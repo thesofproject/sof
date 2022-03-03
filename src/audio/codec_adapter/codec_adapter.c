@@ -453,7 +453,7 @@ copy_period:
 int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
-	uint32_t bytes_to_process, processed = 0, produced = 0;
+	uint32_t processed = 0, produced = 0;
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
 	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -462,7 +462,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct module_data *md = &mod->priv;
 	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
-	struct comp_copy_limits cl;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
@@ -472,9 +471,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
 		return -EINVAL;
 	}
-
-	comp_get_copy_limits_with_lock(source, local_buff, &cl);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
 		 codec_buff_size, local_buff->stream.free, source->stream.avail);
@@ -493,6 +489,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	/* copy source samples into input buffer */
 	list_for_item(blist, &dev->bsource_list) {
 		int frames, source_frame_bytes;
+		uint32_t bytes_to_process;
 
 		source = container_of(blist, struct comp_buffer, sink_list);
 
@@ -523,7 +520,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	 * input/output buffers
 	 */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
 	if (!md->mpd.init_done) {
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
@@ -531,7 +527,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 		if (ret)
 			goto out;
 
-		bytes_to_process -= md->mpd.consumed;
 		processed += md->mpd.consumed;
 
 		i = 0;
@@ -599,10 +594,11 @@ int codec_adapter_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+		comp_dbg(dev, "codec_adapter_copy(): bytes left for next period: %d in input buffer: %d",
+			 mod->input_buffers[i].size - mod->input_buffers[i].consumed, i);
 		i++;
 	}
 
-	bytes_to_process -= md->mpd.consumed;
 	processed += md->mpd.consumed;
 	produced += md->mpd.produced;
 
@@ -611,8 +607,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 db_verify:
 	module_copy_samples(dev, mod->local_buff, sink, md->mpd.produced);
 
-	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
-		 processed, bytes_to_process);
+	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call", processed);
 out:
 	for (i = 0; i < mod->num_output_buffers; i++) {
 		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
