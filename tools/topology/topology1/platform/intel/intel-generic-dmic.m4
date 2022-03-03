@@ -42,6 +42,9 @@ ifdef(`DMIC_PCM_CHANNELS', `', `define(DMIC_PCM_CHANNELS, CHANNELS)')
 ifdef(`DMIC16K_DAI_CHANNELS', `', `define(DMIC16K_DAI_CHANNELS, CHANNELS)')
 ifdef(`DMIC16K_PCM_CHANNELS', `', `define(DMIC16K_PCM_CHANNELS, CHANNELS)')
 
+dnl Unless explicitly specified, dmic period at 48k is 1ms
+ifdef(`DMIC_48k_PERIOD_US', `', `define(DMIC_48k_PERIOD_US, 1000)')
+
 ## Prolong period to 4ms for RTNR
 ifdef(`RTNR', `define(`INTEL_GENERIC_DMIC_PERIOD', 4000)', `define(`INTEL_GENERIC_DMIC_PERIOD', 1000)')
 ifdef(`RTNR', `define(`INTEL_GENERIC_DMIC_PERIOD_INV', 250)', `define(`INTEL_GENERIC_DMIC_PERIOD_INV', 1000)')
@@ -86,7 +89,7 @@ define(`PGA_NAME', Dmic0)
 
 PIPELINE_PCM_ADD(sof/pipe-DMICPROC-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, DMIC_PCM_CHANNELS, s32le,
-	1000, 0, DMIC_48k_CORE_ID, 48000, 48000, 48000)
+	DMIC_48k_PERIOD_US, 0, DMIC_48k_CORE_ID, 48000, 48000, 48000)
 
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
@@ -124,7 +127,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-	1000, 0, DMIC_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
+	DMIC_48k_PERIOD_US, 0, DMIC_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
