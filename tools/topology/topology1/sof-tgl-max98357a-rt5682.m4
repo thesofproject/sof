@@ -134,7 +134,17 @@ define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
+ifdef(`RTNR', `define(`DMICPROC', rtnr)', `')
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+	`define(`DMICPROC', google-rtc-audio-processing)'
+	`define(`DMIC_48k_PERIOD_US', 10000)'
+	,
+	`')
+
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
+
+# Google RTC Audio processing processes 10ms at a time. It needs to have time to process it.
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`DMIC_48k_PERIOD', 10000)', `')
 
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
