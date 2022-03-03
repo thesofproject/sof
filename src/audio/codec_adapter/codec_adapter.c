@@ -428,15 +428,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
-	/* Proceed only if we have enough data to fill the lib buffer
-	 * completely. If you don't fill whole buffer
-	 * the lib won't process it.
-	 */
-	if (bytes_to_process < codec_buff_size) {
-		comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
-		goto db_verify;
-	}
-
 	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
 		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
@@ -444,8 +435,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 		md->mpd.avail = codec_buff_size;
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 				     mod->output_buffers, mod->num_output_buffers);
-		if (ret)
+		if (ret < 0) {
+			if (ret == -ENODATA) {
+				ret = 0;
+				goto db_verify;
+			}
 			goto out;
+		}
 
 		bytes_to_process -= md->mpd.consumed;
 		processed += md->mpd.consumed;
@@ -461,7 +457,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
-		if (ret == -ENOSPC) {
+		if (ret == -ENOSPC || ret == -ENODATA) {
 			ret = 0;
 			goto db_verify;
 		}
