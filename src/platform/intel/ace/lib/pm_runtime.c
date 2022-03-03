@@ -408,6 +408,7 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 	prd->platform_data = pprd;
 }
 
+#ifdef __ZEPHYR__
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 			     uint32_t flags)
 {
@@ -494,6 +495,97 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		break;
 	}
 }
+
+#else /*__ZEPHYR__ */
+
+void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
+			     uint32_t flags)
+{
+	/* Action based on context */
+	switch (context) {
+	case PM_RUNTIME_HOST_DMA_L1:
+		cavs_pm_runtime_host_dma_l1_get();
+		break;
+#if CONFIG_INTEL_SSP
+	case SSP_CLK:
+		cavs_pm_runtime_dis_ssp_clk_gating(index);
+		break;
+	case SSP_POW:
+		cavs_pm_runtime_en_ssp_power(index);
+		break;
+#endif /* CONFIG_INTEL_SSP */
+#if CONFIG_INTEL_DMIC
+	case DMIC_CLK:
+		cavs_pm_runtime_dis_dmic_clk_gating(index);
+		break;
+	case DMIC_POW:
+		cavs_pm_runtime_en_dmic_power(index);
+		break;
+#endif /* CONFIG_INTEL_DMIC */
+	case DW_DMAC_CLK:
+		cavs_pm_runtime_dis_dwdma_clk_gating(index);
+		break;
+	case DW_DMAC_OWNER:
+		cavs_pm_runtime_en_dwdma_owner(index);
+		break;
+	case CORE_MEMORY_POW:
+		cavs_pm_runtime_core_en_memory(index);
+		break;
+	case CORE_HP_CLK:
+		cavs_pm_runtime_core_en_hp_clk(index);
+		break;
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_dis_dsp_pg(index);
+		break;
+	default:
+		break;
+	}
+}
+
+void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
+			     uint32_t flags)
+{
+	switch (context) {
+	case PM_RUNTIME_HOST_DMA_L1:
+		cavs_pm_runtime_host_dma_l1_put();
+		break;
+#if CONFIG_INTEL_SSP
+	case SSP_CLK:
+		cavs_pm_runtime_en_ssp_clk_gating(index);
+		break;
+	case SSP_POW:
+		cavs_pm_runtime_dis_ssp_power(index);
+		break;
+#endif /* CONFIG_INTEL_SSP */
+#if CONFIG_INTEL_DMIC
+	case DMIC_CLK:
+		cavs_pm_runtime_en_dmic_clk_gating(index);
+		break;
+	case DMIC_POW:
+		cavs_pm_runtime_dis_dmic_power(index);
+		break;
+#endif /* CONFIG_INTEL_DMIC */
+	case DW_DMAC_CLK:
+		cavs_pm_runtime_en_dwdma_clk_gating(index);
+		break;
+	case DW_DMAC_OWNER:
+		cavs_pm_runtime_dis_dwdma_owner(index);
+		break;
+	case CORE_MEMORY_POW:
+		cavs_pm_runtime_core_dis_memory(index);
+		break;
+	case CORE_HP_CLK:
+		cavs_pm_runtime_core_dis_hp_clk(index);
+		break;
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_en_dsp_pg(index);
+		break;
+	default:
+		break;
+	}
+}
+
+#endif /*__ZEPHYR__ */
 
 void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 {
