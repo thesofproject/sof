@@ -8,6 +8,8 @@ rsource "dw/Kconfig"
 
 rsource "imx/Kconfig"
 
+rsource "mediatek/Kconfig"
+
 config DUMMY_DMA
 	bool "Dummy DMA (software DMA driver)"
 	default n

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config TEST_SGEN
+	bool
+	default n
+	help
+	  Note: TEST_SGEN for test only
+	  Define this TEST_SGEN to enable sine tone generator,
+	  then output data to audio memory interface(memif)
