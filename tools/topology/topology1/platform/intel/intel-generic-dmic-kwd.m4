@@ -45,21 +45,10 @@ ifdef(`DMIC_PIPELINE_48k_CORE_ID',`',define(DMIC_PIPELINE_48k_CORE_ID, 0))
 ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 
 # DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
-ifdef(`IGO',
-`define(DMICPROC, igonr)',
-`ifdef(`RTNR',
-`define(DMICPROC, rtnr)',
-`ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
-`define(DMICPROC, google-rtc-audio-processing)', `define(DMICPROC, passthrough)')')')
+ifdef(`DMICPROC', `', `define(DMICPROC, passthrough)')
 
-# Prolong period to 16ms for igo_nr process
-ifdef(`IGO',
-  `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)',
-  `ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
-    `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 10000)',
-	`define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)'
-  )'
-)
+dnl Unless explicitly specified, dmic period at 48k is 1ms
+ifdef(`DMIC_48k_PERIOD_US', `', `define(`DMIC_48k_PERIOD_US', 1000)')
 
 # define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0') define the PDM port, default is STEREO_PDM0
 ifdef(`DMIC_DAI_LINK_16k_PDM',`',`define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0')')
@@ -86,7 +75,7 @@ define(`PGA_NAME', Dmic0)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
-        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, DMIC_PIPELINE_48k_CORE_ID, 48000, 48000, 48000)
+        DMIC_48k_PERIOD_US, 0, DMIC_PIPELINE_48k_CORE_ID, 48000, 48000, 48000)
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
@@ -119,7 +108,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
         concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, DMIC_PIPELINE_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
+        DMIC_48k_PERIOD_US, 0, DMIC_PIPELINE_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 3 periods
 # Buffers use s32le format, with 320 frame per 20000us on core 0 with priority 0
