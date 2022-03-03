@@ -75,6 +75,8 @@ passthrough_codec_process(struct processing_module *mod,
 	codec->mpd.produced = mod->period_bytes;
 	codec->mpd.consumed = mod->period_bytes;
 
+	input_buffers[0].consumed = codec->mpd.consumed;
+
 	return 0;
 }
 
