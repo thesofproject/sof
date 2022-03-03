@@ -453,10 +453,8 @@ copy_period:
 int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
-	uint32_t processed = 0, produced = 0;
 	struct comp_buffer *source;
-	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-						    source_list);
+	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	uint32_t codec_buff_size = md->mpd.in_buff_size;
@@ -465,11 +463,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
 	int i = 0;
-
-	if (!sink) {
-		comp_err(dev, "codec_adapter_copy(): sink buffer not found");
-		return -EINVAL;
-	}
 
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d",
 		 codec_buff_size, local_buff->stream.free);
@@ -527,8 +520,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 		if (ret)
 			goto out;
 
-		processed += md->mpd.consumed;
-
 		i = 0;
 		list_for_item(blist, &dev->bsource_list) {
 			source = container_of(blist, struct comp_buffer, sink_list);
@@ -574,9 +565,11 @@ int codec_adapter_copy(struct comp_dev *dev)
 			 ret);
 		goto db_verify;
 	}
+
+	/* remove this after all codec implementations change to use input/output buffers */
 	ca_copy_from_module_to_sink(&local_buff->stream, md->mpd.out_buff, md->mpd.produced);
 
-	/* copy all produced output samples */
+	/* copy all produced output samples to output buffers */
 	i = 0;
 	list_for_item(blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer, sink_list);
@@ -599,15 +592,31 @@ int codec_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
-	processed += md->mpd.consumed;
-	produced += md->mpd.produced;
-
 	audio_stream_produce(&local_buff->stream, md->mpd.produced);
 
 db_verify:
+	/* remove this after all codecs start using input/output buffers */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	module_copy_samples(dev, mod->local_buff, sink, md->mpd.produced);
 
-	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call", processed);
+	/* copy from all output local buffers to sink buffers */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *src_buffer;
+		int j = 0;
+
+		sink = container_of(blist, struct comp_buffer, sink_list);
+		list_for_item(blist, &mod->sink_buffer_list) {
+			src_buffer = container_of(blist, struct comp_buffer, source_list);
+
+			if (i == j)
+				break;
+			j++;
+		}
+
+		if (mod->output_buffers[i].data)
+			module_copy_samples(dev, src_buffer, sink, mod->output_buffers[i].size);
+	}
 out:
 	for (i = 0; i < mod->num_output_buffers; i++) {
 		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
