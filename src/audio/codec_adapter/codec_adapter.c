@@ -111,6 +111,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
+	int i = 0;
 
 	comp_dbg(dev, "codec_adapter_prepare() start");
 
@@ -178,6 +179,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	 * large enough to save the produced output samples.
 	 */
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
+	mod->output_buffer_size = buff_size;
 
 	/* compute number of input buffers */
 	list_for_item(blist, &dev->bsource_list)
@@ -192,19 +194,62 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	/* allocate memory for input buffers */
+	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
+	if (!mod->input_buffers) {
+		comp_err(dev, "codec_adapter_prepare(): failed to allocate input buffers");
+		return -ENOMEM;
+	}
+
+	/* allocate memory for input buffer data */
+	list_for_item(blist, &dev->bsource_list) {
+		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
+
+		mod->input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!mod->input_buffers[i].data) {
+			comp_err(mod->dev, "codec_adapter_prepare(): Failed to alloc input buffer data");
+			ret = -ENOMEM;
+			goto in_free;
+		}
+		i++;
+	}
+
+	/* allocate memory for output buffers */
+	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
+	if (!mod->output_buffers) {
+		comp_err(dev, "codec_adapter_prepare(): failed to allocate output buffers");
+		ret = -ENOMEM;
+		goto in_free;
+	}
+
+	/* allocate memory for output buffer data */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, buff_size);
+		if (!mod->output_buffers[i].data) {
+			comp_err(mod->dev, "codec_adapter_prepare(): Failed to alloc output buffer data");
+			ret = -ENOMEM;
+			goto out_free;
+		}
+		i++;
+	}
+
 	/* Allocate local buffer */
 	if (mod->local_buff) {
 		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
 			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
 				 buff_size);
-			return ret;
+			goto out_free;
 		}
 	} else {
 		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
 		if (!mod->local_buff) {
 			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out_free;
 		}
 
 	}
@@ -215,6 +260,19 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_prepare() done");
 
 	return 0;
+
+out_free:
+	for (i = 0; i < mod->num_output_buffers; i++)
+		rfree(mod->output_buffers[i].data);
+
+	rfree(mod->output_buffers);
+
+in_free:
+	for (i = 0; i < mod->num_input_buffers; i++)
+		rfree(mod->input_buffers[i].data);
+
+	rfree(mod->input_buffers);
+	return ret;
 }
 
 int codec_adapter_params(struct comp_dev *dev,
@@ -328,9 +386,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
 	struct list_item *blist;
+	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	int i = 0;
 
 	if (!source || !sink) {
@@ -344,15 +401,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
 		 codec_buff_size, local_buff->stream.free, source->stream.avail);
 
-	/* allocate memory for input buffers */
-	input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				sizeof(*input_buffers) * mod->num_input_buffers);
-	if (!input_buffers) {
-		comp_err(dev, "codec_adapter_copy(): failed to allocate input buffers");
-		return -ENOMEM;
-	}
-
-	/* allocate memory for input buffer data and copy source samples */
+	/* copy source samples into input buffer */
 	list_for_item(blist, &dev->bsource_list) {
 		int frames, source_frame_bytes;
 
@@ -366,28 +415,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 		bytes_to_process = frames * source_frame_bytes;
 
 		buffer_stream_invalidate(source, bytes_to_process);
-		input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, bytes_to_process);
-		if (!input_buffers[i].data) {
-			comp_err(mod->dev, "codec_adapter_copy(): Failed to alloc input buffer data");
-			ret = -ENOMEM;
-			goto free;
-		}
-
-		input_buffers[i].size = bytes_to_process;
-		ca_copy_from_source_to_module(&source->stream, input_buffers[i].data,
-					      input_buffers[i].size, bytes_to_process);
+		mod->input_buffers[i].size = bytes_to_process;
+		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
+					      size, bytes_to_process);
 		i++;
-	}
-
-	/*
-	 * allocate memory for output buffers. The memory for output buffer data should be
-	 * allocated by the module depending on the number of output samples produced
-	 */
-	output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				 sizeof(*output_buffers) * mod->num_output_buffers);
-	if (!output_buffers) {
-		comp_err(dev, "codec_adapter_copy(): failed to allocate output buffers");
-		goto free;
 	}
 
 	/*
@@ -411,10 +442,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
 					      md->mpd.in_buff_size, codec_buff_size);
 		md->mpd.avail = codec_buff_size;
-		ret = module_process(mod, input_buffers, mod->num_input_buffers,
-				     output_buffers, mod->num_output_buffers);
+		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
+				     mod->output_buffers, mod->num_output_buffers);
 		if (ret)
-			goto out_free;
+			goto out;
 
 		bytes_to_process -= md->mpd.consumed;
 		processed += md->mpd.consumed;
@@ -427,8 +458,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
 				      md->mpd.in_buff_size, codec_buff_size);
 	md->mpd.avail = codec_buff_size;
-	ret = module_process(mod, input_buffers, mod->num_input_buffers,
-			     output_buffers, mod->num_output_buffers);
+	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
+			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
 		if (ret == -ENOSPC) {
 			ret = 0;
@@ -489,17 +520,16 @@ copy_period:
 end:
 	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 		 processed, bytes_to_process);
+out:
+	for (i = 0; i < mod->num_output_buffers; i++) {
+		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
+		mod->output_buffers[i].size = 0;
+	}
 
-out_free:
-	for (i = 0; i < mod->num_output_buffers; i++)
-		rfree(output_buffers[i].data);
-
-	rfree(output_buffers);
-
-free:
-	for (i = 0; i < mod->num_input_buffers; i++)
-		rfree(input_buffers[i].data);
-	rfree(input_buffers);
+	for (i = 0; i < mod->num_input_buffers; i++) {
+		bzero(mod->input_buffers[i].data, size);
+		mod->input_buffers[i].size = 0;
+	}
 
 	return ret;
 }
@@ -610,7 +640,7 @@ int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 
 int codec_adapter_reset(struct comp_dev *dev)
 {
-	int ret;
+	int ret, i;
 	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_reset(): resetting");
@@ -624,6 +654,19 @@ int codec_adapter_reset(struct comp_dev *dev)
 	/* if module is not prepared, local_buffer won't be allocated */
 	if (mod->local_buff)
 		buffer_zero(mod->local_buff);
+
+	for (i = 0; i < mod->num_output_buffers; i++)
+		rfree(mod->output_buffers[i].data);
+
+	rfree(mod->output_buffers);
+
+	for (i = 0; i < mod->num_input_buffers; i++)
+		rfree(mod->input_buffers[i].data);
+
+	rfree(mod->input_buffers);
+
+	mod->num_input_buffers = 0;
+	mod->num_output_buffers = 0;
 
 	comp_dbg(dev, "codec_adapter_reset(): done");
 

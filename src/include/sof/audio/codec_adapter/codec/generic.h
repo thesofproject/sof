@@ -282,6 +282,9 @@ struct processing_module {
 	struct comp_dev *dev;
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
+	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
+	struct input_stream_buffer *input_buffers;
+	struct output_stream_buffer *output_buffers;
 	uint32_t num_input_buffers; /**< number of input buffers */
 	uint32_t num_output_buffers; /**< number of output buffers */
 };
