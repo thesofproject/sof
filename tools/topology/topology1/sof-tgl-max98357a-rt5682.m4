@@ -102,7 +102,7 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
-ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', define(`SPK_MIC_PERIOD_US', 10000), define(`SPK_MIC_PERIOD_US', 1000))
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_MIC_PERIOD_US', 10000)', `define(`SPK_MIC_PERIOD_US', 1000)')
 
 ifdef(`NO_AMP',`',`
 # Define pipeline id for sof-tgl-CODEC-rt5682.m4
