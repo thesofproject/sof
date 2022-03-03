@@ -415,16 +415,56 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 	comp_update_buffer_produce(sink, bytes);
 }
 
+static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_buffer,
+				struct comp_buffer *sink_buffer, uint32_t produced)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_copy_limits cl;
+	uint32_t copy_bytes;
+
+	if (!produced && !mod->deep_buff_bytes) {
+		comp_dbg(dev, "module_copy_samples(): nothing processed in this call");
+		/*
+		 * No data produced anything in this period but there still be data in the buffer
+		 * to copy to sink
+		 */
+		if (audio_stream_get_avail_bytes(&src_buffer->stream) >= mod->period_bytes)
+			goto copy_period;
+
+		return;
+	}
+
+	if (mod->deep_buff_bytes) {
+		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&src_buffer->stream)) {
+			generate_zeroes(sink_buffer, mod->period_bytes);
+			return;
+		}
+
+		comp_dbg(dev, "module_copy_samples(): deep buffering has ended after gathering %d bytes of processed data",
+			 audio_stream_get_avail_bytes(&src_buffer->stream));
+		mod->deep_buff_bytes = 0;
+	}
+
+copy_period:
+	comp_get_copy_limits_with_lock(src_buffer, sink_buffer, &cl);
+	copy_bytes = cl.frames * cl.source_frame_bytes;
+	audio_stream_copy(&src_buffer->stream, 0, &sink_buffer->stream, 0,
+			  copy_bytes / mod->stream_params.sample_container_bytes);
+	buffer_stream_writeback(sink_buffer, copy_bytes);
+
+	comp_update_buffer_produce(sink_buffer, copy_bytes);
+	comp_update_buffer_consume(src_buffer, copy_bytes);
+}
+
 int codec_adapter_copy(struct comp_dev *dev)
 {
-	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
+	uint32_t bytes_to_process, processed = 0, produced = 0;
 	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 						    source_list);
 	struct comp_buffer *source;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *local_buff = mod->local_buff;
-	struct comp_copy_limits cl;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	int ret, i = 0;
@@ -505,40 +545,10 @@ consume:
 	}
 
 db_verify:
-	if (!produced && !mod->deep_buff_bytes) {
-		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
-		/* we haven't produced anything in this period but we
-		 * still have data in the local buffer to copy to sink
-		 */
-		if (audio_stream_get_avail_bytes(&local_buff->stream) >= mod->period_bytes)
-			goto copy_period;
+	module_copy_samples(dev, mod->local_buff, sink, md->mpd.produced);
 
-		goto end;
-	}
-
-	if (mod->deep_buff_bytes) {
-		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
-			generate_zeroes(sink, mod->period_bytes);
-			goto end;
-		}
-
-		comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
-			 audio_stream_get_avail_bytes(&local_buff->stream));
-		mod->deep_buff_bytes = 0;
-	}
-
-copy_period:
-	comp_get_copy_limits_with_lock(local_buff, sink, &cl);
-	copy_bytes = cl.frames * cl.source_frame_bytes;
-	audio_stream_copy(&local_buff->stream, 0,
-			  &sink->stream, 0,
-			  copy_bytes / mod->stream_params.sample_container_bytes);
-	buffer_stream_writeback(sink, copy_bytes);
-
-	comp_update_buffer_produce(sink, copy_bytes);
-	comp_update_buffer_consume(local_buff, copy_bytes);
-end:
-	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call", processed);
+	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+		 processed, bytes_to_process);
 out:
 	for (i = 0; i < mod->num_output_buffers; i++) {
 		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
