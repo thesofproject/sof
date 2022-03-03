@@ -13,7 +13,6 @@
  * \brief Processing component aimed to work with external codec libraries
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
-
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
@@ -22,6 +21,8 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#include <limits.h>
+#include <stdint.h>
 
 /**
  * \brief Create a codec adapter component.
@@ -464,6 +465,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
+	uint32_t min_free_frames = UINT_MAX;
 	int i = 0;
 
 	if (!source || !sink) {
@@ -477,6 +479,17 @@ int codec_adapter_copy(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
 		 codec_buff_size, local_buff->stream.free, source->stream.avail);
 
+	/* get the least number of free frames from all sinks */
+	list_for_item(blist, &dev->bsink_list) {
+		uint32_t free_sink_frames;
+
+		sink = container_of(blist, struct comp_buffer, sink_list);
+		free_sink_frames = audio_stream_get_free_frames(&sink->stream);
+
+		if (free_sink_frames < min_free_frames)
+			min_free_frames = free_sink_frames;
+	}
+
 	/* copy source samples into input buffer */
 	list_for_item(blist, &dev->bsource_list) {
 		int frames, source_frame_bytes;
@@ -484,7 +497,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 
 		source = buffer_acquire(source);
-		frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+		frames = MIN(min_free_frames, audio_stream_get_avail_frames(&source->stream));
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
