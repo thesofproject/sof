@@ -463,15 +463,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
-	/* Proceed only if we have enough data to fill the lib buffer
-	 * completely. If you don't fill whole buffer
-	 * the lib won't process it.
-	 */
-	if (bytes_to_process < codec_buff_size) {
-		comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
-		goto db_verify;
-	}
-
 	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
 		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,

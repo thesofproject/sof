@@ -65,6 +65,12 @@ passthrough_codec_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 
+	/* Proceed only if we have enough data to fill the module buffer completely */
+	if (input_buffers[0].size < codec->mpd.in_buff_size) {
+		comp_dbg(dev, "passthrough_codec_process(): not enough data to process");
+		return 0;
+	}
+
 	if (!codec->mpd.init_done)
 		return passthrough_codec_init_process(dev);
 

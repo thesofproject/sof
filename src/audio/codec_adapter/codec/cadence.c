@@ -509,6 +509,12 @@ cadence_codec_process(struct processing_module *mod,
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
+	/* Proceed only if we have enough data to fill the module buffer completely */
+	if (input_buffers[0].size < codec->mpd.in_buff_size) {
+		comp_dbg(dev, "cadence_codec_process(): not enough data to process");
+		return 0;
+	}
+
 	/* do not proceed with processing if not enough free left in the local buffer */
 	if (codec->mpd.init_done) {
 		int output_bytes = cadence_codec_get_samples(dev) *
