@@ -507,6 +507,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 		mod->input_buffers[i].size = bytes_to_process;
 		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
 					      size, bytes_to_process);
+
+		/* this should be removed when all codecs use the input/output buffers */
+		if (i == 0) {
+			ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
+						      md->mpd.in_buff_size, bytes_to_process);
+			md->mpd.avail = bytes_to_process;
+		}
 		mod->input_buffers[i].consumed = 0;
 		i++;
 	}
@@ -519,10 +526,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
 	if (!md->mpd.init_done) {
-		buffer_stream_invalidate(source, codec_buff_size);
-		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-					      md->mpd.in_buff_size, codec_buff_size);
-		md->mpd.avail = codec_buff_size;
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 				     mod->output_buffers, mod->num_output_buffers);
 		if (ret)
