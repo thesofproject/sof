@@ -84,6 +84,12 @@ define(DMIC_DAI_LINK_16k_ID, `2')
 define(DMIC_PIPELINE_48k_CORE_ID, 1)
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
+
+ifdef(`IGO',
+  `define(`DMICPROC', igonr)'
+  `define(`DMIC_48k_PERIOD_US', 16000)',
+  `')
+
 # include the generic dmic with kwd
 include(`platform/intel/intel-generic-dmic-kwd.m4')
 
