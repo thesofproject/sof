@@ -228,6 +228,12 @@ dts_codec_process(struct processing_module *mod,
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
 
+	/* Proceed only if we have enough data to fill the module buffer completely */
+	if (input_buffers[0].size < codec->mpd.in_buff_size) {
+		comp_dbg(dev, "dts_codec_process(): not enough data to process");
+		return -ENODATA;
+	}
+
 	if (!codec->mpd.init_done)
 		return dts_codec_init_process(dev);
 
