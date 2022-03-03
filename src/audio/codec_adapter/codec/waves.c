@@ -760,6 +760,8 @@ waves_codec_process(struct processing_module *mod,
 	if (ret)
 		comp_err(dev, "waves_codec_process() failed %d", ret);
 
+	input_buffers[0].consumed = codec->mpd.consumed;
+
 	comp_dbg(dev, "waves_codec_process() done");
 	return ret;
 }
