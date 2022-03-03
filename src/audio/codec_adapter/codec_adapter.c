@@ -517,6 +517,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
+	/*
+	 * when init is not done, the first process callback is not expected to produce any
+	 * samples
+	 */
 	if (!md->mpd.init_done) {
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 				     mod->output_buffers, mod->num_output_buffers);
