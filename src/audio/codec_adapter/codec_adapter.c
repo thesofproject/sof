@@ -540,8 +540,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 			comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 			i++;
 		}
-		if (bytes_to_process < codec_buff_size)
-			goto db_verify;
 	}
 
 	/* process remaining data */
