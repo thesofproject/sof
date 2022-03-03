@@ -457,15 +457,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
 	int i = 0;
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d",
-		 codec_buff_size, local_buff->stream.free);
+	comp_dbg(dev, "codec_adapter_copy() start: local_buff free: %d", local_buff->stream.free);
 
 	/* get the least number of free frames from all sinks */
 	list_for_item(blist, &dev->bsink_list) {
