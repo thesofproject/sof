@@ -245,7 +245,7 @@ int module_process(struct processing_module *mod, struct input_stream_buffer *in
 
 	ret = md->ops->process(mod, input_buffers, num_input_buffers, output_buffers,
 			       num_output_buffers);
-	if (ret && ret != -ENOSPC) {
+	if (ret && ret != -ENOSPC && ret != -ENODATA) {
 		comp_err(dev, "module_process() error %d: for comp %d",
 			 ret, dev_comp_id(dev));
 		return ret;
