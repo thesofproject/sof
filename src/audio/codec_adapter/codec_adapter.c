@@ -507,6 +507,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		mod->input_buffers[i].size = bytes_to_process;
 		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
 					      size, bytes_to_process);
+		mod->input_buffers[i].consumed = 0;
 		i++;
 	}
 
