@@ -140,7 +140,7 @@ static int google_rtc_audio_processing_cmd(struct comp_dev *dev, int cmd, void *
 
 static struct comp_dev *google_rtc_audio_processing_create(
 	const struct comp_driver *drv,
-	struct sof_ipc_comp *comp_template)
+	struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct google_rtc_audio_processing_comp_data *cd;
@@ -153,7 +153,7 @@ static struct comp_dev *google_rtc_audio_processing_create(
 	if (!dev)
 		return NULL;
 
-	dev->ipc_config = *config;
+	dev->comp = *comp;
 
 	/* Create private component data */
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
