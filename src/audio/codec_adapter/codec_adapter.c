@@ -454,8 +454,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	uint32_t processed = 0, produced = 0;
-	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
-						     sink_list);
+	struct comp_buffer *source;
 	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 						    source_list);
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -467,13 +466,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 	uint32_t min_free_frames = UINT_MAX;
 	int i = 0;
 
-	if (!source || !sink) {
-		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
+	if (!sink) {
+		comp_err(dev, "codec_adapter_copy(): sink buffer not found");
 		return -EINVAL;
 	}
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
-		 codec_buff_size, local_buff->stream.free, source->stream.avail);
+	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d",
+		 codec_buff_size, local_buff->stream.free);
 
 	/* get the least number of free frames from all sinks */
 	list_for_item(blist, &dev->bsink_list) {
@@ -511,15 +510,12 @@ int codec_adapter_copy(struct comp_dev *dev)
 						      md->mpd.in_buff_size, bytes_to_process);
 			md->mpd.avail = bytes_to_process;
 		}
+
+		comp_dbg(dev, "codec_adapter_copy(): %d bytes available in input buffer: %d",
+			 bytes_to_process, i);
 		mod->input_buffers[i].consumed = 0;
 		i++;
 	}
-
-	/*
-	 * This should be removed once all codec implementations start using the passed
-	 * input/output buffers
-	 */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
 	if (!md->mpd.init_done) {
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
