@@ -324,6 +324,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 {
 	struct ipc4_copier_module_cfg *copier = spec;
 	union ipc4_connector_node_id node_id;
+	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
 	struct copier_data *cd;
 	struct comp_dev *dev;
@@ -353,19 +354,18 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
+	if (!ipc_pipe) {
+		comp_cl_err(&comp_copier, "pipeline %d is not existed", config->pipeline_id);
+		goto error_cd;
+	}
+
+	dev->pipeline = ipc_pipe->pipeline;
+
 	/* copier is linked to gateway */
 	if (copier->gtw_cfg.node_id != IPC4_INVALID_NODE_ID) {
-		struct ipc_comp_dev *ipc_pipe;
-
 		node_id.dw = copier->gtw_cfg.node_id;
 		cd->direction = node_id.f.dma_type % 2;
-
-		/* check whether pipeline id is already taken or in use */
-		ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
-		if (!ipc_pipe) {
-			tr_err(&ipc_tr, "pipeline %d is not existed", config->pipeline_id);
-			goto error_cd;
-		}
 
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
@@ -569,7 +569,21 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		comp_err(dev, "failed to find dai comp");
 		return ret;
 	}
+
 	dai_cd = comp_get_drvdata(dai_copier);
+	/* dai is in another pipeline and it is not prepared or active */
+	if (dai_copier->state <= COMP_STATE_READY || dai_cd->endpoint->state <= COMP_STATE_READY) {
+		struct ipc4_pipeline_registers pipe_reg;
+
+		comp_warn(dev, "dai is not ready");
+
+		pipe_reg.stream_start_offset = 0;
+		pipe_reg.stream_end_offset = 0;
+		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+
+		return 0;
+	}
+
 	comp_position(dai_cd->endpoint, &posn);
 
 	/* update stream start and end offset for running message in host copier
