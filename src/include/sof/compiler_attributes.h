@@ -32,8 +32,8 @@
  * test will not be true here, and must go through
  * the Clang version test.
  */
-#if (defined(__GNUC__) && (__GNUC__ >= 7)) || \
-	(defined(__clang__) && (__clang_major__ >= 10))
+#if ((defined(__GNUC__) && (__GNUC__ >= 7)) || \
+     (defined(__clang__) && (__clang_major__ >= 10))) && !defined(__CHECKER__)
 
 #define COMPILER_FALLTHROUGH __attribute__((fallthrough))
 
