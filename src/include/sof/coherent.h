@@ -99,9 +99,11 @@ struct coherent {
 
 #if CONFIG_INCOHERENT
 /* When coherent_acquire() is called, we are sure not to have cache for this memory */
-__must_check static inline struct coherent *coherent_acquire(struct coherent *c,
-							     const size_t size)
+__must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
+								     const size_t size)
 {
+	struct coherent __sparse_cache *cc = uncache_to_cache(c);
+
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
 	CHECK_ATOMIC(c);
@@ -112,16 +114,30 @@ __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 
 		c->key = k_spin_lock(&c->lock);
 
+		/*
+		 * FIXME: This is wrong. dcache_invalidate_region() only makes
+		 * sense if we assume, that dirty cache lines might exist for
+		 * this object. But in that case those lines could be written
+		 * back here thus overwriting either user data, or the coherent
+		 * header or both. When coherent_acquire() is called it must be
+		 * guaranteed that the object isn't in cache. Before it is
+		 * acquired no cached access to it is allowed. This has to be
+		 * fixed here and on multiple further occasions below.
+		 */
+
 		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
+		dcache_invalidate_region(cc, size);
 	}
 
 	/* client can now use cached object safely */
-	return uncache_to_cache(c);
+	return cc;
 }
 
-static inline struct coherent *coherent_release(struct coherent *c, const size_t size)
+static inline struct coherent *coherent_release(struct coherent __sparse_cache *c,
+						const size_t size)
 {
+	struct coherent *uc = cache_to_uncache(c);
+
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 	CHECK_ATOMIC(c);
@@ -134,10 +150,10 @@ static inline struct coherent *coherent_release(struct coherent *c, const size_t
 		dcache_writeback_invalidate_region(c, size);
 
 		/* unlock on uncache alias */
-		k_spin_unlock(&cache_to_uncache(c)->lock, cache_to_uncache(c)->key);
+		k_spin_unlock(&uc->lock, uc->key);
 	}
 
-	return cache_to_uncache(c);
+	return uc;
 }
 
 static inline void __coherent_init(struct coherent *c, const size_t size)
@@ -167,7 +183,7 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 
 	c->key = k_spin_lock(&c->lock);
 	c->shared = true;
-	dcache_invalidate_region(c, size);
+	dcache_invalidate_region(uncache_to_cache(c), size);
 	k_spin_unlock(&c->lock, c->key);
 }
 
@@ -176,9 +192,11 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 
 #ifdef __ZEPHYR__
 
-__must_check static inline struct coherent *coherent_acquire_thread(struct coherent *c,
-								    const size_t size)
+__must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
+	struct coherent *c, const size_t size)
 {
+	struct coherent __sparse_cache *cc = uncache_to_cache(c);
+
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
 	CHECK_SLEEP(c);
@@ -191,15 +209,18 @@ __must_check static inline struct coherent *coherent_acquire_thread(struct coher
 		k_mutex_lock(&c->mutex, K_FOREVER);
 
 		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
+		dcache_invalidate_region(cc, size);
 	}
 
 	/* client can now use cached object safely */
-	return uncache_to_cache(c);
+	return cc;
 }
 
-static inline struct coherent *coherent_release_thread(struct coherent *c, const size_t size)
+static inline struct coherent *coherent_release_thread(struct coherent __sparse_cache *c,
+						       const size_t size)
 {
+	struct coherent *uc = cache_to_uncache(c);
+
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 	CHECK_SLEEP(c);
@@ -213,10 +234,10 @@ static inline struct coherent *coherent_release_thread(struct coherent *c, const
 		dcache_writeback_invalidate_region(c, size);
 
 		/* unlock on uncache alias */
-		k_mutex_unlock(&cache_to_uncache(c)->mutex);
+		k_mutex_unlock(&uc->mutex);
 	}
 
-	return cache_to_uncache(c);
+	return uc;
 }
 
 static inline void __coherent_init_thread(struct coherent *c, const size_t size)
@@ -246,7 +267,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 
 	k_mutex_lock(&c->mutex, K_FOREVER);
 	c->shared = true;
-	dcache_invalidate_region(c, size);
+	dcache_invalidate_region(uncache_to_cache(c), size);
 	k_mutex_unlock(&c->mutex);
 }
 
@@ -260,7 +281,8 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 		/* assert if someone passes a cache address in here. */		\
 		ADDR_IS_COHERENT(object);					\
 		/* wtb and inv local data to coherent object */			\
-		dcache_writeback_invalidate_region(uncache_to_cache(object), sizeof(*object)); \
+		dcache_writeback_invalidate_region(uncache_to_cache(object),	\
+						   sizeof(*object));		\
 	} while (0)
 
 #else /* CONFIG_INCOHERENT */
@@ -268,28 +290,34 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 /*
  * Coherent devices only require locking to manage shared access.
  */
-__must_check static inline struct coherent *coherent_acquire(struct coherent *c, const size_t size)
+__must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
+								     const size_t size)
 {
 	if (c->shared) {
+		struct coherent __sparse_cache *cc = uncache_to_cache(c);
+
 		c->key = k_spin_lock(&c->lock);
 
 		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
+		dcache_invalidate_region(cc, size);
 	}
 
-	return c;
+	return (__sparse_force struct coherent __sparse_cache *)c;
 }
 
-static inline struct coherent *coherent_release(struct coherent *c, const size_t size)
+static inline struct coherent *coherent_release(struct coherent __sparse_cache *c,
+						const size_t size)
 {
 	if (c->shared) {
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(uncache_to_cache(c), size);
+		struct coherent *uc = cache_to_uncache(c);
 
-		k_spin_unlock(&c->lock, c->key);
+		/* wtb and inv local data to coherent object */
+		dcache_writeback_invalidate_region(c, size);
+
+		k_spin_unlock(&uc->lock, uc->key);
 	}
 
-	return c;
+	return (__sparse_force struct coherent *)c;
 }
 
 static inline void __coherent_init(struct coherent *c, const size_t size)
@@ -310,29 +338,34 @@ static inline void __coherent_init(struct coherent *c, const size_t size)
 #define coherent_shared(object, member) (object)->member.shared = true
 
 #ifdef __ZEPHYR__
-__must_check static inline struct coherent *coherent_acquire_thread(struct coherent *c,
-								    const size_t size)
+__must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
+	struct coherent *c, const size_t size)
 {
 	if (c->shared) {
+		struct coherent __sparse_cache *cc = uncache_to_cache(c);
+
 		k_mutex_lock(&c->mutex, K_FOREVER);
 
 		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
+		dcache_invalidate_region(cc, size);
 	}
 
-	return c;
+	return (__sparse_force struct coherent __sparse_cache *)c;
 }
 
-static inline struct coherent *coherent_release_thread(struct coherent *c, const size_t size)
+static inline struct coherent *coherent_release_thread(struct coherent __sparse_cache *c,
+						       const size_t size)
 {
 	if (c->shared) {
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(uncache_to_cache(c), size);
+		struct coherent *uc = cache_to_uncache(c);
 
-		k_mutex_unlock(&c->mutex);
+		/* wtb and inv local data to coherent object */
+		dcache_writeback_invalidate_region(c, size);
+
+		k_mutex_unlock(&uc->mutex);
 	}
 
-	return c;
+	return (__sparse_force struct coherent *)c;
 }
 
 static inline void __coherent_init_thread(struct coherent *c, const size_t size)
