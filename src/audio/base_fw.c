@@ -308,7 +308,15 @@ static int basefw_set_large_config(struct comp_dev *dev,
 				   uint32_t data_offset,
 				   char *data)
 {
-	return 0;
+	switch (param_id) {
+	case IPC4_FW_CONFIG:
+		tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
+		return 0;
+	default:
+		break;
+	}
+
+	return IPC4_UNKNOWN_MESSAGE_TYPE;
 };
 
 static const struct comp_driver comp_basefw = {
