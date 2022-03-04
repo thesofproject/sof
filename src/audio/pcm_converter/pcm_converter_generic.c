@@ -747,7 +747,7 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream *so
 	int32_t *src = source->r_ptr;
 	uint16_t *dst = sink->w_ptr;
 	int processed;
-	int nmax, i, n;
+	int nmax, i = 0, n = 0;
 
 	src += ioffset;
 	assert(ooffset == 0);
