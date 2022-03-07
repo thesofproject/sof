@@ -14,7 +14,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-const struct dw_drv_plat_data dmac0 = {
+static const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= 6,
 		.weight = 0,
@@ -49,7 +49,7 @@ const struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-const struct dw_drv_plat_data dmac1 = {
+static const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,
@@ -84,7 +84,7 @@ const struct dw_drv_plat_data dmac1 = {
 	},
 };
 
-SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC0,
@@ -114,7 +114,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &dw_dma_ops,
 },};
 
-const struct dma_info lib_dma = {
+static const struct dma_info lib_dma = {
 	.dma_array = dma,
 	.num_dmas = ARRAY_SIZE(dma)
 };

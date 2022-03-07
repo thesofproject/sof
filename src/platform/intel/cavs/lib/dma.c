@@ -35,7 +35,7 @@
 #define DMAC1_CLASS 7
 #endif
 
-const struct dw_drv_plat_data dmac0 = {
+static const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= DMAC0_CLASS,
 		.weight = 0,
@@ -70,7 +70,7 @@ const struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-const struct dw_drv_plat_data dmac1 = {
+static const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= DMAC1_CLASS,
 		.weight = 0,
@@ -106,7 +106,7 @@ const struct dw_drv_plat_data dmac1 = {
 };
 
 #if CONFIG_SUECREEK
-struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
+static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -155,7 +155,7 @@ struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 };
 
 #else
-SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -238,7 +238,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 },};
 #endif
 
-const struct dma_info lib_dma = {
+static const struct dma_info lib_dma = {
 	.dma_array = cache_to_uncache_init((struct dma *)dma),
 	.num_dmas = ARRAY_SIZE(dma)
 };
