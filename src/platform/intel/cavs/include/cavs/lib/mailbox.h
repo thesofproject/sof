@@ -70,27 +70,30 @@
 static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
 {
 	volatile uint32_t *ptr;
+	volatile uint32_t __sparse_cache *ptr_c;
 
-	ptr = (volatile uint32_t *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr);
+	ptr_c = (volatile uint32_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache((uint32_t __sparse_cache *)ptr_c);
 	*ptr = src;
 }
 
 static inline void mailbox_sw_reg_write64(size_t offset, uint64_t src)
 {
 	volatile uint64_t *ptr;
+	volatile uint64_t __sparse_cache *ptr_c;
 
-	ptr = (volatile uint64_t *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr);
+	ptr_c = (volatile uint64_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache((uint64_t __sparse_cache *)ptr_c);
 	*ptr = src;
 }
 
 static inline uint32_t mailbox_sw_reg_read(size_t offset)
 {
 	volatile uint32_t *ptr;
+	volatile uint32_t __sparse_cache *ptr_c;
 
-	ptr = (volatile uint32_t *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr);
+	ptr_c = (volatile uint32_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache((uint32_t __sparse_cache *)ptr_c);
 
 	return *ptr;
 }
@@ -98,9 +101,10 @@ static inline uint32_t mailbox_sw_reg_read(size_t offset)
 static inline uint64_t mailbox_sw_reg_read64(size_t offset)
 {
 	volatile uint64_t *ptr;
+	volatile uint64_t __sparse_cache *ptr_c;
 
-	ptr = (volatile uint64_t *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr);
+	ptr_c = (volatile uint64_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache((uint64_t __sparse_cache *)ptr_c);
 
 	return *ptr;
 }
