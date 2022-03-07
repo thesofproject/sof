@@ -162,7 +162,7 @@ static inline int get_lowest_freq_idx(int clock)
 static void platform_clock_low_power_mode(int clock, bool enable)
 {
 	int current_freq_idx = get_current_freq_idx(clock);
-	int freq_idx = *cache_to_uncache(&active_freq_idx);
+	int freq_idx = *(int *)cache_to_uncache(&active_freq_idx);
 
 	if (enable && current_freq_idx > CPU_LPRO_FREQ_IDX)
 		/* LPRO requests are fast, but requests for other ROs
@@ -186,7 +186,7 @@ void platform_clock_on_waiti(void)
 	/* hold the prd->lock for possible active_freq_idx switching */
 	key = k_spin_lock(&prd->lock);
 
-	freq_idx = *cache_to_uncache(&active_freq_idx);
+	freq_idx = *(int *)cache_to_uncache(&active_freq_idx);
 	lowest_freq_idx = get_lowest_freq_idx(CLK_CPU(cpu_get_id()));
 	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
@@ -261,7 +261,7 @@ void platform_clock_on_waiti(void)
 	/* hold the prd->lock for possible active_freq_idx switching */
 	key = k_spin_lock(&prd->lock);
 
-	freq_idx = *cache_to_uncache(&active_freq_idx);
+	freq_idx = *(int *)cache_to_uncache(&active_freq_idx);
 	lowest_freq_idx = get_lowest_freq_idx(CLK_CPU(cpu_get_id()));
 	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
@@ -289,7 +289,7 @@ void platform_clock_on_wakeup(void)
 	key = k_spin_lock(&prd->lock);
 
 	current_idx = get_current_freq_idx(CLK_CPU(cpu_get_id()));
-	target_idx = *cache_to_uncache(&active_freq_idx);
+	target_idx = *(int *)cache_to_uncache(&active_freq_idx);
 
 	/* restore the active cpu freq_idx manually */
 	if (current_idx != target_idx)

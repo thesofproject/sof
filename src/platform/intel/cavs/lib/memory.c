@@ -201,14 +201,14 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->runtime_shared[0].blocks = ARRAY_SIZE(rt_shared_heap_map);
 	sof->memory_map->runtime_shared[0].map = uncached_block_map(rt_shared_heap_map);
 	sof->memory_map->runtime_shared[0].heap =
-			cache_to_uncache((uintptr_t)&_runtime_shared_heap);
+		(uint32_t)cache_to_uncache(&_runtime_shared_heap);
 	sof->memory_map->runtime_shared[0].size = HEAP_RUNTIME_SHARED_SIZE;
 	sof->memory_map->runtime_shared[0].info.free = HEAP_RUNTIME_SHARED_SIZE;
 	sof->memory_map->runtime_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
 	/* .system_shared init */
-	sof->memory_map->system_shared[0].heap = cache_to_uncache((uintptr_t)&_system_shared_heap);
+	sof->memory_map->system_shared[0].heap = (uint32_t)cache_to_uncache(&_system_shared_heap);
 	sof->memory_map->system_shared[0].size = HEAP_SYSTEM_SHARED_SIZE;
 	sof->memory_map->system_shared[0].info.free = HEAP_SYSTEM_SHARED_SIZE;
 	sof->memory_map->system_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
@@ -228,7 +228,7 @@ void platform_init_memmap(struct sof *sof)
 	/* heap buffer init */
 	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
 	sof->memory_map->buffer[0].map = uncached_block_map(buf_heap_map);
-	sof->memory_map->buffer[0].heap = cache_to_uncache((uintptr_t)&_buffer_heap);
+	sof->memory_map->buffer[0].heap = (uint32_t)cache_to_uncache(&_buffer_heap);
 	sof->memory_map->buffer[0].size = heap_buffer_size;
 	sof->memory_map->buffer[0].info.free = heap_buffer_size;
 	sof->memory_map->buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
