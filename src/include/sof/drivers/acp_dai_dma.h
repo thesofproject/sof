@@ -9,6 +9,9 @@
 #ifndef __SOF_DRIVERS_ACPDMA_H__
 #define __SOF_DRIVERS_ACPDMA_H__
 
+#include <ipc/dai.h>
+#include <ipc/dai-amd.h>
+#include <sof/lib/dai.h>
 #include <sof/bit.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -37,4 +40,10 @@ int acp_dma_init(struct sof *sof);
 extern const struct dai_driver acp_spdai_driver;
 extern const struct dai_driver acp_btdai_driver;
 extern const struct dai_driver acp_dmic_dai_driver;
+
+/* ACP private data */
+struct acp_pdata {
+	struct sof_ipc_dai_config config;
+	struct sof_ipc_dai_acp_params params;
+};
 #endif /* __SOF_DRIVERS_ACPDMA_H__ */

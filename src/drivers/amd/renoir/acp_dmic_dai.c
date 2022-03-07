@@ -28,7 +28,29 @@ DECLARE_TR_CTX(acp_dmic_dai_tr, SOF_UUID(acp_dmic_dai_uuid), LOG_LEVEL_INFO);
 static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 					  void *spec_config)
 {
-	/* nothing to do on dmic dai */
+	dai_info(dai, "ACP: acp_dmic_set_config");
+	struct sof_ipc_dai_config *config = spec_config;
+	struct acp_pdata *acpdata = dai_get_drvdata(dai);
+	acp_wov_clk_ctrl_t clk_ctrl;
+
+	acpdata->config = *config;
+	acpdata->params = config->acpdmic;
+	clk_ctrl = (acp_wov_clk_ctrl_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
+	clk_ctrl.u32all = 0;
+	switch (acpdata->params.sample_rate) {
+	case 48000:
+		/* DMIC Clock for 48K sample rate */
+		clk_ctrl.bits.brm_clk_ctrl = 7;
+		break;
+	case 16000:
+		/* DMIC Clock for 16K sample rate */
+		clk_ctrl.bits.brm_clk_ctrl = 1;
+		break;
+	default:
+		dai_info(dai, "ACP:acp_dmic_set_config unsupported samplerate");
+		return -EINVAL;
+	}
+	io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL, clk_ctrl.u32all);
 	return 0;
 }
 
@@ -46,7 +68,29 @@ static int acp_dmic_dai_trigger(struct dai *dai, int cmd, int direction)
 
 static int acp_dmic_dai_probe(struct dai *dai)
 {
-	/* TODO */
+	struct acp_pdata *acp;
+
+	dai_info(dai, "ACP: acp_dmic_dai_probe");
+	/* allocate private data */
+	acp = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*acp));
+	if (!acp) {
+		dai_err(dai, "acp_dmic_dai_probe(): alloc failed");
+		return -ENOMEM;
+	}
+	dai_set_drvdata(dai, acp);
+
+	return 0;
+}
+
+static int acp_dmic_dai_remove(struct dai *dai)
+{
+	struct acp_pdata *acp = dai_get_drvdata(dai);
+
+	dai_info(dai, "acp_dmic_dai_remove()");
+	rfree(acp);
+
+	dai_set_drvdata(dai, NULL);
+
 	return 0;
 }
 
@@ -72,8 +116,14 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params *params,
 			      int dir)
 {
+	struct acp_pdata *acpdata = dai_get_drvdata(dai);
+
+	if (!acpdata->params.sample_rate)
+		params->rate = ACP_DEFAULT_SAMPLE_RATE;
+	else
+		params->rate = acpdata->params.sample_rate;
+	dai_info(dai, "acp_dmic_get_hw_params samplerate %d():", params->rate);
 	/* ACP only currently supports these parameters */
-	params->rate = ACP_SAMPLE_RATE_16K;/* 16000 sample rate only for dmic */
 	params->channels = ACP_DEFAULT_NUM_CHANNELS;
 	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
@@ -90,6 +140,7 @@ const struct dai_driver acp_dmic_dai_driver = {
 		.trigger		= acp_dmic_dai_trigger,
 		.set_config		= acp_dmic_dai_set_config,
 		.probe			= acp_dmic_dai_probe,
+		.remove			= acp_dmic_dai_remove,
 		.get_fifo		= acp_dmic_dai_get_fifo,
 		.get_handshake		= acp_dmic_dai_get_handshake,
 		.get_hw_params		= acp_dmic_dai_get_hw_params,

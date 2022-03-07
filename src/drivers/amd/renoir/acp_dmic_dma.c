@@ -80,7 +80,6 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 {
 	acp_wov_pdm_no_of_channels_t pdm_channels;
 	acp_wov_pdm_decimation_factor_t deci_fctr;
-	acp_wov_clk_ctrl_t clk_ctrl;
 	acp_wov_misc_ctrl_t wov_misc_ctrl;
 	acp_wov_pdm_dma_enable_t  pdm_dma_enable;
 	struct timer *timer = timer_get();
@@ -96,10 +95,6 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 		deci_fctr.u32all = 2;
 		io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_DECIMATION_FACTOR,
 							deci_fctr.u32all);
-		/* DMIC Clock for 16K sample rate */
-		clk_ctrl.bits.brm_clk_ctrl = 1;
-		io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL,
-						clk_ctrl.u32all);
 		/* PDM Control */
 		wov_misc_ctrl = (acp_wov_misc_ctrl_t)
 			io_reg_read(PU_REGISTER_BASE + ACP_WOV_MISC_CTRL);
