@@ -251,8 +251,12 @@ SectionGraph."mixer-host" {
 }
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+ifdef(`DISABLE_SSP0',,
 PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_7, PIPELINE_PCM_2)
+)
+ifdef(`DISABLE_SSP1',,
 PCM_DUPLEX_ADD(`Port'SSP1_IDX, 1, PIPELINE_PCM_8, PIPELINE_PCM_4)
+)
 PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_9, PIPELINE_PCM_6)
 ifelse(PLATFORM,`bxt',
 `PCM_PLAYBACK_ADD(`Port'SSP2_IDX` Deep Buffer', 3, PIPELINE_PCM_11)',
