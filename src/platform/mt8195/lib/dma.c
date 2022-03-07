@@ -17,7 +17,7 @@
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops memif_ops;
 
-SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_HOST,
@@ -39,7 +39,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
-const struct dma_info lib_dma = { .dma_array = dma, .num_dmas = ARRAY_SIZE(dma) };
+static const struct dma_info lib_dma = { .dma_array = dma, .num_dmas = ARRAY_SIZE(dma) };
 
 int dmac_init(struct sof *sof)
 {

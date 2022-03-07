@@ -12,7 +12,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-const struct dw_drv_plat_data dmac0 = {
+static const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= 6,
 		.weight = 0,
@@ -47,7 +47,7 @@ const struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-const struct dw_drv_plat_data dmac1 = {
+static const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,
@@ -83,7 +83,7 @@ const struct dw_drv_plat_data dmac1 = {
 };
 
 #if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
-const struct dw_drv_plat_data dmac2 = {
+static const struct dw_drv_plat_data dmac2 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,
@@ -135,7 +135,7 @@ const struct dw_drv_plat_data dmac2 = {
  *    Channels 2-7 - Mem to Mem
  *
  */
-SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	/* DMAC 0 Mem2Phe and Phe2Mem Transfers */
 	.plat_data = {
@@ -185,7 +185,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 #endif
 };
 
-const struct dma_info lib_dma = {
+static const struct dma_info lib_dma = {
 	.dma_array = dma,
 	.num_dmas = ARRAY_SIZE(dma)
 };
