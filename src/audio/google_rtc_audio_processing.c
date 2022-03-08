@@ -9,6 +9,7 @@
 #include <ipc/topology.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/kpb.h>
 #include <sof/common.h>

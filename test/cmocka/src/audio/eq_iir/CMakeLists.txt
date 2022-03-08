@@ -18,6 +18,7 @@ add_library(audio_for_eq_iir STATIC
         ${PROJECT_SOURCE_DIR}/src/math/iir_df2t_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c

@@ -7,6 +7,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/eq_iir/eq_iir.h>
 #include <sof/audio/format.h>

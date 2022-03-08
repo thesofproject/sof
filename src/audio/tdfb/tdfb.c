@@ -25,6 +25,7 @@
 #include <sof/string.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/tdfb/tdfb_comp.h>

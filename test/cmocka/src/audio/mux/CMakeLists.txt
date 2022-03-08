@@ -12,6 +12,7 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux.c
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c

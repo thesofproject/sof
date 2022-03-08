@@ -19,6 +19,7 @@
 #include <sof/string.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/igo_nr/igo_nr_comp.h>

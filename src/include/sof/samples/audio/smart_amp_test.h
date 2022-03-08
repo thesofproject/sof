@@ -10,6 +10,7 @@
 
 #include <sof/platform.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 
 #define SMART_AMP_MAX_STREAM_CHAN   8
 

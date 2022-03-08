@@ -13,6 +13,7 @@
 #define __SOF_AUDIO_CODEC_GENERIC__
 
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
 

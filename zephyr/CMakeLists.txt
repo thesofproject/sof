@@ -502,6 +502,7 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/component.c
+	${SOF_AUDIO_PATH}/data_blob.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
