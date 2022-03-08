@@ -92,8 +92,24 @@ endif()
 if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	set(SOURCE_HASH_DIR "${SOF_ROOT_BINARY_DIRECTORY}/source_hash")
 	file(MAKE_DIRECTORY ${SOURCE_HASH_DIR})
+
+	# When building with Zephyr, add a few extra files so the XTOS
+	# and Zephyr .ldc files (which have different content!) do not
+	# end up with the exact same "source checksum". The concept of
+	# source checksum is flawed (see issue #3890) but this is much
+	# better than nothing at all.
+	#
+	# Warning: ZEPHYR_CURRENT_MODULE_DIR is _undefined_ the first
+	# time we're run and _defined empty_ the second time.  To
+	# understand why look at the check_version_h target below.
+	if("${ZEPHYR_CURRENT_MODULE_DIR}" STREQUAL "")
+	  set(_sof_zephyr_dir "")
+	else()
+	  set(_sof_zephyr_dir "zephyr/")
+	endif()
+
 	# list tracked files from src directory
-	execute_process(COMMAND git ls-files src/ scripts/ zephyr/
+	execute_process(COMMAND git ls-files src/ scripts/ ${_sof_zephyr_dir}
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
@@ -171,6 +187,7 @@ if("${CMAKE_SCRIPT_MODE_FILE}" STREQUAL "")
 			-DVERSION_H_PATH=${VERSION_H_PATH}
 			-DSOF_ROOT_SOURCE_DIRECTORY=${SOF_ROOT_SOURCE_DIRECTORY}
 			-DSOF_ROOT_BINARY_DIRECTORY=${SOF_ROOT_BINARY_DIRECTORY}
+			-DZEPHYR_CURRENT_MODULE_DIR=${ZEPHYR_CURRENT_MODULE_DIR}
 			-P ${VERSION_CMAKE_PATH}
 		COMMENT "cmake -P ${VERSION_CMAKE_PATH}"
 		VERBATIM
