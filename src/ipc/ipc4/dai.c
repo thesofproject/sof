@@ -196,6 +196,13 @@ void dai_dma_release(struct comp_dev *dev)
 			mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
 		}
 
+		/* The stop sequnece of host driver is first pause and then reset
+		 * dma is released for reset state and need to change dma state from
+		 * pause to stop.
+		 * TODO: refine power management when stream is paused
+		 */
+		dma_stop(dd->chan);
+
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(dd->chan);
