@@ -30,10 +30,10 @@ message(STATUS "SOF version.cmake starting at ${build_start_time} UTC")
 # --no-abbrev-commit because some git servers like github allow fetching
 # by full length SHA (others forbid this entirely, see last page of
 # `git help fetch-pack`)
-message(STATUS "Building SOF git commit with parent(s):")
+message(STATUS "${SOF_ROOT_SOURCE_DIRECTORY} is at git commit with parent(s):")
 # Note execute_process() failures are ignored by default (missing git...)
 execute_process(
-	COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}"
+	COMMAND git -C "${SOF_ROOT_SOURCE_DIRECTORY}"
 		log --parents --no-abbrev-commit --decorate -n 1 HEAD
 	)
 
