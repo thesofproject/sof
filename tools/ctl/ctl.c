@@ -30,7 +30,8 @@ struct ctl_data {
 	int out_fd;
 
 	/* cached buffer for input/output */
-	unsigned int *buffer;
+	/* use uint32_t to ensure alignment: Warning on pointer arithmetic. */
+	uint32_t *buffer;
 	int buffer_size;
 	int ctrl_size;
 
@@ -89,17 +90,20 @@ static void header_init(struct ctl_data *ctl_data)
 	hdr->abi = SOF_ABI_VERSION;
 }
 
+/* Returns the number of bytes written to the control buffer */
 static int read_setup(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
-	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
+	int n_max = ctl_data->ctrl_size;
 	char *mode = ctl_data->binary ? "rb" : "r";
 	int abi_size = 0;
-	unsigned int x;
+	uint32_t x;
 	int separator;
 	int n = 0;
 	FILE *fh;
+	int data_start_int_index = BUFFER_ABI_OFFSET;
+	int data_int_index;
 
 	/* open input file */
 	fh = fdopen(ctl_data->in_fd, mode);
@@ -111,20 +115,21 @@ static int read_setup(struct ctl_data *ctl_data)
 	/* create abi header*/
 	if (ctl_data->no_abi) {
 		header_init(ctl_data);
-		abi_size = sizeof(struct sof_abi_hdr) / sizeof(int);
+		abi_size = sizeof(struct sof_abi_hdr);
+		data_start_int_index += abi_size / sizeof(uint32_t);
 	}
 
 	if (ctl_data->binary) {
-		n = fread(&ctl_data->buffer[BUFFER_ABI_OFFSET + abi_size],
-			  sizeof(int), n_max - abi_size, fh);
-
+		n = fread(&ctl_data->buffer[data_start_int_index],
+			  sizeof(uint8_t), n_max - abi_size, fh);
 		goto read_done;
 	}
 
 	/* reading for ASCII CSV txt */
+	data_int_index = data_start_int_index;
 	while (fscanf(fh, "%u", &x) != EOF) {
 		if (n < n_max)
-			ctl_data->buffer[BUFFER_ABI_OFFSET + abi_size + n] = x;
+			ctl_data->buffer[data_int_index] = x;
 
 		if (n > 0)
 			fprintf(stdout, ",");
@@ -133,21 +138,21 @@ static int read_setup(struct ctl_data *ctl_data)
 		separator = fgetc(fh);
 		while (separator != ',' && separator != EOF)
 			separator = fgetc(fh);
-
-		n++;
+		data_int_index++;
+		n += sizeof(uint32_t);
 	}
 
 	fprintf(stdout, "\n");
 
 read_done:
 	if (ctl_data->no_abi) {
-		hdr->size = n * sizeof(int);
+		hdr->size = n;
 		n += abi_size;
 	}
 
 	if (n > n_max) {
 		fprintf(stderr, "Warning: Read of %d exceeded control size. ",
-			4 * n);
+				n);
 		fprintf(stderr, "Please check the data file.\n");
 	}
 
@@ -262,7 +267,7 @@ static int buffer_alloc(struct ctl_data *ctl_data)
 	 * Allocate buffer for tlv write/read. The buffer needs a two
 	 * words header with tag (SOF_CTRL_CMD_BINARY) and size in bytes.
 	 */
-	buffer_size = ctl_data->ctrl_size + 2 * sizeof(unsigned int);
+	buffer_size = ctl_data->ctrl_size + 2 * sizeof(uint32_t);
 	ctl_data->buffer = calloc(1, buffer_size);
 	if (!ctl_data->buffer) {
 		fprintf(stderr,
@@ -467,7 +472,7 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 			return -EINVAL;
 		}
 
-		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n * sizeof(unsigned int);
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n;
 		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
 					     ctl_data->buffer);
 		if (ret < 0) {
