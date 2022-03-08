@@ -161,6 +161,7 @@ define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 ifdef(`NOHOTWORD',
 `
 define(NO16KDMIC)
+define(DMIC_48k_CORE_ID, 1)
 include(`platform/intel/intel-generic-dmic.m4')',
 `include(`platform/intel/intel-generic-dmic-kwd.m4')')
 
