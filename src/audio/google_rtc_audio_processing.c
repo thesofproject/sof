@@ -84,6 +84,39 @@ static int google_rtc_audio_processing_params(
 	return 0;
 }
 
+static int google_rtc_audio_processing_reconfigure(struct comp_dev *dev)
+{
+	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
+	uint8_t *config;
+	size_t size;
+	int ret;
+
+	comp_dbg(dev, "google_rtc_audio_processing_reconfigure()");
+
+	config = comp_get_data_blob(cd->tuning_handler, &size, NULL);
+	if (size == 0) {
+		/* No data to be handled */
+		return 0;
+	}
+
+	if (!config) {
+		comp_err(dev, "google_rtc_audio_processing_reconfigure(): Tuning config not set");
+		return -EINVAL;
+	}
+
+	comp_info(dev, "google_rtc_audio_processing_reconfigure(): New tuning config %p (%zu bytes)",
+		  config, size);
+
+	ret = GoogleRtcAudioProcessingReconfigure(cd->state, config, size);
+	if (ret) {
+		comp_err(dev, "GoogleRtcAudioProcessingReconfigure failed: %d",
+			 ret);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int google_rtc_audio_processing_cmd_set_data(
 	struct comp_dev *dev,
 	struct sof_ipc_ctrl_data *cdata)
@@ -129,6 +162,9 @@ static int google_rtc_audio_processing_cmd(struct comp_dev *dev, int cmd, void *
 	comp_dbg(dev, "google_rtc_audio_processing_cmd(): %d - data_cmd: %d", cmd, cdata->cmd);
 
 	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+	case COMP_CMD_GET_VALUE:
+		return 0;
 	case COMP_CMD_SET_DATA:
 		return google_rtc_audio_processing_cmd_set_data(dev, cdata);
 	case COMP_CMD_GET_DATA:
@@ -246,6 +282,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
 	struct list_item *source_buffer_list_item;
+	int ret;
 
 	comp_dbg(dev, "google_rtc_audio_processing_prepare()");
 
@@ -288,6 +325,13 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	/* Blobs sent during COMP_STATE_READY is assigned to blob_handler->data
+	 * directly, so comp_is_new_data_blob_available always returns false.
+	 */
+	ret = google_rtc_audio_processing_reconfigure(dev);
+	if (ret)
+		return ret;
+
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
@@ -312,6 +356,13 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	uint32_t num_aec_reference_frames;
 	uint32_t num_aec_reference_bytes;
 	int channel;
+	int ret;
+
+	if (comp_is_new_data_blob_available(cd->tuning_handler)) {
+		ret = google_rtc_audio_processing_reconfigure(dev);
+		if (ret)
+			return ret;
+	}
 
 	cd->aec_reference = buffer_acquire_irq(cd->aec_reference);
 	num_aec_reference_frames = audio_stream_get_avail_frames(&cd->aec_reference->stream);

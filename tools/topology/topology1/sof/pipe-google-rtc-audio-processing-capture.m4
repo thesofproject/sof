@@ -16,16 +16,20 @@ include(`bytecontrol.m4')
 include(`enumcontrol.m4')
 include(`google_rtc_audio_processing.m4')
 
-define(GOOGLE_RTC_AUDIO_PROCESSING_priv, concat(`google_rtc_audio_processing_bytes_', PIPELINE_ID))
-define(GOOGLE_RTC_AUDIO_PROCESSING_CTRL, concat(`google_rtc_audio_processing_control_', PIPELINE_ID))
+#
+# Controls
+#
+
 include(`google_rtc_audio_processing_default.m4')
-C_CONTROLBYTES(GOOGLE_RTC_AUDIO_PROCESSING_CTRL, PIPELINE_ID,
-      CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
-      CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
-      , , ,
-      CONTROLBYTES_MAX(, 2048),
-      ,
-      GOOGLE_RTC_AUDIO_PROCESSING_priv)
+
+# Byte control for AEC tuning data
+C_CONTROLBYTES(`Config', PIPELINE_ID,
+	CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
+	CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
+	, , ,
+	CONTROLBYTES_MAX(, 2048),
+	,
+	GOOGLE_RTC_AUDIO_PROCESSING_priv)
 
 #
 # Components and Buffers
@@ -36,7 +40,8 @@ C_CONTROLBYTES(GOOGLE_RTC_AUDIO_PROCESSING_CTRL, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Google RTC Audio Processing, 0, DAI_PERIODS, SCHEDULE_CORE)
 
 W_GOOGLE_RTC_AUDIO_PROCESSING(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
-			LIST(`          ', "GOOGLE_RTC_AUDIO_PROCESSING_CTRL"))
+	`',
+	LIST(`          ', "Config"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

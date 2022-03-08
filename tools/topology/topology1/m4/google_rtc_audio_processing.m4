@@ -7,7 +7,7 @@ DECLARE_SOF_RT_UUID("google-rtc-audio-processing", google_rtc_audio_processing_u
 dnl N_GOOGLE_RTC_AUDIO_PROCESSING(name)
 define(`N_GOOGLE_RTC_AUDIO_PROCESSING', `GOOGLE_RTC_AUDIO_PROCESSING'PIPELINE_ID`.'$1)
 
-dnl W_GOOGLE_RTC_AUDIO_PROCESSING(name, format, periods_sink, periods_source, core, kcontrols_list)
+dnl W_GOOGLE_RTC_AUDIO_PROCESSING(name, format, periods_sink, periods_source, core, mixer_kcontrols_list, byte_kcontrols_list)
 define(`W_GOOGLE_RTC_AUDIO_PROCESSING',
 `SectionVendorTuples."'N_GOOGLE_RTC_AUDIO_PROCESSING($1)`_tuples_uuid" {'
 `	tokens "sof_comp_tokens"'
@@ -57,8 +57,11 @@ define(`W_GOOGLE_RTC_AUDIO_PROCESSING',
 `		"'N_GOOGLE_RTC_AUDIO_PROCESSING($1)`_data_str"'
 `		"'N_GOOGLE_RTC_AUDIO_PROCESSING($1)`_data_str_type"'
 `	]'
-`	bytes ['
+`	mixer ['
 		$6
+`	]'
+`	bytes ['
+		$7
 `	]'
 `}')
 
