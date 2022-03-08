@@ -21,7 +21,7 @@ set(VERSION_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version.cmake)
 # In the real world, some CI results use a random timezone without
 # telling which one or don't provide any time at all.
 string(TIMESTAMP build_start_time UTC)
-message(STATUS "version.cmake starting SOF build at ${build_start_time} UTC")
+message(STATUS "SOF version.cmake starting at ${build_start_time} UTC")
 
 # Most CI engines test a temporary merge of the pull request with a
 # moving target: the latest target branch. In that case the SHA version
@@ -124,6 +124,13 @@ endif()
 # for SOF_BUILD
 include(${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
+# (Re)-generate "${VERSION_H_PATH}" but overwrite the old one only if
+# different to avoid a full rebuild.  TODO: check how Zephyr solves this
+# problem, see Zephyr commit 91709778a4878c
+#
+# This function is called only below; not supposed to be used elsewhere.
+# This entire file is run at CMake configure time _and_ invoked
+# again at build time.
 function(sof_check_version_h)
 	string(CONCAT header_content
 		"#define SOF_MAJOR ${SOF_MAJOR}\n"
@@ -135,20 +142,24 @@ function(sof_check_version_h)
 		"#define SOF_SRC_HASH 0x${SOF_SRC_HASH}\n"
 	)
 
-	# Regenerating the same file would cause a full rebuild.
 	if(EXISTS "${VERSION_H_PATH}")
 		file(READ "${VERSION_H_PATH}" old_version_content)
 		if("${header_content}" STREQUAL "${old_version_content}")
-			message(STATUS "Up-to-date ${VERSION_H_PATH}")
+			message(STATUS "Unchanged ${VERSION_H_PATH}")
 			return()
 		endif()
-	endif()	
+	endif()
 
-	message(STATUS "Generating ${VERSION_H_PATH}")
 	file(WRITE "${VERSION_H_PATH}" "${header_content}")
+	message(STATUS "Generated new ${VERSION_H_PATH}")
 endfunction()
 
-# Run these only if not run as script
+# This ${VERSION_CMAKE_PATH} file is run in two (very) different ways:
+#
+# 1. explicitly included by some other, top-level CMakeLists.txt file, and
+# 2. directly and "recursively" invoking itself with 'cmake -P myself' here.
+#
+# Add this check_version_h target only in case 1. (no "infinite recursion")
 if("${CMAKE_SCRIPT_MODE_FILE}" STREQUAL "")
 	add_custom_target(
 		check_version_h
@@ -158,7 +169,7 @@ if("${CMAKE_SCRIPT_MODE_FILE}" STREQUAL "")
 			-DSOF_ROOT_SOURCE_DIRECTORY=${SOF_ROOT_SOURCE_DIRECTORY}
 			-DSOF_ROOT_BINARY_DIRECTORY=${SOF_ROOT_BINARY_DIRECTORY}
 			-P ${VERSION_CMAKE_PATH}
-		COMMENT "Checking ${VERSION_H_PATH}"
+		COMMENT "cmake -P ${VERSION_CMAKE_PATH}"
 		VERBATIM
 		USES_TERMINAL
 	)
