@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/crossover/crossover.h>
 #include <sof/audio/drc/drc.h>
 #include <sof/platform.h>

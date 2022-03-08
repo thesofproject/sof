@@ -7,6 +7,7 @@ if(CONFIG_FORMAT_FLOAT)
 		${PROJECT_SOURCE_DIR}/src/audio/pcm_converter/pcm_converter_generic.c
 		${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 		${PROJECT_SOURCE_DIR}/src/audio/component.c
+		${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 		${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 		${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 		${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c

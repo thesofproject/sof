@@ -4,6 +4,7 @@ if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		host.c
 		component.c
+		data_blob.c
 		buffer.c
 		channel_map.c
 	)
@@ -137,6 +138,7 @@ subdirs(pipeline)
 
 add_local_sources(sof
 	component.c
+	data_blob.c
 	buffer.c
 )
 

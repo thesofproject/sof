@@ -9,6 +9,7 @@
 #include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>

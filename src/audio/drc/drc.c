@@ -5,6 +5,7 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/drc/drc.h>
 #include <sof/audio/drc/drc_algorithm.h>
