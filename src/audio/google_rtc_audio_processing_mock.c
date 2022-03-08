@@ -31,11 +31,11 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreate()
 	s->num_output_channels = 1;
 	s->num_frames = GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ * 10 / 1000;
 	s->aec_reference = rballoc(0,
-							   SOF_MEM_CAPS_RAM,
-							   sizeof(s->aec_reference[0]) *
-							   s->num_frames *
-							   s->num_aec_reference_channels
-							   );
+				   SOF_MEM_CAPS_RAM,
+				   sizeof(s->aec_reference[0]) *
+				   s->num_frames *
+				   s->num_aec_reference_channels
+				   );
 	return s;
 }
 
@@ -50,6 +50,13 @@ void GoogleRtcAudioProcessingFree(GoogleRtcAudioProcessingState *state)
 int GoogleRtcAudioProcessingGetFramesizeInMs(GoogleRtcAudioProcessingState *state)
 {
 	return state->num_frames * 1000 / GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ;
+}
+
+int GoogleRtcAudioProcessingReconfigure(
+	GoogleRtcAudioProcessingState * const state, const uint8_t *const config,
+	int config_size)
+{
+	return 0;
 }
 
 int GoogleRtcAudioProcessingProcessCapture_int16(
@@ -78,6 +85,6 @@ int GoogleRtcAudioProcessingAnalyzeRender_int16(
 			* state->num_frames
 			* state->num_aec_reference_channels;
 	memcpy_s(state->aec_reference, buffer_size,
-			 data, buffer_size);
+		 data, buffer_size);
 	return 0;
 }
