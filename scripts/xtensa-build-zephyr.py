@@ -48,6 +48,12 @@ platform_list = [
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
 	},
 	{
+		"name": "jsl",
+		"PLAT_CONFIG": "intel_adsp_cavs20_jsl",
+		"XTENSA_CORE": "X6H3CNL_2017_8",
+		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
+	},
+	{
 		"name": "tgl",
 		"PLAT_CONFIG": "intel_adsp_cavs25",
 		"IPC4_CONFIG_OVERLAY": "ipc4_overlay.conf",
