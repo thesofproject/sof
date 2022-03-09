@@ -22,6 +22,11 @@ struct comp_data_blob_handler {
 	uint32_t data_pos;	/**< indicates a data position in data
 				  *  sending/receiving process
 				  */
+	uint32_t single_blob:1; /**< Allocate only one blob. Module can not
+				  *  be active while reconfguring.
+				  */
+	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
+	void (*free)(void *buf);	/**< alternate free(), maybe null */
 };
 
 static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
@@ -31,8 +36,8 @@ static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
 	if (!blob_handler->data)
 		return;
 
-	rfree(blob_handler->data);
-	rfree(blob_handler->data_new);
+	blob_handler->free(blob_handler->data);
+	blob_handler->free(blob_handler->data_new);
 	blob_handler->data = NULL;
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = 0;
@@ -53,7 +58,7 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 		comp_dbg(blob_handler->dev, "comp_get_data_blob(): new data available");
 
 		/* Free "old" data blob and set data to data_new pointer */
-		rfree(blob_handler->data);
+		blob_handler->free(blob_handler->data);
 		blob_handler->data = blob_handler->data_new;
 		blob_handler->data_size = blob_handler->new_data_size;
 
@@ -99,6 +104,12 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 	return false;
 }
 
+bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
+				     *blob_handler)
+{
+	return !!blob_handler->data;
+}
+
 int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 			uint32_t size, void *init_data)
 {
@@ -112,9 +123,9 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 		return 0;
 
 	/* Data blob allocation */
-	blob_handler->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	blob_handler->data = blob_handler->alloc(size);
 	if (!blob_handler->data) {
-		comp_err(blob_handler->dev, "comp_init_data_blob(): model->data rballoc failed");
+		comp_err(blob_handler->dev, "comp_init_data_blob(): model->data allocation failed");
 		return -ENOMEM;
 	}
 
@@ -152,6 +163,15 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 		return -EBUSY;
 	}
 
+	/* In single blob mode the component can not be reconfigured if
+	 * the component is active.
+	 */
+	if (blob_handler->single_blob &&
+	    blob_handler->dev->state == COMP_STATE_ACTIVE) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), on the fly updates forbidden in single blob mode");
+		return -EBUSY;
+	}
+
 	/* in case when the current package is the first, we should allocate
 	 * memory for whole model data
 	 */
@@ -175,11 +195,23 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 		if (!cdata->data->size)
 			return 0;
 
-		blob_handler->data_new = rballoc(0, SOF_MEM_CAPS_RAM,
-						 cdata->data->size);
+		if (blob_handler->single_blob) {
+			if (cdata->data->size != blob_handler->data_size) {
+				blob_handler->free(blob_handler->data);
+				blob_handler->data = NULL;
+			} else {
+				blob_handler->data_new = blob_handler->data;
+				blob_handler->data = NULL;
+			}
+		}
+
 		if (!blob_handler->data_new) {
-			comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
-			return -ENOMEM;
+			blob_handler->data_new =
+				blob_handler->alloc(cdata->data->size);
+			if (!blob_handler->data_new) {
+				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
+				return -ENOMEM;
+			}
 		}
 
 		blob_handler->new_data_size = cdata->data->size;
@@ -210,7 +242,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 		 * the new configuration presence is checked in copy().
 		 */
 		if (blob_handler->dev->state ==  COMP_STATE_READY) {
-			rfree(blob_handler->data);
+			blob_handler->free(blob_handler->data);
 			blob_handler->data = NULL;
 		}
 
@@ -284,17 +316,34 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 	return ret;
 }
 
-struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
+static void *default_alloc(size_t size)
+{
+	return rballoc(0, SOF_MEM_CAPS_RAM, size);
+}
+
+static void default_free(void *buf)
+{
+	rfree(buf);
+}
+
+struct comp_data_blob_handler *
+comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
+			       void *(*alloc)(size_t size),
+			       void (*free)(void *buf))
 {
 	struct comp_data_blob_handler *handler;
 
-	comp_dbg(dev, "comp_data_blob_handler_new()");
+	comp_dbg(dev, "comp_data_blob_handler_new_ext()");
 
 	handler = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(struct comp_data_blob_handler));
 
-	if (handler)
+	if (handler) {
 		handler->dev = dev;
+		handler->single_blob = single_blob;
+		handler->alloc = alloc ? alloc : default_alloc;
+		handler->free = free ? free : default_free;
+	}
 
 	return handler;
 }

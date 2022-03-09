@@ -36,6 +36,14 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 					*blob_handler);
 
 /**
+ * Checks whether there is a valid data blob is available.
+ *
+ * @param blob_handler Data blob handler
+ */
+bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
+				     *blob_handler);
+
+/**
  * Initializes data blob with given value. If init_data is not specified,
  * function will zero data blob.
  *
@@ -66,9 +74,37 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 /**
  * Returns new data blob handler.
  *
+ * Data blob handler has two modes of operation, single_blob == false
+ * stands for double blob mode that allow seamless configuration
+ * updates on the fly. In single_blob == true mode there is at most
+ * one blob allocated at one time and configuration update is not
+ * allowed if the component is active. The single blob mode should be
+ * used with components with very big configuration blobs to save DSP
+ * memory.
+ *
+ * @param dev Component device
+ * @param single_blob Set true for single configuration blob operation
+ * @param alloc Optional blob memory allocator function pointer
+ * @param free Optional blob memory free function pointer
+ */
+struct comp_data_blob_handler *
+comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
+			       void *(*alloc)(size_t size),
+			       void (*free)(void *buf));
+
+/**
+ * Returns new data blob handler.
+ *
+ * This is a simplified version of comp_data_blob_handler_new_ext() using
+ * default memory allocator and double blob mode for on the fly updates.
+ *
  * @param dev Component device
  */
-struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev);
+static inline
+struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
+{
+	return comp_data_blob_handler_new_ext(dev, false, NULL, NULL);
+}
 
 /**
  * Free data blob handler.
