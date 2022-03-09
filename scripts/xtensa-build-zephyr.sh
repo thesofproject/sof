@@ -11,7 +11,7 @@ SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 DEFAULT_PLATFORMS=()
 
 # Intel
-DEFAULT_PLATFORMS+=(apl cnl icl tgl-h tgl)
+DEFAULT_PLATFORMS+=(apl cnl icl jsl tgl-h tgl)
 
 # NXP
 DEFAULT_PLATFORMS+=(imx8 imx8x imx8m)
@@ -189,8 +189,11 @@ build_platforms()
 				XTENSA_CORE="X6H3CNL_2017_8"
 				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
-			icl)
+			icl|jsl)
 				PLAT_CONFIG='intel_adsp_cavs20'
+				if test "$platform" = jsl ; then
+				    PLAT_CONFIG="intel_adsp_cavs20_jsl"
+                                fi
 				XTENSA_CORE="X6H3CNL_2017_8"
 				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
