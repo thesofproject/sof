@@ -87,7 +87,7 @@ else
 end
 
 % Override defaults in comp_run.sh
-fprintf(fh, 'VALGRIND=false\n', test.fs_in);
+fprintf(fh, 'VALGRIND=false\n');
 fclose(fh);
 
 arg = sprintf('-t %s', fn_config);
