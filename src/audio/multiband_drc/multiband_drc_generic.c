@@ -215,46 +215,55 @@ static void multiband_drc_s16_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int16_t *x;
-	int16_t *y;
-	int idx_src = 0;
-	int idx_sink = 0;
-	int ch;
+	int16_t *x = source->r_ptr;
+	int16_t *y = sink->w_ptr;
 	int band;
+	int nbuf;
+	int npcm;
+	int ch;
 	int i;
 	int nch = source->channels;
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; ++i) {
-		for (ch = 0; ch < nch; ch++) {
-			x = audio_stream_read_frag_s16(source, idx_src);
-			buf_src[ch] = *x << 16;
-			idx_src++;
-		}
+	while (samples) {
+		nbuf = audio_stream_samples_without_wrap_s16(source, x);
+		npcm = MIN(samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s16(sink, y);
+		npcm = MIN(npcm, nbuf);
+		for (i = 0; i < npcm; i += nch) {
+			for (ch = 0; ch < nch; ch++) {
+				buf_src[ch] = *x << 16;
+				x++;
+			}
 
-		multiband_drc_process_emp_crossover(state, cd->crossover_split,
-						    buf_src, buf_drc_src,
+			multiband_drc_process_emp_crossover(state, cd->crossover_split,
+							    buf_src, buf_drc_src,
+							    enable_emp_deemp, nch, nband);
+
+			band_buf_drc_src = buf_drc_src;
+			band_buf_drc_sink = buf_drc_sink;
+			for (band = 0; band < nband; ++band) {
+				multiband_drc_s16_process_drc(&state->drc[band],
+							      &cd->config->drc_coef[band],
+							      band_buf_drc_src, band_buf_drc_sink,
+							      nch);
+				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			}
+
+			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
 						    enable_emp_deemp, nch, nband);
 
-		band_buf_drc_src = buf_drc_src;
-		band_buf_drc_sink = buf_drc_sink;
-		for (band = 0; band < nband; ++band) {
-			multiband_drc_s16_process_drc(&state->drc[band],
-						      &cd->config->drc_coef[band],
-						      band_buf_drc_src, band_buf_drc_sink, nch);
-			band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-			band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			for (ch = 0; ch < nch; ch++) {
+				*y = sat_int16(Q_SHIFT_RND(buf_sink[ch], 31, 15));
+				y++;
+			}
 		}
-
-		multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
-					    enable_emp_deemp, nch, nband);
-
-		for (ch = 0; ch < nch; ch++) {
-			y = audio_stream_write_frag_s16(sink, idx_sink);
-			*y = sat_int16(Q_SHIFT_RND(buf_sink[ch], 31, 15));
-			idx_sink++;
-		}
+		samples -= npcm;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -273,46 +282,55 @@ static void multiband_drc_s24_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x;
-	int32_t *y;
-	int idx_src = 0;
-	int idx_sink = 0;
-	int ch;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int band;
+	int nbuf;
+	int npcm;
+	int ch;
 	int i;
 	int nch = source->channels;
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; ++i) {
-		for (ch = 0; ch < nch; ch++) {
-			x = audio_stream_read_frag_s32(source, idx_src);
-			buf_src[ch] = *x << 8;
-			idx_src++;
-		}
+	while (samples) {
+		nbuf = audio_stream_samples_without_wrap_s24(source, x);
+		npcm = MIN(samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s24(sink, y);
+		npcm = MIN(npcm, nbuf);
+		for (i = 0; i < npcm; i += nch) {
+			for (ch = 0; ch < nch; ch++) {
+				buf_src[ch] = *x << 8;
+				x++;
+			}
 
-		multiband_drc_process_emp_crossover(state, cd->crossover_split,
-						    buf_src, buf_drc_src,
+			multiband_drc_process_emp_crossover(state, cd->crossover_split,
+							    buf_src, buf_drc_src,
+							    enable_emp_deemp, nch, nband);
+
+			band_buf_drc_src = buf_drc_src;
+			band_buf_drc_sink = buf_drc_sink;
+			for (band = 0; band < nband; ++band) {
+				multiband_drc_s32_process_drc(&state->drc[band],
+							      &cd->config->drc_coef[band],
+							      band_buf_drc_src, band_buf_drc_sink,
+							      nch);
+				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			}
+
+			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
 						    enable_emp_deemp, nch, nband);
 
-		band_buf_drc_src = buf_drc_src;
-		band_buf_drc_sink = buf_drc_sink;
-		for (band = 0; band < nband; ++band) {
-			multiband_drc_s32_process_drc(&state->drc[band],
-						      &cd->config->drc_coef[band],
-						      band_buf_drc_src, band_buf_drc_sink, nch);
-			band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-			band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			for (ch = 0; ch < nch; ch++) {
+				*y = sat_int24(Q_SHIFT_RND(buf_sink[ch], 31, 23));
+				y++;
+			}
 		}
-
-		multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
-					    enable_emp_deemp, nch, nband);
-
-		for (ch = 0; ch < nch; ch++) {
-			y = audio_stream_write_frag_s32(sink, idx_sink);
-			*y = sat_int24(Q_SHIFT_RND(buf_sink[ch], 31, 23));
-			idx_sink++;
-		}
+		samples -= npcm;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -331,46 +349,55 @@ static void multiband_drc_s32_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x;
-	int32_t *y;
-	int idx_src = 0;
-	int idx_sink = 0;
-	int ch;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int band;
+	int nbuf;
+	int npcm;
+	int ch;
 	int i;
 	int nch = source->channels;
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; ++i) {
-		for (ch = 0; ch < nch; ch++) {
-			x = audio_stream_read_frag_s32(source, idx_src);
-			buf_src[ch] = *x;
-			idx_src++;
-		}
+	while (samples) {
+		nbuf = audio_stream_samples_without_wrap_s32(source, x);
+		npcm = MIN(samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s32(sink, y);
+		npcm = MIN(npcm, nbuf);
+		for (i = 0; i < npcm; i += nch) {
+			for (ch = 0; ch < nch; ch++) {
+				buf_src[ch] = *x;
+				x++;
+			}
 
-		multiband_drc_process_emp_crossover(state, cd->crossover_split,
-						    buf_src, buf_drc_src,
+			multiband_drc_process_emp_crossover(state, cd->crossover_split,
+							    buf_src, buf_drc_src,
+							    enable_emp_deemp, nch, nband);
+
+			band_buf_drc_src = buf_drc_src;
+			band_buf_drc_sink = buf_drc_sink;
+			for (band = 0; band < nband; ++band) {
+				multiband_drc_s32_process_drc(&state->drc[band],
+							      &cd->config->drc_coef[band],
+							      band_buf_drc_src, band_buf_drc_sink,
+							      nch);
+				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			}
+
+			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
 						    enable_emp_deemp, nch, nband);
 
-		band_buf_drc_src = buf_drc_src;
-		band_buf_drc_sink = buf_drc_sink;
-		for (band = 0; band < nband; ++band) {
-			multiband_drc_s32_process_drc(&state->drc[band],
-						      &cd->config->drc_coef[band],
-						      band_buf_drc_src, band_buf_drc_sink, nch);
-			band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-			band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+			for (ch = 0; ch < nch; ch++) {
+				*y = buf_sink[ch];
+				y++;
+			}
 		}
-
-		multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
-					    enable_emp_deemp, nch, nband);
-
-		for (ch = 0; ch < nch; ch++) {
-			y = audio_stream_write_frag_s32(sink, idx_sink);
-			*y = buf_sink[ch];
-			idx_sink++;
-		}
+		samples -= npcm;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
