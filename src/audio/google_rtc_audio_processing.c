@@ -47,9 +47,10 @@ struct google_rtc_audio_processing_comp_data {
 	struct comp_buffer *aec_reference;
 	struct comp_buffer *output;
 	uint32_t num_frames;
+	int num_aec_reference_channels;
 	GoogleRtcAudioProcessingState *state;
 	int16_t *aec_reference_buffer;
-	int16_t aec_reference_buffer_index;
+	int16_t aec_reference_frame_index;
 	int16_t *raw_mic_buffer;
 	int16_t raw_mic_buffer_index;
 	int16_t *output_buffer;
@@ -170,7 +171,7 @@ static struct comp_dev *google_rtc_audio_processing_create(
 		comp_err(dev, "Failed to initialized GoogleRtcAudioProcessing");
 		goto fail;
 	}
-
+	cd->num_aec_reference_channels = 2;
 	cd->num_frames = GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE *
 					 GoogleRtcAudioProcessingGetFramesizeInMs(cd->state) / 1000;
 
@@ -184,11 +185,12 @@ static struct comp_dev *google_rtc_audio_processing_create(
 
 	cd->aec_reference_buffer = rballoc(
 		0, SOF_MEM_CAPS_RAM,
-		cd->num_frames * sizeof(cd->aec_reference_buffer[0]));
+		cd->num_frames * sizeof(cd->aec_reference_buffer[0]) *
+		cd->num_aec_reference_channels);
 	if (!cd->aec_reference_buffer)
 		goto fail;
 	bzero(cd->aec_reference_buffer, cd->num_frames * sizeof(cd->aec_reference_buffer[0]));
-	cd->aec_reference_buffer_index = 0;
+	cd->aec_reference_frame_index = 0;
 
 	cd->output_buffer = rballoc(
 		0, SOF_MEM_CAPS_RAM,
@@ -261,6 +263,16 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 
 	cd->output = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
+	/* On some platform the playback output is left right left right due to a crossover
+	 * later on on the signal processing chain. That makes the aec_reference be 4 channels
+	 * and the AEC should only use the 2 first.
+	 */
+	if (cd->num_aec_reference_channels > cd->aec_reference->stream.channels) {
+		comp_err(dev, "unsupported number of AEC reference channels: %d",
+			 cd->aec_reference->stream.channels);
+		return -EINVAL;
+	}
+
 	switch (cd->output->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
@@ -299,6 +311,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	int16_t *dst;
 	uint32_t num_aec_reference_frames;
 	uint32_t num_aec_reference_bytes;
+	int channel;
 
 	cd->aec_reference = buffer_acquire(cd->aec_reference);
 	num_aec_reference_frames = audio_stream_get_avail_frames(&cd->aec_reference->stream);
@@ -309,15 +322,18 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 
 	aec_reference_buff_frag = 0;
 	for (frame = 0; frame < num_aec_reference_frames; frame++) {
-		src = audio_stream_read_frag_s16(&cd->aec_reference->stream,
-										 aec_reference_buff_frag);
-		cd->aec_reference_buffer[cd->aec_reference_buffer_index] = *src;
-		++cd->aec_reference_buffer_index;
+		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
+			src = audio_stream_read_frag_s16(&cd->aec_reference->stream,
+							 aec_reference_buff_frag + channel);
+			cd->aec_reference_buffer[cd->num_aec_reference_channels *
+				cd->aec_reference_frame_index + channel] = *src;
+		}
+		++cd->aec_reference_frame_index;
 
-		if (cd->aec_reference_buffer_index == cd->num_frames) {
+		if (cd->aec_reference_frame_index == cd->num_frames) {
 			GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-														cd->aec_reference_buffer);
-			cd->aec_reference_buffer_index = 0;
+								    cd->aec_reference_buffer);
+			cd->aec_reference_frame_index = 0;
 		}
 		aec_reference_buff_frag += cd->aec_reference->stream.channels;
 	}
