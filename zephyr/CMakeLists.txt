@@ -618,6 +618,15 @@ if (CONFIG_COMP_CODEC_ADAPTER)
 zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC
 	${SOF_AUDIO_PATH}/codec_adapter/codec/cadence.c
 )
+
+if (CONFIG_CADENCE_CODEC_MP3_DEC)
+zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
+endif()
+
+if (CONFIG_CADENCE_CODEC_AAC_DEC)
+zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 	${SOF_AUDIO_PATH}/codec_adapter/codec/passthrough.c
 )
