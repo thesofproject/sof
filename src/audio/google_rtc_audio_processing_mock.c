@@ -27,7 +27,7 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreate()
 	struct GoogleRtcAudioProcessingState *s =
 			rballoc(0, SOF_MEM_CAPS_RAM, sizeof(GoogleRtcAudioProcessingState));
 	s->num_capture_channels = 1;
-	s->num_aec_reference_channels = 1;
+	s->num_aec_reference_channels = 2;
 	s->num_output_channels = 1;
 	s->num_frames = GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ * 10 / 1000;
 	s->aec_reference = rballoc(0,
