@@ -223,11 +223,6 @@ def show_installed_files():
 	for pre, fill, node in RenderTree(graph_root):
 		print(f"{pre}{node.name}")
 
-def git_submodules_update():
-	global SOF_TOP
-	execute_command(["git", "submodule", "update", "--init", "--recursive"], timeout=600,
-		check=True, cwd=SOF_TOP)
-
 def check_west_installation():
 	west_path = shutil.which("west")
 	if not west_path:
@@ -419,7 +414,6 @@ def run_clone_mode():
 		raise RuntimeError("Zephyr found already! Not downloading it again")
 	create_zephyr_directory()
 	west_init_update()
-	git_submodules_update()
 
 def run_point_mode():
 	global west_top, SOF_TOP
