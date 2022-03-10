@@ -342,12 +342,13 @@ int idc_init(void)
 		.get_deadline = ipc_task_deadline,
 		.complete = idc_complete,
 	};
+
+	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 #endif
 
 	tr_info(&idc_tr, "idc_init()");
 
 	/* initialize idc data */
-	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
 
 	/* process task */
