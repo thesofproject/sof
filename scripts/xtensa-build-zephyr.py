@@ -25,6 +25,7 @@ if platform.system() == "Windows":
 elif platform.system() == "Linux":
 	xtensa_tools_version_postfix = "-linux"
 else:
+	xtensa_tools_version_postfix = "-unsupportedOS"
 	warnings.warn(f"Your operating system: {platform.system()} is not supported")
 
 platform_list = [
