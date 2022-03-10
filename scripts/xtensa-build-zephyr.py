@@ -280,8 +280,26 @@ def west_init_update():
 	link back to sof/"""
 	global west_top, SOF_TOP
 	zephyr_dir = pathlib.Path(west_top, "zephyr")
+
+	z_remote = "origin"
+	z_ref = args.zephyr_ref
+
+	# Example of how to override SOF CI and point it at any Zephyr
+	# commit from anywhere and to run all tests on it. Simply
+	# uncomment and edit these lines and submit as an SOF Pull
+	# Request. Note: unlike many git servers, github allows direct
+	# fetching of (full 40-digits) SHAs; even SHAs not in origin but
+	# in forks! See the end of "git help fetch-pack".
+	#
+	# z_remote = "https://somewhere.else"
+	# z_ref = "pull/38374/head"
+	# z_ref = "cb9a279050c4e8ad4663ee78688d8e7de1cac953"
+
+	# SECURITY WARNING for reviewers: never allow unknown code from
+	# unknown submitters on any CI system.
+
 	execute_command(["git", "clone", "--depth", "5", args.url, str(zephyr_dir)], check=True, timeout=1200)
-	execute_command(["git", "fetch", "origin", args.zephyr_ref], check=True, timeout=300, cwd=zephyr_dir)
+	execute_command(["git", "fetch", z_remote, z_ref], check=True, timeout=300, cwd=zephyr_dir)
 	execute_command(["git", "checkout", "FETCH_HEAD"], check=True, cwd=zephyr_dir)
 	execute_command(["git", "-C", str(zephyr_dir), "--no-pager", "log", "--oneline", "--graph",
 		"--decorate", "--max-count=20"], check=True)
