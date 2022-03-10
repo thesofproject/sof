@@ -133,7 +133,7 @@ def parse_args():
 						" Jobs=number of cores by default. Ignored by west build.")
 	parser.add_argument("-k", "--key", type=pathlib.Path, required=False,
 						help="Path to a non-default rimage signing key.")
-	parser.add_argument("-z", required=False,
+	parser.add_argument("-z", "--zephyr-ref", required=False,
 						help="Initial Zephyr git ref for the -c option."
 						" Can be a branch, tag, full SHA1 in a fork")
 	parser.add_argument("-u", "--url", required=False,
@@ -187,10 +187,10 @@ sign must be used (https://bugs.python.org/issue9334)""",
 			parser.print_help()
 			sys.exit(0)
 
-	if args.z and not args.clone_mode:
+	if args.zephyr_ref and not args.clone_mode:
 		raise RuntimeError(f"Argument -z without -c makes no sense")
-	if args.clone_mode and not args.z:
-		args.z = "main"		# set default name for -z if -c specified
+	if args.clone_mode and not args.zephyr_ref:
+		args.zephyr_ref = "main"	# set default name for -z if -c specified
 
 	if args.west_path: # let the user provide an already existing zephyrproject/ anywhere
 		west_top = pathlib.Path(args.west_path)
@@ -279,7 +279,7 @@ def west_init_update():
 	global west_top, SOF_TOP
 	zephyr_dir = pathlib.Path(west_top, "zephyr")
 	execute_command(["git", "clone", args.url, str(zephyr_dir)], check=True, timeout=1200)
-	execute_command(["git", "fetch", "origin", args.z], check=True, timeout=300, cwd=zephyr_dir)
+	execute_command(["git", "fetch", "origin", args.zephyr_ref], check=True, timeout=300, cwd=zephyr_dir)
 	execute_command(["git", "checkout", "FETCH_HEAD"], check=True, cwd=zephyr_dir)
 	execute_command(["git", "-C", str(zephyr_dir), "--no-pager", "log", "--oneline", "--graph",
 		"--decorate", "--max-count=20"], check=True)
