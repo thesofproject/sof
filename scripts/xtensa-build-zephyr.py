@@ -200,11 +200,17 @@ sign must be used (https://bugs.python.org/issue9334)""",
 def execute_command(*run_args, **run_kwargs):
 	"""[summary] Provides wrapper for subprocess.run that prints
 	command executed when 'more verbose' verbosity level is set."""
+	command_args = run_args[0]
+
+	# If you really need the shell in some non-portable section then
+	# invoke subprocess.run() directly.
+	if run_kwargs.get('shell') or not isinstance(command_args, list):
+		raise RuntimeError("Do not rely on non-portable shell parsing")
+
 	if args.verbose >= 0:
 		cwd = run_kwargs.get('cwd')
-		command_args = run_args[0]
 		print_cwd = f"In dir: {cwd}" if cwd else f"in current dir: {os.getcwd()}"
-		print_args = shlex.join(command_args) if isinstance(command_args, list) else command_args
+		print_args = shlex.join(command_args)
 		print(f"{print_cwd}; running command: {print_args}", flush=True)
 
 	return subprocess.run(*run_args, **run_kwargs)
