@@ -278,7 +278,7 @@ def west_init_update():
 	link back to sof/"""
 	global west_top, SOF_TOP
 	zephyr_dir = pathlib.Path(west_top, "zephyr")
-	execute_command(["git", "clone", args.url, str(zephyr_dir)], check=True, timeout=1200)
+	execute_command(["git", "clone", "--depth", "5", args.url, str(zephyr_dir)], check=True, timeout=1200)
 	execute_command(["git", "fetch", "origin", args.zephyr_ref], check=True, timeout=300, cwd=zephyr_dir)
 	execute_command(["git", "checkout", "FETCH_HEAD"], check=True, cwd=zephyr_dir)
 	execute_command(["git", "-C", str(zephyr_dir), "--no-pager", "log", "--oneline", "--graph",
