@@ -57,7 +57,7 @@ PCM_DUPLEX_ADD(I2SSP, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	3, 1, 2, s32le,
 	2000, 0, 0,
-	16000, 16000, 16000)
+	48000, 48000, 48000)
 
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, ACPDMIC, 0, acp-dmic-codec,
@@ -66,7 +66,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, acpdmic_config)
 DAI_CONFIG(ACPDMIC, 3, 2, acp-dmic-codec,
-	ACPDMIC_CONFIG(ACPDMIC_CONFIG_DATA(ACPDMIC, 3, 16000, 2)))
+	ACPDMIC_CONFIG(ACPDMIC_CONFIG_DATA(ACPDMIC, 3, 48000, 2)))
 
 # PCM id 1
 PCM_CAPTURE_ADD(DMIC, 1, PIPELINE_PCM_3)
