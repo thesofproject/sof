@@ -62,13 +62,13 @@ struct mn {
 	struct k_spinlock lock; /**< lock mechanism */
 };
 
-static SHARED_DATA struct mn mn;
+static SHARED_DATA struct mn mn_shared;
 
 void mn_init(struct sof *sof)
 {
 	int i;
 
-	sof->mn = platform_shared_get(&mn, sizeof(mn));
+	sof->mn = platform_shared_get(&mn_shared, sizeof(mn_shared));
 
 	sof->mn->mclk_source_clock = 0;
 
