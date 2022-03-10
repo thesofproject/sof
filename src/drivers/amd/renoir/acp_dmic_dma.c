@@ -96,8 +96,8 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 		deci_fctr.u32all = 2;
 		io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_DECIMATION_FACTOR,
 							deci_fctr.u32all);
-		/* DMIC Clock for 16K sample rate */
-		clk_ctrl.bits.brm_clk_ctrl = 1;
+		/* DMIC Clock */
+		clk_ctrl.bits.brm_clk_ctrl = 7;
 		io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL,
 						clk_ctrl.u32all);
 		/* PDM Control */

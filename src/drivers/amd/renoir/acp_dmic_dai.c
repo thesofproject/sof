@@ -73,7 +73,7 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 			      int dir)
 {
 	/* ACP only currently supports these parameters */
-	params->rate = ACP_SAMPLE_RATE_16K;/* 16000 sample rate only for dmic */
+	params->rate = ACP_DEFAULT_SAMPLE_RATE;
 	params->channels = ACP_DEFAULT_NUM_CHANNELS;
 	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;

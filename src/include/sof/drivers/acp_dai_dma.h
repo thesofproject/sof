@@ -27,8 +27,6 @@ int acp_dma_init(struct sof *sof);
 /* default sample rate */
 #define ACP_DEFAULT_SAMPLE_RATE     48000
 
-#define ACP_SAMPLE_RATE_16K	16000
-
 #define ACP_DMA_BUFFER_ALIGN	64
 #define ACP_DMA_TRANS_SIZE	64
 #define ACP_DAI_DMA_BUFFER_PERIOD_COUNT		2
