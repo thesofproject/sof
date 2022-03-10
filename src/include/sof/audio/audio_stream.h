@@ -566,6 +566,54 @@ audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const 
 }
 
 /**
+ * @brief Calculates numbers of s16 samples to buffer wrap when buffer
+ * is read forward towards end address.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of data s16 samples until circular wrap need at end
+ */
+static inline int
+audio_stream_samples_without_wrap_s16(const struct audio_stream *source, const void *ptr)
+{
+	int to_end = (int16_t *)source->end_addr - (int16_t *)ptr;
+
+	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	return to_end;
+}
+
+/**
+ * @brief Calculates numbers of s24 samples to buffer wrap when buffer
+ * is read forward towards end address.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of data s24 samples until circular wrap need at end
+ */
+static inline int
+audio_stream_samples_without_wrap_s24(const struct audio_stream *source, const void *ptr)
+{
+	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
+
+	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	return to_end;
+}
+
+/**
+ * @brief Calculates numbers of s32 samples to buffer wrap when buffer
+ * is read forward towards end address.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of data s32 samples until circular wrap need at end
+ */
+static inline int
+audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const void *ptr)
+{
+	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
+
+	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	return to_end;
+}
+
+/**
  * @brief Calculates numbers of frames to buffer wrap and return
  *	  minimum of calculated value.
  * @param source Stream to get information from.
