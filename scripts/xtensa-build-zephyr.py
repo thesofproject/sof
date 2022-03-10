@@ -190,20 +190,17 @@ sign must be used (https://bugs.python.org/issue9334)""",
 	elif not args.clone_mode:	# if neather -p nor -c provided, use -p
 		args.west_path = west_top
 
-
-def execute_command(command_args, stdin=None, input=None, stdout=None, stderr=None,
-	capture_output=False, shell=False, cwd=None, timeout=None, check=False, encoding=None,
-	errors=None, text=None, env=None, universal_newlines=None):
-	"""[summary] Provides wrapper for subprocess.run (matches its signature) that prints
+def execute_command(*run_args, **run_kwargs):
+	"""[summary] Provides wrapper for subprocess.run that prints
 	command executed when 'more verbose' verbosity level is set."""
 	if args.verbose >= 0:
+		cwd = run_kwargs.get('cwd')
+		command_args = run_args[0]
 		print_cwd = f"In dir: {cwd}" if cwd else f"in current dir: {os.getcwd()}"
 		print_args = shlex.join(command_args) if isinstance(command_args, list) else command_args
 		print(f"{print_cwd}; running command: {print_args}", flush=True)
-	return subprocess.run(args=command_args, stdin=stdin, input=input, stdout=stdout,
-		stderr=stderr, capture_output=capture_output, shell=shell, cwd=cwd, timeout=timeout,
-		check=check, encoding=encoding, errors=errors, text=text, env=env,
-		universal_newlines=universal_newlines)
+
+	return subprocess.run(*run_args, **run_kwargs)
 
 def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
