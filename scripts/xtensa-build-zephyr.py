@@ -367,8 +367,6 @@ def build_platforms():
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)],
 			check=True)
-		# Update SOF submodules
-		git_submodules_update()
 		# CMake - configure rimage module
 		rimage_dir_name="build-rimage"
 		sof_mirror_dir = pathlib.Path("modules", "audio", "sof")
