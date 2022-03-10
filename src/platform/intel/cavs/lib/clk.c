@@ -311,8 +311,7 @@ void platform_clock_init(struct sof *sof)
 	uint32_t platform_lowest_clock = CPU_LOWEST_FREQ_IDX;
 	int i;
 
-	sof->clocks =
-		cache_to_uncache((struct clock_info *)platform_clocks_info);
+	sof->clocks = platform_shared_get(platform_clocks_info, sizeof(platform_clocks_info));
 
 #if CAVS_VERSION == CAVS_VERSION_2_5
 	/*
