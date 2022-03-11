@@ -269,7 +269,7 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 #endif
 
 #ifndef __ZEPHYR__
-static SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer platform_timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_EXT_TSTAMP0_LVL2,
 	.irq_name = irq_name_level2,
@@ -359,8 +359,8 @@ int platform_init(struct sof *sof)
 	int i;
 
 #ifndef __ZEPHYR__
-	sof->platform_timer = cache_to_uncache(&timer);
-	sof->cpu_timers = (struct timer *)cache_to_uncache(&arch_timers);
+	sof->platform_timer = platform_shared_get(&platform_timer, sizeof(platform_timer));
+	sof->cpu_timers = platform_shared_get(arch_timers, sizeof(arch_timers));
 
 	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		sof->cpu_timers[i] = (struct timer) {

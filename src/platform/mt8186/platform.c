@@ -120,7 +120,7 @@ const struct ext_man_windows xsram_window
 	}
 };
 
-static SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer timer_shared = {
 	.id = OSTIMER0,
 	.irq = MTK_DSP_IRQ_OSTIMER32,
 };
@@ -168,8 +168,8 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
-	sof->platform_timer = &timer;
-	sof->cpu_timers = &timer;
+	sof->platform_timer = platform_shared_get(&timer_shared, sizeof(timer_shared));
+	sof->cpu_timers = sof->platform_timer;
 
 	platform_interrupt_init();
 	platform_clock_init(sof);

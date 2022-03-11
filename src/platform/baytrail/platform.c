@@ -144,7 +144,7 @@ const struct ext_man_windows xsram_window
 };
 
 #ifndef __ZEPHYR__
-static SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer platform_timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_NUM_EXT_TIMER,
 };
@@ -193,8 +193,8 @@ int platform_init(struct sof *sof)
 	int ret;
 
 #ifndef __ZEPHYR__
-	sof->platform_timer = &timer;
-	sof->cpu_timers = &arch_timer;
+	sof->platform_timer = platform_shared_get(&platform_timer, sizeof(platform_timer));
+	sof->cpu_timers = platform_shared_get(&arch_timer, sizeof(arch_timer));
 #endif /* __ZEPHYR__ */
 
 	/* clear mailbox for early trace and debug */
