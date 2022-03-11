@@ -348,7 +348,7 @@ int idc_init(void)
 
 	/* initialize idc data */
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
-	(*idc)->payload = cache_to_uncache((struct idc_payload *)static_payload);
+	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
 
 	/* process task */
 #ifndef __ZEPHYR__
