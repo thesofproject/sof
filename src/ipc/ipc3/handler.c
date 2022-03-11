@@ -820,9 +820,10 @@ static int ipc_dma_trace_config(uint32_t header)
 		 *  "SOF_IPC_TRACE_DMA_PARAMS_EXT" in your particular
 		 *  kernel version.
 		 */
-		platform_timer_set_delta(timer, params.timestamp_ns);
+		dmat->time_delta = clock_ns_to_ticks(PLATFORM_DEFAULT_CLOCK, params.timestamp_ns) -
+				   platform_timer_get(timer);
 	else
-		timer->delta = 0;
+		dmat->time_delta = 0;
 
 #if CONFIG_HOST_PTABLE
 	err = ipc_process_host_buffer(ipc, &params.buffer,

@@ -42,11 +42,12 @@ struct dma_trace_data {
 	uint32_t copy_in_progress;
 	uint32_t stream_tag;
 	uint32_t active_stream_tag;
-	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
-				   *  copied by dma connected to host
-				   */
-	uint32_t dropped_entries; /* amount of dropped entries */
-	struct k_spinlock lock; /* dma trace lock */
+	uint32_t dma_copy_align;	/* Minimal chunk of data possible to be
+					 *  copied by dma connected to host
+					 */
+	uint32_t dropped_entries;	/* amount of dropped entries */
+	struct k_spinlock lock;		/* dma trace lock */
+	uint64_t time_delta;		/* difference between the host time */
 };
 
 int dma_trace_init_early(struct sof *sof);
