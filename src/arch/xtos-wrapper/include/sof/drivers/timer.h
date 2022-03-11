@@ -11,6 +11,7 @@
 #include <arch/drivers/timer.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
+#include <sof/platform.h>
 #include <stdint.h>
 
 struct comp_dev;
@@ -75,6 +76,46 @@ static inline uint64_t platform_safe_get_time(struct timer *timer)
 
 void platform_timer_start(struct timer *timer);
 void platform_timer_stop(struct timer *timer);
+
+static inline uint64_t k_ms_to_cyc_ceil64(uint64_t ms)
+{
+	return clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, ms);
+}
+
+static inline uint64_t k_us_to_cyc_ceil64(uint64_t us)
+{
+	return clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, us);
+}
+
+static inline uint64_t k_ns_to_cyc_near64(uint64_t ns)
+{
+	return clock_ns_to_ticks(PLATFORM_DEFAULT_CLOCK, ns);
+}
+
+static inline uint64_t k_cyc_to_ms_near64(uint64_t ticks)
+{
+	return ticks / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+}
+
+static inline uint64_t k_cyc_to_us_near64(uint64_t ticks)
+{
+	return ticks / clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+}
+
+static inline uint64_t k_cycle_get_64(void)
+{
+	return platform_timer_get(timer_get());
+}
+
+static inline uint64_t k_cycle_get_64_atomic(void)
+{
+	return platform_timer_get_atomic(timer_get());
+}
+
+static inline uint64_t k_cycle_get_64_safe(void)
+{
+	return platform_safe_get_time(timer_get());
+}
 
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
