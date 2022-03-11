@@ -61,7 +61,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-static SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer timer_shared = {
 	.id = TIMER0,
 	.irq = IRQ_NUM_TIMER0,
 };
@@ -70,8 +70,9 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
-	sof->platform_timer = &timer;
-	sof->cpu_timers = &timer;
+	sof->platform_timer = platform_shared_get(&timer_shared, sizeof(timer_shared));
+	sof->cpu_timers = sof->platform_timer;
+
 	/* to view system memory */
 	platform_interrupt_init();
 	platform_clock_init(sof);
