@@ -23,7 +23,7 @@
 
 #include <sof/drivers/ssp.h>
 
-static SHARED_DATA struct dai ssp[DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT];
+static SHARED_DATA struct dai ssp_shared[DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT];
 
 #endif
 
@@ -31,7 +31,7 @@ static SHARED_DATA struct dai ssp[DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT];
 
 #include <sof/drivers/dmic.h>
 
-static SHARED_DATA struct dai dmic[2] = {
+static SHARED_DATA struct dai dmic_shared[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones
 	 * with two different sample rate and PCM format could be presented
 	 * similarly as SSP0..N. The difference however is that the DMIC
@@ -82,36 +82,36 @@ static SHARED_DATA struct dai dmic[2] = {
 
 #include <sof/drivers/alh.h>
 
-static SHARED_DATA struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
+static SHARED_DATA struct dai alh_shared[DAI_NUM_ALH_BI_DIR_LINKS];
 #endif
 
-static SHARED_DATA struct dai hda[DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN];
+static SHARED_DATA struct dai hda_shared[DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN];
 
 const struct dai_type_info dti[] = {
 #if CONFIG_INTEL_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
-		.dai_array = cache_to_uncache_init((struct dai *)ssp),
-		.num_dais = ARRAY_SIZE(ssp)
+		.dai_array = cache_to_uncache_init((struct dai *)ssp_shared),
+		.num_dais = ARRAY_SIZE(ssp_shared)
 	},
 #endif
 #if CONFIG_INTEL_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
-		.dai_array = cache_to_uncache_init((struct dai *)dmic),
-		.num_dais = ARRAY_SIZE(dmic)
+		.dai_array = cache_to_uncache_init((struct dai *)dmic_shared),
+		.num_dais = ARRAY_SIZE(dmic_shared)
 	},
 #endif
 	{
 		.type = SOF_DAI_INTEL_HDA,
-		.dai_array = cache_to_uncache_init((struct dai *)hda),
-		.num_dais = ARRAY_SIZE(hda)
+		.dai_array = cache_to_uncache_init((struct dai *)hda_shared),
+		.num_dais = ARRAY_SIZE(hda_shared)
 	},
 #if CONFIG_INTEL_ALH
 	{
 		.type = SOF_DAI_INTEL_ALH,
-		.dai_array = cache_to_uncache_init((struct dai *)alh),
-		.num_dais = ARRAY_SIZE(alh)
+		.dai_array = cache_to_uncache_init((struct dai *)alh_shared),
+		.num_dais = ARRAY_SIZE(alh_shared)
 	}
 #endif
 };
@@ -124,15 +124,47 @@ const struct dai_info lib_dai = {
 int dai_init(struct sof *sof)
 {
 	struct dai *dai;
+#if CONFIG_INTEL_SSP
+	const struct dai_type_info *ssp = NULL;
+#endif
+#if CONFIG_INTEL_ALH
+	const struct dai_type_info *alh = NULL;
+#endif
+#if CONFIG_INTEL_DMIC
+	const struct dai_type_info *dmic = NULL;
+#endif
+	const struct dai_type_info *hda = NULL;
 	int i;
 
 	sof->dai_info = &lib_dai;
 
+	for (i = 0; i < ARRAY_SIZE(dti); i++)
+		switch (dti[i].type) {
+#if CONFIG_INTEL_ALH
+		case SOF_DAI_INTEL_ALH:
+			alh = dti + i;
+			break;
+#endif
+#if CONFIG_INTEL_DMIC
+		case SOF_DAI_INTEL_DMIC:
+			dmic = dti + i;
+			break;
+#endif
 #if CONFIG_INTEL_SSP
-	dai = cache_to_uncache((struct dai *)ssp);
+		case SOF_DAI_INTEL_SSP:
+			ssp = dti + i;
+			break;
+#endif
+		case SOF_DAI_INTEL_HDA:
+			hda = dti + i;
+			break;
+		}
+
+#if CONFIG_INTEL_SSP
+	dai = ssp->dai_array;
 
 	/* init ssp */
-	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
+	for (i = 0; i < ssp->num_dais; i++) {
 		dai[i].index = i;
 		dai[i].drv = &ssp_driver;
 		dai[i].plat_data.base = SSP_BASE(i);
@@ -156,27 +188,27 @@ int dai_init(struct sof *sof)
 	mn_init(sof);
 #endif
 
-	dai = cache_to_uncache((struct dai *)hda);
+	dai = hda->dai_array;
 
 	/* init hd/a, note that size depends on the platform caps */
-	for (i = 0; i < ARRAY_SIZE(hda); i++) {
+	for (i = 0; i < hda->num_dais; i++) {
 		dai[i].index = i;
 		dai[i].drv = &hda_driver;
 		k_spinlock_init(&dai[i].lock);
 	}
 
 #if (CONFIG_INTEL_DMIC)
-	dai = cache_to_uncache((struct dai *)dmic);
+	dai = dmic->dai_array;
 
 	/* init dmic */
-	for (i = 0; i < ARRAY_SIZE(dmic); i++)
+	for (i = 0; i < dmic->num_dais; i++)
 		k_spinlock_init(&dai[i].lock);
 #endif
 
 #if CONFIG_INTEL_ALH
-	dai = cache_to_uncache((struct dai *)alh);
+	dai = alh->dai_array;
 
-	for (i = 0; i < ARRAY_SIZE(alh); i++) {
+	for (i = 0; i < alh->num_dais; i++) {
 		dai[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
 			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
 		dai[i].drv = &alh_driver;
