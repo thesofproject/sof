@@ -146,7 +146,7 @@ void platform_init_memmap(struct sof *sof)
 				sizeof(struct block_map) * ARRAY_SIZE(buf_heap_map));
 
 	/* access memory map through uncached region */
-	sof->memory_map = cache_to_uncache(&memmap);
+	sof->memory_map = platform_shared_get(&memmap, sizeof(memmap));
 
 	/* .system primary core initialization */
 	sof->memory_map->system[0].heap = (uintptr_t)&_system_heap;
