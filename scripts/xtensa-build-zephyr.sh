@@ -210,7 +210,7 @@ build_platforms()
 				;;
 			tgl-h|tgl)
 				PLAT_CONFIG='intel_adsp_cavs25'
-				if test $platform = tgl-h ; then
+				if test "$platform" = tgl-h ; then
 				    PLAT_CONFIG="intel_adsp_cavs25_tgph"
 				fi
 				XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
