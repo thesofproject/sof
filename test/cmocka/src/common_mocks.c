@@ -346,6 +346,14 @@ uint64_t WEAK clock_us_to_ticks(int clock, uint64_t us)
 	return 0;
 }
 
+uint64_t WEAK clock_ns_to_ticks(int clock, uint64_t us)
+{
+	(void)clock;
+	(void)us;
+
+	return 0;
+}
+
 #if CONFIG_MULTICORE && !CONFIG_LIBRARY
 
 int WEAK idc_send_msg(struct idc_msg *msg, uint32_t mode)
