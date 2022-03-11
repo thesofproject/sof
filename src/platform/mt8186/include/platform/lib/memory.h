@@ -190,6 +190,7 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 
 #define uncache_to_cache(address)	address
 #define cache_to_uncache(address)	address
+#define cache_to_uncache_init(address)	address
 #define is_uncached(address)		0
 
 /**
