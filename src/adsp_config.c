@@ -1304,7 +1304,7 @@ static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx 
 	out->ext_len = sizeof(struct signed_pkg_info_ext_ace_v1_5);
 
 	/* configurable fields */
-	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	parse_printable_key(signed_pkg, &ctx, "name", out->name, sizeof(out->name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1356,7 +1356,7 @@ static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx 
 		/* non-configurable fields */
 
 		/* configurable fields */
-		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		parse_printable_key(module, &ctx, "name", mod->name, sizeof(mod->name), &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
