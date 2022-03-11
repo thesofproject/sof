@@ -74,9 +74,9 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
-	struct timer *timer = timer_get();
+	struct dma_trace_data *trace_data = dma_trace_data_get();
 	/* Support very early tracing */
-	uint64_t delta = timer ? timer->delta : 0;
+	uint64_t delta = dma_trace_initialized(trace_data) ? trace_data->time_delta : 0;
 	struct log_entry_header header;
 	int ret;
 
@@ -89,7 +89,6 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 
 	ret = memcpy_s(dst, sizeof(header), &header, sizeof(header));
 	assert(!ret);
-
 }
 
 #ifndef __ZEPHYR__
