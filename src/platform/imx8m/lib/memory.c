@@ -97,5 +97,5 @@ static SHARED_DATA struct mm memmap = {
 void platform_init_memmap(struct sof *sof)
 {
 	/* memmap has been initialized statically as a part of .data */
-	sof->memory_map = &memmap;
+	sof->memory_map = platform_shared_get(&memmap, sizeof(memmap));
 }
