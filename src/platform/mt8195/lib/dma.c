@@ -39,7 +39,10 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
-static const struct dma_info lib_dma = { .dma_array = dma, .num_dmas = ARRAY_SIZE(dma) };
+static const struct dma_info lib_dma = {
+	.dma_array = cache_to_uncache_init((struct dma *)dma),
+	.num_dmas = ARRAY_SIZE(dma)
+};
 
 int dmac_init(struct sof *sof)
 {
