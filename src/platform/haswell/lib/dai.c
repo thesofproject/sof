@@ -52,7 +52,7 @@ static SHARED_DATA struct dai ssp[2] = {
 const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_INTEL_SSP,
-		.dai_array = ssp,
+		.dai_array = cache_to_uncache_init((struct dai *)ssp),
 		.num_dais = ARRAY_SIZE(ssp)
 	}
 };
@@ -68,7 +68,7 @@ int dai_init(struct sof *sof)
 
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
-		k_spinlock_init(&ssp[i].lock);
+		k_spinlock_init(&dti[0].dai_array[i].lock);
 
 	sof->dai_info = &lib_dai;
 

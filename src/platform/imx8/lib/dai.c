@@ -73,12 +73,12 @@ static SHARED_DATA struct dai sai[] = {
 const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_IMX_SAI,
-		.dai_array = sai,
+		.dai_array = cache_to_uncache_init((struct dai *)sai),
 		.num_dais = ARRAY_SIZE(sai)
 	},
 	{
 		.type = SOF_DAI_IMX_ESAI,
-		.dai_array = esai,
+		.dai_array = cache_to_uncache_init((struct dai *)esai),
 		.num_dais = ARRAY_SIZE(esai)
 	},
 };
@@ -94,10 +94,10 @@ int dai_init(struct sof *sof)
 
 	 /* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(esai); i++)
-		k_spinlock_init(&esai[i].lock);
+		k_spinlock_init(&dti[1].dai_array[i].lock);
 
 	for (i = 0; i < ARRAY_SIZE(sai); i++)
-		k_spinlock_init(&sai[i].lock);
+		k_spinlock_init(&dti[0].dai_array[i].lock);
 
 	sof->dai_info = &lib_dai;
 
