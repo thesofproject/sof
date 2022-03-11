@@ -119,6 +119,11 @@ west_init_update()
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
 
+	( cd "$WEST_TOP"/zephyr
+	  set -x
+	  git remote add sof https://github.com/thesofproject/zephyr.git
+	)
+
 	# To keep things simple, this moves to a detached HEAD even when
 	# init_ref is a (remote) branch.
 	test -z "$init_ref" ||
@@ -133,6 +138,7 @@ west_init_update()
 
 	# zephyr_fetch_and_switch    origin   pull/38374/head
 	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
+	zephyr_fetch_and_switch    sof       sof/stable-v2.1
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
