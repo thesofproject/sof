@@ -55,9 +55,9 @@ ifelse(PLATFORM, `tgl',
 	define(`SMART_ALH_CAPTURE_NAME', `SDW1-Capture')
 ', `')
 ifelse(PLATFORM, `adl',
-`	define(`SMART_ALH_INDEX', 0x202)
-	define(`SMART_ALH_PLAYBACK_NAME', `SDW2-Playback')
-	define(`SMART_ALH_CAPTURE_NAME', `SDW2-Capture')
+`	define(`SMART_ALH_INDEX', 2)
+	define(`SMART_ALH_PLAYBACK_NAME', `SDW0-Playback')
+	define(`SMART_ALH_CAPTURE_NAME', `SDW0-Capture')
 	# Add BT audio offload support
 	define(`BT_PIPELINE_PB_ID', `14') dnl DMIC_PIPELINE_KWD_ID + 1
 	define(`BT_PIPELINE_CP_ID', `15') dnl DMIC_PIPELINE_KWD_ID + 2
@@ -67,9 +67,9 @@ ifelse(PLATFORM, `adl',
 	include(`platform/intel/intel-generic-bt.m4')
 ', `')
 #define BE dai_link ID
-define(`SMART_BE_ID', 2)
+define(`SMART_BE_ID', 0)
 
-# Playback related
+# Playback pipeline ID
 define(`SMART_PB_PPL_ID', 3)
 define(`SMART_PB_CH_NUM', 2)
 # channel number for playback on sdw link
@@ -170,14 +170,14 @@ dnl     deadline, priority, core, time_domain)
 # playback DAI is ALH(ALH0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        1, ALH, 2, SDW0-Playback,
+        1, ALH, 0x202, SDW2-Playback,
         PIPELINE_SOURCE_1, 2, s24le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(ALH0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        2, ALH, 3, SDW0-Capture,
+        2, ALH, 0x203, SDW2-Capture,
         PIPELINE_SINK_2, 2, s24le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -225,13 +225,13 @@ PCM_PLAYBACK_ADD(HDMI 4, 8, PIPELINE_PCM_9)
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 
-#ALH SDW0 Pin2 (ID: 0)
-DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
-        ALH_CONFIG(ALH_CONFIG_DATA(ALH, 2, 48000, 2)))
+#ALH SDW2 Pin2 (ID: 2)
+DAI_CONFIG(ALH, 0x202, 2, SDW2-Playback,
+        ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x202, 48000, 2)))
 
-#ALH SDW0 Pin3 (ID: 1)
-DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
-        ALH_CONFIG(ALH_CONFIG_DATA(ALH, 3, 48000, 2)))
+#ALH SDW2 Pin3 (ID: 3)
+DAI_CONFIG(ALH, 0x203, 3, SDW2-Capture,
+        ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x203, 48000, 2)))
 
 # 4 HDMI/DP outputs (ID: 6,7,8,9)
 DAI_CONFIG(HDA, 0, 6, iDisp1,
