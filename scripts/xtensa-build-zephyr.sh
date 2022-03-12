@@ -57,6 +57,9 @@ usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
           Incompatible with -p. To stop after downloading Zephyr, do not
           pass any platform or cmake argument.
 
+       -u Initial Zephyr remote for the -c option. Default value:
+            https://github.com/zephyrproject-rtos/zephyr
+
        -z Initial Zephyr git ref for the -c option. Can be a branch, tag,
           full SHA1 in a fork, magic pull/12345/merge,... anything as long as
           it is fetchable from https://github.com/zephyrproject-rtos/zephyr/
@@ -111,18 +114,26 @@ zephyr_fetch_and_switch()
 # link back to sof/
 west_init_update()
 {
-	local init_ref="$1"
+	# Default Zephyr remote and branch if nothing passed on the
+	# command line.
+	local init_remote="${1:-https://github.com/zephyrproject-rtos/zephyr}"
 
-	# Or, we could have a default value:
-	# init_ref=${1:-811a09bd8305}
+	# This can be a branch, a 40-digit SHA or empty to fetch the
+	# default branch. Example:
+	# local init_ref=${2:-sof/stable-v2.1}
+	local init_ref="$2"
 
-	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
-	    "$WEST_TOP"/zephyr
+	# git fetch accepts anything, even 40-digits SHA but git clone is
+	# less flexible. So we git clone the default branch first to get
+	# started and then we switch to any 'z_ref' thanks to git fetch.
+	( set -x
+	  git clone --depth=5 "$init_remote" "$WEST_TOP"/zephyr
+	)
 
 	# To keep things simple, this moves to a detached HEAD even when
 	# init_ref is a (remote) branch.
 	test -z "$init_ref" ||
-	    zephyr_fetch_and_switch     origin   "${init_ref}"
+	    zephyr_fetch_and_switch  "${init_remote}"   "${init_ref}"
 
 	# This shows how to point CI at any Zephyr commit from anywhere
 	# and to run all tests on it. Simply edit remote and reference,
@@ -302,14 +313,15 @@ build_platforms()
 parse_args()
 {
 	local zeproj
-	unset zephyr_ref
+	unset zephyr_remote zephyr_ref
 	local OPTIND=1
 
 	# Parse -options
-	while getopts "acz:j:k:p:v" OPTION; do
+	while getopts "acu:z:j:k:p:v" OPTION; do
 		case "$OPTION" in
 			a) PLATFORMS=("${DEFAULT_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
+			u) zephyr_remote="$OPTARG" ;;
 			z) zephyr_ref="$OPTARG" ;;
 			j) BUILD_JOBS="$OPTARG" ;;
 			k) RIMAGE_KEY_OPT="$OPTARG" ;;
@@ -328,8 +340,8 @@ parse_args()
 	    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
 	fi
 
-	if [ -n "$zephyr_ref" ] && [ -z "$DO_CLONE" ]; then
-	   die '%s' '-z without -c makes no sense'
+	if [ -n "$zephyr_remote" -o -n "$zephyr_ref" ] && [ -z "$DO_CLONE" ]; then
+	   die '%s' '-u or -z without -c makes no sense'
 	fi
 
 	if [ -n "$zeproj" ]; then
@@ -407,7 +419,7 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		# Resolve symlinks
 		mkdir "$zep"; WEST_TOP=$( cd "$zep" && /bin/pwd )
 
-		west_init_update "${zephyr_ref}"
+		west_init_update "${zephyr_remote}" "${zephyr_ref}"
 
 	else
 		 # Look for Zephyr and define WEST_TOP
