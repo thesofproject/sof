@@ -233,6 +233,22 @@ build_platforms()
 				;;
 		esac
 
+		# default value if undefined
+		local config_overlay=${CONFIG_OVERLAY:-overlay.conf}
+
+		# every platform that has CONFIG_OVERLAY file is expected to have it in:
+		# overlays/<platform_name> directory
+		local CONFIG_DIR="$SOF_TOP"/overlays/"$platform"
+		local OVERLAY_FILE="$CONFIG_DIR"/"$config_overlay"
+
+		test -d "$CONFIG_DIR" ||
+			die 'Overlay configuration directory: %s does not exist, create one.' \
+					"$CONFIG_DIR"
+
+		test -f "$OVERLAY_FILE" ||
+			die 'Platform overlay file: %s does not exist. Please create one.' \
+				"$OVERLAY_FILE"
+
 		if [ -n "$XTENSA_TOOLS_ROOT" ]
 		then
 			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
@@ -266,7 +282,7 @@ build_platforms()
 			set -x
 			west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof \
-				-- "${CMAKE_ARGS[@]}"
+				-- "${CMAKE_ARGS[@]}" "-DOVERLAY_CONFIG=${OVERLAY_FILE}"
 
 			# This should ideally be part of
 			# sof/zephyr/CMakeLists.txt but due to the way
