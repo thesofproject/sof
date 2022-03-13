@@ -371,9 +371,17 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
+		overlays = []
+		# You may override default overlay.conf file name using CONFIG_OVERLAY in your platform
+		# dictionary
+		overlay_filename = platform_dict.get("CONFIG_OVERLAY", "overlay.conf")
+		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
+
 		if args.ipc == "IPC4":
-			overlay = pathlib.Path(SOF_TOP, "platforms", platform, platform_dict["IPC4_CONFIG_OVERLAY"])
-			build_cmd.append(f"-DOVERLAY_CONFIG={overlay}")
+			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, platform_dict["IPC4_CONFIG_OVERLAY"])))
+
+		overlays = ";".join(overlays)
+		build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
 
 		# Build
 		execute_command(build_cmd, check=True, cwd=west_top)
