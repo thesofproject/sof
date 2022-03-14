@@ -72,7 +72,10 @@ passthrough_codec_process(struct processing_module *mod,
 	}
 
 	if (!codec->mpd.init_done)
-		return passthrough_codec_init_process(dev);
+		passthrough_codec_init_process(dev);
+
+	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
+		 input_buffers[0].data, codec->mpd.in_buff_size);
 
 	comp_dbg(dev, "passthrough_codec_process()");
 
@@ -80,6 +83,7 @@ passthrough_codec_process(struct processing_module *mod,
 		 codec->mpd.in_buff, codec->mpd.in_buff_size);
 	codec->mpd.produced = mod->period_bytes;
 	codec->mpd.consumed = mod->period_bytes;
+	input_buffers[0].consumed = codec->mpd.consumed;
 
 	return 0;
 }
