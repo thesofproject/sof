@@ -56,6 +56,16 @@ DECLARE_SOF_TB_UUID("drc", drc_uuid, 0xb36ee4da, 0x006f, 0x47f9,
 DECLARE_SOF_TB_UUID("multiband_drc", multiband_drc_uuid, 0x0d9f2256, 0x8e4f, 0x47b3,
 		    0x84, 0x48, 0x23, 0x9a, 0x33, 0x4f, 0x11, 0x91);
 
+DECLARE_SOF_TB_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
+		    0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
+
+DECLARE_SOF_TB_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
+		    0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
+
+DECLARE_SOF_TB_UUID("google-rtc-audio-processing", google_rtc_audio_processing_uuid,
+		    0xb780a0a6, 0x269f, 0x466f, 0xb4, 0x77, 0x23, 0xdf, 0xa0,
+		    0x5a, 0xf7, 0x58);
+
 #define TESTBENCH_NCH 2 /* Stereo */
 
 struct pipeline_thread_data {
@@ -79,6 +89,10 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"multiband_drc", "libsof_multiband_drc.so", SOF_COMP_NONE,
 		SOF_TB_UUID(multiband_drc_uuid), 0, NULL},
 	{"mixer", "libsof_mixer.so", SOF_COMP_MIXER, NULL, 0, NULL},
+	{"mux", "libsof_mux.so", SOF_COMP_MUX, SOF_TB_UUID(mux_uuid), 0, NULL},
+	{"demux", "libsof_mux.so", SOF_COMP_DEMUX, SOF_TB_UUID(demux_uuid), 0, NULL},
+	{"google-rtc-audio-processing", "libsof_google-rtc-audio-processing.so", SOF_COMP_NONE,
+		SOF_TB_UUID(google_rtc_audio_processing_uuid), 0, NULL},
 };
 
 /* compatible variables, not used */
