@@ -25,7 +25,7 @@
 #define MAX_OUTPUT_FILE_NUM	16
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	12
+#define NUM_WIDGETS_SUPPORTED	15
 
 struct tplg_context;
 
