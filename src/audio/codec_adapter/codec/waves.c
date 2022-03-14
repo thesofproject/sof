@@ -722,7 +722,11 @@ waves_codec_process(struct processing_module *mod,
 	}
 
 	if (!codec->mpd.init_done)
-		return waves_codec_init_process(dev);
+		waves_codec_init_process(dev);
+
+	memcpy_s(codes->mpd.in_buff, codec->mpd.in_buff_size,
+		 input_buffers[0].data, codec->mpd.in_buff_size);
+	codec->mpd.avail = codec->mpd.in_buff_size;
 
 	comp_dbg(dev, "waves_codec_process() start");
 
@@ -760,6 +764,7 @@ waves_codec_process(struct processing_module *mod,
 		codec->mpd.produced = waves_codec->o_stream.numAvailableSamples *
 			waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
 		codec->mpd.consumed = codec->mpd.produced;
+		input_buffers[0].consumed = codec->mpd.consumed;
 		ret = 0;
 	}
 

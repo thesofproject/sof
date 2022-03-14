@@ -234,8 +234,15 @@ dts_codec_process(struct processing_module *mod,
 		return -ENODATA;
 	}
 
-	if (!codec->mpd.init_done)
-		return dts_codec_init_process(dev);
+	if (!codec->mpd.init_done) {
+		ret = dts_codec_init_process(dev);
+		if (ret < 0)
+			return ret;
+	}
+
+	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
+		 input_buffers[0].data, codec->mpd.in_buff_size);
+	codec->mpd.avail = codec->mpd.in_buff_size;
 
 	comp_dbg(dev, "dts_codec_process() start");
 
@@ -244,6 +251,7 @@ dts_codec_process(struct processing_module *mod,
 
 	codec->mpd.consumed = !ret ? bytes_processed : 0;
 	codec->mpd.produced = !ret ? bytes_processed : 0;
+	input_buffers[0].consumed = codec->mpd.consumed;
 
 	if (ret)
 		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
