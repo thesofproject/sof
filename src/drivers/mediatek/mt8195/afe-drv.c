@@ -292,7 +292,7 @@ int afe_irq_clear(struct mtk_base_afe *afe, int id)
 int afe_irq_config(struct mtk_base_afe *afe, int id, unsigned int rate, unsigned int period)
 {
 	struct mtk_base_afe_irq *irq = &afe->irqs[id];
-	unsigned int fs;
+	int fs;
 
 	afe_reg_update_bits(afe, irq->irq_data->irq_cnt_reg,
 			    irq->irq_data->irq_cnt_maskbit << irq->irq_data->irq_cnt_shift,
