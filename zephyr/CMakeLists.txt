@@ -453,6 +453,74 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
+# Intel ACE 1.5 and newer platforms
+if (CONFIG_SOC_SERIES_INTEL_ACE1X)
+
+	# Driver sources
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/ace/ipc.c
+		${SOF_DRIVERS_PATH}/intel/ace/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_TPLG_PARAMS
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic_computed.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_NHLT
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/ace/platform.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/power_down.S
+		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_memory.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/dai.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/dma.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
+		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
+	)
+
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/ace/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/ace/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+	set(PLATFORM "meteorlake")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+endif()
+
 # NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
@@ -519,6 +587,21 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
+if (CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources(
+		${SOF_IPC_PATH}/ipc4/handler.c
+		${SOF_IPC_PATH}/ipc4/helper.c
+		${SOF_IPC_PATH}/ipc4/dai.c
+	)
+else()
+	zephyr_library_sources(
+		${SOF_IPC_PATH}/ipc3/handler.c
+		${SOF_IPC_PATH}/ipc3/helper.c
+		${SOF_IPC_PATH}/ipc3/dai.c
+		${SOF_IPC_PATH}/ipc3/host-page-table.c
+	)
+endif()
+
 zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c

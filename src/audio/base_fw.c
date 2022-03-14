@@ -119,7 +119,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
 	uint32_t value;
 
-	set_tuple_uint32(tuple, IPC4_CAVS_VER_HW_CFG, CAVS_VERSION);
+	set_tuple_uint32(tuple, IPC4_CAVS_VER_HW_CFG, CAVS_VER_HW_CFG);
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, CONFIG_CORE_COUNT);

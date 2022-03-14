@@ -14,7 +14,11 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 
+#if CONFIG_CAVS
 #include <cavs/version.h>
+#elif CONFIG_ACE
+#include <ace/version.h>
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>

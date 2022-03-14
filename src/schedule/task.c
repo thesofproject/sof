@@ -54,7 +54,10 @@ enum task_state task_main_primary_core(void *data)
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IPC or DMA */
+// TODO: To be enabled for MTL
+#if !CONFIG_METEORLAKE
 		wait_for_interrupt(0);
+#endif // !CONFIG_METEORLAKE
 
 		if (!ipc->pm_prepare_D3)
 			ipc_send_queued_msg();

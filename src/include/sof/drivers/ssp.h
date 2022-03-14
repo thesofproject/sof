@@ -111,7 +111,7 @@ extern const struct dai_driver ssp_driver;
 #define SSCR2_ASRC_CNTR_CLR		BIT(9)
 #define SSCR2_ASRC_FRM_CNRT_EN		BIT(10)
 #define SSCR2_ASRC_INTR_MASK		BIT(11)
-#elif CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
+#elif CONFIG_ACE || CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
 #define SSCR2_TURM1		BIT(1)
 #define SSCR2_PSPSRWFDFD	BIT(3)
 #define SSCR2_PSPSTWFDFD	BIT(4)
@@ -148,7 +148,7 @@ extern const struct dai_driver ssp_driver;
 #define SSPSP2			0x44
 #define SSPSP2_FEP_MASK		0xff
 
-#if CONFIG_CAVS
+#if CONFIG_ACE || CONFIG_CAVS
 #define SSCR3		0x48
 #define SSIOC		0x4C
 
@@ -194,7 +194,7 @@ extern const struct dai_driver ssp_driver;
 #define SFIFOL_TFL(x)		((x) & 0xFFFF)
 #define SFIFOL_RFL(x)		((x) >> 16)
 
-#if CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
+#if CONFIG_ACE || CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
 #define SSTSA_TSEN			BIT(8)
 #define SSRSA_RSEN			BIT(8)
 
@@ -210,7 +210,7 @@ extern const struct dai_driver ssp_driver;
 #define SSIOC_SCOE	BIT(5)
 #endif
 
-#if CONFIG_CAVS
+#if CONFIG_ACE || CONFIG_CAVS
 
 #include <sof/lib/clk.h>
 
