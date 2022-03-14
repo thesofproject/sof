@@ -383,7 +383,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 						    source_list);
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
 	struct list_item *blist;
@@ -395,11 +394,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	comp_get_copy_limits_with_lock(source, local_buff, &cl);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
-
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
-		 codec_buff_size, local_buff->stream.free, source->stream.avail);
+	comp_dbg(dev, "codec_adapter_copy() start: local_buff free: %d source avail %d",
+		 local_buff->stream.free, source->stream.avail);
 
 	/* copy source samples into input buffer */
 	list_for_item(blist, &dev->bsource_list) {
@@ -408,7 +404,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 
 		source = buffer_acquire(source);
-		frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+		frames = audio_stream_avail_frames(&source->stream, &local_buff->stream);
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
@@ -416,69 +412,44 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 		buffer_stream_invalidate(source, bytes_to_process);
 		mod->input_buffers[i].size = bytes_to_process;
+		mod->input_buffers[i].consumed = 0;
 		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
-					      size, bytes_to_process);
+					      bytes_to_process, bytes_to_process);
 		i++;
 	}
 
-	/*
-	 * This should be removed once all codec implementations start using the passed
-	 * input/output buffers
-	 */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
-
-	if (!md->mpd.init_done) {
-		buffer_stream_invalidate(source, codec_buff_size);
-		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-					      md->mpd.in_buff_size, codec_buff_size);
-		md->mpd.avail = codec_buff_size;
-		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
-				     mod->output_buffers, mod->num_output_buffers);
-		if (ret < 0) {
-			if (ret == -ENODATA) {
-				ret = 0;
-				goto db_verify;
-			}
-			goto out;
-		}
-
-		bytes_to_process -= md->mpd.consumed;
-		processed += md->mpd.consumed;
-		comp_update_buffer_consume(source, md->mpd.consumed);
-		if (bytes_to_process < codec_buff_size)
-			goto db_verify;
-	}
-
-	buffer_stream_invalidate(source, codec_buff_size);
-	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-				      md->mpd.in_buff_size, codec_buff_size);
-	md->mpd.avail = codec_buff_size;
 	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
 		if (ret == -ENOSPC || ret == -ENODATA) {
 			ret = 0;
-			goto db_verify;
+			goto consume;
 		}
+		comp_err(dev, "codec_adapter_copy() error %x: module processing failed", ret);
+		goto out;
+	}
 
-		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
-			 ret);
-		goto db_verify;
-	} else if (md->mpd.produced == 0) {
-		/* skipping as lib has not produced anything */
-		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+	/* skip copying if module has not produced anything */
+	if (md->mpd.produced == 0) {
+		comp_err(dev, "codec_adapter_copy() error %x: module hasn't processed anything",
 			 ret);
 		goto db_verify;
 	}
+
 	ca_copy_from_module_to_sink(&local_buff->stream, md->mpd.out_buff, md->mpd.produced);
 
-	bytes_to_process -= md->mpd.consumed;
 	processed += md->mpd.consumed;
 	produced += md->mpd.produced;
 
 	audio_stream_produce(&local_buff->stream, md->mpd.produced);
-	comp_update_buffer_consume(source, md->mpd.consumed);
+consume:
+	/* consume from all input buffers */
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+		i++;
+	}
 
 db_verify:
 	if (!produced && !mod->deep_buff_bytes) {
@@ -514,8 +485,7 @@ copy_period:
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(local_buff, copy_bytes);
 end:
-	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
-		 processed, bytes_to_process);
+	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call", processed);
 out:
 	for (i = 0; i < mod->num_output_buffers; i++) {
 		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
@@ -525,6 +495,7 @@ out:
 	for (i = 0; i < mod->num_input_buffers; i++) {
 		bzero(mod->input_buffers[i].data, size);
 		mod->input_buffers[i].size = 0;
+		mod->input_buffers[i].consumed = 0;
 	}
 
 	return ret;
