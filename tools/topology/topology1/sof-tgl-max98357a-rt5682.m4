@@ -90,9 +90,17 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 #
 # Define the pipelines
 #
+ifdef(`2CH_2WAY',`
+ifdef(`WAVES',`
+# PCM0 --> waves --> demux(2to4-ch) --> eq_iir --> SSP$AMP_SSP (Speaker - CODEC)',`
+# PCM0 --> demux(2to4-ch) --> eq_iir --> SSP$AMP_SSP (Speaker - CODEC)')',`
+ifdef(`WAVES',`
+# PCM0 --> waves --> volume --> demux --> SSP$AMP_SSP (Speaker - CODEC)
+#                                 |
+# PCM6 <--------------------------+',`
 # PCM0 --> volume --> demux --> SSP$AMP_SSP (Speaker - CODEC)
 #                       |
-# PCM6 <----------------+
+# PCM6 <----------------+')')
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
 # PCM99 <---- volume <----- DMIC01 (dmic0 capture)
 # PCM2 ----> volume -----> iDisp1
@@ -174,9 +182,11 @@ ifdef(`NO_AMP',`',`
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
-	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
-	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
+	ifdef(`2CH_2WAY',
+	      ifdef(`WAVES', sof/pipe-waves-demux-eq-iir-playback.m4,
+		    sof/pipe-demux-eq-iir-playback.m4),
+	      ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
+		    ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
