@@ -55,6 +55,8 @@ struct mixer_data {
 	struct ipc4_base_module_cfg base_cfg;
 #endif
 
+	bool sources_inactive;
+
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
 			 const struct audio_stream **sources, uint32_t count,
 			 uint32_t frames);
@@ -343,23 +345,6 @@ static int mixer_copy(struct comp_dev *dev)
 			return 0;
 	}
 
-	/* write zeros if all sources are inactive */
-	if (num_mix_sources == 0) {
-		uint32_t free_frames;
-		sink = buffer_acquire(sink);
-		free_frames = audio_stream_get_free_frames(&sink->stream);
-		frames = MIN(frames, free_frames);
-		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
-		sink = buffer_release(sink);
-
-		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
-			buffer_stream_writeback(sink, sink_bytes);
-			comp_update_buffer_produce(sink, sink_bytes);
-		}
-
-		return 0;
-	}
-
 	sink = buffer_acquire(sink);
 
 	/* check for underruns */
@@ -370,6 +355,31 @@ static int mixer_copy(struct comp_dev *dev)
 							 &sink->stream);
 		frames = MIN(frames, avail_frames);
 		sources[i] = buffer_release(sources[i]);
+	}
+
+	if (!num_mix_sources || (frames == 0 && md->sources_inactive)) {
+		/*
+		 * Generate silence when sources are inactive. When
+		 * sources change to active, additionally keep
+		 * generating silence until at least one of the
+		 * sources start to have data available (frames!=0).
+		 */
+		frames = audio_stream_get_free_frames(&sink->stream);
+		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		sink = buffer_release(sink);
+		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
+			buffer_stream_writeback(sink, sink_bytes);
+			comp_update_buffer_produce(sink, sink_bytes);
+		}
+
+		md->sources_inactive = true;
+
+		return 0;
+	}
+
+	if (md->sources_inactive) {
+		md->sources_inactive = false;
+		comp_dbg(dev, "mixer_copy exit sources_inactive state");
 	}
 
 	sink = buffer_release(sink);
