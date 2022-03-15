@@ -11,16 +11,16 @@
 extern "C" {
 #endif
 
-void RTKMA_API_S16_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S16_Default(void *Context, struct audio_stream_rtnr **sources,
+						struct audio_stream_rtnr *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
-void RTKMA_API_S24_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S24_Default(void *Context, struct audio_stream_rtnr **sources,
+						struct audio_stream_rtnr *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
-void RTKMA_API_S32_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S32_Default(void *Context, struct audio_stream_rtnr **sources,
+						struct audio_stream_rtnr *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
 
@@ -43,6 +43,14 @@ int RTKMA_API_Parameter_Size(void *Context, unsigned int IDs);
 int RTKMA_API_Set(void *Context, const void *pParameters, int size, unsigned int IDs);
 
 int	RTKMA_API_Get(void *Context, void *pParameters, int size, unsigned int IDs);
+
+int	RTKMA_API_Set_Preset_Data(void *Context, unsigned int *data,
+						unsigned int msg_index, unsigned int num_elms,
+						unsigned int elems_remaining);
+
+int	RTKMA_API_Set_Model_Data(void *Context, unsigned int *data,
+						unsigned int msg_index, unsigned int num_elms,
+						unsigned int elems_remaining);
 
 #ifdef __cplusplus
 }
