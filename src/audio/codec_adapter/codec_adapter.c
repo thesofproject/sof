@@ -431,8 +431,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 	if (!md->mpd.init_done) {
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 				     mod->output_buffers, mod->num_output_buffers);
-		if (ret < 0) {
-			if (ret == -ENODATA) {
+		if (ret) {
+			if (ret == -ENOSPC || ret == -ENODATA) {
 				ret = 0;
 				goto db_verify;
 			}

@@ -507,6 +507,11 @@ cadence_codec_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
+	int output_bytes = cadence_codec_get_samples(dev) *
+				mod->stream_params.sample_container_bytes *
+				mod->stream_params.channels;
+	uint32_t init_consumed = 0;
+	uint32_t remaining = input_buffers[0].size;
 	int ret;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
@@ -515,22 +520,31 @@ cadence_codec_process(struct processing_module *mod,
 		return -ENODATA;
 	}
 
-	/* do not proceed with processing if not enough free left in the local buffer */
-	if (codec->mpd.init_done) {
-		int output_bytes = cadence_codec_get_samples(dev) *
-				   mod->stream_params.sample_container_bytes *
-				   mod->stream_params.channels;
-
-		if (local_buff->stream.free < output_bytes)
-			return -ENOSPC;
-	} else {
+	if (!codec->mpd.init_done) {
 		memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size, input_buffers[0].data,
 			 input_buffers[0].size);
 		codec->mpd.avail = codec->mpd.in_buff_size;
+
 		ret = cadence_codec_init_process(dev);
+		init_consumed = codec->mpd.consumed;
+		if (ret)
+			return ret;
+
+		remaining -= codec->mpd.consumed;
 		input_buffers[0].consumed = codec->mpd.consumed;
-		return ret;
 	}
+
+	/* do not proceed with processing if not enough free space left in the local buffer */
+	if (local_buff->stream.free < output_bytes)
+		return -ENOSPC;
+
+	/* Proceed only if we have enough data to fill the module buffer completely */
+	if (remaining < codec->mpd.in_buff_size)
+		return -ENODATA;
+
+	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
+		 (uint8_t *)input_buffers[0].data + init_consumed, remaining);
+	codec->mpd.avail = codec->mpd.in_buff_size;
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
@@ -561,6 +575,10 @@ cadence_codec_process(struct processing_module *mod,
 			 ret);
 		return ret;
 	}
+
+	/* update consumed with the number of samples consumed during init */
+	codec->mpd.consumed += init_consumed;
+	input_buffers[0].consumed = codec->mpd.consumed;
 
 	comp_dbg(dev, "cadence_codec_process() done");
 
