@@ -53,6 +53,8 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 				SOF_TASK_STATE_COMPLETED;
 		case COMP_TRIGGER_PRE_START:
 		case COMP_TRIGGER_PRE_RELEASE:
+			if (p->status == COMP_STATE_ACTIVE)
+				return SOF_TASK_STATE_RUNNING;
 			p->status = COMP_STATE_ACTIVE;
 		}
 
