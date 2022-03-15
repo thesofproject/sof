@@ -17,10 +17,34 @@
  * \brief Type definition for the RTNR processing function
  *
  */
+
+/* for RTNR internal use */
+struct audio_stream_rtnr {
+	/* runtime data */
+	uint32_t size;	/**< Runtime buffer size in bytes (period multiple) */
+	uint32_t avail;	/**< Available bytes for reading */
+	uint32_t free;	/**< Free bytes for writing */
+	void *w_ptr;	/**< Buffer write pointer */
+	void *r_ptr;	/**< Buffer read position */
+	void *addr;	/**< Buffer base address */
+	void *end_addr;	/**< Buffer end address */
+
+	/* runtime stream params */
+	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
+
+	uint32_t rate;		/**< Number of data frames per second [Hz] */
+	uint16_t channels;	/**< Number of samples in each frame */
+
+	bool overrun_permitted; /**< indicates whether overrun is permitted */
+	bool underrun_permitted; /**< indicates whether underrun is permitted */
+};
+
 typedef void (*rtnr_func)(struct comp_dev *dev,
-						  const struct audio_stream **sources,
-						  struct audio_stream *sink,
+						  struct audio_stream_rtnr **sources,
+						  struct audio_stream_rtnr *sink,
 						  int frames);
+
+#define RTNR_MAX_SOURCES		1 /* Microphone stream */
 
 /* RTNR component private data */
 struct comp_data {
@@ -40,6 +64,8 @@ struct comp_data {
 	bool ref_active;
 	rtnr_func rtnr_func; /** Processing function */
 	void *rtk_agl;
+	struct audio_stream_rtnr sources_stream[RTNR_MAX_SOURCES];
+	struct audio_stream_rtnr sink_stream;
 };
 
 /* Called by the processing library for debugging purpose */
