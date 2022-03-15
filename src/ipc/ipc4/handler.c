@@ -390,7 +390,7 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 
 static int ipc_wait_for_compound_msg(void)
 {
-	int try_count = 10;
+	int try_count = 30;
 	int ret = 0;
 
 	while (msg_data.delayed_reply) {
