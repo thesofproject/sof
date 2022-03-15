@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define SOF_RTNR_MAX_SIZE 256
+#define SOF_RTNR_MAX_SIZE 8192
 
 struct sof_rtnr_params {
 	/* 1 to enable RTNR, 0 to disable it */
@@ -26,6 +26,7 @@ struct sof_rtnr_config {
 	uint32_t reserved[4];
 
 	struct sof_rtnr_params params;
+	int32_t data[];
 } __attribute__((packed, aligned(4)));
 
 #endif /* __USER_RTNR_H__ */

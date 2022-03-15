@@ -44,6 +44,12 @@ int RTKMA_API_Set(void *Context, const void *pParameters, int size, unsigned int
 
 int	RTKMA_API_Get(void *Context, void *pParameters, int size, unsigned int IDs);
 
+int	RTKMA_API_Set_Data(void *Context, unsigned int *data,
+					unsigned int msg_index,
+					unsigned int num_elms,
+					unsigned int elems_remaining,
+					unsigned int data_type);
+
 #ifdef __cplusplus
 }
 #endif

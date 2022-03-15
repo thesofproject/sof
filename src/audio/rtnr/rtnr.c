@@ -38,6 +38,8 @@
 #define RTNR_BLK_LENGTH_MASK	(RTNR_BLK_LENGTH - 1)
 #define RTNR_MAX_SOURCES		1 /* Microphone stream */
 
+#define SOF_RTNR_CONFIG	0
+
 static const struct comp_driver comp_rtnr;
 
 /** \brief RTNR processing functions map item. */
@@ -399,25 +401,51 @@ static int rtnr_cmd_get_data(struct comp_dev *dev,
 	return ret;
 }
 
+static int rtnr_set_bin_data(struct comp_dev *dev,
+				       struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret = 0;
+
+	assert(cd);
+
+	comp_dbg(dev, "rtnr_set_bin_data() msg_index = %d, num_elems = %d, remaining = %d ",
+		 cdata->msg_index, cdata->num_elems,
+		 cdata->elems_remaining);
+
+	if (cdata->data->type == SOF_RTNR_CONFIG) {
+		comp_dbg(dev, "rtnr_set_bin_data(): SOF_RTNR_CONFIG");
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
+		if (ret >= 0)
+			ret = rtnr_check_config_validity(dev, cd);
+	} else {
+		comp_dbg(dev, "rtnr_set_bin_data(): SOF_RTNR_DATA type: %d", cdata->data->type);
+		ret = RTKMA_API_Set_Data(cd->rtk_agl,
+							cdata->data->data,
+							cdata->msg_index,
+							cdata->num_elems,
+							cdata->elems_remaining,
+							cdata->data->type);
+	}
+
+	return ret;
+}
+
 static int rtnr_cmd_set_data(struct comp_dev *dev,
 							struct sof_ipc_ctrl_data *cdata)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "rtnr_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
+		ret = rtnr_set_bin_data(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "rtnr_cmd_set_data() error: invalid command %d", cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
-
-	if (ret >= 0)
-		ret = rtnr_check_config_validity(dev, cd);
 
 	return ret;
 }
