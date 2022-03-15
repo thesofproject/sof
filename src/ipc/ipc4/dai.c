@@ -186,8 +186,13 @@ void dai_dma_release(struct comp_dev *dev)
 
 		get_llp_reg_info(dd, &node_id, &llp_reg_offset);
 		if (node_id) {
-			/* clear memory window */
+			/* reset llp position to 0 in memory window for reset state.
+			 * clear node id and llp position to 0 when dai is free
+			 */
 			memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+			if (dev->state == COMP_STATE_PAUSED)
+				slot.node_id = node_id;
+
 			mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
 		}
 
