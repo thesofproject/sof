@@ -408,7 +408,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 
 		source = buffer_acquire(source);
-		frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+		frames = audio_stream_avail_frames(&source->stream, &local_buff->stream);
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
@@ -429,10 +429,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
 	if (!md->mpd.init_done) {
-		buffer_stream_invalidate(source, codec_buff_size);
-		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-					      md->mpd.in_buff_size, codec_buff_size);
-		md->mpd.avail = codec_buff_size;
 		ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 				     mod->output_buffers, mod->num_output_buffers);
 		if (ret < 0) {
@@ -445,7 +441,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 		bytes_to_process -= md->mpd.consumed;
 		processed += md->mpd.consumed;
-		comp_update_buffer_consume(source, md->mpd.consumed);
+		/* consume from all input buffers */
+		i = 0;
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer, sink_list);
+			comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+			i++;
+		}
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 	}

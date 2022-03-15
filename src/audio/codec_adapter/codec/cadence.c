@@ -524,7 +524,12 @@ cadence_codec_process(struct processing_module *mod,
 		if (local_buff->stream.free < output_bytes)
 			return -ENOSPC;
 	} else {
-		return cadence_codec_init_process(dev);
+		memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size, input_buffers[0].data,
+			 input_buffers[0].size);
+		codec->mpd.avail = codec->mpd.in_buff_size;
+		ret = cadence_codec_init_process(dev);
+		input_buffers[0].consumed = codec->mpd.consumed;
+		return ret;
 	}
 
 	comp_dbg(dev, "cadence_codec_process() start");
