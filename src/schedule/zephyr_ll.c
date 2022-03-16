@@ -533,6 +533,7 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	list_init(&sch->tasks);
 	sch->ll_domain = domain;
 	sch->core = cpu_get_id();
+	sch->n_tasks = 0;
 
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);
 
