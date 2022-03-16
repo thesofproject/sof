@@ -162,6 +162,7 @@ set(TPLGS
 	"sof-tgl-max98373-rt5682\;sof-tgl-rt5682-ssp0-max98373-ssp2-xperi\;-DAMP_SSP=2\;-DINCLUDE_IIR_EQ=1"
 	"sof-adl-nau8825\;sof-adl-nau8825\;-DNO_AMP\;-DBT_OFFLOAD"
 	"sof-adl-nau8825\;sof-adl-max98373-nau8825\;-DAMP_SSP=1\;-DSMART_AMP\;-DBT_OFFLOAD"
+	"sof-adl-nau8825\;sof-adl-max98373-nau8825-dts\;-DAMP_SSP=1\;-DSMART_AMP\;-DBT_OFFLOAD\;-DDTS=`DTS'"
 	"sof-adl-nau8825\;sof-adl-max98360a-nau8825\;-DAMP_SSP=1\;-DBT_OFFLOAD"
 	"sof-adl-nau8825\;sof-adl-rt1019-nau8825\;-DAMP_SSP=2"
 	"sof-tgl-sdw-max98373-rt5682\;sof-tgl-sdw-max98373-rt5682\;-DCHANNELS=4\;-DPLATFORM=tgl"
