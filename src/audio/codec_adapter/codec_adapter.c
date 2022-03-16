@@ -375,7 +375,6 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 
 int codec_adapter_copy(struct comp_dev *dev)
 {
-	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
@@ -387,7 +386,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
-	int i = 0;
+	int ret, i = 0;
 
 	if (!source || !sink) {
 		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
