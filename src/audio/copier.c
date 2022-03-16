@@ -170,6 +170,7 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 	if (!drv)
 		return NULL;
 
+	parent_dev->ipc_config.type = SOF_COMP_HOST;
 	config->type = SOF_COMP_HOST;
 
 	create_endpoint_buffer(parent_dev, cd, config, copier_cfg);
@@ -222,6 +223,7 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 	if (!drv)
 		return NULL;
 
+	parent_dev->ipc_config.type = SOF_COMP_DAI;
 	config->type = SOF_COMP_DAI;
 	create_endpoint_buffer(parent_dev, cd, config, copier);
 
