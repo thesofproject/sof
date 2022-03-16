@@ -119,7 +119,9 @@ define(`SMART_PCM_ID', 0)
 define(`SMART_PCM_NAME', `smart373-spk')
 
 # Include Smart Amplifier support
-include(`sof-smart-amplifier.m4')')')
+ifdef(`DTS',`
+include(`sof-eq-iir-dts-codec-smart-amplifier.m4')',`
+include(`sof-smart-amplifier.m4')')')')
 
 # Define pipeline id for intel-generic-dmic-kwd.m4
 # to generate dmic setting with kwd when we have dmic
@@ -173,7 +175,8 @@ PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(
+ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-volume-playback.m4),
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
