@@ -198,7 +198,7 @@ static bool is_any_ppl_active(void)
  *     ERROR Stop       EOS       |______\ SAVE
  *                                      /
  */
-static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
+static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t *ppl_status)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct ipc_comp_dev *host;
@@ -320,6 +320,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 		ret = 0;
 	}
 
+	*ppl_status = host->cd->pipeline->status;
 	return ret;
 }
 
@@ -379,12 +380,63 @@ static int ipc_wait_for_compound_msg(void)
 	return ret;
 }
 
+/* In ipc3 path, host driver sends pcm_hw_param message to fw and
+ * direction is included. The direction is set to each component
+ * after pipeline is complete. In ipc4 path, direction is figured out and
+ * set it to each component after connected pipeline are complete.
+ */
+static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
+{
+	struct ipc_comp_dev *icd;
+	struct comp_dev *dai;
+	struct list_item *clist;
+	struct ipc *ipc;
+	uint32_t latency, i;
+
+	ipc = ipc_get();
+
+	/* only dai has direction based on gateway type */
+	dai = pipeline_get_dai_comp(ppl_id[0], &latency);
+	/* skip host copier to host copier case */
+	if (!dai) {
+		tr_info(&ipc_tr, "no dai is found");
+		return 0;
+	}
+
+	/* set direction to the component in the pipeline array */
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		for (i = 0; i < count; i++) {
+			if (ipc_comp_pipe_id(icd) == ppl_id[i]) {
+				/* don't update direction for host & dai since they
+				 * have direction. Especially in dai copier to dai copier
+				 * case the direction can't be modified to single value
+				 * since one of them is for playback and the other one
+				 * is for capture
+				 */
+				if (dev_comp_type(icd->cd) == SOF_COMP_HOST ||
+				    dev_comp_type(icd->cd) == SOF_COMP_DAI)
+					break;
+
+				icd->cd->direction = dai->direction;
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
+
 static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 {
 	struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
 	uint32_t cmd, ppl_count;
 	uint32_t *ppl_id, id;
+	uint32_t status;
 	int ret = 0;
 	int i;
 
@@ -408,12 +460,16 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		bool delayed = false;
 
 		ipc_compound_pre_start(state.header.r.type);
-		ret = set_pipeline_state(ppl_id[i], cmd, &delayed);
+		ret = set_pipeline_state(ppl_id[i], cmd, &delayed, &status);
 		ipc_compound_post_start(state.header.r.type, ret, delayed);
 
-		if (ret < 0)
-			break;
+		if (ret != 0)
+			return ret;
 	}
+
+	/* update direction after all connected pipelines are complete */
+	if (status == COMP_STATE_READY)
+		ret = update_dir_to_pipeline_component(ppl_id, ppl_count);
 
 	return ret;
 }
