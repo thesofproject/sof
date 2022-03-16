@@ -533,7 +533,6 @@ static int copier_reset(struct comp_dev *dev)
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	}
 
-	memset(cd, 0, sizeof(*cd));
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
