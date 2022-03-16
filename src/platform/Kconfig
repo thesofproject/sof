@@ -490,6 +490,7 @@ config SYSTICK_PERIOD
 
 config HAVE_AGENT
 	bool "Enable system agent"
+	default n if ZEPHYR_SOF_MODULE
 	default y
 	help
 	  Enables system agent. It can be disabled on systems
