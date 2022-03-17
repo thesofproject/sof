@@ -69,6 +69,8 @@ struct task {
 	struct task_ops ops;	/**< task operations */
 #ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
+#endif
+#if defined(CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS) || defined(__ZEPHYR__)
 	uint32_t cycles_sum;
 	uint32_t cycles_max;
 	uint32_t cycles_cnt;

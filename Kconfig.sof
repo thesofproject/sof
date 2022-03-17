@@ -171,6 +171,15 @@ config DEBUG_IPC_COUNTERS
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
 
+config SCHEDULE_LOG_CYCLE_STATISTICS
+	bool "Log cycles per tick statistics for each task separately"
+	default y
+	help
+	  Log DSP cycle usage statistics about once per second (1ms *
+	  1024) for each task separately. The printed data is task's
+	  meta information, average number of cycles/tick, and maximum
+	  number of cycles/tick during the previous 1024 tick period.
+
 config PERFORMANCE_COUNTERS
 	bool "Performance counters"
 	default n
