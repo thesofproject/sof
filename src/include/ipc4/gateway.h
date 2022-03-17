@@ -197,4 +197,11 @@ enum ipc4_gateway_type {
 	ipc4_gtw_all	= BIT(6) - 1
 };
 
+enum ipc4_direction_type {
+	ipc4_playback = BIT(0),
+	ipc4_capture = BIT(1),
+	ipc4_bidirection = BIT(0) | BIT(1)
+};
+
+#define IPC4_DIRECTION(x) BIT(x)
 #endif

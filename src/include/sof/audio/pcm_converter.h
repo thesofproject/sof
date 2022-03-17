@@ -103,6 +103,7 @@ struct pcm_func_vc_map {
 	enum sof_ipc_frame sink;	/**< sink frame container format */
 	enum sof_ipc_frame valid_sink_bits;	/**< sink frame format */
 	uint32_t type;	/**< gateway type */
+	enum ipc4_direction_type direction;	/**< support playback, capture or both */
 	pcm_converter_func func; /**< PCM conversion function */
 };
 
@@ -119,13 +120,15 @@ extern const size_t pcm_func_vc_count;
  * \param out_bits is sink container format.
  * \param valid_out_bits is sink valid sample format.
  * \param type is gateway type
+ * \param dir is playback or capture
  */
 static inline pcm_converter_func
 pcm_get_conversion_vc_function(enum sof_ipc_frame in_bits,
 			       enum sof_ipc_frame valid_in_bits,
 			       enum sof_ipc_frame out_bits,
 			       enum sof_ipc_frame valid_out_bits,
-			       enum ipc4_gateway_type type)
+			       enum ipc4_gateway_type type,
+			       enum ipc4_direction_type dir)
 {
 	uint32_t i;
 
@@ -140,6 +143,9 @@ pcm_get_conversion_vc_function(enum sof_ipc_frame in_bits,
 			continue;
 
 		if (!(type & pcm_func_vc_map[i].type))
+			continue;
+
+		if (!(dir & pcm_func_vc_map[i].direction))
 			continue;
 
 		return pcm_func_vc_map[i].func;

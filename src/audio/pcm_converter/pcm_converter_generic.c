@@ -785,51 +785,63 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream *so
 const struct pcm_func_vc_map pcm_func_vc_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
-		ipc4_gtw_all, pcm_convert_s16_c16_to_s16_c32 },
+		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s16_c16_to_s16_c32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,
-		ipc4_gtw_all, pcm_convert_s16_c32_to_s16_c16 },
+		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s16_c32_to_s16_c16 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
-		ipc4_gtw_all, pcm_convert_s16_c32_to_s32_c32 },
+		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s16_c32_to_s32_c32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
-		ipc4_gtw_all, pcm_convert_s32_c32_to_s16_c32 },
+		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s32_c32_to_s16_c32 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
-		ipc4_gtw_all, pcm_convert_s16_c32_to_s24_c32 },
+		ipc4_gtw_all & ~ipc4_gtw_alh, ipc4_bidirection, pcm_convert_s16_c32_to_s24_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_alh, ipc4_capture, pcm_convert_s32_to_s24 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
-		ipc4_gtw_all, pcm_convert_s24_c32_to_s16_c32 },
+		ipc4_gtw_all & ~ipc4_gtw_alh, ipc4_bidirection, pcm_convert_s24_c32_to_s16_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
+		ipc4_gtw_alh, ipc4_playback, pcm_convert_s24_to_s32 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S32LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
-		ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh | ipc4_gtw_host), audio_stream_copy },
+		ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh | ipc4_gtw_host), ipc4_bidirection,
+		audio_stream_copy},
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
-		ipc4_gtw_link | ipc4_gtw_alh, pcm_convert_s24_to_s32 },
+		ipc4_gtw_link | ipc4_gtw_alh, ipc4_playback, pcm_convert_s24_to_s32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
-		ipc4_gtw_host, pcm_convert_s32_to_s24 },
+		ipc4_gtw_link | ipc4_gtw_alh, ipc4_capture, pcm_convert_s32_to_s24 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_host, ipc4_playback, pcm_convert_s32_to_s24 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_host, ipc4_capture, pcm_convert_s24_to_s32 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh),
-		pcm_convert_s16_to_s24 },
+		ipc4_bidirection, pcm_convert_s16_to_s24 },
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_link | ipc4_gtw_alh, pcm_convert_s16_to_s32 },
+		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_link | ipc4_gtw_alh, ipc4_playback,
+		pcm_convert_s16_to_s32},
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, pcm_convert_s24_to_s16 },
+		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, ipc4_bidirection, pcm_convert_s24_to_s16 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
 	{ SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_all, pcm_convert_s24_c24_to_s24_c32 },
+		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_all, ipc4_bidirection,
+		pcm_convert_s24_c24_to_s24_c32},
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_3LE,
 		SOF_IPC_FRAME_S24_3LE, ipc4_gtw_all & ~ipc4_gtw_link,
-		pcm_convert_s24_c32_to_s24_c24 },
+		ipc4_bidirection, pcm_convert_s24_c32_to_s24_c24 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_3LE,
-		SOF_IPC_FRAME_S24_3LE, ipc4_gtw_link, pcm_convert_s24_c32_to_s24_c24_link_gtw },
+		SOF_IPC_FRAME_S24_3LE, ipc4_gtw_link, ipc4_playback,
+		pcm_convert_s24_c32_to_s24_c24_link_gtw },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C32_AND_S16_C32
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, audio_stream_copy },
+		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, ipc4_bidirection, audio_stream_copy },
 #endif
 };
 
