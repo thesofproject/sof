@@ -68,7 +68,8 @@ struct copier_data {
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 					     struct ipc4_audio_format *out_fmt,
-					     enum ipc4_gateway_type type);
+					     enum ipc4_gateway_type type,
+					     enum ipc4_direction_type);
 
 static void create_endpoint_buffer(struct comp_dev *parent_dev,
 				   struct copier_data *cd,
@@ -196,7 +197,7 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 	}
 
 	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt,
-					      ipc4_gtw_host);
+					      ipc4_gtw_host, IPC4_DIRECTION(dir));
 
 	return dev;
 }
@@ -294,7 +295,8 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 		cd->bsource_buffer = false;
 	}
 
-	cd->converter[0] = get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type);
+	cd->converter[0] = get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
+					      IPC4_DIRECTION(dai.direction));
 
 	return dev;
 }
@@ -460,7 +462,8 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 					     struct ipc4_audio_format *out_fmt,
-					     enum ipc4_gateway_type type)
+					     enum ipc4_gateway_type type,
+					     enum ipc4_direction_type dir)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
@@ -473,7 +476,7 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))
 		return pcm_get_conversion_function(in, out);
 	else
-		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type);
+		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type, dir);
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -501,7 +504,8 @@ static int copier_prepare(struct comp_dev *dev)
 	} else {
 		/* set up format conversion function */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
-						      &cd->config.out_fmt, ipc4_gtw_none);
+						      &cd->config.out_fmt, ipc4_gtw_none,
+						      ipc4_bidirection);
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
@@ -887,7 +891,8 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 
 	cd->out_fmt[sink_fmt->sink_id] = sink_fmt->sink_fmt;
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
-							      &sink_fmt->sink_fmt, ipc4_gtw_none);
+							      &sink_fmt->sink_fmt, ipc4_gtw_none,
+							      ipc4_bidirection);
 
 	return 0;
 }
