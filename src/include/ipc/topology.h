@@ -245,6 +245,7 @@ struct sof_ipc_comp_file {
 	char *fn;
 	uint32_t mode;
 	uint32_t frame_fmt;
+	uint32_t direction;	/**< SOF_IPC_STREAM_ */
 } __attribute__((packed, aligned(4)));
 
 /* frees components, buffers and pipelines

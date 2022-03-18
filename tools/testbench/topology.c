@@ -245,16 +245,19 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 	}
 
 	/* configure fileread */
-	fileread.fn = strdup(tp->input_file);
+	fileread.fn = strdup(tp->input_file[tp->input_file_index]);
+	if (tp->input_file_index == 0)
+		tp->fr_id = ctx->comp_id;
 
 	/* use fileread comp as scheduling comp */
-	tp->fr_id = ctx->comp_id;
 	ctx->sched_id = ctx->comp_id;
+	tp->input_file_index++;
 
 	/* Set format from testbench command line*/
 	fileread.rate = ctx->fs_in;
 	fileread.channels = ctx->channels_in;
 	fileread.frame_fmt = ctx->frame_fmt;
+	fileread.direction = dir;
 
 	/* Set type depending on direction */
 	fileread.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
@@ -304,6 +307,7 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	filewrite.rate = ctx->fs_out;
 	filewrite.channels = ctx->channels_out;
 	filewrite.frame_fmt = ctx->frame_fmt;
+	filewrite.direction = dir;
 
 	/* Set type depending on direction */
 	filewrite.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
@@ -361,6 +365,7 @@ int parse_topology(struct tplg_context *ctx)
 	int ret = 0;
 	size_t file_size;
 	size_t size;
+	bool pipeline_match;
 
 	/* initialize output file index */
 	tp->output_file_index = 0;
@@ -410,7 +415,17 @@ int parse_topology(struct tplg_context *ctx)
 
 		ctx->hdr = hdr;
 
-		if (hdr->index != ctx->pipeline_id) {
+		pipeline_match = false;
+		for (i = 0; i < tp->pipeline_num; i++) {
+			if (hdr->index == tp->pipelines[i]) {
+				pipeline_match = true;
+				break;
+			}
+		}
+
+		if (!pipeline_match) {
+			sprintf(message, "skipped pipeline %d\n", hdr->index);
+			debug_print(message);
 			next = get_next_hdr(ctx, hdr, file_size);
 			if (next < 0)
 				goto out;
@@ -418,6 +433,7 @@ int parse_topology(struct tplg_context *ctx)
 				continue;
 			else
 				goto finish;
+
 		}
 
 		/* parse header and load the next block based on type */
@@ -431,6 +447,7 @@ int parse_topology(struct tplg_context *ctx)
 			debug_print(message);
 
 			/* update max pipeline_id */
+			ctx->pipeline_id = hdr->index;
 			if (hdr->index > tp->max_pipeline_id)
 				tp->max_pipeline_id = hdr->index;
 

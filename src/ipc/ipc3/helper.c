@@ -217,6 +217,7 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 		config->file.frame_fmt = file->frame_fmt;
 		config->file.mode = file->mode;
 		config->file.rate = file->rate;
+		config->file.direction = file->direction;
 		break;
 #else
 	case SOF_COMP_HOST:
