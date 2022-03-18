@@ -97,32 +97,26 @@ void tb_free(struct sof *sof)
 	free(sof->ipc);
 }
 
-/* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct tplg_context *ctx)
+/* Get pipeline host component */
+static struct comp_dev *tb_get_pipeline_host(struct pipeline *p)
 {
-	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
+
+	cd = p->source_comp;
+	if (cd->direction == SOF_IPC_STREAM_CAPTURE)
+		cd = p->sink_comp;
+
+	return cd;
+}
+
+/* set up pcm params, prepare and trigger pipeline */
+int tb_pipeline_start(struct ipc *ipc, struct pipeline *p)
+{
 	struct comp_dev *cd;
 	int ret;
 
-	/* set up pipeline params */
-	ret = tb_pipeline_params(ipc, p, ctx);
-	if (ret < 0) {
-		fprintf(stderr, "error: pipeline params failed: %s\n",
-			strerror(ret));
-		return ret;
-	}
-
-	/* Get IPC component device for pipeline */
-	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
-	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp failed: %s\n",
-			strerror(ret));
-		return ret;
-	}
-
-	/* Point to pipeline component device */
-	cd = pcm_dev->cd;
+	/* Get pipeline host component */
+	cd = tb_get_pipeline_host(p);
 
 	/* Component prepare */
 	ret = pipeline_prepare(p, cd);
@@ -133,7 +127,7 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 	}
 
 	/* Start the pipeline */
-	ret = pipeline_trigger(p, cd, COMP_TRIGGER_PRE_START);
+	ret = pipeline_trigger(cd->pipeline, cd, COMP_TRIGGER_PRE_START);
 	if (ret < 0) {
 		fprintf(stderr, "error: Failed to start pipeline command: %s\n",
 			strerror(ret));
@@ -144,24 +138,15 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 }
 
 /* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
-		     struct tplg_context *ctx)
+int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p)
 {
-	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int ret;
 
-	/* Get IPC component device for pipeline */
-	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
-	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp failed\n");
-		return -EINVAL;
-	}
+	/* Get pipeline host component */
+	cd = tb_get_pipeline_host(p);
 
-	/* Point to pipeline component device */
-	cd = pcm_dev->cd;
-
-	ret = pipeline_trigger(p, cd, COMP_TRIGGER_STOP);
+	ret = pipeline_trigger(cd->pipeline, cd, COMP_TRIGGER_STOP);
 	if (ret < 0) {
 		fprintf(stderr, "error: Failed to stop pipeline command: %s\n",
 			strerror(ret));
@@ -171,22 +156,13 @@ int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
 }
 
 /* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
-		      struct tplg_context *ctx)
+int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p)
 {
-	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int ret;
 
-	/* Get IPC component device for pipeline */
-	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
-	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp failed\n");
-		return -EINVAL;
-	}
-
-	/* Point to pipeline component device */
-	cd = pcm_dev->cd;
+	/* Get pipeline host component */
+	cd = tb_get_pipeline_host(p);
 
 	ret = pipeline_reset(p, cd);
 	if (ret < 0)
@@ -223,7 +199,6 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	params.comp_id = p->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params.params.frame_fmt = ctx->frame_fmt;
-	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
 	params.params.rate = ctx->fs_in;
 	params.params.channels = ctx->channels_in;
 
@@ -255,8 +230,11 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 		return -EINVAL;
 	}
 
-	/* point to pipeline component device */
-	cd = pcm_dev->cd;
+	/* Get pipeline host component */
+	cd = tb_get_pipeline_host(p);
+
+	/* Set pipeline params direction from scheduling component */
+	params.params.direction = cd->direction;
 
 	/* pipeline params */
 	ret = pipeline_params(p, cd, &params);

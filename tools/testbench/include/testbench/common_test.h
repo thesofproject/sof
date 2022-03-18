@@ -21,6 +21,7 @@
 #define DEBUG_MSG_LEN		1024
 #define MAX_LIB_NAME_LEN	1024
 
+#define MAX_INPUT_FILE_NUM	16
 #define MAX_OUTPUT_FILE_NUM	16
 
 /* number of widgets types supported in testbench */
@@ -36,8 +37,9 @@ struct tplg_context;
  */
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
-	char *input_file; /* input file name */
+	char *input_file[MAX_INPUT_FILE_NUM]; /* input file names */
 	char *output_file[MAX_OUTPUT_FILE_NUM]; /* output file names */
+	int input_file_num; /* number of input files */
 	int output_file_num; /* number of output files */
 	char *bits_in; /* input bit format */
 	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
@@ -58,6 +60,7 @@ struct testbench_prm {
 	FILE *file;
 	char *pipeline_string;
 	int output_file_index;
+	int input_file_index;
 
 	/* global cmd line args that can override topology */
 	enum sof_ipc_frame cmd_frame_fmt;
@@ -89,17 +92,14 @@ void sys_comp_filewrite_init(void);
 int tb_setup(struct sof *sof, struct testbench_prm *tp);
 void tb_free(struct sof *sof);
 
-int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct tplg_context *ctx);
+int tb_pipeline_start(struct ipc *ipc, struct pipeline *p);
 
 int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 		       struct tplg_context *ctx);
 
-int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
-		     struct tplg_context *ctx);
+int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p);
 
-int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
-		      struct tplg_context *ctx);
+int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p);
 
 void debug_print(char *message);
 

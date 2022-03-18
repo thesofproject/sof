@@ -587,6 +587,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	cd->rate = ipc_file->rate;
 	cd->channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
+	dev->direction = ipc_file->direction;
 
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
