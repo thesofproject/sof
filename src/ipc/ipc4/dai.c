@@ -295,7 +295,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	/* total processed bytes count */
 	posn->dai_posn = dev->position;
 
-	/* set stream start wallclock */
+	platform_dai_wallclock(dev, &dd->wallclock);
 	posn->wallclock = dd->wallclock;
 
 	status.ipc_posn_data = &posn->comp_posn;
@@ -319,6 +319,8 @@ void dai_dma_position_update(struct comp_dev *dev)
 
 	status.ipc_posn_data = llp_data;
 	dma_status(dd->chan, &status, dev->direction);
+
+	platform_dai_wallclock(dev, &dd->wallclock);
 
 	slot.node_id = node_id;
 	slot.reading.llp_l = llp_data[0];
