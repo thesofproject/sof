@@ -13,7 +13,6 @@
  * \brief Processing component aimed to work with external codec libraries
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
-
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
@@ -22,6 +21,8 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#include <limits.h>
+#include <stdint.h>
 
 /**
  * \brief Create a codec adapter component.
@@ -228,7 +229,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, buff_size);
+		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "codec_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -266,30 +267,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 			buffer_reset_pos(buffer, NULL);
 		}
 	}
-
-	/*
-	 * Allocate local buffer.
-	 * TODO: Remove this after all codecs start using the sink_buffer_list
-	 */
-	if (mod->local_buff) {
-		ret = buffer_set_size(mod->local_buff, buff_size);
-		if (ret < 0) {
-			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
-				 buff_size);
-			goto free;
-		}
-	} else {
-		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
-		if (!mod->local_buff) {
-			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
-			ret = -ENOMEM;
-			goto free;
-		}
-
-	}
-	buffer_set_params(mod->local_buff, &mod->stream_params,
-			  BUFFER_UPDATE_FORCE);
-	buffer_reset_pos(mod->local_buff, NULL);
 
 	comp_dbg(dev, "codec_adapter_prepare() done");
 
@@ -458,32 +435,30 @@ copy_period:
 
 int codec_adapter_copy(struct comp_dev *dev)
 {
-	uint32_t bytes_to_process, processed = 0, produced = 0;
-	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-						    source_list);
 	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-	struct comp_buffer *local_buff = mod->local_buff;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
+	uint32_t min_free_frames = UINT_MAX;
 	int ret, i = 0;
 
-	if (!sink) {
-		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
-		return -EINVAL;
+	/* get the least number of free frames from all sinks */
+	list_for_item(blist, &mod->sink_buffer_list) {
+		sink = container_of(blist, struct comp_buffer, sink_list);
+		min_free_frames = MIN(min_free_frames,
+				      audio_stream_get_free_frames(&sink->stream));
 	}
-
-	comp_dbg(dev, "codec_adapter_copy() start: local_buff free: %d", local_buff->stream.free);
 
 	/* copy source samples into input buffer */
 	list_for_item(blist, &dev->bsource_list) {
+		uint32_t bytes_to_process;
 		int frames, source_frame_bytes;
 
 		source = container_of(blist, struct comp_buffer, sink_list);
 
 		source = buffer_acquire(source);
-		frames = audio_stream_avail_frames(&source->stream, &local_buff->stream);
+		frames = MIN(min_free_frames, audio_stream_get_avail_frames(&source->stream));
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
@@ -508,17 +483,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto out;
 	}
 
-	/* skip copying if module has not produced anything */
-	if (md->mpd.produced == 0) {
-		comp_err(dev, "codec_adapter_copy() error %x: module hasn't processed anything",
-			 ret);
-		goto db_verify;
-	}
-
-	/* TODO: remove this after all codecs start using the output_buffers */
-	ca_copy_from_module_to_sink(&local_buff->stream, md->mpd.out_buff, md->mpd.produced);
-
-	/* copy all produced output samples */
+	/* copy all produced output samples to output buffers */
 	i = 0;
 	list_for_item(blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer, sink_list);
@@ -531,10 +496,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
-	processed += md->mpd.consumed;
-	produced += md->mpd.produced;
-
-	audio_stream_produce(&local_buff->stream, md->mpd.produced);
 consume:
 	/* consume from all input buffers */
 	i = 0;
@@ -544,16 +505,28 @@ consume:
 		i++;
 	}
 
-db_verify:
-	module_copy_samples(dev, mod->local_buff, sink, md->mpd.produced);
+	/* copy from all output local buffers to sink buffers */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *src_buffer;
+		struct list_item *_blist;
+		int j = 0;
 
-	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
-		 processed, bytes_to_process);
-out:
-	for (i = 0; i < mod->num_output_buffers; i++) {
-		bzero(mod->output_buffers[i].data, mod->output_buffer_size);
-		mod->output_buffers[i].size = 0;
+		sink = container_of(blist, struct comp_buffer, source_list);
+		list_for_item(_blist, &mod->sink_buffer_list) {
+			src_buffer = container_of(_blist, struct comp_buffer, sink_list);
+
+			if (i == j) {
+				module_copy_samples(dev, src_buffer, sink,
+						    mod->output_buffers[i].size);
+				break;
+			}
+			j++;
+		}
 	}
+out:
+	for (i = 0; i < mod->num_output_buffers; i++)
+		mod->output_buffers[i].size = 0;
 
 	for (i = 0; i < mod->num_input_buffers; i++) {
 		bzero(mod->input_buffers[i].data, size);
@@ -682,10 +655,6 @@ int codec_adapter_reset(struct comp_dev *dev)
 			 ret);
 	}
 
-	/* if module is not prepared, local_buffer won't be allocated */
-	if (mod->local_buff)
-		buffer_zero(mod->local_buff);
-
 	for (i = 0; i < mod->num_output_buffers; i++)
 		rfree(mod->output_buffers[i].data);
 
@@ -722,8 +691,6 @@ void codec_adapter_free(struct comp_dev *dev)
 	ret = module_free(mod);
 	if (ret)
 		comp_err(dev, "codec_adapter_free(): error %d, codec free failed", ret);
-
-	buffer_free(mod->local_buff);
 
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,

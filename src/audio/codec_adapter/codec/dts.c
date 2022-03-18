@@ -253,8 +253,15 @@ dts_codec_process(struct processing_module *mod,
 	codec->mpd.produced = !ret ? bytes_processed : 0;
 	input_buffers[0].consumed = codec->mpd.consumed;
 
-	if (ret)
+	if (ret) {
 		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
+		return ret;
+	}
+
+	/* copy the produced samples into the output buffer */
+	memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
+		 codec->mpd.produced);
+	output_buffers[0].size = codec->mpd.produced;
 
 	comp_dbg(dev, "dts_codec_process() done");
 

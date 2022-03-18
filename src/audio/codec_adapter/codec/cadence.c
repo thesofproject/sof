@@ -503,7 +503,7 @@ cadence_codec_process(struct processing_module *mod,
 		      struct input_stream_buffer *input_buffers, int num_input_buffers,
 		      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_buffer *local_buff = mod->local_buff;
+	struct comp_buffer *local_buff;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
@@ -533,6 +533,7 @@ cadence_codec_process(struct processing_module *mod,
 	}
 
 	/* do not proceed with processing if not enough free space left in the local buffer */
+	local_buff = list_first_item(&mod->sink_buffer_list, struct comp_buffer, sink_list);
 	if (local_buff->stream.free < output_bytes)
 		return -ENOSPC;
 
@@ -578,6 +579,11 @@ cadence_codec_process(struct processing_module *mod,
 	/* update consumed with the number of samples consumed during init */
 	input_buffers[0].consumed += codec->mpd.consumed;
 	codec->mpd.consumed = input_buffers[0].consumed;
+
+	/* copy the produced samples into the output buffer */
+	memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
+		 codec->mpd.produced);
+	output_buffers[0].size = codec->mpd.produced;
 
 	comp_dbg(dev, "cadence_codec_process() done");
 
