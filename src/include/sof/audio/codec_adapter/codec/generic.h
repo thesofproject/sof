@@ -262,6 +262,7 @@ struct module_processing_data {
 /** private, runtime module data */
 struct module_data {
 	enum module_state state;
+	size_t new_cfg_size; /**< size of new module config data */
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
 	struct module_config cfg; /**< module configuration data */
