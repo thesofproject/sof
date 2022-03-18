@@ -766,6 +766,10 @@ waves_codec_process(struct processing_module *mod,
 		codec->mpd.consumed = codec->mpd.produced;
 		input_buffers[0].consumed = codec->mpd.consumed;
 		ret = 0;
+		/* copy the produced samples into the output buffer */
+		memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
+			 codec->mpd.produced);
+		output_buffers[0].size = codec->mpd.produced;
 	}
 
 	if (ret)
