@@ -348,7 +348,6 @@ int module_set_configuration(struct processing_module *mod,
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	static size_t size;
 	size_t offset = 0;
 	uint8_t *dst;
 	int ret;
@@ -360,7 +359,7 @@ int module_set_configuration(struct processing_module *mod,
 		 * verify input params & allocate memory for the config blob when the first
 		 * fragment arrives
 		 */
-		size = data_offset_size;
+		md->new_cfg_size = data_offset_size;
 
 		/* Check that there is no previous request in progress */
 		if (md->runtime_params) {
@@ -368,23 +367,23 @@ int module_set_configuration(struct processing_module *mod,
 			return -EBUSY;
 		}
 
-		if (!size)
+		if (!md->new_cfg_size)
 			return 0;
 
-		if (size > MAX_BLOB_SIZE) {
+		if (md->new_cfg_size > MAX_BLOB_SIZE) {
 			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %d, allowed %d",
-				 size, MAX_BLOB_SIZE);
+				 md->new_cfg_size, MAX_BLOB_SIZE);
 			return -EINVAL;
 		}
 
 		/* Allocate buffer for new params */
-		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, md->new_cfg_size);
 		if (!md->runtime_params) {
 			comp_err(dev, "module_set_configuration(): space allocation for new params failed");
 			return -ENOMEM;
 		}
 
-		memset(md->runtime_params, 0, size);
+		memset(md->runtime_params, 0, md->new_cfg_size);
 		break;
 	default:
 		if (!md->runtime_params) {
@@ -399,7 +398,7 @@ int module_set_configuration(struct processing_module *mod,
 
 	dst = (uint8_t *)md->runtime_params + offset;
 
-	ret = memcpy_s(dst, size - offset, fragment, fragment_size);
+	ret = memcpy_s(dst, md->new_cfg_size - offset, fragment, fragment_size);
 	if (ret < 0) {
 		comp_err(dev, "module_set_configuration(): error: %d failed to copy fragment",
 			 ret);
@@ -411,11 +410,13 @@ int module_set_configuration(struct processing_module *mod,
 		return 0;
 
 	/* config fully copied, now load it */
-	ret = module_load_config(dev, md->runtime_params, size);
+	ret = module_load_config(dev, md->runtime_params, md->new_cfg_size);
 	if (ret)
 		comp_err(dev, "module_set_configuration(): error %d: config failed", ret);
 	else
 		comp_dbg(dev, "module_set_configuration(): config load successful");
+
+	md->new_cfg_size = 0;
 
 	if (md->runtime_params)
 		rfree(md->runtime_params);
