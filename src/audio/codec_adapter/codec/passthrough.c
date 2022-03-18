@@ -85,6 +85,11 @@ passthrough_codec_process(struct processing_module *mod,
 	codec->mpd.consumed = mod->period_bytes;
 	input_buffers[0].consumed = codec->mpd.consumed;
 
+	/* copy the produced samples into the output buffer */
+	memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
+		 codec->mpd.produced);
+	output_buffers[0].size = codec->mpd.produced;
+
 	return 0;
 }
 

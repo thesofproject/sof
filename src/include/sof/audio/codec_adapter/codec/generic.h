@@ -273,7 +273,6 @@ struct module_data {
 /* codec_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
-	struct comp_buffer *local_buff;
 	struct sof_ipc_stream_params stream_params;
 	struct list_item sink_buffer_list; /* list of sink buffers to save produced output */
 
