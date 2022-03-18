@@ -1061,6 +1061,38 @@ static int volume_get_large_config(struct comp_dev *dev, uint32_t param_id,
 
 	return 0;
 }
+
+static int volume_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params vol_params;
+	struct comp_buffer *sinkb;
+	uint32_t valid_fmt;
+	int i;
+
+	comp_dbg(dev, "volume_params()");
+
+	vol_params = *params;
+	vol_params.channels = cd->base.audio_fmt.channels_count;
+	vol_params.rate = cd->base.audio_fmt.sampling_frequency;
+	vol_params.buffer_fmt = cd->base.audio_fmt.interleaving_style;
+
+	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
+				    cd->base.audio_fmt.valid_bit_depth,
+				    &vol_params.frame_fmt,
+				    &valid_fmt,
+				    cd->base.audio_fmt.s_type);
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		vol_params.chmap[i] = (cd->base.audio_fmt.ch_map >> i * 4) & 0xf;
+
+	/* volume component will only ever have 1 sink buffer */
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+	component_set_nearest_period_frames(dev, vol_params.rate);
+
+	return buffer_set_params(sinkb, &vol_params, true);
+}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 /**
@@ -1296,6 +1328,7 @@ static const struct comp_driver comp_volume = {
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
 #if CONFIG_IPC_MAJOR_4
+		.params		= volume_params,
 		.set_large_config = volume_set_large_config,
 		.get_large_config = volume_get_large_config,
 #endif
@@ -1331,6 +1364,7 @@ static const struct comp_driver comp_gain = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
+		.params		= volume_params,
 		.set_large_config = volume_set_large_config,
 		.get_large_config = volume_get_large_config,
 	},
