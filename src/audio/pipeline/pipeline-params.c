@@ -139,9 +139,7 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 		params->chmap[i] = buffer->chmap[i];
 }
 
-/* fetch hardware stream parameters from DAI and propagate them to the remaining
- * buffers in pipeline.
- */
+/* fetch hardware stream parameters from DAI  */
 static int pipeline_comp_hw_params(struct comp_dev *current,
 				   struct comp_buffer *calling_buf,
 				   struct pipeline_walk_context *ctx, int dir)
@@ -168,6 +166,20 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 		}
 	}
 
+	return ret;
+}
+
+/* propagate hw_params to buffers in pipeline. */
+static int pipeline_comp_hw_params_buf(struct comp_dev *current,
+				       struct comp_buffer *calling_buf,
+				       struct pipeline_walk_context *ctx, int dir)
+{
+	struct pipeline_data *ppl_data = ctx->comp_data;
+	int ret;
+
+	ret = pipeline_for_each_comp(current, ctx, dir);
+	if (ret < 0)
+		return ret;
 	/* set buffer parameters */
 	if (calling_buf) {
 		calling_buf = buffer_acquire_irq(calling_buf);
@@ -207,6 +219,11 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		.comp_data = &data,
 		.skip_incomplete = true,
 	};
+	struct pipeline_walk_context buf_param_ctx = {
+		.comp_func = pipeline_comp_hw_params_buf,
+		.comp_data = &data,
+		.skip_incomplete = true,
+	};
 	struct pipeline_walk_context param_ctx = {
 		.comp_func = pipeline_comp_params,
 		.comp_data = &data,
@@ -226,6 +243,13 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		  params->params.sample_container_bytes);
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
+	if (ret < 0) {
+		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = %u",
+			 ret, dev_comp_id(host));
+		return ret;
+	}
+
+	ret = buf_param_ctx.comp_func(host, NULL, &buf_param_ctx, dir);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = %u",
 			 ret, dev_comp_id(host));
