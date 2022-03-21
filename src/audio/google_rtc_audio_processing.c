@@ -401,7 +401,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 		cd->raw_mic_buffer[cd->raw_mic_buffer_index] = *src;
 		++cd->raw_mic_buffer_index;
 
-		dst = audio_stream_read_frag_s16(&cd->output->stream, output_buff_frag);
+		dst = audio_stream_write_frag_s16(&cd->output->stream, output_buff_frag);
 		*dst = cd->output_buffer[cd->output_buffer_index];
 		++cd->output_buffer_index;
 
