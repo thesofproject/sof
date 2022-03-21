@@ -84,8 +84,14 @@ static inline int comp_params(struct comp_dev *dev,
 		} else {
 			/* not defined, run the default handler */
 			ret = comp_verify_params(dev, 0, params);
+
+/* BugLink: https://github.com/zephyrproject-rtos/zephyr/issues/43786
+ * TODO: Remove this once the bug gets fixed.
+ */
+#ifndef __ZEPHYR__
 			if (ret < 0)
 				comp_err(dev, "pcm params verification failed");
+#endif
 		}
 	}
 
@@ -172,9 +178,21 @@ static inline int comp_copy(struct comp_dev *dev)
 
 	/* copy only if we are the owner of the component */
 	if (cpu_is_me(dev->ipc_config.core)) {
+/* BugLink: https://github.com/zephyrproject-rtos/zephyr/issues/43786
+ * TODO: Remove this once the bug gets fixed.
+ */
+#ifndef __ZEPHYR__
 		perf_cnt_init(&dev->pcd);
+#endif
+
 		ret = dev->drv->ops.copy(dev);
+
+/* BugLink: https://github.com/zephyrproject-rtos/zephyr/issues/43786
+ * TODO: Remove this once the bug gets fixed.
+ */
+#ifndef __ZEPHYR__
 		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
+#endif
 	}
 
 	return ret;
