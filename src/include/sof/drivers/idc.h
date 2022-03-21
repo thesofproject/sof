@@ -20,6 +20,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
+#include <sof/lib/cache.h>
 
 /** \brief IDC send blocking flag. */
 #define IDC_BLOCKING		0
@@ -96,7 +97,7 @@
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
 /** \brief Max IDC message payload size in bytes. */
-#define IDC_MAX_PAYLOAD_SIZE	96
+#define IDC_MAX_PAYLOAD_SIZE	(DCACHE_LINE_SIZE * 2)
 
 /** \brief IDC free function flags */
 #define IDC_FREE_IRQ_ONLY	BIT(0)	/**< disable only irqs */
