@@ -374,16 +374,17 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
 
 	struct comp_copy_limits cl;
-	int frame;
-	uint32_t aec_reference_buff_frag;
-	uint32_t raw_microphone_buff_frag;
-	uint32_t output_buff_frag;
-	int16_t *src;
-	int16_t *dst;
+	int16_t *src = cd->raw_microphone->stream.r_ptr;
+	int16_t *dst = cd->output->stream.w_ptr;
+	int16_t *ref = cd->aec_reference->stream.r_ptr;
 	uint32_t num_aec_reference_frames;
 	uint32_t num_aec_reference_bytes;
+	int num_samples_remaining;
+	int num_frames_remaining;
 	int channel;
+	int nmax;
 	int ret;
+	int i, j, n;
 
 	if (cd->reconfigure) {
 		ret = google_rtc_audio_processing_reconfigure(dev);
@@ -398,50 +399,59 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 
 	buffer_stream_invalidate(cd->aec_reference, num_aec_reference_bytes);
 
-	aec_reference_buff_frag = 0;
-	for (frame = 0; frame < num_aec_reference_frames; frame++) {
-		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
-			src = audio_stream_read_frag_s16(&cd->aec_reference->stream,
-							 aec_reference_buff_frag + channel);
-			cd->aec_reference_buffer[cd->num_aec_reference_channels *
-				cd->aec_reference_frame_index + channel] = *src;
-		}
-		++cd->aec_reference_frame_index;
+	num_samples_remaining = num_aec_reference_frames * cd->aec_reference->stream.channels;
+	while (num_samples_remaining) {
+		nmax = audio_stream_samples_without_wrap_s16(&cd->aec_reference->stream, ref);
+		n  = MIN(num_samples_remaining, nmax);
+		for (i = 0; i < n; i += cd->num_aec_reference_channels) {
+			j = cd->num_aec_reference_channels * cd->aec_reference_frame_index;
+			for (channel = 0; channel < cd->num_aec_reference_channels; ++channel)
+				cd->aec_reference_buffer[j++] = ref[channel];
 
-		if (cd->aec_reference_frame_index == cd->num_frames) {
-			GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-								    cd->aec_reference_buffer);
-			cd->aec_reference_frame_index = 0;
+			ref += cd->aec_reference->stream.channels;
+			++cd->aec_reference_frame_index;
+
+			if (cd->aec_reference_frame_index == cd->num_frames) {
+				GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
+									    cd->aec_reference_buffer);
+				cd->aec_reference_frame_index = 0;
+			}
 		}
-		aec_reference_buff_frag += cd->aec_reference->stream.channels;
+		num_samples_remaining -= n;
+		ref = audio_stream_wrap(&cd->aec_reference->stream, ref);
 	}
 	comp_update_buffer_consume(cd->aec_reference, num_aec_reference_bytes);
 
 	comp_get_copy_limits_with_lock(cd->raw_microphone, cd->output, &cl);
 	buffer_stream_invalidate(cd->raw_microphone, cl.source_bytes);
 
-	raw_microphone_buff_frag = 0;
-	output_buff_frag = 0;
-	for (frame = 0; frame < cl.frames; frame++) {
-		src = audio_stream_read_frag_s16(&cd->raw_microphone->stream,
-										 raw_microphone_buff_frag);
-		cd->raw_mic_buffer[cd->raw_mic_buffer_index] = *src;
-		++cd->raw_mic_buffer_index;
+	num_frames_remaining = cl.frames;
+	while (num_frames_remaining) {
+		nmax = audio_stream_frames_without_wrap(&cd->raw_microphone->stream, src);
+		n = MIN(num_frames_remaining, nmax);
+		nmax = audio_stream_frames_without_wrap(&cd->output->stream, dst);
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			cd->raw_mic_buffer[cd->raw_mic_buffer_index] = *src;
+			++cd->raw_mic_buffer_index;
 
-		dst = audio_stream_write_frag_s16(&cd->output->stream, output_buff_frag);
-		*dst = cd->output_buffer[cd->output_buffer_index];
-		++cd->output_buffer_index;
+			*dst = cd->output_buffer[cd->output_buffer_index];
+			++cd->output_buffer_index;
 
-		if (cd->raw_mic_buffer_index == cd->num_frames) {
-			GoogleRtcAudioProcessingProcessCapture_int16(
-				cd->state, cd->raw_mic_buffer,
-				cd->output_buffer);
-			cd->output_buffer_index = 0;
-			cd->raw_mic_buffer_index = 0;
+			if (cd->raw_mic_buffer_index == cd->num_frames) {
+				GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
+									     cd->raw_mic_buffer,
+									     cd->output_buffer);
+				cd->output_buffer_index = 0;
+				cd->raw_mic_buffer_index = 0;
+			}
+
+			src += cd->raw_microphone->stream.channels;
+			dst += cd->output->stream.channels;
 		}
-
-		raw_microphone_buff_frag += cd->raw_microphone->stream.channels;
-		output_buff_frag += cd->output->stream.channels;
+		num_frames_remaining -= n;
+		src = audio_stream_wrap(&cd->raw_microphone->stream, src);
+		dst = audio_stream_wrap(&cd->output->stream, dst);
 	}
 
 	buffer_stream_writeback(cd->output, cl.sink_bytes);
