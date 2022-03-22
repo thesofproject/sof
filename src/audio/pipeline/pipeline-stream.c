@@ -52,6 +52,10 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 	if (pipe_source && dev_comp_type(pipe_source) == SOF_COMP_DAI)
 		return false;
 
+	/* source pipeline may not be active since priority is not higher than current one */
+	if (rsrc->pipeline->priority <= ppl_data->start->pipeline->priority)
+		return false;
+
 	/* if component on which we depend to provide data is inactive, then the
 	 * pipeline has no means of providing data
 	 */
