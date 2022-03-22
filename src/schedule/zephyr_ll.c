@@ -502,7 +502,7 @@ int zephyr_ll_task_init(struct task *task,
 	if (ret < 0)
 		return ret;
 
-	pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	pdata = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
 			sizeof(*pdata));
 	if (!pdata) {
 		tr_err(&ll_tr, "zephyr_ll_task_init(): alloc failed");
