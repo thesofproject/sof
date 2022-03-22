@@ -425,6 +425,8 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 copy_period:
 	comp_get_copy_limits_with_lock(src_buffer, sink_buffer, &cl);
 	copy_bytes = cl.frames * cl.source_frame_bytes;
+	if (!copy_bytes)
+		return;
 	audio_stream_copy(&src_buffer->stream, 0, &sink_buffer->stream, 0,
 			  copy_bytes / mod->stream_params.sample_container_bytes);
 	buffer_stream_writeback(sink_buffer, copy_bytes);
