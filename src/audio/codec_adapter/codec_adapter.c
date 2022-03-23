@@ -591,31 +591,30 @@ static int module_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_d
 	return 0;
 }
 
-static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
-				       struct sof_ipc_ctrl_data *cdata)
+static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
+	comp_dbg(dev, "module_adapter_ctrl_set_data() start, state %d, cmd %d",
 		 mod->priv.state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "codec_adapter_ctrl_set_data(): ABI mismatch!");
+		comp_err(dev, "module_adapter_ctrl_set_data(): ABI mismatch!");
 		return -EINVAL;
 	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_err(dev, "codec_adapter_ctrl_set_data() set enum is not implemented for codec_adapter.");
+		comp_err(dev, "module_adapter_ctrl_set_data(): set enum is not implemented");
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
 		ret = module_adapter_set_params(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");
+		comp_err(dev, "module_adapter_ctrl_set_data error: unknown set data command");
 		ret = -EINVAL;
 		break;
 	}
@@ -634,7 +633,7 @@ int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
-		ret = codec_adapter_ctrl_set_data(dev, cdata);
+		ret = module_adapter_ctrl_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
 		comp_err(dev, "codec_adapter_cmd() get_data not implemented yet.");
