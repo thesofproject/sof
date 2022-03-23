@@ -18,7 +18,6 @@
 #include <sof/lib/memory.h>
 
 #define comp_get_module_data(d) (&(((struct processing_module *)((d)->priv_data))->priv))
-#define CODEC_GET_API_ID(id) ((id) & 0xFF)
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
 		ret = (cd)->api((cd)->self, \
