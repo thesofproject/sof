@@ -648,9 +648,9 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	return ret;
 }
 
-int codec_adapter_trigger(struct comp_dev *dev, int cmd)
+int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
-	comp_dbg(dev, "codec_adapter_trigger(): component got trigger cmd %x", cmd);
+	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
 	return comp_set_state(dev, cmd);
 }
