@@ -249,7 +249,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 			list_item_append(&buffer->sink_list, &mod->sink_buffer_list);
-			buffer_set_params(buffer, &mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			buffer_reset_pos(buffer, NULL);
 		}
 	} else {
@@ -263,7 +263,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 					 buff_size);
 				goto free;
 			}
-			buffer_set_params(buffer, &mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			buffer_reset_pos(buffer, NULL);
 		}
 	}
@@ -306,7 +306,16 @@ int codec_adapter_params(struct comp_dev *dev,
 		return ret;
 	}
 
-	ret = memcpy_s(&mod->stream_params, sizeof(struct sof_ipc_stream_params),
+	/* allocate stream_params each time */
+	if (mod->stream_params)
+		rfree(mod->stream_params);
+
+	mod->stream_params = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				     sizeof(*mod->stream_params));
+	if (!mod->stream_params)
+		return -ENOMEM;
+
+	ret = memcpy_s(mod->stream_params, sizeof(struct sof_ipc_stream_params),
 		       params, sizeof(struct sof_ipc_stream_params));
 	if (ret < 0)
 		return ret;
@@ -429,7 +438,7 @@ copy_period:
 	if (!copy_bytes)
 		return;
 	audio_stream_copy(&src_buffer->stream, 0, &sink_buffer->stream, 0,
-			  copy_bytes / mod->stream_params.sample_container_bytes);
+			  copy_bytes / mod->stream_params->sample_container_bytes);
 	buffer_stream_writeback(sink_buffer, copy_bytes);
 
 	comp_update_buffer_produce(sink_buffer, copy_bytes);
@@ -677,6 +686,9 @@ int codec_adapter_reset(struct comp_dev *dev)
 
 		buffer_zero(buffer);
 	}
+
+	rfree(mod->stream_params);
+	mod->stream_params = NULL;
 
 	comp_dbg(dev, "codec_adapter_reset(): done");
 

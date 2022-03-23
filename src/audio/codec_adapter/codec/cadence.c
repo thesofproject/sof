@@ -537,8 +537,8 @@ cadence_codec_process(struct processing_module *mod,
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 	int output_bytes = cadence_codec_get_samples(dev) *
-				mod->stream_params.sample_container_bytes *
-				mod->stream_params.channels;
+				mod->stream_params->sample_container_bytes *
+				mod->stream_params->channels;
 	uint32_t remaining = input_buffers[0].size;
 	int ret;
 
