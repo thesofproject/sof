@@ -696,17 +696,17 @@ int module_adapter_reset(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
-void codec_adapter_free(struct comp_dev *dev)
+void module_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist, *_blist;
 
-	comp_dbg(dev, "codec_adapter_free(): start");
+	comp_dbg(dev, "module_adapter_free(): start");
 
 	ret = module_free(mod);
 	if (ret)
-		comp_err(dev, "codec_adapter_free(): error %d, codec free failed", ret);
+		comp_err(dev, "module_adapter_free(): failed with error: %d", ret);
 
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
