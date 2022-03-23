@@ -32,7 +32,7 @@ static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
 					 struct comp_ipc_config *config, \
 					 void *spec) \
 { \
-	return codec_adapter_new(drv, config, &(adapter), spec);\
+	return module_adapter_new(drv, config, &(adapter), spec);\
 } \
 \
 static const struct comp_driver comp_codec_adapter = { \
@@ -312,10 +312,9 @@ int module_set_configuration(struct processing_module *mod,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size);
 
-struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   struct module_interface *interface,
-				   void *spec);
+struct comp_dev *module_adapter_new(const struct comp_driver *drv,
+				    struct comp_ipc_config *config,
+				    struct module_interface *interface, void *spec);
 int codec_adapter_prepare(struct comp_dev *dev);
 int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int codec_adapter_copy(struct comp_dev *dev);
