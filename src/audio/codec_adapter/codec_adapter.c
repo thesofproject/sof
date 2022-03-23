@@ -553,7 +553,7 @@ out:
 	return ret;
 }
 
-static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int module_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
@@ -561,7 +561,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	uint32_t data_offset_size;
 	static uint32_t size;
 
-	comp_dbg(dev, "codec_adapter_set_params(): num_of_elem %d, elem remain %d msg_index %u",
+	comp_dbg(dev, "module_adapter_set_params(): num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
 	/* set the fragment position, data offset and config data size */
@@ -586,7 +586,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 						  (const uint8_t *)cdata->data->data,
 						  cdata->num_elems, NULL, 0);
 
-	comp_warn(dev, "codec_adapter_set_params(): no set_configuration op set for %d",
+	comp_warn(dev, "module_adapter_set_params(): no set_configuration op set for %d",
 		  dev_comp_id(dev));
 	return 0;
 }
@@ -612,7 +612,7 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = codec_adapter_set_params(dev, cdata);
+		ret = module_adapter_set_params(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");
