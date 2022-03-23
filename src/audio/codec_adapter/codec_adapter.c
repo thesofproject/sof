@@ -4,15 +4,12 @@
 //
 // Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
 
-/*
- * A codec adapter component.
- */
-
 /**
  * \file
- * \brief Processing component aimed to work with external codec libraries
+ * \brief Module Adapter: Processing component aimed to work with external module libraries
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
+
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
