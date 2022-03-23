@@ -11,8 +11,8 @@
  *
  */
 
-#include <sof/audio/codec_adapter/codec/generic.h>
-#include <sof/audio/codec_adapter/codec/cadence.h>
+#include <sof/audio/codec_adapter/module/generic.h>
+#include <sof/audio/codec_adapter/module/cadence.h>
 #include <ipc/compress_params.h>
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b956aa */

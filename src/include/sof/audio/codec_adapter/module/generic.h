@@ -4,13 +4,13 @@
  *
  *
  * \file generic.h
- * \brief Generic Codec API header file
+ * \brief Generic Module API header file
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  *
  */
 
-#ifndef __SOF_AUDIO_CODEC_GENERIC__
-#define __SOF_AUDIO_CODEC_GENERIC__
+#ifndef __SOF_AUDIO_MODULE_GENERIC__
+#define __SOF_AUDIO_MODULE_GENERIC__
 
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -322,4 +322,4 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void module_adapter_free(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
 
-#endif /* __SOF_AUDIO_CODEC_GENERIC__ */
+#endif /* __SOF_AUDIO_MODULE_GENERIC__ */
