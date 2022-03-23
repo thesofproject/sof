@@ -98,11 +98,12 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_RESET:
 		/* reset always succeeds */
-		if (dev->state == COMP_STATE_ACTIVE ||
-		    dev->state == COMP_STATE_PAUSED) {
+		if (dev->state == COMP_STATE_ACTIVE)
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RESET",
 				 dev->state);
-		}
+		else if (dev->state == COMP_STATE_PAUSED)
+			comp_info(dev, "comp_set_state(): state = %u, COMP_TRIGGER_RESET",
+				  dev->state);
 		break;
 	case COMP_TRIGGER_PREPARE:
 		if (dev->state != COMP_STATE_READY) {
