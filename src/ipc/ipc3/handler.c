@@ -219,8 +219,26 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		return -EINVAL;
 	}
 
-	if (IPC_IS_SIZE_INVALID(pcm_params.params)) {
-		IPC_SIZE_ERROR_TRACE(&ipc_tr, pcm_params.params);
+	/* sanity check for pcm_params size */
+	if (pcm_params.hdr.size !=
+	    sizeof(pcm_params) + pcm_params.params.ext_data_length) {
+		tr_err(&ipc_tr, "pcm_params invalid size, hdr.size=%d, ext_data_len=%d",
+		       pcm_params.hdr.size, pcm_params.params.ext_data_length);
+		return -EINVAL;
+	}
+
+	/* sanity check for pcm_params.params size */
+	if (pcm_params.params.hdr.size !=
+	    sizeof(pcm_params.params) + pcm_params.params.ext_data_length) {
+		tr_err(&ipc_tr, "pcm_params.params invalid size, hdr.size=%d, ext_data_len=%d",
+		       pcm_params.params.hdr.size, pcm_params.params.ext_data_length);
+		return -EINVAL;
+	}
+
+	if (sizeof(pcm_params) + pcm_params.params.ext_data_length > SOF_IPC_MSG_MAX_SIZE) {
+		tr_err(&ipc_tr, "pcm_params ext_data_length invalid size %d max allowed %d",
+		       pcm_params.params.ext_data_length,
+		       SOF_IPC_MSG_MAX_SIZE - sizeof(pcm_params));
 		return -EINVAL;
 	}
 
