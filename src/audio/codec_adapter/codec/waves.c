@@ -865,4 +865,4 @@ static struct module_interface waves_interface = {
 	.free = waves_codec_free
 };
 
-DECLARE_CODEC_ADAPTER(waves_interface, waves_uuid, waves_tr);
+DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);

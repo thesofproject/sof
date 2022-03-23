@@ -426,4 +426,4 @@ static struct module_interface dts_interface = {
 	.free = dts_codec_free
 };
 
-DECLARE_CODEC_ADAPTER(dts_interface, dts_uuid, dts_tr);
+DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);

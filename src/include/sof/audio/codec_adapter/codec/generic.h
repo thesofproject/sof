@@ -27,7 +27,7 @@
 				(value)); \
 	} while (0)
 
-#define DECLARE_CODEC_ADAPTER(adapter, uuid, tr) \
+#define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
 static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
 					 struct comp_ipc_config *config, \
 					 void *spec) \
@@ -35,8 +35,8 @@ static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
 	return module_adapter_new(drv, config, &(adapter), spec);\
 } \
 \
-static const struct comp_driver comp_codec_adapter = { \
-	.type = SOF_COMP_CODEC_ADAPTOR, \
+static const struct comp_driver comp_module_adapter = { \
+	.type = SOF_COMP_MODULE_ADAPTER, \
 	.uid = SOF_RT_UUID(uuid), \
 	.tctx = &(tr), \
 	.ops = { \
@@ -51,17 +51,17 @@ static const struct comp_driver comp_codec_adapter = { \
 	}, \
 }; \
 \
-static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = { \
-	.drv = &comp_codec_adapter, \
+static SHARED_DATA struct comp_driver_info comp_module_adapter_info = { \
+	.drv = &comp_module_adapter, \
 }; \
 \
-UT_STATIC void sys_comp_codec_##adapter##_init(void) \
+UT_STATIC void sys_comp_module_##adapter##_init(void) \
 { \
-	comp_register(platform_shared_get(&comp_codec_adapter_info, \
-					  sizeof(comp_codec_adapter_info))); \
+	comp_register(platform_shared_get(&comp_module_adapter_info, \
+					  sizeof(comp_module_adapter_info))); \
 } \
 \
-DECLARE_MODULE(sys_comp_codec_##adapter##_init)
+DECLARE_MODULE(sys_comp_module_##adapter##_init)
 
 struct processing_module;
 

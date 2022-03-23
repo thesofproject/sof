@@ -458,8 +458,8 @@ void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
 void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
-void sys_comp_codec_cadence_interface_init(void);
-void sys_comp_codec_passthrough_interface_init(void);
+void sys_comp_module_cadence_interface_init(void);
+void sys_comp_module_passthrough_interface_init(void);
 void sys_comp_gain_init(void);
 void sys_comp_mixin_init(void);
 
@@ -574,11 +574,11 @@ int task_main_start(struct sof *sof)
 	}
 
 	if (IS_ENABLED(CONFIG_CADENCE_CODEC)) {
-		sys_comp_codec_cadence_interface_init();
+		sys_comp_module_cadence_interface_init();
 	}
 
 	if (IS_ENABLED(CONFIG_PASSTHROUGH_CODEC)) {
-		sys_comp_codec_passthrough_interface_init();
+		sys_comp_module_passthrough_interface_init();
 	}
 
 	/* init pipeline position offsets */
