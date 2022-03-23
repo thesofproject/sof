@@ -128,9 +128,14 @@ static int cadence_codec_post_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
+	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t obj_size;
 
 	comp_dbg(dev, "cadence_codec_post_init() start");
+
+	ret = cadence_codec_resolve_api(mod, api_id);
+	if (ret < 0)
+		return ret;
 
 	/* Obtain codec name */
 	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
@@ -175,7 +180,6 @@ static int cadence_codec_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = NULL;
-	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
@@ -191,10 +195,6 @@ static int cadence_codec_init(struct processing_module *mod)
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
 	cd->setup_cfg.avail = false;
-
-	ret = cadence_codec_resolve_api(mod, api_id);
-	if (ret < 0)
-		return ret;
 
 	/* copy the setup config only for the first init */
 	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
