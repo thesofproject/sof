@@ -46,7 +46,7 @@ static const struct comp_driver comp_codec_adapter = { \
 		.copy = module_adapter_copy, \
 		.cmd = module_adapter_cmd, \
 		.trigger = module_adapter_trigger, \
-		.reset = codec_adapter_reset, \
+		.reset = module_adapter_reset, \
 		.free = codec_adapter_free, \
 	}, \
 }; \
@@ -321,6 +321,6 @@ int module_adapter_copy(struct comp_dev *dev);
 int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size);
 int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void codec_adapter_free(struct comp_dev *dev);
-int codec_adapter_reset(struct comp_dev *dev);
+int module_adapter_reset(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

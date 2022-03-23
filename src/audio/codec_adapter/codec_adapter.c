@@ -655,18 +655,17 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-int codec_adapter_reset(struct comp_dev *dev)
+int module_adapter_reset(struct comp_dev *dev)
 {
 	int ret, i;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
 
-	comp_dbg(dev, "codec_adapter_reset(): resetting");
+	comp_dbg(dev, "module_adapter_reset(): resetting");
 
 	ret = module_reset(mod);
 	if (ret) {
-		comp_err(dev, "codec_adapter_reset(): error %d, codec reset has failed",
-			 ret);
+		comp_err(dev, "module_adapter_reset(): failed with error: %d", ret);
 	}
 
 	for (i = 0; i < mod->num_output_buffers; i++)
@@ -692,7 +691,7 @@ int codec_adapter_reset(struct comp_dev *dev)
 	rfree(mod->stream_params);
 	mod->stream_params = NULL;
 
-	comp_dbg(dev, "codec_adapter_reset(): done");
+	comp_dbg(dev, "module_adapter_reset(): done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
