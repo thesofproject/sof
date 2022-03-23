@@ -405,6 +405,7 @@ static int mixer_copy(struct comp_dev *dev)
 	return 0;
 }
 
+static inline bool mixer_stop_reset(struct comp_dev *dev, struct comp_dev *source);
 static int mixer_reset(struct comp_dev *dev)
 {
 	int dir = dev->pipeline->source_comp->direction;
@@ -418,9 +419,9 @@ static int mixer_reset(struct comp_dev *dev)
 			source = container_of(blist, struct comp_buffer,
 					      sink_list);
 			/* only mix the sources with the same state with mixer*/
-			if (source->source->state > COMP_STATE_READY)
+			if (mixer_stop_reset(dev, source->source))
 				/* should not reset the downstream components */
-				return 1;
+				return PPL_STATUS_PATH_STOP;
 		}
 	}
 
@@ -569,6 +570,11 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+static inline bool mixer_stop_reset(struct comp_dev *dev, struct comp_dev *source)
+{
+	return source->state > COMP_STATE_READY;
+}
+
 static int mixer_prepare(struct comp_dev *dev)
 {
 	struct comp_buffer *source;
@@ -663,6 +669,11 @@ static int mixin_trigger(struct comp_dev *dev, int cmd)
 static int mixin_copy(struct comp_dev *dev)
 {
 	return 0;
+}
+
+static inline bool mixer_stop_reset(struct comp_dev *dev, struct comp_dev *source)
+{
+	return dev->pipeline == source->pipeline && source->state > COMP_STATE_PAUSED;
 }
 
 /* params are derived from base config for ipc4 path */
