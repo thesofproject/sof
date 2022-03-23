@@ -313,7 +313,7 @@ int module_free(struct processing_module *mod)
 
 	/* Free all memory requested by module */
 	module_free_all_memory(mod);
-	/* Free all memory shared by codec_adapter & module */
+	/* Free all memory shared by module_adapter & module */
 	md->cfg.avail = false;
 	md->cfg.size = 0;
 	rfree(md->cfg.data);

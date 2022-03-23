@@ -125,19 +125,19 @@ struct output_stream_buffer {
 struct module_interface {
 	/**
 	 * Module specific initialization procedure, called as part of
-	 * codec_adapter component creation in .new()
+	 * module_adapter component creation in .new()
 	 */
 	int (*init)(struct processing_module *mod);
 	/**
-	 * Module specific prepare procedure, called as part of codec_adapter
+	 * Module specific prepare procedure, called as part of module_adapter
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct processing_module *mod);
 	/**
-	 * Module specific processing procedure, called as part of codec_adapter
+	 * Module specific processing procedure, called as part of module_adapter
 	 * component copy in .copy(). This procedure is responsible to consume
-	 * samples provided by the codec_adapter and produce/output the processed
-	 * ones back to codec_adapter.
+	 * samples provided by the module_adapter and produce/output the processed
+	 * ones back to module_adapter.
 	 */
 	int (*process)(struct processing_module *mod, struct input_stream_buffer *input_buffers,
 		       int num_input_buffers, struct output_stream_buffer *output_buffers,
@@ -185,13 +185,13 @@ struct module_interface {
 	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
 
 	/**
-	 * Module specific reset procedure, called as part of codec_adapter component
+	 * Module specific reset procedure, called as part of module_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
 	 */
 	int (*reset)(struct processing_module *mod);
 	/**
-	 * Module specific free procedure, called as part of codec_adapter component
+	 * Module specific free procedure, called as part of module_adapter component
 	 * free in .free(). This should free all memory allocated by module.
 	 */
 	int (*free)(struct processing_module *mod);
@@ -247,7 +247,7 @@ struct module_memory {
 
 /**
  * \struct module_processing_data
- * \brief Processing data shared between particular module & codec_adapter
+ * \brief Processing data shared between particular module & module_adapter
  */
 struct module_processing_data {
 	uint32_t in_buff_size; /**< Specifies the size of module input buffer. */
@@ -272,7 +272,7 @@ struct module_data {
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 };
 
-/* codec_adapter private, runtime data */
+/* module_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
 	struct sof_ipc_stream_params *stream_params;
