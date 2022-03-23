@@ -738,4 +738,4 @@ static struct module_interface cadence_interface = {
 	.free = cadence_codec_free
 };
 
-DECLARE_CODEC_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);
+DECLARE_MODULE_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);

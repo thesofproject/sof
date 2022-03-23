@@ -122,4 +122,4 @@ static struct module_interface passthrough_interface = {
 	.free = passthrough_codec_free
 };
 
-DECLARE_CODEC_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);
+DECLARE_MODULE_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);

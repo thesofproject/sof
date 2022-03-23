@@ -273,7 +273,7 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_MUX:
 	case SOF_COMP_DCBLOCK:
 	case SOF_COMP_SMART_AMP:
-	case SOF_COMP_CODEC_ADAPTOR:
+	case SOF_COMP_MODULE_ADAPTER:
 	case SOF_COMP_NONE:
 		config->process.type = proc->type;
 		config->process.size = proc->size;
