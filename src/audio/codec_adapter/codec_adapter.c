@@ -311,7 +311,7 @@ int codec_adapter_params(struct comp_dev *dev,
 		rfree(mod->stream_params);
 
 	mod->stream_params = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				     sizeof(*mod->stream_params));
+				     sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -319,6 +319,15 @@ int codec_adapter_params(struct comp_dev *dev,
 		       params, sizeof(struct sof_ipc_stream_params));
 	if (ret < 0)
 		return ret;
+
+	if (params->ext_data_length) {
+		ret = memcpy_s((uint8_t *)mod->stream_params->data,
+			       params->ext_data_length,
+			       (uint8_t *)params->data,
+			       params->ext_data_length);
+		if (ret < 0)
+			return ret;
+	}
 
 	mod->period_bytes = params->sample_container_bytes *
 			   params->channels * params->rate / 1000;
