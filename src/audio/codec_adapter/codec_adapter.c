@@ -449,7 +449,7 @@ copy_period:
 	comp_update_buffer_consume(src_buffer, copy_bytes);
 }
 
-int codec_adapter_copy(struct comp_dev *dev)
+int module_adapter_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
@@ -495,7 +495,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 			ret = 0;
 			goto consume;
 		}
-		comp_err(dev, "codec_adapter_copy() error %x: module processing failed", ret);
+		comp_err(dev, "module_adapter_copy() error %x: module processing failed", ret);
 		goto out;
 	}
 
