@@ -42,7 +42,7 @@ static const struct comp_driver comp_codec_adapter = { \
 	.ops = { \
 		.create = adapter_shim_new, \
 		.prepare = module_adapter_prepare, \
-		.params = codec_adapter_params, \
+		.params = module_adapter_params, \
 		.copy = codec_adapter_copy, \
 		.cmd = codec_adapter_cmd, \
 		.trigger = codec_adapter_trigger, \
@@ -316,7 +316,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    struct comp_ipc_config *config,
 				    struct module_interface *interface, void *spec);
 int module_adapter_prepare(struct comp_dev *dev);
-int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
+int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int codec_adapter_copy(struct comp_dev *dev);
 int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size);
 int codec_adapter_trigger(struct comp_dev *dev, int cmd);
