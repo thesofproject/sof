@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_local_sources(sof module_adapter.c codec/generic.c)
+add_local_sources(sof module_adapter.c module/generic.c)
 
 if(CONFIG_CADENCE_CODEC)
-add_local_sources(sof codec/cadence.c)
+add_local_sources(sof module/cadence.c)
 
 if(CONFIG_CADENCE_CODEC_WRAPPER)
 sof_add_static_library(codec_wrapper_lib ${CONFIG_CADENCE_CODEC_WRAPPER_LIB})
@@ -48,18 +48,18 @@ endif()
 endif()
 
 if(CONFIG_PASSTHROUGH_CODEC)
-add_local_sources(sof codec/passthrough.c)
+add_local_sources(sof module/passthrough.c)
 endif()
 
 if(CONFIG_WAVES_CODEC)
-add_local_sources(sof codec/waves.c)
+add_local_sources(sof module/waves.c)
 sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
 # folder with Waves API must be among include directories
 target_include_directories(sof PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/)
 endif()
 
 if(CONFIG_DTS_CODEC)
-add_local_sources(sof codec/dts.c)
+add_local_sources(sof module/dts.c)
 target_compile_definitions(sof PRIVATE -DDTS_MATH_INT32 -DDTS_XTENSA)
 target_include_directories(sof PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/dts/)
 sof_add_static_library(DtsCodec ${CMAKE_CURRENT_LIST_DIR}/lib/release/libdts-sof-interface-i32.a)
