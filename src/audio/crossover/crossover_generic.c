@@ -103,7 +103,7 @@ static void crossover_s16_default_pass(const struct comp_dev *dev,
 		for (j = 0; j < num_sinks; j++) {
 			if (!sinks[j])
 				continue;
-			y = audio_stream_read_frag_s16((&sinks[j]->stream), i);
+			y = audio_stream_write_frag_s16((&sinks[j]->stream), i);
 			*y = *x;
 		}
 	}
@@ -127,7 +127,7 @@ static void crossover_s32_default_pass(const struct comp_dev *dev,
 		for (j = 0; j < num_sinks; j++) {
 			if (!sinks[j])
 				continue;
-			y = audio_stream_read_frag_s32((&sinks[j]->stream), i);
+			y = audio_stream_write_frag_s32((&sinks[j]->stream), i);
 			*y = *x;
 		}
 	}
@@ -162,8 +162,8 @@ static void crossover_s16_default(const struct comp_dev *dev,
 				if (!sinks[j])
 					continue;
 				sink_stream = &sinks[j]->stream;
-				y = audio_stream_read_frag_s16(sink_stream,
-							       idx);
+				y = audio_stream_write_frag_s16(sink_stream,
+								idx);
 				*y = sat_int16(Q_SHIFT_RND(out[j], 31, 15));
 			}
 
@@ -201,8 +201,8 @@ static void crossover_s24_default(const struct comp_dev *dev,
 				if (!sinks[j])
 					continue;
 				sink_stream = &sinks[j]->stream;
-				y = audio_stream_read_frag_s32(sink_stream,
-							       idx);
+				y = audio_stream_write_frag_s32(sink_stream,
+								idx);
 				*y = sat_int24(Q_SHIFT_RND(out[j], 31, 23));
 			}
 
@@ -240,8 +240,8 @@ static void crossover_s32_default(const struct comp_dev *dev,
 				if (!sinks[j])
 					continue;
 				sink_stream = &sinks[j]->stream;
-				y = audio_stream_read_frag_s32(sink_stream,
-							       idx);
+				y = audio_stream_write_frag_s32(sink_stream,
+								idx);
 				*y = out[j];
 			}
 
