@@ -623,29 +623,28 @@ static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctr
 }
 
 /* Used to pass standard and bespoke commands (with data) to component */
-int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
-		      int max_data_size)
+int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size)
 {
 	int ret;
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
-	comp_dbg(dev, "codec_adapter_cmd() %d start", cmd);
+	comp_dbg(dev, "module_adapter_cmd() %d start", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		ret = module_adapter_ctrl_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
-		comp_err(dev, "codec_adapter_cmd() get_data not implemented yet.");
+		comp_err(dev, "module_adapter_cmd() get_data not implemented yet.");
 		ret = -ENODATA;
 		break;
 	default:
-		comp_err(dev, "codec_adapter_cmd() error: unknown command");
+		comp_err(dev, "module_adapter_cmd() error: unknown command");
 		ret = -EINVAL;
 		break;
 	}
 
-	comp_dbg(dev, "codec_adapter_cmd() done");
+	comp_dbg(dev, "module_adapter_cmd() done");
 	return ret;
 }
 
