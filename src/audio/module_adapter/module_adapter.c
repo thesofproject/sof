@@ -13,7 +13,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/audio/codec_adapter/module_adapter.h>
+#include <sof/audio/module_adapter/module_adapter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/platform.h>

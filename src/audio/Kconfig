@@ -446,18 +446,18 @@ config COMP_TDFB
           for channels selection, channel filter coefficients, and output
           streams mixing.
 
-config COMP_CODEC_ADAPTER
-	bool "Codec adapter"
+config COMP_MODULE_ADAPTER
+	bool "Module adapter"
 	default n
 	help
 	  This component is an adapter between SoF components and any external third
 	  party codecs/libraries. In order to make use of it the library itself should
 	  be statically linked with the SoF FW binary image and the codec details, such as its
 	  ID or specific methods provided in generic interface object located under
-	  "src\include\sof\audio\codec_adapter\interfaces.h". It is possible to link several
+	  "src\include\sof\audio\module_adapter\interfaces.h". It is possible to link several
 	  different codecs and use them in parallel.
 
-rsource "codec_adapter/Kconfig"
+rsource "module_adapter/Kconfig"
 
 config COMP_IGO_NR
 	bool "IGO NR component"
