@@ -41,7 +41,7 @@ static const struct comp_driver comp_codec_adapter = { \
 	.tctx = &(tr), \
 	.ops = { \
 		.create = adapter_shim_new, \
-		.prepare = codec_adapter_prepare, \
+		.prepare = module_adapter_prepare, \
 		.params = codec_adapter_params, \
 		.copy = codec_adapter_copy, \
 		.cmd = codec_adapter_cmd, \
@@ -315,7 +315,7 @@ int module_set_configuration(struct processing_module *mod,
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    struct comp_ipc_config *config,
 				    struct module_interface *interface, void *spec);
-int codec_adapter_prepare(struct comp_dev *dev);
+int module_adapter_prepare(struct comp_dev *dev);
 int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int codec_adapter_copy(struct comp_dev *dev);
 int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size);

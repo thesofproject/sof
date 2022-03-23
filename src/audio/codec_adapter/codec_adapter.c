@@ -94,14 +94,14 @@ err:
 }
 
 /*
- * \brief Prepare a codec adapter component.
+ * \brief Prepare the module
  * \param[in] dev - component device pointer.
  *
  * \return integer representing either:
  *	0 - success
  *	value < 0 - failure.
  */
-int codec_adapter_prepare(struct comp_dev *dev)
+int module_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -111,7 +111,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	uint32_t buff_size; /* size of local buffer */
 	int i = 0;
 
-	comp_dbg(dev, "codec_adapter_prepare() start");
+	comp_dbg(dev, "module_adapter_prepare() start");
 
 	/* Are we already prepared? */
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
@@ -119,14 +119,14 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-		comp_warn(dev, "codec_adapter_prepare(): codec_adapter has already been prepared");
+		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
 		return PPL_STATUS_PATH_STOP;
 	}
 
-	/* Prepare codec */
+	/* Prepare module */
 	ret = module_prepare(mod);
 	if (ret) {
-		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
+		comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
 			 ret);
 
 		return -EIO;
@@ -134,9 +134,9 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 	mod->deep_buff_bytes = 0;
 
-	/* Codec is prepared, now we need to configure processing settings.
-	 * If codec internal buffer is not equal to natural multiple of pipeline
-	 * buffer we have a situation where CA have to deep buffer certain amount
+	/* Module is prepared, now we need to configure processing settings.
+	 * If module internal buffer is not equal to natural multiple of pipeline
+	 * buffer we have a situation where module adapter have to deep buffer certain amount
 	 * of samples on its start (typically few periods) in order to regularly
 	 * generate output once started (same situation happens for compress streams
 	 * as well).
@@ -188,7 +188,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		mod->num_output_buffers++;
 
 	if (!mod->num_input_buffers || !mod->num_output_buffers) {
-		comp_err(dev, "codec_adapter_prepare(): invalid number of source/sink buffers");
+		comp_err(dev, "module_adapter_prepare(): invalid number of source/sink buffers");
 		return -EINVAL;
 	}
 
@@ -196,7 +196,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
 	if (!mod->input_buffers) {
-		comp_err(dev, "codec_adapter_prepare(): failed to allocate input buffers");
+		comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
 		return -ENOMEM;
 	}
 
@@ -206,7 +206,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 		mod->input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!mod->input_buffers[i].data) {
-			comp_err(mod->dev, "codec_adapter_prepare(): Failed to alloc input buffer data");
+			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
 			goto in_free;
 		}
@@ -217,7 +217,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
 	if (!mod->output_buffers) {
-		comp_err(dev, "codec_adapter_prepare(): failed to allocate output buffers");
+		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
 		ret = -ENOMEM;
 		goto in_free;
 	}
@@ -227,7 +227,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list) {
 		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
-			comp_err(mod->dev, "codec_adapter_prepare(): Failed to alloc output buffer data");
+			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
 			goto out_free;
 		}
@@ -240,7 +240,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
 								  PLATFORM_DCACHE_ALIGN);
 			if (!buffer) {
-				comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
+				comp_err(dev, "module_adapter_prepare(): failed to allocate local buffer");
 				ret = -ENOMEM;
 				goto free;
 			}
@@ -255,7 +255,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 			ret = buffer_set_size(buffer, buff_size);
 			if (ret < 0) {
-				comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
+				comp_err(dev, "module_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
 					 buff_size);
 				goto free;
 			}
@@ -264,7 +264,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		}
 	}
 
-	comp_dbg(dev, "codec_adapter_prepare() done");
+	comp_dbg(dev, "module_adapter_prepare() done");
 
 	return 0;
 
