@@ -22,33 +22,32 @@
 #include <stdint.h>
 
 /**
- * \brief Create a codec adapter component.
+ * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
  *
- * \return: a pointer to newly created codec adapter component.
+ * \return: a pointer to newly created module adapter component on success. NULL on error.
  */
-struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   struct module_interface *interface,
-				   void *spec)
+struct comp_dev *module_adapter_new(const struct comp_driver *drv,
+				    struct comp_ipc_config *config,
+				    struct module_interface *interface, void *spec)
 {
 	int ret;
 	struct comp_dev *dev;
 	struct processing_module *mod;
-	struct ipc_config_process *ipc_codec_adapter = spec;
+	struct ipc_config_process *ipc_module_adapter = spec;
 
-	comp_cl_dbg(drv, "codec_adapter_new() start");
+	comp_cl_dbg(drv, "module_adapter_new() start");
 
 	if (!config) {
-		comp_cl_err(drv, "codec_adapter_new(), wrong input params! drv = %x config = %x",
+		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %x config = %x",
 			    (uint32_t)drv, (uint32_t)config);
 		return NULL;
 	}
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
-		comp_cl_err(drv, "codec_adapter_new(), failed to allocate memory for comp_dev");
+		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for comp_dev");
 		return NULL;
 	}
 	dev->ipc_config = *config;
@@ -56,7 +55,7 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
 	if (!mod) {
-		comp_err(dev, "codec_adapter_new(), failed to allocate memory for module");
+		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
 		rfree(dev);
 		return NULL;
 	}
@@ -67,26 +66,26 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	list_init(&mod->sink_buffer_list);
 
 	/* Copy initial config */
-	if (ipc_codec_adapter->size) {
-		ret = module_load_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
+	if (ipc_module_adapter->size) {
+		ret = module_load_config(dev, ipc_module_adapter->data, ipc_module_adapter->size);
 		if (ret) {
-			comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
+			comp_err(dev, "module_adapter_new() error %d: config loading has failed.",
 				 ret);
 			goto err;
 		}
 	}
 
-	/* Init processing codec */
+	/* Init processing module */
 	ret = module_init(mod, interface);
 	if (ret) {
-		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
+		comp_err(dev, "module_adapter_new() %d: module initialization failed",
 			 ret);
 		goto err;
 	}
 
 	dev->state = COMP_STATE_READY;
 
-	comp_dbg(dev, "codec_adapter_new() done");
+	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
 	rfree(mod);
