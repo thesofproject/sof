@@ -308,7 +308,8 @@ int codec_adapter_params(struct comp_dev *dev,
 
 	ret = memcpy_s(&mod->stream_params, sizeof(struct sof_ipc_stream_params),
 		       params, sizeof(struct sof_ipc_stream_params));
-	assert(!ret);
+	if (ret < 0)
+		return ret;
 
 	mod->period_bytes = params->sample_container_bytes *
 			   params->channels * params->rate / 1000;
