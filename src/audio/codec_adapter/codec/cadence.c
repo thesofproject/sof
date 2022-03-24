@@ -94,11 +94,12 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-static int cadence_codec_resolve_api(struct processing_module *mod, uint32_t api_id)
+static int cadence_codec_resolve_api(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
+	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
 	int i;
 
@@ -128,12 +129,11 @@ static int cadence_codec_post_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
-	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t obj_size;
 
 	comp_dbg(dev, "cadence_codec_post_init() start");
 
-	ret = cadence_codec_resolve_api(mod, api_id);
+	ret = cadence_codec_resolve_api(mod);
 	if (ret < 0)
 		return ret;
 
