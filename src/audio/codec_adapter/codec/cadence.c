@@ -13,6 +13,7 @@
 
 #include <sof/audio/codec_adapter/codec/generic.h>
 #include <sof/audio/codec_adapter/codec/cadence.h>
+#include <ipc/compress_params.h>
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b956aa */
 DECLARE_SOF_RT_UUID("cadence_codec", cadence_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
@@ -94,14 +95,45 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
+static int cadence_code_get_api_id(uint32_t compress_id)
+{
+	/* convert compress id to SOF cadence SOF id */
+	switch (compress_id) {
+	case SND_AUDIOCODEC_MP3:
+		return CADENCE_CODEC_MP3_DEC_ID;
+	case SND_AUDIOCODEC_AAC:
+		return CADENCE_CODEC_AAC_DEC_ID;
+	case SND_AUDIOCODEC_VORBIS:
+		return CADENCE_CODEC_VORBIS_DEC_ID;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
+	int ret;
+	struct snd_codec codec_params;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
 	int i;
+
+	if (mod->stream_params->ext_data_length) {
+		ret = memcpy_s(&codec_params, mod->stream_params->ext_data_length,
+			       (uint8_t *)mod->stream_params + sizeof(*mod->stream_params),
+			       mod->stream_params->ext_data_length);
+		if (ret < 0)
+			return ret;
+
+		ret = cadence_code_get_api_id(codec_params.id);
+		if (ret < 0)
+			return ret;
+
+		api_id = ret;
+	}
 
 	/* Find and assign API function */
 	for (i = 0; i < n_apis; i++) {
@@ -217,10 +249,6 @@ static int cadence_codec_init(struct processing_module *mod)
 		}
 		setup_cfg->avail = true;
 	}
-
-	ret = cadence_codec_post_init(mod);
-	if (ret)
-		return ret;
 
 	comp_dbg(dev, "cadence_codec_init() done");
 
@@ -464,6 +492,10 @@ static int cadence_codec_prepare(struct processing_module *mod)
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
+	ret = cadence_codec_post_init(mod);
+	if (ret)
+		return ret;
+
 	ret = cadence_codec_apply_config(dev);
 	if (ret) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to apply config",
@@ -639,6 +671,9 @@ static int cadence_codec_reset(struct processing_module *mod)
 		return ret;
 
 	codec->mpd.init_done = 0;
+
+	rfree(cd->self);
+	cd->self = NULL;
 
 	ret = cadence_codec_prepare(mod);
 	if (ret) {
