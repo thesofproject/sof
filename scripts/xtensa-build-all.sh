@@ -13,6 +13,7 @@ DEFAULT_PLATFORMS=(  byt cht bdw hsw tgl tgl-h apl skl kbl cnl sue icl jsl \
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
+SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" rmb)
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -333,6 +334,13 @@ do
 			PLATFORM="renoir"
 			XTENSA_CORE="ACP_3_1_001_PROD_2019_1"
 			HOST="xtensa-rn-elf"
+			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			;;
+		rmb)
+			PLATFORM="rembrandt"
+			ARCH="xtensa"
+			XTENSA_CORE="LX7_HiFi5_PROD"
+			HOST="xtensa-rmb-elf"
 			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
 			;;
 		mt8186)
