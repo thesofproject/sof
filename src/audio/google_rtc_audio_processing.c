@@ -56,6 +56,7 @@ struct google_rtc_audio_processing_comp_data {
 	int16_t *output_buffer;
 	int16_t output_buffer_index;
 	struct comp_data_blob_handler *tuning_handler;
+	bool reconfigure;
 };
 
 void *GoogleRtcMalloc(size_t size)
@@ -107,6 +108,7 @@ static int google_rtc_audio_processing_reconfigure(struct comp_dev *dev)
 	comp_info(dev, "google_rtc_audio_processing_reconfigure(): New tuning config %p (%zu bytes)",
 		  config, size);
 
+	cd->reconfigure = false;
 	ret = GoogleRtcAudioProcessingReconfigure(cd->state, config, size);
 	if (ret) {
 		comp_err(dev, "GoogleRtcAudioProcessingReconfigure failed: %d",
@@ -122,10 +124,27 @@ static int google_rtc_audio_processing_cmd_set_data(
 	struct sof_ipc_ctrl_data *cdata)
 {
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
+	int ret;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		return comp_data_blob_set_cmd(cd->tuning_handler, cdata);
+		ret = comp_data_blob_set_cmd(cd->tuning_handler, cdata);
+		if (ret)
+			return ret;
+		/* Accept the new blob immediately so that userspace can write
+		 * the control in quick succession without error.
+		 * This ensures the last successful control write from userspace
+		 * before prepare/copy is applied.
+		 * The config blob is not referenced after reconfigure() returns
+		 * so it is safe to call comp_get_data_blob here which frees the
+		 * old blob. This assumes cmd() and prepare()/copy() cannot run
+		 * concurrently which is the case when there is no preemption.
+		 */
+		if (comp_is_new_data_blob_available(cd->tuning_handler)) {
+			comp_get_data_blob(cd->tuning_handler, NULL, NULL);
+			cd->reconfigure = true;
+		}
+		return 0;
 	default:
 		comp_err(dev,
 				 "google_rtc_audio_processing_ctrl_set_data(): Only binary controls supported %d",
@@ -235,6 +254,13 @@ static struct comp_dev *google_rtc_audio_processing_create(
 		goto fail;
 	bzero(cd->output_buffer, cd->num_frames * sizeof(cd->output_buffer[0]));
 	cd->output_buffer_index = 0;
+
+	/* comp_is_new_data_blob_available always returns false for the first
+	 * control write with non-empty config. The first non-empty write may
+	 * happen after prepare (e.g. during copy). Default to true so that
+	 * copy keeps checking until a non-empty config is applied.
+	 */
+	cd->reconfigure = true;
 
 	comp_set_drvdata(dev, cd);
 	dev->state = COMP_STATE_READY;
@@ -358,7 +384,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	int channel;
 	int ret;
 
-	if (comp_is_new_data_blob_available(cd->tuning_handler)) {
+	if (cd->reconfigure) {
 		ret = google_rtc_audio_processing_reconfigure(dev);
 		if (ret)
 			return ret;
