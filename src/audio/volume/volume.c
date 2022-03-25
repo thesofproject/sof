@@ -59,6 +59,8 @@ DECLARE_SOF_RT_UUID("pga", volume_uuid, 0x8a171323, 0x94a3, 0x4e1d,
 /* 61bca9a8-18d0-4a18-8e7b-2639219804b7 */
 DECLARE_SOF_RT_UUID("gain", gain_uuid, 0x61bca9a8, 0x18d0, 0x4a18,
 		    0x8e, 0x7b, 0x26, 0x39, 0x21, 0x98, 0x04, 0xb7);
+
+DECLARE_TR_CTX(gain_tr, SOF_UUID(gain_uuid), LOG_LEVEL_INFO);
 #endif
 
 DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
@@ -1355,7 +1357,7 @@ DECLARE_MODULE(sys_comp_volume_init);
 static const struct comp_driver comp_gain = {
 	.type	= SOF_COMP_VOLUME,
 	.uid	= SOF_RT_UUID(gain_uuid),
-	.tctx	= &volume_tr,
+	.tctx	= &gain_tr,
 	.ops	= {
 		.create		= volume_new,
 		.free		= volume_free,
