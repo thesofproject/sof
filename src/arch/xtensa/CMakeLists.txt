@@ -53,6 +53,11 @@ if(CONFIG_RENOIR)
 	set(platform_folder amd/renoir)
 	set(platform_ld_script renoir.x)
 endif()
+
+if(CONFIG_REMBRANDT)
+	set(platform_folder amd/rembrandt)
+	set(platform_ld_script rembrandt.x)
+endif()
 # includes
 
 target_include_directories(sof_options INTERFACE
@@ -542,7 +547,7 @@ set(UNSIGNED_RI         byt cht hsw bdw sue)
 # NXP
 list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
-list(APPEND UNSIGNED_RI rn)
+list(APPEND UNSIGNED_RI rn rmb)
 # Mediatek
 list(APPEND UNSIGNED_RI mt8186 mt8195)
 
