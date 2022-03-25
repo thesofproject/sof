@@ -207,13 +207,12 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
 					      uint32_t src_queue, uint32_t dst_queue)
 {
-	struct ipc4_base_module_cfg *src_cfg, *sink_cfg;
+	struct ipc4_base_module_cfg *src_cfg;
 	struct comp_buffer *buffer = NULL;
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size;
 
 	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
-	sink_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(sink);
 
 	/* double it since obs is single buffer size */
 	buf_size = src_cfg->obs * 2;
