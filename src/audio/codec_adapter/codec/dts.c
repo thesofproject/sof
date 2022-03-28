@@ -62,7 +62,6 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct processing_module *mod = comp_get_drvdata(dev);
 	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
