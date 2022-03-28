@@ -52,21 +52,21 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # DMICPROC capture pipeline 3 on PCM 1 using max 4 channels.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)')
 ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)')
 
@@ -79,21 +79,21 @@ undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s32le.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	4, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 5 on PCM 3 using max 2 channels of s32le.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	5, 3, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 6 on PCM 4 using max 2 channels of s32le.
-# Schedule 1000us deadline with priority 0 on core 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	6, 4, 2, s32le,
 	1000, 0, 0,
@@ -155,7 +155,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 #
 
 # Passthrough capture pipeline 7 on PCM 7 using max 2 channels.
-# Schedule 20000us deadline with priority 0 on core 0
+# Schedule 20000us deadline on core 0 with priority 0
 PIPELINE_PCM_DAI_ADD(sof/pipe-kfbm-capture.m4,
 	8, 8, 2, s24le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, s32le, 3,

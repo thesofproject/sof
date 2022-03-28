@@ -31,7 +31,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 7 on PCM 5 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(PIPE_PROC_PLAYBACK,
 	7, 5, 2, s32le,
 	1000, 0, 0,

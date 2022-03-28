@@ -27,7 +27,7 @@ include(`platform/imx/imx8.m4')
 #
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s24le,
 	1000, 0, 0,
@@ -50,7 +50,7 @@ DAI_ADD(sof/pipe-mixer-dai-playback.m4,
 	2, 48000)
 
 # PCM Playback pipeline 3 on PCM 0 using max 2 channels of s24le.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 # this is connected to pipeline DAI 1
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	3, 0, 2, s24le,
@@ -60,7 +60,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s24le.
-# 5ms deadline with priority 0 on core 0
+# 5ms deadline on core 0 with priority 0
 # this is connected to pipeline DAI 1
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	4, 1, 2, s24le,
@@ -83,7 +83,7 @@ SectionGraph."PIPE_NAME" {
 }
 
 # capture DAI is ESAI0 using 2 periods
-# Buffers use s24le format, 1000us deadline with priority 0 on core 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 # this is part of pipeline 2
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ESAI, 0, esai0-cs42888,

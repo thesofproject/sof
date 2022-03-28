@@ -29,7 +29,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline 1 on PCM 1 using max 4 channels.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	1, 1, 4, s32le,
 	1000, 0, 0,
@@ -46,7 +46,7 @@ dnl     deadline, priority, core, time_domain)
 
 
 # capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	1, DMIC, 0, dmic01,
 	PIPELINE_SINK_1, 2, s32le,

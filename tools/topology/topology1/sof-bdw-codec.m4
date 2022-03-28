@@ -38,7 +38,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
@@ -51,14 +51,14 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 #
 
 # playback DAI is SSP0 using 2 periods
-# Buffers use s24le format, 1000us deadline with priority 0 on core 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 2000us deadline with priority 0 on core 0
+# 2000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
 	2000, 0, 0,
@@ -77,7 +77,7 @@ SectionGraph."PIPE_NAME" {
 }
 
 # capture DAI is SSP0 using 2 periods
-# Buffers use s24le format, 1000us deadline with priority 0 on core 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, Codec,
 	PIPELINE_SINK_2, 2, s24le,
