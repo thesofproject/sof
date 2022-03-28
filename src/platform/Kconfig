@@ -245,6 +245,18 @@ config RENOIR
 	help
 	 Select if your target platform is renoir-compatible
 
+config REMBRANDT
+	bool "Build for Rembrandt"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is rembrandt-compatible
+
 config MT8186
 	bool "Build for MTK MT8186"
 	select XT_INTERRUPT_LEVEL_1
