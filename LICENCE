@@ -1,3 +1,9 @@
+// SOF reuses some dual licensed header files where interfaces must be maintained
+// between SOF and other software. Where a dual licensed file contains the
+// GPL (any version) as a license option, then SOF will always use the permissive
+// license option (e.g. BSD, MIT or Apache or another permissive license) instead
+// of the GPL option
+
 /* 
  * BSD 3 Clause
  * Copyright (c) 2016, Intel Corporation
