@@ -226,7 +226,7 @@ static int basefw_get_dsp_properties(uint32_t *data_offset, char *data)
 	uint16_t fw_version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
 	uint32_t value;
 
-	set_tuple(tuple, IPC4_FW_VERSION, sizeof(uint16_t) * 4, &fw_version);
+	set_tuple(tuple, IPC4_FW_VERSION, sizeof(fw_version), fw_version);
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_DSP_CORES, CONFIG_CORE_COUNT);
