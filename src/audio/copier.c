@@ -429,7 +429,7 @@ static void copier_free(struct comp_dev *dev)
 		cd->endpoint->drv->ops.free(cd->endpoint);
 
 	if (cd->endpoint_buffer)
-		buffer_release(cd->endpoint_buffer);
+		buffer_free(cd->endpoint_buffer);
 
 	rfree(cd);
 	rfree(dev);
