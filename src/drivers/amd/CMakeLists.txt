@@ -2,4 +2,6 @@
 
 if(CONFIG_RENOIR)
 	add_subdirectory(renoir)
+elseif(CONFIG_REMBRANDT)
+	add_subdirectory(rembrandt)
 endif()
