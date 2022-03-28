@@ -431,6 +431,11 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, uint32_t *latency)
 		buffer = buffer_from_list(comp_buffer_list(sink->cd, PPL_DIR_DOWNSTREAM)->next,
 					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
 		buff_comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+
+		/* buffer_comp is in another pipeline and it is not complete */
+		if (!buff_comp->pipeline)
+			return NULL;
+
 		sink = ipc_get_ppl_sink_comp(ipc, buff_comp->pipeline->pipeline_id);
 
 		if (!sink)
