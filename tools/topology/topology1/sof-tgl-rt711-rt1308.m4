@@ -96,7 +96,7 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ---> volume ----> mixer --->ALH 2 BE dailink 0
+# PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
 ifdef(`EXT_AMP', `
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
@@ -110,6 +110,19 @@ ifdef(`EXT_AMP', `
 ifelse(PLATFORM, `adl', `
 # PCM14 <---> passthrough <---> SSP2 BT playback/capture
 ', `')
+
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
+
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	1, 0, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -166,10 +179,10 @@ dnl     deadline, priority, core, time_domain)
 
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
+DAI_ADD(sof/pipe-dai-playback.m4,
 	1, ALH, 2, SDW0-Playback,
-	NOT_USED_IGNORED, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
+	PIPELINE_SOURCE_1, 2, s24le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -177,24 +190,6 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, 3, SDW0-Capture,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
-# Low Latency playback pipeline 30 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	30, 0, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_1)
-
-SectionGraph."mixer-host" {
-	index "0"
-
-	lines [
-		# connect mixer dai pipelines to PCM pipelines
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
-	]
-}
 
 ifdef(`EXT_AMP',
 `
@@ -236,7 +231,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
+PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
 ifdef(`EXT_AMP',
 `
