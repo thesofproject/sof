@@ -61,35 +61,35 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 1, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	6, 5, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 7 on PCM 6 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	7, 6, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 8 on PCM 7 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	8, 7, 2, s32le,
 	1000, 0, 0,

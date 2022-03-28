@@ -70,28 +70,28 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Set 1000us deadline with priority 0 on core 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Set 1000us deadline with priority 0 on core 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
-# Set 1000us deadline with priority 0 on core 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	3, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
-# Set 1000us deadline with priority 0 on core 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	4, 3, 2, s32le,
 	1000, 0, 0,
@@ -107,7 +107,7 @@ dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
 # playback DAI is SSP5 using 2 periods
-# Buffers use s24le format, 1000us deadline with priority 0 on core 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
@@ -145,21 +145,21 @@ SectionGraph."PIPE_CAP_VIRT" {
 }
 
 # playback DAI is iDisp1 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, HDA, 0, iDisp1,
 	PIPELINE_SOURCE_2, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, HDA, 1, iDisp2,
 	PIPELINE_SOURCE_3, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, HDA, 2, iDisp3,
 	PIPELINE_SOURCE_4, 2, s32le,

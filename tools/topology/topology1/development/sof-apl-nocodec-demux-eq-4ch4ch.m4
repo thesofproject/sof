@@ -35,14 +35,14 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 4 channels of s32le.
-# Set 1000us deadline with priority 0 on core 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-demux-eq-iir-playback.m4,
 	1, 0, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Volume switch capture pipeline 2 on PCM 0 using max 4 channels of s32le.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	2, 0, 4, s32le,
 	1000, 0, 0,
@@ -59,7 +59,7 @@ dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
 # playback DAI is SSP0 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
 	PIPELINE_SOURCE_1, 4, s32le,
@@ -67,7 +67,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 
 # capture DAI is SSP0 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, NoCodec-0,
 	PIPELINE_SINK_2, 4, s32le,

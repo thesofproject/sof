@@ -114,21 +114,21 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s16le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Volume-switch capture pipeline 2 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s16le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	3, 1, 2, s16le,
 	1000, 0, 3,
@@ -157,7 +157,7 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	48000, 48000, 48000)
 
 # Passthrough capture pipeline 9 on PCM 5 using max 2 channels.
-# 1000us deadline with priority 0 on core 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	9, 5, 2, s32le,
 	1000, 0, 0,
@@ -228,7 +228,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1000, 0, 2, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
-# Buffers use s32le format, 1000us deadline with priority 0 on core 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	9, DMIC, 1, NoCodec-7,
 	PIPELINE_SINK_9, 2, s32le,

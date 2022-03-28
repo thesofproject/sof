@@ -35,28 +35,28 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency capture pipeline 1 on PCM 16 using max 2 channels of s16le
-# Set 10000us deadline with priority 0 on core 0
+# Set 10000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
 	1, 16, 2, s16le,
 	10000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 16 using max 2 channels of s16le
-# Set 10000us deadline with priority 0 on core 0
+# Set 10000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
 	2, 17, 2, s16le,
 	10000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 3 on PCM 16 using max 2 channels of s16le
-# Set 10000us deadline with priority 0 on core 0
+# Set 10000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	3, 18, 2, s16le,
 	10000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 4 on PCM 16 using max 2 channels of s16le
-# Set 10000us deadline with priority 0 on core 0
+# Set 10000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	4, 19, 2, s16le,
 	10000, 0, 0,
