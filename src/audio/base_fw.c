@@ -37,7 +37,7 @@ static inline struct ipc4_tuple *next_tuple(struct ipc4_tuple *tuple)
 
 static int basefw_config(uint32_t *data_offset, char *data)
 {
-	uint32_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
+	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
 	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
 	struct ipc4_scheduler_config sche_cfg;
 
