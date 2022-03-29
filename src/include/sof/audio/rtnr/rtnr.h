@@ -22,6 +22,8 @@ typedef void (*rtnr_func)(struct comp_dev *dev,
 						  struct audio_stream *sink,
 						  int frames);
 
+typedef int (*rtnr_copy_func)(struct comp_dev *dev);
+
 /* RTNR component private data */
 struct comp_data {
 	struct comp_data_blob_handler *model_handler;
@@ -38,6 +40,7 @@ struct comp_data {
 	int ref_shift;
 	bool ref_32bits;
 	bool ref_active;
+	rtnr_copy_func rtnr_copy_func; /** Processing or passthrough */
 	rtnr_func rtnr_func; /** Processing function */
 	void *rtk_agl;
 };

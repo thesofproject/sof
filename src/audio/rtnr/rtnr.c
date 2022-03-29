@@ -181,21 +181,25 @@ static rtnr_func rtnr_find_func(enum sof_ipc_frame fmt)
 	return NULL;
 }
 
+/* TODO(Realtek): theoretically this is not needed anymore, please remove it after
+ *                verification
+ */
 static inline void rtnr_set_process(struct comp_dev *dev)
 {
 	comp_info(dev, "rtnr_set_process()");
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	cd->process_enable = true;
 	RTKMA_API_Bypass(cd->rtk_agl, 0);
 }
 
+/* TODO(Realtek): theoretically this is not needed anymore, please remove it after
+ *                verification
+ */
 static inline void rtnr_set_bypass(struct comp_dev *dev)
 {
 	comp_info(dev, "rtnr_set_bypass()");
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	cd->process_enable = false;
 	RTKMA_API_Bypass(cd->rtk_agl, 1);
 }
 
@@ -207,6 +211,11 @@ static inline void rtnr_set_process_sample_rate(struct comp_dev *dev, uint32_t s
 	cd->process_sample_rate = sample_rate;
 }
 
+/* TODO(Realtek): since we need to decouple the config and the enabled flag, the RTNR
+ *                param blob shouldn't contain "enabled". If RTNR needs to know the
+ *                enabled state currently, we could use another API to inform RTNR while
+ *                the state is switched.
+ */
 static int32_t rtnr_check_config_validity(struct comp_dev *dev,
 									    struct comp_data *cd)
 {
@@ -220,11 +229,6 @@ static int32_t rtnr_check_config_validity(struct comp_dev *dev,
 		comp_info(dev, "rtnr_check_config_validity() enabled: %d sample_rate:%d",
 				p_config->params.enabled,
 				p_config->params.sample_rate);
-
-		if (p_config->params.enabled)
-			rtnr_set_process(dev);
-		else
-			rtnr_set_bypass(dev);
 
 		rtnr_set_process_sample_rate(dev, p_config->params.sample_rate);
 	}
@@ -270,6 +274,8 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
+	cd->process_enable = false;
+
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
@@ -287,7 +293,14 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 	/* Component defaults */
 	cd->source_channel = 0;
 
-    /* Check config */
+	/* TODO(Realtek): it doesn't make sense to fetch config during rtnr_new() because
+	 *                new() is always the first function called for the component. The
+	 *                fetched config here is the default config specified in topology.
+	 *                I suspect that the config blob given in UCM is the one RTNR
+	 *                requires, instead of the default one.
+	 *                Please move to rtnr_prepare().
+	 */
+	/* Check config */
 	ret = rtnr_check_config_validity(dev, cd);
 	if (ret < 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): rtnr_check_config_validity() failed.");
@@ -416,6 +429,7 @@ static int rtnr_cmd_set_data(struct comp_dev *dev,
 		break;
 	}
 
+	/* TODO(Realtek): this should be postponed to rtnr_prepare() */
 	if (ret >= 0)
 		ret = rtnr_check_config_validity(dev, cd);
 
@@ -450,16 +464,20 @@ static int32_t rtnr_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 {
 	uint32_t val = 0;
 	int32_t j;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	for (j = 0; j < cdata->num_elems; j++) {
 		val |= cdata->chanv[j].value;
 		comp_info(dev, "rtnr_set_value(), value = %u", val);
 	}
 
-	if (val)
+	if (val) {
 		rtnr_set_process(dev);
-	else
+		cd->process_enable = true;
+	} else {
 		rtnr_set_bypass(dev);
+		cd->process_enable = false;
+	}
 
 	return 0;
 }
@@ -522,7 +540,7 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int rtnr_copy(struct comp_dev *dev)
+static int rtnr_process(struct comp_dev *dev)
 {
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
@@ -532,7 +550,7 @@ static int rtnr_copy(struct comp_dev *dev)
 	const struct audio_stream *sources_stream[RTNR_MAX_SOURCES] = { NULL };
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "rtnr_copy()");
+	comp_dbg(dev, "rtnr_process()");
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
@@ -545,7 +563,7 @@ static int rtnr_copy(struct comp_dev *dev)
 	/* Process integer multiple of RTNR internal block length */
 	frames = frames & ~RTNR_BLK_LENGTH_MASK;
 
-	comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
+	comp_dbg(dev, "rtnr_process() source->id: %d, frames = %d", source->id, frames);
 
 	if (frames) {
 		source_bytes = frames * audio_stream_frame_bytes(&source->stream);
@@ -579,6 +597,46 @@ static int rtnr_copy(struct comp_dev *dev)
 	return 0;
 }
 
+/* copy stream data from source to sink buffers without RTNR involvement */
+static int rtnr_passthrough(struct comp_dev *dev)
+{
+	struct comp_copy_limits cl;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+
+	comp_dbg(dev, "rtnr_passthrough()");
+
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+
+	/* Get source, sink, number of frames etc. to process. */
+	comp_get_copy_limits_with_lock(source, sink, &cl);
+
+	buffer_stream_invalidate(source, cl.source_bytes);
+
+	audio_stream_copy(&source->stream, 0, &sink->stream, 0,
+			  source->stream.channels * cl.frames);
+
+	buffer_stream_writeback(sink, cl.sink_bytes);
+	comp_update_buffer_consume(source, cl.source_bytes);
+	comp_update_buffer_produce(sink, cl.sink_bytes);
+
+	return 0;
+}
+
+static int rtnr_copy(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "rtnr_copy()");
+
+	ret = cd->rtnr_copy_func(dev);
+	return ret;
+}
+
 static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -594,23 +652,30 @@ static int rtnr_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* Get sink data format */
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	cd->sink_format = sinkb->stream.frame_fmt;
+	/* TODO(Realtek): move the config fetch codes here */
 
-	/* Check source and sink PCM format and get copy function */
-	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
-	cd->rtnr_func = rtnr_find_func(cd->sink_format);
-	if (!cd->rtnr_func) {
-		comp_err(dev, "rtnr_prepare(): No suitable processing function found.");
-		goto err;
+	if (cd->process_enable) {
+		/* Get sink data format */
+		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		cd->sink_format = sinkb->stream.frame_fmt;
+
+		/* Check source and sink PCM format and get copy function */
+		comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
+		cd->rtnr_copy_func = rtnr_process;
+		cd->rtnr_func = rtnr_find_func(cd->sink_format);
+		if (!cd->rtnr_func) {
+			comp_err(dev, "rtnr_prepare(): No suitable processing function found.");
+			goto err;
+		}
+
+		/* Clear in/out buffers */
+		RTKMA_API_Prepare(cd->rtk_agl);
+	} else {
+		/* Bypassthrough path is selected */
+		comp_info(dev, "rtnr_prepare(), passthrough mode");
+		cd->rtnr_copy_func = rtnr_passthrough;
+		cd->rtnr_func = NULL;
 	}
-
-	/* Default on */
-	cd->process_enable = true;
-
-	/* Clear in/out buffers */
-	RTKMA_API_Prepare(cd->rtk_agl);
 
 	/* Initialize RTNR */
 	return 0;
@@ -627,6 +692,7 @@ static int rtnr_reset(struct comp_dev *dev)
 	comp_info(dev, "rtnr_reset()");
 	cd->sink_format = 0;
 	cd->rtnr_func = NULL;
+	cd->rtnr_copy_func = NULL;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
