@@ -29,6 +29,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 extern struct tr_ctx comp_tr;
 
 /**

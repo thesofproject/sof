@@ -27,6 +27,8 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);

@@ -32,6 +32,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 {

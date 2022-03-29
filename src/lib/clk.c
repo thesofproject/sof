@@ -18,6 +18,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(clock, CONFIG_SOF_LOG_LEVEL);
+
 /* 8890ea76-0df9-44ae-87e6-994f4c15e9fa */
 DECLARE_SOF_UUID("clock", clock_uuid, 0x8890ea76, 0x0df9, 0x44ae,
 		 0x87, 0xe6, 0x99, 0x4f, 0x4c, 0x15, 0xe9, 0xfa);

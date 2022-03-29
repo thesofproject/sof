@@ -48,6 +48,8 @@
 
 static const struct comp_driver comp_kpb;
 
+LOG_MODULE_REGISTER(kpb, CONFIG_SOF_LOG_LEVEL);
+
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
 DECLARE_SOF_RT_UUID("kpb", kpb_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0x2e);

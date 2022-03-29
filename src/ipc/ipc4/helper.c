@@ -35,6 +35,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 #define IPC4_MOD_ID(x) ((x) >> 16)
 
 extern struct tr_ctx comp_tr;

@@ -32,6 +32,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(idc, CONFIG_SOF_LOG_LEVEL);
+
 /** \brief IDC message payload per core. */
 static SHARED_DATA struct idc_payload static_payload[CONFIG_CORE_COUNT];
 

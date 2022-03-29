@@ -100,6 +100,8 @@
  *    to ensure DMA is idle
  */
 
+LOG_MODULE_REGISTER(hda_dma, CONFIG_SOF_LOG_LEVEL);
+
 /* ee12fa71-4579-45d7-bde2-b32c6893a122 */
 DECLARE_SOF_UUID("hda-dma", hda_dma_uuid, 0xee12fa71, 0x4579, 0x45d7,
 		 0xbd, 0xe2, 0xb3, 0x2c, 0x68, 0x93, 0xa1, 0x22);

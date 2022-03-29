@@ -23,6 +23,8 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
+LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
+
 /*
  * Currently the Zephyr clock rate is part it's Kconfig known at build time.
  * SOF on Intel CAVS platforms currently only aligns with Zephyr when both

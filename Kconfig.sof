@@ -125,6 +125,10 @@ if !ZEPHYR_SOF_MODULE
 	rsource "Kconfig.xtos-build"
 endif
 
+if ZEPHYR_SOF_MODULE
+	rsource "Kconfig.zephyr-log"
+endif
+
 menu "Debug"
 
 config DEBUG

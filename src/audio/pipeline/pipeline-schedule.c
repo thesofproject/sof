@@ -24,6 +24,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
+
 /* f11818eb-e92e-4082-82a3-dc54c604ebb3 */
 DECLARE_SOF_UUID("pipe-task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
 		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);

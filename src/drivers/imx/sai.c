@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(sai, CONFIG_SOF_LOG_LEVEL);
+
 /* 9302adf5-88be-4234-a0a7-dca538ef81f4 */
 DECLARE_SOF_UUID("sai", sai_uuid, 0x9302adf5, 0x88be, 0x4234,
 		 0xa0, 0xa7, 0xdc, 0xa5, 0x38, 0xef, 0x81, 0xf4);

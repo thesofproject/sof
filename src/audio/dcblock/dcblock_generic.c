@@ -9,6 +9,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/dcblock/dcblock.h>
 
+LOG_MODULE_DECLARE(dcblock, CONFIG_SOF_LOG_LEVEL);
+
 /**
  *
  * Genereric processing function. Input is 32 bits.

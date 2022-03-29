@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(irq, CONFIG_SOF_LOG_LEVEL);
+
 /* 1862d39a-3a84-4d64-8c91-dce1dfc122db */
 
 DECLARE_SOF_UUID("irq", irq_uuid, 0x1862d39a, 0x3a84, 0x4d64,

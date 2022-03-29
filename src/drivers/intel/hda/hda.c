@@ -14,6 +14,8 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 
+LOG_MODULE_REGISTER(hda_dai, CONFIG_SOF_LOG_LEVEL);
+
 /* bc9ebe20-4577-41bb-9eed-d0cb236328da */
 DECLARE_SOF_UUID("hda-dai", hda_uuid, 0xbc9ebe20, 0x4577, 0x41bb,
 		 0x9e, 0xed, 0xd0, 0xcb, 0x23, 0x63, 0x28, 0xda);

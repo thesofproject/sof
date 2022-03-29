@@ -37,6 +37,18 @@ extern struct tr_ctx pipe_tr;
 	tr_dbg(&pipe_tr, __e, ##__VA_ARGS__)
 
 /* device tracing */
+#if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
+
+#define pipe_err(pipe_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define pipe_warn(pipe_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define pipe_info(pipe_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define pipe_dbg(pipe_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+#else
+
 #define pipe_err(pipe_p, __e, ...)					\
 	trace_dev_err(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
@@ -52,5 +64,7 @@ extern struct tr_ctx pipe_tr;
 #define pipe_dbg(pipe_p, __e, ...)					\
 	trace_dev_dbg(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
+
+#endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
 
 #endif

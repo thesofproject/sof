@@ -113,6 +113,8 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
 {
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
+
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
 	if (cmd == COMP_CMD_SET_DATA &&

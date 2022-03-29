@@ -36,6 +36,8 @@
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE 48000
 
+LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
+
 /* b780a0a6-269f-466f-b477-23dfa05af758 */
 DECLARE_SOF_RT_UUID("google-rtc-audio-processing", google_rtc_audio_processing_uuid,
 					0xb780a0a6, 0x269f, 0x466f, 0xb4, 0x77, 0x23, 0xdf, 0xa0,

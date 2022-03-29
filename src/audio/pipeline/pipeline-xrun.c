@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
+
 /*
  * This flag disables firmware-side xrun recovery.
  * It should remain enabled in the situation when the

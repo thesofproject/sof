@@ -33,6 +33,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(ssp_dai, CONFIG_SOF_LOG_LEVEL);
+
 /* 31458125-95c4-4085-8f3f-497434cb2daf */
 DECLARE_SOF_UUID("ssp-dai", ssp_uuid, 0x31458125, 0x95c4, 0x4085,
 		 0x8f, 0x3f, 0x49, 0x74, 0x34, 0xcb, 0x2d, 0xaf);

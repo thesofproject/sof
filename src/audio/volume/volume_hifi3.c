@@ -23,6 +23,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
+
 /**
  * \brief store volume gain 4 times for xtensa multi-way intrinsic operations.
  * Simultaneous processing 2 data.

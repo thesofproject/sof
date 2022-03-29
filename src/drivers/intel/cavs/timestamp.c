@@ -16,6 +16,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(dai_ts, CONFIG_SOF_LOG_LEVEL);
+
 int timestamp_hda_config(struct dai *dai, struct timestamp_cfg *cfg)
 {
 	int i;

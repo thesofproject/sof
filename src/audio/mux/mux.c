@@ -33,6 +33,8 @@
 
 static const struct comp_driver comp_mux;
 
+LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
+
 /* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
 DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
 		 0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);

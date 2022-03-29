@@ -9,6 +9,8 @@
 #include <sof/audio/asrc/asrc_farrow.h>
 #include <sof/audio/format.h>
 
+LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
+
 void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 		       int index_output_frame)
 {

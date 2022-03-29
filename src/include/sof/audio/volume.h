@@ -205,6 +205,8 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
  */
 static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 {
+	LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
+
 	struct vol_data *cd = comp_get_drvdata(dev);
 
 	switch (cd->base.audio_fmt.depth) {
