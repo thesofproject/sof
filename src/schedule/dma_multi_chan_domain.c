@@ -23,6 +23,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
+
 /* For i.MX, when building SOF with Zephyr, we use wrapper.c,
  * interrupt.c and interrupt-irqsteer.c which causes name
  * collisions.

@@ -29,6 +29,8 @@ extern struct tr_ctx wait_tr;
 
 static inline void wait_for_interrupt(int level)
 {
+	LOG_MODULE_DECLARE(wait, CONFIG_SOF_LOG_LEVEL);
+
 	tr_dbg(&wait_tr, "WFE");
 #if CONFIG_DEBUG_LOCKS
 	if (lock_dbg_atomic)

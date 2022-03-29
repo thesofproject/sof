@@ -28,6 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(ipc_task, CONFIG_SOF_LOG_LEVEL);
+
 /* 8fa1d42f-bc6f-464b-867f-547af08834da */
 DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
 		 0x86, 0x7f, 0x54, 0x7a, 0xf0, 0x88, 0x34, 0xda);

@@ -38,6 +38,8 @@
 
 static const struct comp_driver comp_selector;
 
+LOG_MODULE_REGISTER(selector, CONFIG_SOF_LOG_LEVEL);
+
 /* 55a88ed5-3d18-46ca-88f1-0ee6eae9930f */
 DECLARE_SOF_RT_UUID("selector", selector_uuid, 0x55a88ed5, 0x3d18, 0x46ca,
 		 0x88, 0xf1, 0x0e, 0xe6, 0xea, 0xe9, 0x93, 0x0f);

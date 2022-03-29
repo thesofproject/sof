@@ -16,6 +16,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(muxdemux, CONFIG_SOF_LOG_LEVEL);
+
 static void mux_check_for_wrap(struct audio_stream *sink,
 			       const struct audio_stream **sources,
 			       struct mux_look_up *lookup)

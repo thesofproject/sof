@@ -17,6 +17,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_FORMAT_S32LE
 /* For even frame lengths use FIR filter that processes two sequential
  * sample per call.

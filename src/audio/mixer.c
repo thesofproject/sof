@@ -32,6 +32,8 @@
 
 static const struct comp_driver comp_mixer;
 
+LOG_MODULE_REGISTER(mixer, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_IPC_MAJOR_3
 /* bc06c037-12aa-417c-9a97-89282e321a76 */
 DECLARE_SOF_RT_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,

@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 /* tracing */
+LOG_MODULE_REGISTER(mn, CONFIG_SOF_LOG_LEVEL);
 
 /* fa3b3763-759c-4c64-82b6-3dd239c89f58 */
 DECLARE_SOF_UUID("mn", mn_uuid, 0xfa3b3763, 0x759c, 0x4c64,

@@ -15,6 +15,8 @@
 
 #include <kernel.h>
 
+LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
+
 /* 1547fe68-de0c-11eb-8461-3158a1294853 */
 DECLARE_SOF_UUID("zll-schedule", zll_sched_uuid, 0x1547fe68, 0xde0c, 0x11eb,
 		 0x84, 0x61, 0x31, 0x58, 0xa1, 0x29, 0x48, 0x53);

@@ -27,6 +27,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+/* every trace calls uses IPC context in this file */
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 extern struct tr_ctx dt_tr;
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE

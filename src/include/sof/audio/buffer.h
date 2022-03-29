@@ -49,6 +49,17 @@ extern struct tr_ctx buffer_tr;
 /** \brief Retrieves subid (comp id) from the buffer */
 #define trace_buf_get_subid(buf_ptr) ((buf_ptr)->id)
 
+#if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
+
+#define buf_err(buf_ptr, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define buf_info(buf_ptr, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+#else
 /** \brief Trace error message from buffer */
 #define buf_err(buf_ptr, __e, ...)					\
 	trace_dev_err(trace_buf_get_tr_ctx, trace_buf_get_id,		\
@@ -72,6 +83,8 @@ extern struct tr_ctx buffer_tr;
 	trace_dev_dbg(trace_buf_get_tr_ctx, trace_buf_get_id,		\
 		      trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 #endif
+
+#endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
 
 /** @}*/
 

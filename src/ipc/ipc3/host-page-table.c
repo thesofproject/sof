@@ -14,6 +14,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 /*
  * Parse the host page tables and create the audio DMA SG configuration
  * for host audio DMA buffer. This involves creating a dma_sg_elem for each

@@ -11,6 +11,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
 
+LOG_MODULE_REGISTER(data_blob, CONFIG_SOF_LOG_LEVEL);
+
 /** \brief Struct handler for large component configs */
 struct comp_data_blob_handler {
 	struct comp_dev *dev;	/**< audio component device */

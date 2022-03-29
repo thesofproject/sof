@@ -52,6 +52,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
 #include <ipc/header-intel-cavs.h>
 #include <cavs/drivers/sideband-ipc.h>

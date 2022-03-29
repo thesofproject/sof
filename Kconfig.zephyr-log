@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Logging"
+
+config ZEPHYR_LOG
+	bool "Enable Logging via Zephyr"
+	default n
+	help
+	  Select for Zephyr logging support, and logging
+	  via SOF will be disabled. If not selected, SOF
+	  logging will be used.
+
+choice "SOF_LOG_LEVEL_CHOICE"
+	prompt "Max compiled-in log level for SOF"
+	default SOF_LOG_LEVEL_INF
+	depends on LOG
+
+config SOF_LOG_LEVEL_OFF
+	bool "Off"
+	help
+	  Set log level to off
+
+config SOF_LOG_LEVEL_ERR
+	bool "Error"
+	help
+	  Set log level to error
+
+config SOF_LOG_LEVEL_WRN
+	bool "Warning"
+	help
+	  Set log level to warning
+
+config SOF_LOG_LEVEL_INF
+	bool "Info"
+	help
+	  Set log level to info
+
+config SOF_LOG_LEVEL_DBG
+	bool "Debug"
+	help
+	  Set log level to debug
+
+endchoice
+
+config SOF_LOG_LEVEL
+	int
+	depends on LOG
+	default 0 if SOF_LOG_LEVEL_OFF
+	default 1 if SOF_LOG_LEVEL_ERR
+	default 2 if SOF_LOG_LEVEL_WRN
+	default 3 if SOF_LOG_LEVEL_INF
+	default 4 if SOF_LOG_LEVEL_DBG
+
+endmenu

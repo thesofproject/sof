@@ -38,6 +38,8 @@
 
 static const struct comp_driver comp_copier;
 
+LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
+
 /* this id aligns windows driver requirement to support windows driver */
 /* 9ba00c83-ca12-4a83-943c-1fa2e82f9dda */
 DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,

@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(selector, CONFIG_SOF_LOG_LEVEL);
+
 #define BYTES_TO_S16_SAMPLES	1
 #define BYTES_TO_S32_SAMPLES	2
 

@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief Volume s24 to s24 multiply function

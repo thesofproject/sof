@@ -152,6 +152,26 @@ enum {
 /** \brief Retrieves subid (comp id) from the component device */
 #define trace_comp_get_subid(comp_p) ((comp_p)->ipc_config.id)
 
+#if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
+/* class (driver) level (no device object) tracing */
+#define comp_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define comp_cl_warn(drv_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define comp_cl_info(drv_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define comp_cl_dbg(drv_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+/* device level tracing */
+#define comp_err(comp_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define comp_warn(comp_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define comp_info(comp_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define comp_dbg(comp_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+#else
 /* class (driver) level (no device object) tracing */
 
 /** \brief Trace error message from component driver (no comp instance) */
@@ -207,6 +227,8 @@ enum {
 #define comp_dbg(comp_p, __e, ...)					\
 	trace_dev_dbg(trace_comp_get_tr_ctx, trace_comp_get_id,		\
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
 
 #define comp_perf_info(pcd, comp_p)					\
 	comp_info(comp_p, "perf comp_copy peak plat %d cpu %d",		\
@@ -739,6 +761,8 @@ static inline void comp_underrun(struct comp_dev *dev,
 				 struct comp_buffer *source,
 				 uint32_t copy_bytes)
 {
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
+
 	int32_t bytes = (int32_t)audio_stream_get_avail_bytes(&source->stream) -
 			copy_bytes;
 
@@ -759,6 +783,8 @@ static inline void comp_underrun(struct comp_dev *dev,
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 				uint32_t copy_bytes)
 {
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
+
 	int32_t bytes = (int32_t)copy_bytes -
 			audio_stream_get_free_bytes(&sink->stream);
 

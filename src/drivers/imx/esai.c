@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(esai, CONFIG_SOF_LOG_LEVEL);
+
 /* 889f6dcd-ddcd-4e05-aa5b-0d39f8bca961 */
 DECLARE_SOF_UUID("esai", esai_uuid, 0x889f6dcd, 0xddcd, 0x4e05,
 		 0xaa, 0x5b, 0x0d, 0x39, 0xf8, 0xbc, 0xa9, 0x61);

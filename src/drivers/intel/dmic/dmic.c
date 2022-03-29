@@ -35,6 +35,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(dmic_dai, CONFIG_SOF_LOG_LEVEL);
+
 /* aafc26fe-3b8d-498d-8bd6-248fc72efa31 */
 DECLARE_SOF_UUID("dmic-dai", dmic_uuid, 0xaafc26fe, 0x3b8d, 0x498d,
 		 0x8b, 0xd6, 0x24, 0x8f, 0xc7, 0x2e, 0xfa, 0x31);
