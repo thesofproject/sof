@@ -46,6 +46,8 @@
 
 static const struct comp_driver comp_volume;
 
+LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_IPC_MAJOR_3
 /* b77e677e-5ff4-4188-af14-fba8bdbf8682 */
 DECLARE_SOF_RT_UUID("pga", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,

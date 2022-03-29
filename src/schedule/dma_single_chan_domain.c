@@ -27,6 +27,8 @@
 
 #define DMA_DOMAIN_OWNER_INVALID	0xFFFFFFFF
 
+LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
+
 struct dma_domain_data {
 	int irq;
 	struct dma_chan_data *channel;

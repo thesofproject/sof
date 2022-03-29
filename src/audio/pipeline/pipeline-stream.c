@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
+
 /*
  * Check whether pipeline is incapable of acquiring data for capture.
  *

@@ -28,6 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 {
 	struct ipc4_copier_module_cfg *copier_cfg = spec_config;

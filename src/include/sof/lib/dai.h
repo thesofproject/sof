@@ -215,6 +215,26 @@ struct dai_type_info {
 #define trace_dai_get_id(dai_p) ((dai_p)->drv->type)
 #define trace_dai_get_subid(dai_p) ((dai_p)->index)
 
+#ifdef __ZEPHYR__
+/* driver level tracing */
+#define dai_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define dai_cl_warn(drv_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define dai_cl_info(drv_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define dai_cl_dbg(drv_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+/* device level tracing */
+#define dai_err(dai_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define dai_warn(dai_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define dai_info(dai_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define dai_dbg(dai_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+#else
 /* class (driver) level (no device object) tracing */
 
 #define dai_cl_err(drv_p, __e, ...)		\
@@ -262,6 +282,8 @@ struct dai_type_info {
 	trace_dev_dbg(trace_dai_get_tr_ctx,				\
 		      trace_dai_get_id,					\
 		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+
+#endif
 
 /**
  * \brief API to request DAI group

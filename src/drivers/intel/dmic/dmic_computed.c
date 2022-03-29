@@ -16,6 +16,8 @@
 /* Decimation filters */
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_table.h>
 
+LOG_MODULE_DECLARE(dmic, CONFIG_SOF_LOG_LEVEL);
+
 /* Base addresses (in PDM scope) of 2ch PDM controllers and coefficient RAM. */
 static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
 static const uint32_t coef_base_a[4] = {PDM0_COEFFICIENT_A, PDM1_COEFFICIENT_A,

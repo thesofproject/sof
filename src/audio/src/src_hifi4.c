@@ -17,6 +17,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
+
 /* HiFi4 has
  * 16x 64 bit registers in register file AE_DR
  */

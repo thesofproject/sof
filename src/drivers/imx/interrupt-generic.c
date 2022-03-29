@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(generic_irq_imx, CONFIG_SOF_LOG_LEVEL);
+
 /* fa00558c-d653-4851-a03a-b21f125a9524 */
 DECLARE_SOF_UUID("generic-irq-imx", generic_irq_imx_uuid, 0xfa00558c, 0xd653, 0x4851,
 		 0xa0, 0x3a, 0xb2, 0x1f, 0x12, 0x5a, 0x95, 0x24);

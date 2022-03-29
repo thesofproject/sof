@@ -53,6 +53,9 @@
 #define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
 
 static const struct comp_driver comp_src;
+
+LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_IPC_MAJOR_4
 /* e61bb28d-149a-4c1f-b709-46823ef5f5a3 */
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xe61bb28d, 0x149a, 0x4c1f,

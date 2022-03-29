@@ -38,6 +38,8 @@
 #include <kernel.h>
 #endif
 
+LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
+
 /* 5276b491-5b64-464e-8984-dc228ef9e6a1 */
 DECLARE_SOF_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
 		 0x89, 0x84, 0xdc, 0x22, 0x8e, 0xf9, 0xe6, 0xa1);

@@ -53,6 +53,8 @@ typedef void (*asrc_proc_func)(struct comp_dev *dev,
 
 static const struct comp_driver comp_asrc;
 
+LOG_MODULE_REGISTER(asrc, CONFIG_SOF_LOG_LEVEL);
+
 #ifndef CONFIG_IPC_MAJOR_4
 /* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
 DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,

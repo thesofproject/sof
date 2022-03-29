@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 /* tracing */
+LOG_MODULE_REGISTER(dma_copy, CONFIG_SOF_LOG_LEVEL);
 
 /* 729bf8b5-e873-4bf5-9690-8e2a3fd33911 */
 DECLARE_SOF_UUID("dma-copy", dma_copy_uuid, 0x729bf8b5, 0xe873, 0x4bf5,

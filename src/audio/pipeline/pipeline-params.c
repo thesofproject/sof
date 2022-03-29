@@ -19,6 +19,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
+
 static int pipeline_comp_params_neg(struct comp_dev *current,
 				    struct comp_buffer *calling_buf,
 				    struct pipeline_walk_context *ctx,

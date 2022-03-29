@@ -16,6 +16,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_FORMAT_S16LE
 void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream *source,
 		struct audio_stream *sink, int frames, int nch)

@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(sdma, CONFIG_SOF_LOG_LEVEL);
+
 /* 70d223ef-2b91-4aac-b444-d89a0db2793a */
 DECLARE_SOF_UUID("sdma", sdma_uuid, 0x70d223ef, 0x2b91, 0x4aac,
 		 0xb4, 0x44, 0xd8, 0x9a, 0x0d, 0xb2, 0x79, 0x3a);

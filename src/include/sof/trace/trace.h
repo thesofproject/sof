@@ -30,6 +30,10 @@
 #include <stdio.h>
 #endif
 
+#ifdef __ZEPHYR__
+#include <logging/log.h>
+#endif
+
 struct sof;
 struct trace;
 struct tr_ctx;
@@ -435,42 +439,59 @@ struct tr_ctx {
 
 /* tracing from infrastructure part */
 
-#define tr_err(ctx, fmt, ...) \
-	trace_error_with_ids(_TRACE_INV_CLASS, ctx, \
-			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
-
 #define tr_err_atomic(ctx, fmt, ...) \
 	trace_error_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
-
-#define tr_warn(ctx, fmt, ...) \
-	trace_warn_with_ids(_TRACE_INV_CLASS, ctx, \
-			    _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 #define tr_warn_atomic(ctx, fmt, ...) \
 	trace_warn_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
 				   _TRACE_INV_ID, _TRACE_INV_ID, \
 				   fmt, ##__VA_ARGS__)
 
-#define tr_info(ctx, fmt, ...) \
-	trace_event_with_ids(_TRACE_INV_CLASS, ctx, \
-			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
-
 #define tr_info_atomic(ctx, fmt, ...) \
 	trace_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
+
+#define tr_dbg_atomic(ctx, fmt, ...) \
+	tracev_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
+				     _TRACE_INV_ID, _TRACE_INV_ID, \
+				     fmt, ##__VA_ARGS__)
+
+#ifdef __ZEPHYR__
+
+#define tr_err(ctx, fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+
+#define tr_warn(ctx, fmt, ...) LOG_WRN(fmt, ##__VA_ARGS__)
+
+#define tr_info(ctx, fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
+
+#define tr_dbg(ctx, fmt, ...) LOG_DBG(fmt, ##__VA_ARGS__)
+
+#else
+
+#define LOG_MODULE_REGISTER(ctx, level)
+#define LOG_MODULE_DECLARE(ctx, level)
+
+#define tr_err(ctx, fmt, ...) \
+	trace_error_with_ids(_TRACE_INV_CLASS, ctx, \
+			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_warn(ctx, fmt, ...) \
+	trace_warn_with_ids(_TRACE_INV_CLASS, ctx, \
+			    _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_info(ctx, fmt, ...) \
+	trace_event_with_ids(_TRACE_INV_CLASS, ctx, \
+			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 /* tracev_ output depends on CONFIG_TRACEV=y */
 #define tr_dbg(ctx, fmt, ...) \
 	tracev_event_with_ids(_TRACE_INV_CLASS, ctx, \
 			      _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
-#define tr_dbg_atomic(ctx, fmt, ...) \
-	tracev_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
-				     _TRACE_INV_ID, _TRACE_INV_ID, \
-				     fmt, ##__VA_ARGS__)
+#endif
 
 #if CONFIG_TRACE
 

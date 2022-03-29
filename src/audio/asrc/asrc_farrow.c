@@ -15,6 +15,8 @@
 #include <sof/audio/asrc/asrc_config.h>
 #include <sof/audio/asrc/asrc_farrow.h>
 
+LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
+
 #define CONVERT_COEFF(x) ((int32_t)(x))
 
 /* Rate skew in Q2.30 format can be 0.5 - 2.0 x rate */

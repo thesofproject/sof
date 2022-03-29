@@ -36,6 +36,8 @@
 
 static const struct comp_driver comp_eq_fir;
 
+LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
+
 /* 43a90ce7-f3a5-41df-ac06-ba98651ae6a3 */
 DECLARE_SOF_RT_UUID("eq-fir", eq_fir_uuid, 0x43a90ce7, 0xf3a5, 0x41df,
 		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3);

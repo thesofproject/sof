@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <ipc4/alh.h>
 
+LOG_MODULE_REGISTER(alh, CONFIG_SOF_LOG_LEVEL);
+
 /* a8e4218c-e863-4c93-84e7-5c27d2504501 */
 DECLARE_SOF_UUID("alh-dai", alh_uuid, 0xa8e4218c, 0xe863, 0x4c93,
 		 0x84, 0xe7, 0x5c, 0x27, 0xd2, 0x50, 0x45, 0x01);

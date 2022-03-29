@@ -36,6 +36,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(dma_trace, CONFIG_SOF_LOG_LEVEL);
+
 /* 58782c63-1326-4185-8459-22272e12d1f1 */
 DECLARE_SOF_UUID("dma-trace", dma_trace_uuid, 0x58782c63, 0x1326, 0x4185,
 		 0x84, 0x59, 0x22, 0x27, 0x2e, 0x12, 0xd1, 0xf1);

@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(pm_memory, CONFIG_SOF_LOG_LEVEL);
+
 /* 14f25ab6-3a4b-4e5d-b343-2a142d4e4d92 */
 DECLARE_SOF_UUID("pm-memory", pm_mem_uuid, 0x14f25ab6, 0x3a4b, 0x4e5d,
 		 0xb3, 0x43, 0x2a, 0x14, 0x2d, 0x4e, 0x4d, 0x92);

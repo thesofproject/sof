@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
+
 static SHARED_DATA struct comp_driver_list cd;
 
 /* 7c42ce8b-0108-43d0-9137-56d660478c5f */

@@ -37,6 +37,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 struct ipc4_msg_data {
 	uint32_t msg_in[2]; /* local copy of current message from host header */
 	uint32_t msg_out[2]; /* local copy of current message to host header */
