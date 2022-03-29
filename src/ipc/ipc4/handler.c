@@ -849,6 +849,9 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 			return IPC4_BUSY;
 		}
 
+		/* do platform specific suspending */
+		platform_context_save(sof_get());
+
 		ipc_get()->pm_prepare_D3 = 1;
 		/* TODO: prepare for D3 */
 	}
