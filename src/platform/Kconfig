@@ -603,5 +603,11 @@ config INCOHERENT
 	  architectures for testing without cached access to shared data.
 
 endif
+config SECONDARY_CORE_DISABLING_TIMEOUT
+	int
+	default 5000
+	depends on MULTICORE
+	help
+	  Timeout value (in ms) for secondary core to enter D3 state.
 
 endmenu
