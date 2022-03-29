@@ -434,9 +434,9 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 {
 	struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
+	uint32_t status = COMP_STATE_INIT;
 	uint32_t cmd, ppl_count;
 	uint32_t *ppl_id, id;
-	uint32_t status;
 	int ret = 0;
 	int i;
 
