@@ -141,7 +141,7 @@ extern struct mtk_base_afe_platform mtk_afe_platform;
 
 struct mtk_base_afe *afe_get(void);
 int afe_probe(struct mtk_base_afe *afe);
-int afe_remove(struct mtk_base_afe *afe);
+void afe_remove(struct mtk_base_afe *afe);
 
 /* dai operation */
 int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, unsigned int *rate,
