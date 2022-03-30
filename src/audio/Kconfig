@@ -132,6 +132,14 @@ config COMP_SRC_TINY
 	  has no critical usage or when only need with lower quality
 	  endpoint like miniature speakers.
 
+config COMP_SRC_IPC4_FULL_MATRIX
+	bool "Full IPC4 conversions matrix support and high quality"
+	help
+	  This coefficients set supports a large number of conversions
+	  with 8 - 192 kHz input 8 - 192 kHz output. The 32 bits coefficients
+	  storate consumes 241 kB. The runtime needs 9 kB. Use this to
+	  make the full conversions set available for IPC4 build.
+
 endchoice
 
 endif # SRC
