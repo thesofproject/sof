@@ -394,17 +394,17 @@ err_alloc_memif:
 	return -ENOMEM;
 }
 
-int afe_remove(struct mtk_base_afe *afe)
+void afe_remove(struct mtk_base_afe *afe)
 {
 	afe->ref_count--;
 
 	if (afe->ref_count > 0)
-		return 0;
+		return;
 
 	if (afe->ref_count < 0) {
 		afe->ref_count = 0;
 		tr_dbg(&afedrv_tr, "afe ref_count < 0, :%d\n", afe->ref_count);
-		return 0;
+		return;
 	}
 
 	rfree(afe->memif);
@@ -415,6 +415,5 @@ int afe_remove(struct mtk_base_afe *afe)
 
 	rfree(afe->irqs);
 	afe->irqs = NULL;
-
-	return 0;
 }
+
