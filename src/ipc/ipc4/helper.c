@@ -26,6 +26,7 @@
 #include <ipc4/base-config.h>
 #include <ipc4/copier.h>
 #include <ipc4/header.h>
+#include <ipc4/notification.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
@@ -50,6 +51,8 @@ void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 
 void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
+	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
+	posn->rhdr.hdr.size = sizeof(uint32_t);
 }
 
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
