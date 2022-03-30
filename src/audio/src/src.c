@@ -37,15 +37,17 @@
 #if SRC_SHORT || CONFIG_COMP_SRC_TINY
 #include <sof/audio/coefficients/src/src_tiny_int16_define.h>
 #include <sof/audio/coefficients/src/src_tiny_int16_table.h>
-#else
-#if CONFIG_COMP_SRC_SMALL
+#elif CONFIG_COMP_SRC_SMALL
 #include <sof/audio/coefficients/src/src_small_int32_define.h>
 #include <sof/audio/coefficients/src/src_small_int32_table.h>
-#endif
-#if CONFIG_COMP_SRC_STD
+#elif CONFIG_COMP_SRC_STD
 #include <sof/audio/coefficients/src/src_std_int32_define.h>
 #include <sof/audio/coefficients/src/src_std_int32_table.h>
-#endif
+#elif CONFIG_COMP_SRC_IPC4_FULL_MATRIX
+#include <sof/audio/coefficients/src/src_ipc4_int32_define.h>
+#include <sof/audio/coefficients/src/src_ipc4_int32_table.h>
+#else
+#error "No valid configuration selected for SRC"
 #endif
 
 /* The FIR maximum lengths are per channel so need to multiply them */
