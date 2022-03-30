@@ -49,6 +49,11 @@ void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 {
 }
 
+bool ipc_trigger_trace_xfer(uint32_t avail)
+{
+	return avail >= DMA_TRACE_LOCAL_SIZE / 2;
+}
+
 void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
 	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);

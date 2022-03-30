@@ -67,6 +67,9 @@ static enum task_state trace_work(void *data)
 	if (!d->dc.chan)
 		return SOF_TASK_STATE_RESCHEDULE;
 
+	if (!ipc_trigger_trace_xfer(avail))
+		return SOF_TASK_STATE_RESCHEDULE;
+
 	/* make sure we don't write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE) {
 		overflow = avail - DMA_TRACE_LOCAL_SIZE;
