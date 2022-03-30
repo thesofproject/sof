@@ -154,7 +154,7 @@ int dma_trace_init_early(struct sof *sof)
 
 	ipc_build_trace_posn(&sof->dmat->posn);
 	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
-				      sizeof(sof->dmat->posn));
+				      sof->dmat->posn.rhdr.hdr.size);
 	if (!sof->dmat->msg) {
 		ret = -ENOMEM;
 		goto err;
