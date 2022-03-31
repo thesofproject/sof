@@ -6,21 +6,25 @@
 # binaries. Currently supports simple PCM <-> component <-> SSP style tests
 # using simple_test()
 
-# Remove possible old topologies
-rm -f test-*.conf test-*.tplg
-
 # fail immediately on any errors
 set -e
+
+MYDIR="$(cd $(dirname "$0") && pwd)"
+cd "${MYDIR}"
 
 # M4 preprocessor flags
 export M4PATH="../../topology/topology1:../../topology/topology1/m4:../../topology/topology1/common:../../topology/topology1/platform/intel:../../topology/topology1/platform/common"
 
 if [ -z "$SOF_TPLG_BUILD_OUTPUT" ]
 then
-      BUILD_OUTPUT="."
+      BUILD_OUTPUT="./build_test_topo"
 else
       BUILD_OUTPUT="$SOF_TPLG_BUILD_OUTPUT"
 fi
+mkdir -p "$BUILD_OUTPUT"
+
+# Remove possible old topologies
+rm -f "$BUILD_OUTPUT"/test-*.conf "$BUILD_OUTPUT"/test-*.tplg
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
@@ -60,6 +64,7 @@ function simple_test {
 		then
 			TFILE="$i-dmic$6-${14}-$2-$4-$7-$((${13} / 1000))k-$1"
 			echo "M4 pre-processing test $i -> ${TFILE}"
+			(set -x
 			m4 ${M4_FLAGS} \
 				-DTEST_PIPE_NAME="$2" \
 				-DTEST_DAI_LINK_NAME="$3" \
@@ -76,8 +81,11 @@ function simple_test {
 				-DTEST_DMIC_PDM_CONFIG=${14} \
 				-DTEST_DMIC_UNMUTE_TIME=400 \
 				$i.m4 > "$BUILD_OUTPUT/${TFILE}.conf"
+			)
 			echo "Compiling test $i -> $BUILD_OUTPUT/${TFILE}.tplg"
+			(set -x
 			alsatplg -v 1 -c "$BUILD_OUTPUT/${TFILE}.conf" -o "$BUILD_OUTPUT/${TFILE}.tplg"
+			)
 		else
 			if [ "$USE_XARGS" == "yes" ]
 			then
@@ -123,6 +131,7 @@ function simple_test {
 						fi
 					fi
 					echo "M4 pre-processing test $i -> ${TFILE}"
+					( set -x
 					m4 ${M4_FLAGS} \
 						-DTEST_PIPE_NAME="$2" \
 						-DTEST_DAI_LINK_NAME="$3" \
@@ -138,8 +147,11 @@ function simple_test {
 						-DTEST_PIPE_AMOUNT=${14} \
 						-DTEST_DAI_TYPE=$5 \
 						$i.m4 > "$BUILD_OUTPUT/${TFILE}.conf"
+					)
 					echo "Compiling test $i -> $BUILD_OUTPUT/${TFILE}.tplg"
+					(set -x
 					alsatplg -v 1 -c "$BUILD_OUTPUT/${TFILE}.conf" -o "$BUILD_OUTPUT/${TFILE}.tplg"
+					)
 				fi
 			fi
 		fi

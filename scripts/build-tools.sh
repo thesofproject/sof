@@ -24,7 +24,7 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T]
        -l Rebuild logger/
        -p Rebuild probes/
        -T Rebuild topology/ (not topology/development/! Use ALL)
-       -t Rebuild test/topology/
+       -t Rebuild test/topology/ (or tools/test/topology/tplg-build.sh directly)
 
        -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
@@ -75,6 +75,7 @@ Build commands for respective tools:
         probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
         topologies: make -C "$BUILD_TOOLS_DIR" topologies
         test tplgs: make -C "$BUILD_TOOLS_DIR" tests
+               (or ./tools/test/topology/tplg-build.sh directly)
 
         fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
 
