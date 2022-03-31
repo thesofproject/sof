@@ -456,6 +456,8 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	struct comp_dev *sink = NULL, *source = NULL;
+	struct comp_dev *active_comp;
+	unsigned int core;
 	bool sink_active = false;
 	bool source_active = false;
 
@@ -503,6 +505,24 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	 */
 	if (sink_active && source_active)
 		return -EINVAL;
+
+	/*
+	 * If either component is active and is running on a different
+	 * core, the free must be run in the context of the active
+	 * pipeline.
+	 */
+	active_comp = sink_active ? sink : source;
+	if (active_comp) {
+		core = active_comp->ipc_config.core;
+
+		if (active_comp->state > COMP_STATE_READY &&
+		    core != ibd->core && core != cpu_get_id()) {
+			tr_dbg(&ipc_tr, "ipc_buffer_free(): comp id: %d run on sink core %u",
+			       buffer_id, core);
+			ibd->core = core;
+			return ipc_process_on_core(core, false);
+		}
+	}
 
 	/*
 	 * Disconnect the buffer from the active component before freeing it.
