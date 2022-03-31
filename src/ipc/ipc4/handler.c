@@ -859,6 +859,10 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 			}
 		} else {
 			cpu_disable_core(core_id);
+			if (cpu_is_core_enabled(core_id)) {
+				tr_err(&ipc_tr, "failed to disable core %d", core_id);
+				return IPC4_FAILURE;
+			}
 		}
 	}
 
@@ -879,7 +883,6 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		platform_context_save(sof_get());
 
 		ipc_get()->pm_prepare_D3 = 1;
-		/* TODO: prepare for D3 */
 	}
 
 	return IPC4_SUCCESS;
