@@ -11,6 +11,29 @@ cat <<EOF_HEADER
 Object.Base.manifest."sof_manifest" {
 	Object.Base.data."SOF ABI" {
 EOF_HEADER
-printf '\t\tbytes\t"0x%02x,' "$ABI_MAJOR"
-printf "0x%02x," "$ABI_MINOR"
-printf '0x%02x\"\n\t}\n}' "$ABI_PATCH"
+
+print_1byte()
+{
+	printf '0x%02x' "$(("$1" & 0xff))"
+}
+
+print_2bytes()
+{
+	printf '0x%02x,0x%02x' "$(("$1" & 0xff))" "$((("$1" & 0xff00) >> 8))"
+}
+
+printf '\t\tbytes\t\"'
+for vers in $ABI_MAJOR $ABI_MINOR; do
+	case "$2" in
+		ipc3) print_1byte "$vers" ;;
+		ipc4) print_2bytes "$vers" ;;
+	esac
+	printf ','
+done
+
+case "$2" in
+	ipc3) print_1byte "$ABI_PATCH" ;;
+	ipc4) print_2bytes "$ABI_PATCH" ;;
+esac
+
+printf '\"\n\t}\n}'
