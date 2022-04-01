@@ -49,7 +49,7 @@ include(`test_pipeline_filters.m4')
 PIPELINE_PCM_ADD(sof/pipe-TEST_PIPE_NAME-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
-	8000, 192000, 48000)
+	8000, 192000 , 48000)
 
 #
 # DAI configuration
