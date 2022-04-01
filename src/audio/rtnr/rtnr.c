@@ -182,24 +182,6 @@ static rtnr_func rtnr_find_func(enum sof_ipc_frame fmt)
 	return NULL;
 }
 
-static inline void rtnr_set_process(struct comp_dev *dev)
-{
-	comp_info(dev, "rtnr_set_process()");
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	cd->process_enable = true;
-	RTKMA_API_Bypass(cd->rtk_agl, 0);
-}
-
-static inline void rtnr_set_bypass(struct comp_dev *dev)
-{
-	comp_info(dev, "rtnr_set_bypass()");
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	cd->process_enable = false;
-	RTKMA_API_Bypass(cd->rtk_agl, 1);
-}
-
 static inline void rtnr_set_process_sample_rate(struct comp_dev *dev, uint32_t sample_rate)
 {
 	comp_dbg(dev, "rtnr_set_process_sample_rate()");
@@ -218,25 +200,14 @@ static int32_t rtnr_check_config_validity(struct comp_dev *dev,
 		comp_err(dev, "rtnr_check_config_validity() error: invalid cd->model_handler");
 		ret = -EINVAL;
 	} else {
-		comp_info(dev, "rtnr_check_config_validity() enabled: %d sample_rate:%d",
-				p_config->params.enabled,
+		comp_info(dev, "rtnr_check_config_validity() sample_rate:%d",
 				p_config->params.sample_rate);
-
-		if (p_config->params.enabled)
-			rtnr_set_process(dev);
-		else
-			rtnr_set_bypass(dev);
 
 		rtnr_set_process_sample_rate(dev, p_config->params.sample_rate);
 	}
 
 	return ret;
 }
-
-
-/*
- * End of RTNR setup code. Next the standard component methods.
- */
 
 static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 								struct comp_ipc_config *config,
@@ -271,6 +242,8 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
+	cd->process_enable = false;
+
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
@@ -288,7 +261,7 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 	/* Component defaults */
 	cd->source_channel = 0;
 
-    /* Check config */
+	/* Get default sample rate from topology */
 	ret = rtnr_check_config_validity(dev, cd);
 	if (ret < 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): rtnr_check_config_validity() failed.");
@@ -417,9 +390,6 @@ static int rtnr_cmd_set_data(struct comp_dev *dev,
 		break;
 	}
 
-	if (ret >= 0)
-		ret = rtnr_check_config_validity(dev, cd);
-
 	return ret;
 }
 
@@ -451,16 +421,15 @@ static int32_t rtnr_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 {
 	uint32_t val = 0;
 	int32_t j;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	for (j = 0; j < cdata->num_elems; j++) {
 		val |= cdata->chanv[j].value;
 		comp_info(dev, "rtnr_set_value(), value = %u", val);
 	}
 
-	if (val)
-		rtnr_set_process(dev);
-	else
-		rtnr_set_bypass(dev);
+	cd->process_enable = !val;
+	RTKMA_API_Bypass(cd->rtk_agl, !val);
 
 	return 0;
 }
@@ -586,7 +555,7 @@ static int rtnr_prepare(struct comp_dev *dev)
 	struct comp_buffer *sinkb;
 	int ret;
 
-	comp_info(dev, "rtnr_prepare()");
+	comp_dbg(dev, "rtnr_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -595,11 +564,20 @@ static int rtnr_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
+	/* Check config */
+	ret = rtnr_check_config_validity(dev, cd);
+	if (ret < 0) {
+		comp_cl_err(&comp_rtnr, "rtnr_prepare(): rtnr_check_config_validity() failed.");
+		goto err;
+	}
+
+	/* Initialize RTNR */
+
 	/* Get sink data format */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	cd->sink_format = sinkb->stream.frame_fmt;
 
-	/* Check source and sink PCM format and get copy function */
+	/* Check source and sink PCM format and get processing function */
 	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
 	cd->rtnr_func = rtnr_find_func(cd->sink_format);
 	if (!cd->rtnr_func) {
@@ -607,13 +585,9 @@ static int rtnr_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	/* Default on */
-	cd->process_enable = true;
-
 	/* Clear in/out buffers */
 	RTKMA_API_Prepare(cd->rtk_agl);
 
-	/* Initialize RTNR */
 	return 0;
 
 err:

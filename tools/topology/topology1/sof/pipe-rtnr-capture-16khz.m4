@@ -13,6 +13,7 @@ include(`buffer.m4')
 include(`pcm.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 include(`rtnr.m4')
 
@@ -45,6 +46,19 @@ C_CONTROLBYTES(DEF_RTNR_BYTES, PIPELINE_ID,
 	,
 	DEF_RTNR_PRIV)
 
+# RTNR Enable switch
+define(DEF_RTNR_ENABLE, concat(`rtnr_enable_', PIPELINE_ID))
+define(`CONTROL_NAME', `DEF_RTNR_ENABLE')
+
+C_CONTROLMIXER(DEF_RTNR_ENABLE, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
+	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
+	false,
+	,
+	Channel register and shift for Front Center,
+	LIST(`	', KCONTROL_CHANNEL(FC, 3, 0)),
+	"1")
+undefine(`CONTROL_NAME')
 
 #
 # Components and Buffers
@@ -55,7 +69,9 @@ C_CONTROLBYTES(DEF_RTNR_BYTES, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Capture, 0, 2, DMIC_PIPELINE_16k_CORE_ID)
 
 # "RTNR 0" has 2 sink period and 2 source periods
-W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, DMIC_PIPELINE_16k_CORE_ID, LIST(`		', "DEF_RTNR_BYTES"))
+W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
+	LIST(`		', "DEF_RTNR_BYTES"),
+	LIST(`          ', "DEF_RTNR_ENABLE"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(4,
@@ -86,5 +102,6 @@ PCM_CAPABILITIES(Capture PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT),
 	PCM_MIN_RATE, PCM_MAX_RATE, PIPELINE_CHANNELS, PIPELINE_CHANNELS,
 	2, 16, 192, 16384, RTNR_BUFFER_SIZE_MIN, RTNR_BUFFER_SIZE_MAX)
 
+undefine(`DEF_RTNR_ENABLE')
 undefine(`DEF_RTNR_PRIV')
 undefine(`DEF_RTNR_BYTES')
