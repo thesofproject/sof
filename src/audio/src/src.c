@@ -894,13 +894,11 @@ static int src_copy(struct comp_dev *dev)
 	buffer_release(source);
 
 	if (ret) {
-		comp_info(dev, "No data to process.");
-		return PPL_STATUS_PATH_STOP;
+		comp_dbg(dev, "No data to process.");
+		return 0;
 	}
 
 	src_process(dev, source, sink);
-
-	/* produced no data */
 	return 0;
 }
 
