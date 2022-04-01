@@ -291,7 +291,6 @@ static int mixer_params(struct comp_dev *dev,
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 {
-	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
 	ret = comp_set_state(dev, cmd);
@@ -300,10 +299,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
-
-	/* nothing else to check for capture streams */
-	if (dir == SOF_IPC_STREAM_CAPTURE)
-		return ret;
 
 	return ret;
 }
