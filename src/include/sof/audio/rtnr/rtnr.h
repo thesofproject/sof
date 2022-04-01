@@ -22,6 +22,8 @@ typedef void (*rtnr_func)(struct comp_dev *dev,
 						  struct audio_stream *sink,
 						  int frames);
 
+#define RTNR_MAX_SOURCES		1 /* Microphone stream */
+
 /* RTNR component private data */
 struct comp_data {
 	struct comp_data_blob_handler *model_handler;
