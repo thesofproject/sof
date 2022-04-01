@@ -699,9 +699,6 @@ static int src_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	comp_info(dev, "src_params(): src->source_rate: %d", cd->source_rate);
-	comp_info(dev, "src_params(): src->sink_rate: %d", cd->sink_rate);
-
 	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
 	cd->sink_frames = dev->frames;
 
