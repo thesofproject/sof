@@ -71,8 +71,10 @@ jobs:
       # Use our docker container to avoid the "unsupported widget type asrc"
       # bug in ALSA 1.2.2
       # https://github.com/thesofproject/sof/issues/2543
-      - name: build topologies
-        run: ./scripts/docker-run.sh ./scripts/build-tools.sh -t
+      - name: build test topologies
+        run: ./scripts/docker-run.sh ./scripts/build-tools.sh -t ||
+             VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
+             ./scripts/docker-run.sh ./scripts/build-tools.sh -t
 
       - name: build testbench
         run: ./scripts/rebuild-testbench.sh
