@@ -79,6 +79,33 @@ define(`C_CONTROLBYTES',
 `	]'
 `}')
 
+dnl C_CONTROLBYTES_READONLY(name, index, ops, base, num_regs, mask, max, tlv, priv)
+define(`C_CONTROLBYTES_READONLY',
+`SectionControlBytes.STR($1) {'
+`'
+`	# control belongs to this index group'
+`	index STR($2)'
+`'
+`	# control uses bespoke driver get/put/info ID for io ops'
+`	$3'
+`	# control uses bespoke driver get/put/info ID for ext ops'
+`	$4'
+`'
+`	# default base/num_regs/mask to avoid NULL STR'
+`	ifelse($5, `', base STR(XX), base STR($5))'
+`	ifelse($6, `', num_regs STR(XX), num_regs STR($6)`')'
+`	ifelse($7, `', mask STR(XX), mask STR($7)`')'
+`	$8'
+`	$9'
+`	access ['
+`		tlv_read'
+`		tlv_callback'
+`	]'
+`	data ['
+`		$10'
+`	]'
+`}')
+
 # Readonly byte control to read the actual value from DSP
 dnl C_CONTROLBYTES_VOLATILE_READONLY(name, index, ops, base, num_regs, mask, max, tlv, priv)
 define(`C_CONTROLBYTES_VOLATILE_READONLY',
