@@ -27,10 +27,12 @@ jobs:
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
       # -j3 tests the ability to build multiple platforms
-      # concurrently. It makes the build log unreadable but that's OK
-      # because we have other, slower actions with readable logs.
+      # concurrently. It makes the build log unreadable, so retry with
+      # a single thread in case of failure
       - name: build all and stage
-        run: ./scripts/docker-run.sh make -j3 -C installer/ tarball
+        run: ./scripts/docker-run.sh make -j3 -C installer/ tarball ||
+            VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
+             ./scripts/docker-run.sh make -j1 -C installer/ tarball
 
       - name: check staging tree
         run: make -C installer/ checktree
