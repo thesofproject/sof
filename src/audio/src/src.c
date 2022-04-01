@@ -52,6 +52,12 @@
 #define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)
 #define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
 
+/* Coefficient to convert internal min. block multiple to buffer size between
+ * stages 1 and 2. This is empirically found value plus a tenth that avoids
+ * condition where processing can't happen due to run out of this buffer. Use Q4.12.
+ */
+#define SBUF_LENGTH_MULTIPLIER Q_CONVERT_FLOAT(2.4, 12)
+
 static const struct comp_driver comp_src;
 
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
@@ -196,7 +202,8 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 		 * variable number of blocks to process per each stage
 		 * there is no equation known for minimum size.
 		 */
-		a->sbuf_length = 2 * nch * stage1->blk_out * r1;
+		a->sbuf_length = Q_MULTSR_32X32(nch * stage1->blk_out * r1,
+						SBUF_LENGTH_MULTIPLIER, 0, 12, 0);
 	}
 
 	a->src_multich = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
