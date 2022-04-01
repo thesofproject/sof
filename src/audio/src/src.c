@@ -311,7 +311,7 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 	 * tap.
 	 */
 	n_stages = (src->stage2->filter_length == 1) ? 1 : 2;
-	if (p->idx_in == p->idx_out)
+	if (src_in_fs[p->idx_in] == src_out_fs[p->idx_out])
 		n_stages = 0;
 
 	/* If filter length for first stage is zero this is a deleted
