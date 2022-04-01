@@ -23,4 +23,7 @@ jobs:
       # For some reason gcc has more warnings in Release mode
       - name: build-tools
         run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
+          ./scripts/build-tools.sh ||
+             VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
+             CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
           ./scripts/build-tools.sh
