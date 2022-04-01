@@ -60,6 +60,9 @@ define(`W_RTNR',
 `	bytes ['
 		$6
 `	]'
+`	mixer ['
+		$7
+`	]'
 `}')
 
 divert(0)dnl
