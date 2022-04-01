@@ -3,12 +3,6 @@ add_custom_target(topologies2
 	COMMAND ${CMAKE_COMMAND} -E copy_directory cavs ${SOF_TOPOLOGY_BINARY_DIRECTORY}
 )
 
-# generate ABI
-execute_process(
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY}
-	OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/abi.conf
-)
-
 # check alsatplg version and built topology2 if alsatplg version is 1.2.6 or greater
 # This will override any common topologies built with topology1
 execute_process(COMMAND alsatplg --version RESULT_VARIABLE STATUS OUTPUT_VARIABLE ALSA_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)

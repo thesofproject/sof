@@ -30,6 +30,12 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-tgl-nocodec.bin"
 )
 
+# generate ABI for IPC4
+execute_process(
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY} "ipc4"
+	OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/abi.conf
+)
+
 # This will override the topology1 binaries with topology2 binaries
 add_custom_target(topology2_cavs)
 add_dependencies(topologies2 topology2_cavs)
@@ -52,7 +58,7 @@ foreach(tplg ${TPLGS})
 	#
 	# BUG: move this from CMake configuration time to build time to
 	# fix incremental builds
-	configure_file(${CMAKE_CURRENT_BINARY_DIR}/../abi.conf ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf)
+	configure_file(${CMAKE_CURRENT_BINARY_DIR}/abi.conf ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf)
 	file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${input}.conf CONTENTS)
 	file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf "${CONTENTS}")
 
