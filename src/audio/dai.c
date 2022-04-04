@@ -222,6 +222,9 @@ static void dai_free(struct comp_dev *dev)
 		dd->chan->dev_data = NULL;
 	}
 
+	if (dev->state != COMP_STATE_PREPARE)
+		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+
 	dma_put(dd->dma);
 
 	dai_put(dd->dai);
