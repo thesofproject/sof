@@ -3,6 +3,7 @@
 set(TPLGS
 	"sof-apl-asrc-pcm512x\;sof-apl-asrc-pcm512x"
 	"sof-apl-asrc-wm8804\;sof-apl-asrc-wm8804"
+	"sof-apl-src-pcm512x\;sof-apl-src-pcm512x"
 	"sof-apl-dmic-a96k-b16k\;sof-apl-dmic-a96k-b16k"
 	"sof-apl-dmic-asymmetric\;sof-apl-dmic-a2ch-b2ch\;-DDMICSETTING=apl-dmic-a2b2"
 	"sof-apl-dmic-asymmetric\;sof-apl-dmic-a2ch-b4ch\;-DDMICSETTING=apl-dmic-a2b4"
