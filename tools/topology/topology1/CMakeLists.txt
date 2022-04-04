@@ -285,3 +285,4 @@ endforeach()
 
 add_subdirectory(development)
 add_subdirectory(dsp_enhancement)
+add_subdirectory(kernel_dependent)
