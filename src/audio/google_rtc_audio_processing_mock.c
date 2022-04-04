@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "sof/lib/alloc.h"
+#include <rtos/alloc.h>
 #include "ipc/topology.h"
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ 48000
