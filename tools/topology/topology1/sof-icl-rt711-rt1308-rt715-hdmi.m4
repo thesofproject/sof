@@ -231,12 +231,16 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 # Deep buffer playback pipeline 31 on PCM 31 using max 2 channels of s32le
 # Set 1000us deadline on core 0 with priority 0.
 # TODO: Modify pipeline deadline to account for deep buffering
+ifdef(`HEADSET_DEEP_BUFFER',
+`
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	31, 31, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
+'
+)
 
 SectionGraph."mixer-host" {
 	index "0"
@@ -244,7 +248,11 @@ SectionGraph."mixer-host" {
 	lines [
 		# connect mixer dai pipelines to PCM pipelines
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
+ifdef(`HEADSET_DEEP_BUFFER',
+`
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_31)
+'
+)
 	]
 }
 
@@ -316,7 +324,11 @@ dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 ifdef(`NOJACK', `',
 `
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
+ifdef(`HEADSET_DEEP_BUFFER',
+`
 PCM_PLAYBACK_ADD(Jack Out DeepBuffer, 31, PIPELINE_PCM_31)
+'
+)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
 ')
 ifdef(`NOAMP', `',
