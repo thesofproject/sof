@@ -55,12 +55,15 @@ PIPELINE_PCM_ADD(sof/pipe-TEST_PIPE_NAME-capture.m4,
 # DAI configuration
 #
 # SSP port TEST_DAI_PORT is our only pipeline DAI
-#
-# capture DAI is SSP TEST_DAI_PORT using 2 periods
+
+# Use 3 periods for SRC DAI buffer, otherwise 2 periods
+ifelse(TEST_PIPE_NAME, `src', `define(TEST_DAI_PERIODS, `3')', `define(TEST_DAI_PERIODS, `2')')
+
+# capture DAI is SSP TEST_DAI_PORT using TEST_DAI_PERIODS periods
 # schedule 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
-	PIPELINE_SINK_2, 2, TEST_DAI_FORMAT,
+	PIPELINE_SINK_2, TEST_DAI_PERIODS, TEST_DAI_FORMAT,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Passthrough

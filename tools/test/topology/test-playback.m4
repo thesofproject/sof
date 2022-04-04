@@ -152,11 +152,14 @@ SectionGraph."pipe-sof-fourth-pipe" {
 
 # DAI configuration
 
-# playback DAI is SSP TEST_DAI_PORT using 2 periods
+# Use 3 periods for SRC DAI buffer, otherwise 2 periods
+ifelse(TEST_PIPE_NAME, `src', `define(TEST_DAI_PERIODS, `3')', `define(TEST_DAI_PERIODS, `2')')
+
+# playback DAI is SSP TEST_DAI_PORT using TEST_DAI_PERIODS periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
-	PIPELINE_SOURCE_1, 2, TEST_DAI_FORMAT,
+	PIPELINE_SOURCE_1, TEST_DAI_PERIODS, TEST_DAI_FORMAT,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifdef(`TEST_HAS_PIPE2',
