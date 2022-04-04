@@ -268,7 +268,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 		if (status == COMP_STATE_READY)
 			return 0;
 
-		if (status == COMP_STATE_ACTIVE) {
+		if (status == COMP_STATE_ACTIVE || COMP_STATE_PAUSED) {
 			ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
