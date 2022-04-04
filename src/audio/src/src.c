@@ -909,6 +909,50 @@ static int src_copy(struct comp_dev *dev)
 	return 0;
 }
 
+static int src_check_buffer_sizes(struct comp_data *cd,
+				  struct audio_stream *source_stream,
+				  struct audio_stream *sink_stream)
+{
+	struct src_stage *s1 = cd->src.stage1;
+	struct src_stage *s2 = cd->src.stage2;
+	int stage1_times;
+	int stage2_times;
+	int blk_in;
+	int blk_out;
+	int n;
+
+	if (s2->filter_length > 1) {
+		/* Two polyphase filters case */
+		stage2_times = ceil_divide(cd->sink_frames, s2->blk_out);
+		stage1_times = ceil_divide(cd->source_frames, s1->blk_in);
+		blk_in = stage1_times * s1->blk_in;
+		blk_out = stage2_times * s2->blk_out;
+	} else {
+		/* Single polyphase filter case */
+		stage1_times = ceil_divide(cd->sink_frames, s1->blk_out);
+		n = ceil_divide(cd->source_frames, s1->blk_in);
+		stage1_times = MAX(stage1_times, n);
+		blk_in = stage1_times * s1->blk_in;
+		blk_out = stage1_times * s1->blk_out;
+	}
+
+	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
+	if (source_stream->size < n) {
+		comp_cl_err(&comp_src, "Source size %d is less than required %d",
+			source_stream->size, n);
+		return -ENOBUFS;
+	}
+
+	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
+	if (sink_stream->size < n) {
+		comp_cl_err(&comp_src, "Sink size %d is less than required %d",
+			sink_stream->size, n);
+		return -ENOBUFS;
+	}
+
+	return 0;
+}
+
 static int src_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -916,8 +960,6 @@ static int src_prepare(struct comp_dev *dev)
 	struct comp_buffer *sourceb;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	uint32_t source_period_bytes;
-	uint32_t sink_period_bytes;
 	int ret;
 
 	comp_info(dev, "src_prepare()");
@@ -935,33 +977,16 @@ static int src_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	/* get source data format and period bytes */
+	/* get source data format */
 	source_format = sourceb->stream.frame_fmt;
-	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
-							dev->frames);
 
-	/* get sink data format and period bytes */
+	/* get sink data format */
 	sink_format = sinkb->stream.frame_fmt;
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
-						      dev->frames);
 
-	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
-		comp_err(dev, "src_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	/* validate */
-	if (!sink_period_bytes) {
-		comp_err(dev, "src_prepare(): sink_period_bytes = 0");
-		ret = -EINVAL;
-		goto err;
-	}
-	if (!source_period_bytes) {
-		comp_err(dev, "src_prepare(): source_period_bytes = 0");
-		ret = -EINVAL;
-		goto err;
+	ret = src_check_buffer_sizes(cd, &sourceb->stream, &sinkb->stream);
+	if (ret < 0) {
+		comp_err(dev, "src_prepare(): source or sink buffer size is insufficient");
+		return ret;
 	}
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
