@@ -9,6 +9,35 @@ set(TPLGS_UP
 	"sof-hda-generic\;sof-hda-generic-3ch\;-DDEEP_BUFFER\;-DCHANNELS=4\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
 	"sof-hda-generic\;sof-hda-generic-4ch\;-DDEEP_BUFFER\;-DCHANNELS=4\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
 	## end HDaudio codec topologies
+
+	## SoundWire topologies
+	# sof-icl-r700 is kept for compatibility with CI and previous versions of the kernel.
+	"sof-icl-rt700\;sof-icl-rt700\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-icl-rt700\;sof-icl-rt700-4ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-icl-rt700\;sof-icl-rt700-2ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=2\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	# sof-cml-r700 is kept for compatibility with CI and previous versions of the kernel.
+	"sof-cml-rt700\;sof-cml-rt700\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-cml-rt700\;sof-cml-rt700-4ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-cml-rt700\;sof-cml-rt700-2ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=2\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-mono-rt715\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=cml\;-DMONO"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=cml"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=icl"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1308-mono-rt715\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=tgl\;-DMONO\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-l0-rt1316-l1-mono-rt714-l3\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=tgl\;-DMONO\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DEXT_AMP_REF\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt715-rt711-rt1308-mono\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=tgl\;-DMONO\;-DUAJ_LINK=1\;-DAMP_1_LINK=2\;-DMIC_LINK=0"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1308-rt715\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=tgl\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1316-rt714\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=tgl\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt711-l0-rt1308-l12-rt715-l3\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=adl\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt711-l0-rt1316-l12-rt714-l3\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=adl\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt711-l0-rt1316-l13-rt714-l2\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=adl\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DAMP_2_LINK=3\;-DEXT_AMP_REF\;-DMIC_LINK=2"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt711-l2-rt1316-l01-rt714-l3\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=adl\;-DUAJ_LINK=2\;-DAMP_1_LINK=0\;-DAMP_2_LINK=1\;-DEXT_AMP_REF\;-DMIC_LINK=3"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt711-l2-rt1316-l01\;-DHEADSET_DEEP_BUFFER\;-DPLATFORM=adl\;-DUAJ_LINK=2\;-DAMP_1_LINK=0\;-DAMP_2_LINK=1\;-DEXT_AMP_REF\;-DNO_LOCAL_MIC"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-2ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=2\;-DEXT_AMP\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=tgl"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-4ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DEXT_AMP\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=tgl"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-4ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=tgl"
+	"sof-tgl-rt711-rt1308\;sof-adl-rt711-4ch\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
+	"sof-tgl-rt711-rt1308\;sof-adl-rt711\;-DHEADSET_DEEP_BUFFER\;-DCHANNELS=0\;-DPLATFORM=adl"
+	## end SoundWire topologies
 )
 
 add_custom_target(kernel_dependent_v5_19_topologies1)
