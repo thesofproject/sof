@@ -31,6 +31,9 @@ set(TPLGS
 	"sof-imx8mp-compr-mp3-wm8960\;sof-imx8mp-compr-mp3-wm8960"
 	"sof-apl-nocodec-demux-eq-4ch4ch\;sof-apl-nocodec-demux-eq-4ch4ch"
 	"sof-apl-nocodec-demux-eq-2ch4ch\;sof-apl-nocodec-demux-eq-2ch4ch"
+
+	"sof-hda-generic-kwd\;sof-hda-generic-2ch-kwd\;-DCHANNELS=2\;-DDYNAMIC=1"
+	"sof-hda-generic-kwd\;sof-hda-generic-4ch-kwd\;-DCHANNELS=4\;-DDYNAMIC=1"
 )
 
 
