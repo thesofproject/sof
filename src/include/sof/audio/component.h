@@ -758,7 +758,7 @@ static inline void component_set_nearest_period_frames(struct comp_dev *current,
  * @param copy_bytes Requested size of data to be available.
  */
 static inline void comp_underrun(struct comp_dev *dev,
-				 struct comp_buffer *source,
+				 struct comp_buffer __sparse_cache *source,
 				 uint32_t copy_bytes)
 {
 	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
@@ -780,7 +780,7 @@ static inline void comp_underrun(struct comp_dev *dev,
  * @param sink Sink buffer.
  * @param copy_bytes Requested size of free space to be available.
  */
-static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
+static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer __sparse_cache *sink,
 				uint32_t copy_bytes)
 {
 	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
@@ -805,7 +805,7 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
  * @param[in] sink Sink buffer.
  * @param[out] cl Current copy limits.
  */
-void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
+void comp_get_copy_limits(struct comp_buffer __sparse_cache *source, struct comp_buffer __sparse_cache *sink,
 			  struct comp_copy_limits *cl);
 
 /**
@@ -821,13 +821,15 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    struct comp_copy_limits *cl)
 {
-	source = buffer_acquire(source);
-	sink = buffer_acquire(sink);
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 
-	comp_get_copy_limits(source, sink, cl);
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
 
-	source = buffer_release(source);
-	sink = buffer_release(sink);
+	comp_get_copy_limits(source_c, sink_c, cl);
+
+	buffer_release(source_c);
+	buffer_release(sink_c);
 }
 
 /**
