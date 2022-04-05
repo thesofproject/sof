@@ -68,9 +68,9 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #else
 
-extern uint8_t _end, _heap_sentry;
-#define heapmem ((uint8_t *)ALIGN_UP((uintptr_t)&_end, PLATFORM_DCACHE_ALIGN))
-#define HEAPMEM_SIZE (&_heap_sentry - heapmem)
+extern char _end[], _heap_sentry[];
+#define heapmem ((uint8_t *)ALIGN_UP((uintptr_t)_end, PLATFORM_DCACHE_ALIGN))
+#define HEAPMEM_SIZE ((uint8_t *)_heap_sentry - heapmem)
 
 #endif
 
