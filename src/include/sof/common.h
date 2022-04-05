@@ -113,6 +113,16 @@
 #define container_of(ptr, type, member) \
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
+/*
+ * typeof() doesn't preserve __attribute__((address_space(x))) sparse
+ * annotations, so if an object belongs to such an address space, using the
+ * original form of container_of() will lose that annotation, which then will
+ * lead to sparse "different address spaces" warnings. We need to explicitly
+ * re-inforce the address space onto the new pointer.
+ */
+#define attr_container_of(ptr, type, member, attr) \
+	({const typeof(((type *)0)->member) attr *__memberptr = (ptr); \
+	(type *)((char attr *)__memberptr - offsetof(type, member)); })
 
 #define ffs(i) __builtin_ffs(i)
 #define ffsl(i) __builtin_ffsl(i)
