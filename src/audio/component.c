@@ -149,7 +149,8 @@ void sys_comp_init(struct sof *sof)
 	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
-void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
+void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
+			  struct comp_buffer __sparse_cache *sink,
 			  struct comp_copy_limits *cl)
 {
 	cl->frames = audio_stream_avail_frames(&source->stream, &sink->stream);
@@ -165,6 +166,7 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	struct list_item *old_bsink_list = &dev->bsink_list;
 	struct list_item *buffer_list, *clist;
 	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 	int dir;
 
 	/* flush cache to share */
@@ -191,15 +193,17 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 		list_for_item(clist, buffer_list) {
 			buffer = buffer_from_list(clist, struct comp_buffer, dir);
 
-			buffer_set_comp(buffer, dev, dir);
+			buffer_c = buffer_acquire(buffer);
+			buffer_set_comp(buffer_c, dev, dir);
+			buffer_release(buffer_c);
 		}
 	}
 
 	return dev;
 }
 
-int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
-		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
+int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
+		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
 	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
@@ -223,8 +227,9 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
-void audio_stream_copy_from_linear(void *linear_source, int ioffset,
-				   struct audio_stream *sink, int ooffset, unsigned int samples)
+void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
+				   struct audio_stream __sparse_cache *sink, int ooffset,
+				   unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(sink); /* src fmt == sink fmt */
 	uint8_t *src = (uint8_t *)linear_source + ioffset * ssize;
@@ -243,7 +248,7 @@ void audio_stream_copy_from_linear(void *linear_source, int ioffset,
 	}
 }
 
-void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
+void audio_stream_copy_to_linear(const struct audio_stream __sparse_cache *source, int ioffset,
 				 void *linear_sink, int ooffset, unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */

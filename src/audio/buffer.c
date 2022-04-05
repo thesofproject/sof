@@ -29,6 +29,7 @@ DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 {
 	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 
 	tr_dbg(&buffer_tr, "buffer_alloc()");
 
@@ -55,15 +56,19 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer_init(buffer, size, caps);
-	coherent_init_thread(buffer, c);
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
+
+	coherent_init_thread(buffer, c);
+
+	buffer_c = buffer_acquire(buffer);
+	buffer_init(buffer_c, size, caps);
+	buffer_release(buffer_c);
 
 	return buffer;
 }
 
-void buffer_zero(struct comp_buffer *buffer)
+void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 
@@ -73,7 +78,7 @@ void buffer_zero(struct comp_buffer *buffer)
 					buffer->stream.size);
 }
 
-int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
+int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
 {
 	void *new_ptr = NULL;
 
@@ -105,8 +110,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	return 0;
 }
 
-int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
-		      bool force_update)
+int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
+		      struct sof_ipc_stream_params *params, bool force_update)
 {
 	int ret;
 	int i;
@@ -134,8 +139,8 @@ int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *
 	return 0;
 }
 
-bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
-			 uint32_t flag)
+bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
+			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
 

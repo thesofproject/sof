@@ -15,6 +15,7 @@
 #define __SOF_AUDIO_AUDIO_STREAM_H__
 
 #include <sof/audio/format.h>
+#include <sof/compiler_attributes.h>
 #include <sof/debug/panic.h>
 #include <sof/math/numbers.h>
 #include <sof/lib/alloc.h>
@@ -169,7 +170,7 @@ struct audio_stream {
  * @param params Parameters (frame format, rate, number of channels).
  * @return 0 if succeeded, error code otherwise.
  */
-static inline int audio_stream_set_params(struct audio_stream *buffer,
+static inline int audio_stream_set_params(struct audio_stream __sparse_cache *buffer,
 					  struct sof_ipc_stream_params *params)
 {
 	if (!params)
@@ -187,7 +188,7 @@ static inline int audio_stream_set_params(struct audio_stream *buffer,
  * @param buf Component buffer.
  * @return Period size in bytes.
  */
-static inline uint32_t audio_stream_frame_bytes(const struct audio_stream *buf)
+static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __sparse_cache *buf)
 {
 	return get_frame_bytes(buf->frame_fmt, buf->channels);
 }
@@ -197,7 +198,7 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream *buf)
  * @param buf Component buffer.
  * @return Size of sample in bytes.
  */
-static inline uint32_t audio_stream_sample_bytes(const struct audio_stream *buf)
+static inline uint32_t audio_stream_sample_bytes(const struct audio_stream __sparse_cache *buf)
 {
 	return get_sample_bytes(buf->frame_fmt);
 }
@@ -208,7 +209,7 @@ static inline uint32_t audio_stream_sample_bytes(const struct audio_stream *buf)
  * @param frames Number of processing frames.
  * @return Period size in bytes.
  */
-static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
+static inline uint32_t audio_stream_period_bytes(const struct audio_stream __sparse_cache *buf,
 						 uint32_t frames)
 {
 	return frames * audio_stream_frame_bytes(buf);
@@ -221,7 +222,7 @@ static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
  * @param ptr Pointer
  * @return Pointer, adjusted if necessary.
  */
-static inline void *audio_stream_wrap(const struct audio_stream *buffer,
+static inline void *audio_stream_wrap(const struct audio_stream __sparse_cache *buffer,
 				      void *ptr)
 {
 	if (ptr >= buffer->end_addr)
@@ -240,7 +241,8 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer,
  * @param ptr Pointer
  * @return Pointer, adjusted if necessary.
  */
-static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer, void *ptr)
+static inline void *audio_stream_rewind_wrap(const struct audio_stream __sparse_cache *buffer,
+					     void *ptr)
 {
 	if (ptr < buffer->addr)
 		ptr = (char *)buffer->end_addr - ((char *)buffer->addr - (char *)ptr);
@@ -256,7 +258,7 @@ static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer, 
  * @return amount of data available for processing in bytes
  */
 static inline uint32_t
-audio_stream_get_avail_bytes(const struct audio_stream *stream)
+audio_stream_get_avail_bytes(const struct audio_stream __sparse_cache *stream)
 {
 	/*
 	 * In case of underrun-permitted stream, report buffer full instead of
@@ -276,7 +278,7 @@ audio_stream_get_avail_bytes(const struct audio_stream *stream)
  * @return amount of data available for processing in samples
  */
 static inline uint32_t
-audio_stream_get_avail_samples(const struct audio_stream *stream)
+audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 {
 	return audio_stream_get_avail_bytes(stream) /
 		audio_stream_sample_bytes(stream);
@@ -288,7 +290,7 @@ audio_stream_get_avail_samples(const struct audio_stream *stream)
  * @return amount of data available for processing in frames
  */
 static inline uint32_t
-audio_stream_get_avail_frames(const struct audio_stream *stream)
+audio_stream_get_avail_frames(const struct audio_stream __sparse_cache *stream)
 {
 	return audio_stream_get_avail_bytes(stream) /
 		audio_stream_frame_bytes(stream);
@@ -300,7 +302,7 @@ audio_stream_get_avail_frames(const struct audio_stream *stream)
  * @return amount of space free in bytes
  */
 static inline uint32_t
-audio_stream_get_free_bytes(const struct audio_stream *stream)
+audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 {
 	/*
 	 * In case of overrun-permitted stream, report buffer empty instead of
@@ -320,7 +322,7 @@ audio_stream_get_free_bytes(const struct audio_stream *stream)
  * @return amount of space free in samples
  */
 static inline uint32_t
-audio_stream_get_free_samples(const struct audio_stream *stream)
+audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 {
 	return audio_stream_get_free_bytes(stream) /
 		audio_stream_sample_bytes(stream);
@@ -332,7 +334,7 @@ audio_stream_get_free_samples(const struct audio_stream *stream)
  * @return amount of space free in frames
  */
 static inline uint32_t
-audio_stream_get_free_frames(const struct audio_stream *stream)
+audio_stream_get_free_frames(const struct audio_stream __sparse_cache *stream)
 {
 	return audio_stream_get_free_bytes(stream) /
 		audio_stream_frame_bytes(stream);
@@ -348,8 +350,8 @@ audio_stream_get_free_frames(const struct audio_stream *stream)
  *  @return 1 if there is not enough free space in sink.
  *  @return -1 if there is not enough data in source.
  */
-static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
-					      const struct audio_stream *sink,
+static inline int audio_stream_can_copy_bytes(const struct audio_stream __sparse_cache *source,
+					      const struct audio_stream __sparse_cache *sink,
 					      uint32_t bytes)
 {
 	/* check for underrun */
@@ -373,8 +375,8 @@ static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
  * @return Number of bytes.
  */
 static inline uint32_t
-audio_stream_get_copy_bytes(const struct audio_stream *source,
-			    const struct audio_stream *sink)
+audio_stream_get_copy_bytes(const struct audio_stream __sparse_cache *source,
+			    const struct audio_stream __sparse_cache *sink)
 {
 	uint32_t avail = audio_stream_get_avail_bytes(source);
 	uint32_t free = audio_stream_get_free_bytes(sink);
@@ -394,8 +396,8 @@ audio_stream_get_copy_bytes(const struct audio_stream *source,
  * @return Number of frames.
  */
 static inline uint32_t
-audio_stream_avail_frames(const struct audio_stream *source,
-			  const struct audio_stream *sink)
+audio_stream_avail_frames(const struct audio_stream __sparse_cache *source,
+			  const struct audio_stream __sparse_cache *sink)
 {
 	uint32_t src_frames = audio_stream_get_avail_frames(source);
 	uint32_t sink_frames = audio_stream_get_free_frames(sink);
@@ -408,7 +410,7 @@ audio_stream_avail_frames(const struct audio_stream *source,
  * @param buffer Buffer to update.
  * @param bytes Number of written bytes.
  */
-static inline void audio_stream_produce(struct audio_stream *buffer,
+static inline void audio_stream_produce(struct audio_stream __sparse_cache *buffer,
 					uint32_t bytes)
 {
 	buffer->w_ptr = audio_stream_wrap(buffer,
@@ -436,7 +438,7 @@ static inline void audio_stream_produce(struct audio_stream *buffer,
  * @param buffer Buffer to update.
  * @param bytes Number of read bytes.
  */
-static inline void audio_stream_consume(struct audio_stream *buffer,
+static inline void audio_stream_consume(struct audio_stream __sparse_cache *buffer,
 					uint32_t bytes)
 {
 	buffer->r_ptr = audio_stream_wrap(buffer,
@@ -459,7 +461,7 @@ static inline void audio_stream_consume(struct audio_stream *buffer,
  * Resets the buffer.
  * @param buffer Buffer to reset.
  */
-static inline void audio_stream_reset(struct audio_stream *buffer)
+static inline void audio_stream_reset(struct audio_stream __sparse_cache *buffer)
 {
 	/* reset read and write pointer to buffer bas */
 	buffer->w_ptr = buffer->addr;
@@ -478,7 +480,7 @@ static inline void audio_stream_reset(struct audio_stream *buffer)
  * @param buff_addr Address of the memory block to assign.
  * @param size Size of the memory block in bytes.
  */
-static inline void audio_stream_init(struct audio_stream *buffer,
+static inline void audio_stream_init(struct audio_stream __sparse_cache *buffer,
 				     void *buff_addr, uint32_t size)
 {
 	buffer->size = size;
@@ -493,7 +495,7 @@ static inline void audio_stream_init(struct audio_stream *buffer,
  * @param buffer Buffer.
  * @param bytes Size of the fragment to invalidate.
  */
-static inline void audio_stream_invalidate(struct audio_stream *buffer,
+static inline void audio_stream_invalidate(struct audio_stream __sparse_cache *buffer,
 					   uint32_t bytes)
 {
 	uint32_t head_size = bytes;
@@ -517,7 +519,7 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer,
  * @param buffer Buffer.
  * @param bytes Size of the fragment to write back.
  */
-static inline void audio_stream_writeback(struct audio_stream *buffer,
+static inline void audio_stream_writeback(struct audio_stream __sparse_cache *buffer,
 					  uint32_t bytes)
 {
 	uint32_t head_size = bytes;
@@ -536,19 +538,17 @@ static inline void audio_stream_writeback(struct audio_stream *buffer,
 }
 
 /**
- * @brief Calculates numbers of bytes to buffer wrap and return
- *	  minimum of calculated value and given bytes number.
+ * @brief Calculates numbers of bytes to buffer wrap.
  * @param source Stream to get information from.
  * @param ptr Read or write pointer from source
- * @return Number of data samples to buffer wrap or given samples number.
+ * @return Number of data samples to buffer wrap.
  */
 static inline int
-audio_stream_bytes_without_wrap(const struct audio_stream *source,
+audio_stream_bytes_without_wrap(const struct audio_stream __sparse_cache *source,
 				const void *ptr)
 {
 	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
-	int to_end = (intptr_t)source->end_addr - (intptr_t)ptr;
-	return to_end;
+	return (intptr_t)source->end_addr - (intptr_t)ptr;
 }
 
 /**
@@ -560,7 +560,8 @@ audio_stream_bytes_without_wrap(const struct audio_stream *source,
  *	   need to add size of sample to returned bytes count.
  */
 static inline int
-audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
+audio_stream_rewind_bytes_without_wrap(const struct audio_stream __sparse_cache *source,
+				       const void *ptr)
 {
 	assert((intptr_t)ptr >= (intptr_t)source->addr);
 	int to_begin = (intptr_t)ptr - (intptr_t)source->addr;
@@ -575,7 +576,8 @@ audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const 
  * @return Number of data s16 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s16(const struct audio_stream *source, const void *ptr)
+audio_stream_samples_without_wrap_s16(const struct audio_stream __sparse_cache *source,
+				      const void *ptr)
 {
 	int to_end = (int16_t *)source->end_addr - (int16_t *)ptr;
 
@@ -591,7 +593,8 @@ audio_stream_samples_without_wrap_s16(const struct audio_stream *source, const v
  * @return Number of data s24 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s24(const struct audio_stream *source, const void *ptr)
+audio_stream_samples_without_wrap_s24(const struct audio_stream __sparse_cache *source,
+				      const void *ptr)
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
@@ -607,7 +610,8 @@ audio_stream_samples_without_wrap_s24(const struct audio_stream *source, const v
  * @return Number of data s32 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const void *ptr)
+audio_stream_samples_without_wrap_s32(const struct audio_stream __sparse_cache *source,
+				      const void *ptr)
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
@@ -623,7 +627,7 @@ audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const v
  * @return Number of data frames to buffer wrap.
  */
 static inline uint32_t
-audio_stream_frames_without_wrap(const struct audio_stream *source,
+audio_stream_frames_without_wrap(const struct audio_stream __sparse_cache *source,
 				 const void *ptr)
 {
 	uint32_t bytes = audio_stream_bytes_without_wrap(source, ptr);
@@ -641,8 +645,8 @@ audio_stream_frames_without_wrap(const struct audio_stream *source,
  * @param samples Number of samples to copy.
  * @return number of processed samples.
  */
-int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
-		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples);
+int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
+		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples);
 
 /**
  * Copies data from linear source buffer to circular sink buffer.
@@ -652,8 +656,9 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
  * @param ooffset Offset (in samples) in sink buffer to start writing to.
  * @param samples Number of samples to copy.
  */
-void audio_stream_copy_from_linear(void *linear_source, int ioffset,
-				   struct audio_stream *sink, int ooffset, unsigned int samples);
+void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
+				   struct audio_stream __sparse_cache *sink, int ooffset,
+				   unsigned int samples);
 
 /**
  * Copies data from circular source buffer to linear sink buffer.
@@ -663,7 +668,7 @@ void audio_stream_copy_from_linear(void *linear_source, int ioffset,
  * @param ooffset Offset (in samples) in sink buffer to start writing to.
  * @param samples Number of samples to copy.
  */
-void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
+void audio_stream_copy_to_linear(const struct audio_stream __sparse_cache *source, int ioffset,
 				 void *linear_sink, int ooffset, unsigned int samples);
 
 /**
@@ -673,8 +678,8 @@ void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
  * @return 0 if there is enough free space in buffer.
  * @return 1 if there is not enough free space in buffer.
  */
-static inline int audio_stream_set_zero(struct audio_stream *buffer,
-					  uint32_t bytes)
+static inline int audio_stream_set_zero(struct audio_stream __sparse_cache *buffer,
+					uint32_t bytes)
 {
 	uint32_t head_size = bytes;
 	uint32_t tail_size = 0;
@@ -698,8 +703,8 @@ static inline int audio_stream_set_zero(struct audio_stream *buffer,
 
 static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 					       enum ipc4_bit_depth valid,
-					       enum sof_ipc_frame *frame_fmt,
-					       enum sof_ipc_frame *valid_fmt,
+					       enum sof_ipc_frame __sparse_cache *frame_fmt,
+					       enum sof_ipc_frame __sparse_cache *valid_fmt,
 					       enum ipc4_sample_type type)
 {
 	/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)
