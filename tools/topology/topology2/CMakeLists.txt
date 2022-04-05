@@ -24,3 +24,4 @@ else()
 endif()
 
 add_subdirectory(cavs)
+add_subdirectory(development)
