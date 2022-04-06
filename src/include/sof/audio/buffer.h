@@ -198,9 +198,11 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer);
 
 /* called by a component after producing data into this buffer */
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
+void comp_update_buffer_cached_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes);
 
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
+void comp_update_buffer_cached_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes);
 
 int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update);
