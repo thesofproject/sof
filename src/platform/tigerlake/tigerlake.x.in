@@ -105,6 +105,7 @@ MEMORY
   fw_metadata_seg (!ari) :
         org = EXT_MANIFEST_ELF_BASE,
         len = EXT_MANIFEST_ELF_SIZE
+#if CONFIG_MULTICORE
   lpsram_alt_reset_vec_seg :
         org = LP_SRAM_ALT_RESET_VEC_BASE,
         len = LP_SRAM_ALT_RESET_VEC_SIZE
@@ -114,6 +115,7 @@ MEMORY
   lpsram_code_seg :
         org = LP_SRAM_CODE_BASE,
         len = LP_SRAM_CODE_SIZE
+#endif
   lpsram_mem :
         org = LP_SRAM_START,
         len = LP_SRAM_SIZE - (LP_SRAM_START - LP_SRAM_BASE)
@@ -374,6 +376,7 @@ SECTIONS
     _etext = .;
   } >sof_fw :sof_fw_phdr
 
+#if CONFIG_MULTICORE
   .AlternateResetVector.text : ALIGN(64)
   {
     _alternate_reset_vector_start = ABSOLUTE(.);
@@ -397,6 +400,7 @@ SECTIONS
     . = ALIGN(16);
     _lpsram_code_end = ABSOLUTE(.);
   } >lpsram_code_seg AT> sof_fw : lpsram_code_phdr
+#endif
 
   .rodata : ALIGN(4096)
   {
@@ -500,10 +504,12 @@ SECTIONS
     LONG(LOADADDR(.AlternateResetVector.text));
     LONG(ADDR(.AlternateResetVector.text));
     LONG(SIZEOF(.AlternateResetVector.text));
+#if CONFIG_MULTICORE
     /* Entry 2 */
     LONG(LOADADDR(.AlternateResetL2IntVector.text));
     LONG(ADDR(.AlternateResetL2IntVector.text));
     LONG(SIZEOF(.AlternateResetL2IntVector.text));
+#endif
 	/* Entry 3 */
 	LONG(LOADADDR(.LpsramCode.text));
     LONG(ADDR(.LpsramCode.text));
@@ -556,12 +562,12 @@ SECTIONS
     . = . + HEAP_SYSTEM_SHARED_SIZE;
     . = ALIGN (PLATFORM_DCACHE_ALIGN);
     _system_shared_heap_end = ABSOLUTE(.);
+#endif
 
     . = ALIGN (SRAM_BANK_SIZE);
     _sof_core_s_start = ABSOLUTE(.);
     . = . + SOF_CORE_S_T_SIZE;
     _sof_core_s_end = ABSOLUTE(.);
-#endif
 
     . = ALIGN (SRAM_BANK_SIZE);
     _runtime_heap_start = ABSOLUTE(.);
