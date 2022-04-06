@@ -19,5 +19,5 @@ jobs:
       # -e https_proxy=...
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             docker.io/zephyrprojectrtos/zephyr-build:latest
+             docker.io/zephyrprojectrtos/zephyr-build:v0.21.0
              ./zephyr/docker-build.sh -- -DEXTRA_CFLAGS='-Werror'
