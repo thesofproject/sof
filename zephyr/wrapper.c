@@ -243,7 +243,10 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	return heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		return heap_alloc_aligned(&sof_heap, alignment, bytes);
+	else
+		return heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
 }
 
 /*
