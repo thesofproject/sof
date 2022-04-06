@@ -106,8 +106,8 @@ struct comp_data {
 	int sink_frames;
 	int sample_container_bytes;
 	void (*src_func)(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink,
 			 int *consumed,
 			 int *produced);
 	void (*polyphase_func)(struct src_stage_prm *s);
@@ -335,16 +335,16 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 
 /* Fallback function */
 static void src_fallback(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink, int *n_read, int *n_written)
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
 {
 	*n_read = 0;
 	*n_written = 0;
 }
 
 /* Normal 2 stage SRC */
-static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
-		   struct audio_stream *sink, int *n_read, int *n_written)
+static void src_2s(struct comp_dev *dev, const struct audio_stream __sparse_cache *source,
+		   struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -435,8 +435,8 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 }
 
 /* 1 stage SRC for simple conversions */
-static void src_1s(struct comp_dev *dev, const struct audio_stream *source,
-		   struct audio_stream *sink, int *n_read, int *n_written)
+static void src_1s(struct comp_dev *dev, const struct audio_stream __sparse_cache *source,
+		   struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -461,8 +461,8 @@ static void src_1s(struct comp_dev *dev, const struct audio_stream *source,
 
 /* A fast copy function for same in and out rate */
 static void src_copy_sxx(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -529,7 +529,7 @@ static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *p
 	sinkb->stream.rate = cd->ipc_config.sink_rate;
 }
 
-static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer *sinkb)
+static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
@@ -568,7 +568,7 @@ static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 
 static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params) {}
 
-static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer *sinkb) {}
+static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb) {}
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif /* CONFIG_IPC_MAJOR_4 */
@@ -667,11 +667,11 @@ static int src_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	size_t delay_lines_size;
 	int32_t *buffer_start;
-	int n = 0;
+	int n;
 	int err;
 
 	comp_info(dev, "src_params()");
@@ -691,14 +691,19 @@ static int src_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	src_set_sink_params(dev, sinkb);
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
+	src_set_sink_params(dev, sink_c);
 
 	/* Set source/sink_rate/frames */
-	cd->source_rate = sourceb->stream.rate;
-	cd->sink_rate = sinkb->stream.rate;
+	cd->source_rate = source_c->stream.rate;
+	cd->sink_rate = sink_c->stream.rate;
 	if (!cd->sink_rate) {
 		comp_err(dev, "src_params(), zero sink rate");
-		return -EINVAL;
+
+		err = -EINVAL;
+		goto out;
 	}
 
 	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
@@ -708,12 +713,12 @@ static int src_params(struct comp_dev *dev,
 	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
 		  cd->source_rate, cd->sink_rate);
 	comp_info(dev, "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
-		  sourceb->stream.channels, sinkb->stream.channels, dev->frames);
+		  source_c->stream.channels, sink_c->stream.channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
-				 sourceb->stream.channels, cd->source_frames);
+				 source_c->stream.channels, cd->source_frames);
 	if (err < 0) {
 		comp_err(dev, "src_params(): src_buffer_lengths() failed");
-		return err;
+		goto out;
 	}
 
 	comp_info(dev, "src_params(), blk_in = %u, blk_out = %u",
@@ -722,7 +727,9 @@ static int src_params(struct comp_dev *dev,
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
 		comp_err(dev, "src_params(): delay_lines_size = 0");
-		return -EINVAL;
+
+		err = -EINVAL;
+		goto out;
 	}
 
 	/* free any existing delay lines. TODO reuse if same size */
@@ -733,7 +740,8 @@ static int src_params(struct comp_dev *dev,
 	if (!cd->delay_lines) {
 		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %u",
 			 delay_lines_size);
-		return -EINVAL;
+		err = -EINVAL;
+		goto out;
 	}
 
 	/* Clear all delay lines here */
@@ -765,10 +773,14 @@ static int src_params(struct comp_dev *dev,
 		 */
 		comp_info(dev, "src_params(), missing coefficients for requested rates combination");
 		cd->src_func = src_fallback;
-		return -EINVAL;
+		err = -EINVAL;
 	}
 
-	return 0;
+out:
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return err;
 }
 
 static int src_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
@@ -805,8 +817,8 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int src_get_copy_limits(struct comp_data *cd,
-			       const struct comp_buffer *source,
-			       const struct comp_buffer *sink)
+			       const struct comp_buffer __sparse_cache *source,
+			       const struct comp_buffer __sparse_cache *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
@@ -850,8 +862,8 @@ static int src_get_copy_limits(struct comp_data *cd,
 	return 0;
 }
 
-static void src_process(struct comp_dev *dev, struct comp_buffer *source,
-			struct comp_buffer *sink)
+static void src_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
+			struct comp_buffer __sparse_cache *sink)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int consumed = 0;
@@ -865,9 +877,9 @@ static void src_process(struct comp_dev *dev, struct comp_buffer *source,
 	comp_dbg(dev, "src_copy(), consumed = %u,  produced = %u",
 		 consumed, produced);
 
-	comp_update_buffer_consume(source, consumed *
+	comp_update_buffer_cached_consume(source, consumed *
 				   audio_stream_frame_bytes(&source->stream));
-	comp_update_buffer_produce(sink, produced *
+	comp_update_buffer_cached_produce(sink, produced *
 				   audio_stream_frame_bytes(&sink->stream));
 }
 
@@ -875,8 +887,8 @@ static void src_process(struct comp_dev *dev, struct comp_buffer *source,
 static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int ret;
 
 	comp_dbg(dev, "src_copy()");
@@ -887,30 +899,28 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	source = buffer_acquire(source);
-	sink = buffer_acquire(sink);
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
 
 	/* Get from buffers and SRC conversion specific block constraints
 	 * how many frames can be processed. If sufficient number of samples
 	 * is not available the processing is omitted.
 	 */
-	ret = src_get_copy_limits(cd, source, sink);
-
-	buffer_release(sink);
-	buffer_release(source);
-
-	if (ret) {
+	ret = src_get_copy_limits(cd, source_c, sink_c);
+	if (ret)
 		comp_dbg(dev, "No data to process.");
-		return 0;
-	}
+	else
+		src_process(dev, source_c, sink_c);
 
-	src_process(dev, source, sink);
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	return 0;
 }
 
 static int src_check_buffer_sizes(struct comp_data *cd,
-				  struct audio_stream *source_stream,
-				  struct audio_stream *sink_stream)
+				  struct audio_stream __sparse_cache *source_stream,
+				  struct audio_stream __sparse_cache *sink_stream)
 {
 	struct src_stage *s1 = cd->src.stage1;
 	struct src_stage *s2 = cd->src.stage2;
@@ -955,8 +965,8 @@ static int src_check_buffer_sizes(struct comp_data *cd,
 static int src_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 	int ret;
@@ -976,24 +986,25 @@ static int src_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* get source data format */
-	source_format = sourceb->stream.frame_fmt;
+	source_format = source_c->stream.frame_fmt;
 
 	/* get sink data format */
-	sink_format = sinkb->stream.frame_fmt;
+	sink_format = sink_c->stream.frame_fmt;
 
-	ret = src_check_buffer_sizes(cd, &sourceb->stream, &sinkb->stream);
-	if (ret < 0) {
-		comp_err(dev, "src_prepare(): source or sink buffer size is insufficient");
-		return ret;
-	}
+	ret = src_check_buffer_sizes(cd, &source_c->stream, &sink_c->stream);
+	if (ret < 0)
+		goto out;
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (source_format != sink_format) {
 		comp_err(dev, "src_prepare(): Source fmt %d and sink fmt %d are different.",
 			 source_format, sink_format);
 		ret = -EINVAL;
-		goto err;
+		goto out;
 	}
 
 	switch (source_format) {
@@ -1018,13 +1029,16 @@ static int src_prepare(struct comp_dev *dev)
 	default:
 		comp_err(dev, "src_prepare(): invalid format %d", source_format);
 		ret = -EINVAL;
-		goto err;
+		goto out;
 	}
 
-	return 0;
+out:
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	return ret;
 }
 
