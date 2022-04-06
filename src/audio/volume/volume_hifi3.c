@@ -73,12 +73,12 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample;
-	ae_f32x2 volume;
+	ae_f32x2 out_sample = AE_ZERO32();
+	ae_f32x2 volume = AE_ZERO32();
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
-	ae_valign inu;
-	ae_valign outu;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
 	int i;
 	ae_f32x2 *in = (ae_f32x2 *)source->r_ptr;
 	ae_f32x2 *out = (ae_f32x2 *)sink->w_ptr;
@@ -100,7 +100,6 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	 * avoid risk of buf not aligned to 64 bits.
 	 */
 	AE_LA32X2POS_PC(inu, in);
-	AE_SA64POS_FC(outu, out);
 
 	/* process two continuous sample data once */
 	for (i = 0; i < samples; i += 2) {
@@ -135,6 +134,7 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 
 		/* Store the output sample */
 		AE_SA32X2_IC(out_sample, outu, out);
+		AE_SA64POS_FC(outu, out);
 
 		/* calc peak vol
 		 * TODO: fix channel value
@@ -161,8 +161,8 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample;
-	ae_f32x2 volume;
+	ae_f32x2 out_sample = AE_ZERO32();
+	ae_f32x2 volume = AE_ZERO32();
 	int i;
 	ae_f64 mult0;
 	ae_f64 mult1;
@@ -174,8 +174,8 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	const int samples = channels_count * frames;
 	ae_f32x2 *in = (ae_f32x2 *)source->r_ptr;
 	ae_f32x2 *out = (ae_f32x2 *)sink->w_ptr;
-	ae_valign inu;
-	ae_valign outu;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
 
 	/** to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
@@ -190,7 +190,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	 * avoid risk of buf not aligned to 64 bits.
 	 */
 	AE_LA32X2POS_PC(inu, in);
-	AE_SA64POS_FC(outu, out);
+
 
 	/* process two continuous sample data once */
 	for (i = 0; i < samples; i += 2) {
@@ -224,6 +224,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 #endif
 		vol_setup_circular(sink);
 		AE_SA32X2_IC(out_sample, outu, out);
+		AE_SA64POS_FC(outu, out);
 
 		/* calc peak vol
 		 * TODO: fix channel value
@@ -248,7 +249,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
-	ae_f32x2 volume0, volume1;
+	ae_f32x2 volume0 = AE_ZERO32();
+	ae_f32x2 volume1 = AE_ZERO32();
 	ae_f32x2 out_sample0, out_sample1;
 	ae_f16x4 in_sample = AE_ZERO16();
 	ae_f16x4 out_sample = AE_ZERO16();
@@ -256,8 +258,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
-	ae_valign inu;
-	ae_valign outu;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)source->r_ptr;
 	ae_f16x4 *out = (ae_f16x4 *)sink->w_ptr;
 	const int channels_count = sink->channels;
@@ -278,7 +280,6 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 	 * risk of buf not aligned to 8-byte
 	 */
 	AE_LA16X4POS_PC(inu, in);
-	AE_SA64POS_FC(outu, out);
 
 	for (i = 0; i < samples; i += 4) {
 		/* Set buf as circular buffer */
@@ -321,6 +322,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 		/* store the output */
 		out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
 		AE_SA16X4_IC(out_sample, outu, out);
+		AE_SA64POS_FC(outu, out);
 
 		/* calc peak vol
 		 * TODO: fix channel value
