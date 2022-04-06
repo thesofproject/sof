@@ -22,8 +22,8 @@ struct comp_dev;
 
 /** \brief Type definition for processing function select return value. */
 typedef void (*eq_iir_func)(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct audio_stream __sparse_cache *source,
+			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames);
 
 /** \brief IIR EQ processing functions map item. */
