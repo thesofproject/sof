@@ -16,6 +16,7 @@
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <sof/common.h>
+#include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
@@ -46,8 +47,8 @@
 #define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
 
 typedef void (*asrc_proc_func)(struct comp_dev *dev,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
+			       const struct audio_stream __sparse_cache *source,
+			       struct audio_stream __sparse_cache *sink,
 			       int *consumed,
 			       int *produced);
 
@@ -123,8 +124,8 @@ static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -193,8 +194,8 @@ static void src_copy_s32(struct comp_dev *dev,
 }
 
 static void src_copy_s16(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -515,8 +516,8 @@ static int asrc_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *pcm_params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int err;
 
 	comp_info(dev, "asrc_params()");
@@ -532,13 +533,20 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
-		sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
+		sink_c->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = sourceb->stream.rate;
-	cd->sink_rate = sinkb->stream.rate;
+	cd->source_rate = source_c->stream.rate;
+	cd->sink_rate = sink_c->stream.rate;
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	if (!cd->sink_rate) {
 		comp_err(dev, "asrc_params(), zero sink rate");
 		return -EINVAL;
@@ -566,12 +574,10 @@ static int asrc_params(struct comp_dev *dev,
 	return 0;
 }
 
-static int asrc_dai_find(struct comp_dev *dev,
-			 struct comp_data *cd,
-			 struct comp_buffer *sinkb,
-			 struct comp_buffer *sourceb)
+static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 {
-	struct comp_dev *next_dev;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int pid;
 
 	/* Get current pipeline ID and walk to find the DAI */
@@ -579,44 +585,48 @@ static int asrc_dai_find(struct comp_dev *dev,
 	cd->dai_dev = NULL;
 	if (cd->mode == ASRC_OM_PUSH) {
 		/* In push mode check if sink component is DAI */
-		next_dev = sinkb->sink;
-		while (dev_comp_type(next_dev) != SOF_COMP_DAI) {
-			sinkb = list_first_item(&next_dev->bsink_list,
-						struct comp_buffer,
-						source_list);
-			next_dev = sinkb->sink;
-			if (!next_dev) {
+		do {
+			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+			sink_c = buffer_acquire(sinkb);
+			dev = sink_c->sink;
+			buffer_release(sink_c);
+
+			if (!dev) {
 				comp_cl_err(&comp_asrc, "At end, no DAI found.");
 				return -EINVAL;
 			}
 
-			if (dev_comp_pipe_id(next_dev) != pid) {
+			if (dev_comp_pipe_id(dev) != pid) {
 				comp_cl_err(&comp_asrc, "No DAI sink in pipeline.");
 				return -EINVAL;
 			}
-		}
+
+		} while (dev_comp_type(dev) != SOF_COMP_DAI);
 	} else {
 		/* In pull mode check if source component is DAI */
-		next_dev = sourceb->source;
-		while (dev_comp_type(next_dev) != SOF_COMP_DAI) {
-			sourceb = list_first_item(&next_dev->bsource_list,
-						  struct comp_buffer,
-						  sink_list);
-			next_dev = sourceb->source;
-			if (!next_dev) {
+		do {
+			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+
+			source_c = buffer_acquire(sourceb);
+			dev = source_c->source;
+			buffer_release(source_c);
+
+			if (!dev) {
 				comp_cl_err(&comp_asrc, "At beginning, no DAI found.");
 				return -EINVAL;
 			}
 
-			if (dev_comp_pipe_id(next_dev) != pid) {
+			if (dev_comp_pipe_id(dev) != pid) {
 				comp_cl_err(&comp_asrc, "No DAI source in pipeline.");
 				return -EINVAL;
 			}
-		}
+		} while (dev_comp_type(dev) != SOF_COMP_DAI);
 	}
 
 	/* Point dai_dev to found DAI */
-	cd->dai_dev = next_dev;
+	cd->dai_dev = dev;
+
 	return 0;
 }
 
@@ -667,8 +677,6 @@ static int asrc_dai_get_timestamp(struct comp_data *cd,
 
 static int asrc_trigger(struct comp_dev *dev, int cmd)
 {
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
@@ -676,9 +684,7 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 
 	/* Enable timestamping in pipeline DAI */
 	if (cmd == COMP_TRIGGER_START && cd->track_drift) {
-		sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		ret = asrc_dai_find(dev, cd, sinkb, sourceb);
+		ret = asrc_dai_find(dev, cd);
 		if (ret) {
 			comp_err(dev, "No DAI found to track");
 			cd->track_drift = false;
@@ -700,8 +706,8 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int sample_bytes;
@@ -727,19 +733,22 @@ static int asrc_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->stream.frame_fmt;
-	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
+	cd->source_format = source_c->stream.frame_fmt;
+	source_period_bytes = audio_stream_period_bytes(&source_c->stream,
 							cd->source_frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->stream.frame_fmt;
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+	cd->sink_format = sink_c->stream.frame_fmt;
+	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      cd->sink_frames);
 
-	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
+	if (sink_c->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "asrc_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
+			 sink_c->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -757,7 +766,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/* ASRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (sourceb->stream.frame_fmt) {
+	switch (source_c->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->asrc_func = src_copy_s16;
 		break;
@@ -775,7 +784,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/* Allocate input and output data buffer for ASRC processing */
-	frame_bytes = audio_stream_frame_bytes(&sourceb->stream);
+	frame_bytes = audio_stream_frame_bytes(&source_c->stream);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
@@ -789,7 +798,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	sample_bytes = frame_bytes / sourceb->stream.channels;
+	sample_bytes = frame_bytes / source_c->stream.channels;
 	for (i = 0; i < sourceb->stream.channels; i++) {
 		cd->ibuf[i] = cd->buf + i * sample_bytes;
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
@@ -798,7 +807,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/* Get required size and allocate memory for ASRC */
 	sample_bits = sample_bytes * 8;
 	ret = asrc_get_required_size(dev, &cd->asrc_size,
-				     sourceb->stream.channels,
+				     source_c->stream.channels,
 				     sample_bits);
 	if (ret) {
 		comp_err(dev, "asrc_prepare(), get_required_size_bytes failed");
@@ -824,7 +833,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		fs_sec = cd->source_rate;
 	}
 
-	ret = asrc_initialise(dev, cd->asrc_obj, sourceb->stream.channels,
+	ret = asrc_initialise(dev, cd->asrc_obj, source_c->stream.channels,
 			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
@@ -872,6 +881,8 @@ err_free_buf:
 	cd->buf = NULL;
 
 err:
+	buffer_release(sink_c);
+	buffer_release(source_c);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 }
@@ -947,8 +958,8 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
-			 struct comp_buffer *sink)
+static void asrc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
+			 struct comp_buffer __sparse_cache *sink)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int consumed = 0;
@@ -963,9 +974,9 @@ static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
 	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
 		 consumed, produced);
 
-	comp_update_buffer_consume(source, consumed *
+	comp_update_buffer_cached_consume(source, consumed *
 				   audio_stream_frame_bytes(&source->stream));
-	comp_update_buffer_produce(sink, produced *
+	comp_update_buffer_cached_produce(sink, produced *
 				   audio_stream_frame_bytes(&sink->stream));
 }
 
@@ -973,8 +984,8 @@ static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
 static int asrc_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int frames_src;
 	int frames_snk;
 	int ret;
@@ -991,14 +1002,11 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	source = buffer_acquire(source);
-	sink = buffer_acquire(sink);
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
 
-	frames_src = audio_stream_get_avail_frames(&source->stream);
-	frames_snk = audio_stream_get_free_frames(&sink->stream);
-
-	buffer_release(sink);
-	buffer_release(source);
+	frames_src = audio_stream_get_avail_frames(&source_c->stream);
+	frames_snk = audio_stream_get_free_frames(&sink_c->stream);
 
 	if (cd->mode == ASRC_OM_PULL) {
 		/* Let ASRC access max number of source frames in pull mode.
@@ -1024,7 +1032,10 @@ static int asrc_copy(struct comp_dev *dev)
 	}
 
 	if (cd->source_frames && cd->sink_frames)
-		asrc_process(dev, source, sink);
+		asrc_process(dev, source_c, sink_c);
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	return 0;
 }
