@@ -118,7 +118,7 @@ typedef void (*vol_scale_func)(struct processing_module *mod, struct input_strea
 /**
  * \brief volume interface for function getting nearest zero crossing frame
  */
-typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
+typedef uint32_t (*vol_zc_func)(const struct audio_stream __sparse_cache *source,
 				uint32_t frames, int64_t *prev_sum);
 
 /**
@@ -182,14 +182,12 @@ struct comp_zc_func_map {
 /**
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
+ * \param[in] sinkb Sink buffer to match against
  */
-static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
+static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
+							 struct comp_buffer __sparse_cache *sinkb)
 {
-	struct comp_buffer *sinkb;
 	int i;
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < volume_func_count; i++) {
@@ -205,13 +203,12 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 /**
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
+ * \param[in] sinkb Sink buffer to match against
  */
-static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
+static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
+							 struct comp_buffer __sparse_cache *sinkb)
 {
-	LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
-
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct vol_data *cd = module_get_private_data(mod);
+	struct vol_data *cd = comp_get_drvdata(dev);
 
 	switch (cd->base.audio_fmt.depth) {
 	case IPC4_DEPTH_16BIT:
