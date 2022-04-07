@@ -12,6 +12,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
+#include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -365,42 +366,57 @@ int pipeline_for_each_comp(struct comp_dev *current,
 {
 	struct list_item *buffer_list = comp_buffer_list(current, dir);
 	struct list_item *clist;
-	struct comp_buffer *buffer;
-	struct comp_dev *buffer_comp;
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
-		buffer = buffer_from_list(clist, struct comp_buffer, dir);
+		struct comp_buffer *buffer = buffer_from_list(clist, struct comp_buffer, dir);
+		struct comp_buffer __sparse_cache *buffer_c;
+		struct comp_dev *buffer_comp;
+		int err = 0;
+
+		if (ctx->incoming == buffer)
+			continue;
 
 		/* don't go back to the buffer which already walked */
+		/*
+		 * Note, that this access must be performed unlocked via
+		 * uncached address. Trying to lock before checking the flag
+		 * understandably leads to a deadlock when this function is
+		 * called recursively from .comp_func() below. We do it in a
+		 * safe way: this flag must *only* be accessed in this function
+		 * only in these three cases: testing, setting and clearing.
+		 * Note, that it is also assumed that buffers aren't shared
+		 * across CPUs. See further comment below.
+		 */
 		if (buffer->walking)
 			continue;
 
+		buffer_c = buffer_acquire(buffer);
+
 		/* execute operation on buffer */
 		if (ctx->buff_func)
-			ctx->buff_func(buffer, ctx->buff_data);
+			ctx->buff_func(buffer_c, ctx->buff_data);
 
-		buffer_comp = buffer_get_comp(buffer, dir);
+		buffer_comp = buffer_get_comp(buffer_c, dir);
 
 		/* don't go further if this component is not connected */
-		if (!buffer_comp ||
-		    (ctx->skip_incomplete && !buffer_comp->pipeline))
-			continue;
+		if (buffer_comp &&
+		    (!ctx->skip_incomplete || buffer_comp->pipeline) &&
+		    ctx->comp_func) {
+			buffer_c->walking = true;
+			buffer_release(buffer_c);
 
-		/* continue further */
-		if (ctx->comp_func) {
-			buffer = buffer_acquire(buffer);
-			buffer->walking = true;
-			buffer = buffer_release(buffer);
+			err = ctx->comp_func(buffer_comp, buffer,
+					     ctx, dir);
 
-			int err = ctx->comp_func(buffer_comp, buffer,
-						 ctx, dir);
-			buffer = buffer_acquire(buffer);
-			buffer->walking = false;
-			buffer = buffer_release(buffer);
-			if (err < 0 || err == PPL_STATUS_PATH_STOP)
-				return err;
+			buffer_c = buffer_acquire(buffer);
+			buffer_c->walking = false;
 		}
+
+		buffer_release(buffer_c);
+
+		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+			return err;
 	}
 
 	return 0;
