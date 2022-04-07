@@ -83,8 +83,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	void *buffer_ptr;
 	int ret;
 
@@ -101,51 +100,60 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		next->status = DMA_CB_STATUS_END;
 	}
 
+	dma_buf = buffer_acquire(dd->dma_buffer);
+
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
 		/* make sure we only playback silence during an XRUN */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
-			buffer_zero(dd->dma_buffer);
+			buffer_zero(dma_buf);
+		buffer_release(dma_buf);
 
 		return;
 	}
 
+	local_buf = buffer_acquire(dd->local_buffer);
+
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
+		ret = dma_buffer_copy_to(local_buf, dma_buf,
 					 dd->process, bytes);
 
-		buffer_ptr = dd->local_buffer->stream.r_ptr;
+		buffer_ptr = local_buf->stream.r_ptr;
 	} else {
-		ret = dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
+		ret = dma_buffer_copy_from(dma_buf, local_buf,
 					   dd->process, bytes);
 
-		buffer_ptr = dd->local_buffer->stream.w_ptr;
+		buffer_ptr = local_buf->stream.w_ptr;
 	}
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
-		source = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					dd->local_buffer : dd->dma_buffer;
-		sink = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					dd->dma_buffer : dd->local_buffer;
+		struct comp_buffer __sparse_cache *source_c, *sink_c;
+
+		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					local_buf : dma_buf;
+		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					dma_buf : local_buf;
 		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
-			 audio_stream_get_avail_samples(&source->stream) *
-				audio_stream_frame_bytes(&source->stream),
-			 audio_stream_get_free_samples(&sink->stream) *
-				audio_stream_frame_bytes(&sink->stream));
-		return;
+			 audio_stream_get_avail_samples(&source_c->stream) *
+				audio_stream_frame_bytes(&source_c->stream),
+			 audio_stream_get_free_samples(&sink_c->stream) *
+				audio_stream_frame_bytes(&sink_c->stream));
+	} else {
+		/* update host position (in bytes offset) for drivers */
+		dev->position += bytes;
+		if (dd->dai_pos) {
+			dd->dai_pos_blks += bytes;
+			*dd->dai_pos = dd->dai_pos_blks +
+				(char *)buffer_ptr -
+				(char *)dma_buf->stream.addr;
+		}
 	}
 
-	/* update host position (in bytes offset) for drivers */
-	dev->position += bytes;
-	if (dd->dai_pos) {
-		dd->dai_pos_blks += bytes;
-		*dd->dai_pos = dd->dai_pos_blks +
-			       (char *)buffer_ptr -
-			       (char *)dd->dma_buffer->stream.addr;
-	}
+	buffer_release(local_buf);
+	buffer_release(dma_buf);
 }
 
 static struct comp_dev *dai_new(const struct comp_driver *drv,
@@ -318,10 +326,14 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
 	struct dma_block_config *prev;
-	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
-	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
+	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
+		*local_buf = buffer_acquire(dd->local_buffer);
+	uint32_t local_fmt = local_buf->stream.frame_fmt;
+	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
 	uint32_t fifo;
-	int i, err;
+	int i, err = 0;
+
+	buffer_release(local_buf);
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
@@ -329,7 +341,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dd->process) {
 		comp_err(dev, "dai_playback_params(): converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		return -EINVAL;
+		err = -EINVAL;
+		goto out;
 	}
 
 	/* set up DMA configuration */
@@ -357,12 +370,12 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->stream.addr),
+				   (uintptr_t)(dma_buf->stream.addr),
 				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
-			return err;
+			goto out;
 		}
 	}
 
@@ -371,7 +384,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
 		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto out;
 	}
 
 	dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
@@ -388,7 +402,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	dma_cfg->user_data = NULL;
 	dma_cfg->dma_callback = NULL;
 	dma_cfg->block_count = config->elem_array.count;
-	dma_cfg->dma_slot =  config->dest_dev;
+	dma_cfg->dma_slot = config->dest_dev;
 
 	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
 				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
@@ -396,10 +410,11 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dma_block_cfg) {
 		rfree(dma_cfg);
 		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto out;
 	}
 
-	dma_cfg->head_block  = dma_block_cfg;
+	dma_cfg->head_block = dma_block_cfg;
 	for (i = 0; i < dma_cfg->block_count; i++) {
 		dma_block_cfg->dest_scatter_en = config->scatter;
 		dma_block_cfg->block_size = config->elem_array.elems[i].size;
@@ -411,7 +426,10 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
-	return 0;
+out:
+	buffer_release(dma_buf);
+
+	return err;
 }
 
 static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
@@ -422,10 +440,14 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
 	struct dma_block_config *prev;
-	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
-	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
+	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
+		*local_buf = buffer_acquire(dd->local_buffer);
+	uint32_t local_fmt = local_buf->stream.frame_fmt;
+	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
 	uint32_t fifo;
-	int i, err;
+	int i, err = 0;
+
+	buffer_release(local_buf);
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
@@ -433,7 +455,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dd->process) {
 		comp_err(dev, "dai_capture_params(): converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		return -EINVAL;
+		err = -EINVAL;
+		goto out;
 	}
 
 	/* set up DMA configuration */
@@ -472,12 +495,12 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->stream.addr),
+				   (uintptr_t)(dma_buf->stream.addr),
 				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
-			return err;
+			goto out;
 		}
 	}
 
@@ -486,7 +509,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
 		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto out;
 	}
 
 	dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
@@ -503,7 +527,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	dma_cfg->user_data = NULL;
 	dma_cfg->dma_callback = NULL;
 	dma_cfg->block_count = config->elem_array.count;
-	dma_cfg->dma_slot =  config->src_dev;
+	dma_cfg->dma_slot = config->src_dev;
 
 	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
 				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
@@ -511,10 +535,11 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dma_block_cfg) {
 		rfree(dma_cfg);
 		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto out;
 	}
 
-	dma_cfg->head_block  = dma_block_cfg;
+	dma_cfg->head_block = dma_block_cfg;
 	for (i = 0; i < dma_cfg->block_count; i++) {
 		dma_block_cfg->dest_scatter_en = config->scatter;
 		dma_block_cfg->block_size = config->elem_array.elems[i].size;
@@ -526,7 +551,10 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
-	return 0;
+out:
+	buffer_release(dma_buf);
+
+	return err;
 }
 
 static int dai_params(struct comp_dev *dev,
@@ -534,6 +562,7 @@ static int dai_params(struct comp_dev *dev,
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
 	uint32_t period_bytes;
@@ -607,9 +636,13 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+	buffer_c = buffer_acquire(dd->local_buffer);
+
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     dd->local_buffer->stream.channels);
+				     buffer_c->stream.channels);
+
+	buffer_release(buffer_c);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -625,7 +658,10 @@ static int dai_params(struct comp_dev *dev,
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
-		err = buffer_set_size(dd->dma_buffer, buffer_size);
+		buffer_c = buffer_acquire(dd->dma_buffer);
+		err = buffer_set_size(buffer_c, buffer_size);
+		buffer_release(buffer_c);
+
 		if (err < 0) {
 			comp_err(dev, "dai_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
@@ -646,8 +682,10 @@ static int dai_params(struct comp_dev *dev,
 		 * frame_fmt's (using pcm converter).
 		 */
 		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
-		buffer_set_params(dd->dma_buffer, &hw_params,
+		buffer_c = buffer_acquire(dd->dma_buffer);
+		buffer_set_params(buffer_c, &hw_params,
 				  BUFFER_UPDATE_FORCE);
+		buffer_release(buffer_c);
 	}
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
@@ -710,6 +748,7 @@ static int dai_config_prepare(struct comp_dev *dev)
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
 
 	comp_info(dev, "dai_prepare()");
@@ -740,7 +779,9 @@ static int dai_prepare(struct comp_dev *dev)
 	}
 
 	/* clear dma buffer to avoid pop noise */
-	buffer_zero(dd->dma_buffer);
+	buffer_c = buffer_acquire(dd->dma_buffer);
+	buffer_zero(buffer_c);
+	buffer_release(buffer_c);
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -840,8 +881,13 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		 * then there is no history data sent out after release.
 		 * this is only supported at capture mode.
 		 */
-		if (dev->direction == SOF_IPC_STREAM_CAPTURE)
-			buffer_zero(dd->dma_buffer);
+		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
+			struct comp_buffer __sparse_cache *buffer_c =
+				buffer_acquire(dd->dma_buffer);
+
+			buffer_zero(buffer_c);
+			buffer_release(buffer_c);
+		}
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -972,23 +1018,25 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(dd->local_buffer);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
-		comp_underrun(dev, dd->local_buffer, bytes);
+		comp_underrun(dev, buf_c, bytes);
 	} else {
 		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
-		comp_overrun(dev, dd->local_buffer, bytes);
+		comp_overrun(dev, buf_c, bytes);
 	}
+
+	buffer_release(buf_c);
 }
 
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
-	const uint32_t sampling = get_sample_bytes(dma_fmt);
-	struct comp_buffer *buf = dd->local_buffer;
+	uint32_t dma_fmt;
+	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
 	struct dma_status stat;
 	uint32_t avail_bytes = 0;
@@ -1010,7 +1058,14 @@ static int dai_copy(struct comp_dev *dev)
 	avail_bytes = stat.pending_length;
 	free_bytes = stat.free;
 
-	buf_c = buffer_acquire(buf);
+	buf_c = buffer_acquire(dd->dma_buffer);
+
+	dma_fmt = buf_c->stream.frame_fmt;
+	sampling = get_sample_bytes(dma_fmt);
+
+	buffer_release(buf_c);
+
+	buf_c = buffer_acquire(dd->local_buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -1030,11 +1085,11 @@ static int dai_copy(struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	buffer_release(buf_c);
-
 	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
-		 samples / buf->stream.channels);
+		 samples / buf_c->stream.channels);
+
+	buffer_release(buf_c);
 
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
