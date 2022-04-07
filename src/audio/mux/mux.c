@@ -335,11 +335,11 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 }
 
 static void mux_prepare_active_look_up(struct comp_dev *dev,
-				       struct audio_stream *sink,
-				       const struct audio_stream **sources)
+				       struct audio_stream __sparse_cache *sink,
+				       const struct audio_stream __sparse_cache **sources)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const struct audio_stream *source;
+	const struct audio_stream __sparse_cache *source;
 	uint8_t active_elem;
 	uint8_t elem;
 
@@ -367,8 +367,8 @@ static void mux_prepare_active_look_up(struct comp_dev *dev,
 }
 
 static void demux_prepare_active_look_up(struct comp_dev *dev,
-					 struct audio_stream *sink,
-					 const struct audio_stream *source,
+					 struct audio_stream __sparse_cache *sink,
+					 const struct audio_stream __sparse_cache *source,
 					 struct mux_look_up *look_up)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -398,9 +398,9 @@ static void demux_prepare_active_look_up(struct comp_dev *dev,
 static int demux_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	struct comp_buffer *sinks[MUX_MAX_STREAMS] = { NULL };
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer __sparse_cache *sinks[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_up;
 	struct list_item *clist;
@@ -409,7 +409,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t avail;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
-	int i;
+	int i, ret = 0;
 
 	comp_dbg(dev, "demux_copy()");
 
@@ -422,54 +422,49 @@ static int demux_copy(struct comp_dev *dev)
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
-		sink = buffer_acquire(sink);
-		if (sink->sink->state == dev->state) {
+		sink_c = buffer_acquire(sink);
+
+		if (sink_c->sink->state == dev->state) {
 			num_sinks++;
-			i = get_stream_index(cd, sink->pipeline_id);
+			i = get_stream_index(cd, sink_c->pipeline_id);
 			/* return if index wrong */
-			if (i < 0)
-				return i;
-			look_up = get_lookup_table(cd, sink->pipeline_id);
-			sinks[i] = sink;
+			if (i < 0) {
+				ret = i;
+				goto out_sink;
+			}
+			look_up = get_lookup_table(cd, sink_c->pipeline_id);
+			sinks[i] = sink_c;
 			look_ups[i] = look_up;
+		} else {
+			buffer_release(sink_c);
 		}
-		sink = buffer_release(sink);
 	}
 
-	/* if there are no sinks active */
+	/* if there are no sinks active, then sinks[] is also empty */
 	if (num_sinks == 0)
 		return 0;
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-
-	source = buffer_acquire(source);
+	source_c = buffer_acquire(source);
 
 	/* check if source is active */
-	if (source->source->state != dev->state) {
-		source = buffer_release(source);
-		return 0;
-	}
+	if (source_c->source->state != dev->state)
+		goto out_source;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		sinks[i] = buffer_acquire(sinks[i]);
-		avail = audio_stream_avail_frames(&source->stream,
+		avail = audio_stream_avail_frames(&source_c->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_release(sinks[i]);
 	}
 
-	source = buffer_release(source);
-
-	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sinks[i])
-			continue;
-		sinks_bytes[i] = frames *
-				 audio_stream_frame_bytes(&sinks[i]->stream);
-	}
+	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (sinks[i])
+			sinks_bytes[i] = frames *
+				audio_stream_frame_bytes(&sinks[i]->stream);
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
@@ -477,32 +472,39 @@ static int demux_copy(struct comp_dev *dev)
 			continue;
 
 		demux_prepare_active_look_up(dev, &sinks[i]->stream,
-					     &source->stream, look_ups[i]);
-		buffer_stream_invalidate(source, source_bytes);
-		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
+					     &source_c->stream, look_ups[i]);
+		buffer_stream_invalidate(source_c, source_bytes);
+		cd->demux(dev, &sinks[i]->stream, &source_c->stream, frames,
 			  &cd->active_lookup);
 		buffer_stream_writeback(sinks[i], sinks_bytes[i]);
 	}
 
 	/* update components */
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sinks[i])
-			continue;
-		comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
-	}
-	comp_update_buffer_consume(source, source_bytes);
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (sinks[i])
+			comp_update_buffer_cached_produce(sinks[i], sinks_bytes[i]);
 
-	return 0;
+	comp_update_buffer_cached_consume(source_c, source_bytes);
+
+out_source:
+	buffer_release(source_c);
+out_sink:
+	/* Release buffers in reverse order */
+	for (i = MUX_MAX_STREAMS - 1; i >= 0; i--)
+		if (sinks[i])
+			buffer_release(sinks[i]);
+
+	return ret;
 }
 
 /* process and copy stream data from source to sink buffers */
 static int mux_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	struct comp_buffer *sources[MUX_MAX_STREAMS] = { NULL };
-	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer __sparse_cache *sources[MUX_MAX_STREAMS] = { NULL };
+	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	struct list_item *clist;
 	uint32_t num_sources = 0;
 	uint32_t frames = -1;
@@ -521,17 +523,24 @@ static int mux_copy(struct comp_dev *dev)
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
-		source = buffer_acquire(source);
-		if (source->source->state == dev->state) {
+		source_c = buffer_acquire(source);
+
+		if (source_c->source->state == dev->state) {
 			num_sources++;
-			i = get_stream_index(cd, source->pipeline_id);
+			i = get_stream_index(cd, source_c->pipeline_id);
 			/* return if index wrong */
-			if (i < 0)
+			if (i < 0) {
+				unsigned int j;
+
+				for (j = 0; j < MUX_MAX_STREAMS; j++)
+					if (sources[j])
+						buffer_release(sources[j]);
 				return i;
-			sources[i] = source;
-			sources_stream[i] = &source->stream;
+			}
+			sources[i] = source_c;
+			sources_stream[i] = &source_c->stream;
 		} else {
-			source = buffer_release(source);
+			buffer_release(source_c);
 		}
 	}
 
@@ -542,31 +551,20 @@ static int mux_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	sink = buffer_acquire(sink);
+	sink_c = buffer_acquire(sink);
 
 	/* check if sink is active */
-	if (sink->sink->state != dev->state) {
-		for (i = 0; i < MUX_MAX_STREAMS; i++) {
-			if (!sources[i])
-				continue;
-			buffer_release(sources[i]);
-		}
-
-		sink = buffer_release(sink);
-		return 0;
-	}
+	if (sink_c->sink->state != dev->state)
+		goto out;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		uint32_t avail_frames;
 		if (!sources[i])
 			continue;
 		avail_frames = audio_stream_avail_frames(sources_stream[i],
-							 &sink->stream);
+							 &sink_c->stream);
 		frames = MIN(frames, avail_frames);
-		sources[i] = buffer_release(sources[i]);
 	}
-
-	sink = buffer_release(sink);
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
@@ -575,22 +573,27 @@ static int mux_copy(struct comp_dev *dev)
 				   audio_stream_frame_bytes(sources_stream[i]);
 		buffer_stream_invalidate(sources[i], sources_bytes[i]);
 	}
-	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
 
-	mux_prepare_active_look_up(dev, &sink->stream, &sources_stream[0]);
+	mux_prepare_active_look_up(dev, &sink_c->stream, &sources_stream[0]);
 
 	/* produce output */
-	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
+	cd->mux(dev, &sink_c->stream, &sources_stream[0], frames,
 		&cd->active_lookup);
-	buffer_stream_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink_c, sink_bytes);
 
 	/* update components */
-	comp_update_buffer_produce(sink, sink_bytes);
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sources[i])
-			continue;
-		comp_update_buffer_consume(sources[i], sources_bytes[i]);
-	}
+	comp_update_buffer_cached_produce(sink_c, sink_bytes);
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (sources[i])
+			comp_update_buffer_cached_consume(sources[i], sources_bytes[i]);
+
+out:
+	buffer_release(sink_c);
+
+	for (i = MUX_MAX_STREAMS - 1; i >= 0; i--)
+		if (sources[i])
+			buffer_release(sources[i]);
 
 	return 0;
 }
@@ -599,17 +602,21 @@ static int mux_reset(struct comp_dev *dev)
 {
 	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
-	struct comp_buffer *source;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "mux_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
-			source = container_of(blist, struct comp_buffer,
-					      sink_list);
+			struct comp_buffer *source = container_of(blist, struct comp_buffer,
+								  sink_list);
+			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+			int state = source_c->source->state;
+
+			buffer_release(source_c);
+
 			/* only mux the sources with the same state with mux */
-			if (source->source->state > COMP_STATE_READY)
+			if (state > COMP_STATE_READY)
 				/* should not reset the downstream components */
 				return PPL_STATUS_PATH_STOP;
 		}
@@ -628,8 +635,6 @@ static int mux_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct list_item *blist;
-	struct comp_buffer *source;
-	int downstream = 0;
 	int ret;
 
 	comp_info(dev, "mux_prepare()");
@@ -654,30 +659,36 @@ static int mux_prepare(struct comp_dev *dev)
 
 	/* check each mux source state */
 	list_for_item(blist, &dev->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
+		struct comp_buffer *source = container_of(blist, struct comp_buffer,
+							  sink_list);
+		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+		int state = source_c->source->state;
+
+		buffer_release(source_c);
 
 		/* only prepare downstream if we have no active sources */
-		if (source->source->state == COMP_STATE_PAUSED ||
-		    source->source->state == COMP_STATE_ACTIVE) {
-			downstream = 1;
-		}
+		if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
+			return PPL_STATUS_PATH_STOP;
 	}
 
 	/* prepare downstream */
-	return downstream;
+	return 0;
 }
 
 static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
 {
-	struct comp_buffer *source;
 	struct list_item *blist;
 	int count = 0;
 
 	/* count source with state == status */
 	list_for_item(blist, &mux->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		if (source->source->state == status)
+		struct comp_buffer *source = container_of(blist, struct comp_buffer,
+							  sink_list);
+		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+
+		if (source_c->source->state == status)
 			count++;
+		buffer_release(source_c);
 	}
 
 	return count;
@@ -686,14 +697,22 @@ static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
 static int mux_trigger(struct comp_dev *dev, int cmd)
 {
 	int dir = dev->pipeline->source_comp->direction;
-	int ret = 0;
+	unsigned int src_n_active, src_n_paused;
+	int ret;
 
 	comp_info(dev, "mux_trigger(), command = %u", cmd);
 
+	/*
+	 * We are in a TRIGGER IPC. IPCs are serialised, while we're processing
+	 * this one, no other IPCs can be received until we have replied to the
+	 * current one
+	 */
+	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
+	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
+
 	switch (cmd) {
 	case COMP_TRIGGER_PRE_START:
-		if (mux_source_status_count(dev, COMP_STATE_ACTIVE) ||
-		    mux_source_status_count(dev, COMP_STATE_PAUSED))
+		if (src_n_active || src_n_paused)
 			return PPL_STATUS_PATH_STOP;
 	}
 
@@ -709,13 +728,11 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 
 	/* don't stop mux if at least one source is active */
-	if (mux_source_status_count(dev, COMP_STATE_ACTIVE) &&
-	    (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
+	if (src_n_active && (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
 		dev->state = COMP_STATE_ACTIVE;
 		ret = PPL_STATUS_PATH_STOP;
 	/* don't stop mux if at least one source is paused */
-	} else if (mux_source_status_count(dev, COMP_STATE_PAUSED) &&
-		   cmd == COMP_TRIGGER_STOP) {
+	} else if (src_n_paused && cmd == COMP_TRIGGER_STOP) {
 		dev->state = COMP_STATE_PAUSED;
 		ret = PPL_STATUS_PATH_STOP;
 	}
