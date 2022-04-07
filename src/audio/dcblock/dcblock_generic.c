@@ -34,8 +34,8 @@ static int32_t dcblock_generic(struct dcblock_state *state,
 
 #if CONFIG_FORMAT_S16LE
 static void dcblock_s16_default(const struct comp_dev *dev,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
+				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -66,8 +66,8 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void dcblock_s24_default(const struct comp_dev *dev,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
+				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -98,8 +98,8 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void dcblock_s32_default(const struct comp_dev *dev,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
+				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
