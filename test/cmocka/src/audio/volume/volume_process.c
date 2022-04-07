@@ -118,7 +118,7 @@ static int setup(void **state)
 	vol_state->output->data = &vol_state->sink->stream;
 
 	/* set processing function and volume */
-	cd->scale_vol = vol_get_processing_function(dev);
+	cd->scale_vol = vol_get_processing_function(dev, vol_state->sink);
 	set_volume(cd->volume, parameters->volume, parameters->channels);
 
 	/* assigns verification function */
