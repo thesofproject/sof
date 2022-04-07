@@ -59,15 +59,15 @@ struct mixer_data {
 
 	bool sources_inactive;
 
-	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
-			 const struct audio_stream **sources, uint32_t count,
+	void (*mix_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream __sparse_cache **sources, uint32_t count,
 			 uint32_t frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
+static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int16_t *src[PLATFORM_MAX_CHANNELS];
@@ -112,8 +112,8 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 
 #if CONFIG_FORMAT_S24LE
 /* Mix n 24 bit PCM source streams to one sink stream */
-static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
+static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int32_t *src[PLATFORM_MAX_CHANNELS];
@@ -160,8 +160,8 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 
 #if CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
+static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int32_t *src[PLATFORM_MAX_CHANNELS];
@@ -261,7 +261,8 @@ static int mixer_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sinkb;
-	uint32_t sink_period_bytes;
+	struct comp_buffer __sparse_cache *sink_c;
+	size_t sink_period_bytes, sink_stream_size;
 	int err;
 
 	comp_dbg(dev, "mixer_params()");
@@ -274,18 +275,23 @@ static int mixer_params(struct comp_dev *dev,
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
+	sink_c = buffer_acquire(sinkb);
+
+	sink_stream_size = sink_c->stream.size;
 
 	/* calculate period size based on config */
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
+	buffer_release(sink_c);
+
 	if (sink_period_bytes == 0) {
 		comp_err(dev, "mixer_params(): period_bytes = 0");
 		return -EINVAL;
 	}
 
-	if (sinkb->stream.size < sink_period_bytes) {
+	if (sink_stream_size < sink_period_bytes) {
 		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d",
-			 sinkb->stream.size, sink_period_bytes);
+			 sink_stream_size, sink_period_bytes);
 		return -ENOMEM;
 	}
 
@@ -298,9 +304,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 	int ret;
 
 	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
@@ -313,50 +316,60 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
-	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
-	struct comp_buffer *source;
+	struct comp_buffer __sparse_cache *sources_c[PLATFORM_MAX_STREAMS];
+	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
 	struct list_item *blist;
 	int32_t i = 0;
 	int32_t num_mix_sources = 0;
 	uint32_t frames = INT32_MAX;
-	uint32_t source_bytes;
+	/* Redundant, but helps the compiler */
+	uint32_t source_bytes = 0;
 	uint32_t sink_bytes;
 
 	comp_dbg(dev, "mixer_copy()");
-
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
 
 	/* calculate the highest runtime component status
 	 * between input streams
 	 */
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
+		source_c = buffer_acquire(source);
 
 		/* only mix the sources with the same state with mixer */
-		if (source->source->state == dev->state) {
-			sources[num_mix_sources] = source;
-			sources_stream[num_mix_sources] = &source->stream;
-			num_mix_sources++;
-		}
+		if (source_c->source->state == dev->state)
+			sources[num_mix_sources++] = source;
+
+		buffer_release(source_c);
 
 		/* too many sources ? */
 		if (num_mix_sources == PLATFORM_MAX_STREAMS - 1)
 			return 0;
 	}
 
-	sink = buffer_acquire(sink);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+	sink_c = buffer_acquire(sink);
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++) {
 		uint32_t avail_frames;
-		sources[i] = buffer_acquire(sources[i]);
-		avail_frames = audio_stream_avail_frames(sources_stream[i],
-							 &sink->stream);
+
+		source_c = buffer_acquire(sources[i]);
+		avail_frames = audio_stream_avail_frames(&source_c->stream,
+							 &sink_c->stream);
 		frames = MIN(frames, avail_frames);
-		sources[i] = buffer_release(sources[i]);
+
+		if (i == num_mix_sources - 1)
+			/* Every source has the same format, so calculate bytes
+			 * based on the last one - once we've got the final
+			 * frames value.
+			 */
+			source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
+
+		buffer_release(source_c);
 	}
 
 	if (!num_mix_sources || (frames == 0 && md->sources_inactive)) {
@@ -366,12 +379,13 @@ static int mixer_copy(struct comp_dev *dev)
 		 * generating silence until at least one of the
 		 * sources start to have data available (frames!=0).
 		 */
-		sink_bytes = dev->frames * audio_stream_frame_bytes(&sink->stream);
-		sink = buffer_release(sink);
-		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
-			buffer_stream_writeback(sink, sink_bytes);
-			comp_update_buffer_produce(sink, sink_bytes);
+		sink_bytes = dev->frames * audio_stream_frame_bytes(&sink_c->stream);
+		if (!audio_stream_set_zero(&sink_c->stream, sink_bytes)) {
+			buffer_stream_writeback(sink_c, sink_bytes);
+			comp_update_buffer_cached_produce(sink_c, sink_bytes);
 		}
+
+		buffer_release(sink_c);
 
 		md->sources_inactive = true;
 
@@ -383,30 +397,33 @@ static int mixer_copy(struct comp_dev *dev)
 		comp_dbg(dev, "mixer_copy exit sources_inactive state");
 	}
 
-	sink = buffer_release(sink);
-
-	/* Every source has the same format, so calculate bytes based
-	 * on the first one.
-	 */
-	source_bytes = frames * audio_stream_frame_bytes(sources_stream[0]);
-	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
 
 	comp_dbg(dev, "mixer_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);
 
 	/* mix streams */
-	for (i = num_mix_sources - 1; i >= 0; i--)
-		buffer_stream_invalidate(sources[i], source_bytes);
-	md->mix_func(dev, &sink->stream, sources_stream, num_mix_sources,
+	for (i = num_mix_sources - 1; i >= 0; i--) {
+		sources_c[i] = buffer_acquire(sources[i]);
+		sources_stream[i] = &sources_c[i]->stream;
+		buffer_stream_invalidate(sources_c[i], source_bytes);
+	}
+
+	md->mix_func(dev, &sink_c->stream, sources_stream, num_mix_sources,
 		     frames);
-	buffer_stream_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink_c, sink_bytes);
 
 	/* update source buffer pointers */
 	for (i = num_mix_sources - 1; i >= 0; i--)
-		comp_update_buffer_consume(sources[i], source_bytes);
+		comp_update_buffer_cached_consume(sources_c[i], source_bytes);
+
+	for (i = 0; i < num_mix_sources; i++)
+		buffer_release(sources_c[i]);
 
 	/* update sink buffer pointer */
-	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_cached_produce(sink_c, sink_bytes);
+
+	buffer_release(sink_c);
 
 	return 0;
 }
@@ -416,17 +433,21 @@ static int mixer_reset(struct comp_dev *dev)
 {
 	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
-	struct comp_buffer *source;
 	struct mixer_data *md = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "mixer_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
-			source = container_of(blist, struct comp_buffer,
-					      sink_list);
-			/* only mix the sources with the same state with mixer*/
-			if (mixer_stop_reset(dev, source->source))
+			/* FIXME: this is racy and implicitly protected by serialised IPCs */
+			struct comp_buffer *source = container_of(blist, struct comp_buffer,
+								  sink_list);
+			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+			bool stop = mixer_stop_reset(dev, source_c->source);
+
+			buffer_release(source_c);
+			/* only mix the sources with the same state with mixer */
+			if (stop)
 				/* should not reset the downstream components */
 				return PPL_STATUS_PATH_STOP;
 		}
@@ -450,44 +471,50 @@ static int mixer_prepare_common(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
+	enum sof_ipc_frame fmt;
 	int ret;
 
 	comp_dbg(dev, "mixer_prepare()");
 
+	/* does mixer already have active source streams ? */
+	if (dev->state == COMP_STATE_ACTIVE)
+		return 0;
+
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
+	sink_c = buffer_acquire(sink);
+	fmt = sink_c->stream.frame_fmt;
+	buffer_release(sink_c);
 
-	/* does mixer already have active source streams ? */
-	if (dev->state != COMP_STATE_ACTIVE) {
-		/* currently inactive so setup mixer */
-		switch (sink->stream.frame_fmt) {
+	/* currently inactive so setup mixer */
+	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
-		case SOF_IPC_FRAME_S16_LE:
-			md->mix_func = mix_n_s16;
-			break;
+	case SOF_IPC_FRAME_S16_LE:
+		md->mix_func = mix_n_s16;
+		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
-		case SOF_IPC_FRAME_S24_4LE:
-			md->mix_func = mix_n_s24;
-			break;
+	case SOF_IPC_FRAME_S24_4LE:
+		md->mix_func = mix_n_s24;
+		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-		case SOF_IPC_FRAME_S32_LE:
-			md->mix_func = mix_n_s32;
-			break;
+	case SOF_IPC_FRAME_S32_LE:
+		md->mix_func = mix_n_s32;
+		break;
 #endif /* CONFIG_FORMAT_S32LE */
-		default:
-			comp_err(dev, "unsupported data format");
-			return -EINVAL;
-		}
-
-		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-		if (ret < 0)
-			return ret;
-
-		if (ret == COMP_STATUS_STATE_ALREADY_SET)
-			return PPL_STATUS_PATH_STOP;
+	default:
+		comp_err(dev, "unsupported data format");
+		return -EINVAL;
 	}
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
 
 	return 0;
 }
@@ -514,15 +541,24 @@ static int mixer_prepare_common(struct comp_dev *dev)
 #if CONFIG_IPC_MAJOR_3
 static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 {
-	struct comp_buffer *source;
 	struct list_item *blist;
 	int count = 0;
 
 	/* count source with state == status */
 	list_for_item(blist, &mixer->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		if (source->source->state == status)
+		/*
+		 * FIXME: this is racy, state can be changed by another core.
+		 * This is implicitly protected by serialised IPCs. Even when
+		 * IPCs are processed in the pipeline thread, the next IPC will
+		 * not be sent until the thread has processed and replied to the
+		 * current one.
+		 */
+		struct comp_buffer *source = container_of(blist, struct comp_buffer,
+							  sink_list);
+		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+		if (source_c->source->state == status)
 			count++;
+		buffer_release(source_c);
 	}
 
 	return count;
@@ -586,7 +622,6 @@ static inline bool mixer_stop_reset(struct comp_dev *dev, struct comp_dev *sourc
 
 static int mixer_prepare(struct comp_dev *dev)
 {
-	struct comp_buffer *source;
 	struct list_item *blist;
 	int ret;
 
@@ -596,13 +631,27 @@ static int mixer_prepare(struct comp_dev *dev)
 
 	/* check each mixer source state */
 	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source;
+		struct comp_buffer __sparse_cache *source_c;
+		bool stop;
+
+		/*
+		 * FIXME: this is intrinsically racy. One of mixer sources can
+		 * run on a different core and can enter PAUSED or ACTIVE right
+		 * after we have checked it here. We should set a flag or a
+		 * status to inform any other connected pipelines that we're
+		 * preparing the mixer, so they shouldn't touch it until we're
+		 * done.
+		 */
 		source = container_of(blist, struct comp_buffer, sink_list);
+		source_c = buffer_acquire(source);
+		stop = source->source->state == COMP_STATE_PAUSED ||
+			source->source->state == COMP_STATE_ACTIVE;
+		buffer_release(source_c);
 
 		/* only prepare downstream if we have no active sources */
-		if (source->source->state == COMP_STATE_PAUSED ||
-		    source->source->state == COMP_STATE_ACTIVE) {
+		if (stop)
 			return PPL_STATUS_PATH_STOP;
-		}
 	}
 
 	/* prepare downstream */
@@ -630,7 +679,7 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 {
 	struct comp_dev *dev;
 	struct mixer_data *md;
-	enum sof_ipc_frame valid_fmt;
+	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 
 	comp_cl_dbg(&comp_mixer, "mixinout_new()");
 
@@ -651,8 +700,10 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 
 	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
 				    md->base_cfg.audio_fmt.valid_bit_depth,
-				    &dev->ipc_config.frame_fmt, &valid_fmt,
+				    &frame_fmt, &valid_fmt,
 				    md->base_cfg.audio_fmt.s_type);
+
+	dev->ipc_config.frame_fmt = frame_fmt;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -691,6 +742,7 @@ static int mixout_params(struct comp_dev *dev,
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
 	int i;
 
 	memset(params, 0, sizeof(*params));
@@ -708,15 +760,17 @@ static int mixout_params(struct comp_dev *dev,
 	 * host driver based on runtime hw_params and topology setting.
 	 */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink->stream.channels = md->base_cfg.audio_fmt.channels_count;
-	sink->stream.rate = md->base_cfg.audio_fmt.sampling_frequency;
+	sink_c = buffer_acquire(sink);
+
+	sink_c->stream.channels = md->base_cfg.audio_fmt.channels_count;
+	sink_c->stream.rate = md->base_cfg.audio_fmt.sampling_frequency;
 	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
 				    md->base_cfg.audio_fmt.valid_bit_depth,
-				    &sink->stream.frame_fmt,
-				    &sink->stream.valid_sample_fmt,
+				    &sink_c->stream.frame_fmt,
+				    &sink_c->stream.valid_sample_fmt,
 				    md->base_cfg.audio_fmt.s_type);
 
-	sink->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
+	sink_c->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
 
 	/* 8 ch stream is supported by ch_map and each channel
 	 * is mapped by 4 bits. The first channel will be mapped
@@ -725,7 +779,9 @@ static int mixout_params(struct comp_dev *dev,
 	 * N*4 ~ N*4 + 3
 	 */
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		sink->chmap[i] = (md->base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
+		sink_c->chmap[i] = (md->base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
+
+	buffer_release(sink_c);
 
 	return mixer_params(dev, params);
 }
