@@ -243,17 +243,13 @@ static inline struct comp_buffer *buffer_release(struct comp_buffer __sparse_cac
 	return container_of(c, struct comp_buffer, c);
 }
 
-static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
+static inline void buffer_reset_pos(struct comp_buffer __sparse_cache *buffer, void *data)
 {
-	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
-
 	/* reset rw pointers and avail/free bytes counters */
-	audio_stream_reset(&buffer_c->stream);
+	audio_stream_reset(&buffer->stream);
 
 	/* clear buffer contents */
-	buffer_zero(buffer_c);
-
-	buffer_release(buffer_c);
+	buffer_zero(buffer);
 }
 
 static inline void buffer_init(struct comp_buffer __sparse_cache *buffer,
@@ -265,13 +261,9 @@ static inline void buffer_init(struct comp_buffer __sparse_cache *buffer,
 	audio_stream_init(&buffer->stream, buffer->stream.addr, size);
 }
 
-static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
+static inline void buffer_reset_params(struct comp_buffer __sparse_cache *buffer, void *data)
 {
-	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
-
-	buffer_c->hw_params_configured = false;
-
-	buffer_release(buffer_c);
+	buffer->hw_params_configured = false;
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
