@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <ipc/stream.h>
@@ -24,12 +25,11 @@
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
 static int pipeline_comp_params_neg(struct comp_dev *current,
-				    struct comp_buffer *calling_buf,
+				    struct comp_buffer __sparse_cache *calling_buf,
 				    struct pipeline_walk_context *ctx,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	int err = 0;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
@@ -59,19 +59,15 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	 * a component who has different channels input/output buffers
 	 * should explicitly configure the channels of the branched buffers.
 	 */
-	if (calling_buf) {
-		calling_buf = buffer_acquire(calling_buf);
-		err = buffer_set_params(calling_buf,
-					&ppl_data->params->params,
-					BUFFER_UPDATE_FORCE);
-		calling_buf = buffer_release(calling_buf);
-	}
+	if (calling_buf)
+		return buffer_set_params(calling_buf, &ppl_data->params->params,
+					 BUFFER_UPDATE_FORCE);
 
-	return err;
+	return 0;
 }
 
 static int pipeline_comp_params(struct comp_dev *current,
-				struct comp_buffer *calling_buf,
+				struct comp_buffer __sparse_cache *calling_buf,
 				struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -129,7 +125,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 }
 
 /* save params changes made by component */
-static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
+static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache *buffer,
 					      void *data)
 {
 	struct sof_ipc_stream_params *params = data;
@@ -145,7 +141,7 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 
 /* fetch hardware stream parameters from DAI  */
 static int pipeline_comp_hw_params(struct comp_dev *current,
-				   struct comp_buffer *calling_buf,
+				   struct comp_buffer __sparse_cache *calling_buf,
 				   struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -175,7 +171,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 
 /* propagate hw_params to buffers in pipeline. */
 static int pipeline_comp_hw_params_buf(struct comp_dev *current,
-				       struct comp_buffer *calling_buf,
+				       struct comp_buffer __sparse_cache *calling_buf,
 				       struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -186,10 +182,8 @@ static int pipeline_comp_hw_params_buf(struct comp_dev *current,
 		return ret;
 	/* set buffer parameters */
 	if (calling_buf) {
-		calling_buf = buffer_acquire(calling_buf);
 		ret = buffer_set_params(calling_buf, &ppl_data->params->params,
 					BUFFER_UPDATE_IF_UNSET);
-		calling_buf = buffer_release(calling_buf);
 		if (ret < 0)
 			pipe_err(current->pipeline,
 				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);
@@ -278,7 +272,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 }
 
 static int pipeline_comp_prepare(struct comp_dev *current,
-				 struct comp_buffer *calling_buf,
+				 struct comp_buffer __sparse_cache *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;

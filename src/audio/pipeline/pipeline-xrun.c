@@ -31,7 +31,7 @@ LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
 /* This function always returns success */
 static int pipeline_comp_xrun(struct comp_dev *current,
-			      struct comp_buffer *calling_buf,
+			      struct comp_buffer __sparse_cache *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;

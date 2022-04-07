@@ -68,7 +68,7 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 }
 
 static int pipeline_comp_copy(struct comp_dev *current,
-			      struct comp_buffer *calling_buf,
+			      struct comp_buffer __sparse_cache *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -144,7 +144,7 @@ int pipeline_copy(struct pipeline *p)
 
 /* only collect scheduling components */
 static int pipeline_comp_list(struct comp_dev *current,
-			      struct comp_buffer *calling_buf,
+			      struct comp_buffer __sparse_cache *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -298,7 +298,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 /* Runs in IPC or in pipeline task context */
 static int pipeline_comp_trigger(struct comp_dev *current,
-				 struct comp_buffer *calling_buf,
+				 struct comp_buffer __sparse_cache *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -458,7 +458,7 @@ out:
  * the first active DAI and return it's timestamp.
  */
 static int pipeline_comp_timestamp(struct comp_dev *current,
-				   struct comp_buffer *calling_buf,
+				   struct comp_buffer __sparse_cache *calling_buf,
 				   struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;

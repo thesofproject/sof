@@ -12,6 +12,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
+#include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -221,7 +222,7 @@ int pipeline_free(struct pipeline *p)
 }
 
 static int pipeline_comp_complete(struct comp_dev *current,
-				  struct comp_buffer *calling_buf,
+				  struct comp_buffer __sparse_cache *calling_buf,
 				  struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
@@ -285,7 +286,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 }
 
 static int pipeline_comp_reset(struct comp_dev *current,
-			       struct comp_buffer *calling_buf,
+			       struct comp_buffer __sparse_cache *calling_buf,
 			       struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline *p = ctx->comp_data;
@@ -363,42 +364,41 @@ int pipeline_for_each_comp(struct comp_dev *current,
 {
 	struct list_item *buffer_list = comp_buffer_list(current, dir);
 	struct list_item *clist;
-	struct comp_buffer *buffer;
-	struct comp_dev *buffer_comp;
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
-		buffer = buffer_from_list(clist, struct comp_buffer, dir);
+		struct comp_buffer *buffer = buffer_from_list(clist, struct comp_buffer, dir);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+		struct comp_dev *buffer_comp;
+		int err = 0;
 
 		/* don't go back to the buffer which already walked */
-		if (buffer->walking)
+		if (buffer_c->walking) {
+			buffer_release(buffer_c);
 			continue;
+		}
 
 		/* execute operation on buffer */
 		if (ctx->buff_func)
-			ctx->buff_func(buffer, ctx->buff_data);
+			ctx->buff_func(buffer_c, ctx->buff_data);
 
-		buffer_comp = buffer_get_comp(buffer, dir);
+		buffer_comp = buffer_get_comp(buffer_c, dir);
 
 		/* don't go further if this component is not connected */
-		if (!buffer_comp ||
-		    (ctx->skip_incomplete && !buffer_comp->pipeline))
-			continue;
+		if (buffer_comp &&
+		    (!ctx->skip_incomplete || buffer_comp->pipeline) &&
+		    ctx->comp_func) {
+			buffer_c->walking = true;
 
-		/* continue further */
-		if (ctx->comp_func) {
-			buffer = buffer_acquire(buffer);
-			buffer->walking = true;
-			buffer = buffer_release(buffer);
-
-			int err = ctx->comp_func(buffer_comp, buffer,
-						 ctx, dir);
-			buffer = buffer_acquire(buffer);
-			buffer->walking = false;
-			buffer = buffer_release(buffer);
-			if (err < 0 || err == PPL_STATUS_PATH_STOP)
-				return err;
+			err = ctx->comp_func(buffer_comp, buffer_c,
+					     ctx, dir);
+			buffer_c->walking = false;
 		}
+
+		buffer_release(buffer_c);
+
+		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+			return err;
 	}
 
 	return 0;

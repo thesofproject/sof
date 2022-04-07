@@ -73,7 +73,7 @@ static int ipc4_delete_pipeline(union ipc4_message_header *ipc4)
 }
 
 static int ipc4_comp_params(struct comp_dev *current,
-			    struct comp_buffer *calling_buf,
+			    struct comp_buffer __sparse_cache *calling_buf,
 			    struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
