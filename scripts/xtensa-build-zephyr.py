@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 
+#pylint:disable=mixed-indentation
+#pylint:disable=invalid-name
+#pylint:disable=missing-function-docstring
 import argparse
 import shlex
 import subprocess
