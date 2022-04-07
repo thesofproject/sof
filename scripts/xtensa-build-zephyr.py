@@ -435,15 +435,21 @@ def build_platforms():
 		# looses file owner and group - file is commonly accessible
 		shutil.copy2(str(fw_file_to_copy), str(fw_file_installed))
 
+	src_dest_list = []
+
 	# Install sof-logger
 	sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
 		"sof-logger_ep", "build", "logger")
 	sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
 	sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
-	os.makedirs(os.path.dirname(sof_logger_installed_file), exist_ok=True)
-	# looses file owner and group - file is commonly accessible
-	shutil.copy2(str(sof_logger_executable_to_copy), str(sof_logger_installed_file))
+
+	src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
+
+	for _src, _dst in src_dest_list:
+		os.makedirs(os.path.dirname(_dst), exist_ok=True)
+		# looses file owner and group - file is commonly accessible
+		shutil.copy2(str(_src), str(_dst))
 
 def run_clone_mode():
 	if find_west_workspace():
