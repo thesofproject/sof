@@ -130,8 +130,6 @@ static int init_aria(struct comp_dev *dev, struct comp_ipc_config *config,
 	int ret;
 
 	dev->ipc_config = *config;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	dcache_invalidate_region(spec, sizeof(*aria));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));

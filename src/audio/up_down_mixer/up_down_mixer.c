@@ -342,8 +342,6 @@ static int init_up_down_mixer(struct comp_dev *dev, struct comp_ipc_config *conf
 	int ret;
 
 	dev->ipc_config = *config;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	dcache_invalidate_region(spec, sizeof(*up_down_mixer));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));

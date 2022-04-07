@@ -396,8 +396,6 @@ static struct comp_dev *ipc4_create_host(uint32_t pipeline_id, uint32_t id, uint
 		return NULL;
 
 	dev->direction = dir;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	return dev;
 }
@@ -435,8 +433,6 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 	pipe->sched_id = id;
 
 	dev->direction = dir;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	ret = comp_dai_config(dev, &dai, copier_cfg);
 	if (ret < 0)

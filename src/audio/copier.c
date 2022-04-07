@@ -183,9 +183,6 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 	if (!dev)
 		return NULL;
 
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_buffer_connect(dev, config->core, cd->endpoint_buffer,
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -278,9 +275,6 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 
 	pipeline->sched_id = config->id;
 
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
 	ret = comp_dai_config(dev, &dai, copier);
 	if (ret < 0)
 		return NULL;
@@ -354,9 +348,6 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	mailbox_hostbox_read(&cd->config, size, 0, size);
 	cd->out_fmt[0] = cd->config.out_fmt;
 	comp_set_drvdata(dev, cd);
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
 	if (!ipc_pipe) {

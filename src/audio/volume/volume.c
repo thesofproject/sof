@@ -595,8 +595,6 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 		return NULL;
 
 	dev->ipc_config = *config;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		     sizeof(struct vol_data));
