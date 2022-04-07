@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <ipc/stream.h>
@@ -29,6 +30,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
+	struct comp_buffer __sparse_cache *buf_c = calling_buf ? buffer_acquire(calling_buf) : NULL;
 	int err = 0;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
@@ -38,17 +40,20 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	if (current->state != COMP_STATE_INIT &&
 	    current->state != COMP_STATE_READY) {
 		/* return 0 if params matches */
-		if (buffer_params_match(calling_buf,
-					&ppl_data->params->params,
-					BUFF_PARAMS_FRAME_FMT |
-					BUFF_PARAMS_RATE))
-			return 0;
-		/*
-		 * the param is conflict with an active pipeline,
-		 * drop an error and reject the .params() command.
-		 */
-		pipe_err(current->pipeline, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
-		return -EINVAL;
+		if (!buffer_params_match(buf_c,
+					 &ppl_data->params->params,
+					 BUFF_PARAMS_FRAME_FMT |
+					 BUFF_PARAMS_RATE)) {
+			/*
+			 * parameters conflict with an active pipeline,
+			 * drop an error and reject the .params() command.
+			 */
+			pipe_err(current->pipeline,
+				 "pipeline_comp_params_neg(): params conflict with existing active pipeline!");
+			err = -EINVAL;
+		}
+
+		goto out;
 	}
 
 	/*
@@ -59,14 +64,13 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	 * a component who has different channels input/output buffers
 	 * should explicitly configure the channels of the branched buffers.
 	 */
-	if (calling_buf) {
-		calling_buf = buffer_acquire(calling_buf);
-		err = buffer_set_params(calling_buf,
+	if (calling_buf)
+		err = buffer_set_params(buf_c,
 					&ppl_data->params->params,
 					BUFFER_UPDATE_FORCE);
-		calling_buf = buffer_release(calling_buf);
-	}
 
+out:
+	buffer_release(buf_c);
 	return err;
 }
 
@@ -78,6 +82,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 	struct pipeline_walk_context param_neg_ctx = {
 		.comp_func = pipeline_comp_params_neg,
 		.comp_data = ppl_data,
+		.incoming = calling_buf,
 		.skip_incomplete = true,
 	};
 	int stream_direction = ppl_data->params->params.direction;
@@ -129,7 +134,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 }
 
 /* save params changes made by component */
-static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
+static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache *buffer,
 					      void *data)
 {
 	struct sof_ipc_stream_params *params = data;
@@ -186,10 +191,11 @@ static int pipeline_comp_hw_params_buf(struct comp_dev *current,
 		return ret;
 	/* set buffer parameters */
 	if (calling_buf) {
-		calling_buf = buffer_acquire(calling_buf);
-		ret = buffer_set_params(calling_buf, &ppl_data->params->params,
+		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
+
+		ret = buffer_set_params(buf_c, &ppl_data->params->params,
 					BUFFER_UPDATE_IF_UNSET);
-		calling_buf = buffer_release(calling_buf);
+		buffer_release(buf_c);
 		if (ret < 0)
 			pipe_err(current->pipeline,
 				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);
