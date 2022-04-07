@@ -216,6 +216,10 @@ def execute_command(*run_args, **run_kwargs):
 		print_args = shlex.join(command_args)
 		print(f"{print_cwd}; running command: {print_args}", flush=True)
 
+	if run_kwargs.get('check') is None:
+		run_kwargs['check'] = True
+	#pylint:disable=subprocess-run-check
+
 	return subprocess.run(*run_args, **run_kwargs)
 
 def show_installed_files():
