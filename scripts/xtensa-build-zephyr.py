@@ -446,6 +446,10 @@ def build_platforms():
 
 	src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
 
+	src_dest_list += [(pathlib.Path(west_top) /
+			  "zephyr" / "soc" / "xtensa" / "intel_adsp" / "tools" / "cavstool.py",
+			  tools_output_dir)]
+
 	for _src, _dst in src_dest_list:
 		os.makedirs(os.path.dirname(_dst), exist_ok=True)
 		# looses file owner and group - file is commonly accessible
