@@ -25,8 +25,8 @@ struct dcblock_state {
  * DC Blocking Filter.
  */
 typedef void (*dcblock_func)(const struct comp_dev *dev,
-			     const struct audio_stream *source,
-			     const struct audio_stream *sink,
+			     const struct audio_stream __sparse_cache *source,
+			     const struct audio_stream __sparse_cache *sink,
 			     uint32_t frames);
 
 /* DC Blocking Filter component private data */
