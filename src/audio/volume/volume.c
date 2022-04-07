@@ -74,7 +74,7 @@ DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s16(const struct audio_stream *source,
+static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	uint32_t curr_frames = frames;
@@ -122,7 +122,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s24(const struct audio_stream *source,
+static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -170,7 +170,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s32(const struct audio_stream *source,
+static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -992,7 +992,7 @@ static int volume_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	comp_dbg(dev, "volume_set_large_config()");
 
 	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(data, 8);
-	dcache_invalidate_region(cdata, sizeof(*cdata));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)cdata, sizeof(*cdata));
 	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
 
 	init_ramp(cd, cdata->curve_duration, cdata->target_volume);
@@ -1071,8 +1071,9 @@ static int volume_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct vol_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_stream_params vol_params;
 	struct comp_buffer *sinkb;
-	uint32_t valid_fmt;
-	int i;
+	struct comp_buffer __sparse_cache *sink_c;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	int i, ret;
 
 	comp_dbg(dev, "volume_params()");
 
@@ -1083,19 +1084,23 @@ static int volume_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 
 	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
 				    cd->base.audio_fmt.valid_bit_depth,
-				    &vol_params.frame_fmt,
-				    &valid_fmt,
+				    &frame_fmt, &valid_fmt,
 				    cd->base.audio_fmt.s_type);
+
+	vol_params.frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		vol_params.chmap[i] = (cd->base.audio_fmt.ch_map >> i * 4) & 0xf;
 
-	/* volume component will only ever have 1 sink buffer */
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
 	component_set_nearest_period_frames(dev, vol_params.rate);
 
-	return buffer_set_params(sinkb, &vol_params, true);
+	/* volume component will only ever have 1 sink buffer */
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ret = buffer_set_params(sink_c, &vol_params, true);
+	buffer_release(sink_c);
+
+	return ret;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
@@ -1133,8 +1138,8 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits c;
 	struct vol_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 	uint32_t frames;
@@ -1147,8 +1152,11 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
+
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_with_lock(source, sink, &c);
+	comp_get_copy_limits(source_c, sink_c, &c);
 	/* limit frames to be divided by 4 for alignment of 8-byte */
 	c.frames &= ~0x03;
 
@@ -1163,7 +1171,7 @@ static int volume_copy(struct comp_dev *dev)
 			frames = c.frames;
 		} else if (cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
 			/* with ZC ramping look for next ZC offset */
-			frames = cd->zc_get(&source->stream,
+			frames = cd->zc_get(&source_c->stream,
 					    cd->vol_ramp_frames, &prev_sum);
 		} else {
 			/* without ZC process max ramp chunk */
@@ -1174,13 +1182,13 @@ static int volume_copy(struct comp_dev *dev)
 		sink_bytes = frames * c.sink_frame_bytes;
 
 		/* copy and scale volume */
-		buffer_stream_invalidate(source, source_bytes);
-		cd->scale_vol(dev, &sink->stream, &source->stream, frames);
-		buffer_stream_writeback(sink, sink_bytes);
+		buffer_stream_invalidate(source_c, source_bytes);
+		cd->scale_vol(dev, &sink_c->stream, &source_c->stream, frames);
+		buffer_stream_writeback(sink_c, sink_bytes);
 
 		/* calculate new free and available */
-		comp_update_buffer_produce(sink, sink_bytes);
-		comp_update_buffer_consume(source, source_bytes);
+		comp_update_buffer_cached_produce(sink_c, sink_bytes);
+		comp_update_buffer_cached_consume(source_c, source_bytes);
 
 		if (cd->vol_ramp_active)
 			cd->vol_ramp_elapsed_frames += frames;
@@ -1191,6 +1199,9 @@ static int volume_copy(struct comp_dev *dev)
 		c.frames -= frames;
 	}
 
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	return 0;
 }
 
@@ -1198,24 +1209,62 @@ static int volume_copy(struct comp_dev *dev)
  * \brief Retrieves volume zero crossing function.
  * \param[in,out] dev Volume base component device.
  */
-static vol_zc_func vol_get_zc_function(struct comp_dev *dev)
+static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
+				       struct comp_buffer __sparse_cache *sinkb)
 {
-	struct comp_buffer *sinkb;
 	int i;
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
 
 	/* map the zc function to frame format */
 	for (i = 0; i < ARRAY_SIZE(zc_func_map); i++) {
-		if (sinkb->stream.frame_fmt != zc_func_map[i].frame_fmt)
-			continue;
-
-		return zc_func_map[i].func;
+		if (sinkb->stream.frame_fmt == zc_func_map[i].frame_fmt)
+			return zc_func_map[i].func;
 	}
 
 	return NULL;
 }
+
+#if CONFIG_IPC_MAJOR_3
+/**
+ * \brief Retrievies volume processing function.
+ * \param[in,out] dev Volume base component device.
+ */
+static vol_scale_func vol_get_processing_function(struct comp_dev *dev,
+						  struct comp_buffer __sparse_cache *sinkb)
+{
+	int i;
+
+	/* map the volume function for source and sink buffers */
+	for (i = 0; i < func_count; i++) {
+		if (sinkb->stream.frame_fmt != func_map[i].frame_fmt)
+			continue;
+
+		return func_map[i].func;
+	}
+
+	return NULL;
+}
+#else
+/**
+ * \brief Retrievies volume processing function.
+ * \param[in,out] dev Volume base component device.
+ */
+static vol_scale_func vol_get_processing_function(struct comp_dev *dev,
+						  struct comp_buffer __sparse_cache *sinkb)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+
+	switch (cd->base.audio_fmt.depth) {
+	case IPC4_DEPTH_16BIT:
+		return func_map[0].func;
+	case IPC4_DEPTH_32BIT:
+		return func_map[2].func;
+	default:
+		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+			 cd->base.audio_fmt.depth);
+		return NULL;
+	}
+}
+#endif
 
 /**
  * \brief Prepares volume component for processing.
@@ -1229,6 +1278,7 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
@@ -1246,18 +1296,20 @@ static int volume_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	sink_c = buffer_acquire(sinkb);
+
 	/* get sink period bytes */
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < sink_period_bytes) {
+	if (sink_c->stream.size < sink_period_bytes) {
 		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d",
-			 sinkb->stream.size, sink_period_bytes);
+			 sink_c->stream.size, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
 
-	cd->scale_vol = vol_get_processing_function(dev);
+	cd->scale_vol = vol_get_processing_function(dev, sink_c);
 	if (!cd->scale_vol) {
 		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
 
@@ -1265,7 +1317,7 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	cd->zc_get = vol_get_zc_function(dev);
+	cd->zc_get = vol_get_zc_function(dev, sink_c);
 	if (!cd->zc_get) {
 		comp_err(dev, "volume_prepare(): invalid cd->zc_get");
 		ret = -EINVAL;
@@ -1285,8 +1337,11 @@ static int volume_prepare(struct comp_dev *dev)
 	 * for entire topology specified time.
 	 */
 	cd->ramp_finished = true;
-	cd->channels = sinkb->stream.channels;
-	cd->sample_rate = sinkb->stream.rate;
+	cd->channels = sink_c->stream.channels;
+	cd->sample_rate = sink_c->stream.rate;
+
+	buffer_release(sink_c);
+
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
 		volume_set_chan(dev, i, cd->tvolume[i], false);
@@ -1299,6 +1354,7 @@ static int volume_prepare(struct comp_dev *dev)
 	return 0;
 
 err:
+	buffer_release(sink_c);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 }

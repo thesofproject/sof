@@ -52,8 +52,8 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
  * Copy and scale volume from 24/32 bit source buffer
  * to 24/32 bit destination buffer.
  */
-static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
-			   const struct audio_stream *source, uint32_t frames)
+static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			   const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
@@ -110,8 +110,8 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
  * Copy and scale volume from 32 bit source buffer
  * to 32 bit destination buffer.
  */
-static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
-			   const struct audio_stream *source, uint32_t frames)
+static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			   const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
@@ -173,8 +173,8 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
  * Copy and scale volume from 16 bit source buffer
  * to 16 bit destination buffer.
  */
-static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
-			   const struct audio_stream *source, uint32_t frames)
+static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			   const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t vol;

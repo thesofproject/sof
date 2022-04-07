@@ -108,14 +108,14 @@ struct sof_ipc_ctrl_value_chan;
 /**
  * \brief volume processing function interface
  */
-typedef void (*vol_scale_func)(struct comp_dev *dev, struct audio_stream *sink,
-			       const struct audio_stream *source,
+typedef void (*vol_scale_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream __sparse_cache *source,
 			       uint32_t frames);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame
  */
-typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
+typedef uint32_t (*vol_zc_func)(const struct audio_stream __sparse_cache *source,
 				uint32_t frames, int64_t *prev_sum);
 
 /**
@@ -174,53 +174,6 @@ struct comp_zc_func_map {
 	uint16_t frame_fmt;	/**< frame format */
 	vol_zc_func func;	/**< volume zc function */
 };
-
-#if CONFIG_IPC_MAJOR_3
-/**
- * \brief Retrievies volume processing function.
- * \param[in,out] dev Volume base component device.
- */
-static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
-{
-	struct comp_buffer *sinkb;
-	int i;
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
-	/* map the volume function for source and sink buffers */
-	for (i = 0; i < func_count; i++) {
-		if (sinkb->stream.frame_fmt != func_map[i].frame_fmt)
-			continue;
-
-		return func_map[i].func;
-	}
-
-	return NULL;
-}
-#else
-/**
- * \brief Retrievies volume processing function.
- * \param[in,out] dev Volume base component device.
- */
-static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
-{
-	LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
-
-	struct vol_data *cd = comp_get_drvdata(dev);
-
-	switch (cd->base.audio_fmt.depth) {
-	case IPC4_DEPTH_16BIT:
-		return func_map[0].func;
-	case IPC4_DEPTH_32BIT:
-		return func_map[2].func;
-	default:
-		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
-			 cd->base.audio_fmt.depth);
-		return NULL;
-	}
-}
-#endif
 
 static inline void peak_vol_update(struct vol_data *cd)
 {
