@@ -190,7 +190,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 		coherent_shared(buffer, c);
 
 		if (!comp->is_shared)
-			comp = comp_make_shared(comp);
+			comp_make_shared(comp);
 	}
 
 	return pipeline_connect(comp, buffer, dir);

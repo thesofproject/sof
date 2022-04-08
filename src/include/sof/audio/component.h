@@ -638,9 +638,10 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 	struct comp_dev *dev = NULL;
 
 	/*
-	 * use uncached address at the moment to rule out multi-core failures,
-	 * may need to switch to the latest coherence API for performance
-	 * improvement later.
+	 * Use uncached address everywhere to access components to rule out
+	 * multi-core failures. In the future we might decide to switch over to
+	 * the latest coherence API for performance. In that case components
+	 * will be acquired for cached access and released afterwards.
 	 */
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bytes);
 	if (!dev)

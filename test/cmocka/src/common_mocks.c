@@ -201,11 +201,6 @@ void WEAK ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	(void)high_priority;
 }
 
-struct comp_dev * WEAK comp_make_shared(struct comp_dev *dev)
-{
-	return dev;
-}
-
 int WEAK platform_ipc_init(struct ipc *ipc)
 {
 	return 0;
