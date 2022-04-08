@@ -82,8 +82,8 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 				   enum ipc4_gateway_type type,
 				   int index)
 {
-	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
-	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
+	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	uint32_t buf_size;
@@ -561,7 +561,7 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type dir)
 {
-	enum sof_ipc_frame in, in_valid, out, out_valid;
+	enum sof_ipc_frame __sparse_cache in, in_valid, out, out_valid;
 
 	audio_stream_fmt_conversion(in_fmt->depth, in_fmt->valid_bit_depth, &in, &in_valid,
 				    in_fmt->s_type);
@@ -764,7 +764,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 }
 
 static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
-				    struct comp_buffer *sink, int frame)
+				    struct comp_buffer __sparse_cache *sink, int frame)
 {
 	uint32_t buff_frag = 0;
 	uint32_t *dst;
@@ -791,15 +791,15 @@ static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd
 
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
-			      struct comp_buffer *src,
-			      struct comp_buffer *sink,
+			      struct comp_buffer __sparse_cache *src,
+			      struct comp_buffer __sparse_cache *sink,
 			      uint32_t *src_copy_bytes)
 {
 	struct comp_copy_limits c;
 	int i;
 	int ret;
 
-	comp_get_copy_limits_with_lock(src, sink, &c);
+	comp_get_copy_limits(src, sink, &c);
 	*src_copy_bytes = c.source_bytes;
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
@@ -813,7 +813,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 	}
 
 	buffer_stream_writeback(sink, c.sink_bytes);
-	comp_update_buffer_produce(sink, c.sink_bytes);
+	comp_update_buffer_cached_produce(sink, c.sink_bytes);
 
 	return 0;
 }
@@ -822,68 +822,88 @@ static int do_conversion_copy(struct comp_dev *dev,
 static int copier_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret;
+	struct comp_buffer *src, *sink;
+	struct comp_buffer __sparse_cache *src_c, *sink_c;
+	int ret = 0;
 
 	comp_dbg(dev, "copier_copy()");
 
 	/* process gateway case */
 	if (cd->endpoint_num) {
-		struct comp_buffer *src;
-		struct comp_buffer *sink;
 		uint32_t src_copy_bytes;
 		int i;
 
 		if (!cd->bsource_buffer) {
 			sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+			sink_c = buffer_acquire(sink);
+
 			for (i = 0; i < cd->endpoint_num; i++) {
 				ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
 				if (ret < 0)
-					return ret;
+					break;
 
-				ret = do_conversion_copy(dev, cd, cd->endpoint_buffer[i], sink,
+				src_c = buffer_acquire(cd->endpoint_buffer[i]);
+				ret = do_conversion_copy(dev, cd, src_c, sink_c,
 							 &src_copy_bytes);
-				if (ret < 0)
-					return ret;
+				if (!ret)
+					comp_update_buffer_cached_consume(src_c, src_copy_bytes);
 
-				comp_update_buffer_consume(cd->endpoint_buffer[i], src_copy_bytes);
+				buffer_release(src_c);
+
+				if (ret < 0)
+					break;
 			}
+
+			buffer_release(sink_c);
 		} else {
 			src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-			for (i = 0; i < cd->endpoint_num; i++) {
+			src_c = buffer_acquire(src);
 
-				ret = do_conversion_copy(dev, cd, src, cd->endpoint_buffer[i],
+			for (i = 0; i < cd->endpoint_num; i++) {
+				sink_c = buffer_acquire(cd->endpoint_buffer[i]);
+
+				ret = do_conversion_copy(dev, cd, src_c, sink_c,
 							 &src_copy_bytes);
+				buffer_release(sink_c);
 				if (ret < 0)
-					return ret;
+					break;
 
 				ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
 				if (ret < 0)
-					return ret;
+					break;
 			}
 
-			comp_update_buffer_consume(src, src_copy_bytes);
+			if (!ret)
+				comp_update_buffer_cached_consume(src_c, src_copy_bytes);
+
+			buffer_release(src_c);
 		}
 	} else {
 		/* do format conversion */
-		struct comp_buffer *src;
-		struct comp_buffer *sink;
 		struct list_item *sink_list;
 		uint32_t src_bytes = 0;
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		src_c = buffer_acquire(src);
+
 		/* do format conversion for each sink buffer */
 		list_for_item(sink_list, &dev->bsink_list) {
 			sink = container_of(sink_list, struct comp_buffer, source_list);
-			ret = do_conversion_copy(dev, cd, src, sink, &src_bytes);
+			sink_c = buffer_acquire(sink);
+
+			ret = do_conversion_copy(dev, cd, src_c, sink_c, &src_bytes);
+			buffer_release(sink_c);
 			if (ret < 0) {
 				comp_err(dev, "failed to copy buffer for comp %x",
 					 dev->ipc_config.id);
-				return ret;
+				break;
 			}
 		}
 
-		comp_update_buffer_consume(src, src_bytes);
-		ret = 0;
+		if (!ret)
+			comp_update_buffer_cached_consume(src_c, src_bytes);
+
+		buffer_release(src_c);
 	}
 
 	return ret;
@@ -902,8 +922,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	union ipc4_connector_node_id node_id;
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
+	struct comp_buffer *sink, *source;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
 	int ret = 0;
 	int i;
@@ -931,21 +951,25 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		int j;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		j = IPC4_SINK_QUEUE_ID(sink->id);
-		sink->stream.channels = cd->out_fmt[j].channels_count;
-		sink->stream.rate = cd->out_fmt[j].sampling_frequency;
+		sink_c = buffer_acquire(sink);
+
+		j = IPC4_SINK_QUEUE_ID(sink_c->id);
+		sink_c->stream.channels = cd->out_fmt[j].channels_count;
+		sink_c->stream.rate = cd->out_fmt[j].sampling_frequency;
 		audio_stream_fmt_conversion(cd->out_fmt[j].depth,
 					    cd->out_fmt[j].valid_bit_depth,
-					    &sink->stream.frame_fmt,
-					    &sink->stream.valid_sample_fmt,
+					    &sink_c->stream.frame_fmt,
+					    &sink_c->stream.valid_sample_fmt,
 					    cd->out_fmt[j].s_type);
 
-		sink->buffer_fmt = cd->out_fmt[j].interleaving_style;
+		sink_c->buffer_fmt = cd->out_fmt[j].interleaving_style;
 
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			sink->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
+			sink_c->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
 
-		sink->hw_params_configured = true;
+		sink_c->hw_params_configured = true;
+
+		buffer_release(sink_c);
 	}
 
 	/* update the source format
@@ -956,25 +980,29 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	 */
 	if (!list_is_empty(&dev->bsource_list)) {
 		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		if (!source->hw_params_configured) {
+		source_c = buffer_acquire(source);
+
+		if (!source_c->hw_params_configured) {
 			struct ipc4_audio_format in_fmt;
 
 			in_fmt = cd->config.base.audio_fmt;
-			source->stream.channels = in_fmt.channels_count;
-			source->stream.rate = in_fmt.sampling_frequency;
+			source_c->stream.channels = in_fmt.channels_count;
+			source_c->stream.rate = in_fmt.sampling_frequency;
 			audio_stream_fmt_conversion(in_fmt.depth,
 						    in_fmt.valid_bit_depth,
-						    &source->stream.frame_fmt,
-						    &source->stream.valid_sample_fmt,
+						    &source_c->stream.frame_fmt,
+						    &source_c->stream.valid_sample_fmt,
 						    in_fmt.s_type);
 
-			source->buffer_fmt = in_fmt.interleaving_style;
+			source_c->buffer_fmt = in_fmt.interleaving_style;
 
 			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-				source->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
+				source_c->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
 
-			source->hw_params_configured = true;
+			source_c->hw_params_configured = true;
 		}
+
+		buffer_release(source_c);
 	}
 
 	if (cd->endpoint_num) {
