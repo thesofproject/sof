@@ -86,7 +86,7 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
  */
 static void comp_update_params(uint32_t flag,
 			       struct sof_ipc_stream_params *params,
-			       struct comp_buffer *buffer)
+			       struct comp_buffer __sparse_cache *buffer)
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
 		params->frame_fmt = buffer->stream.frame_fmt;
@@ -111,6 +111,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	struct list_item *curr;
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
+	struct comp_buffer __sparse_cache *buf_c;
 	int dir = dev->direction;
 
 	if (!params) {
@@ -134,22 +135,22 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					      struct comp_buffer,
 					      source_list);
 
-		buf = buffer_acquire(buf);
+		buf_c = buffer_acquire(buf);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
 		 */
-		comp_update_params(flag, params, buf);
+		comp_update_params(flag, params, buf_c);
 
 		/* overwrite buffer parameters with modified pcm
 		 * parameters
 		 */
-		buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
+		buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
 
 		/* set component period frames */
-		component_set_nearest_period_frames(dev, buf->stream.rate);
+		component_set_nearest_period_frames(dev, buf_c->stream.rate);
 
-		buf = buffer_release(buf);
+		buffer_release(buf_c);
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
@@ -160,20 +161,20 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		while (clist != buffer_list) {
 			curr = clist;
 			buf = buffer_from_list(curr, struct comp_buffer, dir);
-			buf = buffer_acquire(buf);
+			buf_c = buffer_acquire(buf);
 			clist = clist->next;
-			comp_update_params(flag, params, buf);
-			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
-			buf = buffer_release(buf);
+			comp_update_params(flag, params, buf_c);
+			buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
+			buffer_release(buf_c);
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-		sinkb = buffer_acquire(sinkb);
-		component_set_nearest_period_frames(dev, sinkb->stream.rate);
-		sinkb = buffer_release(sinkb);
+		buf_c = buffer_acquire(sinkb);
+		component_set_nearest_period_frames(dev, buf_c->stream.rate);
+		buffer_release(buf_c);
 	}
 
 	return 0;
