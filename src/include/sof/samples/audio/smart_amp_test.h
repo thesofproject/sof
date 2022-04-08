@@ -26,8 +26,8 @@ struct smart_amp_model_data {
 };
 
 typedef int(*smart_amp_proc)(struct comp_dev *dev,
-			     const struct audio_stream *source,
-			     const struct audio_stream *sink, uint32_t frames,
+			     const struct audio_stream __sparse_cache *source,
+			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
 			     int8_t *chan_map);
 
 /* Each channel map specifies which channel from input (buffer between host
