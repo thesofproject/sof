@@ -495,6 +495,10 @@ static int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
 	return ret;
 }
 
+/* In ipc4 case param is figured out by module config so we need to first
+ * set up param then verify param. BTW for IPC3 path, the param is sent by
+ * host driver.
+ */
 static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -503,7 +507,7 @@ static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *p
 	params->channels = cd->ipc_config.base.audio_fmt.channels_count;
 	params->rate = cd->ipc_config.base.audio_fmt.sampling_frequency;
 	params->sample_container_bytes = cd->ipc_config.base.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->ipc_config.base.audio_fmt.valid_bit_depth;
+	params->sample_valid_bytes = cd->ipc_config.base.audio_fmt.valid_bit_depth / 8;
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 	params->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
 	params->buffer.size = cd->ipc_config.base.ibs;
@@ -657,13 +661,12 @@ static int src_params(struct comp_dev *dev,
 
 	comp_info(dev, "src_params()");
 
+	src_set_params(dev, params);
 	err = src_verify_params(dev, params);
 	if (err < 0) {
 		comp_err(dev, "src_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
-
-	src_set_params(dev, params);
 
 	cd->sample_container_bytes = params->sample_container_bytes;
 
