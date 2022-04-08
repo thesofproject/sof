@@ -11,6 +11,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/kpb.h>
 #include <sof/common.h>
+#include <sof/compiler_attributes.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
@@ -87,7 +88,7 @@ struct comp_data {
 	struct ipc_msg *msg;	/**< host notification */
 
 	void (*detect_func)(struct comp_dev *dev,
-			    const struct audio_stream *source, uint32_t frames);
+			    const struct audio_stream __sparse_cache *source, uint32_t frames);
 	struct sof_ipc_comp_event event;
 };
 
@@ -155,7 +156,7 @@ void detect_test_notify(const struct comp_dev *dev)
 }
 
 static void default_detect_test(struct comp_dev *dev,
-				const struct audio_stream *source,
+				const struct audio_stream __sparse_cache *source,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -627,6 +628,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
+	struct comp_buffer __sparse_cache *source_c;
 	uint32_t frames;
 
 	comp_dbg(dev, "test_keyword_copy()");
@@ -634,20 +636,23 @@ static int test_keyword_copy(struct comp_dev *dev)
 	/* keyword components will only ever have 1 source */
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
+	source_c = buffer_acquire(source);
 
-	if (!source->stream.avail)
+	if (!source_c->stream.avail) {
+		buffer_release(source_c);
 		return PPL_STATUS_PATH_STOP;
+	}
 
-	source = buffer_acquire(source);
-	frames = audio_stream_get_avail_frames(&source->stream);
-	source = buffer_release(source);
+	frames = audio_stream_get_avail_frames(&source_c->stream);
 
 	/* copy and perform detection */
-	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
-	cd->detect_func(dev, &source->stream, frames);
+	buffer_stream_invalidate(source_c, audio_stream_get_avail_bytes(&source_c->stream));
+	cd->detect_func(dev, &source_c->stream, frames);
 
 	/* calc new available */
-	comp_update_buffer_consume(source, audio_stream_get_avail_bytes(&source->stream));
+	comp_update_buffer_cached_consume(source_c, audio_stream_get_avail_bytes(&source_c->stream));
+
+	buffer_release(source_c);
 
 	return 0;
 }

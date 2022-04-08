@@ -5,6 +5,7 @@
 // Author: Cristina Feies <cristina.ilie@nxp.com>
 // Author: Viorel Suman <viorel.suman@nxp.com>
 
+#include <sof/compiler_attributes.h>
 #include <sof/samples/audio/kwd_nn_detect_test.h>
 #include <sof/samples/audio/kwd_nn/kwd_nn_preprocess.h>
 #include <sof/samples/audio/kwd_nn/kwd_nn_process.h>
@@ -34,7 +35,7 @@ static int kwd_nn_detect_postprocess(uint8_t confidences[KWD_NN_CONFIDENCES_SIZE
 }
 
 void kwd_nn_detect_test(struct comp_dev *dev,
-			const struct audio_stream *source,
+			const struct audio_stream __sparse_cache *source,
 			uint32_t frames)
 {
 	void *src;
