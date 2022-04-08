@@ -559,17 +559,8 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", buffer->id,
 	       comp->id);
 
-	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-
-		/* set the buffer as a coherent object */
-		coherent_shared(buffer->cb, c);
-
-		if (!comp->cd->is_shared)
-			comp->cd = comp_make_shared(comp->cd);
-	}
-
-	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_COMP_TO_BUFFER);
+	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
+				   PPL_CONN_DIR_COMP_TO_BUFFER);
 }
 
 static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
@@ -581,17 +572,8 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", comp->id,
 	       buffer->id);
 
-	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-
-		/* set the buffer as a coherent object */
-		coherent_shared(buffer->cb, c);
-
-		if (!comp->cd->is_shared)
-			comp->cd = comp_make_shared(comp->cd);
-	}
-
-	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_BUFFER_TO_COMP);
+	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
+				   PPL_CONN_DIR_BUFFER_TO_COMP);
 }
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
