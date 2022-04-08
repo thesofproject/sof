@@ -4,6 +4,7 @@
 //
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
+#include <sof/compiler_attributes.h>
 #include <sof/samples/audio/smart_amp_test.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/trace/trace.h>
@@ -313,8 +314,11 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
-		if (sad->feedback_buf)
-			buffer_zero(sad->feedback_buf);
+		if (sad->feedback_buf) {
+			struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
+			buffer_zero(buf);
+			buffer_release(buf);
+		}
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -327,8 +331,8 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int smart_amp_process_s16(struct comp_dev *dev,
-				 const struct audio_stream *source,
-				 const struct audio_stream *sink,
+				 const struct audio_stream __sparse_cache *source,
+				 const struct audio_stream __sparse_cache *sink,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
@@ -359,8 +363,8 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 }
 
 static int smart_amp_process_s32(struct comp_dev *dev,
-				 const struct audio_stream *source,
-				 const struct audio_stream *sink,
+				 const struct audio_stream __sparse_cache *source,
+				 const struct audio_stream __sparse_cache *sink,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
@@ -391,11 +395,10 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 	return 0;
 }
 
-static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
+static smart_amp_proc get_smart_amp_process(struct comp_dev *dev,
+					    struct comp_buffer __sparse_cache *buf)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-
-	switch (sad->source_buf->stream.frame_fmt) {
+	switch (buf->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		return smart_amp_process_s16;
 	case SOF_IPC_FRAME_S24_4LE:
@@ -410,85 +413,73 @@ static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 static int smart_amp_copy(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer *source_buf = sad->source_buf;
-	struct comp_buffer *sink_buf = sad->sink_buf;
+	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
+	struct comp_buffer __sparse_cache *sink_buf = buffer_acquire(sad->sink_buf);
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
 	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
-	int ret = 0;
 
 	comp_dbg(dev, "smart_amp_copy()");
 
-	source_buf = buffer_release(source_buf);
-	sink_buf = buffer_release(sink_buf);
-
 	/* available bytes and samples calculation */
 	avail_passthrough_frames =
-		audio_stream_avail_frames(&sad->source_buf->stream,
-					  &sad->sink_buf->stream);
-
-	source_buf = buffer_release(source_buf);
-	sink_buf = buffer_release(sink_buf);
+		audio_stream_avail_frames(&source_buf->stream,
+					  &sink_buf->stream);
 
 	avail_frames = avail_passthrough_frames;
 
 	if (sad->feedback_buf) {
-		struct comp_buffer *buf = sad->feedback_buf;
+		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
-		buf = buffer_acquire(buf);
-		if (comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
+		if (comp_get_state(dev, buf->source) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
-				audio_stream_get_avail_frames(&sad->feedback_buf->stream);
+				audio_stream_get_avail_frames(&buf->stream);
 
 			avail_frames = MIN(avail_passthrough_frames,
 					   avail_feedback_frames);
 
 			feedback_bytes = avail_frames *
-				audio_stream_frame_bytes(&sad->feedback_buf->stream);
-
-			buffer_release(buf);
+				audio_stream_frame_bytes(&buf->stream);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
 				 avail_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
-			buffer_stream_invalidate(sad->feedback_buf, feedback_bytes);
-			sad->process(dev, &sad->feedback_buf->stream,
-				     &sad->sink_buf->stream, avail_frames,
-				     sad->config.feedback_ch_map);
+			buffer_stream_invalidate(buf, feedback_bytes);
+			sad->process(dev, &buf->stream, &sink_buf->stream,
+				     avail_frames, sad->config.feedback_ch_map);
 
-			comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
-		} else {
-			buffer_release(buf);
+			comp_update_buffer_cached_consume(buf, feedback_bytes);
 		}
+
+		buffer_release(buf);
 	}
 
 	/* bytes calculation */
-	source_buf = buffer_acquire(source_buf);
 	source_bytes = avail_frames *
-		audio_stream_frame_bytes(&sad->source_buf->stream);
-	source_buf = buffer_release(source_buf);
+		audio_stream_frame_bytes(&source_buf->stream);
 
-	sink_buf = buffer_acquire(sink_buf);
 	sink_bytes = avail_frames *
-		audio_stream_frame_bytes(&sad->sink_buf->stream);
-	sink_buf = buffer_release(sink_buf);
+		audio_stream_frame_bytes(&sink_buf->stream);
 
 	/* process data */
-	buffer_stream_invalidate(sad->source_buf, source_bytes);
-	sad->process(dev, &sad->source_buf->stream, &sad->sink_buf->stream,
+	buffer_stream_invalidate(source_buf, source_bytes);
+	sad->process(dev, &source_buf->stream, &sink_buf->stream,
 		     avail_frames, sad->config.source_ch_map);
-	buffer_stream_writeback(sad->sink_buf, sink_bytes);
+	buffer_stream_writeback(sink_buf, sink_bytes);
 
 	/* source/sink buffer pointers update */
-	comp_update_buffer_consume(sad->source_buf, source_bytes);
-	comp_update_buffer_produce(sad->sink_buf, sink_bytes);
+	comp_update_buffer_cached_consume(source_buf, source_bytes);
+	comp_update_buffer_cached_produce(sink_buf, sink_bytes);
 
-	return ret;
+	buffer_release(sink_buf);
+	buffer_release(source_buf);
+
+	return 0;
 }
 
 static int smart_amp_reset(struct comp_dev *dev)
@@ -504,6 +495,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 	struct list_item *blist;
 	int ret;
 
@@ -520,36 +512,42 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-		source_buffer = buffer_acquire(source_buffer);
-		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
+		buffer_c = buffer_acquire(source_buffer);
+		/* FIXME: how often can this loop be run? */
+		if (buffer_c->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
-		source_buffer = buffer_release(source_buffer);
+		buffer_release(buffer_c);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-	sad->in_channels = sad->source_buf->stream.channels;
-	sad->out_channels = sad->sink_buf->stream.channels;
+	buffer_c = buffer_acquire(sad->sink_buf);
+	sad->out_channels = buffer_c->stream.channels;
+	buffer_release(buffer_c);
+
+	buffer_c = buffer_acquire(sad->source_buf);
+	sad->in_channels = buffer_c->stream.channels;
 
 	if (sad->feedback_buf) {
-		struct comp_buffer *buf = sad->feedback_buf;
+		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
-		buf = buffer_acquire(buf);
-		sad->feedback_buf->stream.channels = sad->config.feedback_channels;
-		sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
-		buf = buffer_release(buf);
+		buf->stream.channels = sad->config.feedback_channels;
+		buf->stream.rate = buffer_c->stream.rate;
+		buffer_release(buf);
 	}
 
-	sad->process = get_smart_amp_process(dev);
+	sad->process = get_smart_amp_process(dev, buffer_c);
 	if (!sad->process) {
 		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
+	buffer_release(buffer_c);
+
+	return ret;
 }
 
 static const struct comp_driver comp_smart_amp = {
