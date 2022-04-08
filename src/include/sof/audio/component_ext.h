@@ -354,11 +354,13 @@ static inline bool comp_is_scheduling_source(struct comp_dev *dev)
 }
 
 /**
- * Called to reallocate component in shared memory.
+ * Called to mark component as shared between cores
  * @param dev Component device.
- * @return Pointer to reallocated component device.
  */
-struct comp_dev *comp_make_shared(struct comp_dev *dev);
+static inline void comp_make_shared(struct comp_dev *dev)
+{
+	dev->is_shared = true;
+}
 
 static inline struct comp_driver_list *comp_drivers_get(void)
 {

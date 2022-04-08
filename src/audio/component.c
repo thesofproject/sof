@@ -160,48 +160,6 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
-struct comp_dev *comp_make_shared(struct comp_dev *dev)
-{
-	struct list_item *old_bsource_list = &dev->bsource_list;
-	struct list_item *old_bsink_list = &dev->bsink_list;
-	struct list_item *buffer_list, *clist;
-	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
-	int dir;
-
-	/* flush cache to share */
-	dcache_writeback_region((__sparse_force void __sparse_cache *)dev, dev->size);
-
-	dev = platform_shared_get(dev, dev->size);
-
-	/* re-link lists with the new heads addresses, init would cut
-	 * links to existing items, local already connected buffers
-	 */
-	list_relink(&dev->bsource_list, old_bsource_list);
-	list_relink(&dev->bsink_list, old_bsink_list);
-	dev->is_shared = true;
-
-	/* re-link all buffers which are already connected to this
-	 * component
-	 */
-	for (dir = 0; dir <= PPL_CONN_DIR_BUFFER_TO_COMP; dir++) {
-		buffer_list = comp_buffer_list(dev, dir);
-
-		if (list_is_empty(buffer_list))
-			continue;
-
-		list_for_item(clist, buffer_list) {
-			buffer = buffer_from_list(clist, struct comp_buffer, dir);
-
-			buffer_c = buffer_acquire(buffer);
-			buffer_set_comp(buffer_c, dev, dir);
-			buffer_release(buffer_c);
-		}
-	}
-
-	return dev;
-}
-
 int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
 		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
 {

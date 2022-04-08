@@ -566,7 +566,7 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 		coherent_shared(buffer->cb, c);
 
 		if (!comp->cd->is_shared)
-			comp->cd = comp_make_shared(comp->cd);
+			comp_make_shared(comp->cd);
 	}
 
 	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -588,7 +588,7 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 		coherent_shared(buffer->cb, c);
 
 		if (!comp->cd->is_shared)
-			comp->cd = comp_make_shared(comp->cd);
+			comp_make_shared(comp->cd);
 	}
 
 	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_BUFFER_TO_COMP);
