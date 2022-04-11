@@ -127,41 +127,52 @@ static int crossover_assign_sinks(struct comp_dev *dev,
 				  struct comp_buffer **sinks)
 {
 	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	int num_sinks = 0;
 	int i;
 
 	/* Align sink streams with their respective configurations */
 	list_for_item(sink_list, &dev->bsink_list) {
+		unsigned int pipeline_id, state;
+
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (sink->sink->state == dev->state) {
-			/* If no config is set, then assign the sinks in order */
-			if (!config) {
-				sinks[num_sinks++] = sink;
-				continue;
-			}
+		sink_c = buffer_acquire(sink);
 
-			i = crossover_get_stream_index(config,
-						       sink->pipeline_id);
+		pipeline_id = sink_c->pipeline_id;
+		state = sink_c->sink->state;
+		buffer_release(sink_c);
 
-			/* If this sink buffer is not assigned
-			 * in the configuration.
-			 */
-			if (i < 0) {
-				comp_err(dev, "crossover_assign_sinks(), could not find sink %d in config",
-					 sink->pipeline_id);
-				break;
-			}
+		if (state != dev->state)
+			continue;
 
-			if (sinks[i]) {
-				comp_err(dev, "crossover_assign_sinks(), multiple sinks from pipeline %d are assigned",
-					 sink->pipeline_id);
-				break;
-			}
-
-			sinks[i] = sink;
-			num_sinks++;
+		/* If no config is set, then assign the sinks in order */
+		if (!config) {
+			sinks[num_sinks++] = sink;
+			continue;
 		}
+
+		i = crossover_get_stream_index(config, pipeline_id);
+
+		/* If this sink buffer is not assigned
+		 * in the configuration.
+		 */
+		if (i < 0) {
+			comp_err(dev,
+				 "crossover_acquire_sinks(), could not find sink %d in config",
+				 pipeline_id);
+			break;
+		}
+
+		if (sinks[i]) {
+			comp_err(dev,
+				 "crossover_acquire_sinks(), multiple sinks from pipeline %d are assigned",
+				 pipeline_id);
+			break;
+		}
+
+		sinks[i] = sink;
+		num_sinks++;
 	}
 
 	return num_sinks;
@@ -397,6 +408,7 @@ static int crossover_validate_config(struct comp_dev *dev,
 				     struct sof_crossover_config *config)
 {
 	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	uint32_t size = config->size;
 	int32_t num_assigned_sinks = 0;
@@ -420,17 +432,23 @@ static int crossover_validate_config(struct comp_dev *dev,
 	 * the config.
 	 */
 	list_for_item(sink_list, &dev->bsink_list) {
+		unsigned int pipeline_id;
+
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		i = crossover_get_stream_index(config, sink->pipeline_id);
+		sink_c = buffer_acquire(sink);
+		pipeline_id = sink_c->pipeline_id;
+		buffer_release(sink_c);
+
+		i = crossover_get_stream_index(config, pipeline_id);
 		if (i < 0) {
 			comp_warn(dev, "crossover_validate_config(), could not assign sink %d",
-				  sink->pipeline_id);
+				  pipeline_id);
 			break;
 		}
 
 		if (assigned_sinks[i]) {
 			comp_warn(dev, "crossover_validate_config(), multiple sinks from pipeline %d are assigned",
-				  sink->pipeline_id);
+				  pipeline_id);
 			break;
 		}
 
@@ -572,8 +590,10 @@ static int crossover_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
+	struct comp_buffer __sparse_cache *source_c;
 	struct comp_buffer *sinks[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
-	int i, ret;
+	struct comp_buffer __sparse_cache *sinks_c[SOF_CROSSOVER_MAX_STREAMS];
+	int i, ret = 0;
 	uint32_t num_sinks;
 	uint32_t num_assigned_sinks = 0;
 	uint32_t frames = UINT_MAX;
@@ -584,15 +604,22 @@ static int crossover_copy(struct comp_dev *dev)
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
+	source_c = buffer_acquire(source);
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = crossover_setup(cd, source->stream.channels);
+		ret = crossover_setup(cd, source_c->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "crossover_copy(), failed Crossover setup");
-			return ret;
+			goto out;
 		}
+	}
+
+	/* Check if source is active */
+	if (source_c->source->state != dev->state) {
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Use the assign_sink array from the config to route
@@ -614,49 +641,49 @@ static int crossover_copy(struct comp_dev *dev)
 	else
 		num_sinks = num_assigned_sinks;
 
-	source = buffer_acquire(source);
-
-	/* Check if source is active */
-	if (source->source->state != dev->state) {
-		source = buffer_release(source);
-		return -EINVAL;
-	}
-
 	/* Find the number of frames to copy over */
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		sinks[i] = buffer_acquire(sinks[i]);
-		avail = audio_stream_avail_frames(&source->stream,
-						  &sinks[i]->stream);
+		/*
+		 * WARNING: if a different thread happens to lock the same
+		 * buffers in different order, they can deadlock
+		 */
+		sinks_c[i] = buffer_acquire(sinks[i]);
+		avail = audio_stream_avail_frames(&source_c->stream,
+						  &sinks_c[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_release(sinks[i]);
 	}
 
-	source = buffer_release(source);
+	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
 
-	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
-
-	for (i = 0; i < num_sinks; i++) {
-		if (!sinks[i])
-			continue;
-		sinks_bytes[i] = frames *
-				 audio_stream_frame_bytes(&sinks[i]->stream);
-	}
+	for (i = 0; i < num_sinks; i++)
+		if (sinks[i])
+			sinks_bytes[i] = frames *
+				audio_stream_frame_bytes(&sinks_c[i]->stream);
 
 	/* Process crossover */
-	buffer_stream_invalidate(source, source_bytes);
-	cd->crossover_process(dev, source, sinks, num_sinks, frames);
+	buffer_stream_invalidate(source_c, source_bytes);
+	cd->crossover_process(dev, source_c, sinks_c, num_sinks, frames);
 
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		buffer_stream_writeback(sinks[i], sinks_bytes[i]);
-		comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
+		buffer_stream_writeback(sinks_c[i], sinks_bytes[i]);
+		comp_update_buffer_cached_produce(sinks_c[i], sinks_bytes[i]);
 	}
-	comp_update_buffer_consume(source, source_bytes);
 
-	return 0;
+	/* Release buffers in reverse order */
+	for (i = num_sinks - 1; i >= 0; i--)
+		if (sinks[i])
+			buffer_release(sinks_c[i]);
+
+	comp_update_buffer_cached_consume(source_c, source_bytes);
+
+out:
+	buffer_release(source_c);
+
+	return ret;
 }
 
 /**
@@ -668,6 +695,7 @@ static int crossover_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct list_item *sink_list;
 	int32_t sink_period_bytes;
 	int ret;
@@ -684,34 +712,41 @@ static int crossover_prepare(struct comp_dev *dev)
 	/* Crossover has a variable number of sinks */
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
+	source_c = buffer_acquire(source);
 
 	/* Get source data format */
-	cd->source_format = source->stream.frame_fmt;
+	cd->source_format = source_c->stream.frame_fmt;
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (cd->source_format != sink->stream.frame_fmt) {
+		sink_c = buffer_acquire(sink);
+
+		if (cd->source_format != sink_c->stream.frame_fmt) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different for sink %d.",
-				 cd->source_format, sink->stream.frame_fmt,
-				 sink->pipeline_id);
+				 cd->source_format, sink_c->stream.frame_fmt,
+				 sink_c->pipeline_id);
 			ret = -EINVAL;
-			goto err;
+		} else {
+			sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
+								      dev->frames);
+			if (sink_c->stream.size < sink_period_bytes) {
+				comp_err(dev,
+					 "crossover_prepare(), sink %d buffer size %d is insufficient",
+					 sink_c->pipeline_id, sink_c->stream.size);
+				ret = -ENOMEM;
+			}
 		}
 
-		sink_period_bytes = audio_stream_period_bytes(&sink->stream,
-							      dev->frames);
-		if (sink->stream.size < sink_period_bytes) {
-			comp_err(dev, "crossover_prepare(), sink %d buffer size %d is insufficient",
-				 sink->pipeline_id, sink->stream.size);
-			ret = -ENOMEM;
-			goto err;
-		}
+		buffer_release(sink_c);
+
+		if (ret < 0)
+			goto out;
 	}
 
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
 		  cd->source_format, cd->source_format,
-		  source->stream.channels);
+		  source_c->stream.channels);
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
@@ -723,10 +758,10 @@ static int crossover_prepare(struct comp_dev *dev)
 	}
 
 	if (cd->config) {
-		ret = crossover_setup(cd, source->stream.channels);
+		ret = crossover_setup(cd, source_c->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "crossover_prepare(), setup failed");
-			goto err;
+			goto out;
 		}
 
 		cd->crossover_process =
@@ -735,7 +770,7 @@ static int crossover_prepare(struct comp_dev *dev)
 			comp_err(dev, "crossover_prepare(), No processing function matching frame_fmt %i",
 				 cd->source_format);
 			ret = -EINVAL;
-			goto err;
+			goto out;
 		}
 
 		cd->crossover_split =
@@ -744,7 +779,7 @@ static int crossover_prepare(struct comp_dev *dev)
 			comp_err(dev, "crossover_prepare(), No split function matching num_sinks %i",
 				 cd->config->num_sinks);
 			ret = -EINVAL;
-			goto err;
+			goto out;
 		}
 	} else {
 		comp_info(dev, "crossover_prepare(), setting crossover to passthrough mode");
@@ -756,14 +791,16 @@ static int crossover_prepare(struct comp_dev *dev)
 			comp_err(dev, "crossover_prepare(), No passthrough function matching frame_fmt %i",
 				 cd->source_format);
 			ret = -EINVAL;
-			goto err;
+			goto out;
 		}
 	}
 
-	return 0;
+out:
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	buffer_release(source_c);
+
 	return ret;
 }
 

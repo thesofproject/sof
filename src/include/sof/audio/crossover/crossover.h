@@ -67,8 +67,8 @@ struct crossover_state {
 };
 
 typedef void (*crossover_process)(const struct comp_dev *dev,
-				  const struct comp_buffer *source,
-				  struct comp_buffer *sinks[],
+				  const struct comp_buffer __sparse_cache *source,
+				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames);
 
