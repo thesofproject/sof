@@ -648,6 +648,10 @@ zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
 	${SOF_AUDIO_PATH}/copier.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
+	${SOF_AUDIO_PATH}/aria/aria.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )
