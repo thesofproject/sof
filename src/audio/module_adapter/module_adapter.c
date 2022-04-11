@@ -106,6 +106,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_buffer __sparse_cache *buffer_c;
 	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
@@ -244,23 +245,31 @@ int module_adapter_prepare(struct comp_dev *dev)
 				ret = -ENOMEM;
 				goto free;
 			}
+
 			list_item_append(&buffer->sink_list, &mod->sink_buffer_list);
-			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			buffer_reset_pos(buffer, NULL);
+
+			buffer_c = buffer_acquire(buffer);
+			buffer_set_params(buffer_c, mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_reset_pos(buffer_c, NULL);
+			buffer_release(buffer_c);
 		}
 	} else {
 		list_for_item(blist, &mod->sink_buffer_list) {
 			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 								  sink_list);
 
-			ret = buffer_set_size(buffer, buff_size);
+			buffer_c = buffer_acquire(buffer);
+			ret = buffer_set_size(buffer_c, buff_size);
 			if (ret < 0) {
+				buffer_release(buffer_c);
 				comp_err(dev, "module_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
 					 buff_size);
 				goto free;
 			}
-			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			buffer_reset_pos(buffer, NULL);
+
+			buffer_set_params(buffer_c, mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_reset_pos(buffer_c, NULL);
+			buffer_release(buffer_c);
 		}
 	}
 
@@ -337,8 +346,8 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
  * @bytes: number of bytes available in the source buffer
  */
 static void
-ca_copy_from_source_to_module(const struct audio_stream *source, void *buff, uint32_t buff_size,
-			      size_t bytes)
+ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source, void *buff,
+			      uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source, source->r_ptr);
@@ -364,7 +373,7 @@ ca_copy_from_source_to_module(const struct audio_stream *source, void *buff, uin
  * @bytes: number of bytes available in the module output buffer
  */
 static void
-ca_copy_from_module_to_sink(const struct audio_stream *sink, void *buff, size_t bytes)
+ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink, void *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(sink, sink->w_ptr);
@@ -390,24 +399,23 @@ ca_copy_from_module_to_sink(const struct audio_stream *sink, void *buff, size_t 
  *
  * \return: none.
  */
-static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
+static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t bytes)
 {
 	uint32_t tmp, copy_bytes = bytes;
 	void *ptr;
 
 	while (copy_bytes) {
 		ptr = audio_stream_wrap(&sink->stream, sink->stream.w_ptr);
-		tmp = audio_stream_bytes_without_wrap(&sink->stream,
-						      ptr);
+		tmp = audio_stream_bytes_without_wrap(&sink->stream, ptr);
 		tmp = MIN(tmp, copy_bytes);
 		ptr = (char *)ptr + tmp;
 		copy_bytes -= tmp;
 	}
-	comp_update_buffer_produce(sink, bytes);
+	comp_update_buffer_cached_produce(sink, bytes);
 }
 
-static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_buffer,
-				struct comp_buffer *sink_buffer, uint32_t produced)
+static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __sparse_cache *src_buffer,
+				struct comp_buffer __sparse_cache *sink_buffer, uint32_t produced)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_copy_limits cl;
@@ -437,7 +445,7 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 	}
 
 copy_period:
-	comp_get_copy_limits_with_lock(src_buffer, sink_buffer, &cl);
+	comp_get_copy_limits(src_buffer, sink_buffer, &cl);
 	copy_bytes = cl.frames * cl.source_frame_bytes;
 	if (!copy_bytes)
 		return;
@@ -445,14 +453,14 @@ copy_period:
 			  copy_bytes / mod->stream_params->sample_container_bytes);
 	buffer_stream_writeback(sink_buffer, copy_bytes);
 
-	comp_update_buffer_produce(sink_buffer, copy_bytes);
-	comp_update_buffer_consume(src_buffer, copy_bytes);
+	comp_update_buffer_cached_produce(sink_buffer, copy_bytes);
+	comp_update_buffer_cached_consume(src_buffer, copy_bytes);
 }
 
 int module_adapter_copy(struct comp_dev *dev)
 {
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
@@ -462,8 +470,10 @@ int module_adapter_copy(struct comp_dev *dev)
 	/* get the least number of free frames from all sinks */
 	list_for_item(blist, &mod->sink_buffer_list) {
 		sink = container_of(blist, struct comp_buffer, sink_list);
+		sink_c = buffer_acquire(sink);
 		min_free_frames = MIN(min_free_frames,
-				      audio_stream_get_free_frames(&sink->stream));
+				      audio_stream_get_free_frames(&sink_c->stream));
+		buffer_release(sink_c);
 	}
 
 	/* copy source samples into input buffer */
@@ -473,18 +483,18 @@ int module_adapter_copy(struct comp_dev *dev)
 
 		source = container_of(blist, struct comp_buffer, sink_list);
 
-		source = buffer_acquire(source);
-		frames = MIN(min_free_frames, audio_stream_get_avail_frames(&source->stream));
-		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
-		source = buffer_release(source);
+		source_c = buffer_acquire(source);
+		frames = MIN(min_free_frames, audio_stream_get_avail_frames(&source_c->stream));
+		source_frame_bytes = audio_stream_frame_bytes(&source_c->stream);
 
 		bytes_to_process = frames * source_frame_bytes;
 
-		buffer_stream_invalidate(source, bytes_to_process);
+		buffer_stream_invalidate(source_c, bytes_to_process);
 		mod->input_buffers[i].size = bytes_to_process;
 		mod->input_buffers[i].consumed = 0;
-		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
+		ca_copy_from_source_to_module(&source_c->stream, mod->input_buffers[i].data,
 					      bytes_to_process, bytes_to_process);
+		buffer_release(source_c);
 		i++;
 	}
 
@@ -502,12 +512,14 @@ int module_adapter_copy(struct comp_dev *dev)
 	/* copy all produced output samples to output buffers */
 	i = 0;
 	list_for_item(blist, &mod->sink_buffer_list) {
-		struct comp_buffer *buffer = container_of(blist, struct comp_buffer, sink_list);
+		sink = container_of(blist, struct comp_buffer, sink_list);
 
 		if (mod->output_buffers[i].size > 0) {
-			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
+			sink_c = buffer_acquire(sink);
+			ca_copy_from_module_to_sink(&sink_c->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
-			audio_stream_produce(&buffer->stream, mod->output_buffers[i].size);
+			audio_stream_produce(&sink_c->stream, mod->output_buffers[i].size);
+			buffer_release(sink_c);
 		}
 		i++;
 	}
@@ -517,24 +529,29 @@ consume:
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
-		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+		source_c = buffer_acquire(source);
+		comp_update_buffer_cached_consume(source_c, mod->input_buffers[i].consumed);
+		buffer_release(source_c);
 		i++;
 	}
 
 	/* copy from all output local buffers to sink buffers */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *src_buffer;
 		struct list_item *_blist;
 		int j = 0;
 
 		sink = container_of(blist, struct comp_buffer, source_list);
 		list_for_item(_blist, &mod->sink_buffer_list) {
-			src_buffer = container_of(_blist, struct comp_buffer, sink_list);
+			source = container_of(_blist, struct comp_buffer, sink_list);
 
 			if (i == j) {
-				module_copy_samples(dev, src_buffer, sink,
+				sink_c = buffer_acquire(sink);
+				source_c = buffer_acquire(source);
+				module_copy_samples(dev, source_c, sink_c,
 						    mod->output_buffers[i].size);
+				buffer_release(source_c);
+				buffer_release(sink_c);
 				break;
 			}
 			j++;
@@ -684,8 +701,10 @@ int module_adapter_reset(struct comp_dev *dev)
 	list_for_item(blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
 
-		buffer_zero(buffer);
+		buffer_zero(buffer_c);
+		buffer_release(buffer_c);
 	}
 
 	rfree(mod->stream_params);
