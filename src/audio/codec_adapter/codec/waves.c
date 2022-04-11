@@ -65,9 +65,9 @@ static int32_t sample_format_convert_to_bytes(MaxxBuffer_Format_t format)
 		res = 3; /* 3 bytes */
 		break;
 	case MAXX_BUFFER_FORMAT_Q9_23:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	case MAXX_BUFFER_FORMAT_Q1_31:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	case MAXX_BUFFER_FORMAT_Q5_27:
 		res = sizeof(uint32_t);
 		break;
@@ -132,14 +132,14 @@ static bool format_is_supported(enum sof_ipc_frame format)
 
 	switch (format) {
 	case SOF_IPC_FRAME_S16_LE:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	case SOF_IPC_FRAME_S24_4LE:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	case SOF_IPC_FRAME_S32_LE:
 		supported = true;
 		break;
 	case SOF_IPC_FRAME_FLOAT:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	default:
 		supported = false;
 		break;
@@ -157,7 +157,7 @@ static bool layout_is_supported(uint32_t layout)
 		supported = true;
 		break;
 	case SOF_IPC_BUFFER_NONINTERLEAVED:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	default:
 		supported = false;
 		break;
@@ -172,7 +172,7 @@ static bool rate_is_supported(uint32_t rate)
 
 	switch (rate) {
 	case 44100:
-		COMPILER_FALLTHROUGH
+		COMPILER_FALLTHROUGH;
 	case 48000:
 		supported = true;
 		break;
@@ -219,7 +219,6 @@ static int waves_effect_allocate(struct processing_module *mod)
 /* checks if sink/source parameters fit MaxxEffect */
 static int waves_effect_check(struct comp_dev *dev)
 {
-	struct processing_module *component = comp_get_drvdata(dev);
 	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 						    source_list);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -295,7 +294,6 @@ static int waves_effect_init(struct comp_dev *dev)
 						     sink_list);
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
-	struct processing_module *component = comp_get_drvdata(dev);
 
 	const struct audio_stream *src_fmt = &source->stream;
 
@@ -595,7 +593,6 @@ static int waves_effect_config(struct comp_dev *dev)
 /* apply setup config */
 static int waves_effect_setup_config(struct comp_dev *dev)
 {
-	struct module_data *codec = comp_get_module_data(dev);
 	int ret;
 
 	comp_dbg(dev, "waves_effect_setup_config() start");
