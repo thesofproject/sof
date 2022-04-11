@@ -829,25 +829,27 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	if (!source->hw_params_configured) {
-		struct ipc4_audio_format in_fmt;
+	if (!list_is_empty(&dev->bsource_list)) {
+		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		if (!source->hw_params_configured) {
+			struct ipc4_audio_format in_fmt;
 
-		in_fmt = cd->config.base.audio_fmt;
-		source->stream.channels = in_fmt.channels_count;
-		source->stream.rate = in_fmt.sampling_frequency;
-		audio_stream_fmt_conversion(in_fmt.depth,
-					    in_fmt.valid_bit_depth,
-					    &source->stream.frame_fmt,
-					    &source->stream.valid_sample_fmt,
-					    in_fmt.s_type);
+			in_fmt = cd->config.base.audio_fmt;
+			source->stream.channels = in_fmt.channels_count;
+			source->stream.rate = in_fmt.sampling_frequency;
+			audio_stream_fmt_conversion(in_fmt.depth,
+						    in_fmt.valid_bit_depth,
+						    &source->stream.frame_fmt,
+						    &source->stream.valid_sample_fmt,
+						    in_fmt.s_type);
 
-		source->buffer_fmt = in_fmt.interleaving_style;
+			source->buffer_fmt = in_fmt.interleaving_style;
 
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			source->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
+			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+				source->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
 
-		source->hw_params_configured = true;
+			source->hw_params_configured = true;
+		}
 	}
 
 	if (cd->endpoint) {
