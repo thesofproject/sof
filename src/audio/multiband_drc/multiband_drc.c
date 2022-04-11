@@ -448,8 +448,8 @@ static int multiband_drc_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static void multiband_drc_process(struct comp_dev *dev, struct comp_buffer *source,
-				  struct comp_buffer *sink, int frames,
+static void multiband_drc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
+				  struct comp_buffer __sparse_cache *sink, int frames,
 				  uint32_t source_bytes, uint32_t sink_bytes)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
@@ -461,17 +461,17 @@ static void multiband_drc_process(struct comp_dev *dev, struct comp_buffer *sour
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_cached_consume(source, source_bytes);
+	comp_update_buffer_cached_produce(sink, sink_bytes);
 }
 
 static int multiband_drc_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
-	int ret;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	int ret = 0;
 
 	comp_dbg(dev, "multiband_drc_copy()");
 
@@ -480,31 +480,38 @@ static int multiband_drc_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = multiband_drc_setup(cd, (int16_t)sourceb->stream.channels,
-					  sourceb->stream.rate);
+		ret = multiband_drc_setup(cd, (int16_t)source_c->stream.channels,
+					  source_c->stream.rate);
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_copy(), failed DRC setup");
-			return ret;
+			goto out;
 		}
 	}
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_with_lock(sourceb, sinkb, &cl);
+	comp_get_copy_limits(source_c, sink_c, &cl);
 
 	/* Run Multiband DRC function */
-	multiband_drc_process(dev, sourceb, sinkb, cl.frames, cl.source_bytes, cl.sink_bytes);
+	multiband_drc_process(dev, source_c, sink_c, cl.frames, cl.source_bytes, cl.sink_bytes);
 
-	return 0;
+out:
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return ret;
 }
 
 static int multiband_drc_prepare(struct comp_dev *dev)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 
@@ -523,25 +530,27 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	source_c = buffer_acquire(sourceb);
+
 	/* get source data format */
-	cd->source_format = sourceb->stream.frame_fmt;
+	cd->source_format = source_c->stream.frame_fmt;
 
 	/* Initialize DRC */
 	comp_dbg(dev, "multiband_drc_prepare(), source_format=%d, sink_format=%d",
 		 cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config && cd->process_enabled) {
-		ret = multiband_drc_setup(cd, sourceb->stream.channels, sourceb->stream.rate);
+		ret = multiband_drc_setup(cd, source_c->stream.channels, source_c->stream.rate);
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_prepare() error: multiband_drc_setup failed.");
-			goto err;
+			goto out_source;
 		}
 
 		cd->multiband_drc_func = multiband_drc_find_proc_func(cd->source_format);
 		if (!cd->multiband_drc_func) {
 			comp_err(dev, "multiband_drc_prepare(), No proc func");
 			ret = -EINVAL;
-			goto err;
+			goto out_source;
 		}
 
 		cd->crossover_split = crossover_find_split_func(cd->config->num_bands);
@@ -549,7 +558,7 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 			comp_err(dev, "multiband_drc_prepare(), No crossover_split for band num %i",
 				 cd->config->num_bands);
 			ret = -EINVAL;
-			goto err;
+			goto out_source;
 		}
 	} else {
 		comp_info(dev, "multiband_drc_prepare(), DRC is in passthrough mode");
@@ -557,33 +566,38 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 		if (!cd->multiband_drc_func) {
 			comp_err(dev, "multiband_drc_prepare(), No proc func passthrough");
 			ret = -EINVAL;
-			goto err;
+			goto out_source;
 		}
 	}
 
+	sink_c = buffer_acquire(sinkb);
+
 	/* validate sink data format and period bytes */
-	if (cd->source_format != sinkb->stream.frame_fmt) {
+	if (cd->source_format != sink_c->stream.frame_fmt) {
 		comp_err(dev,
 			 "multiband_drc_prepare(): Source fmt %d and sink fmt %d are different.",
-			 cd->source_format, sinkb->stream.frame_fmt);
+			 cd->source_format, sink_c->stream.frame_fmt);
 		ret = -EINVAL;
-		goto err;
+		goto out_sink;
 	}
 
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < sink_period_bytes) {
+	if (sink_c->stream.size < sink_period_bytes) {
 		comp_err(dev, "multiband_drc_prepare(), sink buffer size %d is insufficient",
-			 sinkb->stream.size);
+			 sink_c->stream.size);
 		ret = -ENOMEM;
-		goto err;
 	}
 
-	return 0;
+out_sink:
+	buffer_release(sink_c);
+out_source:
+	buffer_release(source_c);
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+
 	return ret;
 }
 
