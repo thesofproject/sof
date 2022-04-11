@@ -652,6 +652,11 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 	${SOF_AUDIO_PATH}/aria/aria.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
+	${SOF_AUDIO_PATH}/crossover/crossover.c
+	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )

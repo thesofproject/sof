@@ -87,12 +87,12 @@ static void crossover_generic_split_4way(int32_t in,
 
 #if CONFIG_FORMAT_S16LE
 static void crossover_s16_default_pass(const struct comp_dev *dev,
-				       const struct comp_buffer *source,
-				       struct comp_buffer *sinks[],
+				       const struct comp_buffer __sparse_cache *source,
+				       struct comp_buffer __sparse_cache *sinks[],
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = &source->stream;
 	int16_t *x;
 	int32_t *y;
 	int i, j;
@@ -112,12 +112,12 @@ static void crossover_s16_default_pass(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void crossover_s32_default_pass(const struct comp_dev *dev,
-				       const struct comp_buffer *source,
-				       struct comp_buffer *sinks[],
+				       const struct comp_buffer __sparse_cache *source,
+				       struct comp_buffer __sparse_cache *sinks[],
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = &source->stream;
 	int32_t *x, *y;
 	int i, j;
 	int n = source_stream->channels * frames;
@@ -136,15 +136,15 @@ static void crossover_s32_default_pass(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S16LE
 static void crossover_s16_default(const struct comp_dev *dev,
-				  const struct comp_buffer *source,
-				  struct comp_buffer *sinks[],
+				  const struct comp_buffer __sparse_cache *source,
+				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream *source_stream = &source->stream;
-	struct audio_stream *sink_stream;
+	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	struct audio_stream __sparse_cache *sink_stream;
 	int16_t *x, *y;
 	int ch, i, j;
 	int idx;
@@ -175,15 +175,15 @@ static void crossover_s16_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void crossover_s24_default(const struct comp_dev *dev,
-				  const struct comp_buffer *source,
-				  struct comp_buffer *sinks[],
+				  const struct comp_buffer __sparse_cache *source,
+				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream *source_stream = &source->stream;
-	struct audio_stream *sink_stream;
+	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	struct audio_stream __sparse_cache *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
@@ -214,15 +214,15 @@ static void crossover_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void crossover_s32_default(const struct comp_dev *dev,
-				  const struct comp_buffer *source,
-				  struct comp_buffer *sinks[],
+				  const struct comp_buffer __sparse_cache *source,
+				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream *source_stream = &source->stream;
-	struct audio_stream *sink_stream;
+	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	struct audio_stream __sparse_cache *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
