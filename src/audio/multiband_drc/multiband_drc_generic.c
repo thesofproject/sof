@@ -11,8 +11,8 @@
 #include <sof/math/iir_df2t.h>
 
 static void multiband_drc_default_pass(const struct comp_dev *dev,
-				       const struct audio_stream *source,
-				       struct audio_stream *sink,
+				       const struct audio_stream __sparse_cache *source,
+				       struct audio_stream __sparse_cache *sink,
 				       uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, source->channels * frames);
@@ -203,8 +203,8 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
   */
 #if CONFIG_FORMAT_S16LE
 static void multiband_drc_s16_default(const struct comp_dev *dev,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
+				      const struct audio_stream __sparse_cache *source,
+				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
@@ -270,8 +270,8 @@ static void multiband_drc_s16_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void multiband_drc_s24_default(const struct comp_dev *dev,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
+				      const struct audio_stream __sparse_cache *source,
+				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
@@ -337,8 +337,8 @@ static void multiband_drc_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void multiband_drc_s32_default(const struct comp_dev *dev,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
+				      const struct audio_stream __sparse_cache *source,
+				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);

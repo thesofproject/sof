@@ -662,6 +662,11 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
+	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )
