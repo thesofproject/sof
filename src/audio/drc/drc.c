@@ -121,7 +121,7 @@ inline int drc_set_pre_delay_time(struct drc_state *state,
 static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
 {
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
-	int ret = 0;
+	int ret;
 
 	/* Reset any previous state */
 	drc_reset_state(&cd->state);
@@ -304,8 +304,8 @@ static int drc_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static void drc_process(struct comp_dev *dev, struct comp_buffer *source,
-			struct comp_buffer *sink, int frames,
+static void drc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
+			struct comp_buffer __sparse_cache *sink, int frames,
 			uint32_t source_bytes, uint32_t sink_bytes)
 {
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
@@ -317,8 +317,8 @@ static void drc_process(struct comp_dev *dev, struct comp_buffer *source,
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_cached_consume(source, source_bytes);
+	comp_update_buffer_cached_produce(sink, sink_bytes);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -326,9 +326,9 @@ static int drc_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
-	int ret;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	int ret = 0;
 
 	comp_dbg(dev, "drc_copy()");
 
@@ -337,31 +337,38 @@ static int drc_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = drc_setup(cd, sourceb->stream.channels, sourceb->stream.rate);
+		ret = drc_setup(cd, source_c->stream.channels, source_c->stream.rate);
 		if (ret < 0) {
 			comp_err(dev, "drc_copy(), failed DRC setup");
-			return ret;
+			goto out;
 		}
 	}
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_with_lock(sourceb, sinkb, &cl);
+	comp_get_copy_limits(source_c, sink_c, &cl);
 
 	/* Run DRC function */
-	drc_process(dev, sourceb, sinkb, cl.frames, cl.source_bytes,
+	drc_process(dev, source_c, sink_c, cl.frames, cl.source_bytes,
 		    cl.sink_bytes);
 
-	return 0;
+out:
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return ret;
 }
 
 static int drc_prepare(struct comp_dev *dev)
 {
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 

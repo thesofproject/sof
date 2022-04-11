@@ -58,8 +58,8 @@ struct drc_state {
 };
 
 typedef void (*drc_func)(const struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct audio_stream __sparse_cache *source,
+			 struct audio_stream __sparse_cache *sink,
 			 uint32_t frames);
 
 /* DRC component private data */
