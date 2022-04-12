@@ -196,6 +196,17 @@ config PERFORMANCE_COUNTERS
 	  use the stamp() macro periodically to find out how long the cpu
 	  was in active/sleep state between the calls and estimate the cpu load.
 
+config PERFORMANCE_COUNTERS_RUN_AVERAGE
+	bool "Performance counters run average"
+	depends on PERFORMANCE_COUNTERS
+	default n
+	help
+	  Enables tracing of performance measurements with window-based average
+	  calculations. In addition to the usage of stamp(), the performance
+	  counter will compute the average number of cpu cycles/ticks spent
+	  within the window size of 1024 scheduled tasks and log it out via
+	  tracings.
+
 config DSP_RESIDENCY_COUNTERS
 	bool "DSP residency counters"
 	default n

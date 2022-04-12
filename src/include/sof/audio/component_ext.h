@@ -194,6 +194,7 @@ static inline int comp_copy(struct comp_dev *dev)
  */
 #ifndef __ZEPHYR__
 		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
+		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
 #endif
 	}
 

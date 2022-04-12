@@ -235,6 +235,11 @@ enum {
 		  (uint32_t)((pcd)->plat_delta_peak),			\
 		  (uint32_t)((pcd)->cpu_delta_peak))
 
+#define comp_perf_avg_info(pcd, comp_p)					\
+	comp_info(comp_p, "perf comp_copy cpu avg %u (current peak %u)",\
+		  (uint32_t)((pcd)->cpu_delta_sum),			\
+		  (uint32_t)((pcd)->cpu_delta_peak))
+
 /** @}*/
 
 /** \brief Type of endpoint this component is connected to in a pipeline */
