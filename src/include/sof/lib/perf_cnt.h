@@ -23,6 +23,8 @@ struct perf_cnt_data {
 	uint32_t plat_delta_peak;
 	uint32_t cpu_delta_last;
 	uint32_t cpu_delta_peak;
+	uint32_t cpu_delta_sum;
+	uint32_t sample_cnt;
 };
 
 #if CONFIG_PERFORMANCE_COUNTERS
@@ -57,6 +59,33 @@ struct perf_cnt_data {
 /** \brief Simple trace, all values are printed, arg should be a tr_ctx address.
  */
 #define perf_trace_simple(pcd, arg) perf_cnt_trace(arg, pcd)
+
+#if CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE
+
+/* perf measurement windows size 2^x */
+#define PERF_CNT_CHECK_WINDOW_SIZE 10
+
+/** \brief Accumulates cpu timer delta samples calculated by perf_cnt_stamp().
+ *
+ *  If current sample count reaches the window size, compute the average and run trace_m.
+ *  \param pcd Performance counters data.
+ *  \param trace_m Trace function trace_m(pcd, arg) or trace macro if a
+ *         more precise line number is desired in the logs.
+ *  \param arg Argument passed to trace_m as arg.
+ */
+#define perf_cnt_average(pcd, trace_m, arg) do {                             \
+		(pcd)->cpu_delta_sum += (pcd)->cpu_delta_last;               \
+		if (++(pcd)->sample_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) {\
+			(pcd)->cpu_delta_sum >>= PERF_CNT_CHECK_WINDOW_SIZE; \
+			trace_m(pcd, arg);                                   \
+			(pcd)->cpu_delta_sum = 0;                            \
+			(pcd)->sample_cnt = 0;                               \
+		}                                                            \
+	} while (0)
+
+#else
+#define perf_cnt_average(pcd, trace_m, arg)
+#endif /* CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE */
 
 /** \brief Reads the timers and computes delta to the previous readings.
  *
@@ -122,6 +151,7 @@ struct perf_cnt_data {
 #define perf_cnt_clear(pcd)
 #define perf_cnt_init(pcd)
 #define perf_cnt_stamp(pcd, trace_m, arg)
+#define perf_cnt_average(pcd, trace_m, arg)
 #endif
 
 #endif /* __SOF_LIB_PERF_CNT_H__ */

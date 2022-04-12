@@ -85,6 +85,16 @@ static void perf_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 		(uint32_t)((pcd)->plat_delta_peak),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
+
+#if CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE
+static void perf_avg_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
+{
+	tr_info(&ll_tr, "perf ll_work cpu avg %u (current peak %u)",
+		(uint32_t)((pcd)->cpu_delta_sum),
+		(uint32_t)((pcd)->cpu_delta_peak));
+}
+#endif
+
 #endif
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
@@ -315,6 +325,7 @@ static void schedule_ll_tasks_run(void *data)
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 
 	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, 0 /* ignored */);
+	perf_cnt_average(&sch->pcd, perf_avg_ll_sched_trace, 0 /* ignored */);
 
 	key = k_spin_lock(&domain->lock);
 
