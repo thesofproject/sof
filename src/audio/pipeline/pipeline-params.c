@@ -14,6 +14,8 @@
 #include <sof/spinlock.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/error_status.h>
+#include <ipc4/module.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -304,6 +306,10 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 			    end_type == COMP_ENDPOINT_NODE)
 				return 0;
 		}
+
+		/* ipc4 module is only prepared in its parent pipeline */
+		if (IPC4_MOD_ID(current->ipc_config.id))
+			return 0;
 	}
 
 	err = pipeline_comp_task_init(current->pipeline);
