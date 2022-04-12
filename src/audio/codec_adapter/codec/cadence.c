@@ -678,7 +678,7 @@ cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_i
 
 	/* return if more fragments are expected or if the module is not prepared */
 	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
-	    md->state < MODULE_INITIALIZED)
+	    md->state < MODULE_IDLE)
 		return 0;
 
 	/* whole configuration received, apply it now */
