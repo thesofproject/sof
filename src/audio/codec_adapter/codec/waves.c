@@ -724,7 +724,7 @@ waves_codec_process(struct processing_module *mod,
 	if (!codec->mpd.init_done)
 		waves_codec_init_process(dev);
 
-	memcpy_s(codes->mpd.in_buff, codec->mpd.in_buff_size,
+	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
 		 input_buffers[0].data, codec->mpd.in_buff_size);
 	codec->mpd.avail = codec->mpd.in_buff_size;
 
