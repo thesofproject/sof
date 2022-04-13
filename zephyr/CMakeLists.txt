@@ -671,6 +671,10 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	${SOF_AUDIO_PATH}/google_rtc_audio_processing.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
+	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )

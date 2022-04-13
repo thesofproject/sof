@@ -40,8 +40,8 @@ struct comp_data {
 	int32_t sink_frames_max;	/* Max # of frames to process at sink */
 	int32_t frames;		/* IO buffer length */
 	void (*igo_nr_func)(struct comp_data *cd,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct audio_stream __sparse_cache *source,
+			    struct audio_stream __sparse_cache *sink,
 			    int32_t frames);
 };
 
