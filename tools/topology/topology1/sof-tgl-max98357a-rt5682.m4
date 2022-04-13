@@ -87,6 +87,20 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 	`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')'
 )')
 
+# define the ID base for backend DAI Links
+ifdef(`SSP_AMP_LINK_ORDER',`
+# use the order defined in sof_ssp_amp.c
+define(`SPK_BE_ID_BASE', `0')
+define(`DMIC_BE_ID_BASE', eval(SPK_BE_ID_BASE + 1))
+define(`HDMI_BE_ID_BASE', eval(DMIC_BE_ID_BASE + 2))
+define(`BT_BE_ID_BASE', eval(HDMI_BE_ID_BASE + 4))
+',`
+ifdef(`NO_HEADPHONE', `define(`DMIC_BE_ID_BASE', `0')', `define(`DMIC_BE_ID_BASE', `1')')
+define(`HDMI_BE_ID_BASE', eval(DMIC_BE_ID_BASE + 2))
+define(`SPK_BE_ID_BASE', eval(HDMI_BE_ID_BASE + 4))
+ifdef(`NO_AMP', `define(`BT_BE_ID_BASE', SPK_BE_ID_BASE)', `define(`BT_BE_ID_BASE', eval(SPK_BE_ID_BASE + 1))')
+')
+
 #
 # Define the pipelines
 #
@@ -122,7 +136,7 @@ define(`SPK_SSP_INDEX', AMP_SSP)
 # define SSP BE dai_link name
 define(`SPK_SSP_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`-Codec'))
 # define BE dai_link ID
-define(`SPK_BE_ID', 7)
+define(`SPK_BE_ID', SPK_BE_ID_BASE)
 # Ref capture related
 # Ref capture BE dai_name
 define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))')
@@ -135,11 +149,11 @@ define(KFBM_TYPE, `vol-kfbm')
 # define pcm, pipeline and dai id
 define(DMIC_PCM_48k_ID, `99')
 define(DMIC_PIPELINE_48k_ID, `10')
-define(DMIC_DAI_LINK_48k_ID, `1')
+define(DMIC_DAI_LINK_48k_ID, DMIC_BE_ID_BASE)
 define(DMIC_PCM_16k_ID, `100')
 define(DMIC_PIPELINE_16k_ID, `11')
 define(DMIC_PIPELINE_KWD_ID, `12')
-define(DMIC_DAI_LINK_16k_ID, `2')
+define(DMIC_DAI_LINK_16k_ID, eval(DMIC_BE_ID_BASE + 1))
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
 ifdef(`RTNR', `define(`DMICPROC', rtnr)', `')
@@ -168,9 +182,9 @@ ifdef(`BT_OFFLOAD', `
 # BT offload support
 define(`BT_PIPELINE_PB_ID', `13')
 define(`BT_PIPELINE_CP_ID', `14')
-define(`BT_DAI_LINK_ID', `8')
+define(`BT_DAI_LINK_ID', BT_BE_ID_BASE)
 define(`BT_PCM_ID', `7')
-define(`HW_CONFIG_ID', `8')
+define(`HW_CONFIG_ID', BT_BE_ID_BASE)
 include(`platform/intel/intel-generic-bt.m4')')
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -193,6 +207,7 @@ PIPELINE_PCM_ADD(
 	48000, 48000, 48000)
 undefine(`ENDPOINT_NAME')')
 
+ifdef(`NO_HEADPHONE',`',`
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Headphones')
@@ -208,7 +223,7 @@ undefine(`ENDPOINT_NAME')
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	3, 1, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000)')
 
 # Low Latency playback pipeline 2 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -268,7 +283,20 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	9, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SINK_9, 2, FMT,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
-',
+', CODEC, `CS35L41', `
+# Low Latency capture pipeline 9 on PCM 6 using max 4 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	9, 6, 4, s32le,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
+	48000, 48000, 48000)
+
+# capture DAI is SSP1 using 2 periods
+# Buffers use FMT format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	9, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
+	PIPELINE_SINK_9, 2, FMT,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)',
 `
 ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 `
@@ -321,6 +349,7 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 dnl else
 , `')
 
+ifdef(`NO_HEADPHONE',`',`
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -333,7 +362,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 0, SSP0-Codec,
 	PIPELINE_SINK_3, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
@@ -367,7 +396,8 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 ifdef(`NO_AMP',`',`
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')
-PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
+ifdef(`NO_HEADPHONE',`',`
+PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)')
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
@@ -426,24 +456,31 @@ ifelse(
                 SSP_CLOCK(fsync, 48000, codec_slave),
                 SSP_TDM(2, 16, 3, 3),
                 SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
+	CODEC, `CS35L41', `
+	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+		SSP_CLOCK(bclk, 6144000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(4, 32, 3, 15),
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
 	)')
 
+ifdef(`NO_HEADPHONE',`',`
 # SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
-		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
+		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))')
 
 # 4 HDMI/DP outputs (ID: 3,4,5,6)
-DAI_CONFIG(HDA, 0, 3, iDisp1,
+DAI_CONFIG(HDA, 0, HDMI_BE_ID_BASE, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, 4, iDisp2,
+DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, 5, iDisp3,
+DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
-DAI_CONFIG(HDA, 3, 6, iDisp4,
+DAI_CONFIG(HDA, 3, eval(HDMI_BE_ID_BASE + 3), iDisp4,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
 
 DEBUG_END
