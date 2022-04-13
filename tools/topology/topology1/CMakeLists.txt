@@ -162,6 +162,7 @@ set(TPLGS
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-ssp2-rt5682-ssp0\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2"
 	"sof-tgl-max98357a-rt5682\;sof-adl-rt5682\;-DNO_AMP\;-DPLATFORM=adl"
 	"sof-tgl-max98357a-rt5682\;sof-adl-rt1019-rt5682\;-DCODEC=RT1019\;-DFMT=s16le\;-DPLATFORM=adl\;-DAMP_SSP=1"
+	"sof-tgl-max98357a-rt5682\;sof-adl-cs35l41\;-DCODEC=CS35L41\;-DFMT=s24le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DNO_HEADPHONE\;-DSSP_AMP_LINK_ORDER"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682-igonr\;-DAMP_SSP=1\;-DIGO"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682-xperi\;-DAMP_SSP=1\;-DINCLUDE_IIR_EQ=1"
