@@ -18,9 +18,9 @@
  *
  */
 typedef void (*rtnr_func)(struct comp_dev *dev,
-						  const struct audio_stream **sources,
-						  struct audio_stream *sink,
-						  int frames);
+			  const struct audio_stream __sparse_cache **sources,
+			  struct audio_stream __sparse_cache *sink,
+			  int frames);
 
 #define RTNR_MAX_SOURCES		1 /* Microphone stream */
 

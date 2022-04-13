@@ -101,8 +101,8 @@ void rtk_rfree(void *ptr)
 
 #if CONFIG_FORMAT_S16LE
 
-static void rtnr_s16_default(struct comp_dev *dev, const struct audio_stream **sources,
-							struct audio_stream *sink, int frames)
+static void rtnr_s16_default(struct comp_dev *dev, const struct audio_stream __sparse_cache **sources,
+			     struct audio_stream __sparse_cache *sink, int frames)
 
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -116,8 +116,8 @@ static void rtnr_s16_default(struct comp_dev *dev, const struct audio_stream **s
 
 #if CONFIG_FORMAT_S24LE
 
-static void rtnr_s24_default(struct comp_dev *dev, const struct audio_stream **sources,
-							struct audio_stream *sink, int frames)
+static void rtnr_s24_default(struct comp_dev *dev, const struct audio_stream __sparse_cache **sources,
+			     struct audio_stream __sparse_cache *sink, int frames)
 
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -131,8 +131,8 @@ static void rtnr_s24_default(struct comp_dev *dev, const struct audio_stream **s
 
 #if CONFIG_FORMAT_S32LE
 
-static void rtnr_s32_default(struct comp_dev *dev, const struct audio_stream **sources,
-							struct audio_stream *sink, int frames)
+static void rtnr_s32_default(struct comp_dev *dev, const struct audio_stream __sparse_cache **sources,
+			     struct audio_stream __sparse_cache *sink, int frames)
 
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -307,8 +307,9 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	bool channels_valid;
 
 	comp_info(dev, "rtnr_params()");
 
@@ -323,16 +324,24 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 							source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* set source/sink_frames/rate */
-	cd->source_rate = sourceb->stream.rate;
-	cd->sink_rate = sinkb->stream.rate;
+	cd->source_rate = source_c->stream.rate;
+	cd->sink_rate = sink_c->stream.rate;
+	channels_valid = source_c->stream.channels == 2 && sink_c->stream.channels == 2;
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
 		return -EINVAL;
 	}
 
 	/* Currently support 16kHz sample rate only. */
-	switch (sourceb->stream.rate) {
+	switch (cd->source_rate) {
 	case 16000:
 		comp_info(dev, "rtnr_params(), sample rate = 16000 kHz");
 		break;
@@ -341,11 +350,11 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 		break;
 	default:
 		comp_err(dev, "rtnr_nr_params(), invalid sample rate(%d kHz)",
-				 sourceb->stream.rate);
+				 cd->source_rate);
 		return -EINVAL;
 	}
 
-	if (sourceb->stream.channels != 2 || sinkb->stream.channels != 2) {
+	if (!channels_valid) {
 		comp_err(dev, "rtnr_params(), source/sink stream must be 2 channels");
 		return -EINVAL;
 	}
@@ -494,34 +503,37 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 /* copy and process stream data from source to sink buffers */
 static int rtnr_copy(struct comp_dev *dev)
 {
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int frames;
 	int sink_bytes;
 	int source_bytes;
-	const struct audio_stream *sources_stream[RTNR_MAX_SOURCES] = { NULL };
+	const struct audio_stream __sparse_cache *sources_stream[RTNR_MAX_SOURCES] = { NULL };
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "rtnr_copy()");
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(source);
 
 	/* put empty data into output queue*/
-	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, source->stream.channels);
+	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, source_c->stream.channels);
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+	sink_c = buffer_acquire(sink);
+
+	frames = audio_stream_avail_frames(&source_c->stream, &sink_c->stream);
 
 	/* Process integer multiple of RTNR internal block length */
 	frames = frames & ~RTNR_BLK_LENGTH_MASK;
 
-	comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
+	comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source_c->id, frames);
 
 	if (frames) {
-		source_bytes = frames * audio_stream_frame_bytes(&source->stream);
-		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
+		sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
 
-		buffer_stream_invalidate(source, source_bytes);
+		buffer_stream_invalidate(source_c, source_bytes);
 
 		/* Run processing function */
 
@@ -529,8 +541,8 @@ static int rtnr_copy(struct comp_dev *dev)
 		 * Processing function uses an array of pointers to source streams
 		 * as parameter.
 		 */
-		sources_stream[0] = &source->stream;
-		cd->rtnr_func(dev, sources_stream, &sink->stream, frames);
+		sources_stream[0] = &source_c->stream;
+		cd->rtnr_func(dev, sources_stream, &sink_c->stream, frames);
 
 		/*
 		 * real process function of rtnr, consume/produce data from internal queue
@@ -538,13 +550,15 @@ static int rtnr_copy(struct comp_dev *dev)
 		 */
 		RTKMA_API_Process(cd->rtk_agl, 0, cd->source_rate, MicNum);
 
-		buffer_stream_writeback(sink, sink_bytes);
+		buffer_stream_writeback(sink_c, sink_bytes);
 
 		/* Track consume and produce */
-		comp_update_buffer_consume(source, source_bytes);
-		comp_update_buffer_produce(sink, sink_bytes);
+		comp_update_buffer_cached_consume(source_c, source_bytes);
+		comp_update_buffer_cached_produce(sink_c, sink_bytes);
 	}
 
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	return 0;
 }
@@ -553,6 +567,7 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");
@@ -575,7 +590,9 @@ static int rtnr_prepare(struct comp_dev *dev)
 
 	/* Get sink data format */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_c = buffer_acquire(sinkb);
+	cd->sink_format = sink_c->stream.frame_fmt;
+	buffer_release(sink_c);
 
 	/* Check source and sink PCM format and get processing function */
 	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);

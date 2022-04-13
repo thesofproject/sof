@@ -11,16 +11,16 @@
 extern "C" {
 #endif
 
-void RTKMA_API_S16_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S16_Default(void *Context, const struct audio_stream __sparse_cache **sources,
+						struct audio_stream __sparse_cache *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
-void RTKMA_API_S24_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S24_Default(void *Context, const struct audio_stream __sparse_cache **sources,
+						struct audio_stream __sparse_cache *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
-void RTKMA_API_S32_Default(void *Context, const struct audio_stream **sources,
-						struct audio_stream *sink, int frames,
+void RTKMA_API_S32_Default(void *Context, const struct audio_stream __sparse_cache **sources,
+						struct audio_stream __sparse_cache *sink, int frames,
 						_Bool ref_active, int in_idx, int ref_idx,
 						int ref_32bits, int ref_shift);
 
