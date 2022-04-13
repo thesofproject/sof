@@ -17,9 +17,64 @@ LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
 DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 		 0x95, 0xa8, 0x72, 0xde, 0xfe, 0x77, 0x96, 0xfc);
 
-DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), 3);
+
+/** \brief ACE specific runtime power management data. */
+struct ace_pm_runtime_data {
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+	uint32_t min_ticks_to_pg; /* min ticks to allow power gating */
+#endif
+	int32_t host_dma_l1_sref; /**< ref counter for Host DMA accesses */
+};
 
 #if defined(CONFIG_PM_POLICY_CUSTOM)
+
+static inline void pm_runtime_set_pg_min_ticks(uint32_t ticks)
+{
+	void *pprd = pm_runtime_data_get()->platform_data;
+
+	tr_info(&power_tr, "new min ticks to PG %d", ticks);
+	((struct ace_pm_runtime_data *) pprd)->min_ticks_to_pg = ticks;
+}
+
+static inline uint32_t pm_runtime_get_pg_min_ticks(void)
+{
+	void *pprd = pm_runtime_data_get()->platform_data;
+
+	return ((struct ace_pm_runtime_data *) pprd)->min_ticks_to_pg;
+}
+
+void platform_pm_runtime_pg_policy_set(uint32_t cycles)
+{
+	/* cycles per tick*/
+	uint32_t cpt = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC;
+
+	tr_info(&power_tr, "cycles %d, wher cycles in tick = %d", cycles, cpt);
+	pm_runtime_set_pg_min_ticks(cycles / cpt);
+}
+
+static inline uint32_t pm_policy_min_ticks_to_pg_get(void)
+{
+	uint32_t ret = 0;
+
+	unsigned int num_cpu_states;
+	const struct pm_state_info *cpu_states;
+
+	num_cpu_states = pm_state_cpu_get_all(PLATFORM_PRIMARY_CORE_ID, &cpu_states);
+
+	for (int i = num_cpu_states - 1; i >= 0; i--) {
+		const struct pm_state_info *state = &cpu_states[i];
+
+		if (state->state == PM_STATE_RUNTIME_IDLE) {
+			uint32_t min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
+			uint32_t exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
+
+			return min_residency + exit_latency;
+		}
+	}
+
+	return ret;
+}
 const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 {
 	unsigned int num_cpu_states;
@@ -29,7 +84,7 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 
 	for (int i = num_cpu_states - 1; i >= 0; i--) {
 		const struct pm_state_info *state = &cpu_states[i];
-		uint32_t min_residency, exit_latency;
+		uint32_t min_residency, exit_latency, min_ticks;
 
 		/* policy cannot lead to D3 */
 		if (state->state == PM_STATE_SOFT_OFF)
@@ -38,6 +93,10 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 		/* check if there is a lock on state + substate */
 		if (pm_policy_state_lock_is_active(state->state, state->substate_id))
 			continue;
+
+		min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
+		exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
+		min_ticks = min_residency + exit_latency;
 
 		/* checking conditions for D0i3 */
 		if (state->state == PM_STATE_RUNTIME_IDLE) {
@@ -48,13 +107,12 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 			/* skipping when some ipc task is not finished */
 			if (ipc_get()->task_mask)
 				continue;
+
+			min_ticks = pm_runtime_get_pg_min_ticks();
 		}
 
-		min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
-		exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
-
 		if (ticks == K_TICKS_FOREVER ||
-		    (ticks >= (min_residency + exit_latency))) {
+		    (ticks >= (min_ticks))) {
 			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
 			 * to handle case with enabled PG andf disabled CG.
 			 */
@@ -94,7 +152,17 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 }
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{ }
+{
+	struct ace_pm_runtime_data *pprd;
+
+	pprd = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
+		       sizeof(struct ace_pm_runtime_data));
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+	pprd->min_ticks_to_pg = pm_policy_min_ticks_to_pg_get();
+	LOG_INF("min ticks to allow power gating = %d", pprd->min_ticks_to_pg);
+#endif
+	prd->platform_data = pprd;
+}
 
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 			     uint32_t flags)

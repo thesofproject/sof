@@ -144,6 +144,13 @@ bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 #endif
 }
 
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+void pm_runtime_pg_policy_set(uint32_t ticks)
+{
+	platform_pm_runtime_pg_policy_set(ticks);
+}
+#endif
+
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 void init_dsp_r_state(enum dsp_r_state r_state)
 {

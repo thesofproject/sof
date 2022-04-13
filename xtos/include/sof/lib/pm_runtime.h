@@ -148,6 +148,9 @@ static inline struct pm_runtime_data *pm_runtime_data_get(void)
 	return sof_get()->prd;
 }
 
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+void pm_runtime_pg_policy_set(uint32_t ticks);
+#endif
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 /**
  * \brief Initializes DSP residency counters.

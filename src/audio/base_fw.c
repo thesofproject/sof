@@ -10,6 +10,7 @@
 #include <sof_versions.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/pm_runtime.h>
 #include <rtos/init.h>
 #include <platform/lib/clk.h>
 
@@ -134,6 +135,68 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	*data_offset = (int)((char *)tuple - data);
 
 	return 0;
+}
+
+struct pm_data {
+	uint32_t min_cycles_to_pg; /* min cycles to allow power gating */
+	int32_t host_dma_l1_sref; /* ref counter for Host DMA accesses */
+};
+
+static int base_fw_set_pg_policy(const void *data)
+{
+	LOG_INF("IPC4_POWER_GATING_POLICY");
+	/* min cycles to allow power gating */
+	const uint32_t *new_pg_policy = (uint32_t *) data;
+
+	LOG_INF("new power gating set to %d", *new_pg_policy);
+	pm_runtime_pg_policy_set(*new_pg_policy);
+	return 0;
+}
+
+__attribute__((optimize("-O0")))
+static int basefw_set_config(uint32_t data_offset, const char *data)
+{
+	int ret = IPC4_SUCCESS;
+
+	uint32_t data_size = data_offset;
+	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+
+	while (data_size > sizeof(struct ipc4_tuple)) {
+		switch (tuple->type) {
+		case IPC4_MEMORY_RECLAIMED_FW_CFG:
+			LOG_WRN("IPC4_MEMORY_RECLAIMED_FW_CFG");
+			break;
+		case IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG:
+			LOG_WRN("IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG");
+			break;
+		case IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG:
+			LOG_WRN("IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG");
+			break;
+		case IPC4_DMA_BUFFER_CONFIG_FW_CFG:
+			LOG_WRN("IPC4_DMA_BUFFER_CONFIG_FW_CFG");
+			break;
+		case IPC4_XTAL_FREQ_HZ_FW_CFG:
+			LOG_WRN("IPC4_XTAL_FREQ_HZ_FW_CFG");
+			break;
+		case IPC4_POWER_GATING_POLICY:
+			if (tuple->length == sizeof(uint32_t)) {
+				ret = base_fw_set_pg_policy(tuple->data);
+			} else {
+				LOG_ERR("invalid param size");
+				ret = IPC4_ERROR_INVALID_PARAM;
+			}
+			break;
+		default:
+			LOG_ERR("invalid param, id = %d", tuple->type);
+			ret = IPC4_ERROR_INVALID_PARAM;
+			break;
+		}
+
+		data_size -= tuple->length;
+		tuple = next_tuple(tuple);
+	}
+
+	return ret;
 }
 
 static int basefw_hw_config(uint32_t *data_offset, char *data)
@@ -472,8 +535,7 @@ static int basefw_set_large_config(struct comp_dev *dev,
 {
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
-		tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
-		return 0;
+		return basefw_set_config(data_offset, data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);
