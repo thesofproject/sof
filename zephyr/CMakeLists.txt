@@ -689,6 +689,17 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
+	${SOF_MATH_PATH}/sqrt_int16.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
 	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
 	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c

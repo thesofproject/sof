@@ -115,15 +115,11 @@ static inline void set_s32_fir(struct tdfb_comp_data *cd)
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-static inline int set_func(struct comp_dev *dev)
+static inline int set_func(struct comp_dev *dev, enum sof_ipc_frame fmt)
 {
 	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-
-	switch (sourceb->stream.frame_fmt) {
+	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		comp_info(dev, "set_func(), SOF_IPC_FRAME_S16_LE");
@@ -665,8 +661,8 @@ static int tdfb_cmd(struct comp_dev *dev, int cmd, void *data,
 	return -EINVAL;
 }
 
-static void tdfb_process(struct comp_dev *dev, struct comp_buffer *source,
-			 struct comp_buffer *sink, int frames,
+static void tdfb_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
+			 struct comp_buffer __sparse_cache *sink, int frames,
 			 uint32_t source_bytes, uint32_t sink_bytes)
 {
 	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
@@ -678,8 +674,8 @@ static void tdfb_process(struct comp_dev *dev, struct comp_buffer *source,
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_cached_consume(source, source_bytes);
+	comp_update_buffer_cached_produce(sink, sink_bytes);
 
 	/* Update sound direction estimate */
 	tdfb_direction_estimate(cd, frames, source->stream.channels);
@@ -691,10 +687,10 @@ static void tdfb_process(struct comp_dev *dev, struct comp_buffer *source,
 static int tdfb_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 	int n;
 
 	comp_dbg(dev, "tdfb_copy()");
@@ -704,28 +700,31 @@ static int tdfb_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
+		ret = tdfb_setup(cd, source_c->stream.channels, sink_c->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "tdfb_copy(), failed FIR setup");
-			return ret;
+			goto out;
 		}
 	}
 
 	/* Handle enum controls */
 	if (cd->update) {
 		cd->update = false;
-		ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
+		ret = tdfb_setup(cd, source_c->stream.channels, sink_c->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "tdfb_copy(), failed FIR setup");
-			return ret;
+			goto out;
 		}
 	}
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
+	comp_get_copy_limits(source_c, sink_c, &cl);
 
 	/*
 	 * Process only even number of frames with the FIR function. The
@@ -737,7 +736,7 @@ static int tdfb_copy(struct comp_dev *dev)
 		n = (cl.frames >> 1) << 1;
 
 		/* Run the process function */
-		tdfb_process(dev, sourceb, sinkb, n,
+		tdfb_process(dev, source_c, sink_c, n,
 			     n * cl.source_frame_bytes,
 			     n * cl.sink_frame_bytes);
 	}
@@ -748,14 +747,19 @@ static int tdfb_copy(struct comp_dev *dev)
 		comp_dbg(dev, "tdfb_dupd %d %d", cd->az_value_estimate, cd->direction.az_slow);
 	}
 
-	return 0;
+out:
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return ret;
 }
 
 static int tdfb_prepare(struct comp_dev *dev)
 {
 	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int ret;
 
 	comp_info(dev, "tdfb_prepare()");
@@ -773,26 +777,29 @@ static int tdfb_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (!cd->config) {
 		ret = -EINVAL;
-		goto err;
+		goto out;
 	}
 
 	ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
 	if (ret < 0) {
 		comp_err(dev, "tdfb_prepare() error: tdfb_setup failed.");
-		goto err;
+		goto out;
 	}
 
 	/* Clear in/out buffers */
 	memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 	memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 
-	ret = set_func(dev);
+	ret = set_func(dev, source_c->stream.frame_fmt);
 	if (ret)
-		goto err;
+		goto out;
 
 	/* The max. amount of processing need to be limited for sound direction
 	 * processing. Max frames is used in tdfb_direction_init() and copy().
@@ -808,11 +815,15 @@ static int tdfb_prepare(struct comp_dev *dev)
 		comp_info(dev, "line_array = %d, a_step = %d, a_offs = %d",
 			  (int)cd->direction.line_array, cd->config->angle_enum_mult,
 			  cd->config->angle_enum_offs);
-		return 0;
 	}
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+out:
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	return ret;
 }
 
