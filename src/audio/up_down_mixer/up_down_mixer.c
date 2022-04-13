@@ -36,7 +36,7 @@ DECLARE_SOF_RT_UUID("up_down_mixer", up_down_mixer_comp_uuid, 0x42f8060c, 0x832f
 DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_comp_uuid),
 	       LOG_LEVEL_INFO);
 
-const int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
+int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
 static int set_downmix_coefficients(struct comp_dev *dev,
 				    const struct ipc4_audio_format *format,
@@ -345,7 +345,8 @@ static int init_up_down_mixer(struct comp_dev *dev, struct comp_ipc_config *conf
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	dcache_invalidate_region(spec, sizeof(*up_down_mixer));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)spec,
+				 sizeof(*up_down_mixer));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
@@ -453,8 +454,8 @@ static int up_down_mixer_reset(struct comp_dev *dev)
 
 static int up_down_mixer_copy(struct comp_dev *dev)
 {
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source, *sink;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t source_bytes, sink_bytes;
 	uint32_t mix_frames;
 
@@ -467,27 +468,34 @@ static int up_down_mixer_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	mix_frames = MIN(audio_stream_get_avail_frames(&source->stream),
-			 audio_stream_get_free_frames(&sink->stream));
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
 
-	source_bytes = mix_frames * audio_stream_frame_bytes(&source->stream);
-	sink_bytes = mix_frames * audio_stream_frame_bytes(&sink->stream);
+	mix_frames = MIN(audio_stream_get_avail_frames(&source_c->stream),
+			 audio_stream_get_free_frames(&sink_c->stream));
 
-	if (!source_bytes)
-		return 0;
+	source_bytes = mix_frames * audio_stream_frame_bytes(&source_c->stream);
+	sink_bytes = mix_frames * audio_stream_frame_bytes(&sink_c->stream);
 
-	buffer_stream_invalidate(source, source_bytes);
-	audio_stream_copy_to_linear(&source->stream, 0, cd->buf_in, 0,
-				    source_bytes / audio_stream_sample_bytes(&source->stream));
+	if (source_bytes) {
+		buffer_stream_invalidate(source_c, source_bytes);
+		audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0,
+					    source_bytes /
+					    audio_stream_sample_bytes(&source_c->stream));
 
-	cd->mix_routine(cd, (uint8_t *)cd->buf_in, source_bytes, (uint8_t *)cd->buf_out);
+		cd->mix_routine(cd, (uint8_t *)cd->buf_in, source_bytes, (uint8_t *)cd->buf_out);
 
-	audio_stream_copy_from_linear(cd->buf_out, 0, &sink->stream, 0,
-				      sink_bytes / audio_stream_sample_bytes(&sink->stream));
-	buffer_stream_writeback(sink, sink_bytes);
+		audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0,
+					      sink_bytes /
+					      audio_stream_sample_bytes(&sink_c->stream));
+		buffer_stream_writeback(sink_c, sink_bytes);
 
-	comp_update_buffer_produce(sink, sink_bytes);
-	comp_update_buffer_consume(source, source_bytes);
+		comp_update_buffer_cached_produce(sink_c, sink_bytes);
+		comp_update_buffer_cached_consume(source_c, source_bytes);
+	}
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	return 0;
 }
