@@ -65,8 +65,8 @@ static void igo_nr_lib_process(struct comp_data *cd)
 
 #if CONFIG_FORMAT_S16LE
 static void igo_nr_capture_s16(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
+			       const struct audio_stream __sparse_cache *source,
+			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
 	int32_t nch = source->channels;
@@ -124,8 +124,8 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S24LE
 static void igo_nr_capture_s24(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
+			       const struct audio_stream __sparse_cache *source,
+			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
 	int32_t nch = source->channels;
@@ -183,8 +183,8 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S32LE
 static void igo_nr_capture_s32(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
+			       const struct audio_stream __sparse_cache *source,
+			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
 	int32_t nch = source->channels;
@@ -377,8 +377,8 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 			     struct sof_ipc_stream_params *pcm_params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	int32_t err;
 
 	comp_info(dev, "igo_nr_params()");
@@ -394,9 +394,21 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* set source/sink_frames/rate */
-	cd->source_rate = sourceb->stream.rate;
-	cd->sink_rate = sinkb->stream.rate;
+	cd->source_rate = source_c->stream.rate;
+	cd->sink_rate = sink_c->stream.rate;
+
+	if (source_c->stream.channels != sink_c->stream.channels) {
+		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");
+		cd->invalid_param = true;
+	}
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	if (!cd->sink_rate) {
 		comp_err(dev, "igo_nr_params(), zero sink rate");
 		return -EINVAL;
@@ -421,7 +433,7 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 		 cd->source_frames_max, cd->sink_frames_max);
 
 	/* The igo_nr supports sample rate 48000 only. */
-	switch (sourceb->stream.rate) {
+	switch (cd->source_rate) {
 	case 48000:
 		comp_info(dev, "igo_nr_params(), sample rate = 48000");
 		cd->invalid_param = false;
@@ -429,16 +441,9 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	default:
 		comp_err(dev, "igo_nr_params(), invalid sample rate");
 		cd->invalid_param = true;
-		return -EINVAL;
 	}
 
-	if (sourceb->stream.channels != sinkb->stream.channels) {
-		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");
-		cd->invalid_param = true;
-		return -EINVAL;
-	}
-
-	return 0;
+	return cd->invalid_param ? -EINVAL : 0;
 }
 
 static inline void igo_nr_set_chan_process(struct comp_dev *dev, int32_t chan)
@@ -472,7 +477,7 @@ static int32_t igo_nr_cmd_get_data(struct comp_dev *dev,
 		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
 		break;
 	default:
-		comp_err(dev, "igo_nr_cmd_get_data() error: invalid cdata->cmd", cdata->cmd);
+		comp_err(dev, "igo_nr_cmd_get_data() error: invalid cdata->cmd %u", cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -612,8 +617,8 @@ static int32_t igo_nr_cmd(struct comp_dev *dev,
 }
 
 static void igo_nr_process(struct comp_dev *dev,
-			   struct comp_buffer *source,
-			   struct comp_buffer *sink,
+			   struct comp_buffer __sparse_cache *source,
+			   struct comp_buffer __sparse_cache *sink,
 			   struct comp_copy_limits *cl,
 			   int32_t frames)
 
@@ -629,8 +634,8 @@ static void igo_nr_process(struct comp_dev *dev,
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_cached_consume(source, source_bytes);
+	comp_update_buffer_cached_produce(sink, sink_bytes);
 }
 
 static void igo_nr_print_config(struct comp_dev *dev)
@@ -693,8 +698,8 @@ static void igo_nr_set_igo_params(struct comp_dev *dev)
 static int32_t igo_nr_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t src_frames;
 	int32_t sink_frames;
@@ -706,21 +711,27 @@ static int32_t igo_nr_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler))
 		igo_nr_set_igo_params(dev);
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
+	comp_get_copy_limits(source_c, sink_c, &cl);
 
-	src_frames = audio_stream_get_avail_frames(&sourceb->stream);
-	sink_frames = audio_stream_get_free_frames(&sinkb->stream);
+	src_frames = audio_stream_get_avail_frames(&source_c->stream);
+	sink_frames = audio_stream_get_free_frames(&sink_c->stream);
 
 	comp_dbg(dev, "src_frames = %d, sink_frames = %d.", src_frames, sink_frames);
 
 	/* Process only when frames count is enough. */
 	if (src_frames >= IGO_FRAME_SIZE && sink_frames >= IGO_FRAME_SIZE)
-		igo_nr_process(dev, sourceb, sinkb, &cl, IGO_FRAME_SIZE);
+		igo_nr_process(dev, source_c, sink_c, &cl, IGO_FRAME_SIZE);
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	return 0;
 }
