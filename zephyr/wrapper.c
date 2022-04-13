@@ -556,7 +556,8 @@ int task_main_start(struct sof *sof)
 		sys_comp_kpb_init();
 	}
 
-	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP)) {
+	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP) ||
+	    IS_ENABLED(CONFIG_MAXIM_DSM)) {
 		sys_comp_smart_amp_init();
 	}
 

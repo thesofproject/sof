@@ -679,6 +679,12 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp_maxim_dsm.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )

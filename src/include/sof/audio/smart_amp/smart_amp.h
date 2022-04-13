@@ -136,9 +136,9 @@ struct smart_amp_mod_struct_t {
 };
 
 typedef void (*smart_amp_func)(const struct comp_dev *dev,
-			       const struct audio_stream *source,
-			       const struct audio_stream *sink,
-			       const struct audio_stream *feedback,
+			       const struct audio_stream __sparse_cache *source,
+			       const struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream __sparse_cache *feedback,
 			       uint32_t frames);
 struct smart_amp_func_map {
 	uint16_t frame_fmt;
@@ -151,14 +151,14 @@ int smart_amp_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev);
 int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev);
 /* Feed forward processing function */
 int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
-		      struct comp_buffer *source,
-		      struct comp_buffer *sink, int8_t *chan_map,
+		      const struct audio_stream __sparse_cache *source,
+		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch_in, uint32_t num_ch_out);
 /* Feedback processing function */
 int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
-		      struct comp_buffer *source,
-		      struct comp_buffer *sink, int8_t *chan_map,
+		      const struct audio_stream __sparse_cache *source,
+		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch);
 /* memory usage calculation for the component */
