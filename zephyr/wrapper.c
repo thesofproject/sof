@@ -469,6 +469,7 @@ void sys_comp_multiband_drc_init(void);
 void sys_comp_google_rtc_audio_processing_init(void);
 void sys_comp_igo_nr_init(void);
 void sys_comp_rtnr_init(void);
+void sys_comp_up_down_mixer_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -615,6 +616,10 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_COMP_RTNR)) {
 		sys_comp_rtnr_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_UP_DOWN_MIXER)) {
+		sys_comp_up_down_mixer_init();
 	}
 
 	/* init pipeline position offsets */
