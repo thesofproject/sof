@@ -17,8 +17,8 @@
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames)
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames)
 {
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
@@ -91,8 +91,8 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 
 #if CONFIG_FORMAT_S24LE
 void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames)
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames)
 {
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
@@ -164,8 +164,8 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 
 #if CONFIG_FORMAT_S32LE
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames)
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames)
 {
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
