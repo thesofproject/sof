@@ -77,7 +77,7 @@ struct tdfb_direction_data {
 	int16_t max_lag;
 	size_t d_size;
 	size_t r_size;
-	int line_array:1; /* Limit scan to -90 to 90 degrees */
+	bool line_array; /* Limit scan to -90 to 90 degrees */
 };
 
 struct tdfb_comp_data {
@@ -104,27 +104,27 @@ struct tdfb_comp_data {
 	bool beam_on:1;			    /**< set true if beam is off */
 	bool update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
-			  const struct audio_stream *source,
-			  struct audio_stream *sink,
+			  const struct audio_stream __sparse_cache *source,
+			  struct audio_stream __sparse_cache *sink,
 			  int frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames);
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S24LE
 void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames);
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S32LE
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
-		  const struct audio_stream *source,
-		  struct audio_stream *sink, int frames);
+		  const struct audio_stream __sparse_cache *source,
+		  struct audio_stream __sparse_cache *sink, int frames);
 #endif
 
 int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int channels);
