@@ -579,7 +579,7 @@ int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
 }
 
 static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
-				struct audio_stream *stream,
+				const struct audio_stream __sparse_cache *stream,
 				int8_t *chan_map, uint32_t num_ch)
 {
 	int idx, ch;
@@ -629,7 +629,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 }
 
 static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
-				struct audio_stream *stream,
+				const struct audio_stream __sparse_cache *stream,
 				int8_t *chan_map, uint32_t num_ch_in,
 				uint32_t num_ch_out)
 {
@@ -681,8 +681,8 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 }
 
 int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
-		      struct comp_buffer *source,
-		      struct comp_buffer *sink, int8_t *chan_map,
+		      const struct audio_stream __sparse_cache *source,
+		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch_in, uint32_t num_ch_out)
 {
@@ -703,12 +703,12 @@ int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 	num_ch_out = MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM);
 
 	ret = smart_amp_get_buffer(hspk->buf.frame_in,
-				   frames, &source->stream, chan_map,
+				   frames, source, chan_map,
 				   num_ch_in);
 	if (ret)
 		goto err;
 
-	switch (source->stream.frame_fmt) {
+	switch (source->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		maxim_dsm_ff_proc(hspk, dev,
 				  hspk->buf.frame_in,
@@ -728,7 +728,7 @@ int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 	}
 
 	ret = smart_amp_put_buffer(hspk->buf.frame_out,
-				   frames, &sink->stream, chan_map,
+				   frames, sink, chan_map,
 				   MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM),
 				   MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
 	if (ret)
@@ -741,8 +741,8 @@ err:
 }
 
 int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
-		      struct comp_buffer *source,
-		      struct comp_buffer *sink, int8_t *chan_map,
+		      const struct audio_stream __sparse_cache *source,
+		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch)
 {
@@ -762,12 +762,12 @@ int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
 	num_ch = MIN(num_ch, SMART_AMP_FB_MAX_CH_NUM);
 
 	ret = smart_amp_get_buffer(hspk->buf.frame_iv,
-				   frames, &source->stream,
+				   frames, source,
 				   chan_map, num_ch);
 	if (ret)
 		goto err;
 
-	switch (source->stream.frame_fmt) {
+	switch (source->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		maxim_dsm_fb_proc(hspk, dev, hspk->buf.frame_iv,
 				  frames * num_ch, sizeof(int16_t));
@@ -784,6 +784,6 @@ int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
 	return 0;
 err:
 	comp_err(dev, "[DSM] Not supported frame format : %d",
-		 source->stream.frame_fmt);
+		 source->frame_fmt);
 	return ret;
 }
