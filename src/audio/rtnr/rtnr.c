@@ -305,8 +305,9 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	bool channels_valid;
 
 	comp_info(dev, "rtnr_params()");
 
@@ -321,18 +322,24 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 							source_list);
 
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+
 	/* set source/sink_frames/rate */
-	cd->source_rate = sourceb->stream.rate;
-	cd->sink_rate = sinkb->stream.rate;
-	cd->sources_stream[0].rate = sourceb->stream.rate;
-	cd->sink_stream.rate = sinkb->stream.rate;
+	cd->source_rate = source_c->stream.rate;
+	cd->sink_rate = sink_c->stream.rate;
+	cd->sources_stream[0].rate = source_c->stream.rate;
+	cd->sink_stream.rate = sink_c->stream.rate;
+	channels_valid = source_c->stream.channels == sink_c->stream.channels;
+
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Currently support 16kHz sample rate only. */
-	switch (sourceb->stream.rate) {
+	switch (cd->source_rate) {
 	case 16000:
 		comp_info(dev, "rtnr_params(), sample rate = 16000 kHz");
 		break;
@@ -341,26 +348,32 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 		break;
 	default:
 		comp_err(dev, "rtnr_nr_params(), invalid sample rate(%d kHz)",
-				 sourceb->stream.rate);
-		return -EINVAL;
+			 cd->source_rate);
+		ret = -EINVAL;
+		goto out;
 	}
 
-	if (sourceb->stream.channels != sinkb->stream.channels) {
+	if (!channels_valid) {
 		comp_err(dev, "rtnr_params(), source/sink stream must have same channels");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* set source/sink stream channels */
-	cd->sources_stream[0].channels = sourceb->stream.channels;
-	cd->sink_stream.channels = sinkb->stream.channels;
+	cd->sources_stream[0].channels = source_c->stream.channels;
+	cd->sink_stream.channels = sink_c->stream.channels;
 
 	/* set source/sink stream overrun/underrun permitted */
-	cd->sources_stream[0].overrun_permitted = sourceb->stream.overrun_permitted;
-	cd->sink_stream.overrun_permitted = sinkb->stream.overrun_permitted;
-	cd->sources_stream[0].underrun_permitted = sourceb->stream.underrun_permitted;
-	cd->sink_stream.underrun_permitted = sinkb->stream.underrun_permitted;
+	cd->sources_stream[0].overrun_permitted = source_c->stream.overrun_permitted;
+	cd->sink_stream.overrun_permitted = sink_c->stream.overrun_permitted;
+	cd->sources_stream[0].underrun_permitted = source_c->stream.underrun_permitted;
+	cd->sink_stream.underrun_permitted = sink_c->stream.underrun_permitted;
 
-	return 0;
+out:
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return ret;
 }
 
 static int rtnr_cmd_get_data(struct comp_dev *dev,
@@ -506,7 +519,8 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst, struct audio_stream *src)
+static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
+				      struct audio_stream __sparse_cache *src)
 {
 
 	dst->size = src->size;
@@ -518,7 +532,8 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst, struct audi
 	dst->end_addr = src->end_addr;
 }
 
-static void rtnr_copy_to_sof_stream(struct audio_stream *dst, struct audio_stream_rtnr *src)
+static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
+				    struct audio_stream_rtnr *src)
 {
 	dst->size = src->size;
 	dst->avail = src->avail;
@@ -595,8 +610,8 @@ static int rtnr_copy(struct comp_dev *dev)
 			buffer_stream_writeback(sink, sink_bytes);
 
 			/* Track consume and produce */
-			comp_update_buffer_consume(source, source_bytes);
-			comp_update_buffer_produce(sink, sink_bytes);
+			comp_update_buffer_cached_consume(source, source_bytes);
+			comp_update_buffer_cached_produce(sink, sink_bytes);
 		}
 	} else {
 		comp_dbg(dev, "rtnr_copy() passthrough");
@@ -610,8 +625,8 @@ static int rtnr_copy(struct comp_dev *dev)
 				source->stream.channels * cl.frames);
 
 		buffer_stream_writeback(sink, cl.sink_bytes);
-		comp_update_buffer_consume(source, cl.source_bytes);
-		comp_update_buffer_produce(sink, cl.sink_bytes);
+		comp_update_buffer_cached_consume(source, cl.source_bytes);
+		comp_update_buffer_cached_produce(sink, cl.sink_bytes);
 	}
 
 	return 0;
@@ -621,6 +636,7 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");
