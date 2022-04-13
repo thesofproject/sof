@@ -89,6 +89,7 @@ enum sof_ipc_dai_type {
 	SOF_DAI_AMD_BT,			/**< Amd BT */
 	SOF_DAI_AMD_SP,			/**< Amd SP */
 	SOF_DAI_AMD_DMIC,		/**< Amd DMIC */
+	SOF_DAI_AMD_HS,			/**< Amd HS */
 	SOF_DAI_MEDIATEK_AFE            /**< Mtk AFE */
 };
 
@@ -117,6 +118,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_acp_params acpbt;
 		struct sof_ipc_dai_acp_params acpsp;
 		struct sof_ipc_dai_acpdmic_params acpdmic;
+		struct sof_ipc_dai_acp_params acphs;
 		struct sof_ipc_dai_afe_params afe;
 	};
 } __attribute__((packed, aligned(4)));
