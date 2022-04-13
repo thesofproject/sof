@@ -47,10 +47,9 @@ struct comp_buffer;
 #define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
 #define DMA_CAP_GP_LP		BIT(1) /**< GP LP DMA */
 #define DMA_CAP_GP_HP		BIT(2) /**< GP HP DMA */
-#define DMA_CAP_BT              BIT(3) /**< DMA I2S */
+#define DMA_CAP_BT              BIT(3) /**< BT DMA */
 #define DMA_CAP_SP              BIT(4) /**< SP DMA */
 #define DMA_CAP_DMIC            BIT(5) /**< ACP DMA DMIC > */
-
 /* DMA dev type bitmasks used to define the type of DMA */
 
 #define DMA_DEV_HOST		BIT(0) /**< connectable to host */
