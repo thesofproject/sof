@@ -24,9 +24,9 @@ static void smart_amp_fb_generic(int32_t x)
 
 #if CONFIG_FORMAT_S16LE
 static void smart_amp_s16_ff_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int16_t *x;
@@ -52,9 +52,9 @@ static void smart_amp_s16_ff_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void smart_amp_s24_ff_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int32_t *x;
@@ -80,9 +80,9 @@ static void smart_amp_s24_ff_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void smart_amp_s32_ff_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int32_t *x;
@@ -106,9 +106,9 @@ static void smart_amp_s32_ff_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S16LE
 static void smart_amp_s16_fb_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int16_t *x;
@@ -130,9 +130,9 @@ static void smart_amp_s16_fb_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void smart_amp_s24_fb_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int32_t *x;
@@ -154,9 +154,9 @@ static void smart_amp_s24_fb_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void smart_amp_s32_fb_default(const struct comp_dev *dev,
-				     const struct audio_stream *source,
-				     const struct audio_stream *sink,
-				     const struct audio_stream *feedback,
+				     const struct audio_stream __sparse_cache *source,
+				     const struct audio_stream __sparse_cache *sink,
+				     const struct audio_stream __sparse_cache *feedback,
 				     uint32_t frames)
 {
 	int32_t *x;
