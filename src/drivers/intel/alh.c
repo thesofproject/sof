@@ -59,13 +59,22 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	struct alh_pdata *alh = dai_get_drvdata(dai);
 	struct sof_alh_configuration_blob *blob = spec_config;
 	struct ipc4_alh_multi_gtw_cfg *alh_cfg = &blob->alh_cfg;
+	int i;
 
 	dai_info(dai, "alh_set_config_blob()");
 
-	alh->params.channels = 2;
 	alh->params.rate = 48000;
-	/* the LSB 8bits are for stream id */
-	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xff;
+
+	for (i = 0; i < alh_cfg->count; i++) {
+		/* the LSB 8bits are for stream id */
+		int alh_id = alh_cfg->mapping[i].alh_id & 0xff;
+
+		if (IPC4_ALH_DAI_INDEX(alh_id) == dai->index) {
+			alh->params.stream_id = alh_id;
+			alh->params.channels = popcount(alh_cfg->mapping[i].channel_mask);
+			break;
+		}
+	}
 
 	return 0;
 }
