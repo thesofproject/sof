@@ -146,3 +146,8 @@ SectionVendorTokens."sof_acpdmic_tokens" {
         SOF_TKN_AMD_ACPDMIC_RATE                  "1800"
         SOF_TKN_AMD_ACPDMIC_CH                    "1801"
 }
+
+SectionVendorTokens."sof_acphs_tokens" {
+        SOF_TKN_AMD_ACPHS_RATE                  "1900"
+        SOF_TKN_AMD_ACPHS_CH                    "1901"
+}
