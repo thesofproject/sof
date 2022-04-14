@@ -183,6 +183,11 @@ union ipc4_cfg_param_id_data {
 
 #define IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT		4
 
+/*
+ * Gateway can only be connected to input pin "0" or output pin "0".
+ */
+#define IPC4_COPIER_GATEWAY_PIN 0
+
 enum ipc4_copier_features {
 	/* ff FAST_MODE bit is set in CopierModuleCfg::copier_feature_mask then
 	 * copier is able to transfer more than ibs. This bit shall be set only if

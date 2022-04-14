@@ -30,6 +30,12 @@
 #define IPC4_ALH_MAX_NUMBER_OF_GTW 16
 #define IPC4_ALH_DAI_INDEX_OFFSET 7
 
+/* copier id = (group id << 4) + codec id + IPC4_ALH_DAI_INDEX_OFFSET
+ * dai_index = (group id << 8) + codec id;
+ */
+#define IPC4_ALH_DAI_INDEX(x) ((((x) & 0xF0) << DAI_NUM_ALH_BI_DIR_LINKS_GROUP) + \
+				(((x) & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET))
+
 struct ipc4_alh_multi_gtw_cfg {
 	/* Number of single channels (valid items in mapping array). */
 	uint32_t count;
