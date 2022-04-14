@@ -718,6 +718,10 @@ zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
 	${SOF_AUDIO_PATH}/module_adapter/module/dts.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
+	${SOF_AUDIO_PATH}/module_adapter/module/waves.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_PROBE
 	${SOF_SRC_PATH}/probe/probe.c
 )

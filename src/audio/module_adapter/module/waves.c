@@ -223,16 +223,14 @@ static int waves_effect_check(struct comp_dev *dev)
 						    source_list);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	const struct audio_stream *src_fmt = &source->stream;
-	const struct audio_stream *snk_fmt = &sink->stream;
+	struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+	struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
+	const struct audio_stream __sparse_cache *src_fmt = &source_c->stream;
+	const struct audio_stream __sparse_cache *snk_fmt = &sink_c->stream;
+	int ret = 0;
 
 	/* Init sink & source buffers */
 	comp_dbg(dev, "waves_effect_check() start");
-
-	if (!source || !sink) {
-		comp_err(dev, "waves_effect_check() source/sink buffer not found");
-		return -EINVAL;
-	}
 
 	/* todo use fallback to comp_verify_params when ready */
 
@@ -240,51 +238,64 @@ static int waves_effect_check(struct comp_dev *dev)
 	if (src_fmt->rate != snk_fmt->rate) {
 		comp_err(dev, "waves_effect_check() source %d sink %d rate mismatch",
 			 src_fmt->rate, snk_fmt->rate);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* upmix/downmix not supported */
 	if (src_fmt->channels != snk_fmt->channels) {
 		comp_err(dev, "waves_effect_check() source %d sink %d channels mismatch",
 			 src_fmt->channels, snk_fmt->channels);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* different frame format not supported */
 	if (src_fmt->frame_fmt != snk_fmt->frame_fmt) {
 		comp_err(dev, "waves_effect_check() source %d sink %d sample format mismatch",
 			 src_fmt->frame_fmt, snk_fmt->frame_fmt);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* different interleaving is not supported */
-	if (source->buffer_fmt != sink->buffer_fmt) {
+	if (source_c->buffer_fmt != sink_c->buffer_fmt) {
 		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (!format_is_supported(src_fmt->frame_fmt)) {
 		comp_err(dev, "waves_effect_check() float samples not supported");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
-	if (!layout_is_supported(source->buffer_fmt)) {
+	if (!layout_is_supported(source_c->buffer_fmt)) {
 		comp_err(dev, "waves_effect_check() non interleaved format not supported");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (!rate_is_supported(src_fmt->rate)) {
 		comp_err(dev, "waves_effect_check() rate %d not supported", src_fmt->rate);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (src_fmt->channels != 2) {
 		comp_err(dev, "waves_effect_check() channels %d not supported", src_fmt->channels);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	comp_dbg(dev, "waves_effect_check() done");
-	return 0;
+
+out:
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
+	return ret;
 }
 
 /* initializes MaxxEffect based on stream parameters */
@@ -292,17 +303,17 @@ static int waves_effect_init(struct comp_dev *dev)
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
+	struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
-
-	const struct audio_stream *src_fmt = &source->stream;
-
+	const struct audio_stream __sparse_cache *src_fmt = &source_c->stream;
 	MaxxStatus_t status;
 	MaxxBuffer_Format_t sample_format;
 	MaxxBuffer_Layout_t buffer_format;
 	int32_t sample_bytes;
 	MaxxStreamFormat_t *i_formats[NUM_IO_STREAMS] = { &waves_codec->i_format };
 	MaxxStreamFormat_t *o_formats[NUM_IO_STREAMS] = { &waves_codec->o_format };
+	int ret = 0;
 
 	comp_dbg(dev, "waves_effect_init() start");
 
@@ -310,21 +321,24 @@ static int waves_effect_init(struct comp_dev *dev)
 	if (sample_format < 0) {
 		comp_err(dev, "waves_effect_init() sof sample format %d not supported",
 			 src_fmt->frame_fmt);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
-	buffer_format = layout_convert_sof_to_me(source->buffer_fmt);
+	buffer_format = layout_convert_sof_to_me(source_c->buffer_fmt);
 	if (buffer_format < 0) {
 		comp_err(dev, "waves_effect_init() sof buffer format %d not supported",
-			 source->buffer_fmt);
-		return -EINVAL;
+			 source_c->buffer_fmt);
+		ret = -EINVAL;
+		goto out;
 	}
 
 	sample_bytes = sample_format_convert_to_bytes(sample_format);
 	if (sample_bytes < 0) {
 		comp_err(dev, "waves_effect_init() sample_format %d not supported",
 			 sample_format);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	waves_codec->request_max_bytes = 0;
@@ -358,11 +372,16 @@ static int waves_effect_init(struct comp_dev *dev)
 
 	if (status) {
 		comp_err(dev, "waves_effect_init() MaxxEffect_Initialize returned %d", status);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	comp_dbg(dev, "waves_effect_init() done");
-	return 0;
+
+out:
+	buffer_release(source_c);
+
+	return ret;
 }
 
 /* allocate additional buffers for MaxxEffect */

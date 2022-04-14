@@ -473,6 +473,7 @@ void sys_comp_up_down_mixer_init(void);
 void sys_comp_tdfb_init(void);
 void sys_comp_ghd_init(void);
 void sys_comp_module_dts_interface_init(void);
+void sys_comp_module_waves_interface_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -635,6 +636,10 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_DTS_CODEC)) {
 		sys_comp_module_dts_interface_init();
+	}
+
+	if (IS_ENABLED(CONFIG_WAVES_CODEC)) {
+		sys_comp_module_waves_interface_init();
 	}
 
 	/* init pipeline position offsets */
