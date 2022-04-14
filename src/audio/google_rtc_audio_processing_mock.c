@@ -26,6 +26,8 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreate()
 {
 	struct GoogleRtcAudioProcessingState *s =
 			rballoc(0, SOF_MEM_CAPS_RAM, sizeof(GoogleRtcAudioProcessingState));
+	if (!s)
+		return NULL;
 	s->num_capture_channels = 1;
 	s->num_aec_reference_channels = 2;
 	s->num_output_channels = 1;
@@ -36,6 +38,10 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreate()
 				   s->num_frames *
 				   s->num_aec_reference_channels
 				   );
+	if (!s->aec_reference) {
+		rfree(s);
+		return NULL;
+	}
 	return s;
 }
 
