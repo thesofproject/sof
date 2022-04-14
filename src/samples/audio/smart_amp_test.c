@@ -453,7 +453,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 			sad->process(dev, &buf->stream, &sink_buf->stream,
 				     avail_frames, sad->config.feedback_ch_map);
 
-			comp_update_buffer_cached_consume(buf, feedback_bytes);
+			comp_update_buffer_consume(buf, feedback_bytes);
 		}
 
 		buffer_release(buf);
@@ -473,8 +473,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 	buffer_stream_writeback(sink_buf, sink_bytes);
 
 	/* source/sink buffer pointers update */
-	comp_update_buffer_cached_consume(source_buf, source_bytes);
-	comp_update_buffer_cached_produce(sink_buf, sink_bytes);
+	comp_update_buffer_consume(source_buf, source_bytes);
+	comp_update_buffer_produce(sink_buf, sink_bytes);
 
 	buffer_release(sink_buf);
 	buffer_release(source_buf);

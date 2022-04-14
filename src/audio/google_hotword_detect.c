@@ -424,7 +424,7 @@ static int ghd_copy(struct comp_dev *dev)
 		ghd_detect(dev, stream, stream->addr, head_bytes);
 
 	/* calc new available */
-	comp_update_buffer_cached_consume(source_c, bytes);
+	comp_update_buffer_consume(source_c, bytes);
 
 	buffer_release(source_c);
 

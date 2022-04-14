@@ -768,8 +768,8 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_err(dev, "kpb_copy(): too much data to buffer.");
 		}
 
-		comp_update_buffer_cached_produce(sink_c, copy_bytes);
-		comp_update_buffer_cached_consume(source_c, copy_bytes);
+		comp_update_buffer_produce(sink_c, copy_bytes);
+		comp_update_buffer_consume(source_c, copy_bytes);
 
 		break;
 	case KPB_STATE_HOST_COPY:
@@ -806,8 +806,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width);
 
-		comp_update_buffer_cached_produce(sink_c, copy_bytes);
-		comp_update_buffer_cached_consume(source_c, copy_bytes);
+		comp_update_buffer_produce(sink_c, copy_bytes);
+		comp_update_buffer_consume(source_c, copy_bytes);
 
 		break;
 	case KPB_STATE_INIT_DRAINING:
@@ -829,7 +829,7 @@ static int kpb_copy(struct comp_dev *dev)
 				break;
 			}
 
-			comp_update_buffer_cached_consume(source_c, copy_bytes);
+			comp_update_buffer_consume(source_c, copy_bytes);
 		} else {
 			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
 				  audio_stream_get_avail_bytes(&source_c->stream),
@@ -1310,7 +1310,7 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		if (size_to_copy) {
-			comp_update_buffer_cached_produce(sink, size_to_copy);
+			comp_update_buffer_produce(sink, size_to_copy);
 			comp_copy(sink->sink);
 		} else if (!audio_stream_get_free_bytes(&sink->stream)) {
 			/* There is no free space in sink buffer.

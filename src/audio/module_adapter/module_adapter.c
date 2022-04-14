@@ -411,7 +411,7 @@ static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t by
 		ptr = (char *)ptr + tmp;
 		copy_bytes -= tmp;
 	}
-	comp_update_buffer_cached_produce(sink, bytes);
+	comp_update_buffer_produce(sink, bytes);
 }
 
 static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __sparse_cache *src_buffer,
@@ -453,8 +453,8 @@ copy_period:
 			  copy_bytes / mod->stream_params->sample_container_bytes);
 	buffer_stream_writeback(sink_buffer, copy_bytes);
 
-	comp_update_buffer_cached_produce(sink_buffer, copy_bytes);
-	comp_update_buffer_cached_consume(src_buffer, copy_bytes);
+	comp_update_buffer_produce(sink_buffer, copy_bytes);
+	comp_update_buffer_consume(src_buffer, copy_bytes);
 }
 
 int module_adapter_copy(struct comp_dev *dev)
@@ -530,7 +530,7 @@ consume:
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
-		comp_update_buffer_cached_consume(source_c, mod->input_buffers[i].consumed);
+		comp_update_buffer_consume(source_c, mod->input_buffers[i].consumed);
 		buffer_release(source_c);
 		i++;
 	}

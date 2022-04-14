@@ -650,7 +650,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 	cd->detect_func(dev, &source_c->stream, frames);
 
 	/* calc new available */
-	comp_update_buffer_cached_consume(source_c, audio_stream_get_avail_bytes(&source_c->stream));
+	comp_update_buffer_consume(source_c, audio_stream_get_avail_bytes(&source_c->stream));
 
 	buffer_release(source_c);
 

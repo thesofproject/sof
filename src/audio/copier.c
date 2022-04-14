@@ -696,7 +696,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 	}
 
 	buffer_stream_writeback(sink, c.sink_bytes);
-	comp_update_buffer_cached_produce(sink, c.sink_bytes);
+	comp_update_buffer_produce(sink, c.sink_bytes);
 
 	return 0;
 }
@@ -723,7 +723,7 @@ static int copier_copy(struct comp_dev *dev)
 			src_c = buffer_acquire(cd->endpoint_buffer);
 			ret = do_conversion_copy(dev, cd, src_c, sink_c, &src_copy_bytes);
 			if (!ret)
-				comp_update_buffer_cached_consume(src_c, src_copy_bytes);
+				comp_update_buffer_consume(src_c, src_copy_bytes);
 			buffer_release(src_c);
 			buffer_release(sink_c);
 			if (ret < 0)
@@ -735,7 +735,7 @@ static int copier_copy(struct comp_dev *dev)
 			ret = do_conversion_copy(dev, cd, src_c, sink_c, &src_copy_bytes);
 			buffer_release(sink_c);
 			if (!ret) {
-				comp_update_buffer_cached_consume(src_c, src_copy_bytes);
+				comp_update_buffer_consume(src_c, src_copy_bytes);
 				ret = cd->endpoint->drv->ops.copy(cd->endpoint);
 			}
 			buffer_release(src_c);
@@ -769,7 +769,7 @@ static int copier_copy(struct comp_dev *dev)
 			}
 		}
 		if (!ret)
-			comp_update_buffer_cached_consume(src_c, src_bytes);
+			comp_update_buffer_consume(src_c, src_bytes);
 
 		buffer_release(src_c);
 	}
