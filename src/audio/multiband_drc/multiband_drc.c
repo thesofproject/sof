@@ -461,8 +461,8 @@ static void multiband_drc_process(struct comp_dev *dev, struct comp_buffer __spa
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_cached_consume(source, source_bytes);
-	comp_update_buffer_cached_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 }
 
 static int multiband_drc_copy(struct comp_dev *dev)

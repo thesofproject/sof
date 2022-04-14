@@ -610,8 +610,8 @@ static int rtnr_copy(struct comp_dev *dev)
 			buffer_stream_writeback(sink, sink_bytes);
 
 			/* Track consume and produce */
-			comp_update_buffer_cached_consume(source, source_bytes);
-			comp_update_buffer_cached_produce(sink, sink_bytes);
+			comp_update_buffer_consume(source, source_bytes);
+			comp_update_buffer_produce(sink, sink_bytes);
 		}
 	} else {
 		comp_dbg(dev, "rtnr_copy() passthrough");
@@ -625,8 +625,8 @@ static int rtnr_copy(struct comp_dev *dev)
 				source->stream.channels * cl.frames);
 
 		buffer_stream_writeback(sink, cl.sink_bytes);
-		comp_update_buffer_cached_consume(source, cl.source_bytes);
-		comp_update_buffer_cached_produce(sink, cl.sink_bytes);
+		comp_update_buffer_consume(source, cl.source_bytes);
+		comp_update_buffer_produce(sink, cl.sink_bytes);
 	}
 
 	return 0;

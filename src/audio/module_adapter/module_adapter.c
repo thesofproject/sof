@@ -453,7 +453,7 @@ static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t by
 		ptr = (char *)ptr + tmp;
 		copy_bytes -= tmp;
 	}
-	comp_update_buffer_cached_produce(sink, bytes);
+	comp_update_buffer_produce(sink, bytes);
 }
 
 static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __sparse_cache *src_buffer,
@@ -490,8 +490,8 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __spars
 			  copy_bytes / mod->stream_params->sample_container_bytes);
 	buffer_stream_writeback(sink_buffer, copy_bytes);
 
-	comp_update_buffer_cached_produce(sink_buffer, copy_bytes);
-	comp_update_buffer_cached_consume(src_buffer, copy_bytes);
+	comp_update_buffer_produce(sink_buffer, copy_bytes);
+	comp_update_buffer_consume(src_buffer, copy_bytes);
 }
 
 static void module_adapter_process_output(struct comp_dev *dev)
@@ -511,7 +511,7 @@ static void module_adapter_process_output(struct comp_dev *dev)
 		sink_c = buffer_acquire(sink);
 
 		buffer_stream_writeback(sink_c, mod->output_buffers[0].size);
-		comp_update_buffer_cached_produce(sink_c, mod->output_buffers[0].size);
+		comp_update_buffer_produce(sink_c, mod->output_buffers[0].size);
 
 		buffer_release(sink_c);
 
@@ -656,7 +656,7 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
-		comp_update_buffer_cached_consume(source_c, mod->input_buffers[0].consumed);
+		comp_update_buffer_consume(source_c, mod->input_buffers[0].consumed);
 		buffer_release(sink_c);
 		buffer_release(source_c);
 		mod->input_buffers[0].size = 0;
@@ -668,7 +668,7 @@ int module_adapter_copy(struct comp_dev *dev)
 			source = container_of(blist, struct comp_buffer, sink_list);
 			source_c = buffer_acquire(source);
 
-			comp_update_buffer_cached_consume(source_c, mod->input_buffers[i].consumed);
+			comp_update_buffer_consume(source_c, mod->input_buffers[i].consumed);
 			buffer_release(source_c);
 
 			bzero((__sparse_force void *)mod->input_buffers[i].data, size);

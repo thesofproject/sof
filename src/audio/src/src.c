@@ -892,9 +892,9 @@ static void src_process(struct comp_dev *dev, struct comp_buffer __sparse_cache 
 	comp_dbg(dev, "src_copy(), consumed = %u,  produced = %u",
 		 consumed, produced);
 
-	comp_update_buffer_cached_consume(source, consumed *
+	comp_update_buffer_consume(source, consumed *
 				   audio_stream_frame_bytes(&source->stream));
-	comp_update_buffer_cached_produce(sink, produced *
+	comp_update_buffer_produce(sink, produced *
 				   audio_stream_frame_bytes(&sink->stream));
 }
 

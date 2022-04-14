@@ -774,7 +774,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 	}
 
 	buffer_stream_writeback(sink, processed_data->sink_bytes);
-	comp_update_buffer_cached_produce(sink, processed_data->sink_bytes);
+	comp_update_buffer_produce(sink, processed_data->sink_bytes);
 
 	return 0;
 }
@@ -807,8 +807,8 @@ static int copier_copy(struct comp_dev *dev)
 				ret = do_conversion_copy(dev, cd, src_c, sink_c,
 							 &processed_data);
 				if (!ret) {
-					comp_update_buffer_cached_consume(src_c,
-						processed_data.source_bytes);
+					comp_update_buffer_consume(src_c,
+								   processed_data.source_bytes);
 					cd->output_total_data_processed +=
 						processed_data.sink_bytes;
 				}
@@ -839,8 +839,8 @@ static int copier_copy(struct comp_dev *dev)
 			}
 
 			if (!ret) {
-				comp_update_buffer_cached_consume(src_c,
-								  processed_data.source_bytes);
+				comp_update_buffer_consume(src_c,
+							   processed_data.source_bytes);
 				cd->input_total_data_processed += processed_data.source_bytes;
 			}
 
@@ -873,7 +873,7 @@ static int copier_copy(struct comp_dev *dev)
 		}
 
 		if (!ret) {
-			comp_update_buffer_cached_consume(src_c, processed_data.source_bytes);
+			comp_update_buffer_consume(src_c, processed_data.source_bytes);
 			cd->input_total_data_processed += processed_data.source_bytes;
 		}
 

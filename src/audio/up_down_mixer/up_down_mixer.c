@@ -490,8 +490,8 @@ static int up_down_mixer_copy(struct comp_dev *dev)
 					      audio_stream_sample_bytes(&sink_c->stream));
 		buffer_stream_writeback(sink_c, sink_bytes);
 
-		comp_update_buffer_cached_produce(sink_c, sink_bytes);
-		comp_update_buffer_cached_consume(source_c, source_bytes);
+		comp_update_buffer_produce(sink_c, sink_bytes);
+		comp_update_buffer_consume(source_c, source_bytes);
 	}
 
 	buffer_release(sink_c);

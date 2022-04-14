@@ -655,7 +655,7 @@ static int tone_copy(struct comp_dev *dev)
 		buffer_stream_writeback(sink_c, cd->period_bytes);
 
 		/* calc new free and available */
-		comp_update_buffer_cached_produce(sink_c, cd->period_bytes);
+		comp_update_buffer_produce(sink_c, cd->period_bytes);
 
 		ret = dev->frames;
 	}
