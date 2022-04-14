@@ -634,8 +634,8 @@ static void igo_nr_process(struct comp_dev *dev,
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_cached_consume(source, source_bytes);
-	comp_update_buffer_cached_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 }
 
 static void igo_nr_print_config(struct comp_dev *dev)

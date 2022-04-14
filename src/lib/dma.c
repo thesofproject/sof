@@ -341,7 +341,7 @@ int dma_buffer_copy_from(struct comp_buffer __sparse_cache *source,
 	 * appear in topology so notifier event is not needed
 	 */
 	audio_stream_consume(istream, source_bytes);
-	comp_update_buffer_cached_produce(sink, sink_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 
 	return ret;
 }
@@ -370,7 +370,7 @@ int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
 	 * appear in topology so notifier event is not needed
 	 */
 	audio_stream_produce(ostream, sink_bytes);
-	comp_update_buffer_cached_consume(source, source_bytes);
+	comp_update_buffer_consume(source, source_bytes);
 
 	return ret;
 }

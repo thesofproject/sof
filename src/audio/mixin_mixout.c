@@ -644,7 +644,7 @@ static int mixin_copy(struct comp_dev *dev)
 	}
 
 	if (bytes_to_consume_from_source_buf > 0)
-		comp_update_buffer_cached_consume(source_c, bytes_to_consume_from_source_buf);
+		comp_update_buffer_consume(source_c, bytes_to_consume_from_source_buf);
 	buffer_release(source_c);
 
 	return 0;
@@ -700,7 +700,7 @@ static int mixout_copy(struct comp_dev *dev)
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
 		/* writeback is already done in mixin while mixing */
-		comp_update_buffer_cached_produce(sink_c, bytes_to_produce);
+		comp_update_buffer_produce(sink_c, bytes_to_produce);
 		buffer_release(sink_c);
 	}
 

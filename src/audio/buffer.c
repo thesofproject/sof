@@ -182,78 +182,7 @@ void buffer_free(struct comp_buffer *buffer)
 	rfree(buffer);
 }
 
-void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
-{
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = buffer->stream.w_ptr,
-	};
-
-	/* return if no bytes */
-	if (!bytes) {
-		buf_dbg(buffer, "comp_update_buffer_produce(), no bytes to produce, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
-			dev_comp_id(buffer->source),
-			dev_comp_type(buffer->source),
-			dev_comp_id(buffer->sink),
-			dev_comp_type(buffer->sink));
-		return;
-	}
-
-	buffer = buffer_acquire(buffer);
-
-	audio_stream_produce(&buffer->stream, bytes);
-
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
-		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
-		 audio_stream_get_free_bytes(&buffer->stream),
-		(buffer->id << 16) | buffer->stream.size);
-	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		((char *)buffer->stream.r_ptr - (char *)buffer->stream.addr) << 16 |
-		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
-
-	buffer = buffer_release(buffer);
-}
-
-void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
-{
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = buffer->stream.r_ptr,
-	};
-
-	/* return if no bytes */
-	if (!bytes) {
-		buf_dbg(buffer, "comp_update_buffer_consume(), no bytes to consume, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
-			dev_comp_id(buffer->source),
-			dev_comp_type(buffer->source),
-			dev_comp_id(buffer->sink),
-			dev_comp_type(buffer->sink));
-		return;
-	}
-
-	buffer = buffer_acquire(buffer);
-
-	audio_stream_consume(&buffer->stream, bytes);
-
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buf_dbg(buffer, "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
-		 audio_stream_get_free_bytes(&buffer->stream),
-		(buffer->id << 16) | buffer->stream.size,
-		((char *)buffer->stream.r_ptr - (char *)buffer->stream.addr) << 16 |
-		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
-
-	buffer = buffer_release(buffer);
-}
-
-void comp_update_buffer_cached_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = cache_to_uncache(buffer),
@@ -286,7 +215,7 @@ void comp_update_buffer_cached_produce(struct comp_buffer __sparse_cache *buffer
 		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
 }
 
-void comp_update_buffer_cached_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = cache_to_uncache(buffer),

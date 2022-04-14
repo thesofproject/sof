@@ -484,9 +484,9 @@ static int demux_copy(struct comp_dev *dev)
 	/* update components */
 	for (i = 0; i < MUX_MAX_STREAMS; i++)
 		if (sinks[i])
-			comp_update_buffer_cached_produce(sinks[i], sinks_bytes[i]);
+			comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
 
-	comp_update_buffer_cached_consume(source_c, source_bytes);
+	comp_update_buffer_consume(source_c, source_bytes);
 
 out_source:
 	buffer_release(source_c);
@@ -585,10 +585,10 @@ static int mux_copy(struct comp_dev *dev)
 	buffer_stream_writeback(sink_c, sink_bytes);
 
 	/* update components */
-	comp_update_buffer_cached_produce(sink_c, sink_bytes);
+	comp_update_buffer_produce(sink_c, sink_bytes);
 	for (i = 0; i < MUX_MAX_STREAMS; i++)
 		if (sources[i])
-			comp_update_buffer_cached_consume(sources[i], sources_bytes[i]);
+			comp_update_buffer_consume(sources[i], sources_bytes[i]);
 
 out:
 	buffer_release(sink_c);

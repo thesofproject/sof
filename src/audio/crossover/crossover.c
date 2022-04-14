@@ -670,7 +670,7 @@ static int crossover_copy(struct comp_dev *dev)
 		if (!sinks[i])
 			continue;
 		buffer_stream_writeback(sinks_c[i], sinks_bytes[i]);
-		comp_update_buffer_cached_produce(sinks_c[i], sinks_bytes[i]);
+		comp_update_buffer_produce(sinks_c[i], sinks_bytes[i]);
 	}
 
 	/* Release buffers in reverse order */
@@ -678,7 +678,7 @@ static int crossover_copy(struct comp_dev *dev)
 		if (sinks[i])
 			buffer_release(sinks_c[i]);
 
-	comp_update_buffer_cached_consume(source_c, source_bytes);
+	comp_update_buffer_consume(source_c, source_bytes);
 
 out:
 	buffer_release(source_c);

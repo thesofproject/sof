@@ -432,7 +432,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 		num_samples_remaining -= n;
 		ref = audio_stream_wrap(&buffer_c->stream, ref);
 	}
-	comp_update_buffer_cached_consume(buffer_c, num_aec_reference_bytes);
+	comp_update_buffer_consume(buffer_c, num_aec_reference_bytes);
 
 	buffer_release(buffer_c);
 
@@ -476,8 +476,8 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 
 	buffer_stream_writeback(output_buf, cl.sink_bytes);
 
-	comp_update_buffer_cached_produce(output_buf, cl.sink_bytes);
-	comp_update_buffer_cached_consume(mic_buf, cl.source_bytes);
+	comp_update_buffer_produce(output_buf, cl.sink_bytes);
+	comp_update_buffer_consume(mic_buf, cl.source_bytes);
 
 	buffer_release(output_buf);
 	buffer_release(mic_buf);

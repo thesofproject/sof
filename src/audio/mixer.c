@@ -365,7 +365,7 @@ static int mixer_copy(struct comp_dev *dev)
 		sink_bytes = dev->frames * audio_stream_frame_bytes(&sink_c->stream);
 		if (!audio_stream_set_zero(&sink_c->stream, sink_bytes)) {
 			buffer_stream_writeback(sink_c, sink_bytes);
-			comp_update_buffer_cached_produce(sink_c, sink_bytes);
+			comp_update_buffer_produce(sink_c, sink_bytes);
 		}
 
 		buffer_release(sink_c);
@@ -398,13 +398,13 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* update source buffer pointers */
 	for (i = num_mix_sources - 1; i >= 0; i--)
-		comp_update_buffer_cached_consume(sources_c[i], source_bytes);
+		comp_update_buffer_consume(sources_c[i], source_bytes);
 
 	for (i = 0; i < num_mix_sources; i++)
 		buffer_release(sources_c[i]);
 
 	/* update sink buffer pointer */
-	comp_update_buffer_cached_produce(sink_c, sink_bytes);
+	comp_update_buffer_produce(sink_c, sink_bytes);
 
 	buffer_release(sink_c);
 

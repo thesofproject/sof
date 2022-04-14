@@ -418,8 +418,8 @@ static int selector_copy(struct comp_dev *dev)
 	buffer_stream_writeback(sink_c, sink_bytes);
 
 	/* calculate new free and available */
-	comp_update_buffer_cached_produce(sink_c, sink_bytes);
-	comp_update_buffer_cached_consume(source_c, source_bytes);
+	comp_update_buffer_produce(sink_c, sink_bytes);
+	comp_update_buffer_consume(source_c, source_bytes);
 
 	buffer_release(sink_c);
 	buffer_release(source_c);

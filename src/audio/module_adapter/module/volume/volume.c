@@ -1448,8 +1448,8 @@ static int volume_copy(struct comp_dev *dev)
 	buffer_stream_writeback(sink_c, output_buffer.size);
 
 	/* calculate new free and available */
-	comp_update_buffer_cached_produce(sink_c, output_buffer.size);
-	comp_update_buffer_cached_consume(source_c, input_buffer.consumed);
+	comp_update_buffer_produce(sink_c, output_buffer.size);
+	comp_update_buffer_consume(source_c, input_buffer.consumed);
 
 out:
 	buffer_release(sink_c);

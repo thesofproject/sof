@@ -676,8 +676,8 @@ static void tdfb_process(struct comp_dev *dev, struct comp_buffer __sparse_cache
 	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_cached_consume(source, source_bytes);
-	comp_update_buffer_cached_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 
 	/* Update sound direction estimate */
 	tdfb_direction_estimate(cd, frames, source->stream.channels);
