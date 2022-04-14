@@ -62,17 +62,28 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	const struct audio_stream *stream;
+	struct comp_buffer __sparse_cache *source_c;
+	const struct audio_stream __sparse_cache *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
+	unsigned int buffer_fmt, frame_fmt, rate, channels;
+
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() start");
 
 	if (!source)
 		return -EINVAL;
 
-	stream = &source->stream;
+	source_c = buffer_acquire(source);
 
-	switch (source->buffer_fmt) {
+	buffer_fmt = source_c->buffer_fmt;
+	stream = &source_c->stream;
+	frame_fmt = stream->frame_fmt;
+	rate = stream->rate;
+	channels = stream->channels;
+
+	buffer_release(source_c);
+
+	switch (buffer_fmt) {
 	case SOF_IPC_BUFFER_INTERLEAVED:
 		buffer_layout = DTS_SOF_INTERFACE_BUFFER_LAYOUT_INTERLEAVED;
 		break;
@@ -83,7 +94,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	switch (stream->frame_fmt) {
+	switch (frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		buffer_format = DTS_SOF_INTERFACE_BUFFER_FORMAT_SINT16LE;
 		break;
@@ -102,8 +113,8 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 
 	buffer_config->bufferLayout = buffer_layout;
 	buffer_config->bufferFormat = buffer_format;
-	buffer_config->sampleRate = stream->rate;
-	buffer_config->numChannels = stream->channels;
+	buffer_config->sampleRate = rate;
+	buffer_config->numChannels = channels;
 	buffer_config->periodInFrames = dev->frames;
 	/* totalBufferLengthInBytes will be populated in dtsSofInterfacePrepare */
 	buffer_config->totalBufferLengthInBytes = 0;
