@@ -216,6 +216,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 	}
 
 	status = pcm_dev->pipeline->status;
+	*ppl_status = status;
 	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
 	if (status != COMP_STATE_INIT) {
 		int host_id;
@@ -261,6 +262,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
+			*ppl_status = COMP_STATE_READY;
 			return ret;
 		}
 
@@ -291,6 +293,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
+			*ppl_status = COMP_STATE_READY;
 			return ret;
 		}
 
