@@ -726,8 +726,9 @@ static int mixout_params(struct comp_dev *dev,
 	return mixer_params(dev, params);
 }
 
-/* the original pipeline is : buffer  -> mixin -> buffer -> mixout
- * now convert it to : buffer -> mixer
+/* the original ipc4 pipeline is : buffer0  -> mixin -> buffer1 -> mixout -> ...
+ * Since ipc4 mixin & mixout are supported by current mixer which is
+ * named mixout in ipc4 case,  fw will convert it to : buffer0 -> mixout (mixer)
  */
 static int mixin_bind(struct comp_dev *dev, void *data)
 {
@@ -735,6 +736,7 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 	struct comp_buffer *source_buf;
 	struct comp_buffer *sink_buf = NULL;
 	struct comp_dev *sink;
+	struct list_item *blist;
 	int src_id, sink_id;
 
 	bu = (struct ipc4_module_bind_unbind *)data;
@@ -743,32 +745,48 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 
 	/* mixin -> mixout */
 	if (dev->ipc_config.id == src_id) {
-		struct list_item *blist;
+		/* mixin is not bound to its source component so mixout
+		 * can't be connected to source component
+		 */
+		if (list_is_empty(&dev->bsource_list))
+			return 0;
 
 		sink = ipc4_get_comp_dev(sink_id);
 		if (!sink) {
 			comp_err(dev, "mixin_bind: no sink with ID %d found", sink_id);
 			return -EINVAL;
 		}
+	} else { /* xxx -> mixin */
+		/* mixin is not bound to mixout so mixout can't be
+		 * connected to the source component of mixin
+		 */
+		if (list_is_empty(&dev->bsink_list))
+			return 0;
 
-		list_for_item(blist, &sink->bsource_list) {
-			sink_buf = container_of(blist, struct comp_buffer, sink_list);
-			if (sink_buf->source == dev) {
-				pipeline_disconnect(sink, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
-				break;
-			}
-		}
-
-		if (!sink_buf) {
-			comp_err(dev, "mixin_bind: no sink buffer found");
-			return -EINVAL;
-		}
-
-		source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
-		pipeline_connect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
-		pipeline_connect(dev, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+		sink_buf = buffer_from_list(dev->bsink_list.next, struct comp_buffer,
+					    PPL_DIR_DOWNSTREAM);
+		sink = buffer_get_comp(sink_buf, PPL_DIR_DOWNSTREAM);
 	}
+
+	/* disconnect mixin to mixout (mixer) */
+	list_for_item(blist, &sink->bsource_list) {
+		sink_buf = container_of(blist, struct comp_buffer, sink_list);
+		if (sink_buf->source == dev) {
+			pipeline_disconnect(sink, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+			break;
+		}
+	}
+
+	if (!sink_buf) {
+		comp_err(dev, "mixin_bind: no sink buffer found");
+		return -EINVAL;
+	}
+
+	/* connect mixout (mixer) to source component of mixin */
+	source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+	pipeline_connect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+	pipeline_connect(dev, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 
 	return 0;
 }
