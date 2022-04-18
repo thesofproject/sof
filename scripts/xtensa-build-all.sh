@@ -67,6 +67,9 @@ usage: $0 [options] platform(s)
        -k Configure rimage to use a non-default \${RIMAGE_PRIVATE_KEY}
            DEPRECATED: use the more flexible \${PRIVATE_KEY_OPTION} below.
        -v Verbose Makefile log
+       -i Set IPC_VERSION as "IPC4" or "IPC3". If IPC_VERSION is set as "IPC4" \
+	   corresponding overlay configuration file for building for IPC4 will be used \
+	   according to what the platform is.
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
 Infinte when not specified.
        -m path to MEU tool. CMake disables rimage signing which produces a
@@ -105,11 +108,12 @@ EOF
 }
 
 # parse the args
-while getopts "rudj:ckvao:m:" OPTION; do
+while getopts "rudi:j:ckvao:m:" OPTION; do
         case "$OPTION" in
 		r) BUILD_ROM=yes ;;
 		u) BUILD_FORCE_UP=yes ;;
 		d) BUILD_DEBUG=yes ;;
+		i) IPC_VERSION=$OPTARG ;;
 		j) BUILD_JOBS=$OPTARG ;;
 		c) MAKE_MENUCONFIG=yes ;;
 		k) USE_PRIVATE_KEY=yes ;;
@@ -281,6 +285,7 @@ do
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
+			IPC4_CONFIG_OVERLAY="tigerlake_ipc4"
 			# default key for TGL
 			PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
 			;;
@@ -414,6 +419,12 @@ do
 	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
 	then
 		cmake --build .  --  menuconfig
+	fi
+
+	if [[ "$IPC_VERSION" == "IPC4" ]]
+	then
+	    cat "${SOF_TOP}/src/arch/xtensa/configs/override/$IPC4_CONFIG_OVERLAY.config" \
+		    >> override.config
 	fi
 
 	if [[ "x$BUILD_DEBUG" == "xyes" ]]
