@@ -790,6 +790,15 @@ static int32_t igo_nr_reset(struct comp_dev *dev)
 
 	cd->igo_nr_func = NULL;
 
+	cd->source_rate = 0;
+	cd->sink_rate = 0;
+	cd->source_frames = 0;
+	cd->sink_frames = 0;
+	cd->source_frames_max = 0;
+	cd->sink_frames_max = 0;
+	cd->frames = 0;
+	cd->invalid_param = false;
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
