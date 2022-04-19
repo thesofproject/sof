@@ -298,7 +298,7 @@ SECTIONS
   .module_init : ALIGN(4)
   {
    _module_init_start = ABSOLUTE(.);
-    *(*.module_init)
+    *(*.initcall)
     _module_init_end = ABSOLUTE(.);
   } >sof_sram0 :sof_sram0_phdr
 
