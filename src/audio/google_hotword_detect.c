@@ -52,11 +52,11 @@ struct comp_data {
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
 
-	struct sof_ipc_comp_event event;
 	struct ipc_msg *msg;
 
 	int detected;
 	size_t history_bytes;
+	struct sof_ipc_comp_event event;
 };
 
 static void notify_host(const struct comp_dev *dev)
