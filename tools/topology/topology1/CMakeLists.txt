@@ -140,6 +140,7 @@ set(TPLGS
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-waves-2way\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2\;-D2CH_2WAY\;-DWAVES"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-4ch\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2\;-D4CH_PASSTHROUGH"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682\;-DCODEC=MAX98360A\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1"
+	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682-rtnr-google-aec\;-DCODEC=MAX98360A\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DGOOGLE_RTC_AUDIO_PROCESSING\;-DRTNR\;-DNOHOTWORD\;-DDMICPROC=rtnr-google-rtc-audio-processing\;-DNO16KDMIC"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682-waves\;-DCODEC=MAX98360A\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DWAVES"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682-2way\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-D2CH_2WAY"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682-4ch\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-D4CH_PASSTHROUGH"
