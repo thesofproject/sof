@@ -817,6 +817,8 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 		ipc4_gtw_host, ipc4_playback, pcm_convert_s32_to_s24 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
 		ipc4_gtw_host, ipc4_capture, pcm_convert_s24_to_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s24_to_s32},
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
