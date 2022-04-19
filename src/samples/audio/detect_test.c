@@ -82,11 +82,11 @@ struct comp_data {
 	size_t input_size;
 #endif
 
-	struct sof_ipc_comp_event event;
 	struct ipc_msg *msg;	/**< host notification */
 
 	void (*detect_func)(struct comp_dev *dev,
 			    const struct audio_stream *source, uint32_t frames);
+	struct sof_ipc_comp_event event;
 };
 
 static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
