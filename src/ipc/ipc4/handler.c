@@ -636,6 +636,7 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+	void *response_buffer;
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
@@ -688,9 +689,12 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	if (ret)
 		return ret;
 
-	msg_reply.tx_size = data_offset + sizeof(reply.data.dat);
-	msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, msg_reply.tx_size);
-	if (!msg_reply.tx_data) {
+	data_offset += sizeof(reply.data.dat);
+	response_buffer = rballoc(0, SOF_MEM_CAPS_RAM, data_offset);
+	if (response_buffer) {
+		msg_reply.tx_size = data_offset;
+		msg_reply.tx_data = response_buffer;
+	} else {
 		tr_err(&ipc_tr, "error: failed to allocate tx_data");
 		ret = IPC4_OUT_OF_MEMORY;
 	}
@@ -1018,7 +1022,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		reply.header.r.msg_tgt = in->r.msg_tgt;
 		reply.header.r.type = in->r.type;
 		if (msg_data.delayed_error)
-			reply.header.r.status = err;
+			reply.header.r.status = msg_data.delayed_error;
 		else
 			reply.header.r.status = err;
 
