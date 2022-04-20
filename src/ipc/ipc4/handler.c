@@ -1002,12 +1002,6 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	/* FW sends a ipc message to host if request bit is set*/
 	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
-		/**
-		 * If FW is on the path to D3 on primary core,
-		 * IPC response will be send during power down procedure.
-		 */
-		if (ipc_get()->pm_prepare_D3 && in->r.type == SOF_IPC4_MOD_SET_DX)
-			return;
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
 
