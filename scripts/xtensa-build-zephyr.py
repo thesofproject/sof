@@ -309,20 +309,20 @@ def west_init_update():
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
 
-	execute_command(["git", "clone", "--depth", "5", args.url, str(zephyr_dir)], check=True, timeout=1200)
-	execute_command(["git", "fetch", z_remote, z_ref], check=True, timeout=300, cwd=zephyr_dir)
-	execute_command(["git", "checkout", "FETCH_HEAD"], check=True, cwd=zephyr_dir)
+	execute_command(["git", "clone", "--depth", "5", args.url, str(zephyr_dir)], timeout=1200)
+	execute_command(["git", "fetch", z_remote, z_ref], timeout=300, cwd=zephyr_dir)
+	execute_command(["git", "checkout", "FETCH_HEAD"], cwd=zephyr_dir)
 	execute_command(["git", "-C", str(zephyr_dir), "--no-pager", "log", "--oneline", "--graph",
-		"--decorate", "--max-count=20"], check=True)
-	execute_command(["west", "init", "-l", str(zephyr_dir)], check=True)
+		"--decorate", "--max-count=20"])
+	execute_command(["west", "init", "-l", str(zephyr_dir)])
 	create_zephyr_sof_symlink()
 	# Do NOT "west update sof"!!
-	execute_command(["west", "update", "zephyr", "hal_xtensa"], check=True, timeout=300, cwd=west_top)
+	execute_command(["west", "update", "zephyr", "hal_xtensa"], timeout=300, cwd=west_top)
 
 def build_platforms():
 	global west_top, SOF_TOP
 	# double check that west workspace is initialized
-	execute_command(["west", "topdir"], check=True, stderr=subprocess.DEVNULL,
+	execute_command(["west", "topdir"], stderr=subprocess.DEVNULL,
 		stdout=subprocess.DEVNULL, cwd=west_top)
 	print(f"SOF_TOP={SOF_TOP}")
 	print(f"west_top={west_top}")
@@ -397,22 +397,21 @@ def build_platforms():
 		build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
 
 		# Build
-		execute_command(build_cmd, check=True, cwd=west_top)
+		execute_command(build_cmd, cwd=west_top)
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
 		fw_ldc_file = pathlib.Path(sof_output_dir, f"sof-{platform}.ldc")
 		input_elf_file = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.elf")
 		# Extract metadata
-		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)],
-			check=True)
+		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 		# CMake - configure rimage module
 		rimage_dir_name="build-rimage"
 		sof_mirror_dir = pathlib.Path("modules", "audio", "sof")
 		rimage_source_dir = pathlib.Path(sof_mirror_dir, "rimage")
-		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)], check=True,
+		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)],
 			cwd=west_top)
 		# CMake build rimage module
-		execute_command(["cmake", "--build", rimage_dir_name, "-j", str(args.jobs)], check=True,
+		execute_command(["cmake", "--build", rimage_dir_name, "-j", str(args.jobs)],
 			cwd=west_top)
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
@@ -434,7 +433,7 @@ def build_platforms():
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
 			sign_cmd += ["-c", str(rimage_desc)]
 
-		execute_command(sign_cmd, check=True, cwd=west_top)
+		execute_command(sign_cmd, cwd=west_top)
 		# Install by copy
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
 		fw_file_installed = pathlib.Path(sof_output_dir, "community", f"sof-{platform}.ri")
