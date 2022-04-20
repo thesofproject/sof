@@ -598,6 +598,7 @@ static int mux_reset(struct comp_dev *dev)
 	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
 	struct comp_buffer *source;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "mux_reset()");
 
@@ -611,6 +612,11 @@ static int mux_reset(struct comp_dev *dev)
 				return PPL_STATUS_PATH_STOP;
 		}
 	}
+
+	if (dev->ipc_config.type == SOF_COMP_MUX)
+		cd->mux = NULL;
+	else
+		cd->demux = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
