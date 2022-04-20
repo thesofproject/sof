@@ -85,22 +85,16 @@ ldoctl_hpsram_ldo_bypass:
 	.word SHIM_LDOCTL_HPSRAM_LDO_BYPASS
 
 hspgctl0_address:
-	.word HSPGCTL0
-
-hsrmctl0_address:
-	.word HSRMCTL0
+	.word SHIM_HSPGCTL(0)
 
 hspgctl1_address:
-	.word HSPGCTL1
-
-hsrmctl1_address:
-	.word HSRMCTL1
+	.word SHIM_HSPGCTL(1)
 
 hspgists0_address:
-	.word HSPGISTS0
+	.word SHIM_HSPGISTS(0)
 
 hspgists1_address:
-	.word HSPGISTS1
+	.word SHIM_HSPGISTS(1)
 #endif
 
 boot_init:
@@ -121,33 +115,13 @@ boot_init:
 
 
 #ifdef PLATFORM_MEM_INIT_AT_BOOT
-#if 0 // TODO - to be enabled for ACE
 	/* turn on memory _before_ stack reprogramming */
-
-	l32r	a3, ldoctl_hpsram_ldo_on
-	l32r	a5, shim_ldoctl_address
-	s32i	a3, a5, 0
-	memw
-
-	/* delay for 256 iterations before touching pwr regs */
-	movi	a2, 256
-1:	addi.n	a2, a2, -1
-	bnez	a2, 1b
-
 	movi	a3, 0
 	l32r	a5, hspgctl0_address
 	s32i	a3, a5, 0
 	memw
 
-	l32r	a5, hsrmctl0_address
-	s32i	a3, a5, 0
-	memw
-
 	l32r	a5, hspgctl1_address
-	s32i	a3, a5, 0
-	memw
-
-	l32r	a5, hsrmctl1_address
 	s32i	a3, a5, 0
 	memw
 
@@ -168,11 +142,6 @@ boot_init:
 4:	addi.n	a2, a2, -1
 	bnez	a2, 4b
 
-	l32r	a3, ldoctl_hpsram_ldo_bypass
-	l32r	a5, shim_ldoctl_address
-	s32i	a3, a5, 0
-	memw
-#endif // 0
 #endif // PLATFORM_MEM_INIT_AT_BOOT
 
 	/* reprogram stack to the area defined by main FW */
@@ -181,7 +150,6 @@ boot_init:
 
 
 #if CONFIG_MEM_WND
-#if 0 // TODO - to be enabled for MTL
 	/* set status register to 0x00000005 in wnd0 */
 	l32r	a3, fw_loaded_status_value
 	l32r	a5, wnd0_status_address
@@ -202,7 +170,6 @@ boot_init:
 	l32r	a5, wnd0_base_val
 	s32i	a5, a3, 0
 	memw
-#endif // 0
 #endif // CONFIG_MEM_WND
 
 #if (XCHAL_DCACHE_IS_COHERENT || XCHAL_LOOP_BUFFER_SIZE) && \

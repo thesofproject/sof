@@ -248,18 +248,10 @@
 #define L2LMCAP			0x71D00
 #define L2MPAT			0x71D04
 
-#define HSPGCTL0		0x71D10
-#define HSRMCTL0		0x71D14
-#define HSPGISTS0		0x71D18
-
 #define L2HSBPM(x)		(0x17A800 + 0x0008 * (x))
 #define SHIM_HSPGCTL(x)		(L2HSBPM(x) + 0x0000)
 #define SHIM_HSRMCTL(x)		(L2HSBPM(x) + 0x0001)
 #define SHIM_HSPGISTS(x)	(L2HSBPM(x) + 0x0004)
-
-#define HSPGCTL1		0x71D20
-#define HSRMCTL1		0x71D24
-#define HSPGISTS1		0x71D28
 
 #define LSPGCTL			0x71D80
 #define LSRMCTL			0x71D81
