@@ -416,6 +416,7 @@ static int mixer_reset(struct comp_dev *dev)
 	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
 	struct comp_buffer *source;
+	struct mixer_data *md = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "mixer_reset()");
 
@@ -429,6 +430,8 @@ static int mixer_reset(struct comp_dev *dev)
 				return PPL_STATUS_PATH_STOP;
 		}
 	}
+
+	md->mix_func = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
