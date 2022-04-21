@@ -813,7 +813,7 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE), sizeof(dx_info));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
 	memcpy_s(&dx_info, sizeof(dx_info), (const void *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
 
 	/* check if core enable mask is valid */
