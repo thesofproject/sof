@@ -26,6 +26,7 @@
 #include <soc.h>
 #include <kernel.h>
 #include <version.h>
+#include <sys/__assert.h>
 
 #if !CONFIG_KERNEL_COHERENCE
 #include <arch/xtensa/cache.h>
@@ -479,6 +480,8 @@ static inline const void *smex_placeholder_f(void)
  */
 const void *_smex_placeholder;
 
+static int w_core_enable_mask;
+
 int task_main_start(struct sof *sof)
 {
 	_smex_placeholder = smex_placeholder_f();
@@ -585,6 +588,13 @@ int task_main_start(struct sof *sof)
 #define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_TIMER
 #endif
 
+	/*
+	 * called from primary_core_init(), track state here
+	 * (only called from single core, no RMW lock)
+	 */
+	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
+	w_core_enable_mask |= BIT(PLATFORM_PRIMARY_CORE_ID);
+
 	/* Temporary fix for issue #4356 */
 	(void)notifier_register(NULL, scheduler_get_data(SOF_IPC_QUEUED_DOMAIN),
 				NOTIFIER_ID_LL_POST_RUN,
@@ -680,6 +690,11 @@ int arch_cpu_enable_core(int id)
 {
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 
+	/* only called from single core, no RMW lock */
+	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
+
+	w_core_enable_mask |= BIT(id);
+
 	return 0;
 }
 
@@ -727,11 +742,16 @@ int arch_cpu_secondary_cores_prepare_d0ix(void)
 void arch_cpu_disable_core(int id)
 {
 	/* TODO: call Zephyr API */
+
+	/* only called from single core, no RMW lock */
+	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
+
+	w_core_enable_mask &= ~BIT(id);
 }
 
 int arch_cpu_is_core_enabled(int id)
 {
-	return arch_cpu_active(id);
+	return w_core_enable_mask & BIT(id);
 }
 
 void cpu_power_down_core(uint32_t flags)
@@ -741,14 +761,7 @@ void cpu_power_down_core(uint32_t flags)
 
 int arch_cpu_enabled_cores(void)
 {
-	unsigned int i;
-	int mask = 0;
-
-	for (i = 0; i < CONFIG_MP_NUM_CPUS; i++)
-		if (arch_cpu_active(i))
-			mask |= BIT(i);
-
-	return mask;
+	return w_core_enable_mask;
 }
 
 static struct idc idc[CONFIG_MP_NUM_CPUS];
