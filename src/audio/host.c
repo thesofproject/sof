@@ -970,6 +970,9 @@ static int host_reset(struct comp_dev *dev)
 	dma_sg_free(&hd->local.elem_array);
 	dma_sg_free(&hd->config.elem_array);
 
+	/* It's safe that cleaning out `hd->config` after `dma_sg_free` for config.elem_array */
+	memset(&hd->config, 0, sizeof(hd->config));
+
 	/* free DMA buffer */
 	if (hd->dma_buffer) {
 		buffer_free(hd->dma_buffer);
