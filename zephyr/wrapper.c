@@ -102,9 +102,9 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 	return ret;
 }
 
-static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_t bytes)
+static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_t bytes)
 {
-	void *ptr;
+	void __sparse_cache *ptr;
 
 	/*
 	 * Zephyr sys_heap stores metadata at start of each
@@ -120,11 +120,11 @@ static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_
 	bytes = ALIGN_UP(bytes, min_align);
 #endif
 
-	ptr = heap_alloc_aligned(h, min_align, bytes);
+	ptr = (__sparse_force void __sparse_cache *)heap_alloc_aligned(h, min_align, bytes);
 
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	if (ptr)
-		ptr = z_soc_cached_ptr(ptr);
+		ptr = z_soc_cached_ptr((__sparse_force void *)ptr);
 #endif
 
 	return ptr;
@@ -137,7 +137,7 @@ static void heap_free(struct k_heap *h, void *mem)
 	void *mem_uncached;
 
 	if (is_cached(mem)) {
-		mem_uncached = z_soc_uncached_ptr(mem);
+		mem_uncached = z_soc_uncached_ptr((__sparse_force void __sparse_cache *)mem);
 		z_xtensa_cache_flush_inv(mem, sys_heap_usable_size(&h->heap, mem_uncached));
 
 		mem = mem_uncached;
@@ -171,7 +171,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	void *ptr;
 
 	if (zone_is_cached(zone) && !(flags & SOF_MEM_FLAG_COHERENT)) {
-		ptr = heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+		ptr = (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, 0, bytes);
 	} else {
 		/*
 		 * XTOS alloc implementation has used dcache alignment,
@@ -248,8 +248,8 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 {
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return heap_alloc_aligned(&sof_heap, alignment, bytes);
-	else
-		return heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
+
+	return (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
 }
 
 /*
