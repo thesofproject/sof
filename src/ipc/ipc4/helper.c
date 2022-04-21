@@ -644,6 +644,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
 	struct ipc_comp_dev *ipc_pipe;
+	struct comp_dev *host;
 	uint32_t pipeline_id;
 	int ret;
 
@@ -653,11 +654,14 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	if (!ipc_pipe)
 		return IPC4_INVALID_RESOURCE_ID;
 
+	host = ipc_pipe->pipeline->source_comp;
+	if (host->direction == SOF_IPC_STREAM_CAPTURE)
+		host = ipc_pipe->pipeline->sink_comp;
+
 	/* pause or release chain dma */
 	if (!cdma->header.r.enable) {
 		if (ipc_pipe->pipeline->status == COMP_STATE_ACTIVE) {
-			ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
-					       COMP_TRIGGER_PAUSE);
+			ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PAUSE);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to disable chain dma %d", ret);
 				return IPC4_BAD_STATE;
@@ -666,7 +670,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 		/* release chain dma */
 		if (!cdma->header.r.allocate) {
-			ret = pipeline_reset(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp);
+			ret = pipeline_reset(ipc_pipe->pipeline, host);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to reset chain dma %d", ret);
 				return IPC4_BAD_STATE;
@@ -689,8 +693,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	switch (ipc_pipe->pipeline->status) {
 	case COMP_STATE_PAUSED:
-		ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
-				       COMP_TRIGGER_PRE_RELEASE);
+		ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PRE_RELEASE);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to resume chain dma %d", ret);
 			return IPC4_BAD_STATE;
@@ -698,8 +701,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		break;
 	case COMP_STATE_READY:
 	case COMP_STATE_PREPARE:
-		ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
-				       COMP_TRIGGER_PRE_START);
+		ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PRE_START);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to start chain dma %d", ret);
 			return IPC4_BAD_STATE;
