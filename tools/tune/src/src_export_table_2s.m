@@ -175,10 +175,9 @@ for n = 1:2
                         fprintf(fh, '\n');
                 end
         end
-        fprintf(fh, '};\n');
+        fprintf(fh, '};\n\n');
 end
 
-fprintf(fh, '\n', def);
 fprintf(fh, '#endif /* %s */\n', def);
 
 fclose(fh);
