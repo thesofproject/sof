@@ -13,6 +13,7 @@ function src_generate(fs_in, fs_out, fs_inout, cfg);
 %   profile - differentiate set with identifier, e.g. 'std'
 %   quality - quality factor, usually 1.0
 %   speed   - optimize speed, gives higher RAM size, usually 0
+%   gain    - overal filter gain, defaults to -1 dB if empty
 %
 % If fs_inout matrix is omitted this script will compute coefficients
 % for all fs_in <-> fs_out combinations.
@@ -34,6 +35,7 @@ if nargin < 4
 	cfg.profile = 'std';
 	cfg.quality = 1.0;
 	cfg.speed = 0;
+	cfg.gain = -1;
 end
 if nargin < 3
 	fs_inout = ones(length(fs_in), length(fs_out));
@@ -108,8 +110,8 @@ for b = 1:nfso
 			m2 = 1;
 		end
                 fs3 = fs1*l1/m1;
-                cnv1 = src_param(fs1, fs3, coef_bits, cfg.quality);
-                cnv2 = src_param(fs3, fs2, coef_bits, cfg.quality);
+                cnv1 = src_param(fs1, fs3, coef_bits, cfg.quality, cfg.gain);
+                cnv2 = src_param(fs3, fs2, coef_bits, cfg.quality, cfg.gain);
                 if (fs2 < fs1)
                         % When decimating 1st stage passband can be limited
                         % for wider transition band
