@@ -493,7 +493,7 @@ void trace_off(void)
 	k_spin_unlock(&trace->lock, key);
 }
 
-void trace_init(struct sof *sof)
+__attribute__((optimize("-O0"))) void trace_init(struct sof *sof)
 {
 	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
 	sof->trace->enable = 1;

@@ -744,7 +744,7 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 
 	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
-	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	sink_id = IPC4_COMP_ID(bu->header_ext.r.dst_module_id, bu->header_ext.r.dst_instance_id);
 
 	/* mixin -> mixout */
 	if (dev->ipc_config.id == src_id) {

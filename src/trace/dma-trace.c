@@ -156,6 +156,10 @@ int dma_trace_init_early(struct sof *sof)
 	k_spinlock_init(&sof->dmat->lock);
 
 	ipc_build_trace_posn(&sof->dmat->posn);
+	/*volatile int loop = 1;
+	while (loop) {
+		__asm__ volatile("nop");
+	}*/
 	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
 				      sof->dmat->posn.rhdr.hdr.size);
 	if (!sof->dmat->msg) {

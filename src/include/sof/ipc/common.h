@@ -23,7 +23,9 @@ struct dma_sg_elem_array;
 struct ipc_msg;
 
 /* generic IPC header regardless of ABI MAJOR type that is always 4 byte aligned */
-typedef uint32_t ipc_cmd_hdr;
+typedef struct ipc_cmd_hdr_ {
+	uint32_t dat[2];
+} ipc_cmd_hdr;
 
 /*
  * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
@@ -34,7 +36,7 @@ typedef uint32_t ipc_cmd_hdr;
 #define ipc_from_hdr(x) ((struct sof_ipc_cmd_hdr *)x)
 #elif CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
-#define ipc_from_hdr(x) ((union ipc4_message_header *)x)
+#define ipc_from_hdr(x) ((struct ipc4_message_header *)x)
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
@@ -158,7 +160,7 @@ int ipc_dai_data_config(struct comp_dev *dev);
  * @param[in] header header.
  * @param[in] data data.
  */
-void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data);
+void ipc_boot_complete_msg(ipc_cmd_hdr *header);
 
 /**
  * \brief Read a compact IPC message or return NULL for normal message.

@@ -144,7 +144,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	/* just for retrieving valid ipc_msg header */
 	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN, p->comp_id);
 
-	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, sizeof(posn));
+	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
 	if (!p->msg) {
 		pipe_err(p, "pipeline_new(): ipc_msg_init failed");
 		rfree(p);

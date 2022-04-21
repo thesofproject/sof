@@ -57,7 +57,7 @@ bool ipc_trigger_trace_xfer(uint32_t avail)
 void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
 	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
-	posn->rhdr.hdr.size = sizeof(uint32_t);
+	posn->rhdr.hdr.size = 0;
 }
 
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
@@ -259,7 +259,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
-	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	sink_id = IPC4_COMP_ID(bu->header_ext.r.dst_module_id, bu->header_ext.r.dst_instance_id);
 	source = ipc4_get_comp_dev(src_id);
 	sink = ipc4_get_comp_dev(sink_id);
 
@@ -268,8 +268,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	buffer = ipc4_create_buffer(source, sink, bu->data.r.src_queue,
-				    bu->data.r.dst_queue);
+	buffer = ipc4_create_buffer(source, sink, bu->header_ext.r.src_queue,
+				    bu->header_ext.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
@@ -321,7 +321,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
-	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	sink_id = IPC4_COMP_ID(bu->header_ext.r.dst_module_id, bu->header_ext.r.dst_instance_id);
 	src = ipc4_get_comp_dev(src_id);
 	sink = ipc4_get_comp_dev(sink_id);
 	if (!src || !sink) {
@@ -334,7 +334,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return 0;
 	}
 
-	buffer_id = IPC4_COMP_ID(bu->data.r.src_queue, bu->data.r.dst_queue);
+	buffer_id = IPC4_COMP_ID(bu->header_ext.r.src_queue, bu->header_ext.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf;
 
@@ -541,7 +541,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	/* build a pipeline id based on dma id */
 	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->header.r.link_dma_id);
-	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->data.r.fifo_size);
+	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->header_ext.r.fifo_size);
 	if (ret < 0) {
 		tr_err(&comp_tr, "failed to create pipeline for chain dma");
 		return IPC4_INVALID_NODE_ID;
@@ -564,7 +564,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	memset_s(&params, sizeof(params), 0, sizeof(params));
 	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
-	construct_config(&copier_cfg, cdma->data.r.fifo_size, &params);
+	construct_config(&copier_cfg, cdma->header_ext.r.fifo_size, &params);
 	params.direction = dir;
 	params.stream_tag = host_chan + 1;
 
@@ -591,7 +591,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	}
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
-	ipc_buf.size = cdma->data.r.fifo_size;
+	ipc_buf.size = cdma->header_ext.r.fifo_size;
 	ipc_buf.comp.id = buf_id;
 	ipc_buf.comp.pipeline_id = pipeline_id;
 	ipc_buf.comp.core = src->ipc_config.core;

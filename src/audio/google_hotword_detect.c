@@ -114,7 +114,7 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	cd->event.event_type = SOF_CTRL_EVENT_KD;
 	cd->event.num_elems = 0;
 
-	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
+	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, cd->event.rhdr.size);
 	if (!cd->msg) {
 		comp_err(dev, "ghd_create(): ipc_msg_init failed");
 		goto cd_fail;

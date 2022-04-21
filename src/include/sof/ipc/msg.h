@@ -30,6 +30,7 @@ struct dma_sg_elem_array;
 
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
+	uint32_t header_ext; /* extension specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
 	void *tx_data;		/* pointer to payload data */
 	struct list_item list;
@@ -38,28 +39,20 @@ struct ipc_msg {
 /**
  * \brief Initialise a new IPC message.
  * @param header Message header metadata
- * @param size Message size in bytes.
+ * @param header_ext Message header extension metadata
+ * @param size Message data size in bytes.
+ * @return New IPC message.
+ */
+struct ipc_msg *ipc_msg_w_ext_init(uint32_t header, uint32_t header_ext, uint32_t size);
+/**
+ * \brief Initialise a new IPC message.
+ * @param header Message header metadata
+ * @param size Message data size in bytes.
  * @return New IPC message.
  */
 static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
 {
-	struct ipc_msg *msg;
-
-	msg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*msg));
-	if (!msg)
-		return NULL;
-
-	msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
-	if (!msg->tx_data) {
-		rfree(msg);
-		return NULL;
-	}
-
-	msg->header = header;
-	msg->tx_size = size;
-	list_init(&msg->list);
-
-	return msg;
+	return ipc_msg_w_ext_init(header, 0, size);
 }
 
 /**

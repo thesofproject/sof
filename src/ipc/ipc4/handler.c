@@ -52,14 +52,14 @@ struct ipc_msg msg_reply;
 /*
  * Global IPC Operations.
  */
-static int ipc4_create_pipeline(union ipc4_message_header *ipc4)
+static int ipc4_create_pipeline(struct ipc4_message_header *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
 
-static int ipc4_delete_pipeline(union ipc4_message_header *ipc4)
+static int ipc4_delete_pipeline(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
 	struct ipc *ipc = ipc_get();
@@ -236,7 +236,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 		if (!cpu_is_me(host->core))
 			return ipc_process_on_core(host->core, false);
 	}
-
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
 		if (status != COMP_STATE_PAUSED && status != COMP_STATE_READY) {
@@ -350,7 +349,7 @@ static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 
 static void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
-	if (!msg_data.delayed_reply || !msg_reply.tx_size) {
+	if (!msg_data.delayed_reply) {
 		tr_err(&ipc_tr, "unexpected delayed reply");
 		return;
 	}
@@ -433,7 +432,7 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 	return 0;
 }
 
-static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
+static int ipc4_set_pipeline_state(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
@@ -444,12 +443,12 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	int i;
 
 	state.header.dat = ipc4[0].dat;
-	state.data.dat = ipc4[1].dat;
+	state.header_ext.dat = ipc4[1].dat;
 	cmd = state.header.r.ppl_state;
 
 	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
 	dcache_invalidate_region(ppl_data, sizeof(*ppl_data));
-	if (state.data.r.multi_ppl) {
+	if (state.header_ext.r.multi_ppl) {
 		ppl_count = ppl_data->pipelines_count;
 		ppl_id = ppl_data->ppl_id;
 		dcache_invalidate_region(ppl_id, sizeof(int) * ppl_count);
@@ -477,7 +476,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	return ret;
 }
 
-static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
+static int ipc4_process_chain_dma(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_chain_dma cdma;
 	struct ipc *ipc = ipc_get();
@@ -485,7 +484,7 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
 
-	if (cdma.header.r.allocate && cdma.data.r.fifo_size) {
+	if (cdma.header.r.allocate && cdma.header_ext.r.fifo_size) {
 		ret = ipc4_create_chain_dma(ipc, &cdma);
 		if (ret)
 			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
@@ -505,8 +504,106 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 
 	return ret;
 }
+struct ipc_msg *ipc_msg_w_ext_init(uint32_t header, uint32_t header_ext, uint32_t size) 
+{
+	struct ipc_msg *msg;
 
+	msg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*msg));
+	if (!msg)
+		return NULL;
+
+<<<<<<< HEAD
 static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
+=======
+	if(size) {
+		msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
+		if (!msg->tx_data) {
+			rfree(msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->header_ext = header_ext;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+ __attribute__((optimize("-O0"))) static int ipc4_log_enable(struct ipc4_message_header *ipc4)
+{
+#if CONFIG_HOST_PTABLE
+	struct dma_sg_elem_array elem_array;
+	uint32_t ring_size;
+#endif
+	struct dma_trace_data *dmat = dma_trace_data_get();
+	struct sof_ipc_dma_trace_params_ext params;
+	int err = 0;
+
+	if (!dmat) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "ipc_dma_trace_config failed: dmat not initialized");
+		return -ENOMEM;
+	}
+
+	/* Logs already enabled. */
+	if (dmat->enabled)
+		return 0;
+
+	mailbox_hostbox_read(&params, sizeof(params), 0, sizeof(params));
+
+	/* TODO: header will change in release version.
+	 * There is no point in implemening this in dev.
+	 */
+	/*
+	 *if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
+	 * As version 5.12 Linux sends the monotonic
+	 *  ktime_get(). Search for
+	 *  "SOF_IPC_TRACE_DMA_PARAMS_EXT" in your particular
+	 *  kernel version.
+	 *
+	 *platform_timer_set_delta(timer, params.timestamp_ns);
+	 *else
+	 *timer->delta = 0;
+	 */
+	dmat->time_delta = k_ns_to_cyc_near64(params.timestamp_ns) - k_cycle_get_64();
+
+#if CONFIG_HOST_PTABLE
+	err = ipc_process_host_buffer(ipc, &params.buffer,
+				      SOF_IPC_STREAM_CAPTURE,
+				      &elem_array,
+				      &ring_size);
+	if (err < 0)
+		goto error;
+
+	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
+	if (err < 0) {
+		tr_err(&ipc_tr, "ipc: trace failed to set host buffers %d",
+		       err);
+		goto error;
+	}
+#else
+	/* stream tag of capture stream for DMA trace */
+	dmat->stream_tag = params.stream_tag;
+	/* host buffer size for DMA trace */
+	dmat->host_size = params.buffer.size;
+#endif
+
+err = dma_trace_enable(dmat);
+
+	if (err < 0) {
+		tr_err(&ipc_tr, "ipc: failed to enable trace %d", err);
+		goto error;
+	}
+	return err;
+
+error:
+	return err;
+}
+
+
+static int ipc4_process_glb_message(struct ipc4_message_header *ipc4)
+>>>>>>> c91af8f406... Fix the IPC4 header extension usage
 {
 	uint32_t type;
 	int ret;
@@ -577,7 +674,7 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
  * delete module <-------> free component
  */
 
-static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_init_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_init_instance module;
 	struct sof_ipc_comp comp;
@@ -589,8 +686,8 @@ static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 
 	memset(&comp, 0, sizeof(comp));
 	comp.id = IPC4_COMP_ID(module.header.r.module_id, module.header.r.instance_id);
-	comp.pipeline_id = module.data.r.ppl_instance_id;
-	comp.core = module.data.r.core_id;
+	comp.pipeline_id = module.header_ext.r.ppl_instance_id;
+	comp.core = module.header_ext.r.core_id;
 	dev = comp_new(&comp);
 	if (!dev) {
 		tr_err(&ipc_tr, "error: failed to init module %x : %x",
@@ -602,7 +699,7 @@ static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 	return 0;
 }
 
-static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_bind_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -610,12 +707,12 @@ static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_bind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
-	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
+	       (uint32_t)bu.header_ext.r.dst_module_id, (uint32_t)bu.header_ext.r.dst_instance_id);
 
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_unbind_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -623,12 +720,12 @@ static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_unbind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
-	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
+	       (uint32_t)bu.header_ext.r.dst_module_id, (uint32_t)bu.header_ext.r.dst_instance_id);
 
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_get_large_config_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
 	struct ipc4_module_large_config config;
@@ -661,35 +758,36 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 			return IPC4_MOD_INVALID_ID;
 	}
 
-	data_offset =  config.data.r.data_off_size;
-	ret = drv->ops.get_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
-				config.data.r.final_block, &data_offset,
-				data + sizeof(reply.data.dat));
+	data_offset =  config.header_ext.r.data_off_size;
+	ret = drv->ops.get_large_config(dev, config.header_ext.r.large_param_id, config.header_ext.r.init_block,
+				config.header_ext.r.final_block, &data_offset,
+				data);
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
 		ret = IPC4_MOD_INVALID_ID;
 
 	/* Copy host config and overwrite */
-	reply.data.dat = config.data.dat;
-	reply.data.r.data_off_size = data_offset;
+	reply.header_ext.dat = config.header_ext.dat;
+	reply.header_ext.r.data_off_size = data_offset;
 
 	/* The last block, no more data */
-	if (!config.data.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
-		reply.data.r.final_block = 1;
+	if (!config.header_ext.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+		reply.header_ext.r.final_block = 1;
 
 	/* Indicate last block if error occurs */
 	if (ret)
-		reply.data.r.final_block = 1;
+		reply.header_ext.r.final_block = 1;
 
-	*(uint32_t *)data = reply.data.dat;
+	//*(uint32_t *)data = reply.header_ext.dat;
 
 	/* no need to allocate memory for reply msg */
 	if (ret)
 		return ret;
 
-	msg_reply.tx_size = data_offset + sizeof(reply.data.dat);
+	msg_reply.tx_size = data_offset;
 	msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, msg_reply.tx_size);
+	msg_reply.header_ext = reply.header_ext.dat;
 	if (!msg_reply.tx_data) {
 		tr_err(&ipc_tr, "error: failed to allocate tx_data");
 		ret = IPC4_OUT_OF_MEMORY;
@@ -698,7 +796,7 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	return ret;
 }
 
-static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_set_large_config_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
@@ -725,8 +823,8 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 			return IPC4_MOD_INVALID_ID;
 	}
 
-	ret = drv->ops.set_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
-					config.data.r.final_block, config.data.r.data_off_size,
+	ret = drv->ops.set_large_config(dev, config.header_ext.r.large_param_id, config.header_ext.r.init_block,
+					config.header_ext.r.final_block, config.header_ext.r.data_off_size,
 					(char *)MAILBOX_HOSTBOX_BASE);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
@@ -737,7 +835,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 	return ret;
 }
 
-static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_delete_module_instance(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_delete_instance module;
 	struct ipc *ipc = ipc_get();
@@ -761,7 +859,7 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 }
 
 /* disable power gating on core 0 */
-static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
+static int ipc4_module_process_d0ix(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_set_d0ix d0ix;
 	uint32_t module_id, instance_id;
@@ -778,7 +876,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 	}
 
 	/* only module 0 can be used to set d0ix state */
-	if (d0ix.data.r.prevent_power_gating)
+	if (d0ix.header_ext.r.prevent_power_gating)
 		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
 		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
@@ -787,7 +885,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 }
 
 /* enable/disable cores according to the state mask */
-static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
+static int ipc4_module_process_dx(struct ipc4_message_header *ipc4)
 {
 	struct ipc4_module_set_dx dx;
 	struct ipc4_dx_state_info dx_info;
@@ -862,7 +960,7 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	return IPC4_SUCCESS;
 }
 
-static int ipc4_process_module_message(union ipc4_message_header *ipc4)
+static int ipc4_process_module_message(struct ipc4_message_header *ipc4)
 {
 	uint32_t type;
 	int ret;
@@ -931,32 +1029,28 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
-	uint32_t size;
-
 	msg_data.msg_out[0] = msg->header;
-	msg_data.msg_out[1] = *(uint32_t *)msg->tx_data;
+	msg_data.msg_out[1] = msg->header_ext;
 
-	/* the first uint of msg data is sent by ipc data register for ipc4 */
-	size = msg->tx_size - sizeof(uint32_t);
-	if (size)
-		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, size);
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
 
 	/* free memory for get config function */
-	if (msg == &msg_reply && msg_reply.tx_size > sizeof(uint32_t))
+	if (msg == &msg_reply && msg_reply.tx_size > 0)
 		rfree(msg_reply.tx_data);
 
 	return ipc_to_hdr(msg_data.msg_out);
 }
 
-void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
+void ipc_boot_complete_msg(ipc_cmd_hdr *header)
 {
-	*header = SOF_IPC4_FW_READY;
-	*data = 0;
+	header->dat[0]= (uint32_t)SOF_IPC4_FW_READY;
+	header->dat[1] = 0;
 }
 
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
-	union ipc4_message_header in;
+	struct ipc4_message_header in;
 
 	in.dat = msg_data.msg_in[0];
 	ipc_compound_msg_done(in.r.type, reply->error);
@@ -964,7 +1058,7 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
-	union ipc4_message_header *in = ipc_from_hdr(_hdr);
+	struct ipc4_message_header *in = ipc_from_hdr(_hdr);
 	uint32_t *data = ipc_get()->comp_data;
 	enum ipc4_message_target target;
 	int err;
@@ -976,14 +1070,15 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	msg_data.delayed_reply = 0;
 	msg_data.delayed_error = 0;
 
-	/* Common reply msg only sends back ipc extension register */
-	msg_reply.tx_size = sizeof(uint32_t);
+		/* Common reply msg only sends back ipc extension register */
+	msg_reply.tx_size = 0;
 	/* msg_reply data is stored in msg_out[1] */
-	msg_reply.tx_data = msg_data.msg_out + 1;
+	msg_reply.tx_data = msg_data.msg_out;
 	/* Ipc extension register is stored in in[1].
 	 * Save it for reply msg
 	 */
-	data[0] = in[1].dat;
+	msg_reply.header = in->dat;
+	msg_reply.header_ext = in->header_ext;
 
 	target = in->r.msg_tgt;
 
