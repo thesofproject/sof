@@ -650,7 +650,13 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 static int smart_amp_reset(struct comp_dev *dev)
 {
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+
 	comp_dbg(dev, "smart_amp_reset()");
+
+	sad->process = NULL;
+	sad->in_channels = 0;
+	sad->out_channels = 0;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
