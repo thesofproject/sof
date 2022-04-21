@@ -506,8 +506,13 @@ err:
 static int selector_reset(struct comp_dev *dev)
 {
 	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "selector_reset()");
+
+	cd->source_period_bytes = 0;
+	cd->sink_period_bytes = 0;
+	cd->sel_func = NULL;
 
 	ret = comp_set_state(dev, COMP_TRIGGER_RESET);
 
