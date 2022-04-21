@@ -198,7 +198,7 @@ g_dc_comp_lin = 10^(-g_dc/20);
 if 1
         p_ymin = floor((-cnv.rs-50)/10)*10;
         p_ymax = 10;
-        figure;
+        figure(1);
         clf;
         plot(f_p, m_db);
         grid on;
