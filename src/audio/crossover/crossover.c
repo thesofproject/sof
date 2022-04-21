@@ -837,8 +837,6 @@ static int crossover_reset(struct comp_dev *dev)
 
 	cd->crossover_process = NULL;
 	cd->crossover_split = NULL;
-	cd->config = NULL;
-	cd->config_new = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
