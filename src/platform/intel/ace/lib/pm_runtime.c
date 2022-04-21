@@ -34,8 +34,6 @@
 #include <sof_versions.h>
 #include <stdint.h>
 
-#include <ace/lib/power_down.h>
-
 /* 76cc9773-440c-4df9-95a8-72defe7796fc */
 DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 		 0x95, 0xa8, 0x72, 0xde, 0xfe, 0x77, 0x96, 0xfc);
@@ -653,7 +651,6 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 
 void platform_pm_runtime_power_off(void)
 {
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
 	int ret;
 
 	/* check if DSP is busy sending IPC for 2ms */
@@ -664,9 +661,5 @@ void platform_pm_runtime_power_off(void)
 	if (ret < 0)
 		tr_err(&power_tr, "failed to wait for DSP sent IPC handled.");
 
-	/* power down entire HPSRAM */
-	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
-		hpsram_mask[i] = HPSRAM_MASK(i);
-
-	power_down(true, uncache_to_cache(&hpsram_mask[0]), true);
+	cpu_disable_core(PLATFORM_PRIMARY_CORE_ID);
 }

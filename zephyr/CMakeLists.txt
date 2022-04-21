@@ -504,7 +504,6 @@ if (CONFIG_SOC_SERIES_INTEL_ACE1X)
 		${SOF_PLATFORM_PATH}/intel/ace/platform.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/mem_window.c
 		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/ace/lib/power_down.S
 		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/clk.c
@@ -521,7 +520,6 @@ if (CONFIG_SOC_SERIES_INTEL_ACE1X)
 		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
 	)
 
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/ace/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/ace/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "meteorlake")
