@@ -611,6 +611,7 @@ static int kpb_reset(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
+	int i;
 
 	comp_cl_info(&comp_kpb, "kpb_reset(): resetting from state %d, state log %x",
 		     kpb->state, kpb->state_log);
@@ -631,6 +632,15 @@ static int kpb_reset(struct comp_dev *dev)
 		break;
 	default:
 		kpb->hd.buffered = 0;
+		kpb->sel_sink = NULL;
+		kpb->host_sink = NULL;
+		kpb->host_buffer_size = 0;
+		kpb->host_period_size = 0;
+
+		for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
+			kpb->clients[i].state = KPB_CLIENT_UNREGISTERED;
+			kpb->clients[i].r_ptr = NULL;
+		}
 
 		if (kpb->hd.c_hb) {
 			/* Reset history buffer - zero its data, reset pointers
