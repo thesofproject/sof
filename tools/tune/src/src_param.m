@@ -1,4 +1,4 @@
-function cnv = src_param(fs1, fs2, coef_bits, q)
+function cnv = src_param(fs1, fs2, coef_bits, q, gain)
 
 % src_param - get converter parameters
 %
@@ -9,6 +9,7 @@ function cnv = src_param(fs1, fs2, coef_bits, q)
 % coef_bits - word length identifier
 % q         - quality scale filter bandwidth and stopband attenuation,
 %	      1 is default
+% gain      - overall gain of SRC, defaults to -1 (dB) if omitted
 %
 
 % Copyright (c) 2016, Intel Corporation
@@ -44,6 +45,10 @@ function cnv = src_param(fs1, fs2, coef_bits, q)
 % Both give about -80 dB THD+N with 24 bit coefficients. With 16 bit
 % coefficients THD+N is limited to about -76 dB.
 
+if nargin < 5
+	gain = -1;
+end
+
 if nargin < 4
 	q = 1.0;
 end
@@ -62,7 +67,8 @@ cnv.c_sb = 0.5; % Start stopband at Fs/2
 cnv.rs = 70; % Stopband attenuation in dB
 cnv.rp = 0.1; % Passband ripple in dB
 cnv.rp_tot = 0.1; % Max +/- passband ripple allowed, used in test script only
-cnv.gain = -1; % Gain in decibels at 0 Hz
+cnv.gain = gain; % Gain in decibels at 0 Hz
+
 
 %% Constrain sub-filter lengths. Make subfilters lengths multiple of four
 %  is a good assumption for processors.
