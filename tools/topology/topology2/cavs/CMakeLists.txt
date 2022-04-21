@@ -39,7 +39,6 @@ execute_process(
 	OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/abi.conf
 )
 
-# This will override the topology1 binaries with topology2 binaries
 add_custom_target(topology2_cavs)
 add_dependencies(topologies2 topology2_cavs)
 

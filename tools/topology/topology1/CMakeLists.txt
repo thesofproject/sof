@@ -239,9 +239,7 @@ set(TPLGS
 # down.
 add_subdirectory(production)
 
-# "Install" all v1 production topologies two directory levels up. In the
-# future, v2 topologies will be "installed" instead in the same place so
-# users get upgraded without doing anything.
+# "Install" all v1 production topologies two directory levels up.
 add_custom_target(topologies1 ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory production ${SOF_TOPOLOGY_BINARY_DIRECTORY}
 )
