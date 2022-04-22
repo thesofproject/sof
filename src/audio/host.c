@@ -659,7 +659,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, dev->ipc_config.id);
 
-	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, hd->posn.rhdr.hdr.size);
 	if (!hd->msg) {
 		comp_err(dev, "host_new(): ipc_msg_init failed");
 		dma_put(hd->dma);
