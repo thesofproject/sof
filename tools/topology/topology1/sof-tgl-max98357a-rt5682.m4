@@ -19,6 +19,10 @@ include(`sof/tokens.m4')
 # Include Tigerlake DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 include(`platform/intel/dmic.m4')
+
+# Include machine driver definitions
+include(`platform/intel/intel-boards.m4')
+
 DEBUG_START
 
 #
@@ -87,20 +91,6 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 	`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')'
 )')
 
-# define the ID base for backend DAI Links
-ifdef(`SSP_AMP_LINK_ORDER',`
-# use the order defined in sof_ssp_amp.c
-define(`SPK_BE_ID_BASE', `0')
-define(`DMIC_BE_ID_BASE', eval(SPK_BE_ID_BASE + 1))
-define(`HDMI_BE_ID_BASE', eval(DMIC_BE_ID_BASE + 2))
-define(`BT_BE_ID_BASE', eval(HDMI_BE_ID_BASE + 4))
-',`
-ifdef(`NO_HEADPHONE', `define(`DMIC_BE_ID_BASE', `0')', `define(`DMIC_BE_ID_BASE', `1')')
-define(`HDMI_BE_ID_BASE', eval(DMIC_BE_ID_BASE + 2))
-define(`SPK_BE_ID_BASE', eval(HDMI_BE_ID_BASE + 4))
-ifdef(`NO_AMP', `define(`BT_BE_ID_BASE', SPK_BE_ID_BASE)', `define(`BT_BE_ID_BASE', eval(SPK_BE_ID_BASE + 1))')
-')
-
 #
 # Define the pipelines
 #
@@ -136,7 +126,7 @@ define(`SPK_SSP_INDEX', AMP_SSP)
 # define SSP BE dai_link name
 define(`SPK_SSP_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`-Codec'))
 # define BE dai_link ID
-define(`SPK_BE_ID', SPK_BE_ID_BASE)
+define(`SPK_BE_ID', BOARD_SPK_BE_ID)
 # Ref capture related
 # Ref capture BE dai_name
 define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))')
@@ -149,11 +139,11 @@ define(KFBM_TYPE, `vol-kfbm')
 # define pcm, pipeline and dai id
 define(DMIC_PCM_48k_ID, `99')
 define(DMIC_PIPELINE_48k_ID, `10')
-define(DMIC_DAI_LINK_48k_ID, DMIC_BE_ID_BASE)
+define(DMIC_DAI_LINK_48k_ID, BOARD_DMIC_BE_ID_BASE)
 define(DMIC_PCM_16k_ID, `100')
 define(DMIC_PIPELINE_16k_ID, `11')
 define(DMIC_PIPELINE_KWD_ID, `12')
-define(DMIC_DAI_LINK_16k_ID, eval(DMIC_BE_ID_BASE + 1))
+define(DMIC_DAI_LINK_16k_ID, eval(BOARD_DMIC_BE_ID_BASE + 1))
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
 ifdef(`RTNR', `define(`DMICPROC', rtnr)', `')
@@ -182,9 +172,9 @@ ifdef(`BT_OFFLOAD', `
 # BT offload support
 define(`BT_PIPELINE_PB_ID', `13')
 define(`BT_PIPELINE_CP_ID', `14')
-define(`BT_DAI_LINK_ID', BT_BE_ID_BASE)
+define(`BT_DAI_LINK_ID', BOARD_BT_BE_ID)
 define(`BT_PCM_ID', `7')
-define(`HW_CONFIG_ID', BT_BE_ID_BASE)
+define(`HW_CONFIG_ID', BOARD_BT_BE_ID)
 include(`platform/intel/intel-generic-bt.m4')')
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -465,8 +455,8 @@ ifelse(
 	)')
 
 ifdef(`NO_HEADPHONE',`',`
-# SSP 0 (ID: 0)
-DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
+# SSP 0 (ID: BOARD_HP_BE_ID)
+DAI_CONFIG(SSP, 0, BOARD_HP_BE_ID, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
@@ -474,13 +464,13 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))')
 
 # 4 HDMI/DP outputs (ID: 3,4,5,6)
-DAI_CONFIG(HDA, 0, HDMI_BE_ID_BASE, iDisp1,
+DAI_CONFIG(HDA, 0, BOARD_HDMI_BE_ID_BASE, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
+DAI_CONFIG(HDA, 1, eval(BOARD_HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
+DAI_CONFIG(HDA, 2, eval(BOARD_HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
-DAI_CONFIG(HDA, 3, eval(HDMI_BE_ID_BASE + 3), iDisp4,
+DAI_CONFIG(HDA, 3, eval(BOARD_HDMI_BE_ID_BASE + 3), iDisp4,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
 
 DEBUG_END
