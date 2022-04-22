@@ -64,7 +64,7 @@ src/schedule				@mrajwa
 
 # other helpers
 # Mostly overridden by *.(ba)sh below
-scripts/*				@marc-hb
+scripts/*				@marc-hb @aborisovich
 
 # tools(old 'soft' repo)
 tools/logger/*				@bkokoszx @akloniex
@@ -79,7 +79,7 @@ tools/tune/drc/*			@cujomalainey @johnylin76 @chiang831
 tools/oss-fuzz/*			@cujomalainey
 
 # build system
-# **/CMakeLists.txt
+**/CMakeLists.txt			@marc-hb @aborisovich
 # **/Kconfig
 # scripts/cmake/**
 # scripts/kconfig/**
@@ -88,7 +88,7 @@ tools/oss-fuzz/*			@cujomalainey
 *.bash					@marc-hb
 *trace.*				@akloniex
 
-/.github/				@dbaluta @cujomalainey @lgirdwood @marc-hb @zrombel
+/.github/				@dbaluta @cujomalainey @lgirdwood @marc-hb @aborisovich
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
