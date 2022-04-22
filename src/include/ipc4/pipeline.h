@@ -95,7 +95,7 @@ struct ipc4_pipeline_create {
 			uint32_t msg_tgt        : 1;
 			uint32_t _reserved_0    : 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -108,7 +108,7 @@ struct ipc4_pipeline_create {
 			uint32_t rsvd2          : 10;
 			uint32_t _reserved_2    : 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -138,7 +138,7 @@ struct ipc4_pipeline_delete {
 			uint32_t msg_tgt        : 1;
 			uint32_t _reserved_0    : 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -147,7 +147,7 @@ struct ipc4_pipeline_delete {
 			uint32_t rsvd1          : 30;
 			uint32_t _reserved_2    : 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -199,7 +199,7 @@ struct ipc4_pipeline_set_state {
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -212,7 +212,7 @@ struct ipc4_pipeline_set_state {
 			uint32_t rsvd1      : 28;
 			uint32_t _reserved_2: 2;
 		} r;
-	} data;
+	} extension;
 
 	/* multiple pipeline states */
 	struct ipc4_pipeline_set_state_data s_data;
@@ -239,7 +239,7 @@ struct ipc4_pipeline_set_state_reply {
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -249,7 +249,7 @@ struct ipc4_pipeline_set_state_reply {
 			uint32_t ppl_id     : 30;
 			uint32_t _reserved_2: 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /**< This IPC message is sent to the FW in order to retrieve a pipeline state. */
@@ -270,7 +270,7 @@ struct ipc4_pipeline_get_state {
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1;
 			} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -279,7 +279,7 @@ struct ipc4_pipeline_get_state {
 			uint32_t rsvd1      : 30;
 			uint32_t _reserved_2: 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /**< Sent by the FW in response to GetPipelineState. */
@@ -299,7 +299,7 @@ struct ipc4_pipeline_get_state_reply {
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -310,7 +310,7 @@ struct ipc4_pipeline_get_state_reply {
 			uint32_t rsvd1      : 25;
 			uint32_t _reserved_2: 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -336,7 +336,7 @@ struct ipc4_pipeline_get_context_size {
 			uint32_t msg_tgt        : 1;
 			uint32_t _reserved_0    : 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -345,7 +345,7 @@ struct ipc4_pipeline_get_context_size {
 			uint32_t rsvd1          : 30;
 			uint32_t _reserved_2    : 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 /**< Reply to Get Pipeline Context Size. */
@@ -365,7 +365,7 @@ struct ipc4_pipeline_get_context_size_reply {
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1;
 		} r;
-	} header;
+	} primary;
 
 	union{
 		uint32_t dat;
@@ -376,7 +376,7 @@ struct ipc4_pipeline_get_context_size_reply {
 			uint32_t rsvd1      : 14;
 			uint32_t _reserved_2: 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_chain_dma {
@@ -402,7 +402,7 @@ struct ipc4_chain_dma {
 		uint32_t msg_tgt		: 1;
 		uint32_t _reserved_0		: 1;
 		} r;
-	} header;
+	} primary;
 
 	union {
 		uint32_t dat;
@@ -413,7 +413,7 @@ struct ipc4_chain_dma {
 			uint32_t rsvd1		: 6;
 			uint32_t _reserved_2		: 2;
 		} r;
-	} data;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 #endif

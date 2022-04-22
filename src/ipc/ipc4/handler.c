@@ -444,29 +444,29 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	int ret = 0;
 	int i;
 
-	state.header.dat = ipc4[0].dat;
-	state.data.dat = ipc4[1].dat;
-	cmd = state.header.r.ppl_state;
+	state.primary.dat = ipc4[0].dat;
+	state.extension.dat = ipc4[1].dat;
+	cmd = state.primary.r.ppl_state;
 
 	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data, sizeof(*ppl_data));
-	if (state.data.r.multi_ppl) {
+	if (state.extension.r.multi_ppl) {
 		ppl_count = ppl_data->pipelines_count;
 		ppl_id = ppl_data->ppl_id;
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_id,
 					 sizeof(int) * ppl_count);
 	} else {
 		ppl_count = 1;
-		id = state.header.r.ppl_id;
+		id = state.primary.r.ppl_id;
 		ppl_id = &id;
 	}
 
 	for (i = 0; i < ppl_count; i++) {
 		bool delayed = false;
 
-		ipc_compound_pre_start(state.header.r.type);
+		ipc_compound_pre_start(state.primary.r.type);
 		ret = set_pipeline_state(ppl_id[i], cmd, &delayed, &status);
-		ipc_compound_post_start(state.header.r.type, ret, delayed);
+		ipc_compound_post_start(state.primary.r.type, ret, delayed);
 
 		if (ret != 0)
 			return ret;
@@ -487,7 +487,7 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
 
-	if (cdma.header.r.allocate && cdma.data.r.fifo_size) {
+	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
 		ret = ipc4_create_chain_dma(ipc, &cdma);
 		if (ret)
 			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
@@ -586,18 +586,18 @@ static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 	struct comp_dev *dev;
 
 	memcpy_s(&module, sizeof(module), ipc4, sizeof(module));
-	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.header.r.module_id,
-	       (uint32_t)module.header.r.instance_id);
+	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
+	       (uint32_t)module.primary.r.instance_id);
 
 	memset(&comp, 0, sizeof(comp));
-	comp.id = IPC4_COMP_ID(module.header.r.module_id, module.header.r.instance_id);
-	comp.pipeline_id = module.data.r.ppl_instance_id;
-	comp.core = module.data.r.core_id;
+	comp.id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
+	comp.pipeline_id = module.extension.r.ppl_instance_id;
+	comp.core = module.extension.r.core_id;
 	dev = comp_new(&comp);
 	if (!dev) {
 		tr_err(&ipc_tr, "error: failed to init module %x : %x",
-		       (uint32_t)module.header.r.module_id,
-		       (uint32_t)module.header.r.instance_id);
+		       (uint32_t)module.primary.r.module_id,
+		       (uint32_t)module.primary.r.instance_id);
 		return IPC4_MOD_NOT_INITIALIZED;
 	}
 
@@ -611,8 +611,8 @@ static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
 
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_bind_module_instance %x : %x with %x : %x",
-	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
-	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
+	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
+	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
 
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
@@ -624,8 +624,8 @@ static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
 
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_unbind_module_instance %x : %x with %x : %x",
-	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
-	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
+	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
+	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
 
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
@@ -643,9 +643,9 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
 	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
-	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
-	drv = ipc4_get_comp_drv(config.header.r.module_id);
+	drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	if (!drv)
 		return IPC4_MOD_INVALID_ID;
 
@@ -655,30 +655,31 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	/* get component dev for non-basefw since there is no
 	 * component dev for basefw
 	 */
-	if (config.header.r.module_id) {
+	if (config.primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
 	}
 
-	data_offset =  config.data.r.data_off_size;
-	ret = drv->ops.get_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
-				config.data.r.final_block, &data_offset,
-				data + sizeof(reply.data.dat));
+	data_offset =  config.extension.r.data_off_size;
+	ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
+					config.extension.r.init_block,
+					config.extension.r.final_block,
+					&data_offset, data + sizeof(reply.data.dat));
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
 		ret = IPC4_MOD_INVALID_ID;
 
 	/* Copy host config and overwrite */
-	reply.data.dat = config.data.dat;
+	reply.data.dat = config.extension.dat;
 	reply.data.r.data_off_size = data_offset;
 
 	/* The last block, no more data */
-	if (!config.data.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
 		reply.data.r.final_block = 1;
 
 	/* Indicate last block if error occurs */
@@ -713,30 +714,33 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
-	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
-	drv = ipc4_get_comp_drv(config.header.r.module_id);
+	drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	if (!drv)
 		return IPC4_MOD_INVALID_ID;
 
 	if (!drv->ops.set_large_config)
 		return IPC4_INVALID_REQUEST;
 
-	if (config.header.r.module_id) {
+	if (config.primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
 	}
 
-	ret = drv->ops.set_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
-					config.data.r.final_block, config.data.r.data_off_size,
+	ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
+					config.extension.r.init_block,
+					config.extension.r.final_block,
+					config.extension.r.data_off_size,
 					(char *)MAILBOX_HOSTBOX_BASE);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
-		       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
+		       (uint32_t)config.primary.r.module_id,
+		       (uint32_t)config.primary.r.instance_id);
 		ret = IPC4_INVALID_RESOURCE_ID;
 	}
 
@@ -751,15 +755,15 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 	int ret;
 
 	memcpy_s(&module, sizeof(module), ipc4, sizeof(module));
-	tr_dbg(&ipc_tr, "ipc4_delete_module_instance %x : %x", (uint32_t)module.header.r.module_id,
-	       (uint32_t)module.header.r.instance_id);
+	tr_dbg(&ipc_tr, "ipc4_delete_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
+	       (uint32_t)module.primary.r.instance_id);
 
-	comp_id = IPC4_COMP_ID(module.header.r.module_id, module.header.r.instance_id);
+	comp_id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
 	ret = ipc_comp_free(ipc, comp_id);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to delete module instance %x : %x",
-		       (uint32_t)module.header.r.module_id,
-		       (uint32_t)module.header.r.instance_id);
+		       (uint32_t)module.primary.r.module_id,
+		       (uint32_t)module.primary.r.instance_id);
 		ret = IPC4_INVALID_RESOURCE_ID;
 	}
 
@@ -773,18 +777,18 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 	uint32_t module_id, instance_id;
 
 	memcpy_s(&d0ix, sizeof(d0ix), ipc4, sizeof(d0ix));
-	module_id = d0ix.header.r.module_id;
-	instance_id = d0ix.header.r.instance_id;
+	module_id = d0ix.primary.r.module_id;
+	instance_id = d0ix.primary.r.instance_id;
 
 	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
 
-	if (d0ix.header.r.module_id || d0ix.header.r.instance_id) {
+	if (d0ix.primary.r.module_id || d0ix.primary.r.instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
 	/* only module 0 can be used to set d0ix state */
-	if (d0ix.data.r.prevent_power_gating)
+	if (d0ix.extension.r.prevent_power_gating)
 		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
 		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
@@ -802,8 +806,8 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	int ret;
 
 	memcpy_s(&dx, sizeof(dx), ipc4, sizeof(dx));
-	module_id = dx.header.r.module_id;
-	instance_id = dx.header.r.instance_id;
+	module_id = dx.primary.r.module_id;
+	instance_id = dx.primary.r.instance_id;
 
 	/* only module 0 can be used to set dx state */
 	if (module_id || instance_id) {

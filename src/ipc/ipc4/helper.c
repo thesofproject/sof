@@ -156,10 +156,10 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
 
-	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->header.r.instance_id);
+	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
-	return ipc4_create_pipeline(ipc, pipe_desc->header.r.instance_id,
-		pipe_desc->header.r.ppl_priority, pipe_desc->header.r.ppl_mem_size);
+	return ipc4_create_pipeline(ipc, pipe_desc->primary.r.instance_id,
+		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size);
 }
 
 static int ipc_pipeline_module_free(uint32_t pipeline_id)
@@ -260,8 +260,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	int ret;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
-	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
-	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
 	source = ipc4_get_comp_dev(src_id);
 	sink = ipc4_get_comp_dev(sink_id);
 
@@ -270,8 +270,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	buffer = ipc4_create_buffer(source, sink, bu->data.r.src_queue,
-				    bu->data.r.dst_queue);
+	buffer = ipc4_create_buffer(source, sink, bu->extension.r.src_queue,
+				    bu->extension.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
@@ -322,8 +322,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	int ret;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
-	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
-	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
 	src = ipc4_get_comp_dev(src_id);
 	sink = ipc4_get_comp_dev(sink_id);
 	if (!src || !sink) {
@@ -336,7 +336,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return 0;
 	}
 
-	buffer_id = IPC4_COMP_ID(bu->data.r.src_queue, bu->data.r.dst_queue);
+	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf;
 
@@ -556,16 +556,16 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	uint32_t dir, host_chan, link_chan;
 	int ret;
 
-	if (process_dma_index(cdma->header.r.host_dma_id, &dir, &host_chan) < 0)
+	if (process_dma_index(cdma->primary.r.host_dma_id, &dir, &host_chan) < 0)
 		return IPC4_INVALID_NODE_ID;
 
-	if (process_dma_index(cdma->header.r.link_dma_id, &dir, &link_chan) < 0)
+	if (process_dma_index(cdma->primary.r.link_dma_id, &dir, &link_chan) < 0)
 		return IPC4_INVALID_NODE_ID;
 
 	/* build a pipeline id based on dma id */
-	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
-				   cdma->header.r.link_dma_id);
-	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->data.r.fifo_size);
+	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
+				   cdma->primary.r.link_dma_id);
+	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->extension.r.fifo_size);
 	if (ret < 0) {
 		tr_err(&comp_tr, "failed to create pipeline for chain dma");
 		return IPC4_INVALID_NODE_ID;
@@ -588,7 +588,8 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	memset_s(&params, sizeof(params), 0, sizeof(params));
 	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
-	ret = construct_config(&copier_cfg, cdma->data.r.fifo_size, &params, cdma->header.r.scs);
+	ret = construct_config(&copier_cfg, cdma->extension.r.fifo_size, &params,
+			       cdma->primary.r.scs);
 	if (ret != IPC4_SUCCESS)
 		return ret;
 
@@ -618,7 +619,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	}
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
-	ipc_buf.size = cdma->data.r.fifo_size;
+	ipc_buf.size = cdma->extension.r.fifo_size;
 	ipc_buf.comp.id = buf_id;
 	ipc_buf.comp.pipeline_id = pipeline_id;
 	ipc_buf.comp.core = src->ipc_config.core;
@@ -640,7 +641,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		return IPC4_INVALID_RESOURCE_STATE;
 
 	/* set up host & dai and start pipeline */
-	if (cdma->header.r.enable) {
+	if (cdma->primary.r.enable) {
 		buf->stream.channels = params.channels;
 		buf->stream.frame_fmt = params.frame_fmt;
 		buf->stream.valid_sample_fmt = params.frame_fmt;
@@ -675,8 +676,8 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	uint32_t pipeline_id;
 	int ret;
 
-	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
-				   cdma->header.r.link_dma_id);
+	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
+				   cdma->primary.r.link_dma_id);
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
 	if (!ipc_pipe)
 		return IPC4_INVALID_RESOURCE_ID;
@@ -686,7 +687,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		host = ipc_pipe->pipeline->sink_comp;
 
 	/* pause or release chain dma */
-	if (!cdma->header.r.enable) {
+	if (!cdma->primary.r.enable) {
 		if (ipc_pipe->pipeline->status == COMP_STATE_ACTIVE) {
 			ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PAUSE);
 			if (ret < 0) {
@@ -696,7 +697,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		}
 
 		/* release chain dma */
-		if (!cdma->header.r.allocate) {
+		if (!cdma->primary.r.allocate) {
 			ret = pipeline_reset(ipc_pipe->pipeline, host);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to reset chain dma %d", ret);
@@ -713,7 +714,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		return IPC4_SUCCESS;
 	}
 
-	if (!cdma->header.r.allocate) {
+	if (!cdma->primary.r.allocate) {
 		tr_err(&ipc_tr, "can't enable chain dma");
 		return IPC4_INVALID_REQUEST;
 	}
