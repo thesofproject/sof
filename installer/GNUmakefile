@@ -260,6 +260,8 @@ ifneq (true,${BUILD_ONLY_ONCE})
 .PHONY: ${BUILD_TOOLS}
 endif
 
+# Deploy and release only "official", top-level topology files starting
+# with the 'sof-' prefix to avoid any experimental stuff.
 topologies: ${BUILD_TOOLS}
 	install ${INSTALL_OPTS}  -t ${STAGING_SOF_TPLG}${VERSION_SUFFIX}/ \
                ${BUILD_TOOLS}/topology/sof-*.tplg
