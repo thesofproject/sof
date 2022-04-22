@@ -425,7 +425,9 @@ static struct comp_dev *ipc4_create_host(uint32_t pipeline_id, uint32_t id, uint
 }
 
 static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint32_t dir,
-					struct ipc4_copier_module_cfg *copier_cfg)
+					struct ipc4_copier_module_cfg *copier_cfg,
+					struct sof_ipc_stream_params *params,
+					uint32_t link_chan)
 {
 	struct sof_uuid uuid = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
 				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
@@ -441,6 +443,7 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 
 	memset_s(&config, sizeof(config), 0, sizeof(config));
 	config.type = SOF_COMP_DAI;
+	config.frame_fmt = params->frame_fmt;
 	config.pipeline_id = pipe->pipeline_id;
 	config.core = 0;
 	config.id = id;
@@ -460,6 +463,7 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
+	copier_cfg->gtw_cfg.node_id = link_chan;
 	ret = comp_dai_config(dev, &dai, copier_cfg);
 	if (ret < 0)
 		return NULL;
@@ -473,28 +477,42 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
  * and 44.1K sample rate and 16 & 24bit are supported by chain dma.
  */
 static void construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t fifo_size,
-			     struct sof_ipc_stream_params *params)
+			     struct sof_ipc_stream_params *params, uint32_t scs)
 {
 	uint32_t frame_size;
 
-	/* fifo_size = rate * channel * depth */
-	if (fifo_size % 48 == 0)
+	/* fifo_size = rate * channel * depth
+	 * support stream format : 48k * n,  44.1k * n, 32k *n and 16k * n.
+	 * Since the chain dma is used to just copy data from host to dai
+	 * without any change, 32k * 1 ch makes the same effect as
+	 * 16k * 2ch
+	 */
+	if (fifo_size % 48 == 0) {
 		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_48000HZ;
-	else
+		frame_size = fifo_size / 48;
+	} else if (fifo_size % 44 == 0) {
 		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_44100HZ;
+		frame_size = fifo_size / 44;
+	} else if (fifo_size % 32 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_32000HZ;
+		frame_size = fifo_size / 32;
+	} else if (fifo_size % 16 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_16000HZ;
+		frame_size = fifo_size / 16;
+	}
+
 	params->rate = copier_cfg->base.audio_fmt.sampling_frequency;
 
-	frame_size = fifo_size / (copier_cfg->base.audio_fmt.sampling_frequency / 1000);
 	/* convert double buffer to single buffer */
 	frame_size >>= 1;
 
-	/* two cases: 16 bits or 24 bits sample size */
-	if (frame_size % 3 == 0) {
-		copier_cfg->base.audio_fmt.depth = 24;
-		copier_cfg->base.audio_fmt.valid_bit_depth = 24;
-		params->frame_fmt = SOF_IPC_FRAME_S24_3LE;
-		params->sample_container_bytes = 3;
-		params->sample_valid_bytes = 3;
+	/* two cases based on scs : 16 bits or 32 bits sample size */
+	if (!scs) {
+		copier_cfg->base.audio_fmt.depth = 32;
+		copier_cfg->base.audio_fmt.valid_bit_depth = 32;
+		params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		params->sample_container_bytes = 4;
+		params->sample_valid_bytes = 4;
 	} else {
 		copier_cfg->base.audio_fmt.depth = 16;
 		copier_cfg->base.audio_fmt.valid_bit_depth = 16;
@@ -564,12 +582,12 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	memset_s(&params, sizeof(params), 0, sizeof(params));
 	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
-	construct_config(&copier_cfg, cdma->data.r.fifo_size, &params);
+	construct_config(&copier_cfg, cdma->data.r.fifo_size, &params, cdma->header.r.scs);
 	params.direction = dir;
 	params.stream_tag = host_chan + 1;
 
 	dai_id = host_id + 1;
-	dai = ipc4_create_dai(ipc_pipe->pipeline, dai_id, dir, &copier_cfg);
+	dai = ipc4_create_dai(ipc_pipe->pipeline, dai_id, dir, &copier_cfg, &params, link_chan);
 	if (!dai) {
 		tr_err(&comp_tr, "failed to create dai for chain dma");
 		return IPC4_INVALID_REQUEST;
@@ -610,7 +628,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	ret = ipc_pipeline_complete(ipc, pipeline_id);
 	if (ret < 0)
-		ret = IPC4_INVALID_RESOURCE_STATE;
+		return IPC4_INVALID_RESOURCE_STATE;
 
 	/* set up host & dai and start pipeline */
 	if (cdma->header.r.enable) {
@@ -708,7 +726,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		}
 	}
 
-	return IPC4_SUCCESS;
+	return ret;
 }
 
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
