@@ -40,8 +40,8 @@
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 struct ipc4_msg_data {
-	uint32_t msg_in[2]; /* local copy of current message from host header */
-	uint32_t msg_out[2]; /* local copy of current message to host header */
+	struct ipc_cmd_hdr msg_in; /* local copy of current message from host header */
+	struct ipc_cmd_hdr msg_out; /* local copy of current message to host header */
 	int delayed_reply;
 	uint32_t delayed_error;
 };
@@ -919,28 +919,27 @@ static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 	return ret;
 }
 
-ipc_cmd_hdr *mailbox_validate(void)
+struct ipc_cmd_hdr *mailbox_validate(void)
 {
-	ipc_cmd_hdr *hdr = ipc_get()->comp_data;
+	struct ipc_cmd_hdr *hdr = ipc_get()->comp_data;
 	return hdr;
 }
 
-ipc_cmd_hdr *ipc_compact_read_msg(void)
+struct ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
-	ipc_cmd_hdr *hdr = (ipc_cmd_hdr *)msg_data.msg_in;
 	int words;
 
-	words = ipc_platform_compact_read_msg(hdr, 2);
+	words = ipc_platform_compact_read_msg(&msg_data.msg_in, 2);
 	if (!words)
 		return mailbox_validate();
 
-	return ipc_to_hdr(msg_data.msg_in);
+	return &msg_data.msg_in;
 }
 
-ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
+struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
-	msg_data.msg_out[0] = msg->header;
-	msg_data.msg_out[1] = msg->extension;
+	msg_data.msg_out.pri = msg->header;
+	msg_data.msg_out.ext = msg->extension;
 
 	if (msg->tx_size)
 		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
@@ -949,24 +948,24 @@ ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 	if (msg == &msg_reply && msg_reply.tx_size > 0)
 		rfree(msg_reply.tx_data);
 
-	return ipc_to_hdr(msg_data.msg_out);
+	return &msg_data.msg_out;
 }
 
-void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
+void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 {
-	*header = SOF_IPC4_FW_READY;
-	*data = 0;
+	header->pri = SOF_IPC4_FW_READY;
+	header->ext = 0;
 }
 
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc4_message_request in;
 
-	in.primary.dat = msg_data.msg_in[0];
+	in.primary.dat = msg_data.msg_in.pri;
 	ipc_compound_msg_done(in.primary.r.type, reply->error);
 }
 
-void ipc_cmd(ipc_cmd_hdr *_hdr)
+void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 {
 	struct ipc4_message_request *in = ipc_from_hdr(_hdr);
 	enum ipc4_message_target target;
@@ -978,8 +977,6 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	/* no process on scheduled thread */
 	msg_data.delayed_reply = 0;
 	msg_data.delayed_error = 0;
-
-		/* Common reply msg only sends back ipc extension register */
 	msg_reply.tx_size = 0;
 	msg_reply.header = in->primary.dat;
 	msg_reply.extension = in->extension.dat;

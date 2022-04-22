@@ -25,7 +25,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	if (hdr->size < sizeof(*hdr) || hdr->size > SOF_IPC_MSG_MAX_SIZE)
 		goto done;
 
-	ipc_cmd((ipc_cmd_hdr *)hdr);
+	ipc_cmd((struct ipc_cmd_hdr *)hdr);
 done:
 	free(hdr);
 	return 0;  // Non-zero return values are reserved for future use.

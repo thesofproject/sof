@@ -134,7 +134,7 @@ static void ipc_irq_handler(void *arg)
 }
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
-int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
 
@@ -148,7 +148,7 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 	return 2; /* number of words read */
 }
 
-int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
 
@@ -164,12 +164,12 @@ int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
 }
 
 #else
-int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	return 0; /* number of words written - not used on CAVS1.5 */
 }
 
-int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	return 0; /* number of words read - not used on CAVS1.5 */
 }
@@ -177,7 +177,7 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
-	ipc_cmd_hdr *hdr;
+	struct ipc_cmd_hdr *hdr;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();
@@ -219,7 +219,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	ipc_cmd_hdr *hdr;
+	struct ipc_cmd_hdr *hdr;
 
 	if (ipc->is_notification_pending ||
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -239,12 +239,22 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	hdr = ipc_prepare_to_send(msg);
 
 	/* now interrupt host to tell it we have message sent */
+#if CONFIG_IPC_MAJOR_3
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, hdr[1]);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr[0]);
+	ipc_write(IPC_DIPCIE, hdr->dat[1]);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr->dat[0]);
 #else
-	ipc_write(IPC_DIPCIDD, hdr[1]);
-	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr[0]);
+	ipc_write(IPC_DIPCIDD, hdr->dat[1]);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr->dat[0]);
+#endif
+#elif CONFIG_IPC_MAJOR_4
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	ipc_write(IPC_DIPCIE, hdr->ext);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr->pri);
+#else
+	ipc_write(IPC_DIPCIDD, hdr->ext);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr->pri);
+#endif
 #endif
 
 	return 0;

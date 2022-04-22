@@ -67,7 +67,7 @@ struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc);
  * @param[in] words Number of words to read in header.
  * @return Number of word written.
  */
-int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words);
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words);
 
 /**
  * \brief Write a compact IPC message to hardware.
@@ -75,7 +75,7 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words);
  * @param[in] words Number of words to be written from header.
  * @return Number of word written.
  */
-int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words);
+int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words);
 
 /**
  * \brief Initialise IPC hardware for polling mode.
