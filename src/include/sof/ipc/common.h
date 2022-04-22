@@ -22,9 +22,6 @@
 struct dma_sg_elem_array;
 struct ipc_msg;
 
-/* generic IPC header regardless of ABI MAJOR type that is always 4 byte aligned */
-typedef uint32_t ipc_cmd_hdr;
-
 /*
  * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
  * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
@@ -32,14 +29,23 @@ typedef uint32_t ipc_cmd_hdr;
 #if CONFIG_IPC_MAJOR_3
 #include <ipc/header.h>
 #define ipc_from_hdr(x) ((struct sof_ipc_cmd_hdr *)x)
+
+struct ipc_cmd_hdr {
+	uint32_t dat[2];
+};
 #elif CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
 #define ipc_from_hdr(x) ((struct ipc4_message_request *)x)
+
+struct ipc_cmd_hdr {
+	uint32_t pri;
+	uint32_t ext;
+};
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
 
-#define ipc_to_hdr(x) ((ipc_cmd_hdr *)x)
+#define ipc_to_hdr(x) ((struct ipc_cmd_hdr *)x)
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
@@ -158,33 +164,33 @@ int ipc_dai_data_config(struct comp_dev *dev);
  * @param[in] header header.
  * @param[in] data data.
  */
-void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data);
+void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data);
 
 /**
  * \brief Read a compact IPC message or return NULL for normal message.
  * @return Pointer to the compact message data.
  */
-ipc_cmd_hdr *ipc_compact_read_msg(void);
+struct ipc_cmd_hdr *ipc_compact_read_msg(void);
 
 /**
  * \brief Write a compact IPC message.
  * @param[in] hdr Compact message header data.
  * @return Number of words written.
  */
-int ipc_compact_write_msg(ipc_cmd_hdr *hdr);
+int ipc_compact_write_msg(struct ipc_cmd_hdr *hdr);
 
 /**
  * \brief Prepare an IPC message for sending.
  * @param[in] msg The ipc msg.
  * @return pointer to raw header or NULL.
  */
-ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg);
+struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg);
 
 /**
  * \brief Validate mailbox contents for valid IPC header.
  * @return pointer to header if valid or NULL.
  */
-ipc_cmd_hdr *mailbox_validate(void);
+struct ipc_cmd_hdr *mailbox_validate(void);
 
 /**
  * Generic IPC command handler. Expects that IPC command (the header plus
@@ -193,7 +199,7 @@ ipc_cmd_hdr *mailbox_validate(void);
  *
  * @param _hdr Points to the IPC command header.
  */
-void ipc_cmd(ipc_cmd_hdr *_hdr);
+void ipc_cmd(struct ipc_cmd_hdr *_hdr);
 
 /**
  * \brief IPC message to be processed on other core.
