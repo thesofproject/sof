@@ -639,7 +639,7 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
-	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x with %x : %x",
+	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
 	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 
 	drv = ipc4_get_comp_drv(config.header.r.module_id);
