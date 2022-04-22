@@ -59,7 +59,7 @@ bool ipc_trigger_trace_xfer(uint32_t avail)
 void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
 	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
-	posn->rhdr.hdr.size = sizeof(uint32_t);
+	posn->rhdr.hdr.size = 0;
 }
 
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
