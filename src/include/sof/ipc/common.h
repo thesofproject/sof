@@ -34,7 +34,7 @@ typedef uint32_t ipc_cmd_hdr;
 #define ipc_from_hdr(x) ((struct sof_ipc_cmd_hdr *)x)
 #elif CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
-#define ipc_from_hdr(x) ((union ipc4_message_header *)x)
+#define ipc_from_hdr(x) ((struct ipc4_message_request *)x)
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif

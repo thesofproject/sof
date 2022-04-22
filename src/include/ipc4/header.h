@@ -94,23 +94,32 @@ enum ipc4_message_type {
  * When msg_tgt is SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG then type is
  * enum ipc4_message_type.
  */
-union ipc4_message_header {
-	uint32_t dat;
+struct ipc4_message_request {
+	union  {
+		uint32_t dat;
 
-	struct {
-		uint32_t rsvd0 : 24;
+		struct {
+			uint32_t rsvd0 : 24;
 
-		/**< One of Global::Type */
-		uint32_t type : 5;
+			/**< One of Global::Type */
+			uint32_t type : 5;
 
-		/**< Msg::MSG_REQUEST */
-		uint32_t rsp : 1;
+			/**< Msg::MSG_REQUEST */
+			uint32_t rsp : 1;
 
-		/**< Msg::FW_GEN_MSG */
-		uint32_t msg_tgt : 1;
+			/**< Msg::FW_GEN_MSG */
+			uint32_t msg_tgt : 1;
 
-		uint32_t _reserved_0 : 1;
-	} r;
+			uint32_t _reserved_0 : 1;
+		} r;
+	} primary;
+	union  {
+		uint32_t dat;
+		struct {
+			uint32_t ext_data : 30;
+			uint32_t _reserved_0 : 2;
+		} r;
+	} extension;
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_message_reply {
@@ -133,7 +142,7 @@ struct ipc4_message_reply {
 			/**< Reserved field (HW ctrl bits) */
 			uint32_t _reserved_0 : 1;
 		} r;
-	} header;
+	} primary;
 
 	union {
 		uint32_t dat;
@@ -145,7 +154,7 @@ struct ipc4_message_reply {
 			/**< Reserved field (HW ctrl bits) */
 			uint32_t _reserved_2 : 2;
 		} r;
-	} data;
+	} extension;
 } __attribute((packed, aligned(4)));
 
 #endif

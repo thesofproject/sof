@@ -54,22 +54,22 @@ struct ipc_msg msg_reply;
 /*
  * Global IPC Operations.
  */
-static int ipc4_create_pipeline(union ipc4_message_header *ipc4)
+static int ipc4_create_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
 
-static int ipc4_delete_pipeline(union ipc4_message_header *ipc4)
+static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
 	struct ipc *ipc = ipc_get();
 
 	pipe = (struct ipc4_pipeline_delete *)ipc4;
-	tr_dbg(&ipc_tr, "ipc4 delete pipeline %x:", (uint32_t)pipe->header.r.instance_id);
+	tr_dbg(&ipc_tr, "ipc4 delete pipeline %x:", (uint32_t)pipe->primary.r.instance_id);
 
-	return ipc_pipeline_free(ipc, pipe->header.r.instance_id);
+	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
 
 static int ipc4_comp_params(struct comp_dev *current,
@@ -352,7 +352,7 @@ static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 
 static void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
-	if (!msg_data.delayed_reply || !msg_reply.tx_size) {
+	if (!msg_data.delayed_reply) {
 		tr_err(&ipc_tr, "unexpected delayed reply");
 		return;
 	}
@@ -434,7 +434,7 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 	return 0;
 }
 
-static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
+static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
@@ -444,8 +444,8 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	int ret = 0;
 	int i;
 
-	state.primary.dat = ipc4[0].dat;
-	state.extension.dat = ipc4[1].dat;
+	state.primary.dat = ipc4->primary.dat;
+	state.extension.dat = ipc4->extension.dat;
 	cmd = state.primary.r.ppl_state;
 
 	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
@@ -479,7 +479,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	return ret;
 }
 
-static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
+static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_chain_dma cdma;
 	struct ipc *ipc = ipc_get();
@@ -508,12 +508,12 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 	return ret;
 }
 
-static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
+static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
 	int ret;
 
-	type = ipc4->r.type;
+	type = ipc4->primary.r.type;
 
 	switch (type) {
 	case SOF_IPC4_GLB_BOOT_CONFIG:
@@ -579,7 +579,7 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
  * delete module <-------> free component
  */
 
-static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_init_instance module;
 	struct sof_ipc_comp comp;
@@ -604,7 +604,7 @@ static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 	return 0;
 }
 
-static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -617,7 +617,7 @@ static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -630,7 +630,7 @@ static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
 	struct ipc4_module_large_config config;
@@ -668,31 +668,29 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
 					config.extension.r.init_block,
 					config.extension.r.final_block,
-					&data_offset, data + sizeof(reply.data.dat));
+					&data_offset, data);
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
 		ret = IPC4_MOD_INVALID_ID;
 
 	/* Copy host config and overwrite */
-	reply.data.dat = config.extension.dat;
-	reply.data.r.data_off_size = data_offset;
+	reply.extension.dat = config.extension.dat;
+	reply.extension.r.data_off_size = data_offset;
 
 	/* The last block, no more data */
 	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
-		reply.data.r.final_block = 1;
+		reply.extension.r.final_block = 1;
 
 	/* Indicate last block if error occurs */
 	if (ret)
-		reply.data.r.final_block = 1;
-
-	*(uint32_t *)data = reply.data.dat;
+		reply.extension.r.final_block = 1;
 
 	/* no need to allocate memory for reply msg */
 	if (ret)
 		return ret;
 
-	data_offset += sizeof(reply.data.dat);
+	msg_reply.extension = reply.extension.dat;
 	response_buffer = rballoc(0, SOF_MEM_CAPS_RAM, data_offset);
 	if (response_buffer) {
 		msg_reply.tx_size = data_offset;
@@ -705,7 +703,7 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	return ret;
 }
 
-static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
@@ -747,7 +745,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 	return ret;
 }
 
-static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
+static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_delete_instance module;
 	struct ipc *ipc = ipc_get();
@@ -771,7 +769,7 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 }
 
 /* disable power gating on core 0 */
-static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
+static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_set_d0ix d0ix;
 	uint32_t module_id, instance_id;
@@ -797,7 +795,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 }
 
 /* enable/disable cores according to the state mask */
-static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
+static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_set_dx dx;
 	struct ipc4_dx_state_info dx_info;
@@ -872,12 +870,12 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	return IPC4_SUCCESS;
 }
 
-static int ipc4_process_module_message(union ipc4_message_header *ipc4)
+static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
 	int ret;
 
-	type = ipc4->r.type;
+	type = ipc4->primary.r.type;
 
 	switch (type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
@@ -941,18 +939,14 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
-	uint32_t size;
-
 	msg_data.msg_out[0] = msg->header;
-	msg_data.msg_out[1] = *(uint32_t *)msg->tx_data;
+	msg_data.msg_out[1] = msg->extension;
 
-	/* the first uint of msg data is sent by ipc data register for ipc4 */
-	size = msg->tx_size - sizeof(uint32_t);
-	if (size)
-		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, size);
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
 
 	/* free memory for get config function */
-	if (msg == &msg_reply && msg_reply.tx_size > sizeof(uint32_t))
+	if (msg == &msg_reply && msg_reply.tx_size > 0)
 		rfree(msg_reply.tx_data);
 
 	return ipc_to_hdr(msg_data.msg_out);
@@ -966,16 +960,15 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
-	union ipc4_message_header in;
+	struct ipc4_message_request in;
 
-	in.dat = msg_data.msg_in[0];
-	ipc_compound_msg_done(in.r.type, reply->error);
+	in.primary.dat = msg_data.msg_in[0];
+	ipc_compound_msg_done(in.primary.r.type, reply->error);
 }
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
-	union ipc4_message_header *in = ipc_from_hdr(_hdr);
-	uint32_t *data = ipc_get()->comp_data;
+	struct ipc4_message_request *in = ipc_from_hdr(_hdr);
 	enum ipc4_message_target target;
 	int err;
 
@@ -986,16 +979,12 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	msg_data.delayed_reply = 0;
 	msg_data.delayed_error = 0;
 
-	/* Common reply msg only sends back ipc extension register */
-	msg_reply.tx_size = sizeof(uint32_t);
-	/* msg_reply data is stored in msg_out[1] */
-	msg_reply.tx_data = msg_data.msg_out + 1;
-	/* Ipc extension register is stored in in[1].
-	 * Save it for reply msg
-	 */
-	data[0] = in[1].dat;
+		/* Common reply msg only sends back ipc extension register */
+	msg_reply.tx_size = 0;
+	msg_reply.header = in->primary.dat;
+	msg_reply.extension = in->extension.dat;
 
-	target = in->r.msg_tgt;
+	target = in->primary.r.msg_tgt;
 
 	switch (target) {
 	case SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG:
@@ -1014,7 +1003,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
 
 	/* FW sends a ipc message to host if request bit is set*/
-	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
+	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
 
@@ -1024,15 +1013,15 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		}
 
 		/* copy contents of message received */
-		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
-		reply.header.r.msg_tgt = in->r.msg_tgt;
-		reply.header.r.type = in->r.type;
+		reply.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
+		reply.primary.r.msg_tgt = in->primary.r.msg_tgt;
+		reply.primary.r.type = in->primary.r.type;
 		if (msg_data.delayed_error)
-			reply.header.r.status = msg_data.delayed_error;
+			reply.primary.r.status = msg_data.delayed_error;
 		else
-			reply.header.r.status = err;
+			reply.primary.r.status = err;
 
-		msg_reply.header = reply.header.dat;
+		msg_reply.header = reply.primary.dat;
 		ipc_msg_send(&msg_reply, data, true);
 	}
 }
