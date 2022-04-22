@@ -63,15 +63,15 @@ usage: $0 [options] platform(s)
        -d Enable debug build
        -c Interactive menuconfig
        -o arg, copies src/arch/xtensa/configs/override/<arg>.config
-	  to the build directory after invoking CMake and before Make.
+          to the build directory after invoking CMake and before Make.
        -k Configure rimage to use a non-default \${RIMAGE_PRIVATE_KEY}
-           DEPRECATED: use the more flexible \${PRIVATE_KEY_OPTION} below.
+          DEPRECATED: use the more flexible \${PRIVATE_KEY_OPTION} below.
        -v Verbose Makefile log
-       -i Set IPC_VERSION as "IPC4" or "IPC3". If IPC_VERSION is set as "IPC4" \
-	   corresponding overlay configuration file for building for IPC4 will be used \
-	   according to what the platform is.
-       -j n Set number of make build jobs. Jobs=#cores when no flag. \
-Infinte when not specified.
+       -i Optional IPC_VERSION: can be set to IPC3, IPC4 or an empty string.
+          If set to "IPCx" then CONFIG_IPC_MAJOR_x will be set. If set to
+          IPC4 then a platform specific overlay may be used.
+       -j n Set number of make build jobs. Jobs=#cores when no flag.
+            Infinite when not specified.
        -m path to MEU tool. CMake disables rimage signing which produces a
           .uns[igned] file signed by MEU. For a non-default key use the
           PRIVATE_KEY_OPTION, see below.
@@ -421,11 +421,19 @@ do
 		cmake --build .  --  menuconfig
 	fi
 
-	if [[ "$IPC_VERSION" == "IPC4" ]]
-	then
+	case "$IPC_VERSION" in
+	    '') ;;
+	    IPC3)
+		echo 'CONFIG_IPC_MAJOR_3=y' >> override.config
+		;;
+	    IPC4)
+		test -z "$IPC4_CONFIG_OVERLAY" ||
 	    cat "${SOF_TOP}/src/arch/xtensa/configs/override/$IPC4_CONFIG_OVERLAY.config" \
 		    >> override.config
-	fi
+		echo 'CONFIG_IPC_MAJOR_4=y' >> override.config
+	    ;;
+	    *) die "Invalid -i '%s' argument\n" "$IPC_VERSION" ;;
+	esac
 
 	if [[ "x$BUILD_DEBUG" == "xyes" ]]
 	then
