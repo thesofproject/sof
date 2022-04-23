@@ -5,6 +5,8 @@
 # arguments or environment variables.  Warning: undefined is NOT the
 # same as blank!
 
+# You MUST "make cleanall" after changing anything here
+
 # Everything is installed by default. To install and deploy fewer
 # patforms override the default lists like this:
 # UNSIGNED_list :=
@@ -14,6 +16,10 @@
 # _remote := test-system.local
 # FW_DESTDIR     := root@${_remote}:/lib/firmware/intel
 # USER_DESTDIR   := ${_remote}:bin/
+
+# Passed to ./scripts/xtensa-build-all.sh -i
+# Ignored by incremental builds, MUST cleanall after changing this
+# IPC_VERSION    := IPC4
 
 # Define this empty for a plain sof/ directory and no sof -> sof-v1.2.3
 # symbolic links. This is _only_ to override the top-level directory

@@ -1,0 +1,41 @@
+.
+├── community
+│   ├── sof-adl-s.ri -> sof-tgl-h.ri
+│   ├── sof-adl.ri -> sof-tgl.ri
+│   ├── sof-cfl.ri -> sof-cnl.ri
+│   ├── sof-cml.ri -> sof-cnl.ri
+│   ├── sof-cnl.ri
+│   ├── sof-ehl.ri -> sof-tgl.ri
+│   ├── sof-glk.ri -> sof-apl.ri
+│   ├── sof-icl.ri
+│   ├── sof-jsl.ri
+│   ├── sof-tgl-h.ri
+│   └── sof-tgl.ri
+├── intel-signed
+│   ├── sof-cfl.ri -> sof-cnl.ri
+│   ├── sof-cml.ri -> sof-cnl.ri
+│   └── sof-glk.ri -> sof-apl.ri
+├── sof-adl-s.ldc -> sof-tgl-h.ldc
+├── sof-adl-s.ri -> intel-signed/sof-adl-s.ri
+├── sof-adl.ldc -> sof-tgl.ldc
+├── sof-adl.ri -> intel-signed/sof-adl.ri
+├── sof-cfl.ldc -> sof-cnl.ldc
+├── sof-cfl.ri -> intel-signed/sof-cfl.ri
+├── sof-cml.ldc -> sof-cnl.ldc
+├── sof-cml.ri -> intel-signed/sof-cml.ri
+├── sof-cnl.ldc
+├── sof-cnl.ri -> intel-signed/sof-cnl.ri
+├── sof-ehl.ldc -> sof-tgl.ldc
+├── sof-ehl.ri -> intel-signed/sof-ehl.ri
+├── sof-glk.ldc -> sof-apl.ldc
+├── sof-glk.ri -> intel-signed/sof-glk.ri
+├── sof-icl.ldc
+├── sof-icl.ri -> intel-signed/sof-icl.ri
+├── sof-jsl.ldc
+├── sof-jsl.ri -> intel-signed/sof-jsl.ri
+├── sof-tgl-h.ldc
+├── sof-tgl-h.ri -> intel-signed/sof-tgl-h.ri
+├── sof-tgl.ldc
+└── sof-tgl.ri -> intel-signed/sof-tgl.ri
+
+2 directories, 36 files
