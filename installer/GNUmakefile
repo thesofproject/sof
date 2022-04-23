@@ -197,7 +197,7 @@ ${BUILD_SOF_RIS}: ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri: | ${BUILDS_ROOT}
 	cd ${BUILDS_ROOT} && bdir="$$(dirname $@)" &&  \
       if [ -d $${bdir} ] && [ xcc != "${TOOLCHAIN}" ] ; then \
         cmake --build $${bdir} -- bin; else \
-      $(CURDIR)/../scripts/xtensa-build-all.sh $*; fi
+      $(CURDIR)/../scripts/xtensa-build-all.sh -i "${IPC_VERSION}" $*; fi
 
 
        ########################################
@@ -305,7 +305,7 @@ checktree:
 	cd ${STAGING_SOF_VERSION} && \
              tree -a -v --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Update sof-apl-nocodec.tplg when adding or removing a default platform
-	diff -u tests/staging_sof_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
+	diff -u tests/staging_sof${IPC_VERSION}_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Check two random topologies are there
 	test -f ${STAGING_SOF_TPLG}/sof-apl-nocodec.tplg
 	test -f ${STAGING_SOF_TPLG}/sof-imx8-wm8960.tplg
