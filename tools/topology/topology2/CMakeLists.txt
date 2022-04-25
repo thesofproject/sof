@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 add_custom_target(topologies2
 	COMMAND ${CMAKE_COMMAND} -E copy_directory cavs ${SOF_TOPOLOGY_BINARY_DIRECTORY}
+	COMMAND ${CMAKE_COMMAND} -E copy_directory sof ${SOF_TOPOLOGY_BINARY_DIRECTORY}
 )
 
 # check alsatplg version and built topology2 if alsatplg version is 1.2.6 or greater
@@ -24,3 +25,4 @@ else()
 endif()
 
 add_subdirectory(cavs)
+add_subdirectory(sof)
