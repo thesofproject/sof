@@ -502,6 +502,7 @@ static int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
 static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
 
 	memset(params, 0, sizeof(*params));
 	params->channels = cd->ipc_config.base.audio_fmt.channels_count;
@@ -511,13 +512,15 @@ static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *p
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 	params->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
 	params->buffer.size = cd->ipc_config.base.ibs;
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sinkb->stream.rate = cd->ipc_config.sink_rate;
 }
 
 static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer *sinkb)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	sinkb->stream.rate = cd->ipc_config.sink_rate;
 	/* convert IPC4 config to format used by the module */
 	audio_stream_fmt_conversion(cd->ipc_config.base.audio_fmt.depth,
 				    cd->ipc_config.base.audio_fmt.valid_bit_depth,
