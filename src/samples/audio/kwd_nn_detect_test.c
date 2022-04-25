@@ -46,8 +46,8 @@ void kwd_nn_detect_test(struct comp_dev *dev,
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !test_keyword_get_detected(dev); ++sample) {
 		src = (test_keyword_get_sample_valid_bytes(dev) * 8 == 16U) ?
-			audio_stream_read_frag_s16(source, sample) :
-			audio_stream_read_frag_s32(source, sample);
+			deprecated_audio_stream_read_frag_s16(source, sample) :
+			deprecated_audio_stream_read_frag_s32(source, sample);
 		if (test_keyword_get_input_size(dev) < KWD_NN_IN_BUFF_SIZE) {
 			if (test_keyword_get_sample_valid_bytes(dev) == 16U)
 				test_keyword_set_input_elem(dev,

@@ -477,8 +477,8 @@ static void drc_s16_default_pass(const struct comp_dev *dev,
 	int n = source->channels * frames;
 
 	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s16(source, i);
-		y = audio_stream_write_frag_s16(sink, i);
+		x = deprecated_audio_stream_read_frag_s16(source, i);
+		y = deprecated_audio_stream_write_frag_s16(sink, i);
 		*y = *x;
 	}
 }
@@ -496,8 +496,8 @@ static void drc_s32_default_pass(const struct comp_dev *dev,
 	int n = source->channels * frames;
 
 	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s32(source, i);
-		y = audio_stream_write_frag_s32(sink, i);
+		x = deprecated_audio_stream_read_frag_s32(source, i);
+		y = deprecated_audio_stream_write_frag_s32(sink, i);
 		*y = *x;
 	}
 }
@@ -539,8 +539,8 @@ static void drc_s16_default(const struct comp_dev *dev,
 			pd_read = (int16_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = ch;
 			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_write_frag_s16(sink, idx);
+				x = deprecated_audio_stream_read_frag_s16(source, idx);
+				y = deprecated_audio_stream_write_frag_s16(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
@@ -585,8 +585,8 @@ static void drc_s16_default(const struct comp_dev *dev,
 			pd_read = (int16_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = i * nch + ch;
 			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_write_frag_s16(sink, idx);
+				x = deprecated_audio_stream_read_frag_s16(source, idx);
+				y = deprecated_audio_stream_write_frag_s16(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				pd_write++;
@@ -645,8 +645,8 @@ static void drc_s24_default(const struct comp_dev *dev,
 			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = ch;
 			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
+				x = deprecated_audio_stream_read_frag_s32(source, idx);
+				y = deprecated_audio_stream_write_frag_s32(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
@@ -691,8 +691,8 @@ static void drc_s24_default(const struct comp_dev *dev,
 			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = i * nch + ch;
 			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
+				x = deprecated_audio_stream_read_frag_s32(source, idx);
+				y = deprecated_audio_stream_write_frag_s32(sink, idx);
 
 				/* Write/Read pre_delay_buffer as s32 format */
 				*pd_write = *x << 8;
@@ -754,8 +754,8 @@ static void drc_s32_default(const struct comp_dev *dev,
 			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = ch;
 			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
+				x = deprecated_audio_stream_read_frag_s32(source, idx);
+				y = deprecated_audio_stream_write_frag_s32(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
@@ -800,8 +800,8 @@ static void drc_s32_default(const struct comp_dev *dev,
 			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
 			idx = i * nch + ch;
 			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
+				x = deprecated_audio_stream_read_frag_s32(source, idx);
+				y = deprecated_audio_stream_write_frag_s32(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				pd_write++;

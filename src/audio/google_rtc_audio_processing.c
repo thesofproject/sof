@@ -401,8 +401,8 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	aec_reference_buff_frag = 0;
 	for (frame = 0; frame < num_aec_reference_frames; frame++) {
 		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
-			src = audio_stream_read_frag_s16(&cd->aec_reference->stream,
-							 aec_reference_buff_frag + channel);
+			src = deprecated_audio_stream_read_frag_s16(&cd->aec_reference->stream,
+								    aec_reference_buff_frag + channel);
 			cd->aec_reference_buffer[cd->num_aec_reference_channels *
 				cd->aec_reference_frame_index + channel] = *src;
 		}
@@ -423,12 +423,12 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	raw_microphone_buff_frag = 0;
 	output_buff_frag = 0;
 	for (frame = 0; frame < cl.frames; frame++) {
-		src = audio_stream_read_frag_s16(&cd->raw_microphone->stream,
-										 raw_microphone_buff_frag);
+		src = deprecated_audio_stream_read_frag_s16(&cd->raw_microphone->stream,
+							    raw_microphone_buff_frag);
 		cd->raw_mic_buffer[cd->raw_mic_buffer_index] = *src;
 		++cd->raw_mic_buffer_index;
 
-		dst = audio_stream_write_frag_s16(&cd->output->stream, output_buff_frag);
+		dst = deprecated_audio_stream_write_frag_s16(&cd->output->stream, output_buff_frag);
 		*dst = cd->output_buffer[cd->output_buffer_index];
 		++cd->output_buffer_index;
 

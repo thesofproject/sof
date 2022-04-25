@@ -176,8 +176,8 @@ static void default_detect_test(struct comp_dev *dev,
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
 		src = (valid_bits == 16U) ?
-		      audio_stream_read_frag_s16(source, sample) :
-		      audio_stream_read_frag_s32(source, sample);
+		      deprecated_audio_stream_read_frag_s16(source, sample) :
+		      deprecated_audio_stream_read_frag_s32(source, sample);
 		if (valid_bits > 16U) {
 			diff = abs(*(int32_t *)src) - abs(cd->activation);
 		} else {

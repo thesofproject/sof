@@ -296,8 +296,8 @@ static int aria_copy(struct comp_dev *dev)
 
 	for (i = 0; i < c.frames; i++) {
 		for (channel = 0; channel < sink->stream.channels; channel++) {
-			cd->buf_in[frag] = *(int32_t *)audio_stream_read_frag_s32(&source->stream,
-										  frag);
+			cd->buf_in[frag] = *(int32_t *)deprecated_audio_stream_read_frag_s32(&source->stream,
+											     frag);
 
 			frag++;
 		}
@@ -311,7 +311,7 @@ static int aria_copy(struct comp_dev *dev)
 	frag = 0;
 	for (i = 0; i < c.frames; i++) {
 		for (channel = 0; channel < sink->stream.channels; channel++) {
-			destp = audio_stream_write_frag_s32(&sink->stream, frag);
+			destp = deprecated_audio_stream_write_frag_s32(&sink->stream, frag);
 			*destp = cd->buf_out[frag];
 
 			frag++;

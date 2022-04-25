@@ -86,25 +86,33 @@ struct audio_stream {
 	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, size)
 
 /**
- * Retrieves readable address of a signed 16-bit sample at specified index.
+ * Retrieves readable address of a signed 16-bit sample at specified index. Use
+ * only to get initial buffer pointer.
  * @param buffer Buffer.
  * @param idx Index of sample.
  * @return Pointer to the sample.
  *
  * @see audio_stream_get_frag().
  */
-#define audio_stream_read_frag_s16(buffer, idx) \
+#define audio_stream_read_initial_frag_s16(buffer, idx) \
+	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int16_t))
+
+#define deprecated_audio_stream_read_frag_s16(buffer, idx) \
 	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int16_t))
 
 /**
- * Retrieves readable address of a signed 32-bit sample at specified index.
+ * Retrieves readable address of a signed 32-bit sample at specified index. Use
+ * only to get initial buffer pointer.
  * @param buffer Buffer.
  * @param idx Index of sample.
  * @return Pointer to the sample.
  *
  * @see audio_stream_get_frag().
  */
-#define audio_stream_read_frag_s32(buffer, idx) \
+#define audio_stream_read_initial_frag_s32(buffer, idx) \
+	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int32_t))
+
+#define deprecated_audio_stream_read_frag_s32(buffer, idx) \
 	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int32_t))
 
 /**
@@ -129,25 +137,33 @@ struct audio_stream {
 	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, size)
 
 /**
- * Retrieves writeable address of a signed 16-bit sample at specified index.
+ * Retrieves writeable address of a signed 16-bit sample at specified index. Use
+ * only to get initial buffer pointer.
  * @param buffer Buffer.
  * @param idx Index of sample.
  * @return Pointer to the space for sample.
  *
  * @see audio_stream_get_frag().
  */
-#define audio_stream_write_frag_s16(buffer, idx) \
+#define audio_stream_write_initial_frag_s16(buffer, idx) \
+	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int16_t))
+
+#define deprecated_audio_stream_write_frag_s16(buffer, idx) \
 	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int16_t))
 
 /**
- * Retrieves writeable address of a signed 32-bit sample at specified index.
+ * Retrieves writeable address of a signed 32-bit sample at specified index. Use
+ * only to get initial buffer pointer.
  * @param buffer Buffer.
  * @param idx Index of sample.
  * @return Pointer to the space for sample.
  *
  * @see audio_stream_get_frag().
  */
-#define audio_stream_write_frag_s32(buffer, idx) \
+#define audio_stream_write_initial_frag_s32(buffer, idx) \
+	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int32_t))
+
+#define deprecated_audio_stream_write_frag_s32(buffer, idx) \
 	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int32_t))
 
 /**

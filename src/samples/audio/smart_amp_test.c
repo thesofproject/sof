@@ -342,11 +342,9 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
-				src = audio_stream_read_frag_s16(source,
-								 in_frag +
-								 chan_map[j]);
-				dest = audio_stream_write_frag_s16(sink,
-								   out_frag);
+				src = deprecated_audio_stream_read_frag_s16(source,
+									    in_frag + chan_map[j]);
+				dest = deprecated_audio_stream_write_frag_s16(sink, out_frag);
 				*dest = *src;
 			}
 			out_frag++;
@@ -374,11 +372,9 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
-				src = audio_stream_read_frag_s32(source,
-								 in_frag +
-								 chan_map[j]);
-				dest = audio_stream_write_frag_s32(sink,
-								   out_frag);
+				src = deprecated_audio_stream_read_frag_s32(source,
+									    in_frag + chan_map[j]);
+				dest = deprecated_audio_stream_write_frag_s32(sink, out_frag);
 				*dest = *src;
 			}
 			out_frag++;

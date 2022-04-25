@@ -88,12 +88,13 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 		for (j = 0; j < nch; j++) {
 			if (j == cd->config.active_channel_idx)
 				continue;
-			x = audio_stream_read_frag_s16(source, idx_in + j);
-			y = audio_stream_write_frag_s16(sink, idx_in + j);
+			x = deprecated_audio_stream_read_frag_s16(source, idx_in + j);
+			y = deprecated_audio_stream_write_frag_s16(sink, idx_in + j);
 			*y = (*x);
 		}
 
-		x = audio_stream_read_frag_s16(source, idx_in + cd->config.active_channel_idx);
+		x = deprecated_audio_stream_read_frag_s16(source,
+							  idx_in + cd->config.active_channel_idx);
 		cd->in[i] = (*x);
 
 		idx_in += nch;
@@ -103,7 +104,8 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 
 	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s16(sink, idx_out + cd->config.active_channel_idx);
+		y = deprecated_audio_stream_write_frag_s16(sink,
+							   idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]);
 
 #if CONFIG_DEBUG
@@ -113,7 +115,7 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 		else
 			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s16(sink, idx_out + dbg_ch_idx);
+			y = deprecated_audio_stream_write_frag_s16(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]);
 		}
 #endif
@@ -147,12 +149,12 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 		for (j = 0; j < nch; j++) {
 			if (j == cd->config.active_channel_idx)
 				continue;
-			x = audio_stream_read_frag_s32(source, idx_in + j);
-			y = audio_stream_write_frag_s32(sink, idx_in + j);
+			x = deprecated_audio_stream_read_frag_s32(source, idx_in + j);
+			y = deprecated_audio_stream_write_frag_s32(sink, idx_in + j);
 			*y = (*x);
 		}
 
-		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
+		x = deprecated_audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
 		cd->in[i] = Q_SHIFT_RND(*x, 24, 16);
 
 		idx_in += nch;
@@ -162,7 +164,8 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 
 	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
+		y = deprecated_audio_stream_write_frag_s32(sink,
+							   idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]) << 8;
 
 #if CONFIG_DEBUG
@@ -172,7 +175,7 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 		else
 			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
+			y = deprecated_audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]) << 8;
 		}
 #endif
@@ -205,12 +208,13 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 		for (j = 0; j < nch; j++) {
 			if (j == cd->config.active_channel_idx)
 				continue;
-			x = audio_stream_read_frag_s32(source, idx_in + j);
-			y = audio_stream_write_frag_s32(sink, idx_in + j);
+			x = deprecated_audio_stream_read_frag_s32(source, idx_in + j);
+			y = deprecated_audio_stream_write_frag_s32(sink, idx_in + j);
 			*y = (*x);
 		}
 
-		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
+		x = deprecated_audio_stream_read_frag_s32(source,
+							  idx_in + cd->config.active_channel_idx);
 		cd->in[i] = Q_SHIFT_RND(*x, 32, 16);
 
 		idx_in += nch;
@@ -220,7 +224,8 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 
 	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
+		y = deprecated_audio_stream_write_frag_s32(sink,
+							   idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]) << 16;
 
 #if CONFIG_DEBUG
@@ -230,7 +235,7 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 		else
 			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
+			y = deprecated_audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]) << 16;
 		}
 #endif

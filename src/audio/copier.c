@@ -661,7 +661,7 @@ static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		for (i = 0; i < frame * sink->stream.channels; i++) {
-			dst = audio_stream_read_frag_s32(&sink->stream, buff_frag);
+			dst = deprecated_audio_stream_read_frag_s32(&sink->stream, buff_frag);
 			*dst >>= cd->attenuation;
 			buff_frag++;
 		}

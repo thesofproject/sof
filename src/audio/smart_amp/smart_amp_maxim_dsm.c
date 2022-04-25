@@ -599,9 +599,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 				if (chan_map[ch] == -1)
 					continue;
 				index = in_frag + chan_map[ch];
-				input.buf16 =
-					audio_stream_read_frag_s16(stream,
-								   index);
+				input.buf16 = deprecated_audio_stream_read_frag_s16(stream, index);
 				output.buf16[num_ch * idx + ch] = *input.buf16;
 			}
 			in_frag += stream->channels;
@@ -614,9 +612,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 				if (chan_map[ch] == -1)
 					continue;
 				index = in_frag + chan_map[ch];
-				input.buf32 =
-					audio_stream_read_frag_s32(stream,
-								   index);
+				input.buf32 = deprecated_audio_stream_read_frag_s32(stream, index);
 				output.buf32[num_ch * idx + ch] = *input.buf32;
 			}
 			in_frag += stream->channels;
@@ -650,9 +646,8 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 					out_frag++;
 					continue;
 				}
-				output.buf16 =
-					audio_stream_write_frag_s16(stream,
-								    out_frag);
+				output.buf16 = deprecated_audio_stream_write_frag_s16(stream,
+										      out_frag);
 				*output.buf16 = input.buf16[num_ch_in * idx + ch];
 				out_frag++;
 			}
@@ -666,9 +661,8 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 					out_frag++;
 					continue;
 				}
-				output.buf32 =
-					audio_stream_write_frag_s32(stream,
-								    out_frag);
+				output.buf32 = deprecated_audio_stream_write_frag_s32(stream,
+										      out_frag);
 				*output.buf32 = input.buf32[num_ch_in * idx + ch];
 				out_frag++;
 			}
