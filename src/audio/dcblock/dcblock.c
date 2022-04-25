@@ -382,6 +382,9 @@ static int dcblock_reset(struct comp_dev *dev)
 	comp_info(dev, "dcblock_reset()");
 
 	dcblock_init_state(cd);
+
+	cd->dcblock_func = NULL;
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
