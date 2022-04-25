@@ -12,11 +12,57 @@ set -x
 
 unset ZEPHYR_BASE
 
-# Make sure we're in the right place; chgrp -R below.
+# Make sure we're in the right place.
 test -e ./scripts/xtensa-build-zephyr.sh
 
 sudo apt-get update
 sudo apt-get -y install tree
+
+
+# See https://stackoverflow.com/questions/35291520/docker-and-userns-remap-how-to-manage-volume-permissions-to-share-data-betwee + many others
+exec_as_sof_uid()
+{
+    local sof_uid; sof_uid="$(stat --printf='%u' .)"
+    local current_uid; current_uid="$(id -u)"
+    if test "$current_uid" = "$sof_uid"; then
+        return 0
+    fi
+
+    # Add new container user matching the host user owning the SOF
+    # checkout
+    local sof_user; sof_user="$(id "$sof_uid")" || {
+        sof_user=sof_zephyr_docker_builder
+
+        local sof_guid; sof_guid="$(stat --printf='%g' .)"
+
+        getent group "$sof_guid" ||
+            sudo groupadd -g  "$sof_guid" sof_zephyr_docker_group
+
+        sudo useradd -m -u "$sof_uid" -g "$sof_guid" "$sof_user"
+
+        local current_user; current_user="$(id -un)"
+
+        # Copy sudo permissions just in case the build needs it
+        sudo sed -e "s/$current_user/$sof_user/" /etc/sudoers.d/"$current_user" |
+            sudo tee -a /etc/sudoers.d/"$sof_user"
+        sudo chmod --reference=/etc/sudoers.d/"$current_user" \
+             /etc/sudoers.d/"$sof_user"
+    }
+
+    # Safety delay: slower infinite loops are much better
+    sleep 0.5
+
+    # Double sudo to work around some funny restriction in
+    # zephyr-build:/etc/sudoers: 'user' can do anything but... only as
+    # root.
+    sudo sudo -u "$sof_user" "$0" "$@"
+    exit "$?"
+}
+
+exec_as_sof_uid "$@"
+
+# Work in progress: move more code to a function
+# https://github.com/thesofproject/sof-test/issues/740
 
 # As of container version 0.18.4,
 # https://github.com/zephyrproject-rtos/docker-image/blob/master/Dockerfile
@@ -31,10 +77,5 @@ ln -s  /opt/toolchains/zephyr-sdk-*  ~/
 if test -e zephyrproject; then
     ./scripts/xtensa-build-zephyr.sh -a "$@"
 else
-    # Matches docker.io/zephyrprojectrtos/zephyr-build:latest gid
-    ls -ln | head
-    stat .
-    sudo chgrp -R 1000 .
-    sudo chmod -R g+rwX .
     ./scripts/xtensa-build-zephyr.sh -a -c "$@"
 fi

@@ -25,6 +25,11 @@ if tty --quiet; then
     SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
 fi
 
+# Not fatal, just a warning to allow other "creative" solutions.
+# TODO: fix this with 'adduser' like in zephyr/docker-build.sh
+test "$(id -n)" = 1001 ||
+    >&2 printf "Warning: this script should be run as user ID 1001 to match the container\n"
+
 set -x
 docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	-v "${SOF_TOP}":/home/sof/work/sof-bind-mount-DO-NOT-DELETE \
