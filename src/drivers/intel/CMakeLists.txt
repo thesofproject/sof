@@ -18,7 +18,7 @@ if(CONFIG_INTEL_SSP)
 endif()
 
 if(CONFIG_INTEL_ALH)
-	add_local_sources(sof alh.c)
+	add_subdirectory(alh)
 endif()
 
 if(CONFIG_INTEL_DMIC)

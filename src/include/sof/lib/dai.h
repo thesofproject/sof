@@ -32,6 +32,9 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#ifdef __ZEPHYR__
+#include <device.h>
+#endif
 
 struct dai;
 struct sof_ipc_stream_params;
@@ -82,6 +85,7 @@ struct dai_ops {
 	int (*hw_params)(struct dai *dai, struct sof_ipc_stream_params *params);
 	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
+	int (*get_stream_id)(struct dai *dai, int direction);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
 	uint32_t (*get_init_delay_ms)(struct dai *dai);
@@ -194,6 +198,9 @@ struct dai {
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
 	const struct dai_driver *drv;
+#ifdef __ZEPHYR__
+	const struct device *z_drv;
+#endif
 	void *priv_data;
 };
 
@@ -376,7 +383,7 @@ static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
 /**
  * \brief Digital Audio interface trigger
  */
-static inline int dai_trigger(struct dai *dai, int cmd, int direction)
+static inline int dai_trigger_sof(struct dai *dai, int cmd, int direction)
 {
 	return dai->drv->ops.trigger(dai, cmd, direction);
 }
@@ -421,10 +428,18 @@ static inline int dai_get_fifo(struct dai *dai, int direction,
 	return dai->drv->ops.get_fifo(dai, direction, stream_id);
 }
 
+static inline int dai_get_stream_id(struct dai *dai, int direction)
+{
+	if (dai->drv->ops.get_stream_id)
+		return dai->drv->ops.get_stream_id(dai, direction);
+
+	return -1;
+}
+
 /**
  * \brief Digital Audio interface Probe
  */
-static inline int dai_probe(struct dai *dai)
+static inline int dai_probe_sof(struct dai *dai)
 {
 	return dai->drv->ops.probe(dai);
 }
@@ -432,7 +447,7 @@ static inline int dai_probe(struct dai *dai)
 /**
  * \brief Digital Audio interface Remove
  */
-static inline int dai_remove(struct dai *dai)
+static inline int dai_remove_sof(struct dai *dai)
 {
 	return dai->drv->ops.remove(dai);
 }

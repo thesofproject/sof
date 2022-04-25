@@ -134,6 +134,34 @@ static inline const struct dai_type_info *dai_find_type(uint32_t type)
 	return NULL;
 }
 
+#ifdef __ZEPHYR__
+struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
+{
+	int ret = 0;
+	const struct dai_type_info *dti;
+	struct dai *d;
+
+	dti = dai_find_type(type);
+	if (!dti)
+		return NULL; /* type not found */
+
+	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
+		if (d->index != index) {
+			continue;
+		}
+		if (flags & DAI_CREAT)
+			ret = dai_probe_sof(d);
+		else
+			ret = -ENODEV;
+
+		tr_info(&dai_tr, "dai_get type %d index %d", type, index);
+
+		return !ret ? d : NULL;
+	}
+	tr_err(&dai_tr, "dai_get: type %d index %d not found", type, index);
+	return NULL;
+}
+#else
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	int ret = 0;
@@ -153,7 +181,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		key = k_spin_lock(&d->lock);
 		if (d->sref == 0) {
 			if (flags & DAI_CREAT)
-				ret = dai_probe(d);
+				ret = dai_probe_sof(d);
 			else
 				ret = -ENODEV;
 		}
@@ -170,7 +198,20 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	tr_err(&dai_tr, "dai_get: type %d index %d not found", type, index);
 	return NULL;
 }
+#endif
 
+#ifdef __ZEPHYR__
+void dai_put(struct dai *dai)
+{
+	int ret = dai_remove_sof(dai);
+	if (ret < 0) {
+		tr_err(&dai_tr, "dai_put: type %d index %d dai_remove() failed ret = %d",
+		       dai->drv->type, dai->index, ret);
+	}
+
+	tr_info(&dai_tr, "dai_put type %d index %d", dai->drv->type, dai->index);
+}
+#else
 void dai_put(struct dai *dai)
 {
 	int ret;
@@ -178,7 +219,7 @@ void dai_put(struct dai *dai)
 
 	key = k_spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
-		ret = dai_remove(dai);
+		ret = dai_remove_sof(dai);
 		if (ret < 0) {
 			tr_err(&dai_tr, "dai_put: type %d index %d dai_remove() failed ret = %d",
 			       dai->drv->type, dai->index, ret);
@@ -188,3 +229,4 @@ void dai_put(struct dai *dai)
 		dai->drv->type, dai->index, dai->sref);
 	k_spin_unlock(&dai->lock, key);
 }
+#endif

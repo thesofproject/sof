@@ -161,7 +161,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
+		${SOF_DRIVERS_PATH}/intel/alh/alh.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
@@ -227,7 +227,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
+		${SOF_DRIVERS_PATH}/intel/alh/alh.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
@@ -295,7 +295,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
+		${SOF_DRIVERS_PATH}/intel/alh/alh.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
@@ -363,7 +363,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
+		${SOF_DRIVERS_PATH}/intel/alh/alh-zephyr.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC

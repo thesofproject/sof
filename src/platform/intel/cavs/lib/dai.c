@@ -18,6 +18,9 @@
 #include <sof/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
+#ifdef __ZEPHYR__
+#include <device.h>
+#endif
 
 #if CONFIG_INTEL_SSP
 
@@ -212,7 +215,21 @@ int dai_init(struct sof *sof)
 		dai[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
 			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
 		dai[i].drv = &alh_driver;
+#ifdef __ZEPHYR__
+		switch (i) {
+		case 0:
+			dai[i].z_drv = device_get_binding("ALH_0");
+			break;
+		case 1:
+			dai[i].z_drv = device_get_binding("ALH_1");
+			break;
+		default:
+			continue;
+		}
 
+		if (!dai[i].z_drv)
+			return -EINVAL;
+#else
 		/* set burst length to align with DMAT value in the
 		 * Audio Link Hub.
 		 */
@@ -221,6 +238,7 @@ int dai_init(struct sof *sof)
 		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
 			ALH_GPDMA_BURST_LENGTH;
 		k_spinlock_init(&dai[i].lock);
+#endif
 	}
 
 #endif

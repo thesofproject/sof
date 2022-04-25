@@ -95,7 +95,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
 		/* stop the DAI */
-		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+		dai_trigger_sof(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
 		next->status = DMA_CB_STATUS_END;
@@ -730,7 +730,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				return ret;
 			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->direction);
+			dai_trigger_sof(dd->dai, cmd, dev->direction);
 		} else {
 			dd->xrun = 0;
 		}
@@ -753,7 +753,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 				return ret;
 
 			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->direction);
+			dai_trigger_sof(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
@@ -780,16 +780,16 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
  */
 #if CONFIG_DMA_SUSPEND_DRAIN
 		ret = dma_stop(dd->chan);
-		dai_trigger(dd->dai, cmd, dev->direction);
+		dai_trigger_sof(dd->dai, cmd, dev->direction);
 #else
-		dai_trigger(dd->dai, cmd, dev->direction);
+		dai_trigger_sof(dd->dai, cmd, dev->direction);
 		ret = dma_stop(dd->chan);
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 		ret = dma_pause(dd->chan);
-		dai_trigger(dd->dai, cmd, dev->direction);
+		dai_trigger_sof(dd->dai, cmd, dev->direction);
 		break;
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
@@ -797,7 +797,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		if (dd->xrun)
 			dd->xrun = 0;
 		else
-			dai_trigger(dd->dai, cmd, dev->direction);
+			dai_trigger_sof(dd->dai, cmd, dev->direction);
 		break;
 	}
 
