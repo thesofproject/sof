@@ -201,7 +201,7 @@ static bool is_any_ppl_active(void)
 static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t *ppl_status)
 {
 	struct ipc_comp_dev *pcm_dev;
-	struct ipc_comp_dev *host;
+	struct ipc_comp_dev *host = NULL;
 	struct ipc *ipc = ipc_get();
 	int status;
 	int ret;

@@ -476,8 +476,8 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
  * function rebuild the hw params based on fifo_size since only 48K
  * and 44.1K sample rate and 16 & 24bit are supported by chain dma.
  */
-static void construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t fifo_size,
-			     struct sof_ipc_stream_params *params, uint32_t scs)
+static int construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t fifo_size,
+			    struct sof_ipc_stream_params *params, uint32_t scs)
 {
 	uint32_t frame_size;
 
@@ -499,6 +499,9 @@ static void construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t
 	} else if (fifo_size % 16 == 0) {
 		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_16000HZ;
 		frame_size = fifo_size / 16;
+	} else {
+		tr_err(&comp_tr, "unsupported fifo_size %d", fifo_size);
+		return IPC4_ERROR_INVALID_PARAM;
 	}
 
 	params->rate = copier_cfg->base.audio_fmt.sampling_frequency;
@@ -530,6 +533,7 @@ static void construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t
 	copier_cfg->out_fmt = copier_cfg->base.audio_fmt;
 	copier_cfg->base.ibs = fifo_size;
 	copier_cfg->base.obs = fifo_size;
+	return IPC4_SUCCESS;
 }
 
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
@@ -582,7 +586,10 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 
 	memset_s(&params, sizeof(params), 0, sizeof(params));
 	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
-	construct_config(&copier_cfg, cdma->data.r.fifo_size, &params, cdma->header.r.scs);
+	ret = construct_config(&copier_cfg, cdma->data.r.fifo_size, &params, cdma->header.r.scs);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
 	params.direction = dir;
 	params.stream_tag = host_chan + 1;
 
@@ -726,7 +733,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		}
 	}
 
-	return ret;
+	return IPC4_SUCCESS;
 }
 
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
