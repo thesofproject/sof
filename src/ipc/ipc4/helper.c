@@ -581,8 +581,8 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	host->period = ipc_pipe->pipeline->period;
 
 	ret = ipc4_add_comp_dev(host);
-	if (ret < 0)
-		return IPC4_FAILURE;
+	if (ret != IPC4_SUCCESS)
+		return ret;
 
 	memset_s(&params, sizeof(params), 0, sizeof(params));
 	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
@@ -603,8 +603,8 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	dai->period = ipc_pipe->pipeline->period;
 
 	ret = ipc4_add_comp_dev(dai);
-	if (ret < 0)
-		return IPC4_FAILURE;
+	if (ret != IPC4_SUCCESS)
+		return ret;
 
 	buf_id = dai_id + 1;
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
@@ -825,5 +825,5 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 
-	return 0;
+	return IPC4_SUCCESS;
 };
