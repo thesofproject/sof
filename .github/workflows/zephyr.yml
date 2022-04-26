@@ -15,10 +15,11 @@ jobs:
         # From time to time this will catch a git tag and change SOF_VERSION
         with: {fetch-depth: 10, submodules: recursive}
 
+      # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with
       # -e https_proxy=...
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             docker.io/zephyrprojectrtos/zephyr-build:latest
+             ghcr.io/zephyrproject-rtos/zephyr-build:latest
              ./zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized   -a
