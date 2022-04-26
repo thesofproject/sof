@@ -24,7 +24,7 @@ jobs:
       matrix:  # just a vector in this case
         make_env: [
           IPC_VERSION=,  # default version
-          IPC_VERSION=IPC4 UNSIGNED_list= SIGNED_list='cnl icl jsl tgl tgl-h',
+          IPC_VERSION=IPC4 UNSIGNED_list= SIGNED_list='tgl tgl-h cnl icl jsl',
         ]
 
     steps:
