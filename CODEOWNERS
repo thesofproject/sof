@@ -35,7 +35,7 @@ src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@johnylin76 @cujomalainey @chiang831
 src/audio/multiband_drc/*		@johnylin76 @cujomalainey @chiang831
 src/audio/codec_adapter/*		@cujomalainey @mrajwa @dbaluta
-src/audio/google_hotword_detect.c	@benzh @cujomalainey @chiang831 @johnylin76
+src/audio/google_hotword_detect.c	@bzhg @cujomalainey @chiang831 @johnylin76
 
 # platforms
 src/platform/haswell/*			@randerwang
