@@ -132,11 +132,12 @@ def parse_args():
 						" Jobs=number of cores by default. Ignored by west build.")
 	parser.add_argument("-k", "--key", type=pathlib.Path, required=False,
 						help="Path to a non-default rimage signing key.")
+	# The default args.z value is not here because we want to know whether -z was used at all.
 	parser.add_argument("-z", required=False,
 						help="Initial Zephyr git ref for the -c option."
 						" Can be a branch, tag, full SHA1 in a fork")
 	parser.add_argument("-u", "--url", required=False,
-						default="https://github.com/zephyrproject-rtos/zephyr/",
+						default="https://github.com/thesofproject/zephyr/",
 						help="URL to clone Zephyr from")
 	mode_group = parser.add_mutually_exclusive_group()
 	mode_group.add_argument("-p", "--west_path", required=False, type=pathlib.Path,
@@ -189,7 +190,7 @@ sign must be used (https://bugs.python.org/issue9334)""",
 	if args.z and not args.clone_mode:
 		raise RuntimeError(f"Argument -z without -c makes no sense")
 	if args.clone_mode and not args.z:
-		args.z = "main"		# set default name for -z if -c specified
+		args.z = "sof/stable-v2.1"	# set default name for -z if -c specified
 
 	if args.west_path: # let the user provide an already existing zephyrproject/ anywhere
 		west_top = pathlib.Path(args.west_path)
