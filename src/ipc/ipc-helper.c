@@ -45,20 +45,21 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 	/* allocate buffer */
 	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
 	if (buffer) {
-		buffer->id = desc->comp.id;
-		buffer->pipeline_id = desc->comp.pipeline_id;
-		buffer->core = desc->comp.core;
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
 
-		buffer->stream.underrun_permitted = desc->flags &
+		buffer_c->id = desc->comp.id;
+		buffer_c->pipeline_id = desc->comp.pipeline_id;
+		buffer_c->core = desc->comp.core;
+
+		buffer_c->stream.underrun_permitted = desc->flags &
 						    SOF_BUF_UNDERRUN_PERMITTED;
-		buffer->stream.overrun_permitted = desc->flags &
+		buffer_c->stream.overrun_permitted = desc->flags &
 						   SOF_BUF_OVERRUN_PERMITTED;
 
-		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
+		memcpy_s((__sparse_force void *)&buffer_c->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
 
-		dcache_writeback_invalidate_region((__sparse_force void __sparse_cache *)buffer,
-						   sizeof(*buffer));
+		buffer_release(buffer_c);
 	}
 
 	return buffer;

@@ -157,6 +157,19 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	return p;
 }
 
+static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
+			    int dir)
+{
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+
+	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
+		buffer_c->source = comp;
+	else
+		buffer_c->sink = comp;
+
+	buffer_release(buffer_c);
+}
+
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
@@ -168,6 +181,15 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		comp_info(comp, "connect buffer %d as source", buffer->id);
 
 	irq_local_disable(flags);
+	/*
+	 * Even if the buffer isn't shared, we have to write back and invalidate
+	 * its cache now before adding to the list. Buffer list structures are
+	 * always accessed uncached and they're never modified at run-time, i.e.
+	 * buffers are never relinked. So we have to make sure, that what we
+	 * have written into buffer's cache is in RAM before modifying that RAM
+	 * bypassing cache, and that after this cache is re-loaded again.
+	 */
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 	list_item_prepend(buffer_comp_list(buffer, dir),
 			  comp_buffer_list(comp, dir));
 	buffer_set_comp(buffer, comp, dir);
