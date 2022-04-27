@@ -440,7 +440,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_volume_init(void);
 void sys_comp_host_init(void);
 void sys_comp_mixer_init(void);
 void sys_comp_dai_init(void);
@@ -460,7 +459,12 @@ void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
 void sys_comp_module_cadence_interface_init(void);
 void sys_comp_module_passthrough_interface_init(void);
-void sys_comp_gain_init(void);
+#if CONFIG_COMP_LEGACY_INTERFACE
+void sys_comp_volume_init(void);
+#else
+void sys_comp_module_volume_interface_init(void);
+#endif
+void sys_comp_module_gain_interface_init(void);
 void sys_comp_mixin_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
@@ -500,10 +504,14 @@ int task_main_start(struct sof *sof)
 	sys_comp_host_init();
 
 	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
+#if CONFIG_COMP_LEGACY_INTERFACE
 		sys_comp_volume_init();
+#else
+		sys_comp_module_volume_interface_init();
+#endif
 
 		if (IS_ENABLED(CONFIG_IPC_MAJOR_4))
-			sys_comp_gain_init();
+			sys_comp_module_gain_interface_init();
 	}
 
 	if (IS_ENABLED(CONFIG_COMP_MIXER)) {

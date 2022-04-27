@@ -18,6 +18,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
@@ -105,12 +106,14 @@ struct sof_ipc_ctrl_value_chan;
 #define VOL_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
 #define VOL_BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
 
+#define VOL_S16_SAMPLES_TO_BYTES(s)	((s) << 1)
+#define VOL_S32_SAMPLES_TO_BYTES(s)	((s) << 2)
+
 /**
  * \brief volume processing function interface
  */
-typedef void (*vol_scale_func)(struct comp_dev *dev, struct audio_stream *sink,
-			       const struct audio_stream *source,
-			       uint32_t frames);
+typedef void (*vol_scale_func)(struct processing_module *mod, struct input_stream_buffer *source,
+			       struct output_stream_buffer *sink, uint32_t frames);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame
@@ -122,7 +125,7 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
  * \brief Function for volume ramp shape function
  */
 
-typedef int32_t (*vol_ramp_func)(struct comp_dev *dev, int32_t ramp_time, int channel);
+typedef int32_t (*vol_ramp_func)(struct processing_module *mod, int32_t ramp_time, int channel);
 
 struct vol_data {
 #if CONFIG_IPC_MAJOR_4
@@ -207,7 +210,8 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 {
 	LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 
 	switch (cd->base.audio_fmt.depth) {
 	case IPC4_DEPTH_16BIT:
@@ -231,7 +235,11 @@ static inline void peak_vol_update(struct vol_data *cd)
 }
 
 #ifdef UNIT_TEST
+#if CONFIG_COMP_LEGACY_INTERFACE
 void sys_comp_volume_init(void);
+#else
+void sys_comp_module_volume_interface_init(void);
+#endif
 #endif
 
 #endif /* __SOF_AUDIO_VOLUME_H__ */

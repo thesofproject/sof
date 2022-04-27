@@ -46,6 +46,7 @@ zephyr_interface_library_named(SOF)
 set(SOF_SRC_PATH "../src")
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
+set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
@@ -620,9 +621,9 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
-	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-	${SOF_AUDIO_PATH}/volume/volume_generic.c
-	${SOF_AUDIO_PATH}/volume/volume.c
+	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3.c
+	${SOF_AUDIO_MODULES_PATH}/volume/volume_generic.c
+	${SOF_AUDIO_MODULES_PATH}/volume/volume.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
@@ -644,7 +645,7 @@ zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
-	${SOF_AUDIO_PATH}/codec_adapter/codec/passthrough.c
+	${SOF_AUDIO_MODULES_PATH}/passthrough.c
 )
 endif()
 

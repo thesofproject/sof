@@ -12,9 +12,11 @@ target_include_directories(volume_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audi
 add_compile_options(-DUNIT_TEST)
 
 add_library(audio_for_volume STATIC
-	${PROJECT_SOURCE_DIR}/src/audio/volume/volume.c
-	${PROJECT_SOURCE_DIR}/src/audio/volume/volume_generic.c
-	${PROJECT_SOURCE_DIR}/src/audio/volume/volume_hifi3.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_hifi3.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c

@@ -35,14 +35,29 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	int ret;
 	struct comp_dev *dev;
 	struct processing_module *mod;
-	struct ipc_config_process *ipc_module_adapter = spec;
 	unsigned char *data;
 	uint32_t size;
 
-	comp_cl_dbg(drv, "module_adapter_new() start");
+	switch (config->type) {
+	case SOF_COMP_VOLUME:
+	{
+		struct ipc_config_volume *ipc_volume = spec;
 
-	size = ipc_module_adapter->size;
-	data = ipc_module_adapter->data;
+		size = sizeof(*ipc_volume);
+		data = spec;
+		break;
+	}
+	default:
+	{
+		struct ipc_config_process *ipc_module_adapter = spec;
+
+		size = ipc_module_adapter->size;
+		data = ipc_module_adapter->data;
+		break;
+	}
+	}
+
+	comp_cl_dbg(drv, "module_adapter_new() start");
 
 	if (!config) {
 		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %x config = %x",
