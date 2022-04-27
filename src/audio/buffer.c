@@ -61,9 +61,22 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	coherent_init_thread(buffer, c);
 
+	/* From here no more uncached access to the buffer object, except its list headers */
 	buffer_c = buffer_acquire(buffer);
 	buffer_init(buffer_c, size, caps);
 	buffer_release(buffer_c);
+
+	/*
+	 * The buffer hasn't yet been marked as shared, hence buffer_release()
+	 * hasn't written back and invalidated the cache. Therefore we have to
+	 * do this manually now before adding to the lists. Buffer list
+	 * structures are always accessed uncached and they're never modified at
+	 * run-time, i.e. buffers are never relinked. So we have to make sure,
+	 * that what we have written into buffer's cache is in RAM before
+	 * modifying that RAM bypassing cache, and that after this cache is
+	 * re-loaded again.
+	 */
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
 	return buffer;
 }

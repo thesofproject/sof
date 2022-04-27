@@ -159,9 +159,27 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	return p;
 }
 
+static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
+			    int dir)
+{
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+
+	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
+		buffer_c->source = comp;
+	else
+		buffer_c->sink = comp;
+
+	buffer_release(buffer_c);
+
+	/* The buffer might be marked as shared later, write back the cache */
+	if (!buffer->c.shared)
+		dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
+}
+
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
+	struct list_item *comp_list;
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
@@ -170,8 +188,18 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		comp_info(comp, "connect buffer %d as source", buffer->id);
 
 	irq_local_disable(flags);
-	list_item_prepend(buffer_comp_list(buffer, dir),
-			  comp_buffer_list(comp, dir));
+	comp_list = comp_buffer_list(comp, dir);
+	/*
+	 * There can already be buffers on the target component list. If we just
+	 * link this buffer, we modify the first buffer's list header via
+	 * uncached alias, so its cached copy can later be written back,
+	 * overwriting the modified header. FIXME: this is still a problem with
+	 * different cores.
+	 */
+	if (!list_is_empty(comp_list))
+		dcache_writeback_invalidate_region(uncache_to_cache(comp_list->next),
+						   sizeof(struct list_item));
+	list_item_prepend(buffer_comp_list(buffer, dir), comp_list);
 	buffer_set_comp(buffer, comp, dir);
 	irq_local_enable(flags);
 
@@ -386,16 +414,17 @@ int pipeline_for_each_comp(struct comp_dev *current,
 		 * Note, that it is also assumed that buffers aren't shared
 		 * across CPUs. See further comment below.
 		 */
+		dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 		if (buffer->walking)
 			continue;
+
+		buffer_comp = buffer_get_comp(buffer, dir);
 
 		buffer_c = buffer_acquire(buffer);
 
 		/* execute operation on buffer */
 		if (ctx->buff_func)
 			ctx->buff_func(buffer_c, ctx->buff_data);
-
-		buffer_comp = buffer_get_comp(buffer_c, dir);
 
 		/* don't go further if this component is not connected */
 		if (buffer_comp &&
