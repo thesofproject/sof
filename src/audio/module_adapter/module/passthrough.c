@@ -22,7 +22,7 @@ static int passthrough_codec_init(struct processing_module *mod)
 static int passthrough_codec_prepare(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 
 	comp_info(dev, "passthrough_codec_prepare()");
 
@@ -44,9 +44,10 @@ static int passthrough_codec_prepare(struct processing_module *mod)
 	return 0;
 }
 
-static int passthrough_codec_init_process(struct comp_dev *dev)
+static int passthrough_codec_init_process(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "passthrough_codec_init_process()");
 
@@ -63,7 +64,7 @@ passthrough_codec_process(struct processing_module *mod,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
@@ -72,7 +73,7 @@ passthrough_codec_process(struct processing_module *mod,
 	}
 
 	if (!codec->mpd.init_done)
-		passthrough_codec_init_process(dev);
+		passthrough_codec_init_process(mod);
 
 	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
 		 input_buffers[0].data, codec->mpd.in_buff_size);
@@ -104,7 +105,7 @@ static int passthrough_codec_reset(struct processing_module *mod)
 static int passthrough_codec_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 
 	comp_info(dev, "passthrough_codec_free()");
 

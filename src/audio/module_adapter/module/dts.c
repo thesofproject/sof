@@ -117,7 +117,7 @@ static int dts_codec_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 	DtsSofInterfaceVersionInfo interface_version;
 	DtsSofInterfaceVersionInfo sdk_version;
@@ -162,7 +162,7 @@ static int dts_codec_prepare(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
 
@@ -196,7 +196,7 @@ static int dts_codec_prepare(struct processing_module *mod)
 static int dts_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_init_process() start");
@@ -223,7 +223,7 @@ dts_codec_process(struct processing_module *mod,
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
 
@@ -270,7 +270,7 @@ dts_codec_process(struct processing_module *mod,
 static int dts_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct module_config *config;
 	struct module_param *param;
 	uint32_t config_header_size;
@@ -348,7 +348,7 @@ static int dts_codec_reset(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_reset() start");
@@ -368,7 +368,7 @@ static int dts_codec_free(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_free() start");
