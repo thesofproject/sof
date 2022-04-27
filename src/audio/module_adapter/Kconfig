@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-menu "Module Adapter codecs"
+menu "Processing modules"
 	visible if COMP_MODULE_ADAPTER
 
 	config CADENCE_CODEC
