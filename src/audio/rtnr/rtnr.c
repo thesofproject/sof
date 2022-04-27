@@ -626,8 +626,13 @@ static int rtnr_reset(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "rtnr_reset()");
+
 	cd->sink_format = 0;
 	cd->rtnr_func = NULL;
+	cd->process_enable = false;
+	cd->source_rate = 0;
+	cd->sink_rate = 0;
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
