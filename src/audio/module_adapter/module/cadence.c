@@ -115,7 +115,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 	int ret;
 	struct snd_codec codec_params;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
@@ -159,7 +159,7 @@ static int cadence_codec_post_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 	uint32_t obj_size;
 
@@ -210,7 +210,7 @@ static int cadence_codec_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = NULL;
 
 	comp_dbg(dev, "cadence_codec_init() start");
@@ -258,14 +258,15 @@ free:
 	return ret;
 }
 
-static int cadence_codec_apply_config(struct comp_dev *dev)
+static int cadence_codec_apply_config(struct processing_module *mod)
 {
 	int ret = 0;
 	int size;
 	struct module_config *cfg;
 	void *data;
 	struct module_param *param;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct comp_dev *dev = mod->dev;
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_apply_config() start");
@@ -320,7 +321,7 @@ static int init_memory_tables(struct processing_module *mod)
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr, *scratch, *persistent;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 
 	scratch = NULL;
@@ -423,10 +424,11 @@ err:
 	return ret;
 }
 
-static int cadence_codec_get_samples(struct comp_dev *dev)
+static int cadence_codec_get_samples(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "cadence_codec_get_samples() start");
 
@@ -445,11 +447,12 @@ static int cadence_codec_get_samples(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_init_process(struct comp_dev *dev)
+static int cadence_codec_init_process(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
+	struct comp_dev *dev = mod->dev;
 
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
@@ -487,7 +490,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 {
 	int ret = 0, mem_tabs_size;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
@@ -496,7 +499,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 	if (ret)
 		return ret;
 
-	ret = cadence_codec_apply_config(dev);
+	ret = cadence_codec_apply_config(mod);
 	if (ret) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to apply config",
 			 ret);
@@ -566,9 +569,9 @@ cadence_codec_process(struct processing_module *mod,
 {
 	struct comp_buffer *local_buff;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
-	int output_bytes = cadence_codec_get_samples(dev) *
+	int output_bytes = cadence_codec_get_samples(mod) *
 				mod->stream_params->sample_container_bytes *
 				mod->stream_params->channels;
 	uint32_t remaining = input_buffers[0].size;
@@ -585,7 +588,7 @@ cadence_codec_process(struct processing_module *mod,
 			 codec->mpd.in_buff_size);
 		codec->mpd.avail = codec->mpd.in_buff_size;
 
-		ret = cadence_codec_init_process(dev);
+		ret = cadence_codec_init_process(mod);
 		if (ret)
 			return ret;
 
@@ -654,7 +657,7 @@ cadence_codec_process(struct processing_module *mod,
 static int cadence_codec_reset(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
@@ -686,7 +689,7 @@ static int cadence_codec_reset(struct processing_module *mod)
 
 static int cadence_codec_free(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(mod->dev);
+	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 
 	rfree(cd->setup_cfg.data);
@@ -717,7 +720,7 @@ cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_i
 		return 0;
 
 	/* whole configuration received, apply it now */
-	ret = cadence_codec_apply_config(dev);
+	ret = cadence_codec_apply_config(mod);
 	if (ret) {
 		comp_err(dev, "cadence_codec_set_configuration(): error %x: runtime config apply failed",
 			 ret);

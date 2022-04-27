@@ -187,7 +187,7 @@ static bool rate_is_supported(uint32_t rate)
 static int waves_effect_allocate(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
 
@@ -288,11 +288,12 @@ static int waves_effect_check(struct comp_dev *dev)
 }
 
 /* initializes MaxxEffect based on stream parameters */
-static int waves_effect_init(struct comp_dev *dev)
+static int waves_effect_init(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
 	const struct audio_stream *src_fmt = &source->stream;
@@ -369,7 +370,7 @@ static int waves_effect_init(struct comp_dev *dev)
 static int waves_effect_buffers(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
 	int ret;
@@ -437,10 +438,11 @@ err:
 }
 
 /* get MaxxEffect revision */
-static int waves_effect_revision(struct comp_dev *dev)
+static int waves_effect_revision(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
+	struct comp_dev *dev = mod->dev;
 	const char *revision = NULL;
 	uint32_t revision_len;
 	MaxxStatus_t status;
@@ -485,10 +487,11 @@ static int waves_effect_revision(struct comp_dev *dev)
 }
 
 /* apply MaxxEffect message */
-static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
+static int waves_effect_message(struct processing_module *mod, void *data, uint32_t size)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
+	struct module_data *codec = &mod->priv;
 	MaxxStatus_t status;
 	uint32_t response_size = 0;
 
@@ -520,12 +523,13 @@ static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
 }
 
 /* apply codec config */
-static int waves_effect_config(struct comp_dev *dev)
+static int waves_effect_config(struct processing_module *mod)
 {
-	struct module_config *cfg;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct comp_dev *dev = mod->dev;
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 	struct module_param *param;
+	struct module_config *cfg;
 	uint32_t index;
 	uint32_t param_number = 0;
 	int ret = 0;
@@ -570,10 +574,10 @@ static int waves_effect_config(struct comp_dev *dev)
 			comp_info(dev, "waves_codec_configure() NOP");
 			break;
 		case PARAM_MESSAGE:
-			ret = waves_effect_message(dev, param->data, param_data_size);
+			ret = waves_effect_message(mod, param->data, param_data_size);
 			break;
 		case PARAM_REVISION:
-			ret = waves_effect_revision(dev);
+			ret = waves_effect_revision(mod);
 			break;
 		default:
 			ret = -EINVAL;
@@ -591,13 +595,14 @@ static int waves_effect_config(struct comp_dev *dev)
 }
 
 /* apply setup config */
-static int waves_effect_setup_config(struct comp_dev *dev)
+static int waves_effect_setup_config(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	comp_dbg(dev, "waves_effect_setup_config() start");
 
-	ret = waves_effect_config(dev);
+	ret = waves_effect_config(mod);
 	if (ret < 0) {
 		comp_err(dev, "waves_effect_setup_config(): fail to apply config");
 		return ret;
@@ -610,7 +615,7 @@ static int waves_effect_setup_config(struct comp_dev *dev)
 static int waves_codec_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec;
 	int ret = 0;
 
@@ -674,13 +679,13 @@ static int waves_codec_prepare(struct processing_module *mod)
 	ret = waves_effect_check(dev);
 
 	if (!ret)
-		ret = waves_effect_init(dev);
+		ret = waves_effect_init(mod);
 
 	if (!ret)
 		ret = waves_effect_buffers(mod);
 
 	if (!ret)
-		ret = waves_effect_setup_config(dev);
+		ret = waves_effect_setup_config(mod);
 
 	if (ret)
 		comp_err(dev, "waves_codec_prepare() failed %d", ret);
@@ -689,9 +694,10 @@ static int waves_codec_prepare(struct processing_module *mod)
 	return ret;
 }
 
-static int waves_codec_init_process(struct comp_dev *dev)
+static int waves_codec_init_process(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "waves_codec_init_process()");
 
@@ -709,7 +715,7 @@ waves_codec_process(struct processing_module *mod,
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
@@ -795,7 +801,7 @@ static int waves_codec_reset(struct processing_module *mod)
 	MaxxStatus_t status;
 	int ret = 0;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
 	comp_dbg(dev, "waves_codec_reset() start");
