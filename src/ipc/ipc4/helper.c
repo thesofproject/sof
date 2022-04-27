@@ -773,6 +773,21 @@ out:
 	return drv;
 }
 
+bool ipc4_comp_is_gateway(struct comp_dev *dev)
+{
+	const struct sof_uuid copier = {0x9ba00c83, 0xca12, 0x4a83, {0x94, 0x3c,
+		0x1f, 0xa2, 0xe8, 0x2f, 0x9d, 0xda}};
+
+	/* check whether it is a copier module with copier uuid */
+	if (!memcmp(dev->drv->uid, &copier, UUID_SIZE)) {
+		/* dai or host, not a module for copy */
+		if (list_is_empty(&dev->bsink_list) || list_is_empty(&dev->bsource_list))
+			return true;
+	}
+
+	return false;
+}
+
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
 	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
