@@ -115,8 +115,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 	int ret;
 	struct snd_codec codec_params;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = &mod->priv;
-	struct cadence_codec_data *cd = codec->private;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
 	int i;
@@ -159,8 +158,7 @@ static int cadence_codec_post_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = &mod->priv;
-	struct cadence_codec_data *cd = codec->private;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
 	uint32_t obj_size;
 
 	comp_dbg(dev, "cadence_codec_post_init() start");
@@ -426,8 +424,7 @@ err:
 
 static int cadence_codec_get_samples(struct processing_module *mod)
 {
-	struct module_data *codec = &mod->priv;
-	struct cadence_codec_data *cd = codec->private;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "cadence_codec_get_samples() start");
@@ -689,8 +686,7 @@ static int cadence_codec_reset(struct processing_module *mod)
 
 static int cadence_codec_free(struct processing_module *mod)
 {
-	struct module_data *codec = &mod->priv;
-	struct cadence_codec_data *cd = codec->private;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
 
 	rfree(cd->setup_cfg.data);
 	module_free_all_memory(mod);
