@@ -212,6 +212,35 @@ static int pcm_convert_s32_to_s24(const struct audio_stream *source,
 	return samples;
 }
 
+static int pcm_convert_s32_to_s24_be(const struct audio_stream *source,
+				     uint32_t ioffset, struct audio_stream *sink,
+				     uint32_t ooffset, uint32_t samples)
+{
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_samples_without_wrap_s32(source, src);
+		n = MIN(n, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23)) << 8;
+			src++;
+			dst++;
+		}
+	}
+
+	return samples;
+}
+
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && (CONFIG_PCM_CONVERTER_FORMAT_S16LE || CONFIG_PCM_CONVERTER_FORMAT_S24LE || CONFIG_PCM_CONVERTER_FORMAT_S32LE)
@@ -782,6 +811,12 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream *so
 
 #endif
 
+/* Different gateway has different sample layout requirement
+ * (1) hda link gateway: 24le sample should be converted to 24be one
+ * (2) alh gateway: all data format layout should be in big-endian style in 32bit container,
+ *     .e.g. 24le stream should be convert to 24be one
+ * (3) ssp gateway: all sample should be in container size of 32bit
+ */
 const struct pcm_func_vc_map pcm_func_vc_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
@@ -819,6 +854,13 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 		ipc4_gtw_host, ipc4_capture, pcm_convert_s24_to_s32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
 		ipc4_gtw_all, ipc4_bidirection, pcm_convert_s24_to_s32},
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh), ipc4_bidirection,
+		pcm_convert_s32_to_s24 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_link | ipc4_gtw_alh, ipc4_playback, pcm_convert_s32_to_s24_be },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_link | ipc4_gtw_alh, ipc4_capture, pcm_convert_s32_to_s24 },
 #endif
 #if CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
