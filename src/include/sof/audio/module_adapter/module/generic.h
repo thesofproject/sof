@@ -17,6 +17,7 @@
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
 
+#define module_get_private_data(mod) (mod->priv.private)
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
 		ret = (cd)->api((cd)->self, \
