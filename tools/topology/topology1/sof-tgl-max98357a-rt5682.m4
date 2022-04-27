@@ -442,10 +442,10 @@ ifelse(
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `RT1019', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-                SSP_CLOCK(bclk, 1536000, codec_slave),
+                SSP_CLOCK(bclk, 3072000, codec_slave),
                 SSP_CLOCK(fsync, 48000, codec_slave),
-                SSP_TDM(2, 16, 3, 3),
-                SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
+                SSP_TDM(2, 32, 3, 3),
+                SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
 	CODEC, `CS35L41', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 6144000, codec_slave),
