@@ -170,18 +170,6 @@ struct buffer_cb_free {
 	 container_of(ptr, type, source_list) : \
 	 container_of(ptr, type, sink_list))
 
-#define buffer_get_comp(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? buffer->sink : \
-	 buffer->source)
-
-#define buffer_set_comp(buffer, comp, dir) \
-	do {						\
-		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)	\
-			buffer->source = comp;		\
-		else					\
-			buffer->sink = comp;		\
-	} while (0)					\
-
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
 		buffer->cb = func;	\
@@ -241,6 +229,15 @@ static inline struct comp_buffer *buffer_release(struct comp_buffer __sparse_cac
 	return container_of(c, struct comp_buffer, c);
 }
 
+static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
+{
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer_c->sink :
+		buffer_c->source;
+	buffer_release(buffer_c);
+	return comp;
+}
+
 static inline void buffer_reset_pos(struct comp_buffer __sparse_cache *buffer, void *data)
 {
 	/* reset rw pointers and avail/free bytes counters */
@@ -250,6 +247,7 @@ static inline void buffer_reset_pos(struct comp_buffer __sparse_cache *buffer, v
 	buffer_zero(buffer);
 }
 
+/* Run-time buffer re-configuration calls this too, so it must use cached access */
 static inline void buffer_init(struct comp_buffer __sparse_cache *buffer,
 			       uint32_t size, uint32_t caps)
 {

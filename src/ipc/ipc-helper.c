@@ -56,9 +56,6 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
-
-		dcache_writeback_invalidate_region((__sparse_force void __sparse_cache *)buffer,
-						   sizeof(*buffer));
 	}
 
 	return buffer;
