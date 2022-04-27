@@ -118,11 +118,11 @@ west_init_update()
 {
 	# Default Zephyr remote and branch if nothing passed on the
 	# command line.
-	local init_remote="${1:-https://github.com/zephyrproject-rtos/zephyr}"
+	local init_remote="${1:-https://github.com/thesofproject/zephyr}"
 
 	# This can be a branch, a 40-digit SHA or empty to fetch the
 	# default branch
-	local init_ref="${2:-fd089b361d8aebbcb49cca989444aaeb0b6fbb4d}"
+	local init_ref="${2:-sof/stable-v2.0}"
 
 	# git fetch accepts anything, even 40-digits SHA but git clone is
 	# less flexible. So we git clone the default branch first to get
