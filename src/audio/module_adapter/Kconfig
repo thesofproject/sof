@@ -11,6 +11,49 @@ menu "Processing modules"
 		  This will cause codec adapter component to include header
 		  files specific to CADENCE base codecs.
 
+	config COMP_VOLUME
+		bool "Volume component"
+		default y
+		help
+		  Select for Volume component
+
+if COMP_VOLUME
+
+config COMP_VOLUME_WINDOWS_FADE
+       bool "Windows Fade shape volume transitions support"
+       help
+         This option enables volume ramp shape that follows
+	 power of 1.75. The shape is not linear, not logarithmic.
+	 The power function uses a lookup table that consumes
+	 256 bytes. The topology must set volume ramp token to
+	 SOF_VOLUME_WINDOWS_FADE for the volume instance to use
+	 this ramp shape.
+
+config COMP_VOLUME_LINEAR_RAMP
+       bool "Linear ramp volume transitions support"
+	   default y
+	   depends on IPC_MAJOR_3
+       help
+         This option enables volume linear ramp shape.
+
+config COMP_PEAK_VOL
+       bool "Report peak vol data to host"
+	   default y
+	   depends on IPC_MAJOR_4
+       help
+         This option enables reporting to host peak vol regs.
+         See: struct ipc4_peak_volume_regs
+
+config COMP_GAIN
+	bool "GAIN component"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  This option enables gain to change volume. It works
+	  as peak volume without updating peak vol to host
+
+endif # volume
+
 if CADENCE_CODEC
 	config CADENCE_CODEC_WRAPPER
 		bool 'Cadence codec wrapper'
