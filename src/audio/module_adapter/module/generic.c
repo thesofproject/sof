@@ -311,8 +311,6 @@ int module_free(struct processing_module *mod)
 		comp_warn(mod->dev, "module_free(): error: %d for %d",
 			  ret, dev_comp_id(mod->dev));
 
-	/* Free all memory requested by module */
-	module_free_all_memory(mod);
 	/* Free all memory shared by module_adapter & module */
 	md->cfg.avail = false;
 	md->cfg.size = 0;

@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 #include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/volume.h>
 
 /* Add macro for a volume test level. The levels to test with this code
@@ -30,10 +31,15 @@
 #define INT24_MIN -8388608
 
 struct vol_test_state {
-	struct comp_dev *dev;
+	struct processing_module *mod;
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink, struct comp_buffer *source);
+	struct input_stream_buffer *input;
+	struct output_stream_buffer *output;
+	size_t size;
+	uint32_t channels;
+	void (*verify)(struct processing_module *mod, struct comp_buffer *sink,
+		       struct comp_buffer *source);
 };
 
 struct vol_test_parameters {
@@ -43,7 +49,8 @@ struct vol_test_parameters {
 	uint32_t buffer_size_ms;
 	uint32_t source_format;
 	uint32_t sink_format;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink, struct comp_buffer *source);
+	void (*verify)(struct processing_module *mod, struct comp_buffer *sink,
+		       struct comp_buffer *source);
 };
 
 static void set_volume(int32_t *vol, int32_t value, uint32_t channels)
@@ -58,6 +65,8 @@ static int setup(void **state)
 {
 	struct vol_test_parameters *parameters = *state;
 	struct vol_test_state *vol_state;
+	struct module_data *md;
+	struct comp_dev *dev;
 	struct vol_data *cd;
 	uint32_t size = 0;
 
@@ -65,12 +74,16 @@ static int setup(void **state)
 	vol_state = test_malloc(sizeof(*vol_state));
 
 	/* allocate and set new device */
-	vol_state->dev = test_malloc(sizeof(struct comp_dev));
-	vol_state->dev->frames = parameters->frames;
+	vol_state->mod = test_malloc(sizeof(struct processing_module));
+	dev = test_malloc(sizeof(struct comp_dev));
+	dev->frames = parameters->frames;
 
 	/* allocate and set new data */
+	vol_state->mod->dev = dev;
 	cd = test_malloc(sizeof(*cd));
-	comp_set_drvdata(vol_state->dev, cd);
+	md = &vol_state->mod->priv;
+	comp_set_drvdata(dev, vol_state->mod);
+	md->private = cd;
 
 	/* malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
@@ -79,25 +92,33 @@ static int setup(void **state)
 
 	cd->vol = test_malloc(vol_size);
 
-	list_init(&vol_state->dev->bsource_list);
-	list_init(&vol_state->dev->bsink_list);
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
 
 	/* allocate new sink buffer */
 	size = parameters->frames * get_frame_bytes(parameters->sink_format, parameters->channels) *
 	       parameters->buffer_size_ms;
+	vol_state->size = size;
+	vol_state->channels = parameters->channels;
 
-	vol_state->sink = create_test_sink(vol_state->dev, 0, parameters->sink_format,
+	vol_state->sink = create_test_sink(dev, 0, parameters->sink_format,
 					   parameters->channels, size);
 
 	/* allocate new source buffer */
 	size = parameters->frames * get_frame_bytes(parameters->source_format,
 	       parameters->channels) * parameters->buffer_size_ms;
 
-	vol_state->source = create_test_source(vol_state->dev, 0, parameters->source_format,
+	vol_state->source = create_test_source(dev, 0, parameters->source_format,
 					       parameters->channels, size);
 
+	/* allocate intermediate buffers */
+	vol_state->input = test_malloc(sizeof(struct input_stream_buffer));
+	vol_state->input->data = &vol_state->source->stream;
+	vol_state->output = test_malloc(sizeof(struct output_stream_buffer));
+	vol_state->output->data = &vol_state->sink->stream;
+
 	/* set processing function and volume */
-	cd->scale_vol = vol_get_processing_function(vol_state->dev);
+	cd->scale_vol = vol_get_processing_function(dev);
 	set_volume(cd->volume, parameters->volume, parameters->channels);
 
 	/* assigns verification function */
@@ -112,12 +133,15 @@ static int setup(void **state)
 static int teardown(void **state)
 {
 	struct vol_test_state *vol_state = *state;
-	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
+	struct vol_data *cd = module_get_private_data(vol_state->mod);
 
 	/* free everything */
 	test_free(cd->vol);
 	test_free(cd);
-	test_free(vol_state->dev);
+	test_free(vol_state->mod->dev);
+	test_free(vol_state->mod);
+	test_free(vol_state->input);
+	test_free(vol_state->output);
 	free_test_sink(vol_state->sink);
 	free_test_source(vol_state->source);
 	test_free(vol_state);
@@ -141,10 +165,10 @@ static void fill_source_s16(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
+static void verify_s16_to_s16(struct processing_module *mod, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *src = (int16_t *)source->stream.r_ptr;
 	const int16_t *dst = (int16_t *)sink->stream.w_ptr;
 	double processed;
@@ -190,11 +214,11 @@ static void fill_source_s24(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s24_to_s24_s32(struct comp_dev *dev,
+static void verify_s24_to_s24_s32(struct processing_module *mod,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *src = (int32_t *)source->stream.r_ptr;
 	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	double processed;
@@ -247,11 +271,11 @@ static void fill_source_s32(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s32_to_s24_s32(struct comp_dev *dev,
+static void verify_s32_to_s24_s32(struct processing_module *mod,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 	double processed;
 	const int32_t *src = (int32_t *)source->stream.r_ptr;
 	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
@@ -380,7 +404,8 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 static void test_audio_vol(void **state)
 {
 	struct vol_test_state *vol_state = *state;
-	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
+	struct processing_module *mod = vol_state->mod;
+	struct vol_data *cd = module_get_private_data(mod);
 
 	switch (vol_state->sink->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -398,10 +423,12 @@ static void test_audio_vol(void **state)
 		break;
 	}
 
-	cd->scale_vol(vol_state->dev, &vol_state->sink->stream,
-		      &vol_state->source->stream, vol_state->dev->frames);
+	vol_state->input->consumed = 0;
+	vol_state->output->size = 0;
 
-	vol_state->verify(vol_state->dev, vol_state->sink, vol_state->source);
+	cd->scale_vol(mod, vol_state->input, vol_state->output, mod->dev->frames);
+
+	vol_state->verify(mod, vol_state->sink, vol_state->source);
 }
 
 static struct vol_test_parameters parameters[] = {

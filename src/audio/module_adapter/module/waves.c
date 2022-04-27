@@ -821,10 +821,7 @@ static int waves_codec_reset(struct processing_module *mod)
 
 static int waves_codec_free(struct processing_module *mod)
 {
-	/* codec is using codec_adapter method module_allocate_memory for all allocations
-	 * codec_adapter will free it all on component free call
-	 * nothing to do here
-	 */
+	module_free_all_memory(mod);
 	comp_dbg(mod->dev, "waves_codec_free()");
 	return 0;
 }

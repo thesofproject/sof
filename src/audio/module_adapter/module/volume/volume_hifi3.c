@@ -59,11 +59,12 @@ static inline void peak_vol_calc(struct vol_data *cd, ae_f32x2 out_sample, size_
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
-			       const struct audio_stream *source,
-			       uint32_t frames)
+static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample = AE_ZERO32();
 	ae_f32x2 volume = AE_ZERO32();
@@ -90,6 +91,9 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	/* Set buf who stores the volume gain data as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
+
+	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
 		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
@@ -139,16 +143,17 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 #if CONFIG_FORMAT_S32LE
 /**
  * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Pointer to struct processing_module
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
-			       const struct audio_stream *source,
-			       uint32_t frames)
+static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample = AE_ZERO32();
 	ae_f32x2 volume = AE_ZERO32();
@@ -160,8 +165,8 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	ae_f32x2 *vol;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
-	const int inc = sizeof(ae_f32x2);
 	const int channels_count = sink->channels;
+	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
 	ae_f32x2 *in = (ae_f32x2 *)source->r_ptr;
 	ae_f32x2 *out = (ae_f32x2 *)sink->w_ptr;
@@ -177,6 +182,10 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	/* Set buf who stores the volume gain data as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
+
+	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
+
 	while (samples) {
 		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
 		n = MIN(m, samples);
@@ -233,10 +242,12 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
-			   const struct audio_stream *source, uint32_t frames)
+static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
+			   struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 volume0 = AE_ZERO32();
 	ae_f32x2 volume1 = AE_ZERO32();
 	ae_f32x2 out_sample0 = AE_ZERO32();
@@ -267,6 +278,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 	/* Set buf as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
+
 	while (samples) {
 		m = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, in));
 		n = MIN(m, samples);
@@ -312,6 +324,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
+		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
+		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
