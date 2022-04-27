@@ -101,6 +101,11 @@ struct sof {
 	/* pipelines stream position */
 	struct pipeline_posn *pipeline_posn;
 
+#ifdef CONFIG_LIBRARY_MANAGER
+	/* dynamically loaded libraries */
+	struct ext_library *ext_library;
+#endif
+
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
 

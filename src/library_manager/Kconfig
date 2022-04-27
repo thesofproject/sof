@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# Library manager configs
+
+menu "Library Manager"
+
+config LIBRARY_MANAGER
+	bool "Library Manager Support"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  This is support for dynamic modules loading.
+	  Externally developed modules both for SOF and Zephyr
+	  could be used if enabled.
+	  If unsure say N.
+endmenu
