@@ -174,14 +174,6 @@ struct buffer_cb_free {
 	((dir) == PPL_DIR_DOWNSTREAM ? buffer->sink : \
 	 buffer->source)
 
-#define buffer_set_comp(buffer, comp, dir) \
-	do {						\
-		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)	\
-			buffer->source = comp;		\
-		else					\
-			buffer->sink = comp;		\
-	} while (0)					\
-
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
 		buffer->cb = func;	\
