@@ -49,6 +49,8 @@ static const struct comp_driver comp_module_adapter = { \
 		.trigger = module_adapter_trigger, \
 		.reset = module_adapter_reset, \
 		.free = module_adapter_free, \
+		.set_large_config = module_set_large_config,\
+		.get_large_config = module_get_large_config,\
 	}, \
 }; \
 \
@@ -323,5 +325,9 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void module_adapter_free(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
+int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t data_offset, char *data);
+int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t *data_offset, char *data);
 
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */

@@ -733,3 +733,87 @@ void module_adapter_free(struct comp_dev *dev)
 	rfree(mod);
 	rfree(dev);
 }
+
+#if CONFIG_IPC_MAJOR_4
+int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t data_offset_size, char *data)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	enum module_cfg_fragment_position pos;
+	size_t fragment_size;
+
+	/* set fragment position */
+	if (first_block) {
+		if (last_block)
+			pos = MODULE_CFG_FRAGMENT_SINGLE;
+		else
+			pos = MODULE_CFG_FRAGMENT_FIRST;
+	} else {
+		if (!last_block)
+			pos = MODULE_CFG_FRAGMENT_MIDDLE;
+		else
+			pos = MODULE_CFG_FRAGMENT_LAST;
+	}
+
+	switch (pos) {
+	case MODULE_CFG_FRAGMENT_SINGLE:
+		fragment_size = data_offset_size;
+		break;
+	case MODULE_CFG_FRAGMENT_MIDDLE:
+	case MODULE_CFG_FRAGMENT_FIRST:
+		fragment_size = SOF_IPC_MSG_MAX_SIZE;
+		break;
+	case MODULE_CFG_FRAGMENT_LAST:
+		fragment_size = md->new_cfg_size - data_offset_size;
+		break;
+	default:
+		comp_err(dev, "module_set_large_config(): invalid fragment position");
+		return -EINVAL;
+	}
+
+	if (md->ops->set_configuration)
+		return md->ops->set_configuration(mod, param_id, pos, data_offset_size,
+						  (const uint8_t *)data,
+						  fragment_size, NULL, 0);
+	return 0;
+}
+
+int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t *data_offset_size, char *data)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	size_t fragment_size;
+
+	/* set fragment size */
+	if (first_block) {
+		if (last_block)
+			fragment_size = md->cfg.size;
+		else
+			fragment_size = SOF_IPC_MSG_MAX_SIZE;
+	} else {
+		if (!last_block)
+			fragment_size = SOF_IPC_MSG_MAX_SIZE;
+		else
+			fragment_size = md->cfg.size - *data_offset_size;
+	}
+
+	if (md->ops->get_configuration)
+		return md->ops->get_configuration(mod, param_id, data_offset_size,
+						  (uint8_t *)data, fragment_size);
+	return 0;
+}
+#else
+int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t data_offset, char *data)
+{
+	return 0;
+}
+
+int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			    bool last_block, uint32_t *data_offset, char *data)
+{
+	return 0;
+}
+#endif
