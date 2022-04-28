@@ -132,8 +132,9 @@ west_init_update()
 
 	# To keep things simple, this moves to a detached HEAD even when
 	# init_ref is a (remote) branch.
-	test -z "$init_ref" ||
-	    zephyr_fetch_and_switch  "${init_remote}"   "${init_ref}"
+	# test -z "$init_ref" ||
+	#     zephyr_fetch_and_switch  "${init_remote}"   "${init_ref}"
+	zephyr_fetch_and_switch    origin   d92e3b88bacc6e6fc1b6222421ef4accdf2d574e
 
 	# This shows how to point CI at any Zephyr commit from anywhere
 	# and to run all tests on it. Simply edit remote and reference,

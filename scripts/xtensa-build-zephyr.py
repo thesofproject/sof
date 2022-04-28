@@ -293,7 +293,7 @@ def west_init_update():
 	zephyr_dir = pathlib.Path(west_top, "zephyr")
 
 	z_remote = "origin"
-	z_ref = args.zephyr_ref
+	z_ref = "d92e3b88bacc6e6fc1b6222421ef4accdf2d574e" # args.zephyr_ref
 
 	# Example of how to override SOF CI and point it at any Zephyr
 	# commit from anywhere and to run all tests on it. Simply
