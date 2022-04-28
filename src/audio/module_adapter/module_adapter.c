@@ -35,7 +35,21 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	int ret;
 	struct comp_dev *dev;
 	struct processing_module *mod;
-	struct ipc_config_process *ipc_module_adapter = spec;
+	unsigned char *data;
+	uint32_t size;
+
+	switch (config->type) {
+	case SOF_COMP_MODULE_ADAPTER:
+	{
+		struct ipc_config_process *ipc_module_adapter = spec;
+
+		size = ipc_module_adapter->size;
+		data = ipc_module_adapter->data;
+		break;
+	}
+	default:
+		return NULL;
+	}
 
 	comp_cl_dbg(drv, "module_adapter_new() start");
 
@@ -66,8 +80,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	list_init(&mod->sink_buffer_list);
 
 	/* Copy initial config */
-	if (ipc_module_adapter->size) {
-		ret = module_load_config(dev, ipc_module_adapter->data, ipc_module_adapter->size);
+	if (size) {
+		ret = module_load_config(dev, data, size);
 		if (ret) {
 			comp_err(dev, "module_adapter_new() error %d: config loading has failed.",
 				 ret);
