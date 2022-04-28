@@ -171,8 +171,8 @@ struct module_interface {
 	 * retrieval, otherwise it is set to 0.
 	 */
 	int (*get_configuration)(struct processing_module *mod,
-				 uint32_t config_id, uint32_t data_offset_size,
-				 const uint8_t *fragment, size_t fragment_size);
+				 uint32_t config_id, uint32_t *data_offset_size,
+				 uint8_t *fragment, size_t fragment_size);
 
 	/**
 	 * Set processing mode for the module
