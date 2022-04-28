@@ -202,7 +202,7 @@ static void hex_data_dump(struct ctl_data *ctl_data)
 	/* Print out in 16bit hex format */
 	for (i = 0; i < n; i++) {
 		if (!(i % 8))
-			fprintf(stdout, "%08lx ",
+			fprintf(stdout, "%08zx ",
 				i * sizeof(uint16_t));
 		fprintf(stdout, "%04x ", config[i]);
 		if ((i % 8) == 7)
@@ -410,7 +410,7 @@ static void ctl_dump(struct ctl_data *ctl_data)
 {
 	FILE *fh;
 	int offset = 0;
-	size_t n;/* in bytes */
+	size_t n = 0;/* in bytes */
 
 	if (ctl_data->out_fd > 0) {
 		if (ctl_data->binary) {
@@ -441,7 +441,7 @@ static void ctl_dump(struct ctl_data *ctl_data)
 			csv_data_dump(ctl_data, fh);
 		}
 
-		fprintf(stdout, "%ld bytes written to file.\n", n);
+		fprintf(stdout, "%zd bytes written to file.\n", n);
 		fclose(fh);
 	} else {
 		/* dump to stdout */
