@@ -43,6 +43,12 @@ static int spdai_probe(struct dai *dai)
 	return 0;
 }
 
+static int spdai_remove(struct dai *dai)
+{
+	/* TODO*/
+	return 0;
+}
+
 static int spdai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
 	switch (direction) {
@@ -82,6 +88,7 @@ const struct dai_driver acp_spdai_driver = {
 		.trigger		= spdai_trigger,
 		.set_config		= spdai_set_config,
 		.probe			= spdai_probe,
+		.remove			= spdai_remove,
 		.get_fifo		= spdai_get_fifo,
 		.get_handshake		= spdai_get_handshake,
 		.get_hw_params          = spdai_get_hw_params,

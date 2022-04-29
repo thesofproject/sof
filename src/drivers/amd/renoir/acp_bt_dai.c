@@ -44,6 +44,12 @@ static int btdai_probe(struct dai *dai)
 	return 0;
 }
 
+static int btdai_remove(struct dai *dai)
+{
+	/* TODO */
+	return 0;
+}
+
 static int btdai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
 	switch (direction) {
@@ -82,6 +88,7 @@ const struct dai_driver acp_btdai_driver = {
 		.trigger		= btdai_trigger,
 		.set_config		= btdai_set_config,
 		.probe			= btdai_probe,
+		.remove			= btdai_remove,
 		.get_fifo		= btdai_get_fifo,
 		.get_handshake		= btdai_get_handshake,
 		.get_hw_params		= btdai_get_hw_params,
