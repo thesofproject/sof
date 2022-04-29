@@ -32,14 +32,26 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 
 #ifdef __ZEPHYR__
 #include <kernel.h>
+#include <sys/__assert.h>
+
 #define panic(x) k_panic()
 
-#define assert(x) \
-	do {			\
-		if (!(x))	\
-			k_oops();\
+#define verify_assert(cond) \
+	do {	       \
+		if (!(cond)) \
+			k_oops(); \
 	} while (0)
-#else
+
+#if __ASSERT_ON
+#define assert(x) \
+	do { \
+		__ASSERT_NO_MSG(x); \
+	} while (0)
+#else /* !__ASSERT_ON */
+#define assert(x) (void)(x)
+#endif
+
+#else /* XTOS */
 
 void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 
@@ -51,6 +63,11 @@ void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 
 /* runtime assertion */
 #define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
+
+/**
+ * Runtime assertion that may have side-effects.
+ */
+#define verify_assert(x) assert(x)
 
 #endif
 
