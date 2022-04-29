@@ -300,8 +300,9 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 			sizeof(struct mux_stream_data);
 
 		/* copy back to user space */
-		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
-				 (cdata->data))->size, cfg, reply_size));
+		verify_assert(!memcpy_s(cdata->data->data,
+					((struct sof_abi_hdr *)(cdata->data))->size,
+					cfg, reply_size));
 
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = reply_size;
