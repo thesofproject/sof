@@ -457,7 +457,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
-			-f ${SOF_MAJOR}.${SOF_MINOR}
+			-f ${SOF_MAJOR}.${SOF_MINOR}.${SOF_MICRO}
 			-b ${SOF_BUILD}
 			-e
 			${bootloader_binary_path}
@@ -498,7 +498,7 @@ else() # sign with rimage
 			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
-			-f ${SOF_MAJOR}.${SOF_MINOR}
+			-f ${SOF_MAJOR}.${SOF_MINOR}.${SOF_MICRO}
 			-b ${SOF_BUILD}
 			-e
 			${bootloader_binary_path}
