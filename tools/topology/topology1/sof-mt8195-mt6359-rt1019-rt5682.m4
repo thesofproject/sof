@@ -52,7 +52,8 @@ PIPELINE_PCM_ADD(
 
 # Low Latency capture pipeline 3 on PCM 18 using max 2 channels of s16le
 # Set 2000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(
+	ifdef(`RTNR', sof/pipe-rtnr-capture.m4, sof/pipe-passthrough-capture.m4),
 	3, 18, 2, s16le,
 	2000, 0, 0,
 	48000, 48000, 48000)
