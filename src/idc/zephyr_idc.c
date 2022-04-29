@@ -63,8 +63,11 @@ static void idc_handler(struct k_p4wq_work *work)
 
 	SOC_DCACHE_INVALIDATE(msg, sizeof(*msg));
 
-	if (msg->size == sizeof(int))
-		assert(!memcpy_s(&payload, sizeof(payload), msg->payload, msg->size));
+	if (msg->size == sizeof(int)) {
+		const int idc_handler_memcpy_err __unused =
+			memcpy_s(&payload, sizeof(payload), msg->payload, msg->size);
+		assert(!idc_handler_memcpy_err);
+	}
 
 	idc->received_msg.core = msg->core;
 	idc->received_msg.header = msg->header;
@@ -103,8 +106,10 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	struct idc_msg *msg_cp = &zmsg->msg;
 	struct k_p4wq_work *work = &zmsg->work;
 	int ret;
+	int idc_send_memcpy_err __unused;
 
-	assert(!memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg)));
+	idc_send_memcpy_err = memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg));
+	assert(!idc_send_memcpy_err);
 	/* TODO: verify .priority and .deadline */
 	work->priority = K_HIGHEST_THREAD_PRIO + 1;
 	work->deadline = 0;
@@ -112,8 +117,10 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->sync = mode == IDC_BLOCKING;
 
 	if (msg->payload) {
-		assert(!memcpy_s(payload->data, sizeof(payload->data),
-				 msg->payload, msg->size));
+		idc_send_memcpy_err = memcpy_s(payload->data, sizeof(payload->data),
+					       msg->payload, msg->size);
+		assert(!idc_send_memcpy_err);
+
 		SOC_DCACHE_FLUSH(payload->data, MIN(sizeof(payload->data), msg->size));
 	}
 
