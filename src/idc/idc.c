@@ -283,9 +283,14 @@ void idc_cmd(struct idc_msg *msg)
 	int ret = 0;
 
 	switch (type) {
+#ifndef __ZEPHYR__
+/* In flow with Zephyr this IDC is not used.
+ * Primary core is forcing OFF state directly via power manager.
+ */
 	case iTS(IDC_MSG_POWER_DOWN):
 		cpu_power_down_core(0);
 		break;
+#endif
 	case iTS(IDC_MSG_NOTIFY):
 		notifier_notify_remote();
 		break;
