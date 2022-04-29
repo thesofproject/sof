@@ -36,6 +36,19 @@ static inline bool cpu_is_me(int id)
 	return id == cpu_get_id();
 }
 
+#ifdef __ZEPHYR__
+int cpu_enable_core(int id);
+
+void cpu_disable_core(int id);
+
+int cpu_is_core_enabled(int id);
+
+int cpu_enabled_cores(void);
+
+int cpu_restore_secondary_cores(void);
+
+int cpu_secondary_cores_prepare_d0ix(void);
+#else
 static inline int cpu_enable_core(int id)
 {
 	return arch_cpu_enable_core(id);
@@ -65,6 +78,7 @@ static inline int cpu_secondary_cores_prepare_d0ix(void)
 {
 	return arch_cpu_secondary_cores_prepare_d0ix();
 }
+#endif /* __ZEPHYR__ */
 
 #endif
 

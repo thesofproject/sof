@@ -519,6 +519,7 @@ zephyr_library_sources(
 	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
 	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
 	${SOF_SRC_PATH}/idc/zephyr_idc.c
+	${SOF_SRC_PATH}/lib-zephyr/cpu.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
