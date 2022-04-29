@@ -2,7 +2,8 @@
 
 add_local_sources(sof rtnr.c)
 
-sof_add_static_library(SOF_RTK_MA_API rtklib/tgl/libSOF_RTK_MA_API.a)
-sof_add_static_library(Suite_rename rtklib/tgl/libSuite_rename.a)
-sof_add_static_library(Net rtklib/tgl/libNet.a)
-sof_add_static_library(Preset rtklib/tgl/libPreset.a)
+if(CONFIG_TIGERLAKE)
+	add_subdirectory(rtklib/tgl)
+elseif(CONFIG_MT8195)
+	add_subdirectory(rtklib/mt8195)
+endif()
