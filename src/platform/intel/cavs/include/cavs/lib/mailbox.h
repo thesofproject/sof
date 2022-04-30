@@ -111,10 +111,10 @@ static inline uint64_t mailbox_sw_reg_read64(size_t offset)
 
 static inline void mailbox_sw_regs_write(size_t offset, const void *src, size_t bytes)
 {
-	int ret = memcpy_s((void *)(MAILBOX_SW_REG_BASE + offset),
-			   MAILBOX_SW_REG_SIZE - offset, src, bytes);
+	int regs_write_err __unused = memcpy_s((void *)(MAILBOX_SW_REG_BASE + offset),
+					       MAILBOX_SW_REG_SIZE - offset, src, bytes);
 
-	assert(!ret);
+	assert(!regs_write_err);
 	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_SW_REG_BASE +
 								       offset), bytes);
 }
