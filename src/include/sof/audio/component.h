@@ -669,7 +669,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
  * @return Private data.
  */
 #define comp_get_drvdata(c) \
-	c->priv_data
+	(c->priv_data)
 
 #if defined UNIT_TEST || defined __ZEPHYR__
 #define DECLARE_MODULE(init)

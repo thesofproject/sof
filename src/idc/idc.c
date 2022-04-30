@@ -368,7 +368,7 @@ int idc_init(void)
 
 int idc_restore(void)
 {
-	struct idc **idc = idc_get();
+	struct idc **idc __unused = idc_get();
 
 	tr_info(&idc_tr, "idc_restore()");
 

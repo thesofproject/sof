@@ -39,7 +39,12 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		if (!(x))	\
 			k_oops();\
 	} while (0)
-#else
+/* To print the asserted expression on failure:
+ *  #define assert(x) __ASSERT(x, #x)
+ */
+
+#else /* __ZEPHYR__ */
+
 
 void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 
