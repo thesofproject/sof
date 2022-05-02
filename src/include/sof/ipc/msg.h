@@ -21,6 +21,7 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/common.h>
+#include <ipc/input-event.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -142,5 +143,11 @@ bool ipc_trigger_trace_xfer(uint32_t avail);
  * @param[in,out] posn Trace position message
  */
 void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn);
+
+/**
+ * \brief Build input event message.
+ * @param[in,out] input event message
+ */
+void ipc_build_input_event(struct sof_ipc_input_event *event);
 
 #endif

@@ -73,6 +73,12 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 	posn->rhdr.hdr.size = sizeof(*posn);
 }
 
+void ipc_build_input_event(struct sof_ipc_input_event *event)
+{
+	event->rhdr.hdr.cmd =  SOF_IPC_GLB_INPUT_EVENT | SOF_IPC_INPUT_EVENT;
+	event->rhdr.hdr.size = sizeof(*event);
+}
+
 static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
