@@ -15,6 +15,9 @@
 #include <sof/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+
+#include <kernel.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -430,7 +433,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 		list_init(&walk_ctx.pipelines);
 
 		if (data.delay_ms)
-			wait_delay_ms(data.delay_ms);
+			k_msleep(data.delay_ms);
 
 		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 		if (ret < 0)
