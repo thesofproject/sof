@@ -21,7 +21,6 @@
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/pm_runtime.h>
-#include <sof/lib/wait.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <ipc4/error_status.h>
@@ -31,6 +30,8 @@
 #include <ipc4/notification.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+
+#include <kernel.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -372,8 +373,7 @@ static int ipc_wait_for_compound_msg(void)
 	int ret = 0;
 
 	while (msg_data.delayed_reply) {
-		/* TODO: update to yield(tmeout) for Zephyr */
-		wait_delay(10000);
+		k_sleep(Z_TIMEOUT_TICKS(10000));
 
 		if (!try_count--) {
 			ret = IPC4_FAILURE;
