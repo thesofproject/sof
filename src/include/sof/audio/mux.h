@@ -55,7 +55,8 @@ struct mux_stream_data {
 	uint8_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
 	uint8_t mask[PLATFORM_MAX_CHANNELS];
 
-	uint8_t reserved[(20 - PLATFORM_MAX_CHANNELS - 1) % 4]; // padding to ensure proper alignment of following instances
+	uint8_t reserved1[8 - PLATFORM_MAX_CHANNELS]; // padding for extra channels
+	uint8_t reserved2[3]; // padding to ensure proper alignment of following instances
 };
 
 typedef void(*demux_func)(struct comp_dev *dev, struct audio_stream *sink,
