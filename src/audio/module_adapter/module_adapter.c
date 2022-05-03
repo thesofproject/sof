@@ -639,8 +639,10 @@ static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctr
 /* Used to pass standard and bespoke commands (with data) to component */
 int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size)
 {
-	int ret;
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	int ret = 0;
 
 	comp_dbg(dev, "module_adapter_cmd() %d start", cmd);
 
@@ -651,6 +653,25 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	case COMP_CMD_GET_DATA:
 		comp_err(dev, "module_adapter_cmd() get_data not implemented yet.");
 		ret = -ENODATA;
+		break;
+	case COMP_CMD_SET_VALUE:
+		/*
+		 * IPC3 does not use config_id, so pass 0 for config ID as it will be ignored
+		 * anyway. Also, pass the 0 as the fragment size as it is not relevant for the
+		 * SET_VALUE command.
+		 */
+		if (md->ops->set_configuration)
+			ret = md->ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE, 0,
+							  (const uint8_t *)cdata, 0, NULL, 0);
+		break;
+	case COMP_CMD_GET_VALUE:
+		/*
+		 * IPC3 does not use config_id, so pass 0 for config ID as it will be ignored
+		 * anyway. Also, pass the 0 as the fragment size and data offset as they are not
+		 * relevant for the GET_VALUE command.
+		 */
+		if (md->ops->get_configuration)
+			ret = md->ops->get_configuration(mod, 0, 0, (uint8_t *)cdata, 0);
 		break;
 	default:
 		comp_err(dev, "module_adapter_cmd() error: unknown command");
