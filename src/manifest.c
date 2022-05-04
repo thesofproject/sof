@@ -776,6 +776,7 @@ int man_write_fw_v1_5(struct image *image)
 	/* firmware and build version */
 	m->desc.header.major_version = image->fw_ver_major;
 	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.hotfix_version = image->fw_ver_micro;
 	m->desc.header.build_version = image->fw_ver_build;
 
 	/* create each module */
@@ -845,6 +846,7 @@ int man_write_fw_v1_5_sue(struct image *image)
 	/* firmware and build version */
 	m->desc.header.major_version = image->fw_ver_major;
 	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.hotfix_version = image->fw_ver_micro;
 	m->desc.header.build_version = image->fw_ver_build;
 
 	/* create each module - subtract the boot loader exec header */
@@ -916,6 +918,7 @@ int man_write_fw_v1_8(struct image *image)
 	m->css.version.build_version = image->fw_ver_build;
 	m->desc.header.major_version = image->fw_ver_major;
 	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.hotfix_version = image->fw_ver_micro;
 	m->desc.header.build_version = image->fw_ver_build;
 
 	/* create each module */
@@ -1022,6 +1025,7 @@ int man_write_fw_meu_v1_5(struct image *image)
 	/* firmware and build version */
 	desc->header.major_version = image->fw_ver_major;
 	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.hotfix_version = image->fw_ver_micro;
 	desc->header.build_version = image->fw_ver_build;
 
 	/* create each module */
@@ -1102,6 +1106,7 @@ int man_write_fw_meu_v1_8(struct image *image)
 	/* firmware and build version */
 	desc->header.major_version = image->fw_ver_major;
 	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.hotfix_version = image->fw_ver_micro;
 	desc->header.build_version = image->fw_ver_build;
 
 	/* create each module */
@@ -1182,6 +1187,7 @@ int man_write_fw_meu_v2_5(struct image *image)
 	/* firmware and build version */
 	desc->header.major_version = image->fw_ver_major;
 	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.hotfix_version = image->fw_ver_micro;
 	desc->header.build_version = image->fw_ver_build;
 
 	/* create each module */
@@ -1266,6 +1272,7 @@ int man_write_fw_v2_5(struct image *image)
 	m->css.version.build_version = image->fw_ver_build;
 	m->desc.header.major_version = image->fw_ver_major;
 	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.hotfix_version = image->fw_ver_micro;
 	m->desc.header.build_version = image->fw_ver_build;
 
 	/* create each module */

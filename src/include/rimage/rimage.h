@@ -109,6 +109,7 @@ struct image {
 	char* fw_ver_build_string;
 	uint16_t fw_ver_major;
 	uint16_t fw_ver_minor;
+	uint16_t fw_ver_micro;
 	uint16_t fw_ver_build;
 };
 
