@@ -14,7 +14,7 @@
 #include <platform/chip_registers.h>
 
 static struct freq_table platform_cpu_freq[] = {
-	{200000000, 200000 },
+	{600000000, 600000 },
 };
 
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
@@ -137,4 +137,5 @@ void platform_clock_init(struct sof *sof)
 		};
 		k_spinlock_init(&sof->clocks[i].lock);
 	}
+	acp_change_clock_notify(600000000);
 }
