@@ -74,11 +74,11 @@ static const struct sof_ipc_fw_ready ready
 		.abi_version = SOF_ABI_VERSION,
 		.src_hash = SOF_SRC_HASH,
 	},
-#if CONFIG_CAVS_IMR_D3_PERSISTENT
+#if CONFIG_ACE_IMR_D3_PERSISTENT
 	.flags = DEBUG_SET_FW_READY_FLAGS | SOF_IPC_INFO_D3_PERSISTENT,
-#else /* CONFIG_CAVS_IMR_D3_PERSISTENT */
+#else /* CONFIG_ACE_IMR_D3_PERSISTENT */
 	.flags = DEBUG_SET_FW_READY_FLAGS,
-#endif /* CONFIG_CAVS_IMR_D3_PERSISTENT */
+#endif /* CONFIG_ACE_IMR_D3_PERSISTENT */
 };
 
 #if CONFIG_MEM_WND
@@ -494,13 +494,16 @@ void platform_wait_for_interrupt(int level)
 }
 #endif /* !__ZEPHYR__ */
 
-#if CONFIG_CAVS_IMR_D3_PERSISTENT
+#if CONFIG_ACE_IMR_D3_PERSISTENT
 /* These structs and macros are from from the ROM code header
  * on cAVS platforms, please keep them immutable
  */
 
 #define ADSP_IMR_MAGIC_VALUE		0x02468ACE
-#define IMR_L1_CACHE_ADDRESS		0xB0000000
+/* FIXME: IMR address should be taken from zephyr DTS */
+#define IMR_L1_CACHE_ADDRESS		0xA1000000
+#define IMR_LAYOUT_OFFSET               0x20000
+#define IMR_LAYOUT_ADDRESS              (IMR_L1_CACHE_ADDRESS + IMR_LAYOUT_OFFSET)
 
 struct imr_header {
 	uint32_t adsp_imr_magic;
@@ -509,6 +512,7 @@ struct imr_header {
 	uint32_t imr_state;
 	uint32_t imr_size;
 	void *imr_restore_vector;
+	void *imr_auth_api_vector;
 };
 
 struct imr_state {
@@ -517,7 +521,6 @@ struct imr_state {
 };
 
 struct imr_layout {
-	uint8_t     css_reserved[0x1000];
 	struct imr_state    imr_state;
 };
 
@@ -525,7 +528,7 @@ struct imr_layout {
 
 static void imr_layout_update(void *vector)
 {
-	struct imr_layout *imr_layout = (struct imr_layout *)(IMR_L1_CACHE_ADDRESS);
+	struct imr_layout *imr_layout = (struct imr_layout *)(IMR_LAYOUT_ADDRESS);
 
 	/* update the IMR layout and write it back to uncache memory
 	 * for ROM code usage. The ROM code will read this from IMR
@@ -540,11 +543,11 @@ static void imr_layout_update(void *vector)
 	imr_layout->imr_state.header.imr_restore_vector = vector;
 	dcache_writeback_region(imr_layout, sizeof(*imr_layout));
 }
-#endif /* CONFIG_CAVS_IMR_D3_PERSISTENT */
+#endif /* CONFIG_ACE_IMR_D3_PERSISTENT */
 
 int platform_context_save(struct sof *sof)
 {
-#if CONFIG_CAVS_IMR_D3_PERSISTENT
+#if CONFIG_ACE_IMR_D3_PERSISTENT
 	/*
 	 * Both runtime PM and S2Idle suspend works on APL, while S3 ([deep])
 	 * doesn't. Only support IMR restoring on cAVS 1.8 and onward at the
@@ -553,6 +556,6 @@ int platform_context_save(struct sof *sof)
 	 * cycle.
 	 */
 	imr_layout_update((void *)IMR_BOOT_LDR_TEXT_ENTRY_BASE);
-#endif /* CONFIG_CAVS_IMR_D3_PERSISTENT */
+#endif /* CONFIG_ACE_IMR_D3_PERSISTENT */
 	return 0;
 }
