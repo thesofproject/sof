@@ -465,8 +465,10 @@ static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 
 	comp_info(dev, "eq_fir_trigger()");
 
-	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
-		assert(cd->eq_fir_func);
+	if ((cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) && !cd->eq_fir_func) {
+		comp_cl_err(&comp_eq_fir, "eq_fir_func is not set");
+		return -EINVAL;
+	}
 
 	return comp_set_state(dev, cmd);
 }
