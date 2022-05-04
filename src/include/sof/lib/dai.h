@@ -85,6 +85,7 @@ struct dai_ops {
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
 	uint32_t (*get_init_delay_ms)(struct dai *dai);
+	int (*get_fifo_depth)(struct dai *dai, int direction);
 };
 
 struct timestamp_cfg {
@@ -466,6 +467,14 @@ static inline uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	if (dai && dai->drv->ops.get_init_delay_ms)
 		return dai->drv->ops.get_init_delay_ms(dai);
+
+	return 0;
+}
+
+static inline int dai_get_fifo_depth(struct dai *dai, int direction)
+{
+	if (dai && dai->drv->ops.get_fifo_depth)
+		return dai->drv->ops.get_fifo_depth(dai, direction);
 
 	return 0;
 }

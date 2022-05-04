@@ -617,6 +617,11 @@ static int dmic_get_fifo(struct dai *dai, int direction, int stream_id)
 	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset;
 }
 
+static int dmic_get_fifo_depth(struct dai *dai, int direction)
+{
+	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth;
+}
+
 const struct dai_driver dmic_driver = {
 	.type = SOF_DAI_INTEL_DMIC,
 	.uid = SOF_UUID(dmic_uuid),
@@ -629,6 +634,7 @@ const struct dai_driver dmic_driver = {
 		.get_hw_params		= dmic_get_hw_params,
 		.get_handshake		= dmic_get_handshake,
 		.get_fifo		= dmic_get_fifo,
+		.get_fifo_depth		= dmic_get_fifo_depth,
 		.probe			= dmic_probe,
 		.remove			= dmic_remove,
 	},

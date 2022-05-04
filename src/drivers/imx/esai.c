@@ -398,6 +398,18 @@ static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
 	}
 }
 
+static int esai_get_fifo_depth(struct dai *dai, int direction)
+{
+	switch (direction) {
+	case DAI_DIR_PLAYBACK:
+	case DAI_DIR_CAPTURE:
+		return dai->plat_data.fifo[direction].depth;
+	default:
+		dai_err(dai, "esai_get_fifo_depth(): Invalid direction");
+		return -EINVAL;
+	}
+}
+
 static int esai_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params *params,
 			      int dir)
@@ -428,6 +440,7 @@ const struct dai_driver esai_driver = {
 		.remove			= esai_remove,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,
+		.get_fifo_depth		= esai_get_fifo_depth,
 		.get_hw_params		= esai_get_hw_params,
 	},
 };

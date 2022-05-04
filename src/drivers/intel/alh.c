@@ -146,6 +146,11 @@ static int alh_get_fifo(struct dai *dai, int direction, int stream_id)
 	return ALH_BASE + offset + ALH_STREAM_OFFSET * stream_id;
 }
 
+static int alh_get_fifo_depth(struct dai *dai, int direction)
+{
+	return dai->plat_data.fifo[direction].depth;
+}
+
 const struct dai_driver alh_driver = {
 	.type = SOF_DAI_INTEL_ALH,
 	.uid = SOF_UUID(alh_uuid),
@@ -158,6 +163,7 @@ const struct dai_driver alh_driver = {
 		.get_hw_params		= alh_get_hw_params,
 		.get_handshake		= alh_get_handshake,
 		.get_fifo		= alh_get_fifo,
+		.get_fifo_depth		= alh_get_fifo_depth,
 		.probe			= alh_probe,
 		.remove			= alh_remove,
 	},
