@@ -331,9 +331,9 @@ do
 			;;
 		rn)
 			PLATFORM="renoir"
-			XTENSA_CORE="ACP_3_1_001_PROD"
+			XTENSA_CORE="ACP_3_1_001_PROD_2019_1"
 			HOST="xtensa-rn-elf"
-			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
 			;;
 		mt8186)
 			PLATFORM="mt8186"
