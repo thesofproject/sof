@@ -39,6 +39,7 @@ DECLARE_SOF_UUID("acp-sp", acp_sp_uuid, 0x3ac07334, 0x41ce, 0x4447,
 DECLARE_TR_CTX(acp_sp_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
 #define SP_FIFO_SIZE	512
+#define SP_IER_DISABLE  0x0
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
@@ -169,6 +170,11 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 		tr_err(&acp_sp_tr, " ACP: Stop direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en)
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), SP_IER_DISABLE);
+
 	return 0;
 }
 
@@ -206,6 +212,7 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 
 		/* SP Transmit FIFO Address and FIFO Size*/
 		sp_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_fifo_buffer);
+		memset((void *)sp_fifo_addr, 0, SP_FIFO_SIZE);
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_FIFOADDR), sp_fifo_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_FIFOSIZE), (uint32_t)(SP_FIFO_SIZE));
 
@@ -225,6 +232,7 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 
 		/* SP Receive FIFO Address and FIFO Size*/
 		sp_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_receive_fifo_buffer);
+		memset((void *)sp_fifo_addr, 0, SP_FIFO_SIZE);
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_FIFOADDR), sp_fifo_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_FIFOSIZE),
 			     (uint32_t)(SP_FIFO_SIZE));
