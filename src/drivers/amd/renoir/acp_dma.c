@@ -350,8 +350,6 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 		}
 		ret = acp_dma_stop(channel);
 	}
-	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
-			NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	/* Reconfigure dma descriptors for stream channels only */
 	if (channel->index != DMA_TRACE_CHANNEL) {
 		/* Reconfigure the dma descriptors for next buffer of data after the call back */
@@ -361,6 +359,8 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 		/* Stop the dma for requested channel */
 		acp_dma_stop(channel);
 	}
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return ret;
 }
 
