@@ -463,6 +463,51 @@ copy_period:
 	comp_update_buffer_consume(src_buffer, copy_bytes);
 }
 
+static void module_adapter_process_output(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_buffer *sink;
+	struct list_item *blist;
+	int i;
+
+	/*
+	 * copy all produced output samples to output buffers. This loop will do nothing when
+	 * there are no samples produced.
+	 */
+	i = 0;
+	list_for_item(blist, &mod->sink_buffer_list) {
+		if (mod->output_buffers[i].size > 0) {
+			struct comp_buffer *buffer;
+
+			buffer = container_of(blist, struct comp_buffer, sink_list);
+			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
+						    mod->output_buffers[i].size);
+			audio_stream_produce(&buffer->stream, mod->output_buffers[i].size);
+		}
+		i++;
+	}
+
+	/* copy from all output local buffers to sink buffers */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct list_item *_blist;
+		int j = 0;
+
+		sink = container_of(blist, struct comp_buffer, source_list);
+		list_for_item(_blist, &mod->sink_buffer_list) {
+			if (i == j) {
+				struct comp_buffer *src_buffer;
+
+				src_buffer = container_of(_blist, struct comp_buffer, sink_list);
+				module_copy_samples(dev, src_buffer, sink,
+						    mod->output_buffers[i].size);
+				break;
+			}
+			j++;
+		}
+	}
+}
+
 int module_adapter_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *source;
@@ -511,24 +556,7 @@ int module_adapter_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		/*
-		 * the loop to copy output samples will do nothing when ret is -ENODATA or
-		 * -ENOSPC because there will be no samples produced
-		 */
 		ret = 0;
-	}
-
-	/* copy all produced output samples to output buffers */
-	i = 0;
-	list_for_item(blist, &mod->sink_buffer_list) {
-		struct comp_buffer *buffer = container_of(blist, struct comp_buffer, sink_list);
-
-		if (mod->output_buffers[i].size > 0) {
-			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
-						    mod->output_buffers[i].size);
-			audio_stream_produce(&buffer->stream, mod->output_buffers[i].size);
-		}
-		i++;
 	}
 
 	/* consume from all input buffers */
@@ -539,25 +567,7 @@ int module_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
-	/* copy from all output local buffers to sink buffers */
-	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *src_buffer;
-		struct list_item *_blist;
-		int j = 0;
-
-		sink = container_of(blist, struct comp_buffer, source_list);
-		list_for_item(_blist, &mod->sink_buffer_list) {
-			src_buffer = container_of(_blist, struct comp_buffer, sink_list);
-
-			if (i == j) {
-				module_copy_samples(dev, src_buffer, sink,
-						    mod->output_buffers[i].size);
-				break;
-			}
-			j++;
-		}
-	}
+	module_adapter_process_output(dev);
 out:
 	for (i = 0; i < mod->num_output_buffers; i++)
 		mod->output_buffers[i].size = 0;
