@@ -505,12 +505,17 @@ int module_adapter_copy(struct comp_dev *dev)
 	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
-		if (ret == -ENOSPC || ret == -ENODATA) {
-			ret = 0;
-			goto consume;
+		if (ret != -ENOSPC && ret != -ENODATA) {
+			comp_err(dev, "module_adapter_copy() error %x: module processing failed",
+				 ret);
+			goto out;
 		}
-		comp_err(dev, "module_adapter_copy() error %x: module processing failed", ret);
-		goto out;
+
+		/*
+		 * the loop to copy output samples will do nothing when ret is -ENODATA or
+		 * -ENOSPC because there will be no samples produced
+		 */
+		ret = 0;
 	}
 
 	/* copy all produced output samples to output buffers */
@@ -526,7 +531,6 @@ int module_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
-consume:
 	/* consume from all input buffers */
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
