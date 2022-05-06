@@ -125,11 +125,19 @@ dnl     time_domain, sched_comp)
 
 # Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline with priority 0 on core 0
+ifelse(GOOGLE_AUDIO_POST_PROCESSING, `1',
+`
+PIPELINE_PCM_ADD(sof/pipe-gapp-smart-amplifier-playback.m4,
+	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
+	SMART_AMP_PERIOD, 0, SMART_AMP_CORE,
+	48000, 48000, 48000)
+',
+`
 PIPELINE_PCM_ADD(sof/pipe-smart-amplifier-playback.m4,
 	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
 	SMART_AMP_PERIOD, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
-
+')
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline with priority 0 on core 0
 ifelse(SDW, `1',
