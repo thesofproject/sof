@@ -24,7 +24,7 @@
 #define __IPC4_NOTIFICATION_H__
 
 #include <stdint.h>
-#include <ipc4/header.h>
+#include <ipc/header.h>
 
 /* ipc4 notification msg */
 enum sof_ipc4_notification_type {

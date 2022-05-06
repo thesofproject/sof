@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#define ipc_from_hdr(x) ((struct ipc4_message_request *)x)
+
 /**< Message target, value of msg_tgt field. */
 enum ipc4_message_target {
 	/**< Global FW message */
@@ -87,6 +89,16 @@ enum ipc4_message_type {
 
 	/**< Maximum message number */
 	SOF_IPC4_GLB_MAX_IXC_MESSAGE_TYPE = 31
+};
+
+/**
+ * \brief Generic message header. IPC MAJOR 4 version.
+ * All IPC4 messages use this header as abstraction
+ * to platform specific calls.
+ */
+struct ipc_cmd_hdr {
+	uint32_t pri;
+	uint32_t ext;
 };
 
 /**
