@@ -18,34 +18,10 @@
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <ipc/header.h>
 
 struct dma_sg_elem_array;
 struct ipc_msg;
-
-/*
- * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
- * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
- */
-#if CONFIG_IPC_MAJOR_3
-#include <ipc/header.h>
-#define ipc_from_hdr(x) ((struct sof_ipc_cmd_hdr *)x)
-
-struct ipc_cmd_hdr {
-	uint32_t dat[2];
-};
-#elif CONFIG_IPC_MAJOR_4
-#include <ipc4/header.h>
-#define ipc_from_hdr(x) ((struct ipc4_message_request *)x)
-
-struct ipc_cmd_hdr {
-	uint32_t pri;
-	uint32_t ext;
-};
-#else
-#error "No or invalid IPC MAJOR version selected."
-#endif
-
-#define ipc_to_hdr(x) ((struct ipc_cmd_hdr *)x)
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\

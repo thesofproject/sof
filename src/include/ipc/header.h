@@ -18,6 +18,24 @@
 
 #include <stdint.h>
 
+/**
+ * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
+ * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
+ */
+#if CONFIG_IPC_MAJOR_3
+#include <ipc3/header.h>
+#elif CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#endif
+
+/**
+ * Generic IPC Header structure - Header for all IPC structures which provides
+ * abstraction of IPC header implementation for different IPC ABI MAJOR types.
+ */
+struct ipc_cmd_hdr;
+
+#define ipc_to_hdr(x) ((struct ipc_cmd_hdr *)x)
+
 /** \addtogroup sof_uapi uAPI
  * SOF uAPI specification
  *

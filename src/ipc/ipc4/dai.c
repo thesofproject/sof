@@ -17,7 +17,7 @@
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <ipc4/gateway.h>
-#include <ipc4/header.h>
+#include <ipc/header.h>
 #include <ipc4/alh.h>
 #include <ipc4/ssp.h>
 #include <ipc4/copier.h>

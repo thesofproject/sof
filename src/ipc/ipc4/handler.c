@@ -25,7 +25,7 @@
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <ipc4/error_status.h>
-#include <ipc4/header.h>
+#include <ipc/header.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/notification.h>

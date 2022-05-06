@@ -25,7 +25,7 @@
 #include <rimage/sof/user/manifest.h>
 #include <ipc4/base-config.h>
 #include <ipc4/copier.h>
-#include <ipc4/header.h>
+#include <ipc/header.h>
 #include <ipc4/notification.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
