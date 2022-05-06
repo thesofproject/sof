@@ -231,6 +231,20 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
 
+config COMP_GOOGLE_AUDIO_POST_PROCESSING
+	bool "Google playback audio post processing"
+	default n
+	help
+	  Select for Google playback audio post processing. It uses the Google
+	  audio post-processing library to apply EQ and other processing.
+
+config GOOGLE_AUDIO_POST_PROCESSING_MOCK
+        bool "Google playback audio post processing mock"
+	default n
+	depends on COMP_GOOGLE_AUDIO_POST_PROCESSING
+	help
+	  Mock Google playback audio post processing.
+	  It allows for compilation check and basic audio flow check.
 
 config COMP_SEL
 	bool "Channel selector component"
