@@ -361,14 +361,13 @@ ca_copy_from_source_to_module(const struct audio_stream *source, void *buff, uin
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy head_size to module buffer */
-	memcpy_s(buff, buff_size, source->r_ptr, head_size);
+	memcpy(buff, source->r_ptr, MIN(buff_size, head_size));
 
 	/* copy residual samples after wrap */
 	if (tail_size)
-		memcpy_s((char *)buff + head_size, buff_size,
-			 audio_stream_wrap(source,
-					   (char *)source->r_ptr + head_size),
-					   tail_size);
+		memcpy((char *)buff + head_size,
+		       audio_stream_wrap(source, (char *)source->r_ptr + head_size),
+					 MIN(buff_size, tail_size));
 }
 
 /**
@@ -389,12 +388,12 @@ ca_copy_from_module_to_sink(const struct audio_stream *sink, void *buff, size_t 
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy "head_size" samples to sink buffer */
-	memcpy_s(sink->w_ptr, sink->size, buff, head_size);
+	memcpy(sink->w_ptr, buff, MIN(sink->size, head_size));
 
 	/* copy rest of the samples after buffer wrap */
 	if (tail_size)
-		memcpy_s(audio_stream_wrap(sink, (char *)sink->w_ptr + head_size),
-			 sink->size, (char *)buff + head_size, tail_size);
+		memcpy(audio_stream_wrap(sink, (char *)sink->w_ptr + head_size),
+		       (char *)buff + head_size, MIN(sink->size, tail_size));
 }
 
 /**
