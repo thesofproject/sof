@@ -44,7 +44,6 @@ src/arch/xtensa/module
 src/arch/xtensa/rom
 src/arch/xtensa/rom-*
 boot_module
-module
 
 tap-driver.sh
 test-driver
