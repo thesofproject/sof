@@ -46,6 +46,7 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_INLINE		BIT(0)
 #define IPC_TASK_IN_THREAD	BIT(1)
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
+#define IPC_TASK_POWERDOWN      BIT(3)
 
 struct ipc {
 	struct k_spinlock lock;	/* locking mechanism */
