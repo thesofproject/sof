@@ -501,6 +501,7 @@ static void module_adapter_process_output(struct comp_dev *dev)
 				src_buffer = container_of(_blist, struct comp_buffer, sink_list);
 				module_copy_samples(dev, src_buffer, sink,
 						    mod->output_buffers[i].size);
+				mod->output_buffers[i].size = 0;
 				break;
 			}
 			j++;
@@ -564,10 +565,15 @@ int module_adapter_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+		bzero(mod->input_buffers[i].data, size);
+		mod->input_buffers[i].size = 0;
+		mod->input_buffers[i].consumed = 0;
 		i++;
 	}
 
 	module_adapter_process_output(dev);
+
+	return 0;
 out:
 	for (i = 0; i < mod->num_output_buffers; i++)
 		mod->output_buffers[i].size = 0;
