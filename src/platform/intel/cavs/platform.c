@@ -629,6 +629,10 @@ static void imr_layout_update(void *vector)
 
 int platform_context_save(struct sof *sof)
 {
+#if CONFIG_IPC_MAJOR_4
+	ipc_get()->task_mask |= IPC_TASK_POWERDOWN;
+#endif
+
 #if CONFIG_CAVS_IMR_D3_PERSISTENT
 	/*
 	 * Both runtime PM and S2Idle suspend works on APL, while S3 ([deep])

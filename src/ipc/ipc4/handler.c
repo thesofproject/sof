@@ -1003,15 +1003,15 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 	/* FW sends an ipc message to host if request bit is clear */
 	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
-		char *data = ipc_get()->comp_data;
+		struct ipc *ipc = ipc_get();
+		char *data = ipc->comp_data;
 		struct ipc4_message_reply reply;
 
 		/* Do not send reply for SET_DX if we are going to enter D3
 		 * The reply is going to be sent as part of the power down
 		 * sequence
 		 */
-		if (in->primary.r.type == SOF_IPC4_MOD_SET_DX &&
-		    ipc_get()->pm_prepare_D3)
+		if (ipc->task_mask & IPC_TASK_POWERDOWN)
 			return;
 
 		if (ipc_wait_for_compound_msg() != 0) {
