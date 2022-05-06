@@ -466,9 +466,27 @@ copy_period:
 static void module_adapter_process_output(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 	struct comp_buffer *sink;
 	struct list_item *blist;
 	int i;
+
+	/*
+	 * When a module produces only period_bytes every period, skip copying the produced
+	 * samples to the intermediate buffer and copy to the sink buffer directly
+	 */
+	if (md->mpd.out_buff_size == mod->period_bytes) {
+		i = 0;
+		list_for_item(blist, &dev->bsink_list) {
+			sink = container_of(blist, struct comp_buffer, source_list);
+			ca_copy_from_module_to_sink(&sink->stream, mod->output_buffers[i].data,
+						    mod->output_buffers[i].size);
+			audio_stream_produce(&sink->stream, mod->output_buffers[i].size);
+			mod->output_buffers[i].size = 0;
+			i++;
+		}
+		return;
+	}
 
 	/*
 	 * copy all produced output samples to output buffers. This loop will do nothing when
