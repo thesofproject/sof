@@ -798,9 +798,12 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 
 	comp_info(dev, "src_trigger()");
 
-	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
-		assert(cd->polyphase_func);
-
+	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
+		if (!cd->polyphase_func) {
+			comp_err(dev, "polyphase_func is not set");
+			return -EINVAL;
+		}
+	}
 	return comp_set_state(dev, cmd);
 }
 
