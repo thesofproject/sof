@@ -321,11 +321,18 @@ def west_init_update():
 
 def build_platforms():
 	global west_top, SOF_TOP
-	# double check that west workspace is initialized
-	execute_command(["west", "topdir"], stderr=subprocess.DEVNULL,
-		stdout=subprocess.DEVNULL, cwd=west_top)
 	print(f"SOF_TOP={SOF_TOP}")
 	print(f"west_top={west_top}")
+
+	# Verify that zephyrproject is initialized and that it has a
+	# correct pointer back to us SOF.  create_zephyr_sof_symlink()
+	# takes care of that but it's optional; maybe cloning was done
+	# outside this script.  The link can also fail when hopping in
+	# and out of a container.  Without this check, a not found SOF
+	# would fail later with surprisingly cryptic Kconfig errors.
+	execute_command(["west", "status", "hal_xtensa", "sof"], cwd=west_top,
+			stdout=subprocess.DEVNULL)
+
 	global STAGING_DIR
 	STAGING_DIR = pathlib.Path(west_top, "build-sof-staging")
 	# smex does not use 'install -D'
