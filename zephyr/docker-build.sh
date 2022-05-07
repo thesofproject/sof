@@ -69,7 +69,7 @@ unset ZEPHYR_SDK_INSTALL_DIR
 
 # Zephyr's CMake does not look in /opt but it searches $HOME
 ls -ld /opt/toolchains/zephyr-sdk-*
-ln -s  /opt/toolchains/zephyr-sdk-*  ~/
+ln -s  /opt/toolchains/zephyr-sdk-*  ~/ || true
 
 if test -e zephyrproject; then
     ./scripts/xtensa-build-zephyr.py  "$@"
