@@ -57,7 +57,7 @@ struct mux_stream_data {
 
 	uint8_t reserved1[8 - PLATFORM_MAX_CHANNELS]; // padding for extra channels
 	uint8_t reserved2[3]; // padding to ensure proper alignment of following instances
-};
+} __attribute__((packed, aligned(4)));
 
 typedef void(*demux_func)(struct comp_dev *dev, struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames,
@@ -113,7 +113,7 @@ struct sof_mux_config {
 	uint16_t reserved; // padding to ensure proper alignment
 
 	struct mux_stream_data streams[];
-};
+} __attribute__((packed, aligned(4)));
 
 struct comp_data {
 	union {
