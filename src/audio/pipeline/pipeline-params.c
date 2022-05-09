@@ -290,6 +290,10 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		/* ipc4 module is only prepared in its parent pipeline */
+		if (IPC4_MOD_ID(current->ipc_config.id))
+			return 0;
+
 		/* If pipeline connected to the starting one is in improper
 		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
 		 * stop propagation. Direction param of the pipeline can not be
@@ -308,10 +312,6 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 			    end_type == COMP_ENDPOINT_NODE)
 				return 0;
 		}
-
-		/* ipc4 module is only prepared in its parent pipeline */
-		if (IPC4_MOD_ID(current->ipc_config.id))
-			return 0;
 	}
 
 	err = pipeline_comp_task_init(current->pipeline);
