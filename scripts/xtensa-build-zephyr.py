@@ -128,6 +128,8 @@ def parse_args():
 						help="Build all currently supported platforms")
 	parser.add_argument("platforms", nargs="*", action=validate_platforms_arguments,
 						help="List of platforms to build")
+	parser.add_argument("-d", "--debug", required=False, action="store_true",
+						help="Enable debug build")
 	parser.add_argument("-i", "--ipc", required=False, choices=["IPC3", "IPC4"],
 						default="IPC3", help="IPC major version")
 	parser.add_argument("-j", "--jobs", required=False, type=int,
@@ -398,6 +400,11 @@ def build_platforms():
 		# dictionary
 		overlay_filename = platform_dict.get("CONFIG_OVERLAY", "overlay.conf")
 		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
+
+		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
+		# if both are provided, because it's no harm to merge the same overlay twice.
+		if args.debug:
+			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", "common", "debug_overlay.conf")))
 
 		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
 		# are provided, because it's no harm to merge the same overlay twice.
