@@ -6,6 +6,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
@@ -344,23 +345,30 @@ static struct comp_dev *crossover_new(const struct comp_driver *drv,
 	cd->crossover_process = NULL;
 	cd->crossover_split = NULL;
 	cd->config = NULL;
-	cd->config_new = NULL;
 
-	if (bs) {
-		cd->config = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-				     SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config) {
-			rfree(dev);
-			rfree(cd);
-			return NULL;
-		}
-
-		ret = memcpy_s(cd->config, bs, ipc_crossover->data, bs);
-		assert(!ret);
+	/* Handler for configuration data */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_cl_err(&comp_crossover, "crossover_new(): comp_data_blob_handler_new() failed.");
+		goto cd_fail;
 	}
+
+	/* Get configuration data and reset Crossover state */
+	ret = comp_init_data_blob(cd->model_handler, bs, ipc_crossover->data);
+	if (ret < 0) {
+		comp_cl_err(&comp_crossover, "crossover_new(): comp_init_data_blob() failed.");
+		goto cd_fail;
+	}
+	crossover_reset_state(cd);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+	rfree(dev);
+	return NULL;
 }
 
 /**
@@ -372,8 +380,7 @@ static void crossover_free(struct comp_dev *dev)
 
 	comp_info(dev, "crossover_free()");
 
-	crossover_free_config(&cd->config);
-	crossover_free_config(&cd->config_new);
+	comp_data_blob_handler_free(cd->model_handler);
 
 	crossover_reset_state(cd);
 
@@ -482,54 +489,12 @@ static int crossover_cmd_set_data(struct comp_dev *dev,
 				  struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_crossover_config *request;
-	uint32_t bs;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "crossover_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Find size from header */
-		request = (struct sof_crossover_config *)ASSUME_ALIGNED(&cdata->data->data, 4);
-		bs = request->size;
-
-		/* Check that there is no work-in-progress previous request */
-		if (cd->config_new) {
-			comp_err(dev, "crossover_cmd_set_data(), busy with previous");
-			return -EBUSY;
-		}
-
-		/* Allocate and make a copy of the blob */
-		cd->config_new = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-					 SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config_new) {
-			comp_err(dev, "crossover_cmd_set_data(), alloc fail");
-			return -EINVAL;
-		}
-
-		/* Copy the configuration. If the component state is ready
-		 * the Crossover will initialize in prepare().
-		 */
-		ret = memcpy_s(cd->config_new, bs, request, bs);
-		assert(!ret);
-
-		/* If component state is READY we can omit old configuration
-		 * immediately. When in playback/capture the new configuration
-		 * presence is checked in copy().
-		 */
-		if (dev->state == COMP_STATE_READY)
-			crossover_free_config(&cd->config);
-
-		/* If there is no existing configuration the received can
-		 * be set to current immediately. It will be applied in
-		 * prepare() when streaming starts.
-		 */
-		if (!cd->config) {
-			cd->config = cd->config_new;
-			cd->config_new = NULL;
-		}
-
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "crossover_cmd_set_data(), invalid command");
@@ -544,32 +509,12 @@ static int crossover_cmd_get_data(struct comp_dev *dev,
 				  struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t bs;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "crossover_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Copy back to user space */
-		if (cd->config) {
-			bs = cd->config->size;
-			comp_info(dev, "crossover_cmd_get_data(), size %u",
-				  bs);
-			if (bs > SOF_CROSSOVER_MAX_SIZE || bs == 0 ||
-			    bs > max_size)
-				return -EINVAL;
-			ret = memcpy_s(cdata->data->data,
-				       cdata->data->size,
-				       cd->config, bs);
-			assert(!ret);
-
-			cdata->data->abi = SOF_ABI_VERSION;
-			cdata->data->size = bs;
-		} else {
-			comp_err(dev, "crossover_cmd_get_data(), no config");
-			ret = -EINVAL;
-		}
+		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
 		break;
 	default:
 		comp_err(dev, "crossover_cmd_get_data(), invalid command");
@@ -641,14 +586,12 @@ static int crossover_copy(struct comp_dev *dev)
 				 sink_list);
 
 	/* Check for changed configuration */
-	if (cd->config_new) {
-		crossover_free_config(&cd->config);
-		cd->config = cd->config_new;
-		cd->config_new = NULL;
+	if (comp_is_new_data_blob_available(cd->model_handler)) {
+		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 		ret = crossover_setup(cd, source->stream.channels);
 		if (ret < 0) {
-			comp_err(dev, "crossover_copy(), setup failed");
-			return -EINVAL;
+			comp_err(dev, "crossover_copy(), failed Crossover setup");
+			return ret;
 		}
 	}
 
@@ -769,6 +712,8 @@ static int crossover_prepare(struct comp_dev *dev)
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
 		  cd->source_format, cd->source_format,
 		  source->stream.channels);
+
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	/* Initialize Crossover */
 	if (cd->config && crossover_validate_config(dev, cd->config) < 0) {
