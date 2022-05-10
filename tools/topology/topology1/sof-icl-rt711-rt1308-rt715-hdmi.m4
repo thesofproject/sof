@@ -31,6 +31,9 @@ ifdef(`AMP_2_LINK',`',
 ifdef(`MIC_LINK',`',
 `define(MIC_LINK, `3')')
 
+# uncomment to remove HDMI support
+#define(NOHDMI, `1')
+
 # UAJ ID: 0, 1
 # AMP ID: 2, 3 (if EXT_AMP_REF defined)
 # DMIC ID: 4
@@ -113,9 +116,13 @@ ifdef(`MONO', `',
 ')
 ifdef(`NO_LOCAL_MIC', `',
 `# PCM4 <--- volume <---- ALH 2 BE MIC_LINK')
+
+ifdef(`NOHDMI', `',
+`
 # PCM5 ---> volume ----> iDisp1
 # PCM6 ---> volume ----> iDisp2
 # PCM7 ---> volume ----> iDisp3
+')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -297,6 +304,8 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
 
+ifdef(`NOHDMI', `',
+`
 # playback DAI is iDisp1 using 2 periods
 # # Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -317,6 +326,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	8, HDA, 2, iDisp3,
 	PIPELINE_SOURCE_8, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
@@ -336,9 +346,13 @@ ifdef(`NOAMP', `',
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
 ')
 ifdef(`NO_LOCAL_MIC', `', `PCM_CAPTURE_ADD(Microphone, 4, PIPELINE_PCM_5)')
+
+ifdef(`NOHDMI', `',
+`
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
+')
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -370,6 +384,8 @@ DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, `SDW'eval(MIC_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + 2), 48000, 2)))
 ')
 
+ifdef(`NOHDMI', `',
+`
 # 3 HDMI/DP outputs (ID: from HDMI_BE_ID_BASE)
 DAI_CONFIG(HDA, 0, HDMI_BE_ID_BASE, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
@@ -377,5 +393,6 @@ DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
 DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
+')
 
 DEBUG_END
