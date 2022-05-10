@@ -70,7 +70,9 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct ipc4_copier_module_cfg *copier_cfg;
 	struct dai *dai_p = dd->dai;
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct alh_pdata *alh;
+#endif
 
 	if (!dai) {
 		comp_err(dev, "dai_data_config(): no dai!\n");
@@ -102,7 +104,15 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_INTEL_HDA:
 		break;
 	case SOF_DAI_INTEL_ALH:
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		dd->stream_id = dai_get_stream_id(dai_p, dai->direction);
+#else
 		alh = dai_get_drvdata(dai_p);
+		/* As with HDA, the DMA channel is assigned in runtime,
+		 * not during topology parsing.
+		 */
+		dd->stream_id = alh->params.stream_id;
+#endif
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
@@ -111,10 +121,6 @@ int ipc_dai_data_config(struct comp_dev *dev)
 
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 
-		/* As with HDA, the DMA channel is assigned in runtime,
-		 * not during topology parsing.
-		 */
-		dd->stream_id = alh->params.stream_id;
 
 		comp_dbg(dev, "dai_data_config() SOF_DAI_INTEL_ALH dd->dma_buffer->stream.frame_fmt %#x stream_id %d",
 			 dd->dma_buffer->stream.frame_fmt, dd->stream_id);

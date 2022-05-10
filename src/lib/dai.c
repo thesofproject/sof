@@ -12,11 +12,16 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
+#include <ipc/dai.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+#include <device.h>
+#include <drivers/dai.h>
+#endif
 LOG_MODULE_REGISTER(dai, CONFIG_SOF_LOG_LEVEL);
 
 /* 06711c94-d37d-4a76-b302-bbf6944fdd2b */
@@ -123,6 +128,91 @@ void dai_group_put(struct dai_group *group)
 		group->group_id = 0;
 }
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+
+struct dai_info_table dit[] = {
+	{"SSP_", {
+			.type = SOF_DAI_INTEL_SSP,
+			.dma_dev = DMA_DEV_SSP,
+			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+		},
+	},
+	{"DMIC", {
+			.type = SOF_DAI_INTEL_DMIC,
+			.dma_dev = DMA_DEV_DMIC,
+			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+		},
+	},
+	{"ALH_", {
+			.type = SOF_DAI_INTEL_ALH,
+			.dma_dev = DMA_DEV_ALH,
+			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+		},
+	},
+};
+
+/* called from ipc/ipc3/handler.c and some platform.c files */
+struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
+{
+	const struct device *drv;
+	bool found =  false;
+	char dai_name[32];
+	struct dai *d;
+	uint32_t len;
+	int i;
+
+	tr_info(&dai_tr, "get_dai_zephyr index: %u type: %u", index, type);
+
+	for (i = 0; i < ARRAY_SIZE(dit); i++) {
+		if (dit[i].dai_p.type == type) {
+			strcpy(dai_name, dit[i].name);
+			len = strlen(dai_name);
+			dai_name[len] = 0x30 + index;
+			dai_name[len + 1] = 0;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return NULL;
+
+	drv = device_get_binding(dai_name);
+	if (!drv)
+		return NULL;
+
+	d = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(struct dai));
+	if (!d)
+		return NULL;
+
+	d->type = type;
+	d->dma_dev = dit[i].dai_p.dma_dev;
+	d->dma_caps = dit[i].dai_p.dma_caps;
+	d->index = index;
+	d->drv = drv;
+
+	if (dai_probe(d->drv)) {
+		rfree(d);
+		return NULL;
+	}
+
+	return d;
+}
+
+/* called from src/ipc/ipc3/handler.c */
+void dai_put(struct dai *dai)
+{
+	int ret;
+
+	ret = dai_remove(dai->drv);
+	if (ret < 0) {
+		tr_err(&dai_tr, "dai_put_zephyr: index %d failed ret = %d",
+		       dai->index, ret);
+	}
+
+	rfree(dai);
+}
+#else
 static inline const struct dai_type_info *dai_find_type(uint32_t type)
 {
 	const struct dai_info *info = dai_info_get();
@@ -190,3 +280,4 @@ void dai_put(struct dai *dai)
 		dai->drv->type, dai->index, dai->sref);
 	k_spin_unlock(&dai->lock, key);
 }
+#endif

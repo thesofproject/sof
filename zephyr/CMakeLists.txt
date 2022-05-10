@@ -145,11 +145,18 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	# Driver sources
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+	)
+
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)
 
@@ -177,6 +184,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
 	)
 
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+	)
+	endif()
+
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
@@ -184,7 +196,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		${SOF_PLATFORM_PATH}/apollolake/lib/power_down.S
 		${SOF_PLATFORM_PATH}/apollolake/lib/clk.c
@@ -207,6 +218,14 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	# Driver sources
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+	)
+
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
@@ -215,7 +234,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	#${SOF_DRIVERS_PATH}/intel/cavs/sue-iomux.c
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
-		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)
 
@@ -243,6 +261,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
 	)
 
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+	)
+	endif()
+
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
@@ -252,7 +275,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
 	)
@@ -279,11 +301,18 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 	# Driver sources
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+	)
+
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)
 
@@ -311,6 +340,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
 	)
 
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+	)
+	endif()
+
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
@@ -320,7 +354,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
 	)
@@ -347,11 +380,18 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	# Driver sources
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+	)
+
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)
 
@@ -379,6 +419,10 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
 	)
 
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+	)
+	endif()
 
 	# Platform sources
 	zephyr_library_sources(
@@ -389,7 +433,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
 	)
