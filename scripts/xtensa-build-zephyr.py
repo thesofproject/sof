@@ -136,6 +136,8 @@ def parse_args():
 						" Jobs=number of cores by default. Ignored by west build.")
 	parser.add_argument("-k", "--key", type=pathlib.Path, required=False,
 						help="Path to a non-default rimage signing key.")
+	parser.add_argument("-o", "--overlay", type=pathlib.Path, required=False, action='append',
+						default=[], help="Paths to overlays")
 	parser.add_argument("-z", "--zephyr-ref", required=False,
 						help="Initial Zephyr git ref for the -c option."
 						" Can be a branch, tag, full SHA1 in a fork")
@@ -391,12 +393,14 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
-		overlays = []
+		overlays = [str(item.resolve(True)) for item in args.overlay]
 		# You may override default overlay.conf file name using CONFIG_OVERLAY in your platform
 		# dictionary
 		overlay_filename = platform_dict.get("CONFIG_OVERLAY", "overlay.conf")
 		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
 
+		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
+		# are provided, because it's no harm to merge the same overlay twice.
 		if args.ipc == "IPC4":
 			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, platform_dict["IPC4_CONFIG_OVERLAY"])))
 
