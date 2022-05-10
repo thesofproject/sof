@@ -79,8 +79,8 @@ typedef void (*crossover_split)(int32_t in, int32_t out[],
 struct comp_data {
 	/**< filter state */
 	struct crossover_state state[PLATFORM_MAX_CHANNELS];
+	struct comp_data_blob_handler *model_handler;
 	struct sof_crossover_config *config;      /**< pointer to setup blob */
-	struct sof_crossover_config *config_new;  /**< pointer to new setup */
 	enum sof_ipc_frame source_format;         /**< source frame format */
 	crossover_process crossover_process;      /**< processing function */
 	crossover_split crossover_split;          /**< split function */
