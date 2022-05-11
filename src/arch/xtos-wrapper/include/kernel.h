@@ -12,6 +12,23 @@
 
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#error "This file should only be included in XTOS builds."
+#endif
+
+typedef uint32_t k_ticks_t;
+
+typedef struct {
+	k_ticks_t ticks;
+} k_timeout_t;
+
+#define Z_TIMEOUT_TICKS(t) ((k_timeout_t) { .ticks = (t) })
+
+static inline void k_sleep(k_timeout_t timeout)
+{
+	wait_delay(timeout.ticks);
+}
+
 static inline void k_msleep(int32_t ms)
 {
 	wait_delay_ms(ms);
