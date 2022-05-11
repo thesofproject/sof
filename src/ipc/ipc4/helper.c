@@ -149,7 +149,7 @@ static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
@@ -186,7 +186,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		ret = ipc_comp_free(ipc, icd->id);
 		if (ret)
-			return ret;
+			return IPC4_INVALID_RESOURCE_STATE;
 
 		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
 	}
@@ -202,14 +202,17 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
 	if (!ipc_pipe)
-		return -ENODEV;
+		return IPC4_INVALID_RESOURCE_ID;
 
 	/* check core */
-	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core, false);
+	if (!cpu_is_me(ipc_pipe->core)) {
+		ret = ipc_process_on_core(ipc_pipe->core, false);
+		if (ret < 0)
+			return IPC4_INVALID_REQUEST;
+	}
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
-	if (ret) {
+	if (ret != IPC4_SUCCESS) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
 		return ret;
 	}
@@ -299,7 +302,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (ret < 0)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	return 0;
+	return IPC4_SUCCESS;
 
 err:
 	buffer_free(buffer);
@@ -367,7 +370,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (ret < 0)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 /* dma index may be for playback or capture. Current
@@ -379,7 +382,7 @@ static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *ch
 {
 	if (dma_id > DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN) {
 		tr_err(&ipc_tr, "dma id %d is out of range", dma_id);
-		return -EINVAL;
+		return IPC4_INVALID_NODE_ID;
 	}
 
 	if (dma_id >= PLATFORM_MAX_DMA_CHAN) {
@@ -390,7 +393,7 @@ static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *ch
 		*chan = dma_id;
 	}
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static struct comp_dev *ipc4_create_host(uint32_t pipeline_id, uint32_t id, uint32_t dir)
@@ -556,19 +559,21 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	uint32_t dir, host_chan, link_chan;
 	int ret;
 
-	if (process_dma_index(cdma->primary.r.host_dma_id, &dir, &host_chan) < 0)
-		return IPC4_INVALID_NODE_ID;
+	ret = process_dma_index(cdma->primary.r.host_dma_id, &dir, &host_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
 
-	if (process_dma_index(cdma->primary.r.link_dma_id, &dir, &link_chan) < 0)
-		return IPC4_INVALID_NODE_ID;
+	ret = process_dma_index(cdma->primary.r.link_dma_id, &dir, &link_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
 
 	/* build a pipeline id based on dma id */
 	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->primary.r.link_dma_id);
 	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->extension.r.fifo_size);
-	if (ret < 0) {
+	if (ret != IPC4_SUCCESS) {
 		tr_err(&comp_tr, "failed to create pipeline for chain dma");
-		return IPC4_INVALID_NODE_ID;
+		return ret;
 	}
 
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
