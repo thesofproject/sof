@@ -174,6 +174,10 @@ enum {
 #else
 /* class (driver) level (no device object) tracing */
 
+/* Use Zephyr logging for error trace if Zephyr is used to avoid the
+ * collision with SOF etrace, because they both use shared memory.
+ */
+#ifndef __ZEPHYR__
 /** \brief Trace error message from component driver (no comp instance) */
 #define comp_cl_err(drv_p, __e, ...)			\
 	trace_dev_err(trace_comp_drv_get_tr_ctx,	\
@@ -181,6 +185,21 @@ enum {
 		      trace_comp_drv_get_subid,		\
 		      drv_p,				\
 		      __e, ##__VA_ARGS__)
+
+/** \brief Trace error message from component device */
+#define comp_err(comp_p, __e, ...)					\
+	trace_dev_err(trace_comp_get_tr_ctx, trace_comp_get_id,		\
+		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#else
+
+/** \brief Trace error message from component driver (no comp instance) */
+#define comp_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+/** \brief Trace error message from component device */
+#define comp_err(comp_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#endif
 
 /** \brief Trace warning message from component driver (no comp instance) */
 #define comp_cl_warn(drv_p, __e, ...)			\
@@ -207,11 +226,6 @@ enum {
 		      __e, ##__VA_ARGS__)
 
 /* device tracing */
-
-/** \brief Trace error message from component device */
-#define comp_err(comp_p, __e, ...)					\
-	trace_dev_err(trace_comp_get_tr_ctx, trace_comp_get_id,		\
-		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from component device */
 #define comp_warn(comp_p, __e, ...)					\

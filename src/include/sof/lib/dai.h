@@ -236,13 +236,31 @@ struct dai_type_info {
 #define dai_dbg(dai_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
 
 #else
-/* class (driver) level (no device object) tracing */
+
+/* Use Zephyr logging for error trace if Zephyr is used to avoid the
+ * collision with SOF etrace, because they both use shared memory.
+ */
+#ifndef __ZEPHYR__
 
 #define dai_cl_err(drv_p, __e, ...)		\
 	trace_dev_err(trace_dai_dvr_get_tr_ctx,	\
 		      trace_dai_drv_get_id,	\
 		      trace_dai_drv_get_subid,	\
 		      drv_p, __e, ##__VA_ARGS__)
+
+#define dai_err(dai_p, __e, ...)					\
+	trace_dev_err(trace_dai_get_tr_ctx,				\
+		      trace_dai_get_id,					\
+		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+#else
+
+#define dai_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define dai_err(dai_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#endif
+
+/* class (driver) level (no device object) tracing */
 
 #define dai_cl_warn(drv_p, __e, ...)		\
 	trace_dev_warn(trace_dai_drv_get_tr_ctx,\
@@ -263,11 +281,6 @@ struct dai_type_info {
 		      drv_p, __e, ##__VA_ARGS__)
 
 /* device tracing */
-
-#define dai_err(dai_p, __e, ...)					\
-	trace_dev_err(trace_dai_get_tr_ctx,				\
-		      trace_dai_get_id,					\
-		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_warn(dai_p, __e, ...)					\
 	trace_dev_warn(trace_dai_get_tr_ctx,				\

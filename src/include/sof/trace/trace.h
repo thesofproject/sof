@@ -471,17 +471,24 @@ struct tr_ctx {
 
 #else
 
+/* Use Zephyr logging for error trace if Zephyr is used to avoid the
+ * collision with SOF etrace, because they both use shared memory.
+ */
+#ifndef __ZEPHYR__
 /* Only define these two macros for XTOS to avoid the collision with
  * zephyr/include/zephyr/logging/log.h
  */
-#ifndef __ZEPHYR__
 #define LOG_MODULE_REGISTER(ctx, level)
 #define LOG_MODULE_DECLARE(ctx, level)
-#endif
 
 #define tr_err(ctx, fmt, ...) \
 	trace_error_with_ids(_TRACE_INV_CLASS, ctx, \
 			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+#else
+
+#define tr_err(ctx, fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+
+#endif
 
 #define tr_warn(ctx, fmt, ...) \
 	trace_warn_with_ids(_TRACE_INV_CLASS, ctx, \

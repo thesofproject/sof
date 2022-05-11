@@ -49,9 +49,19 @@ extern struct tr_ctx pipe_tr;
 
 #else
 
+/* Use Zephyr logging for error trace if Zephyr is used to avoid the
+ * collision with SOF etrace, because they both use shared memory.
+ */
+#ifndef __ZEPHYR__
+
 #define pipe_err(pipe_p, __e, ...)					\
 	trace_dev_err(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
+#else
+
+#define pipe_err(ctx, fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+
+#endif
 
 #define pipe_warn(pipe_p, __e, ...)					\
 	trace_dev_warn(trace_pipe_get_tr_ctx, trace_pipe_get_id,	\

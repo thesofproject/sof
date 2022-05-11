@@ -60,12 +60,22 @@ extern struct tr_ctx buffer_tr;
 #define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
 
 #else
+
+/* Use Zephyr logging for error trace if Zephyr is used to avoid the
+ * collision with SOF etrace, because they both use shared memory.
+ */
+#ifndef __ZEPHYR__
 /** \brief Trace error message from buffer */
 #define buf_err(buf_ptr, __e, ...)						\
 	trace_dev_err(trace_buf_get_tr_ctx, trace_buf_get_id,			\
 		      trace_buf_get_subid,					\
 		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		      __e, ##__VA_ARGS__)
+#else
+
+#define buf_err(ctx, fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+
+#endif
 
 /** \brief Trace warning message from buffer */
 #define buf_warn(buf_ptr, __e, ...)						\
