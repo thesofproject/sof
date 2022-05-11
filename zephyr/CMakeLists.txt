@@ -610,14 +610,14 @@ zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
 	${SOF_AUDIO_PATH}/volume/volume.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_CODEC_ADAPTER
-	${SOF_AUDIO_PATH}/codec_adapter/codec_adapter.c
-	${SOF_AUDIO_PATH}/codec_adapter/codec/generic.c
+zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
 )
 
-if (CONFIG_COMP_CODEC_ADAPTER)
+if (CONFIG_COMP_MODULE_ADAPTER)
 zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC
-	${SOF_AUDIO_PATH}/codec_adapter/codec/cadence.c
+	${SOF_AUDIO_PATH}/module_adapter/module/cadence.c
 )
 
 if (CONFIG_CADENCE_CODEC_MP3_DEC)
