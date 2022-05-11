@@ -2866,16 +2866,17 @@ sub process {
 		}
 
 # Check for added, moved or deleted files
-		if (!$SOF &&
-		    (!$reported_maintainer_file && !$in_commit_log &&
-		     ($line =~ /^(?:new|deleted) file mode\s*\d+\s*$/ ||
-		      $line =~ /^rename (?:from|to) [\w\/\.\-]+\s*$/ ||
-		      ($line =~ /\{\s*([\w\/\.\-]*)\s*\=\>\s*([\w\/\.\-]*)\s*\}/ &&
-		       (defined($1) || defined($2)))))) {
+		if (!$SOF) {
+		if (!$reported_maintainer_file && !$in_commit_log &&
+		    ($line =~ /^(?:new|deleted) file mode\s*\d+\s*$/ ||
+		     $line =~ /^rename (?:from|to) [\w\/\.\-]+\s*$/ ||
+		     ($line =~ /\{\s*([\w\/\.\-]*)\s*\=\>\s*([\w\/\.\-]*)\s*\}/ &&
+		      (defined($1) || defined($2))))) {
 			$is_patch = 1;
 			$reported_maintainer_file = 1;
 			WARN("FILE_PATH_CHANGES",
 			     "added, moved or deleted file(s), does MAINTAINERS need updating?\n" . $herecurr);
+		}
 		}
 
 # Check for wrappage within a valid hunk of the file
@@ -6000,8 +6001,8 @@ sub process {
 		}
 
 # check for c99 types like uint8_t used outside of uapi/ and tools/
-		if (!$SOF &&
-		    $realfile !~ m@\binclude/uapi/@ &&
+		if (!$SOF) {
+		if ($realfile !~ m@\binclude/uapi/@ &&
 		    $realfile !~ m@\btools/@ &&
 		    $line =~ /\b($Declare)\s*$Ident\s*[=;,\[]/) {
 			my $type = $1;
@@ -6017,6 +6018,7 @@ sub process {
 					$fixed[$fixlinenr] =~ s/\b$type\b/$kernel_type/;
 				}
 			}
+		}
 		}
 
 # check for cast of C90 native int or longer types constants
