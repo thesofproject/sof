@@ -73,7 +73,7 @@ void trigger_irq_to_host_req(void)
 
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
-	ipc_cmd_hdr *hdr;
+	struct ipc_cmd_hdr *hdr;
 
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
