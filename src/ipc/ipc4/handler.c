@@ -546,7 +546,7 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	return ret;
 }
 
-static int ipc4_log_enable(union ipc4_message_header *ipc4)
+static int ipc4_log_enable(struct ipc4_message_request *ipc4)
 {
 #if CONFIG_HOST_PTABLE
 	struct dma_sg_elem_array elem_array;

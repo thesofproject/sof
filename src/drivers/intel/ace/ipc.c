@@ -108,7 +108,7 @@ static void ipc_irq_handler(void *arg)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
 
@@ -122,7 +122,7 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 	return 2; /* number of words read */
 }
 
-int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
 
@@ -139,7 +139,7 @@ int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
 
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
-	ipc_cmd_hdr *hdr;
+	struct ipc_cmd_hdr *hdr;
 
 	hdr = ipc_compact_read_msg();
 
@@ -171,7 +171,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	ipc_cmd_hdr *hdr;
+	struct ipc_cmd_hdr *hdr;
 
 	if (ipc->is_notification_pending ||
 	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
@@ -187,8 +187,8 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	hdr = ipc_prepare_to_send(msg);
 
 	/* now interrupt host to tell it we have message sent */
-	ipc_write(IPC_DIPCIDD, hdr[1]);
-	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr[0]);
+	ipc_write(IPC_DIPCIDD, hdr->ext);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr->pri);
 
 	/* Clear request */
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);

@@ -301,18 +301,16 @@ int platform_boot_complete(uint32_t boot_message)
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	ipc_cmd_hdr header;
-	uint32_t data;
+	struct ipc_cmd_hdr header;
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* get any IPC specific boot message and optional data */
-	data = SRAM_WINDOW_HOST_OFFSET(0) >> 12;
-	ipc_boot_complete_msg(&header, &data);
+	ipc_boot_complete_msg(&header, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 
 	/* tell host we are ready */
-	ipc_write(DfIPCxIDDy_REG, data);
-	ipc_write(DfIPCxIDR_REG, IPC_DIPCIDR_BUSY | header);
+	ipc_write(DfIPCxIDDy_REG, header.ext);
+	ipc_write(DfIPCxIDR_REG, IPC_DIPCIDR_BUSY | header.pri);
 
 	return 0;
 }
