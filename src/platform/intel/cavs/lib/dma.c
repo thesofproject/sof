@@ -15,6 +15,9 @@
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#ifdef __ZEPHYR__
+#include <device.h>
+#endif
 
 #if CONFIG_APOLLOLAKE
 #define DMAC0_CLASS 1
@@ -246,6 +249,9 @@ static const struct dma_info lib_dma = {
 /* Initialize all platform DMAC's */
 int dmac_init(struct sof *sof)
 {
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	struct device *z_dev;
+#endif
 	int i;
 	/* no probing before first use */
 
@@ -254,8 +260,30 @@ int dmac_init(struct sof *sof)
 	sof->dma_info = &lib_dma;
 
 	/* early lock initialization for ref counting */
-	for (i = 0; i < sof->dma_info->num_dmas; i++)
+	for (i = 0; i < sof->dma_info->num_dmas; i++) {
 		k_spinlock_init(&sof->dma_info->dma_array[i].lock);
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		switch (sof->dma_info->dma_array[i].plat_data.id) {
+		case DMA_HOST_IN_DMAC:
+			z_dev = device_get_binding("HDA_HOST_IN");
+			break;
+		case DMA_HOST_OUT_DMAC:
+			z_dev = device_get_binding("HDA_HOST_OUT");
+			break;
+		case DMA_GP_LP_DMAC0:
+			z_dev = device_get_binding("DMA_0");
+			break;
+		case DMA_GP_LP_DMAC1:
+			z_dev = device_get_binding("DMA_1");
+			break;
+		default:
+			continue;
+		}
+		if (!z_dev)
+			return -EINVAL;
 
+		sof->dma_info->dma_array[i].z_dev = z_dev;
+#endif
+	}
 	return 0;
 }
