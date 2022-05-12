@@ -157,6 +157,9 @@ struct dai_data {
 	struct dma_chan_data *chan;
 	uint32_t stream_id;
 	struct dma_sg_config config;
+#ifdef __ZEPHYR__
+	struct dma_config *z_config;
+#endif
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
 	struct timestamp_cfg ts_config;

@@ -28,6 +28,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <device.h>
+#include <drivers/dma.h>
+#endif
+
 struct comp_buffer;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
@@ -205,6 +210,9 @@ struct dma {
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
 	struct dma_chan_data *chan; /* channels array */
+#ifdef __ZEPHYR__
+	const struct device *z_dev; /* Zephyr driver */
+#endif
 	void *priv_data;
 };
 
@@ -292,8 +300,8 @@ void dma_put(struct dma *dma);
  * 7) dma_channel_put()
  */
 
-static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
-						    int req_channel)
+static inline struct dma_chan_data *dma_channel_get_legacy(struct dma *dma,
+							   int req_channel)
 {
 	if (!dma || !dma->ops || !dma->ops->channel_get)
 		return NULL;
@@ -303,18 +311,18 @@ static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
 	return chan;
 }
 
-static inline void dma_channel_put(struct dma_chan_data *channel)
+static inline void dma_channel_put_legacy(struct dma_chan_data *channel)
 {
 	channel->dma->ops->channel_put(channel);
 
 }
 
-static inline int dma_start(struct dma_chan_data *channel)
+static inline int dma_start_legacy(struct dma_chan_data *channel)
 {
 	return channel->dma->ops->start(channel);
 }
 
-static inline int dma_stop(struct dma_chan_data *channel)
+static inline int dma_stop_legacy(struct dma_chan_data *channel)
 {
 	if (channel->dma->ops->stop)
 		return channel->dma->ops->stop(channel);
@@ -322,7 +330,7 @@ static inline int dma_stop(struct dma_chan_data *channel)
 	return 0;
 }
 
-static inline int dma_stop_delayed(struct dma_chan_data *channel)
+static inline int dma_stop_delayed_legacy(struct dma_chan_data *channel)
 {
 	if (channel->dma->ops->stop_delayed)
 		return channel->dma->ops->stop_delayed(channel);
@@ -336,14 +344,14 @@ static inline int dma_stop_delayed(struct dma_chan_data *channel)
  * struct dma_copy {}
  * @{
  */
-static inline int dma_copy(struct dma_chan_data *channel, int bytes,
-			   uint32_t flags)
+static inline int dma_copy_legacy(struct dma_chan_data *channel, int bytes,
+				  uint32_t flags)
 {
 	return channel->dma->ops->copy(channel, bytes, flags);
 }
 /** @} */
 
-static inline int dma_pause(struct dma_chan_data *channel)
+static inline int dma_pause_legacy(struct dma_chan_data *channel)
 {
 	if (channel->dma->ops->pause)
 		return channel->dma->ops->pause(channel);
@@ -351,7 +359,7 @@ static inline int dma_pause(struct dma_chan_data *channel)
 	return 0;
 }
 
-static inline int dma_release(struct dma_chan_data *channel)
+static inline int dma_release_legacy(struct dma_chan_data *channel)
 {
 	if (channel->dma->ops->release)
 		return channel->dma->ops->release(channel);
@@ -359,30 +367,30 @@ static inline int dma_release(struct dma_chan_data *channel)
 	return 0;
 }
 
-static inline int dma_status(struct dma_chan_data *channel,
-			     struct dma_chan_status *status, uint8_t direction)
+static inline int dma_status_legacy(struct dma_chan_data *channel,
+				    struct dma_chan_status *status, uint8_t direction)
 {
 	return channel->dma->ops->status(channel, status, direction);
 }
 
-static inline int dma_set_config(struct dma_chan_data *channel,
-				 struct dma_sg_config *config)
+static inline int dma_set_config_legacy(struct dma_chan_data *channel,
+					struct dma_sg_config *config)
 {
 	return channel->dma->ops->set_config(channel, config);
 }
 
-static inline int dma_probe(struct dma *dma)
+static inline int dma_probe_legacy(struct dma *dma)
 {
 	return dma->ops->probe(dma);
 }
 
-static inline int dma_remove(struct dma *dma)
+static inline int dma_remove_legacy(struct dma *dma)
 {
 	return dma->ops->remove(dma);
 }
 
-static inline int dma_get_data_size(struct dma_chan_data *channel,
-				    uint32_t *avail, uint32_t *free)
+static inline int dma_get_data_size_legacy(struct dma_chan_data *channel,
+					   uint32_t *avail, uint32_t *free)
 {
 	return channel->dma->ops->get_data_size(channel, avail, free);
 }
@@ -393,8 +401,8 @@ static inline int dma_get_attribute(struct dma *dma, uint32_t type,
 	return dma->ops->get_attribute(dma, type, value);
 }
 
-static inline int dma_interrupt(struct dma_chan_data *channel,
-				enum dma_irq_cmd cmd)
+static inline int dma_interrupt_legacy(struct dma_chan_data *channel,
+				       enum dma_irq_cmd cmd)
 {
 	return channel->dma->ops->interrupt(channel, cmd);
 }
@@ -529,7 +537,7 @@ int dma_copy_new(struct dma_copy *dc);
 /* free dma copy context resources */
 static inline void dma_copy_free(struct dma_copy *dc)
 {
-	dma_channel_put(dc->chan);
+	dma_channel_put_legacy(dc->chan);
 }
 
 /* DMA copy data from host to DSP */

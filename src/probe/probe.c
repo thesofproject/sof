@@ -154,7 +154,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	if (err < 0)
 		return err;
 
-	err = dma_set_config(dma->dc.chan, &config);
+	err = dma_set_config_legacy(dma->dc.chan, &config);
 	if (err < 0)
 		return err;
 
@@ -172,13 +172,13 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
 
-	err = dma_stop(dma->dc.chan);
+	err = dma_stop_legacy(dma->dc.chan);
 	if (err < 0) {
 		tr_err(&pr_tr, "probe_dma_deinit(): dma_stop() failed");
 		return err;
 	}
 
-	dma_channel_put(dma->dc.chan);
+	dma_channel_put_legacy(dma->dc.chan);
 	dma_put(dma->dc.dmac);
 
 	rfree((void *)dma->dmapb.addr);
@@ -258,7 +258,7 @@ int probe_init(struct probe_dma *probe_dma)
 			return err;
 		}
 
-		err = dma_start(_probe->ext_dma.dc.chan);
+		err = dma_start_legacy(_probe->ext_dma.dc.chan);
 		if (err < 0) {
 			tr_err(&pr_tr, "probe_init(): failed to start extraction dma");
 
@@ -825,9 +825,9 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 		}
 		dma = &_probe->inject_dma[j];
 		/* get avail data info */
-		ret = dma_get_data_size(dma->dc.chan,
-					&dma->dmapb.avail,
-					&free_bytes);
+		ret = dma_get_data_size_legacy(dma->dc.chan,
+					       &dma->dmapb.avail,
+					       &free_bytes);
 		if (ret < 0) {
 			tr_err(&pr_tr, "probe_cb_produce(): dma_get_data_size() failed, ret = %u",
 			       ret);
@@ -1013,7 +1013,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 				return -EINVAL;
 			}
-			if (dma_start(_probe->inject_dma[j].dc.chan) < 0) {
+			if (dma_start_legacy(_probe->inject_dma[j].dc.chan) < 0) {
 				tr_err(&pr_tr, "probe_point_add(): failed to start dma");
 
 				return -EBUSY;

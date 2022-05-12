@@ -220,7 +220,7 @@ static void dai_free(struct comp_dev *dev)
 
 	if (dd->chan) {
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-		dma_channel_put(dd->chan);
+		dma_channel_put_legacy(dd->chan);
 		dd->chan->dev_data = NULL;
 	}
 
@@ -595,7 +595,7 @@ static int dai_config_prepare(struct comp_dev *dev)
 	}
 
 	/* allocate DMA channel */
-	dd->chan = dma_channel_get(dd->dma, channel);
+	dd->chan = dma_channel_get_legacy(dd->dma, channel);
 	if (!dd->chan) {
 		comp_err(dev, "dai_config_prepare(): dma_channel_get() failed");
 		dd->chan = NULL;
@@ -656,7 +656,7 @@ static int dai_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	ret = dma_set_config(dd->chan, &dd->config);
+	ret = dma_set_config_legacy(dd->chan, &dd->config);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -728,7 +728,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			ret = dma_start(dd->chan);
+			ret = dma_start_legacy(dd->chan);
 			if (ret < 0)
 				return ret;
 			/* start the DAI */
@@ -750,13 +750,13 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = dma_release(dd->chan);
+			ret = dma_release_legacy(dd->chan);
 			if (ret < 0)
 				return ret;
 
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->direction);
-			ret = dma_start(dd->chan);
+			ret = dma_start_legacy(dd->chan);
 			if (ret < 0)
 				return ret;
 		} else {
@@ -781,16 +781,16 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
  * as soon as possible.
  */
 #if CONFIG_DMA_SUSPEND_DRAIN
-		ret = dma_stop(dd->chan);
+		ret = dma_stop_legacy(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger(dd->dai, cmd, dev->direction);
-		ret = dma_stop(dd->chan);
+		ret = dma_stop_legacy(dd->chan);
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
-		ret = dma_pause(dd->chan);
+		ret = dma_pause_legacy(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
 	case COMP_TRIGGER_PRE_START:
@@ -904,7 +904,7 @@ static int dai_copy(struct comp_dev *dev)
 	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
-	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
+	ret = dma_get_data_size_legacy(dd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
 		dai_report_xrun(dev, 0);
 		return ret;
@@ -952,7 +952,7 @@ static int dai_copy(struct comp_dev *dev)
 		return 0;
 	}
 
-	ret = dma_copy(dd->chan, copy_bytes, 0);
+	ret = dma_copy_legacy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
 		dai_report_xrun(dev, copy_bytes);
 		return ret;

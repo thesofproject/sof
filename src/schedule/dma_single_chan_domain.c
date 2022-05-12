@@ -210,8 +210,8 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 
 		/* unregister from current channel */
 		dma_single_chan_domain_irq_unregister(data);
-		dma_interrupt(data->channel, DMA_IRQ_MASK);
-		dma_interrupt(data->channel, DMA_IRQ_CLEAR);
+		dma_interrupt_legacy(data->channel, DMA_IRQ_MASK);
+		dma_interrupt_legacy(data->channel, DMA_IRQ_CLEAR);
 
 		dma_domain->channel_changed = true;
 
@@ -234,7 +234,7 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 		goto out;
 
 	/* enable channel interrupt */
-	dma_interrupt(data->channel, DMA_IRQ_UNMASK);
+	dma_interrupt_legacy(data->channel, DMA_IRQ_UNMASK);
 
 	/* unmask if we are the owner */
 	if (dma_domain->owner == core)
@@ -333,8 +333,8 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 
 	/* no other channel is running */
 	dma_single_chan_domain_irq_unregister(data);
-	dma_interrupt(data->channel, DMA_IRQ_MASK);
-	dma_interrupt(data->channel, DMA_IRQ_CLEAR);
+	dma_interrupt_legacy(data->channel, DMA_IRQ_MASK);
+	dma_interrupt_legacy(data->channel, DMA_IRQ_CLEAR);
 	data->channel = NULL;
 
 	if (channel) {
@@ -413,7 +413,7 @@ static void dma_single_chan_domain_enable(struct ll_schedule_domain *domain,
 	if (!data->channel)
 		return;
 
-	dma_interrupt(data->channel, DMA_IRQ_UNMASK);
+	dma_interrupt_legacy(data->channel, DMA_IRQ_UNMASK);
 	interrupt_unmask(data->irq, core);
 }
 
@@ -477,7 +477,7 @@ static void dma_single_chan_domain_clear(struct ll_schedule_domain *domain)
 	if (!data->channel)
 		return;
 
-	dma_interrupt(data->channel, DMA_IRQ_CLEAR);
+	dma_interrupt_legacy(data->channel, DMA_IRQ_CLEAR);
 }
 
 /**
@@ -511,8 +511,8 @@ static void dma_domain_changed(void *arg, enum notify_id type, void *data)
 	dma_single_chan_domain_irq_unregister(domain_data);
 
 	if (domain_data->channel->core == core) {
-		dma_interrupt(domain_data->channel, DMA_IRQ_MASK);
-		dma_interrupt(domain_data->channel, DMA_IRQ_CLEAR);
+		dma_interrupt_legacy(domain_data->channel, DMA_IRQ_MASK);
+		dma_interrupt_legacy(domain_data->channel, DMA_IRQ_CLEAR);
 	}
 
 	/* register to the new DMA channel */

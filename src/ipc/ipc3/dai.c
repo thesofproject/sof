@@ -257,7 +257,7 @@ void dai_dma_release(struct comp_dev *dev)
 	if (dd->chan) {
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-		dma_channel_put(dd->chan);
+		dma_channel_put_legacy(dd->chan);
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -302,7 +302,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 		/* stop DMA and reset config for two-step stop DMA */
 		if (dd->delayed_dma_stop) {
-			ret = dma_stop_delayed(dd->chan);
+			ret = dma_stop_delayed_legacy(dd->chan);
 			if (ret < 0)
 				return ret;
 
@@ -314,7 +314,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		if (!dd->chan)
 			return 0;
 
-		return dma_stop_delayed(dd->chan);
+		return dma_stop_delayed_legacy(dd->chan);
 	default:
 		break;
 	}

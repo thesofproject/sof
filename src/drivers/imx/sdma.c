@@ -447,7 +447,7 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 		return; /* Channel was already free */
 	tr_dbg(&sdma_tr, "sdma_channel_put(%d)", channel->index);
 
-	dma_interrupt(channel, DMA_IRQ_CLEAR);
+	dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
 	sdma_disable_event(channel, pdata->hw_event);
 	sdma_set_overrides(channel, false, false);
 	channel->status = COMP_STATE_INIT;

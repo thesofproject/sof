@@ -2,7 +2,7 @@
 
 if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
-		host.c
+		host-legacy.c
 		component.c
 		data_blob.c
 		buffer.c
@@ -55,7 +55,7 @@ if(NOT CONFIG_LIBRARY)
 	endif()
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
-			dai.c
+			dai-legacy.c
 		)
 	endif()
 	if(CONFIG_COMP_KPB)

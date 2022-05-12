@@ -202,11 +202,11 @@ void dai_dma_release(struct comp_dev *dev)
 		 * pause to stop.
 		 * TODO: refine power management when stream is paused
 		 */
-		dma_stop(dd->chan);
+		dma_stop_legacy(dd->chan);
 
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-		dma_channel_put(dd->chan);
+		dma_channel_put_legacy(dd->chan);
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -229,7 +229,7 @@ static void dai_dma_position_init(struct dai_data *dd)
 
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       void *spec_config)
-{
+{trace_point(9);
 	struct ipc4_copier_module_cfg *copier_cfg = spec_config;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int size;
@@ -300,7 +300,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	posn->wallclock = dd->wallclock;
 
 	status.ipc_posn_data = &posn->comp_posn;
-	dma_status(dd->chan, &status, dev->direction);
+	dma_status_legacy(dd->chan, &status, dev->direction);
 
 	return 0;
 }
@@ -319,7 +319,7 @@ void dai_dma_position_update(struct comp_dev *dev)
 		return;
 
 	status.ipc_posn_data = llp_data;
-	dma_status(dd->chan, &status, dev->direction);
+	dma_status_legacy(dd->chan, &status, dev->direction);
 
 	platform_dai_wallclock(dev, &dd->wallclock);
 
