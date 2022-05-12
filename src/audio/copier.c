@@ -376,7 +376,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_hda_host_input_class:
 			cd->endpoint = create_host(dev, cd, config, copier, cd->direction);
 			if (!cd->endpoint) {
-				comp_cl_err(&comp_copier, "unenable to create host");
+				comp_cl_err(&comp_copier, "unable to create host");
 				goto error_cd;
 			}
 
@@ -397,7 +397,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_alh_link_input_class:
 		cd->endpoint = create_dai(dev, cd, config, copier, &node_id, ipc_pipe->pipeline);
 		if (!cd->endpoint) {
-			comp_cl_err(&comp_copier, "unenable to create dai");
+			comp_cl_err(&comp_copier, "unable to create dai");
 			goto error_cd;
 		}
 
