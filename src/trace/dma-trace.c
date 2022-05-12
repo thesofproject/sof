@@ -374,7 +374,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 			      d->active_stream_tag);
 
 		schedule_task_cancel(&d->dmat_work);
-		err = dma_stop(d->dc.chan);
+		err = dma_stop_legacy(d->dc.chan);
 		if (err < 0) {
 			mtrace_printf(LOG_LEVEL_ERROR,
 				      "dma_trace_start(): DMA channel failed to stop");
@@ -384,7 +384,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 				      "dma_trace_start(): stream_tag change from %u to %u",
 				      d->active_stream_tag, d->stream_tag);
 
-			dma_channel_put(d->dc.chan);
+			dma_channel_put_legacy(d->dc.chan);
 			d->dc.chan = NULL;
 			err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
 		}
@@ -400,18 +400,18 @@ static int dma_trace_start(struct dma_trace_data *d)
 
 	d->active_stream_tag = d->stream_tag;
 
-	err = dma_set_config(d->dc.chan, &d->gw_config);
+	err = dma_set_config_legacy(d->dc.chan, &d->gw_config);
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
 		goto error;
 	}
 
-	err = dma_start(d->dc.chan);
+	err = dma_start_legacy(d->dc.chan);
 	if (err == 0)
 		return 0;
 
 error:
-	dma_channel_put(d->dc.chan);
+	dma_channel_put_legacy(d->dc.chan);
 	d->dc.chan = NULL;
 
 	return err;
@@ -504,8 +504,8 @@ void dma_trace_disable(struct dma_trace_data *d)
 	schedule_task_cancel(&d->dmat_work);
 
 	if (d->dc.chan) {
-		dma_stop(d->dc.chan);
-		dma_channel_put(d->dc.chan);
+		dma_stop_legacy(d->dc.chan);
+		dma_channel_put_legacy(d->dc.chan);
 		d->dc.chan = NULL;
 	}
 

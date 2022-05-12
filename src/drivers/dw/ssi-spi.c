@@ -180,7 +180,7 @@ static int spi_trigger(struct spi *spi, int cmd, int direction)
 	switch (cmd) {
 	case SPI_TRIGGER_START:
 		/* trigger the SPI-Slave + DMA + INT + Receiving */
-		ret = dma_start(spi->chan[direction]);
+		ret = dma_start_legacy(spi->chan[direction]);
 		if (ret < 0)
 			return ret;
 
@@ -196,7 +196,7 @@ static int spi_trigger(struct spi *spi, int cmd, int direction)
 	case SPI_TRIGGER_STOP:
 		/* Stop the SPI-Slave */
 		spi_stop(spi);
-		dma_stop(spi->chan[direction]);
+		dma_stop_legacy(spi->chan[direction]);
 
 		break;
 	default:
@@ -280,7 +280,7 @@ static int spi_slave_dma_set_config(struct spi *spi,
 	config.elem_array.count = 1;
 	config.elem_array.elems = &local_sg_elem;
 
-	return dma_set_config(chan, &config);
+	return dma_set_config_legacy(chan, &config);
 }
 
 static int spi_set_config(struct spi *spi,
@@ -435,11 +435,11 @@ int spi_probe(struct spi *spi)
 	if (!spi->dma[SPI_DIR_TX])
 		return -ENODEV;
 
-	spi->chan[SPI_DIR_RX] = dma_channel_get(spi->dma[SPI_DIR_RX], 0);
+	spi->chan[SPI_DIR_RX] = dma_channel_get_legacy(spi->dma[SPI_DIR_RX], 0);
 	if (!spi->chan[SPI_DIR_RX])
 		return -ENODEV;
 
-	spi->chan[SPI_DIR_TX] = dma_channel_get(spi->dma[SPI_DIR_TX], 0);
+	spi->chan[SPI_DIR_TX] = dma_channel_get_legacy(spi->dma[SPI_DIR_TX], 0);
 	if (!spi->chan[SPI_DIR_TX])
 		return -ENODEV;
 

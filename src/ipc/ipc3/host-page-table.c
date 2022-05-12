@@ -94,7 +94,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	int ret = 0;
 
 	/* get DMA channel from DMAC */
-	chan = dma_channel_get(dmac, 0);
+	chan = dma_channel_get_legacy(dmac, 0);
 	if (!chan) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): chan is NULL");
 		return -ENODEV;
@@ -125,14 +125,14 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.elem_array.elems = &elem;
 	config.elem_array.count = 1;
 
-	ret = dma_set_config(chan, &config);
+	ret = dma_set_config_legacy(chan, &config);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_set_config() failed");
 		goto out;
 	}
 
 	/* start the copy of page table to DSP */
-	ret = dma_copy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+	ret = dma_copy_legacy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_start() failed");
 		goto out;
@@ -140,7 +140,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
-	dma_channel_put(chan);
+	dma_channel_put_legacy(chan);
 	return ret;
 }
 

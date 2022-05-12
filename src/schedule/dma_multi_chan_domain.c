@@ -149,7 +149,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			if (dma_domain->channel_mask[i][core] & BIT(j))
 				continue;
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 
 			/* register only if not aggregated or not registered */
 			if (!dma_domain->aggregated_irq ||
@@ -171,7 +171,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			interrupt_clear_mask(dma_domain->data[i][j].irq,
 					     BIT(j));
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_UNMASK);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_UNMASK);
 
 			dma_domain->data[i][j].task = pipe_task;
 			dma_domain->channel_mask[i][core] |= BIT(j);
@@ -239,8 +239,8 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 			if (!(dma_domain->channel_mask[i][core] & BIT(j)))
 				continue;
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_MASK);
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_MASK);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 			interrupt_clear_mask(dma_domain->data[i][j].irq,
 					     BIT(j));
 
@@ -282,8 +282,8 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
 			if (!*comp) {
-				status = dma_interrupt(&dmas[i].chan[j],
-						       DMA_IRQ_STATUS_GET);
+				status = dma_interrupt_legacy(&dmas[i].chan[j],
+							      DMA_IRQ_STATUS_GET);
 				if (!status)
 					continue;
 
@@ -329,7 +329,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 			/* clear interrupt */
 			if (pipe_task->registrable) {
-				dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+				dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 				interrupt_clear_mask(dma_domain->data[i][j].irq,
 						     BIT(j));
 			}

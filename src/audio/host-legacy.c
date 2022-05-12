@@ -145,14 +145,14 @@ static int host_dma_set_config_and_copy(struct comp_dev *dev, uint32_t bytes)
 	local_elem->size = bytes;
 
 	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
+	ret = dma_set_config_legacy(hd->chan, &hd->config);
 	if (ret < 0) {
 		comp_err(dev, "host_dma_set_config_and_copy(): dma_set_config() failed, ret = %d",
 			 ret);
 		return ret;
 	}
 
-	ret = dma_copy(hd->chan, bytes, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+	ret = dma_copy_legacy(hd->chan, bytes, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (ret < 0) {
 		comp_err(dev, "host_dma_set_config_and_copy(): dma_copy() failed, ret = %d",
 			 ret);
@@ -288,13 +288,13 @@ static int host_copy_one_shot(struct comp_dev *dev)
 	}
 
 	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
+	ret = dma_set_config_legacy(hd->chan, &hd->config);
 	if (ret < 0) {
 		comp_err(dev, "host_copy_one_shot(): dma_set_config() failed, ret = %u", ret);
 		return ret;
 	}
 
-	ret = dma_copy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
+	ret = dma_copy_legacy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
 	if (ret < 0) {
 		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
 		return ret;
@@ -454,8 +454,7 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	int ret;
 
 	/* get data sizes from DMA */
-	ret = dma_get_data_size(hd->chan, &avail_bytes,
-				&free_bytes);
+	ret = dma_get_data_size_legacy(hd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
 		comp_err(dev, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
 			 ret);
@@ -513,7 +512,7 @@ static int host_copy_normal(struct comp_dev *dev)
 	if (!copy_bytes)
 		return 0;
 
-	ret = dma_copy(hd->chan, copy_bytes, flags);
+	ret = dma_copy_legacy(hd->chan, copy_bytes, flags);
 	if (ret < 0)
 		comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
 
@@ -596,14 +595,14 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		ret = dma_start(hd->chan);
+		ret = dma_start_legacy(hd->chan);
 		if (ret < 0)
 			comp_err(dev, "host_trigger(): dma_start() failed, ret = %u",
 				 ret);
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		ret = dma_stop(hd->chan);
+		ret = dma_stop_legacy(hd->chan);
 		if (ret < 0)
 			comp_err(dev, "host_trigger(): dma stop failed: %d",
 				 ret);
@@ -870,16 +869,16 @@ static int host_params(struct comp_dev *dev,
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
 	 */
-	hd->chan = dma_channel_get(hd->dma, hd->stream_tag);
+	hd->chan = dma_channel_get_legacy(hd->dma, hd->stream_tag);
 	if (!hd->chan) {
 		comp_err(dev, "host_params(): hd->chan is NULL");
 		return -ENODEV;
 	}
 
-	err = dma_set_config(hd->chan, &hd->config);
+	err = dma_set_config_legacy(hd->chan, &hd->config);
 	if (err < 0) {
 		comp_err(dev, "host_params(): dma_set_config() failed");
-		dma_channel_put(hd->chan);
+		dma_channel_put_legacy(hd->chan);
 		hd->chan = NULL;
 		return err;
 	}
@@ -959,11 +958,11 @@ static int host_reset(struct comp_dev *dev)
 	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
-		dma_stop_delayed(hd->chan);
+		dma_stop_delayed_legacy(hd->chan);
 
 		/* remove callback */
 		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
-		dma_channel_put(hd->chan);
+		dma_channel_put_legacy(hd->chan);
 		hd->chan = NULL;
 	}
 

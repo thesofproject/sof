@@ -508,7 +508,6 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-stream.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
-	${SOF_AUDIO_PATH}/host.c
 
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/init/init.c
@@ -525,6 +524,16 @@ zephyr_library_sources(
 	edf_schedule.c
 	schedule.c
 )
+
+if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/host-zephyr.c
+	)
+else()
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/host-legacy.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_3
 	${SOF_IPC_PATH}/ipc3/handler.c
@@ -596,9 +605,15 @@ zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_DAI
-	${SOF_AUDIO_PATH}/dai.c
+if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
+		${SOF_AUDIO_PATH}/dai-zephyr.c
 )
+else()
+	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
+		${SOF_AUDIO_PATH}/dai-legacy.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
