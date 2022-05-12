@@ -131,11 +131,6 @@ void cpu_disable_core(int id)
 #endif /* CONFIG_PM */
 }
 
-int cpu_is_core_enabled(int id)
-{
-	return arch_cpu_active(id);
-}
-
 int cpu_enabled_cores(void)
 {
 	unsigned int i;

@@ -47,7 +47,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 	int ret;
 
 	/* check if requested core is enabled */
-	if (!cpu_is_core_enabled(core)) {
+	if (!arch_cpu_active(core)) {
 		tr_err(&ipc_tr, "ipc_process_on_core(): core #%d is disabled", core);
 		return -EACCES;
 	}
