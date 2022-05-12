@@ -829,6 +829,7 @@ static int host_params(struct comp_dev *dev,
 
 	/* calculate DMA buffer size */
 	buffer_size = ALIGN_UP(period_bytes, align) * period_count;
+	buffer_size = MAX(buffer_size, ALIGN_UP(hd->ipc_host.dma_buffer_size, align));
 
 	/* alloc DMA buffer or change its size if exists */
 	if (hd->dma_buffer) {

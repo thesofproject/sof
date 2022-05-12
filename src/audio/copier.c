@@ -178,6 +178,7 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
+	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
 	dev = drv->ops.create(drv, config, &ipc_host);
 	if (!dev)

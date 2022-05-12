@@ -529,6 +529,8 @@ static int dai_params(struct comp_dev *dev,
 	dd->period_bytes = period_bytes;
 
 	/* calculate DMA buffer size */
+	period_count = MAX(period_count,
+			   DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 
 	/* alloc DMA buffer or change its size if exists */

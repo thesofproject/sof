@@ -68,7 +68,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct ipc4_copier_module_cfg *copier_cfg;
+	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
 	struct dai *dai_p = dd->dai;
 	struct alh_pdata *alh;
 
@@ -88,7 +88,6 @@ int ipc_dai_data_config(struct comp_dev *dev)
 
 	switch (dai->type) {
 	case SOF_DAI_INTEL_SSP:
-		copier_cfg = dd->dai_spec_config;
 		/* set dma burst elems to slot number */
 		dd->config.burst_elems = copier_cfg->base.audio_fmt.channels_count;
 		/* DMA buffer size is in fixed format of 32bit in IPC4 case */
@@ -124,6 +123,8 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		comp_warn(dev, "dai_data_config(): Unknown dai type %d", dai->type);
 		return -EINVAL;
 	}
+
+	dai->dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
 	/* some DAIs may not need extra config */
 	return 0;
