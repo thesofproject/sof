@@ -371,6 +371,8 @@ our $Ident	= qr{
 		}x;
 our $Storage	= qr{extern|static|asmlinkage};
 our $Sparse	= qr{
+			__sparse_cache|
+			__sparse_force|
 			__user|
 			__kernel|
 			__force|
