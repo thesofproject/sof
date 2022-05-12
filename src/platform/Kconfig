@@ -498,6 +498,12 @@ config HAVE_AGENT
 	  with DMA based scheduling, where asynchronous interrupts
 	  can potentially starve the agent.
 
+config INPUT_DEVICE
+	bool "Enable SOF input device demo"
+	default y
+	help
+	  Enables SOF input device demo.
+
 config AGENT_PANIC_ON_DELAY
 	bool "Enable system agent time verification panic"
 	default n

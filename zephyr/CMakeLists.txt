@@ -669,6 +669,10 @@ zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
 	${SOF_LIB_PATH}/agent.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_INPUT_DEVICE
+	${SOF_LIB_PATH}/input-device.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
 	${SOF_DEBUG_PATH}/gdb/gdb.c
 	${SOF_DEBUG_PATH}/gdb/ringbuffer.c

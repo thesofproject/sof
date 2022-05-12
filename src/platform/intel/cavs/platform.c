@@ -28,6 +28,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
+#include <sof/lib/input-device.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
@@ -419,6 +420,9 @@ int platform_init(struct sof *sof)
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
+
+	/* init input device */
+	input_device_init(sof);
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);

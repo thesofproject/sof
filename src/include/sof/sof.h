@@ -29,6 +29,7 @@ struct timer;
 struct trace;
 struct pipeline_posn;
 struct probe_pdata;
+struct input_device;
 
 /**
  * \brief General firmware context.
@@ -100,6 +101,8 @@ struct sof {
 
 	/* pipelines stream position */
 	struct pipeline_posn *pipeline_posn;
+
+	struct input_device *input_device;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
