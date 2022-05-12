@@ -168,7 +168,7 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		if (core_mask & NOTIFIER_TARGET_CORE_MASK(i)) {
 			if (i == cpu_get_id()) {
 				notifier_notify(caller, type, data);
-			} else if (cpu_is_core_enabled(i)) {
+			} else if (arch_cpu_active(i)) {
 				notify_msg.core = i;
 				notify_data = notify_data_get() + i;
 				notify_data->caller = caller;

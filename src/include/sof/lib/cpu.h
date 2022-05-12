@@ -37,11 +37,12 @@ static inline bool cpu_is_me(int id)
 }
 
 #ifdef __ZEPHYR__
+
+#include <zephyr/arch/cpu.h>
+
 int cpu_enable_core(int id);
 
 void cpu_disable_core(int id);
-
-int cpu_is_core_enabled(int id);
 
 int cpu_enabled_cores(void);
 
@@ -59,7 +60,7 @@ static inline void cpu_disable_core(int id)
 	arch_cpu_disable_core(id);
 }
 
-static inline int cpu_is_core_enabled(int id)
+static inline bool arch_cpu_active(int id)
 {
 	return arch_cpu_is_core_enabled(id);
 }
