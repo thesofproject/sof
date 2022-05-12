@@ -16,21 +16,23 @@
 
 /* generic host component */
 struct ipc_config_host {
-	uint32_t direction;	/**< SOF_IPC_STREAM_ */
-	uint32_t no_irq;	/**< don't send periodic IRQ to host/DSP */
-	uint32_t dmac_config; /**< DMA engine specific */
+	uint32_t direction;		/**< SOF_IPC_STREAM_ */
+	uint32_t no_irq;		/**< don't send periodic IRQ to host/DSP */
+	uint32_t dmac_config;		/**< DMA engine specific */
+	uint32_t dma_buffer_size;	/**< Requested DMA buffer size */
 };
 
 /* generic DAI component */
 struct ipc_config_dai {
-	uint32_t direction;	/**< SOF_IPC_STREAM_ */
-	uint32_t dai_index;	/**< index of this type dai */
-	uint32_t type;		/**< DAI type - SOF_DAI_ */
+	uint32_t direction;		/**< SOF_IPC_STREAM_ */
+	uint32_t dai_index;		/**< index of this type dai */
+	uint32_t type;			/**< DAI type - SOF_DAI_ */
+	uint32_t dma_buffer_size;	/**< Requested DMA buffer size */
 	/* physical protocol and clocking */
-	uint32_t sampling_frequency; /**< DAI sampling frequency - required only with IPC4 */
-	uint16_t format;	/**< SOF_DAI_FMT_ */
-	uint16_t group_id;	/**< group ID, 0 means no group (ABI 3.17) */
-	bool is_config_blob;	/**< DAI specific configuration is a blob */
+	uint32_t sampling_frequency;	/**< DAI sampling frequency - required only with IPC4 */
+	uint16_t format;		/**< SOF_DAI_FMT_ */
+	uint16_t group_id;		/**< group ID, 0 means no group (ABI 3.17) */
+	bool is_config_blob;		/**< DAI specific configuration is a blob */
 };
 
 /* generic volume component */
