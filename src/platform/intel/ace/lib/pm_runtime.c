@@ -445,10 +445,6 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case CORE_HP_CLK:
 		cavs_pm_runtime_core_en_hp_clk(index);
 		break;
-	case PM_RUNTIME_DSP:
-		index &= ~(PWRD_MASK);
-		z_wrapper_cpu_enable_secondary_core(index);
-		break;
 	default:
 		break;
 	}
