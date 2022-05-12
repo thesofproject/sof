@@ -241,8 +241,8 @@ static void dai_free(struct comp_dev *dev)
 
 	if (dd->chan) {
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-		dma_channel_put_legacy(dd->chan);
 		dd->chan->dev_data = NULL;
+		dma_channel_put_legacy(dd->chan);
 	}
 
 	dma_put(dd->dma);
