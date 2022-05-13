@@ -58,6 +58,8 @@
  * +---------------------+----------------+-----------------------------------+
  *
  * +---------------------+----------------+-----------------------------------+
+ * | SOF_DRAM_BASE       |                |  SOF_DRAM_SIZE                    |
+ * +---------------------+----------------+-----------------------------------+
  * | HEAP_SYSTEM_BASE    | System Heap    |  HEAP_SYSTEM_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
@@ -67,6 +69,8 @@
  * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
  * +---------------------+----------------+-----------------------------------+
  * | SOF_STACK_BASE      |                |                                   |
+ * +---------------------+----------------+-----------------------------------+
+ * | MAILBOX_BASE        |                |  SOF_MAILBOX_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -99,6 +103,10 @@
 	(SRAM_INBOX_SIZE + SRAM_OUTBOX_SIZE + SRAM_DEBUG_SIZE + \
 	 SRAM_EXCEPT_SIZE + SRAM_STREAM_SIZE + SRAM_TRACE_SIZE)
 
+/* SOF image on DRAM */
+#define SOF_DRAM_BASE	DRAM_BASE
+#define SOF_DRAM_SIZE	0x100000
+
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0
 #define HEAP_RT_COUNT16		48
@@ -118,7 +126,7 @@
 
 /* Heap configuration */
 
-#define HEAP_SYSTEM_BASE	DRAM_BASE
+#define HEAP_SYSTEM_BASE	(SOF_DRAM_BASE + SOF_DRAM_SIZE)
 #define HEAP_SYSTEM_SIZE	0x6000
 
 #define HEAP_SYS_RUNTIME_BASE	(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
@@ -138,7 +146,7 @@
 
 #define HEAP_BUFFER_BASE (HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE                                           \
-	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_TOTAL_SIZE -   \
+	(DRAM0_SIZE - SOF_DRAM_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_TOTAL_SIZE -   \
 	 HEAP_SYS_RUNTIME_SIZE - HEAP_SYSTEM_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
