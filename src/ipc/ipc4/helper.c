@@ -44,6 +44,7 @@ extern struct tr_ctx comp_tr;
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
 {
+	memset(posn, 0, sizeof(*posn));
 }
 
 void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
