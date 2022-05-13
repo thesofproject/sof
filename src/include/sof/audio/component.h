@@ -368,8 +368,6 @@ struct comp_ops {
 	 *
 	 * Resets the component state and any hw_params to default component
 	 * state. Should also free any resources acquired during hw_params.
-	 * TODO: Some components are not compliant here wrt reset(). Fix this
-	 * in v1.8.
 	 */
 	int (*reset)(struct comp_dev *dev);
 
