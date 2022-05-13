@@ -17,7 +17,7 @@
 
 /* physical DSP addresses */
 #define SRAM_BASE			0x4e100000
-#define SRAM_SIZE			0x100000
+#define SRAM_SIZE			0x80000
 
 /* reset vector + rodata + module_init + text + data + bss */
 #define SOF_DATA_SIZE			0x80000
