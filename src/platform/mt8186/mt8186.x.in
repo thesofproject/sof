@@ -11,6 +11,12 @@
 #include <sof/lib/memory.h>
 #include <xtensa/config/core-isa.h>
 
+#if CONFIG_MEDIATEK_DRAM_IMAGE
+#define IMAGE_LOC sof_dram
+#else
+#define IMAGE_LOC sof_sram
+#endif
+
 OUTPUT_ARCH(xtensa)
 
 MEMORY
@@ -69,6 +75,9 @@ MEMORY
   sof_sram :
         org = SRAM_START,
         len = SRAM_SIZE
+  sof_dram :
+        org = SOF_DRAM_BASE,
+        len = SOF_DRAM_SIZE
   system_heap :
         org = HEAP_SYSTEM_BASE,
         len = HEAP_SYSTEM_SIZE
@@ -293,7 +302,7 @@ SECTIONS
   {
     KEEP (*(.fw_ready))
     KEEP (*(.fw_ready_metadata))
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .rodata : ALIGN(4)
   {
@@ -331,14 +340,14 @@ SECTIONS
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .module_init : ALIGN(4)
   {
    _module_init_start = ABSOLUTE(.);
     *(*.initcall)
     _module_init_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .text : ALIGN(4)
   {
@@ -353,14 +362,14 @@ SECTIONS
     *(.gnu.version)
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .reset.rodata : ALIGN(4)
   {
     _reset_rodata_start = ABSOLUTE(.);
     *(.reset.rodata)
     _reset_rodata_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
 
   .data : ALIGN(4)
@@ -382,7 +391,7 @@ SECTIONS
     *(.trace_ctx)
     _trace_ctx_end = ABSOLUTE(.);
     _data_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .lit4 : ALIGN(4)
   {
@@ -391,7 +400,7 @@ SECTIONS
     *(.lit4.*)
     *(.gnu.linkonce.lit4.*)
     _lit4_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   .bss (NOLOAD) : ALIGN(8)
   {
@@ -412,7 +421,7 @@ SECTIONS
     *(COMMON)
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
-  } >sof_sram :sof_sram_phdr
+  } >IMAGE_LOC :sof_sram_phdr
 
   /* stack */
   _end = SOF_STACK_END;
