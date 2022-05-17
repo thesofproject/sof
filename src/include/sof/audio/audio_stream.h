@@ -61,6 +61,18 @@ struct audio_stream {
 	uint32_t rate;		/**< Number of data frames per second [Hz] */
 	uint16_t channels;	/**< Number of samples in each frame */
 
+	/** alignment limit of stream copy, this value indicates how many
+	 * integer frames which can meet both byte align and frame align
+	 * requirement. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align;
+
+	/**
+	 * alignment limit of stream copy, alignment is the frame_align_shift-th
+	 * power of 2 bytes. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align_shift;
+
 	bool overrun_permitted; /**< indicates whether overrun is permitted */
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
 };
@@ -201,6 +213,49 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __spar
 static inline uint32_t audio_stream_sample_bytes(const struct audio_stream __sparse_cache *buf)
 {
 	return get_sample_bytes(buf->frame_fmt);
+}
+
+/**
+ * Return the frames that meet the align requirement of both byte_align and
+ * frame_align_req.
+ * @param byte_align Processing byte alignment requirement.
+ * @param frame_align_req Processing frames alignment requirement.
+ * @param frame_size Size of the frame in bytes.
+ * @return frame number.
+ */
+static inline uint32_t audio_stream_frame_align_get(const uint32_t byte_align,
+						    const uint32_t frame_align_req,
+						    uint32_t frame_size)
+{
+	/* Figure out how many frames are needed to meet the byte_align alignment requirements */
+	uint32_t frame_num = byte_align / gcd(byte_align, frame_size);
+
+	/** return the lcm of frame_num and frame_align_req*/
+	return frame_align_req * frame_num / gcd(frame_num, frame_align_req);
+}
+
+/**
+ * Set frame_align_shift and frame_align of stream according to byte_align and
+ * frame_align_req alignment requirement. Once the channel number,frame size
+ * are determined，the frame_align and frame_align_shift are determined too.
+ * these two feature will be used in audio_stream_get_avail_frames_aligned
+ * to calculate the available frames. it should be called in component prepare
+ * or param functions only once before stream copy. if someone forgets to call
+ * this first, there would be unexampled error such as nothing is copied at all.
+ * @param byte_align Processing byte alignment requirement.
+ * @param frame_align_req Processing frames alignment requirement.
+ * @param stream Sink or source stream structure which to be set.
+ */
+static inline void audio_stream_init_alignment_constants(const uint32_t byte_align,
+							 const uint32_t frame_align_req,
+							 struct audio_stream *stream)
+{
+	uint32_t process_size;
+	uint32_t frame_size = audio_stream_frame_bytes(stream);
+
+	stream->frame_align = audio_stream_frame_align_get(byte_align, frame_align_req, frame_size);
+	process_size = stream->frame_align * frame_size;
+	stream->frame_align_shift = (is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
 }
 
 /**
@@ -401,6 +456,26 @@ audio_stream_avail_frames(const struct audio_stream __sparse_cache *source,
 {
 	uint32_t src_frames = audio_stream_get_avail_frames(source);
 	uint32_t sink_frames = audio_stream_get_free_frames(sink);
+
+	return MIN(src_frames, sink_frames);
+}
+
+/**
+ * Computes maximum number of frames aligned that can be copied from
+ * source buffer to sink buffer, verifying number of available source
+ * frames vs. free space available in sink.
+ * @param source Buffer of source.
+ * @param sink Buffer of sink.
+ * @return Number of frames.
+ */
+static inline uint32_t
+audio_stream_avail_frames_aligned(const struct audio_stream *source,
+				  const struct audio_stream *sink)
+{
+	uint32_t src_frames = (audio_stream_get_avail_bytes(source) >> source->frame_align_shift)
+		 * source->frame_align;
+	uint32_t sink_frames = (audio_stream_get_free_bytes(sink) >> sink->frame_align_shift)
+		 * sink->frame_align;
 
 	return MIN(src_frames, sink_frames);
 }

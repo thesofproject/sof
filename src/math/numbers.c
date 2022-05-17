@@ -14,8 +14,6 @@
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
-#if CONFIG_NUMBERS_GCD
-
 /* This function returns the greatest common divisor of two numbers
  * If both parameters are 0, gcd(0, 0) returns 0
  * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
@@ -74,8 +72,6 @@ int gcd(int a, int b)
 	/* restore common factors of 2 */
 	return a << k;
 }
-
-#endif /* CONFIG_NUMBERS_GCD */
 
 #if CONFIG_NUMBERS_VECTOR_FIND
 

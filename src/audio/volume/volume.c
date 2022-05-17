@@ -1147,10 +1147,8 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_with_lock(source, sink, &c);
-	/* limit frames to be divided by 4 for alignment of 8-byte */
-	c.frames &= ~0x03;
+	/* Get aligned source, sink, number of frames etc. to process. */
+	comp_get_copy_limits_with_lock_frame_aligned(source, sink, &c);
 
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
@@ -1218,6 +1216,39 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev)
 }
 
 /**
+ * \brief Set volume frames alignment limit.
+ * \param[in,out] source Structure pointer of source.
+ * \param[in,out] sink Structure pointer of sink.
+ */
+static void volume_set_alignment(struct audio_stream *source,
+				 struct audio_stream *sink)
+{
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+
+	/* Both source and sink buffer in HiFi 3 or HiFi4 processing version,
+	 * xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
+	 * requires 16-byte aligned.
+	 */
+	const uint32_t byte_align = source->channels == 6 ? 16 : 8;
+
+	/*There is no limit for frame number, so both source and sink set it to be 1*/
+	const uint32_t frame_align_req = 1;
+
+#else
+
+	/* Since the generic version process signal sample by sample, so there is no
+	 * limit for it, then set the byte_align and frame_align_req to be 1.
+	 */
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+#endif
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+}
+
+/**
  * \brief Prepares volume component for processing.
  * \param[in,out] dev Volume base component device.
  * \return Error code.
@@ -1229,6 +1260,7 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
@@ -1242,9 +1274,13 @@ static int volume_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* volume component will only ever have 1 sink buffer */
+	/* volume component will only ever have 1 sink and source buffer */
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+
+	volume_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get sink period bytes */
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
