@@ -52,12 +52,6 @@ config COMMON_LOGARITHM_FIXED
 	  This option builds common Logarithm function (log10(N)) which is the logarithm to
 	  the base 10.
 
-config NUMBERS_GCD
-	bool "Greatest common divisor"
-	default n
-	help
-	  Returns greatest common divisor for two parameters.
-
 config NUMBERS_NORM
 	bool "Norm function"
 	default n

@@ -160,6 +160,17 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache *source,
+					const struct comp_buffer __sparse_cache *sink,
+					struct comp_copy_limits *cl)
+{
+	cl->frames = audio_stream_avail_frames_aligned(&source->stream, &sink->stream);
+	cl->source_frame_bytes = audio_stream_frame_bytes(&source->stream);
+	cl->sink_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+	cl->source_bytes = cl->frames * cl->source_frame_bytes;
+	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
+}
+
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct list_item *old_bsource_list = &dev->bsource_list;

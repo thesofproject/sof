@@ -814,6 +814,19 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source, struct comp
 			  struct comp_copy_limits *cl);
 
 /**
+ * Computes source to sink copy operation boundaries including maximum number
+ * of frames aligned with requirement that can be transferred (data available in
+ * source vs. free space available in sink).
+ *
+ * @param[in] source Buffer of source.
+ * @param[in] sink Buffer of sink.
+ * @param[out] cl Current copy limits.
+ */
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
+					const struct comp_buffer *sink,
+					struct comp_copy_limits *cl);
+
+/**
  * Version of comp_get_copy_limits that locks both buffers to guarantee
  * consistent state readings.
  *
@@ -835,6 +848,29 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 
 	buffer_release(source_c);
 	buffer_release(sink_c);
+}
+
+/**
+ * Version of comp_get_copy_limits_with_lock_frame_aligned that locks both
+ * buffers to guarantee consistent state readings and the frames aligned with
+ * the requirement.
+ *
+ * @param[in] source Buffer of source.
+ * @param[in] sink Buffer of sink
+ * @param[out] cl Current copy limits.
+ */
+static inline
+void comp_get_copy_limits_with_lock_frame_aligned(struct comp_buffer *source,
+						  struct comp_buffer *sink,
+						  struct comp_copy_limits *cl)
+{
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
+
+	comp_get_copy_limits_frame_aligned(source, sink, cl);
+
+	buffer_release(source);
+	buffer_release(sink);
 }
 
 /**
