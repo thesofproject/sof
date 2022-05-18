@@ -95,6 +95,8 @@ jobs:
         platform: [imx8ulp,
                    sue jsl tgl,
                    rn,
+                   # TODO: enable mt81xx after docker image udpated
+                   # mt8186, mt8195,
         ]
 
     steps:
