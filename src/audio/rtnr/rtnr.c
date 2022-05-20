@@ -342,8 +342,8 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 		return -EINVAL;
 	}
 
-	if (sourceb->stream.channels != 2 || sinkb->stream.channels != 2) {
-		comp_err(dev, "rtnr_params(), source/sink stream must be 2 channels");
+	if (sourceb->stream.channels != sinkb->stream.channels) {
+		comp_err(dev, "rtnr_params(), source/sink stream must have same channels");
 		return -EINVAL;
 	}
 
@@ -435,8 +435,13 @@ static int32_t rtnr_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 		comp_info(dev, "rtnr_set_value(), value = %u", val);
 	}
 
-	cd->process_enable = !val;
-	RTKMA_API_Bypass(cd->rtk_agl, !val);
+	if (val) {
+		comp_info(dev, "rtnr_set_value(): enabled");
+		cd->process_enable = true;
+	} else {
+		comp_info(dev, "rtnr_set_value(): passthrough");
+		cd->process_enable = false;
+	}
 
 	return 0;
 }
@@ -529,15 +534,16 @@ static int rtnr_copy(struct comp_dev *dev)
 	int frames;
 	int sink_bytes;
 	int source_bytes;
+	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct audio_stream_rtnr *sources_stream[RTNR_MAX_SOURCES];
 	struct audio_stream_rtnr *sink_stream = &cd->sink_stream;
 	int32_t i;
 
-	comp_dbg(dev, "rtnr_copy()");
-
 	for (i = 0; i < RTNR_MAX_SOURCES; ++i)
 		sources_stream[i] = &cd->sources_stream[i];
+
+	comp_dbg(dev, "rtnr_copy()");
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
@@ -545,50 +551,65 @@ static int rtnr_copy(struct comp_dev *dev)
 	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, source->stream.channels);
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 
-	/* Process integer multiple of RTNR internal block length */
-	frames = frames & ~RTNR_BLK_LENGTH_MASK;
+	if (cd->process_enable) {
+		frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 
-	comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
+		/* Process integer multiple of RTNR internal block length */
+		frames = frames & ~RTNR_BLK_LENGTH_MASK;
 
-	if (frames) {
-		source_bytes = frames * audio_stream_frame_bytes(&source->stream);
-		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
 
-		buffer_stream_invalidate(source, source_bytes);
+		if (frames) {
+			source_bytes = frames * audio_stream_frame_bytes(&source->stream);
+			sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-		/* Run processing function */
+			buffer_stream_invalidate(source, source_bytes);
 
-		/*
-		 * Processing function uses an array of pointers to source streams
-		 * as parameter.
-		 */
+			/* Run processing function */
 
-		/* copy required data from sof audio stream to RTNR audio stream */
-		rtnr_copy_from_sof_stream(sources_stream[0], &source->stream);
-		rtnr_copy_from_sof_stream(sink_stream, &sink->stream);
+			/* copy required data from sof audio stream to RTNR audio stream */
+			rtnr_copy_from_sof_stream(sources_stream[0], &source->stream);
+			rtnr_copy_from_sof_stream(sink_stream, &sink->stream);
 
-		cd->rtnr_func(dev, (struct audio_stream_rtnr **)&sources_stream, sink_stream,
-					frames);
+			/*
+			 * Processing function uses an array of pointers to source streams
+			 * as parameter.
+			 */
+			cd->rtnr_func(dev, (struct audio_stream_rtnr **)&sources_stream,
+						sink_stream, frames);
 
-		/*
-		 * real process function of rtnr, consume/produce data from internal queue
-		 * instead of component buffer
-		 */
-		RTKMA_API_Process(cd->rtk_agl, 0, cd->source_rate, MicNum);
+			/*
+			 * real process function of rtnr, consume/produce data from internal queue
+			 * instead of component buffer
+			 */
+			RTKMA_API_Process(cd->rtk_agl, 0, cd->source_rate, MicNum);
 
-		/* copy required data from RTNR audio stream to sof audio stream */
-		rtnr_copy_to_sof_stream(&source->stream, sources_stream[0]);
-		rtnr_copy_to_sof_stream(&sink->stream, sink_stream);
+			/* copy required data from RTNR audio stream to sof audio stream */
+			rtnr_copy_to_sof_stream(&source->stream, sources_stream[0]);
+			rtnr_copy_to_sof_stream(&sink->stream, sink_stream);
 
-		buffer_stream_writeback(sink, sink_bytes);
+			buffer_stream_writeback(sink, sink_bytes);
 
-		/* Track consume and produce */
-		comp_update_buffer_consume(source, source_bytes);
-		comp_update_buffer_produce(sink, sink_bytes);
+			/* Track consume and produce */
+			comp_update_buffer_consume(source, source_bytes);
+			comp_update_buffer_produce(sink, sink_bytes);
+		}
+	} else {
+		comp_dbg(dev, "rtnr_copy() passthrough");
+
+		/* Get source, sink, number of frames etc. to process. */
+		comp_get_copy_limits_with_lock(source, sink, &cl);
+
+		buffer_stream_invalidate(source, cl.source_bytes);
+
+		audio_stream_copy(&source->stream, 0, &sink->stream, 0,
+				source->stream.channels * cl.frames);
+
+		buffer_stream_writeback(sink, cl.sink_bytes);
+		comp_update_buffer_consume(source, cl.source_bytes);
+		comp_update_buffer_produce(sink, cl.sink_bytes);
 	}
-
 
 	return 0;
 }
