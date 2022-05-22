@@ -20,7 +20,11 @@ struct sof;
 
 /* input-device data */
 struct input_device {
+#ifdef __ZEPHYR__
+	struct k_work_delayable dwork;
+#else
 	struct task work;
+#endif
 	uint64_t prev_stamp;		/* time of previous event */
 	struct sof_ipc_input_event event;
 	struct ipc_msg *msg;

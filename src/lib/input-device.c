@@ -30,6 +30,86 @@ DECLARE_SOF_UUID("inputdev", inputdev_uuid, 0x2c979884, 0x1546, 0x470b,
 
 DECLARE_TR_CTX(id_tr, SOF_UUID(inputdev_uuid), LOG_LEVEL_INFO);
 
+#ifdef __ZEPHYR__
+
+#include <zephyr/kernel.h>
+
+static void input_device_work(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct input_device *inputdev =
+		CONTAINER_OF(dwork, struct input_device, dwork);
+	uint64_t stamp = k_cycle_get_64();
+	static int value = 0;
+	int ret;
+
+	tr_info(&id_tr, "input_device_task() %u ms since previous event (%u)",
+		(unsigned int) k_cyc_to_ms_near64(stamp -
+						  inputdev->prev_stamp),
+		(unsigned int) (stamp - inputdev->prev_stamp));
+
+	value = !value;
+
+	inputdev->event.code = BTN_1;
+	inputdev->event.value = value;
+	ipc_msg_send(inputdev->msg, &inputdev->event, false);
+
+	inputdev->prev_stamp = stamp;
+
+	ret = k_work_reschedule(dwork, Z_TIMEOUT_MS(3000));
+}
+
+void input_device_init(struct sof *sof)
+{
+	int ret;
+
+	tr_info(&id_tr, "input_device_init()");
+
+	sof->input_device = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
+				    SOF_MEM_CAPS_RAM,
+				    sizeof(*sof->input_device));
+	if (!sof->input_device) {
+		tr_err(&id_tr, "input_device_init(), rzalloc failed");
+		return;
+	}
+
+	ipc_build_input_event(&sof->input_device->event);
+	sof->input_device->msg =
+		ipc_msg_init(sof->input_device->event.rhdr.hdr.cmd,
+			     sof->input_device->event.rhdr.hdr.size);
+
+	if (!sof->input_device->msg) {
+		tr_err(&id_tr, "input_device_init(), ipc_msg_init failed");
+		goto err_exit;
+	}
+
+	k_work_init_delayable(&sof->input_device->dwork, input_device_work);
+
+	ret = k_work_schedule(&sof->input_device->dwork, Z_TIMEOUT_MS(3000));
+	if (ret < 0) {
+		tr_err(&id_tr,
+		       "k_work_schedule(), failed %d", ret);
+		goto err_exit;
+	}
+
+	/* initialize prev_stamp */
+	sof->input_device->prev_stamp = k_cycle_get_64();
+	return;
+
+err_exit:
+	ipc_msg_free(sof->input_device->msg);
+	rfree(sof->input_device);
+}
+
+void input_device_exit(struct sof *sof)
+{
+	k_work_cancel_delayable(&sof->input_device->dwork);
+
+	ipc_msg_free(sof->input_device->msg);
+}
+
+#else
+
 /* 5708d56b-83be-448e-bbd9-d50f5bbfa9c1 */
 DECLARE_SOF_UUID("inputdev-work", inputdev_task_uuid, 0x5708d56b, 0x83be,
 		 0x448e, 0xbb, 0xd9, 0xd5, 0x0f, 0x5b, 0xbf, 0xa9, 0xc1);
@@ -111,3 +191,4 @@ void input_device_exit(struct sof *sof)
 
 	ipc_msg_free(sof->input_device->msg);
 }
+#endif
