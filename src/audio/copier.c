@@ -525,7 +525,7 @@ static void copier_free(struct comp_dev *dev)
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-		buffer_release(cd->endpoint_buffer[i]);
+		buffer_free(cd->endpoint_buffer[i]);
 	}
 
 	rfree(cd);
