@@ -23,6 +23,8 @@ SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
 west_top = pathlib.Path(SOF_TOP, "zephyrproject")
 default_rimage_key = pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key.pem")
 
+sof_version = None
+
 if platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
 elif platform.system() == "Linux":
@@ -323,6 +325,28 @@ def west_init_update():
 	# Do NOT "west update sof"!!
 	execute_command(["west", "update", "zephyr", "hal_xtensa"], timeout=300, cwd=west_top)
 
+def get_sof_version(abs_build_dir):
+	"""[summary] Get version string major.minor.micro of SOF firmware
+	file. When building multiple platforms from the same SOF commit,
+	all platforms share the same version. So for the 1st platform,
+	generate the version string from sof_version.h and later platforms
+	will reuse it.
+	"""
+	global sof_version
+	if sof_version:
+		return sof_version
+
+	versions = {}
+	with open(pathlib.Path(abs_build_dir,
+		  "zephyr/include/generated/sof_versions.h"), encoding="utf8") as hfile:
+		for hline in hfile:
+			words = hline.split()
+			if words[0] == '#define':
+				versions[words[1]] = words[2]
+	sof_version = versions['SOF_MAJOR'] + '.' + versions['SOF_MINOR'] + '.' + \
+		      versions['SOF_MICRO']
+	return sof_version
+
 def build_platforms():
 	global west_top, SOF_TOP
 	print(f"SOF_TOP={SOF_TOP}")
@@ -446,6 +470,8 @@ def build_platforms():
 		else:
 			signing_key = default_rimage_key
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
+
+		sign_cmd += ["-f", get_sof_version(abs_build_dir)]
 
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
