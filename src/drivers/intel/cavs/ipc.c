@@ -198,6 +198,7 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
+#if CONFIG_IPC_MAJOR_3
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	/* write 1 to clear busy, and trigger interrupt to host*/
@@ -215,6 +216,29 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 }
+#elif CONFIG_IPC_MAJOR_4
+void ipc_platform_ack_cmd(struct ipc *ipc)
+{
+	/* write 1 to clear busy, and trigger interrupt to host*/
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
+#else
+	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
+	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
+#endif
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+	increment_ipc_processed_counter();
+#endif
+
+	/* unmask Busy interrupt */
+	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
+}
+
+void ipc_platform_complete_cmd(struct ipc *ipc)
+{
+}
+#endif
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {

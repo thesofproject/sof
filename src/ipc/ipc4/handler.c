@@ -971,8 +971,11 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	enum ipc4_message_target target;
 	int err;
 
-	if (!in)
+	if (!in) {
+		tr_err(&ipc_tr, "ipc4 failed for NULL message");
+		ipc_platform_ack_cmd(ipc_get());
 		return;
+	}
 
 	/* no process on scheduled thread */
 	msg_data.delayed_reply = 0;
@@ -998,6 +1001,8 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 	if (err)
 		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
+
+	ipc_platform_ack_cmd(ipc_get());
 
 	/* FW sends an ipc message to host if request bit is clear */
 	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {

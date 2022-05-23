@@ -46,6 +46,11 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc);
 void ipc_platform_complete_cmd(struct ipc *ipc);
 
 /**
+ * \brief Tell host we have received the last IPC command.
+ */
+void ipc_platform_ack_cmd(struct ipc *ipc);
+
+/**
  * \brief Send IPC message to host.
  * @param msg The IPC message to send to host.
  * @return 0 on success.
