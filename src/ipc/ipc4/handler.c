@@ -999,10 +999,18 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	if (err)
 		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
 
-	/* FW sends a ipc message to host if request bit is set*/
+	/* FW sends an ipc message to host if request bit is clear */
 	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
+
+		/* Do not send reply for SET_DX if we are going to enter D3
+		 * The reply is going to be sent as part of the power down
+		 * sequence
+		 */
+		if (in->primary.r.type == SOF_IPC4_MOD_SET_DX &&
+		    ipc_get()->pm_prepare_D3)
+			return;
 
 		if (ipc_wait_for_compound_msg() != 0) {
 			tr_err(&ipc_tr, "ipc4: failed to send delayed reply");

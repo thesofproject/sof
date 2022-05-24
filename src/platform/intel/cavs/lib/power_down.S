@@ -26,8 +26,15 @@
 	.align 64
 power_down_literals:
 	.literal_position
+#if CONFIG_IPC_MAJOR_3
 ipc_flag:
 	.word IPC_DIPCTDR_BUSY
+#elif CONFIG_IPC_MAJOR_4
+set_dx_reply:
+	/* BUSY (bit31), MODULE_MSG (bit30), reply (bit29), SET_DX (bit 24-28: 7) */
+	.word 0xE7000000
+
+#endif
 sram_dis_loop_cnt:
 	.word 4096
 
@@ -137,6 +144,7 @@ _PD_DISABLE_HPSRAM:
 	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
 
 _PD_SEND_IPC:
+#if CONFIG_IPC_MAJOR_3
 /* Send IPC to host informing of PD completion - Clear BUSY
  * bit by writing IPC_DIPCTDR_BUSY to IPC_DIPCTDR
  * and writing IPC_DIPCTDA_DONE to IPC_DIPCTDA
@@ -150,6 +158,17 @@ _PD_SEND_IPC:
 	l32i temp_reg1, host_base, IPC_DIPCTDA
 	or temp_reg1, temp_reg1, temp_reg2
 	s32i temp_reg1, host_base, IPC_DIPCTDA
+#elif CONFIG_IPC_MAJOR_4
+/* Send IPC reply for SET_DX message */
+	movi temp_reg1, 0
+	s32i temp_reg1, host_base, IPC_DIPCIDD
+
+	movi temp_reg1, set_dx_reply
+	l32i temp_reg1, temp_reg1, 0
+	s32i temp_reg1, host_base, IPC_DIPCIDR
+#else
+#error "Support for this IPC version is not implemented"
+#endif
 
 _PD_SLEEP:
 /* effecfively executes:
