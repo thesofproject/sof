@@ -422,7 +422,7 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 				 * since one of them is for playback and the other one
 				 * is for capture
 				 */
-				if (ipc4_comp_is_gateway(icd->cd))
+				if (ipc4_comp_has_dir(icd->cd))
 					break;
 
 				icd->cd->direction = dai->direction;
