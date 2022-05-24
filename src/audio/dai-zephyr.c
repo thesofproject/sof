@@ -1052,6 +1052,9 @@ static int dai_copy(struct comp_dev *dev)
 		return 0;
 	}
 
+	if (dd->dai->drv->ops.copy)
+		dd->dai->drv->ops.copy(dd->dai);
+
 	struct dma_cb_data next = {
 		.channel = dd->chan,
 		.elem = { .size = copy_bytes },

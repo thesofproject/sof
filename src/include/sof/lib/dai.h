@@ -86,6 +86,7 @@ struct dai_ops {
 	int (*remove)(struct dai *dai);
 	uint32_t (*get_init_delay_ms)(struct dai *dai);
 	int (*get_fifo_depth)(struct dai *dai, int direction);
+	void (*copy)(struct dai *dai);	/* Can be used by DAIs to prepare for data copying */
 };
 
 struct timestamp_cfg {
