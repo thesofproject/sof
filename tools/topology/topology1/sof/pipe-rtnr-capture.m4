@@ -38,9 +38,9 @@ CONTROLBYTES_PRIV(DEF_RTNR_PRIV,
 )
 
 # RTNR Bytes control with max value of 255
-C_CONTROLBYTES(DEF_RTNR_BYTES, PIPELINE_ID,
-	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
-	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+C_CONTROLBYTES_READONLY(DEF_RTNR_BYTES, PIPELINE_ID,
+	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get handlers, 258),
+	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get handlers, 258),
 	, , ,
 	CONTROLBYTES_MAX(, 256),
 	,
