@@ -780,17 +780,13 @@ out:
 	return drv;
 }
 
-bool ipc4_comp_is_gateway(struct comp_dev *dev)
+bool ipc4_comp_has_dir(struct comp_dev *dev)
 {
-	const struct sof_uuid copier = {0x9ba00c83, 0xca12, 0x4a83, {0x94, 0x3c,
-		0x1f, 0xa2, 0xe8, 0x2f, 0x9d, 0xda}};
+	int dir = -EINVAL;
 
-	/* check whether it is a copier module with copier uuid */
-	if (!memcmp(dev->drv->uid, &copier, UUID_SIZE)) {
-		/* dai or host, not a module for copy */
-		if (list_is_empty(&dev->bsink_list) || list_is_empty(&dev->bsource_list))
-			return true;
-	}
+	comp_get_attribute(dev, COMP_ATTR_COPY_DIR, &dir);
+	if (dir == SOF_IPC_STREAM_PLAYBACK || dir == SOF_IPC_STREAM_CAPTURE)
+		return true;
 
 	return false;
 }
