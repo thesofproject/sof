@@ -1000,6 +1000,9 @@ static int dai_copy(struct comp_dev *dev)
 		return 0;
 	}
 
+	if (dd->dai->drv->ops.copy)
+		dd->dai->drv->ops.copy(dd->dai);
+
 	ret = dma_copy_legacy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
 		dai_report_xrun(dev, copy_bytes);
