@@ -1,3 +1,4 @@
 [submodule "rimage"]
 	path = rimage
-	url = ../rimage
+	url = https://github.com/abonislawski/rimage.git
+	branch = mtl_upstream
