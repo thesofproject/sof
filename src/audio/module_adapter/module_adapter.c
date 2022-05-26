@@ -471,6 +471,7 @@ static void module_adapter_process_output(struct comp_dev *dev)
 			sink = container_of(blist, struct comp_buffer, source_list);
 			ca_copy_from_module_to_sink(&sink->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
+			buffer_stream_writeback(sink, mod->output_buffers[i].size);
 			audio_stream_produce(&sink->stream, mod->output_buffers[i].size);
 			mod->output_buffers[i].size = 0;
 			i++;
