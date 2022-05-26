@@ -522,6 +522,7 @@ int module_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
@@ -546,13 +547,13 @@ int module_adapter_copy(struct comp_dev *dev)
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
-		bytes_to_process = frames * source_frame_bytes;
+		bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
 
 		buffer_stream_invalidate(source, bytes_to_process);
 		mod->input_buffers[i].size = bytes_to_process;
 		mod->input_buffers[i].consumed = 0;
 		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
-					      bytes_to_process, bytes_to_process);
+					      md->mpd.in_buff_size, bytes_to_process);
 		i++;
 	}
 
