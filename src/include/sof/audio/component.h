@@ -862,13 +862,15 @@ void comp_get_copy_limits_with_lock_frame_aligned(struct comp_buffer *source,
 						  struct comp_buffer *sink,
 						  struct comp_copy_limits *cl)
 {
-	source = buffer_acquire(source);
-	sink = buffer_acquire(sink);
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 
-	comp_get_copy_limits_frame_aligned(source, sink, cl);
+	source_c = buffer_acquire(source);
+	sink_c = buffer_acquire(sink);
 
-	buffer_release(source);
-	buffer_release(sink);
+	comp_get_copy_limits_frame_aligned(source_c, sink_c, cl);
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
 }
 
 /**
