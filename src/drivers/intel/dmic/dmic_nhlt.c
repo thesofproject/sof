@@ -318,7 +318,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	 * configuration
 	 */
 	bfth = OUTCONTROL0_BFTH_GET(val);
-	dai->plat_data.fifo->depth = 1 << bfth;
+	dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth = 1 << bfth;
 
 	/* Get PDMx registers */
 	pdm_ctrl_mask = ((struct nhlt_pdm_ctrl_mask *)p)->pdm_ctrl_mask;
