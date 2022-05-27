@@ -161,68 +161,74 @@ int dai_init(struct sof *sof)
 		}
 
 #if CONFIG_INTEL_SSP
-	dai = ssp->dai_array;
+	if (ssp) {
+		dai = ssp->dai_array;
 
-	/* init ssp */
-	for (i = 0; i < ssp->num_dais; i++) {
-		dai[i].index = i;
-		dai[i].drv = &ssp_driver;
-		dai[i].plat_data.base = SSP_BASE(i);
-		dai[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i);
-		dai[i].plat_data.irq_name = irq_name_level5;
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
-			SSP_BASE(i) + SSDR;
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].handshake =
-			DMA_HANDSHAKE_SSP0_TX + 2 * i;
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset =
-			SSP_BASE(i) + SSDR;
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
-			DMA_HANDSHAKE_SSP0_RX + 2 * i;
-		/* initialize spin locks early to enable ref counting */
-		k_spinlock_init(&dai[i].lock);
+		/* init ssp */
+		for (i = 0; i < ssp->num_dais; i++) {
+			dai[i].index = i;
+			dai[i].drv = &ssp_driver;
+			dai[i].plat_data.base = SSP_BASE(i);
+			dai[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i);
+			dai[i].plat_data.irq_name = irq_name_level5;
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
+				SSP_BASE(i) + SSDR;
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].handshake =
+				DMA_HANDSHAKE_SSP0_TX + 2 * i;
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset =
+				SSP_BASE(i) + SSDR;
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
+				DMA_HANDSHAKE_SSP0_RX + 2 * i;
+			/* initialize spin locks early to enable ref counting */
+			k_spinlock_init(&dai[i].lock);
+		}
 	}
-
 #endif
 
 #if CONFIG_INTEL_MCLK
 	mn_init(sof);
 #endif
 
-	dai = hda->dai_array;
+	if (hda) {
+		dai = hda->dai_array;
 
-	/* init hd/a, note that size depends on the platform caps */
-	for (i = 0; i < hda->num_dais; i++) {
-		dai[i].index = i;
-		dai[i].drv = &hda_driver;
-		k_spinlock_init(&dai[i].lock);
+		/* init hd/a, note that size depends on the platform caps */
+		for (i = 0; i < hda->num_dais; i++) {
+			dai[i].index = i;
+			dai[i].drv = &hda_driver;
+			k_spinlock_init(&dai[i].lock);
+		}
 	}
 
 #if (CONFIG_INTEL_DMIC)
-	dai = dmic->dai_array;
+	if (dmic) {
+		dai = dmic->dai_array;
 
-	/* init dmic */
-	for (i = 0; i < dmic->num_dais; i++)
-		k_spinlock_init(&dai[i].lock);
+		/* init dmic */
+		for (i = 0; i < dmic->num_dais; i++)
+			k_spinlock_init(&dai[i].lock);
+	}
 #endif
 
 #if CONFIG_INTEL_ALH
-	dai = alh->dai_array;
+	if (alh) {
+		dai = alh->dai_array;
 
-	for (i = 0; i < alh->num_dais; i++) {
-		dai[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
-			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
-		dai[i].drv = &alh_driver;
+		for (i = 0; i < alh->num_dais; i++) {
+			dai[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
+				(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
+			dai[i].drv = &alh_driver;
 
-		/* set burst length to align with DMAT value in the
-		 * Audio Link Hub.
-		 */
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].depth =
-			ALH_GPDMA_BURST_LENGTH;
-		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
-			ALH_GPDMA_BURST_LENGTH;
-		k_spinlock_init(&dai[i].lock);
+			/* set burst length to align with DMAT value in the
+			 * Audio Link Hub.
+			 */
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].depth =
+				ALH_GPDMA_BURST_LENGTH;
+			dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
+				ALH_GPDMA_BURST_LENGTH;
+			k_spinlock_init(&dai[i].lock);
+		}
 	}
-
 #endif
 
 	return 0;
