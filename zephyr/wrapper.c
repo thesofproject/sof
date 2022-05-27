@@ -24,8 +24,9 @@
 /* Zephyr includes */
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
-#include <version.h>
+#include <zephyr/pm/policy.h>
 #include <zephyr/sys/__assert.h>
+#include <version.h>
 #include <soc.h>
 
 #if !CONFIG_KERNEL_COHERENCE
@@ -642,6 +643,7 @@ int task_main_start(struct sof *sof)
 	(void)notifier_register(NULL, scheduler_get_data(SOF_IPC_QUEUED_DOMAIN),
 				NOTIFIER_ID_LL_POST_RUN,
 				ipc_send_queued_callback, 0);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
