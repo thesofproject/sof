@@ -29,13 +29,13 @@ src/audio/eq_iir*			@singalsu
 src/audio/tone.c			@singalsu
 src/audio/kpb.c				@mrajwa
 src/audio/mux/*				@akloniex
-src/audio/dcblock*			@cujomalainey @chiang831 @johnylin76
-src/audio/crossover*			@cujomalainey @chiang831 @johnylin76
+src/audio/dcblock*			@thesofproject/google
+src/audio/crossover*			@thesofproject/google
 src/audio/tdfb*                         @singalsu
-src/audio/drc/*				@johnylin76 @cujomalainey @chiang831
-src/audio/multiband_drc/*		@johnylin76 @cujomalainey @chiang831
+src/audio/drc/*				@thesofproject/google
+src/audio/multiband_drc/*		@thesofproject/google
 src/audio/codec_adapter/*		@cujomalainey @mrajwa @dbaluta
-src/audio/google_hotword_detect.c	@bzhg @cujomalainey @chiang831 @johnylin76
+src/audio/google_hotword_detect.c	@thesofproject/google
 
 # platforms
 src/platform/haswell/*			@randerwang
@@ -73,10 +73,10 @@ tools/testbench/*			@ranj063
 tools/test/audio/*			@singalsu
 tools/ctl/*				@singalsu
 tools/tune/*				@singalsu
-tools/tune/crossover/*			@cujomalainey @johnylin76 @chiang831
-tools/tune/dcblock/*			@cujomalainey @johnylin76 @chiang831
-tools/tune/drc/*			@cujomalainey @johnylin76 @chiang831
-tools/oss-fuzz/*			@cujomalainey
+tools/tune/crossover/*			@thesofproject/google
+tools/tune/dcblock/*			@thesofproject/google
+tools/tune/drc/*			@thesofproject/google
+tools/oss-fuzz/*			@thesofproject/google
 
 # build system
 **/CMakeLists.txt			@marc-hb @aborisovich
