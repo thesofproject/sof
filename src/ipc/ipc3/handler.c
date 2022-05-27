@@ -456,10 +456,18 @@ static int ipc_stream_trigger(uint32_t header)
 		cmd = COMP_TRIGGER_STOP;
 		break;
 	case SOF_IPC_STREAM_TRIG_PAUSE:
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL || CONFIG_BROADWELL || CONFIG_HASWELL
+		cmd = COMP_TRIGGER_STOP;
+#else
 		cmd = COMP_TRIGGER_PAUSE;
+#endif
 		break;
 	case SOF_IPC_STREAM_TRIG_RELEASE:
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL || CONFIG_BROADWELL || CONFIG_HASWELL
+		cmd = COMP_TRIGGER_PRE_START;
+#else
 		cmd = COMP_TRIGGER_PRE_RELEASE;
+#endif
 		break;
 	/* XRUN is special case- TODO */
 	case SOF_IPC_STREAM_TRIG_XRUN:
