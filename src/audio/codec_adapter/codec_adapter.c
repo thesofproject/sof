@@ -126,7 +126,14 @@ int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	if (!cfg || !size) {
 		comp_err(dev, "load_setup_config(): no config available cfg: %x, size: %d",
 			 (uintptr_t)cfg, size);
-		ret = -EINVAL;
+		/* Hack: set default values to setup config if no config available. */
+		cd->ca_config.codec_id = 9999;
+		cd->ca_config.reserved = 0;
+		cd->ca_config.sample_rate = 48000;
+		cd->ca_config.sample_width = 32;
+		cd->ca_config.channels = 2;
+		comp_info(dev, "load_setup_config(): set deafult values to config instead");
+		ret = validate_setup_config(&cd->ca_config);
 		goto end;
 	} else if (size < sizeof(struct ca_config)) {
 		comp_err(dev, "load_setup_config(): no codec config available, size %d", size);

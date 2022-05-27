@@ -22,7 +22,7 @@ include(`eq_iir.m4')
 # DTS Codec
 #
 
-include(`dts_codec_adapter.m4')
+include(`dts_codec_adapter_hp.m4')
 
 #
 # IIR EQ
