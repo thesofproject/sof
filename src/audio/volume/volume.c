@@ -1149,6 +1149,12 @@ static int volume_copy(struct comp_dev *dev)
 
 	/* Get aligned source, sink, number of frames etc. to process. */
 	comp_get_copy_limits_with_lock_frame_aligned(source, sink, &c);
+	comp_info(dev, "volume_copy(), limit frames %d", c.frames);
+	comp_get_copy_limits_with_lock(source, sink, &c);
+	comp_info(dev, "volume_copy(), bytes 0x%x, 0x%x,frame_bytes 0x%x, 0x%x,",
+		 c.source_bytes, c.sink_bytes, c.source_frame_bytes, c.sink_frame_bytes);
+	comp_info(dev, "volume_copy(), channels %d, frames %d", source->stream.channels, c.frames);
+	c.frames &= ~0x03;
 
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
