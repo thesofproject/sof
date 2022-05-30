@@ -844,8 +844,8 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 
 	comp_get_copy_limits(source_c, sink_c, cl);
 
-	buffer_release(source_c);
 	buffer_release(sink_c);
+	buffer_release(source_c);
 }
 
 /**
