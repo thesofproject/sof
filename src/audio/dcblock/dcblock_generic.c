@@ -40,27 +40,36 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct dcblock_state *state;
-	int16_t *x;
-	int16_t *y;
+	int16_t *x = source->r_ptr;
+	int16_t *y = sink->w_ptr;
 	int32_t R;
 	int32_t tmp;
 	int idx;
 	int ch;
-	int i;
+	int i, n, nmax;
 	int nch = source->channels;
+	int samples = nch * frames;
 
-	for (ch = 0; ch < nch; ch++) {
-		state = &cd->state[ch];
-		R = cd->R_coeffs[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s16(source, idx);
-			y = audio_stream_write_frag_s16(sink, idx);
-			tmp = dcblock_generic(state, R, *x << 16);
-			*y = sat_int16(Q_SHIFT_RND(tmp, 31, 15));
-			idx += nch;
+	while (samples) {
+		nmax = audio_stream_samples_without_wrap_s16(source, x);
+		n = MIN(samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s16(sink, y);
+		n = MIN(n, nmax);
+		for (ch = 0; ch < nch; ch++) {
+			state = &cd->state[ch];
+			R = cd->R_coeffs[ch];
+			idx = ch;
+			for (i = 0; i < n; i += nch) {
+				tmp = dcblock_generic(state, R, x[idx] << 16);
+				y[idx] = sat_int16(Q_SHIFT_RND(tmp, 31, 15));
+				idx += nch;
+			}
 		}
+		samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
+
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -72,27 +81,36 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct dcblock_state *state;
-	int32_t *x;
-	int32_t *y;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int32_t R;
 	int32_t tmp;
 	int idx;
 	int ch;
-	int i;
+	int i, n, nmax;
 	int nch = source->channels;
+	int samples = nch * frames;
 
-	for (ch = 0; ch < nch; ch++) {
-		state = &cd->state[ch];
-		R = cd->R_coeffs[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			tmp = dcblock_generic(state, R, *x << 8);
-			*y = sat_int24(Q_SHIFT_RND(tmp, 31, 23));
-			idx += nch;
+	while (samples) {
+		nmax = audio_stream_samples_without_wrap_s24(source, x);
+		n = MIN(samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s24(sink, y);
+		n = MIN(n, nmax);
+		for (ch = 0; ch < nch; ch++) {
+			state = &cd->state[ch];
+			R = cd->R_coeffs[ch];
+			idx = ch;
+			for (i = 0; i < n; i += nch) {
+				tmp = dcblock_generic(state, R, x[idx] << 8);
+				y[idx] = sat_int24(Q_SHIFT_RND(tmp, 31, 23));
+				idx += nch;
+			}
 		}
+		samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
+
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -104,24 +122,32 @@ static void dcblock_s32_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct dcblock_state *state;
-	int32_t *x;
-	int32_t *y;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int32_t R;
 	int idx;
 	int ch;
-	int i;
+	int i, n, nmax;
 	int nch = source->channels;
+	int samples = nch * frames;
 
-	for (ch = 0; ch < nch; ch++) {
-		state = &cd->state[ch];
-		R = cd->R_coeffs[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			*y = dcblock_generic(state, R, *x);
-			idx += nch;
+	while (samples) {
+		nmax = audio_stream_samples_without_wrap_s32(source, x);
+		n = MIN(samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, y);
+		n = MIN(n, nmax);
+		for (ch = 0; ch < nch; ch++) {
+			state = &cd->state[ch];
+			R = cd->R_coeffs[ch];
+			idx = ch;
+			for (i = 0; i < n; i += nch) {
+				y[idx] = dcblock_generic(state, R, x[idx]);
+				idx += nch;
+			}
 		}
+		samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
