@@ -22,9 +22,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
-#include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/dai.h>
@@ -43,10 +40,6 @@ DECLARE_SOF_UUID("dmic-dai", dmic_uuid, 0xaafc26fe, 0x3b8d, 0x498d,
 
 DECLARE_TR_CTX(dmic_tr, SOF_UUID(dmic_uuid), LOG_LEVEL_INFO);
 
-/* 59c87728-d8f9-42f6-b89d-5870a87b0e1e */
-DECLARE_SOF_UUID("dmic-work", dmic_work_task_uuid, 0x59c87728, 0xd8f9, 0x42f6,
-		 0xb8, 0x9d, 0x58, 0x70, 0xa8, 0x7b, 0x0e, 0x1e);
-
 /* Configuration ABI version, increment if not compatible with previous
  * version.
  */
@@ -59,16 +52,31 @@ static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
 static SHARED_DATA struct dmic_global_shared dmic_global;
 
 /* this ramps volume changes over time */
-static enum task_state dmic_work(void *data)
+static void dmic_gain_ramp(struct dai *dai)
 {
-	struct dai *dai = (struct dai *)data;
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	k_spinlock_key_t key;
 	int32_t gval;
 	uint32_t val;
 	int i;
 
-	dai_dbg(dai, "dmic_work()");
+	/* Currently there's no DMIC HW internal mutings and wait times
+	 * applied into this start sequence. It can be implemented here if
+	 * start of audio capture would contain clicks and/or noise and it
+	 * is not suppressed by gain ramp somewhere in the capture pipe.
+	 */
+
+	dai_dbg(dai, "dmic_gain_ramp()");
+
+	/*
+	 * At run-time dmic->gain is only changed in this function, and this
+	 * function runs in the pipeline task context, so it cannot run
+	 * concurrently on multiple cores, since there's always only one
+	 * task associated with each DAI, so we don't need to hold the lock to
+	 * read the value here.
+	 */
+	if (dmic->gain == DMIC_HW_FIR_GAIN_MAX << 11)
+		return;
 
 	key = k_spin_lock(&dai->lock);
 
@@ -87,8 +95,10 @@ static enum task_state dmic_work(void *data)
 	 * sets gain bypass mode in HW. Zero value will be applied after ramp
 	 * is complete. It is because exact 1.0 gain is not possible with Q1.19.
 	 */
-	if (gval > DMIC_HW_FIR_GAIN_MAX)
+	if (gval > DMIC_HW_FIR_GAIN_MAX) {
 		gval = 0;
+		dmic->gain = DMIC_HW_FIR_GAIN_MAX << 11;
+	}
 
 	/* Write gain to registers */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
@@ -127,13 +137,11 @@ static enum task_state dmic_work(void *data)
 
 
 	k_spin_unlock(&dai->lock, key);
-
-	return gval ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }
 
 /* get DMIC hw params */
 static int dmic_get_hw_params(struct dai *dai,
-			      struct sof_ipc_stream_params  *params, int dir)
+			      struct sof_ipc_stream_params *params, int dir)
 {
 #if CONFIG_INTEL_DMIC_TPLG_PARAMS
 	return dmic_get_hw_params_computed(dai, params, dir);
@@ -149,8 +157,6 @@ static int dmic_get_hw_params(struct dai *dai,
 static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config, void *spec_config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	int32_t unmute_ramp_time_ms;
-	int32_t step_db;
 	int ret = 0;
 	int di = dai->index;
 	k_spinlock_key_t key;
@@ -197,13 +203,15 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	 * if it is non-zero, otherwise use default length.
 	 */
 	if (config->dmic.unmute_ramp_time)
-		unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
+		dmic->unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
 	else
-		unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(config->dmic.fifo_fs);
+		dmic->unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(
+			config->dmic.fifo_fs);
 
-	if (unmute_ramp_time_ms < LOGRAMP_TIME_MIN_MS ||
-	    unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
-		dai_err(dai, "dmic_set_config(): Illegal ramp time = %d", unmute_ramp_time_ms);
+	if (dmic->unmute_ramp_time_ms < LOGRAMP_TIME_MIN_MS ||
+	    dmic->unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
+		dai_err(dai, "dmic_set_config(): Illegal ramp time = %d",
+			dmic->unmute_ramp_time_ms);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -236,7 +244,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	ret = dmic_set_config_nhlt(dai, spec_config);
 
 	/* There's no unmute ramp duration in blob, so the default rate dependent is used. */
-	unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(dmic->dai_rate);
+	dmic->unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(dmic->dai_rate);
 #else
 	ret = -EINVAL;
 #endif
@@ -246,10 +254,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 		goto out;
 	}
 
-	/* Compute unmute ramp gain update coefficient. */
-	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
-	dmic->gain_coef = db2lin_fixed(step_db);
-	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d", unmute_ramp_time_ms);
+	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d", dmic->unmute_ramp_time_ms);
 
 	dmic->state = COMP_STATE_PREPARE;
 
@@ -263,6 +268,7 @@ static void dmic_start(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	k_spinlock_key_t key;
+	int32_t step_db;
 	int i;
 	int mic_a;
 	int mic_b;
@@ -273,6 +279,14 @@ static void dmic_start(struct dai *dai)
 	key = k_spin_lock(&dai->lock);
 	dai_dbg(dai, "dmic_start()");
 	dmic->startcount = 0;
+
+	/*
+	 * Compute unmute ramp gain update coefficient, based on DAI processing
+	 * period in microseconds.
+	 */
+	step_db = dai->dd->dai_dev->period * (int64_t)-LOGRAMP_START_DB /
+		(1000 * dmic->unmute_ramp_time_ms);
+	dmic->gain_coef = db2lin_fixed(step_db);
 
 	/* Initial gain value, convert Q12.20 to Q2.30 */
 	dmic->gain = Q_SHIFT_LEFT(db2lin_fixed(LOGRAMP_START_DB), 20, 30);
@@ -369,16 +383,6 @@ static void dmic_start(struct dai *dai)
 	dmic->state = COMP_STATE_ACTIVE;
 	k_spin_unlock(&dai->lock, key);
 
-	/* Currently there's no DMIC HW internal mutings and wait times
-	 * applied into this start sequence. It can be implemented here if
-	 * start of audio capture would contain clicks and/or noise and it
-	 * is not suppressed by gain ramp somewhere in the capture pipe.
-	 */
-
-	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US,
-		      DMIC_UNMUTE_RAMP_US);
-
-
 	dai_info(dai, "dmic_start(), dmic_active_fifos_mask = 0x%x",
 		 dmic->global->active_fifos_mask);
 }
@@ -449,7 +453,6 @@ static void dmic_stop(struct dai *dai, bool stop_is_pause)
 		}
 	}
 
-	schedule_task_cancel(&dmic->dmicwork);
 	k_spin_unlock(&dai->lock, key);
 }
 
@@ -561,11 +564,6 @@ static int dmic_probe(struct dai *dai)
 		return ret;
 	}
 
-	/* Initialize start sequence handler */
-	schedule_task_init_ll(&dmic->dmicwork, SOF_UUID(dmic_work_task_uuid),
-			      SOF_SCHEDULE_LL_TIMER,
-			      SOF_TASK_PRI_MED, dmic_work, dai, cpu_get_id(), 0);
-
 	/* Enable DMIC power */
 	pm_runtime_get_sync(DMIC_POW, dai->index);
 
@@ -585,9 +583,6 @@ static int dmic_remove(struct dai *dai)
 
 	interrupt_disable(dmic->irq, dai);
 	interrupt_unregister(dmic->irq, dai);
-
-	/* remove scheduling */
-	schedule_task_free(&dmic->dmicwork);
 
 	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
 		 active_fifos_mask, pause_mask);
@@ -637,6 +632,7 @@ const struct dai_driver dmic_driver = {
 		.get_fifo_depth		= dmic_get_fifo_depth,
 		.probe			= dmic_probe,
 		.remove			= dmic_remove,
+		.copy			= dmic_gain_ramp,
 	},
 	.ts_ops = {
 		.ts_config		= timestamp_dmic_config,
