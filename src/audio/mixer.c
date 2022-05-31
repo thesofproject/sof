@@ -366,8 +366,7 @@ static int mixer_copy(struct comp_dev *dev)
 		 * generating silence until at least one of the
 		 * sources start to have data available (frames!=0).
 		 */
-		frames = audio_stream_get_free_frames(&sink->stream);
-		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		sink_bytes = dev->frames * audio_stream_frame_bytes(&sink->stream);
 		sink = buffer_release(sink);
 		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
 			buffer_stream_writeback(sink, sink_bytes);
