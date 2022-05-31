@@ -266,6 +266,8 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	if (dai_config_dma_channel(dev, spec_config) == DMA_CHAN_INVALID)
 		return 0;
 
+	dd->dai_dev = dev;
+
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
 		size = sizeof(*copier_cfg);

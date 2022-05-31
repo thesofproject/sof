@@ -179,6 +179,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
 		goto error;
 	}
+	dd->dai->dd = dd;
 	dd->ipc_config = *dai;
 
 	/* request GP LP DMA with shared access privilege */

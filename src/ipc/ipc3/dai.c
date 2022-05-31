@@ -284,6 +284,8 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		return 0;
 	}
 
+	dd->dai_dev = dev;
+
 	switch (config->flags & SOF_DAI_CONFIG_FLAGS_CMD_MASK) {
 	case SOF_DAI_CONFIG_FLAGS_HW_PARAMS:
 		/* set the delayed_dma_stop flag */
