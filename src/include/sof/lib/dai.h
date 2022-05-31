@@ -161,6 +161,7 @@ struct dai_data {
 #ifdef __ZEPHYR__
 	struct dma_config *z_config;
 #endif
+	struct comp_dev *dai_dev;
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
 	struct timestamp_cfg ts_config;
@@ -199,6 +200,7 @@ struct dai {
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
 	const struct dai_driver *drv;
+	const struct dai_data *dd;
 	void *priv_data;
 };
 
