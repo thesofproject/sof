@@ -109,14 +109,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Use groups to avoid spamming the web interface.
-        # Don't use a single big group so a single failure does not block
-        # all other builds.
+        # Use groups to avoid spamming the web interface. Pay attention
+        # to COMMAS. Don't use a single big group so a single failure
+        # does not block all other builds.
         platform: [imx8ulp,
                    sue jsl tgl,
                    rn,
-                   # TODO: enable mt81xx after docker image udpated
-                   # mt8186, mt8195,
+                   mt8186 mt8195,
         ]
 
     steps:
