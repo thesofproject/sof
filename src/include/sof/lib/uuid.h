@@ -55,19 +55,6 @@ struct sof_uuid_entry {
 	const char name[UUID_NAME_MAX_LEN];
 };
 
-#if CONFIG_LIBRARY
-#define DECLARE_SOF_UUID(entity_name, uuid_name,			\
-			 va, vb, vc,					\
-			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)
-#define DECLARE_SOF_RT_UUID(entity_name, uuid_name,			\
-			 va, vb, vc,					\
-			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)
-
-#define SOF_UUID(uuid_name) 0
-#define SOF_RT_UUID(uuid_name) NULL
-
-#else
-
 /** \brief Declares UUID (aaaaaaaa-bbbb-cccc-d0d1-d2d3d4d5d6d7) and name.
  *
  * UUID value from variables declared with this macro are unaccessible in
@@ -139,7 +126,6 @@ struct sof_uuid_entry {
  * \param uuid_name UUID symbol name declared with DECLARE_SOF_RT_UUID().
  */
 #define SOF_RT_UUID(uuid_name) (&(uuid_name))
-#endif
 
 /** @}*/
 
