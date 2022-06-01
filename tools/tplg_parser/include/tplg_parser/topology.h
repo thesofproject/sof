@@ -142,9 +142,8 @@ int get_token_dai_type(void *elem, void *object, uint32_t offset,
 
 /* Component extended tokens */
 static const struct sof_topology_token comp_ext_tokens[] = {
-	{SOF_TKN_COMP_UUID,
-		SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid,
-		offsetof(struct sof_ipc_comp_ext, uuid), 0},
+	{SOF_TKN_COMP_UUID, SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid, 0, 0},
+
 };
 
 struct sof_dai_types {
@@ -182,8 +181,7 @@ int tplg_create_pcm(struct tplg_context *ctx, int dir,
 		  struct sof_ipc_comp_host *host);
 int tplg_create_dai(struct tplg_context *ctx,
 		  struct sof_ipc_comp_dai *comp_dai);
-int tplg_create_pga(struct tplg_context *ctx,
-		  struct sof_ipc_comp_volume *volume);
+int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume);
 int tplg_create_pipeline(struct tplg_context *ctx,
 		       struct sof_ipc_pipe_new *pipeline);
 int tplg_create_single_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv,

@@ -40,6 +40,7 @@ int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume
 	FILE *file = ctx->file;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
+	char uuid[UUID_SIZE];
 	int ret;
 
 	/* allocate memory for vendor tuple array */
@@ -93,16 +94,28 @@ int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume
 			return -EINVAL;
 		}
 
+		/* parse uuid token */
+		ret = sof_parse_tokens(uuid, comp_ext_tokens,
+				       ARRAY_SIZE(comp_ext_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse pga uuid token %d\n", size);
+			free(array);
+			return -EINVAL;
+		}
+
 		total_array_size += array->size;
 	}
 
 	/* configure volume */
 	volume->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
 	volume->comp.id = comp_id;
-	volume->comp.hdr.size = sizeof(struct sof_ipc_comp_volume);
+	volume->comp.hdr.size = sizeof(struct sof_ipc_comp_volume) + UUID_SIZE;
 	volume->comp.type = SOF_COMP_VOLUME;
 	volume->comp.pipeline_id = ctx->pipeline_id;
+	volume->comp.ext_data_length = UUID_SIZE;
 	volume->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	memcpy(volume + 1, &uuid, UUID_SIZE);
 
 	free(array);
 	return 0;
@@ -112,7 +125,8 @@ int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume
 int tplg_register_pga(struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_comp_volume volume = {};
+	struct sof_ipc_comp *comp;
+	struct sof_ipc_comp_volume *volume;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
 	struct snd_soc_tplg_mixer_control *mixer_ctl;
 	char *priv_data = NULL;
@@ -124,14 +138,23 @@ int tplg_register_pga(struct tplg_context *ctx)
 	int channels = 0;
 	int ret = 0;
 
-	ret = tplg_create_pga(ctx, &volume);
+	volume = malloc(sizeof(*volume) + UUID_SIZE);
+	if (!volume)
+		return -ENOMEM;
+
+	memset(volume, 0, sizeof(*volume) + UUID_SIZE);
+
+	comp = &volume->comp;
+
+	ret = tplg_create_pga(ctx, volume);
 	if (ret < 0)
-		return ret;
+		goto err;
 
 	/* Only one control is supported*/
 	if (ctx->widget->num_kcontrols > 1) {
 		fprintf(stderr, "error: more than one kcontrol defined\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
 	/* Get control into ctl and priv_data */
@@ -139,7 +162,7 @@ int tplg_register_pga(struct tplg_context *ctx)
 		ret = tplg_create_single_control(&ctl, &priv_data, ctx->file);
 		if (ret < 0) {
 			fprintf(stderr, "error: failed control load\n");
-			return ret;
+			goto err;
 		}
 
 		/* Get volume scale */
@@ -152,19 +175,22 @@ int tplg_register_pga(struct tplg_context *ctx)
 
 	vol_min_db = 0.01 * vol_min;
 	vol_max_db = 0.01 * (vol_maxs * vol_step) + vol_min_db;
-	volume.min_value = round(pow(10, vol_min_db / 20.0) * 65535);
-	volume.max_value = round(pow(10, vol_max_db / 20.0) * 65536);
-	volume.channels = channels;
+	volume->min_value = round(pow(10, vol_min_db / 20.0) * 65535);
+	volume->max_value = round(pow(10, vol_max_db / 20.0) * 65536);
+	volume->channels = channels;
 
 	free(ctl);
 	free(priv_data);
 
 	/* load volume component */
-	register_comp(volume.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&volume)) < 0) {
+	register_comp(comp->type, NULL);
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(comp)) < 0) {
 		fprintf(stderr, "error: new pga comp\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
-	return 0;
+err:
+	free(volume);
+	return ret;
 }
