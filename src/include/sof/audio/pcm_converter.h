@@ -17,6 +17,8 @@
 #include <ipc/stream.h>
 #include <ipc4/gateway.h>
 
+#include <sof/compiler_attributes.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -47,8 +49,8 @@ struct audio_stream;
  * \param samples number of samples to convert
  * \return error code or number of processed samples.
  */
-typedef int (*pcm_converter_func)(const struct audio_stream *source,
-				  uint32_t ioffset, struct audio_stream *sink,
+typedef int (*pcm_converter_func)(const struct audio_stream __sparse_cache *source,
+				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples);
 
 /**
