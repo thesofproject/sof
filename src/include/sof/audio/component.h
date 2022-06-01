@@ -808,7 +808,8 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer __spars
  * @param[in] sink Sink buffer.
  * @param[out] cl Current copy limits.
  */
-void comp_get_copy_limits(struct comp_buffer __sparse_cache *source, struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
+			  struct comp_buffer __sparse_cache *sink,
 			  struct comp_copy_limits *cl);
 
 /**
@@ -820,8 +821,8 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source, struct comp
  * @param[in] sink Buffer of sink.
  * @param[out] cl Current copy limits.
  */
-void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
-					const struct comp_buffer *sink,
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache *source,
+					const struct comp_buffer __sparse_cache *sink,
 					struct comp_copy_limits *cl);
 
 /**
