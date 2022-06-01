@@ -29,6 +29,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 # CAVS SDW with SRC gain and mixer support
 "cavs-sdw-src-gain-mixin\;cavs-sdw-src-gain-mixin"
 
+# SDW + HDMI topology with passthrough pipelines
+"cavs-sdw\;cavs-sdw-hdmi\;NUM_HDMIS=4"
+
 # SDW + DMIC topology with passthrough pipelines
 "cavs-sdw\;cavs-mtl-sdw-dmic\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl-sdw-dmic.bin"
