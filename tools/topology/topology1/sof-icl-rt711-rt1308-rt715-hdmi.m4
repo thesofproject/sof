@@ -37,7 +37,7 @@ ifdef(`MIC_LINK',`',
 # UAJ ID: 0, 1
 # AMP ID: 2, 3 (if EXT_AMP_REF defined)
 # DMIC ID: 4
-# HDMI ID calculated based on the configuraiton
+# HDMI ID calculated based on the configuration
 define(HDMI_BE_ID_BASE, `0')
 
 ifdef(`NO_JACK', `',
