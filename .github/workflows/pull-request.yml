@@ -83,6 +83,26 @@ jobs:
         run: ./scripts/host-testbench.sh
 
 
+  # This is a bit redundant with the other jobs below and with the (much
+  # faster!) installer[.yml] but it may differ in which platforms are
+  # built.  This makes sure platforms without any open-source toolchain
+  # are added in the right place and do not accidentally break the -a
+  # option, Docker testing etc.
+  gcc-build-default-platforms:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 5, submodules: recursive}
+
+      - name: docker
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
+      - name: xtensa-build-all.sh -a
+        run: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -a ||
+             ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -a -j 1
+
+
   gcc-build-only:
     runs-on: ubuntu-20.04
 
@@ -107,7 +127,7 @@ jobs:
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
-      - name: xtensa-build-all
+      - name: xtensa-build-all.sh platforms
         env:
           PLATFORM: ${{ matrix.platform }}
         run: ./scripts/docker-run.sh
@@ -146,7 +166,7 @@ jobs:
       - name: docker SOF
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
-      - name: xtensa-build-all -o no-agent
+      - name: xtensa-build-all.sh -o no-agent platforms
         env:
           PLATFORM: ${{ matrix.platform }}
         run: ./scripts/docker-run.sh
