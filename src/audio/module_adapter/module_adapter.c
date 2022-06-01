@@ -205,6 +205,29 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -ENOMEM;
 	}
 
+	/* allocate memory for output buffers */
+	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
+	if (!mod->output_buffers) {
+		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
+		ret = -ENOMEM;
+		goto in_free;
+	}
+
+	/*
+	 * no need to allocate intermediate sink buffers if the module produces only period bytes
+	 * every period and has only 1 input and 1 output buffer
+	 */
+	if (mod->simple_copy) {
+		struct comp_buffer *source, *sink;
+
+		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		mod->input_buffers[0].data = &source->stream;
+		mod->output_buffers[0].data = &sink->stream;
+		return 0;
+	}
+
 	/* allocate memory for input buffer data */
 	list_for_item(blist, &dev->bsource_list) {
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
@@ -216,15 +239,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 			goto in_free;
 		}
 		i++;
-	}
-
-	/* allocate memory for output buffers */
-	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
-	if (!mod->output_buffers) {
-		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
-		ret = -ENOMEM;
-		goto in_free;
 	}
 
 	/* allocate memory for output buffer data */
@@ -456,26 +470,19 @@ copy_period:
 static void module_adapter_process_output(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
 	struct comp_buffer *sink;
 	struct list_item *blist;
 	int i;
 
 	/*
-	 * When a module produces only period_bytes every period, skip copying the produced
-	 * samples to the intermediate buffer and copy to the sink buffer directly
+	 * When a module produces only period_bytes every period, the produced samples are written
+	 * to the output buffer stream directly. So, just writeback buffer stream and reset size.
 	 */
-	if (md->mpd.out_buff_size == mod->period_bytes) {
-		i = 0;
-		list_for_item(blist, &dev->bsink_list) {
-			sink = container_of(blist, struct comp_buffer, source_list);
-			ca_copy_from_module_to_sink(&sink->stream, mod->output_buffers[i].data,
-						    mod->output_buffers[i].size);
-			buffer_stream_writeback(sink, mod->output_buffers[i].size);
-			audio_stream_produce(&sink->stream, mod->output_buffers[i].size);
-			mod->output_buffers[i].size = 0;
-			i++;
-		}
+	if (mod->simple_copy) {
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		buffer_stream_writeback(sink, mod->output_buffers[0].size);
+		comp_update_buffer_produce(sink, mod->output_buffers[0].size);
+		mod->output_buffers[0].size = 0;
 		return;
 	}
 
@@ -524,38 +531,59 @@ int module_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_copy_limits c;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
 	int ret, i = 0;
 
-	/* get the least number of free frames from all sinks */
-	list_for_item(blist, &mod->sink_buffer_list) {
-		sink = container_of(blist, struct comp_buffer, sink_list);
-		min_free_frames = MIN(min_free_frames,
-				      audio_stream_get_free_frames(&sink->stream));
-	}
+	comp_info(dev, "module_adapter_copy(): start");
 
-	/* copy source samples into input buffer */
-	list_for_item(blist, &dev->bsource_list) {
-		uint32_t bytes_to_process;
-		int frames, source_frame_bytes;
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-		source = container_of(blist, struct comp_buffer, sink_list);
+	/*
+	 * Simplify calculation of bytes_to_process for modules that produce period_bytes every
+	 * period and have only 1 source and 1 sink buffer
+	 */
+	if (mod->simple_copy) {
+		comp_get_copy_limits_with_lock_frame_aligned(source, sink, &c);
+		buffer_stream_invalidate(source, c.frames * c.source_frame_bytes);
 
-		source = buffer_acquire(source);
-		frames = MIN(min_free_frames, audio_stream_get_avail_frames(&source->stream));
-		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
-		source = buffer_release(source);
+		/* note that the size is in number of frames not the number of bytes */
+		mod->input_buffers[0].size = c.frames;
+		mod->input_buffers[0].consumed = 0;
+		mod->output_buffers[0].size = 0;
+	} else {
+		list_for_item(blist, &mod->sink_buffer_list) {
+			sink = container_of(blist, struct comp_buffer, sink_list);
+			min_free_frames = MIN(min_free_frames,
+					      audio_stream_get_free_frames(&sink->stream));
+		}
 
-		bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
+		/* copy source samples into input buffer */
+		list_for_item(blist, &dev->bsource_list) {
+			uint32_t bytes_to_process;
+			int frames, source_frame_bytes;
 
-		buffer_stream_invalidate(source, bytes_to_process);
-		mod->input_buffers[i].size = bytes_to_process;
-		mod->input_buffers[i].consumed = 0;
-		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
-					      md->mpd.in_buff_size, bytes_to_process);
-		i++;
+			source = container_of(blist, struct comp_buffer, sink_list);
+
+			source = buffer_acquire(source);
+			frames = MIN(min_free_frames,
+				     audio_stream_get_avail_frames(&source->stream));
+			source_frame_bytes = audio_stream_frame_bytes(&source->stream);
+			source = buffer_release(source);
+
+			bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
+
+			buffer_stream_invalidate(source, bytes_to_process);
+			mod->input_buffers[i].size = bytes_to_process;
+			mod->input_buffers[i].consumed = 0;
+
+			ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
+						      md->mpd.in_buff_size, bytes_to_process);
+			i++;
+		}
 	}
 
 	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
@@ -570,15 +598,21 @@ int module_adapter_copy(struct comp_dev *dev)
 		ret = 0;
 	}
 
-	/* consume from all input buffers */
-	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
-		bzero(mod->input_buffers[i].data, size);
-		mod->input_buffers[i].size = 0;
-		mod->input_buffers[i].consumed = 0;
-		i++;
+	if (mod->simple_copy) {
+		comp_update_buffer_consume(source, mod->input_buffers[0].consumed);
+		mod->input_buffers[0].size = 0;
+		mod->input_buffers[0].consumed = 0;
+	} else {
+		i = 0;
+		/* consume from all input buffers */
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer, sink_list);
+			comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+			bzero(mod->input_buffers[i].data, size);
+			mod->input_buffers[i].size = 0;
+			mod->input_buffers[i].consumed = 0;
+			i++;
+		}
 	}
 
 	module_adapter_process_output(dev);
@@ -589,7 +623,8 @@ out:
 		mod->output_buffers[i].size = 0;
 
 	for (i = 0; i < mod->num_input_buffers; i++) {
-		bzero(mod->input_buffers[i].data, size);
+		if (!mod->simple_copy)
+			bzero(mod->input_buffers[i].data, size);
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
 	}
@@ -733,13 +768,15 @@ int module_adapter_reset(struct comp_dev *dev)
 		comp_err(dev, "module_adapter_reset(): failed with error: %d", ret);
 	}
 
-	for (i = 0; i < mod->num_output_buffers; i++)
-		rfree(mod->output_buffers[i].data);
+	if (!mod->simple_copy)
+		for (i = 0; i < mod->num_output_buffers; i++)
+			rfree(mod->output_buffers[i].data);
 
 	rfree(mod->output_buffers);
 
-	for (i = 0; i < mod->num_input_buffers; i++)
-		rfree(mod->input_buffers[i].data);
+	if (!mod->simple_copy)
+		for (i = 0; i < mod->num_input_buffers; i++)
+			rfree(mod->input_buffers[i].data);
 
 	rfree(mod->input_buffers);
 
