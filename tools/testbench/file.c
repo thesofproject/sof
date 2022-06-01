@@ -24,8 +24,8 @@
 #include "testbench/file.h"
 
 /* bfc7488c-75aa-4ce8-9bde-d8da08a698c2 */
-DECLARE_SOF_UUID("file", file_uuid, 0xbfc7488c, 0x75aa, 0x4ce8,
-		 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2);
+DECLARE_SOF_RT_UUID("file", file_uuid, 0xbfc7488c, 0x75aa, 0x4ce8,
+		    0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2);
 DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_file_dai;
@@ -903,7 +903,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 
 static const struct comp_driver comp_file_host = {
 	.type = SOF_COMP_HOST,
-	.uid	= SOF_UUID(file_tr),
+	.uid = SOF_RT_UUID(file_uuid),
 	.tctx	= &file_tr,
 	.ops = {
 		.create = file_new,
@@ -920,7 +920,7 @@ static const struct comp_driver comp_file_host = {
 
 static const struct comp_driver comp_file_dai = {
 	.type = SOF_COMP_DAI,
-	.uid	= SOF_UUID(file_tr),
+	.uid = SOF_RT_UUID(file_uuid),
 	.tctx	= &file_tr,
 	.ops = {
 		.create = file_new,
