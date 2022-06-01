@@ -62,7 +62,7 @@ ARG CLONE_DEFAULTS="--depth 5"
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
-echo "sof:test0000" | chpasswd && adduser sof sudo
+	echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
 # Use ToT alsa utils for the latest topology patches.
@@ -70,34 +70,35 @@ ENV HOME /home/sof
 #       By default it goes to /usr/lib64, but Ubuntu 20.04's default shared library
 #       path does not have this. Typical build error is like,
 # alsatplg: error while loading shared libraries: libatopology.so.2: cannot open shared object file: No such file or directory
-RUN mkdir -p /home/sof/work/alsa && cd /home/sof/work/alsa && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
-cd /home/sof/work/alsa/alsa-lib && ./gitcompile --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu/ &&  make install && \
-cd /home/sof/work/alsa/alsa-utils && ./gitcompile &&  make install &&\
-chown -R sof:sof /home/sof
+RUN mkdir -p "$HOME"/work/alsa && cd "$HOME"/work/alsa && \
+	git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
+	git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
+	cd "$HOME"/work/alsa/alsa-lib && ./gitcompile --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu/ &&  make install && \
+	cd "$HOME"/work/alsa/alsa-utils && ./gitcompile &&  make install && \
+	chown -R sof:sof "$HOME" && \
+	echo "Stage1: alsa-lib, alsa-utils are done!"
 
 ARG GITHUB_SOF=https://github.com/thesofproject
 ARG XT_OVERLAY_REPO=$GITHUB_SOF/xtensa-overlay.git
 ARG CT_NG_REPO=$GITHUB_SOF/crosstool-ng.git
 # build cross compiler
 USER sof
-RUN cd /home/sof && \
+RUN cd "$HOME" && \
 	git clone $CLONE_DEFAULTS --branch sof-gcc10.2 $XT_OVERLAY_REPO && \
-	cd xtensa-overlay && cd ../ && \
 	git clone $CLONE_DEFAULTS --branch sof-gcc10x $CT_NG_REPO && \
-	mkdir -p /home/sof/work/ && \
 	cd crosstool-ng && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
 	for arch in byt hsw apl cnl imx imx8m imx8ulp rn mt8186 mt8195; do \
+		echo "$arch: ct-ng build start..." && \
 		cp config-${arch}-gcc10.2-gdb9 .config && \
-# replace the build dist to save space
+		# replace the build dist to save space
 		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
-# gl_cv_func_getcwd_path_max=yes is used to avoid too-long confdir3/confdir3/...
+		# gl_cv_func_getcwd_path_max=yes is used to avoid too-long confdir3/confdir3/...
 		gl_cv_func_getcwd_path_max=yes ./ct-ng build && \
 		./ct-ng distclean ; \
 	done && \
-	cd /home/sof/ && rm -rf xtensa-overlay && rm -rf crosstool-ng
+	cd "$HOME" && rm -rf xtensa-overlay && rm -rf crosstool-ng && \
+	echo "Stage2: xtensa-overlay, crosstool-ng are done!"
 
 ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
@@ -111,21 +112,21 @@ ENV PATH="/home/sof/work/xtensa-mt8186-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8195-elf/bin:${PATH}"
 
 ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
-RUN cd /home/sof && \
+RUN cd "$HOME" && \
 	git clone $CLONE_DEFAULTS --branch xtensa $NEWLIB_REPO && \
 	cd newlib-xtensa && \
 	for arch in byt hsw apl cnl imx imx8m imx8ulp rn mt8186 mt8195; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
-		make && \
-		make install && \
+		make && make install && \
 		rm -rf etc/config.cache; \
 	done && \
-	cd /home/sof/ && rm -rf newlib-xtensa.git
+	cd "$HOME" && rm -rf newlib-xtensa && \
+	echo "Stage3: newlib-xtensa is done!"
 
 
 # Create direcroties for the host machines sof directories to be mounted.
-RUN mkdir -p /home/sof/work/sof.git
+RUN mkdir -p "$HOME"/work/sof.git
 
 USER sof
 WORKDIR /home/sof/work/sof.git/
