@@ -40,6 +40,12 @@ DECLARE_SOF_UUID("ipc", ipc_uuid, 0xbe60f97d, 0x78df, 0x4796,
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
+#if (CONFIG_CORE_COUNT == 1)
+int ipc_process_on_core(uint32_t core, bool blocking)
+{
+	return 0;
+}
+#else
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
 	struct ipc *ipc = ipc_get();
@@ -77,6 +83,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 	/* reply written by other core */
 	return 1;
 }
+#endif
 
 /*
  * Components, buffers and pipelines all use the same set of monotonic ID
