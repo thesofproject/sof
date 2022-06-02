@@ -318,14 +318,14 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	default:
 		break;
 	}
-
+#if CONFIG_COMP_DAI_GROUP
 	if (config->group_id) {
 		ret = dai_assign_group(dev, config->group_id);
 
 		if (ret)
 			return ret;
 	}
-
+#endif
 	/* do nothing for asking for channel free, for compatibility. */
 	if (dai_config_dma_channel(dev, spec_config) == DMA_CHAN_INVALID)
 		return 0;

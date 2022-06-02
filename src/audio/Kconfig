@@ -20,6 +20,13 @@ config COMP_DAI
 	help
 	  Select for DAI component
 
+config COMP_DAI_GROUP
+	bool "DAI Group component"
+	default y
+	help
+	  Select for DAI groups support. This is not required for legacy
+	  platforms such as BYT/CHT that has support only for SSP DAI's.
+
 config COMP_ARIA
         bool "ARIA component"
         default n

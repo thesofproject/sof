@@ -43,6 +43,7 @@ DECLARE_SOF_RT_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
 
 DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_comp_uuid), LOG_LEVEL_INFO);
 
+#if CONFIG_COMP_DAI_GROUP
 static void dai_atomic_trigger(void *arg, enum notify_id type, void *data);
 
 /* Assign DAI to a group */
@@ -77,7 +78,7 @@ int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
 
 	return 0;
 }
-
+#endif
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 {
@@ -862,6 +863,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+#if CONFIG_COMP_DAI_GROUP
 static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 {
 	struct comp_dev *dev = arg;
@@ -871,6 +873,7 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 	/* Atomic context set by the last DAI to receive trigger command */
 	group->trigger_ret = dai_comp_trigger_internal(dev, group->trigger_cmd);
 }
+#endif
 
 /* report xrun occurrence */
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
