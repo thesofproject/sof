@@ -88,6 +88,12 @@ config COMP_GAIN
 
 endif # volume
 
+config COMP_BLOB
+	bool "Component large config handler"
+	default y
+	help
+	  Select if large component config support is required.
+
 config COMP_SRC
 	bool "SRC component"
 	default y
