@@ -42,6 +42,7 @@ set(TPLGS
 # The topologies those are built from topology in the parent directory
 set(TPLGS_UP
 	"sof-apl-pcm512x\;sof-apl-pcm512x-tdfb_28mm-4ch\;-DFSYNC=48000\;-DDMIC_PCM_CHANNELS=2\;-DDMIC_DAI_CHANNELS=4\;-DDMIC16K_PCM_CHANNELS=2\;-DDMIC16K_DAI_CHANNELS=4\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line4_28mm_azm90_90_13el0_0_13deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line4_28mm_azm90_90_13el0_0_13deg_48khz.m4\;-DDMICPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-apl-pcm512x\;sof-apl-pcm512x-mfcc-2ch\;-DFSYNC=48000\;-DCHANNELS=2\;-DDMIC16KPROC=eq-iir-mfcc\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-cml-rt1011-rt5682\;sof-cml-eq-rt1011-rt5682\;-DPLATFORM=cml\;-DPPROC=eq-iir-eq-fir-volume"
 	"sof-cml-rt5682\;sof-cml-eq-fir-loud-rt5682\;-DPLATFORM=cml\;-DHSEARPROC=eq-iir-volume\;-DPIPELINE_FILTER1=eq_iir_coef_loudness.m4\;-DHSMICPROC=eq-fir-volume\;-DPIPELINE_FILTER2=eq_fir_coef_loudness.m4\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-cml-rt5682\;sof-cml-eq-fir-rt5682\;-DPLATFORM=cml\;-DHSMICPROC=eq-fir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
@@ -57,6 +58,7 @@ set(TPLGS_UP
 	"sof-hda-generic\;sof-hda-generic-2ch-multiband-drc\;-DCHANNELS=2\;-DHSPROC=multiband-drc\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
 	"sof-hda-generic\;sof-hda-generic-drc\;-DCHANNELS=0\;-DHSPROC=drc\;-DDYNAMIC=1"
 	"sof-hda-generic\;sof-hda-generic-2ch-drc\;-DCHANNELS=2\;-DHSPROC=drc\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
+	"sof-hda-generic\;sof-hda-generic-2ch-mfcc\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1\;-DDMIC16KPROC=eq-iir-mfcc"
 	"sof-tgl-rt711-rt1308\;sof-tgl-sdw-max98373-rt5682-dmic4ch-ampref\;-DCHANNELS=4\;-DEXT_AMP\;-DEXT_AMP_REF\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=tgl"
 )
 

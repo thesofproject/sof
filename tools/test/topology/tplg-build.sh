@@ -240,7 +240,8 @@ done
 
 # for processing algorithms
 ALG_SINGLE_MODE_TESTS=(asrc eq-fir eq-iir src dcblock drc multiband-drc tdfb
-		       tdfb_line4_28mm_pm90deg_48khz tdfb_circular8_100mm_pm30deg_48khz)
+		       tdfb_line4_28mm_pm90deg_48khz tdfb_circular8_100mm_pm30deg_48khz
+		       mfcc)
 ALG_SINGLE_SIMPLE_TESTS=(test-capture test-playback)
 ALG_MULTI_MODE_TESTS=(crossover)
 ALG_MULTI_SIMPLE_TESTS=(test-playback)
