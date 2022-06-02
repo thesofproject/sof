@@ -186,6 +186,11 @@ Note '-C --warn-uninitialized' is not supported by argparse, an equal
 sign must be used (https://bugs.python.org/issue9334)""",
 	)
 
+	parser.add_argument("--key-type-subdir", default="community",
+			    choices=["community", "none", "dbgkey"],
+			    help="""Output subdirectory for rimage signing key type.
+Default key type subdirectory is \"community\".""")
+
 	args = parser.parse_args()
 
 	if args.all:
@@ -469,6 +474,7 @@ def build_platforms():
 			signing_key = platform_dict["RIMAGE_KEY"]
 		else:
 			signing_key = default_rimage_key
+
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
 
 		sign_cmd += ["-f", get_sof_version(abs_build_dir)]
@@ -480,7 +486,12 @@ def build_platforms():
 		execute_command(sign_cmd, cwd=west_top)
 		# Install by copy
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
-		fw_file_installed = pathlib.Path(sof_output_dir, "community", f"sof-{platform}.ri")
+		if args.key_type_subdir == "none":
+			fw_file_installed = pathlib.Path(sof_output_dir,
+							 f"sof-{platform}.ri")
+		else:
+			fw_file_installed = pathlib.Path(sof_output_dir, args.key_type_subdir,
+							 f"sof-{platform}.ri")
 		os.makedirs(os.path.dirname(fw_file_installed), exist_ok=True)
 		# looses file owner and group - file is commonly accessible
 		shutil.copy2(str(fw_file_to_copy), str(fw_file_installed))
