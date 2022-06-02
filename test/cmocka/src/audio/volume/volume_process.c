@@ -383,18 +383,28 @@ static void test_audio_vol(void **state)
 	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
 
 	switch (vol_state->sink->stream.frame_fmt) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(vol_state);
 		break;
+#endif
+#if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
 		fill_source_s24(vol_state);
 		break;
+#endif
+#if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
+#if CONFIG_FORMAT_FLOAT
 	case SOF_IPC_FRAME_FLOAT:
+#endif
 		fill_source_s32(vol_state);
 		break;
+#endif
 	case SOF_IPC_FRAME_S24_3LE:
 		/* TODO: add 3LE support */
+		break;
+	default:
 		break;
 	}
 
