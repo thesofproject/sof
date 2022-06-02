@@ -66,6 +66,8 @@ DECLARE_SOF_TB_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
 DECLARE_SOF_TB_UUID("google-rtc-audio-processing", google_rtc_audio_processing_uuid,
 		    0xb780a0a6, 0x269f, 0x466f, 0xb4, 0x77, 0x23, 0xdf, 0xa0,
 		    0x5a, 0xf7, 0x58);
+DECLARE_SOF_TB_UUID("mfcc", mfcc_uuid, 0xdb10a773, 0x1aa4, 0x4cea,
+		    0xa2, 0x1f, 0x2d, 0x57, 0xa5, 0xc9, 0x82, 0xeb);
 
 #define TESTBENCH_NCH 2 /* Stereo */
 
@@ -94,6 +96,7 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"demux", "libsof_mux.so", SOF_COMP_DEMUX, SOF_TB_UUID(demux_uuid), 0, NULL},
 	{"google-rtc-audio-processing", "libsof_google-rtc-audio-processing.so", SOF_COMP_NONE,
 		SOF_TB_UUID(google_rtc_audio_processing_uuid), 0, NULL},
+	{"mfcc", "libsof_mfcc.so", SOF_COMP_NONE, SOF_TB_UUID(mfcc_uuid), 0, NULL},
 };
 
 /* compatible variables, not used */
