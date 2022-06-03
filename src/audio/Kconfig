@@ -20,6 +20,13 @@ config COMP_DAI
 	help
 	  Select for DAI component
 
+config COMP_DAI_GROUP
+	bool "DAI Grouping support"
+	default y
+	help
+	  Select for grouping physical DAIs into a logical DAI that can be
+	  triggered atomically to synchronise stream start and stop operations.
+
 config COMP_ARIA
         bool "ARIA component"
         default n
