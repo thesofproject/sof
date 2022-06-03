@@ -41,14 +41,16 @@ config SQRT_FIXED
 config NATURAL_LOGARITHM_FIXED
 	bool "Natural Logarithm function"
 	default n
+	select BINARY_LOGARITHM_FIXED
 	help
 	  This option builds Natural Logarithm function (loge(N)) which is the logarithm to
 	  the base e.
 
 config COMMON_LOGARITHM_FIXED
-       bool "Common Logarithm function"
-       default n
-       help
+	bool "Common Logarithm function"
+	default n
+	select BINARY_LOGARITHM_FIXED
+	help
 	  This option builds common Logarithm function (log10(N)) which is the logarithm to
 	  the base 10.
 
