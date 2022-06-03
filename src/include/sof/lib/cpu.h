@@ -21,6 +21,26 @@
 #include <arch/lib/cpu.h>
 #include <stdbool.h>
 
+/* let the compiler optimise when in single core mode */
+#if CONFIG_CORE_COUNT == 1
+
+static inline int cpu_get_id(void)
+{
+	return 0;
+}
+
+static inline bool cpu_is_primary(int id)
+{
+	return 1;
+}
+
+static inline bool cpu_is_me(int id)
+{
+	return 1;
+}
+
+#else
+
 static inline int cpu_get_id(void)
 {
 	return arch_cpu_get_id();
@@ -35,6 +55,7 @@ static inline bool cpu_is_me(int id)
 {
 	return id == cpu_get_id();
 }
+#endif
 
 static inline int cpu_enable_core(int id)
 {
