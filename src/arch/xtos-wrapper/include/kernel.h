@@ -24,6 +24,8 @@ typedef struct {
 
 #define Z_TIMEOUT_TICKS(t) ((k_timeout_t) { .ticks = (t) })
 
+#define Z_TIMEOUT_US(t) ((k_timeout_t) { .ticks = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, t) })
+
 static inline void k_sleep(k_timeout_t timeout)
 {
 	wait_delay(timeout.ticks);
