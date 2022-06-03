@@ -17,6 +17,12 @@ on: [pull_request]
 jobs:
   checkpatch:
     runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        strictness: [null, --strict]
+
     env:
       PR_NUM: ${{github.event.number}}
       # TODO: reduce duplication with scripts/sof-*-commit-hook.sh
@@ -41,12 +47,12 @@ jobs:
            # show what we got
            git --no-pager log --oneline --graph --decorate --max-count=50
 
-      - name: normal checkpatch
-        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS} < PR_SHAs.txt
-
-      - name: checkpatch --strict
+      - name: checkpatch
+        env:
+          STRICTNESS: ${{ matrix.strictness }}
         run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS}
-                 --strict < PR_SHAs.txt
+          ${STRICTNESS} < PR_SHAs.txt
+
   yamllint:
     runs-on: ubuntu-latest
     steps:
