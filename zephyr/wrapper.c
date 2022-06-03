@@ -70,6 +70,18 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
  */
 __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
+#elif CONFIG_ACE
+
+#define HEAPMEM_SIZE 0x40000
+
+/*
+ * System heap definition for ACE is defined below.
+ * It needs to be explicitly packed into dedicated section
+ * to allow memory management driver to control unused
+ * memory pages.
+ */
+__section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+
 #else
 
 extern char _end[], _heap_sentry[];
