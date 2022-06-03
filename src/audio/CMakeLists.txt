@@ -4,10 +4,12 @@ if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		host-legacy.c
 		component.c
-		data_blob.c
 		buffer.c
 		channel_map.c
 	)
+	if(CONFIG_COMP_BLOB)
+		add_local_sources(sof data_blob.c)
+	endif()
 	if(CONFIG_COMP_SRC)
 		add_subdirectory(src)
 	endif()
