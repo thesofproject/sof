@@ -45,6 +45,14 @@ config COMP_UP_DOWN_MIXER
          Downmixing for mono output:
          4.0, Quatro, 3.1, 2 -> 1
 
+config COMP_BLOB
+	bool "Large IPC data as compound message blobs"
+	default y
+	help
+	 Select to support sending large data blobs to firmware as
+	 multiple IPC messages. Not all components or modules need
+	 this. If unsure, say yes.
+
 config COMP_SRC
 	bool "SRC component"
 	default y
@@ -104,6 +112,7 @@ endif # SRC
 config COMP_FIR
 	bool "FIR component"
 	select MATH_FIR
+	select COMP_BLOB
 	default y
 	help
 	  Select for FIR component. FIR performance can differ between DSP
@@ -115,6 +124,7 @@ config COMP_FIR
 
 config COMP_IIR
 	bool "IIR component"
+	select COMP_BLOB
 	default y
 	select MATH_IIR_DF2T
 	help
@@ -163,6 +173,7 @@ endif # COMP_KPB
 
 config COMP_GOOGLE_HOTWORD_DETECT
 	bool "Google hotword detector component"
+	select COMP_BLOB
 	default n
 	help
 	  Select for Google hotword detector component. It uses the Google
@@ -172,6 +183,7 @@ config COMP_GOOGLE_HOTWORD_DETECT
 
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	bool "Google Real Time Communication Audio processing"
+	select COMP_BLOB
 	default n
 	help
 	  Select for Google real-time communication audio processing. It
@@ -197,6 +209,7 @@ config COMP_SEL
 
 config COMP_CROSSOVER
 	bool "Crossover Filter component"
+	select COMP_BLOB
 	default n
 	help
 	  Select for Crossover Filter component. A crossover can be used to
@@ -208,6 +221,7 @@ config COMP_DRC
 	select CORDIC_FIXED
 	select NUMBERS_NORM
 	select MATH_DECIBELS
+	select COMP_BLOB
 	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
@@ -228,6 +242,7 @@ config COMP_MULTIBAND_DRC
 	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
 	bool "Multiband Dynamic Range Compressor component"
 	select CORDIC_FIXED
+	select COMP_BLOB
 	default n
 	help
 	  Select for Multiband Dynamic Range Compressor (DRC) component. It
@@ -244,6 +259,7 @@ config COMP_DCBLOCK
 config MAXIM_DSM
 	depends on CAVS && !CAVS_VERSION_1_5
 	bool "Maxim DSM component"
+	select COMP_BLOB
 	default n
 	help
 	  Select for Maxim DSM(Dynamic Speaker Management) component.
@@ -392,6 +408,7 @@ config COMP_TDFB
 	select MATH_IIR_DF2T
 	select SQRT_FIXED
 	select CORDIC_FIXED
+	select COMP_BLOB
 	default y
 	help
 	  Select for time domain fixed beamformer (TDFB) component. The
@@ -424,6 +441,7 @@ rsource "module_adapter/Kconfig"
 
 config COMP_IGO_NR
 	bool "IGO NR component"
+	select COMP_BLOB
 	default n
 	help
 	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
@@ -432,6 +450,7 @@ config COMP_IGO_NR
 
 config COMP_RTNR
 	bool "RTNR component"
+	select COMP_BLOB
 	default n
 	help
 	  Select for Realtek noise reduction/suppression(NR/NS) component.

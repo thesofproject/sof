@@ -503,7 +503,6 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/component.c
-	${SOF_AUDIO_PATH}/data_blob.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
@@ -525,6 +524,12 @@ zephyr_library_sources(
 	edf_schedule.c
 	schedule.c
 )
+
+if(CONFIG_COMP_BLOB)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/data_blob.c
+	)
+endif()
 
 if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
