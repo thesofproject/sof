@@ -11,10 +11,12 @@ set -e
 main()
 {
     local failures=0
+    set -x
     while read -r sha ; do
         printf '\n    -------------- \n\n'
         ./scripts/checkpatch.pl $@ -g $sha || failures=$((failures+1))
     done
+    set +x
     printf '\n    -------------- \n\n'
     return $failures
 }
