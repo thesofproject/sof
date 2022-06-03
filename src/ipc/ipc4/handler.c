@@ -373,7 +373,7 @@ static int ipc_wait_for_compound_msg(void)
 	int ret = 0;
 
 	while (msg_data.delayed_reply) {
-		k_sleep(Z_TIMEOUT_TICKS(10000));
+		k_sleep(Z_TIMEOUT_US(250));
 
 		if (!try_count--) {
 			ret = IPC4_FAILURE;
