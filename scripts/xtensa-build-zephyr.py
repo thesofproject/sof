@@ -16,7 +16,7 @@ import multiprocessing
 import os
 import warnings
 # anytree module is defined in Zephyr build requirements
-from anytree import Node, RenderTree
+from anytree import AnyNode, RenderTree
 
 # Constant value resolves SOF_TOP directory as: "this script directory/.."
 SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
@@ -243,18 +243,18 @@ def execute_command(*run_args, **run_kwargs):
 def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
 	then presents them in similar way to linux tree command."""
-	graph_root = Node(STAGING_DIR.name, parent=None)
+	graph_root = AnyNode(name=STAGING_DIR.name, long_name=STAGING_DIR.name, parent=None)
 	relative_entries = [entry.relative_to(STAGING_DIR) for entry in STAGING_DIR.glob("**/*")]
 	nodes = [ graph_root ]
 	for entry in relative_entries:
 		if str(entry.parent) == ".":
-			nodes.append(Node(entry.name, parent=graph_root))
+			nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=graph_root))
 		else:
-			node_parent = [node for node in nodes if node.name == str(entry.parent.name)][0]
+			node_parent = [node for node in nodes if node.long_name == str(entry.parent)][0]
 			if not node_parent:
 				warnings.warn("Failed to construct installed files tree")
 				return
-			nodes.append(Node(entry.name, parent=node_parent))
+			nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=node_parent))
 	for pre, fill, node in RenderTree(graph_root):
 		print(f"{pre}{node.name}")
 
