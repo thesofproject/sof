@@ -192,6 +192,12 @@ sign must be used (https://bugs.python.org/issue9334)""",
 			    help="""Output subdirectory for rimage signing key type.
 Default key type subdirectory is \"community\".""")
 
+
+	parser.add_argument("--use-platform-subdir", default = False,
+			    action="store_true",
+			    help="""Use an output subdirectory for each platform.
+Otherwise, all firmware files are installed in the same staging directory by default.""")
+
 	args = parser.parse_args()
 
 	if args.all:
@@ -386,6 +392,12 @@ def build_platforms():
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
 	sof_output_dir.mkdir(mode=511, parents=True, exist_ok=True)
 	for platform in args.platforms:
+		if args.use_platform_subdir:
+			sof_platform_output_dir = pathlib.Path(sof_output_dir, platform)
+			sof_platform_output_dir.mkdir(parents=True, exist_ok=True)
+		else:
+			sof_platform_output_dir = sof_output_dir
+
 		platform_dict = [x for x in platform_list if x["name"] == platform][0]
 		xtensa_tools_root_dir = os.getenv("XTENSA_TOOLS_ROOT")
 		# when XTENSA_TOOLS_ROOT environmental variable is set,
@@ -461,7 +473,7 @@ def build_platforms():
 		execute_command(build_cmd, cwd=west_top)
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
-		fw_ldc_file = pathlib.Path(sof_output_dir, f"sof-{platform}.ldc")
+		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
 		input_elf_file = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.elf")
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
@@ -501,10 +513,10 @@ def build_platforms():
 		# Install by copy
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
 		if args.key_type_subdir == "none":
-			fw_file_installed = pathlib.Path(sof_output_dir,
+			fw_file_installed = pathlib.Path(sof_platform_output_dir,
 							 f"sof-{platform}.ri")
 		else:
-			fw_file_installed = pathlib.Path(sof_output_dir, args.key_type_subdir,
+			fw_file_installed = pathlib.Path(sof_platform_output_dir, args.key_type_subdir,
 							 f"sof-{platform}.ri")
 		os.makedirs(os.path.dirname(fw_file_installed), exist_ok=True)
 		# looses file owner and group - file is commonly accessible
