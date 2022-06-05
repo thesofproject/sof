@@ -257,7 +257,11 @@ void dai_dma_release(struct comp_dev *dev)
 	if (dd->chan) {
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
+#else
 		dma_channel_put_legacy(dd->chan);
+#endif
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -302,7 +306,11 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 		/* stop DMA and reset config for two-step stop DMA */
 		if (dd->delayed_dma_stop) {
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+#else
 			ret = dma_stop_delayed_legacy(dd->chan);
+#endif
 			if (ret < 0)
 				return ret;
 
@@ -313,8 +321,11 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	case SOF_DAI_CONFIG_FLAGS_PAUSE:
 		if (!dd->chan)
 			return 0;
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		return dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+#else
 		return dma_stop_delayed_legacy(dd->chan);
+#endif
 	default:
 		break;
 	}

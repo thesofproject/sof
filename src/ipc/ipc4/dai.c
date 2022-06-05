@@ -202,11 +202,19 @@ void dai_dma_release(struct comp_dev *dev)
 		 * pause to stop.
 		 * TODO: refine power management when stream is paused
 		 */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+
+		/* remove callback */
+		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
+		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
+#else
 		dma_stop_legacy(dd->chan);
 
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put_legacy(dd->chan);
+#endif
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -229,7 +237,7 @@ static void dai_dma_position_init(struct dai_data *dd)
 
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       void *spec_config)
-{trace_point(9);
+{
 	struct ipc4_copier_module_cfg *copier_cfg = spec_config;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int size;
