@@ -97,7 +97,6 @@ RUN cd "$HOME" && \
 		gl_cv_func_getcwd_path_max=yes ./ct-ng build && \
 		./ct-ng distclean ; \
 	done && \
-	cd "$HOME" && rm -rf xtensa-overlay && rm -rf crosstool-ng && \
 	echo "Stage2: xtensa-overlay, crosstool-ng are done!"
 
 ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
@@ -121,9 +120,19 @@ RUN cd "$HOME" && \
 		make && make install && \
 		rm -rf etc/config.cache; \
 	done && \
-	cd "$HOME" && rm -rf newlib-xtensa && \
 	echo "Stage3: newlib-xtensa is done!"
 
+# log all hashes for each repo to a file
+ARG SOF_WORK="$HOME"/work
+# FIXME: this will fail when any whitespace in SOF_WORK. bash array probably good option to consider
+ARG REPOS="$SOF_WORK/alsa/alsa-lib $SOF_WORK/alsa/alsa-utils $HOME/xtensa-overlay $HOME/crosstool-ng $HOME/newlib-xtensa"
+ARG HASH_LIST="$SOF_WORK"/sof_docker_hash.txt
+RUN echo "Build date: $(date +%Y%m%d)" > "$HASH_LIST" && set -e && \
+	for repo in $REPOS; do \
+		cd "$repo"; pwd; git log --oneline -5; \
+	done >> "$HASH_LIST" && \
+	cd "$HOME" && rm -rf xtensa-overlay crosstool-ng newlib-xtensa; \
+	echo "Stage4: git versions saved and repos deleted."
 
 # Create direcroties for the host machines sof directories to be mounted.
 RUN mkdir -p "$HOME"/work/sof.git
