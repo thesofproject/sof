@@ -27,6 +27,7 @@ struct ipc_config_dai {
 	uint32_t dai_index;	/**< index of this type dai */
 	uint32_t type;		/**< DAI type - SOF_DAI_ */
 	/* physical protocol and clocking */
+	uint32_t sampling_frequency; /**< DAI sampling frequency - required only with IPC4 */
 	uint16_t format;	/**< SOF_DAI_FMT_ */
 	uint16_t group_id;	/**< group ID, 0 means no group (ABI 3.17) */
 	bool is_config_blob;	/**< DAI specific configuration is a blob */

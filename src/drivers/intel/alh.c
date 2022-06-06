@@ -63,7 +63,7 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 
 	dai_info(dai, "alh_set_config_blob()");
 
-	alh->params.rate = 48000;
+	alh->params.rate = common_config->sampling_frequency;
 
 	for (i = 0; i < alh_cfg->count; i++) {
 		/* the LSB 8bits are for stream id */
