@@ -324,6 +324,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	dai_index[dai_count - 1] = node_id.f.v_index;
 	dai.direction = node_id.f.dma_type % 2;
 	dai.is_config_blob = true;
+	dai.sampling_frequency = copier->out_fmt.sampling_frequency;
 
 	switch (node_id.f.dma_type) {
 	case ipc4_hda_link_output_class:

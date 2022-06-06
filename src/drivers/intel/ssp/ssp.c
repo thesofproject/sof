@@ -825,7 +825,7 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	ssp->config.ssp.tdm_slots = SSCR0_FRDC_GET(ssc0);
 	ssp->config.ssp.tx_slots = SSTSA_GET(sstsa);
 	ssp->config.ssp.rx_slots = SSRSA_GET(ssrsa);
-	ssp->config.ssp.fsync_rate = 48000;
+	ssp->config.ssp.fsync_rate = common_config->sampling_frequency;
 	ssp->params = ssp->config.ssp;
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
