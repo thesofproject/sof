@@ -8,6 +8,7 @@ import argparse
 import shlex
 import subprocess
 import pathlib
+import errno
 import platform
 import sys
 import shutil
@@ -272,6 +273,19 @@ def find_west_workspace():
 
 def create_zephyr_directory():
 	global west_top
+	# Do not fail when there's only an empty directory left over
+	# (because of some early interruption of this script or proxy
+	# misconfiguration, etc.)
+	try:
+		# rmdir() is safe: it deletes empty directories ONLY.
+		west_top.rmdir()
+	except OSError as oserr:
+		if oserr.errno not in [errno.ENOTEMPTY, errno.ENOENT]:
+			raise oserr
+		# else when not empty then let the next line fail with a
+		# _better_ error message:
+		#         "zephyrproject already exists"
+
 	west_top.mkdir(mode=511, parents=False, exist_ok=False)
 	west_top = west_top.resolve(strict=True)
 
