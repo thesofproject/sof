@@ -113,7 +113,7 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
  */
 static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
-	struct dma_sg_config config;
+	struct dma_sg_config config = { 0 };
 	uint32_t elem_addr, addr_align;
 	const uint32_t elem_size = sizeof(uint64_t) * DMA_ELEM_SIZE;
 	const uint32_t elem_num = PROBE_BUFFER_LOCAL_SIZE / elem_size;
