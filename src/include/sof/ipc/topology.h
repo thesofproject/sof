@@ -52,7 +52,6 @@ int ipc4_add_comp_dev(struct comp_dev *dev);
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid);
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
-bool ipc4_comp_has_dir(struct comp_dev *dev);
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif

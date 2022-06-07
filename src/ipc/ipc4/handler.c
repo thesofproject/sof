@@ -416,13 +416,15 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 
 		for (i = 0; i < count; i++) {
 			if (ipc_comp_pipe_id(icd) == ppl_id[i]) {
+				struct comp_dev *dev = icd->cd;
+
 				/* don't update direction for host & dai since they
 				 * have direction. Especially in dai copier to dai copier
 				 * case the direction can't be modified to single value
 				 * since one of them is for playback and the other one
 				 * is for capture
 				 */
-				if (ipc4_comp_has_dir(icd->cd))
+				if (dev->direction_set)
 					break;
 
 				icd->cd->direction = dai->direction;
