@@ -780,17 +780,6 @@ out:
 	return drv;
 }
 
-bool ipc4_comp_has_dir(struct comp_dev *dev)
-{
-	int dir = -EINVAL;
-
-	comp_get_attribute(dev, COMP_ATTR_COPY_DIR, &dir);
-	if (dir == SOF_IPC_STREAM_PLAYBACK || dir == SOF_IPC_STREAM_CAPTURE)
-		return true;
-
-	return false;
-}
-
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
 	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;

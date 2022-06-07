@@ -561,6 +561,7 @@ struct comp_dev {
 
 	/* common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
+	bool direction_set; /**< flag indicating that the direction has been set */
 
 	const struct comp_driver *drv;	/**< driver */
 
