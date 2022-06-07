@@ -1167,25 +1167,6 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 	return -EINVAL;
 }
 
-static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct copier_data *cd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_COPY_DIR:
-		/* direction is set based on gateway type */
-		if (!cd->endpoint_num)
-			return -EINVAL;
-
-		*(uint32_t *)value = dev->direction;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
@@ -1199,7 +1180,6 @@ static const struct comp_driver comp_copier = {
 		.params			= copier_params,
 		.prepare		= copier_prepare,
 		.reset			= copier_reset,
-		.get_attribute		= copier_get_attribute,
 	},
 };
 
