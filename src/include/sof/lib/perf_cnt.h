@@ -39,10 +39,25 @@ struct perf_cnt_data {
 /** \brief Clears performance counters data. */
 #define perf_cnt_clear(pcd) memset((pcd), 0, sizeof(struct perf_cnt_data))
 
+/* NOTE: Zephyr's arch_timing_counter_get() might not be implemented
+ * for a particular platform. In this case let's fallback to use
+ * Zephyr's k_cycle_get_64(). This will result in both "platform" and
+ * "cpu" timestamps to be equal.
+ */
+#ifdef __ZEPHYR__
+	#ifdef CONFIG_TIMING_FUNCTIONS
+		#define perf_cnt_get_cpu_ts arch_timing_counter_get
+	#else
+		#define perf_cnt_get_cpu_ts k_cycle_get_64
+	#endif	/* CONFIG_TIMING_FUNCTIONS */
+#else
+	#define perf_cnt_get_cpu_ts() timer_get_system(cpu_timer_get())
+#endif	/* __ZEPHYR__ */
+
 /** \brief Initializes timestamps with current timer values. */
 #define perf_cnt_init(pcd) do {						\
 		(pcd)->plat_ts = k_cycle_get_64();			\
-		(pcd)->cpu_ts = k_cycle_get_64();			\
+		(pcd)->cpu_ts = perf_cnt_get_cpu_ts();			\
 	} while (0)
 
 /* Trace macros that can be used as trace_m argument of the perf_cnt_stamp()
@@ -99,7 +114,7 @@ struct perf_cnt_data {
 		uint32_t plat_ts =						\
 			(uint32_t)k_cycle_get_64();				\
 		uint32_t cpu_ts =						\
-			(uint32_t)k_cycle_get_64();				\
+			(uint32_t)perf_cnt_get_cpu_ts();			\
 		if ((pcd)->plat_ts) {						\
 			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;	\
 			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;		\
