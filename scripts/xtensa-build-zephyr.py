@@ -276,10 +276,10 @@ def find_west_workspace():
 	paths = [ pathlib.Path(os.getcwd()), SOF_TOP, west_top]
 	for path in paths:
 		if path.is_dir():
-			result = execute_command(["west", "topdir"], stderr=subprocess.DEVNULL,
-				stdout=subprocess.DEVNULL, check=False, cwd=path)
+			result = execute_command(["west", "topdir"], capture_output=True,
+						 text=True, check=False, cwd=path)
 		if result.returncode == 0:
-			return path
+			return pathlib.Path(result.stdout.rstrip(os.linesep))
 	return None
 
 def create_zephyr_directory():
@@ -302,12 +302,14 @@ def create_zephyr_directory():
 
 def create_zephyr_sof_symlink():
 	global west_top, SOF_TOP
+	if not west_top.exists():
+		raise FileNotFoundError("No west top: {}".format(west_top))
 	audio_modules_dir = pathlib.Path(west_top, "modules", "audio")
 	audio_modules_dir.mkdir(mode=511, parents=True, exist_ok=True)
 	sof_symlink = pathlib.Path(audio_modules_dir, "sof")
 	# Symlinks creation requires administrative privileges in Windows or special user rights
 	try:
-		if not sof_symlink.is_symlink():
+		if not sof_symlink.exists():
 			sof_symlink.symlink_to(SOF_TOP, target_is_directory=True)
 	except:
 		print(f"Failed to create symbolic link: {sof_symlink} to {SOF_TOP}."
@@ -386,6 +388,7 @@ def build_platforms():
 	execute_command(["west", "status", "hal_xtensa", "sof"], cwd=west_top,
 			stdout=subprocess.DEVNULL)
 
+	assert(west_top.exists())
 	global STAGING_DIR
 	STAGING_DIR = pathlib.Path(west_top, "build-sof-staging")
 	# smex does not use 'install -D'
@@ -557,6 +560,7 @@ def run_point_mode():
 	if not west_workspace_path.exists():
 		raise FileNotFoundError("West topdir returned {} as workspace but it"
 			" does not exist".format(west_workspace_path))
+	west_top = west_workspace_path
 	create_zephyr_sof_symlink()
 
 def main():
