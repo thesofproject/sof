@@ -73,6 +73,23 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
  */
 __section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
 
+#if CONFIG_L3_HEAP
+
+#define L3_MEM_LABEL imr1
+#define L3_MEM_BASE_ADDR (DT_REG_ADDR(DT_NODELABEL(L3_MEM_LABEL)))
+#define L3_MEM_SIZE (DT_REG_SIZE(DT_NODELABEL(L3_MEM_LABEL)))
+#define L3_MEM_PAGE_SIZE (DT_PROP(DT_NODELABEL(L3_MEM_LABEL), block_size))
+
+/*
+ * This is a poor man's method to identify start of unused
+ * IMR memory. This should be done dynamically based on FW metadata
+ * and manifest, but since bootloader hardcodes the IMR layout the
+ * code here follows this concept.
+ */
+#define L3_HEAP_START ROUND_UP(IMR_BOOT_LDR_BSS_BASE + IMR_BOOT_LDR_BSS_SIZE, \
+		L3_MEM_PAGE_SIZE)
+
+#endif
 #else
 
 extern char _end[], _heap_sentry[];
@@ -83,11 +100,112 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
+#if CONFIG_L3_HEAP
+static struct k_heap l3_heap;
+
+/**
+ * Returns the start of L3 memory heap.
+ * @return Pointer to the L3 memory location which can be used for L3 heap.
+ */
+static uintptr_t get_l3_heap_start(void)
+{
+	/*
+	 * TODO: parse the actual offset using:
+	 * - HfIMRIA1 register
+	 * - rom_ext_load_offset
+	 * - main_fw_load_offset
+	 * - main fw size in manifest
+	 */
+
+	return (uintptr_t)L3_HEAP_START;
+}
+
+/**
+ * Returns the size of L3 memory heap.
+ * @return Size of the L3 memory region which can be used for L3 heap.
+ */
+static size_t get_l3_heap_size(void)
+{
+	size_t size;
+	 /*
+	  * Calculate the IMR heap size using:
+	  * - total IMR size
+	  * - IMR base address
+	  * - actual IMR heap start
+	  */
+	size = L3_MEM_SIZE -
+	       (get_l3_heap_start() - L3_MEM_BASE_ADDR);
+
+	return ROUND_DOWN(size, L3_MEM_PAGE_SIZE);
+}
+
+/**
+ * Checks whether pointer is from L3 heap memory range.
+ * @param ptr Pointer to memory being checked.
+ * @return True if pointer falls into L3 heap region, false otherwise.
+ */
+static bool is_l3_heap_pointer(void *ptr)
+{
+	uintptr_t l3_heap_start = get_l3_heap_start();
+	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
+
+	if (POINTER_TO_UINT(ptr) >= l3_heap_start &&
+	    POINTER_TO_UINT(ptr) < l3_heap_end) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Allocate buffer from the L3 memory heap.
+ * Return pointer is always aligned to page size.
+ * @param size Size of memory to be allocated
+ * @return Pointer to allocated L3 memory block.
+ */
+void *l3_alloc(size_t size)
+{
+	k_spinlock_key_t key;
+	void *ret;
+
+	key = k_spin_lock(&l3_heap.lock);
+	ret = sys_heap_aligned_alloc(&l3_heap.heap, L3_MEM_PAGE_SIZE, size);
+	k_spin_unlock(&l3_heap.lock, key);
+	return ret;
+}
+
+/**
+ * Allocate buffer from the L3 memory heap.
+ * @param mem SPointer to memory block to be freed.
+ * @return Pointer to allocated L3 memory block.
+ */
+void l3_free(void *mem)
+{
+	/*
+	 * first check to which heap the mem argument belongs to
+	 */
+	uintptr_t l3_heap_start = get_l3_heap_start();
+	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
+
+	if (mem < l3_heap_start && mem >= l3_heap_end)
+		return;
+
+	k_spinlock_key_t key = k_spin_lock(&l3_heap.lock);
+
+	sys_heap_free(&l3_heap.heap, mem);
+
+	k_spin_unlock(&l3_heap.lock, key);
+}
+#endif
+
 static int statics_init(const struct device *unused)
 {
 	ARG_UNUSED(unused);
 
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+
+#if CONFIG_L3_HEAP
+	sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()), get_l3_heap_size());
+#endif
 
 	return 0;
 }
@@ -174,6 +292,11 @@ static inline bool zone_is_cached(enum mem_zone zone)
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
+
+#if CONFIG_L3_HEAP
+	if (caps & SOF_MEM_CAPS_L3)
+		return l3_alloc(bytes);
+#endif
 
 	if (zone_is_cached(zone) && !(flags & SOF_MEM_FLAG_COHERENT)) {
 		ptr = (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, 0, bytes);
@@ -263,6 +386,13 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
+#if CONFIG_L3_HEAP
+	if (is_l3_heap_pointer(ptr)) {
+		l3_free(ptr);
+		return;
+	}
+#endif
+
 	heap_free(&sof_heap, ptr);
 }
 
@@ -270,4 +400,3 @@ void rfree(void *ptr)
 void heap_trace_all(int force)
 {
 }
-
