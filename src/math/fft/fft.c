@@ -36,7 +36,7 @@ struct fft_plan *fft_plan_new(struct icomplex32 *inb, struct icomplex32 *outb, u
 	plan->len = len;
 
 	plan->bit_reverse_idx = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					plan->size * sizeof(uint32_t));
+					plan->size * sizeof(uint16_t));
 	if (!plan->bit_reverse_idx) {
 		rfree(plan);
 		return NULL;

@@ -21,7 +21,7 @@ struct icomplex32 {
 struct fft_plan {
 	uint32_t size;	/* fft size */
 	uint32_t len;	/* fft length in exponent of 2 */
-	uint32_t *bit_reverse_idx;	/* pointer to bit reverse index array */
+	uint16_t *bit_reverse_idx;	/* pointer to bit reverse index array */
 	struct icomplex32 *inb;	/* pointer to input integer complex buffer */
 	struct icomplex32 *outb;/* pointer to output integer complex buffer */
 };
