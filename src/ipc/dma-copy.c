@@ -74,10 +74,26 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	return size;
 }
 
+int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
+			    int32_t host_offset, void *local_ptr, int32_t size)
+{
+	int ret;
+
+	/* tell gateway to copy */
+	ret = dma_copy_legacy(dc->chan, size, 0);
+	if (ret < 0)
+		return ret;
+
+	/* bytes copied */
+	return size;
+}
+
 #else /* CONFIG_DMA_GW */
 
-int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
-		     int32_t host_offset, void *local_ptr, int32_t size)
+static int
+dma_copy_to_host_flags(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		       int32_t host_offset, void *local_ptr, int32_t size,
+		       uint32_t flags)
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem;
@@ -118,12 +134,26 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		return err;
 
 	err = dma_copy_legacy(dc->chan, local_sg_elem.size,
-			      DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+			      flags);
 	if (err < 0)
 		return err;
 
 	/* bytes copied */
 	return local_sg_elem.size;
+}
+
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_to_host_flags(dc, host_sg, host_offset, local_ptr, size,
+				      DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+}
+
+int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
+			    int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_to_host_flags(dc, host_sg, host_offset, local_ptr, size,
+				      DMA_COPY_ONE_SHOT);
 }
 
 #endif /* CONFIG_DMA_GW */
