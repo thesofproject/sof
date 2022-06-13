@@ -386,6 +386,16 @@ static inline void __coherent_init_thread(struct coherent *c, const size_t size)
 
 #define coherent_init_thread(object, member) __coherent_init_thread(&(object)->member, \
 								    sizeof(*object))
+
+static inline void __coherent_shared_thread(struct coherent *c, const size_t size)
+{
+	k_mutex_lock(&c->mutex, K_FOREVER);
+	c->shared = true;
+	k_mutex_unlock(&c->mutex);
+}
+
+#define coherent_shared_thread(object, member) __coherent_shared_thread(&(object)->member, \
+									sizeof(*object))
 #endif /* __ZEPHYR__ */
 
 #endif /* CONFIG_INCOHERENT */
