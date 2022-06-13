@@ -36,6 +36,7 @@ struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
 	struct k_sem sem;
+	uint64_t period;
 };
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
@@ -253,7 +254,8 @@ static void zephyr_ll_run(void *data)
 				break;
 			default:
 				/* reschedule */
-				task->start = sch->ll_domain->next_tick;
+				task->start = sch->ll_domain->next_tick +
+					sch->ll_domain->ticks_per_ms * pdata->period / 1000;
 			}
 		}
 	}
@@ -291,6 +293,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 	zephyr_ll_lock(sch, &flags);
 
 	pdata = task->priv_data;
+	pdata->period = period;
 
 	if (!pdata || pdata->freeing) {
 		/*
