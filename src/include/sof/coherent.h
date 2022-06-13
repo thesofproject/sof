@@ -334,8 +334,15 @@ static inline void __coherent_init(struct coherent *c, const size_t size)
 
 #define coherent_free(object, member) do {} while (0)
 
-/* no function on cache coherent architectures */
-#define coherent_shared(object, member) (object)->member.shared = true
+static inline void __coherent_shared(struct coherent *c, const size_t size)
+{
+	c->key = k_spin_lock(&c->lock);
+	c->shared = true;
+	k_spin_unlock(&c->lock, c->key);
+}
+
+#define coherent_shared(object, member) __coherent_shared(&(object)->member, \
+							  sizeof(*object))
 
 #ifdef __ZEPHYR__
 __must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
