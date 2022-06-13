@@ -187,7 +187,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 	if (buffer->core != comp_core) {
 
 		/* set the buffer as a coherent object */
-		coherent_shared(buffer, c);
+		coherent_shared_thread(buffer, c);
 
 		if (!comp->is_shared)
 			comp = comp_make_shared(comp);
