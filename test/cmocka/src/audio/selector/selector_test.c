@@ -111,7 +111,7 @@ static void fill_source_s16(struct sel_test_state *sel_state)
 	int i;
 
 	for (i = 0; i < audio_stream_get_free_samples(stream); i++) {
-		w_ptr = audio_stream_write_frag_s16(stream, i);
+		w_ptr = deprecated_audio_stream_write_frag_s16(stream, i);
 		*w_ptr = i;
 	}
 
@@ -191,7 +191,7 @@ static void fill_source_s32(struct sel_test_state *sel_state)
 	int i;
 
 	for (i = 0; i < audio_stream_get_free_samples(stream); i++) {
-		w_ptr = audio_stream_write_frag_s32(stream, i);
+		w_ptr = deprecated_audio_stream_write_frag_s32(stream, i);
 		*w_ptr = i << 16;
 	}
 

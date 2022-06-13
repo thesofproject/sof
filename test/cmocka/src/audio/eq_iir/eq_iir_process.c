@@ -177,7 +177,7 @@ static void fill_source_s16(struct test_data *td, int frames_max)
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_write_frag_s16(ss, i);
+		x = deprecated_audio_stream_write_frag_s16(ss, i);
 		*x = sat_int16(Q_SHIFT_RND(chirp_2ch[buffer_fill_data.idx++], 31, 15));
 		samples_processed++;
 		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
@@ -210,7 +210,7 @@ static void verify_sink_s16(struct test_data *td)
 	frames = audio_stream_get_avail_frames(ss);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_read_frag_s16(ss, i);
+		x = deprecated_audio_stream_read_frag_s16(ss, i);
 		out = *x;
 		ref = sat_int16(Q_SHIFT_RND(chirp_iir_ref_2ch[buffer_verify_data.idx++], 31, 15));
 		delta = ref - out;
@@ -241,7 +241,7 @@ static void fill_source_s24(struct test_data *td, int frames_max)
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_write_frag_s32(ss, i);
+		x = deprecated_audio_stream_write_frag_s32(ss, i);
 		*x = sat_int24(Q_SHIFT_RND(chirp_2ch[buffer_fill_data.idx++], 31, 23));
 		samples_processed++;
 		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
@@ -274,7 +274,7 @@ static void verify_sink_s24(struct test_data *td)
 	frames = audio_stream_get_avail_frames(ss);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_read_frag_s32(ss, i);
+		x = deprecated_audio_stream_read_frag_s32(ss, i);
 		out = (*x << 8) >> 8; /* Make sure there's no 24 bit overflow */
 		ref = sat_int24(Q_SHIFT_RND(chirp_iir_ref_2ch[buffer_verify_data.idx++], 31, 23));
 		delta = ref - out;
@@ -305,7 +305,7 @@ static void fill_source_s32(struct test_data *td, int frames_max)
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_write_frag_s32(ss, i);
+		x = deprecated_audio_stream_write_frag_s32(ss, i);
 		*x = chirp_2ch[buffer_fill_data.idx++];
 		samples_processed++;
 		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
@@ -338,7 +338,7 @@ static void verify_sink_s32(struct test_data *td)
 	frames = audio_stream_get_avail_frames(ss);
 	samples = frames * ss->channels;
 	for (i = 0; i < samples; i++) {
-		x = audio_stream_read_frag_s32(ss, i);
+		x = deprecated_audio_stream_read_frag_s32(ss, i);
 		out = *x;
 		ref = chirp_iir_ref_2ch[buffer_verify_data.idx++];
 		delta = (int64_t)ref - (int64_t)out;
