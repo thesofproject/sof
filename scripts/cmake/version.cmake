@@ -114,13 +114,13 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
 	# calculate hash of each listed files (from file version saved in file system)
-	execute_process(COMMAND git hash-object --stdin-paths
+	execute_process(COMMAND git hash-object --no-filters --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
 		)
 	# then calculate single hash of previously calculated hash list
-	execute_process(COMMAND git hash-object --stdin
+	execute_process(COMMAND git hash-object --no-filters --stdin
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_STRIP_TRAILING_WHITESPACE
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
