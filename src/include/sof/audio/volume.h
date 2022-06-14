@@ -167,10 +167,10 @@ struct comp_func_map {
 };
 
 /** \brief Map of formats with dedicated processing functions. */
-extern const struct comp_func_map func_map[];
+extern const struct comp_func_map volume_func_map[];
 
 /** \brief Number of processing functions. */
-extern const size_t func_count;
+extern const size_t volume_func_count;
 
 /** \brief Volume zero crossing functions map. */
 struct comp_zc_func_map {
@@ -192,11 +192,11 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 				source_list);
 
 	/* map the volume function for source and sink buffers */
-	for (i = 0; i < func_count; i++) {
-		if (sinkb->stream.frame_fmt != func_map[i].frame_fmt)
+	for (i = 0; i < volume_func_count; i++) {
+		if (sinkb->stream.frame_fmt != volume_func_map[i].frame_fmt)
 			continue;
 
-		return func_map[i].func;
+		return volume_func_map[i].func;
 	}
 
 	return NULL;
@@ -215,9 +215,9 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 
 	switch (cd->base.audio_fmt.depth) {
 	case IPC4_DEPTH_16BIT:
-		return func_map[0].func;
+		return volume_func_map[0].func;
 	case IPC4_DEPTH_32BIT:
-		return func_map[2].func;
+		return volume_func_map[2].func;
 	default:
 		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
 			 cd->base.audio_fmt.depth);

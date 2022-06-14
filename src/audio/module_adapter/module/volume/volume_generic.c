@@ -235,7 +235,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-const struct comp_func_map func_map[] = {
+const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16 },
 #endif /* CONFIG_FORMAT_S16LE */
@@ -247,6 +247,6 @@ const struct comp_func_map func_map[] = {
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
-const size_t func_count = ARRAY_SIZE(func_map);
+const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
 
 #endif
