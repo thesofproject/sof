@@ -446,18 +446,6 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 	struct comp_copy_limits cl;
 	uint32_t copy_bytes;
 
-	if (!produced && !mod->deep_buff_bytes) {
-		comp_dbg(dev, "module_copy_samples(): nothing processed in this call");
-		/*
-		 * No data produced anything in this period but there still be data in the buffer
-		 * to copy to sink
-		 */
-		if (audio_stream_get_avail_bytes(&src_buffer->stream) >= mod->period_bytes)
-			goto copy_period;
-
-		return;
-	}
-
 	if (mod->deep_buff_bytes) {
 		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&src_buffer->stream)) {
 			generate_zeroes(sink_buffer, mod->period_bytes);
@@ -467,9 +455,16 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 		comp_dbg(dev, "module_copy_samples(): deep buffering has ended after gathering %d bytes of processed data",
 			 audio_stream_get_avail_bytes(&src_buffer->stream));
 		mod->deep_buff_bytes = 0;
+	} else if (!produced) {
+		comp_dbg(dev, "module_copy_samples(): nothing processed in this call");
+		/*
+		 * No data produced anything in this period but there still be data in the buffer
+		 * to copy to sink
+		 */
+		if (audio_stream_get_avail_bytes(&src_buffer->stream) < mod->period_bytes)
+			return;
 	}
 
-copy_period:
 	comp_get_copy_limits_with_lock(src_buffer, sink_buffer, &cl);
 	copy_bytes = cl.frames * cl.source_frame_bytes;
 	if (!copy_bytes)
