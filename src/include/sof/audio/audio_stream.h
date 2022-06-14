@@ -248,7 +248,7 @@ static inline uint32_t audio_stream_frame_align_get(const uint32_t byte_align,
  */
 static inline void audio_stream_init_alignment_constants(const uint32_t byte_align,
 							 const uint32_t frame_align_req,
-							 struct audio_stream *stream)
+							 struct audio_stream __sparse_cache *stream)
 {
 	uint32_t process_size;
 	uint32_t frame_size = audio_stream_frame_bytes(stream);
@@ -469,8 +469,8 @@ audio_stream_avail_frames(const struct audio_stream __sparse_cache *source,
  * @return Number of frames.
  */
 static inline uint32_t
-audio_stream_avail_frames_aligned(const struct audio_stream *source,
-				  const struct audio_stream *sink)
+audio_stream_avail_frames_aligned(const struct audio_stream __sparse_cache *source,
+				  const struct audio_stream __sparse_cache *sink)
 {
 	uint32_t src_frames = (audio_stream_get_avail_bytes(source) >> source->frame_align_shift)
 		 * source->frame_align;
