@@ -13,6 +13,8 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 
+LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
+
 /*****************************************************************************/
 /* Local helper functions						     */
 /*****************************************************************************/
