@@ -8,6 +8,7 @@
 #ifndef __SOF_AUDIO_DATA_BLOB_H__
 #define __SOF_AUDIO_DATA_BLOB_H__
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/sof.h>
 
 struct comp_dev;
@@ -62,6 +63,19 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
  */
 int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			   struct sof_ipc_ctrl_data *cdata);
+
+/**
+ * Handles IPC set command.
+ *
+ * @param blob_handler: Data blob handler
+ * @param pos position: of the data fragment
+ * @param data_offset_size: offset of the fragment in the whole data
+ * @param fragment: pointer to the fragment data
+ * @param fragment_size: size of the fragment data
+ */
+int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
+		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		       const uint8_t *fragment, size_t fragment_size);
 /**
  * Handles IPC get command.
  * @param blob_handler Data blob handler
