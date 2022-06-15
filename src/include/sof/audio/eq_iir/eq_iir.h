@@ -11,6 +11,7 @@
 #define __SOF_AUDIO_EQ_IIR_EQ_IIR_H__
 
 #include <stdint.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/iir_df2t.h>
 
 /** \brief Macros to convert without division bytes count to samples count */
@@ -21,10 +22,8 @@ struct audio_stream;
 struct comp_dev;
 
 /** \brief Type definition for processing function select return value. */
-typedef void (*eq_iir_func)(const struct comp_dev *dev,
-			    const struct audio_stream __sparse_cache *source,
-			    struct audio_stream __sparse_cache *sink,
-			    uint32_t frames);
+typedef void (*eq_iir_func)(struct processing_module *mod, struct input_stream_buffer *bsource,
+			   struct output_stream_buffer *bsink, uint32_t frames);
 
 /** \brief IIR EQ processing functions map item. */
 struct eq_iir_func_map {
@@ -34,7 +33,7 @@ struct eq_iir_func_map {
 };
 
 #ifdef UNIT_TEST
-void sys_comp_eq_iir_init(void);
+void sys_comp_module_eq_iir_interface_init(void);
 #endif
 
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */
