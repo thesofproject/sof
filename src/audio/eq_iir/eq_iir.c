@@ -7,6 +7,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/eq_iir/eq_iir.h>
@@ -34,8 +35,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_eq_iir;
-
 LOG_MODULE_REGISTER(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
 /* 5150c0e6-27f9-4ec8-8351-c705b642d12f */
@@ -60,11 +59,12 @@ struct comp_data {
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_default(const struct comp_dev *dev,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink, uint32_t frames)
+static void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct iir_state_df2t *filter;
 	int16_t *x0;
 	int16_t *y0;
@@ -79,6 +79,9 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 	const int nch = source->channels;
 	const int samples = frames * nch;
 	int processed = 0;
+
+	bsource->consumed += samples << 1;
+	bsink->size += samples << 1;
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -107,11 +110,12 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 
-static void eq_iir_s24_default(const struct comp_dev *dev,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink, uint32_t frames)
+static void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct iir_state_df2t *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -126,6 +130,9 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 	const int nch = source->channels;
 	const int samples = frames * nch;
 	int processed = 0;
+
+	bsource->consumed += samples << 2;
+	bsink->size += samples << 2;
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -154,11 +161,12 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 
-static void eq_iir_s32_default(const struct comp_dev *dev,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink, uint32_t frames)
+static void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct iir_state_df2t *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -173,6 +181,9 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 	const int nch = source->channels;
 	const int samples = frames * nch;
 	int processed = 0;
+
+	bsource->consumed += samples << 2;
+	bsink->size += samples << 2;
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -200,11 +211,13 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
-static void eq_iir_s32_16_default(const struct comp_dev *dev,
-				  const struct audio_stream __sparse_cache *source,
-				  struct audio_stream __sparse_cache *sink, uint32_t frames)
+static void eq_iir_s32_16_default(struct processing_module *mod,
+				  struct input_stream_buffer *bsource,
+				  struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct iir_state_df2t *filter;
 	int32_t *x0;
 	int16_t *y0;
@@ -219,6 +232,9 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 	const int nch = source->channels;
 	const int samples = frames * nch;
 	int processed = 0;
+
+	bsource->consumed += samples << 2;
+	bsink->size += samples << 1;
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -246,11 +262,13 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
-static void eq_iir_s32_24_default(const struct comp_dev *dev,
-				  const struct audio_stream __sparse_cache *source,
-				  struct audio_stream __sparse_cache *sink, uint32_t frames)
+static void eq_iir_s32_24_default(struct processing_module *mod,
+				  struct input_stream_buffer *bsource,
+				  struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct iir_state_df2t *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -265,6 +283,9 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 	const int nch = source->channels;
 	const int samples = frames * nch;
 	int processed = 0;
+
+	bsource->consumed += samples << 2;
+	bsink->size += samples << 2;
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -291,26 +312,38 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
 
-static void eq_iir_pass(const struct comp_dev *dev,
-			const struct audio_stream __sparse_cache *source,
-			struct audio_stream __sparse_cache *sink,
-			uint32_t frames)
+static void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
+
+	if (source->frame_fmt == SOF_IPC_FRAME_S16_LE) {
+		bsource->consumed += (frames * source->channels) << 1;
+		bsink->size += (frames * source->channels) << 1;
+	} else {
+		bsource->consumed += (frames * source->channels) << 2;
+		bsink->size += (frames * source->channels) << 2;
+	}
+
 	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 }
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s16_pass(const struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
-				struct audio_stream __sparse_cache *sink,
-				uint32_t frames)
+static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
+				struct output_stream_buffer *bsink, uint32_t frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	int32_t *x = source->r_ptr;
 	int16_t *y = sink->w_ptr;
 	int nmax;
 	int n;
 	int i;
 	int remaining_samples = frames * source->channels;
+
+	bsource->consumed += remaining_samples << 2;
+	bsink->size += remaining_samples << 1;
 
 	while (remaining_samples) {
 		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
@@ -330,17 +363,20 @@ static void eq_iir_s32_s16_pass(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s24_pass(const struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
-				struct audio_stream __sparse_cache *sink,
-				uint32_t frames)
+static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
+				struct output_stream_buffer *bsink, uint32_t frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	int32_t *x = source->r_ptr;
 	int32_t *y = sink->w_ptr;
 	int nmax;
 	int n;
 	int i;
 	int remaining_samples = frames * source->channels;
+
+	bsource->consumed += remaining_samples << 2;
+	bsink->size += remaining_samples << 2;
 
 	while (remaining_samples) {
 		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
@@ -444,9 +480,11 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 		iir[i].delay = NULL;
 }
 
-static int eq_iir_init_coef(struct sof_eq_iir_config *config,
-			    struct iir_state_df2t *iir, int nch)
+static int eq_iir_init_coef(struct processing_module *mod, int nch)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_eq_iir_config *config = cd->config;
+	struct iir_state_df2t *iir = cd->iir;
 	struct sof_eq_iir_header_df2t *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header_df2t *eq;
 	int32_t *assign_response;
@@ -457,19 +495,18 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 	int j;
 	int s;
 
-	comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), response assign for %u channels, %u responses",
-		     config->channels_in_config,
-		     config->number_of_responses);
+	comp_info(mod->dev, "eq_iir_init_coef(), response assign for %u channels, %u responses",
+		  config->channels_in_config, config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), invalid channels count");
+		comp_err(mod->dev, "eq_iir_init_coef(), invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), # of resp exceeds max");
+		comp_err(mod->dev, "eq_iir_init_coef(), # of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -504,15 +541,14 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
-				     i);
+			comp_info(mod->dev, "eq_iir_init_coef(), ch %d is set to bypass", i);
 			iir_reset_df2t(&iir[i]);
 			continue;
 		}
 
 		if (resp >= config->number_of_responses) {
-			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), requested response %d exceeds defined",
-				     resp);
+			comp_info(mod->dev, "eq_iir_init_coef(), requested response %d exceeds defined",
+				  resp);
 			return -EINVAL;
 		}
 
@@ -522,14 +558,13 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), sections count %d exceeds max",
-				     eq->num_sections);
+			comp_info(mod->dev, "eq_iir_init_coef(), sections count %d exceeds max",
+				  eq->num_sections);
 			return -EINVAL;
 		}
 
 		iir_init_coef_df2t(&iir[i], eq);
-		comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to response %d",
-			     i, resp);
+		comp_info(mod->dev, "eq_iir_init_coef(), ch %d is set to response %d", i, resp);
 	}
 
 	return size_sum;
@@ -550,15 +585,16 @@ static void eq_iir_init_delay(struct iir_state_df2t *iir,
 	}
 }
 
-static int eq_iir_setup(struct comp_data *cd, int nch)
+static int eq_iir_setup(struct processing_module *mod, int nch)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	int delay_size;
 
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(cd);
 
 	/* Set coefficients for each channel EQ from coefficient blob */
-	delay_size = eq_iir_init_coef(cd->config, cd->iir, nch);
+	delay_size = eq_iir_init_coef(mod, nch);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */
 
@@ -572,11 +608,10 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 	cd->iir_delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				delay_size);
 	if (!cd->iir_delay) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_setup(), delay allocation fail");
+		comp_err(mod->dev, "eq_iir_setup(), delay allocation fail");
 		return -ENOMEM;
 	}
 
-	memset(cd->iir_delay, 0, delay_size);
 	cd->iir_delay_size = delay_size;
 
 	/* Assign delay line to each channel EQ */
@@ -587,40 +622,28 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 /*
  * End of EQ setup code. Next the standard component methods.
  */
-
-static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+static int eq_iir_init(struct processing_module *mod)
 {
-	struct comp_dev *dev = NULL;
-	struct comp_data *cd = NULL;
-	struct ipc_config_process *ipc_iir = spec;
-	size_t bs = ipc_iir->size;
-	int i;
-	int ret;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *cfg = &md->cfg;
+	struct comp_data *cd;
+	size_t bs = cfg->size;
+	int i, ret;
 
-	comp_cl_info(&comp_eq_iir, "eq_iir_new()");
+	comp_info(dev, "eq_iir_init()");
 
-	/* Check first before proceeding with dev and cd that coefficients
-	 * blob size is sane.
-	 */
+	/* Check first before proceeding with dev and cd that coefficients blob size is sane */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_new(), coefficients blob size %u exceeds maximum",
-			    bs);
-		return NULL;
+		comp_err(dev, "eq_iir_init(), coefficients blob size %u exceeds maximum", bs);
+		return -EINVAL;
 	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto fail;
+		return -ENOMEM;
 
-	comp_set_drvdata(dev, cd);
-
+	md->private = cd;
 	cd->eq_iir_func = NULL;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
@@ -628,44 +651,47 @@ static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_new(): comp_data_blob_handler_new() failed.");
-		goto cd_fail;
+		comp_err(dev, "eq_iir_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	/* Allocate and make a copy of the coefficients blob and reset IIR. If
 	 * the EQ is configured later in run-time the size is zero.
 	 */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_iir->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_new(): comp_init_data_blob() failed.");
-		goto cd_fail;
+		comp_err(dev, "eq_iir_init(): comp_init_data_blob() failed with error: %d", ret);
+		comp_data_blob_handler_free(cd->model_handler);
+		goto err;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+	/*
+	 * set the simple_copy flag as the eq_iir component always produces period_bytes
+	 * every period and has only 1 input/output buffer
+	 */
+	mod->simple_copy = true;
 
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
+	return 0;
+err:
 	rfree(cd);
-fail:
-	rfree(dev);
-	return NULL;
+	return ret;
 }
 
-static void eq_iir_free(struct comp_dev *dev)
+static int eq_iir_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "eq_iir_free()");
+	comp_info(mod->dev, "eq_iir_free()");
 
 	eq_iir_free_delaylines(cd);
 	comp_data_blob_handler_free(cd->model_handler);
 
 	rfree(cd);
-	rfree(dev);
+	return 0;
 }
 
 static int eq_iir_verify_params(struct comp_dev *dev,
@@ -709,252 +735,156 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
-/* set component audio stream parameters */
-static int eq_iir_params(struct comp_dev *dev,
-			 struct sof_ipc_stream_params *params)
-{
-	int err;
-
-	comp_info(dev, "eq_iir_params()");
-
-	err = eq_iir_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "eq_iir_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
-
-	/* All configuration work is postponed to prepare(). */
-	return 0;
-}
-
-static int iir_cmd_get_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata, int max_size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "iir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_get_cmd(cd->model_handler, cdata,
-					     max_size);
-		break;
-	default:
-		comp_err(dev, "iir_cmd_get_data(), invalid command");
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-static int iir_cmd_set_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		break;
-	default:
-		comp_err(dev, "iir_cmd_set_data(), invalid command");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
 /* used to pass standard and bespoke commands (with data) to component */
-static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
-		      int max_data_size)
+static int eq_iir_set_config(struct processing_module *mod, uint32_t config_id,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size)
 {
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "eq_iir_cmd()");
+	comp_info(mod->dev, "eq_iir_set_config()");
 
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = iir_cmd_set_data(dev, cdata);
-		break;
-	case COMP_CMD_GET_DATA:
-		ret = iir_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	default:
-		comp_err(dev, "eq_iir_cmd(), invalid command");
-		ret = -EINVAL;
-	}
-
-	return ret;
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
+				  fragment_size);
 }
 
-static int eq_iir_trigger(struct comp_dev *dev, int cmd)
+static int eq_iir_get_config(struct processing_module *mod,
+			     uint32_t config_id, uint32_t *data_offset_size,
+			     uint8_t *fragment, size_t fragment_size)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "eq_iir_trigger()");
+	comp_info(mod->dev, "eq_iir_get_config()");
 
-	if ((cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) && !cd->eq_iir_func) {
-		comp_cl_err(&comp_eq_iir, "eq_iir_func is not set");
-		return -EINVAL;
-	}
-
-	return comp_set_state(dev, cmd);
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static void eq_iir_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			   struct comp_buffer __sparse_cache *sink, int frames,
-			   uint32_t source_bytes, uint32_t sink_bytes)
+static int eq_iir_process(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers, int num_input_buffers,
+			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	buffer_stream_invalidate(source, source_bytes);
-
-	cd->eq_iir_func(dev, &source->stream, &sink->stream, frames);
-
-	buffer_stream_writeback(sink, sink_bytes);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
-}
-
-/* copy and process stream data from source to sink buffers */
-static int eq_iir_copy(struct comp_dev *dev)
-{
-	struct comp_copy_limits cl;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
-
-	comp_dbg(dev, "eq_iir_copy()");
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	source_c = buffer_acquire(sourceb);
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_iir_setup(cd, source_c->stream.channels);
+		ret = eq_iir_setup(mod, mod->stream_params->channels);
 		if (ret < 0) {
-			comp_err(dev, "eq_iir_copy(), failed IIR setup");
-			buffer_release(source_c);
-
+			comp_err(mod->dev, "eq_iir_process(), failed IIR setup");
 			return ret;
 		}
 	}
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-	sink_c = buffer_acquire(sinkb);
-
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source_c, sink_c, &cl);
-
-	/* Run EQ function */
-	eq_iir_process(dev, source_c, sink_c, cl.frames, cl.source_bytes,
-		       cl.sink_bytes);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
+	cd->eq_iir_func(mod, &input_buffers[0], &output_buffers[0], input_buffers[0].size);
 	return 0;
 }
 
-static int eq_iir_prepare(struct comp_dev *dev)
+/**
+ * \brief Set EQ IIR frames alignment limit.
+ * \param[in,out] source Structure pointer of source.
+ * \param[in,out] sink Structure pointer of sink.
+ */
+static void eq_iir_set_alignment(struct audio_stream *source, struct audio_stream *sink)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+}
+
+static int eq_iir_prepare(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct module_data *md = &mod->priv;
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	uint32_t sink_period_bytes;
+	uint32_t sink_period_bytes, source_period_bytes;
 	int ret;
 
-	comp_info(dev, "eq_iir_prepare()");
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	ret = eq_iir_verify_params(dev, mod->stream_params);
 	if (ret < 0)
 		return ret;
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	comp_info(dev, "eq_iir_prepare()");
 
 	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 
-	/* get source data format */
+	eq_iir_set_alignment(&source_c->stream, &sink_c->stream);
+
+	/* get source and sink data format */
 	source_format = source_c->stream.frame_fmt;
-
-	/* get sink data format and period bytes */
 	sink_format = sink_c->stream.frame_fmt;
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
-						      dev->frames);
 
+	source_period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
+	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 	if (sink_c->stream.size < sink_period_bytes) {
 		comp_err(dev, "eq_iir_prepare(): sink buffer size %d is insufficient < %d",
 			 sink_c->stream.size, sink_period_bytes);
-		ret = -ENOMEM;
-		goto out;
+		buffer_release(sink_c);
+		buffer_release(source_c);
+		return -ENOMEM;
 	}
+
+	md->mpd.in_buff_size = source_period_bytes;
+	md->mpd.out_buff_size = sink_period_bytes;
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	/* Initialize EQ */
 	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 		  source_format, sink_format);
+
 	if (cd->config) {
-		ret = eq_iir_setup(cd, source_c->stream.channels);
+		ret = eq_iir_setup(mod, source_c->stream.channels);
+		buffer_release(sink_c);
+		buffer_release(source_c);
 		if (ret < 0) {
 			comp_err(dev, "eq_iir_prepare(), setup failed.");
-			goto out;
+			return ret;
 		}
 		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_configured,
 						   ARRAY_SIZE(fm_configured));
 		if (!cd->eq_iir_func) {
 			comp_err(dev, "eq_iir_prepare(), No proc func");
-			ret = -EINVAL;
-			goto out;
+			return -EINVAL;
 		}
 		comp_info(dev, "eq_iir_prepare(), IIR is configured.");
-	} else {
-		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
-						   ARRAY_SIZE(fm_passthrough));
-		if (!cd->eq_iir_func) {
-			comp_err(dev, "eq_iir_prepare(), No pass func");
-			ret = -EINVAL;
-			goto out;
-		}
-		comp_info(dev, "eq_iir_prepare(), pass-through mode.");
-	}
 
-out:
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return 0;
+	}
 
 	buffer_release(sink_c);
 	buffer_release(source_c);
 
-	return ret;
+	cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
+					   ARRAY_SIZE(fm_passthrough));
+	if (!cd->eq_iir_func) {
+		comp_err(dev, "eq_iir_prepare(), No pass func");
+		return -EINVAL;
+	}
+	comp_info(dev, "eq_iir_prepare(), pass-through mode.");
+
+	return 0;
 }
 
-static int eq_iir_reset(struct comp_dev *dev)
+static int eq_iir_reset(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	int i;
-	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "eq_iir_reset()");
+	comp_info(mod->dev, "eq_iir_reset()");
 
 	eq_iir_free_delaylines(cd);
 
@@ -962,34 +892,17 @@ static int eq_iir_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static const struct comp_driver comp_eq_iir = {
-	.type = SOF_COMP_EQ_IIR,
-	.uid = SOF_RT_UUID(eq_iir_uuid),
-	.tctx = &eq_iir_tr,
-	.ops = {
-		.create = eq_iir_new,
-		.free = eq_iir_free,
-		.params = eq_iir_params,
-		.cmd = eq_iir_cmd,
-		.trigger = eq_iir_trigger,
-		.copy = eq_iir_copy,
-		.prepare = eq_iir_prepare,
-		.reset = eq_iir_reset,
-	},
+static struct module_interface eq_iir_interface = {
+	.init  = eq_iir_init,
+	.prepare = eq_iir_prepare,
+	.process = eq_iir_process,
+	.set_configuration = eq_iir_set_config,
+	.get_configuration = eq_iir_get_config,
+	.reset = eq_iir_reset,
+	.free = eq_iir_free
 };
 
-static SHARED_DATA struct comp_driver_info comp_eq_iir_info = {
-	.drv = &comp_eq_iir,
-};
-
-UT_STATIC void sys_comp_eq_iir_init(void)
-{
-	comp_register(platform_shared_get(&comp_eq_iir_info,
-					  sizeof(comp_eq_iir_info)));
-}
-
-DECLARE_MODULE(sys_comp_eq_iir_init);
+DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
