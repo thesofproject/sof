@@ -385,10 +385,12 @@ int tplg_create_process(struct tplg_context *ctx,
 	/* configure asrc */
 	process->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
 	process->comp.id = comp_id;
-	process->comp.hdr.size = sizeof(struct sof_ipc_comp_asrc);
+	process->comp.hdr.size = sizeof(struct sof_ipc_comp_process) + UUID_SIZE;
 	process->comp.type = tplg_get_process_type(process->type);
 	process->comp.pipeline_id = ctx->pipeline_id;
 	process->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	process->comp.ext_data_length = UUID_SIZE;
+	memcpy(process + 1, comp_ext, UUID_SIZE);
 
 	free(array);
 	return 0;
@@ -397,14 +399,14 @@ int tplg_create_process(struct tplg_context *ctx,
 static int process_init_data(struct sof_ipc_comp_process **process_ipc,
 			     struct sof_ipc_comp_process *process)
 {
-	*process_ipc = malloc(sizeof(struct sof_ipc_comp_process));
+	*process_ipc = malloc(sizeof(struct sof_ipc_comp_process) + UUID_SIZE);
 	if (!(*process_ipc)) {
 		fprintf(stderr, "error: Failed to allocate IPC\n");
 		return -errno;
 	}
 
 	/* Copy header */
-	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process));
+	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process) + UUID_SIZE);
 	(*process_ipc)->size = 0;
 	return 0;
 }
@@ -424,7 +426,7 @@ static int process_append_data(struct sof_ipc_comp_process **process_ipc,
 	}
 
 	/* Size is process IPC plus private data minus ABI header */
-	ipc_size = sizeof(struct sof_ipc_comp_process);
+	ipc_size = sizeof(struct sof_ipc_comp_process) + UUID_SIZE;
 	if (ctl->ops.info == SND_SOC_TPLG_CTL_BYTES) {
 		bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl;
 		size = bytes_ctl->priv.size - sizeof(struct sof_abi_hdr);
@@ -437,10 +439,10 @@ static int process_append_data(struct sof_ipc_comp_process **process_ipc,
 	}
 
 	/* Copy header */
-	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process));
+	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process) + UUID_SIZE);
 
 	/* Copy configuration data, need to strip ABI header*/
-	memcpy((char *)*process_ipc + sizeof(struct sof_ipc_comp_process),
+	memcpy((char *)*process_ipc + sizeof(struct sof_ipc_comp_process) + UUID_SIZE,
 	       priv_data + sizeof(struct sof_abi_hdr), size);
 	(*process_ipc)->size = size;
 	return 0;
@@ -451,7 +453,7 @@ int load_process(struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
 	struct snd_soc_tplg_dapm_widget *widget = ctx->widget;
-	struct sof_ipc_comp_process process = {0};
+	struct sof_ipc_comp_process *process;
 	struct sof_ipc_comp_process *process_ipc = NULL;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
 	struct sof_ipc_comp_ext comp_ext;
@@ -459,14 +461,15 @@ int load_process(struct tplg_context *ctx)
 	int ret = 0;
 	int i;
 
-	ret = tplg_create_process(ctx, &process, &comp_ext);
-	if (ret < 0)
-		return ret;
+	process = malloc(sizeof(*process) + UUID_SIZE);
+	if (!process)
+		return -ENOMEM;
 
-	printf("debug uuid:\n");
-	for (i = 0; i < SOF_UUID_SIZE; i++)
-		printf("%u ", comp_ext.uuid[i]);
-	printf("\n");
+	memset(process, 0, sizeof(*process) + UUID_SIZE);
+
+	ret = tplg_create_process(ctx, process, &comp_ext);
+	if (ret < 0)
+		goto err;
 
 	/* Get control into ctl and priv_data */
 	for (i = 0; i < widget->num_kcontrols; i++) {
@@ -474,27 +477,27 @@ int load_process(struct tplg_context *ctx)
 
 		if (ret < 0) {
 			fprintf(stderr, "error: failed control load\n");
-			return ret;
+			goto err;
 		}
 
 		/* Merge process and priv_data into process_ipc */
 		if (priv_data)
-			ret = process_append_data(&process_ipc, &process, ctl, priv_data);
+			ret = process_append_data(&process_ipc, process, ctl, priv_data);
 
 		free(ctl);
 		free(priv_data);
 		if (ret) {
 			fprintf(stderr, "error: private data append failed\n");
 			free(process_ipc);
-			return ret;
+			goto err;
 		}
 	}
 
 	/* Default IPC without appended data */
 	if (!process_ipc) {
-		ret = process_init_data(&process_ipc, &process);
+		ret = process_init_data(&process_ipc, process);
 		if (ret)
-			return ret;
+			goto err;
 	}
 
 	/* load process component */
@@ -507,5 +510,7 @@ int load_process(struct tplg_context *ctx)
 	if (ret < 0)
 		fprintf(stderr, "error: new process comp\n");
 
+err:
+	free(process);
 	return ret;
 }
