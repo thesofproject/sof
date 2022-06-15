@@ -544,6 +544,7 @@ static int volume_init(struct processing_module *mod)
 	uint32_t channels_count;
 	uint8_t channel_cfg;
 	uint8_t channel;
+	uint32_t instance_id;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
 	if (!cd)
@@ -583,9 +584,14 @@ static int volume_init(struct processing_module *mod)
 
 	init_ramp(cd, vol->config[0].curve_duration, vol->config[0].target_volume);
 
+	instance_id = IPC4_INST_ID(dev_comp_id(dev));
+	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
+		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
+		return -EINVAL;
+	}
+
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
-	cd->mailbox_offset +=
-		IPC4_INST_ID(dev_comp_id(dev)) * sizeof(struct ipc4_peak_volume_regs);
+	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
 
 	reset_state(cd);
 
