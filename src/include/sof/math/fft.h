@@ -9,7 +9,10 @@
 #ifndef __SOF_FFT_H__
 #define __SOF_FFT_H__
 
+#include <sof/audio/format.h>
 #include <sof/common.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define FFT_SIZE_MAX	1024
 
