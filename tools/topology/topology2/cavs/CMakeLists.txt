@@ -25,6 +25,10 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 
 # CAVS SDW topology with passthrough pipelines
 "cavs-sdw\;cavs-sdw"
+
+# CAVS SDW with SRC gain and mixer support
+"cavs-sdw-src-gain-mixin\;cavs-sdw-src-gain-mixin"
+
 # CAVS SSP topology for TGL
 "cavs-nocodec\;cavs-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-tgl-nocodec.bin"
