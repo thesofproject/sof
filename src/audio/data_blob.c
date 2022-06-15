@@ -4,6 +4,7 @@
 //
 // Author: Jyri Sarha <jyri.sarha@intel.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/sof.h>
 #include <sof/lib/alloc.h>
 #include <ipc/topology.h>
@@ -144,6 +145,129 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = size;
 	blob_handler->new_data_size = 0;
+
+	return 0;
+}
+
+int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
+		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		       const uint8_t *fragment, size_t fragment_size)
+{
+	int ret;
+
+	if (!blob_handler)
+		return -EINVAL;
+
+	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() pos = %d, fragment size = %d",
+		 pos, fragment_size);
+
+	/* Check that there is no work-in-progress previous request */
+	if (blob_handler->data_new &&
+	    (pos == MODULE_CFG_FRAGMENT_FIRST || pos == MODULE_CFG_FRAGMENT_SINGLE)) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), busy with previous request");
+		return -EBUSY;
+	}
+
+	/* In single blob mode the component can not be reconfigured if the component is active.
+	 */
+	if (blob_handler->single_blob && blob_handler->dev->state == COMP_STATE_ACTIVE) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), on the fly updates forbidden in single blob mode");
+		return -EBUSY;
+	}
+
+	/* in case when the current package is the first, we should allocate
+	 * memory for whole model data
+	 */
+	if (pos == MODULE_CFG_FRAGMENT_FIRST || pos == MODULE_CFG_FRAGMENT_SINGLE) {
+		/* in case when required model size is equal to zero we do not
+		 * allocate memory and should just return 0.
+		 *
+		 * Set cmd with cdata->data->size equal to 0 is possible in
+		 * following situation:
+		 * 1. At first boot and topology parsing stage, the driver will
+		 * read all initial values of DSP kcontrols via IPC. Driver send
+		 * get_model() cmd to components. If we do not initialize
+		 * component earlier driver will get "model" with size 0.
+		 * 2. When resuming from runtime suspended, the driver will
+		 * restore all pipelines and kcontrols, for the tlv binary
+		 * kcontrols, it will call the set_model() with the cached value
+		 * and size (0 if it is not updated by any actual end user
+		 * sof-ctl settings) - basically driver will send set_model()
+		 * command with size equal to 0.
+		 */
+		if (!fragment_size)
+			return 0;
+
+		if (blob_handler->single_blob) {
+			if (data_offset_size != blob_handler->data_size) {
+				blob_handler->free(blob_handler->data);
+				blob_handler->data = NULL;
+			} else {
+				blob_handler->data_new = blob_handler->data;
+				blob_handler->data = NULL;
+			}
+		}
+
+		if (!blob_handler->data_new) {
+			blob_handler->data_new = blob_handler->alloc(data_offset_size);
+			if (!blob_handler->data_new) {
+				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
+				return -ENOMEM;
+			}
+		}
+
+		blob_handler->new_data_size = data_offset_size;
+		blob_handler->data_ready = false;
+		blob_handler->data_pos = 0;
+	}
+
+	/* return an error in case when we do not have allocated memory for model data */
+	if (!blob_handler->data_new) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): buffer not allocated");
+		return -ENOMEM;
+	}
+
+	ret = memcpy_s((char *)blob_handler->data_new + blob_handler->data_pos,
+		       blob_handler->new_data_size - blob_handler->data_pos,
+		       fragment, fragment_size);
+	if (ret) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): failed to copy fragment");
+		return ret;
+	}
+
+	blob_handler->data_pos += fragment_size;
+
+	if (pos == MODULE_CFG_FRAGMENT_SINGLE || pos == MODULE_CFG_FRAGMENT_LAST) {
+		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+
+		/* If component state is READY we can omit old
+		 * configuration immediately. When in playback/capture
+		 * the new configuration presence is checked in copy().
+		 */
+		if (blob_handler->dev->state ==  COMP_STATE_READY) {
+			blob_handler->free(blob_handler->data);
+			blob_handler->data = NULL;
+		}
+
+		/* If there is no existing configuration the received
+		 * can be set to current immediately. It will be
+		 * applied in prepare() when streaming starts.
+		 */
+		if (!blob_handler->data) {
+			blob_handler->data = blob_handler->data_new;
+			blob_handler->data_size = blob_handler->new_data_size;
+
+			blob_handler->data_new = NULL;
+
+			/* The new configuration has been applied */
+			blob_handler->data_ready = false;
+			blob_handler->new_data_size = 0;
+			blob_handler->data_pos = 0;
+		} else {
+			/* The new configuration is ready to be applied */
+			blob_handler->data_ready = true;
+		}
+	}
 
 	return 0;
 }
