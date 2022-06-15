@@ -143,8 +143,9 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	return 0;
 }
 
-static void get_llp_reg_info(struct dai_data *dd, uint32_t *node_id, uint32_t *offset)
+static void get_llp_reg_info(struct comp_dev *dev, uint32_t *node_id, uint32_t *offset)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc4_copier_module_cfg *copier_cfg;
 	union ipc4_connector_node_id node;
 	uint32_t id;
@@ -160,18 +161,32 @@ static void get_llp_reg_info(struct dai_data *dd, uint32_t *node_id, uint32_t *o
 		/* nothing to do since GP-DMA is not used by HDA */
 		*offset = 0;
 		*node_id = 0;
+		break;
 	case SOF_DAI_INTEL_ALH:
 		/* id = group id << 4 + codec id + IPC4_ALH_DAI_INDEX_OFFSET
 		 * memory location = group id * 4 + codec id
 		 */
 		id =  ((id >> 4) & 0xF) * DAI_NUM_ALH_BI_DIR_LINKS_GROUP +
 			(id & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET;
-		*offset = offsetof(struct ipc4_fw_registers, llp_sndw_reading_slots);
-		*offset += id * sizeof(struct ipc4_llp_reading_slot);
+
+		if (id < IPC4_MAX_LLP_SNDW_READING_SLOTS) {
+			*offset = offsetof(struct ipc4_fw_registers, llp_sndw_reading_slots);
+			*offset += id * sizeof(struct ipc4_llp_reading_slot);
+		} else {
+			comp_err(dev, "get_llp_reg_info(): sndw id %u out of array bounds.", id);
+			*node_id = 0;
+		}
+
 		break;
 	default:
-		*offset = offsetof(struct ipc4_fw_registers, llp_gpdma_reading_slots);
-		*offset += id * sizeof(struct ipc4_llp_reading_slot);
+		if (id < IPC4_MAX_LLP_GPDMA_READING_SLOTS) {
+			*offset = offsetof(struct ipc4_fw_registers, llp_gpdma_reading_slots);
+			*offset += id * sizeof(struct ipc4_llp_reading_slot);
+		} else {
+			comp_err(dev, "get_llp_reg_info(): gpdma id %u out of array bounds.", id);
+			*node_id = 0;
+		}
+
 		break;
 	}
 }
@@ -192,7 +207,7 @@ void dai_dma_release(struct comp_dev *dev)
 		uint32_t llp_reg_offset;
 		uint32_t node_id;
 
-		get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+		get_llp_reg_info(dev, &node_id, &llp_reg_offset);
 		if (node_id) {
 			/* reset llp position to 0 in memory window for reset state.
 			 * clear node id and llp position to 0 when dai is free
@@ -227,13 +242,13 @@ void dai_dma_release(struct comp_dev *dev)
 	}
 }
 
-static void dai_dma_position_init(struct dai_data *dd)
+static void dai_dma_position_init(struct comp_dev *dev)
 {
 	struct ipc4_llp_reading_slot slot;
 	uint32_t llp_reg_offset;
 	uint32_t node_id;
 
-	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+	get_llp_reg_info(dev, &node_id, &llp_reg_offset);
 	if (!node_id)
 		return;
 
@@ -301,7 +316,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		}
 	}
 
-	dai_dma_position_init(dd);
+	dai_dma_position_init(dev);
 
 	return dai_set_config(dd->dai, common_config, copier_cfg->gtw_cfg.config_data);
 }
@@ -332,7 +347,7 @@ void dai_dma_position_update(struct comp_dev *dev)
 	uint32_t node_id;
 	uint32_t llp_data[2];
 
-	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+	get_llp_reg_info(dev, &node_id, &llp_reg_offset);
 	if (!node_id)
 		return;
 

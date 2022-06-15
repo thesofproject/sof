@@ -29,6 +29,7 @@
 #include <platform/lib/cpu.h>
 #include <platform/lib/dma.h>
 
+/* Reports current ROM/FW status. */
 struct ipc4_fw_status_reg {
 	uint32_t state      : 28;
 	/* Last module ID updated FSR */
@@ -118,23 +119,67 @@ union ipc4_rom_info {
 	} platform;
 } __attribute__((packed, aligned(4)));
 
-struct ipc4_fw_registers {
-	struct ipc4_fw_status_reg fsr;
-	ipc4_last_error lec;
-	struct ipc4_fw_pwr_status fps;
-	uint32_t mem_status;
-	uint32_t ltr;
-	uint32_t rsvd0;
-	union ipc4_rom_info rom_info;
-	uint32_t rsvd1[5];
-	uint32_t dbg_log_wp[CONFIG_MAX_CORE_COUNT];
-	uint32_t rsvd2[4 - CONFIG_MAX_CORE_COUNT];
+/* Number of pipeline registers slots in FW Regs. */
+#define IPC4_MAX_SUPPORTED_ADSP_CORES 8
 
-	struct ipc4_pipeline_registers pipeline_regs[PLATFORM_MAX_DMA_CHAN];
-	struct ipc4_peak_volume_regs peak_vol_regs[10];
-	struct ipc4_llp_reading_slot llp_gpdma_reading_slots[MAX_GPDMA_COUNT * 8];
-	struct ipc4_llp_reading_slot llp_sndw_reading_slots[MAX_GPDMA_COUNT * 8];
-	uint32_t memory_window_2_slot_desc[IPC4_MAX_SUPPORTED_LIBRARIES];
+/* Number of pipeline registers slots in FW Regs. */
+#define IPC4_MAX_PIPELINE_REG_SLOTS 16
+
+/* Number of PeakVol registers slots in FW Regs. */
+#define IPC4_MAX_PEAK_VOL_REG_SLOTS 16
+
+/* Number of GPDMA LLP Reading slots in FW Regs. */
+#define IPC4_MAX_LLP_GPDMA_READING_SLOTS 24
+
+/* Number of Aggregated SNDW Reading slots in FW Regs. */
+#define IPC4_MAX_LLP_SNDW_READING_SLOTS 16
+
+/* Current ABI version of the FwRegisters layout. */
+#define IPC4_FW_REGS_ABI_VER 1
+
+/* FW Registers exposes additional DSP / FW state information to the driver. */
+struct ipc4_fw_registers {
+	/* Current ROM / FW status(at 0x0) */
+	struct ipc4_fw_status_reg fsr;
+
+	/* Last ROM / FW error code(at 0x4). */
+	ipc4_last_error lec;
+
+	/* Current DSP clock status(at 0x8). */
+	struct ipc4_fw_pwr_status fps;
+
+	/* Last Native Error Code(from external library) (at 0xC). */
+	uint32_t lnec;
+
+	/* Copy of LTRC HW register value(FW only) (at 0x10). */
+	uint32_t ltr;
+
+	uint32_t rsvd0;
+
+	/* ROM info(at 0x18). */
+	union ipc4_rom_info rom_info;
+
+	/* Version of the layout, set to the current FW_REGS_ABI_VER. */
+	uint32_t abi_ver;
+
+	uint8_t slave_core_sts[IPC4_MAX_SUPPORTED_ADSP_CORES];
+
+	uint32_t rsvd2[6];
+
+	/* State of pipelines attached to host output gateways. */
+	struct ipc4_pipeline_registers pipeline_regs[IPC4_MAX_PIPELINE_REG_SLOTS];
+
+	/* State of PeakVol instances, indexed by the PeakVol's instance_id. */
+	struct ipc4_peak_volume_regs peak_vol_regs[IPC4_MAX_PEAK_VOL_REG_SLOTS];
+
+	/* LLP Readings for single link gateways. */
+	struct ipc4_llp_reading_slot llp_gpdma_reading_slots[IPC4_MAX_LLP_GPDMA_READING_SLOTS];
+
+	/* LLP Readings for SNDW aggregated link gateways. */
+	struct ipc4_llp_reading_slot llp_sndw_reading_slots[IPC4_MAX_LLP_SNDW_READING_SLOTS - 1];
+
+	/* LLP Readings for EVAD gateway. */
+	struct ipc4_llp_reading_slot llp_evad_reading_slot;
 } __attribute__((packed, aligned(4)));
 
 #endif

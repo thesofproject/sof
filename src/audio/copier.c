@@ -397,14 +397,18 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	return ret;
 }
 
-static void init_pipeline_reg(struct copier_data *cd)
+static int init_pipeline_reg(struct copier_data *cd)
 {
 	union ipc4_connector_node_id node_id;
 	struct ipc4_pipeline_registers pipe_reg;
-	int gateway_id;
+	uint8_t gateway_id;
 
 	node_id.dw = cd->config.gtw_cfg.node_id;
 	gateway_id = node_id.f.v_index;
+	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
+		comp_cl_err(&comp_copier, "gateway_id %u out of array bounds.", gateway_id);
+		return -EINVAL;
+	}
 
 	/* pipeline position is stored in memory windows 0 at the following offset
 	 * please check struct ipc4_fw_registers definition. The number of
@@ -416,6 +420,7 @@ static void init_pipeline_reg(struct copier_data *cd)
 	pipe_reg.stream_start_offset = (uint64_t)-1;
 	pipe_reg.stream_end_offset = (uint64_t)-1;
 	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+	return 0;
 }
 
 static struct comp_dev *copier_new(const struct comp_driver *drv,
@@ -478,7 +483,8 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 			if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 				ipc_pipe->pipeline->source_comp = dev;
-				init_pipeline_reg(cd);
+				if (init_pipeline_reg(cd))
+					goto error_cd;
 			} else {
 				ipc_pipe->pipeline->sink_comp = dev;
 			}
