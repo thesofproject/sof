@@ -71,9 +71,9 @@ struct ipc4_pipeline_registers {
 
 #define IPC4_PV_MAX_SUPPORTED_CHANNELS 8
 struct ipc4_peak_volume_regs {
-	uint32_t peak_meter_[IPC4_PV_MAX_SUPPORTED_CHANNELS];
-	uint32_t current_volume_[IPC4_PV_MAX_SUPPORTED_CHANNELS];
-	uint32_t target_volume_[IPC4_PV_MAX_SUPPORTED_CHANNELS];
+	uint32_t peak_meter[IPC4_PV_MAX_SUPPORTED_CHANNELS];
+	uint32_t current_volume[IPC4_PV_MAX_SUPPORTED_CHANNELS];
+	uint32_t target_volume[IPC4_PV_MAX_SUPPORTED_CHANNELS];
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_llp_reading {
