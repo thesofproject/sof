@@ -92,7 +92,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 				y0 += nch;
 			}
 #if CONFIG_COMP_PEAK_VOL
-			cd->peak_regs.peak_meter_[j] = tmp;
+			cd->peak_regs.peak_meter[j] = tmp;
 #endif
 		}
 		remaining_samples -= n;
@@ -158,7 +158,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 				y0 += nch;
 			}
 #if CONFIG_COMP_PEAK_VOL
-			cd->peak_regs.peak_meter_[j] = tmp;
+			cd->peak_regs.peak_meter[j] = tmp;
 #endif
 		}
 		remaining_samples -= n;
@@ -222,7 +222,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 				y0 += nch;
 			}
 #if CONFIG_COMP_PEAK_VOL
-			cd->peak_regs.peak_meter_[j] = tmp;
+			cd->peak_regs.peak_meter[j] = tmp;
 #endif
 		}
 		remaining_samples -= n;

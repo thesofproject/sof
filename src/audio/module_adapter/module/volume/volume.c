@@ -467,9 +467,9 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 			   uint64_t const curve_duration)
 {
 	/* update target volume in peak_regs */
-	cd->peak_regs.target_volume_[channel] = target_volume;
+	cd->peak_regs.target_volume[channel] = target_volume;
 	/* update peak meter in peak_regs */
-	cd->peak_regs.peak_meter_[channel] = 0;
+	cd->peak_regs.peak_meter[channel] = 0;
 
 	/* init target volume */
 	cd->tvolume[channel] = target_volume;
@@ -992,7 +992,7 @@ static int volume_get_config(struct processing_module *mod,
 	switch (config_id) {
 	case IPC4_VOLUME:
 		for (i = 0; i < cd->channels; i++) {
-			uint32_t volume = cd->peak_regs.target_volume_[i];
+			uint32_t volume = cd->peak_regs.target_volume[i];
 
 			cdata[i].channel_id = i;
 			cdata[i].target_volume = convert_volume_ipc3_to_ipc4(volume);
@@ -1055,7 +1055,7 @@ static void volume_update_current_vol_ipc4(struct vol_data *cd)
 	assert(cd);
 
 	for (i = 0; i < cd->channels; i++)
-		cd->peak_regs.current_volume_[i] = cd->volume[i];
+		cd->peak_regs.current_volume[i] = cd->volume[i];
 #endif
 }
 

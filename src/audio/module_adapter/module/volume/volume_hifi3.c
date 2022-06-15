@@ -47,7 +47,7 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 static inline void peak_vol_calc(struct vol_data *cd, ae_f32x2 out_sample, size_t channel)
 {
 #if CONFIG_COMP_PEAK_VOL
-	cd->peak_regs.peak_meter_[channel] = AE_MAX32(out_sample, cd->peak_regs.peak_meter_[channel]);
+	cd->peak_regs.peak_meter[channel] = AE_MAX32(out_sample, cd->peak_regs.peak_meter[channel]);
 #endif
 }
 
