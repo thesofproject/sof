@@ -554,7 +554,7 @@ int module_adapter_copy(struct comp_dev *dev)
 	uint32_t min_free_frames = UINT_MAX;
 	int ret, i = 0;
 
-	comp_info(dev, "module_adapter_copy(): start");
+	comp_dbg(dev, "module_adapter_copy(): start");
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
