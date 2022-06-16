@@ -346,6 +346,22 @@ SECTIONS
     _data_end = ABSOLUTE(.);
   } >sof_sram0 :sof_sram0_phdr
 
+  .clib.data : ALIGN(4)
+  {
+    _clib_data_start = ABSOLUTE(.);
+    *(.clib.data)
+    . = ALIGN (4);
+    _clib_data_end = ABSOLUTE(.);
+  } >sof_sram0 :sof_sram0_phdr
+
+  .clib.rodata : ALIGN(4)
+  {
+    _clib_rodata_start = ABSOLUTE(.);
+    *(.clib.rodata)
+    . = ALIGN (4);
+    _clib_rodata_end = ABSOLUTE(.);
+  } >sof_sram0 :sof_sram0_phdr
+
   .lit4 : ALIGN(4)
   {
     _lit4_start = ABSOLUTE(.);
