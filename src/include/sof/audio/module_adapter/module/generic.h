@@ -209,4 +209,29 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			    bool last_block, uint32_t *data_offset, char *data);
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
 
+static inline void
+module_update_processing_position(struct input_stream_buffer *input,
+				  struct output_stream_buffer *output,
+				  enum sof_ipc_frame input_frame_fmt,
+				  enum sof_ipc_frame output_frame_fmt, int samples)
+{
+	switch (input_frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		input->consumed += S16_SAMPLES_TO_BYTES(samples);
+		break;
+	default:
+		input->consumed += S32_SAMPLES_TO_BYTES(samples);
+		break;
+	}
+
+	switch (output_frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		output->size += S16_SAMPLES_TO_BYTES(samples);
+		break;
+	default:
+		output->size += S32_SAMPLES_TO_BYTES(samples);
+		break;
+	}
+}
+
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */
