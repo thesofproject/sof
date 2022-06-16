@@ -200,11 +200,8 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 		       unsigned char *digest, unsigned char *signature)
 {
 	EVP_PKEY_CTX *ctx = NULL;
-	EVP_PKEY_CTX *ctx2 = NULL;
-	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
 	size_t siglen = MAN_RSA_SIGNATURE_LEN;
 	size_t sig_in = MAN_RSA_SIGNATURE_LEN_2_5;
-	size_t sig_out = MAN_RSA_SIGNATURE_LEN_2_5;
 	int ret;
 
 	ctx = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
@@ -234,30 +231,11 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 			goto out;
 		}
 
-		ret = EVP_PKEY_sign(ctx, sig, &sig_in, digest, SHA384_DIGEST_LENGTH);
+		ret = EVP_PKEY_sign(ctx, signature, &sig_in, digest, SHA384_DIGEST_LENGTH);
 		if (ret <= 0) {
 			fprintf(stderr, "error: failed to sign manifest\n");
 			goto out;
 		}
-
-		/* encryption done with different context */
-		ctx2 = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
-		if (!ctx)
-			return -ENOMEM;
-
-		ret = EVP_PKEY_encrypt_init(ctx2);
-		if (ret <= 0)
-			goto out;
-
-		ret = EVP_PKEY_CTX_set_rsa_padding(ctx2, RSA_NO_PADDING);
-		if (ret <= 0) {
-			fprintf(stderr, "error: failed to set 0 padding \n");
-			goto out;
-		}
-
-		ret = EVP_PKEY_encrypt(ctx2, signature, &sig_out, sig, sig_in);
-		if (ret <= 0)
-			fprintf(stderr, "error: failed to encrypt signature\n");
 	}
 	else {
 		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256());
@@ -273,8 +251,6 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 
 out:
 	EVP_PKEY_CTX_free(ctx);
-	if (ctx2)
-		EVP_PKEY_CTX_free(ctx2);
 
 	return ret;
 }
@@ -331,9 +307,7 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 			 unsigned char *digest, unsigned char *signature)
 {
 	EVP_PKEY_CTX *ctx = NULL;
-	EVP_PKEY_CTX *ctx2 = NULL;
 	size_t siglen = MAN_RSA_SIGNATURE_LEN;
-	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
 	size_t siglen25 = MAN_RSA_SIGNATURE_LEN_2_5;
 	char err_buf[256];
 	int ret;
@@ -369,34 +343,15 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 		if (ret <= 0)
 			goto out;
 
+		ret = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, 32);
+		if (ret <= 0)
+			goto out;
+
 		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384());
 		if (ret <= 0)
 			goto out;
 
-		/* decrypt signature */
-		ctx2 = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
-		if (!ctx)
-			return -ENOMEM;
-
-		ret = EVP_PKEY_decrypt_init(ctx2);
-		if (ret <= 0)
-			goto out;
-
-		ret = EVP_PKEY_CTX_set_rsa_padding(ctx2, RSA_NO_PADDING);
-		if (ret <= 0) {
-			ERR_error_string(ERR_get_error(), err_buf);
-			fprintf(stderr, "error: set padding %s\n", err_buf);
-			goto out;
-		}
-
-		ret = EVP_PKEY_decrypt(ctx2, sig, &siglen25, signature, siglen25);
-		if (ret <= 0) {
-			ERR_error_string(ERR_get_error(), err_buf);
-			fprintf(stderr, "error: decrypt %s\n", err_buf);
-			goto out;
-		}
-
-		ret = EVP_PKEY_verify(ctx, sig, siglen25, digest, SHA384_DIGEST_LENGTH);
+		ret = EVP_PKEY_verify(ctx, signature, siglen25, digest, SHA384_DIGEST_LENGTH);
 		if (ret <= 0) {
 			ERR_error_string(ERR_get_error(), err_buf);
 			fprintf(stderr, "error: verify %s\n", err_buf);
@@ -409,8 +364,6 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 
 out:
 	EVP_PKEY_CTX_free(ctx);
-	if (ctx2)
-		EVP_PKEY_CTX_free(ctx2);
 
 	return ret;
 }
