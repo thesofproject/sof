@@ -12,6 +12,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
 #include <sof/audio/selector.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
@@ -20,8 +21,6 @@
 
 LOG_MODULE_DECLARE(selector, CONFIG_SOF_LOG_LEVEL);
 
-#define BYTES_TO_S16_SAMPLES	1
-#define BYTES_TO_S32_SAMPLES	2
 
 #if CONFIG_IPC_MAJOR_3
 #if CONFIG_FORMAT_S16LE
@@ -51,7 +50,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 		n = frames - processed;
 		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, dest));
 		n = MIN(n, nmax);
 		src_ch = src + sel_channel;
 		for (i = 0; i < n; i++) {
@@ -123,7 +122,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 		n = frames - processed;
 		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dest));
 		n = MIN(n, nmax);
 		src_ch = src + sel_channel;
 		for (i = 0; i < n; i++) {
@@ -198,7 +197,7 @@ static void sel_s16le_1ch(struct processing_module *mod, struct input_stream_buf
 		n = frames - processed;
 		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, dest));
 		n = MIN(n, nmax);
 		src_ch = src + sel_channel;
 		for (i = 0; i < n; i++) {
@@ -211,8 +210,8 @@ static void sel_s16le_1ch(struct processing_module *mod, struct input_stream_buf
 		processed += n;
 	}
 
-	bsource->consumed += processed >> BYTES_TO_S16_SAMPLES;
-	bsink->size += processed >> BYTES_TO_S16_SAMPLES;
+	bsource->consumed += BYTES_TO_S16_SAMPLES(processed);
+	bsink->size += BYTES_TO_S16_SAMPLES(processed);
 }
 
 /**
@@ -246,8 +245,8 @@ static void sel_s16le_nch(struct processing_module *mod, struct input_stream_buf
 		bytes_copied += b;
 	}
 
-	bsource->consumed += bytes_copied >> BYTES_TO_S16_SAMPLES;
-	bsink->size += bytes_copied >> BYTES_TO_S16_SAMPLES;
+	bsource->consumed += BYTES_TO_S16_SAMPLES(bytes_copied);
+	bsink->size += BYTES_TO_S16_SAMPLES(bytes_copied);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -280,7 +279,7 @@ static void sel_s32le_1ch(struct processing_module *mod, struct input_stream_buf
 		n = frames - processed;
 		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dest));
 		n = MIN(n, nmax);
 		src_ch = src + sel_channel;
 		for (i = 0; i < n; i++) {
@@ -293,8 +292,8 @@ static void sel_s32le_1ch(struct processing_module *mod, struct input_stream_buf
 		processed += n;
 	}
 
-	bsource->consumed += processed >> BYTES_TO_S32_SAMPLES;
-	bsink->size += processed >> BYTES_TO_S32_SAMPLES;
+	bsource->consumed += BYTES_TO_S32_SAMPLES(processed);
+	bsink->size += BYTES_TO_S32_SAMPLES(processed);
 }
 
 /**
@@ -329,8 +328,8 @@ static void sel_s32le_nch(struct processing_module *mod, struct input_stream_buf
 		bytes_copied += b;
 	}
 
-	bsource->consumed += bytes_copied >> BYTES_TO_S32_SAMPLES;
-	bsink->size += bytes_copied >> BYTES_TO_S32_SAMPLES;
+	bsource->consumed += BYTES_TO_S32_SAMPLES(bytes_copied);
+	bsink->size += BYTES_TO_S32_SAMPLES(bytes_copied);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 #endif

@@ -14,10 +14,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/iir_df2t.h>
 
-/** \brief Macros to convert without division bytes count to samples count */
-#define EQ_IIR_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
-#define EQ_IIR_BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
-
 struct audio_stream;
 struct comp_dev;
 
