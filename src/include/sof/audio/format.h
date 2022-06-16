@@ -94,6 +94,12 @@
 #define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))
 #define SATM_INT32(x) (((x) < INT32_MIN) ? INT32_MIN : (x))
 
+/** \brief Macros to convert from bytes count to samples count and vice-versa */
+#define BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
+#define BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
+#define S16_SAMPLES_TO_BYTES(s)	((s) << 1)
+#define S32_SAMPLES_TO_BYTES(s)	((s) << 2)
+
 /* Inline functions */
 
 #if __AUDIO_FORMAT_GENERIC__
