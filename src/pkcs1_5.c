@@ -529,6 +529,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
  * extensions, and excluding the last 3 fields of the
  * manifest header (Public Key, Exponent and Signature).
  */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
 			    struct fw_image_manifest_ace_v1_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
@@ -624,6 +625,15 @@ int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
 	EVP_PKEY_free(privkey);
 	return ret;
 }
+#else
+int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
+			    struct fw_image_manifest_ace_v1_5 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2)
+{
+	return -EINVAL;
+}
+#endif
 
 int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
