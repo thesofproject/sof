@@ -26,9 +26,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BYTES_TO_S16_SAMPLES	1
-#define BYTES_TO_S32_SAMPLES	2
-
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 
 static int pcm_convert_s16_to_s24(const struct audio_stream __sparse_cache *source,
@@ -46,9 +43,9 @@ static int pcm_convert_s16_to_s24(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src << 8;
@@ -75,9 +72,9 @@ static int pcm_convert_s24_to_s16(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
@@ -108,9 +105,9 @@ static int pcm_convert_s16_to_s32(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src << 16;
@@ -137,9 +134,9 @@ static int pcm_convert_s32_to_s16(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
@@ -170,9 +167,9 @@ static int pcm_convert_s24_to_s32(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src << 8;
@@ -199,9 +196,9 @@ static int pcm_convert_s32_to_s24(const struct audio_stream __sparse_cache *sour
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
@@ -543,9 +540,9 @@ static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src;
@@ -572,9 +569,9 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src & 0xffff;
@@ -602,9 +599,9 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src << 16;
@@ -631,9 +628,9 @@ static int pcm_convert_s32_c32_to_s16_c32(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
@@ -661,9 +658,9 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = *src << 8;
@@ -690,9 +687,9 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
@@ -723,7 +720,7 @@ static int pcm_convert_s24_c24_to_s24_c32(const struct audio_stream __sparse_cac
 		n = samples - processed;
 		nmax = audio_stream_bytes_without_wrap(source, src) / 3;
 		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i += 1) {
 			*dst = (*(src + 2) << 24) | (*(src + 1) << 16) | (*(src + 0) << 8);
@@ -751,7 +748,7 @@ static int pcm_convert_s24_c32_to_s24_c24(const struct audio_stream __sparse_cac
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
 		nmax = audio_stream_bytes_without_wrap(sink, dst) / 3;
 		n = MIN(n, nmax);
@@ -785,7 +782,7 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream __s
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		n = samples - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
 		n = MIN(n, nmax);
 		nmax = audio_stream_bytes_without_wrap(sink, dst) / 3;
 		n = MIN(n, nmax);

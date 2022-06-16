@@ -88,7 +88,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
 	while (remaining_samples) {
 		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
-		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
+		nmax = BYTES_TO_S16_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
 		for (i = 0; i < n; i += nch) {
 			sum = 0;
@@ -136,7 +136,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
 	while (remaining_samples) {
 		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
-		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		nmax = BYTES_TO_S32_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
 		for (i = 0; i < n; i += nch) {
 			sum = 0;
@@ -184,7 +184,7 @@ static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
 	while (remaining_samples) {
 		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
-		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		nmax = BYTES_TO_S32_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
 		for (i = 0; i < n; i += nch) {
 			sum = 0;
