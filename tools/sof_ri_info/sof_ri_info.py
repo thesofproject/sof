@@ -1374,7 +1374,8 @@ def get_mem_map(ri_path):
         # use full firmware name for match
         if "sof-{}.ri".format(plat_name) in ri_path:
             return DSP_MEM_SPACE_EXT[plat_name]
-    return DspMemory('Memory layout undefined', [])
+    return DspMemory('No platform found in name "{}"'.format(ri_path)
+                     + "; unknown memory layout.", [])
 
 def add_lmap_mem_info(ri_path, mem_map):
     """ Optional lmap processing
@@ -1446,7 +1447,11 @@ class DspMemory(object):
                 return
 
     def dump_info(self):
-        print(self.platform_name)
+        if not self.segments:
+            print(self.platform_name) # "no platform found"
+            return
+
+        print("Memory layout for: " + self.platform_name)
         for seg in self.segments:
             seg.dump_info('  ')
 
