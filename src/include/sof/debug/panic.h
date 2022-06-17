@@ -34,11 +34,8 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 #include <kernel.h>
 #define panic(x) k_panic()
 
-#define assert(x) \
-	do {			\
-		if (!(x))	\
-			k_oops();\
-	} while (0)
+#define assert(x) __ASSERT_NO_MSG(x)
+
 /* To print the asserted expression on failure:
  *  #define assert(x) __ASSERT(x, #x)
  */
