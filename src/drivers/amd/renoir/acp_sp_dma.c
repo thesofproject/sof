@@ -317,9 +317,9 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 		tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_I2S_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
-		*free = (curr_tx_pos - prev_tx_pos) > sp_buff_size ? (curr_tx_pos - prev_tx_pos) % sp_buff_size : curr_tx_pos - prev_tx_pos;
-		*avail = sp_buff_size - *free;
 		prev_tx_pos = curr_tx_pos;
+		*free = (sp_buff_size >> 1);
+		*avail = (sp_buff_size >> 1);
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_I2S_RX_LINEARPOSITIONCNTR_LOW);
