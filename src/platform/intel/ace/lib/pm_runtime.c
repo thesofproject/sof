@@ -407,6 +407,54 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 }
 
 #ifdef __ZEPHYR__
+#include <ace_v1x-regs.h>
+#include <zephyr/pm/policy.h>
+
+#ifdef CONFIG_PM_POLICY_CUSTOM
+const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
+{
+	uint8_t num_cpu_states;
+	const struct pm_state_info *cpu_states;
+
+	num_cpu_states = pm_state_cpu_get_all(cpu, &cpu_states);
+
+	for (int8_t i = num_cpu_states - 1; i >= 0; i--) {
+		const struct pm_state_info *state = &cpu_states[i];
+		uint32_t min_residency, exit_latency;
+
+		/* policy cannot lead to D3 */
+		if (state->state == PM_STATE_SOFT_OFF)
+			continue;
+
+		/* check if there is a lock on state + substate */
+		if (pm_policy_state_lock_is_active(state->state, state->substate_id))
+			continue;
+
+		min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
+		exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
+
+		if (ticks == K_TICKS_FOREVER ||
+		    (ticks >= (min_residency + exit_latency))) {
+			/* TODO: PM_STATE_SUSPEND_TO_IDLE requires substates to be defined
+			 * to handle case with enabled PG andf disabled CG.
+			 */
+			return state;
+		}
+	}
+
+	return NULL;
+}
+#endif /* CONFIG_PM_POLICY_CUSTOM */
+
+static inline void ace_pm_runtime_dis_dsp_pg(uint32_t index)
+{
+	ARG_UNUSED(index);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	/* Disable power gating when preventing */
+	MTL_PWRBOOT.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
+		MTL_PWRBOOT_BCTL_WAITIPCG | MTL_PWRBOOT_BCTL_WAITIPPG;
+}
+
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 			     uint32_t flags)
 {
@@ -442,6 +490,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 		break;
 	case CORE_HP_CLK:
 		cavs_pm_runtime_core_en_hp_clk(index);
+		break;
+	case PM_RUNTIME_DSP:
+		ace_pm_runtime_dis_dsp_pg(index);
 		break;
 	default:
 		break;
@@ -484,7 +535,7 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		cavs_pm_runtime_core_dis_hp_clk(index);
 		break;
 	case PM_RUNTIME_DSP:
-		cavs_pm_runtime_en_dsp_pg(index);
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		break;
 	default:
 		break;
