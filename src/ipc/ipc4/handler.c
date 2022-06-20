@@ -40,6 +40,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+#include <logging/log_backend_cavs_hda.h>
+#endif
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -546,6 +549,18 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	return ret;
 }
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+static int ipc4_log_enable(struct ipc4_message_request *ipc4)
+{
+	struct sof_ipc_dma_trace_params_ext params;
+
+	mailbox_hostbox_read(&params, sizeof(params), 0, sizeof(params));
+
+	cavs_hda_log_init(NULL, params.stream_tag - 1);
+
+	return 0;
+}
+#else
 static int ipc4_log_enable(struct ipc4_message_request *ipc4)
 {
 #if CONFIG_HOST_PTABLE
@@ -616,6 +631,7 @@ err = dma_trace_enable(dmat);
 error:
 	return err;
 }
+#endif
 
 static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {

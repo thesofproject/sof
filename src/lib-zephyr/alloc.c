@@ -34,6 +34,7 @@
 #endif
 
 extern struct tr_ctx zephyr_tr;
+LOG_MODULE_REGISTER(libzephyr_alloc, CONFIG_SOF_LOG_LEVEL);
 
 /*
  * Memory - Create Zephyr HEAP for SOF.

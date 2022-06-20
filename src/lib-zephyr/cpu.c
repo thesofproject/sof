@@ -23,6 +23,7 @@
 #include <zephyr/kernel.h>
 
 extern struct tr_ctx zephyr_tr;
+LOG_MODULE_REGISTER(libzephyr, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_MULTICORE && CONFIG_SMP
 
