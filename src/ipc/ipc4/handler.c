@@ -626,7 +626,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 
 	//Receiving sof style IPC formatted as ACE IPC.
 	//This does not fit any ACE IPC interpretation and will change in the future.
-	if (ipc4->extension.dat == 0x80000009)
+	if (ipc4->extension.dat == 0xA)
 		return ipc4_log_enable(ipc4);
 
 	switch (type) {
