@@ -193,9 +193,10 @@ static int dts_codec_prepare(struct processing_module *mod)
 	return ret;
 }
 
-static int dts_codec_init_process(struct comp_dev *dev)
+static int dts_codec_init_process(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
@@ -234,7 +235,7 @@ dts_codec_process(struct processing_module *mod,
 	}
 
 	if (!codec->mpd.init_done) {
-		ret = dts_codec_init_process(dev);
+		ret = dts_codec_init_process(mod);
 		if (ret < 0)
 			return ret;
 	}
@@ -267,9 +268,10 @@ dts_codec_process(struct processing_module *mod,
 	return ret;
 }
 
-static int dts_codec_apply_config(struct comp_dev *dev)
+static int dts_codec_apply_config(struct processing_module *mod)
 {
 	int ret = 0;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	struct module_config *config;
 	struct module_param *param;
@@ -405,7 +407,7 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 		return 0;
 
 	/* whole configuration received, apply it now */
-	ret = dts_codec_apply_config(dev);
+	ret = dts_codec_apply_config(mod);
 	if (ret) {
 		comp_err(dev, "dts_codec_set_configuration(): error %x: runtime config apply failed",
 			 ret);
