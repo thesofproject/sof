@@ -1341,8 +1341,13 @@ fail:
 static void volume_legacy_free(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	struct module_config *cfg = &md->cfg;
 
 	comp_dbg(dev, "volume_legacy_free()");
+
+	if (cfg->data)
+		rfree(cfg->data);
 
 	volume_free(mod);
 
