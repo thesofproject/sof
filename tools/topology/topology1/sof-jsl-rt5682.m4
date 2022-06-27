@@ -178,7 +178,7 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
-		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
+		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, eval(SSP_CC_BCLK_ES | SSP_CC_MCLK_AON))))
 
 # SSP 1 (ID: 6)
 DAI_CONFIG(SSP, SPK_INDEX, 6, SPK_NAME,
