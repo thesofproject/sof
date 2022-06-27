@@ -232,6 +232,7 @@ extern const struct dai_driver ssp_driver;
 #define SSP_CLK_MCLK_ACTIVE	BIT(1)
 #define SSP_CLK_BCLK_ES_REQ	BIT(2)
 #define SSP_CLK_BCLK_ACTIVE	BIT(3)
+#define SSP_CLK_MCLK_AON_REQ	BIT(4)
 
 /* SSP private data */
 struct ssp_pdata {
