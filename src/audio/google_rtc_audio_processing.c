@@ -330,7 +330,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	cd->output = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* On some platform the playback output is left right left right due to a crossover
-	 * later on on the signal processing chain. That makes the aec_reference be 4 channels
+	 * later on the signal processing chain. That makes the aec_reference be 4 channels
 	 * and the AEC should only use the 2 first.
 	 */
 	if (cd->num_aec_reference_channels > cd->aec_reference->stream.channels) {
