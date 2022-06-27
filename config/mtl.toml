@@ -49,7 +49,7 @@ name = "ADSPFW"
 load_offset = "0x40000"
 
 [module]
-count = 9
+count = 10
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "2B79E4F3-4675-F649-89DF-3BC194A91AEB"
@@ -280,3 +280,22 @@ count = 9
 				20, 0, 0, 0, 12832, 20881000, 0, 0, 0, 20881, 0,
 				21, 0, 0, 0, 12832, 23431000, 0, 0, 0, 23431, 0,
 				22, 0, 0, 0, 12832, 30471000, 0, 0, 0, 30471, 0]
+
+	[[module.entry]]
+	name = "MICSEL"
+	uuid = "32FE92C1-1E17-4FC2-9758-C7F3542E980A"
+	affinity_mask = "0x1"
+	instance_count = "8"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "8"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xe, 0xa, 0x45ff, 1, 0, 0xfeef, 0xe, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 960, 488500, 16, 16, 0, 0, 0,
+			1, 0, 0, 0, 960, 964500, 16, 16, 0, 0, 0,
+			2, 0, 0, 0, 960, 2003000, 16, 16, 0, 0, 0]
