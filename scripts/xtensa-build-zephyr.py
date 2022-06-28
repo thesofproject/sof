@@ -137,6 +137,34 @@ def parse_args():
 						help="Enable debug build")
 	parser.add_argument("-i", "--ipc", required=False, choices=["IPC3", "IPC4"],
 						default="IPC3", help="IPC major version")
+    # NO SOF release will ever user the option --fw-naming.
+    # This option is only for disguising SOF IPC4 as CAVS IPC4 and only in cases where
+    # the kernel 'ipc_type' expects CAVS IPC4. In this way, developers and CI can test
+    # IPC4 on older platforms.
+	parser.add_argument("--fw-naming", required=False, choices=["AVS", "SOF"],
+						default="SOF", help="""
+Determine firmware naming conversion and folder structure
+For SOF:
+    /lib/firmware/intel/sof
+    └───────community
+        │   ├── sof-tgl.ri
+        │   └── sof-cnl.ri
+        ├── dbgkey
+        │   ├── sof-tgl.ri
+        │   └── sof-cnl.ri
+        ├── sof-tgl.ri
+        └── sof-cnl.ri
+For AVS(filename dsp_basefw.bin):
+Noted that with fw_naming set as 'AVS', there will be output subdirectories for each platform
+    /lib/firmware/intel/sof-ipc4
+    └── tgl
+    │   ├── community
+    │   │   └── dsp_basefw.bin
+    │   ├── dbgkey
+    │   │   └── dsp_basefw.bin
+    │   └── dsp_basefw.bin
+    └── cnl"""
+	)
 	parser.add_argument("-j", "--jobs", required=False, type=int,
 						default=multiprocessing.cpu_count(),
 						help="Set number of make build jobs for rimage."
@@ -510,6 +538,10 @@ def build_platforms():
 
 		sign_cmd += ["-f", get_sof_version(abs_build_dir)]
 
+		if args.fw_naming == "AVS":
+			output_fwname="dsp_basefw.bin"
+		else:
+			output_fwname="".join(["sof-", platform, ".ri"])
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
 			sign_cmd += ["-c", str(rimage_desc)]
@@ -519,10 +551,10 @@ def build_platforms():
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
 		if args.key_type_subdir == "none":
 			fw_file_installed = pathlib.Path(sof_platform_output_dir,
-							 f"sof-{platform}.ri")
+							 f"{output_fwname}")
 		else:
 			fw_file_installed = pathlib.Path(sof_platform_output_dir, args.key_type_subdir,
-							 f"sof-{platform}.ri")
+							 f"{output_fwname}")
 		os.makedirs(os.path.dirname(fw_file_installed), exist_ok=True)
 		# looses file owner and group - file is commonly accessible
 		shutil.copy2(str(fw_file_to_copy), str(fw_file_installed))
