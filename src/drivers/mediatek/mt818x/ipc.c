@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2022 Mediatek. All rights reserved.
-//
-// Author: Allen-KH Cheng <allen-kh.cheng@mediatek.com>
-//         Tinghan Shen <tinghan.shen@mediatek.com>
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ *         Tinghan Shen <tinghan.shen@mediatek.com>
+ */
 
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>
@@ -160,7 +161,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	mbox_irq1 = mtk_irq_group_id(MTK_DSP_IRQ_MBOX1);
 	if (mbox_irq1 < 0) {
-		tr_err(&ipc_tr, "Invalid ipc mbox 0 IRQ:%d", mbox_irq1);
+		tr_err(&ipc_tr, "Invalid ipc mbox 1 IRQ:%d", mbox_irq1);
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
