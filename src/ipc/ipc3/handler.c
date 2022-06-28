@@ -515,10 +515,14 @@ static int ipc_glb_stream_message(uint32_t header)
 		return ipc_stream_pcm_params(header);
 	case SOF_IPC_STREAM_PCM_FREE:
 		return ipc_stream_pcm_free(header);
-	case SOF_IPC_STREAM_TRIG_START:
-	case SOF_IPC_STREAM_TRIG_STOP:
 	case SOF_IPC_STREAM_TRIG_PAUSE:
 	case SOF_IPC_STREAM_TRIG_RELEASE:
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL || CONFIG_HASWELL || CONFIG_BROADWELL
+		tr_err(&ipc_tr, "ipc: stream cmd 0x%x is unsupported on this platform", cmd);
+		return -EOPNOTSUPP;
+#endif
+	case SOF_IPC_STREAM_TRIG_START:
+	case SOF_IPC_STREAM_TRIG_STOP:
 	case SOF_IPC_STREAM_TRIG_DRAIN:
 	case SOF_IPC_STREAM_TRIG_XRUN:
 		return ipc_stream_trigger(header);
