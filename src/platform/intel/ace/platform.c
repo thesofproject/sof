@@ -400,10 +400,12 @@ int platform_init(struct sof *sof)
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 
+#if !CONFIG_ZEPHYR_NATIVE_DRIVERS
 	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMA_SPA);
 	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMA_SPA);
 	while (!(shim_read(SHIM_GPDMA_CLKCTL(0)) & SHIM_CLKCTL_LPGPDMA_CPA))
 		idelay(16);
+#endif
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

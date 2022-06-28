@@ -15,6 +15,9 @@
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <rtos/spinlock.h>
+#ifdef __ZEPHYR__
+#include <zephyr/device.h>
+#endif
 
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
@@ -22,6 +25,15 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
 #define DMAC_LINK_IN_CHANNELS_COUNT 10
 #define DMAC_LINK_OUT_CHANNELS_COUNT 9
+
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+static const char gpdma_dmac0_zephyr_id[] = "DMA_0";
+static const char gpdma_dmac1_zephyr_id[] = "DMA_1";
+static const char hda_host_in_zephyr_id[] = "HDA_HOST_IN";
+static const char hda_host_out_zephyr_id[] = "HDA_HOST_OUT";
+static const char hda_link_in_zephyr_id[] = "HDA_LINK_IN";
+static const char hda_link_out_zephyr_id[] = "HDA_LINK_OUT";
+#endif
 
 const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
@@ -107,6 +119,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac0,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = gpdma_dmac0_zephyr_id
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -123,6 +138,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = gpdma_dmac1_zephyr_id
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -135,6 +153,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
 		.channels	= DMAC_HOST_IN_CHANNELS_COUNT,
 		.chan_size	= GTW_HOST_IN_STREAM_SIZE,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = hda_host_in_zephyr_id
+#endif
 	},
 	.ops		= &hda_host_dma_ops,
 },
@@ -147,6 +168,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
 		.channels	= DMAC_HOST_OUT_CHANNELS_COUNT,
 		.chan_size	= GTW_HOST_OUT_STREAM_SIZE,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = hda_host_out_zephyr_id
+#endif
 	},
 	.ops		= &hda_host_dma_ops,
 },
@@ -159,6 +183,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
 		.channels	= DMAC_LINK_IN_CHANNELS_COUNT,
 		.chan_size	= GTW_LINK_IN_STREAM_SIZE,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = hda_link_in_zephyr_id
+#endif
 	},
 	.ops		= &hda_link_dma_ops,
 },
@@ -171,6 +198,9 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
 		.channels	= DMAC_LINK_OUT_CHANNELS_COUNT,
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		.zephyr_id = hda_link_out_zephyr_id
+#endif
 	},
 	.ops		= &hda_link_dma_ops,
 },};
@@ -183,6 +213,9 @@ const struct dma_info lib_dma = {
 /* Initialize all platform DMAC's */
 int dmac_init(struct sof *sof)
 {
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	const struct device *z_dev = NULL;
+#endif
 	int i;
 	/* no probing before first use */
 
@@ -191,8 +224,12 @@ int dmac_init(struct sof *sof)
 	sof->dma_info = &lib_dma;
 
 	/* early lock initialization for ref counting */
-	for (i = 0; i < sof->dma_info->num_dmas; i++)
+	for (i = 0; i < sof->dma_info->num_dmas; i++) {
 		k_spinlock_init(&sof->dma_info->dma_array[i].lock);
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		z_dev = device_get_binding(sof->dma_info->dma_array[i].plat_data.zephyr_id);
+		sof->dma_info->dma_array[i].z_dev = z_dev;
+#endif
+	}
 	return 0;
 }
