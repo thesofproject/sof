@@ -161,12 +161,12 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Deep buffer playback pipeline 11 on PCM 3 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core SSP0_CORE_ID with priority 0.
+# Set 10000us deadline on core SSP0_CORE_ID with priority 0.
 # TODO: Modify pipeline deadline to account for deep buffering
 ifelse(PLATFORM, `bxt', `',
 `PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	11, 3, 2, PIPE_BITS,
-	1000, 0, SSP0_CORE_ID,
+	10000, 0, SSP0_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)')
@@ -218,12 +218,12 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	PIPELINE_PLAYBACK_SCHED_COMP_5)
 
 # Deep buffer playback pipeline 11 on PCM 3 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core SSP2_CORE_ID with priority 0.
+# Set 10000us deadline on core SSP2_CORE_ID with priority 0.
 # TODO: Modify pipeline deadline to account for deep buffering
 ifelse(PLATFORM, `bxt',
 `PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	11, 3, 2, PIPE_BITS,
-	1000, 0, SSP2_CORE_ID,
+	10000, 0, SSP2_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_5)')
