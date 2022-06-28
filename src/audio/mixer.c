@@ -57,8 +57,6 @@ struct mixer_data {
 	struct ipc4_base_module_cfg base_cfg;
 #endif
 
-	bool sources_inactive;
-
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			 const struct audio_stream __sparse_cache **sources, uint32_t count,
 			 uint32_t frames);
@@ -323,7 +321,7 @@ static int mixer_copy(struct comp_dev *dev)
 	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
 	struct list_item *blist;
 	int32_t i = 0;
-	int32_t num_mix_sources = 0;
+	uint32_t num_mix_sources = 0;
 	uint32_t frames = INT32_MAX;
 	/* Redundant, but helps the compiler */
 	uint32_t source_bytes = 0;
@@ -331,16 +329,29 @@ static int mixer_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "mixer_copy()");
 
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+	sink_c = buffer_acquire(sink);
+
 	/* calculate the highest runtime component status
 	 * between input streams
 	 */
 	list_for_item(blist, &dev->bsource_list) {
+		uint32_t avail_frames;
+
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
 
-		/* only mix the sources with the same state with mixer */
-		if (source_c->source->state == dev->state)
+		avail_frames = audio_stream_avail_frames(&source_c->stream, &sink_c->stream);
+
+		/*
+		 * only mix the sources with the same state with mixer and
+		 * with non-zero avail frames
+		 */
+		if (source_c->source->state == dev->state && avail_frames) {
 			sources[num_mix_sources++] = source;
+			frames = MIN(frames, avail_frames);
+		}
 
 		buffer_release(source_c);
 
@@ -349,30 +360,14 @@ static int mixer_copy(struct comp_dev *dev)
 			return 0;
 	}
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-	sink_c = buffer_acquire(sink);
-
 	/* check for underruns */
-	for (i = 0; i < num_mix_sources; i++) {
-		uint32_t avail_frames;
+	if (num_mix_sources) {
+		source_c = buffer_acquire(sources[0]);
 
-		source_c = buffer_acquire(sources[i]);
-		avail_frames = audio_stream_avail_frames(&source_c->stream,
-							 &sink_c->stream);
-		frames = MIN(frames, avail_frames);
-
-		if (i == num_mix_sources - 1)
-			/* Every source has the same format, so calculate bytes
-			 * based on the last one - once we've got the final
-			 * frames value.
-			 */
-			source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
-
+		/* Every source has the same format, so calculate bytes based on the first one */
+		source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
 		buffer_release(source_c);
-	}
-
-	if (!num_mix_sources || (frames == 0 && md->sources_inactive)) {
+	} else {
 		/*
 		 * Generate silence when sources are inactive. When
 		 * sources change to active, additionally keep
@@ -387,15 +382,9 @@ static int mixer_copy(struct comp_dev *dev)
 
 		buffer_release(sink_c);
 
-		md->sources_inactive = true;
-
 		return 0;
 	}
 
-	if (md->sources_inactive) {
-		md->sources_inactive = false;
-		comp_dbg(dev, "mixer_copy exit sources_inactive state");
-	}
 
 	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
 
