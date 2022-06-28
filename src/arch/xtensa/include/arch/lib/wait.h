@@ -8,6 +8,10 @@
 #ifndef __ARCH_LIB_WAIT_H__
 #define __ARCH_LIB_WAIT_H__
 
+#ifdef __ZEPHYR__
+#include <autoconf.h>
+#endif
+
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
@@ -53,10 +57,15 @@ static inline void arch_wait_for_interrupt(int level)
 
 #endif
 
+/* Zephyr SOC for Intel ADSP family defines it's own implementation */
+#if !defined(__ZEPHYR__) && !defined(CONFIG_SOC_FAMILY_INTEL_ADSP)
+
 static inline void idelay(int n)
 {
 	while (n--)
 		asm volatile("nop");
 }
+
+#endif /* !defined(__ZEPHYR__) and !defined(CONFIG_SOC_FAMILY_INTEL_ADSP) */
 
 #endif /* __ARCH_LIB_WAIT_H__ */
