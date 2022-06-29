@@ -71,7 +71,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 
 	/* TODO: add log support */
 	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, 0);
+	set_tuple_uint32(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, 1024);
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_MAX_PPL_CNT_FW_CFG, IPC4_MAX_PPL_COUNT);
