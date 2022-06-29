@@ -52,6 +52,10 @@ struct ipc4_msg_data msg_data;
 /* fw sends a fw ipc message to send the status of the last host ipc message */
 struct ipc_msg msg_reply;
 
+#ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
+static struct ipc_msg msg_notify;
+#endif
+
 /*
  * Global IPC Operations.
  */
@@ -975,6 +979,17 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 	header->pri = SOF_IPC4_FW_READY;
 	header->ext = 0;
 }
+
+#ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
+void ipc_send_buffer_status_notify(void)
+{
+	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
+	msg_notify.extension = 0;
+	msg_notify.tx_size = 0;
+
+	ipc_msg_send(&msg_notify, NULL, true);
+}
+#endif
 
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {

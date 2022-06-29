@@ -6,6 +6,7 @@
 #include <sof/ut.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/pipeline.h>
+#include <ipc4/logging.h>
 #include <sof_versions.h>
 
 LOG_MODULE_REGISTER(basefw, CONFIG_SOF_LOG_LEVEL);
@@ -42,6 +43,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
 	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
 	struct ipc4_scheduler_config sche_cfg;
+	uint32_t log_bytes_size = 0;
 
 	set_tuple(tuple, IPC4_FW_VERSION_FW_CFG, sizeof(version), version);
 
@@ -71,7 +73,11 @@ static int basefw_config(uint32_t *data_offset, char *data)
 
 	/* TODO: add log support */
 	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, 0);
+#ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
+	log_bytes_size = SOF_IPC4_LOGGING_MTRACE_PAGE_SIZE;
+#endif
+	set_tuple_uint32(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, log_bytes_size);
+
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_MAX_PPL_CNT_FW_CFG, IPC4_MAX_PPL_COUNT);
@@ -276,6 +282,11 @@ static int basefw_set_large_config(struct comp_dev *dev,
 	case IPC4_FW_CONFIG:
 		tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
 		return 0;
+	case IPC4_SYSTEM_TIME:
+		tr_warn(&basefw_comp_tr, "returning success for Set SYSTEM_TIME without handling it");
+		return 0;
+	case IPC4_ENABLE_LOGS:
+		return ipc4_logging_enable_logs(first_block, last_block, data_offset, data);
 	default:
 		break;
 	}
