@@ -766,9 +766,11 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 				    struct comp_buffer *sink, int frame)
 {
-	uint32_t buff_frag = 0;
-	uint32_t *dst;
 	int i;
+	int n;
+	int nmax;
+	int remaining_samples = frame * sink->stream.channels;
+	uint32_t *dst = sink->stream.r_ptr;
 
 	/* only support attenuation in format of 32bit */
 	switch (sink->stream.frame_fmt) {
@@ -777,10 +779,15 @@ static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd
 		return -EINVAL;
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		for (i = 0; i < frame * sink->stream.channels; i++) {
-			dst = audio_stream_read_frag_s32(&sink->stream, buff_frag);
-			*dst >>= cd->attenuation;
-			buff_frag++;
+		while (remaining_samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&sink->stream, dst);
+			n = MIN(remaining_samples, nmax);
+			for (i = 0; i < n; i++) {
+				*dst >>= cd->attenuation;
+				dst++;
+			}
+			remaining_samples -= n;
+			dst = audio_stream_wrap(&sink->stream, dst);
 		}
 		return 0;
 	default:
