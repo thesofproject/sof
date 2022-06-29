@@ -1215,6 +1215,11 @@ static int dai_copy(struct comp_dev *dev)
 		return 0;
 	}
 
+	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
+	ret = dai_trigger(dd->dai->drv, dev->direction, DAI_TRIGGER_COPY);
+	if (ret < 0)
+		comp_warn(dev, "dai_copy(): dai trigger copy failed");
+
 	struct dma_cb_data next = {
 		.channel = dd->chan,
 		.elem = { .size = copy_bytes },
