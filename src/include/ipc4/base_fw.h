@@ -623,3 +623,32 @@ enum ipc4_alh_version {
 	IPC4_ALH_NO_SUPPORT,
 	IPC4_ALH_CAVS_1_8 = 0x10000,
 };
+
+struct ipc4_log_state_info {
+	/*
+	 * Specifies how frequently FW sends Log Buffer Status
+	 * notification for new entries in case the usual notification
+	 * sending criteria are not met (half of the buffer is full). The
+	 * parameter is specified in number of system ticks.
+	 */
+	uint32_t  aging_timer_period;
+
+	/*
+	 * Specifies the latency of logging 'dropped log entries'
+	 * information after the content is consumed by the driver but no
+	 * new log entry appears (which would trigger logging 'dropped
+	 * entries' as well). The parameter is specified in number of
+	 * system ticks.
+	 */
+	uint32_t  fifo_full_timer_period;
+
+	/* 0 if logging is disabled, otherwise enabled */
+	uint32_t  enable;
+
+	/*
+	 * Logging mask of priorities and components for all
+	 * supported providers. Nth entry in array gives priorities and
+	 * components mask for Nth provider (library).
+	 */
+	uint32_t logs_mask[IPC4_MAX_LIBS_COUNT];
+} __attribute__((packed, aligned(4)));
