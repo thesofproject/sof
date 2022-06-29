@@ -46,21 +46,33 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 	int err, cmd = p->trigger.cmd;
 
 	if (!p->trigger.host) {
+		int ret;
+
 		p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 
 		switch (cmd) {
 		case COMP_TRIGGER_STOP:
 		case COMP_TRIGGER_PAUSE:
-			return p->trigger.aborted ? SOF_TASK_STATE_RUNNING :
-				SOF_TASK_STATE_COMPLETED;
+			if (p->trigger.aborted)
+				ret = SOF_TASK_STATE_RUNNING;
+			else
+				ret = SOF_TASK_STATE_COMPLETED;
+			break;
 		case COMP_TRIGGER_PRE_START:
 		case COMP_TRIGGER_PRE_RELEASE:
-			if (p->status == COMP_STATE_ACTIVE)
-				return SOF_TASK_STATE_RUNNING;
+			if (p->status == COMP_STATE_ACTIVE) {
+				ret = SOF_TASK_STATE_RUNNING;
+				break;
+			}
 			p->status = COMP_STATE_ACTIVE;
+			COMPILER_FALLTHROUGH;
+		default:
+			ret = SOF_TASK_STATE_RESCHEDULE;
+			break;
 		}
 
-		return SOF_TASK_STATE_RESCHEDULE;
+		p->trigger.aborted = false;
+		return ret;
 	}
 
 	err = pipeline_trigger_run(p, p->trigger.host, cmd);
