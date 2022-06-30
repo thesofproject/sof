@@ -347,6 +347,8 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 		return 0;
 	}
 
+	current->pipeline->trigger.pending = false;
+
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
 	if (err < 0)
