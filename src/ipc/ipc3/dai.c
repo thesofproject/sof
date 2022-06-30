@@ -375,7 +375,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	/* TODO: improve accuracy by adding current DMA position */
-	posn->dai_posn = dev->position;
+	posn->dai_posn = dd->total_data_processed;
 
 	/* set stream start wallclock */
 	posn->wallclock = dd->wallclock;

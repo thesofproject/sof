@@ -327,7 +327,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	struct dma_chan_status status;
 
 	/* total processed bytes count */
-	posn->dai_posn = dev->position;
+	posn->dai_posn = dd->total_data_processed;
 
 	platform_dai_wallclock(dev, &dd->wallclock);
 	posn->wallclock = dd->wallclock;
