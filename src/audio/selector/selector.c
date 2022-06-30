@@ -40,9 +40,16 @@ static const struct comp_driver comp_selector;
 
 LOG_MODULE_REGISTER(selector, CONFIG_SOF_LOG_LEVEL);
 
+#if CONFIG_IPC_MAJOR_3
 /* 55a88ed5-3d18-46ca-88f1-0ee6eae9930f */
 DECLARE_SOF_RT_UUID("selector", selector_uuid, 0x55a88ed5, 0x3d18, 0x46ca,
-		 0x88, 0xf1, 0x0e, 0xe6, 0xea, 0xe9, 0x93, 0x0f);
+		    0x88, 0xf1, 0x0e, 0xe6, 0xea, 0xe9, 0x93, 0x0f);
+#else
+/* 32fe92c1-1e17-4fc2-9758-c7f3542e980a */
+DECLARE_SOF_RT_UUID("selector", selector_uuid, 0x32fe92c1, 0x1e17, 0x4fc2,
+		    0x97, 0x58, 0xc7, 0xf3, 0x54, 0x2e, 0x98, 0x0a);
+
+#endif
 
 DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
 
@@ -51,6 +58,7 @@ DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
  *
  * \return Pointer to selector base component device.
  */
+#if CONFIG_IPC_MAJOR_3
 static struct comp_dev *selector_new(const struct comp_driver *drv,
 				     struct comp_ipc_config *config,
 				     void *spec)
@@ -82,6 +90,142 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
+
+static void set_selector_params(struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
+{
+}
+#else
+static void build_config(struct comp_data *cd)
+{
+	enum sof_ipc_frame valid_format;
+
+	cd->source_format = cd->md.base_cfg.audio_fmt.depth;
+	audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
+				    cd->md.base_cfg.audio_fmt.valid_bit_depth,
+				    &cd->source_format,
+				    &valid_format,
+				    cd->md.base_cfg.audio_fmt.s_type);
+
+	audio_stream_fmt_conversion(cd->md.output_format.depth,
+				    cd->md.output_format.valid_bit_depth,
+				    &cd->sink_format,
+				    &valid_format,
+				    cd->md.output_format.s_type);
+
+	cd->config.in_channels_count = cd->md.base_cfg.audio_fmt.channels_count;
+	cd->config.out_channels_count = cd->md.output_format.channels_count;
+}
+
+static struct comp_dev *selector_new(const struct comp_driver *drv,
+				     struct comp_ipc_config *config,
+				     void *spec)
+{
+	struct micsel_data *ipc_process = spec;
+	struct comp_dev *dev;
+	struct comp_data *cd;
+	int ret;
+
+	comp_cl_info(&comp_selector, "selector_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+	dev->ipc_config = *config;
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	if (!cd) {
+		rfree(dev);
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, cd);
+
+	ret = memcpy_s(&cd->md, sizeof(cd->md), ipc_process, sizeof(*ipc_process));
+	assert(!ret);
+
+	build_config(cd);
+
+	dev->state = COMP_STATE_READY;
+	return dev;
+}
+
+static void set_selector_params(struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *source_b;
+	struct comp_buffer __sparse_cache *source;
+	struct ipc4_audio_format *out_fmt;
+	struct list_item *sink_list;
+	int i;
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		params->channels = cd->config.in_channels_count;
+	else
+		params->channels = cd->config.out_channels_count;
+
+	params->rate = cd->md.base_cfg.audio_fmt.sampling_frequency;
+	params->frame_fmt = cd->source_format;
+
+	out_fmt = &cd->md.output_format;
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		params->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
+
+	/* update each sink format */
+	list_for_item(sink_list, &dev->bsink_list) {
+		struct comp_buffer *sink_b =
+			container_of(sink_list, struct comp_buffer, source_list);
+		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_b);
+
+		sink->stream.channels = params->channels;
+		sink->stream.rate = params->rate;
+		audio_stream_fmt_conversion(out_fmt->depth,
+					    out_fmt->valid_bit_depth,
+					    &sink->stream.frame_fmt,
+					    &sink->stream.valid_sample_fmt,
+					    out_fmt->s_type);
+
+		sink->buffer_fmt = out_fmt->interleaving_style;
+
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+			sink->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
+
+		sink->hw_params_configured = true;
+		buffer_release(sink);
+	}
+
+	/* update the source format
+	 * used only for rare cases where two pipelines are connected by a shared
+	 * buffer and 2 copiers, this will set source format only for shared buffers
+	 * for a short time when the second pipeline already started
+	 * and the first one is not ready yet along with sink buffers params
+	 */
+	source_b = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source = buffer_acquire(source_b);
+	if (!source->hw_params_configured) {
+		struct ipc4_audio_format *in_fmt;
+
+		in_fmt = &cd->md.base_cfg.audio_fmt;
+		source->stream.channels = in_fmt->channels_count;
+		source->stream.rate = in_fmt->sampling_frequency;
+		audio_stream_fmt_conversion(in_fmt->depth,
+					    in_fmt->valid_bit_depth,
+					    &source->stream.frame_fmt,
+					    &source->stream.valid_sample_fmt,
+					    in_fmt->s_type);
+
+		source->buffer_fmt = in_fmt->interleaving_style;
+
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+			source->chmap[i] = (in_fmt->ch_map >> i * 4) & 0xf;
+
+		source->hw_params_configured = true;
+	}
+
+	buffer_release(source);
+}
+#endif
 
 /**
  * \brief Frees selector component.
@@ -223,6 +367,8 @@ static int selector_params(struct comp_dev *dev,
 
 	comp_info(dev, "selector_params()");
 
+	set_selector_params(dev, params);
+
 	err = selector_verify_params(dev, params);
 	if (err < 0) {
 		comp_err(dev, "selector_params(): pcm params verification failed.");
@@ -232,6 +378,7 @@ static int selector_params(struct comp_dev *dev,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Sets selector control command.
  * \param[in,out] dev Selector base component device.
@@ -340,6 +487,29 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
+#else
+static int selector_set_large_config(struct comp_dev *dev,
+				     uint32_t param_id,
+				     bool first_block,
+				     bool last_block,
+				     uint32_t data_offset,
+				     char *data)
+{
+	/* ToDo: add support */
+	return 0;
+}
+
+static int selector_get_large_config(struct comp_dev *dev,
+				     uint32_t param_id,
+				     bool first_block,
+				     bool last_block,
+				     uint32_t *data_offset,
+				     char *data)
+{
+	/* ToDo: add support */
+	return 0;
+}
+#endif
 
 /**
  * \brief Sets component state.
@@ -548,7 +718,12 @@ static const struct comp_driver comp_selector = {
 		.create		= selector_new,
 		.free		= selector_free,
 		.params		= selector_params,
+#if CONFIG_IPC_MAJOR_4
+		.set_large_config = selector_set_large_config,
+		.get_large_config = selector_get_large_config,
+#else
 		.cmd		= selector_cmd,
+#endif
 		.trigger	= selector_trigger,
 		.copy		= selector_copy,
 		.prepare	= selector_prepare,

@@ -16,6 +16,9 @@
 
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/base-config.h>
+#endif
 #include <user/selector.h>
 #include <user/trace.h>
 #include <stdint.h>
@@ -36,8 +39,19 @@ struct comp_dev;
 typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			 const struct audio_stream __sparse_cache *source, uint32_t frames);
 
+#if CONFIG_IPC_MAJOR_4
+struct micsel_data {
+	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_audio_format output_format;
+};
+#endif
+
 /** \brief Selector component private data. */
 struct comp_data {
+#if CONFIG_IPC_MAJOR_4
+		struct micsel_data md;
+#endif
+
 	uint32_t source_period_bytes;	/**< source number of period bytes */
 	uint32_t sink_period_bytes;	/**< sink number of period bytes */
 	enum sof_ipc_frame source_format;	/**< source frame format */
