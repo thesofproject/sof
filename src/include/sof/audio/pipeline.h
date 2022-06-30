@@ -83,6 +83,7 @@ struct pipeline {
 		struct comp_dev *host;
 		unsigned int delay;	/* period count */
 		bool aborted;		/* STOP or PAUSE failed, stay active */
+		bool pending;		/* trigger scheduled but not executed yet */
 	} trigger;
 };
 
