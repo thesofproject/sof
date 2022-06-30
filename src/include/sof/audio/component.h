@@ -492,6 +492,15 @@ struct comp_ops {
 				bool last_block,
 				uint32_t data_offset,
 				char *data);
+
+	/**
+	 * Returns total data processed in number bytes.
+	 * @param dev Component device
+	 * @param stream_no Index of input/output stream
+	 * @param input Selects between input (true) or output (false) stream direction
+	 * @return total data processed if succeeded, 0 otherwise.
+	 */
+	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
 };
 
 /**
