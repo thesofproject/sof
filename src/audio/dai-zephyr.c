@@ -280,12 +280,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	} else {
 		/* update host position (in bytes offset) for drivers */
 		dev->position += bytes;
-		if (dd->dai_pos) {
-			dd->dai_pos_blks += bytes;
-			*dd->dai_pos = dd->dai_pos_blks +
-				(char *)buffer_ptr -
-				(char *)dma_buf->stream.addr;
-		}
 	}
 
 	buffer_release(local_buf);
@@ -335,8 +329,6 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	}
 
 	dma_sg_init(&dd->config.elem_array);
-	dd->dai_pos = NULL;
-	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
 	dd->chan = NULL;
 
@@ -938,10 +930,6 @@ static int dai_reset(struct comp_dev *dev)
 		dd->dma_buffer = NULL;
 	}
 
-	dd->dai_pos_blks = 0;
-	if (dd->dai_pos)
-		*dd->dai_pos = 0;
-	dd->dai_pos = NULL;
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;
