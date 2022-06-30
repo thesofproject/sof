@@ -712,13 +712,79 @@ zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
 	${SOF_AUDIO_PATH}/copier.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
+	${SOF_AUDIO_PATH}/smart_amp/smart_amp_maxim_dsm.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
+	${SOF_AUDIO_PATH}/aria/aria.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
+	${SOF_AUDIO_PATH}/crossover/crossover.c
+	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_DRC
+	${SOF_AUDIO_PATH}/drc/drc.c
+	${SOF_AUDIO_PATH}/drc/drc_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
+	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	${SOF_AUDIO_PATH}/google_rtc_audio_processing.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
+	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
+	${SOF_AUDIO_PATH}/rtnr/rtnr.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
+	${SOF_MATH_PATH}/sqrt_int16.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
+	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
+	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux.c
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
+	${SOF_AUDIO_PATH}/google_hotword_detect.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
+	${SOF_AUDIO_PATH}/module_adapter/module/dts.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
+	${SOF_AUDIO_PATH}/module_adapter/module/waves.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_PROBE

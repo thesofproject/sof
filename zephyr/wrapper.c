@@ -466,6 +466,18 @@ void sys_comp_module_volume_interface_init(void);
 #endif
 void sys_comp_module_gain_interface_init(void);
 void sys_comp_mixin_init(void);
+void sys_comp_aria_init(void);
+void sys_comp_crossover_init(void);
+void sys_comp_drc_init(void);
+void sys_comp_multiband_drc_init(void);
+void sys_comp_google_rtc_audio_processing_init(void);
+void sys_comp_igo_nr_init(void);
+void sys_comp_rtnr_init(void);
+void sys_comp_up_down_mixer_init(void);
+void sys_comp_tdfb_init(void);
+void sys_comp_ghd_init(void);
+void sys_comp_module_dts_interface_init(void);
+void sys_comp_module_waves_interface_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -521,73 +533,93 @@ int task_main_start(struct sof *sof)
 			sys_comp_mixin_init();
 	}
 
-	if (IS_ENABLED(CONFIG_COMP_DAI)) {
+	if (IS_ENABLED(CONFIG_COMP_DAI))
 		sys_comp_dai_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_SRC)) {
+	if (IS_ENABLED(CONFIG_COMP_SRC))
 		sys_comp_src_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_SEL)) {
+	if (IS_ENABLED(CONFIG_COMP_SEL))
 		sys_comp_selector_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_SWITCH)) {
+	if (IS_ENABLED(CONFIG_COMP_SWITCH))
 		sys_comp_switch_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_TONE)) {
+	if (IS_ENABLED(CONFIG_COMP_TONE))
 		sys_comp_tone_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_FIR)) {
+	if (IS_ENABLED(CONFIG_COMP_FIR))
 		sys_comp_eq_fir_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_IIR)) {
+	if (IS_ENABLED(CONFIG_COMP_IIR))
 		sys_comp_eq_iir_init();
-	}
 
-	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE)) {
+	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE))
 		sys_comp_keyword_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_KPB)) {
+	if (IS_ENABLED(CONFIG_COMP_KPB))
 		sys_comp_kpb_init();
-	}
 
-	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP)) {
+	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP) ||
+	    IS_ENABLED(CONFIG_MAXIM_DSM))
 		sys_comp_smart_amp_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_ASRC)) {
+	if (IS_ENABLED(CONFIG_COMP_ASRC))
 		sys_comp_asrc_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_DCBLOCK)) {
+	if (IS_ENABLED(CONFIG_COMP_DCBLOCK))
 		sys_comp_dcblock_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+	if (IS_ENABLED(CONFIG_COMP_MUX))
 		sys_comp_mux_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_BASEFW_IPC4)) {
+	if (IS_ENABLED(CONFIG_COMP_BASEFW_IPC4))
 		sys_comp_basefw_init();
-	}
 
-	if (IS_ENABLED(CONFIG_COMP_COPIER)) {
+	if (IS_ENABLED(CONFIG_COMP_COPIER))
 		sys_comp_copier_init();
-	}
 
-	if (IS_ENABLED(CONFIG_CADENCE_CODEC)) {
+	if (IS_ENABLED(CONFIG_CADENCE_CODEC))
 		sys_comp_module_cadence_interface_init();
-	}
 
-	if (IS_ENABLED(CONFIG_PASSTHROUGH_CODEC)) {
+	if (IS_ENABLED(CONFIG_PASSTHROUGH_CODEC))
 		sys_comp_module_passthrough_interface_init();
-	}
+
+	if (IS_ENABLED(CONFIG_COMP_ARIA))
+		sys_comp_aria_init();
+
+	if (IS_ENABLED(CONFIG_COMP_CROSSOVER))
+		sys_comp_crossover_init();
+
+	if (IS_ENABLED(CONFIG_COMP_DRC))
+		sys_comp_drc_init();
+
+	if (IS_ENABLED(CONFIG_COMP_MULTIBAND_DRC))
+		sys_comp_multiband_drc_init();
+
+	if (IS_ENABLED(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING))
+		sys_comp_google_rtc_audio_processing_init();
+
+	if (IS_ENABLED(CONFIG_COMP_IGO_NR))
+		sys_comp_igo_nr_init();
+
+	if (IS_ENABLED(CONFIG_COMP_RTNR))
+		sys_comp_rtnr_init();
+
+	if (IS_ENABLED(CONFIG_COMP_UP_DOWN_MIXER))
+		sys_comp_up_down_mixer_init();
+
+	if (IS_ENABLED(CONFIG_COMP_TDFB))
+		sys_comp_tdfb_init();
+
+	if (IS_ENABLED(CONFIG_COMP_GOOGLE_HOTWORD_DETECT))
+		sys_comp_ghd_init();
+
+	if (IS_ENABLED(CONFIG_DTS_CODEC))
+		sys_comp_module_dts_interface_init();
+
+	if (IS_ENABLED(CONFIG_WAVES_CODEC))
+		sys_comp_module_waves_interface_init();
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
