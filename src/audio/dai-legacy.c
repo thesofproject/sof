@@ -98,7 +98,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
-	void *buffer_ptr;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -132,13 +131,9 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = dma_buffer_copy_to(local_buf, dma_buf,
 					 dd->process, bytes);
-
-		buffer_ptr = local_buf->stream.r_ptr;
 	} else {
 		ret = dma_buffer_copy_from(dma_buf, local_buf,
 					   dd->process, bytes);
-
-		buffer_ptr = local_buf->stream.w_ptr;
 	}
 
 	/* assert dma_buffer_copy succeed */
@@ -158,12 +153,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	} else {
 		/* update host position (in bytes offset) for drivers */
 		dev->position += bytes;
-		if (dd->dai_pos) {
-			dd->dai_pos_blks += bytes;
-			*dd->dai_pos = dd->dai_pos_blks +
-				(char *)buffer_ptr -
-				(char *)dma_buf->stream.addr;
-		}
 	}
 
 	buffer_release(local_buf);
@@ -216,8 +205,6 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	}
 
 	dma_sg_init(&dd->config.elem_array);
-	dd->dai_pos = NULL;
-	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
 	dd->chan = NULL;
 
@@ -732,10 +719,6 @@ static int dai_reset(struct comp_dev *dev)
 		dd->dma_buffer = NULL;
 	}
 
-	dd->dai_pos_blks = 0;
-	if (dd->dai_pos)
-		*dd->dai_pos = 0;
-	dd->dai_pos = NULL;
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;

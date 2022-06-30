@@ -167,22 +167,18 @@ struct dai_data {
 	struct timestamp_cfg ts_config;
 	struct dai *dai;
 	struct dma *dma;
-	struct dai_group *group;	/**< NULL if no group assigned */
-	int xrun;		/* true if we are doing xrun recovery */
+	struct dai_group *group;		/* NULL if no group assigned */
+	int xrun;				/* true if we are doing xrun recovery */
 
-	pcm_converter_func process;	/* processing function */
+	pcm_converter_func process;		/* processing function */
 
-	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
-	uint64_t start_position;	/* position on start */
-	uint32_t period_bytes;	/**< number of bytes per one period */
-
-	/* host can read back this value without IPC */
-	uint64_t *dai_pos;
+	uint64_t start_position;		/* position on start */
+	uint32_t period_bytes;			/* number of bytes per one period */
 
 	struct ipc_config_dai ipc_config;	/* generic common config */
-	void *dai_spec_config;	/* dai specific config from the host */
+	void *dai_spec_config;			/* dai specific config from the host */
 
-	uint64_t wallclock;	/* wall clock at stream start */
+	uint64_t wallclock;			/* wall clock at stream start */
 
 	/*
 	 * flag indicating two-step stop/pause for DAI comp and DAI DMA.
