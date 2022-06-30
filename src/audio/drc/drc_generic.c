@@ -465,8 +465,8 @@ static void drc_process_one_division(struct drc_state *state,
 	drc_compress_output(state, p, nbyte, nch);
 }
 
-void drc_default_pass(const struct comp_dev *dev, const struct audio_stream *source,
-		      struct audio_stream *sink, uint32_t frames)
+void drc_default_pass(const struct comp_dev *dev, const struct audio_stream __sparse_cache *source,
+		      struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 }
@@ -477,9 +477,10 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 }
 
 #if CONFIG_FORMAT_S16LE
-static void drc_delay_input_sample_s16(struct drc_state *state, const struct audio_stream *source,
-				       struct audio_stream *sink, int16_t **x, int16_t **y,
-				       int samples)
+static void drc_delay_input_sample_s16(struct drc_state *state,
+				       const struct audio_stream __sparse_cache *source,
+				       struct audio_stream __sparse_cache *sink,
+				       int16_t **x, int16_t **y, int samples)
 {
 	int16_t *x1;
 	int16_t *y1;
@@ -526,8 +527,8 @@ static void drc_delay_input_sample_s16(struct drc_state *state, const struct aud
 }
 
 static void drc_s16_default(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct audio_stream __sparse_cache *source,
+			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
 {
 	int16_t *x = source->r_ptr;
@@ -571,9 +572,10 @@ static void drc_s16_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void drc_delay_input_sample_s32(struct drc_state *state, const struct audio_stream *source,
-				       struct audio_stream *sink, int32_t **x, int32_t **y,
-				       int samples)
+static void drc_delay_input_sample_s32(struct drc_state *state,
+				       const struct audio_stream __sparse_cache *source,
+				       struct audio_stream __sparse_cache *sink,
+				       int32_t **x, int32_t **y, int samples)
 {
 	int32_t *x1;
 	int32_t *y1;
@@ -621,9 +623,10 @@ static void drc_delay_input_sample_s32(struct drc_state *state, const struct aud
 #endif
 
 #if CONFIG_FORMAT_S24LE
-static void drc_delay_input_sample_s24(struct drc_state *state, const struct audio_stream *source,
-				       struct audio_stream *sink, int32_t **x, int32_t **y,
-				       int samples)
+static void drc_delay_input_sample_s24(struct drc_state *state,
+				       const struct audio_stream __sparse_cache *source,
+				       struct audio_stream __sparse_cache *sink,
+				       int32_t **x, int32_t **y, int samples)
 {
 	int32_t *x1;
 	int32_t *y1;
@@ -670,8 +673,8 @@ static void drc_delay_input_sample_s24(struct drc_state *state, const struct aud
 }
 
 static void drc_s24_default(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct audio_stream __sparse_cache *source,
+			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
 {
 	int32_t *x = source->r_ptr;
@@ -718,8 +721,8 @@ static void drc_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void drc_s32_default(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct audio_stream __sparse_cache *source,
+			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
 {
 	int32_t *x = source->r_ptr;
