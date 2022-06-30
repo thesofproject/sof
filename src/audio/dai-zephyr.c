@@ -279,7 +279,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 				audio_stream_frame_bytes(&sink_c->stream));
 	} else {
 		/* update host position (in bytes offset) for drivers */
-		dev->position += bytes;
+		dd->total_data_processed += bytes;
 	}
 
 	buffer_release(local_buf);
@@ -875,7 +875,7 @@ static int dai_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	dev->position = 0;
+	dd->total_data_processed = 0;
 
 	if (!dd->chan) {
 		comp_err(dev, "dai_prepare(): Missing dd->chan.");
@@ -931,7 +931,7 @@ static int dai_reset(struct comp_dev *dev)
 	}
 
 	dd->wallclock = 0;
-	dev->position = 0;
+	dd->total_data_processed = 0;
 	dd->xrun = 0;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -1315,26 +1315,42 @@ uint32_t dai_get_init_delay_ms(struct dai *dai)
 	return props->reg_init_delay;
 }
 
+static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+
+	/* Return value only if direction and stream number match.
+	 * The dai supports only one stream.
+	 */
+	if (stream_no == 0 && source == input)
+		ret = dd->total_data_processed;
+
+	return ret;
+}
+
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.uid	= SOF_RT_UUID(dai_comp_uuid),
 	.tctx	= &dai_comp_tr,
 	.ops	= {
-		.create			= dai_new,
-		.free			= dai_free,
-		.params			= dai_params,
-		.dai_get_hw_params	= dai_comp_get_hw_params,
-		.trigger		= dai_comp_trigger,
-		.copy			= dai_copy,
-		.prepare		= dai_prepare,
-		.reset			= dai_reset,
-		.position		= dai_position,
-		.dai_config		= dai_config,
-		.dai_ts_config		= dai_ts_config_op,
-		.dai_ts_start		= dai_ts_start_op,
-		.dai_ts_stop		= dai_ts_stop_op,
-		.dai_ts_get		= dai_ts_get_op,
-	},
+		.create				= dai_new,
+		.free				= dai_free,
+		.params				= dai_params,
+		.dai_get_hw_params		= dai_comp_get_hw_params,
+		.trigger			= dai_comp_trigger,
+		.copy				= dai_copy,
+		.prepare			= dai_prepare,
+		.reset				= dai_reset,
+		.position			= dai_position,
+		.dai_config			= dai_config,
+		.dai_ts_config			= dai_ts_config_op,
+		.dai_ts_start			= dai_ts_start_op,
+		.dai_ts_stop			= dai_ts_stop_op,
+		.dai_ts_get			= dai_ts_get_op,
+		.get_total_data_processed	= dai_get_processed_data,
+},
 };
 
 static SHARED_DATA struct comp_driver_info comp_dai_info = {
