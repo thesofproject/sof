@@ -387,6 +387,17 @@ static inline int comp_unbind(struct comp_dev *dev, void *data)
 	return ret;
 }
 
+static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint32_t stream_no,
+						     bool input)
+{
+	uint64_t ret = 0;
+
+	if (dev->drv->ops.get_total_data_processed)
+		ret = dev->drv->ops.get_total_data_processed(dev, stream_no, input);
+
+	return ret;
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_COMPONENT_INT_H__ */
