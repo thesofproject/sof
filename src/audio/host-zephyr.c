@@ -79,6 +79,7 @@ struct host_data {
 	uint32_t host_period_bytes;
 	uint16_t stream_tag;
 	uint16_t no_stream_position; /**< 1 means don't send stream position */
+	uint64_t total_data_processed;
 	uint8_t cont_update_posn; /**< 1 means continuous update stream position */
 
 	/* host component attributes */
@@ -353,7 +354,7 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 	if (ret < 0)
 		return;
 
-	dev->position += bytes;
+	hd->total_data_processed += bytes;
 
 	/* new local period, update host buffer position blks
 	 * local_pos is queried by the ops.position() API
@@ -1027,7 +1028,7 @@ static int host_pointer_reset(struct comp_dev *dev)
 	/* reset buffer pointers */
 	hd->local_pos = 0;
 	hd->report_pos = 0;
-	dev->position = 0;
+	hd->total_data_processed = 0;
 
 	return 0;
 }
@@ -1127,21 +1128,37 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 	return 0;
 }
 
+static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+
+	/* Return value only if direction and stream number match.
+	 * The host supports only one stream.
+	 */
+	if (stream_no == 0 && source == input)
+		ret = hd->total_data_processed;
+
+	return ret;
+}
+
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.uid	= SOF_RT_UUID(host_uuid),
 	.tctx	= &host_tr,
 	.ops	= {
-		.create		= host_new,
-		.free		= host_free,
-		.params		= host_params,
-		.reset		= host_reset,
-		.trigger	= host_trigger,
-		.copy		= host_copy,
-		.prepare	= host_prepare,
-		.position	= host_position,
-		.get_attribute	= host_get_attribute,
-		.set_attribute	= host_set_attribute,
+		.create				= host_new,
+		.free				= host_free,
+		.params				= host_params,
+		.reset				= host_reset,
+		.trigger			= host_trigger,
+		.copy				= host_copy,
+		.prepare			= host_prepare,
+		.position			= host_position,
+		.get_attribute			= host_get_attribute,
+		.set_attribute			= host_set_attribute,
+		.get_total_data_processed	= host_get_processed_data,
 	},
 };
 
