@@ -30,6 +30,8 @@ define(JACK_OFFSET, `0')
 define(JACK_OFFSET, `2')
 ')
 
+ifdef(`AMP_1_LINK',`',
+`define(AMP_1_LINK, `1')')
 
 # if there is an external RT1308 amplifier connected over SoundWire,
 # enable "EXT_AMP" option in the CMakefile.
@@ -100,7 +102,7 @@ DEBUG_START
 # PCM31 ---> volume ------^
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
 ifdef(`EXT_AMP', `
-# PCM2 ---> volume ----> ALH 2 BE dailink 2
+# PCM2 ---> volume ----> ALH 2 BE dailink AMP_1_LINK
 ')
 # PCM5 ---> volume <---- iDisp1
 # PCM6 ---> volume <---- iDisp2
@@ -219,10 +221,10 @@ ifdef(`HEADSET_DEEP_BUFFER',
 
 ifdef(`EXT_AMP',
 `
-# playback DAI is ALH(SDW1 PIN2) using 2 periods
+# playback DAI is ALH(AMP_1_LINK  PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	3, ALH, 0x102, SDW1-Playback,
+	3, ALH,  eval(AMP_1_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
 	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
@@ -287,9 +289,9 @@ DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
 
 ifdef(`EXT_AMP',
 `
-#ALH SDW1 Pin2 (ID: 2)
-DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback,
-	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x102, 48000, 2)))
+#ALH SDW AMP_1_LINK Pin2 (ID: 2)
+DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, `SDW'eval(AMP_1_LINK)`-Playback',
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + 2), 48000, 2)))
 ')
 
 # 3 HDMI/DP outputs
