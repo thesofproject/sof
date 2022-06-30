@@ -53,7 +53,16 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		switch (cmd) {
 		case COMP_TRIGGER_STOP:
 		case COMP_TRIGGER_PAUSE:
-			if (p->trigger.aborted)
+			/* if the trigger was aborted, keep the task running */
+			if (p->trigger.aborted) {
+				ret = SOF_TASK_STATE_RUNNING;
+				break;
+			}
+
+			/*
+			 * if there's a trigger pending, keep the task running until it is executed
+			 */
+			if (p->trigger.pending)
 				ret = SOF_TASK_STATE_RUNNING;
 			else
 				ret = SOF_TASK_STATE_COMPLETED;
@@ -271,6 +280,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 * components.
 				 */
 				p->trigger.cmd = cmd;
+				p->trigger.pending = true;
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
 			} else {
@@ -291,6 +301,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 * active immediately.
 				 */
 				p->trigger.cmd = cmd;
+				p->trigger.pending = true;
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
 			} else {
