@@ -71,8 +71,8 @@ DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 /* asrc component private data */
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
-	/* Must be the 1st field, function ipc4_create_buffer casts components private data as
-	 * ipc4_base_module_cfg!
+	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
+	 * private data as ipc4_base_module_cfg!
 	 */
 	struct ipc4_asrc_module_cfg ipc_config;
 #else

@@ -53,6 +53,9 @@ int aria_process_data(struct comp_dev *dev, int32_t *__restrict dst,
  * \brief Aria component private data.
  */
 struct aria_data {
+	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
+	 * private data as ipc4_base_module_cfg!
+	 */
 	struct ipc4_base_module_cfg base;
 
 	/* channels count */
