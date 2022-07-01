@@ -128,6 +128,7 @@ enum {
 #define COMP_ATTR_COPY_TYPE	0	/**< Comp copy type attribute */
 #define COMP_ATTR_HOST_BUFFER	1	/**< Comp host buffer attribute */
 #define COMP_ATTR_COPY_DIR	2	/**< Comp copy direction */
+#define COMP_ATTR_VDMA_INDEX	3	/**< Comp index of the virtual DMA at the gateway. */
 /** @}*/
 
 /** \name Trace macros

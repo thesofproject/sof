@@ -396,12 +396,12 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 	struct comp_dev *dai;
 	struct list_item *clist;
 	struct ipc *ipc;
-	uint32_t latency, i;
+	uint32_t i;
 
 	ipc = ipc_get();
 
 	/* only dai has direction based on gateway type */
-	dai = pipeline_get_dai_comp(ppl_id[0], &latency);
+	dai = pipeline_get_dai_comp(ppl_id[0]);
 	/* skip host copier to host copier case */
 	if (!dai) {
 		tr_info(&ipc_tr, "no dai is found");

@@ -422,48 +422,94 @@ int pipeline_for_each_comp(struct comp_dev *current,
 	return 0;
 }
 
-/* visit connected  pipeline to find the dai comp and latency */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, uint32_t *latency)
+/* visit connected pipeline to find the dai comp */
+struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id)
 {
 	struct ipc_comp_dev *sink;
 	struct ipc *ipc = ipc_get();
 
-	*latency = 0;
-
 	sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
-	if (!sink)
-		return NULL;
-
 	while (sink) {
-		struct comp_dev *buff_comp;
 		struct comp_buffer *buffer;
+		struct comp_dev *comp;
 
-		*latency += sink->cd->pipeline->period;
 		/* dai is found */
-		if (list_is_empty(&sink->cd->bsink_list)) {
-			struct list_item *list;
-
-			list = comp_buffer_list(sink->cd, PPL_DIR_UPSTREAM);
-			buffer = buffer_from_list(list->next, struct comp_buffer, PPL_DIR_UPSTREAM);
-			break;
-		}
+		if (list_is_empty(&sink->cd->bsink_list))
+			return sink->cd;
 
 		buffer = buffer_from_list(comp_buffer_list(sink->cd, PPL_DIR_DOWNSTREAM)->next,
 					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
-		buff_comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+		comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
 
 		/* buffer_comp is in another pipeline and it is not complete */
-		if (!buff_comp->pipeline)
+		if (!comp->pipeline)
 			return NULL;
 
-		sink = ipc_get_ppl_sink_comp(ipc, buff_comp->pipeline->pipeline_id);
-
-		if (!sink)
-			return NULL;
+		sink = ipc_get_ppl_sink_comp(ipc, comp->pipeline->pipeline_id);
 	}
 
-	/* convert it to ms */
-	*latency /= 1000;
-
-	return sink->cd;
+	return NULL;
 }
+
+#if CONFIG_IPC_MAJOR_4
+/* visit connected pipeline to find the dai comp and latency.
+ * This function walks down through a pipelines chain looking for the target dai component.
+ * Calculates the delay of each pipeline by determining the number of buffered blocks.
+ */
+struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *latency)
+{
+	struct ipc_comp_dev *ipc_sink;
+	struct ipc_comp_dev *ipc_source;
+	struct comp_dev *source;
+	struct ipc *ipc = ipc_get();
+
+	*latency = 0;
+
+	/* Walks through the ipc component list and get source endpoint component of the given
+	 * pipeline.
+	 */
+	ipc_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
+	if (!ipc_source)
+		return NULL;
+	source = ipc_source->cd;
+
+	/* Walks through the ipc component list and get sink endpoint component of the given
+	 * pipeline. This function returns the first sink. We assume that dai is connected to pin 0.
+	 */
+	ipc_sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
+	while (ipc_sink) {
+		struct comp_buffer *buffer;
+		uint64_t input_data, output_data;
+		struct ipc4_base_module_cfg *input_base_cfg;
+		struct ipc4_base_module_cfg *output_base_cfg;
+
+		/* Calculate pipeline latency */
+		input_data = comp_get_total_data_processed(source, 0, true);
+		output_data = comp_get_total_data_processed(ipc_sink->cd, 0, false);
+		if (!input_data || !output_data)
+			return NULL;
+
+		input_base_cfg = ipc4_comp_get_base_module_cfg(source);
+		output_base_cfg = ipc4_comp_get_base_module_cfg(ipc_sink->cd);
+		*latency += input_data / input_base_cfg->ibs - output_data / output_base_cfg->obs;
+
+		/* If the component doesn't have a sink buffer, this is a dai. */
+		if (list_is_empty(&ipc_sink->cd->bsink_list))
+			return ipc_sink->cd;
+
+		/* Get a component connected to our sink buffer - hop to a next pipeline */
+		buffer = buffer_from_list(comp_buffer_list(ipc_sink->cd, PPL_DIR_DOWNSTREAM)->next,
+					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
+		source = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+
+		/* buffer_comp is in another pipeline and it is not complete */
+		if (!source->pipeline)
+			return NULL;
+
+		/* Get a next sink component */
+		ipc_sink = ipc_get_ppl_sink_comp(ipc, source->pipeline->pipeline_id);
+	}
+
+	return NULL;
+}
+#endif

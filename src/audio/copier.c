@@ -399,12 +399,17 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	return ret;
 }
 
-static int init_pipeline_reg(struct copier_data *cd)
+static int init_pipeline_reg(struct comp_dev *dev)
 {
+	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
-	uint8_t gateway_id;
+	uint32_t gateway_id;
+	int ret;
 
-	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
+	ret = comp_get_attribute(dev, COMP_ATTR_VDMA_INDEX, &gateway_id);
+	if (ret)
+		return ret;
+
 	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
 		comp_cl_err(&comp_copier, "gateway_id %u out of array bounds.", gateway_id);
 		return -EINVAL;
@@ -483,7 +488,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 			if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 				ipc_pipe->pipeline->source_comp = dev;
-				if (init_pipeline_reg(cd))
+				if (init_pipeline_reg(dev))
 					goto error_cd;
 			} else {
 				ipc_pipe->pipeline->sink_comp = dev;
@@ -692,9 +697,9 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)
 		return ret;
 
-	dai_copier = pipeline_get_dai_comp(dev->pipeline->pipeline_id, &latency);
+	dai_copier = pipeline_get_dai_comp_latency(dev->pipeline->pipeline_id, &latency);
 	if (!dai_copier) {
-		comp_err(dev, "failed to find dai comp");
+		comp_err(dev, "failed to find dai comp or sink pipeline not running.");
 		return ret;
 	}
 
@@ -713,7 +718,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		return 0;
 	}
 
-	comp_position(dai_cd->endpoint[IPC4_COPIER_GATEWAY_PIN], &posn);
+	comp_position(dai_copier, &posn);
 
 	/* update stream start and end offset for running message in host copier
 	 * host driver uses DMA link counter to calculate stream position, but it is
@@ -1232,6 +1237,33 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 	return ret;
 }
 
+static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_VDMA_INDEX:
+		*(uint32_t *)value = cd->config.gtw_cfg.node_id.f.v_index;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+
+	/* Exit if no endpoints */
+	if (!cd->endpoint_num)
+		return -EINVAL;
+
+	/* Return position from the default gateway pin */
+	return comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+}
+
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
@@ -1246,6 +1278,8 @@ static const struct comp_driver comp_copier = {
 		.prepare			= copier_prepare,
 		.reset				= copier_reset,
 		.get_total_data_processed	= copier_get_processed_data,
+		.get_attribute			= copier_get_attribute,
+		.position			= copier_position,
 	},
 };
 

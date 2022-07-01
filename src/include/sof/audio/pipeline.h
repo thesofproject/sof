@@ -200,12 +200,21 @@ int pipeline_for_each_comp(struct comp_dev *current,
 			   struct pipeline_walk_context *ctx, int dir);
 
 /**
+ * \brief Walks pipeline graph to find dai component.
+ * \param[in] pipeline_id is the start pipeline id.
+ * \return dai component.
+ */
+struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id);
+
+#if CONFIG_IPC_MAJOR_4
+/**
  * \brief Walks pipeline graph to find dai component and latency.
  * \param[in] pipeline_id is the start pipeline id.
  * \param[out] latency to dai.
  * \return dai component.
  */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, uint32_t *latency);
+struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *latency);
+#endif
 
 /**
  * Retrieves pipeline id from pipeline.
