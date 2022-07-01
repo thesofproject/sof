@@ -68,6 +68,8 @@ struct copier_data {
 
 	struct ipc4_audio_format out_fmt[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	uint64_t input_total_data_processed;
+	uint64_t output_total_data_processed;
 };
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
@@ -631,6 +633,7 @@ static int copier_reset(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
 	int ret = 0;
+	int i;
 
 	comp_dbg(dev, "copier_reset()");
 
@@ -639,14 +642,13 @@ static int copier_reset(struct comp_dev *dev)
 		return 0;
 	}
 
-	if (cd->endpoint_num) {
-		int i;
+	cd->input_total_data_processed = 0;
+	cd->output_total_data_processed = 0;
 
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-			if (ret < 0)
-				break;
-		}
+	for (i = 0; i < cd->endpoint_num; i++) {
+		ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+		if (ret < 0)
+			break;
 	}
 
 	if (cd->pipeline_reg_offset) {
@@ -800,27 +802,26 @@ static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
 			      struct comp_buffer __sparse_cache *src,
 			      struct comp_buffer __sparse_cache *sink,
-			      uint32_t *src_copy_bytes)
+			      struct comp_copy_limits *processed_data)
 {
-	struct comp_copy_limits c;
 	int i;
 	int ret;
 
-	comp_get_copy_limits(src, sink, &c);
-	*src_copy_bytes = c.source_bytes;
+	comp_get_copy_limits(src, sink, processed_data);
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
-	buffer_stream_invalidate(src, c.source_bytes);
+	buffer_stream_invalidate(src, processed_data->source_bytes);
 
-	cd->converter[i](&src->stream, 0, &sink->stream, 0, c.frames * sink->stream.channels);
+	cd->converter[i](&src->stream, 0, &sink->stream, 0,
+			 processed_data->frames * sink->stream.channels);
 	if (cd->attenuation) {
-		ret = apply_attenuation(dev, cd, sink, c.frames);
+		ret = apply_attenuation(dev, cd, sink, processed_data->frames);
 		if (ret < 0)
 			return ret;
 	}
 
-	buffer_stream_writeback(sink, c.sink_bytes);
-	comp_update_buffer_cached_produce(sink, c.sink_bytes);
+	buffer_stream_writeback(sink, processed_data->sink_bytes);
+	comp_update_buffer_cached_produce(sink, processed_data->sink_bytes);
 
 	return 0;
 }
@@ -837,7 +838,7 @@ static int copier_copy(struct comp_dev *dev)
 
 	/* process gateway case */
 	if (cd->endpoint_num) {
-		uint32_t src_copy_bytes;
+		struct comp_copy_limits processed_data;
 		int i;
 
 		if (!cd->bsource_buffer) {
@@ -851,9 +852,13 @@ static int copier_copy(struct comp_dev *dev)
 
 				src_c = buffer_acquire(cd->endpoint_buffer[i]);
 				ret = do_conversion_copy(dev, cd, src_c, sink_c,
-							 &src_copy_bytes);
-				if (!ret)
-					comp_update_buffer_cached_consume(src_c, src_copy_bytes);
+							 &processed_data);
+				if (!ret) {
+					comp_update_buffer_cached_consume(src_c,
+						processed_data.source_bytes);
+					cd->output_total_data_processed +=
+						processed_data.sink_bytes;
+				}
 
 				buffer_release(src_c);
 
@@ -870,7 +875,7 @@ static int copier_copy(struct comp_dev *dev)
 				sink_c = buffer_acquire(cd->endpoint_buffer[i]);
 
 				ret = do_conversion_copy(dev, cd, src_c, sink_c,
-							 &src_copy_bytes);
+							 &processed_data);
 				buffer_release(sink_c);
 				if (ret < 0)
 					break;
@@ -880,15 +885,21 @@ static int copier_copy(struct comp_dev *dev)
 					break;
 			}
 
-			if (!ret)
-				comp_update_buffer_cached_consume(src_c, src_copy_bytes);
+			if (!ret) {
+				comp_update_buffer_cached_consume(src_c,
+								  processed_data.source_bytes);
+				cd->input_total_data_processed += processed_data.source_bytes;
+			}
 
 			buffer_release(src_c);
 		}
 	} else {
 		/* do format conversion */
 		struct list_item *sink_list;
-		uint32_t src_bytes = 0;
+		struct comp_copy_limits processed_data;
+
+		processed_data.source_bytes = 0;
+		processed_data.sink_bytes = 0;
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		src_c = buffer_acquire(src);
@@ -898,17 +909,20 @@ static int copier_copy(struct comp_dev *dev)
 			sink = container_of(sink_list, struct comp_buffer, source_list);
 			sink_c = buffer_acquire(sink);
 
-			ret = do_conversion_copy(dev, cd, src_c, sink_c, &src_bytes);
+			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
 			buffer_release(sink_c);
 			if (ret < 0) {
 				comp_err(dev, "failed to copy buffer for comp %x",
 					 dev->ipc_config.id);
 				break;
 			}
+			cd->output_total_data_processed += processed_data.sink_bytes;
 		}
 
-		if (!ret)
-			comp_update_buffer_cached_consume(src_c, src_bytes);
+		if (!ret) {
+			comp_update_buffer_cached_consume(src_c, processed_data.source_bytes);
+			cd->input_total_data_processed += processed_data.source_bytes;
+		}
 
 		buffer_release(src_c);
 	}
@@ -1205,19 +1219,37 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 	return -EINVAL;
 }
 
+static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	uint64_t ret = 0;
+
+	if (cd->endpoint_num && cd->bsource_buffer != input) {
+		if (stream_no < cd->endpoint_num)
+			ret = comp_get_total_data_processed(cd->endpoint[stream_no], 0, input);
+	} else {
+		if (stream_no == 0)
+			ret = input ? cd->input_total_data_processed :
+				      cd->output_total_data_processed;
+	}
+
+	return ret;
+}
+
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
 	.ops	= {
-		.create			= copier_new,
-		.free			= copier_free,
-		.trigger		= copier_comp_trigger,
-		.copy			= copier_copy,
-		.set_large_config	= copier_set_large_config,
-		.get_large_config	= copier_get_large_config,
-		.params			= copier_params,
-		.prepare		= copier_prepare,
-		.reset			= copier_reset,
+		.create				= copier_new,
+		.free				= copier_free,
+		.trigger			= copier_comp_trigger,
+		.copy				= copier_copy,
+		.set_large_config		= copier_set_large_config,
+		.get_large_config		= copier_get_large_config,
+		.params				= copier_params,
+		.prepare			= copier_prepare,
+		.reset				= copier_reset,
+		.get_total_data_processed	= copier_get_processed_data,
 	},
 };
 
