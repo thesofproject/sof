@@ -39,3 +39,6 @@ TYPEDEF_HIDES_STRUCT = YES
 #FILTER_SOURCE_FILES = YES
 
 HTML_TIMESTAMP = NO
+
+# Avoid error "Include graph for 'foobar.h' not generated, too many nodes"
+DOT_GRAPH_MAX_NODES = 120
