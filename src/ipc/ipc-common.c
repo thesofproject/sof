@@ -99,8 +99,7 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 	return NULL;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
-					    uint32_t ppl_id)
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -123,49 +122,38 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	return NULL;
 }
 
-struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
-				      uint32_t pipeline_id, int dir)
+/* Walks through the list of components looking for a sink/source endpoint component
+ * of the given pipeline
+ */
+struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int dir)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_dev *buff_comp;
 	struct list_item *clist;
 
-	/* first try to find the module in the pipeline */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type != COMP_TYPE_COMPONENT) {
+		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
-		}
 
-		if (!cpu_is_me(icd->core)) {
+		if (!cpu_is_me(icd->core))
 			continue;
-		}
 
-		if (dev_comp_pipe_id(icd->cd) == pipeline_id &&
-		    list_is_empty(comp_buffer_list(icd->cd, dir)))
-			return icd;
-
-	}
-
-	/* it's connected pipeline, so find the connected module */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type != COMP_TYPE_COMPONENT) {
-			continue;
-		}
-
-		if (!cpu_is_me(icd->core)) {
-			continue;
-		}
-
+		/* first try to find the module in the pipeline */
 		if (dev_comp_pipe_id(icd->cd) == pipeline_id) {
-			buffer = buffer_from_list
-					(comp_buffer_list(icd->cd, dir)->next,
-					 struct comp_buffer, dir);
+			struct list_item *buffer_list = comp_buffer_list(icd->cd, dir);
+
+			/* The component has no buffer in the given direction */
+			if (list_is_empty(buffer_list))
+				return icd;
+
+			/* it's connected pipeline, so find the connected module */
+			buffer = buffer_from_list(buffer_list->next, struct comp_buffer, dir);
 			buff_comp = buffer_get_comp(buffer, dir);
-			if (buff_comp &&
-			    dev_comp_pipe_id(buff_comp) != pipeline_id)
+
+			/* Next component is placed on another pipeline */
+			if (buff_comp && dev_comp_pipe_id(buff_comp) != pipeline_id)
 				return icd;
 		}
 
