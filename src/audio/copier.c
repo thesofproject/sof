@@ -323,7 +323,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	memset(&dai, 0, sizeof(dai));
 	dai_count = 1;
-	node_id.dw = copier->gtw_cfg.node_id;
+	node_id = copier->gtw_cfg.node_id;
 	dai_index[dai_count - 1] = node_id.f.v_index;
 	dai.direction = node_id.f.dma_type % 2;
 	dai.is_config_blob = true;
@@ -401,12 +401,10 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 
 static int init_pipeline_reg(struct copier_data *cd)
 {
-	union ipc4_connector_node_id node_id;
 	struct ipc4_pipeline_registers pipe_reg;
 	uint8_t gateway_id;
 
-	node_id.dw = cd->config.gtw_cfg.node_id;
-	gateway_id = node_id.f.v_index;
+	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
 	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
 		comp_cl_err(&comp_copier, "gateway_id %u out of array bounds.", gateway_id);
 		return -EINVAL;
@@ -470,9 +468,9 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	dev->pipeline = ipc_pipe->pipeline;
 
+	node_id = copier->gtw_cfg.node_id;
 	/* copier is linked to gateway */
-	if (copier->gtw_cfg.node_id != IPC4_INVALID_NODE_ID) {
-		node_id.dw = copier->gtw_cfg.node_id;
+	if (node_id.dw != IPC4_INVALID_NODE_ID) {
 		cd->direction = node_id.f.dma_type % 2;
 
 		switch (node_id.f.dma_type) {
@@ -949,7 +947,6 @@ static void update_internal_comp(struct comp_dev *parent, struct comp_dev *child
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	union ipc4_connector_node_id node_id;
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
@@ -965,8 +962,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	params->sample_container_bytes = cd->config.base.audio_fmt.depth;
 	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth;
 
-	node_id.dw = cd->config.gtw_cfg.node_id;
-	params->stream_tag = node_id.f.v_index + 1;
+	params->stream_tag = cd->config.gtw_cfg.node_id.f.v_index + 1;
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
 	params->buffer.size = cd->config.base.ibs;

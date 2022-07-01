@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <ipc4/base-config.h>
+#include <ipc4/gateway.h>
 
 /* This is basic module config that may serve as a base for more specialized, module
  * specific config received along with Init Module Instance from host.
@@ -201,7 +202,7 @@ struct ipc4_copier_gateway_cfg {
 	 * specified gateway using either input pin 0 or output pin 0 depending on
 	 * the node's direction, otherwise the data in this structure is ignored.
 	 */
-	uint32_t node_id;
+	union ipc4_connector_node_id node_id;
 	/* preferred Gateway DMA buffer size (in bytes).
 	 * FW attempts to allocate DMA buffer according to this value, however it may
 	 * fall back to IBS/OBS * 2 in case there is no memory available for deeper
