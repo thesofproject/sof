@@ -45,12 +45,22 @@ jobs:
       - name: apt get doxygen graphviz
         run: sudo apt-get -y install ninja-build doxygen graphviz
 
-      - name: list all warnings, warnings are not failures
+      - name: Show warnings but fail only on errors
         run: cmake -GNinja -S doc -B docbuild && ninja -C docbuild -v doc
 
-      # Build again (it's very quick) so warnings don't go unnoticed
-      - name: fail and stop on first warning
-        run: printf 'WARN_AS_ERROR = YES\n' >> doc/sof.doxygen.in &&
+      # Build again (it's very quick) so warnings don't go unnoticed.
+      # For older doxygen versions that don't have FAIL_ON_WARNINGS, use
+      # WARN_AS_ERROR = YES instead. 'YES' is inferior because it stops
+      # on the first error.
+      #
+      # Note some doxygen bug(s) can cause some specific error types to
+      # escape WARN_AS_ERROR, example:
+      # https://github.com/doxygen/doxygen/issues/7970 and
+      # https://github.com/thesofproject/sof/pull/5978
+
+      - name: Fail on warnings
+        run: printf
+          'WARN_AS_ERROR = FAIL_ON_WARNINGS\n' >> doc/sof.doxygen.in &&
           ninja -C docbuild -v doc
 
 
