@@ -469,7 +469,7 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	copier_cfg->gtw_cfg.node_id = link_chan;
+	copier_cfg->gtw_cfg.node_id.dw = link_chan;
 	ret = comp_dai_config(dev, &dai, copier_cfg);
 	if (ret < 0)
 		return NULL;

@@ -33,7 +33,6 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 {
 	struct ipc4_copier_module_cfg *copier_cfg = spec_config;
-	union ipc4_connector_node_id node;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	int channel;
@@ -45,8 +44,7 @@ int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 		channel = 0;
 		break;
 	case SOF_DAI_INTEL_HDA:
-		node.dw = copier_cfg->gtw_cfg.node_id;
-		channel = node.f.v_index;
+		channel = copier_cfg->gtw_cfg.node_id.f.v_index;
 		break;
 	case SOF_DAI_INTEL_ALH:
 		/* As with HDA, the DMA channel is assigned in runtime,
@@ -151,7 +149,7 @@ static void get_llp_reg_info(struct comp_dev *dev, uint32_t *node_id, uint32_t *
 	uint32_t id;
 
 	copier_cfg = dd->dai_spec_config;
-	node.dw = copier_cfg->gtw_cfg.node_id;
+	node = copier_cfg->gtw_cfg.node_id;
 	/* 13 bits of type + index */
 	*node_id = node.dw & 0x1FFF;
 	id = node.f.v_index;
