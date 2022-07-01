@@ -86,8 +86,8 @@ struct ipc4_config_src {
 
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
-	/* Must be the 1st field, function ipc4_create_buffer casts components private data as
-	 * ipc4_base_module_cfg!
+	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
+	 * private data as ipc4_base_module_cfg!
 	 */
 	struct ipc4_config_src ipc_config;
 #else

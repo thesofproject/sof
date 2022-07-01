@@ -240,7 +240,7 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size;
 
-	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
+	src_cfg = ipc4_comp_get_base_module_cfg(src);
 
 	/* double it since obs is single buffer size */
 	buf_size = src_cfg->obs * 2;

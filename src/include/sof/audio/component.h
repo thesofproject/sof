@@ -936,6 +936,16 @@ static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
 
+#if CONFIG_IPC_MAJOR_4
+/**
+ * Temporary ugly function to get components base configuration. Fix me!
+ */
+static inline struct ipc4_base_module_cfg *ipc4_comp_get_base_module_cfg(struct comp_dev *dev)
+{
+	return (struct ipc4_base_module_cfg *)comp_get_drvdata(dev);
+}
+#endif
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_COMPONENT_H__ */
