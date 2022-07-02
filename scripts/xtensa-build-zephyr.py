@@ -341,6 +341,10 @@ def west_init_update():
 	# z_ref = "pull/38374/head"
 	# z_ref = "cb9a279050c4e8ad4663ee78688d8e7de1cac953"
 
+	# Intel_adsp_ace1x: Meteorlake board upstream 
+	z_remote = "https://github.com/zephyrproject-rtos/zephyr.git"
+	z_ref = "pull/46323/head"
+
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
 
