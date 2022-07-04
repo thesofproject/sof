@@ -12,6 +12,7 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/kpb.h>
+#include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -320,9 +321,9 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 		source_buffer = container_of(source_buffer_list_item, struct comp_buffer,
 						 sink_list);
 		source_buffer = buffer_acquire(source_buffer);
-		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
+		if (source_buffer->source->pipeline->pipeline_id != dev->pipeline->pipeline_id)
 			cd->aec_reference = source_buffer;
-		else if (source_buffer->source->ipc_config.type == SOF_COMP_DAI)
+		else
 			cd->raw_microphone = source_buffer;
 		source_buffer = buffer_release(source_buffer);
 	}
