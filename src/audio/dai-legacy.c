@@ -733,9 +733,6 @@ static void dai_update_start_position(struct comp_dev *dev)
 
 	/* update starting wallclock */
 	platform_dai_wallclock(dev, &dd->wallclock);
-
-	/* update start position */
-	dd->start_position = dev->position;
 }
 
 /* used to pass standard and bespoke command (with data) to component */
