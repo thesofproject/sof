@@ -76,12 +76,7 @@ define(DMIC_OFFSET, `2')
 
 define(HDMI_BE_ID_BASE, eval(JACK_OFFSET+AMP_OFFSET+AMP_REF_OFFSET+DMIC_OFFSET))
 
-# Add Bluetooth Audio Offload pass-through for ADL
-ifelse(PLATFORM, `adl',
-`
-define(BT_OFFLOAD)
-'
-)
+# Add Bluetooth Audio Offload pass-through
 
 ifdef(`BT_OFFLOAD',
 `	define(`BT_PIPELINE_PB_ID', `13')
@@ -110,9 +105,10 @@ ifdef(`EXT_AMP', `
 # PCM8 ---> volume <---- iDisp4
 # PCM10 <----volume <---- DMIC01
 # PCM11 <----volume <---- DMIC16k
-ifelse(PLATFORM, `adl', `
+ifdef(`BT_OFFLOAD',
+`
 # PCM14 <---> passthrough <---> SSP2 BT playback/capture
-', `')
+')
 
 # Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
