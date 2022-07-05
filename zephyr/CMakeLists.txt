@@ -709,7 +709,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
-	${SOF_AUDIO_PATH}/copier.c
+	${SOF_AUDIO_PATH}/copier/copier_generic.c
+	${SOF_AUDIO_PATH}/copier/copier_hifi.c
+	${SOF_AUDIO_PATH}/copier/copier.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM

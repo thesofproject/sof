@@ -129,10 +129,8 @@ if(NOT CONFIG_LIBRARY)
 		add_subdirectory(igo_nr)
 	endif()
 	if(CONFIG_COMP_COPIER)
-                add_local_sources(sof
-                        copier.c
-                )
-        endif()
+		add_subdirectory(copier)
+	endif()
 	if(CONFIG_COMP_RTNR)
 		add_subdirectory(rtnr)
 	endif()

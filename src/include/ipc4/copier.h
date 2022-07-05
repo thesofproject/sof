@@ -28,6 +28,21 @@
 #include <ipc4/base-config.h>
 #include <ipc4/gateway.h>
 
+#include <sof/compiler_attributes.h>
+#include <sof/audio/buffer.h>
+#include <sof/audio/pcm_converter.h>
+
+#define COPIER_GENERIC
+
+#if defined(__XCC__)
+#include <xtensa/config/core-isa.h>
+
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#undef COPIER_GENERIC
+#endif
+
+#endif
+
 /* This is basic module config that may serve as a base for more specialized, module
  * specific config received along with Init Module Instance from host.
  *
@@ -304,5 +319,33 @@ struct ipc4_data_segment_enabled {
 	/* Data segment size (in bytes) */
 	uint32_t data_seg_size;
 } __attribute__((packed, aligned(4)));
+
+struct copier_data {
+	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
+	 * private data as ipc4_base_module_cfg!
+	 */
+	struct ipc4_copier_module_cfg config;
+	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	uint32_t endpoint_num;
+
+	bool bsource_buffer;
+
+	int direction;
+	/* sample data >> attenuation in range of [1 - 31] */
+	uint32_t attenuation;
+
+	/* pipeline register offset in memory windows 0 */
+	uint32_t pipeline_reg_offset;
+	uint64_t host_position;
+
+	struct ipc4_audio_format out_fmt[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	uint64_t input_total_data_processed;
+	uint64_t output_total_data_processed;
+};
+
+int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
+		      struct comp_buffer __sparse_cache *sink, int frame);
 
 #endif
