@@ -374,6 +374,27 @@ def get_sof_version(abs_build_dir):
 		      versions['SOF_MICRO']
 	return sof_version
 
+def get_overlays(plt_dict):
+		overlays = [str(item.resolve(True)) for item in args.overlay]
+		# You may override default overlay.conf file name using CONFIG_OVERLAY in your platform
+		# dictionary
+		platform = plt_dict.get('name')
+		overlay_filename = plt_dict.get("CONFIG_OVERLAY", "overlay.conf")
+		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
+
+		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
+		# if both are provided, because it's no harm to merge the same overlay twice.
+		if args.debug:
+			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", "common", "debug_overlay.conf")))
+
+		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
+		# are provided, because it's no harm to merge the same overlay twice.
+		if args.ipc == "IPC4":
+			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, plt_dict["IPC4_CONFIG_OVERLAY"])))
+
+		overlays = ";".join(overlays)
+		return overlays
+
 def build_platforms():
 	global west_top, SOF_TOP
 	print(f"SOF_TOP={SOF_TOP}")
@@ -453,23 +474,7 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
-		overlays = [str(item.resolve(True)) for item in args.overlay]
-		# You may override default overlay.conf file name using CONFIG_OVERLAY in your platform
-		# dictionary
-		overlay_filename = platform_dict.get("CONFIG_OVERLAY", "overlay.conf")
-		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
-
-		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
-		# if both are provided, because it's no harm to merge the same overlay twice.
-		if args.debug:
-			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", "common", "debug_overlay.conf")))
-
-		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
-		# are provided, because it's no harm to merge the same overlay twice.
-		if args.ipc == "IPC4":
-			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, platform_dict["IPC4_CONFIG_OVERLAY"])))
-
-		overlays = ";".join(overlays)
+		overlays = get_overlays(platform_dict)
 		build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
 
 		# Build
