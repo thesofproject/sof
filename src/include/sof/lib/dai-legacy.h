@@ -172,7 +172,6 @@ struct dai_data {
 
 	pcm_converter_func process;		/* processing function */
 
-	uint64_t start_position;		/* position on start */
 	uint32_t period_bytes;			/* number of bytes per one period */
 
 	struct ipc_config_dai ipc_config;	/* generic common config */
