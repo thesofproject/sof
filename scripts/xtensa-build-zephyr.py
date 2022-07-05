@@ -149,6 +149,8 @@ def parse_args():
 	parser.add_argument("-u", "--url", required=False,
 						default="https://github.com/zephyrproject-rtos/zephyr/",
 						help="URL to clone Zephyr from")
+	parser.add_argument("-s", "--sparse", required=False, action="store_true",
+						help="build Zephyr with Sparse")
 	mode_group = parser.add_mutually_exclusive_group()
 	mode_group.add_argument("-p", "--west_path", required=False, type=pathlib.Path,
 				help="""Points to existing Zephyr project directory. Incompatible with -c.
@@ -395,6 +397,36 @@ def get_overlays(plt_dict):
 		overlays = ";".join(overlays)
 		return overlays
 
+def sparse_build():
+	# Need to build sparse from source in order for it to support the xtensa architecture:
+	# git clone "git clone https://git.kernel.org/pub/scm/devel/sparse/sparse.git/"
+	# cd sparse; make && make install
+	#
+	# Set cgcc to Zephyr SDK gcc as the compiler to invoke:
+	# export REAL_CC=/$YOUR_PATH/zephyr-sdk-$SDK_VERSION/xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc
+	global west_top, SOF_TOP
+	print(f"SOF_TOP={SOF_TOP}")
+	print(f"west_top={west_top}")
+
+	assert(west_top.exists())
+	for platform in args.platforms:
+		platform_dict = [x for x in platform_list if x["name"] == platform][0]
+		PLAT_CONFIG = platform_dict["PLAT_CONFIG"]
+		sparse_build_cmd = ["west"]
+		sparse_build_cmd += ["-v"] * args.verbose
+		sparse_build_cmd += ["build", "-d", platform + '-sparse']
+		source_dir = pathlib.Path(west_top, "zephyr", "samples", "subsys", "audio", "sof")
+		sparse_build_cmd += ["--board", PLAT_CONFIG, str(source_dir)]
+		sparse_build_cmd.append('--')
+		if args.cmake_args:
+			build_cmd += args.cmake_args
+		sparse_build_cmd += ["-DSPARSE=y"]
+
+		overlays = get_overlays(platform_dict)
+		sparse_build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
+
+		execute_command(sparse_build_cmd, cwd=west_top)
+
 def build_platforms():
 	global west_top, SOF_TOP
 	print(f"SOF_TOP={SOF_TOP}")
@@ -585,8 +617,12 @@ def main():
 		run_clone_mode()
 
 	if args.platforms:
-		build_platforms()
-		show_installed_files()
+		# build zephyr with sparse
+		if args.sparse:
+			sparse_build()
+		else:
+			build_platforms()
+			show_installed_files()
 
 if __name__ == "__main__":
 	main()
