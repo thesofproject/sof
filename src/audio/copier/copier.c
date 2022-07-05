@@ -47,31 +47,6 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-struct copier_data {
-	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
-	 * private data as ipc4_base_module_cfg!
-	 */
-	struct ipc4_copier_module_cfg config;
-	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
-	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
-	uint32_t endpoint_num;
-
-	bool bsource_buffer;
-
-	int direction;
-	/* sample data >> attenuation in range of [1 - 31] */
-	uint32_t attenuation;
-
-	/* pipeline register offset in memory windows 0 */
-	uint32_t pipeline_reg_offset;
-	uint64_t host_position;
-
-	struct ipc4_audio_format out_fmt[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
-	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
-	uint64_t input_total_data_processed;
-	uint64_t output_total_data_processed;
-};
-
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 					     struct ipc4_audio_format *out_fmt,
 					     enum ipc4_gateway_type type,
@@ -775,39 +750,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
-				    struct comp_buffer __sparse_cache *sink, int frame)
-{
-	int i;
-	int n;
-	int nmax;
-	int remaining_samples = frame * sink->stream.channels;
-	uint32_t *dst = sink->stream.r_ptr;
-
-	/* only support attenuation in format of 32bit */
-	switch (sink->stream.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		comp_err(dev, "16bit sample isn't supported by attenuation");
-		return -EINVAL;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		while (remaining_samples) {
-			nmax = audio_stream_samples_without_wrap_s32(&sink->stream, dst);
-			n = MIN(remaining_samples, nmax);
-			for (i = 0; i < n; i++) {
-				*dst >>= cd->attenuation;
-				dst++;
-			}
-			remaining_samples -= n;
-			dst = audio_stream_wrap(&sink->stream, dst);
-		}
-		return 0;
-	default:
-		comp_err(dev, "unsupported format %d for attenuation", sink->stream.frame_fmt);
-		return -EINVAL;
-	}
-}
-
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
 			      struct comp_buffer __sparse_cache *src,
@@ -824,6 +766,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
 			 processed_data->frames * sink->stream.channels);
+
 	if (cd->attenuation) {
 		ret = apply_attenuation(dev, cd, sink, processed_data->frames);
 		if (ret < 0)
