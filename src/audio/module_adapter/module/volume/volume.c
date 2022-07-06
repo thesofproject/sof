@@ -536,14 +536,9 @@ static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint3
 static int volume_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
-	struct module_config *cfg = &md->cfg;
 	struct comp_dev *dev = mod->dev;
-	struct ipc4_peak_volume_module_cfg *vol = cfg->data;
 	struct vol_data *cd;
 	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
-	uint32_t channels_count;
-	uint8_t channel_cfg;
-	uint8_t channel;
 	uint32_t instance_id;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
@@ -562,27 +557,6 @@ static int volume_init(struct processing_module *mod)
 	}
 
 	md->private = cd;
-
-	mailbox_hostbox_read(&cd->base, sizeof(cd->base), 0, sizeof(cd->base));
-
-	channels_count = cd->base.audio_fmt.channels_count;
-
-	for (channel = 0; channel < channels_count ; channel++) {
-		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
-			channel_cfg = 0;
-		else
-			channel_cfg = channel;
-
-		vol->config[channel].target_volume =
-			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
-
-		set_volume_ipc4(cd, channel,
-				vol->config[channel_cfg].target_volume,
-				vol->config[channel_cfg].curve_type,
-				vol->config[channel_cfg].curve_duration);
-	}
-
-	init_ramp(cd, vol->config[0].curve_duration, vol->config[0].target_volume);
 
 	instance_id = IPC4_INST_ID(dev_comp_id(dev));
 	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
