@@ -262,7 +262,8 @@ static int32_t volume_windows_fade_ramp(struct processing_module *mod, int32_t r
 
 /**
  * \brief Ramps volume changes over time.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  */
 static void volume_ramp(struct processing_module *mod)
 {
@@ -630,7 +631,8 @@ static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 
 /**
  * \brief Frees volume component.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  */
 static int volume_free(struct processing_module *mod)
 {
@@ -746,7 +748,8 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 
 /**
  * \brief Mutes channel.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \param[in] chan Channel number.
  */
 static inline void volume_set_chan_mute(struct processing_module *mod, int chan)
@@ -762,7 +765,8 @@ static inline void volume_set_chan_mute(struct processing_module *mod, int chan)
 
 /**
  * \brief Unmutes channel.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \param[in] chan Channel number.
  */
 static inline void volume_set_chan_unmute(struct processing_module *mod, int chan)
@@ -1061,7 +1065,8 @@ static void volume_update_current_vol_ipc4(struct vol_data *cd)
 
 /**
  * \brief Copies and processes stream data.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \return Error code.
  */
 static int volume_process(struct processing_module *mod,
@@ -1158,7 +1163,8 @@ static void volume_set_alignment(struct audio_stream __sparse_cache *source,
 
 /**
  * \brief Prepares volume component for processing.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \return Error code.
  *
  * Volume component is usually first and last in pipelines so it makes sense
@@ -1272,7 +1278,8 @@ err:
 
 /**
  * \brief Resets volume component.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \return Error code.
  */
 static int volume_reset(struct processing_module *mod)
