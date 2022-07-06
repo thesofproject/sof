@@ -4,6 +4,8 @@
  *
  */
 
+/** \cond GENERATED_BY_TOOLS_TUNE_SRC */
+
 #ifndef __SOF_AUDIO_COEFFICIENTS_SRC_SRC_IPC4_INT32_TABLE_H__
 #define __SOF_AUDIO_COEFFICIENTS_SRC_SRC_IPC4_INT32_TABLE_H__
 
@@ -294,3 +296,5 @@ struct src_stage *src_table2[10][16] = {
 };
 
 #endif /* __SOF_AUDIO_COEFFICIENTS_SRC_SRC_IPC4_INT32_TABLE_H__ */
+
+/** \endcond */
