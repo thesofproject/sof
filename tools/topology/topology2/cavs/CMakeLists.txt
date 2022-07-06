@@ -20,9 +20,9 @@ HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-4ch-tgl\;\
 HDA_CONFIG=mix,NUM_DMICS=4,PLATFORM=cnl,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
-# MTL: CAVS HDA topology with passthrough pipelines for HDMI
-"cavs-passthrough-hdmi\;cavs-passthrough-hda-4ch-mtl\;PLATFORM=mtl,\
-NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl.bin"
+# MTL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
+"cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-4ch-mtl\;PLATFORM=mtl,\
+HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl-hda-mix.bin"
 
 # CAVS SDW topology with passthrough pipelines
 "cavs-sdw\;cavs-sdw"
