@@ -10,6 +10,8 @@
  */
 
 /**
+  * \cond XTOS_DUP_FIXME
+  *
   * \file include/sof/lib/dai.h
   * \brief DAI Drivers definition
   * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
@@ -564,3 +566,5 @@ void dai_dma_position_update(struct comp_dev *dev);
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_LEGACY_H__ */
+
+/** \endcond */
