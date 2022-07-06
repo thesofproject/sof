@@ -37,27 +37,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	int ret;
 	struct comp_dev *dev;
 	struct processing_module *mod;
-	unsigned char *data;
-	uint32_t size;
-
-	switch (config->type) {
-	case SOF_COMP_VOLUME:
-	{
-		struct ipc_config_volume *ipc_volume = spec;
-
-		size = sizeof(*ipc_volume);
-		data = spec;
-		break;
-	}
-	default:
-	{
-		struct ipc_config_process *ipc_module_adapter = spec;
-
-		size = ipc_module_adapter->size;
-		data = ipc_module_adapter->data;
-		break;
-	}
-	}
 
 	comp_cl_dbg(drv, "module_adapter_new() start");
 
@@ -87,6 +66,29 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_set_drvdata(dev, mod);
 	list_init(&mod->sink_buffer_list);
 
+#if CONFIG_IPC_MAJOR_3
+	unsigned char *data;
+	uint32_t size;
+
+	switch (config->type) {
+	case SOF_COMP_VOLUME:
+	{
+		struct ipc_config_volume *ipc_volume = spec;
+
+		size = sizeof(*ipc_volume);
+		data = spec;
+		break;
+	}
+	default:
+	{
+		struct ipc_config_process *ipc_module_adapter = spec;
+
+		size = ipc_module_adapter->size;
+		data = ipc_module_adapter->data;
+		break;
+	}
+	}
+
 	/* Copy initial config */
 	if (size) {
 		ret = module_load_config(dev, data, size);
@@ -96,6 +98,12 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 			goto err;
 		}
 	}
+#else
+	struct module_data *md = &mod->priv;
+	struct module_config *dst = &md->cfg;
+
+	dst->data = spec;
+#endif
 
 	/* Init processing module */
 	ret = module_init(mod, interface);
@@ -105,6 +113,9 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		goto err;
 	}
 
+#if CONFIG_IPC_MAJOR_4
+	dst->data = NULL;
+#endif
 	dev->state = COMP_STATE_READY;
 
 	comp_dbg(dev, "module_adapter_new() done");
