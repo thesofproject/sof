@@ -144,6 +144,8 @@ PCM_CAPTURE_ADD(DMIC_48k_PCM_NAME, DMIC_PCM_48k_ID, concat(`PIPELINE_PCM_', DMIC
 ifdef(NO16KDMIC, `',
 `PCM_CAPTURE_ADD(DMIC_16k_PCM_NAME, DMIC_PCM_16k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_16k_ID))')
 
+ifdef(`PDM1',`define(DEF_STEREO_PDM, `STEREO_PDM1')',`define(DEF_STEREO_PDM, `STEREO_PDM0')')
+
 #
 # BE configurations - overrides config in ACPI if present
 #
@@ -157,7 +159,7 @@ ifelse(DMIC_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
            DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
-                PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
+                PDM_CONFIG(DMIC, 0, DEF_STEREO_PDM)))')
 
 ifdef(NO16KDMIC, `',
 `ifelse(DMIC16K_DAI_CHANNELS, 4,
@@ -168,4 +170,6 @@ ifdef(NO16KDMIC, `',
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
            DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
-                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))')')
+                PDM_CONFIG(DMIC, 1, DEF_STEREO_PDM)))')')
+
+undefine(DEF_STEREO_PDM)
