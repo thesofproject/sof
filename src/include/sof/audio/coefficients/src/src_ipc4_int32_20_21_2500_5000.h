@@ -4,6 +4,7 @@
  *
  */
 
+/** \cond GENERATED_BY_TOOLS_TUNE_SRC */
 #include <sof/audio/src/src.h>
 #include <stdint.h>
 
@@ -494,3 +495,4 @@ const int32_t src_int32_20_21_2500_5000_fir[480] = {
 struct src_stage src_int32_20_21_2500_5000 = {
 	1, 1, 20, 24, 480, 21, 20, 0, 0,
 	src_int32_20_21_2500_5000_fir};
+/** \endcond */
