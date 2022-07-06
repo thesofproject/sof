@@ -8,20 +8,19 @@ set(TPLGS
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda\;HDA_CONFIG=mix"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
-# TGL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-2ch-tgl\;\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 # CNL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-2ch-cnl\;\
 HDA_CONFIG=mix,NUM_DMICS=2,PLATFORM=cnl,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
-# TGL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-4ch-tgl\;\
-HDA_CONFIG=mix,NUM_DMICS=4,PLATFORM=cnl,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
-# CNL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-4ch-cnl\;\
 HDA_CONFIG=mix,NUM_DMICS=4,PLATFORM=cnl,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
+# TGL: CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
+"cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-2ch-tgl\;\
+HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
+"cavs-passthrough-hdmi\;cavs-mixin-mixout-hda-4ch-tgl\;\
+HDA_CONFIG=mix,NUM_DMICS=4,PLATFORM=cnl,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
+# MTL: CAVS HDA topology with passthrough pipelines for HDMI
 "cavs-passthrough-hdmi\;cavs-passthrough-hda-4ch-mtl\;PLATFORM=mtl,\
 NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl.bin"
 
