@@ -86,10 +86,16 @@ static const struct dma_info lib_dma = {
 int acp_dma_init(struct sof *sof)
 {
 	int i;
+	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
+		(volatile acp_scratch_mem_config_t *)(PU_REGISTER_BASE + SCRATCH_REG_OFFSET);
 
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		k_spinlock_init(&dma[i].lock);
 	sof->dma_info = &lib_dma;
+	/* configure dma descriptor base addr */
+	io_reg_write((PU_REGISTER_BASE + ACP_DMA_DESC_BASE_ADDR),
+		     (uint32_t)(&pscratch_mem_cfg->acp_cfg_dma_descriptor));
+	io_reg_write((PU_REGISTER_BASE + ACP_DMA_DESC_MAX_NUM_DSCR), 0x1);
 	return 0;
 }

@@ -13,6 +13,8 @@
 
 /* Registers from ACP_DMA block */
 #define ACP_DMA_CNTL_0                                0x1240000
+#define ACP_DMA_DESC_BASE_ADDR                        0x12400E0
+#define ACP_DMA_DESC_MAX_NUM_DSCR                     0x12400E4
 #define ACP_DMA_CH_STS                                0x12400E8
 
 #define ACP_DMA_DSCR_STRT_IDX_0                       0x1240020
