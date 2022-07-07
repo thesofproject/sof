@@ -208,7 +208,8 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 							 struct comp_buffer __sparse_cache *sinkb)
 {
-	struct vol_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 
 	switch (cd->base.audio_fmt.depth) {
 	case IPC4_DEPTH_16BIT:
