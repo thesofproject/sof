@@ -40,6 +40,7 @@ DECLARE_TR_CTX(acp_hs_tr, SOF_UUID(acp_hs_uuid), LOG_LEVEL_INFO);
 #define HS_FIFO_SIZE		512
 #define HS_TX_FIFO_ADDR		0x0
 #define HS_RX_FIFO_ADDR		(HS_TX_FIFO_ADDR+HS_FIFO_SIZE)
+#define HS_IER_DISABLE		0x0
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
@@ -87,6 +88,13 @@ static int acp_dai_hs_dma_start(struct dma_chan_data *channel)
 	acp_hstdm_ier_t hs_ier;
 	acp_hstdm_iter_t hs_iter;
 	acp_hstdm_irer_t hs_irer;
+
+	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
+	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en)
+		/* Request SMU to set aclk to 600 Mhz */
+		acp_change_clock_notify(600000000);
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
 		channel->status = COMP_STATE_ACTIVE;
@@ -159,6 +167,13 @@ static int acp_dai_hs_dma_stop(struct dma_chan_data *channel)
 	} else {
 		tr_err(&acp_hs_tr, "Stop direction not defined %d", channel->direction);
 		return -EINVAL;
+	}
+	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
+	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en) {
+		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IER), HS_IER_DISABLE);
+		/* Request SMU to scale down aclk to minimum clk */
+		acp_change_clock_notify(0);
 	}
 	return 0;
 }
