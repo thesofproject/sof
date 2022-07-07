@@ -168,6 +168,43 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	mod->deep_buff_bytes = 0;
 
+	/* compute number of input buffers */
+	list_for_item(blist, &dev->bsource_list)
+		mod->num_input_buffers++;
+
+	/* compute number of output buffers */
+	list_for_item(blist, &dev->bsink_list)
+		mod->num_output_buffers++;
+
+	if (!mod->num_input_buffers || !mod->num_output_buffers) {
+		comp_err(dev, "module_adapter_prepare(): invalid number of source/sink buffers");
+		return -EINVAL;
+	}
+
+	/* allocate memory for input buffers */
+	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
+	if (!mod->input_buffers) {
+		comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
+		return -ENOMEM;
+	}
+
+	/* allocate memory for output buffers */
+	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
+	if (!mod->output_buffers) {
+		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
+		ret = -ENOMEM;
+		goto in_free;
+	}
+
+	/*
+	 * no need to allocate intermediate sink buffers if the module produces only period bytes
+	 * every period and has only 1 input and 1 output buffer
+	 */
+	if (mod->simple_copy)
+		return 0;
+
 	/* Module is prepared, now we need to configure processing settings.
 	 * If module internal buffer is not equal to natural multiple of pipeline
 	 * buffer we have a situation where module adapter have to deep buffer certain amount
@@ -212,43 +249,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 */
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
 	mod->output_buffer_size = buff_size;
-
-	/* compute number of input buffers */
-	list_for_item(blist, &dev->bsource_list)
-		mod->num_input_buffers++;
-
-	/* compute number of output buffers */
-	list_for_item(blist, &dev->bsink_list)
-		mod->num_output_buffers++;
-
-	if (!mod->num_input_buffers || !mod->num_output_buffers) {
-		comp_err(dev, "module_adapter_prepare(): invalid number of source/sink buffers");
-		return -EINVAL;
-	}
-
-	/* allocate memory for input buffers */
-	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
-	if (!mod->input_buffers) {
-		comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
-		return -ENOMEM;
-	}
-
-	/* allocate memory for output buffers */
-	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
-	if (!mod->output_buffers) {
-		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
-		ret = -ENOMEM;
-		goto in_free;
-	}
-
-	/*
-	 * no need to allocate intermediate sink buffers if the module produces only period bytes
-	 * every period and has only 1 input and 1 output buffer
-	 */
-	if (mod->simple_copy)
-		return 0;
 
 	/* allocate memory for input buffer data */
 	list_for_item(blist, &dev->bsource_list) {
