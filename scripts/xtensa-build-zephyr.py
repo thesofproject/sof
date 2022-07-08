@@ -374,7 +374,7 @@ def west_init_update():
 	#
 	# z_remote = "https://somewhere.else"
 	# z_ref = "pull/38374/head"
-	# z_ref = "cb9a279050c4e8ad4663ee78688d8e7de1cac953"
+	z_ref = "504ebf80b3ec8a1cb584e0f800c187019c20a43d"
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
