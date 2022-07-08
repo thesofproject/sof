@@ -380,7 +380,7 @@ def west_init_update():
 	# unknown submitters on any CI system.
 
 	execute_command(["git", "clone", "--depth", "5", args.url, str(zephyr_dir)], timeout=1200)
-	execute_command(["git", "fetch", z_remote, z_ref], timeout=300, cwd=zephyr_dir)
+	execute_command(["git", "fetch", "--depth", "5", z_remote, z_ref], timeout=300, cwd=zephyr_dir)
 	execute_command(["git", "checkout", "FETCH_HEAD"], cwd=zephyr_dir)
 	execute_command(["git", "-C", str(zephyr_dir), "--no-pager", "log", "--oneline", "--graph",
 		"--decorate", "--max-count=20"])
