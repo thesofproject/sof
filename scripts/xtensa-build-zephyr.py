@@ -374,7 +374,9 @@ def west_init_update():
 	#
 	# z_remote = "https://somewhere.else"
 	# z_ref = "pull/38374/head"
-	# z_ref = "cb9a279050c4e8ad4663ee78688d8e7de1cac953"
+	# Testing https://github.com/zephyrproject-rtos/zephyr/pull/4757
+	# soc: cavs15: disable hda link in/out
+	z_ref = "b544c3a14e65263936e51c2b9f83084472a804c6"
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
