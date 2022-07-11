@@ -39,6 +39,7 @@ set(TPLGS_UP
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-4ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=tgl"
 	"sof-tgl-rt711-rt1308\;sof-adl-rt711-4ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
 	"sof-tgl-rt711-rt1308\;sof-adl-rt711\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=0\;-DPLATFORM=adl"
+	"sof-tgl-rt711-rt1308\;sof-adl-rt711-l0-rt1316-l3-2ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=2\;-DEXT_AMP\;-DAMP_1_LINK=3\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
 	## end SoundWire topologies
 )
 
