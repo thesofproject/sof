@@ -505,6 +505,21 @@ static int up_down_mixer_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static int up_down_mixer_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->base;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct comp_driver comp_up_down_mixer = {
 	.uid	= SOF_RT_UUID(up_down_mixer_comp_uuid),
 	.tctx	= &up_down_mixer_comp_tr,
@@ -515,6 +530,7 @@ static const struct comp_driver comp_up_down_mixer = {
 		.copy			= up_down_mixer_copy,
 		.prepare		= up_down_mixer_prepare,
 		.reset			= up_down_mixer_reset,
+		.get_attribute		= up_down_mixer_get_attribute,
 	},
 };
 

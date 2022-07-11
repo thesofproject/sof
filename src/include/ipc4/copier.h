@@ -321,9 +321,6 @@ struct ipc4_data_segment_enabled {
 } __attribute__((packed, aligned(4)));
 
 struct copier_data {
-	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
-	 * private data as ipc4_base_module_cfg!
-	 */
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];

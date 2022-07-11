@@ -990,6 +990,36 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 	return 0;
 }
 
+static int mixin_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct mixin_data *md = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = md->base_cfg;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int mixout_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct mixout_data *md = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = md->base_cfg;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct comp_driver comp_mixin = {
 	.uid	= SOF_RT_UUID(mixin_uuid),
 	.tctx	= &mixin_tr,
@@ -1001,6 +1031,7 @@ static const struct comp_driver comp_mixin = {
 		.trigger = mixinout_trigger,
 		.copy    = mixin_copy,
 		.reset   = mixin_reset,
+		.get_attribute = mixin_get_attribute,
 	},
 };
 
@@ -1030,6 +1061,7 @@ static const struct comp_driver comp_mixout = {
 		.bind    = mixout_bind,
 		.unbind  = mixout_unbind,
 		.reset   = mixout_reset,
+		.get_attribute = mixout_get_attribute,
 	},
 };
 

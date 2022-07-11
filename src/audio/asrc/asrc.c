@@ -71,9 +71,6 @@ DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 /* asrc component private data */
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
-	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
-	 * private data as ipc4_base_module_cfg!
-	 */
 	struct ipc4_asrc_module_cfg ipc_config;
 #else
 	struct ipc_config_asrc ipc_config;
@@ -308,6 +305,21 @@ static inline uint32_t asrc_get_operation_mode(const struct ipc4_asrc_module_cfg
 static inline bool asrc_get_asynchronous_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
 {
 	return false;
+}
+
+static int asrc_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->ipc_config.base;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
 }
 #endif
 
@@ -1077,6 +1089,9 @@ static const struct comp_driver comp_asrc = {
 		.copy = asrc_copy,
 		.prepare = asrc_prepare,
 		.reset = asrc_reset,
+#if CONFIG_IPC_MAJOR_4
+		.get_attribute = asrc_get_attribute,
+#endif
 	},
 };
 

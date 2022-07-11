@@ -963,7 +963,27 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 						  (uint8_t *)data, fragment_size);
 	return 0;
 }
+
+int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		memcpy_s(value, sizeof(struct ipc4_base_module_cfg), mod->priv.private,
+			 sizeof(struct ipc4_base_module_cfg));
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
 #else
+int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	return -EINVAL;
+}
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t data_offset, char *data)
 {
