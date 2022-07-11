@@ -646,9 +646,15 @@ zephyr_library_sources_ifdef(CONFIG_COMP_SWITCH
 	${SOF_AUDIO_PATH}/switch.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-	${SOF_AUDIO_PATH}/mixer.c
-)
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
+		${SOF_AUDIO_PATH}/mixer.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
+		${SOF_AUDIO_PATH}/mixin_mixout.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
