@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+if(CONFIG_IPC_MAJOR_3)
+	set(mixer_src mixer.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	set(mixer_src mixin_mixout.c)
+endif()
+
 if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		host-legacy.c
@@ -41,7 +47,7 @@ if(NOT CONFIG_LIBRARY)
 	endif()
 	if(CONFIG_COMP_MIXER)
 		add_local_sources(sof
-			mixer.c
+			${mixer_src}
 		)
 	endif()
 	if(CONFIG_COMP_MUX)
@@ -200,7 +206,7 @@ set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb
 
 # sources for each module
 set(volume_sources module_adapter/module_adapter.c module_adapter/module/generic.c module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c)
-set(mixer_sources mixer.c)
+set(mixer_sources ${mixer_src})
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
