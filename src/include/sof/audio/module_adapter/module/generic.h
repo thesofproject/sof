@@ -50,6 +50,7 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.free = module_adapter_free, \
 		.set_large_config = module_set_large_config,\
 		.get_large_config = module_get_large_config,\
+		.get_attribute = module_adapter_get_attribute,\
 	}, \
 }; \
 \
@@ -333,5 +334,6 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			    bool last_block, uint32_t data_offset, char *data);
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset, char *data);
+int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
 
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */

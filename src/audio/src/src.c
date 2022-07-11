@@ -86,9 +86,6 @@ struct ipc4_config_src {
 
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
-	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
-	 * private data as ipc4_base_module_cfg!
-	 */
 	struct ipc4_config_src ipc_config;
 #else
 	struct ipc_config_src ipc_config;
@@ -484,6 +481,21 @@ static void src_copy_sxx(struct comp_dev *dev,
 }
 
 #if CONFIG_IPC_MAJOR_4
+static int src_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->ipc_config.base;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int src_rate_check(void *spec)
 {
 	struct ipc4_config_src *ipc_src = spec;
@@ -1071,6 +1083,9 @@ static const struct comp_driver comp_src = {
 		.copy = src_copy,
 		.prepare = src_prepare,
 		.reset = src_reset,
+#if CONFIG_IPC_MAJOR_4
+		.get_attribute = src_get_attribute,
+#endif
 	},
 };
 

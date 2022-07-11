@@ -6,6 +6,7 @@
 // Author: Rander Wang <rander.wang@linux.intel.com>
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -235,15 +236,21 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
 					      uint32_t src_queue, uint32_t dst_queue)
 {
-	struct ipc4_base_module_cfg *src_cfg;
+	const struct comp_driver *drv = src->drv;
+	struct ipc4_base_module_cfg src_cfg;
 	struct comp_buffer *buffer = NULL;
 	struct sof_ipc_buffer ipc_buf;
-	int buf_size;
+	int buf_size, ret;
 
-	src_cfg = ipc4_comp_get_base_module_cfg(src);
+	ret = drv->ops.get_attribute(src, COMP_ATTR_BASE_CONFIG, &src_cfg);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to get base config for src %#x", dev_comp_id(src));
+		return NULL;
+	}
 
 	/* double it since obs is single buffer size */
-	buf_size = src_cfg->obs * 2;
+	buf_size = src_cfg.obs * 2;
+
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);

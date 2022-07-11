@@ -335,6 +335,21 @@ out:
 	return 0;
 }
 
+static int aria_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct aria_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->base;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct comp_driver comp_aria = {
 	.uid	= SOF_RT_UUID(aria_comp_uuid),
 	.tctx	= &aria_comp_tr,
@@ -345,6 +360,7 @@ static const struct comp_driver comp_aria = {
 		.copy			= aria_copy,
 		.prepare		= aria_prepare,
 		.reset			= aria_reset,
+		.get_attribute		= aria_get_attribute,
 	},
 };
 

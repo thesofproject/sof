@@ -129,6 +129,7 @@ enum {
 #define COMP_ATTR_HOST_BUFFER	1	/**< Comp host buffer attribute */
 #define COMP_ATTR_COPY_DIR	2	/**< Comp copy direction */
 #define COMP_ATTR_VDMA_INDEX	3	/**< Comp index of the virtual DMA at the gateway. */
+#define COMP_ATTR_BASE_CONFIG	4	/**< Component base config */
 /** @}*/
 
 /** \name Trace macros
@@ -936,16 +937,6 @@ static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
-
-#if CONFIG_IPC_MAJOR_4
-/**
- * Temporary ugly function to get components base configuration. Fix me!
- */
-static inline struct ipc4_base_module_cfg *ipc4_comp_get_base_module_cfg(struct comp_dev *dev)
-{
-	return (struct ipc4_base_module_cfg *)comp_get_drvdata(dev);
-}
-#endif
 
 /** @}*/
 

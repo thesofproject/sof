@@ -1195,6 +1195,9 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 	case COMP_ATTR_VDMA_INDEX:
 		*(uint32_t *)value = cd->config.gtw_cfg.node_id.f.v_index;
 		break;
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->config.base;
+		break;
 	default:
 		return -EINVAL;
 	}

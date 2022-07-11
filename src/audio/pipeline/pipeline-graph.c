@@ -480,8 +480,10 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 	while (ipc_sink) {
 		struct comp_buffer *buffer;
 		uint64_t input_data, output_data;
-		struct ipc4_base_module_cfg *input_base_cfg;
-		struct ipc4_base_module_cfg *output_base_cfg;
+		struct ipc4_base_module_cfg input_base_cfg;
+		struct ipc4_base_module_cfg output_base_cfg;
+		const struct comp_driver *drv;
+		int ret;
 
 		/* Calculate pipeline latency */
 		input_data = comp_get_total_data_processed(source, 0, true);
@@ -489,9 +491,17 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (!input_data || !output_data)
 			return NULL;
 
-		input_base_cfg = ipc4_comp_get_base_module_cfg(source);
-		output_base_cfg = ipc4_comp_get_base_module_cfg(ipc_sink->cd);
-		*latency += input_data / input_base_cfg->ibs - output_data / output_base_cfg->obs;
+		drv = source->drv;
+		ret = drv->ops.get_attribute(source, COMP_ATTR_BASE_CONFIG, &input_base_cfg);
+		if (ret < 0)
+			return NULL;
+
+		drv = ipc_sink->cd->drv;
+		ret = drv->ops.get_attribute(ipc_sink->cd, COMP_ATTR_BASE_CONFIG, &output_base_cfg);
+		if (ret < 0)
+			return NULL;
+
+		*latency += input_data / input_base_cfg.ibs - output_data / output_base_cfg.obs;
 
 		/* If the component doesn't have a sink buffer, this is a dai. */
 		if (list_is_empty(&ipc_sink->cd->bsink_list))
