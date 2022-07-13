@@ -16,6 +16,7 @@
 #include "testbench/trace.h"
 #include "testbench/file.h"
 #include <limits.h>
+#include <stdlib.h>
 
 #ifdef TESTBENCH_CACHE_CHECK
 #include <arch/lib/cache.h>
