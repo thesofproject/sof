@@ -13,13 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         # From time to time this will catch a git tag and change SOF_VERSION
-        with: {fetch-depth: 10, submodules: recursive}
+        with:
+          fetch-depth: 10
+          path: ./workspace/sof
 
       # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with
       # -e https_proxy=...
       - name: build
-        run: docker run -v "$(pwd)":/workdir
+        run: docker run -v "$(pwd)/workspace":/workspace
+             --workdir /workspace
              ghcr.io/zephyrproject-rtos/zephyr-build:latest
-             ./zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
-             --cmake-args=--warn-uninitialized   -a
+             ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
+             --cmake-args=--warn-uninitialized -a
