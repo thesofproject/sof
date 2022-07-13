@@ -131,6 +131,7 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 	struct comp_buffer *buffer;
 	struct comp_dev *buff_comp;
 	struct list_item *clist;
+	struct ipc_comp_dev *next_ppl_icd = NULL;
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
@@ -154,12 +155,12 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 
 			/* Next component is placed on another pipeline */
 			if (buff_comp && dev_comp_pipe_id(buff_comp) != pipeline_id)
-				return icd;
+				next_ppl_icd = icd;
 		}
 
 	}
 
-	return NULL;
+	return next_ppl_icd;
 }
 
 void ipc_send_queued_msg(void)
