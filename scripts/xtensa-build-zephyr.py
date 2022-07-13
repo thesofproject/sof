@@ -483,7 +483,7 @@ def build_platforms():
 		build_cmd = ["west"]
 		build_cmd += ["-v"] * args.verbose
 		build_cmd += ["build", "--build-dir", platform_build_dir_name]
-		source_dir = pathlib.Path(west_top, "zephyr", "samples", "subsys", "audio", "sof")
+		source_dir = pathlib.Path(SOF_TOP, "app")
 		build_cmd += ["--board", PLAT_CONFIG, str(source_dir)]
 
 		build_cmd.append('--')
@@ -491,23 +491,20 @@ def build_platforms():
 			build_cmd += args.cmake_args
 
 		overlays = [str(item.resolve(True)) for item in args.overlay]
-		# You may override default overlay.conf file name using CONFIG_OVERLAY in your platform
-		# dictionary
-		overlay_filename = platform_dict.get("CONFIG_OVERLAY", "overlay.conf")
-		overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, overlay_filename)))
-
 		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
 		# if both are provided, because it's no harm to merge the same overlay twice.
 		if args.debug:
-			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", "common", "debug_overlay.conf")))
+			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
 		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
 		# are provided, because it's no harm to merge the same overlay twice.
 		if args.ipc == "IPC4":
-			overlays.append(str(pathlib.Path(SOF_TOP, "overlays", platform, platform_dict["IPC4_CONFIG_OVERLAY"])))
+			overlays.append(str(pathlib.Path(SOF_TOP, "app", "overlays", platform,
+                            platform_dict["IPC4_CONFIG_OVERLAY"])))
 
-		overlays = ";".join(overlays)
-		build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
+		if overlays:
+			overlays = ";".join(overlays)
+			build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
 
 		# Build
 		execute_command(build_cmd, cwd=west_top)
