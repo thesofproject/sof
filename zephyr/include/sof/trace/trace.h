@@ -7,8 +7,8 @@
 #define __SOF_TRACE_TRACE1_H__
 
 #ifndef ZEPHYR_INCLUDE_LOGGING_LOG_H_
-#include <logging/log.h>
-#include <sys/printk.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/printk.h>
 
 /* Level of SOF trace on Zephyr */
 #define SOF_ZEPHYR_TRACE_LEVEL LOG_LEVEL_INF

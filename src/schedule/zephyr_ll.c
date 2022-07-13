@@ -13,7 +13,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 
-#include <kernel.h>
+#include <zephyr/kernel.h>
 
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 

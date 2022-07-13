@@ -35,7 +35,7 @@
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
-#include <kernel.h>
+#include <zephyr/kernel.h>
 #endif
 
 LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);

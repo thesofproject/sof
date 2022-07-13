@@ -20,8 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kernel.h>
-#include <sys_clock.h>
+#include <zephyr/kernel.h>
+#include <zephyr/sys_clock.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 

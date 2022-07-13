@@ -22,14 +22,14 @@
 #include <sof/trace/trace.h>
 
 /* Zephyr includes */
-#include <device.h>
-#include <soc.h>
-#include <kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/kernel.h>
 #include <version.h>
-#include <sys/__assert.h>
+#include <zephyr/sys/__assert.h>
+#include <soc.h>
 
 #if !CONFIG_KERNEL_COHERENCE
-#include <arch/xtensa/cache.h>
+#include <zephyr/arch/xtensa/cache.h>
 #endif
 
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
