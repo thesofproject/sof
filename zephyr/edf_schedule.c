@@ -10,8 +10,8 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/lib/wait.h>
 
-#include <kernel.h>
-#include <sys_clock.h>
+#include <zephyr/kernel.h>
+#include <zephyr/sys_clock.h>
 
 struct k_work_q edf_workq;
 K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);

@@ -31,7 +31,7 @@
 #endif
 
 #ifdef __ZEPHYR__
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 #endif
 
 struct sof;

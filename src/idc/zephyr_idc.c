@@ -19,9 +19,9 @@
  *	send tasks to other CPUs.
  */
 
-#include <kernel.h>
+#include <zephyr/kernel.h>
 
-#include <sys/p4wq.h>
+#include <zephyr/sys/p4wq.h>
 #include <sof/drivers/idc.h>
 #include <sof/init.h>
 #include <sof/ipc/common.h>
