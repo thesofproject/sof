@@ -13,7 +13,7 @@ set -x
 unset ZEPHYR_BASE
 
 # Make sure we're in the right place
-test -e ./scripts/xtensa-build-zephyr.py
+test -e ./sof/scripts/xtensa-build-zephyr.py
 
 
 # See https://stackoverflow.com/questions/35291520/docker-and-userns-remap-how-to-manage-volume-permissions-to-share-data-betwee + many others
@@ -71,8 +71,4 @@ unset ZEPHYR_SDK_INSTALL_DIR
 ls -ld /opt/toolchains/zephyr-sdk-*
 ln -s  /opt/toolchains/zephyr-sdk-*  ~/ || true
 
-if test -e zephyrproject; then
-    ./scripts/xtensa-build-zephyr.py  "$@"
-else # -c(lone) with west init etc.
-    ./scripts/xtensa-build-zephyr.py -c "$@"
-fi
+./sof/scripts/xtensa-build-zephyr.py -u --no-interactive "$@"
