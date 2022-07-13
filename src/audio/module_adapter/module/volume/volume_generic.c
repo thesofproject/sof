@@ -14,10 +14,6 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/audio/volume.h>
-
-#ifdef CONFIG_GENERIC
-
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
@@ -26,7 +22,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
+
+#include <sof/audio/volume.h>
+
+#ifdef CONFIG_GENERIC
 
 #if CONFIG_FORMAT_S24LE
 /**

@@ -10,20 +10,20 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/common.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
+
+LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
+
 #include <sof/audio/volume.h>
 
 #if defined(__XCC__) && XCHAL_HAVE_HIFI3
 
-#include <sof/audio/buffer.h>
-#include <sof/audio/component.h>
-#include <sof/audio/volume.h>
-#include <sof/common.h>
-#include <ipc/stream.h>
 #include <xtensa/tie/xt_hifi3.h>
-#include <stddef.h>
-#include <stdint.h>
-
-LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
 /**
  * \brief store volume gain 4 times for xtensa multi-way intrinsic operations.

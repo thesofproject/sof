@@ -49,6 +49,8 @@
 
 static const struct comp_driver comp_tdfb;
 
+LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
+
 /* dd511749-d9fa-455c-b3a7-13585693f1af */
 DECLARE_SOF_RT_UUID("tdfb", tdfb_uuid,  0xdd511749, 0xd9fa, 0x455c, 0xb3, 0xa7,
 		    0x13, 0x58, 0x56, 0x93, 0xf1, 0xaf);

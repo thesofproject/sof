@@ -20,7 +20,6 @@
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/volume.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -46,6 +45,8 @@
 #include <stdint.h>
 
 LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
+
+#include <sof/audio/volume.h>
 
 #if CONFIG_IPC_MAJOR_3
 /* b77e677e-5ff4-4188-af14-fba8bdbf8682 */

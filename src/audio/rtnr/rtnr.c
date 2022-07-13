@@ -46,6 +46,8 @@ struct rtnr_func_map {
 	rtnr_func func; /**< processing function */
 };
 
+LOG_MODULE_REGISTER(rtnr, CONFIG_SOF_LOG_LEVEL);
+
 /* UUID 5c7ca334-e15d-11eb-ba80-0242ac130004 */
 DECLARE_SOF_RT_UUID("rtnr", rtnr_uuid, 0x5c7ca334, 0xe15d, 0x11eb, 0xba, 0x80,
 		    0x02, 0x42, 0xac, 0x13, 0x00, 0x04);
