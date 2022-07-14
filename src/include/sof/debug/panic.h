@@ -52,7 +52,9 @@ void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 #define panic(x) __panic((x), (RELATIVE_FILE), (__LINE__))
 
 /* runtime assertion */
+#ifndef assert
 #define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
+#endif
 
 #endif
 
