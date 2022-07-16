@@ -127,9 +127,11 @@ define(`SPK_SSP_INDEX', AMP_SSP)
 define(`SPK_SSP_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`-Codec'))
 # define BE dai_link ID
 define(`SPK_BE_ID', BOARD_SPK_BE_ID)
+ifdef(`DUMMY_SSP', `
+define(`DUMMY_SSP_INDEX', DUMMY_SSP)
 # Ref capture related
 # Ref capture BE dai_name
-define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))')
+define(`SPK_REF_DAI_NAME', concat(concat(`SSP', DUMMY_SSP_INDEX),`.IN'))')')
 
 # to generate dmic setting with kwd when we have dmic
 # define channel
@@ -293,7 +295,7 @@ ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 # The echo refenrence pipeline has no connections in it,
 # it is used for the capture DAI widget to dock.
 DAI_ADD(sof/pipe-echo-ref-dai-capture.m4,
-	29, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
+	29, SSP, DUMMY_SSP_INDEX, SSP-dummy-capture,
 	PIPELINE_SINK_29, 3, FMT,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -452,7 +454,16 @@ ifelse(
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 32, 3, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
-	)')
+	)
+
+# Set Dai config for dummy codec
+ifelse(CODEC, `MAX98357A', `
+DAI_CONFIG(SSP, DUMMY_SSP_INDEX, BOARD_DUMMY_BE_ID, SSP-dummy-capture,
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 25, 3, 3),
+		SSP_CONFIG_DATA(SSP, DUMMY_SSP_INDEX, 24, 0, 0, 0, SSP_CC_BCLK_ES)))')')
 
 ifdef(`NO_HEADPHONE',`',`
 # SSP 0 (ID: BOARD_HP_BE_ID)

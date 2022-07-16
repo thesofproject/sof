@@ -22,7 +22,8 @@ ifelse(
 	define(`BOARD_DMIC_BE_ID_BASE', eval(BOARD_HP_BE_ID + 1))
 	define(`BOARD_HDMI_BE_ID_BASE', eval(BOARD_DMIC_BE_ID_BASE + NUM_DMIC_BE_LINK))
 	ifdef(`NO_AMP', `', `define(`BOARD_SPK_BE_ID', eval(BOARD_HDMI_BE_ID_BASE + NUM_HDMI_BE_LINK))')
-	ifdef(`NO_AMP', `define(`BOARD_BT_BE_ID', eval(BOARD_HDMI_BE_ID_BASE + NUM_HDMI_BE_LINK))', `define(`BOARD_BT_BE_ID', eval(BOARD_SPK_BE_ID + 1))')',
+	ifdef(`NO_AMP', `define(`BOARD_BT_BE_ID', eval(BOARD_HDMI_BE_ID_BASE + NUM_HDMI_BE_LINK))', `define(`BOARD_BT_BE_ID', eval(BOARD_SPK_BE_ID + 1))')
+	ifdef(`BT_OFFLOAD', `define(`BOARD_DUMMY_BE_ID', eval(BOARD_BT_BE_ID + 1))', `define(`BOARD_DUMMY_BE_ID', eval(BOARD_BT_BE_ID))')',
 	LINUX_MACHINE_DRIVER, `sof_ssp_amp', `
 	define(`BOARD_SPK_BE_ID', `0')
 	ifdef(`NO_DMICS', `', `define(`BOARD_DMIC_BE_ID_BASE', eval(BOARD_SPK_BE_ID + 1))')
