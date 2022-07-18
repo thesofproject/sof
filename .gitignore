@@ -31,9 +31,6 @@
 *.xslt
 *.mbox
 
-doc/doxygen
-*.doxygen
-
 *.gz
 *.xz
 src/arch/xtensa/sof
@@ -53,11 +50,6 @@ __pycache__
 .checkpatch-camelcase.git.*
 
 build*/
-CMakeCache.txt
-CMakeFiles
-doc/*.cmake
-doc/*.ninja
-doc/Makefile
 
 # Eclipse project metadata
 .settings
