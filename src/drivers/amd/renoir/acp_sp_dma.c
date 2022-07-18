@@ -55,13 +55,13 @@ static struct dma_chan_data *acp_dai_sp_dma_channel_get(struct dma *dma,
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sp_tr, "DMA: Channel %d not in range", req_chan);
+		tr_err(&acp_sp_tr, "Channel %d not in range", req_chan);
 		return NULL;
 	}
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sp_tr, "DMA: channel already in use %d", req_chan);
+		tr_err(&acp_sp_tr, "channel already in use %d", req_chan);
 		return NULL;
 	}
 	atomic_add(&dma->num_channels_busy, 1);
@@ -118,7 +118,7 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 		sp_irer.bits.i2stdm_rx_samplen = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_tr, " ACP:Start direction not defined %d", channel->direction);
+		tr_err(&acp_sp_tr, "Start direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 
@@ -143,38 +143,27 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 	acp_i2stdm_irer_t sp_irer;
 	acp_i2stdm_iter_t sp_iter;
 
+	switch (channel->status) {
+	case COMP_STATE_READY:
+	case COMP_STATE_PREPARE:
+		return 0;
+	case COMP_STATE_PAUSED:
+	case COMP_STATE_ACTIVE:
+		break;
+	default:
+		return -EINVAL;
+	}
+	channel->status = COMP_STATE_READY;
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
-		switch (channel->status) {
-		case COMP_STATE_READY:
-		case COMP_STATE_PREPARE:
-			return 0;
-		case COMP_STATE_PAUSED:
-		case COMP_STATE_ACTIVE:
-			break;
-		default:
-			return -EINVAL;
-		}
-		channel->status = COMP_STATE_READY;
 		sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
 		sp_iter.bits.i2stdm_txen = 0;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_ITER), sp_iter.u32all);
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
-		switch (channel->status) {
-		case COMP_STATE_READY:
-		case COMP_STATE_PREPARE:
-			return 0;
-		case COMP_STATE_PAUSED:
-		case COMP_STATE_ACTIVE:
-			break;
-		default:
-			return -EINVAL;
-		}
-		channel->status = COMP_STATE_READY;
 		sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
 		sp_irer.bits.i2stdm_rx_en = 0;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_tr, " ACP: Stop direction not defined %d", channel->direction);
+		tr_err(&acp_sp_tr, "Stop direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
@@ -204,11 +193,11 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 	uint32_t sp_fifo_addr;
 
 	if (!config->cyclic) {
-		tr_err(&acp_sp_tr, "SPDMA: cyclic configurations only supported!");
+		tr_err(&acp_sp_tr, "cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_sp_tr, "SPDMA: scatter enabled, that is not supported for now!");
+		tr_err(&acp_sp_tr, "scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -236,7 +225,8 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (uint32_t)(ACP_DMA_TRANS_SIZE));
 
 		/* Watermark size for SP transmit FIFO - Half of SP buffer size */
-		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_INTR_WATERMARK_SIZE), (sp_buff_size/2));
+		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_INTR_WATERMARK_SIZE),
+			     (sp_buff_size >> 1));
 
 	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
 
@@ -257,10 +247,11 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (uint32_t)(ACP_DMA_TRANS_SIZE));
 
 		/* Watermark size for SP receive fifo - Half of SP buffer size*/
-		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_INTR_WATERMARK_SIZE), (sp_buff_size/2));
+		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_INTR_WATERMARK_SIZE),
+			     (sp_buff_size >> 1));
 
 	} else {
-		tr_err(&acp_sp_tr, "DMA Config channel direction undefined %d", channel->direction);
+		tr_err(&acp_sp_tr, "config channel direction undefined %d", channel->direction);
 		return -EINVAL;
 	}
 
@@ -284,15 +275,14 @@ static int acp_dai_sp_dma_probe(struct dma *dma)
 	int channel;
 
 	if (dma->chan) {
-		tr_err(&acp_sp_tr, "ACP SP DMA: Repeated probe");
+		tr_err(&acp_sp_tr, "Repeated probe");
 		return -EEXIST;
 	}
-	tr_dbg(&acp_sp_tr, "SP DMA: probe");
 	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
 			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&acp_sp_tr, "SP DMA: Probe failure,unable to allocate channel descriptors");
+		tr_err(&acp_sp_tr, "Probe failure,unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -307,7 +297,7 @@ static int acp_dai_sp_dma_probe(struct dma *dma)
 static int acp_dai_sp_dma_remove(struct dma *dma)
 {
 	if (!dma->chan) {
-		tr_err(&acp_sp_tr, "DMA: remove called without probe,it's a no-op");
+		tr_err(&acp_sp_tr, "remove called without probe,it's a no-op");
 		return 0;
 	}
 	rfree(dma->chan);
@@ -337,10 +327,10 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 				ACP_I2S_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size ? (curr_rx_pos - prev_rx_pos) % sp_buff_size : (curr_rx_pos - prev_rx_pos);
-		*avail = sp_buff_size - *free;
-		prev_rx_pos = curr_rx_pos;
+		*avail = (sp_buff_size >> 1);
+		*free  = (sp_buff_size >> 1);
 	} else {
-		tr_err(&acp_sp_tr, "ERROR: Channel direction not defined %d", channel->direction);
+		tr_err(&acp_sp_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	return 0;

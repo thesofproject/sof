@@ -40,6 +40,7 @@ DECLARE_TR_CTX(acp_sp_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 #define SP_FIFO_SIZE		512
 #define SP_TX_FIFO_ADDR		(SP_FIFO_SIZE * 2)
 #define SP_RX_FIFO_ADDR		(SP_TX_FIFO_ADDR+SP_FIFO_SIZE)
+#define SP_IER_DISABLE		0x0
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
@@ -88,6 +89,13 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 	acp_i2stdm_ier_t sp_ier;
 	acp_i2stdm_iter_t sp_iter;
 	acp_i2stdm_irer_t sp_irer;
+
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+
+	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en)
+		/* Request SMU to set aclk to 600 Mhz */
+		acp_change_clock_notify(600000000);
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
 		channel->status = COMP_STATE_ACTIVE;
@@ -160,6 +168,14 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 		tr_err(&acp_sp_tr, "Stop direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en) {
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), SP_IER_DISABLE);
+		/* Request SMU to scale down aclk to minimum clk */
+		acp_change_clock_notify(0);
+	}
+
 	return 0;
 }
 
@@ -209,7 +225,8 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (uint32_t)(ACP_DMA_TRANS_SIZE_128));
 
 		/* Watermark size for SP transmit FIFO - Half of SP buffer size */
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_I2S_TX_INTR_WATERMARK_SIZE), (sp_buff_size/2));
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_I2S_TX_INTR_WATERMARK_SIZE),
+			     (sp_buff_size >> 1));
 
 	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
 
@@ -230,7 +247,8 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (uint32_t)(ACP_DMA_TRANS_SIZE_128));
 
 		/* Watermark size for SP receive fifo - Half of SP buffer size*/
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_I2S_RX_INTR_WATERMARK_SIZE), (sp_buff_size/2));
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_I2S_RX_INTR_WATERMARK_SIZE),
+			     (sp_buff_size >> 1));
 
 	} else {
 		tr_err(&acp_sp_tr, "DMA Config channel direction undefined %d", channel->direction);
@@ -309,9 +327,9 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_I2S_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
-		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size ? (curr_rx_pos - prev_rx_pos) % sp_buff_size : (curr_rx_pos - prev_rx_pos);
-		*avail = sp_buff_size - *free;
 		prev_rx_pos = curr_rx_pos;
+		*free = (sp_buff_size >> 1);
+		*avail = (sp_buff_size >> 1);
 	} else {
 		tr_err(&acp_sp_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;

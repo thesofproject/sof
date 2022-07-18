@@ -217,7 +217,7 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 		io_reg_write(PU_REGISTER_BASE +
 			ACP_WOV_RX_RINGBUFSIZE, dmic_ringbuff_size.u32all);
 		/* Write the ring buffer size to register */
-		watermark.bits.rx_intr_watermark_size = dmic_rngbuff_size/2;
+		watermark.bits.rx_intr_watermark_size = (dmic_rngbuff_size >> 1);
 		io_reg_write(PU_REGISTER_BASE +
 			ACP_WOV_RX_INTR_WATERMARK_SIZE, watermark.u32all);
 		break;
@@ -293,8 +293,8 @@ static int acp_dmic_dma_get_data_size(struct dma_chan_data *channel,
 				   uint32_t *avail, uint32_t *free)
 {
 	if (channel->direction == DMA_DIR_DEV_TO_MEM) {
-		*avail = dmic_rngbuff_size/2;
-		*free = dmic_rngbuff_size/2;
+		*avail = dmic_rngbuff_size >> 1;
+		*free = dmic_rngbuff_size >> 1;
 	} else
 		tr_err(&acp_dmic_dma_tr, "Channel direction Not defined %d",
 				channel->direction);

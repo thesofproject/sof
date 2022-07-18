@@ -39,15 +39,17 @@ DECLARE_SOF_UUID("acp-bt-dma", acp_bt_dma_uuid, 0xab01db67, 0x84b0, 0x4d2d,
 DECLARE_TR_CTX(acp_bt_dma_tr, SOF_UUID(acp_bt_dma_uuid), LOG_LEVEL_INFO);
 
 /* DMA number of buffer periods */
-#define ACP_BT_FIFO_BUFFER_SIZE	768
-#define BT_TX_FIFO_ADDR		(ACP_BT_FIFO_BUFFER_SIZE * 3)
-#define BT_RX_FIFO_ADDR		(BT_TX_FIFO_ADDR + ACP_BT_FIFO_BUFFER_SIZE)
+#define BT_FIFO_SIZE		768
+#define BT_TX_FIFO_ADDR		(BT_FIFO_SIZE * 3)
+#define BT_RX_FIFO_ADDR		(BT_TX_FIFO_ADDR + BT_FIFO_SIZE)
 
 /* ACP DMA transfer size */
 #define ACP_BT_DMA_TRANS_SIZE	128
+#define BT_IER_DISABLE		0x0
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
+static uint32_t bt_buff_size;
 
 /* Allocate requested DMA channel if it is free */
 static struct dma_chan_data *acp_dai_bt_dma_channel_get(struct dma *dma,
@@ -92,6 +94,13 @@ static int acp_dai_bt_dma_start(struct dma_chan_data *channel)
 	acp_bttdm_ier_t         bt_ier;
 	acp_bttdm_iter_t        bt_tdm_iter;
 	acp_bttdm_irer_t        bt_tdm_irer;
+
+	bt_tdm_iter = (acp_bttdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_BTTDM_ITER));
+	bt_tdm_irer = (acp_bttdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_BTTDM_IRER));
+
+	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en)
+		/* Request SMU to set aclk to 600 Mhz */
+		acp_change_clock_notify(600000000);
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
 		channel->status = COMP_STATE_ACTIVE;
@@ -164,6 +173,15 @@ static int acp_dai_bt_dma_stop(struct dma_chan_data *channel)
 		tr_err(&acp_bt_dma_tr, "direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
+
+	bt_tdm_iter = (acp_bttdm_iter_t)io_reg_read(PU_REGISTER_BASE + ACP_BTTDM_ITER);
+	bt_tdm_irer = (acp_bttdm_irer_t)io_reg_read(PU_REGISTER_BASE + ACP_BTTDM_IRER);
+	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en) {
+		io_reg_write((PU_REGISTER_BASE + ACP_BTTDM_IER), BT_IER_DISABLE);
+		/* Request SMU to scale down aclk to minimum clk */
+		acp_change_clock_notify(0);
+	}
+
 	return 0;
 }
 
@@ -183,84 +201,70 @@ static int acp_dai_bt_dma_status(struct dma_chan_data *channel,
 static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 				struct dma_sg_config *config)
 {
-	uint32_t tx_ringbuff_addr;
-	uint32_t rx_ringbuff_addr;
-	uint32_t fifo_addr;
-	acp_bt_tx_ringbufaddr_t         tx_rbuff;
-	acp_bt_tx_fifosize_t            tx_fifo_size;
-	acp_bt_tx_dmasize_t             tx_dma_size;
-	acp_bt_tx_ringbufsize_t         tx_rbuff_size;
-	acp_bt_tx_ringbufaddr_t         rx_rbuff;
-	acp_bt_tx_fifosize_t            rx_fifo_size;
-	acp_bt_tx_dmasize_t             rx_dma_size;
-	acp_bt_tx_ringbufsize_t         rx_rbuff_size;
-	acp_bt_tx_intr_watermark_size_t tx_wtrmrk;
-	acp_bt_rx_intr_watermark_size_t rx_wtrmrk;
+	uint32_t bt_ringbuff_addr;
+	uint32_t bt_fifo_addr;
 
-	channel->is_scheduling_source = true;
-	channel->direction = config->direction;
-	switch (config->direction) {
-	case DMA_DIR_MEM_TO_DEV:
-		config->elem_array.elems[0].src =
-			(config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
-		tx_ringbuff_addr = (config->elem_array.elems[0].src | 0x01000000);
-		/* BT Transmit FIFO Address and FIFO Size */
-		fifo_addr = BT_TX_FIFO_ADDR;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOADDR), fifo_addr);
-		tx_fifo_size.u32all = ACP_BT_FIFO_BUFFER_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOSIZE), tx_fifo_size.u32all);
-		/* Transmit RINGBUFFER Address and size */
-		tx_rbuff.u32all = tx_ringbuff_addr;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFADDR), tx_rbuff.u32all);
-		tx_rbuff_size.u32all = ACP_BT_FIFO_BUFFER_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFSIZE),
-				tx_rbuff_size.u32all);
-		/* Transmit DMA transfer size in bytes */
-		tx_dma_size.u32all = ACP_DMA_TRANS_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_DMA_SIZE), tx_dma_size.u32all);
-		/* Watermark size for BT transfer fifo */
-		tx_wtrmrk.bits.bt_tx_intr_watermark_size = ACP_BT_FIFO_BUFFER_SIZE/2;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_INTR_WATERMARK_SIZE),
-				tx_wtrmrk.u32all);
-		break;
-	case DMA_DIR_DEV_TO_MEM:
-		config->elem_array.elems[0].dest =
-			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
-		rx_ringbuff_addr = (config->elem_array.elems[0].dest | 0x01000000);
-		fifo_addr = BT_RX_FIFO_ADDR;
-		/* BT Receive FIFO Address and FIFO Size*/
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOADDR), fifo_addr);
-		rx_fifo_size.u32all = ACP_BT_FIFO_BUFFER_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOSIZE),
-				rx_fifo_size.u32all);
-		/* Receive RINGBUFFER Address and size */
-		rx_rbuff.u32all = rx_ringbuff_addr;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFADDR),
-				rx_rbuff.u32all);
-		rx_rbuff_size.u32all = ACP_BT_FIFO_BUFFER_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFSIZE),
-				rx_rbuff_size.u32all);
-		/* Receive DMA transfer size in bytes */
-		rx_dma_size.u32all = ACP_BT_DMA_TRANS_SIZE;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_DMA_SIZE),
-				rx_dma_size.u32all);
-		/* Watermark size for BT receive fifo */
-		rx_wtrmrk.bits.bt_rx_intr_watermark_size = ACP_BT_FIFO_BUFFER_SIZE/2;
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_INTR_WATERMARK_SIZE),
-				rx_wtrmrk.u32all);
-		break;
-	default:
-		tr_err(&acp_bt_dma_tr, "unsupported config direction");
-		return -EINVAL;
-	}
 	if (!config->cyclic) {
 		tr_err(&acp_bt_dma_tr, "cyclic configurations only supported");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_bt_dma_tr, "scatter is not supported for now!");
+		tr_err(&acp_bt_dma_tr, "scatter enabled, that is not supported for now");
 		return -EINVAL;
 	}
+
+	channel->is_scheduling_source = true;
+	channel->direction = config->direction;
+	bt_buff_size = config->elem_array.elems[0].size * config->elem_array.count;
+
+	switch (config->direction) {
+	case DMA_DIR_MEM_TO_DEV:
+
+		/* BT Transmit FIFO Address and FIFO Size */
+		bt_fifo_addr = BT_TX_FIFO_ADDR;
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOADDR), bt_fifo_addr);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOSIZE), (uint32_t)(BT_FIFO_SIZE));
+
+		/* Transmit RINGBUFFER Address and size */
+		config->elem_array.elems[0].src =
+			(config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
+		bt_ringbuff_addr = (config->elem_array.elems[0].src | 0x01000000);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFADDR), bt_ringbuff_addr);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFSIZE), bt_buff_size);
+
+		/* Transmit DMA transfer size in bytes */
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_DMA_SIZE),
+			     (uint32_t)(ACP_DMA_TRANS_SIZE_128));
+		/* Watermark size for BT transfer fifo */
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_INTR_WATERMARK_SIZE),
+				(bt_buff_size >> 1));
+		break;
+	case DMA_DIR_DEV_TO_MEM:
+
+		/* BT Receive FIFO Address and FIFO Size*/
+		bt_fifo_addr = BT_RX_FIFO_ADDR;
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOADDR), bt_fifo_addr);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOSIZE), (uint32_t)(BT_FIFO_SIZE));
+
+		/* Receive RINGBUFFER Address and size */
+		config->elem_array.elems[0].dest =
+			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
+		bt_ringbuff_addr = (config->elem_array.elems[0].dest | 0x01000000);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFADDR), bt_ringbuff_addr);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFSIZE), bt_buff_size);
+
+		/* Receive DMA transfer size in bytes */
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_DMA_SIZE),
+				(uint32_t)(ACP_DMA_TRANS_SIZE_128));
+		/* Watermark size for BT receive fifo */
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_INTR_WATERMARK_SIZE),
+				(bt_buff_size >> 1));
+		break;
+	default:
+		tr_err(&acp_bt_dma_tr, "unsupported config direction");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -324,22 +328,18 @@ static int acp_dai_bt_dma_get_data_size(struct dma_chan_data *channel,
 		tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high << 32) | tx_low);
-		*free = (curr_tx_pos - prev_tx_pos) > ACP_BT_FIFO_BUFFER_SIZE ?
-			(curr_tx_pos - prev_tx_pos) % ACP_BT_FIFO_BUFFER_SIZE :
-			curr_tx_pos - prev_tx_pos;
-		*avail = ACP_BT_FIFO_BUFFER_SIZE - *free;
 		prev_tx_pos = curr_tx_pos;
+		*free = bt_buff_size >> 1;
+		*avail = bt_buff_size >> 1;
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high << 32) | rx_low);
-		*free = (curr_rx_pos - prev_rx_pos) > ACP_BT_FIFO_BUFFER_SIZE ?
-			(curr_rx_pos - prev_rx_pos) % ACP_BT_FIFO_BUFFER_SIZE :
-			(curr_rx_pos - prev_rx_pos);
-		*avail = ACP_BT_FIFO_BUFFER_SIZE - *free;
 		prev_rx_pos = curr_rx_pos;
+		*free = bt_buff_size >> 1;
+		*avail = bt_buff_size >> 1;
 	} else {
 		tr_err(&acp_bt_dma_tr, "Channel direction Not defined %d",
 		       channel->direction);
