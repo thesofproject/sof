@@ -137,5 +137,4 @@ void platform_clock_init(struct sof *sof)
 		};
 		k_spinlock_init(&sof->clocks[i].lock);
 	}
-	acp_change_clock_notify(600000000);
 }
