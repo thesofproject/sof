@@ -224,7 +224,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for HS transmit FIFO - Half of HS buffer size */
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_INTR_WATERMARK_SIZE),
-			     (hs_buff_size/2));
+			     (hs_buff_size >> 1));
 
 	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
 
@@ -247,7 +247,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for  receive fifo - Half of HS buffer size*/
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_INTR_WATERMARK_SIZE),
-			     (hs_buff_size/2));
+			     (hs_buff_size >> 1));
 
 	} else {
 		tr_err(&acp_hs_tr, "Config channel direction undefined %d", channel->direction);
@@ -326,9 +326,9 @@ static int acp_dai_hs_dma_get_data_size(struct dma_chan_data *channel,
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
-		*free = (curr_rx_pos - prev_rx_pos) > hs_buff_size ? (curr_rx_pos - prev_rx_pos) % hs_buff_size : (curr_rx_pos - prev_rx_pos);
-		*avail = hs_buff_size - *free;
 		prev_rx_pos = curr_rx_pos;
+		*free = (hs_buff_size >> 1);
+		*avail = (hs_buff_size >> 1);
 	} else {
 		tr_err(&acp_hs_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;
