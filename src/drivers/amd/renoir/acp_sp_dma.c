@@ -337,8 +337,8 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 				ACP_I2S_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size ? (curr_rx_pos - prev_rx_pos) % sp_buff_size : (curr_rx_pos - prev_rx_pos);
-		*avail = sp_buff_size - *free;
-		prev_rx_pos = curr_rx_pos;
+		*avail = (sp_buff_size >> 1);
+		*free  = (sp_buff_size >> 1);
 	} else {
 		tr_err(&acp_sp_tr, "ERROR: Channel direction not defined %d", channel->direction);
 		return -EINVAL;
