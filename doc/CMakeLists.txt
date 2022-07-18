@@ -13,7 +13,7 @@ configure_file(
 	"${PROJECT_BINARY_DIR}/sof.doxygen"
 )
 
-add_custom_target("doc"
+add_custom_target("doc" ALL
 	COMMAND doxygen sof.doxygen
 	VERBATIM
 	USES_TERMINAL
