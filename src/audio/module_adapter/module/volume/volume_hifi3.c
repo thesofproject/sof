@@ -92,8 +92,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
 
-	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
-					  SOF_IPC_FRAME_S32_LE, samples);
+	bsource->consumed += S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += S32_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
 		m = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
@@ -183,8 +183,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
 
-	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
-					  SOF_IPC_FRAME_S32_LE, samples);
+	bsource->consumed += S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += S32_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
 		m = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
@@ -324,8 +324,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S16_LE,
-						  SOF_IPC_FRAME_S16_LE, n);
+		bsource->consumed += S16_SAMPLES_TO_BYTES(n);
+		bsink->size += S16_SAMPLES_TO_BYTES(n);
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
