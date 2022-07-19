@@ -37,8 +37,21 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 		 dev_comp_id(current), dir);
 
 	/* check if 'current' is already configured */
-	if (current->state != COMP_STATE_INIT &&
-	    current->state != COMP_STATE_READY) {
+	switch (current->state) {
+	case COMP_STATE_INIT:
+	case COMP_STATE_READY:
+		/*
+		 * Negotiation only happen when the current component has > 1
+		 * source or sink, we are propagating the params to branched
+		 * buffers, and the subsequent component's .params() or .prepare()
+		 * should be responsible for calibrating if needed. For example,
+		 * a component who has different channels input/output buffers
+		 * should explicitly configure the channels of the branched buffers.
+		 */
+		err = buffer_set_params(buf_c, &ppl_data->params->params,
+					BUFFER_UPDATE_FORCE);
+		break;
+	default:
 		/* return 0 if params matches */
 		if (!buffer_params_match(buf_c,
 					 &ppl_data->params->params,
@@ -52,24 +65,8 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				 "pipeline_comp_params_neg(): params conflict with existing active pipeline!");
 			err = -EINVAL;
 		}
-
-		goto out;
 	}
 
-	/*
-	 * Negotiation only happen when the current component has > 1
-	 * source or sink, we are propagating the params to branched
-	 * buffers, and the subsequent component's .params() or .prepare()
-	 * should be responsible for calibrating if needed. For example,
-	 * a component who has different channels input/output buffers
-	 * should explicitly configure the channels of the branched buffers.
-	 */
-	if (calling_buf)
-		err = buffer_set_params(buf_c,
-					&ppl_data->params->params,
-					BUFFER_UPDATE_FORCE);
-
-out:
 	buffer_release(buf_c);
 	return err;
 }
