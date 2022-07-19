@@ -283,7 +283,7 @@ int module_reset(struct processing_module *mod)
 	/* module resets itself to the initial condition after prepare()
 	 * so let's change its state to reflect that.
 	 */
-	md->state = MODULE_IDLE;
+	md->state = MODULE_INITIALIZED;
 
 	return 0;
 }
