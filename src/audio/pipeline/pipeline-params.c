@@ -30,7 +30,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	struct comp_buffer __sparse_cache *buf_c = calling_buf ? buffer_acquire(calling_buf) : NULL;
+	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
 	int err = 0;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
