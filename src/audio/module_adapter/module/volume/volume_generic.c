@@ -71,8 +71,8 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	x = source->r_ptr;
 	y = sink->w_ptr;
 
-	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
-					  SOF_IPC_FRAME_S32_LE, remaining_samples);
+	bsource->consumed += S32_SAMPLES_TO_BYTES(remaining_samples);
+	bsink->size += S32_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {
 		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
@@ -133,8 +133,8 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
-	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
-					  SOF_IPC_FRAME_S32_LE, remaining_samples);
+	bsource->consumed += S32_SAMPLES_TO_BYTES(remaining_samples);
+	bsink->size += S32_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {
 		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
@@ -201,8 +201,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	x = source->r_ptr;
 	y = sink->w_ptr;
 
-	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S16_LE,
-					  SOF_IPC_FRAME_S16_LE, remaining_samples);
+	bsource->consumed += S16_SAMPLES_TO_BYTES(remaining_samples);
+	bsink->size += S16_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {
 		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
