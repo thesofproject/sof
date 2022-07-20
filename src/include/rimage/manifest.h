@@ -13,6 +13,7 @@
 #include <rimage/plat_auth.h>
 
 #define MAN_PAGE_SIZE		4096
+#define MAN_MAX_SIZE_V1_8       (38 * 1024)
 
 /* start offset for modules built using xcc */
 #define DEFAULT_XCC_MOD_OFFSET		0x8
