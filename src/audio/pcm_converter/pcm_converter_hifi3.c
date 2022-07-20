@@ -28,16 +28,6 @@
 #include <xtensa/tie/xt_FP.h>
 #endif
 
-/**
- * \brief Sets buffer to be circular using HiFi3 functions.
- * \param[in,out] buffer Circular buffer.
- */
-static void pcm_converter_setup_circular(const struct audio_stream *source)
-{
-	AE_SETCBEGIN0(source->addr);
-	AE_SETCEND0(source->end_addr);
-}
-
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 
 /**
@@ -50,79 +40,50 @@ static int pcm_convert_s16_to_s24(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int16 *in = audio_stream_read_frag(source, ioffset, sizeof(int16_t));
-	ae_int32 *out = audio_stream_write_frag(sink, ooffset, sizeof(int32_t));
 	ae_int16x4 sample = AE_ZERO16();
-	ae_valign align_out = AE_ZALIGN64();
-	ae_int16x4 *in16x4;
-	ae_int32x2 *out32x2;
-	int i = 0;
+	int nmax, i, n, m, left;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	int32_t left_samples = samples;
+	int16_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int16x4 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int32x2 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L16X4_XC */
-	while (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s16(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 2;
+		left = n & 0x03;
+		inu = AE_LA64_PP(in);
 
-		/* load one 16 bit sample */
-		AE_L16_XC(sample, in, sizeof(ae_int16));
+		for (i = 0; i < m; i++) {
+			/* load four 16 bit samples */
+			AE_LA16X4_IP(sample, inu, in);
+			/* shift right and store four 32 bit samples */
+			AE_SA32X2_IP(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), outu, out);
+			AE_SA32X2_IP(AE_SRAI32(AE_CVT32X2F16_10(sample), 8), outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
+		/* process the left samples that less than 4
+		 * one by one to avoid memory access overrun
+		 */
+		for (i = 0; i < left ; i++) {
+			/* load one 16 bit samples */
+			AE_L16_IP(sample, (ae_int16 *)in, sizeof(ae_int16));
 
-		/* shift right and store one 32 bit sample */
-		AE_S32_L_XC(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), out,
-			    sizeof(ae_int32));
+			/* shift right and store one 32 bit sample */
+			AE_S32_L_IP(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), (ae_int32 *)out,
+				    sizeof(ae_int32));
+		}
 
-		if (++i == samples)
-			return samples;
-	}
-
-	in16x4 = (ae_int16x4 *)in;
-	out32x2 = (ae_int32x2 *)out;
-
-	/* main loop processes 4 samples at a time */
-	while (samples >= 3 && i < samples - 3) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load four 16 bit samples */
-		AE_L16X4_XC(sample, in16x4, sizeof(ae_int16x4));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift right and store four 32 bit samples */
-		AE_SA32X2_IC(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), align_out,
-			     out32x2);
-		AE_SA32X2_IC(AE_SRAI32(AE_CVT32X2F16_10(sample), 8), align_out,
-			     out32x2);
-
-		i += 4;
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out32x2);
-
-	in = (ae_int16 *)in16x4;
-	out = (ae_int32 *)out32x2;
-
-	while (i++ != samples) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load one 16 bit sample */
-		AE_L16_XC(sample, in, sizeof(ae_int16));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift right and store one 32 bit sample */
-		AE_S32_L_XC(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), out,
-			    sizeof(ae_int32));
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink,  out);
+		left_samples -= n;
 	}
 
 	return samples;
@@ -155,100 +116,61 @@ static int pcm_convert_s24_to_s16(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
-						sizeof(int32_t));
-	ae_int16x4 *out = audio_stream_write_frag(sink, ooffset,
-						  sizeof(int16_t));
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int32x2 sample_1 = AE_ZERO32();
 	ae_int32x2 sample_2 = AE_ZERO32();
-	ae_valign align_out = AE_ZALIGN64();
-	int i = 0;
-	int leftover;
+	int nmax, i, n, m, left;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	int32_t left_samples = samples;
+	ae_int32 *src = source->r_ptr;
+	ae_int16 *dst = sink->w_ptr;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int32x2 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int16x4 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L32X2_XC */
-	if (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s32(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s16(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 2;
+		left = n & 0x03;
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			/* load four 32 bit samples */
+			AE_LA32X2_IP(sample_1, inu, in);
+			AE_LA32X2_IP(sample_2, inu, in);
 
-		/* load one 32 bit sample */
-		AE_L32_XC(sample_1, (ae_int32 *)in, sizeof(ae_int32));
+			sample_1 = pcm_shift_s24_to_s16(sample_1);
+			sample_2 = pcm_shift_s24_to_s16(sample_2);
 
-		/* shift and round */
-		sample_1 = pcm_shift_s24_to_s16(sample_1);
-		sample = AE_MOVINT16X4_FROMINT32X2(sample_1);
+			/* store four 16 bit samples */
+			sample = AE_CVT16X4(sample_1, sample_2);
+			AE_SA16X4_IP(sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
+		/* process the left samples that less than 4
+		 * one by one to avoid memory access overrun
+		 */
+		for (i = 0; i < left ; i++) {
+			/* load one 32 bit sample */
+			AE_L32_IP(sample_1, (ae_int32 *)in, sizeof(ae_int32));
 
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
+			/* shift and round */
+			sample_1 = pcm_shift_s24_to_s16(sample_1);
+			sample = AE_MOVINT16X4_FROMINT32X2(sample_1);
 
-		samples--;
+			/* store one 16 bit sample */
+			AE_S16_0_IP(AE_MOVAD16_0(sample), (ae_int16 *)out,
+				    sizeof(ae_int16));
+		}
+
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink, out);
+		left_samples -= n;
 	}
-
-	/* main loop processes 4 samples at a time */
-	while (samples >= 3 && i < samples - 3) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load four 32 bit samples */
-		AE_L32X2_XC(sample_1, in, sizeof(ae_int32x2));
-		AE_L32X2_XC(sample_2, in, sizeof(ae_int32x2));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift and round */
-		sample_1 = pcm_shift_s24_to_s16(sample_1);
-		sample_2 = pcm_shift_s24_to_s16(sample_2);
-
-		/* store four 16 bit samples */
-		sample = AE_CVT16X4(sample_1, sample_2);
-		AE_SA16X4_IC(sample, align_out, out);
-
-		i += 4;
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out);
-
-	leftover = samples - i;
-
-	while (leftover) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load two 32 bit samples */
-		AE_L32X2_XC(sample_1, in, sizeof(ae_int32x2));
-
-		/* shift and round */
-		sample_1 = pcm_shift_s24_to_s16(sample_1);
-		sample = AE_MOVINT16X4_FROMINT32X2(sample_1);
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_2(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
-
-		/* no more samples to process */
-		if (leftover == 1)
-			return samples;
-
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
-
-		leftover -= 2;
-	}
-
 	return samples;
 }
 
@@ -267,79 +189,50 @@ static int pcm_convert_s16_to_s32(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int16 *in = audio_stream_read_frag(source, ioffset,
-					      sizeof(int16_t));
-	ae_int32 *out = audio_stream_write_frag(sink, ooffset,
-						sizeof(int32_t));
+	int16_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
 	ae_int16x4 sample = AE_ZERO16();
-	ae_valign align_out = AE_ZALIGN64();
-	ae_int16x4 *in16x4;
-	ae_int32x2 *out32x2;
-	int i = 0;
+	int nmax, i, n, m, left;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	int32_t left_samples = samples;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int16x4 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int32x2 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L16X4_XC */
-	while (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s16(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 2;
+		left = n & 0x03;
 
-		/* load one 16 bit sample */
-		AE_L16_XC(sample, in, sizeof(ae_int16));
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			/* load four 16 bit samples */
+			AE_LA16X4_IP(sample, inu, in);
+			/* shift right and store four 32 bit samples */
+			AE_SA32X2_IP(AE_CVT32X2F16_32(sample), outu, out);
+			AE_SA32X2_IP(AE_CVT32X2F16_10(sample), outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
+		/* process the left samples that less than 4
+		 * one by one to avoid memory access overrun
+		 */
+		for (i = 0; i < left ; i++) {
+			/* load one 16 bit samples */
+			AE_L16_IP(sample, (ae_int16 *)in, sizeof(ae_int16));
 
-		/* store one 32 bit sample */
-		AE_S32_L_XC(AE_CVT32X2F16_32(sample), out, sizeof(ae_int32));
+			/* store one 32 bit sample */
+			AE_S32_L_IP(AE_CVT32X2F16_32(sample), (ae_int32 *)out, sizeof(ae_int32));
+		}
 
-		if (++i == samples)
-			return samples;
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink, out);
+		left_samples -= n;
 	}
-
-	in16x4 = (ae_int16x4 *)in;
-	out32x2 = (ae_int32x2 *)out;
-
-	/* main loop processes 4 samples at a time */
-	while (samples >= 3 && i < samples - 3) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load four 16 bit samples */
-		AE_L16X4_XC(sample, in16x4, sizeof(ae_int16x4));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* store two 32 bit samples */
-		AE_SA32X2_IC(AE_CVT32X2F16_32(sample), align_out, out32x2);
-		AE_SA32X2_IC(AE_CVT32X2F16_10(sample), align_out, out32x2);
-
-		i += 4;
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out32x2);
-
-	in = (ae_int16 *)in16x4;
-	out = (ae_int32 *)out32x2;
-
-	while (i++ != samples) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load one 16 bit sample */
-		AE_L16_XC(sample, in, sizeof(ae_int16));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* store one 32 bit sample */
-		AE_S32_L_XC(AE_CVT32X2F16_32(sample), out, sizeof(ae_int32));
-	}
-
 	return samples;
 }
 
@@ -354,94 +247,54 @@ static int pcm_convert_s32_to_s16(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
-						sizeof(int32_t));
-	ae_int16x4 *out = audio_stream_write_frag(sink, ooffset,
-						  sizeof(int16_t));
+	int32_t *src = source->r_ptr;
+	int16_t *dst = sink->w_ptr;
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int32x2 sample_1 = AE_ZERO32();
 	ae_int32x2 sample_2 = AE_ZERO32();
-	ae_valign align_out = AE_ZALIGN64();
-	int i = 0;
-	int leftover;
+	int nmax, i, n, m, left;
+	ae_valign outu = AE_ZALIGN64();
+	ae_valign inu = AE_ZALIGN64();
+	int32_t left_samples = samples;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int32x2 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int16x4 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L32X2_XC */
-	if (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s32(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s16(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 2;
+		left = n & 0x3;
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			/* load four 32 bit samples */
+			AE_LA32X2_IP(sample_1, inu, in);
+			AE_LA32X2_IP(sample_2, inu, in);
+			/* shift and round */
+			sample = AE_ROUND16X4F32SSYM(sample_1, sample_2);
+			/* store four 16 bit samples */
+			AE_SA16X4_IP(sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* load one 32 bit sample */
-		AE_L32_XC(sample_1, (ae_int32 *)in, sizeof(ae_int32));
+		/* process the left samples that less than 4
+		 * one by one to avoid memory access overrun
+		 */
+		for (i = 0; i < left ; i++) {
+			/* load one 32 bit samples */
+			AE_L32_IP(sample_1, (ae_int32 *)in, sizeof(ae_int32));
+			/* shift and round */
+			sample = AE_ROUND16X4F32SSYM(sample_1, sample_1);
+			/* store one 16 bit sample */
+			AE_S16_0_IP(AE_MOVAD16_0(sample), (ae_int16 *)out,
+				    sizeof(ae_int16));
+		}
 
-		/* shift and round */
-		sample = AE_ROUND16X4F32SSYM(sample_1, sample_1);
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
-
-		samples--;
-	}
-
-	/* main loop processes 4 samples at a time */
-	while (samples >= 3 && i < samples - 3) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load four 32 bit samples */
-		AE_L32X2_XC(sample_1, in, sizeof(ae_int32x2));
-		AE_L32X2_XC(sample_2, in, sizeof(ae_int32x2));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift and round */
-		sample = AE_ROUND16X4F32SSYM(sample_1, sample_2);
-
-		/* store four 16 bit samples */
-		AE_SA16X4_IC(sample, align_out, out);
-
-		i += 4;
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out);
-
-	leftover = samples - i;
-
-	while (leftover) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load two 32 bit samples */
-		AE_L32X2_XC(sample_1, in, sizeof(ae_int32x2));
-
-		/* shift and round */
-		sample = AE_ROUND16X4F32SSYM(sample_1, sample_1);
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_1(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
-
-		/* no more samples to process */
-		if (leftover == 1)
-			return samples;
-
-		/* store one 16 bit sample */
-		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
-			    sizeof(ae_int16));
-
-		leftover -= 2;
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink, out);
+		left_samples -= n;
 	}
 
 	return samples;
@@ -462,69 +315,43 @@ static int pcm_convert_s24_to_s32(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
-						sizeof(int32_t));
-	ae_int32x2 *out = audio_stream_write_frag(sink, ooffset,
-						  sizeof(int32_t));
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
 	ae_int32x2 sample = AE_ZERO32();
-	ae_valign align_out = AE_ZALIGN64();
-	int i;
+	int nmax, i, n, m;
+	ae_valign outu = AE_ZALIGN64();
+	ae_valign inu = AE_ZALIGN64();
+	int32_t left_samples = samples;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int32x2 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int32x2 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L32X2_XC */
-	if (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s32(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 1;
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			/* load 2 32 bit samples */
+			AE_LA32X2_IP(sample, inu, in);
+			/* shift left and store two 32 bit samples */
+			AE_SA32X2_IP(AE_SLAI32(sample, 8), outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* load one 32 bit sample */
-		AE_L32_XC(sample, (ae_int32 *)in, sizeof(ae_int32));
+		/* process the left 1 sample to avoid memory access overrun */
+		if (n & 0x01) {
+			AE_L32_IP(sample, (ae_int32 *)in, sizeof(ae_int32));
+			AE_S32_L_IP(AE_SLAI32(sample, 8), (ae_int32 *)out,
+				    sizeof(ae_int32));
+		}
 
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift left and store one 32 bit sample */
-		AE_S32_L_XC(AE_SLAI32(sample, 8), (ae_int32 *)out,
-			    sizeof(ae_int32));
-
-		samples--;
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink, out);
+		left_samples -= n;
 	}
-
-	/* main loop processes 2 samples at a time */
-	for (i = 0; i < samples - 1; i += 2) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load two 32 bit samples */
-		AE_L32X2_XC(sample, in, sizeof(ae_int32x2));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift left and store two 32 bit samples */
-		AE_SA32X2_IC(AE_SLAI32(sample, 8), align_out, out);
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out);
-
-	/* no more samples to process */
-	if (i == samples)
-		return samples;
-
-	/* set source as circular buffer */
-	pcm_converter_setup_circular(source);
-
-	/* load one 32 bit sample */
-	AE_L32_XC(sample, (ae_int32 *)in, 0);
-
-	/* set sink as circular buffer */
-	pcm_converter_setup_circular(sink);
-
-	/* shift left and store one 32 bit sample */
-	AE_S32_L_XC(AE_SLAI32(sample, 8), (ae_int32 *)out, 0);
 
 	return samples;
 }
@@ -555,71 +382,45 @@ static int pcm_convert_s32_to_s24(const struct audio_stream __sparse_cache *sour
 				  uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
-						sizeof(int32_t));
-	ae_int32x2 *out = audio_stream_write_frag(sink, ooffset,
-						  sizeof(int32_t));
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
 	ae_int32x2 sample = AE_ZERO32();
-	ae_valign align_out = AE_ZALIGN64();
-	int i;
+	int nmax, i, n, m;
+	ae_valign outu = AE_ZALIGN64();
+	ae_valign inu = AE_ZALIGN64();
+	int32_t left_samples = samples;
 
-	/* nothing to do */
-	if (!samples)
-		return samples;
+	ae_int32x2 *in = audio_stream_wrap(source, src + ioffset);
+	ae_int32x2 *out = audio_stream_wrap(sink, dst + ooffset);
 
-	/* required alignment for AE_L32X2_XC */
-	if (!IS_ALIGNED((uintptr_t)in, 8)) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
+	while (left_samples) {
+		nmax = audio_stream_samples_without_wrap_s32(source, in);
+		n = MIN(left_samples, nmax);
+		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(n, nmax);
+		m = n >> 1;
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			/* load 2 32 bit samples */
+			AE_LA32X2_IP(sample, inu, in);
+			sample = pcm_shift_s32_to_s24(sample);
+			AE_SA32X2_IP(sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
 
-		/* load one 32 bit sample */
-		AE_L32_XC(sample, (ae_int32 *)in, sizeof(ae_int32));
+		/* process the left 1 sample to avoid memory access overrun */
+		if (n & 0x01) {
+			/* load one 32 bit sample */
+			AE_L32_IP(sample, (ae_int32 *)in, sizeof(ae_int32));
+			/* shift right and store one 32 bit sample */
+			sample = pcm_shift_s32_to_s24(sample);
+			AE_S32_L_IP(sample, (ae_int32 *)out, sizeof(ae_int32));
+		}
 
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift right and store one 32 bit sample */
-		sample = pcm_shift_s32_to_s24(sample);
-		AE_S32_L_XC(sample, (ae_int32 *)out, sizeof(ae_int32));
-
-		samples--;
+		in = audio_stream_wrap(source, in);
+		out = audio_stream_wrap(sink, out);
+		left_samples -= n;
 	}
-
-	/* main loop processes 2 samples at a time */
-	for (i = 0; i < samples - 1; i += 2) {
-		/* set source as circular buffer */
-		pcm_converter_setup_circular(source);
-
-		/* load two 32 bit samples */
-		AE_L32X2_XC(sample, in, sizeof(ae_int32x2));
-
-		/* set sink as circular buffer */
-		pcm_converter_setup_circular(sink);
-
-		/* shift right and store two 32 bit samples */
-		sample = pcm_shift_s32_to_s24(sample);
-		AE_SA32X2_IC(sample, align_out, out);
-	}
-
-	/* flush align_out register to memory */
-	AE_SA64POS_FC(align_out, out);
-
-	/* no more samples to process */
-	if (i == samples)
-		return samples;
-
-	/* set source as circular buffer */
-	pcm_converter_setup_circular(source);
-
-	/* load one 32 bit sample */
-	AE_L32_XC(sample, (ae_int32 *)in, 0);
-
-	/* set sink as circular buffer */
-	pcm_converter_setup_circular(sink);
-
-	/* shift right and store one 32 bit sample */
-	sample = pcm_shift_s32_to_s24(sample);
-	AE_S32_L_XC(sample, (ae_int32 *)out, 0);
 
 	return samples;
 }
