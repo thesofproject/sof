@@ -1,0 +1,26 @@
+---
+# This file is used by sof-ci/jenkins (Linux CI) like this:
+#
+# sed -e 's/=sof_zephyr_revision_override=/zephyr_version_to_test/' \
+#        submanifests/sof-ci-jenkins/zephyr-override-template.yml \
+#   > submanifests/50-sof-ci-jenkins-zephyr-override.yml
+#
+# where 'zephyr_version_to_test' is a fetchable git version (branch, tag,
+# complete SHA1,...)
+# You can override this substitution by changing the revision: below.
+#
+# The number prefix '50-' is just an example, you must adjust it if you
+# use other submanifests/*.yml files. West sorts submanifests/*.yml
+# files before reading them, see west's documentation currently hosted
+# on the Zephyr website.
+
+manifest:
+  projects:
+    # override zephyr project in west.yml
+    - name: zephyr
+      url: https://github.com/zephyrproject-rtos/zephyr
+      revision: =sof_zephyr_revision_override=
+      import:
+        # Download only what sof-ci-jenkins uses to save a lot of time
+        name-allowlist:
+          - hal_xtensa
