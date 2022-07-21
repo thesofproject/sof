@@ -33,6 +33,7 @@ extern struct core_context *core_ctx_ptr[CONFIG_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[CONFIG_CORE_COUNT];
 
 static uint32_t active_cores_mask = BIT(PLATFORM_PRIMARY_CORE_ID);
+static SHARED_DATA uint32_t cpu_powering_down[CONFIG_CORE_COUNT];
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
 extern void *shared_vecbase_ptr;
@@ -75,6 +76,8 @@ int arch_cpu_enable_core(int id)
 	struct idc_msg power_up = {
 		IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT, id };
 	int ret;
+
+	cpu_powering_down[id] = 0;
 
 	if (!arch_cpu_is_core_enabled(id)) {
 		/* Turn on stack memory for core */
@@ -136,6 +139,11 @@ int arch_cpu_enabled_cores(void)
 	return active_cores_mask;
 }
 
+int arch_cpu_is_core_powering_down(int id)
+{
+	return cpu_powering_down[id];
+}
+
 void cpu_alloc_core_context(int core)
 {
 	struct core_context *core_ctx;
@@ -182,6 +190,8 @@ void cpu_power_down_core(uint32_t flags)
 		 */
 		platform_pm_runtime_prepare_d0ix_dis(cpu_get_id());
 	} else {
+		cpu_powering_down[cpu_get_id()] = 1;
+
 		idc_free(0);
 
 		schedule_free(0);
