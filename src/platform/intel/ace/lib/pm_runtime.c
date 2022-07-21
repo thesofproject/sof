@@ -453,8 +453,8 @@ static inline void ace_pm_runtime_dis_dsp_pg(uint32_t index)
 	ARG_UNUSED(index);
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	/* Disable power gating when preventing */
-	MTL_PWRBOOT.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
-		MTL_PWRBOOT_BCTL_WAITIPCG | MTL_PWRBOOT_BCTL_WAITIPPG;
+	DFDSPBRCP.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
+		DFDSPBRCP_BCTL_WAITIPCG | DFDSPBRCP_BCTL_WAITIPPG;
 }
 
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
