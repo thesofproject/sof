@@ -96,7 +96,6 @@ int cpu_enable_core(int id)
 
 void cpu_disable_core(int id)
 {
-	uint64_t timeout = 0;
 
 	if (!arch_cpu_active(id)) {
 		tr_warn(&zephyr_tr, "core %d is already disabled", id);
@@ -116,7 +115,8 @@ void cpu_disable_core(int id)
 	if (cpu_is_primary(id))
 		return;
 
-	timeout = k_cycle_get_64() + k_ms_to_cyc_ceil64(CONFIG_SECONDARY_CORE_DISABLING_TIMEOUT);
+	uint64_t timeout = k_cycle_get_64() +
+		k_ms_to_cyc_ceil64(CONFIG_SECONDARY_CORE_DISABLING_TIMEOUT);
 
 	/* Waiting for secondary core to enter idle state */
 	while (arch_cpu_active(id) && (k_cycle_get_64() < timeout))
