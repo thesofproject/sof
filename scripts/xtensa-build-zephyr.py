@@ -17,6 +17,7 @@ import os
 import warnings
 # anytree module is defined in Zephyr build requirements
 from anytree import AnyNode, RenderTree
+from distutils.util import strtobool
 
 # Constant value resolves SOF_TOP directory as: "this script directory/.."
 SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
@@ -206,6 +207,11 @@ Default key type subdirectory is \"community\".""")
 			    help="""Use an output subdirectory for each platform.
 Otherwise, all firmware files are installed in the same staging directory by default.""")
 
+	parser.add_argument("--no-interactive", default=False, action="store_true",
+			    help="""Run script in non-interactive mode when user input can not be provided.
+This should be used with programmatic script invocations (eg. Continuous Integration).
+				""")
+
 	args = parser.parse_args()
 
 	if args.all:
@@ -272,11 +278,43 @@ def check_west_installation():
 			"https://docs.zephyrproject.org/latest/getting_started/index.html")
 	print(f"Found west: {west_path}")
 
+def west_reinitialize(west_root_dir: pathlib.Path, west_manifest_path: pathlib.Path):
+	"""[summary] Performs west reinitialization to SOF manifest file asking user for permission.
+	Prints error message if script is running in non-interactive mode.
+
+	:param west_root_dir: directory where is initialized.
+	:type west_root_dir: pathlib.Path
+	:param west_manifest_path: manifest file to which west is initialized.
+	:type west_manifest_path: pathlib.Path
+	:raises RuntimeError: Raised when west is initialized to wrong manifest file
+	(not SOFs manifest) and script is running in non-interactive mode.
+	"""
+	global west_top
+	message = "West is initialized to manifest other than SOFs!\n"
+	message +=  f"Initialized to manifest: {west_manifest_path}." + "\n"
+	dot_west_directory  = pathlib.Path(west_root_dir.resolve(), ".west")
+	if args.no_interactive:
+		message += f"Try deleting {dot_west_directory } directory and rerun this script."
+		raise RuntimeError(message)
+	question = message + "Reinitialize west to SOF manifest? [Y/n] "
+	print(f"{question}")
+	while True:
+		try:
+			reinitialize_answer = strtobool(input().lower())
+			break
+		except ValueError:
+			sys.stdout.write('Please respond with \'Y\' or \'n\'.\n')
+	if not reinitialize_answer:
+		print("Can not proceed. Reinitialize your west manifest to SOF and rerun this script.")
+		exit(-1)
+	shutil.rmtree(str(dot_west_directory ), ignore_errors=True)
+	execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
+
 def find_west_workspace():
 	"""[summary] Validates whether west workspace had been initialized and points to SOF manifest.
 
 	:return: [description] Returns west topdir and path to west manifest west.yml, otherwise None, None.
-	:rtype: [type] bool, pathlib.Path
+	:rtype: [type] pathlib.Path, pathlib.Path
 	"""
 	global west_top, SOF_TOP
 	west_manifest_path = pathlib.Path(SOF_TOP, "west.yml")
@@ -291,20 +329,9 @@ def find_west_workspace():
 	manifest_file_result = execute_command(["west", "config", "manifest.file"], capture_output=True,
 		cwd=west_top, timeout=10, check=True)
 	returned_manifest_path = pathlib.Path(west_manifest_dir, manifest_file_result.stdout.decode().strip('\n'))
-	west_workspace_dir = pathlib.Path(west_root_dir, ".west")
 	if str(returned_manifest_path) != str(west_manifest_path):
-		message = "West is initialized to manifest other than SOFs!\n"
-		message += f"Initialized to manifest: {returned_manifest_path}." + "\n"
-		message += f"Try removing {west_workspace_dir} directory and rerun this script."
-		raise RuntimeError(message)
-	return west_workspace_dir, west_manifest_path
-	for path in paths:
-		if path.is_dir():
-			result = execute_command(["west", "topdir"], capture_output=True,
-						 text=True, check=False, cwd=path)
-		if result.returncode == 0:
-			return pathlib.Path(result.stdout.rstrip(os.linesep))
-	return None
+		west_reinitialize(west_root_dir, returned_manifest_path)
+	return west_root_dir, west_manifest_path
 
 def create_zephyr_directory():
 	global west_top
@@ -342,17 +369,6 @@ def create_zephyr_sof_symlink():
 			"see: https://docs.microsoft.com/en-us/windows/security/threat-protection/"
 			"security-policy-settings/create-symbolic-links")
 		raise
-
-def west_init():
-	"""[summary] Performs west initialization.
-	"""
-	global west_top
-	west_workspace_dir, west_manifest_path = find_west_workspace()
-	if not west_workspace_dir:
-		execute_command(["west", "init", "-l", str(SOF_TOP)], check=True, cwd=west_top)
-		return
-	print(f"West workspace: {west_workspace_dir}")
-	print(f"West manifest path: {west_manifest_path}")
 
 def west_update():
 	"""[summary] CLones all west manifest projects to specified revisions"""
@@ -470,7 +486,13 @@ def build_platforms():
 			build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
 
 		# Build
-		execute_command(build_cmd, cwd=west_top)
+		try:
+			execute_command(build_cmd, cwd=west_top)
+		except:
+			zephyr_path = pathlib.Path(west_top, "zephyr")
+			if not os.path.exists(zephyr_path):
+				print("Zephyr project not found. Please run this script with -c flag or clone manually.")
+				exit(-1)
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
 		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
@@ -559,7 +581,13 @@ def main():
 	else:
 		print("Building platforms: {}".format(" ".join(args.platforms)))
 
-	west_init()
+	west_root_dir, west_manifest_path = find_west_workspace()
+	if not west_root_dir:
+		execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
+	else:
+		print(f"West workspace: {west_root_dir}")
+		print(f"West manifest path: {west_manifest_path}")
+
 	if args.update:
 		# Initialize zephyr project with west
 		west_update()
