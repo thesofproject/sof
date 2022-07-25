@@ -24,6 +24,7 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	int i;
 	int n;
 	int nmax;
+	int m;
 	ae_int32x2 sample;
 	ae_valign uu = AE_ZALIGN64();
 	ae_valign su = AE_ZALIGN64();
@@ -45,12 +46,18 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 			out = (ae_int32x2 *)dst;
 			uu = AE_LA64_PP(in);
 			n = MIN(remaining_samples, nmax);
-			for (i = 0; i < n; i += 2) {
+			m = n >> 1;
+			for (i = 0; i < m; i++) {
 				AE_LA32X2_IP(sample, uu, in);
 				sample = AE_SRAA32(sample, cd->attenuation);
 				AE_SA32X2_IP(sample, su, out);
 			}
 			AE_SA64POS_FP(su, out);
+			if (n & 0x01) {
+				AE_L32_IP(sample, (ae_int32 *)in, sizeof(ae_int32));
+				sample = AE_SRAA32(sample, cd->attenuation);
+				AE_S32_L_IP(sample, (ae_int32 *)out, sizeof(ae_int32));
+			}
 			remaining_samples -= n;
 			dst = audio_stream_wrap(&sink->stream, dst + n);
 		}
