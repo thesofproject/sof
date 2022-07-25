@@ -707,6 +707,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_SRC
 	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
 	${SOF_AUDIO_PATH}/src/src_generic.c
 	${SOF_AUDIO_PATH}/src/src_hifi3.c
+	${SOF_AUDIO_PATH}/src/src_hifi4.c
 	${SOF_AUDIO_PATH}/src/src.c
 )
 
