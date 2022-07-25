@@ -17,6 +17,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* sof/math/numbers.h doesn't define MIN when used with zephyr */
+#ifdef __ZEPHYR__
+#include <zephyr/sys/util.h>
+#endif /* __ZEPHYR__ */
+
 /* HiFi4 has
  * 16x 64 bit registers in register file AE_DR
  */
