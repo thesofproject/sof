@@ -136,6 +136,7 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	is_blob = common_config->is_config_blob;
 	cfg.format = sof_cfg->format;
 	cfg.options = sof_cfg->flags;
+	cfg.rate = common_config->sampling_frequency;
 
 	switch (common_config->type) {
 	case SOF_DAI_INTEL_SSP:
