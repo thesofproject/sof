@@ -452,13 +452,13 @@ config COMP_MODULE_ADAPTER
 	  "src\include\sof\audio\module_adapter\interfaces.h". It is possible to link several
 	  different codecs and use them in parallel.
 
+rsource "module_adapter/Kconfig"
+
 config COMP_LEGACY_INTERFACE
 	bool "Use legacy component driver interface"
 	default n
 	help
 	  Use the legacy component driver interface for component instead of the module adapter.
-
-rsource "module_adapter/Kconfig"
 
 config COMP_IGO_NR
 	bool "IGO NR component"
