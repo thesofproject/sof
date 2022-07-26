@@ -48,6 +48,7 @@ fprintf(fh, ' * Copyright(c) %s Intel Corporation. All rights reserved.\n', y);
 fprintf(fh, ' *\n');
 fprintf(fh, ' */\n');
 fprintf(fh, '\n');
+fprintf(fh, '/** \\cond GENERATED_BY_TOOLS_TUNE_SRC */\n\n');
 fprintf(fh, '#ifndef %s\n', def);
 fprintf(fh, '#define %s\n', def);
 fprintf(fh, '\n');
@@ -179,7 +180,8 @@ for n = 1:2
 end
 
 fprintf(fh, '#endif /* %s */\n', def);
-
+fprintf(fh, '\n');
+fprintf(fh, '/** \\endcond */\n');
 fclose(fh);
 
 end
