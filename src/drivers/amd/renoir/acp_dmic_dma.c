@@ -335,8 +335,7 @@ static int acp_dmic_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cm
 		status = acp_intr_stat.bits.wov_dma_stat;
 		return status;
 	case DMA_IRQ_CLEAR:
-		acp_intr_stat = (acp_dsp0_intr_stat_t)
-				(dma_reg_read(channel->dma, ACP_DSP0_INTR_STAT));
+		acp_intr_stat.u32all = 0;
 		acp_intr_stat.bits.wov_dma_stat = 1;
 		status = acp_intr_stat.u32all;
 		dma_reg_write(channel->dma, ACP_DSP0_INTR_STAT, status);
