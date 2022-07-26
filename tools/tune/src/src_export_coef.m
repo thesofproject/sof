@@ -46,6 +46,7 @@ else
 	fprintf(fh, ' *\n');
 	fprintf(fh, ' */\n');
 	fprintf(fh, '\n');
+	fprintf(fh, '/** \\cond GENERATED_BY_TOOLS_TUNE_SRC */\n');
 	fprintf(fh, '#include <sof/audio/src/src.h>\n');
 	fprintf(fh, '#include <stdint.h>\n');
 	fprintf(fh, '\n');
@@ -89,7 +90,7 @@ else
                 otherwise
                         error('Unknown type %s !!!', ctype);
         end
-        %fprintf(fh, '\n');
+        fprintf(fh, '/** \\endcond */\n');
         fclose(fh);
         success = 1;
 end
