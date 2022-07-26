@@ -26,6 +26,13 @@ default_rimage_key = pathlib.Path("modules", "audio", "sof", "keys", "otc_privat
 
 sof_version = None
 
+# Note this "hidden escape" does NOT allow `west init` or `west update`
+# with "west2.yml", it only allows `west build` with a different
+# filename.
+ALLOW_WEST_BUILD_DIFFERENT_MANIFEST_FILENAME = os.path.exists(
+	SOF_TOP / "allow_different_manifest_filename"
+)
+
 if platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
 elif platform.system() == "Linux":
@@ -294,8 +301,12 @@ def west_reinitialize(west_root_dir: pathlib.Path, west_manifest_path: pathlib.P
 	message +=  f"Initialized to manifest: {west_manifest_path}." + "\n"
 	dot_west_directory  = pathlib.Path(west_root_dir.resolve(), ".west")
 	if args.no_interactive:
-		message += f"Try deleting {dot_west_directory } directory and rerun this script."
-		raise RuntimeError(message)
+		if ALLOW_WEST_BUILD_DIFFERENT_MANIFEST_FILENAME:
+			warnings.warn(message)
+			warnings.warn("Trying to build with unknown manifest, don't report bugs!")
+			return
+		else:
+			raise RuntimeError(message)
 	question = message + "Reinitialize west to SOF manifest? [Y/n] "
 	print(f"{question}")
 	while True:
@@ -305,11 +316,18 @@ def west_reinitialize(west_root_dir: pathlib.Path, west_manifest_path: pathlib.P
 		except ValueError:
 			sys.stdout.write('Please respond with \'Y\' or \'n\'.\n')
 	if not reinitialize_answer:
-		print("Can not proceed. Reinitialize your west manifest to SOF and rerun this script.")
-		exit(-1)
+		if ALLOW_WEST_BUILD_DIFFERENT_MANIFEST_FILENAME:
+			warnings.warn(message)
+			warnings.warn("Trying to build with unknown manifest, don't report bugs!")
+			return
+		else:
+			print("Can not proceed. Reinitialize your west manifest to SOF and rerun this script.")
+			exit(-1)
+	# User agreed
 	shutil.rmtree(str(dot_west_directory ), ignore_errors=True)
 	execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
 
+DEFAULT_MANIFEST = pathlib.Path(SOF_TOP, "west.yml")
 def find_west_workspace():
 	"""[summary] Validates whether west workspace had been initialized and points to SOF manifest.
 
@@ -317,7 +335,6 @@ def find_west_workspace():
 	:rtype: [type] pathlib.Path, pathlib.Path
 	"""
 	global west_top, SOF_TOP
-	west_manifest_path = pathlib.Path(SOF_TOP, "west.yml")
 	result_rootdir = execute_command(["west", "topdir"], capture_output=True, cwd=west_top,
 		timeout=10, check=False)
 	if result_rootdir.returncode != 0:
@@ -329,9 +346,7 @@ def find_west_workspace():
 	manifest_file_result = execute_command(["west", "config", "manifest.file"], capture_output=True,
 		cwd=west_top, timeout=10, check=True)
 	returned_manifest_path = pathlib.Path(west_manifest_dir, manifest_file_result.stdout.decode().strip('\n'))
-	if str(returned_manifest_path) != str(west_manifest_path):
-		west_reinitialize(west_root_dir, returned_manifest_path)
-	return west_root_dir, west_manifest_path
+	return west_root_dir, returned_manifest_path
 
 def create_zephyr_directory():
 	global west_top
@@ -584,9 +599,13 @@ def main():
 	west_root_dir, west_manifest_path = find_west_workspace()
 	if not west_root_dir:
 		execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
-	else:
-		print(f"West workspace: {west_root_dir}")
-		print(f"West manifest path: {west_manifest_path}")
+		west_root_dir, west_manifest_path = find_west_workspace()
+	elif west_manifest_path != DEFAULT_MANIFEST:
+		west_reinitialize(west_root_dir, west_manifest_path)
+		west_root_dir, west_manifest_path = find_west_workspace()
+
+	print(f"West workspace: {west_root_dir}")
+	print(f"West manifest path: {west_manifest_path}")
 
 	if args.update:
 		# Initialize zephyr project with west
