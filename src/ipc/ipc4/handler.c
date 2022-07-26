@@ -393,19 +393,32 @@ static int ipc_wait_for_compound_msg(void)
 static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 {
 	struct ipc_comp_dev *icd;
-	struct comp_dev *dai;
+	struct ipc_comp_dev *pipe;
+	struct comp_dev *dir_src = NULL;
 	struct list_item *clist;
 	struct ipc *ipc;
 	uint32_t i;
 
 	ipc = ipc_get();
 
-	/* only dai has direction based on gateway type */
-	dai = pipeline_get_dai_comp(ppl_id[0]);
-	/* skip host copier to host copier case */
-	if (!dai) {
-		tr_info(&ipc_tr, "no dai is found");
-		return 0;
+	for (i = 0; i < count; i++) {
+		pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
+		if (!pipe) {
+			tr_info(&ipc_tr, "ppl_id %u: no pipeline is found", ppl_id[i]);
+			continue;
+		}
+
+		if (pipe->pipeline->source_comp->direction_set) {
+			dir_src = pipe->pipeline->source_comp;
+			break;
+		} else if (pipe->pipeline->sink_comp->direction_set) {
+			dir_src = pipe->pipeline->sink_comp;
+			break;
+		}
+	}
+	if (!dir_src) {
+		tr_err(&ipc_tr, "no direction source in pipeline");
+		return IPC4_INVALID_RESOURCE_STATE;
 	}
 
 	/* set direction to the component in the pipeline array */
@@ -427,7 +440,7 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 				if (dev->direction_set)
 					break;
 
-				icd->cd->direction = dai->direction;
+				icd->cd->direction = dir_src->direction;
 				break;
 			}
 		}
