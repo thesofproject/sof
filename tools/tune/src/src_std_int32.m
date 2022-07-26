@@ -51,5 +51,6 @@ cfg.ctype = 'int32';
 cfg.profile = 'std';
 cfg.quality = 1.0;
 cfg.speed = 0;
+cfg.gain = -1; % Make gain -1 dB
 
 src_generate(fs1, fs2, fs_matrix, cfg);
