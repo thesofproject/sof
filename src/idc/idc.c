@@ -92,14 +92,14 @@ int idc_msg_status_get(uint32_t core)
  */
 int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 {
-	uint64_t deadline = k_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
+	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
 
 	while (!cond(target_core)) {
 
 		/* spin here so other core can access IO and timers freely */
 		idelay(8192);
 
-		if (deadline < k_cycle_get_64())
+		if (deadline < sof_cycle_get_64())
 			break;
 	}
 

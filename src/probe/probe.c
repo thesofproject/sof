@@ -613,7 +613,7 @@ static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
 	uint32_t crc;
 
 	header = &_probe->header;
-	timestamp = k_cycle_get_64();
+	timestamp = sof_cycle_get_64();
 
 	header->sync_word = PROBE_EXTRACT_SYNC_WORD;
 	header->buffer_id = buffer->id;

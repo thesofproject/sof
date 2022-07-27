@@ -236,7 +236,7 @@ static int edma_status(struct dma_chan_data *channel,
 	 */
 	status->r_pos = dma_chan_reg_read(channel, EDMA_TCD_SADDR);
 	status->w_pos = dma_chan_reg_read(channel, EDMA_TCD_DADDR);
-	status->timestamp = k_cycle_get_64();
+	status->timestamp = sof_cycle_get_64();
 	return 0;
 }
 

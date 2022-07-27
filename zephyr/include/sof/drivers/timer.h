@@ -14,8 +14,16 @@
 struct comp_dev;
 struct sof_ipc_stream_posn;
 
-#define k_cycle_get_64_safe()		k_cycle_get_64()
-#define k_cycle_get_64_atomic()		k_cycle_get_64()
+static inline uint64_t sof_cycle_get_64(void)
+{
+	if (IS_ENABLED(CONFIG_TIMER_HAS_64BIT_CYCLE_COUNTER))
+		return k_cycle_get_64();
+	else
+		return k_ticks_to_cyc_floor64(k_uptime_ticks());
+}
+
+#define sof_cycle_get_64_safe()		sof_cycle_get_64()
+#define sof_cycle_get_64_atomic()	sof_cycle_get_64()
 #define platform_timer_stop(x)
 
 /* get timestamp for host stream DMA position */

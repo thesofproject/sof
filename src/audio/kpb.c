@@ -890,7 +890,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
-	timeout = k_cycle_get_64() + k_ms_to_cyc_ceil64(1);
+	timeout = sof_cycle_get_64() + k_ms_to_cyc_ceil64(1);
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
 		/* Reset was requested, it's time to stop buffering and finish
@@ -903,7 +903,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		}
 
 		/* Are we stuck in buffering? */
-		current_time = k_cycle_get_64();
+		current_time = sof_cycle_get_64();
 		if (timeout < current_time) {
 			timeout = k_cyc_to_ms_near64(current_time - timeout);
 			if (timeout <= UINT_MAX)
@@ -1239,7 +1239,7 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	size_t period_copy_start = k_cycle_get_64();
+	size_t period_copy_start = sof_cycle_get_64();
 	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
@@ -1256,7 +1256,7 @@ static enum task_state kpb_draining_task(void *arg)
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
-	draining_time_start = k_cycle_get_64();
+	draining_time_start = sof_cycle_get_64();
 
 	while (drain_req > 0) {
 		/* Have we received reset request? */
@@ -1269,12 +1269,12 @@ static enum task_state kpb_draining_task(void *arg)
 		 * to read the data already provided?
 		 */
 		if (sync_mode_on &&
-		    next_copy_time > k_cycle_get_64()) {
+		    next_copy_time > sof_cycle_get_64()) {
 			period_bytes = 0;
-			period_copy_start = k_cycle_get_64();
+			period_copy_start = sof_cycle_get_64();
 			continue;
 		} else if (next_copy_time == 0) {
-			period_copy_start = k_cycle_get_64();
+			period_copy_start = sof_cycle_get_64();
 		}
 
 		size_to_read = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
@@ -1321,7 +1321,7 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		if (sync_mode_on && period_bytes >= period_bytes_limit) {
-			current_time = k_cycle_get_64();
+			current_time = sof_cycle_get_64();
 			time_taken = current_time - period_copy_start;
 			next_copy_time = current_time + drain_interval -
 					 time_taken;
@@ -1351,7 +1351,7 @@ static enum task_state kpb_draining_task(void *arg)
 	}
 
 out:
-	draining_time_end = k_cycle_get_64();
+	draining_time_end = sof_cycle_get_64();
 
 	buffer_release(sink);
 

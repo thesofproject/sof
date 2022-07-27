@@ -78,11 +78,11 @@ void kwd_nn_detect_test(struct comp_dev *dev,
 				 test_keyword_get_input_byte(dev, 6),
 				 test_keyword_get_input_byte(dev, 7)
 			);
-			time_start = k_cycle_get_64();
+			time_start = sof_cycle_get_64();
 			kwd_nn_preprocess_1s(test_keyword_get_input(dev), preprocessed_data);
 			kwd_nn_process_data(preprocessed_data, confidences);
 			result = kwd_nn_detect_postprocess(confidences);
-			time_stop = k_cycle_get_64();
+			time_stop = sof_cycle_get_64();
 			comp_dbg(dev,
 				 "KWD: kwd_nn_detect_test_copy() inference done in %u ms",
 				 (unsigned int)k_cyc_to_ms_near64(time_stop - time_start));

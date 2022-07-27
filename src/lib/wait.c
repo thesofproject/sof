@@ -60,9 +60,9 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 
 void wait_delay(uint64_t number_of_clks)
 {
-	uint64_t timeout = k_cycle_get_64() + number_of_clks;
+	uint64_t timeout = sof_cycle_get_64() + number_of_clks;
 
-	while (k_cycle_get_64() < timeout)
+	while (sof_cycle_get_64() < timeout)
 		idelay(PLATFORM_DEFAULT_DELAY);
 }
 
