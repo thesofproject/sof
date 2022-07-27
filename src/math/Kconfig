@@ -134,4 +134,13 @@ config MATH_WINDOW
           The currently provided window functions are Blackman, Hamming, Povey, and
           rectangular.
 
+config MATH_MATRIX
+	bool "Matrix functions library"
+	default n
+	help
+	  Select this to build a matrix arithmetic library. Currently it supports
+	  matrix initialization, clear, set values, get values, and a multiply
+	  function for 16 bit fractional format. Multiplication functions exist
+	  for normal matrix multiply and elementwise multiplication.
+
 endmenu
