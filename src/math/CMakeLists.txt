@@ -45,3 +45,7 @@ endif()
 if(CONFIG_MATH_IIR_DF2T)
         add_local_sources(sof iir_df2t_generic.c iir_df2t_hifi3.c iir.c)
 endif()
+
+if(CONFIG_MATH_WINDOW)
+	 add_local_sources(sof window.c)
+endif()
