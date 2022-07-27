@@ -49,3 +49,7 @@ endif()
 if(CONFIG_MATH_WINDOW)
 	 add_local_sources(sof window.c)
 endif()
+
+if(CONFIG_MATH_MATRIX)
+	 add_local_sources(sof matrix.c)
+endif()
