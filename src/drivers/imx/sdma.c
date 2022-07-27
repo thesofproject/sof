@@ -558,7 +558,7 @@ static int sdma_status(struct dma_chan_data *channel,
 	status->flags = 0;
 	status->w_pos = 0;
 	status->r_pos = 0;
-	status->timestamp = k_cycle_get_64();
+	status->timestamp = sof_cycle_get_64();
 
 	bd = (struct sdma_bd *)pdata->ccb->current_bd_paddr;
 

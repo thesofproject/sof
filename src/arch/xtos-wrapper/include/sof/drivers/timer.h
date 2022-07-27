@@ -102,17 +102,17 @@ static inline uint64_t k_cyc_to_us_near64(uint64_t ticks)
 	return ticks / clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 }
 
-static inline uint64_t k_cycle_get_64(void)
+static inline uint64_t sof_cycle_get_64(void)
 {
 	return platform_timer_get(timer_get());
 }
 
-static inline uint64_t k_cycle_get_64_atomic(void)
+static inline uint64_t sof_cycle_get_64_atomic(void)
 {
 	return platform_timer_get_atomic(timer_get());
 }
 
-static inline uint64_t k_cycle_get_64_safe(void)
+static inline uint64_t sof_cycle_get_64_safe(void)
 {
 	return platform_safe_get_time(timer_get());
 }

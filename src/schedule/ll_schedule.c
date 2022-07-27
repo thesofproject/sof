@@ -220,7 +220,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 		tr_dbg(&ll_tr, "task %p %pU being started...", task, task->uid);
 
 #ifdef CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS
-		cycles0 = (uint32_t)k_cycle_get_64();
+		cycles0 = (uint32_t)sof_cycle_get_64();
 #endif
 		task->state = SOF_TASK_STATE_RUNNING;
 
@@ -248,7 +248,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 		k_spin_unlock(&domain->lock, key);
 
 #ifdef CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS
-		cycles1 = (uint32_t)k_cycle_get_64();
+		cycles1 = (uint32_t)sof_cycle_get_64();
 		dsp_load_check(task, cycles0, cycles1);
 #endif
 	}
@@ -299,7 +299,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
 	       core,
-	       (unsigned int)k_cycle_get_64_atomic(),
+	       (unsigned int)sof_cycle_get_64_atomic(),
 	       (unsigned int)domain->next_tick);
 
 	irq_local_disable(flags);
@@ -330,7 +330,7 @@ static void schedule_ll_tasks_run(void *data)
 	key = k_spin_lock(&domain->lock);
 
 	/* reset the new_target_tick for the first core */
-	if (domain->new_target_tick < k_cycle_get_64_atomic())
+	if (domain->new_target_tick < sof_cycle_get_64_atomic())
 		domain->new_target_tick = UINT64_MAX;
 
 	/* update the new_target_tick according to tasks on current core */
@@ -380,7 +380,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	task_start_us = period ? period : start;
 	task_start_ticks = domain->ticks_per_ms * task_start_us / 1000;
-	task_start = task_start_ticks + k_cycle_get_64_atomic();
+	task_start = task_start_ticks + sof_cycle_get_64_atomic();
 
 	if (reference) {
 		task->start = reference->start;
@@ -415,7 +415,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	tr_info(&ll_tr, "new added task->start %u at %u",
 		(unsigned int)task->start,
-		(unsigned int)k_cycle_get_64_atomic());
+		(unsigned int)sof_cycle_get_64_atomic());
 	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
@@ -698,7 +698,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 
 	time = sch->domain->ticks_per_ms * start / 1000;
 
-	time += k_cycle_get_64_atomic();
+	time += sof_cycle_get_64_atomic();
 
 	irq_local_disable(flags);
 
@@ -741,7 +741,7 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
 {
-	uint64_t current = k_cycle_get_64_atomic();
+	uint64_t current = sof_cycle_get_64_atomic();
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t delta_ms;

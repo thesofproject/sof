@@ -75,7 +75,7 @@ static enum task_state validate(void *data)
 	uint64_t current;
 	uint64_t delta;
 
-	current = k_cycle_get_64();
+	current = sof_cycle_get_64();
 	delta = current - sa->last_check;
 
 	perf_cnt_stamp(&sa->pcd, perf_sa_trace, 0 /* ignored */);
@@ -140,7 +140,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	schedule_task(&sof->sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sof->sa->last_check = k_cycle_get_64();
+	sof->sa->last_check = sof_cycle_get_64();
 
 }
 

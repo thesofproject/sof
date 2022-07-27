@@ -678,7 +678,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = k_cycle_get_64() - posn->wallclock;
+	posn->wallclock = sof_cycle_get_64() - posn->wallclock;
 	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
@@ -686,7 +686,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
-	*wallclock = k_cycle_get_64();
+	*wallclock = sof_cycle_get_64();
 }
 
 /*

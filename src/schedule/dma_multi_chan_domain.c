@@ -318,7 +318,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 				/* it's too soon for this task */
 				if (!pipe_task->registrable &&
 				    pipe_task->task.start >
-				    k_cycle_get_64_atomic())
+				    sof_cycle_get_64_atomic())
 					continue;
 			}
 

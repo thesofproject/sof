@@ -48,7 +48,7 @@ struct perf_cnt_data {
 	#ifdef CONFIG_TIMING_FUNCTIONS
 		#define perf_cnt_get_cpu_ts arch_timing_counter_get
 	#else
-		#define perf_cnt_get_cpu_ts k_cycle_get_64
+		#define perf_cnt_get_cpu_ts sof_cycle_get_64
 	#endif	/* CONFIG_TIMING_FUNCTIONS */
 #else
 	#define perf_cnt_get_cpu_ts() timer_get_system(cpu_timer_get())
@@ -56,7 +56,7 @@ struct perf_cnt_data {
 
 /** \brief Initializes timestamps with current timer values. */
 #define perf_cnt_init(pcd) do {						\
-		(pcd)->plat_ts = k_cycle_get_64();			\
+		(pcd)->plat_ts = sof_cycle_get_64();			\
 		(pcd)->cpu_ts = perf_cnt_get_cpu_ts();			\
 	} while (0)
 
@@ -112,7 +112,7 @@ struct perf_cnt_data {
  */
 #define perf_cnt_stamp(pcd, trace_m, arg) do {					\
 		uint32_t plat_ts =						\
-			(uint32_t)k_cycle_get_64();				\
+			(uint32_t)sof_cycle_get_64();				\
 		uint32_t cpu_ts =						\
 			(uint32_t)perf_cnt_get_cpu_ts();			\
 		if ((pcd)->plat_ts) {						\

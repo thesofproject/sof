@@ -452,7 +452,7 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 		return;
 
 	if (dma_domain->channel_changed) {
-		domain->next_tick = k_cycle_get_64_atomic();
+		domain->next_tick = sof_cycle_get_64_atomic();
 
 		dma_domain->channel_changed = false;
 	} else {
@@ -489,7 +489,7 @@ static void dma_single_chan_domain_clear(struct ll_schedule_domain *domain)
 static bool dma_single_chan_domain_is_pending(struct ll_schedule_domain *domain,
 					      struct task *task, struct comp_dev **comp)
 {
-	return task->start <= k_cycle_get_64_atomic();
+	return task->start <= sof_cycle_get_64_atomic();
 }
 
 /**

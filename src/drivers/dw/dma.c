@@ -466,7 +466,7 @@ static int dw_dma_status(struct dma_chan_data *channel,
 	status->state = channel->status;
 	status->r_pos = dma_reg_read(channel->dma, DW_SAR(channel->index));
 	status->w_pos = dma_reg_read(channel->dma, DW_DAR(channel->index));
-	status->timestamp = k_cycle_get_64();
+	status->timestamp = sof_cycle_get_64();
 
 	if (status->ipc_posn_data) {
 		uint32_t *llp = (uint32_t *)status->ipc_posn_data;

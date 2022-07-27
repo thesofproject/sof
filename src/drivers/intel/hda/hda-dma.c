@@ -322,10 +322,10 @@ static inline int hda_dma_is_buffer_empty(struct dma_chan_data *chan)
 
 static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 {
-	uint64_t deadline = k_cycle_get_64() + k_us_to_cyc_ceil64(HDA_DMA_TIMEOUT);
+	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(HDA_DMA_TIMEOUT);
 
 	while (!hda_dma_is_buffer_full(chan)) {
-		if (deadline < k_cycle_get_64()) {
+		if (deadline < sof_cycle_get_64()) {
 			/* safe check in case we've got preempted after read */
 			if (hda_dma_is_buffer_full(chan))
 				return 0;
@@ -343,10 +343,10 @@ static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 
 static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 {
-	uint64_t deadline = k_cycle_get_64() + k_us_to_cyc_ceil64(HDA_DMA_TIMEOUT);
+	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(HDA_DMA_TIMEOUT);
 
 	while (!hda_dma_is_buffer_empty(chan)) {
-		if (deadline < k_cycle_get_64()) {
+		if (deadline < sof_cycle_get_64()) {
 			/* safe check in case we've got preempted after read */
 			if (hda_dma_is_buffer_empty(chan))
 				return 0;
@@ -726,7 +726,7 @@ static int hda_dma_status(struct dma_chan_data *channel,
 	status->state = channel->status;
 	status->r_pos = dma_chan_reg_read(channel, DGBRP);
 	status->w_pos = dma_chan_reg_read(channel, DGBWP);
-	status->timestamp = k_cycle_get_64();
+	status->timestamp = sof_cycle_get_64();
 
 	return 0;
 }
