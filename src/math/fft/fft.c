@@ -5,7 +5,7 @@
 // Author: Amery Song <chao.song@intel.com>
 //	   Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/coefficients/fft/twiddle.h>
+#include <sof/audio/coefficients/fft/twiddle_32.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/common.h>
@@ -109,8 +109,8 @@ void fft_execute(struct fft_plan *plan, bool ifft)
 				index = i * j;
 				top = k + j;
 				bottom = top + n;
-				tmp1.real = twiddle_real[index];
-				tmp1.imag = twiddle_imag[index];
+				tmp1.real = twiddle_real_32[index];
+				tmp1.imag = twiddle_imag_32[index];
 				/* calculate the accumulator: twiddle * bottom */
 				icomplex32_mul(&tmp1, &plan->outb[bottom], &tmp2);
 				tmp1 = plan->outb[top];
