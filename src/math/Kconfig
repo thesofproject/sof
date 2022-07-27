@@ -121,4 +121,17 @@ config MATH_IIR_DF2T
 	  Select this to build IIR (Infinite Impulse Response) filter
 	  or type 2-transposed library.
 
+config MATH_WINDOW
+	bool "Window functions library"
+	default n
+	select CORDIC_FIXED
+	select NATURAL_LOGARITHM_FIXED
+	help
+          Select this to build a library for window functions. The window functions
+          are used to mitigate artefacts (from nature of FFT) to spectra when
+          computing FFT for a finite long chunk of audio. The sample values within
+          the window length need to be multiplied by the weight of coefficient value.
+          The currently provided window functions are Blackman, Hamming, Povey, and
+          rectangular.
+
 endmenu
