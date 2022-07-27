@@ -53,3 +53,7 @@ endif()
 if(CONFIG_MATH_MATRIX)
 	 add_local_sources(sof matrix.c)
 endif()
+
+if(CONFIG_MATH_AUDITORY)
+	 add_subdirectory(auditory)
+endif()

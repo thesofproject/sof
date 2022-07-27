@@ -143,4 +143,39 @@ config MATH_MATRIX
 	  function for 16 bit fractional format. Multiplication functions exist
 	  for normal matrix multiply and elementwise multiplication.
 
+config MATH_AUDITORY
+	bool "Auditory functions library"
+	default n
+	select NATURAL_LOGARITHM_FIXED
+	help
+	  Select this to build a psychoacoustics and auditory system related
+	  functions library. Currently the library provides functions for Mel
+	  frequency scale. Functions are provided to convert between Mel and
+	  Hz, initialize a Mel filterbank and apply Mel filterbank to convert
+	  a linear power spectrum into an auditory power spectrum.
+
+
+menu "Supported Mel filterbank word lengths"
+	visible if MATH_AUDITORY
+
+config MATH_16BIT_MEL_FILTERBANK
+	bool "icomplex16 data support"
+	default n
+	help
+	  This option enables function psy_apply_mel_filterbank_16().
+	  It takes as input an array of icomplex16
+	  struct data from FFT. Output is 16 bit
+	  logarithmic Mel spectrum.
+
+config MATH_32BIT_MEL_FILTERBANK
+	bool "icomplex32 data support"
+	default n
+	help
+	  This option enables function psy_apply_mel_filterbank_32().
+	  It takes as input an array of icomplex32
+	  struct data from FFT. Output is 16 bit
+	  logarithmic Mel spectrum.
+
+endmenu
+
 endmenu
