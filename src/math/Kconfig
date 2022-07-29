@@ -82,6 +82,29 @@ config MATH_FFT
 	  Enable Fast Fourier Transform library, this should not be selected
 	  directly, please select it from other audio components where need it.
 
+menu "Supported FFT word lengths"
+	visible if MATH_FFT
+
+config MATH_16BIT_FFT
+	bool "S16_LE data support"
+	default y
+	help
+	  This option enables support
+	  for 16 bit PCM data. The twiddle
+	  factors data consumes
+	  4096 bytes.
+
+config MATH_32BIT_FFT
+	bool "S32_LE data support"
+	default n
+	help
+	  This option enables support
+	  for 32 bit PCM data. The twiddle
+	  factors data consumes
+	  8192 bytes.
+
+endmenu
+
 config MATH_FIR
 	bool "FIR filter library"
 	default n

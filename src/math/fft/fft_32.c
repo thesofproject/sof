@@ -5,73 +5,24 @@
 // Author: Amery Song <chao.song@intel.com>
 //	   Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/coefficients/fft/twiddle_32.h>
-#include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <sof/lib/alloc.h>
 #include <sof/math/fft.h>
-
-struct fft_plan *fft_plan_new(struct icomplex32 *inb, struct icomplex32 *outb, uint32_t size)
-{
-	struct fft_plan *plan;
-	int lim = 1;
-	int len = 0;
-	int i;
-
-	if (!inb || !outb)
-		return NULL;
-
-	plan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct fft_plan));
-	if (!plan)
-		return NULL;
-
-	/* calculate the exponent of 2 */
-	while (lim < size) {
-		lim <<= 1;
-		len++;
-	}
-
-	plan->size = lim;
-	plan->len = len;
-
-	plan->bit_reverse_idx = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					plan->size * sizeof(uint16_t));
-	if (!plan->bit_reverse_idx) {
-		rfree(plan);
-		return NULL;
-	}
-
-	/* set up the bit reverse index */
-	for (i = 1; i < plan->size; ++i)
-		plan->bit_reverse_idx[i] = (plan->bit_reverse_idx[i >> 1] >> 1) |
-					   ((i & 1) << (len - 1));
-
-	plan->inb = inb;
-	plan->outb = outb;
-
-	return plan;
-}
-
-void fft_plan_free(struct fft_plan *plan)
-{
-	if (!plan)
-		return;
-
-	rfree(plan->bit_reverse_idx);
-	rfree(plan);
-}
+#include <sof/audio/coefficients/fft/twiddle_32.h>
 
 /**
- * \brief Execute the Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
+ * \brief Execute the 32-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
  *	  For the configured fft_pan.
  * \param[in] plan - pointer to fft_plan which will be executed.
  * \param[in] ifft - set to 1 for IFFT and 0 for FFT.
  */
-void fft_execute(struct fft_plan *plan, bool ifft)
+void fft_execute_32(struct fft_plan *plan, bool ifft)
 {
 	struct icomplex32 tmp1;
 	struct icomplex32 tmp2;
+	struct icomplex32 *inb = plan->inb32;
+	struct icomplex32 *outb = plan->outb32;
 	int depth;
 	int top;
 	int bottom;
@@ -82,19 +33,18 @@ void fft_execute(struct fft_plan *plan, bool ifft)
 	int m;
 	int n;
 
-	if (!plan || !plan->bit_reverse_idx)
+	if (!plan || !plan->bit_reverse_idx || !inb || !outb)
 		return;
 
 	/* convert to complex conjugate for ifft */
 	if (ifft) {
 		for (i = 0; i < plan->size; i++)
-			icomplex_conj(&plan->inb[i]);
+			icomplex32_conj(&inb[i]);
 	}
 
 	/* step 1: re-arrange input in bit reverse order, and shrink the level to avoid overflow */
 	for (i = 1; i < plan->size; ++i)
-		icomplex_shift(&plan->inb[i], (-1) * plan->len,
-			       &plan->outb[plan->bit_reverse_idx[i]]);
+		icomplex32_shift(&inb[i], -(plan->len), &outb[plan->bit_reverse_idx[i]]);
 
 	/* step 2: loop to do FFT transform in smaller size */
 	for (depth = 1; depth <= plan->len; ++depth) {
@@ -112,12 +62,12 @@ void fft_execute(struct fft_plan *plan, bool ifft)
 				tmp1.real = twiddle_real_32[index];
 				tmp1.imag = twiddle_imag_32[index];
 				/* calculate the accumulator: twiddle * bottom */
-				icomplex32_mul(&tmp1, &plan->outb[bottom], &tmp2);
-				tmp1 = plan->outb[top];
+				icomplex32_mul(&tmp1, &outb[bottom], &tmp2);
+				tmp1 = outb[top];
 				/* calculate the top output: top = top + accumulate */
-				icomplex32_add(&tmp1, &tmp2, &plan->outb[top]);
+				icomplex32_add(&tmp1, &tmp2, &outb[top]);
 				/* calculate the bottom output: bottom = top - accumulate */
-				icomplex32_sub(&tmp1, &tmp2, &plan->outb[bottom]);
+				icomplex32_sub(&tmp1, &tmp2, &outb[bottom]);
 			}
 		}
 	}
@@ -130,6 +80,6 @@ void fft_execute(struct fft_plan *plan, bool ifft)
 		 * the shrink we did in the FFT transform.
 		 */
 		for (i = 0; i < plan->size; i++)
-			icomplex_shift(&plan->outb[i], plan->len, &plan->outb[i]);
+			icomplex32_shift(&outb[i], plan->len, &outb[i]);
 	}
 }
