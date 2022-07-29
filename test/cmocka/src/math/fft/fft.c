@@ -54,7 +54,7 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size);
+	plan = fft_plan_new(inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -64,7 +64,7 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 	}
 
 	/* perform a single FFT transform */
-	fft_execute(plan, false);
+	fft_execute_32(plan, false);
 
 	for (i = 0; i < size; i++) {
 		*((int32_t *)dst->stream.addr + 2 * i) = outb[i].real;
@@ -109,7 +109,7 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size);
+	plan = fft_plan_new(inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -119,7 +119,7 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 	}
 
 	/* perform a single IFFT transform */
-	fft_execute(plan, true);
+	fft_execute_32(plan, true);
 
 	for (i = 0; i < size; i++) {
 		*((int32_t *)dst->stream.addr + 2 * i) = outb[i].real;
@@ -167,7 +167,7 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size);
+	plan = fft_plan_new(inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -178,7 +178,7 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 	}
 
 	/* perform a single FFT transform */
-	fft_execute(plan, false);
+	fft_execute_32(plan, false);
 
 	/* calculate the outputs */
 	*((int32_t *)dst1->stream.addr) = outb[0].real;
