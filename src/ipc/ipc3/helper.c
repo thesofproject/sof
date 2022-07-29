@@ -561,11 +561,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 				      struct ipc_comp_dev *buffer)
 {
-
-	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core, false);
-
-	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", buffer->id,
+	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d -> connect", buffer->id,
 	       comp->id);
 
 	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
@@ -575,10 +571,7 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 				      struct ipc_comp_dev *comp)
 {
-	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core, false);
-
-	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", comp->id,
+	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d -> connect", comp->id,
 	       buffer->id);
 
 	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
