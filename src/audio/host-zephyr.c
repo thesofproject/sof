@@ -551,6 +551,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 			      uint32_t buffer_bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
 	int err;
@@ -573,9 +574,11 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 		elem_array = &hd->config.elem_array;
 	}
 
+	dma_buf_c = buffer_acquire(hd->dma_buffer);
 	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
 			   buffer_bytes,
-			   (uintptr_t)(hd->dma_buffer->stream.addr), 0);
+			   (uintptr_t)(dma_buf_c->stream.addr), 0);
+	buffer_release(dma_buf_c);
 	if (err < 0) {
 		comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");
 		return err;
