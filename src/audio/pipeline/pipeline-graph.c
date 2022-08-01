@@ -423,29 +423,29 @@ int pipeline_for_each_comp(struct comp_dev *current,
 }
 
 /* visit connected pipeline to find the dai comp */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id)
+struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
 {
-	struct ipc_comp_dev *sink;
+	struct ipc_comp_dev *crt;
 	struct ipc *ipc = ipc_get();
 
-	sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
-	while (sink) {
+	crt = ipc_get_ppl_comp(ipc, pipeline_id, dir);
+	while (crt) {
 		struct comp_buffer *buffer;
 		struct comp_dev *comp;
+		struct list_item *blist = comp_buffer_list(crt->cd, dir);
 
-		/* dai is found */
-		if (list_is_empty(&sink->cd->bsink_list))
-			return sink->cd;
+		/* if buffer list is empty then we have found a DAI */
+		if (list_is_empty(blist))
+			return crt->cd;
 
-		buffer = buffer_from_list(comp_buffer_list(sink->cd, PPL_DIR_DOWNSTREAM)->next,
-					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
-		comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+		buffer = buffer_from_list(blist->next, struct comp_buffer, dir);
+		comp = buffer_get_comp(buffer, dir);
 
 		/* buffer_comp is in another pipeline and it is not complete */
 		if (!comp->pipeline)
 			return NULL;
 
-		sink = ipc_get_ppl_sink_comp(ipc, comp->pipeline->pipeline_id);
+		crt = ipc_get_ppl_comp(ipc, comp->pipeline->pipeline_id, dir);
 	}
 
 	return NULL;
