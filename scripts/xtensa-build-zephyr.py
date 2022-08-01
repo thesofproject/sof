@@ -17,6 +17,10 @@ import os
 import warnings
 # anytree module is defined in Zephyr build requirements
 from anytree import AnyNode, RenderTree
+from packaging import version
+
+# Version of this script matching Major.Minor.Patch style.
+VERSION = version.Version("2.0.0")
 
 # Constant value resolves SOF_TOP directory as: "this script directory/.."
 SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
@@ -210,6 +214,8 @@ Otherwise, all firmware files are installed in the same staging directory by def
 			    help="""Run script in non-interactive mode when user input can not be provided.
 This should be used with programmatic script invocations (eg. Continuous Integration).
 				""")
+	parser.add_argument("--version", required=False, action="store_true",
+			    help="Prints version of this script.")
 
 	args = parser.parse_args()
 
@@ -572,6 +578,9 @@ def build_platforms():
 
 def main():
 	parse_args()
+	if args.version:
+		print(VERSION)
+		sys.exit(0)
 	check_west_installation()
 	if len(args.platforms) == 0:
 		print("No platform build requested")
