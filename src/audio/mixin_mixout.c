@@ -23,6 +23,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
+#include <ipc4/mixin_mixout.h>
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -42,9 +43,8 @@ DECLARE_SOF_RT_UUID("mix_out", mixout_uuid, 0x3c56505a, 0x24d7, 0x418f,
 		    0xbd, 0xdc, 0xc1, 0xf5, 0xa3, 0xac, 0x2a, 0xe0);
 DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 
-#ifndef MIXOUT_MAX_SOURCES
-	#define MIXOUT_MAX_SOURCES PLATFORM_MAX_STREAMS
-#endif
+#define MIXIN_MAX_SINKS IPC4_MIXIN_MODULE_MAX_OUTPUT_QUEUES
+#define MIXOUT_MAX_SOURCES IPC4_MIXOUT_MODULE_MAX_INPUT_QUEUES
 
 /*
  * Unfortunately, if we have to support a topology with a single mixin
@@ -112,7 +112,10 @@ struct mixin_data {
 	struct ipc4_base_module_cfg base_cfg;
 	void (*mix_func)(struct audio_stream __sparse_cache *sink, uint32_t start,
 			 uint32_t mixed_bytes, const struct audio_stream __sparse_cache *source,
-			 uint32_t size);
+			 uint32_t size, uint16_t gain);
+
+	/* Gain as described in struct ipc4_mixer_mode_sink_config */
+	uint16_t gain[MIXIN_MAX_SINKS];
 };
 
 /* mixout component private data */
@@ -130,6 +133,7 @@ static struct comp_dev *mixin_new(const struct comp_driver *drv,
 {
 	struct comp_dev *dev;
 	struct mixin_data *md;
+	int i;
 	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 
 	comp_cl_dbg(&comp_mixin, "mixin_new()");
@@ -147,6 +151,10 @@ static struct comp_dev *mixin_new(const struct comp_driver *drv,
 	}
 
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
+
+	for (i = 0; i < MIXIN_MAX_SINKS; i++)
+		md->gain[i] = IPC4_MIXIN_UNITY_GAIN;
+
 	comp_set_drvdata(dev, md);
 
 	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
@@ -262,11 +270,10 @@ static void audio_stream_bytes_copy(struct audio_stream __sparse_cache *dst_stre
 
 #if CONFIG_FORMAT_S16LE
 static void mix_s16(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size)
+		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
 {
 	int16_t *dest, *src;
-	uint32_t bytes_to_mix;
-	int bytes_processed;
+	uint32_t bytes_to_mix, bytes_to_copy;
 	int i, n;
 
 	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
@@ -274,74 +281,60 @@ static void mix_s16(struct audio_stream __sparse_cache *sink, uint32_t start, ui
 
 	assert(mixed_bytes >= start);
 	bytes_to_mix = MIN(mixed_bytes - start, size);
+	bytes_to_copy = size - bytes_to_mix;
 
-	bytes_processed = 0;
-
-	while (bytes_processed < bytes_to_mix) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest),
-			bytes_to_mix - bytes_processed);
+	while (bytes_to_mix != 0) {
+		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
 		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+		bytes_to_mix -= n;
 		n >>= 1;	/* divide by 2 */
-		for (i = 0; i < n; i++) {
-			*dest = sat_int16((int32_t)*dest + (int32_t)*src);
-			src++;
-			dest++;
+		if (gain == IPC4_MIXIN_UNITY_GAIN) {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int16((int32_t)*dest + (int32_t)*src);
+				src++;
+				dest++;
+			}
+		} else {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int16((int32_t)*dest +
+						  q_mults_16x16(*src, gain,
+								IPC4_MIXIN_GAIN_SHIFT));
+				src++;
+				dest++;
+			}
 		}
 
-		bytes_processed += n << 1;
 		dest = audio_stream_wrap(sink, dest);
 		src = audio_stream_wrap(source, src);
 	}
 
-	audio_stream_bytes_copy(sink, dest, source, src, size - bytes_to_mix);
+	if (gain == IPC4_MIXIN_UNITY_GAIN) {
+		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
+	} else {
+		while (bytes_to_copy != 0) {
+			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
+			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+			bytes_to_copy -= n;
+			n >>= 1;	/* divide by 2 */
+			for (i = 0; i < n; i++) {
+				*dest = (int16_t)q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+				src++;
+				dest++;
+			}
+
+			dest = audio_stream_wrap(sink, dest);
+			src = audio_stream_wrap(source, src);
+		}
+	}
 }
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 static void mix_s24(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size)
+		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
 {
 	int32_t *dest, *src;
-	int bytes_processed;
-	int i, n;
-
-	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
-	src = source->r_ptr;
-
-	assert(mixed_bytes >= start);
-	uint32_t bytes_to_mix = MIN(mixed_bytes - start, size);
-
-	bytes_processed = 0;
-
-	while (bytes_processed < bytes_to_mix) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest),
-			bytes_to_mix - bytes_processed);
-		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-		n >>= 2;	/* divide by 4 */
-		for (i = 0; i < n; i++) {
-			int32_t val1 = *dest << 8;	/* extending sign bit */
-			int32_t val2 = *src << 8;	/* extending sign bit */
-			*dest = sat_int24((val1 >> 8) + (val2 >> 8));
-			src++;
-			dest++;
-		}
-
-		bytes_processed += n << 2;
-		dest = audio_stream_wrap(sink, dest);
-		src = audio_stream_wrap(source, src);
-	}
-
-	audio_stream_bytes_copy(sink, dest, source, src, size - bytes_to_mix);
-}
-#endif	/* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-static void mix_s32(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size)
-{
-	int32_t *dest, *src;
-	uint32_t bytes_to_mix;
-	int bytes_processed;
+	uint32_t bytes_to_mix, bytes_to_copy;
 	int i, n;
 
 	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
@@ -349,26 +342,112 @@ static void mix_s32(struct audio_stream __sparse_cache *sink, uint32_t start, ui
 
 	assert(mixed_bytes >= start);
 	bytes_to_mix = MIN(mixed_bytes - start, size);
+	bytes_to_copy = size - bytes_to_mix;
 
-	bytes_processed = 0;
-
-	while (bytes_processed < bytes_to_mix) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest),
-			bytes_to_mix - bytes_processed);
+	while (bytes_to_mix != 0) {
+		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
 		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+		bytes_to_mix -= n;
 		n >>= 2;	/* divide by 4 */
-		for (i = 0; i < n; i++) {
-			*dest = sat_int32((int64_t)*dest + (int64_t)*src);
-			src++;
-			dest++;
+		if (gain == IPC4_MIXIN_UNITY_GAIN) {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int24(sign_extend_s24(*dest) + sign_extend_s24(*src));
+				src++;
+				dest++;
+			}
+		} else {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int24(sign_extend_s24(*dest) +
+				  (int32_t)q_mults_32x32(sign_extend_s24(*src),
+							 gain, IPC4_MIXIN_GAIN_SHIFT));
+				src++;
+				dest++;
+			}
 		}
 
-		bytes_processed += n << 2;
 		dest = audio_stream_wrap(sink, dest);
 		src = audio_stream_wrap(source, src);
 	}
 
-	audio_stream_bytes_copy(sink, dest, source, src, size - bytes_to_mix);
+	if (gain == IPC4_MIXIN_UNITY_GAIN) {
+		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
+	} else {
+		while (bytes_to_copy != 0) {
+			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
+			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+			bytes_to_copy -= n;
+			n >>= 2;	/* divide by 4 */
+			for (i = 0; i < n; i++) {
+				*dest = (int32_t)q_mults_32x32(sign_extend_s24(*src),
+							       gain, IPC4_MIXIN_GAIN_SHIFT);
+				src++;
+				dest++;
+			}
+
+			dest = audio_stream_wrap(sink, dest);
+			src = audio_stream_wrap(source, src);
+		}
+	}
+}
+#endif	/* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+static void mix_s32(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
+		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
+{
+	int32_t *dest, *src;
+	uint32_t bytes_to_mix, bytes_to_copy;
+	int i, n;
+
+	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
+	src = source->r_ptr;
+
+	assert(mixed_bytes >= start);
+	bytes_to_mix = MIN(mixed_bytes - start, size);
+	bytes_to_copy = size - bytes_to_mix;
+
+	while (bytes_to_mix != 0) {
+		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
+		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+		bytes_to_mix -= n;
+		n >>= 2;	/* divide by 4 */
+		if (gain == IPC4_MIXIN_UNITY_GAIN) {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int32((int64_t)*dest + (int64_t)*src);
+				src++;
+				dest++;
+			}
+		} else {
+			for (i = 0; i < n; i++) {
+				*dest = sat_int32((int64_t)*dest +
+				  q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
+				src++;
+				dest++;
+			}
+		}
+
+		dest = audio_stream_wrap(sink, dest);
+		src = audio_stream_wrap(source, src);
+	}
+
+	if (gain == IPC4_MIXIN_UNITY_GAIN) {
+		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
+	} else {
+		while (bytes_to_copy != 0) {
+			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
+			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
+			bytes_to_copy -= n;
+			n >>= 2;	/* divide by 4 */
+			for (i = 0; i < n; i++) {
+				*dest = (int32_t)q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+				src++;
+				dest++;
+			}
+
+			dest = audio_stream_wrap(sink, dest);
+			src = audio_stream_wrap(source, src);
+		}
+	}
 }
 #endif	/* CONFIG_FORMAT_S32LE */
 
@@ -529,12 +608,24 @@ static int mixin_copy(struct comp_dev *dev)
 			silence(&sink_c->stream, start, mixed_data_info->mixed_bytes,
 				bytes_to_copy);
 		} else {
+			uint16_t sink_index = IPC4_SRC_QUEUE_ID(unused_in_between_buf->id);
+
+			if (sink_index >= MIXIN_MAX_SINKS) {
+				comp_err(dev, "Sink index out of range: %u, max sinks count: %u",
+					 (uint32_t)sink_index, MIXIN_MAX_SINKS);
+				buffer_release(sink_c);
+				mixed_data_info_release(mixed_data_info);
+				buffer_release(source_c);
+				return -EINVAL;
+			}
+
 			/* basically, if sink buffer has no data -- copy source data there, if
 			 * sink buffer has some data (written by another mixin) mix that data
 			 * with source data.
 			 */
 			mixin_data->mix_func(&sink_c->stream, start, mixed_data_info->mixed_bytes,
-					     &source_c->stream, bytes_to_copy);
+					     &source_c->stream, bytes_to_copy,
+					     mixin_data->gain[sink_index]);
 		}
 
 		/* it would be better to writeback (sink_c + start, bytes_to_copy)
@@ -1020,6 +1111,78 @@ static int mixout_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 	return 0;
 }
 
+static int mixin_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+				  bool last_block, uint32_t data_offset_or_size, char *data)
+{
+	struct ipc4_mixer_mode_config *cfg;
+	struct mixin_data *mixin_data;
+	int i;
+	uint32_t sink_index;
+	uint16_t gain;
+
+	if (param_id != IPC4_MIXER_MODE) {
+		comp_err(dev, "mixin_set_large_config() unsupported param_id: %u", param_id);
+		return -EINVAL;
+	}
+
+	if (!(first_block && last_block)) {
+		comp_err(dev, "mixin_set_large_config() data is expected to be sent as one chunk");
+		return -EINVAL;
+	}
+
+	/* for a single chunk data, data_offset_or_size is size */
+	if (data_offset_or_size < sizeof(struct ipc4_mixer_mode_config)) {
+		comp_err(dev, "mixin_set_large_config() too small data size: %u",
+			 data_offset_or_size);
+		return -EINVAL;
+	}
+
+	if (data_offset_or_size > SOF_IPC_MSG_MAX_SIZE) {
+		comp_err(dev, "mixin_set_large_config() too large data size: %u",
+			 data_offset_or_size);
+		return -EINVAL;
+	}
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)data, data_offset_or_size);
+
+	cfg = (struct ipc4_mixer_mode_config *)data;
+
+	if (cfg->mixer_mode_config_count < 1 || cfg->mixer_mode_config_count > MIXIN_MAX_SINKS) {
+		comp_err(dev, "mixin_set_large_config() invalid mixer_mode_config_count: %u",
+			 cfg->mixer_mode_config_count);
+		return -EINVAL;
+	}
+
+	if (sizeof(struct ipc4_mixer_mode_config) +
+	    (cfg->mixer_mode_config_count - 1) * sizeof(struct ipc4_mixer_mode_sink_config) >
+	    data_offset_or_size) {
+		comp_err(dev, "mixin_set_large_config() unexpected data size: %u",
+			 data_offset_or_size);
+		return -EINVAL;
+	}
+
+	mixin_data = comp_get_drvdata(dev);
+
+	for (i = 0; i < cfg->mixer_mode_config_count; i++) {
+		sink_index = cfg->mixer_mode_sink_configs[i].output_queue_id;
+		if (sink_index >= MIXIN_MAX_SINKS) {
+			comp_err(dev, "mixin_set_large_config() invalid sink index: %u",
+				 sink_index);
+			return -EINVAL;
+		}
+
+		gain = cfg->mixer_mode_sink_configs[i].gain;
+		if (gain > IPC4_MIXIN_UNITY_GAIN)
+			gain = IPC4_MIXIN_UNITY_GAIN;
+		mixin_data->gain[sink_index] = gain;
+
+		comp_dbg(dev, "mixin_set_large_config() gain 0x%x will be applied for sink %u",
+			 gain, sink_index);
+	}
+
+	return 0;
+}
+
 static const struct comp_driver comp_mixin = {
 	.uid	= SOF_RT_UUID(mixin_uuid),
 	.tctx	= &mixin_tr,
@@ -1032,6 +1195,7 @@ static const struct comp_driver comp_mixin = {
 		.copy    = mixin_copy,
 		.reset   = mixin_reset,
 		.get_attribute = mixin_get_attribute,
+		.set_large_config = mixin_set_large_config,
 	},
 };
 
