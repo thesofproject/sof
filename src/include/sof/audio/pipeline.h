@@ -203,9 +203,10 @@ int pipeline_for_each_comp(struct comp_dev *current,
 /**
  * \brief Walks pipeline graph to find dai component.
  * \param[in] pipeline_id is the start pipeline id.
+ * \param[in] dir is the direction of the traversal.
  * \return dai component.
  */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id);
+struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir);
 
 #if CONFIG_IPC_MAJOR_4
 /**
