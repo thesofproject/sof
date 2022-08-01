@@ -1,5 +1,7 @@
 # SOF west manifest
 manifest:
+  version: "0.13"
+
   defaults:
     remote: thesofproject
 
