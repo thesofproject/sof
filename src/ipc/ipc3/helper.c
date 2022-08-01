@@ -472,6 +472,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	unsigned int core;
 	bool sink_active = false;
 	bool source_active = false;
+	struct comp_buffer __sparse_cache *buffer_c;
 
 	/* check whether buffer exists */
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
@@ -489,6 +490,8 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	if (!cpu_is_me(ibd->core))
 		return ipc_process_on_core(ibd->core, false);
 
+	buffer_c = buffer_acquire(ibd->cb);
+
 	/* try to find sink/source components to check if they still exists */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
@@ -496,18 +499,20 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 			continue;
 
 		/* check comp state if sink and source are valid */
-		if (ibd->cb->sink == icd->cd &&
-		    ibd->cb->sink->state != COMP_STATE_READY) {
-			sink = ibd->cb->sink;
+		if (buffer_c->sink == icd->cd &&
+		    buffer_c->sink->state != COMP_STATE_READY) {
+			sink = buffer_c->sink;
 			sink_active = true;
 		}
 
-		if (ibd->cb->source == icd->cd &&
-		    ibd->cb->source->state != COMP_STATE_READY) {
-			source = ibd->cb->source;
+		if (buffer_c->source == icd->cd &&
+		    buffer_c->source->state != COMP_STATE_READY) {
+			source = buffer_c->source;
 			source_active = true;
 		}
 	}
+
+	buffer_release(buffer_c);
 
 	/*
 	 * A buffer could be connected to 2 different pipelines. When one pipeline is freed, the

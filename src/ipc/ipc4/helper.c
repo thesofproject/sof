@@ -349,10 +349,13 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
-		struct comp_buffer *buf;
+		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
+		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(buf);
+		bool found = buf_c->id == buffer_id;
 
-		buf = container_of(sink_list, struct comp_buffer, source_list);
-		if (buf->id == buffer_id) {
+		buffer_release(buf_c);
+
+		if (found) {
 			buffer = buf;
 			break;
 		}
