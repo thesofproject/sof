@@ -21,7 +21,7 @@ from anytree import AnyNode, RenderTree
 # Constant value resolves SOF_TOP directory as: "this script directory/.."
 SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
 west_top = pathlib.Path(SOF_TOP, "..").resolve()
-default_rimage_key = pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key.pem")
+default_rimage_key = pathlib.Path(SOF_TOP, "keys", "otc_private_key.pem")
 
 sof_version = None
 
@@ -66,7 +66,7 @@ platform_list = [
 		"IPC4_RIMAGE_DESC": "tgl-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"RIMAGE_KEY": pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key_3k.pem")
+		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
 	{
 		"name": "tgl-h",
@@ -75,7 +75,7 @@ platform_list = [
 		"IPC4_RIMAGE_DESC": "tgl-h-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"RIMAGE_KEY": pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key_3k.pem")
+		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
 	# NXP platforms
 	{
@@ -499,8 +499,7 @@ def build_platforms():
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 		# CMake - configure rimage module
 		rimage_dir_name="build-rimage"
-		sof_mirror_dir = pathlib.Path("modules", "audio", "sof")
-		rimage_source_dir = pathlib.Path(sof_mirror_dir, "rimage")
+		rimage_source_dir = pathlib.Path(SOF_TOP, "rimage")
 		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)],
 			cwd=west_top)
 		# CMake build rimage module
@@ -508,7 +507,7 @@ def build_platforms():
 			cwd=west_top)
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
-		rimage_config = pathlib.Path(sof_mirror_dir, "rimage", "config")
+		rimage_config = pathlib.Path(SOF_TOP, "rimage", "config")
 		sign_cmd = ["west"]
 		sign_cmd += ["-v"] * args.verbose
 		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
