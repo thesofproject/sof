@@ -322,7 +322,7 @@ static int mixer_copy(struct comp_dev *dev)
 		source_c = buffer_acquire(source);
 
 		/* only mix the sources with the same state with mixer */
-		if (source_c->source->state == dev->state)
+		if (source_c->source && source_c->source->state == dev->state)
 			sources[num_mix_sources++] = source;
 
 		buffer_release(source_c);
@@ -519,7 +519,7 @@ static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 		struct comp_buffer *source = container_of(blist, struct comp_buffer,
 							  sink_list);
 		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
-		if (source_c->source->state == status)
+		if (source_c->source && source_c->source->state == status)
 			count++;
 		buffer_release(source_c);
 	}
@@ -577,7 +577,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 
 static inline bool mixer_stop_reset(struct comp_dev *dev, struct comp_dev *source)
 {
-	return source->state > COMP_STATE_READY;
+	return source && source->state > COMP_STATE_READY;
 }
 
 static int mixer_prepare(struct comp_dev *dev)
@@ -605,8 +605,8 @@ static int mixer_prepare(struct comp_dev *dev)
 		 */
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
-		stop = source->source->state == COMP_STATE_PAUSED ||
-			source->source->state == COMP_STATE_ACTIVE;
+		stop = source_c->source && (source_c->source->state == COMP_STATE_PAUSED ||
+					    source_c->source->state == COMP_STATE_ACTIVE);
 		buffer_release(source_c);
 
 		/* only prepare downstream if we have no active sources */
