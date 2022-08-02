@@ -659,8 +659,10 @@ static int rtnr_prepare(struct comp_dev *dev)
 
 	/* Get sink data format */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	cd->sink_format = sinkb->stream.frame_fmt;
-	cd->sink_stream.frame_fmt = sinkb->stream.frame_fmt;
+	sink_c = buffer_acquire(sinkb);
+	cd->sink_format = sink_c->stream.frame_fmt;
+	cd->sink_stream.frame_fmt = sink_c->stream.frame_fmt;
+	buffer_release(sink_c);
 
 	/* Check source and sink PCM format and get processing function */
 	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
