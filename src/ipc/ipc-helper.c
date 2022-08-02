@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
@@ -265,6 +266,8 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
+	struct list_item *clist, *tmp;
+	uint32_t flags;
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
@@ -291,6 +294,34 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		       comp_id, icd->cd->state);
 		return -EINVAL;
 	}
+
+	irq_local_disable(flags);
+	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
+		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+
+		buffer_c->sink = NULL;
+		buffer_release(buffer_c);
+		/* Also if it isn't shared - we are about to modify uncached data */
+		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
+						   sizeof(*buffer));
+		/* This breaks the list, but we anyway delete all buffers */
+		list_init(clist);
+	}
+
+	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
+		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+
+		buffer_c->source = NULL;
+		buffer_release(buffer_c);
+		/* Also if it isn't shared - we are about to modify uncached data */
+		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
+						   sizeof(*buffer));
+		/* This breaks the list, but we anyway delete all buffers */
+		list_init(clist);
+	}
+	irq_local_enable(flags);
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
