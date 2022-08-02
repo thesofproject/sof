@@ -208,6 +208,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 
 void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
 {
+	struct list_item *buf_list, *comp_list;
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
@@ -216,7 +217,23 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 		comp_info(comp, "disconnect buffer %d as source", buffer->id);
 
 	irq_local_disable(flags);
-	list_item_del(buffer_comp_list(buffer, dir));
+	buf_list = buffer_comp_list(buffer, dir);
+	comp_list = comp_buffer_list(comp, dir);
+	/*
+	 * There can be more buffers linked together with this one, that will
+	 * still be staying on their respective pipelines and might get used via
+	 * their cached aliases. If we just unlink this buffer, we modify their
+	 * list header via uncached alias, so their cached copy can later be
+	 * written back, overwriting the modified header. FIXME: this is still a
+	 * problem with different cores.
+	 */
+	if (comp_list != buf_list->next)
+		dcache_writeback_invalidate_region(uncache_to_cache(buf_list->next),
+						   sizeof(struct list_item));
+	if (comp_list != buf_list->prev)
+		dcache_writeback_invalidate_region(uncache_to_cache(buf_list->prev),
+						   sizeof(struct list_item));
+	list_item_del(buf_list);
 	irq_local_enable(flags);
 }
 

@@ -499,16 +499,16 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 			continue;
 
 		/* check comp state if sink and source are valid */
-		if (buffer_c->sink == icd->cd &&
-		    buffer_c->sink->state != COMP_STATE_READY) {
+		if (buffer_c->sink == icd->cd) {
 			sink = buffer_c->sink;
-			sink_active = true;
+			if (buffer_c->sink->state != COMP_STATE_READY)
+				sink_active = true;
 		}
 
-		if (buffer_c->source == icd->cd &&
-		    buffer_c->source->state != COMP_STATE_READY) {
+		if (buffer_c->source == icd->cd) {
 			source = buffer_c->source;
-			source_active = true;
+			if (buffer_c->source->state != COMP_STATE_READY)
+				source_active = true;
 		}
 	}
 

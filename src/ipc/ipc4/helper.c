@@ -180,8 +180,8 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		list_for_item_safe(sink_list, tmp_list, &icd->cd->bsink_list) {
 			sink = container_of(sink_list, struct comp_buffer, source_list);
 
-			pipeline_disconnect(icd->cd, sink, PPL_DIR_DOWNSTREAM);
-			pipeline_disconnect(icd->cd, sink, PPL_DIR_UPSTREAM);
+			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_COMP_TO_BUFFER);
+			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_BUFFER_TO_COMP);
 
 			buffer_free(sink);
 		}
