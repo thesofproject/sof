@@ -35,6 +35,24 @@ enum cadence_api_id {
 
 #define DEFAULT_CODEC_ID CADENCE_CODEC_WRAPPER_ID
 
+/* we divide Cadence param id space as follows:
+ * - 0x00000000 - 0x7FFFFFFF, Cadence library ids which come
+ *   from xa_*_dec_api.h
+ * - 0x80000000 - 0xFFFFFFFF, SOF remapping of Cadence library ids
+ */
+
+#define SOF_CADENCE_PARAM_SPACE_LEN			0x1000
+
+#define SOF_CADENCE_WRAPPER_PARAM_ID_START		0x80000000
+
+/* see include/sof/audio/cadence/mp3_dec/xa_mp3_dec_api.h */
+#define SOF_CADENCE_MP3_PARAM_ID_START			0x80001000
+#define SOF_CADENCE_MP3_PARAM_PCM_WDSZ			0x80001000
+
+/* see include/sof/audio/cadence/aac_dec/xa_aac_dec_api.h */
+#define SOF_CADENCE_AAC_PARAM_ID_START			0x80002000
+#define SOF_CADENCE_AAC_PARAM_BDOWNSAMPLE		0x80002000
+
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
@@ -94,6 +112,46 @@ static struct cadence_api cadence_api_table[] = {
 	},
 #endif
 };
+
+/* cadence_param_id_fixup - function to support multiple param id spaces.
+ * @mod, current processing module
+ * @param_id, param id received from Host.
+ *
+ * param_id are defined by Cadence per codec. Because param_id might
+ * overlap we cannot use them in the same topology.
+ * in order to fixup this overlap, we introduce a new param id space.
+ *
+ * 0x0000.0000 - 0x7FFF.FFFF, these are original Cadence param ids which
+ * are left 'unfixed'
+ * 0x8000.0000 - 0xFFFF.FFFF, remapped param id space
+ * see `SOF_CADENCE_<codec>_PARAM_ID_START` macros above.
+ */
+static int cadence_param_id_fixup(struct processing_module *mod, uint32_t param_id)
+{
+	uint32_t start;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
+
+	/* param_id already in codec Cadence param space, do nothing */
+	if (param_id < SOF_CADENCE_WRAPPER_PARAM_ID_START)
+		return param_id;
+
+	/* param id uses remapped value, fixup it up to original Cadence value */
+	switch (cd->api_id) {
+	case  CADENCE_CODEC_MP3_DEC_ID:
+		start = SOF_CADENCE_MP3_PARAM_ID_START;
+		break;
+	case  CADENCE_CODEC_AAC_DEC_ID:
+		start = SOF_CADENCE_AAC_PARAM_ID_START;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (param_id < start || param_id >= start + SOF_CADENCE_PARAM_SPACE_LEN)
+		return -EINVAL;
+
+	return param_id - start;
+}
 
 static int cadence_code_get_api_id(uint32_t compress_id)
 {
@@ -291,6 +349,20 @@ static int cadence_codec_apply_config(struct processing_module *mod)
 		param = data;
 		comp_dbg(dev, "cadence_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
+
+		ret = cadence_param_id_fixup(mod, param->id);
+		/* skip parameter if no fixup found */
+		if (ret < 0) {
+			comp_err(dev, "cadence_codec_apply_config() skip param %d value %d",
+				 param->id, param->data[0]);
+			data = (char *)data + param->size;
+			size -= param->size;
+
+			continue;
+		}
+
+		param->id = ret;
+
 		/* Set read parameter */
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
