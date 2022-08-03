@@ -166,7 +166,7 @@ void _k_spin_unlock_irq(struct k_spinlock *lock, k_spinlock_key_t key, int line)
 
 #else
 
-#include <kernel.h>
+#include <zephyr/kernel.h>
 
 /* This has to be moved to Zephyr */
 static inline void k_spinlock_init(struct k_spinlock *lock)
