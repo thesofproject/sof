@@ -23,7 +23,7 @@ SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
 #   git grep 'sof-.*\.ri' -- sound/soc/
 
 ALIAS_SAME_KEY_list  := glk cfl cml
-ALIAS_OTHER_KEY_list := ehl adl adl-s
+ALIAS_OTHER_KEY_list := ehl adl adl-s rpl rpl-s
 ALIAS_list ?= ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
 
 
@@ -42,6 +42,8 @@ target_of_cml := cnl
 target_of_ehl := tgl
 target_of_adl   := tgl
 target_of_adl-s := tgl-h
+target_of_rpl   := tgl
+target_of_rpl-s := tgl-h
 
 ifeq (,${TOOLCHAIN})
   ifeq (,${XTENSA_TOOLS_ROOT})
