@@ -71,4 +71,9 @@ unset ZEPHYR_SDK_INSTALL_DIR
 ls -ld /opt/toolchains/zephyr-sdk-*
 ln -s  /opt/toolchains/zephyr-sdk-*  ~/ || true
 
-./sof/scripts/xtensa-build-zephyr.py -u --no-interactive "$@"
+if test -e .west || test -e zephyr; then
+    init_update=''
+else
+    init_update='-u'
+fi
+./sof/scripts/xtensa-build-zephyr.py $init_update --no-interactive "$@"
