@@ -385,6 +385,9 @@ static int test_keyword_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
+	struct comp_buffer __sparse_cache *source_c;
+	unsigned int channels, rate;
+	enum sof_ipc_frame frame_fmt;
 	int err;
 
 	/* Detector is used only in KPB topology. It always requires channels
@@ -403,13 +406,18 @@ static int test_keyword_params(struct comp_dev *dev,
 	/* keyword components will only ever have 1 source */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
+	source_c = buffer_acquire(sourceb);
+	channels = source_c->stream.channels;
+	frame_fmt = source_c->stream.frame_fmt;
+	rate = source_c->stream.rate;
+	buffer_release(source_c);
 
-	if (sourceb->stream.channels != 1) {
+	if (channels != 1) {
 		comp_err(dev, "test_keyword_params(): only single-channel supported");
 		return -EINVAL;
 	}
 
-	if (!detector_is_sample_width_supported(sourceb->stream.frame_fmt)) {
+	if (!detector_is_sample_width_supported(frame_fmt)) {
 		comp_err(dev, "test_keyword_params(): only 16-bit format supported");
 		return -EINVAL;
 	}
@@ -417,7 +425,7 @@ static int test_keyword_params(struct comp_dev *dev,
 	/* calculate the length of the preamble */
 	if (cd->config.preamble_time) {
 		cd->keyphrase_samples = cd->config.preamble_time *
-					(sourceb->stream.rate / 1000);
+					(rate / 1000);
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
 	}
