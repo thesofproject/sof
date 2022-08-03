@@ -22,11 +22,15 @@ manifest:
       path: sof/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
-      # west update will override your local changes to this revision
     - name: zephyr
       repo-path: zephyr
       revision: 63a497280f22aea39793dd9de9731469a83ce533
       remote: zephyrproject
+      # Import some projects listed in zephyr/west.yml@revision
+      #
+      # Warning: changes to zephyr/west.yml or to any other _imported_
+      # west.yml file are _ignored_ by design!  Only the above
+      # 'revision:' of zephyr/west.yml is used.
       import:
         name-whitelist:
           - hal_xtensa
@@ -37,4 +41,6 @@ manifest:
 
   self:
     path: sof
+    # Changes to submanifests/*.yml files _are_ effective; these have no
+    # specified 'revision:'
     import: submanifests
