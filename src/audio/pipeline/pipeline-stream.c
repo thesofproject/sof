@@ -16,7 +16,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 
-#include <kernel.h>
+#include <zephyr/kernel.h>
 
 #include <errno.h>
 #include <stdbool.h>

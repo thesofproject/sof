@@ -16,7 +16,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #ifdef __ZEPHYR__
-#include <device.h>
+#include <zephyr/device.h>
 #endif
 
 #if CONFIG_APOLLOLAKE
