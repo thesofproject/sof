@@ -1,5 +1,5 @@
 #
-# Topology with codec_adapter processing component for i.MX8MP
+# Topology with codec_adapter processing component for i.MX8QM/i.MX8QXP
 #
 
 # Include topology builder
@@ -45,8 +45,7 @@ define(`CA_SETUP_CONTROLBYTES',
 `	0x18,0x00,0x00,0x00,0x03,0x20,0x00,0x80,'
 `	0x0C,0x00,0x00,0x00,0x02,0x00,0x00,0x00,'
 `	0x00,0x10,0x00,0x80,0x0C,0x00,0x00,0x00,'
-`	0x18,0x00,0x00,0x00"''
-)
+`	0x18,0x00,0x00,0x00"'')
 
 define(`CA_SETUP_CONTROLBYTES_MAX', 300)
 
@@ -78,7 +77,7 @@ dnl     period, priority, core, time_domain)
 # playback DAI is SAI3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SAI, 3, sai3-wm8960-hifi,
+	1, SAI, 1, sai1-wm8960-hifi,
 	PIPELINE_SOURCE_1, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
@@ -89,9 +88,9 @@ dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 COMPR_PLAYBACK_ADD(Port0, 0, PIPELINE_PCM_1)
 
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
-DAI_CONFIG(SAI, 3, 0, sai3-wm8960-hifi,
+DAI_CONFIG(SAI, 1, 0, sai1-wm8960-hifi,
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_master),
 		SAI_CLOCK(fsync, 48000, codec_master),
 		SAI_TDM(2, 32, 3, 3),
-		SAI_CONFIG_DATA(SAI, 3, 0)))
+		SAI_CONFIG_DATA(SAI, 1, 0)))
