@@ -31,6 +31,8 @@ DECLARE_TR_CTX(pr_tr, SOF_UUID(probe_uuid), LOG_LEVEL_INFO);
 DECLARE_SOF_UUID("probe-task", probe_task_uuid, 0x2f0b1901, 0xcac0, 0x4b87,
 		 0x81, 0x2f, 0xf2, 0xd5, 0xe4, 0xf1, 0x9e, 0x4a);
 
+LOG_MODULE_REGISTER(probe, CONFIG_SOF_LOG_LEVEL);
+
 #define PROBE_DMA_INVALID	0xFFFFFFFF
 #define PROBE_POINT_INVALID	0xFFFFFFFF
 
