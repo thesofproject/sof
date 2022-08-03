@@ -71,12 +71,12 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	x = source->r_ptr;
 	y = sink->w_ptr;
 
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
+					  SOF_IPC_FRAME_S32_LE, remaining_samples);
 	while (remaining_samples) {
-		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
-		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;
@@ -133,12 +133,12 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S32_LE,
+					  SOF_IPC_FRAME_S32_LE, remaining_samples);
 	while (remaining_samples) {
-		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
-		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		nmax = BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
 		n = MIN(n, nmax);
 		/* Note: on Xtensa processing one channel volume at time performed slightly
 		 * better than simpler interleaved code version (average 19 us vs. 20 us).
@@ -201,12 +201,12 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	x = source->r_ptr;
 	y = sink->w_ptr;
 
-	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
+	module_update_processing_position(bsource, bsink, SOF_IPC_FRAME_S16_LE,
+					  SOF_IPC_FRAME_S16_LE, remaining_samples);
 	while (remaining_samples) {
-		nmax = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, x));
 		n = MIN(remaining_samples, nmax);
-		nmax = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		nmax = BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;

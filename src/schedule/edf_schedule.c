@@ -11,6 +11,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
@@ -323,7 +324,8 @@ static int scheduler_restore_edf(void *data)
 
 static void schedule_edf(struct edf_schedule_data *edf_sch)
 {
-	interrupt_set(edf_sch->irq);
+	if (!cpu_is_core_powering_down(cpu_get_id()))
+		interrupt_set(edf_sch->irq);
 }
 
 static const struct scheduler_ops schedule_edf_ops = {

@@ -452,7 +452,7 @@ void sys_comp_eq_fir_init(void);
 void sys_comp_keyword_init(void);
 void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
-void sys_comp_eq_iir_init(void);
+void sys_comp_module_eq_iir_interface_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
 void sys_comp_basefw_init(void);
@@ -552,7 +552,7 @@ int task_main_start(struct sof *sof)
 		sys_comp_eq_fir_init();
 
 	if (IS_ENABLED(CONFIG_COMP_IIR))
-		sys_comp_eq_iir_init();
+		sys_comp_module_eq_iir_interface_init();
 
 	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE))
 		sys_comp_keyword_init();

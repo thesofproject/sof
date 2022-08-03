@@ -72,6 +72,11 @@ static inline int cpu_is_core_enabled(int id)
 	return arch_cpu_is_core_enabled(id);
 }
 
+static inline int cpu_is_core_powering_down(int id)
+{
+	return arch_cpu_is_core_powering_down(id);
+}
+
 static inline int cpu_enabled_cores(void)
 {
 	return arch_cpu_enabled_cores();
