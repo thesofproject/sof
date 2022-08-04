@@ -8,7 +8,7 @@ name: Zephyr
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  zephyr-build:
+  build:
     runs-on: ubuntu-20.04
 
     strategy:
@@ -19,8 +19,13 @@ jobs:
           "https://github.com/zephyrproject-rtos/zephyr  main",
         ]
         IPC_platforms: [
-          -a,  # IPC3 everything
-          -i IPC4 tgl,  # only tgl has IPC4 overlay file now
+          # IPC3
+          apl cnl,
+          icl jsl,
+          tgl tgl-h,
+          imx8 imx8x imx8m,
+          # only tgl has IPC4 overlay file now
+          -i IPC4 tgl,
         ]
 
     steps:
@@ -35,7 +40,6 @@ jobs:
                west update --narrow --fetch-opt=--depth=5
 
       - name: select zephyr revision
-        # ignore failures when fetching local refs like "manifest-rev"
         run: cd workspace/zephyr/ &&
              if [ 'manifest_revision' != '${{ matrix.zephyr_revision }}' ]; then
                  git fetch --depth 5 ${{ matrix.zephyr_revision }} &&
