@@ -188,7 +188,6 @@ static void zephyr_ll_run(void *data)
 
 	while (list != &sch->tasks) {
 		enum task_state state;
-		struct comp_dev *sched_comp;
 		struct zephyr_ll_pdata *pdata;
 
 		task = container_of(list, struct task, list);
@@ -197,12 +196,6 @@ static void zephyr_ll_run(void *data)
 		if (task->state == SOF_TASK_STATE_CANCEL) {
 			list = list->next;
 			zephyr_ll_task_done(sch, task);
-			continue;
-		}
-
-		/* To be removed together with .start and .next_tick */
-		if (!domain_is_pending(sch->ll_domain, task, &sched_comp)) {
-			list = list->next;
 			continue;
 		}
 
@@ -252,8 +245,7 @@ static void zephyr_ll_run(void *data)
 				zephyr_ll_task_done(sch, task);
 				break;
 			default:
-				/* reschedule */
-				task->start = sch->ll_domain->next_tick;
+				break;
 			}
 		}
 	}
@@ -279,7 +271,6 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 	struct zephyr_ll_pdata *pdata;
 	struct task *task_iter;
 	struct list_item *list;
-	uint64_t delay = period ? period : start;
 	uint32_t flags;
 	int ret;
 
@@ -321,11 +312,6 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 			return 0;
 		}
 	}
-
-	task->start = k_uptime_ticks() + k_cyc_to_ticks_floor64(delay);
-	if (sch->ll_domain->next_tick != UINT64_MAX &&
-	    sch->ll_domain->next_tick > task->start)
-		task->start = sch->ll_domain->next_tick;
 
 	if (task->state == SOF_TASK_STATE_CANCEL) {
 		/* do not queue the same task again */

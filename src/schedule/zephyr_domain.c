@@ -36,8 +36,6 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 #define ZEPHYR_LL_STACK_SIZE	8192
 
-#define LL_TIMER_PERIOD_TICKS (CONFIG_SYS_CLOCK_TICKS_PER_SEC * LL_TIMER_PERIOD_US / 1000000ULL)
-
 K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
 
 struct zephyr_domain_thread {
@@ -100,21 +98,10 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
 	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer);
-	uint64_t now = k_uptime_ticks();
 	int core;
 
 	if (!zephyr_domain)
 		return;
-
-	/*
-	 * This loop should only run once, but for the (nearly) impossible
-	 * case of a missed interrupt, add as many periods as needed. In fact
-	 * we don't need struct ll_schedule_domain::next tick and
-	 * struct task::start for a strictly periodic Zephyr-based LL scheduler
-	 * implementation, they will be removed after a short grace period.
-	 */
-	while (zephyr_domain->ll_domain->next_tick <= now)
-		zephyr_domain->ll_domain->next_tick += LL_TIMER_PERIOD_TICKS;
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
@@ -170,8 +157,6 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 		k_timer_user_data_set(&zephyr_domain->timer, zephyr_domain);
 
 		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
-		domain->next_tick = k_uptime_ticks() +
-			k_timer_remaining_ticks(&zephyr_domain->timer);
 	}
 
 	k_spin_unlock(&domain->lock, key);
@@ -218,16 +203,9 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	return 0;
 }
 
-static bool zephyr_domain_is_pending(struct ll_schedule_domain *domain,
-				     struct task *task, struct comp_dev **comp)
-{
-	return task->start <= k_uptime_ticks();
-}
-
 static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,
-	.domain_is_pending	= zephyr_domain_is_pending
 };
 
 struct ll_schedule_domain *zephyr_domain_init(int clk)
