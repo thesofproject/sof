@@ -10,12 +10,38 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   zephyr-build:
     runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        zephyr_revision: [
+          manifest_revision,
+          "https://github.com/zephyrproject-rtos/zephyr  main",
+        ]
+        IPC_platforms: [
+          -a,  # IPC3 everything
+          -i IPC4 tgl,  # only tgl has IPC4 overlay file now
+        ]
+
     steps:
       - uses: actions/checkout@v2
         # From time to time this will catch a git tag and change SOF_VERSION
         with:
           fetch-depth: 10
           path: ./workspace/sof
+
+      - name: west clones
+        run: pip3 install west && cd workspace/sof/ && west init -l &&
+               west update --narrow --fetch-opt=--depth=5
+
+      - name: select zephyr revision
+        # ignore failures when fetching local refs like "manifest-rev"
+        run: cd workspace/zephyr/ &&
+             if [ 'manifest_revision' != '${{ matrix.zephyr_revision }}' ]; then
+                 git fetch --depth 5 ${{ matrix.zephyr_revision }} &&
+                 git checkout FETCH_HEAD;
+             fi &&
+             git log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
       # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with
@@ -25,4 +51,4 @@ jobs:
              --workdir /workspace
              ghcr.io/zephyrproject-rtos/zephyr-build:latest
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
-             --cmake-args=--warn-uninitialized -a
+             --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
