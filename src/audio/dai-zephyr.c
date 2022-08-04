@@ -33,8 +33,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <device.h>
-#include <drivers/dai.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
 
 static const struct comp_driver comp_dai;
 

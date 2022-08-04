@@ -32,7 +32,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <device.h>
+#include <zephyr/device.h>
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.
