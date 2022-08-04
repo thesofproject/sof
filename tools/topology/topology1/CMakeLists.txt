@@ -91,6 +91,7 @@ set(TPLGS
 	"sof-cavs-nocodec\;sof-tgl-h-nocodec\;-DPLATFORM=tgl\;-DNCORES=2\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-ehl-nocodec\;-DPLATFORM=ehl\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-adl-nocodec\;-DPLATFORM=adl\;-DDMIC_48k_CORE_ID=1\;-DSSP0_CORE_ID=2\;-DSSP1_CORE_ID=3\;-DDYNAMIC=1"
+	"sof-cavs-nocodec\;sof-rpl-nocodec\;-DPLATFORM=rpl\;-DDMIC_48k_CORE_ID=1\;-DSSP0_CORE_ID=2\;-DSSP1_CORE_ID=3\;-DDYNAMIC=1"
 	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"
 	"sof-cml-rt5682\;sof-cml-rt5682\;-DPLATFORM=cml\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-cml-rt5682\;sof-whl-rt5682\;-DPLATFORM=whl\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
