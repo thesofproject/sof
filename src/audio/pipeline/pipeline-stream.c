@@ -15,13 +15,17 @@
 #include <sof/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-
-#include <kernel.h>
-
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#else
+/* the xtos wrapper */
+#include <kernel.h>
+#endif
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 

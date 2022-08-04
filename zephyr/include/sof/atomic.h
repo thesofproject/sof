@@ -6,7 +6,7 @@
 #ifndef __INCLUDE_ATOMIC_H_
 #define __INCLUDE_ATOMIC_H_
 
-#include <sys/atomic.h>
+#include <zephyr/sys/atomic.h>
 
 /* Zephyr commit 174cb7f9f183 switched 'atomic_t' from 'int' to
  * 'long'. As we don't support 64 bits, this should have made no

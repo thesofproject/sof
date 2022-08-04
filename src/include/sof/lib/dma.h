@@ -29,8 +29,8 @@
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
-#include <device.h>
-#include <drivers/dma.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/dma.h>
 #endif
 
 struct comp_buffer;

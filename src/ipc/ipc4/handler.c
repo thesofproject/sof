@@ -30,13 +30,17 @@
 #include <ipc4/notification.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
-
-#include <kernel.h>
-
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#else
+/* the xtos wrapper */
+#include <kernel.h>
+#endif
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 

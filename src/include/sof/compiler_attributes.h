@@ -8,7 +8,7 @@
 #ifdef __ZEPHYR__
 
 /* Get __sparse_cache and __sparse_force definitions if __CHECKER__ is defined */
-#include <debug/sparse.h>
+#include <zephyr/debug/sparse.h>
 
 #else
 

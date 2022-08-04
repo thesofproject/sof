@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
-#include <kernel.h>
+#include <zephyr/kernel.h>
 #endif
 
 struct comp_dev;
