@@ -19,8 +19,8 @@
 #include <stdint.h>
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-#include <device.h>
-#include <drivers/dai.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
 #endif
 LOG_MODULE_REGISTER(dai, CONFIG_SOF_LOG_LEVEL);
 
