@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(copier_generic, CONFIG_SOF_LOG_LEVEL);
+
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 		      struct comp_buffer __sparse_cache *sink, int frame)
 {
