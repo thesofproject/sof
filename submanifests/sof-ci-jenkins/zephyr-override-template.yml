@@ -19,7 +19,8 @@ manifest:
     # override zephyr project in west.yml
     - name: zephyr
       url: https://github.com/zephyrproject-rtos/zephyr
-      revision: =sof_zephyr_revision_override=
+      # random recent commit just for testing
+      revision: aaaed300713d241bb222feb769b43eb32c446b33
       import:
         # Download only what sof-ci-jenkins uses to save a lot of time
         name-allowlist:
