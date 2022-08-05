@@ -14,10 +14,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        zephyr_revision: [
-          manifest_revision,
-          "https://github.com/zephyrproject-rtos/zephyr  main",
-        ]
         IPC_platforms: [
           # IPC3
           apl cnl,
@@ -26,6 +22,10 @@ jobs:
           imx8 imx8x imx8m,
           # only tgl has IPC4 overlay file now
           -i IPC4 tgl,
+        ]
+        zephyr_revision: [
+          manifest_revision,
+          "https://github.com/zephyrproject-rtos/zephyr  main",
         ]
 
     steps:
