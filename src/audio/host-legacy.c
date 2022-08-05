@@ -236,8 +236,7 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
-	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(hd->local_buffer);
 	uint32_t copy_bytes;
 	uint32_t split_value;
 
@@ -445,7 +444,6 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer *buffer = hd->local_buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -461,7 +459,7 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		return 0;
 	}
 
-	buffer_c = buffer_acquire(buffer);
+	buffer_c = buffer_acquire(hd->local_buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -839,7 +837,7 @@ static int host_params(struct comp_dev *dev,
 	/* alloc DMA buffer or change its size if exists */
 	/*
 	 * Host DMA buffer cannot be shared. So we actually don't need to lock,
-	 * but we have to write back caches after we finish anywae
+	 * but we have to write back caches after we finish anyway
 	 */
 	if (hd->dma_buffer) {
 		dma_buf_c = buffer_acquire(hd->dma_buffer);

@@ -195,9 +195,7 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
 	 */
-	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
-
-	return copy_bytes;
+	return ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 }
 
 /**
@@ -311,10 +309,8 @@ static int host_copy_one_shot(struct comp_dev *dev)
 	notifier_event(hd->chan, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, copy_bytes);
-	if (ret < 0) {
+	if (ret < 0)
 		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
-		return ret;
-	}
 
 	return ret;
 }

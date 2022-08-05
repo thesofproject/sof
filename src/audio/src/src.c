@@ -492,24 +492,21 @@ static int src_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 static int src_rate_check(void *spec)
 {
 	struct ipc4_config_src *ipc_src = spec;
-	int ret = 0;
 
 	if (ipc_src->base.audio_fmt.sampling_frequency == 0 && ipc_src->sink_rate == 0)
-		ret = -EINVAL;
+		return -EINVAL;
 
-	return ret;
+	return 0;
 }
 
 static int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
 					    struct sof_ipc_stream_params *params)
 {
-	int ret = 0;
-
 	if (cfg.base.audio_fmt.sampling_frequency &&
 	    params->rate != cfg.base.audio_fmt.sampling_frequency)
-		ret = -EINVAL;
+		return -EINVAL;
 
-	return ret;
+	return 0;
 }
 
 /* In ipc4 case param is figured out by module config so we need to first
@@ -552,23 +549,20 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 static int src_rate_check(void *spec)
 {
 	struct ipc_config_src *ipc_src = spec;
-	int ret = 0;
 
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0)
-		ret = -EINVAL;
+		return -EINVAL;
 
-	return ret;
+	return 0;
 }
 
 static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 					    struct sof_ipc_stream_params *params)
 {
-	int ret = 0;
-
 	if (cfg.source_rate && params->rate != cfg.source_rate)
-		ret = -EINVAL;
+		return -EINVAL;
 
-	return ret;
+	return 0;
 }
 
 static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params) {}
