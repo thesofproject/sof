@@ -22,21 +22,13 @@ include(`eq_iir.m4')
 # and the corresponding max bytenum on your own.
 
 # Codec Adapter setup config control bytes (little endian)
-#  : bytes "abi_header, ca_config, [codec_param0, codec_param1...]"
+#  : bytes "abi_header, [codec_param0, codec_param1...]"
 #  - 32 bytes abi_header: you could get by command "sof-ctl -t 0 -g <payload_size> -b"
 #    - [0:3]: magic number 0x00464f53
 #    - [4:7]: type 0
 #    - [8:11]: payload size in bytes (not including abi header bytes)
 #    - [12:15]: abi 3.1.0
 #    - [16:31]: reserved 0s
-#  - 20 bytes ca_config: codec adapter setup config parameters, for more details please refer
-#                        struct ca_config under audio/codec_adapter/codec/generic.h
-#    - [0]: API ID, e.g. 0x01
-#    - [1:3]: codec ID, e.g. 0xd03311
-#    - [4:7]: reserved 0s
-#    - [8:11]: sample rate, e.g. 48000
-#    - [12:15]: sample width in bits, e.g. 32
-#    - [16:19]: channels, e.g. 2
 # - (optional) 12+ bytes codec_param: codec TLV parameters container, for more details please refer
 #                                     struct codec_param under audio/codec_adapter/codec/generic.h
 #    - [0:3]: param ID
