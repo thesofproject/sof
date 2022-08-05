@@ -238,7 +238,6 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 {
 	const struct comp_driver *drv = src->drv;
 	struct ipc4_base_module_cfg src_cfg;
-	struct comp_buffer *buffer = NULL;
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size, ret;
 
@@ -256,15 +255,13 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = src->ipc_config.core;
-	buffer = buffer_new(&ipc_buf);
-
-	return buffer;
+	return buffer_new(&ipc_buf);
 }
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
-	struct comp_buffer *buffer = NULL;
+	struct comp_buffer *buffer;
 	struct comp_dev *source;
 	struct comp_dev *sink;
 	int src_id, sink_id;
