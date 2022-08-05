@@ -313,7 +313,6 @@ static inline struct dma_chan_data *dma_channel_get_legacy(struct dma *dma,
 static inline void dma_channel_put_legacy(struct dma_chan_data *channel)
 {
 	channel->dma->ops->channel_put(channel);
-
 }
 
 static inline int dma_start_legacy(struct dma_chan_data *channel)
