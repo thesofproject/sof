@@ -497,10 +497,12 @@ def build_platforms():
 		# Build
 		try:
 			execute_command(build_cmd, cwd=west_top)
-		except:
+		except subprocess.CalledProcessError as cpe:
 			zephyr_path = pathlib.Path(west_top, "zephyr")
 			if not os.path.exists(zephyr_path):
-				sys.exit("Zephyr project not found. Please run this script with -c flag or clone manually.")
+				sys.exit("Zephyr project not found. Please run this script with -u flag or `west update zephyr` manually.")
+			else: # unknown failure
+				raise cpe
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
 		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
