@@ -13,7 +13,7 @@
 #include <sof/spinlock.h>
 
 #ifdef __ZEPHYR__
-#include <sys/util.h>
+#include <zephyr/sys/util.h>
 #endif
 
 const struct freq_table platform_cpu_freq[] = {
