@@ -106,7 +106,6 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	struct list_item *source_list;
 	struct list_item *sink_list;
 	struct list_item *clist;
-	struct list_item *curr;
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
 	struct comp_buffer __sparse_cache *buf_c;
@@ -124,12 +123,12 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	 * has only one sink or one source buffer.
 	 */
 	if (list_is_empty(source_list) != list_is_empty(sink_list)) {
-		if (!list_is_empty(source_list))
-			buf = list_first_item(&dev->bsource_list,
+		if (list_is_empty(sink_list))
+			buf = list_first_item(source_list,
 					      struct comp_buffer,
 					      sink_list);
 		else
-			buf = list_first_item(&dev->bsink_list,
+			buf = list_first_item(sink_list,
 					      struct comp_buffer,
 					      source_list);
 
@@ -154,13 +153,10 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		 * (for playback) or upstream buffers (for capture).
 		 */
 		buffer_list = comp_buffer_list(dev, dir);
-		clist = buffer_list->next;
 
-		while (clist != buffer_list) {
-			curr = clist;
-			buf = buffer_from_list(curr, struct comp_buffer, dir);
+		list_for_item(clist, buffer_list) {
+			buf = buffer_from_list(clist, struct comp_buffer, dir);
 			buf_c = buffer_acquire(buf);
-			clist = clist->next;
 			comp_update_params(flag, params, buf_c);
 			buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
 			buffer_release(buf_c);
