@@ -671,8 +671,8 @@ static void eq_iir_free(struct comp_dev *dev)
 static int eq_iir_verify_params(struct comp_dev *dev,
 				struct sof_ipc_stream_params *params)
 {
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t buffer_flag;
 	int ret;
 
@@ -683,6 +683,8 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 				  sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
+	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
 
 	/* we check whether we can support frame_fmt conversion (whether we have
 	 * such conversion function) due to source and sink buffer frame_fmt's.
@@ -690,10 +692,13 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	 * pcm frame_fmt and will not make any conversion (sink and source
 	 * frame_fmt will be equal).
 	 */
-	buffer_flag = eq_iir_find_func(sourceb->stream.frame_fmt,
-				       sinkb->stream.frame_fmt, fm_configured,
+	buffer_flag = eq_iir_find_func(source_c->stream.frame_fmt,
+				       sink_c->stream.frame_fmt, fm_configured,
 				       ARRAY_SIZE(fm_configured)) ?
 				       BUFF_PARAMS_FRAME_FMT : 0;
+
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	ret = comp_verify_params(dev, buffer_flag, params);
 	if (ret < 0) {
