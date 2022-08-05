@@ -146,12 +146,17 @@ define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, eval(BOARD_DMIC_BE_ID_BASE + 1))
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
-ifdef(`RTNR', `define(`DMICPROC', rtnr)', `')
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
-	`define(`DMICPROC', google-rtc-audio-processing)'
+	`ifdef(`RTNR',
+		`define(`DMICPROC', google-rtc-audio-processing-rtnr)',
+		`define(`DMICPROC', google-rtc-audio-processing)')'
 	`define(`DMIC_48k_PERIOD_US', 10000)'
 	,
-	`')
+	`ifdef(`RTNR',
+		`define(`DMICPROC', rtnr)'
+# 5ms period is required for RTNR build 20220728 and later versions
+		`define(`DMIC_48k_PERIOD_US', 5000)')'
+)
 
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
 
