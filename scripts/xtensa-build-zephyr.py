@@ -410,6 +410,10 @@ def build_platforms():
 
 	global STAGING_DIR
 	STAGING_DIR = pathlib.Path(west_top, "build-sof-staging")
+	if args.pristine:
+		if os.path.exists(STAGING_DIR):
+			shutil.rmtree(STAGING_DIR)
+
 	# smex does not use 'install -D'
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
 	sof_output_dir.mkdir(mode=511, parents=True, exist_ok=True)
