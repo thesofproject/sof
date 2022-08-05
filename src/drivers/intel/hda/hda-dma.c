@@ -885,28 +885,25 @@ static int hda_dma_probe(struct dma *dma)
 	if (!dma->chan) {
 		tr_err(&hdma_tr, "hda-dmac: %d channels alloc failed",
 		       dma->plat_data.id);
+		return -ENOMEM;
+	}
+
+	hda_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			   sizeof(struct hda_chan_data) * dma->plat_data.channels);
+	if (!hda_chan) {
+		tr_err(&hdma_tr, "hda-dma: %d private data alloc failed",
+		       dma->plat_data.id);
 		goto out;
 	}
 
 	/* init channel status */
-	chan = dma->chan;
-
-	for (i = 0; i < dma->plat_data.channels; i++, chan++) {
+	for (i = 0, chan = dma->chan; i < dma->plat_data.channels; i++, chan++) {
 		chan->dma = dma;
 		chan->index = i;
 		chan->status = COMP_STATE_INIT;
 		chan->core = DMA_CORE_INVALID;
 
-		hda_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-				   SOF_MEM_CAPS_RAM,
-				   sizeof(struct hda_chan_data));
-		if (!hda_chan) {
-			tr_err(&hdma_tr, "hda-dma: %d channel %d private data alloc failed",
-			       dma->plat_data.id, i);
-			goto out;
-		}
-
-		dma_chan_set_data(chan, hda_chan);
+		dma_chan_set_data(chan, hda_chan + i);
 	}
 
 	/* init number of channels draining */
@@ -915,24 +912,17 @@ static int hda_dma_probe(struct dma *dma)
 	return 0;
 
 out:
-	if (dma->chan) {
-		for (i = 0; i < dma->plat_data.channels; i++)
-			rfree(dma_chan_get_data(&dma->chan[i]));
-		rfree(dma->chan);
-		dma->chan = NULL;
-	}
+	rfree(dma->chan);
+	dma->chan = NULL;
 
 	return -ENOMEM;
 }
 
 static int hda_dma_remove(struct dma *dma)
 {
-	int i;
-
 	tr_info(&hdma_tr, "hda-dmac :%d -> remove", dma->plat_data.id);
 
-	for (i = 0; i < dma->plat_data.channels; i++)
-		rfree(dma_chan_get_data(&dma->chan[i]));
+	rfree(dma_chan_get_data(&dma->chan[0]));
 
 	rfree(dma->chan);
 	dma->chan = NULL;
