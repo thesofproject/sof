@@ -179,7 +179,6 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 {
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
-
 		/* set the buffer as a coherent object */
 		coherent_shared_thread(buffer, c);
 
