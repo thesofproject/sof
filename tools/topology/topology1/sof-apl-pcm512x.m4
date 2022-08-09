@@ -123,10 +123,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_6, 2, s24le,
 	1000, 0, 0, SSP_SCHEDULE_TIME_DOMAIN)
 
-# Media playback pipeline 5 on PCM 4 using max 2 channels of s16le.
+# Media playback pipeline 5 on PCM 4 using max 2 channels of s32le.
 # Set 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	5, 4, 2, s16le,
+	5, 4, 2, s32le,
 	1000, 0, 0,
 	8000, 96000, FSYNC,
 	SSP_SCHEDULE_TIME_DOMAIN,
