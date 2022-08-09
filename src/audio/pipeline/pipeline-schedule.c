@@ -19,6 +19,7 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <sof/ipc/common.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -201,6 +202,25 @@ static enum task_state pipeline_task(void *arg)
 	 * copying below.
 	 */
 	err = pipeline_copy(p);
+	if (p->status == COMP_STATE_DRAINING) {
+		/* check the return value of the copy operation.
+		 *
+		 * if it's <= 0 then the draining opearation is over
+		 * and we need to send a notification to the host
+		 */
+		if (err <= 0) {
+			/* set pipeline status back to ACTIVE */
+			p->status = COMP_STATE_ACTIVE;
+
+			/* notify host that draining is over */
+			err = ipc_stream_drain_notify();
+
+			if (err < 0) {
+				pipe_err(p, "pipeline_task(): failed drain notify");
+				return SOF_TASK_STATE_COMPLETED;
+			}
+		}
+	}
 	if (err < 0) {
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
@@ -319,6 +339,13 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 * just make it non-0
 				 */
 				p->xrun_bytes = 1;
+		}
+		break;
+	case COMP_TRIGGER_DRAIN:
+		list_for_item(tlist, &ctx->pipelines) {
+			p = container_of(tlist, struct pipeline, list);
+			p->xrun_bytes = 0;
+			p->status = COMP_STATE_DRAINING;
 		}
 	}
 
