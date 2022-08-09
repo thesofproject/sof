@@ -2,7 +2,9 @@
 
 cmocka_test(fft
 	fft.c
-	${PROJECT_SOURCE_DIR}/src/math/fft/fft.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_common.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_16.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_32.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
