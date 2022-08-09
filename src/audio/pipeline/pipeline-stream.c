@@ -328,6 +328,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_DRAIN:
 		break;
 	}
 
@@ -349,14 +350,21 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 
 	current->pipeline->trigger.pending = false;
 
-	/* send command to the component and update pipeline state */
-	err = comp_trigger(current, ppl_data->cmd);
-	if (err < 0)
-		return err;
+	/* send command to the component and update pipeline state.
+	 *
+	 * if we're dealing with DRAIN trigger we don't want to update
+	 * the state of the components since we're not using that
+	 * information
+	 */
+	if (ppl_data->cmd != COMP_TRIGGER_DRAIN) {
+		err = comp_trigger(current, ppl_data->cmd);
+		if (err < 0)
+			return err;
 
-	if (err == PPL_STATUS_PATH_STOP) {
-		current->pipeline->trigger.aborted = true;
-		return err;
+		if (err == PPL_STATUS_PATH_STOP) {
+			current->pipeline->trigger.aborted = true;
+			return err;
+		}
 	}
 
 	switch (ppl_data->cmd) {
