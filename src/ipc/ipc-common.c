@@ -138,9 +138,6 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		if (!cpu_is_me(icd->core))
-			continue;
-
 		/* first try to find the module in the pipeline */
 		if (dev_comp_pipe_id(icd->cd) == pipeline_id) {
 			struct list_item *buffer_list = comp_buffer_list(icd->cd, dir);
