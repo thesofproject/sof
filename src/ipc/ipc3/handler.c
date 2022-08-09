@@ -506,6 +506,9 @@ static int ipc_stream_trigger(uint32_t header)
 	case SOF_IPC_STREAM_TRIG_RELEASE:
 		cmd = COMP_TRIGGER_PRE_RELEASE;
 		break;
+	case SOF_IPC_STREAM_TRIG_DRAIN:
+		cmd = COMP_TRIGGER_DRAIN;
+		break;
 	/* XRUN is special case- TODO */
 	case SOF_IPC_STREAM_TRIG_XRUN:
 		return 0;
