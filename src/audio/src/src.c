@@ -709,8 +709,8 @@ static int src_params(struct comp_dev *dev,
 	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */
-	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
-		  cd->source_rate, cd->sink_rate);
+	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u, format = %d",
+		  cd->source_rate, cd->sink_rate, source_c->stream.frame_fmt);
 	comp_info(dev, "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
 		  source_c->stream.channels, sink_c->stream.channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
@@ -719,9 +719,6 @@ static int src_params(struct comp_dev *dev,
 		comp_err(dev, "src_params(): src_buffer_lengths() failed");
 		goto out;
 	}
-
-	comp_info(dev, "src_params(), blk_in = %u, blk_out = %u",
-		  cd->param.blk_in, cd->param.blk_out);
 
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
