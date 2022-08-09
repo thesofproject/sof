@@ -422,6 +422,51 @@ static int ipc_stream_position(uint32_t header)
 	return 1;
 }
 
+int ipc_stream_drain_notify(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct sof_ipc_stream stream;
+	struct sof_ipc_stream_drain drain;
+	struct ipc_comp_dev *pcm_dev;
+
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(stream, ipc->comp_data);
+
+	/* get the pcm dev */
+	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
+	if (!pcm_dev) {
+		tr_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
+		return -ENODEV;
+	}
+
+	/* check core */
+	if (!cpu_is_me(pcm_dev->core))
+		return ipc_process_on_core(pcm_dev->core, false);
+
+	/* prepare message */
+	memset(&drain, 0, sizeof(drain));
+	drain.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_DRAIN |
+		stream.comp_id;
+	drain.rhdr.hdr.size = sizeof(drain);
+
+	if (!pcm_dev->cd->pipeline) {
+		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		       stream.comp_id);
+		return -EINVAL;
+	}
+
+	/* write message */
+	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset, &drain,
+			     sizeof(drain));
+
+	/* send IPC notification */
+	struct ipc_msg *msg = ipc_msg_init(drain.rhdr.hdr.cmd, drain.rhdr.hdr.size);
+
+	ipc_msg_send(msg, &drain, false);
+
+	return 0;
+}
+
 static int ipc_stream_trigger(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();

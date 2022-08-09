@@ -197,4 +197,9 @@ void ipc_msg_reply(struct sof_ipc_reply *reply);
  */
 void ipc_complete_cmd(struct ipc *ipc);
 
+/**
+ * \brief Notify host that the drain operation is done.
+ */
+int ipc_stream_drain_notify(void);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
