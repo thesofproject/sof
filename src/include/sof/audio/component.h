@@ -65,6 +65,7 @@ struct timestamp_data;
 #define COMP_STATE_PAUSED	4	/**< Component paused */
 #define COMP_STATE_ACTIVE	5	/**< Component active */
 #define COMP_STATE_PRE_ACTIVE	6	/**< Component after early initialisation */
+#define COMP_STATE_DRAINING	7	/**< Component draining */
 /** @}*/
 
 /** \name Standard Component Stream Commands
@@ -91,6 +92,7 @@ enum {
 	COMP_TRIGGER_POST_STOP,		/**< Finalize stop component stream */
 	COMP_TRIGGER_POST_PAUSE,	/**< Finalize pause component stream */
 	COMP_TRIGGER_NO_ACTION,		/**< No action required */
+	COMP_TRIGGER_DRAIN,		/**< Start drain operation */
 };
 /** @}*/
 
