@@ -601,12 +601,12 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 /**
  * \brief Generate probe data packet header, update timestamp, calc crc
  *	  and copy data to probe buffer.
- * \param[in] buffer component buffer pointer.
+ * \param[in] buffer_id component buffer id
  * \param[in] size data size.
  * \param[in] format audio format.
  * \return 0 on success, error code otherwise.
  */
-static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
+static int probe_gen_header(uint32_t buffer_id, uint32_t size,
 			    uint32_t format)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -618,7 +618,7 @@ static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
 	timestamp = sof_cycle_get_64();
 
 	header->sync_word = PROBE_EXTRACT_SYNC_WORD;
-	header->buffer_id = buffer->id;
+	header->buffer_id = buffer_id;
 	header->format = format;
 	header->timestamp_low = (uint32_t)timestamp;
 	header->timestamp_high = (uint32_t)(timestamp >> 32);
@@ -778,7 +778,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 		format = probe_gen_format(buffer->stream.frame_fmt,
 					  buffer->stream.rate,
 					  buffer->stream.channels);
-		ret = probe_gen_header(buffer,
+		ret = probe_gen_header(buffer->id,
 				       cb_data->transaction_amount,
 				       format);
 		if (ret < 0)
