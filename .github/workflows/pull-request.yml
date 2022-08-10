@@ -160,7 +160,7 @@ jobs:
         # does not block all other builds.
         platform: [imx8ulp,
                    sue jsl tgl,
-                   rn,
+                   rn rmb,
                    mt8186 mt8195,
         ]
 
