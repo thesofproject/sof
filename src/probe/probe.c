@@ -200,13 +200,28 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 static enum task_state probe_task(void *data)
 {
 	struct probe_pdata *_probe = probe_get();
+	uint32_t copy_align, avail;
 	int err;
 
-	if (_probe->ext_dma.dmapb.avail > 0)
+	if (!_probe->ext_dma.dmapb.avail)
+		return SOF_TASK_STATE_RESCHEDULE;
+
+	err = dma_get_attribute(_probe->ext_dma.dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
+				&copy_align);
+	if (err < 0) {
+		tr_err(&pr_tr, "probe_task(): dma_get_attribute failed.");
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	avail = ALIGN_DOWN(_probe->ext_dma.dmapb.avail, copy_align);
+	if (avail + _probe->ext_dma.dmapb.r_ptr >= _probe->ext_dma.dmapb.end_addr)
+		avail = _probe->ext_dma.dmapb.end_addr - _probe->ext_dma.dmapb.r_ptr;
+
+	if (avail > 0)
 		err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
 					      &_probe->ext_dma.config, 0,
 					      (void *)_probe->ext_dma.dmapb.r_ptr,
-					      _probe->ext_dma.dmapb.avail);
+					      avail);
 	else
 		return SOF_TASK_STATE_RESCHEDULE;
 
@@ -216,8 +231,10 @@ static enum task_state probe_task(void *data)
 	}
 
 	/* buffer data sent, set read pointer and clear avail bytes */
-	_probe->ext_dma.dmapb.r_ptr = _probe->ext_dma.dmapb.w_ptr;
-	_probe->ext_dma.dmapb.avail = 0;
+	_probe->ext_dma.dmapb.r_ptr += avail;
+	if (_probe->ext_dma.dmapb.r_ptr >= _probe->ext_dma.dmapb.end_addr)
+		_probe->ext_dma.dmapb.r_ptr -= _probe->ext_dma.dmapb.size;
+	_probe->ext_dma.dmapb.avail -= avail;
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
