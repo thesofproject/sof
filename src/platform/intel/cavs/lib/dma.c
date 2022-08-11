@@ -250,7 +250,7 @@ static const struct dma_info lib_dma = {
 int dmac_init(struct sof *sof)
 {
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	const struct device *z_dev = NULL;
+	struct device *z_dev = NULL;
 #endif
 	int i;
 	/* no probing before first use */
