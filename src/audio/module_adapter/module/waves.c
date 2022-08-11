@@ -342,8 +342,11 @@ static int waves_effect_init(struct processing_module *mod)
 	waves_codec->o_format = waves_codec->i_format;
 
 	waves_codec->sample_size_in_bytes = sample_bytes;
-	waves_codec->buffer_bytes = mod->period_bytes;
-	waves_codec->buffer_samples = waves_codec->buffer_bytes / src_fmt->channels /
+	/* Prepare a buffer for 1 period worth of data
+	 * dev->pipeline->period stands for the scheduling period in us
+	 */
+	waves_codec->buffer_samples = src_fmt->rate * dev->pipeline->period / 1000000;
+	waves_codec->buffer_bytes = waves_codec->buffer_samples * src_fmt->channels *
 		waves_codec->sample_size_in_bytes;
 
 	// trace allows printing only up-to 4 words at a time
