@@ -638,7 +638,6 @@ static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 static int volume_free(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 #if CONFIG_IPC_MAJOR_4
 	struct ipc4_peak_volume_regs regs;
 
@@ -647,7 +646,7 @@ static int volume_free(struct processing_module *mod)
 	mailbox_sw_regs_write(cd->mailbox_offset, &regs, sizeof(regs));
 #endif
 
-	comp_dbg(dev, "volume_free()");
+	comp_dbg(mod->dev, "volume_free()");
 
 	rfree(cd->vol);
 	rfree(cd);
@@ -668,7 +667,6 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 				  int32_t vol, bool constant_rate_ramp)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 	int32_t v = vol;
 	int32_t delta;
 	int32_t delta_abs;
@@ -681,14 +679,14 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 	 */
 	if (v < VOL_MIN) {
 		/* No need to fail, just trace the event. */
-		comp_warn(dev, "volume_set_chan: Limited request %d to min. %d",
+		comp_warn(mod->dev, "volume_set_chan: Limited request %d to min. %d",
 			  v, VOL_MIN);
 		v = VOL_MIN;
 	}
 
 	if (v > VOL_MAX) {
 		/* No need to fail, just trace the event. */
-		comp_warn(dev, "volume_set_chan: Limited request %d to max. %d",
+		comp_warn(mod->dev, "volume_set_chan: Limited request %d to max. %d",
 			  v, VOL_MAX);
 		v = VOL_MAX;
 	}
@@ -741,7 +739,7 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 			coef = -coef;
 
 		cd->ramp_coef[chan] = coef;
-		comp_dbg(dev, "cd->ramp_coef[%d] = %d", chan, cd->ramp_coef[chan]);
+		comp_dbg(mod->dev, "cd->ramp_coef[%d] = %d", chan, cd->ramp_coef[chan]);
 	}
 
 	return 0;
@@ -986,11 +984,10 @@ static int volume_get_config(struct processing_module *mod,
 			     uint8_t *fragment, size_t fragment_size)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 	struct ipc4_peak_volume_config *cdata;
 	int i;
 
-	comp_dbg(dev, "volume_get_large_config()");
+	comp_dbg(mod->dev, "volume_get_large_config()");
 
 	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(fragment, 8);
 
@@ -1005,7 +1002,7 @@ static int volume_get_config(struct processing_module *mod,
 		*data_offset_size = sizeof(*cdata) * cd->channels;
 		break;
 	default:
-		comp_err(dev, "unsupported param %d", config_id);
+		comp_err(mod->dev, "unsupported param %d", config_id);
 		return -EINVAL;
 	}
 
@@ -1075,12 +1072,11 @@ static int volume_process(struct processing_module *mod,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 	uint32_t avail_frames = input_buffers[0].size;
 	uint32_t frames;
 	int64_t prev_sum = 0;
 
-	comp_dbg(dev, "volume_process()");
+	comp_dbg(mod->dev, "volume_process()");
 
 	while (avail_frames) {
 		volume_update_current_vol_ipc4(cd);
@@ -1286,9 +1282,8 @@ err:
 static int volume_reset(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "volume_reset()");
+	comp_dbg(mod->dev, "volume_reset()");
 	reset_state(cd);
 	return 0;
 }
