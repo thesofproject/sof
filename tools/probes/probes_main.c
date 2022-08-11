@@ -297,6 +297,13 @@ void parse_data(char *file_in)
 									 packet->buffer_id,
 									 packet->format);
 
+						if (file < 0) {
+							fprintf(stderr,
+								"unable to open file for %u\n",
+								packet->buffer_id);
+							goto err;
+						}
+
 						fwrite(packet->data,
 						       sizeof(uint32_t),
 						       packet->data_size_bytes /
