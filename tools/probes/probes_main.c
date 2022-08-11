@@ -83,7 +83,18 @@ int get_buffer_file(struct wave_files *files, uint32_t buffer_id)
 	int i;
 
 	for (i = 0; i < FILES_LIMIT; i++) {
-		if (files[i].buffer_id == buffer_id)
+		if (files[i].fd != NULL && files[i].buffer_id == buffer_id)
+			return i;
+	}
+	return -1;
+}
+
+int get_buffer_file_free(struct wave_files *files)
+{
+	int i;
+
+	for (i = 0; i < FILES_LIMIT; i++) {
+		if (files[i].fd == NULL)
 			return i;
 	}
 	return -1;
@@ -94,7 +105,7 @@ int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
 	char path[FILE_PATH_LIMIT];
 	int i;
 
-	i = get_buffer_file(files, 0);
+	i = get_buffer_file_free(files);
 	if (i == -1) {
 		fprintf(stderr, "error: too many buffers\n");
 		exit(0);
