@@ -325,13 +325,13 @@ def west_init_if_needed():
 	if result_rootdir.returncode != 0:
 		execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
 		return
-	west_root_dir = pathlib.Path(result_rootdir.stdout.decode().strip('\n')).resolve()
+	west_root_dir = pathlib.Path(result_rootdir.stdout.decode().rstrip()).resolve()
 	result_manifest_dir = execute_command(["west", "config", "manifest.path"], capture_output=True,
 		cwd=west_top, timeout=10, check=True)
-	west_manifest_dir = pathlib.Path(west_root_dir, result_manifest_dir.stdout.decode().strip('\n')).resolve()
+	west_manifest_dir = pathlib.Path(west_root_dir, result_manifest_dir.stdout.decode().rstrip()).resolve()
 	manifest_file_result = execute_command(["west", "config", "manifest.file"], capture_output=True,
 		cwd=west_top, timeout=10, check=True)
-	returned_manifest_path = pathlib.Path(west_manifest_dir, manifest_file_result.stdout.decode().strip('\n'))
+	returned_manifest_path = pathlib.Path(west_manifest_dir, manifest_file_result.stdout.decode().rstrip())
 	if not returned_manifest_path.samefile(west_manifest_path):
 		west_reinitialize(west_root_dir, returned_manifest_path)
 	else:
