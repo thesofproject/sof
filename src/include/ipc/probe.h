@@ -22,6 +22,8 @@
 
 #define PROBE_PURPOSE_EXTRACTION	0x1
 #define PROBE_PURPOSE_INJECTION		0x2
+#define PROBE_PURPOSE_LOGGING		0x3
+#define PROBE_PURPOSE_TRACING		0x4
 
 #define PROBE_EXTRACT_SYNC_WORD		0xBABEBEBA
 
@@ -109,7 +111,7 @@ struct probe_dma {
  */
 struct probe_point {
 	uint32_t buffer_id;	/**< ID of buffer to which probe is attached */
-	uint32_t purpose;	/**< PROBE_PURPOSE_EXTRACTION or PROBE_PURPOSE_INJECTION */
+	uint32_t purpose;	/**< PROBE_PURPOSE_xxx */
 	uint32_t stream_tag;	/**< Stream tag of DMA via which data will be provided for injection.
 				 *   For extraction purposes, stream tag is ignored when received,
 				 *   but returned actual extraction stream tag via INFO function.

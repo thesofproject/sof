@@ -94,4 +94,33 @@ config TRACE_BURST_COUNT
 		Amount of messages that will pass through the filter even if sent in rapid succession.
 		Allowed message burst size before filter suppresses the message.
 
+config LOG_BACKEND_SOF_PROBE
+	bool "Logging backend with SOF probes"
+	depends on LOG
+	select LOG_OUTPUT
+	help
+		Enable backend for log output via SOF probe interface.
+		Probe interface allows to transmit logs and PCM data, muxed over
+		a shared DMA channel.
+		Logging is enabled by setting up a probe point with
+		probe purpose value of PROBE_PURPOSE_LOGGING.
+
+config LOG_BACKEND_SOF_PROBE_OUTPUT_DICTIONARY
+	bool "Dictionary"
+	select LOG_DICTIONARY_SUPPORT
+	help
+		Set output format of the SOF probe logging backend to
+		Zephyr log dictionary.
+		The resulting log file can be parsed with tools in
+		zephyr/scripts/logging/dictionary
+		A dictionary for the binary is created during build.
+
+config LOG_BACKEND_SOF_PROBE_OUTPUT
+	int "Set logging output format"
+	default 1 if LOG_MIPI_SYST_ENABLE
+	default 2 if LOG_BACKEND_SOF_PROBE_OUTPUT_DICTIONARY
+	default 0 # Text encoding is default
+        help
+                Set the logging format for SOF probe output.
+
 endmenu
