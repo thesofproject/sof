@@ -250,7 +250,7 @@ static const struct dma_info lib_dma = {
 int dmac_init(struct sof *sof)
 {
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	struct device *z_dev;
+	struct device *z_dev = NULL;
 #endif
 	int i;
 	/* no probing before first use */
@@ -265,16 +265,24 @@ int dmac_init(struct sof *sof)
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		switch (sof->dma_info->dma_array[i].plat_data.id) {
 		case DMA_HOST_IN_DMAC:
-			z_dev = device_get_binding("HDA_HOST_IN");
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_host_in), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(hda_host_in));
+#endif
 			break;
 		case DMA_HOST_OUT_DMAC:
-			z_dev = device_get_binding("HDA_HOST_OUT");
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_host_out), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(hda_host_out));
+#endif
 			break;
 		case DMA_GP_LP_DMAC0:
-			z_dev = device_get_binding("DMA_0");
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(lpgpdma0));
+#endif
 			break;
 		case DMA_GP_LP_DMAC1:
-			z_dev = device_get_binding("DMA_1");
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma1), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(lpgpdma1));
+#endif
 			break;
 		default:
 			continue;

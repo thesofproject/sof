@@ -130,54 +130,63 @@ void dai_group_put(struct dai_group *group)
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 
-struct dai_info_table dit[] = {
-	{"SSP_", {
-			.type = SOF_DAI_INTEL_SSP,
-			.dma_dev = DMA_DEV_SSP,
-			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
-		},
-	},
-	{"DMIC", {
-			.type = SOF_DAI_INTEL_DMIC,
-			.dma_dev = DMA_DEV_DMIC,
-			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
-		},
-	},
-	{"ALH_", {
-			.type = SOF_DAI_INTEL_ALH,
-			.dma_dev = DMA_DEV_ALH,
-			.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
-		},
-	},
+#define GET_DEVICE_LIST(node) DEVICE_DT_GET(node),
+
+const struct device *zephyr_dev[] = {
+#if CONFIG_DAI_INTEL_SSP
+	DT_FOREACH_STATUS_OKAY(intel_ssp_dai, GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_INTEL_DMIC
+	DT_FOREACH_STATUS_OKAY(intel_dai_dmic, GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_INTEL_ALH
+	DT_FOREACH_STATUS_OKAY(intel_alh_dai, GET_DEVICE_LIST)
+#endif
 };
+
+static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
+{
+	const struct dai_config *cfg;
+	int dir;
+	int i;
+
+	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
+
+	for (i = 0; i < ARRAY_SIZE(zephyr_dev); i++) {
+		cfg = dai_config_get(zephyr_dev[i], dir);
+		if (cfg->type == type && cfg->dai_index == index)
+			return zephyr_dev[i];
+	}
+
+	return NULL;
+}
+
+static void dai_set_device_params(struct dai *d)
+{
+	switch (d->type) {
+	case SOF_DAI_INTEL_SSP:
+		d->dma_dev = DMA_DEV_SSP;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		d->dma_dev = DMA_DEV_DMIC;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		d->dma_dev = DMA_DEV_ALH;
+		break;
+	default:
+		break;
+	}
+
+	d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+}
 
 /* called from ipc/ipc3/handler.c and some platform.c files */
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	const struct device *dev;
-	bool found =  false;
-	char dai_name[32];
 	struct dai *d;
-	uint32_t len;
-	int i;
 
-	tr_info(&dai_tr, "get_dai_zephyr index: %u type: %u", index, type);
-
-	for (i = 0; i < ARRAY_SIZE(dit); i++) {
-		if (dit[i].dai_p.type == type) {
-			strcpy(dai_name, dit[i].name);
-			len = strlen(dai_name);
-			dai_name[len] = 0x30 + index;
-			dai_name[len + 1] = 0;
-			found = true;
-			break;
-		}
-	}
-
-	if (!found)
-		return NULL;
-
-	dev = device_get_binding(dai_name);
+	dev = dai_get_zephyr_device(type, index);
 	if (!dev)
 		return NULL;
 
@@ -185,11 +194,11 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	if (!d)
 		return NULL;
 
-	d->type = type;
-	d->dma_dev = dit[i].dai_p.dma_dev;
-	d->dma_caps = dit[i].dai_p.dma_caps;
 	d->index = index;
+	d->type = type;
 	d->dev = dev;
+
+	dai_set_device_params(d);
 
 	if (dai_probe(d->dev)) {
 		rfree(d);

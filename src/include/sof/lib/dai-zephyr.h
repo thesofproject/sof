@@ -51,11 +51,6 @@ struct dai {
 	const struct dai_data *dd;
 };
 
-struct dai_info_table {
-	const char *name;	/**< Name prototype*/
-	struct dai dai_p;	/**< DAI prototype */
-};
-
 struct timestamp_cfg {
 	uint32_t walclk_rate; /* Rate in Hz, e.g. 19200000 */
 	int type; /* SSP, DMIC, HDA, etc. */
