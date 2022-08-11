@@ -38,6 +38,7 @@
 struct wave_files {
 	FILE *fd;
 	uint32_t buffer_id;
+	uint32_t fmt;
 	uint32_t size;
 	struct wave header;
 };
@@ -100,8 +101,14 @@ int get_buffer_file_free(struct wave_files *files)
 	return -1;
 }
 
+bool is_audio_format(uint32_t format)
+{
+	return (format & PROBE_MASK_FMT_TYPE) != 0 && (format & PROBE_MASK_AUDIO_FMT) == 0;
+}
+
 int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
 {
+	bool audio = is_audio_format(format);
 	char path[FILE_PATH_LIMIT];
 	int i;
 
@@ -111,10 +118,9 @@ int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
 		exit(0);
 	}
 
-	fprintf(stdout, "%s:\t Creating wave file for buffer id: %d\n",
-		APP_NAME, buffer_id);
+	sprintf(path, "buffer_%d.%s", buffer_id, audio ? "wav" : "bin");
 
-	sprintf(path, "buffer_%d.wav", buffer_id);
+	fprintf(stdout, "%s:\t Creating file %s\n", APP_NAME, path);
 
 	files[i].fd = fopen(path, "wb");
 	if (!files[i].fd) {
@@ -124,6 +130,10 @@ int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
 	}
 
 	files[i].buffer_id = buffer_id;
+	files[i].fmt = format;
+
+	if (!audio)
+		return i;
 
 	files[i].header.riff.chunk_id = HEADER_RIFF;
 	files[i].header.riff.format = HEADER_WAVE;
@@ -153,6 +163,9 @@ void finalize_wave_files(struct wave_files *files)
 	/* and close all opened files */
 	/* check wave struct to understand the offsets */
 	for (i = 0; i < FILES_LIMIT; i++) {
+		if (!is_audio_format(files[i].fmt))
+			continue;
+
 		if (files[i].fd) {
 			chunk_size = files[i].size + sizeof(struct wave) -
 				     offsetof(struct riff_chunk, format);
