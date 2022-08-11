@@ -467,37 +467,48 @@ if (CONFIG_SOC_SERIES_INTEL_ACE1X)
 	# Driver sources
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/ace/ipc.c
-		${SOF_DRIVERS_PATH}/intel/ace/timestamp.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
-		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
-	)
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
-	)
+		zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+			${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+		)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
-	)
+		zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+			${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+		)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic/ace_dmic.c
-	)
+		zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+			${SOF_DRIVERS_PATH}/intel/hda/hda.c
+		)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_TPLG_PARAMS
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_computed.c
-	)
+		zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+			${SOF_DRIVERS_PATH}/intel/alh.c
+		)
 
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_NHLT
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
-	)
+		zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+			${SOF_DRIVERS_PATH}/intel/dmic/ace_dmic.c
+		)
+
+		zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_TPLG_PARAMS
+			${SOF_DRIVERS_PATH}/intel/dmic/dmic_computed.c
+		)
+
+		zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_NHLT
+			${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
+		)
+
+		zephyr_library_sources(
+			${SOF_PLATFORM_PATH}/intel/ace/lib/dai.c
+			${SOF_DRIVERS_PATH}/intel/ace/timestamp.c
+		)
+
+	endif() #!CONFIG_ZEPHYR_NATIVE_DRIVERS
 
 	# Platform sources
 	zephyr_library_sources(
@@ -507,7 +518,6 @@ if (CONFIG_SOC_SERIES_INTEL_ACE1X)
 		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/ace/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/dma.c
 	)
 
