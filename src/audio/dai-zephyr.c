@@ -437,7 +437,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
-	struct dma_block_config *prev;
+	struct dma_block_config *prev = NULL;
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = local_buf->stream.frame_fmt;
@@ -534,7 +534,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
 	}
-	prev->next_block = dma_cfg->head_block;
+	if (prev)
+		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
 out:
@@ -550,7 +551,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
-	struct dma_block_config *prev;
+	struct dma_block_config *prev = NULL;
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = local_buf->stream.frame_fmt;
@@ -659,7 +660,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
 	}
-	prev->next_block = dma_cfg->head_block;
+	if (prev)
+		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
 out:
