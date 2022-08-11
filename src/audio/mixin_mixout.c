@@ -535,6 +535,12 @@ static int mixin_copy(struct comp_dev *dev)
 		mixout_data = comp_get_drvdata(mixout);
 		mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
 		src_info = find_mixout_source_info(mixed_data_info, dev);
+		if (!src_info) {
+			comp_err(dev, "No source info");
+			mixed_data_info_release(mixed_data_info);
+			buffer_release(source_c);
+			return -EINVAL;
+		}
 
 		sink_c = buffer_acquire(sink);
 
@@ -589,6 +595,12 @@ static int mixin_copy(struct comp_dev *dev)
 		mixout_data = comp_get_drvdata(mixout);
 		mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
 		src_info = find_mixout_source_info(mixed_data_info, dev);
+		if (!src_info) {
+			comp_err(dev, "No source info");
+			mixed_data_info_release(mixed_data_info);
+			buffer_release(source_c);
+			return -EINVAL;
+		}
 
 		/* Skip data from previous run(s) not yet produced in mixout_copy().
 		 * Normally start would be 0 unless mixout pipeline has serious
@@ -679,6 +691,11 @@ static int mixout_copy(struct comp_dev *dev)
 		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
 
 		src_info = find_mixout_source_info(mixed_data_info, mixin);
+		if (!src_info) {
+			comp_err(dev, "No source info");
+			mixed_data_info_release(mixed_data_info);
+			return -EINVAL;
+		}
 
 		bytes_to_produce = MIN(bytes_to_produce, src_info->consumed_yet_not_produced_bytes);
 	}
