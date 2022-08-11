@@ -523,6 +523,10 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 	if (bytes == 0)
 		return 0;
 
+	/* check if there is free room in probe buffer */
+	if (pbuf->size - pbuf->avail < bytes)
+		return -EINVAL;
+
 	/* check if it will not exceed end_addr */
 	if ((char *)pbuf->end_addr - (char *)pbuf->w_ptr < bytes) {
 		head = (char *)pbuf->end_addr - (char *)pbuf->w_ptr;
@@ -754,6 +758,36 @@ static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate,
 	return format;
 }
 
+/*
+ * Check if more than 75% of buffer is already used,
+ * and if yes, rescheduled the probe task immediately.
+ */
+static void kick_probe_task(struct probe_pdata *_probe)
+{
+	if (_probe->ext_dma.dmapb.size - _probe->ext_dma.dmapb.avail <
+		_probe->ext_dma.dmapb.size >> 2)
+		reschedule_task(&_probe->dmap_work, 0);
+}
+
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+static void probe_logging_hook(uint8_t *buffer, size_t length)
+{
+	struct probe_pdata *_probe = probe_get();
+	int ret;
+
+	ret = probe_gen_header(PROBE_LOGGING_BUFFER_ID, length, 0);
+	if (ret < 0)
+		return;
+
+	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
+			      buffer, length);
+	if (ret < 0)
+		return;
+
+	kick_probe_task(_probe);
+}
+#endif
+
 /**
  * \brief General extraction probe callback, called from buffer produce.
  *	  It will search for probe point connected to this buffer.
@@ -825,10 +859,8 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 			if (ret < 0)
 				goto err;
 		}
-		/* check if more than 75% of buffer size is already used */
-		if (_probe->ext_dma.dmapb.size - _probe->ext_dma.dmapb.avail <
-		    _probe->ext_dma.dmapb.size >> 2)
-			probe_task(NULL);
+
+		kick_probe_task(_probe);
 	} else {
 		/* search for DMA used by this probe point */
 		for (j = 0; j < CONFIG_PROBE_DMA_MAX; j++) {
@@ -927,6 +959,11 @@ static void probe_cb_free(void *arg, enum notify_id type, void *data)
 		tr_err(&pr_tr, "probe_cb_free(): probe_point_remove() failed");
 }
 
+static bool probe_purpose_needs_ext_dma(uint32_t purpose)
+{
+	return purpose == PROBE_PURPOSE_EXTRACTION || purpose == PROBE_PURPOSE_LOGGING;
+}
+
 int probe_point_add(uint32_t count, struct probe_point *probe)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -935,7 +972,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 	uint32_t buffer_id;
 	uint32_t first_free;
 	uint32_t dma_found;
-	struct ipc_comp_dev *dev;
+	struct ipc_comp_dev *dev = NULL;
 
 	tr_dbg(&pr_tr, "probe_point_add() count = %u", count);
 
@@ -952,34 +989,36 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		       probe[i].stream_tag);
 
 		if (probe[i].purpose != PROBE_PURPOSE_EXTRACTION &&
-		    probe[i].purpose != PROBE_PURPOSE_INJECTION) {
+		    probe[i].purpose != PROBE_PURPOSE_INJECTION &&
+		    probe[i].purpose != PROBE_PURPOSE_LOGGING) {
 			tr_err(&pr_tr, "probe_point_add() error: invalid purpose %d",
 			       probe[i].purpose);
 
 			return -EINVAL;
 		}
 
-		if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION &&
-		    _probe->ext_dma.stream_tag == PROBE_DMA_INVALID) {
-			tr_err(&pr_tr, "probe_point_add(): Setting probe for extraction, while extraction DMA not enabled.");
-
+		if (_probe->ext_dma.stream_tag == PROBE_DMA_INVALID &&
+		    probe_purpose_needs_ext_dma(probe[i].purpose)) {
+			tr_err(&pr_tr, "probe_point_add(): extraction DMA not enabled.");
 			return -EINVAL;
 		}
 
-		/* check if buffer exists */
-		dev = ipc_get_comp_by_id(ipc_get(), probe[i].buffer_id);
-		if (!dev) {
-			tr_err(&pr_tr, "probe_point_add(): No device with ID %u found.",
-			       probe[i].buffer_id);
+		if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
+			/* check if buffer exists */
+			dev = ipc_get_comp_by_id(ipc_get(), probe[i].buffer_id);
+			if (!dev) {
+				tr_err(&pr_tr, "probe_point_add(): No device with ID %u found.",
+				       probe[i].buffer_id);
 
-			return -EINVAL;
-		}
+				return -EINVAL;
+			}
 
-		if (dev->type != COMP_TYPE_BUFFER) {
-			tr_err(&pr_tr, "probe_point_add(): Device ID %u is not a buffer.",
-			       probe[i].buffer_id);
+			if (dev->type != COMP_TYPE_BUFFER) {
+				tr_err(&pr_tr, "probe_point_add(): Device ID %u is not a buffer.",
+				       probe[i].buffer_id);
 
-			return -EINVAL;
+				return -EINVAL;
+			}
 		}
 
 		first_free = CONFIG_PROBE_POINTS_MAX;
@@ -1039,10 +1078,11 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 				return -EBUSY;
 			}
-		} else if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
+		} else {
+			/* prepare extraction DMA */
 			for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
 				if (_probe->probe_points[j].stream_tag != PROBE_DMA_INVALID &&
-				    _probe->probe_points[j].purpose == PROBE_PURPOSE_EXTRACTION)
+				    probe_purpose_needs_ext_dma(_probe->probe_points[j].purpose))
 					break;
 			}
 			if (j == CONFIG_PROBE_POINTS_MAX) {
@@ -1059,10 +1099,18 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		_probe->probe_points[first_free].stream_tag =
 			probe[i].stream_tag;
 
-		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
-				  &probe_cb_produce, 0);
-		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE,
-				  &probe_cb_free, 0);
+		if (probe[i].purpose == PROBE_PURPOSE_LOGGING) {
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+			probe_logging_init(probe_logging_hook);
+#else
+			return -EINVAL;
+#endif
+		} else {
+			notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
+					  &probe_cb_produce, 0);
+			notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE,
+					  &probe_cb_free, 0);
+		}
 	}
 
 	return 0;

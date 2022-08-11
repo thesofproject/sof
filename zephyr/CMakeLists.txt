@@ -599,8 +599,10 @@ zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c
-	${SOF_SRC_PATH}/trace/trace.c
-)
+	${SOF_SRC_PATH}/trace/trace.c)
+
+zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
+      ${SOF_SRC_PATH}/logging/log_backend_probe.c)
 
 # Optional SOF sources - depends on Kconfig - WIP
 
