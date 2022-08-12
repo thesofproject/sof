@@ -151,8 +151,9 @@ struct comp_buffer {
 	bool walking;		/**< indicates if the buffer is being walked */
 };
 
+/* Only to be used for synchronous same-core notifications! */
 struct buffer_cb_transact {
-	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer;
 	uint32_t transaction_amount;
 	void *transaction_begin_address;
 };
