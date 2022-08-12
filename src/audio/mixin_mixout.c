@@ -478,7 +478,7 @@ static void silence(struct audio_stream __sparse_cache *stream, uint32_t start,
 
 /* Most of the mixing is done here on mixin side. mixin mixes its source data
  * into each connected mixout sink buffer. Basically, if mixout sink buffer has
- * no data, mixin copies its source data into mixin sink buffer. If moxout sink
+ * no data, mixin copies its source data into mixout sink buffer. If moxout sink
  * buffer has some data (written there by other mixin), mixin reads mixout sink
  * buffer data, mixes it with its source data and writes back to mixout sink
  * buffer. So after all mixin mixin_copy() calls, mixout sink buffer contains
@@ -1004,11 +1004,12 @@ static int mixout_bind(struct comp_dev *dev, void *data)
 	md = comp_get_drvdata(dev);
 	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
 
-	/* mixout -> new sink */
-	if (dev->ipc_config.id == src_id) {
-		mixed_data_info->mixed_bytes = 0;
-		memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
-	} else { /* new mixin -> mixout */
+	/*
+	 * If dev->ipc_config.id == src_id then we're called for the downstream
+	 * link, nothing to do
+	 */
+	if (dev->ipc_config.id != src_id) {
+		/* new mixin -> mixout */
 		struct comp_dev *mixin;
 		struct mixout_source_info *source_info;
 
@@ -1057,7 +1058,6 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 
 	/* mixout -> new sink */
 	if (dev->ipc_config.id == src_id) {
-		/* not really necessary as same is done in mixout_bind() */
 		mixed_data_info->mixed_bytes = 0;
 		memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
 	} else { /* new mixin -> mixout */
