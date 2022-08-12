@@ -171,6 +171,13 @@ PCM_CAPTURE_ADD_COMMON($1, $2, $3, 0, false),
 `fatal_error(`Invalid parameters ($#) to PCM_CAPTURE_ADD')')'
 )
 
+dnl COMPR_CAPTURE_ADD(name, pcm_id, capture)
+define(`COMPR_CAPTURE_ADD',
+`ifelse(`$#', `3',
+PCM_CAPTURE_ADD_COMMON($1, $2, $3, 0, true),
+`fatal_error(`Invalid parameters ($#) to COMPR_CAPTURE_ADD')')'
+)
+
 dnl PCM_CAPTURE_LP_ADD(name, pcm_id, capture)
 define(`PCM_CAPTURE_LP_ADD',
 `ifelse(`$#', `3',
