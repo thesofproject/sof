@@ -751,7 +751,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct buffer_cb_transact *cb_data = data;
-	struct comp_buffer *buffer = cb_data->buffer;
+	struct comp_buffer __sparse_cache *buffer = cb_data->buffer;
 	struct probe_dma_ext *dma;
 	uint32_t buffer_id;
 	uint32_t head, tail;
@@ -778,7 +778,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 		format = probe_gen_format(buffer->stream.frame_fmt,
 					  buffer->stream.rate,
 					  buffer->stream.channels);
-		ret = probe_gen_header(buffer->id,
+		ret = probe_gen_header(buffer_id,
 				       cb_data->transaction_amount,
 				       format);
 		if (ret < 0)
@@ -840,8 +840,8 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 		/* check if transaction amount exceeds component buffer end addr */
 		/* if yes: divide copying into two stages, head and tail */
 		if ((char *)cb_data->transaction_begin_address +
-			cb_data->transaction_amount > (char *)cb_data->buffer->stream.end_addr) {
-			head = (char *)cb_data->buffer->stream.end_addr -
+			cb_data->transaction_amount > (char *)buffer->stream.end_addr) {
+			head = (char *)buffer->stream.end_addr -
 				(char *)cb_data->transaction_begin_address;
 			tail = cb_data->transaction_amount - head;
 
@@ -851,7 +851,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 				goto err;
 
 			ret = copy_from_pbuffer(&dma->dmapb,
-						cb_data->buffer->stream.addr, tail);
+						buffer->stream.addr, tail);
 			if (ret < 0)
 				goto err;
 		} else {
@@ -899,7 +899,8 @@ err:
 static void probe_cb_free(void *arg, enum notify_id type, void *data)
 {
 	struct buffer_cb_free *cb_data = data;
-	uint32_t buffer_id = cb_data->buffer->id;
+	struct comp_buffer __sparse_cache *buffer = cb_data->buffer;
+	uint32_t buffer_id = buffer->id;
 	int ret;
 
 	tr_dbg(&pr_tr, "probe_cb_free() buffer_id = %u", buffer_id);

@@ -195,10 +195,22 @@ void buffer_free(struct comp_buffer *buffer)
 	rfree(buffer);
 }
 
+/*
+ * comp_update_buffer_produce() and comp_update_buffer_consume() send
+ * NOTIFIER_ID_BUFFER_PRODUCE and NOTIFIER_ID_BUFFER_CONSUME notifier events
+ * respectively. The only recipient of those notifications is probes. The
+ * target for those notifications is always the current core, therefore notifier
+ * callbacks will be called synchronously from notifier_event() calls. Therefore
+ * we cannot pass unlocked buffer pointers to probes, because if they try to
+ * acquire the buffer, that can cause a deadlock. In general locked objects
+ * shouldn't be passed to potentially asynchronous contexts, but here we have no
+ * choice but to use our knowledge of the local notifier behaviour and pass
+ * locked buffers to notification recipients.
+ */
 void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
-		.buffer = cache_to_uncache(buffer),
+		.buffer = buffer,
 		.transaction_amount = bytes,
 		.transaction_begin_address = buffer->stream.w_ptr,
 	};
@@ -216,7 +228,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 	audio_stream_produce(&buffer->stream, bytes);
 
 	/* Notifier looks for the pointer value to match it against registration */
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_PRODUCE,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
@@ -231,7 +243,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
-		.buffer = cache_to_uncache(buffer),
+		.buffer = buffer,
 		.transaction_amount = bytes,
 		.transaction_begin_address = buffer->stream.r_ptr,
 	};
@@ -248,7 +260,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 
 	audio_stream_consume(&buffer->stream, bytes);
 
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_CONSUME,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	buf_dbg(buffer, "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
