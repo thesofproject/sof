@@ -563,6 +563,7 @@ static int mixin_copy(struct comp_dev *dev)
 	if (source_avail_bytes > 0) {
 		bytes_to_copy = MIN(source_avail_bytes, sinks_free_bytes);
 		bytes_to_consume_from_source_buf = bytes_to_copy;
+		buffer_stream_invalidate(source_c, bytes_to_copy);
 	} else {
 		/* if source does not produce any data -- do NOT stop mixing but generate
 		 * silence as that source output.
@@ -572,9 +573,6 @@ static int mixin_copy(struct comp_dev *dev)
 		bytes_to_copy = MIN(audio_stream_period_bytes(&source_c->stream, dev->frames),
 				    sinks_free_bytes);
 	}
-
-	if (source_avail_bytes > 0)
-		buffer_stream_invalidate(source_c, bytes_to_copy);
 
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
 	list_for_item(blist, &dev->bsink_list) {
