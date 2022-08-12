@@ -31,7 +31,7 @@
 #define APP_NAME "sof-probes"
 
 #define PACKET_MAX_SIZE	4096	/**< Size limit for probe data packet */
-#define DATA_READ_LIMIT 1024	/**< Data limit for file read */
+#define DATA_READ_LIMIT 4096	/**< Data limit for file read */
 #define FILES_LIMIT	32	/**< Maximum num of probe output files */
 #define FILE_PATH_LIMIT 128	/**< Path limit for probe output files */
 
@@ -187,13 +187,13 @@ int validate_data_packet(struct probe_data_packet *data_packet)
 	}
 }
 
-int process_sync(struct probe_data_packet *packet, uint32_t **w_ptr, uint32_t *total_data_to_copy)
+int process_sync(struct probe_data_packet *packet, uint8_t **w_ptr, uint32_t *total_data_to_copy)
 {
 	struct probe_data_packet *temp_packet;
 
 	/* request to copy data_size from probe packet */
-	*total_data_to_copy = packet->data_size_bytes /
-					 sizeof(uint32_t);
+	*total_data_to_copy = packet->data_size_bytes;
+
 	if (packet->data_size_bytes > PACKET_MAX_SIZE) {
 		temp_packet = realloc(packet,
 				      sizeof(struct probe_data_packet) + packet->data_size_bytes);
@@ -201,8 +201,19 @@ int process_sync(struct probe_data_packet *packet, uint32_t **w_ptr, uint32_t *t
 			return -ENOMEM;
 	}
 
-	*w_ptr = (uint32_t *)&packet->data;
+	*w_ptr = (uint8_t *)&packet->data;
 	return 0;
+}
+
+static bool sync_word_at(uint8_t *buf, size_t len)
+{
+	if (len < sizeof(uint32_t))
+		return false;
+
+	if (*((uint32_t *)buf) == PROBE_EXTRACT_SYNC_WORD)
+		return true;
+
+	return false;
 }
 
 void parse_data(char *file_in)
@@ -210,10 +221,10 @@ void parse_data(char *file_in)
 	FILE *fd_in;
 	struct wave_files files[FILES_LIMIT];
 	struct probe_data_packet *packet;
-	uint32_t data[DATA_READ_LIMIT];
+	uint8_t data[DATA_READ_LIMIT];
 	uint32_t total_data_to_copy = 0;
 	uint32_t data_to_copy = 0;
-	uint32_t *w_ptr;
+	uint8_t *w_ptr;
 	int i, j, file;
 
 	enum p_state state = READY;
@@ -234,16 +245,17 @@ void parse_data(char *file_in)
 		fclose(fd_in);
 		exit(0);
 	}
-	memset(&data, 0, sizeof(uint32_t) * DATA_READ_LIMIT);
+	memset(&data, 0, DATA_READ_LIMIT);
 	memset(&files, 0, sizeof(struct wave_files) * FILES_LIMIT);
 
 	/* data read loop to process DATA_READ_LIMIT bytes at each iteration */
 	do {
-		i = fread(&data, sizeof(uint32_t), DATA_READ_LIMIT, fd_in);
+		i = fread(&data, 1, DATA_READ_LIMIT, fd_in);
+
 		/* processing all loaded bytes */
 		for (j = 0; j < i; j++) {
-			/* SYNC received */
-			if (data[j] == PROBE_EXTRACT_SYNC_WORD) {
+			/* check for SYNC */
+			if (sync_word_at(&data[j], i - j)) {
 				if (state != READY) {
 					fprintf(stderr, "error: wrong state %d, err %d\n",
 						state, errno);
@@ -252,9 +264,8 @@ void parse_data(char *file_in)
 				}
 				memset(packet, 0, PACKET_MAX_SIZE);
 				/* request to copy full data packet */
-				total_data_to_copy = sizeof(struct probe_data_packet) /
-					sizeof(uint32_t);
-				w_ptr = (uint32_t *)packet;
+				total_data_to_copy = sizeof(struct probe_data_packet);
+				w_ptr = (uint8_t *)packet;
 				state = SYNC;
 			}
 			/* data copying section */
@@ -268,7 +279,7 @@ void parse_data(char *file_in)
 					data_to_copy = total_data_to_copy;
 					total_data_to_copy = 0;
 				}
-				memcpy(w_ptr, data + j, data_to_copy * sizeof(uint32_t));
+				memcpy(w_ptr, data + j, data_to_copy);
 				w_ptr += data_to_copy;
 				j += data_to_copy - 1;
 			}
@@ -304,11 +315,8 @@ void parse_data(char *file_in)
 							goto err;
 						}
 
-						fwrite(packet->data,
-						       sizeof(uint32_t),
-						       packet->data_size_bytes /
-						       sizeof(uint32_t),
-						       files[file].fd);
+						fwrite(packet->data, 1,
+						       packet->data_size_bytes, files[file].fd);
 
 						files[file].size += packet->data_size_bytes;
 					}
