@@ -969,10 +969,14 @@ static int ipc_glb_trace_message(uint32_t header)
 
 static int ipc_glb_gdb_debug(uint32_t header)
 {
-	/* no furher information needs to be extracted form header */
+	/* no further information needs to be extracted from header */
 	(void) header;
 
-#if CONFIG_GDB_DEBUG
+#if CONFIG_GDBSTUB
+	gdb_init();
+	return 0;
+// TODO: remove old GDB stub?
+#elif CONFIG_GDB_DEBUG
 	gdb_init_debug_exception();
 	gdb_init();
 	/* TODO: this asm should be in arch/include/debug/debug.h
