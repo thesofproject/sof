@@ -6,23 +6,26 @@
 % Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs)
-
+function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest)
 	%% Defaults for call parameters
 	if nargin < 1
 		comp = 'EQIIR';
 	end
 
 	if nargin < 2
-		bits_in_list = [16 24 32];
+		bits_in_list = 32;
 	end
 
 	if nargin < 3
-		bits_out_list = [16 24 32];
+		bits_out_list = 32;
 	end
 
 	if nargin < 4
 		fs = 48e3;
+	end
+
+	if nargin < 5
+		fulltest = 1;
 	end
 
 	%% Paths
@@ -40,7 +43,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	t.ch = [1 2];                          % Test channel 1 and 2
 	t.bits_in = bits_in_list;              % Input word length from func arguments
 	t.bits_out = bits_out_list;            % Output word length from func arguments
-	t.full_test = 1;                       % 0 is quick check only, 1 is full set
+	t.full_test = fulltest;                % 0 is quick check only, 1 is full test
 
 	%% Show graphics or not. With visible plot windows Octave may freeze if too
 	%  many windows are kept open. As workaround setting close windows to
@@ -82,9 +85,9 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 
 			v(1) = chirp_test(t);
 			if v(1) ~= -1 && t.full_test
-				[v(2) g] = g_test(t);
-				[v(3) dr] = dr_test(t);
-				[v(4) thdnf] = thdnf_test(t);
+				[v(2), g] = g_test(t);
+				[v(3), dr] = dr_test(t);
+				[v(4), thdnf] = thdnf_test(t);
 				v(5) = fr_test(t);
 
 				% TODO: Collect results for all channels, now get worst-case
@@ -156,7 +159,7 @@ function fail = chirp_test(t)
 	test = chirp_test_input(test);
 
 	% Run test
-	test = test_run_process(test, t);
+	test = test_run_process(test);
 
 	% Analyze
 	test = chirp_test_analyze(test);
@@ -178,7 +181,7 @@ function [fail, g_db] = g_test(t)
 	test = g_test_input(test);
 
 	% Run test
-	test = test_run_process(test, t);
+	test = test_run_process(test);
 
 	% Measure
 	test = g_spec(test, t);
@@ -199,7 +202,7 @@ function [fail, dr_db] = dr_test(t)
 	test = dr_test_input(test);
 
 	% Run test
-	test = test_run_process(test, t);
+	test = test_run_process(test);
 
 	% Measure
 	test = dr_test_measure(test);
@@ -219,10 +222,10 @@ function [fail, thdnf] = thdnf_test(t)
 	test = thdnf_test_input(test);
 
 	% Run test
-	test = test_run_process(test, t);
+	test = test_run_process(test);
 
 	% Measure
-	test = thdnf_mask(test, t);
+	test = thdnf_mask(test);
 	test = thdnf_test_measure(test);
 
 	% For EQ use the -20dBFS result and ignore possible -1 dBFS fail
@@ -243,7 +246,7 @@ function fail = fr_test(t)
 	test = fr_test_input(test);
 
 	% Run test
-	test = test_run_process(test, t);
+	test = test_run_process(test);
 
 	% Measure
 	test = fr_mask(test, t);
@@ -259,7 +262,7 @@ end
 %% ------------------------------------------------------------
 %% Helper functions
 
-function test = thdnf_mask(test, prm)
+function test = thdnf_mask(test)
 	min_bits = min(test.bits_in, test.bits_out);
 	test.thdnf_mask_f = [50 400 test.f_max];
 	test.thdnf_mask_hi = [-40 -50 -50];
@@ -352,7 +355,7 @@ function test = test_defaults(t)
 	test.fr_rp_max_db = 0.5;        % Allow 0.5 dB frequency response ripple
 end
 
-function test = test_run_process(test, t)
+function test = test_run_process(test)
 	delete_check(1, test.fn_out);
 	test = test_run(test);
 end
