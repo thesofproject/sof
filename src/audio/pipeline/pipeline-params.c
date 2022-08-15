@@ -97,14 +97,12 @@ static int pipeline_comp_params(struct comp_dev *current,
 		 */
 		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
 		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (end_type == COMP_ENDPOINT_HOST ||
-			    end_type == COMP_ENDPOINT_NODE)
+			if (end_type == COMP_ENDPOINT_HOST)
 				return 0;
 		}
 
 		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
-			if (end_type == COMP_ENDPOINT_DAI ||
-			    end_type == COMP_ENDPOINT_NODE)
+			if (end_type == COMP_ENDPOINT_DAI)
 				return 0;
 		}
 	}
@@ -302,14 +300,12 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 		 */
 		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
 		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (end_type == COMP_ENDPOINT_HOST ||
-			    end_type == COMP_ENDPOINT_NODE)
+			if (end_type == COMP_ENDPOINT_HOST)
 				return 0;
 		}
 
 		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
-			if (end_type == COMP_ENDPOINT_DAI ||
-			    end_type == COMP_ENDPOINT_NODE)
+			if (end_type == COMP_ENDPOINT_DAI)
 				return 0;
 		}
 	}
