@@ -140,7 +140,7 @@ static int iadk_modules_init_process(struct processing_module *mod)
 	return 0;
 }
 
-/**
+/*
  * \brief iadk_modules_process.
  * \param[in] mod - processing module pointer.
  *
@@ -202,7 +202,7 @@ static int iadk_modules_free(struct processing_module *mod)
 	return ret;
 }
 
-/**
+/*
  * \brief iadk_modules_set_configuration - Common method to assemble large configuration message
  * \param[in] mod - struct processing_module pointer
  * \param[in] config_id - Configuration ID
@@ -228,7 +228,7 @@ static int iadk_modules_set_configuration(struct processing_module *mod, uint32_
 					      response, response_size);
 }
 
-/**
+/*
  * \brief iadk_modules_get_configuration - Common method to retrieve module configuration
  * \param[in] mod - struct processing_module pointer
  * \param[in] config_id - Configuration ID

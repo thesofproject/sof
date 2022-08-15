@@ -1064,7 +1064,7 @@ static void volume_update_current_vol_ipc4(struct vol_data *cd)
 #endif
 }
 
-/**
+/*
  * \brief Copies and processes stream data.
  * \param[in,out] mod Volume processing module handle
 
@@ -1111,7 +1111,7 @@ static int volume_process(struct processing_module *mod,
 	return 0;
 }
 
-/**
+/*
  * \brief Retrieves volume zero crossing function.
  * \param[in,out] dev Volume base component device.
  */
