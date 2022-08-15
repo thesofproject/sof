@@ -5,7 +5,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 % process_test(comp, bits_in_list, bits_out_list, fs)
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2017-202 Intel Corporation. All rights reserved.
+% Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% Defaults for call parameters
