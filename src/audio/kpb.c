@@ -157,7 +157,7 @@ static void kpb_lock_init(struct comp_data *kpb)
 
 #endif /* __ZEPHYR__ */
 
-/**
+/*
  * \brief Create a key phrase buffer component.
  * \param[in] config - generic ipc component pointer.
  *

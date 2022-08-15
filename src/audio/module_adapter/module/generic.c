@@ -325,7 +325,7 @@ int module_free(struct processing_module *mod)
 	return ret;
 }
 
-/**
+/*
  * \brief Set module configuration - Common method to assemble large configuration message
  * \param[in] mod - struct processing_module pointer
  * \param[in] config_id - Configuration ID

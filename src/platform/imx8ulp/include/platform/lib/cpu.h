@@ -5,7 +5,7 @@
  * Author: Peng Zhang <peng.zhang_8@nxp.com>
  */
 
-/**
+/*
  * \file platform/lib/cpu.h
  * \brief DSP core parameters.
  */

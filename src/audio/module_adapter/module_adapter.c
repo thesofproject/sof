@@ -23,7 +23,7 @@
 
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
-/**
+/*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
@@ -380,7 +380,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	return 0;
 }
 
-/**
+/*
  * Function to copy from source buffer to the module buffer
  * @source: source audio buffer stream
  * @buff: pointer to the module input buffer
@@ -407,7 +407,7 @@ ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
 					 MIN(buff_size, tail_size));
 }
 
-/**
+/*
  * Function to copy processed samples from the module buffer to sink buffer
  * @sink: sink audio buffer stream
  * @buff: pointer to the module output buffer
