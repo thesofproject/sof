@@ -898,11 +898,14 @@ static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 }
 
 /**
+ * Warning: duplicate declaration in topology.h
+ *
  * Called by component in  params() function in order to set and update some of
  * downstream (playback) or upstream (capture) buffer parameters with pcm
  * parameters. There is a possibility to specify which of parameters won't be
  * overwritten (e.g. SRC component should not overwrite rate parameter, because
  * it is able to change it).
+ *
  * @param dev Component device
  * @param flag Specifies which parameter should not be updated
  * @param params pcm params
