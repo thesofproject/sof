@@ -567,7 +567,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		return -EINVAL;
 	}
 
-	dmic->dai_rate = DMIC_HW_IOCLK / rate_div;
+	dmic->dai_rate = CONFIG_DMIC_HW_IOCLK / rate_div;
 	dai_info(dai, "dmic_set_config_nhlt(): rate = %d, channels = %d, format = %d",
 		 dmic->dai_rate, dmic->dai_channels, dmic->dai_format);
 	return 0;

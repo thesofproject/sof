@@ -67,7 +67,7 @@ static void find_modes(struct dai *dai,
 
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
 	if (dmic->global->prm[di].pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
-	    dmic->global->prm[di].pdmclk_max > DMIC_HW_IOCLK / 2) {
+	    dmic->global->prm[di].pdmclk_max > CONFIG_DMIC_HW_IOCLK / 2) {
 		dai_err(dai, "find_modes():  pdm clock max not in range");
 		return;
 	}
@@ -94,9 +94,9 @@ static void find_modes(struct dai *dai,
 	}
 
 	/* Min and max clock dividers */
-	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, dmic->global->prm[di].pdmclk_max);
+	clkdiv_min = ceil_divide(CONFIG_DMIC_HW_IOCLK, dmic->global->prm[di].pdmclk_max);
 	clkdiv_min = MAX(clkdiv_min, DMIC_HW_CIC_DECIM_MIN);
-	clkdiv_max = DMIC_HW_IOCLK / dmic->global->prm[di].pdmclk_min;
+	clkdiv_max = CONFIG_DMIC_HW_IOCLK / dmic->global->prm[di].pdmclk_min;
 
 	/* Loop possible clock dividers and check based on resulting
 	 * oversampling ratio that CIC and FIR decimation ratios are
@@ -112,7 +112,7 @@ static void find_modes(struct dai *dai,
 		du_max = 100 - du_min;
 
 		/* Calculate PDM clock rate and oversampling ratio. */
-		pdmclk = DMIC_HW_IOCLK / clkdiv;
+		pdmclk = CONFIG_DMIC_HW_IOCLK / clkdiv;
 		osr = pdmclk / fs;
 
 		/* Check that OSR constraints is met and clock duty cycle does
@@ -140,7 +140,7 @@ static void find_modes(struct dai *dai,
 			mcic = osr / mfir;
 			ioclk_test = fs * mfir * mcic * clkdiv;
 
-			if (ioclk_test == DMIC_HW_IOCLK &&
+			if (ioclk_test == CONFIG_DMIC_HW_IOCLK &&
 			    mcic >= DMIC_HW_CIC_DECIM_MIN &&
 			    mcic <= DMIC_HW_CIC_DECIM_MAX &&
 			    i < DMIC_MAX_MODES) {
@@ -237,14 +237,14 @@ static struct pdm_decim *get_fir(struct dai *dai,
 	if (mfir <= 0)
 		return fir;
 
-	cic_fs = DMIC_HW_IOCLK / cfg->clkdiv / cfg->mcic;
+	cic_fs = CONFIG_DMIC_HW_IOCLK / cfg->clkdiv / cfg->mcic;
 	fs = cic_fs / mfir;
 	/* FIR max. length depends on available cycles and coef RAM
 	 * length. Exceeding this length sets HW overrun status and
 	 * overwrite of other register.
 	 */
 	fir_max_length = MIN(DMIC_HW_FIR_LENGTH_MAX,
-			     DMIC_HW_IOCLK / fs / 2 -
+			     CONFIG_DMIC_HW_IOCLK / fs / 2 -
 			     DMIC_FIR_PIPELINE_OVERHEAD);
 
 	i = 0;
