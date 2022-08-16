@@ -758,8 +758,9 @@ static int mixout_reset(struct comp_dev *dev)
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			source = container_of(blist, struct comp_buffer, sink_list);
 			source_c = buffer_acquire(source);
-			stop = (dev->pipeline == source_c->source->pipeline &&
-					source_c->source->state > COMP_STATE_PAUSED);
+			stop = (source_c->source &&
+				dev->pipeline == source_c->source->pipeline &&
+				source_c->source->state > COMP_STATE_PAUSED);
 			buffer_release(source_c);
 
 			if (stop)
