@@ -44,17 +44,6 @@
 /* Max pipeline count supported by ipc4 */
 #define IPC4_MAX_PPL_COUNT 16
 
-enum ipc4_basefw_properties {
-	IPC4_FW_VERSION,	/**< Firmware version */
-	IPC4_DSP_CORES,	/**< dsp cores count in audio subsystem */
-	IPC4_MEM_PAGE_SIZE,	/**< memory page size */
-	IPC4_TOTAL_PHYS_MEM_PAGES,	/**< total memory in page size */
-	IPC4_DL_MAILBOX_SIZE,	/**< download mailbox size */
-	IPC4_UL_MAILBOX_SIZE,	/**< uplaod mailbox size */
-	IPC4_TRACE_LOG_SIZE,	/**< trace log buffer size */
-	IPC4_MAX_PPL_CNT	/**< max pipleine count */
-};
-
 enum ipc4_basefw_params {
 	/* Use LARGE_CONFIG_GET to retrieve fw properties as TLV structure
 	 * with typeof AdspProperties.
