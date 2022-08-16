@@ -140,7 +140,9 @@ static int crossover_assign_sinks(struct comp_dev *dev,
 		sink_c = buffer_acquire(sink);
 
 		pipeline_id = sink_c->pipeline_id;
-		state = sink_c->sink->state;
+		state = -1;
+		if (sink_c->sink)
+			state = sink_c->sink->state;
 		buffer_release(sink_c);
 
 		if (state != dev->state)
@@ -617,7 +619,7 @@ static int crossover_copy(struct comp_dev *dev)
 	}
 
 	/* Check if source is active */
-	if (source_c->source->state != dev->state) {
+	if (source_c->source && source_c->source->state != dev->state) {
 		ret = -EINVAL;
 		goto out;
 	}
