@@ -443,8 +443,28 @@ static int demux_copy(struct comp_dev *dev)
 	}
 
 	/* if there are no sinks active, then sinks[] is also empty */
-	if (num_sinks == 0)
+	if (num_sinks == 0) {
+		if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_CAPTURE) {
+
+			/* drop all available source data on the floor */
+			source = list_first_item(&dev->bsource_list, struct comp_buffer,
+						 sink_list);
+			source_c = buffer_acquire(source);
+
+			/* check if source is active */
+			if (source_c->source && source_c->source->state != dev->state) {
+				buffer_release(source_c);
+				return 0;
+			}
+
+			source_bytes = audio_stream_get_avail_bytes(&source_c->stream);
+			buffer_stream_invalidate(source_c, source_bytes);
+			comp_update_buffer_consume(source_c, source_bytes);
+			buffer_release(source_c);
+
+		}
 		return 0;
+	}
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
@@ -724,6 +744,25 @@ static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
 	return count;
 }
 
+static int mux_sink_status_count(struct comp_dev *mux, uint32_t status)
+{
+	struct list_item *blist;
+	int count = 0;
+
+	/* count sink with state == status */
+	list_for_item(blist, &mux->bsink_list) {
+		struct comp_buffer *sink = container_of(blist, struct comp_buffer,
+							source_list);
+		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
+
+		if (sink_c->sink && sink_c->sink->state == status)
+			count++;
+		buffer_release(sink_c);
+	}
+
+	return count;
+}
+
 static int mux_trigger(struct comp_dev *dev, int cmd)
 {
 	int dir = dev->pipeline->source_comp->direction;
@@ -737,6 +776,40 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	 * this one, no other IPCs can be received until we have replied to the
 	 * current one
 	 */
+	if (dir == SOF_IPC_STREAM_CAPTURE) {
+		unsigned int sink_n_active, sink_n_paused;
+
+		sink_n_active = mux_sink_status_count(dev, COMP_STATE_ACTIVE);
+		sink_n_paused = mux_sink_status_count(dev, COMP_STATE_PAUSED);
+
+		/*
+		 * we never pause on capture, filter out some triggers to simplify
+		 * the state machine
+		 */
+
+		switch (cmd) {
+		case COMP_TRIGGER_PAUSE:
+		case COMP_TRIGGER_PRE_RELEASE:
+		case COMP_TRIGGER_RELEASE:
+			return PPL_STATUS_PATH_STOP;
+		case COMP_TRIGGER_PRE_START:
+			if (dev->state != COMP_STATE_PREPARE)
+				return PPL_STATUS_PATH_STOP;
+			break;
+		case COMP_TRIGGER_START:
+			if (dev->state != COMP_STATE_PRE_ACTIVE)
+				return PPL_STATUS_PATH_STOP;
+			break;
+		case COMP_TRIGGER_STOP:
+			if (dev->state == COMP_STATE_ACTIVE &&
+			    ((sink_n_active + sink_n_paused) != 0))
+				return PPL_STATUS_PATH_STOP;
+			break;
+		default:
+			break;
+		}
+	}
+
 	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
 	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
 
@@ -753,7 +826,6 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		ret = PPL_STATUS_PATH_STOP;
 
-	/* nothing else to check for capture streams */
 	if (dir == SOF_IPC_STREAM_CAPTURE)
 		return ret;
 
