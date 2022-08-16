@@ -426,7 +426,7 @@ static int demux_copy(struct comp_dev *dev)
 		sink = container_of(clist, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
 
-		if (sink_c->sink->state == dev->state) {
+		if (sink_c->sink && sink_c->sink->state == dev->state) {
 			num_sinks++;
 			i = get_stream_index(cd, sink_c->pipeline_id);
 			/* return if index wrong */
@@ -451,7 +451,7 @@ static int demux_copy(struct comp_dev *dev)
 	source_c = buffer_acquire(source);
 
 	/* check if source is active */
-	if (source_c->source->state != dev->state)
+	if (source_c->source && source_c->source->state != dev->state)
 		goto out_source;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
@@ -527,7 +527,7 @@ static int mux_copy(struct comp_dev *dev)
 		source = container_of(clist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
 
-		if (source_c->source->state == dev->state) {
+		if (source_c->source && source_c->source->state == dev->state) {
 			num_sources++;
 			i = get_stream_index(cd, source_c->pipeline_id);
 			/* return if index wrong */
@@ -556,7 +556,7 @@ static int mux_copy(struct comp_dev *dev)
 	sink_c = buffer_acquire(sink);
 
 	/* check if sink is active */
-	if (sink_c->sink->state != dev->state)
+	if (sink_c->sink && sink_c->sink->state != dev->state)
 		goto out;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
@@ -613,7 +613,10 @@ static int mux_reset(struct comp_dev *dev)
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
 			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
-			int state = source_c->source->state;
+			int state = -1;
+
+			if (source_c->source)
+				state = source_c->source->state;
 
 			buffer_release(source_c);
 
@@ -664,7 +667,10 @@ static int mux_prepare(struct comp_dev *dev)
 		struct comp_buffer *source = container_of(blist, struct comp_buffer,
 							  sink_list);
 		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
-		int state = source_c->source->state;
+		int state = -1;
+
+		if (source_c->source)
+			state = source_c->source->state;
 
 		buffer_release(source_c);
 
@@ -688,7 +694,7 @@ static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
 							  sink_list);
 		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
 
-		if (source_c->source->state == status)
+		if (source_c->source && source_c->source->state == status)
 			count++;
 		buffer_release(source_c);
 	}
