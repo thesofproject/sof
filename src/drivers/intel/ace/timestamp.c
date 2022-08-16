@@ -102,7 +102,7 @@ int timestamp_dmic_config(struct dai *dai, struct timestamp_cfg *cfg)
 		return -EINVAL;
 	}
 
-	cfg->walclk_rate = DMIC_HW_IOCLK;
+	cfg->walclk_rate = CONFIG_DMIC_HW_IOCLK;
 
 	return 0;
 }
