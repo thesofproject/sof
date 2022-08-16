@@ -17,6 +17,9 @@ include(`sof/tokens.m4')
 # Include DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 
+# include muxdemux
+include(`muxdemux.m4')
+
 # bxt has 2 cores but currently only one is enabled in the build
 ifelse(PLATFORM, `bxt', `define(NCORES, 1)')
 ifelse(PLATFORM, `cnl', `define(NCORES, 4)')
@@ -94,18 +97,46 @@ define(DAI_BITS, `s24le')
 #
 # Define the pipelines
 #
-# PCM0 ---> Volume -----\
-#                        Mixer ----> SSP0
-# PCM3 ---> Volume -----/
+# PCM0 ---> Volume -----------------------\
+#                                          \
+#                                           Mixer --> Volume ---> SSP0
+# PCM3 ---> Volume -----\                  /
+#                        Mixer --> Volume /
+# PCM4 ---> Volume -----/
+
 # PCM1 ---> Volume ----> Mixer ----> SSP1
 # PCM2 ---> volume ----> Mixer ----> SSP2
-#
-# SSP0 ---> Volume ----> PCM0
+#                                Volume --> PCM0
+# SSP0 ---> Volume ----> demux /
+#                              \ Volume --> PCM4
 # SSP1 ---> Volume ----> PCM1
 # SSP2 ---> Volume ----> PCM2
 # DMIC0 --> IIR -------> PCM10
 # DMIC1 --> IIR -------> PCM11
 #
+
+define(matrix1, `ROUTE_MATRIX(32,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
+define(matrix2, `ROUTE_MATRIX(35,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
+dnl name, num_streams, route_matrix list
+MUXDEMUX_CONFIG(demux_priv_2, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -167,7 +198,8 @@ ifelse(PLATFORM, `bxt', `',
 # capture DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP0_IDX
 # The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-dai-volume-capture.m4,
+#DAI_ADD(sof/pipe-dai-volume-capture.m4,
+DAI_ADD(sof/pipe-dai-volume-demux-capture.m4,
 	2, SSP, SSP0_IDX, NoCodec-0,
 	NOT_USED_IGNORED, 2, DAI_BITS,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
@@ -179,7 +211,16 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-capture.m4,
 	1000, 0, SSP0_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_CAPTURE_SCHED_COMP_2)
+	PIPELINE_DEMUX_CAPTURE_SCHED_COMP_2)
+
+# Low Latency capture pipeline 35 on PCM 4 using max 2 channels of PIPE_BITS.
+# Set 1000us deadline on core SSP0_CORE_ID with priority 0
+PIPELINE_PCM_ADD(sof/pipe-host-volume-capture.m4,
+	35, 4, 2, PIPE_BITS,
+	1000, 0, SSP0_CORE_ID,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_DEMUX_CAPTURE_SCHED_COMP_2)
 
 # playback DAI is SSP1 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
@@ -261,7 +302,8 @@ SectionGraph."mixer-host" {
 	index "0"
 
 	lines [
-		dapm(PIPELINE_SINK_32, PIPELINE_SOURCE_2)
+		dapm(PIPELINE_SINK_32, PIPELINE_DEMUX_SOURCE_2)
+		dapm(PIPELINE_SINK_35, PIPELINE_DEMUX_SOURCE_2)
 		dapm(PIPELINE_SINK_33, PIPELINE_SOURCE_4)
 		dapm(PIPELINE_SINK_34, PIPELINE_SOURCE_6)
 
@@ -285,6 +327,7 @@ PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_7, PIPELINE_PCM_32)
 ifelse(PLATFORM,`bxt',,
 `PCM_PLAYBACK_ADD(`Port'SSP0_IDX` Deep Buffer', 3, PIPELINE_PCM_11)'
 `PCM_PLAYBACK_ADD(`Port'SSP0_IDX` Media', 4, PIPELINE_PCM_12)')
+`PCM_CAPTURE_ADD(`Port'SSP0_IDX` Media', 4, PIPELINE_PCM_35)')
 )
 
 ifdef(`DISABLE_SSP1',,
