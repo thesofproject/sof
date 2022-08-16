@@ -52,6 +52,13 @@ config INTEL_DMIC
 
 if INTEL_DMIC
 
+config DMIC_HW_IOCLK
+	int "Set DMIC hw IO clock"
+	default 0
+	help
+	  Hardware specific DMIC IO clock speed defined by each platform.
+	  May be overridden from hardware values for simulation purposes.
+
 choice
 	prompt "Driver operation mode"
 	default INTEL_DMIC_TPLG_PARAMS
