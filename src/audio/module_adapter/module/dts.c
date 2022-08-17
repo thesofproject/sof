@@ -327,7 +327,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 		/* If param->size is less than param_header_size, then this param is not valid */
 		if (param->size < param_header_size) {
 			comp_err(dev, "dts_codec_apply_config() param is invalid");
-			return 0;
+			return -EINVAL;
 		}
 
 		/* Only process param->data if it has size greater than 0 */
