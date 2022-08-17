@@ -449,6 +449,7 @@ static int up_down_mixer_prepare(struct comp_dev *dev)
 
 static int up_down_mixer_reset(struct comp_dev *dev)
 {
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
