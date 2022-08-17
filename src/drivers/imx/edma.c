@@ -168,7 +168,7 @@ static int edma_release(struct dma_chan_data *channel)
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
-	channel->status = COMP_STATE_ACTIVE;
+	channel->status = COMP_STATE_PREPARE;
 	return 0;
 }
 
