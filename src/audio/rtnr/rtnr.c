@@ -238,7 +238,7 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	cd->process_enable = false;
+	cd->process_enable = true;
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -670,7 +670,6 @@ static int rtnr_reset(struct comp_dev *dev)
 
 	cd->sink_format = 0;
 	cd->rtnr_func = NULL;
-	cd->process_enable = false;
 	cd->source_rate = 0;
 	cd->sink_rate = 0;
 
