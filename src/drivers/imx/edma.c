@@ -147,7 +147,7 @@ static int edma_start(struct dma_chan_data *channel)
 	tr_info(&edma_tr, "EDMA: start(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
-	    channel->status != COMP_STATE_SUSPEND)
+	    channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
 	channel->status = COMP_STATE_ACTIVE;
