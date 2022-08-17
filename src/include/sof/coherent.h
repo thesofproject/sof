@@ -133,8 +133,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 	return cc;
 }
 
-static inline struct coherent *coherent_release(struct coherent __sparse_cache *c,
-						const size_t size)
+static inline void coherent_release(struct coherent __sparse_cache *c,
+				    const size_t size)
 {
 	struct coherent *uc = cache_to_uncache(c);
 
@@ -152,8 +152,6 @@ static inline struct coherent *coherent_release(struct coherent __sparse_cache *
 		/* unlock on uncache alias */
 		k_spin_unlock(&uc->lock, uc->key);
 	}
-
-	return uc;
 }
 
 static inline void __coherent_init(struct coherent *c, const size_t size)
@@ -216,8 +214,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 	return cc;
 }
 
-static inline struct coherent *coherent_release_thread(struct coherent __sparse_cache *c,
-						       const size_t size)
+static inline void coherent_release_thread(struct coherent __sparse_cache *c,
+					   const size_t size)
 {
 	struct coherent *uc = cache_to_uncache(c);
 
@@ -236,8 +234,6 @@ static inline struct coherent *coherent_release_thread(struct coherent __sparse_
 		/* unlock on uncache alias */
 		k_mutex_unlock(&uc->mutex);
 	}
-
-	return uc;
 }
 
 static inline void __coherent_init_thread(struct coherent *c, const size_t size)
@@ -305,8 +301,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 	return (__sparse_force struct coherent __sparse_cache *)c;
 }
 
-static inline struct coherent *coherent_release(struct coherent __sparse_cache *c,
-						const size_t size)
+static inline void coherent_release(struct coherent __sparse_cache *c,
+				    const size_t size)
 {
 	if (c->shared) {
 		struct coherent *uc = cache_to_uncache(c);
@@ -316,8 +312,6 @@ static inline struct coherent *coherent_release(struct coherent __sparse_cache *
 
 		k_spin_unlock(&uc->lock, uc->key);
 	}
-
-	return (__sparse_force struct coherent *)c;
 }
 
 static inline void __coherent_init(struct coherent *c, const size_t size)
@@ -360,8 +354,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 	return (__sparse_force struct coherent __sparse_cache *)c;
 }
 
-static inline struct coherent *coherent_release_thread(struct coherent __sparse_cache *c,
-						       const size_t size)
+static inline void coherent_release_thread(struct coherent __sparse_cache *c,
+					   const size_t size)
 {
 	if (c->shared) {
 		struct coherent *uc = cache_to_uncache(c);
@@ -371,8 +365,6 @@ static inline struct coherent *coherent_release_thread(struct coherent __sparse_
 
 		k_mutex_unlock(&uc->mutex);
 	}
-
-	return (__sparse_force struct coherent *)c;
 }
 
 static inline void __coherent_init_thread(struct coherent *c, const size_t size)
