@@ -622,6 +622,22 @@ static int mux_reset(struct comp_dev *dev)
 				/* should not reset the downstream components */
 				return PPL_STATUS_PATH_STOP;
 		}
+	} else {
+		list_for_item(blist, &dev->bsink_list) {
+			struct comp_buffer *sink = container_of(blist, struct comp_buffer,
+								source_list);
+			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
+			int state = -1;
+
+			if (sink_c->sink)
+				state = sink_c->sink->state;
+
+			buffer_release(sink_c);
+
+			if (state > COMP_STATE_READY)
+				/* should not reset the upstream components */
+				return PPL_STATUS_PATH_STOP;
+		}
 	}
 
 	if (dev->ipc_config.type == SOF_COMP_MUX)
