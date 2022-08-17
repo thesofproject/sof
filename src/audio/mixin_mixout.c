@@ -97,11 +97,9 @@ struct mixed_data_info __sparse_cache *mixed_data_info_acquire(struct mixed_data
 }
 
 static inline
-struct mixed_data_info *mixed_data_info_release(struct mixed_data_info __sparse_cache *mdi)
+void mixed_data_info_release(struct mixed_data_info __sparse_cache *mdi)
 {
-	struct coherent *c = coherent_release_thread(&mdi->c, sizeof(*mdi));
-
-	return container_of(c, struct mixed_data_info, c);
+	coherent_release_thread(&mdi->c, sizeof(*mdi));
 }
 
 /* mixin component private data */
