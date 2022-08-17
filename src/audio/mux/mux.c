@@ -657,7 +657,7 @@ static int mux_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "mux_prepare()");
 
-	if (dev->state != COMP_STATE_ACTIVE) {
+	if (dev->state == COMP_STATE_READY) {
 		if (dev->ipc_config.type == SOF_COMP_MUX)
 			cd->mux = mux_get_processing_function(dev);
 		else
