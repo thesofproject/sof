@@ -223,11 +223,9 @@ __must_check static inline struct comp_buffer __sparse_cache *buffer_acquire(
 	return attr_container_of(c, struct comp_buffer __sparse_cache, c, __sparse_cache);
 }
 
-static inline struct comp_buffer *buffer_release(struct comp_buffer __sparse_cache *buffer)
+static inline void buffer_release(struct comp_buffer __sparse_cache *buffer)
 {
-	struct coherent *c = coherent_release_thread(&buffer->c, sizeof(*buffer));
-
-	return container_of(c, struct comp_buffer, c);
+	coherent_release_thread(&buffer->c, sizeof(*buffer));
 }
 
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
