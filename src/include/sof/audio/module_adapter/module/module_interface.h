@@ -13,6 +13,8 @@
 #ifndef __SOF_MODULE_INTERFACE__
 #define __SOF_MODULE_INTERFACE__
 
+#include <sof/compiler_attributes.h>
+
 /**
  * \enum module_cfg_fragment_position
  * \brief Fragment position in config
@@ -46,7 +48,7 @@ enum module_processing_mode {
  * \brief Input stream buffer
  */
 struct input_stream_buffer {
-	void *data; /* data stream buffer */
+	void __sparse_cache *data; /* data stream buffer */
 	uint32_t size; /* size of data in the buffer */
 	uint32_t consumed; /* number of bytes consumed by the module */
 
@@ -59,7 +61,7 @@ struct input_stream_buffer {
  * \brief Output stream buffer
  */
 struct output_stream_buffer {
-	void *data; /* data stream buffer */
+	void __sparse_cache *data; /* data stream buffer */
 	uint32_t size; /* size of data in the buffer */
 };
 
