@@ -22,7 +22,10 @@ target_compile_options(smex PRIVATE
 	-Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3
 )
 
+# TODO: The xtos-wrapper include PATH will eventually become optional based on the
+# RTOS selection. It's manadatory atm until the native Zephyr integration is ready.
 target_include_directories(smex PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}/rimage/src/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/arch/xtos-wrapper/include"
 )
