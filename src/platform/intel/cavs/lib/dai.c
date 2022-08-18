@@ -15,7 +15,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <zephyr/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 

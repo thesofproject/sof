@@ -8,6 +8,11 @@
 #ifndef __SOF_SOF_H__
 #define __SOF_SOF_H__
 
+/* catch any Zephyr APIs that still need upstreamed */
+#ifdef __ZEPHYR__
+#include <sof/zephyr-wrap.h>
+#endif
+
 #include <arch/sof.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>

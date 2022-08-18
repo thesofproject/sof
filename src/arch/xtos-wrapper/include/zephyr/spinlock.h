@@ -13,10 +13,8 @@
 #ifndef __SOF_SPINLOCK_H__
 #define __SOF_SPINLOCK_H__
 
-#ifndef __ZEPHYR__
 #include <arch/spinlock.h>
 typedef uint32_t k_spinlock_key_t;
-#endif
 #include <sof/lib/memory.h>
 #include <ipc/trace.h>
 
@@ -143,8 +141,6 @@ extern struct tr_ctx sl_tr;
 
 #endif /* CONFIG_DEBUG_LOCKS */
 
-#ifndef __ZEPHYR__
-
 /* all SMP spinlocks need init, nothing todo on UP */
 static inline void _spinlock_init(struct k_spinlock *lock, int line)
 {
@@ -163,19 +159,5 @@ k_spinlock_key_t _k_spin_lock_irq(struct k_spinlock *lock);
 /* re-enables current IRQ sources and releases lock - leave atomic context */
 void _k_spin_unlock_irq(struct k_spinlock *lock, k_spinlock_key_t key, int line);
 #define k_spin_unlock(lock, key) _k_spin_unlock_irq(lock, key, __LINE__)
-
-#else
-
-#include <zephyr/kernel.h>
-
-/* This has to be moved to Zephyr */
-static inline void k_spinlock_init(struct k_spinlock *lock)
-{
-#ifdef CONFIG_SMP
-	atomic_set(&lock->locked, 0);
-#endif
-}
-
-#endif /* __ZEPHYR__ */
 
 #endif /* __SOF_SPINLOCK_H__ */

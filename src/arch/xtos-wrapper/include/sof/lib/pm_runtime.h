@@ -17,7 +17,7 @@
 
 #include <platform/lib/pm_runtime.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <zephyr/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>

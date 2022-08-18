@@ -23,7 +23,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <zephyr/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
