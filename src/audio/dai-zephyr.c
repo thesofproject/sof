@@ -96,7 +96,7 @@ int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
 
 static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 {
-	const struct device *dev = dai->drv;
+	const struct device *dev = dai->dev;
 	enum dai_trigger_cmd zephyr_cmd;
 
 	switch (cmd) {
@@ -125,7 +125,7 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		   void *spec_config)
 {
-	const struct device *dev = dai->drv;
+	const struct device *dev = dai->dev;
 	struct sof_ipc_dai_config *sof_cfg;
 	struct dai_config cfg;
 	void *cfg_params;
@@ -160,7 +160,7 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 
 static int dai_get_hw_params(struct dai *dai, struct sof_ipc_stream_params  *params, int dir)
 {
-	const struct dai_config *cfg = dai_config_get(dai->drv, dir);
+	const struct dai_config *cfg = dai_config_get(dai->dev, dir);
 
 	params->rate = cfg->rate;
 	params->buffer_fmt = 0;
@@ -186,7 +186,7 @@ static int dai_get_hw_params(struct dai *dai, struct sof_ipc_stream_params  *par
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	const struct dai_properties *props = dai_get_properties(dai->drv, direction, stream_id);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction, stream_id);
 
 	return props->dma_hs_id;
 }
@@ -194,21 +194,21 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
-	const struct dai_properties *props = dai_get_properties(dai->drv, direction, 0);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
 
 	return props->fifo_address;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
-	const struct dai_properties *props = dai_get_properties(dai->drv, direction, 0);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
 
 	return props->stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	const struct dai_properties *props = dai_get_properties(dai->drv, direction, stream_id);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction, stream_id);
 
 	return props->fifo_address;
 }
@@ -1202,7 +1202,7 @@ static int dai_copy(struct comp_dev *dev)
 	}
 
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
-	ret = dai_trigger(dd->dai->drv, dev->direction, DAI_TRIGGER_COPY);
+	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
 	if (ret < 0)
 		comp_warn(dev, "dai_copy(): dai trigger copy failed");
 
@@ -1272,7 +1272,7 @@ static int dai_ts_config_op(struct comp_dev *dev)
 	cfg.dma_chan_index = dd->chan->index;
 	cfg.dma_chan_count = dd->dma->plat_data.channels;
 
-	return dai_ts_config(dd->dai->drv, &cfg);
+	return dai_ts_config(dd->dai->dev, &cfg);
 }
 
 static int dai_ts_start_op(struct comp_dev *dev)
@@ -1282,7 +1282,7 @@ static int dai_ts_start_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_start()");
 
-	return dai_ts_start(dd->dai->drv, &cfg);
+	return dai_ts_start(dd->dai->dev, &cfg);
 }
 
 static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
@@ -1294,7 +1294,7 @@ static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 
 	comp_dbg(dev, "dai_ts_get()");
 
-	ret = dai_ts_get(dd->dai->drv, &cfg, &tsdata);
+	ret = dai_ts_get(dd->dai->dev, &cfg, &tsdata);
 
 	if (ret < 0)
 		return ret;
@@ -1311,12 +1311,12 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_stop()");
 
-	return dai_ts_stop(dd->dai->drv, &cfg);
+	return dai_ts_stop(dd->dai->dev, &cfg);
 }
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props = dai_get_properties(dai->drv, 0, 0);
+	const struct dai_properties *props = dai_get_properties(dai->dev, 0, 0);
 
 	return props->reg_init_delay;
 }

@@ -47,7 +47,7 @@ struct dai {
 	uint32_t type;
 	uint32_t dma_caps;
 	uint32_t dma_dev;
-	const struct device *drv;
+	const struct device *dev;
 	const struct dai_data *dd;
 };
 
