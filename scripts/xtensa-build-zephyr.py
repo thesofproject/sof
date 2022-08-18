@@ -19,6 +19,10 @@ import warnings
 from anytree import AnyNode, RenderTree
 from packaging import version
 
+MIN_PYTHON_VERSION = 3, 8
+assert sys.version_info >= MIN_PYTHON_VERSION, \
+	f"Python {MIN_PYTHON_VERSION} or above is required."
+
 # Version of this script matching Major.Minor.Patch style.
 VERSION = version.Version("2.0.0")
 
