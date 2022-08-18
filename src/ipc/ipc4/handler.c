@@ -41,7 +41,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-#include <logging/log_backend_cavs_hda.h>
+#include <logging/log_backend_adsp_hda.h>
 #endif
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
@@ -556,7 +556,7 @@ static int ipc4_log_enable(struct ipc4_message_request *ipc4)
 
 	mailbox_hostbox_read(&params, sizeof(params), 0, sizeof(params));
 
-	cavs_hda_log_init(NULL, params.stream_tag - 1);
+	adsp_hda_log_init(NULL, params.stream_tag - 1);
 
 	return 0;
 }
