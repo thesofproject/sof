@@ -154,7 +154,7 @@ struct dai_info_table dit[] = {
 /* called from ipc/ipc3/handler.c and some platform.c files */
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
-	const struct device *drv;
+	const struct device *dev;
 	bool found =  false;
 	char dai_name[32];
 	struct dai *d;
@@ -177,8 +177,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	if (!found)
 		return NULL;
 
-	drv = device_get_binding(dai_name);
-	if (!drv)
+	dev = device_get_binding(dai_name);
+	if (!dev)
 		return NULL;
 
 	d = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(struct dai));
@@ -189,9 +189,9 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	d->dma_dev = dit[i].dai_p.dma_dev;
 	d->dma_caps = dit[i].dai_p.dma_caps;
 	d->index = index;
-	d->drv = drv;
+	d->dev = dev;
 
-	if (dai_probe(d->drv)) {
+	if (dai_probe(d->dev)) {
 		rfree(d);
 		return NULL;
 	}
@@ -204,7 +204,7 @@ void dai_put(struct dai *dai)
 {
 	int ret;
 
-	ret = dai_remove(dai->drv);
+	ret = dai_remove(dai->dev);
 	if (ret < 0) {
 		tr_err(&dai_tr, "dai_put_zephyr: index %d failed ret = %d",
 		       dai->index, ret);
