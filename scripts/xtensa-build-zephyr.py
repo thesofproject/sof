@@ -11,7 +11,7 @@ import shlex
 import subprocess
 import pathlib
 import errno
-import platform
+import platform as py_platform
 import sys
 import shutil
 import multiprocessing
@@ -35,13 +35,13 @@ default_rimage_key = pathlib.Path(SOF_TOP, "keys", "otc_private_key.pem")
 
 sof_version = None
 
-if platform.system() == "Windows":
+if py_platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
-elif platform.system() == "Linux":
+elif py_platform.system() == "Linux":
 	xtensa_tools_version_postfix = "-linux"
 else:
 	xtensa_tools_version_postfix = "-unsupportedOS"
-	warnings.warn(f"Your operating system: {platform.system()} is not supported")
+	warnings.warn(f"Your operating system: {py_platform.system()} is not supported")
 
 platform_list = [
 	# Intel platforms
