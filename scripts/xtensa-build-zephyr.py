@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 
+# W0311, W0312, C0103, C0116
+#pylint:disable=bad-indentation
 #pylint:disable=mixed-indentation
 #pylint:disable=invalid-name
 #pylint:disable=missing-function-docstring
