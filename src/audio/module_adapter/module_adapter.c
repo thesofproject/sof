@@ -140,6 +140,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *sink;
 	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
@@ -156,6 +157,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
 		return PPL_STATUS_PATH_STOP;
 	}
+
+	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
+	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	 */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
 
 	/* Prepare module */
 	ret = module_prepare(mod);
@@ -375,8 +383,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 			return ret;
 	}
 
-	mod->period_bytes = params->sample_container_bytes *
-			   params->channels * params->rate / 1000;
 	return 0;
 }
 
