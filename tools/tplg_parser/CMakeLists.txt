@@ -27,6 +27,10 @@ target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/i
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
 
+# TODO: The xtos-wrapper include PATH will eventually become optional based on the
+# RTOS selection. It's manadatory atm until the native Zephyr integration is ready.
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/xtos-wrapper/include)
+
 # TODO: add IPC4 option when it's ready.
 target_compile_options(sof_tplg_parser PRIVATE
 	-g -O -Wall -Werror -Wl,-EL

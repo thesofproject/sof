@@ -60,9 +60,12 @@ if(CONFIG_REMBRANDT)
 endif()
 # includes
 
+# TODO: The xtos-wrapper include PATH will eventually become optional based on the
+# RTOS selection. It's manadatory atm until the native Zephyr integration is ready.
 target_include_directories(sof_options INTERFACE
 	${PROJECT_SOURCE_DIR}/src/arch/xtensa/include
 	${PROJECT_SOURCE_DIR}/src/arch/xtensa/xtos
+	${PROJECT_SOURCE_DIR}/src/arch/xtos-wrapper/include
 )
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/${platform_folder}/include)

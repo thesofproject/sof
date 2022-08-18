@@ -7,7 +7,7 @@
  */
 
 /**
-  * \file include/sof/lib/dai.h
+  * \file include/sof/lib/dai-zephyr.h
   * \brief DAI Drivers definition
   * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
   * \author Keyon Jie <yang.jie@linux.intel.com>

@@ -88,6 +88,10 @@ target_include_directories(SOF INTERFACE ../zephyr/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 
+# TODO: The xtos-wrapper include PATH will eventually become optional based on the
+# RTOS selection. It's manadatory atm until the native Zephyr integration is ready.
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/xtos-wrapper/include)
+
 # SOF module init
 zephyr_library_named(modules_sof)
 zephyr_include_directories(
