@@ -10,7 +10,7 @@
 #ifndef __CAVS_DRIVERS_TIMESTAMP_H__
 #define __CAVS_DRIVERS_TIMESTAMP_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 #define TS_LOCAL_TSCTRL_NTK_BIT		BIT(31)
 #define TS_LOCAL_TSCTRL_IONTE_BIT	BIT(30)

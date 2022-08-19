@@ -10,7 +10,7 @@
 #ifndef __CAVS_LIB_DW_DMA_H__
 #define __CAVS_LIB_DW_DMA_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/shim.h>
 

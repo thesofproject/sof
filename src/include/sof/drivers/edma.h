@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_EDMA_H__
 #define __SOF_DRIVERS_EDMA_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 

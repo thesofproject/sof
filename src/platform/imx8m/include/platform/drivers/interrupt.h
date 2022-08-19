@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_DRIVERS_INTERRUPT_H__
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 
 /* IRQ numbers */

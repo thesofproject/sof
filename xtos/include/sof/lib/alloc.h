@@ -16,7 +16,7 @@
 #ifndef __SOF_LIB_ALLOC_H__
 #define __SOF_LIB_ALLOC_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>

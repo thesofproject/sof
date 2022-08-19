@@ -4,7 +4,7 @@
  */
 
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #if CONFIG_XT_BOOT_LOADER && !CONFIG_VM_ROM

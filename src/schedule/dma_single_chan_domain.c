@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>

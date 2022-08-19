@@ -18,7 +18,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
 #include <ipc/stream.h>

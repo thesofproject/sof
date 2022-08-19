@@ -14,7 +14,7 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/drivers/interrupt.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 #endif
 

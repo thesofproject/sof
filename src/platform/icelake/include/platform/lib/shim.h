@@ -14,7 +14,7 @@
 
 #include <cavs/drivers/sideband-ipc.h>
 #include <cavs/lib/shim.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/memory.h>
 
 /* DSP IPC for Host Registers */

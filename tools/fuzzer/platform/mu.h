@@ -11,7 +11,7 @@
 #ifndef __SOF_DRIVERS_MU_H__
 #define __SOF_DRIVERS_MU_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <stdint.h>
 #include "../fuzzer.h"
 

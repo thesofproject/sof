@@ -12,7 +12,7 @@
 #define __PLATFORM_LIB_SHIM_H__
 
 #include <cavs/lib/shim.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/memory.h>
 
 /* DSP IPC for Host Registers */

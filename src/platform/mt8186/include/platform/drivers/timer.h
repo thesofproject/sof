@@ -8,7 +8,7 @@
 #ifndef __PLATFORM_DRIVERS_TIMER_H__
 #define __PLATFORM_DRIVERS_TIMER_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <platform/drivers/mt_reg_base.h>
 
 /*-------timer:ostimer0-------*/

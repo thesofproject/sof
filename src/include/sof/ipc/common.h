@@ -9,7 +9,7 @@
 #ifndef __SOF_IPC_COMMON_H__
 #define __SOF_IPC_COMMON_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>

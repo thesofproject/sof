@@ -18,7 +18,7 @@
 
 #include <platform/lib/dma.h>
 #include <rtos/atomic.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>

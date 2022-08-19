@@ -10,7 +10,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
