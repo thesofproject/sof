@@ -151,9 +151,6 @@ static int edma_start(struct dma_chan_data *channel)
 		return -EINVAL;
 
 	channel->status = COMP_STATE_ACTIVE;
-	/* Do the HW start of the DMA */
-	dma_chan_reg_update_bits(channel, EDMA_TCD_CSR,
-				 EDMA_TCD_CSR_START, EDMA_TCD_CSR_START);
 	/* Allow the HW to automatically trigger further transfers */
 	dma_chan_reg_update_bits(channel, EDMA_CH_CSR,
 				 EDMA_CH_CSR_ERQ_EARQ, EDMA_CH_CSR_ERQ_EARQ);
