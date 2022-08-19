@@ -11,7 +11,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>

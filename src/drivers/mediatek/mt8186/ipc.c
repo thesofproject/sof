@@ -21,7 +21,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>

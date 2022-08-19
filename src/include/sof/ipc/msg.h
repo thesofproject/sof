@@ -18,7 +18,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/common.h>
 #include <stdbool.h>

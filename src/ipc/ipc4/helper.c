@@ -21,7 +21,7 @@
 #include <sof/lib/wait.h>
 
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/user/manifest.h>
 #include <ipc4/base-config.h>

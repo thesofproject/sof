@@ -13,7 +13,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>

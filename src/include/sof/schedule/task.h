@@ -13,10 +13,7 @@
 #include <sof/list.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#ifdef __ZEPHYR__
-#include <zephyr/kernel.h>
-#endif
+#include <rtos/kernel.h>
 
 struct comp_dev;
 struct sof;

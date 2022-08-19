@@ -6,7 +6,7 @@
  */
 
 /**
- * \file include/sof/lib/cache.h
+ * \file xtos/include/sof/lib/cache.h
  * \brief Cache header file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

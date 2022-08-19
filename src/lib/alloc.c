@@ -14,7 +14,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>

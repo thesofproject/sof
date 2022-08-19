@@ -9,7 +9,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops sdma_ops;

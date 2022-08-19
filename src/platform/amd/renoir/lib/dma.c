@@ -13,7 +13,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 #define ACP_ADDR_MASK	0x20000000
 

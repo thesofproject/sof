@@ -11,7 +11,7 @@
 
 #include <platform/lib/clk.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <stdbool.h>
 #include <stdint.h>
 

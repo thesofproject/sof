@@ -12,7 +12,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 static const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {

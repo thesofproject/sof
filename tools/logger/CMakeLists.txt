@@ -39,4 +39,9 @@ target_include_directories(sof-logger PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
 
+# TODO: logger should not need to include RTOS headers. FIX.
+target_include_directories(sof-logger PRIVATE
+	"${SOF_ROOT_SOURCE_DIRECTORY}/xtos/include"
+)
+
 install(TARGETS sof-logger DESTINATION bin)

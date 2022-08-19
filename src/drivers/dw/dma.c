@@ -36,7 +36,7 @@
 #include <sof/lib/wait.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <ipc/topology.h>
 
 #include <errno.h>

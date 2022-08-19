@@ -6,7 +6,7 @@
  */
 
 /**
- * \file include/sof/compiler_info.h
+ * \file xtos/include/sof/compiler_info.h
  * \brief Compiler version and name descriptor
  * \author Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */

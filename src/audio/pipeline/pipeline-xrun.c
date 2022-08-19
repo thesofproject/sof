@@ -10,7 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/string.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>

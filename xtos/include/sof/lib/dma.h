@@ -7,7 +7,7 @@
  */
 
 /**
- * \file include/sof/lib/dma.h
+ * \file xtos/include/sof/lib/dma.h
  * \brief DMA Drivers definition
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -23,7 +23,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

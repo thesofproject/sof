@@ -53,8 +53,7 @@ ExternalProject_Add(sof_parser_ep
 	SOURCE_DIR "${parser_src_dir}"
 	PREFIX "${PROJECT_BINARY_DIR}/sof_parser"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/sof_parser/build"
-	CMAKE_ARGS
-		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${parser_install_dir}
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.so"
@@ -74,6 +73,21 @@ target_link_libraries(sof-fuzzer PRIVATE ${GLIB_LDFLAGS})
 find_library(LIBRT rt)
 if(LIBRT)
 	target_link_libraries(sof-fuzzer PRIVATE ${LIBRT})
+endif()
+
+set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/../..")
+
+target_include_directories(sof-fuzzer PRIVATE
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/arch/host/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}"
+)
+
+# TODO: fuzzer should not need RTOS headers: FIX.
+if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
+target_include_directories(sof-fuzzer PRIVATE
+	"${SOF_ROOT_SOURCE_DIRECTORY}/xtos/include"
+)
 endif()
 
 install(TARGETS sof-fuzzer DESTINATION bin)

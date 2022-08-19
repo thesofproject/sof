@@ -84,9 +84,17 @@ ExternalProject_Add(sof_logger_ep
 
 # default SOF includes
 target_include_directories(SOF INTERFACE ../rimage/src/include)
-target_include_directories(SOF INTERFACE ../zephyr/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
+
+# TODO: Zephyr should not need xtos headers: FIX.
+if (CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
+	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../zephyr/include)
+else()
+	# include Zephyr before xtos to flag up any errors in SOF
+	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../zephyr/include)
+	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../xtos/include)
+endif()
 
 # SOF module init
 zephyr_library_named(modules_sof)

@@ -26,7 +26,7 @@
 #include <sof/init.h>
 #include <sof/ipc/common.h>
 #include <sof/lib/alloc.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <ipc/topology.h>
 
 /*

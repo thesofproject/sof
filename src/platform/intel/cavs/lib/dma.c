@@ -14,7 +14,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #ifdef __ZEPHYR__
 #include <zephyr/device.h>
 #endif

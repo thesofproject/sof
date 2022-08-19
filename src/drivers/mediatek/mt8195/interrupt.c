@@ -12,7 +12,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>

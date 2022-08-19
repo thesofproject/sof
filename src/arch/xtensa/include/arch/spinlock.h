@@ -5,7 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifdef __SOF_SPINLOCK_H__
+#ifdef __XTOS_RTOS_SPINLOCK_H__
 
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__

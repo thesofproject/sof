@@ -11,7 +11,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 
 #include <cavs/version.h>

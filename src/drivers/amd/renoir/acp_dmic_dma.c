@@ -20,7 +20,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
