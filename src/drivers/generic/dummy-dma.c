@@ -25,7 +25,7 @@
  * holds if you have CONFIG_HOST_PTABLE enabled, at least currently.
  */
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>

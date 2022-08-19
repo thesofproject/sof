@@ -20,7 +20,7 @@
  *    used to construct the DMA configuration for the host client 1 above.
  */
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/common.h>

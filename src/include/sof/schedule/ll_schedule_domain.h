@@ -8,7 +8,7 @@
 #ifndef __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__
 #define __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/debug/panic.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>

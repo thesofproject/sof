@@ -8,7 +8,7 @@
 #ifndef __SOF_LIB_AGENT_H__
 #define __SOF_LIB_AGENT_H__
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/perf_cnt.h>
 #include <sof/schedule/task.h>

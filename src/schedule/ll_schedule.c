@@ -6,7 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>

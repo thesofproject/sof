@@ -6,7 +6,7 @@
 //		Anup Kulkarni <anup.kulkarni@amd.com>
 //		Bala Kishore <balakishore.pati@amd.com>
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/drivers/acp_dai_dma.h>

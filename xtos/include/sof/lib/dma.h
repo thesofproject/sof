@@ -17,7 +17,7 @@
 #define __SOF_LIB_DMA_H__
 
 #include <platform/lib/dma.h>
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/bit.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/io.h>

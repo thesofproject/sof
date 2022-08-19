@@ -4,7 +4,7 @@
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/lib/alloc.h>

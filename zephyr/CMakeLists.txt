@@ -531,7 +531,6 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c
 	${SOF_IPC_PATH}/ipc-helper.c
-	${SOF_SRC_PATH}/spinlock.c
 
 	# SOF math utilities
 	${SOF_MATH_PATH}/decibels.c
