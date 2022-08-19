@@ -3,8 +3,8 @@
 // Copyright(c) 2020 Intel Corporation. All rights reserved.
 //
 
-#ifndef __INCLUDE_ATOMIC_H_
-#define __INCLUDE_ATOMIC_H_
+#ifndef __ZEPHYR_RTOS_ATOMIC_H__
+#define __ZEPHYR_RTOS_ATOMIC_H__
 
 #include <zephyr/sys/atomic.h>
 
@@ -17,4 +17,4 @@
 #define atomic_read(p)		((long)atomic_get(p))
 #define atomic_init(p, v)	atomic_set(p, v)
 
-#endif
+#endif /*__ZEPHYR_RTOS_ATOMIC_H__ */

@@ -5,7 +5,7 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/drivers/hda-dma.h>
