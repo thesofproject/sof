@@ -126,7 +126,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			err = SOF_TASK_STATE_COMPLETED;
 		} else {
 			p->status = COMP_STATE_ACTIVE;
-			err = SOF_TASK_STATE_RESCHEDULE;
+			err = SOF_TASK_STATE_RUNNING;
 		}
 	}
 
@@ -369,6 +369,16 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	/* disable system agent panic for DMA driven pipelines */
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);
+
+	/*
+	 * With connected pipelines some pipelines can be re-used for multiple
+	 * streams. E.g. if playback pipelines A and B are connected on a mixer,
+	 * belonging to pipeline C, leading to a DAI, if A is already streaming,
+	 * when we attempt to start B, we don't need to schedule pipeline C -
+	 * it's already running.
+	 */
+	if (task_is_active(p->pipe_task))
+		return;
 
 	if (p->sched_next && task_is_active(p->sched_next->pipe_task))
 		schedule_task_before(p->pipe_task, start, p->period,
