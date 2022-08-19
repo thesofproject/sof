@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_DRIVERS_DW_DMA_H__
 #define __PLATFORM_DRIVERS_DW_DMA_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <stdint.h>
 
 struct dma;

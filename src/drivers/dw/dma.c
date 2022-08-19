@@ -22,7 +22,7 @@
 
 #include <rtos/atomic.h>
 #include <sof/audio/component.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>

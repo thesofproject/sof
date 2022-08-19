@@ -15,7 +15,7 @@
 #define __CAVS_LIB_PM_MEMORY_H__
 
 #include <cavs/version.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>

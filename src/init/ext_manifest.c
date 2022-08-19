@@ -5,7 +5,7 @@
 // Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
 //
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>

@@ -69,7 +69,7 @@
 
 #include <ipc/dai-intel.h>
 #include <sof/audio/format.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/wait.h>
 #include <stdint.h>

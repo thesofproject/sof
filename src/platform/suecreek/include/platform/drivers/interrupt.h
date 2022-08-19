@@ -13,7 +13,7 @@
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
 #include <cavs/drivers/interrupt.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/drivers/interrupt-map.h>
 
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS

@@ -14,7 +14,7 @@
 #ifndef __IPC_HEADER_INTEL_CAVS_H__
 #define __IPC_HEADER_INTEL_CAVS_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 /* Primary register, mapped to
  * - DIPCTDR (HIPCIDR) in sideband IPC (cAVS 1.8+)

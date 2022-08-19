@@ -7,7 +7,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/cpu.h>

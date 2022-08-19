@@ -10,7 +10,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/mux.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
 #include <stddef.h>

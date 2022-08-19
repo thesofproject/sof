@@ -24,7 +24,7 @@
 #define __SOF_IPC4_MIXIN_MIXOUT_H__
 
 #include <stdint.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 enum ipc4_mixin_config_param {
 	/* large_config_set param id for ipc4_mixer_mode_config */

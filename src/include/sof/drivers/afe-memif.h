@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_AFE_MEMIF_H__
 #define __SOF_DRIVERS_AFE_MEMIF_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/lib/dma.h>
 #include <sof/trace/trace.h>

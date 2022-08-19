@@ -10,7 +10,7 @@
 #ifndef __CAVS_DRIVERS_MN_H__
 #define __CAVS_DRIVERS_MN_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 /** \brief Offset of MCLK Divider Control Register. */
 #define MN_MDIVCTRL 0x0

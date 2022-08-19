@@ -17,7 +17,7 @@
 #define __IPC_PROBE_H__
 
 #include <ipc/header.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <stdint.h>
 
 #define PROBE_PURPOSE_EXTRACTION	0x1

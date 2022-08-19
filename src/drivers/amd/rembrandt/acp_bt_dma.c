@@ -7,7 +7,7 @@
 
 #include <rtos/atomic.h>
 #include <sof/audio/component.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/drivers/acp_dai_dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>

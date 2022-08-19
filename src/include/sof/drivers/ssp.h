@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_SSP_H__
 #define __SOF_DRIVERS_SSP_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/wait.h>

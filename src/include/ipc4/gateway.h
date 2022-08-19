@@ -25,7 +25,7 @@
 #define __SOF_IPC4_GATEWAY_H__
 
 #include <stdint.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 /**< Type of the gateway. */
 enum ipc4_connector_node_id_type {

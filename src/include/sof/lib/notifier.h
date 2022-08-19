@@ -8,7 +8,7 @@
 #ifndef __SOF_LIB_NOTIFIER_H__
 #define __SOF_LIB_NOTIFIER_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <sof/sof.h>

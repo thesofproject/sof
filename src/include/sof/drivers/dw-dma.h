@@ -10,7 +10,7 @@
 #define __SOF_DRIVERS_DW_DMA_H__
 
 #include <platform/drivers/dw-dma.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/lib/dma.h>
 #include <sof/trace/trace.h>

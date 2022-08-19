@@ -8,7 +8,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/common.h>
 #include <ipc/channel_map.h>
 #include <stdint.h>

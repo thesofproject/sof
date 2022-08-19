@@ -11,7 +11,7 @@
 #ifndef __PLATFORM_DRIVERS_INTERRUPT_H__
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 

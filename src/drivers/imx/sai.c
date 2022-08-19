@@ -7,7 +7,7 @@
 // Author: Guido Roncarolo <guido.roncarolo@nxp.com>
 
 #include <sof/audio/component.h>
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/sai.h>
 #include <sof/lib/dai.h>
