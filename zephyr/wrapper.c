@@ -483,6 +483,9 @@ void sys_comp_tdfb_init(void);
 void sys_comp_ghd_init(void);
 void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_waves_interface_init(void);
+#if CONFIG_IPC_MAJOR_4
+void sys_comp_probe_init(void);
+#endif
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -628,7 +631,10 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_WAVES_CODEC))
 		sys_comp_module_waves_interface_init();
-
+#if CONFIG_IPC_MAJOR_4
+	if (IS_ENABLED(CONFIG_PROBE))
+		sys_comp_probe_init();
+#endif
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
 
