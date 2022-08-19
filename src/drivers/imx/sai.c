@@ -115,6 +115,38 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
 }
 
+static void sai_release(struct dai *dai, int direction)
+{
+	dai_info(dai, "SAI: sai_release");
+
+	int chan_idx = 0;
+#ifdef CONFIG_IMX8ULP
+	int fifo_offset = 0;
+#endif
+	/* enable DMA requests */
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
+
+	chan_idx = BIT(0);
+#ifdef CONFIG_IMX8ULP
+	if (direction == DAI_DIR_CAPTURE) {
+		fifo_offset = (dai_fifo(dai, DAI_DIR_CAPTURE) - dai_base(dai) - REG_SAI_RDR0) >> 2;
+		chan_idx = BIT(fifo_offset);
+	} else {
+		fifo_offset = (dai_fifo(dai, DAI_DIR_PLAYBACK) - dai_base(dai) - REG_SAI_TDR0) >> 2;
+		chan_idx = BIT(fifo_offset);
+	}
+#endif
+
+	/* transmit/receive data channel enable */
+	dai_update_bits(dai, REG_SAI_XCR3(direction),
+			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(chan_idx));
+
+	/* transmitter/receiver enable */
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
+}
+
 static void sai_stop(struct dai *dai, int direction)
 {
 	dai_info(dai, "SAI: sai_stop");
