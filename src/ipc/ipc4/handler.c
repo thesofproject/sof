@@ -31,7 +31,7 @@
 #include <ipc/trace.h>
 #include <user/trace.h>
 
-#include <zephyr/kernel.h>
+#include <rtos/kernel.h>
 
 #include <errno.h>
 #include <stdbool.h>

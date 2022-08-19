@@ -60,10 +60,14 @@ if(CONFIG_REMBRANDT)
 endif()
 # includes
 
+# None of these should be included if Zephyr strict headers are used.
+if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
 target_include_directories(sof_options INTERFACE
 	${PROJECT_SOURCE_DIR}/src/arch/xtensa/include
 	${PROJECT_SOURCE_DIR}/src/arch/xtensa/xtos
+	${PROJECT_SOURCE_DIR}/xtos/include
 )
+endif()
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/${platform_folder}/include)
 

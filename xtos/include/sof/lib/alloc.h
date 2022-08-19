@@ -7,7 +7,7 @@
  */
 
 /**
- * \file include/sof/lib/alloc.h
+ * \file xtos/include/sof/lib/alloc.h
  * \brief Memory Allocation API definition
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>

@@ -10,7 +10,7 @@
 
 #include <sof/bit.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/sof.h>
 #include <stdint.h>
 

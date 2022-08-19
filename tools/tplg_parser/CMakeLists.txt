@@ -36,6 +36,9 @@ target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/i
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
 
+# TODO: The topology parser should NOT need to include RTOS header. FIX.
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/xtos/include)
+
 # TODO: add IPC4 option when it's ready.
 target_compile_options(sof_tplg_parser PRIVATE
 	-g -O -Wall -Werror -Wl,-EL -fPIC -DPIC

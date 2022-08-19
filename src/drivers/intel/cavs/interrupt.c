@@ -14,7 +14,7 @@
 #include <sof/lib/shim.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 #include <stdbool.h>
 #include <stddef.h>

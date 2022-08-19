@@ -9,7 +9,8 @@ CASE_SENSE_NAMES = NO
 INPUT            = @top_srcdir@/src/include/ipc \
                    @top_srcdir@/src/include/kernel \
 		   @top_srcdir@/src/include/user \
-                   @top_srcdir@/src/include/sof
+                   @top_srcdir@/src/include/sof \
+                   @top_srcdir@/xtos/include
 # Exlude some 3rd party codec headers with external references
 EXCLUDE		 = @top_srcdir@/src/include/sof/audio/MaxxEffect
 RECURSIVE	 = YES

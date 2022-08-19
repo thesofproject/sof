@@ -5,7 +5,7 @@
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/notifier.h>

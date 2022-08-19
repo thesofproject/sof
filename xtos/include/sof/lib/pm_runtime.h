@@ -7,7 +7,7 @@
  */
 
 /**
- * \file include/sof/lib/pm_runtime.h
+ * \file xtos/include/sof/lib/pm_runtime.h
  * \brief Runtime power management header file
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
@@ -17,7 +17,7 @@
 
 #include <platform/lib/pm_runtime.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>

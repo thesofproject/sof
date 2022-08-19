@@ -14,7 +14,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/string.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>

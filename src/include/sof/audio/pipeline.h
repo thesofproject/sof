@@ -14,7 +14,7 @@
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/audio/pipeline-trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>

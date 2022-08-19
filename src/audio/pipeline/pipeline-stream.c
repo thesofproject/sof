@@ -11,12 +11,11 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-
-#include <zephyr/kernel.h>
+#include <rtos/kernel.h>
 
 #include <errno.h>
 #include <stdbool.h>

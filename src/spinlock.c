@@ -8,7 +8,7 @@
 #if CONFIG_DEBUG_LOCKS
 #include <sof/lib/uuid.h>
 #endif
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 #include <stdint.h>
 

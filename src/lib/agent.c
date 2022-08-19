@@ -33,10 +33,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#ifdef __ZEPHYR__
-#include <zephyr/kernel.h>
-#endif
+#include <rtos/kernel.h>
 
 LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
 

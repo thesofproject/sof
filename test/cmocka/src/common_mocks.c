@@ -15,7 +15,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/audio/component_ext.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>

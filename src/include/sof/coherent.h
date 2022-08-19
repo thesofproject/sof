@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/list.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/cpu.h>

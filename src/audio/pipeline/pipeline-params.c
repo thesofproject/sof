@@ -12,7 +12,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/error_status.h>

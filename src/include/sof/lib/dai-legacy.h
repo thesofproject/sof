@@ -29,7 +29,7 @@
 #include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>
 #include <sof/audio/pcm_converter.h>

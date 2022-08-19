@@ -23,13 +23,19 @@ set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 
 set(config_h ${sof_binary_directory}/library_autoconfig.h)
 
+# TODO: testbench should not need RTOS headers: FIX.
+if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
+target_include_directories(testbench PRIVATE
+	"${PROJECT_SOURCE_DIR}/xtos/include"
+)
+endif()
+
 target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
   -Wimplicit-fallthrough -DCONFIG_LIBRARY -imacros${config_h})
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
 
 install(TARGETS testbench DESTINATION bin)
-
 
 include(ExternalProject)
 

@@ -22,7 +22,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/string.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>

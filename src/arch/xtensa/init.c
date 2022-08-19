@@ -16,7 +16,7 @@
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 
 #include <ipc/trace.h>
 
