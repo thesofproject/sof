@@ -12,12 +12,6 @@
 
 #include <ipc/probe.h>
 
-/*
- * Buffer id used in the probe output stream headers for
- * logging data packet.
- */
-#define PROBE_LOGGING_BUFFER_ID 0
-
 /**
  * A buffer of logging data is available for processing.
  */
