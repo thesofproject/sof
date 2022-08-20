@@ -143,7 +143,6 @@ static void dsp_write(struct fuzz *fuzzer, unsigned int bar,
 			unsigned int reg, uint32_t value)
 {
 	struct hsw_data *data = fuzzer->platform_data;
-	struct qemu_io_msg_reg32 reg32;
 	struct qemu_io_msg_irq irq;
 	uint32_t active, isrd;
 
@@ -215,7 +214,6 @@ static uint64_t dsp_update_bits_unlocked(struct fuzz *fuzzer,
 					   unsigned int bar, uint32_t offset,
 					   uint32_t mask, uint32_t value)
 {
-	struct hsw_data *data = fuzzer->platform_data;
 	uint32_t old, new;
 	uint32_t ret;
 
@@ -235,7 +233,6 @@ static void mailbox_read(struct fuzz *fuzzer, unsigned int offset,
 			 void *mbox_data, unsigned int size)
 {
 	struct hsw_data *data = fuzzer->platform_data;
-	int i, j = 1;
 
 	memcpy(mbox_data, (void *)(data->bar[HSW_MBOX_BAR] + offset), size);
 }
@@ -355,9 +352,7 @@ static int hsw_irq_thread(int irq, void *context)
 
 static int hsw_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct hsw_data *data = fuzzer->platform_data;
-	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *)msg->msg_data;
 	uint32_t cmd = msg->header;
 
 	/* send the message */
@@ -372,7 +367,6 @@ static int hsw_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 
 static int hsw_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct hsw_data *data = fuzzer->platform_data;
 	struct sof_ipc_reply reply;
 	int ret = 0;

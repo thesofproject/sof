@@ -11,16 +11,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 #include <ipc/topology.h>
-#include <ipc/stream.h>
-#include <ipc/dai.h>
-#include <sof/common.h>
-#include <tplg_parser/topology.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
+#include <tplg_parser/topology.h>
+#include <tplg_parser/tokens.h>
 
 /* PCM */
 static const struct sof_topology_token pcm_tokens[] = {

@@ -168,6 +168,8 @@ static uint64_t imx8_fixup_side_b(struct fuzz *fuzzer, unsigned int bar,
 	default:
 		break;
 	}
+
+	return status_side_b;
 }
 
 static uint64_t imx_mu_read(struct fuzz *fuzzer, unsigned int bar,
@@ -193,9 +195,7 @@ static uint64_t imx_mu_xcr_rmw(struct fuzz *fuzzer,
 			       unsigned int bar,
 			       uint64_t set, uint64_t clr)
 {
-	struct imx8_data *data = fuzzer->platform_data;
 	uint64_t val;
-	struct qemu_io_msg_irq irq;
 
 	val = imx_mu_read(fuzzer, bar, IMX_MU_xCR);
 	val &= ~clr;
@@ -209,9 +209,7 @@ static uint64_t imx_mu_xsr_rmw(struct fuzz *fuzzer,
 			       unsigned int bar,
 			       uint64_t set, uint64_t clr)
 {
-	struct imx8_data *data = fuzzer->platform_data;
 	uint64_t val;
-	struct qemu_io_msg_irq irq;
 
 	val = imx_mu_read(fuzzer, bar, IMX_MU_xSR);
 	val &= ~clr;
@@ -331,10 +329,7 @@ static int imx8_irq_handler(int irq, void *context)
 
 static int imx8_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct imx8_data *data = fuzzer->platform_data;
-	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *)msg->msg_data;
-	uint64_t cmd = msg->header;
 	struct qemu_io_msg_irq irq;
 
 	/* send the message */
@@ -357,7 +352,6 @@ static int imx8_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 
 static int imx8_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct imx8_data *data = fuzzer->platform_data;
 	struct sof_ipc_reply reply;
 	int ret = 0;
@@ -516,7 +510,6 @@ static void imx8_fw_ready(struct fuzz *fuzzer)
 	struct imx8_data *data = fuzzer->platform_data;
 	struct sof_ipc_fw_ready fw_ready;
 	struct sof_ipc_fw_version version;
-	uint32_t offset = MBOX_OFFSET;
 
 	/* read fw_ready data from mailbox */
 	fuzzer_mailbox_read(fuzzer, &data->dsp_box, 0,

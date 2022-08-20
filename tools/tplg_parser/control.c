@@ -11,16 +11,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 #include <ipc/topology.h>
-#include <ipc/stream.h>
-#include <ipc/dai.h>
-#include <sof/common.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
+#include <tplg_parser/tokens.h>
 
 int tplg_create_single_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 			  FILE *file)
@@ -188,7 +184,8 @@ err:
  * we don't use controls in the fuzzer atm.
  * so just skip to the next dapm widget
  */
-int tplg_create_controls(int num_kcontrols, FILE *file)
+int tplg_create_controls(int num_kcontrols, FILE *file, struct snd_soc_tplg_ctl_hdr *rctl,
+			 size_t max_ctl_size)
 {
 	struct snd_soc_tplg_ctl_hdr *ctl_hdr;
 	struct snd_soc_tplg_mixer_control *mixer_ctl;
@@ -199,14 +196,14 @@ int tplg_create_controls(int num_kcontrols, FILE *file)
 
 	/* allocate memory */
 	size = sizeof(struct snd_soc_tplg_ctl_hdr);
-	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)malloc(size);
+	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)calloc(size, 1);
 	if (!ctl_hdr) {
 		fprintf(stderr, "error: mem alloc\n");
 		return -errno;
 	}
 
 	size = sizeof(struct snd_soc_tplg_mixer_control);
-	mixer_ctl = (struct snd_soc_tplg_mixer_control *)malloc(size);
+	mixer_ctl = (struct snd_soc_tplg_mixer_control *)calloc(size, 1);
 	if (!mixer_ctl) {
 		fprintf(stderr, "error: mem alloc\n");
 		free(ctl_hdr);
@@ -214,7 +211,7 @@ int tplg_create_controls(int num_kcontrols, FILE *file)
 	}
 
 	size = sizeof(struct snd_soc_tplg_enum_control);
-	enum_ctl = (struct snd_soc_tplg_enum_control *)malloc(size);
+	enum_ctl = (struct snd_soc_tplg_enum_control *)calloc(size, 1);
 	if (!enum_ctl) {
 		fprintf(stderr, "error: mem alloc\n");
 		free(ctl_hdr);
@@ -223,7 +220,7 @@ int tplg_create_controls(int num_kcontrols, FILE *file)
 	}
 
 	size = sizeof(struct snd_soc_tplg_bytes_control);
-	bytes_ctl = (struct snd_soc_tplg_bytes_control *)malloc(size);
+	bytes_ctl = (struct snd_soc_tplg_bytes_control *)calloc(size, 1);
 	if (!bytes_ctl) {
 		fprintf(stderr, "error: mem alloc\n");
 		free(ctl_hdr);
@@ -324,6 +321,15 @@ int tplg_create_controls(int num_kcontrols, FILE *file)
 		}
 	}
 
+	if (rctl) {
+		/* make sure the CTL will fit if we need to copy it for others */
+		if (ctl_hdr->size > max_ctl_size) {
+			fprintf(stderr, "error: failed control control copy\n");
+			ret = -EINVAL;
+			goto err;
+		}
+		memcpy(rctl, ctl_hdr, ctl_hdr->size);
+	}
 err:
 	/* free all data */
 	free(mixer_ctl);

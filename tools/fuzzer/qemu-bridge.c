@@ -75,7 +75,6 @@ static gpointer parent_reader_thread(gpointer data)
 {
 	struct io_bridge *io = data;
 	char buf[QEMU_IO_MAX_MSG_SIZE];
-	int i;
 
 	mq_getattr(io->parent.mqdes, &io->parent.mqattr);
 	if (io_bridge_debug)

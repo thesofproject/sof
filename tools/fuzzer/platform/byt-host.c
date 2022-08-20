@@ -116,7 +116,6 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 			unsigned int reg, uint64_t value)
 {
 	struct byt_data *data = fuzzer->platform_data;
-	struct qemu_io_msg_reg32 reg32;
 	struct qemu_io_msg_irq irq;
 	uint32_t active, isrd;
 
@@ -191,7 +190,6 @@ static uint64_t dsp_update_bits64_unlocked(struct fuzz *fuzzer,
 					   unsigned int bar, uint32_t offset,
 					   uint64_t mask, uint64_t value)
 {
-	struct byt_data *data = fuzzer->platform_data;
 	uint64_t old, new;
 	uint64_t ret;
 
@@ -329,9 +327,7 @@ static int byt_irq_thread(int irq, void *context)
 
 static int byt_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct byt_data *data = fuzzer->platform_data;
-	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *)msg->msg_data;
 	uint64_t cmd = msg->header;
 
 	/* send the message */
@@ -345,7 +341,6 @@ static int byt_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 
 static int byt_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
-	struct fuzz_platform *plat = fuzzer->platform;
 	struct byt_data *data = fuzzer->platform_data;
 	struct sof_ipc_reply reply;
 	int ret = 0;
@@ -471,7 +466,6 @@ static void byt_fw_ready(struct fuzz *fuzzer)
 	struct byt_data *data = fuzzer->platform_data;
 	struct sof_ipc_fw_ready fw_ready;
 	struct sof_ipc_fw_version version;
-	uint32_t offset = MBOX_OFFSET;
 
 	/* read fw_ready data from mailbox */
 	fuzzer_mailbox_read(fuzzer, &data->dsp_box, 0,
