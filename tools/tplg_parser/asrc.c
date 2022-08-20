@@ -11,34 +11,52 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <unistd.h>
 #include <string.h>
+
 #include <ipc/topology.h>
+#include <ipc/stream.h>
+#include <sof/common.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
 
-/* load mixer dapm widget */
-int tplg_create_mixer(struct tplg_context *ctx,
-		    struct sof_ipc_comp_mixer *mixer, size_t max_comp_size)
+/* ASRC */
+static const struct sof_topology_token asrc_tokens[] = {
+	{SOF_TKN_ASRC_RATE_IN, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, source_rate), 0},
+	{SOF_TKN_ASRC_RATE_OUT, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, sink_rate), 0},
+	{SOF_TKN_ASRC_ASYNCHRONOUS_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, asynchronous_mode), 0},
+	{SOF_TKN_ASRC_OPERATION_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, operation_mode), 0},
+};
+
+/* load asrc dapm widget */
+int tplg_create_asrc(struct tplg_context *ctx, struct sof_ipc_comp_asrc *asrc,
+		     size_t max_comp_size)
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
 	FILE *file = ctx->file;
-	int size = ctx->widget->priv.size;
-	int comp_id = ctx->comp_id;
+	int ret, comp_id = ctx->comp_id;
+	int size = ctx->widget_size;
 	char uuid[UUID_SIZE];
-	int ret;
-
-	if (max_comp_size < sizeof(struct sof_ipc_comp_mixer) + UUID_SIZE)
-		return -EINVAL;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
-		fprintf(stderr, "error: mem alloc for src vendor array\n");
+		fprintf(stderr, "error: mem alloc for asrc vendor array\n");
 		return -errno;
 	}
+
+	if (max_comp_size < sizeof(struct sof_ipc_comp_asrc) + UUID_SIZE)
+		return -EINVAL;
 
 	/* read vendor tokens */
 	while (total_array_size < size) {
@@ -51,7 +69,7 @@ int tplg_create_mixer(struct tplg_context *ctx,
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
-			fprintf(stderr, "error: load mixer array size mismatch\n");
+			fprintf(stderr, "error: load asrc array size mismatch\n");
 			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
 			return -EINVAL;
 		}
@@ -64,21 +82,32 @@ int tplg_create_mixer(struct tplg_context *ctx,
 		}
 
 		/* parse comp tokens */
-		ret = sof_parse_tokens(&mixer->config, comp_tokens,
+		ret = sof_parse_tokens(&asrc->config, comp_tokens,
 				       ARRAY_SIZE(comp_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			fprintf(stderr, "error: parse src comp_tokens %d\n",
+			fprintf(stderr, "error: parse asrc comp_tokens %d\n",
 				size);
 			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
 			return -EINVAL;
 		}
+
+		/* parse asrc tokens */
+		ret = sof_parse_tokens(asrc, asrc_tokens,
+				       ARRAY_SIZE(asrc_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse asrc tokens %d\n", size);
+			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
+			return -EINVAL;
+		}
+
 		/* parse uuid token */
 		ret = sof_parse_tokens(uuid, comp_ext_tokens,
 				       ARRAY_SIZE(comp_ext_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			fprintf(stderr, "error: parse mixer uuid token %d\n", size);
+			fprintf(stderr, "error: parse asrc uuid token %d\n", size);
 			free(array);
 			return -EINVAL;
 		}
@@ -92,27 +121,28 @@ int tplg_create_mixer(struct tplg_context *ctx,
 	/* point to the start of array so it gets freed properly */
 	array = MOVE_POINTER_BY_BYTES(array, -total_array_size);
 
-	/* configure mixer */
-	mixer->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
-	mixer->comp.id = comp_id;
-	mixer->comp.hdr.size = sizeof(struct sof_ipc_comp_src) + UUID_SIZE;
-	mixer->comp.type = SOF_COMP_MIXER;
-	mixer->comp.pipeline_id = ctx->pipeline_id;
-	mixer->comp.ext_data_length = UUID_SIZE;
-	mixer->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-	memcpy(mixer + 1, &uuid, UUID_SIZE);
+	/* configure asrc */
+	asrc->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
+	asrc->comp.id = comp_id;
+	asrc->comp.hdr.size = sizeof(struct sof_ipc_comp_asrc) + UUID_SIZE;
+	asrc->comp.type = SOF_COMP_ASRC;
+	asrc->comp.pipeline_id = ctx->pipeline_id;
+	asrc->comp.ext_data_length = UUID_SIZE;
+	asrc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	memcpy(asrc + 1, &uuid, UUID_SIZE);
 
 	free(array);
 	return 0;
 }
 
-int tplg_new_mixer(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t max_comp_size,
+/* load asrc dapm widget */
+int tplg_new_asrc(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
 		struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
 {
-	struct sof_ipc_comp_mixer *mixer = (struct sof_ipc_comp_mixer *)comp;
+	struct sof_ipc_comp_asrc *asrc = (struct sof_ipc_comp_asrc *)comp;
 	int ret;
 
-	ret = tplg_create_mixer(ctx, mixer, max_comp_size);
+	ret = tplg_create_asrc(ctx, asrc, comp_size);
 	if (ret < 0)
 		return ret;
 

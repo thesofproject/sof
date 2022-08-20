@@ -12,8 +12,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <sound/asoc.h>
 #include <ipc/dai.h>
+#include <ipc/topology.h>
+#include <ipc/stream.h>
 #include <kernel/tokens.h>
 
 #define SOF_DEV 1
@@ -22,6 +23,9 @@
 #define MOVE_POINTER_BY_BYTES(p, b) ((typeof(p))((uint8_t *)(p) + (b)))
 
 struct testbench_prm;
+struct snd_soc_tplg_vendor_array;
+struct snd_soc_tplg_ctl_hdr;
+struct sof_topology_token;
 
 struct comp_info {
 	char *name;
@@ -94,15 +98,6 @@ enum sof_ipc_process_type {
 	SOF_PROCESS_DCBLOCK,
 };
 
-struct sof_topology_token {
-	uint32_t token;
-	uint32_t type;
-	int (*get_token)(void *elem, void *object, uint32_t offset,
-			 uint32_t size);
-	uint32_t offset;
-	uint32_t size;
-};
-
 enum sof_ipc_frame find_format(const char *name);
 
 int get_token_uint32_t(void *elem, void *object, uint32_t offset,
@@ -117,34 +112,11 @@ int get_token_uuid(void *elem, void *object, uint32_t offset, uint32_t size);
 int get_token_process_type(void *elem, void *object, uint32_t offset,
 			   uint32_t size);
 
-/* Tone */
-static const struct sof_topology_token tone_tokens[] = {
-};
-
-/* Generic components */
-static const struct sof_topology_token comp_tokens[] = {
-	{SOF_TKN_COMP_PERIOD_SINK_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
-		offsetof(struct sof_ipc_comp_config, periods_sink), 0},
-	{SOF_TKN_COMP_PERIOD_SOURCE_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
-		offsetof(struct sof_ipc_comp_config, periods_source), 0},
-	{SOF_TKN_COMP_FORMAT,
-		SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
-		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
-};
-
 /* DAI */
 enum sof_ipc_dai_type find_dai(const char *name);
 
 int get_token_dai_type(void *elem, void *object, uint32_t offset,
 		       uint32_t size);
-
-/* Component extended tokens */
-static const struct sof_topology_token comp_ext_tokens[] = {
-	{SOF_TKN_COMP_UUID, SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid, 0, 0},
-
-};
 
 struct sof_dai_types {
 	const char *name;
@@ -174,34 +146,63 @@ enum sof_ipc_dai_type find_dai(const char *name);
 enum sof_ipc_process_type tplg_get_process_name(const char *name);
 enum sof_comp_type tplg_get_process_type(enum sof_ipc_process_type type);
 
+int tplg_process_append_data(struct sof_ipc_comp_process **process_ipc,
+			       struct sof_ipc_comp_process *process,
+			       struct snd_soc_tplg_ctl_hdr *ctl,
+			       char *priv_data);
+
+int tplg_process_init_data(struct sof_ipc_comp_process **process_ipc,
+			     struct sof_ipc_comp_process *process);
+
 int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file);
 int tplg_create_buffer(struct tplg_context *ctx,
 		     struct sof_ipc_buffer *buffer);
+int tplg_new_buffer(struct tplg_context *ctx, struct sof_ipc_buffer *buffer,
+		struct snd_soc_tplg_ctl_hdr *rctl);
+
 int tplg_create_pcm(struct tplg_context *ctx, int dir,
 		  struct sof_ipc_comp_host *host);
 int tplg_create_dai(struct tplg_context *ctx,
 		  struct sof_ipc_comp_dai *comp_dai);
-int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume);
+int tplg_create_pga(struct tplg_context *ctx, struct sof_ipc_comp_volume *volume, size_t max_comp_size);
 int tplg_create_pipeline(struct tplg_context *ctx,
 		       struct sof_ipc_pipe_new *pipeline);
+int tplg_new_pipeline(struct tplg_context *ctx, struct sof_ipc_pipe_new *pipeline,
+		struct snd_soc_tplg_ctl_hdr *rctl);
+
 int tplg_create_single_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv,
 			  FILE *file);
-int tplg_create_controls(int num_kcontrols, FILE *file);
+int tplg_create_controls(int num_kcontrols, FILE *file, struct snd_soc_tplg_ctl_hdr *rctl,
+		size_t max_ctl_size);
+
 int tplg_create_src(struct tplg_context *ctx,
-		  struct sof_ipc_comp_src *src);
+		  struct sof_ipc_comp_src *src, size_t max_comp_size);
+int tplg_new_src(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
 int tplg_create_asrc(struct tplg_context *ctx,
-		   struct sof_ipc_comp_asrc *asrc);
+		   struct sof_ipc_comp_asrc *asrc, size_t max_comp_size);
+int tplg_new_asrc(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
 int tplg_create_mixer(struct tplg_context *ctx,
-		    struct sof_ipc_comp_mixer *mixer);
+		    struct sof_ipc_comp_mixer *mixer, size_t max_comp_size);
 int tplg_create_process(struct tplg_context *ctx,
 		      struct sof_ipc_comp_process *process,
 		      struct sof_ipc_comp_ext *comp_ext);
+int tplg_new_process(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
 int tplg_create_graph(int num_comps, int pipeline_id,
 		    struct comp_info *temp_comp_list, char *pipeline_string,
 		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
 		    int route_num, int count);
 
+int tplg_new_pga(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
 int tplg_register_pga(struct tplg_context *ctx);
+int tplg_register_pga_ipc(struct tplg_context *ctx, struct snd_soc_tplg_ctl_hdr *ctl,
+			  char *mailbox, size_t size);
 
 int load_aif_in_out(struct tplg_context *ctx, int dir);
 int load_dai_in_out(struct tplg_context *ctx, int dir);
@@ -209,7 +210,11 @@ int tplg_register_buffer(struct tplg_context *ctx);
 int tplg_register_pipeline(struct tplg_context *ctx);
 int tplg_register_src(struct tplg_context *ctx);
 int tplg_register_asrc(struct tplg_context *ctx);
+
 int tplg_register_mixer(struct tplg_context *ctx);
+int tplg_new_mixer(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size);
+
 int tplg_register_graph(void *dev, struct comp_info *temp_comp_list,
 			char *pipeline_string, FILE *file,
 			int count, int num_comps, int pipeline_id);

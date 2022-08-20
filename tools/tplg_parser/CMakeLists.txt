@@ -9,7 +9,6 @@ include(../../scripts/cmake/misc.cmake)
 set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 
 add_library(sof_tplg_parser SHARED
-	widget.c
 	tokens.c
 	process.c
 	control.c
@@ -18,6 +17,10 @@ add_library(sof_tplg_parser SHARED
 	pipeline.c
 	pcm.c
 	dai.c
+	asrc.c
+	src.c
+	buffer.c
+	graph.c
 )
 
 sof_append_relative_path_definitions(sof_tplg_parser)

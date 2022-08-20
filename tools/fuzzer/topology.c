@@ -17,6 +17,7 @@
 #include <ipc/stream.h>
 #include <sof/common.h>
 #include <tplg_parser/topology.h>
+#include <tplg_parser/tokens.h>
 
 #include "../fuzzer/fuzzer.h"
 
@@ -48,7 +49,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	return 0;
 }
 
-int ipc_comp_connect(struct ipc *ipc, struct sof_ipc_pipe_comp_connect *_connect)
+int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect)
 {
 	return 0;
 }
@@ -58,12 +59,12 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 	return 0;
 }
 
-int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *_pipe_desc)
+int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *pipeline)
 {
 	return 0;
 }
 
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *_comp)
+int ipc_comp_new(struct ipc *ipc, ipc_comp *new)
 {
 	return 0;
 }
@@ -232,7 +233,7 @@ static int fuzzer_load_pga(struct tplg_context *ctx)
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_create_pga(ctx, &volume);
+	ret = tplg_create_pga(ctx, &volume, sizeof(volume));
 	if (ret < 0)
 		return ret;
 
@@ -285,7 +286,7 @@ static int fuzzer_load_src(struct tplg_context *ctx)
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_create_src(ctx, &src);
+	ret = tplg_create_src(ctx, &src, sizeof(src));
 	if (ret < 0)
 		return ret;
 
@@ -311,7 +312,7 @@ static int fuzzer_load_asrc(struct tplg_context *ctx)
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_create_asrc(ctx, &asrc);
+	ret = tplg_create_asrc(ctx, &asrc, sizeof(asrc));
 	if (ret < 0)
 		return ret;
 
@@ -337,7 +338,7 @@ static int fuzzer_load_mixer(struct tplg_context *ctx)
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_create_mixer(ctx, &mixer);
+	ret = tplg_create_mixer(ctx, &mixer, sizeof(mixer));
 	if (ret < 0)
 		return ret;
 
@@ -497,7 +498,7 @@ static int fuzzer_load_widget(struct tplg_context *ctx)
 		}
 
 		printf("info: Widget type not supported %d\n", ctx->widget->id);
-		ret = tplg_create_controls(ctx->widget->num_kcontrols, ctx->file);
+		ret = tplg_create_controls(ctx->widget->num_kcontrols, ctx->file, NULL, 0);
 		if (ret < 0) {
 			fprintf(stderr, "error: loading controls\n");
 			goto exit;
@@ -521,10 +522,9 @@ int fuzzer_parse_topology(struct tplg_context *ctx)
 	struct fuzz *fuzzer = ctx->fuzzer;
 	struct comp_info *comp_list_realloc = NULL;
 	char message[DEBUG_MSG_LEN];
-	int next_comp_id = 0, num_comps = 0;
+	int num_comps = 0;
 	int i, ret = 0;
 	size_t file_size, size;
-	int sched_id;
 
 	/* open topology file */
 	ctx->file = fopen(ctx->tplg_file, "rb");

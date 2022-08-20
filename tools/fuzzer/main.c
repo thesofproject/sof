@@ -285,10 +285,9 @@ int main(int argc, char *argv[])
 	struct fuzz fuzzer;
 	int ret;
 	char opt;
-	char *topology_file;
+	char *topology_file = NULL;
 	char *platform_name = NULL;
-	int i, j;
-	int regions = 0;
+	int i;
 	struct tplg_context ctx;
 
 	/* parse arguments */
