@@ -177,6 +177,15 @@ static int dts_codec_prepare(struct processing_module *mod)
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "dts_codec_prepare(): skipped by module under state %d",
+			 mod->priv.state);
+		return 0;
+	}
+
 	comp_dbg(dev, "dts_codec_prepare() start");
 
 	ret = dts_effect_populate_buffer_configuration(dev, &buffer_configuration);

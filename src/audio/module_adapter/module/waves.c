@@ -687,6 +687,15 @@ static int waves_codec_prepare(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "waves_codec_prepare(): skipped by module under state %d",
+			 mod->priv.state);
+		return 0;
+	}
+
 	comp_dbg(dev, "waves_codec_prepare() start");
 
 	ret = waves_effect_check(dev);

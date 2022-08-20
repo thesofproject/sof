@@ -24,6 +24,15 @@ static int passthrough_codec_prepare(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "passthrough_codec_prepare(): skipped by module under state %d",
+			 mod->priv.state;
+		return 0;
+	}
+
 	comp_info(dev, "passthrough_codec_prepare()");
 
 	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);

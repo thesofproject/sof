@@ -1182,6 +1182,15 @@ static int volume_prepare(struct processing_module *mod)
 	int ret;
 	int i;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "volume_prepare(): skipped by module under state %d",
+			 mod->priv.state);
+		return 0;
+	}
+
 	comp_dbg(dev, "volume_prepare()");
 
 #if CONFIG_IPC_MAJOR_4

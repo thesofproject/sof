@@ -105,6 +105,15 @@ static int iadk_modules_prepare(struct processing_module *mod)
 			(struct ipc4_base_module_cfg *)lib_manager_get_config(dev);
 	int ret = 0;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "iadk_modules_prepare(): skipped by module under state %d",
+			 mod->priv.state);
+		return 0;
+	}
+
 	comp_info(dev, "iadk_modules_prepare()");
 
 	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);

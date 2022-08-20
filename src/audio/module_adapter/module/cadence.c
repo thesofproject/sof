@@ -490,6 +490,15 @@ static int cadence_codec_prepare(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 
+	if (mod->priv.state >= MODULE_IDLE) {
+		/* TODO: handle the case that stream_params was changed afterwards (different from
+		 *       the one applied on module codec initialization).
+		 */
+		comp_dbg(dev, "cadence_codec_prepare(): skipped by module under state %d",
+			 mod->priv.state);
+		return 0;
+	}
+
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
 	ret = cadence_codec_post_init(mod);

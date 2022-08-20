@@ -77,8 +77,8 @@ DECLARE_MODULE(sys_comp_module_##adapter##_init)
  */
 enum module_state {
 	MODULE_DISABLED, /**< Module isn't initialized yet or has been freed.*/
-	MODULE_INITIALIZED, /**< Module initialized or reset. */
-	MODULE_IDLE, /**< Module is idle now. */
+	MODULE_INITIALIZED, /**< Module is initialized, not prepared yet. */
+	MODULE_IDLE, /**< Module has been prepared and is idle now. */
 	MODULE_PROCESSING, /**< Module is processing samples now. */
 };
 

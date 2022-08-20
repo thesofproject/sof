@@ -76,7 +76,13 @@ struct module_interface {
 	int (*init)(struct processing_module *mod);
 	/**
 	 * Module specific prepare procedure, called as part of module_adapter
-	 * component preparation in .prepare()
+	 * component preparation in .prepare().
+	 * This procedure should be handled differently in respect of the module state:
+	 *   @ MODULE_INITIALIZED: fully run the specific prepare procedure as it is the first time
+	 *                         getting .prepare() for this module.
+	 *   @ MODULE_IDLE: take actions only when mod->stream_params is different from the last
+	 *                  .prepare(), which may cause changes of module parameters, e.g. required
+	 *                  size for data buffers, sample format, and etc.
 	 */
 	int (*prepare)(struct processing_module *mod);
 	/**

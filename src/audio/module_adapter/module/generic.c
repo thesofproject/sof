@@ -197,15 +197,13 @@ int module_prepare(struct processing_module *mod)
 
 	comp_dbg(dev, "module_prepare() start");
 
-	if (mod->priv.state == MODULE_IDLE)
-		return 0;
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 
 	ret = md->ops->prepare(mod);
 	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-			 ret, dev_comp_id(dev));
+		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %din state %d",
+			 ret, dev_comp_id(dev), md->state);
 		return ret;
 	}
 
