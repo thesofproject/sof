@@ -907,8 +907,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	params->direction = cd->direction;
 	params->channels = cd->config.base.audio_fmt.channels_count;
 	params->rate = cd->config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->config.base.audio_fmt.depth;
-	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth;
+	params->sample_container_bytes = cd->config.base.audio_fmt.depth / 8;
+	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth / 8;
 
 	params->stream_tag = cd->config.gtw_cfg.node_id.f.v_index + 1;
 	params->frame_fmt = dev->ipc_config.frame_fmt;
