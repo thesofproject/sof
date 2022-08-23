@@ -576,7 +576,7 @@ void heap_trace(struct mm_heap *heap, int size)
 
 			tr_info(&mem_tr, " %d Bytes blocks ID:%d base 0x%x",
 				current_map->block_size, j, current_map->base);
-			tr_info(&mem_tr, "   Number of Blocks: total % used %d free %d",
+			tr_info(&mem_tr, "   Number of Blocks: total %d used %d free %d",
 				current_map->count,
 				(current_map->count - current_map->free_count),
 				current_map->free_count);
