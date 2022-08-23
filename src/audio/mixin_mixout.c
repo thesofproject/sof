@@ -855,7 +855,7 @@ static int mixout_prepare(struct comp_dev *dev)
 							 PPL_DIR_UPSTREAM);
 		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
 
-		if (mixin->pipeline->core != dev->pipeline->core) {
+		if (mixin->pipeline && mixin->pipeline->core != dev->pipeline->core) {
 			coherent_shared(md->mixed_data_info, c);
 			break;
 		}
