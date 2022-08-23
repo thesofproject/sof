@@ -37,23 +37,38 @@ enum ipc4_mixin_config_param {
 /* Number of supported input pins that are mixed together */
 #define IPC4_MIXOUT_MODULE_MAX_INPUT_QUEUES 8
 
+enum ipc4_mixer_mode {
+	/* Normal mode, just mixing */
+	IPC4_MIXER_NORMAL_MODE = 0,
+
+	/* Mixing with channel remapping */
+	IPC4_MIXER_CHANNEL_REMAPPING_MODE = 1,
+};
+
 struct ipc4_mixer_mode_sink_config {
 	/* Index of output queue (aka sink) this config is for,
 	 * range from 0 to IPC4_MIXIN_MODULE_MAX_OUTPUT_QUEUES - 1
 	 */
 	uint32_t output_queue_id;
 
-	/* Channel remapping config is here which is not (yet) supported. */
-	uint32_t reserved1;
-	uint32_t reserved2;
-	uint32_t reserved3;
+	/* Operational mode for given output queue index. enum ipc4_mixer_mode */
+	uint32_t mixer_mode;
+
+	/* These two below are used in channel remapping mode. */
+	uint32_t output_channel_count;
+
+	/* Output channel map for given output queue index. Each nibble (where nibble index is
+	 * equivalent for output channel index) contains source channel index. Value 0xF in nibble
+	 * means that output channel cannot be modified.
+	 */
+	uint32_t output_channel_map;
 
 	/* Gain to be applied to input signal. Valid range: 0x0..0x400 (0.0 <= gain <= 1.0). Values
 	 * greater than 0x400 are treated as 0x400 (unity gain). To apply gain, multiply sample
 	 * by "gain" and divide by 1024.
 	 */
 	uint16_t gain;
-	uint16_t reserved4;
+	uint16_t reserved;
 } __packed __aligned(4);
 
 #define IPC4_MIXIN_GAIN_SHIFT 10

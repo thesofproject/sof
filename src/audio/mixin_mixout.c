@@ -67,24 +67,24 @@ DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 /*
  * Source data is consumed by mixins in mixin_copy() but sink data cannot be
  * immediately produced. Sink data is produced by mixout in mixout_copy() after
- * ensuring all connected mixers have mixed their data into mixout sink buffer.
+ * ensuring all connected mixins have mixed their data into mixout sink buffer.
  * So for each connected mixin, mixout keeps knowledge of data already consumed
  * by mixin but not yet produced in mixout.
  */
 struct mixout_source_info {
 	struct comp_dev *mixin;
-	uint32_t consumed_yet_not_produced_bytes;
+	uint32_t consumed_yet_not_produced_frames;
 };
 
 /*
- * Data used by both mixin and mixout: number of currently mixed bytes in
+ * Data used by both mixin and mixout: number of currently mixed frames in
  * mixout sink buffer and each mixin consumed data amount (and so mixout should
  * produce the appropreate amount of data).
  * Can be accessed from different cores.
  */
 struct mixed_data_info {
 	struct coherent c;
-	uint32_t mixed_bytes;
+	uint32_t mixed_frames;
 	struct mixout_source_info source_info[MIXOUT_MAX_SOURCES];
 };
 
@@ -102,18 +102,31 @@ void mixed_data_info_release(struct mixed_data_info __sparse_cache *mdi)
 	coherent_release_thread(&mdi->c, sizeof(*mdi));
 }
 
+struct mixin_sink_config {
+	enum ipc4_mixer_mode mixer_mode;
+	uint32_t output_channel_count;
+	uint32_t output_channel_map;
+	/* Gain as described in struct ipc4_mixer_mode_sink_config */
+	uint16_t gain;
+};
+
 /* mixin component private data */
 struct mixin_data {
 	/* Must be the 1st field, function ipc4_comp_get_base_module_cfg casts components
 	 * private data as ipc4_base_module_cfg!
 	 */
 	struct ipc4_base_module_cfg base_cfg;
-	void (*mix_func)(struct audio_stream __sparse_cache *sink, uint32_t start,
-			 uint32_t mixed_bytes, const struct audio_stream __sparse_cache *source,
-			 uint32_t size, uint16_t gain);
 
-	/* Gain as described in struct ipc4_mixer_mode_sink_config */
-	uint16_t gain[MIXIN_MAX_SINKS];
+	void (*mix_channel)(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
+			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
+			    const struct audio_stream __sparse_cache *source,
+			    uint8_t source_channel_index, uint8_t source_channel_count,
+			    uint32_t frame_count, uint16_t gain);
+
+	void (*mute_channel)(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
+			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count);
+
+	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
 };
 
 /* mixout component private data */
@@ -150,8 +163,10 @@ static struct comp_dev *mixin_new(const struct comp_driver *drv,
 
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 
-	for (i = 0; i < MIXIN_MAX_SINKS; i++)
-		md->gain[i] = IPC4_MIXIN_UNITY_GAIN;
+	for (i = 0; i < MIXIN_MAX_SINKS; i++) {
+		md->sink_config[i].mixer_mode = IPC4_MIXER_NORMAL_MODE;
+		md->sink_config[i].gain = IPC4_MIXIN_UNITY_GAIN;
+	}
 
 	comp_set_drvdata(dev, md);
 
@@ -248,235 +263,372 @@ struct mixout_source_info *find_mixout_source_info(struct mixed_data_info __spar
 	return NULL;
 }
 
-static void audio_stream_bytes_copy(struct audio_stream __sparse_cache *dst_stream, void *dst,
-				    const struct audio_stream __sparse_cache *src_stream,
-				    void *src, uint32_t size)
-{
-	int n;
-	uint8_t *pdst = (uint8_t *)dst;
-	uint8_t *psrc = (uint8_t *)src;
-
-	while (size) {
-		n = MIN(audio_stream_bytes_without_wrap(dst_stream, pdst), size);
-		n = MIN(audio_stream_bytes_without_wrap(src_stream, psrc), n);
-		memcpy_s(pdst, n, psrc, n);
-		size -= n;
-		pdst = audio_stream_wrap(dst_stream, pdst + n);
-		psrc = audio_stream_wrap(src_stream, psrc + n);
-	}
-}
-
 #if CONFIG_FORMAT_S16LE
-static void mix_s16(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
+/* Instead of using sink->channels and source->channels, sink_channel_count and
+ * source_channel_count are supplied as parameters. This is done to reuse the function
+ * to also mix an entire stream. In this case the function is called with fake stream
+ * parameters: multichannel stream is treated as single channel and so the entire stream
+ * contents is mixed.
+ */
+static void mix_channel_s16(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
+			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
+			    const struct audio_stream __sparse_cache *source,
+			    uint8_t source_channel_index, uint8_t source_channel_count,
+			    uint32_t frame_count, uint16_t gain)
 {
 	int16_t *dest, *src;
-	uint32_t bytes_to_mix, bytes_to_copy;
-	int i, n;
+	uint32_t frames_to_mix, frames_to_copy;
 
-	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
-	src = source->r_ptr;
+	/* audio_stream_wrap() is required and is done below in a loop */
+	dest = (int16_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	src = (int16_t *)source->r_ptr + source_channel_index;
 
-	assert(mixed_bytes >= start);
-	bytes_to_mix = MIN(mixed_bytes - start, size);
-	bytes_to_copy = size - bytes_to_mix;
+	assert(mixed_frames >= start_frame);
+	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
+	frames_to_copy = frame_count - frames_to_mix;
 
-	while (bytes_to_mix != 0) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
-		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-		bytes_to_mix -= n;
-		n >>= 1;	/* divide by 2 */
-		if (gain == IPC4_MIXIN_UNITY_GAIN) {
-			for (i = 0; i < n; i++) {
+	/* we do not want to use something like audio_stream_frames_without_wrap() here
+	 * as it uses stream->channels internally. Also we would like to avoid expensive
+	 * division operations.
+	 */
+	while (frames_to_mix) {
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_mix && src < (int16_t *)source->end_addr &&
+			       dest < (int16_t *)sink->end_addr) {
 				*dest = sat_int16((int32_t)*dest + (int32_t)*src);
-				src++;
-				dest++;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
 			}
-		} else {
-			for (i = 0; i < n; i++) {
+		else
+			while (frames_to_mix && src < (int16_t *)source->end_addr &&
+			       dest < (int16_t *)sink->end_addr) {
 				*dest = sat_int16((int32_t)*dest +
 						  q_mults_16x16(*src, gain,
 								IPC4_MIXIN_GAIN_SHIFT));
-				src++;
-				dest++;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
 			}
-		}
-
-		dest = audio_stream_wrap(sink, dest);
-		src = audio_stream_wrap(source, src);
 	}
 
-	if (gain == IPC4_MIXIN_UNITY_GAIN) {
-		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
-	} else {
-		while (bytes_to_copy != 0) {
-			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
-			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-			bytes_to_copy -= n;
-			n >>= 1;	/* divide by 2 */
-			for (i = 0; i < n; i++) {
-				*dest = (int16_t)q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
-				src++;
-				dest++;
-			}
+	while (frames_to_copy) {
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
 
-			dest = audio_stream_wrap(sink, dest);
-			src = audio_stream_wrap(source, src);
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_copy && src < (int16_t *)source->end_addr &&
+			       dest < (int16_t *)sink->end_addr) {
+				*dest = *src;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
+			}
+		else
+			while (frames_to_copy && src < (int16_t *)source->end_addr &&
+			       dest < (int16_t *)sink->end_addr) {
+				*dest = (int16_t)q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
+			}
+	}
+}
+
+static void mute_channel_s16(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
+			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count)
+{
+	uint32_t skip_mixed_frames;
+	int16_t *ptr;
+
+	assert(mixed_frames >= start_frame);
+	skip_mixed_frames = mixed_frames - start_frame;
+
+	if (frame_count <= skip_mixed_frames)
+		return;
+	frame_count -= skip_mixed_frames;
+
+	/* audio_stream_wrap() is needed here and it is just below in a loop */
+	ptr = (int16_t *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
+
+	while (frame_count) {
+		ptr = audio_stream_wrap(stream, ptr);
+		while (frame_count && ptr < (int16_t *)stream->end_addr) {
+			*ptr = 0;
+			ptr += stream->channels;
+			frame_count--;
 		}
 	}
 }
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void mix_s24(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
+/* Instead of using sink->channels and source->channels, sink_channel_count and
+ * source_channel_count are supplied as parameters. This is done to reuse the function
+ * to also mix an entire stream. In this case the function is called with fake stream
+ * parameters: multichannel stream is treated as single channel and so the entire stream
+ * contents is mixed.
+ */
+static void mix_channel_s24(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
+			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
+			    const struct audio_stream __sparse_cache *source,
+			    uint8_t source_channel_index, uint8_t source_channel_count,
+			    uint32_t frame_count, uint16_t gain)
 {
 	int32_t *dest, *src;
-	uint32_t bytes_to_mix, bytes_to_copy;
-	int i, n;
+	uint32_t frames_to_mix, frames_to_copy;
 
-	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
-	src = source->r_ptr;
+	/* audio_stream_wrap() is required and is done below in a loop */
+	dest = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	src = (int32_t *)source->r_ptr + source_channel_index;
 
-	assert(mixed_bytes >= start);
-	bytes_to_mix = MIN(mixed_bytes - start, size);
-	bytes_to_copy = size - bytes_to_mix;
+	assert(mixed_frames >= start_frame);
+	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
+	frames_to_copy = frame_count - frames_to_mix;
 
-	while (bytes_to_mix != 0) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
-		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-		bytes_to_mix -= n;
-		n >>= 2;	/* divide by 4 */
-		if (gain == IPC4_MIXIN_UNITY_GAIN) {
-			for (i = 0; i < n; i++) {
-				*dest = sat_int24(sign_extend_s24(*dest) + sign_extend_s24(*src));
-				src++;
-				dest++;
-			}
-		} else {
-			for (i = 0; i < n; i++) {
-				*dest = sat_int24(sign_extend_s24(*dest) +
-				  (int32_t)q_mults_32x32(sign_extend_s24(*src),
-							 gain, IPC4_MIXIN_GAIN_SHIFT));
-				src++;
-				dest++;
-			}
-		}
-
-		dest = audio_stream_wrap(sink, dest);
+	/* we do not want to use something like audio_stream_frames_without_wrap() here
+	 * as it uses stream->channels internally. Also we would like to avoid expensive
+	 * division operations.
+	 */
+	while (frames_to_mix) {
 		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_mix && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = sat_int24(sign_extend_s24(*dest) + sign_extend_s24(*src));
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
+			}
+		else
+			while (frames_to_mix && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = sat_int24(sign_extend_s24(*dest) +
+						  (int32_t)q_mults_32x32(sign_extend_s24(*src),
+						  gain, IPC4_MIXIN_GAIN_SHIFT));
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
+			}
 	}
 
-	if (gain == IPC4_MIXIN_UNITY_GAIN) {
-		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
-	} else {
-		while (bytes_to_copy != 0) {
-			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
-			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-			bytes_to_copy -= n;
-			n >>= 2;	/* divide by 4 */
-			for (i = 0; i < n; i++) {
+	while (frames_to_copy) {
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_copy && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = *src;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
+			}
+		else
+			while (frames_to_copy && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
 				*dest = (int32_t)q_mults_32x32(sign_extend_s24(*src),
 							       gain, IPC4_MIXIN_GAIN_SHIFT);
-				src++;
-				dest++;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
 			}
-
-			dest = audio_stream_wrap(sink, dest);
-			src = audio_stream_wrap(source, src);
-		}
 	}
 }
+
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void mix_s32(struct audio_stream __sparse_cache *sink, uint32_t start, uint32_t mixed_bytes,
-		    const struct audio_stream __sparse_cache *source, uint32_t size, uint16_t gain)
+/* Instead of using sink->channels and source->channels, sink_channel_count and
+ * source_channel_count are supplied as parameters. This is done to reuse the function
+ * to also mix an entire stream. In this case the function is called with fake stream
+ * parameters: multichannel stream is treated as single channel and so the entire stream
+ * contents is mixed.
+ */
+static void mix_channel_s32(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
+			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
+			    const struct audio_stream __sparse_cache *source,
+			    uint8_t source_channel_index, uint8_t source_channel_count,
+			    uint32_t frame_count, uint16_t gain)
 {
 	int32_t *dest, *src;
-	uint32_t bytes_to_mix, bytes_to_copy;
-	int i, n;
+	uint32_t frames_to_mix, frames_to_copy;
 
-	dest = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + start);
-	src = source->r_ptr;
+	/* audio_stream_wrap() is required and is done below in a loop */
+	dest = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	src = (int32_t *)source->r_ptr + source_channel_index;
 
-	assert(mixed_bytes >= start);
-	bytes_to_mix = MIN(mixed_bytes - start, size);
-	bytes_to_copy = size - bytes_to_mix;
+	assert(mixed_frames >= start_frame);
+	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
+	frames_to_copy = frame_count - frames_to_mix;
 
-	while (bytes_to_mix != 0) {
-		n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_mix);
-		n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-		bytes_to_mix -= n;
-		n >>= 2;	/* divide by 4 */
-		if (gain == IPC4_MIXIN_UNITY_GAIN) {
-			for (i = 0; i < n; i++) {
-				*dest = sat_int32((int64_t)*dest + (int64_t)*src);
-				src++;
-				dest++;
-			}
-		} else {
-			for (i = 0; i < n; i++) {
-				*dest = sat_int32((int64_t)*dest +
-				  q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
-				src++;
-				dest++;
-			}
-		}
-
-		dest = audio_stream_wrap(sink, dest);
+	/* we do not want to use something like audio_stream_frames_without_wrap() here
+	 * as it uses stream->channels internally. Also we would like to avoid expensive
+	 * division operations.
+	 */
+	while (frames_to_mix) {
 		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_mix && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = sat_int32((int64_t)*dest + (int64_t)*src);
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
+			}
+		else
+			while (frames_to_mix && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = sat_int32((int64_t)*dest +
+						  q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_mix--;
+			}
 	}
 
-	if (gain == IPC4_MIXIN_UNITY_GAIN) {
-		audio_stream_bytes_copy(sink, dest, source, src, bytes_to_copy);
-	} else {
-		while (bytes_to_copy != 0) {
-			n = MIN(audio_stream_bytes_without_wrap(sink, dest), bytes_to_copy);
-			n = MIN(audio_stream_bytes_without_wrap(source, src), n);
-			bytes_to_copy -= n;
-			n >>= 2;	/* divide by 4 */
-			for (i = 0; i < n; i++) {
-				*dest = (int32_t)q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
-				src++;
-				dest++;
-			}
+	while (frames_to_copy) {
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
 
-			dest = audio_stream_wrap(sink, dest);
-			src = audio_stream_wrap(source, src);
+		if (gain == IPC4_MIXIN_UNITY_GAIN)
+			while (frames_to_copy && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = *src;
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
+			}
+		else
+			while (frames_to_copy && src < (int32_t *)source->end_addr &&
+			       dest < (int32_t *)sink->end_addr) {
+				*dest = (int32_t)q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+				src += source_channel_count;
+				dest += sink_channel_count;
+				frames_to_copy--;
+			}
+	}
+}
+
+static void mute_channel_s32(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
+			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count)
+{
+	uint32_t skip_mixed_frames;
+	int32_t *ptr;
+
+	assert(mixed_frames >= start_frame);
+	skip_mixed_frames = mixed_frames - start_frame;
+
+	if (frame_count <= skip_mixed_frames)
+		return;
+	frame_count -= skip_mixed_frames;
+
+	/* audio_stream_wrap() is needed here and it is just below in a loop */
+	ptr = (int32_t *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
+
+	while (frame_count) {
+		ptr = audio_stream_wrap(stream, ptr);
+		while (frame_count && ptr < (int32_t *)stream->end_addr) {
+			*ptr = 0;
+			ptr += stream->channels;
+			frame_count--;
 		}
 	}
 }
 #endif	/* CONFIG_FORMAT_S32LE */
 
-/* mix silence into stream, i.e. set not yet mixed data in stream to zero */
-static void silence(struct audio_stream __sparse_cache *stream, uint32_t start,
-		    uint32_t mixed_bytes, uint32_t size)
+static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
+			 uint16_t sink_index, struct audio_stream __sparse_cache *sink,
+			 uint32_t start_frame, uint32_t mixed_frames,
+			 const struct audio_stream __sparse_cache *source, uint32_t frame_count)
 {
-	uint32_t skip_mixed;
+	const struct mixin_sink_config *sink_config;
+
+	if (sink_index >= MIXIN_MAX_SINKS) {
+		comp_err(dev, "Sink index out of range: %u, max sinks count: %u",
+			 (uint32_t)sink_index, MIXIN_MAX_SINKS);
+		return -EINVAL;
+	}
+
+	sink_config = &mixin_data->sink_config[sink_index];
+
+	if (sink_config->mixer_mode == IPC4_MIXER_NORMAL_MODE) {
+		/* Mix streams. mix_channel() is reused here to mix streams, not individual
+		 * channels. To do so, (multichannel) stream is treated as single channel:
+		 * channel count is passed as 1, channel index is 0, frame indices (start_frame
+		 * and mixed_frame) and frame count are multiplied by real stream channel count.
+		 */
+		mixin_data->mix_channel(sink, 0, 1, start_frame * sink->channels,
+					mixed_frames * sink->channels, source, 0, 1,
+					frame_count * sink->channels, sink_config->gain);
+	} else if (sink_config->mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE) {
+		int i;
+
+		for (i = 0; i < sink->channels; i++) {
+			uint8_t source_channel =
+				(sink_config->output_channel_map >> (i * 4)) & 0xf;
+
+			if (source_channel == 0xf) {
+				mixin_data->mute_channel(sink, i, start_frame, mixed_frames,
+							 frame_count);
+			} else {
+				if (source_channel >= source->channels) {
+					comp_err(dev, "Out of range chmap: 0x%x, src channels: %u",
+						 sink_config->output_channel_map,
+						 source->channels);
+					return -EINVAL;
+				}
+				mixin_data->mix_channel(sink, i, sink->channels, start_frame,
+							mixed_frames, source, source_channel,
+							source->channels, frame_count,
+							sink_config->gain);
+			}
+		}
+	} else {
+		comp_err(dev, "Unexpected mixer mode: %d", sink_config->mixer_mode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* mix silence into stream, i.e. set not yet mixed data in stream to zero */
+static void silence(struct audio_stream __sparse_cache *stream, uint32_t start_frame,
+		    uint32_t mixed_frames, uint32_t frame_count)
+{
+	uint32_t skip_mixed_frames;
 	uint8_t *ptr;
+	uint32_t size;
 	int n;
 
-	assert(mixed_bytes >= start);
-	skip_mixed = mixed_bytes - start;
+	assert(mixed_frames >= start_frame);
+	skip_mixed_frames = mixed_frames - start_frame;
 
-	if (size <= skip_mixed)
+	if (frame_count <= skip_mixed_frames)
 		return;
 
-	size -= skip_mixed;
-	ptr = audio_stream_wrap(stream, (uint8_t *)stream->w_ptr + mixed_bytes);
+	size = audio_stream_period_bytes(stream, frame_count - skip_mixed_frames);
+	ptr = (uint8_t *)stream->w_ptr + audio_stream_period_bytes(stream, mixed_frames);
 
 	while (size) {
+		ptr = audio_stream_wrap(stream, ptr);
 		n = MIN(audio_stream_bytes_without_wrap(stream, ptr), size);
 		memset(ptr, 0, n);
 		size -= n;
-		ptr = audio_stream_wrap(stream, ptr + n);
+		ptr += n;
 	}
 }
 
 /* Most of the mixing is done here on mixin side. mixin mixes its source data
  * into each connected mixout sink buffer. Basically, if mixout sink buffer has
- * no data, mixin copies its source data into mixout sink buffer. If moxout sink
+ * no data, mixin copies its source data into mixout sink buffer. If mixout sink
  * buffer has some data (written there by other mixin), mixin reads mixout sink
  * buffer data, mixes it with its source data and writes back to mixout sink
  * buffer. So after all mixin mixin_copy() calls, mixout sink buffer contains
@@ -495,10 +647,14 @@ static int mixin_copy(struct comp_dev *dev)
 	struct mixin_data *mixin_data;
 	struct comp_buffer *source;
 	struct comp_buffer __sparse_cache *source_c;
-	uint32_t source_avail_bytes, sinks_free_bytes;
+	uint32_t source_avail_frames, sinks_free_frames;
+	struct comp_dev *active_mixouts[MIXIN_MAX_SINKS];
+	uint16_t sinks_ids[MIXIN_MAX_SINKS];
+	int active_mixout_cnt;
 	struct list_item *blist;
 	uint32_t bytes_to_consume_from_source_buf;
-	uint32_t bytes_to_copy;
+	uint32_t frames_to_copy;
+	int i, ret;
 
 	comp_dbg(dev, "mixin_copy()");
 
@@ -507,27 +663,41 @@ static int mixin_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	source_c = buffer_acquire(source);
 
-	source_avail_bytes = audio_stream_get_avail_bytes(&source_c->stream);
-	sinks_free_bytes = INT32_MAX;
+	source_avail_frames = audio_stream_get_avail_frames(&source_c->stream);
+	sinks_free_frames = INT32_MAX;
 
-	/* first, let's find out how many bytes can be now processed --
-	 * it is a nimimal value among bytes available in source buffer
-	 * and bytes free in each connected mixout sink buffer.
+	/* first, let's find out how many frames can be now processed --
+	 * it is a nimimal value among frames available in source buffer
+	 * and frames free in each connected mixout sink buffer.
 	 */
+	active_mixout_cnt = 0;
+
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *unused_in_between_buf;
+		struct comp_buffer __sparse_cache *unused_in_between_buf_c;
 		struct comp_dev *mixout;
+		uint16_t sink_id;
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
 		struct mixout_source_info *src_info;
 		struct comp_buffer __sparse_cache *sink_c;
-		uint32_t stream_free_bytes;
+		uint32_t free_frames;
 
 		/* unused buffer between mixin and mixout */
 		unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
 							 PPL_DIR_DOWNSTREAM);
 		mixout = buffer_get_comp(unused_in_between_buf, PPL_DIR_DOWNSTREAM);
+		unused_in_between_buf_c = buffer_acquire(unused_in_between_buf);
+		sink_id = IPC4_SRC_QUEUE_ID(unused_in_between_buf_c->id);
+		buffer_release(unused_in_between_buf_c);
+
+		if (comp_get_state(dev, mixout) != COMP_STATE_ACTIVE)
+			continue;
+		active_mixouts[active_mixout_cnt] = mixout;
+		sinks_ids[active_mixout_cnt] = sink_id;
+		active_mixout_cnt++;
+
 		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
 
 		mixout_data = comp_get_drvdata(mixout);
@@ -542,50 +712,70 @@ static int mixin_copy(struct comp_dev *dev)
 
 		sink_c = buffer_acquire(sink);
 
-		stream_free_bytes = audio_stream_get_free_bytes(&sink_c->stream);
+		/* Normally this should never happen as we checked above
+		 * that mixout is in active state and so its sink buffer
+		 * should be already initialized in mixout .params().
+		 */
+		if (!sink_c->hw_params_configured) {
+			comp_err(dev, "Uninitialized mixout sink buffer!");
+			buffer_release(sink_c);
+			mixed_data_info_release(mixed_data_info);
+			buffer_release(source_c);
+			return -EINVAL;
+		}
+
+		free_frames = audio_stream_get_free_frames(&sink_c->stream);
 
 		/* mixout sink buffer may still have not yet produced data -- data
 		 * consumed and written there by mixin on previous mixin_copy() run.
 		 * We do NOT want to overwrite that data.
 		 */
-		assert(stream_free_bytes >= src_info->consumed_yet_not_produced_bytes);
-		sinks_free_bytes = MIN(sinks_free_bytes,
-				       stream_free_bytes -
-				       src_info->consumed_yet_not_produced_bytes);
+		assert(free_frames >= src_info->consumed_yet_not_produced_frames);
+		sinks_free_frames = MIN(sinks_free_frames,
+					free_frames -
+					src_info->consumed_yet_not_produced_frames);
 
 		buffer_release(sink_c);
 		mixed_data_info_release(mixed_data_info);
 	}
 
 	bytes_to_consume_from_source_buf = 0;
-	if (source_avail_bytes > 0) {
-		bytes_to_copy = MIN(source_avail_bytes, sinks_free_bytes);
-		bytes_to_consume_from_source_buf = bytes_to_copy;
-		buffer_stream_invalidate(source_c, bytes_to_copy);
+	if (source_avail_frames > 0) {
+		if (active_mixout_cnt == 0) {
+			/* discard source data */
+			comp_update_buffer_consume(source_c,
+						   audio_stream_period_bytes(&source_c->stream,
+									     source_avail_frames));
+			buffer_release(source_c);
+			return 0;
+		}
+
+		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
+		bytes_to_consume_from_source_buf =
+			audio_stream_period_bytes(&source_c->stream, frames_to_copy);
+		if (bytes_to_consume_from_source_buf > 0)
+			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
 	} else {
-		/* if source does not produce any data -- do NOT stop mixing but generate
+		/* if source does not produce any data -- do NOT block mixing but generate
 		 * silence as that source output.
 		 *
-		 * here bytes_to_copy is silence size.
+		 * here frames_to_copy is silence size.
 		 */
-		bytes_to_copy = MIN(audio_stream_period_bytes(&source_c->stream, dev->frames),
-				    sinks_free_bytes);
+		frames_to_copy = MIN(dev->frames, sinks_free_frames);
 	}
 
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *unused_in_between_buf;
+	for (i = 0; i < active_mixout_cnt; i++) {
 		struct comp_dev *mixout;
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
 		struct mixout_source_info *src_info;
-		uint32_t start;
+		uint32_t start_frame;
 		struct comp_buffer __sparse_cache *sink_c;
+		uint32_t writeback_size;
 
-		unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
-							 PPL_DIR_DOWNSTREAM);
-		mixout = buffer_get_comp(unused_in_between_buf, PPL_DIR_DOWNSTREAM);
+		mixout = active_mixouts[i];
 		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
 
 		mixout_data = comp_get_drvdata(mixout);
@@ -599,54 +789,51 @@ static int mixin_copy(struct comp_dev *dev)
 		}
 
 		/* Skip data from previous run(s) not yet produced in mixout_copy().
-		 * Normally start would be 0 unless mixout pipeline has serious
+		 * Normally start_frame would be 0 unless mixout pipeline has serious
 		 * performance problems with processing data on time in mixout.
 		 */
-		start = src_info->consumed_yet_not_produced_bytes;
-		assert(sinks_free_bytes >= start);
+		start_frame = src_info->consumed_yet_not_produced_frames;
+		assert(sinks_free_frames >= start_frame);
 
 		sink_c = buffer_acquire(sink);
 
-		/* in case mixout and mixin source are in different states -- generate
+		/* if source does not produce any data but mixin is in active state -- generate
 		 * silence instead of that source data
 		 */
-		if (source_avail_bytes == 0 ||
-		    comp_get_state(dev, source_c->source) != comp_get_state(dev, mixout)) {
+		if (source_avail_frames == 0) {
 			/* generate silence */
-			silence(&sink_c->stream, start, mixed_data_info->mixed_bytes,
-				bytes_to_copy);
+			silence(&sink_c->stream, start_frame, mixed_data_info->mixed_frames,
+				frames_to_copy);
 		} else {
-			uint16_t sink_index = IPC4_SRC_QUEUE_ID(unused_in_between_buf->id);
-
-			if (sink_index >= MIXIN_MAX_SINKS) {
-				comp_err(dev, "Sink index out of range: %u, max sinks count: %u",
-					 (uint32_t)sink_index, MIXIN_MAX_SINKS);
-				buffer_release(sink_c);
-				mixed_data_info_release(mixed_data_info);
-				buffer_release(source_c);
-				return -EINVAL;
-			}
-
 			/* basically, if sink buffer has no data -- copy source data there, if
 			 * sink buffer has some data (written by another mixin) mix that data
 			 * with source data.
 			 */
-			mixin_data->mix_func(&sink_c->stream, start, mixed_data_info->mixed_bytes,
-					     &source_c->stream, bytes_to_copy,
-					     mixin_data->gain[sink_index]);
+			ret = mix_and_remap(dev, mixin_data, sinks_ids[i], &sink_c->stream,
+					    start_frame, mixed_data_info->mixed_frames,
+					    &source_c->stream, frames_to_copy);
+			if (ret < 0) {
+				buffer_release(sink_c);
+				mixed_data_info_release(mixed_data_info);
+				buffer_release(source_c);
+				return ret;
+			}
 		}
 
-		/* it would be better to writeback (sink_c + start, bytes_to_copy)
-		 * memory region, but seems there is no appropreate API. Anyway, start
-		 * would be 0 most of the time.
+		/* it would be better to writeback memory region starting from start_frame and
+		 * of frames_to_copy size (converted to bytes, of course). However, seems
+		 * there is no appropreate API. Anyway, start_frame would be 0 most of the time.
 		 */
-		buffer_stream_writeback(sink_c, bytes_to_copy + start);
+		writeback_size = audio_stream_period_bytes(&sink_c->stream,
+							   frames_to_copy + start_frame);
+		if (writeback_size > 0)
+			buffer_stream_writeback(sink_c, writeback_size);
 		buffer_release(sink_c);
 
-		src_info->consumed_yet_not_produced_bytes += bytes_to_copy;
+		src_info->consumed_yet_not_produced_frames += frames_to_copy;
 
-		if (bytes_to_copy + start > mixed_data_info->mixed_bytes)
-			mixed_data_info->mixed_bytes = bytes_to_copy + start;
+		if (frames_to_copy + start_frame > mixed_data_info->mixed_frames)
+			mixed_data_info->mixed_frames = frames_to_copy + start_frame;
 
 		mixed_data_info_release(mixed_data_info);
 	}
@@ -666,14 +853,14 @@ static int mixout_copy(struct comp_dev *dev)
 	struct mixout_data *mixout_data;
 	struct mixed_data_info __sparse_cache *mixed_data_info;
 	struct list_item *blist;
-	uint32_t bytes_to_produce = INT32_MAX;
+	uint32_t frames_to_produce = INT32_MAX;
 
 	comp_dbg(dev, "mixout_copy()");
 
 	mixout_data = comp_get_drvdata(dev);
 	mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
 
-	/* iterate over all connected mixins to find minimal value of bytes they consumed
+	/* iterate over all connected mixins to find minimal value of frames they consumed
 	 * (i.e., mixed into mixout sink buffer). That is the amount that can/should be
 	 * produced now.
 	 */
@@ -693,27 +880,39 @@ static int mixout_copy(struct comp_dev *dev)
 			return -EINVAL;
 		}
 
-		bytes_to_produce = MIN(bytes_to_produce, src_info->consumed_yet_not_produced_bytes);
+		/* Inactive sources should not block other active sources */
+		if (comp_get_state(dev, mixin) == COMP_STATE_ACTIVE)
+			frames_to_produce = MIN(frames_to_produce,
+						src_info->consumed_yet_not_produced_frames);
 	}
 
-	if (bytes_to_produce > 0 && bytes_to_produce < INT32_MAX) {
+	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		int i;
 		struct comp_buffer *sink;
 		struct comp_buffer __sparse_cache *sink_c;
 
 		for (i = 0; i < MIXOUT_MAX_SOURCES; i++) {
-			if (mixed_data_info->source_info[i].mixin)
-				mixed_data_info->source_info[i].consumed_yet_not_produced_bytes -=
-						bytes_to_produce;
+			if (!mixed_data_info->source_info[i].mixin)
+				continue;
+
+			if (mixed_data_info->source_info[i].consumed_yet_not_produced_frames >=
+				frames_to_produce)
+				mixed_data_info->source_info[i].consumed_yet_not_produced_frames -=
+					frames_to_produce;
+			else
+				mixed_data_info->source_info[i].consumed_yet_not_produced_frames =
+					0;
 		}
 
-		assert(mixed_data_info->mixed_bytes >= bytes_to_produce);
-		mixed_data_info->mixed_bytes -= bytes_to_produce;
+		assert(mixed_data_info->mixed_frames >= frames_to_produce);
+		mixed_data_info->mixed_frames -= frames_to_produce;
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
 		/* writeback is already done in mixin while mixing */
-		comp_update_buffer_produce(sink_c, bytes_to_produce);
+		comp_update_buffer_produce(sink_c,
+					   audio_stream_period_bytes(&sink_c->stream,
+								     frames_to_produce));
 		buffer_release(sink_c);
 	}
 
@@ -729,7 +928,8 @@ static int mixin_reset(struct comp_dev *dev)
 	comp_dbg(dev, "mixin_reset()");
 
 	mixin_data = comp_get_drvdata(dev);
-	mixin_data->mix_func = NULL;
+	mixin_data->mix_channel = NULL;
+	mixin_data->mute_channel = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -799,24 +999,27 @@ static int mixin_prepare(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 	sink_c = buffer_acquire(sink);
-	fmt = sink_c->stream.frame_fmt;
+	fmt = sink_c->stream.valid_sample_fmt;
 	buffer_release(sink_c);
 
 	/* currently inactive so setup mixer */
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		md->mix_func = mix_s16;
+		md->mix_channel = mix_channel_s16;
+		md->mute_channel = mute_channel_s16;
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		md->mix_func = mix_s24;
+		md->mix_channel = mix_channel_s24;
+		md->mute_channel = mute_channel_s32;	/* yes, 32 is correct */
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		md->mix_func = mix_s32;
+		md->mix_channel = mix_channel_s32;
+		md->mute_channel = mute_channel_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
@@ -885,81 +1088,89 @@ static int mixinout_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/* params are derived from base config for ipc4 path */
-static int mixinout_common_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params,
-				  const struct ipc4_base_module_cfg *base_cfg)
+static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
+					     struct sof_ipc_stream_params *params)
 {
-	struct list_item *blist;
-	int ret;
+	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	int i;
 
-	memset(params, 0, sizeof(*params));
+	memset(params, 0, sizeof(struct sof_ipc_stream_params));
 	params->channels = base_cfg->audio_fmt.channels_count;
 	params->rate = base_cfg->audio_fmt.sampling_frequency;
-	params->sample_container_bytes = base_cfg->audio_fmt.depth;
-	params->sample_valid_bytes = base_cfg->audio_fmt.valid_bit_depth;
-	params->frame_fmt = dev->ipc_config.frame_fmt;
+	params->sample_container_bytes = base_cfg->audio_fmt.depth / 8;
+	params->sample_valid_bytes = base_cfg->audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = base_cfg->audio_fmt.interleaving_style;
-	params->buffer.size = base_cfg->ibs;
+	params->buffer.size = base_cfg->obs * 2;
 
-	/* update each sink format based on base_cfg initialized by
-	 * host driver. There is no hw_param ipc message for ipc4, instead
-	 * all module params are built into module initialization data by
-	 * host driver based on runtime hw_params and topology setting.
-	 *
-	 * This might be not necessary for mixin as buffers between mixin and
-	 * mixout are not used (mixin writes data directly to mixout sink).
-	 * But let's keep buffer setup just in case.
-	 */
+	audio_stream_fmt_conversion(base_cfg->audio_fmt.depth,
+				    base_cfg->audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    base_cfg->audio_fmt.s_type);
+	params->frame_fmt = frame_fmt;
 
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink;
-		struct comp_buffer __sparse_cache *sink_c;
-		int i;
-
-		sink = buffer_from_list(blist, struct comp_buffer, PPL_DIR_DOWNSTREAM);
-		sink_c = buffer_acquire(sink);
-
-		sink_c->stream.channels = base_cfg->audio_fmt.channels_count;
-		sink_c->stream.rate = base_cfg->audio_fmt.sampling_frequency;
-		audio_stream_fmt_conversion(base_cfg->audio_fmt.depth,
-					    base_cfg->audio_fmt.valid_bit_depth,
-					    &sink_c->stream.frame_fmt,
-					    &sink_c->stream.valid_sample_fmt,
-					    base_cfg->audio_fmt.s_type);
-
-		sink_c->buffer_fmt = base_cfg->audio_fmt.interleaving_style;
-
-		/* 8 ch stream is supported by ch_map and each channel
-		 * is mapped by 4 bits. The first channel will be mapped
-		 * by the bits of 0 ~ 3 and the 2th channel will be mapped
-		 * by bits 4 ~ 7. The N channel will be mapped by bits
-		 * N*4 ~ N*4 + 3
-		 */
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			sink_c->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
-
-		buffer_release(sink_c);
-	}
-
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
-	if (ret < 0) {
-		comp_err(dev, "mixinout_common_params(): comp_verify_params() failed!");
-		return -EINVAL;
-	}
-
-	return 0;
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
 }
 
+/* params are derived from base config for ipc4 path */
 static int mixin_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
 {
 	struct mixin_data *md;
+	struct list_item *blist;
+	int ret;
 
 	comp_dbg(dev, "mixin_params()");
 
 	md = comp_get_drvdata(dev);
-	return mixinout_common_params(dev, params, &md->base_cfg);
+	base_module_cfg_to_stream_params(&md->base_cfg, params);
+
+	/* Buffers between mixins and mixouts are not used (mixin writes data directly to mixout
+	 * sink). But, anyway, let's setup these buffers properly just in case.
+	 */
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink;
+		struct comp_buffer __sparse_cache *sink_c;
+		uint16_t sink_id;
+
+		sink = buffer_from_list(blist, struct comp_buffer, PPL_DIR_DOWNSTREAM);
+		sink_c = buffer_acquire(sink);
+
+		sink_c->stream.channels = md->base_cfg.audio_fmt.channels_count;
+
+		/* Applying channel remapping may produce sink stream with channel count
+		 * different from source channel count.
+		 */
+		sink_id = IPC4_SRC_QUEUE_ID(sink_c->id);
+		if (sink_id >= MIXIN_MAX_SINKS) {
+			comp_err(dev, "Sink index out of range: %u, max sink count: %u",
+				 (uint32_t)sink_id, MIXIN_MAX_SINKS);
+			buffer_release(sink_c);
+			return -EINVAL;
+		}
+		if (md->sink_config[sink_id].mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE)
+			sink_c->stream.channels = md->sink_config[sink_id].output_channel_count;
+
+		/* comp_verify_params() does not modify valid_sample_fmt (a BUG?),
+		 * let's do this here
+		 */
+		audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
+					    md->base_cfg.audio_fmt.valid_bit_depth,
+					    &sink_c->stream.frame_fmt,
+					    &sink_c->stream.valid_sample_fmt,
+					    md->base_cfg.audio_fmt.s_type);
+
+		buffer_release(sink_c);
+	}
+
+	/* use BUFF_PARAMS_CHANNELS to skip updating channel count */
+	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	if (ret < 0) {
+		comp_err(dev, "mixin_params(): comp_verify_params() failed!");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static int mixout_params(struct comp_dev *dev,
@@ -967,21 +1178,31 @@ static int mixout_params(struct comp_dev *dev,
 {
 	struct mixout_data *md;
 	int ret;
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
+	enum sof_ipc_frame __sparse_cache dummy;
 	uint32_t sink_period_bytes, sink_stream_size;
 
 	comp_dbg(dev, "mixout_params()");
 
 	md = comp_get_drvdata(dev);
+	base_module_cfg_to_stream_params(&md->base_cfg, params);
 
-	ret = mixinout_common_params(dev, params, &md->base_cfg);
-	if (ret < 0)
-		return ret;
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "mixout_params(): comp_verify_params() failed!");
+		return -EINVAL;
+	}
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-	sink_c = buffer_acquire(sinkb);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+	sink_c = buffer_acquire(sink);
+
+	/* comp_verify_params() does not modify valid_sample_fmt (a BUG?), let's do this here */
+	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
+				    md->base_cfg.audio_fmt.valid_bit_depth,
+				    &dummy, &sink_c->stream.valid_sample_fmt,
+				    md->base_cfg.audio_fmt.s_type);
 
 	sink_stream_size = sink_c->stream.size;
 
@@ -1048,7 +1269,7 @@ static int mixout_bind(struct comp_dev *dev, void *data)
 			return -ENOMEM;
 		}
 		source_info->mixin = mixin;
-		source_info->consumed_yet_not_produced_bytes = 0;
+		source_info->consumed_yet_not_produced_frames = 0;
 	}
 
 	mixed_data_info_release(mixed_data_info);
@@ -1071,7 +1292,7 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 
 	/* mixout -> new sink */
 	if (dev->ipc_config.id == src_id) {
-		mixed_data_info->mixed_bytes = 0;
+		mixed_data_info->mixed_frames = 0;
 		memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
 	} else { /* new mixin -> mixout */
 		struct comp_dev *mixin;
@@ -1187,10 +1408,33 @@ static int mixin_set_large_config(struct comp_dev *dev, uint32_t param_id, bool 
 		gain = cfg->mixer_mode_sink_configs[i].gain;
 		if (gain > IPC4_MIXIN_UNITY_GAIN)
 			gain = IPC4_MIXIN_UNITY_GAIN;
-		mixin_data->gain[sink_index] = gain;
+		mixin_data->sink_config[sink_index].gain = gain;
 
 		comp_dbg(dev, "mixin_set_large_config() gain 0x%x will be applied for sink %u",
 			 gain, sink_index);
+
+		if (cfg->mixer_mode_sink_configs[i].mixer_mode ==
+			IPC4_MIXER_CHANNEL_REMAPPING_MODE) {
+			uint32_t channel_count =
+				cfg->mixer_mode_sink_configs[i].output_channel_count;
+			if (channel_count < 1 || channel_count > 8) {
+				comp_err(dev, "Invalid output_channel_count %u for sink %u",
+					 channel_count, sink_index);
+				return -EINVAL;
+			}
+
+			mixin_data->sink_config[sink_index].output_channel_count = channel_count;
+			mixin_data->sink_config[sink_index].output_channel_map =
+				cfg->mixer_mode_sink_configs[i].output_channel_map;
+
+			comp_dbg(dev, "output_channel_count: %u, chmap: 0x%x for sink: %u",
+				 channel_count,
+				 mixin_data->sink_config[sink_index].output_channel_map,
+				 sink_index);
+		}
+
+		mixin_data->sink_config[sink_index].mixer_mode =
+			cfg->mixer_mode_sink_configs[i].mixer_mode;
 	}
 
 	return 0;
