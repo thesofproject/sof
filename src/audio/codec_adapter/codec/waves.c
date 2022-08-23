@@ -335,7 +335,7 @@ static int waves_effect_init(struct comp_dev *dev)
 	 */
 	waves_codec->buffer_samples = src_fmt->rate * dev->pipeline->period / 1000000;
 	waves_codec->buffer_bytes = waves_codec->buffer_samples * src_fmt->channels *
-	        waves_codec->sample_size_in_bytes;
+		waves_codec->sample_size_in_bytes;
 
 	// trace allows printing only up-to 4 words at a time
 	// logging all the information in two calls
