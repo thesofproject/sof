@@ -44,6 +44,33 @@ function srcsize() {
   echo "$OUTPUT_SIZE"
 }
 
+function die() {
+  printf "$@"
+  exit 1
+}
+
+process_test_cmd() {
+  octave -q --eval "pkg load signal io; [n_fail]=process_test('$1', $2, $3, $4, $5);exit(n_fail)"
+}
+
+# function test_component()
+# $1 : component name
+# $2 : input bits per sample
+# $3 : output bits per sample
+# $4 : sampling rate
+# $5 : quick test=0, fulltest=1
+test_component() {
+  test "$#" -eq 5 || die "Have $# parameters but 5 expected"
+
+  echo "------------------------------------------------------------"
+  echo "test $1 component with $2 $3 $4 $5"
+  if process_test_cmd "$@"; then
+    echo "$1 test passed!"
+  else
+    die "$1 test failed!"
+  fi
+}
+
 SCRIPTS_DIR=$(dirname "${BASH_SOURCE[0]}")
 SOF_DIR=$SCRIPTS_DIR/../
 TESTBENCH_DIR=${SOF_DIR}/tools/test/audio
@@ -56,64 +83,31 @@ rm -rf ./*.raw
 head -c ${INPUT_FILE_SIZE} < /dev/zero > zeros_in.raw
 
 # test with volume
-echo "=========================================================="
-echo "test volume with ./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw"
-if ./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw &>vol.log; then
-  echo "volume test passed!"
-else
-  echo "volume test failed!"
-  cat vol.log
-  exit 1
-fi
+test_component volume 16 16 48000 0
+test_component volume 24 24 48000 0
+test_component volume 32 32 48000 0
 
-if comparesize ${INPUT_FILE_SIZE} "$(filesize volume_out.raw)"; then
-  echo "volume_out size check passed!"
-else
-  echo "volume_out size check failed!"
-  cat vol.log
-  exit 1
-fi
-rm volume_out.raw vol.log
+# test with eq-iir
+test_component eq-iir 16 16 48000 0
+test_component eq-iir 24 24 48000 0
+test_component eq-iir 32 32 48000 0
+
+# test with eq-fir
+test_component eq-fir 32 32 48000 0
+
+# test with dcblock
+test_component dcblock 32 32 48000 0
+
+# test with drc
+test_component drc 32 32 48000 0
+
+# test with multiband-drc
+test_component multiband-drc 32 32 48000 0
 
 # test with src
-echo "=========================================================="
-echo "test src with ./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw"
-if ./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw &>src.log; then
-  echo "src test passed!"
-else
-  echo "src test failed!"
-  cat src.log
-  exit 1
-fi
+test_component src 24 24 48000 0
 
-if comparesize "$(srcsize ${INPUT_FILE_SIZE} 44100 48000)" "$(filesize src_out.raw)";then
-  echo "src_out size check passed!"
-else
-  echo "src_out size check failed!"
-  cat src.log
-  exit 1
-fi
-rm src_out.raw src.log
+# test with tdfb
+test_component tdfb 32 32 48000 0
 
-# test with eq
-echo "=========================================================="
-echo "test eqiir with ./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw"
-if ./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw &>eqiir.log; then
-  echo "eqiir test passed!"
-else
-  echo "eqiir test failed!"
-  cat eqiir.log
-  exit 1
-fi
-
-
-if comparesize $INPUT_FILE_SIZE "$(filesize eqiir_out.raw)"; then
-  echo "eqiir_out size check passed!"
-else
-  echo "eqiir_out size check failed!"
-  cat eqiir.log
-  exit 1
-fi
-rm eqiir_out.raw eqiir.log
-
-rm zeros_in.raw
+echo "All tests are done!"
