@@ -5,7 +5,9 @@ cmocka_test(mixer
 	comp_mock.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
-	${PROJECT_SOURCE_DIR}/src/audio/mixer.c
+	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer.c
+	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c

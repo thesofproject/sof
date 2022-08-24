@@ -650,7 +650,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_SWITCH
 
 if(CONFIG_IPC_MAJOR_3)
 	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-		${SOF_AUDIO_PATH}/mixer.c
+		${SOF_AUDIO_PATH}/mixer/mixer.c
+		${SOF_AUDIO_PATH}/mixer/mixer_generic.c
+		${SOF_AUDIO_PATH}/mixer/mixer_hifi3.c
 	)
 elseif(CONFIG_IPC_MAJOR_4)
 	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER

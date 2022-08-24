@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(CONFIG_IPC_MAJOR_3)
-	set(mixer_src mixer.c)
+	set(mixer_src mixer/mixer.c mixer/mixer_generic.c mixer/mixer_hifi3.c)
 elseif(CONFIG_IPC_MAJOR_4)
 	set(mixer_src mixin_mixout.c)
 endif()
