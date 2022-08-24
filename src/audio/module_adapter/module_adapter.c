@@ -102,7 +102,15 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	struct module_data *md = &mod->priv;
 	struct module_config *dst = &md->cfg;
 
-	dst->data = spec;
+	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
+		struct ipc_config_process *ipc_module_adapter = spec;
+
+		dst->data = ipc_module_adapter->data;
+		dst->size = ipc_module_adapter->size;
+	} else {
+		dst->data = spec;
+	}
+
 #endif
 
 	/* Init processing module */

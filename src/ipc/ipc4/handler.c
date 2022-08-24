@@ -608,6 +608,7 @@ static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	comp.id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
 	comp.pipeline_id = module.extension.r.ppl_instance_id;
 	comp.core = module.extension.r.core_id;
+	comp.ext_data_length = module.extension.r.param_block_size;
 	dev = comp_new(&comp);
 	if (!dev) {
 		tr_err(&ipc_tr, "error: failed to init module %x : %x",
