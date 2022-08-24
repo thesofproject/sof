@@ -14,7 +14,7 @@
 
 
 /* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
+#define PLATFORM_DCACHE_ALIGN	32
 
 /* physical DSP addresses */
 
