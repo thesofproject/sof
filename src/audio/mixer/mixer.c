@@ -49,146 +49,6 @@ struct mixer_data {
 			 uint32_t frames);
 };
 
-#if CONFIG_FORMAT_S16LE
-/* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
-		      uint32_t frames)
-{
-	int16_t *src[PLATFORM_MAX_CHANNELS];
-	int16_t *dest;
-	int32_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = sink->channels;
-	int samples = frames * nch;
-
-	dest = sink->w_ptr;
-	for (j = 0; j < num_sources; j++)
-		src[j] = sources[j]->r_ptr;
-
-	while (processed < samples) {
-		nmax = samples - processed;
-		n = audio_stream_bytes_without_wrap(sink, dest) >> 1; /* divide 2 */
-		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 1;
-			n = MIN(n, ns);
-		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				val += *src[j];
-				src[j]++;
-			}
-
-			/* Saturate to 16 bits */
-			*dest = sat_int16(val);
-			dest++;
-		}
-		processed += n;
-		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE
-/* Mix n 24 bit PCM source streams to one sink stream */
-static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
-		      uint32_t frames)
-{
-	int32_t *src[PLATFORM_MAX_CHANNELS];
-	int32_t *dest;
-	int32_t val;
-	int32_t x;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = sink->channels;
-	int samples = frames * nch;
-
-	dest = sink->w_ptr;
-	for (j = 0; j < num_sources; j++)
-		src[j] = sources[j]->r_ptr;
-
-	while (processed < samples) {
-		nmax = samples - processed;
-		n = audio_stream_bytes_without_wrap(sink, dest) >> 2; /* divide 4 */
-		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 2;
-			n = MIN(n, ns);
-		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				x = *src[j] << 8;
-				val += x >> 8; /* Sign extend */
-				src[j]++;
-			}
-
-			/* Saturate to 24 bits */
-			*dest = sat_int24(val);
-			dest++;
-		}
-		processed += n;
-		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
-	}
-}
-#endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-/* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
-		      uint32_t frames)
-{
-	int32_t *src[PLATFORM_MAX_CHANNELS];
-	int32_t *dest;
-	int64_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = sink->channels;
-	int samples = frames * nch;
-
-	dest = sink->w_ptr;
-	for (j = 0; j < num_sources; j++)
-		src[j] = sources[j]->r_ptr;
-
-	while (processed < samples) {
-		nmax = samples - processed;
-		n = audio_stream_bytes_without_wrap(sink, dest) >> 2; /* divide 4 */
-		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 2;
-			n = MIN(n, ns);
-		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				val += *src[j];
-				src[j]++;
-			}
-
-			/* Saturate to 32 bits */
-			*dest = sat_int32(val);
-			dest++;
-		}
-		processed += n;
-		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
-	}
-}
-#endif /* CONFIG_FORMAT_S32LE */
-
 static struct comp_dev *mixer_new(const struct comp_driver *drv,
 				  struct comp_ipc_config *config,
 				  void *spec)
@@ -455,7 +315,6 @@ static int mixer_prepare_common(struct comp_dev *dev)
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
-	enum sof_ipc_frame fmt;
 	int ret;
 
 	comp_dbg(dev, "mixer_prepare()");
@@ -467,30 +326,8 @@ static int mixer_prepare_common(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 	sink_c = buffer_acquire(sink);
-	fmt = sink_c->stream.frame_fmt;
+	md->mix_func = mixer_get_processing_function(dev, sink_c);
 	buffer_release(sink_c);
-
-	/* currently inactive so setup mixer */
-	switch (fmt) {
-#if CONFIG_FORMAT_S16LE
-	case SOF_IPC_FRAME_S16_LE:
-		md->mix_func = mix_n_s16;
-		break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	case SOF_IPC_FRAME_S24_4LE:
-		md->mix_func = mix_n_s24;
-		break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	case SOF_IPC_FRAME_S32_LE:
-		md->mix_func = mix_n_s32;
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-	default:
-		comp_err(dev, "unsupported data format");
-		return -EINVAL;
-	}
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
