@@ -1,4 +1,5 @@
 # SOF west manifest
+# TEST CI
 manifest:
   version: "0.13"
 
