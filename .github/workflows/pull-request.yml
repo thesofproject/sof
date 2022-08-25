@@ -108,7 +108,7 @@ jobs:
 
       - name: apt get
         run: sudo apt-get update &&
-             sudo apt-get -y install valgrind alsa-utils
+             sudo apt-get -y install valgrind alsa-utils libasound2-dev
 
       # testbench needs some topologies.
       - name: build test topologies
