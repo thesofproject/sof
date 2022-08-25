@@ -9,10 +9,9 @@
 # github.com also has a powerful web editor that can be used without
 # committing.
 
-# This is the name of this workflow and should technically be called
-# something like "Main Workflow" but the place where most people see
-# this name is the Checks window next to other, non-github checks.
-name: GitHub Actions
+# TODO: finishing scattering this very old workflow to more specific
+# .yml files
+name: Main Actions
 
 # yamllint disable-line rule:truthy
 on:
@@ -101,7 +100,7 @@ jobs:
 
 
   testbench:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v2
