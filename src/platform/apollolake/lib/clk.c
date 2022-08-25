@@ -45,4 +45,4 @@ STATIC_ASSERT(NUM_SSP_FREQ == ARRAY_SIZE(platform_ssp_freq),
 	      invalid_number_of_ssp_frequencies);
 
 const struct freq_table *ssp_freq = platform_ssp_freq;
-const uint32_t *ssp_freq_sources = platform_ssp_freq_sources;
+const uint32_t *ssp_freq_sources = platform_ssp_freq_sources // TEST Build failure.
