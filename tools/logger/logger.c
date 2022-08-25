@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -15,11 +16,17 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <termios.h>
+
+#include <sys/types.h>
+#include <dirent.h>
+
+#include "config.h"
+
+#if HAS_INOTIFY
 #include <poll.h>
 #include <sys/inotify.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <dirent.h>
+#endif
 
 #include "convert.h"
 #include "misc.h"
@@ -176,6 +183,12 @@ static int append_filter_config(struct convert_config *config, const char *input
 	return 0;
 }
 
+#if !HAS_INOTIFY
+static void *wait_open(const char *watched_dir, const char *expected_file)
+{
+	assert(HAS_INOTIFY); /* Should never be called */
+}
+#else
 /*
  * This 5 minutes timeout is for "backward compatible safety" in case
  * any user/script of an earlier, pre-inotify version of sof-logger
@@ -262,6 +275,8 @@ cleanup:
 
 	return ret_stream;
 }
+#endif // HAS_INOTIFY
+
 
 int main(int argc, char *argv[])
 {
@@ -436,9 +451,10 @@ int main(int argc, char *argv[])
 		 * for _any_ input file, not just for /sys/kernel/debug/sof/[e]trace
 		 */
 		config.in_fd = NULL;
-		if (strncmp(config.in_file, sys_debug, strlen(sys_debug))) {
+		if (!HAS_INOTIFY ||
+		    strncmp(config.in_file, sys_debug, strlen(sys_debug))) {
 			config.in_fd = fopen(config.in_file, "rb");
-		} else {
+		} else { // both inotify and /sys/kernel/debug/
 			DIR *dbg_sof = (DIR *)wait_open(sys_debug, "sof");
 
 			if (dbg_sof) {
