@@ -7,8 +7,6 @@
 
 #if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
 
-LOG_MODULE_REGISTER(copier_hifi, CONFIG_SOF_LOG_LEVEL);
-
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
