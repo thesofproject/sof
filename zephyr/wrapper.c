@@ -453,7 +453,7 @@ void sys_comp_module_selector_interface_init(void);
 #endif
 void sys_comp_switch_init(void);
 void sys_comp_tone_init(void);
-void sys_comp_eq_fir_init(void);
+void sys_comp_module_eq_fir_interface_init(void);
 void sys_comp_keyword_init(void);
 void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
@@ -557,7 +557,7 @@ int task_main_start(struct sof *sof)
 		sys_comp_tone_init();
 
 	if (IS_ENABLED(CONFIG_COMP_FIR))
-		sys_comp_eq_fir_init();
+		sys_comp_module_eq_fir_interface_init();
 
 	if (IS_ENABLED(CONFIG_COMP_IIR))
 		sys_comp_eq_iir_init();

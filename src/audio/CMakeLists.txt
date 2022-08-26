@@ -207,7 +207,7 @@ set(volume_sources module_adapter/module_adapter.c module_adapter/module/generic
 set(mixer_sources ${mixer_src})
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
-set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
+set(eq-fir_sources module_adapter/module_adapter.c module_adapter/module/generic.c eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
 set(eq-iir_sources eq_iir/eq_iir.c)
 set(dcblock_sources dcblock/dcblock.c dcblock/dcblock_generic.c)
 set(crossover_sources crossover/crossover.c crossover/crossover_generic.c)
