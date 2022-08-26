@@ -209,4 +209,15 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			    bool last_block, uint32_t *data_offset, char *data);
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
 
+static inline void module_update_buffer_position(struct input_stream_buffer *input_buffers,
+						 struct output_stream_buffer *output_buffers,
+						 uint32_t frames)
+{
+	struct audio_stream __sparse_cache *source = input_buffers->data;
+	struct audio_stream __sparse_cache *sink = output_buffers->data;
+
+	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
+	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
+}
+
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */
