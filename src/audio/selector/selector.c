@@ -374,7 +374,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 
 	buffer_release(source_c);
 
-	return type == SOF_COMP_KPB ? PPL_STATUS_PATH_STOP : ret;
+	return type == SOF_COMP_KPB ? PPL_STATUS_PATH_TERMINATE : ret;
 }
 
 /**
