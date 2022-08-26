@@ -8,6 +8,7 @@
 
 #if FIR_HIFI3
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/math/fir_hifi3.h>
 #include <user/fir.h>
@@ -23,9 +24,12 @@ LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 /* For even frame lengths use FIR filter that processes two sequential
  * sample per call.
  */
-void eq_fir_2x_s32(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		   struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		   struct output_stream_buffer *bsink,
+		   int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
@@ -79,12 +83,17 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], const struct audio_stream __spa
 			AE_L32_XC(d1, y1, inc_2nch_s);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 
 /* FIR for any number of frames */
-void eq_fir_s32(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		struct output_stream_buffer *bsink,
+		int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 in = 0;
 	ae_int32 out;
@@ -135,13 +144,18 @@ void eq_fir_s32(struct fir_state_32x16 fir[], const struct audio_stream __sparse
 			AE_S32_L_XC((ae_int32x2)out, y, inc);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE
-void eq_fir_2x_s24(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		   struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		   struct output_stream_buffer *bsink,
+		   int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
@@ -201,11 +215,16 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], const struct audio_stream __spa
 			AE_S32_L_XC(d1, y, inc_nch_s);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 
-void eq_fir_s24(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		struct output_stream_buffer *bsink,
+		int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32 in;
 	ae_int32 out;
@@ -261,13 +280,18 @@ void eq_fir_s24(struct fir_state_32x16 fir[], const struct audio_stream __sparse
 			AE_S32_L_XC(d, y, inc);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S16LE
-void eq_fir_2x_s16(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		   struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		   struct output_stream_buffer *bsink,
+		   int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int16x4 d0 = AE_ZERO16();
 	ae_int16x4 d1 = AE_ZERO16();
@@ -331,11 +355,16 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], const struct audio_stream __spa
 			AE_S16_0_XC(d1, y, inc_nch_s);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 
-void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream __sparse_cache *source,
-		struct audio_stream __sparse_cache *sink, int frames, int nch)
+void eq_fir_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
+		struct output_stream_buffer *bsink,
+		int frames, int nch)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_f16x4 d = AE_ZERO16();
 	ae_int32 in;
@@ -389,6 +418,8 @@ void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream __sparse
 			AE_S16_0_XC(d, y, inc);
 		}
 	}
+
+	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
