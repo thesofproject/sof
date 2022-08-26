@@ -27,10 +27,25 @@ static void edf_work_handler(struct k_work *work)
 	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
 
 	task->state = SOF_TASK_STATE_RUNNING;
-	task_run(task);
 
-	task_complete(task);
-	task->state = SOF_TASK_STATE_COMPLETED;
+	task->state = task_run(task);
+
+	if (task->state == SOF_TASK_STATE_RESCHEDULE) {
+		uint64_t deadline = task_get_deadline(task);
+		uint64_t now = k_uptime_ticks();
+		k_timeout_t timeout = K_MSEC(0);
+
+		if (deadline > now)
+			timeout = K_TICKS(deadline - now);
+
+		k_work_reschedule_for_queue(&edf_workq,
+					    &task->z_delayed_work,
+					    timeout);
+		task->state = SOF_TASK_STATE_QUEUED;
+	} else {
+		task_complete(task);
+		task->state = SOF_TASK_STATE_COMPLETED;
+	}
 }
 
 /* schedule task */
