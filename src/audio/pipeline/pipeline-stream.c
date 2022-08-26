@@ -351,8 +351,17 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
-	if (err < 0)
+	switch (err) {
+	case 0:
+		break;
+	case PPL_STATUS_PATH_STOP:
+		current->pipeline->trigger.aborted = true;
+		COMPILER_FALLTHROUGH;
+	case PPL_STATUS_PATH_TERMINATE:
+		return PPL_STATUS_PATH_STOP;
+	default:
 		return err;
+	}
 
 	if (err == PPL_STATUS_PATH_STOP) {
 		current->pipeline->trigger.aborted = true;

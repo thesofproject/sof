@@ -27,8 +27,16 @@ struct comp_dev;
 struct ipc;
 struct ipc_msg;
 
-/* Pipeline status to stop execution of current path */
-#define PPL_STATUS_PATH_STOP	1
+/*
+ * Pipeline status to stop execution of current path, but to keep the
+ * pipeline alive, when processing COMP_TRIGGER_STOP or COMP_TRIGGER_PAUSE
+ */
+#define PPL_STATUS_PATH_STOP		1
+/*
+ * Pipeline status to stop execution of current path, and to terminate the
+ * pipeline, when processing COMP_TRIGGER_STOP or COMP_TRIGGER_PAUSE
+ */
+#define PPL_STATUS_PATH_TERMINATE	2
 
 /* Pipeline scheduled in another thread other than ipc thread */
 #define PPL_STATUS_SCHEDULED	2

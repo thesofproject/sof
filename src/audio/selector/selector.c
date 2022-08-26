@@ -363,7 +363,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	 * new pipeline_task()
 	 */
 	return dev_comp_type(sourceb->source) == SOF_COMP_KPB ?
-		PPL_STATUS_PATH_STOP : ret;
+		PPL_STATUS_PATH_TERMINATE : ret;
 }
 
 /**
