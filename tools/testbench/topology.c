@@ -50,14 +50,12 @@ enum sof_ipc_dai_type find_dai(const char *name)
 void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext)
 {
 	int index;
-	char message[DEBUG_MSG_LEN + MAX_LIB_NAME_LEN];
 
 	/* register file comp driver (no shared library needed) */
 	if (comp_type == SOF_COMP_HOST || comp_type == SOF_COMP_DAI) {
 		if (!lib_table[0].register_drv) {
 			sys_comp_file_init();
 			lib_table[0].register_drv = 1;
-			debug_print("registered file comp driver\n");
 		}
 		return;
 	}
@@ -66,20 +64,22 @@ void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext)
 	index = get_index_by_type(comp_type, lib_table);
 	if (comp_type == SOF_COMP_NONE && comp_ext) {
 		index = get_index_by_uuid(comp_ext, lib_table);
-		if (index < 0)
+		if (index < 0) {
+			fprintf(stderr, "cant find type %d UUID starting %x %x %x %x\n",
+				comp_type, comp_ext->uuid[0], comp_ext->uuid[1],
+				comp_ext->uuid[2], comp_ext->uuid[3]);
 			return;
+		}
 	}
 
 	/* register comp driver if not already registered */
 	if (!lib_table[index].register_drv) {
-		sprintf(message, "registered comp driver for %s\n",
+		printf("registered comp driver for %s\n",
 			lib_table[index].comp_name);
-		debug_print(message);
 
 		/* open shared library object */
-		sprintf(message, "opening shared lib %s\n",
+		printf("opening shared lib %s\n",
 			lib_table[index].library_name);
-		debug_print(message);
 
 		lib_table[index].handle = dlopen(lib_table[index].library_name,
 						 RTLD_LAZY);
