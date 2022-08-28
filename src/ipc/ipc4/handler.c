@@ -753,6 +753,7 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE, config.extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 

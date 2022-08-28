@@ -981,7 +981,6 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 	struct copier_data *cd = comp_get_drvdata(dev);
 
 	sink_fmt = (struct ipc4_copier_config_set_sink_format *)data;
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)sink_fmt, sizeof(*sink_fmt));
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -1027,7 +1026,6 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, char *dat
 		return -EINVAL;
 	}
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)data, sizeof(uint32_t));
 	attenuation = *(uint32_t *)data;
 	if (attenuation > 31) {
 		comp_err(dev, "attenuation %d is out of range", attenuation);

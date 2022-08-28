@@ -1377,8 +1377,6 @@ static int mixin_set_large_config(struct comp_dev *dev, uint32_t param_id, bool 
 		return -EINVAL;
 	}
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)data, data_offset_or_size);
-
 	cfg = (struct ipc4_mixer_mode_config *)data;
 
 	if (cfg->mixer_mode_config_count < 1 || cfg->mixer_mode_config_count > MIXIN_MAX_SINKS) {
