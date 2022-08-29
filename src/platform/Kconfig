@@ -4,6 +4,7 @@ menu "Platform"
 
 choice
 	prompt "Platform"
+	default ZEPHYR_POSIX if ARCH_POSIX
 	default APOLLOLAKE
 
 config BAYTRAIL
@@ -174,6 +175,15 @@ config LIBRARY
 	  It is generic/mock configuration not tied to some specific platform.
 	  Library builds are not intended to be run on DSP, but to be used by
 	  user-space applications.
+
+config ZEPHYR_POSIX
+	bool "Build for Zephyr native_posix board"
+	help
+	  Select if you are building a host unit test using
+	  native_posix.  This is similar to LIBRARY in that it builds
+	  host binaries, but is tied to the Zephyr posix architecture
+	  and thus able to instrument and test the whole OS
+	  environment.
 
 config IMX8
 	bool "Build for NXP i.MX8"

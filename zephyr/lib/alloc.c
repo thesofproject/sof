@@ -75,6 +75,12 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
  */
 __section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
 
+#elif defined(CONFIG_ARCH_POSIX)
+
+/* Zephyr native_posix links as a host binary and lacks the automated heap markers */
+#define HEAPMEM_SIZE (256 * 1024)
+char __aligned(8) heapmem[HEAPMEM_SIZE];
+
 #else
 
 extern char _end[], _heap_sentry[];

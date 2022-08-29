@@ -17,9 +17,13 @@
 #include <zephyr/kernel.h>
 #include <stdint.h>
 
+#include <sof/trace/trace.h>
+
 /* to be removed once driver upstream in Zephyr */
 #define __SOF_DRIVERS_INTERRUPT_H__
 #include <platform/drivers/interrupt.h>
+
+extern struct tr_ctx zephyr_tr;
 
 static inline int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
@@ -48,7 +52,7 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
  */
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if defined(CONFIG_LIBRARY) || defined(CONFIG_ACE)
+#if defined(CONFIG_LIBRARY) || defined(CONFIG_ACE) || defined(CONFIG_ZEPHYR_POSIX)
 	return irq;
 #else
 	if (cascade == irq_name_level2)
