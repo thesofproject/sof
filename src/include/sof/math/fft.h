@@ -125,7 +125,7 @@ static inline void icomplex16_shift(struct icomplex16 *input, int16_t n, struct 
 {
 	int n_rnd = -n - 1;
 
-	if (n > 0) {
+	if (n >= 0) {
 		/* need saturation handling */
 		output->real = sat_int16((int32_t)input->real << n);
 		output->imag = sat_int16((int32_t)input->imag << n);
