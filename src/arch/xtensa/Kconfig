@@ -17,12 +17,3 @@ config WAKEUP_HOOK
 	  This config should be selected by other platform-level configs.
 	  Platforms that use it, have to implement hook function
 	  platform_interrupt_on_wakeup.
-
-config INCOHERENT
-	bool
-	default n
-	help
-	  The architecture is cache incoherent. i.e FW has to manually manage
-	  cache coherency amongst objects that are used on multiple cores.
-	  This setting should only be disabled for cache incoherent
-	  architectures if they are being used in UP mode.
