@@ -21,8 +21,8 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 {
 	struct icomplex32 tmp1;
 	struct icomplex32 tmp2;
-	struct icomplex32 *inb = plan->inb32;
-	struct icomplex32 *outb = plan->outb32;
+	struct icomplex32 *inb;
+	struct icomplex32 *outb;
 	int depth;
 	int top;
 	int bottom;
@@ -33,7 +33,12 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	int m;
 	int n;
 
-	if (!plan || !plan->bit_reverse_idx || !inb || !outb)
+	if (!plan || !plan->bit_reverse_idx)
+		return;
+
+	inb = plan->inb32;
+	outb = plan->outb32;
+	if (!inb || !outb)
 		return;
 
 	/* convert to complex conjugate for ifft */
