@@ -16,6 +16,7 @@
 #include <sof/platform.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/clk.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
@@ -28,10 +29,6 @@
 #include <version.h>
 #include <zephyr/sys/__assert.h>
 #include <soc.h>
-
-#if !CONFIG_KERNEL_COHERENCE
-#include <zephyr/arch/xtensa/cache.h>
-#endif
 
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
 
@@ -75,7 +72,7 @@ void interrupt_unregister(uint32_t irq, const void *arg)
 	 * There is no "unregister" (or "disconnect") for
 	 * interrupts in Zephyr.
 	 */
-	z_soc_irq_disable(irq);
+	irq_disable(irq);
 }
 
 /* enable an interrupt source - IRQ needs mapped to Zephyr,
@@ -83,7 +80,7 @@ void interrupt_unregister(uint32_t irq, const void *arg)
  */
 uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
-	z_soc_irq_enable(irq);
+	irq_enable(irq);
 
 	return 0;
 }
@@ -91,7 +88,7 @@ uint32_t interrupt_enable(uint32_t irq, void *arg)
 /* disable interrupt */
 uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
-	z_soc_irq_disable(irq);
+	irq_disable(irq);
 
 	return 0;
 }
