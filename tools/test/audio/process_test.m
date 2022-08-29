@@ -111,21 +111,24 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 		end
 	end
 
+	%% FIXME: get unique string to keep all the incremental logs, like datetime string.
+	%% For now bitspersample is differentiator.
+
 	%% Print table with test summary: Gain
-	fn = sprintf('%s/g_%s.txt', reports, t.comp);
+	fn = sprintf('%s/g_%s_%d.txt', reports, t.comp, t.bits_in);
 	print_val(t.comp, 'Gain (dB)', fn, bits_in_list, bits_out_list, r.g, r.pf);
 
 	%% Print table with test summary: DR
-	fn = sprintf('%s/dr_%s.txt', reports, t.comp);
+	fn = sprintf('%s/dr_%s_%d.txt', reports, t.comp, t.bits_in);
 	print_val(t.comp, 'Dynamic range (dB CCIR-RMS)', fn, bits_in_list, bits_out_list, r.dr, r.pf);
 
 	%% Print table with test summary: THD+N vs. frequency
-	fn = sprintf('%s/thdnf_%s.txt', reports, t.comp);
+	fn = sprintf('%s/thdnf_%s_%d.txt', reports, t.comp, t.bits_in);
 	print_val(t.comp, 'Worst-case THD+N vs. frequency', fn, bits_in_list, bits_out_list, r.thdnf, r.pf);
 
 
 	%% Print table with test summary: pass/fail
-	fn = sprintf('%s/pf_%s.txt', reports, t.comp);
+	fn = sprintf('%s/pf_%s_%d.txt', reports, t.comp, t.bits_in);
 	print_pf(t.comp', fn, bits_in_list, bits_out_list, r.pf, 'Fails chirp/gain/DR/THD+N/FR');
 
 	fprintf('\n');
@@ -363,6 +366,8 @@ end
 function test_result_print(t, testverbose, testacronym, test)
 	tstr = sprintf('%s %s %d-%d %d Hz', ...
 			testverbose, t.comp, t.bits_in, t.bits_out, t.fs);
+
+	%% FIXME: get unique string to keep all the incremental logs
 
 	for i = 1:length(test.ph)
 		title(test.ph(i), tstr);
