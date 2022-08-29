@@ -648,7 +648,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct copier_data *dai_cd;
 	struct comp_buffer *buffer;
 	uint32_t latency;
-	int ret;
+	int ret, i;
 
 	comp_dbg(dev, "copier_comp_trigger()");
 
@@ -659,14 +659,10 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (cd->endpoint) {
-		int i;
-
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
-			if (ret < 0)
-				break;
-		}
+	for (i = 0; i < cd->endpoint_num; i++) {
+		ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+		if (ret < 0)
+			break;
 	}
 
 	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)
