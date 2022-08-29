@@ -31,6 +31,7 @@
 #endif
 
 #ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #endif
 
