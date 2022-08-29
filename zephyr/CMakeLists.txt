@@ -8,6 +8,9 @@ if(CONFIG_LIBRARY)
 	set(PLATFORM "library")
 	set(ARCH host)
 	zephyr_include_directories(../src/platform/library/include)
+elseif(CONFIG_ZEPHYR_POSIX)
+	set(ARCH host)
+	set(PLATFORM "posix")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -524,6 +527,15 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 
 	set(PLATFORM "imx8m")
 endif()
+
+# Building for native_posix-based whole-OS host emulator
+zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
+	${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	${SOF_PLATFORM_PATH}/posix/dma.c
+	${SOF_PLATFORM_PATH}/posix/dai.c
+	${SOF_PLATFORM_PATH}/posix/ipc.c
+	${SOF_PLATFORM_PATH}/posix/posix.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY
 	${SOF_PLATFORM_PATH}/library/platform.c

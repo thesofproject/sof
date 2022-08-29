@@ -20,7 +20,7 @@ option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
 non-deterministic build features" OFF)
 
-if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST)
+if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 else()
 	# firmware build supports only xtensa arch for now

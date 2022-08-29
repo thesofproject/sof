@@ -11,7 +11,9 @@
 struct sof;
 
 /* main firmware entry point - argc and argv not currently used */
+#ifndef CONFIG_ARCH_POSIX
 int main(int argc, char *argv[]);
+#endif
 
 #if CONFIG_MULTICORE
 

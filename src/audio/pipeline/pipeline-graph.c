@@ -12,11 +12,11 @@
 #include <rtos/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
-#include <sof/lib/clk.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
+#include <rtos/clk.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
