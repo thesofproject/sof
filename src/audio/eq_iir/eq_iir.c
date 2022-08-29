@@ -22,7 +22,7 @@
 #include <sof/list.h>
 #include <sof/math/iir_df2t.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>

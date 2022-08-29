@@ -24,7 +24,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
 #include <stddef.h>

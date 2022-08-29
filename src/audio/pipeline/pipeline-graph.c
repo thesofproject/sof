@@ -15,7 +15,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

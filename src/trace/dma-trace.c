@@ -20,7 +20,7 @@
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/dma-trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>

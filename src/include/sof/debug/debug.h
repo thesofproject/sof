@@ -14,7 +14,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc/info.h>
 #include <ipc/trace.h>
 

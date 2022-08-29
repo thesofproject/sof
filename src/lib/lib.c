@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/compiler_info.h>
 
 #include <stddef.h>

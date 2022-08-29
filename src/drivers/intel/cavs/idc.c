@@ -13,7 +13,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <errno.h>
 #include <stdbool.h>

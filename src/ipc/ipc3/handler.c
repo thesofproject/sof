@@ -31,7 +31,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>

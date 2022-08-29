@@ -17,7 +17,7 @@
 #define __SOF_LIB_ALLOC_H__
 
 #include <rtos/bit.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
@@ -151,13 +151,6 @@ void rfree(void *ptr);
  * @param bytes Size in bytes.
  */
 void *rzalloc_core_sys(int core, size_t bytes);
-
-/** \brief Zeroes memory block.
- * @param ptr Pointer to the memory block.
- * @param size Size of the block in bytes.
- */
-#define bzero(ptr, size) \
-	arch_bzero(ptr, size)
 
 /**
  * Calculates length of the null-terminated string.

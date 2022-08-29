@@ -20,7 +20,7 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <ipc/stream.h>

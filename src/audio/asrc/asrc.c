@@ -19,7 +19,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>

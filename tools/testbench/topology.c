@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sof/common.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/audio/component.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>

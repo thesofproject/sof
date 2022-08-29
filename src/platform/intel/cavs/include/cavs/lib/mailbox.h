@@ -13,7 +13,7 @@
 
 #include <sof/debug/panic.h>
 #include <sof/lib/memory.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <stddef.h>
 #include <stdint.h>
 

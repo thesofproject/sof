@@ -12,7 +12,7 @@
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <rtos/kernel.h>

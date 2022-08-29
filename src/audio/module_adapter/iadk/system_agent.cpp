@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <utilities/array.h>
 #include <adsp_error_code.h>
 #include <logger.h>
