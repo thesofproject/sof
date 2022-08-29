@@ -5,7 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifdef __SOF_STRING_H__
+#ifdef __XTOS_RTOS_STRING_H__
 
 #ifndef __ARCH_STRING_H__
 #define __ARCH_STRING_H__
@@ -17,7 +17,7 @@
 #define arch_memcpy(dest, src, size) \
 	memcpy(dest, src, size)
 
-#define arch_bzero(ptr, size) \
+#define bzero(ptr, size) \
 	memset(ptr, 0, size)
 
 void *memcpy(void *dest, const void *src, size_t length);

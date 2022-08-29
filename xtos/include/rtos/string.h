@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __SOF_STRING_H__
-#define __SOF_STRING_H__
+#ifndef __XTOS_RTOS_STRING_H__
+#define __XTOS_RTOS_STRING_H__
 
 #include <arch/string.h>
 #include <stddef.h>
@@ -25,4 +25,4 @@ int rstrcmp(const char *s1, const char *s2);
 	cmemcpy(dest, src, size)
 #endif
 
-#endif /* __SOF_STRING_H__ */
+#endif /* __XTOS_RTOS_STRING_H__ */

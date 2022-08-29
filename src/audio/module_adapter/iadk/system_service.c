@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <sof/common.h>
 #include <sof/sof.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc4/notification.h>
 #include <sof/ipc/msg.h>
 #include <adsp_error_code.h>

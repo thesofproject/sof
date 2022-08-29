@@ -17,7 +17,7 @@
 
 #include <sof/math/log.h>
 #include <sof/audio/format.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/common.h>
 #include "log2_tables.h"
 /* 'Error[max] = 0.0000071279028671,THD = -102.9407645424143993 ' */

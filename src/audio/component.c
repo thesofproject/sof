@@ -14,7 +14,7 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>

@@ -7,7 +7,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <math.h>
 #include <sof/sof.h>
 #include <sof/schedule/task.h>

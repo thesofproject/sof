@@ -16,7 +16,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/dma-trace.h>

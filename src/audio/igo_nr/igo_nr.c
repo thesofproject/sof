@@ -16,7 +16,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>

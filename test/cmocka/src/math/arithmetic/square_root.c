@@ -14,7 +14,7 @@
 
 #include <sof/math/sqrt.h>
 #include <sof/audio/format.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/common.h>
 
 /* 'Error[max] = 0.0003000860000000,THD(-dBc) = -87.1210823527511309' */

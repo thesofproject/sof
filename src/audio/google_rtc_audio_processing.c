@@ -23,7 +23,7 @@
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <stdbool.h>

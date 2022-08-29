@@ -20,7 +20,7 @@
 #include <sof/coherent.h>
 #include <sof/math/numbers.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

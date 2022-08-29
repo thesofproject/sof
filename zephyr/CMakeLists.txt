@@ -540,7 +540,6 @@ zephyr_library_sources(
 	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/clk.c
 	${SOF_LIB_PATH}/notifier.c
-	${SOF_LIB_PATH}/lib.c
 	${SOF_LIB_PATH}/pm_runtime.c
 	${SOF_LIB_PATH}/wait.c
 	${SOF_LIB_PATH}/dma.c

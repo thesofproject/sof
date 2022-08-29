@@ -35,7 +35,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <rtos/spinlock.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sys/types.h>
 #include <ipc/topology.h>
