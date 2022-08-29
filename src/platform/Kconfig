@@ -156,7 +156,6 @@ config TIGERLAKE
 	select XT_WAITI_DELAY
 	select NO_SECONDARY_CORE_ROM
 	select CAVS_USE_LPRO_IN_WAITI
-	select INCOHERENT
 	help
 	  Select if your target platform is Tigerlake-compatible
 
@@ -544,5 +543,19 @@ config SOF_STACK_SIZE
 	  IPC calls. Increasing it allows deeper call stack on those IPC
 	  and might be useful when creating more complex audio processing
 	  components.
+
+if XTENSA
+
+config INCOHERENT
+	bool "Enable cached data access via the Coherent API"
+	default y if TIGERLAKE
+	default n
+	help
+	  The architecture is cache incoherent. i.e FW has to manually manage
+	  cache coherency amongst objects that are used on multiple cores.
+	  This setting should only be disabled for cache incoherent
+	  architectures for testing without cached access to shared data.
+
+endif
 
 endmenu
