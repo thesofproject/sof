@@ -12,6 +12,7 @@
 #include <rtos/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/clk.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
