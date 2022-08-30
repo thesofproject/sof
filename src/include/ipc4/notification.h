@@ -56,3 +56,28 @@ enum sof_ipc4_notification_type {
 		((SOF_IPC4_GLB_NOTIFICATION) << (SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT)))
 
 #endif
+
+/**
+ * \brief IPC MAJOR 4 notification header. All IPC4 notifications use this header.
+ */
+union ipc4_notification_header {
+	uint32_t dat;
+
+	struct {
+		uint32_t rsvd0 : 16;
+
+		/**< Notification::MODULE_EVENT */
+		uint32_t notif_type : 8;
+
+		/**< One of Global::Type */
+		uint32_t type : 5;
+
+		/**< Msg::MSG_REQUEST */
+		uint32_t rsp : 1;
+
+		/**< Msg::FW_GEN_MSG */
+		uint32_t msg_tgt : 1;
+
+		uint32_t _reserved_0 : 1;
+	} r;
+} __packed __aligned(4);
