@@ -373,6 +373,37 @@ struct ipc4_module_set_dx {
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_module_load_library {
+	union {
+		uint32_t dat;
+
+		struct {
+			/* ID of HD/A HO DMA to load the code */
+			uint32_t dma_id				: 5;
+			uint32_t rsvd0				: 11;
+			/* ID of library */
+			uint32_t lib_id				: 4;
+			uint32_t rsvd1				: 4;
+			/* Global::LOAD_LIBRARY */
+			uint32_t type				: 5;
+			/* Msg::MSG_REQUEST */
+			uint32_t rsp				: 1;
+			/* Msg::FW_GEN_MSG */
+			uint32_t msg_tgt			: 1;
+			uint32_t _reserved_0		: 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t load_offset		: 30;
+			uint32_t _reserved_2		: 2;
+		} r;
+	} data;
+} __packed __aligned(4);
+
 #define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
 #define IPC4_MOD_ID(x) ((x) >> 16)
 #define IPC4_INST_ID(x)	((x) & 0xffff)
