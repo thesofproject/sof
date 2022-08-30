@@ -52,7 +52,7 @@ name = "ADSPFW"
 load_offset = "0x30000"
 
 [module]
-count = 7
+count = 8
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "61EB0CB9-34D8-4F59-A21D-04C54C21D3A4"
@@ -212,4 +212,18 @@ count = 7
 				4, 0, 0, 0, 416, 2910000, 192, 256, 0, 0, 0,
 				5, 0, 0, 0, 416, 3441000, 192, 256, 0, 0, 0,
 				6, 0, 0, 0, 416, 4265000, 192, 256, 0, 0, 0]
+
+	[[module.entry]]
+	name = "PROBE"
+	uuid = "7CAD0808-AB10-CD23-EF45-12AB34CD56EF"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "6"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 100000, 48, 48, 0, 1000, 0]
 
