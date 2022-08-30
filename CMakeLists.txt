@@ -46,7 +46,7 @@ set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 # check git hooks
 include(scripts/cmake/git-hooks.cmake)
 
-# checkout submodules
+# Check submodules
 include(scripts/cmake/git-submodules.cmake)
 
 # most of other options are set on per-arch and per-target basis
