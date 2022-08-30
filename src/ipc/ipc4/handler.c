@@ -32,6 +32,8 @@
 #include <user/trace.h>
 
 #include <rtos/kernel.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/lib_manager.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -498,6 +500,22 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	return ret;
 }
 
+#if CONFIG_LIBRARY_MANAGER
+static int ipc4_load_library(struct ipc4_message_request *ipc4)
+{
+	struct ipc4_module_load_library library;
+	int ret = IPC4_UNAVAILABLE;
+
+	library.header.dat = ipc4->primary.dat;
+	library.data.dat = ipc4->extension.dat;
+
+	ret = lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id);
+	tr_info(&ipc_tr, "ipc: ipc4_load_library %d", ret);
+
+	return ret;
+}
+#endif
+
 static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_chain_dma cdma;
@@ -569,7 +587,11 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 		break;
 
 	/* Loads library (using Code Load or HD/A Host Output DMA) */
+#ifdef CONFIG_LIBRARY_MANAGER
 	case SOF_IPC4_GLB_LOAD_LIBRARY:
+		ret = ipc4_load_library(ipc4);
+		break;
+#endif
 	case SOF_IPC4_GLB_INTERNAL_MESSAGE:
 		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
 		ret = IPC4_UNAVAILABLE;
