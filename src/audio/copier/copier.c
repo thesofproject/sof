@@ -775,106 +775,88 @@ static int do_conversion_copy(struct comp_dev *dev,
 	return 0;
 }
 
-/* copy and process stream data from source to sink buffers */
+/* Copier has one input and one or more outputs. Maximum of one gateway can be connected
+ * to copier or no gateway connected at all. Gateway can only be connected to either input
+ * pin 0 (the only input) or output pin 0. With or without connected gateway it is also
+ * possible to have component(s) connected on input and/or output pins.
+ *
+ * A special exception is a multichannel ALH gateway case. These are multiple gateways
+ * but should be treated like a single gateway to satisfy rules above. Data from such
+ * gateways has to be multiplexed into single stream (for input gateways) or demultiplexed
+ * from single stream (for output gateways) so such gateways work kind of like a single
+ * gateway, i.e., produce/consume single stream.
+ */
 static int copier_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *src, *sink;
 	struct comp_buffer __sparse_cache *src_c, *sink_c;
+	struct comp_copy_limits processed_data;
+	struct list_item *sink_list;
 	int ret = 0;
 
 	comp_dbg(dev, "copier_copy()");
 
-	/* process gateway case */
-	if (cd->endpoint_num) {
-		struct comp_copy_limits processed_data;
-		int i;
+	processed_data.source_bytes = 0;
 
-		if (!cd->bsource_buffer) {
-			sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-			sink_c = buffer_acquire(sink);
+	if (cd->endpoint_num >= 2) {
+		// TODO: Add implementation for multichannel ALH represented as multiple gateways
+		comp_err(dev, "Multichannel ALH (multiple gateways) support is NOT IMPLEMENTED");
+		return -1;
+	}
 
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
-				if (ret < 0)
-					break;
+	if (cd->endpoint_num && !cd->bsource_buffer) {
+		/* gateway as input */
+		ret = cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+		if (ret < 0)
+			return ret;
 
-				src_c = buffer_acquire(cd->endpoint_buffer[i]);
-				ret = do_conversion_copy(dev, cd, src_c, sink_c,
-							 &processed_data);
-				if (!ret) {
-					comp_update_buffer_consume(src_c,
-								   processed_data.source_bytes);
-					cd->output_total_data_processed +=
-						processed_data.sink_bytes;
-				}
-
-				buffer_release(src_c);
-
-				if (ret < 0)
-					break;
-			}
-
-			buffer_release(sink_c);
-		} else {
-			src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-			src_c = buffer_acquire(src);
-
-			for (i = 0; i < cd->endpoint_num; i++) {
-				sink_c = buffer_acquire(cd->endpoint_buffer[i]);
-
-				ret = do_conversion_copy(dev, cd, src_c, sink_c,
-							 &processed_data);
-				buffer_release(sink_c);
-				if (ret < 0)
-					break;
-
-				ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
-				if (ret < 0)
-					break;
-			}
-
-			if (!ret) {
-				comp_update_buffer_consume(src_c,
-							   processed_data.source_bytes);
-				cd->input_total_data_processed += processed_data.source_bytes;
-			}
-
-			buffer_release(src_c);
-		}
+		src_c = buffer_acquire(cd->endpoint_buffer[0]);
 	} else {
-		/* do format conversion */
-		struct list_item *sink_list;
-		struct comp_copy_limits processed_data;
-
-		processed_data.source_bytes = 0;
-		processed_data.sink_bytes = 0;
-
+		/* component as input */
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		src_c = buffer_acquire(src);
 
-		/* do format conversion for each sink buffer */
-		list_for_item(sink_list, &dev->bsink_list) {
-			sink = container_of(sink_list, struct comp_buffer, source_list);
-			sink_c = buffer_acquire(sink);
-
+		if (cd->endpoint_num) {
+			/* gateway on output */
+			sink_c = buffer_acquire(cd->endpoint_buffer[0]);
 			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
 			buffer_release(sink_c);
+
 			if (ret < 0) {
-				comp_err(dev, "failed to copy buffer for comp %x",
-					 dev->ipc_config.id);
-				break;
+				buffer_release(src_c);
+				return ret;
 			}
-			cd->output_total_data_processed += processed_data.sink_bytes;
-		}
 
-		if (!ret) {
-			comp_update_buffer_consume(src_c, processed_data.source_bytes);
-			cd->input_total_data_processed += processed_data.source_bytes;
+			ret = cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+			if (ret < 0) {
+				buffer_release(src_c);
+				return ret;
+			}
 		}
-
-		buffer_release(src_c);
 	}
+
+	/* zero or more components on outputs */
+	list_for_item(sink_list, &dev->bsink_list) {
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
+		buffer_release(sink_c);
+		if (ret < 0) {
+			comp_err(dev, "failed to copy buffer for comp %x",
+				 dev->ipc_config.id);
+			break;
+		}
+		cd->output_total_data_processed += processed_data.sink_bytes;
+	}
+
+	if (!ret) {
+		comp_update_buffer_consume(src_c, processed_data.source_bytes);
+		if (!cd->endpoint_num || cd->bsource_buffer)
+			cd->input_total_data_processed += processed_data.source_bytes;
+	}
+
+	buffer_release(src_c);
 
 	return ret;
 }
