@@ -1346,7 +1346,7 @@ sub top_of_kernel_tree {
 
 	if ($SOF) {
 		@tree_check = (
-			"LICENCE", "README.md", "rimage", "tools",
+			"LICENCE", "README.md", "tools",
 			"scripts", "doc", "src", "CODEOWNERS",
 			"CMakeLists.txt",
 		);

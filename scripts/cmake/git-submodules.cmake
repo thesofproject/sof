@@ -34,23 +34,12 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 
 	elseif(NOT BUILD_UNIT_TESTS AND
 	    NOT CONFIG_LIBRARY)
-	# Automated initialization for convenience. You can defeat it by
-	# manually initializing rimage and _not_ some other
-	# submodule. In that case you get the warning above.
 
-	# TODO: get rid of this CMake configuration time
-	# hack. Downloading, configuring and building should always be
-	# kept separate; that's CI 101.
-
-		message(STATUS "Git submodules update HACK")
-		execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --merge --recursive
-				WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-				RESULT_VARIABLE GIT_SUBMOD_RESULT)
-
-		if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-			message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-		endif()
-
+		message(FATAL_ERROR
+"${RIMAGE_CMAKE} not found. You should have used 'git clone --recursive'. \
+To fix this existing git clone run:
+git submodule update --init --merge --recursive
+")
 	endif() # rimage/CMakeLists.txt
 
 endif() # .git/
