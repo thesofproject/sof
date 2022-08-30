@@ -1285,7 +1285,7 @@ static int volume_reset(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "volume_reset()");
 	reset_state(cd);
-	return 0;
+	return MODULE_PREPARE_REQUESTED;
 }
 
 #if CONFIG_COMP_LEGACY_INTERFACE
