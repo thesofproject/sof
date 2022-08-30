@@ -31,6 +31,8 @@
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
+#include <sof/lib_manager.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -800,14 +802,38 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 	struct sof_man_module *mod;
 	int entry_index;
 
-	/* module_id 0 is used for base fw which is in entry 1 */
-	if (!module_id)
-		entry_index = 1;
-	else
-		entry_index = module_id;
+	uint32_t lib_idx = LIB_MANAGER_GET_LIB_ID(module_id);
 
+	if (lib_idx == 0) {
+		/* module_id 0 is used for base fw which is in entry 1 */
+		if (!module_id)
+			entry_index = 1;
+		else
+			entry_index = module_id;
+	} else {
+		/* Library index greater than 0 possible only when LIBRARY_MANAGER
+		 * support enabled.
+		 */
+#if CONFIG_LIBRARY_MANAGER
+		desc = lib_manager_get_library_module_desc(module_id);
+		entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+#else
+		tr_err(&comp_tr, "Error: lib index:%d, while loadable libraries are not supported!!!",
+		       lib_idx);
+		return NULL;
+#endif
+	}
+	/* Check already registered components */
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	drv = ipc4_get_drv(mod->uuid);
+
+#if CONFIG_LIBRARY_MANAGER
+	if (!drv) {
+		/* New module not registered yet. */
+		lib_manager_register_module(desc, module_id);
+		drv = ipc4_get_drv(mod->uuid);
+	}
+#endif
 
 	return drv;
 }
