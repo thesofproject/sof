@@ -83,6 +83,15 @@ enum module_state {
 };
 
 /**
+ * \enum module_retcode
+ * \brief Module-specific return codes - 0 is preserved for function success and
+ * all negative values are preserved for errors.
+ */
+enum module_retcode {
+	MODULE_PREPARE_REQUESTED = 1, /**< Module requests prepare() call after reset. */
+};
+
+/**
  * \struct module_param
  * \brief Module TLV parameters container - used for both config types.
  * For example if one want to set the sample_rate to 16 [kHz] and this

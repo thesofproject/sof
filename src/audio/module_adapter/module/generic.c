@@ -264,13 +264,26 @@ int module_reset(struct processing_module *mod)
 {
 	int ret;
 	struct module_data *md = &mod->priv;
+	enum module_state new_state;
+
+	/* the default behavior of module reset is back to the initial condition after prepare()
+	 * so change its state to IDLE to reflect this.
+	 */
+	new_state = MODULE_IDLE;
 
 	/* if the module was never prepared, no need to reset */
 	if (md->state < MODULE_IDLE)
 		return 0;
 
 	ret = md->ops->reset(mod);
-	if (ret) {
+	if (ret == MODULE_PREPARE_REQUESTED) {
+		/* module resets itself to the state before prepare() so change its state to
+		 * INITIALIZED to reflect this.
+		 */
+		comp_dbg(mod->dev, "module_reset(): module requests prepare() for comp %d",
+			 dev_comp_id(mod->dev));
+		new_state = MODULE_INITIALIZED;
+	} else if (ret) {
 		comp_err(mod->dev, "module_reset() error %d: module specific reset() failed for comp %d",
 			 ret, dev_comp_id(mod->dev));
 		return ret;
@@ -280,10 +293,7 @@ int module_reset(struct processing_module *mod)
 	md->cfg.size = 0;
 	rfree(md->cfg.data);
 
-	/* module resets itself to the initial condition after prepare()
-	 * so let's change its state to reflect that.
-	 */
-	md->state = MODULE_IDLE;
+	md->state = new_state;
 
 	return 0;
 }
