@@ -597,11 +597,10 @@ static int selector_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
-	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd;
 	int ret;
 
-	comp_dbg(dev, "selector_init()");
+	comp_dbg(mod->dev, "selector_init()");
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
@@ -700,9 +699,8 @@ static void set_selector_params(struct comp_dev *dev,
 static int selector_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "selector_free()");
+	comp_dbg(mod->dev, "selector_free()");
 
 	rfree(cd);
 
@@ -764,9 +762,8 @@ static int selector_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t avail_frames = input_buffers[0].size;
-	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "selector_process()");
+	comp_dbg(mod->dev, "selector_process()");
 
 	if (!avail_frames)
 		return PPL_STATUS_PATH_STOP;
@@ -871,9 +868,8 @@ static int selector_prepare(struct processing_module *mod)
 static int selector_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "selector_reset()");
+	comp_info(mod->dev, "selector_reset()");
 
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;
