@@ -11,7 +11,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <arch/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
 #include <stdint.h>
@@ -63,10 +63,8 @@ static inline void platform_panic(uint32_t p) {}
  * May be power-optimized using platform specific capabilities.
  * @param level Interrupt level.
  */
-static inline void platform_wait_for_interrupt(int level)
-{
-	arch_wait_for_interrupt(level);
-}
+static inline void platform_wait_for_interrupt(int level) {}
+
 
 static inline int ipc_platform_send_msg(const struct ipc_msg *msg) { return 0; }
 

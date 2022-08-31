@@ -19,7 +19,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <arch/lib/cpu.h>
 #include <stdlib.h>
 #include <stdarg.h>

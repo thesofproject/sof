@@ -11,7 +11,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/io.h>
 #include <sof/lib/uuid.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace/trace.h>

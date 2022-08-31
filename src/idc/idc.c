@@ -20,7 +20,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>
-#include <arch/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>

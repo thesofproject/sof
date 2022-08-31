@@ -71,7 +71,7 @@
 #include <sof/audio/format.h>
 #include <rtos/bit.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <stdint.h>
 
 /* Parameters used in modes computation */

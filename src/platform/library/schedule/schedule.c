@@ -10,7 +10,7 @@
 #include <sof/audio/component.h>
 #include <sof/schedule/task.h>
 #include <stdint.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <stdlib.h>
 
 static struct schedulers *testbench_schedulers_ptr; /* Initialized as NULL */

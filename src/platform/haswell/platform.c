@@ -265,3 +265,11 @@ int platform_context_save(struct sof *sof)
 {
 	return 0;
 }
+
+void platform_wait_for_interrupt(int level)
+{
+	if (arch_interrupt_get_level())
+		panic(SOF_IPC_PANIC_WFI);
+
+	arch_wait_for_interrupt(level);
+}

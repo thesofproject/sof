@@ -4,7 +4,7 @@
 //
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
-#include <arch/lib/wait.h>
+#include <rtos/wait.h>
 #include <cavs/lps_ctx.h>
 #include <cavs/lps_wait.h>
 #include <cavs/mem_window.h>

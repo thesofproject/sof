@@ -20,6 +20,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
+#include <rtos/wait.h>
 
 /* Zephyr includes */
 #include <zephyr/device.h>
@@ -685,7 +686,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = sof_cycle_get_64() - posn->wallclock;
+	posn->wallclock = k_cycle_get_64() - posn->wallclock;
 	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
@@ -693,7 +694,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
-	*wallclock = sof_cycle_get_64();
+	*wallclock = k_cycle_get_64();
 }
 
 /*
@@ -825,4 +826,34 @@ struct idc **idc_get(void)
 	return p_idc + cpu;
 }
 #endif
+
+#define DEFAULT_TRY_TIMES 8
+
+int poll_for_register_delay(uint32_t reg, uint32_t mask,
+			    uint32_t val, uint64_t us)
+{
+	uint64_t tick = k_us_to_cyc_ceil64(us);
+	uint32_t tries = DEFAULT_TRY_TIMES;
+	uint64_t delta = tick / tries;
+
+	if (!delta) {
+		/*
+		 * If we want to wait for less than DEFAULT_TRY_TIMES ticks then
+		 * delta has to be set to 1 and number of tries to that of number
+		 * of ticks.
+		 */
+		delta = 1;
+		tries = tick;
+	}
+
+	while ((io_reg_read(reg) & mask) != val) {
+		if (!tries--) {
+			LOG_DBG("poll timeout reg %u mask %u val %u us %u",
+			       reg, mask, val, (uint32_t)us);
+			return -EIO;
+		}
+		wait_delay(delta);
+	}
+	return 0;
+}
 

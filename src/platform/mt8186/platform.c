@@ -216,3 +216,9 @@ int platform_context_save(struct sof *sof)
 {
 	return 0;
 }
+
+void platform_wait_for_interrupt(int level)
+{
+	arch_wait_for_interrupt(level);
+}
+

@@ -16,7 +16,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>

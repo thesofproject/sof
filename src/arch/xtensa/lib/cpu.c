@@ -20,7 +20,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>

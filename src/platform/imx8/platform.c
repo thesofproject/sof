@@ -221,3 +221,10 @@ int platform_context_save(struct sof *sof)
 {
 	return 0;
 }
+
+#ifndef __ZEPHYR__
+void platform_wait_for_interrupt(int level)
+{
+	arch_wait_for_interrupt(level);
+}
+#endif

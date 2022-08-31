@@ -8,7 +8,7 @@
 #include <sof/schedule/task.h>
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <stdlib.h>
 
  /* scheduler testbench definition */

@@ -11,7 +11,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>

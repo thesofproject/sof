@@ -33,7 +33,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <rtos/spinlock.h>

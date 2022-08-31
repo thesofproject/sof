@@ -22,7 +22,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/audio/pipeline.h>
 #include "testbench/common_test.h"
 #include "testbench/trace.h"
