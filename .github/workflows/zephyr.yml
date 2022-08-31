@@ -53,6 +53,6 @@ jobs:
       - name: build
         run: docker run -v "$(pwd)/workspace":/workspace
              --workdir /workspace
-             ghcr.io/zephyrproject-rtos/zephyr-build:v0.24.2
+             ghcr.io/zephyrproject-rtos/zephyr-build:latest
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
