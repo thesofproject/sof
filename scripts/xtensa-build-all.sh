@@ -8,12 +8,11 @@ set -e
 # Platforms with a toolchain available in the latest Docker image and
 # built by the -a option.
 DEFAULT_PLATFORMS=(  byt cht bdw hsw tgl tgl-h apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp rn mt8186 mt8195 )
+                    imx8 imx8x imx8m imx8ulp rn rmb mt8186 mt8195 )
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
-SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" rmb)
 
 BUILD_ROM=no
 BUILD_DEBUG=no
