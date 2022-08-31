@@ -15,21 +15,25 @@
 # released by Intel.
 
 # See rimage/config/*.toml
-UNSIGNED_list ?= bdw byt cht
-SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
+SIGNED_list  ?= tgl tgl-h
 
 # To find aliases, try in a Linux kernel git clone:
 #
 #   git grep 'sof-.*\.ri' -- sound/soc/
 
-ALIAS_SAME_KEY_list  := glk cfl cml
-ALIAS_OTHER_KEY_list := ehl adl adl-s rpl rpl-s
-ALIAS_list ?= ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
+ALIAS_OTHER_KEY_list += adl adl-s rpl rpl-s
 
+# Not supported in the main branch anymore, go to stable-v2.3
+# UNSIGNED_list += bdw byt cht
+# SIGNED_list   += apl cnl icl jsl
+# ALIAS_SAME_KEY_list  += glk cfl cml
+# ALIAS_OTHER_KEY_list += ehl
 
-# Older platforms not released anymore
+# Much older platforms
 # UNSIGNED_list += hsw sue
 # SIGNED_list += kbl skl
+
+ALIAS_list := ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
