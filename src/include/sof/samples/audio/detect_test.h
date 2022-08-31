@@ -14,6 +14,26 @@
 #define SOF_DETECT_TEST_CONFIG	0
 #define SOF_DETECT_TEST_MODEL	1
 
+#ifdef CONFIG_IPC_MAJOR_4
+struct sof_detect_test_config {
+	struct ipc4_base_module_cfg base;
+
+	/** synthetic system load settings */
+	uint32_t load_mips;
+
+	/** time in ms after which detection is activated */
+	uint32_t preamble_time;
+
+	/** activation right shift, determines the speed of activation */
+	uint32_t activation_shift;
+
+	/** activation threshold */
+	uint32_t activation_threshold;
+
+	/** default draining size in bytes */
+	uint32_t drain_req;
+} __packed __aligned(4);
+#else /* CONFIG_IPC_MAJOR_4 */
 struct sof_detect_test_config {
 	uint32_t size;
 
@@ -37,7 +57,8 @@ struct sof_detect_test_config {
 
 	/** reserved for future use */
 	uint32_t reserved[1];
-} __attribute__((packed));
+} __packed;
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 uint16_t test_keyword_get_sample_valid_bytes(struct comp_dev *dev);
 

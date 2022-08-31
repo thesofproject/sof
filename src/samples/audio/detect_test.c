@@ -27,6 +27,7 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/detect_test.h>
 #include <kernel/abi.h>
 #include <sof/samples/audio/detect_test.h>
 #include <user/trace.h>
@@ -241,7 +242,11 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 		       sizeof(struct sof_detect_test_config));
 	assert(!ret);
 
+#if CONFIG_IPC_MAJOR_4
+	sample_width = cd->config.base.audio_fmt.depth;
+#else
 	sample_width = cd->config.sample_width;
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (!cd->config.activation_shift)
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
@@ -265,7 +270,11 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 					 void *spec)
 {
 	struct comp_dev *dev = NULL;
+#if CONFIG_IPC_MAJOR_4
+	struct sof_detect_test_config *ipc_keyword = spec;
+#else
 	struct ipc_config_process *ipc_keyword = spec;
+#endif /* CONFIG_IPC_MAJOR_4 */
 	struct comp_data *cd = NULL;
 	struct sof_detect_test_config *cfg;
 	int ret = 0;
@@ -295,8 +304,13 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 
+#if CONFIG_IPC_MAJOR_4
+	cfg = ipc_keyword;
+	bs = sizeof(*ipc_keyword);
+#else
 	cfg = (struct sof_detect_test_config *)ipc_keyword->data;
 	bs = ipc_keyword->size;
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (bs > 0) {
 		if (bs < sizeof(struct sof_detect_test_config)) {
@@ -363,85 +377,121 @@ static void test_keyword_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int test_keyword_verify_params(struct comp_dev *dev,
-				      struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "test_keyword_verify_params()");
-
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "test_keyword_verify_params(): comp_verify_params() failed");
-		return ret;
-	}
-
-	return 0;
-}
-
-/* set component audio stream parameters */
-static int test_keyword_params(struct comp_dev *dev,
-			       struct sof_ipc_stream_params *params)
+#if CONFIG_IPC_MAJOR_4
+static void test_keyword_set_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
-	unsigned int channels, rate;
-	enum sof_ipc_frame frame_fmt;
-	int err;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
 
-	/* Detector is used only in KPB topology. It always requires channels
-	 * parameter set to 1.
-	 */
-	params->channels = 1;
+	comp_info(dev, "test_keyword_set_params()");
 
-	err = test_keyword_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "test_keyword_params(): pcm params verification failed.");
+	memset(params, 0, sizeof(*params));
+	params->channels = cd->config.base.audio_fmt.channels_count;
+	params->rate = cd->config.base.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cd->config.base.audio_fmt.depth / 8;
+	params->sample_valid_bytes =
+		cd->config.base.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
+	params->buffer.size = cd->config.base.ibs;
+
+	audio_stream_fmt_conversion(cd->config.base.audio_fmt.depth,
+				    cd->config.base.audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    cd->config.base.audio_fmt.s_type);
+
+	params->frame_fmt = frame_fmt;
+}
+
+static int test_keyword_set_config(struct comp_dev *dev, char *data,
+				   uint32_t data_size)
+{
+	struct sof_detect_test_config *cfg;
+	size_t cfg_size;
+
+	/* Copy new config */
+	cfg = (struct sof_detect_test_config *)data;
+	cfg_size = data_size;
+
+	comp_info(dev, "test_keyword_set_config(): config size = %u",
+		  cfg_size);
+
+	if (cfg_size != sizeof(struct sof_detect_test_config)) {
+		comp_err(dev, "test_keyword_set_config(): invalid config size");
 		return -EINVAL;
 	}
 
-	cd->sample_valid_bytes = params->sample_valid_bytes;
+	return test_keyword_apply_config(dev, cfg);
+}
 
-	/* keyword components will only ever have 1 source */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	source_c = buffer_acquire(sourceb);
-	channels = source_c->stream.channels;
-	frame_fmt = source_c->stream.frame_fmt;
-	rate = source_c->stream.rate;
-	buffer_release(source_c);
+static int test_keyword_get_config(struct comp_dev *dev, char *data,
+				   uint32_t *data_size)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	size_t cfg_size;
+	int ret;
 
-	if (channels != 1) {
-		comp_err(dev, "test_keyword_params(): only single-channel supported");
+	comp_info(dev, "test_keyword_get_config()");
+
+	cfg_size = sizeof(struct sof_detect_test_config);
+
+	if (cfg_size > *data_size) {
+		comp_err(dev, "test_keyword_get_config(): wrong config size: %d",
+			 *data_size);
 		return -EINVAL;
 	}
 
-	if (!detector_is_sample_width_supported(frame_fmt)) {
-		comp_err(dev, "test_keyword_params(): only 16-bit format supported");
-		return -EINVAL;
-	}
+	*data_size = cfg_size;
 
-	/* calculate the length of the preamble */
-	if (cd->config.preamble_time) {
-		cd->keyphrase_samples = cd->config.preamble_time *
-					(rate / 1000);
-	} else {
-		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
-	}
-
-	err = test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
-	if (err < 0) {
-		comp_err(dev, "test_keyword_params(): unsupported sample width %u",
-			 params->sample_valid_bytes * 8);
-		return err;
-	}
-
-	cd->config.activation_threshold = err;
+	/* Copy back to user space */
+	ret = memcpy_s(data, cfg_size, &cd->config, cfg_size);
+	assert(!ret);
 
 	return 0;
 }
 
+static int test_keyword_set_large_config(struct comp_dev *dev,
+					 uint32_t param_id,
+					 bool first_block,
+					 bool last_block,
+					 uint32_t data_offset,
+					 char *data)
+{
+	comp_dbg(dev, "test_keyword_set_large_config()");
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (param_id) {
+	case IPC4_DETECT_TEST_SET_MODEL_BLOB:
+		return ipc4_comp_data_blob_set(cd->model_handler,
+					       first_block,
+					       last_block,
+					       data_offset,
+					       data);
+	case IPC4_DETECT_TEST_SET_CONFIG:
+		return test_keyword_set_config(dev, data, data_offset);
+	default:
+		return -EINVAL;
+	}
+}
+
+static int test_keyword_get_large_config(struct comp_dev *dev,
+					 uint32_t param_id,
+					 bool first_block,
+					 bool last_block,
+					 uint32_t *data_offset,
+					 char *data)
+{
+	comp_dbg(dev, "test_keyword_get_large_config()");
+
+	switch (param_id) {
+	case IPC4_DETECT_TEST_GET_CONFIG:
+		return test_keyword_get_config(dev, data, data_offset);
+	default:
+		return -EINVAL;
+	}
+}
+
+#else
 static int test_keyword_set_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
@@ -462,13 +512,15 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	return test_keyword_apply_config(dev, cfg);
 }
 
+static void test_keyword_set_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
+{}
+
 static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 					  struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
-
-	assert(cd);
 
 	if (dev->state != COMP_STATE_READY) {
 		/* It is a valid request but currently this is not
@@ -556,8 +608,6 @@ static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	assert(cd);
-
 	switch (cdata->data->type) {
 	case SOF_DETECT_TEST_CONFIG:
 		ret = test_keyword_get_config(dev, cdata, size);
@@ -608,6 +658,83 @@ static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 	default:
 		return -EINVAL;
 	}
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+static int test_keyword_verify_params(struct comp_dev *dev,
+				      struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "test_keyword_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "test_keyword_verify_params(): verification failed!");
+		return ret;
+	}
+
+	return 0;
+}
+
+/* set component audio stream parameters */
+static int test_keyword_params(struct comp_dev *dev,
+			       struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
+	struct comp_buffer __sparse_cache *source_c;
+	unsigned int channels, rate;
+	enum sof_ipc_frame frame_fmt;
+	int err;
+
+	test_keyword_set_params(dev, params);
+
+	err = test_keyword_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "test_keyword_params(): pcm params verification failed.");
+		return err;
+	}
+
+	cd->sample_valid_bytes = params->sample_valid_bytes;
+
+	/* keyword components will only ever have 1 source */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	source_c = buffer_acquire(sourceb);
+	channels = source_c->stream.channels;
+	frame_fmt = source_c->stream.frame_fmt;
+	rate = source_c->stream.rate;
+	buffer_release(source_c);
+
+	if (channels != 1) {
+		comp_err(dev, "test_keyword_params(): only single-channel supported");
+		return -EINVAL;
+	}
+
+	if (!detector_is_sample_width_supported(frame_fmt)) {
+		comp_err(dev, "test_keyword_params(): only 16-bit format supported");
+		return -EINVAL;
+	}
+
+	/* calculate the length of the preamble */
+	if (cd->config.preamble_time) {
+		cd->keyphrase_samples = cd->config.preamble_time *
+					(rate / 1000);
+	} else {
+		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
+	}
+
+	err = test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
+	if (err < 0) {
+		comp_err(dev, "test_keyword_params(): unsupported sample width %u",
+			 params->sample_valid_bytes * 8);
+		return err;
+	}
+
+	cd->config.activation_threshold = err;
+
+	return 0;
 }
 
 static int test_keyword_trigger(struct comp_dev *dev, int cmd)
@@ -682,7 +809,13 @@ static int test_keyword_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t valid_bits = cd->sample_valid_bytes * 8;
-	uint16_t sample_width = cd->config.sample_width;
+	uint16_t sample_width;
+
+#if CONFIG_IPC_MAJOR_4
+	sample_width = cd->config.base.audio_fmt.depth;
+#else
+	sample_width = cd->config.sample_width;
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 	comp_info(dev, "test_keyword_prepare()");
 
@@ -802,14 +935,19 @@ static const struct comp_driver comp_keyword = {
 	.uid	= SOF_RT_UUID(keyword_uuid),
 	.tctx	= &keyword_tr,
 	.ops	= {
-		.create		= test_keyword_new,
-		.free		= test_keyword_free,
-		.params		= test_keyword_params,
-		.cmd		= test_keyword_cmd,
-		.trigger	= test_keyword_trigger,
-		.copy		= test_keyword_copy,
-		.prepare	= test_keyword_prepare,
-		.reset		= test_keyword_reset,
+		.create			= test_keyword_new,
+		.free			= test_keyword_free,
+		.params			= test_keyword_params,
+#ifdef CONFIG_IPC_MAJOR_4
+		.set_large_config	= test_keyword_set_large_config,
+		.get_large_config	= test_keyword_get_large_config,
+#else
+		.cmd			= test_keyword_cmd,
+#endif /* CONFIG_IPC_MAJOR_4 */
+		.trigger		= test_keyword_trigger,
+		.copy			= test_keyword_copy,
+		.prepare		= test_keyword_prepare,
+		.reset			= test_keyword_reset,
 	},
 };
 
