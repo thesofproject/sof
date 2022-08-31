@@ -42,6 +42,9 @@ set(CMAKE_C_COMPILER_FORCED 1)
 set(CMAKE_ASM_COMPILER_ID GNU)
 set(CMAKE_C_COMPILER_ID GNU)
 
+set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_FLAGS "$$(CMAKE_C_FLAGS) -fno-exceptions -fno-rtti -g2")
+
 # in case if *_FORCED variables are ignored,
 # try to just compile lib instead of executable
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
@@ -50,8 +53,10 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 if(TOOLCHAIN STREQUAL "xt")
 	set(XCC 1)
 	set(CMAKE_C_COMPILER ${CROSS_COMPILE}xcc)
+	set(CMAKE_CXX_COMPILER ${CROSS_COMPILE}xc++)
 else()
 	set(CMAKE_C_COMPILER ${CROSS_COMPILE}gcc)
+	set(CMAKE_CXX_COMPILER ${CROSS_COMPILE}g++)
 endif()
 
 find_program(CMAKE_LD NAMES "${CROSS_COMPILE}ld" PATHS ENV PATH NO_DEFAULT_PATH)

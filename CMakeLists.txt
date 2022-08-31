@@ -36,7 +36,7 @@ endif()
 
 include(scripts/cmake/misc.cmake)
 
-project(SOF C ASM)
+project(SOF C CXX ASM)
 
 # intended to be used where PROJECT_* variables are not set
 # for example in standalone scripts like version.cmake
