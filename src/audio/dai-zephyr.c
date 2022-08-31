@@ -151,6 +151,10 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = is_blob ? DAI_INTEL_DMIC_NHLT : DAI_INTEL_DMIC;
 		cfg_params = is_blob ? spec_config : &sof_cfg->dmic;
 		break;
+	case SOF_DAI_INTEL_HDA:
+		cfg.type = is_blob ? DAI_INTEL_HDA_NHLT : DAI_INTEL_HDA;
+		cfg_params = is_blob ? spec_config : &sof_cfg->hda;
+		break;
 	default:
 		return -EINVAL;
 	}
