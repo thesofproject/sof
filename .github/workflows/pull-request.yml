@@ -153,7 +153,7 @@ jobs:
         # to COMMAS. Don't use a single big group so a single failure
         # does not block all other builds.
         platform: [imx8ulp,
-                   sue jsl tgl,
+                   tgl,
                    rn rmb,
                    mt8186 mt8195,
         ]
@@ -189,8 +189,8 @@ jobs:
         # xtensa-build-all.sh.  Pay attention to commas and whitespace.
         # The main reason for these groups is to avoid the matrix
         # swarming the Github web interface and burying other checks.
+        # See longer example above.
         platform: [imx8 imx8x imx8m,
-                   byt cht, bdw hsw, apl skl kbl, cnl icl,
         ]
 
     steps:
