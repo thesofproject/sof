@@ -131,6 +131,18 @@ jobs:
   gcc-build-default-platforms:
     runs-on: ubuntu-22.04
 
+    strategy:
+      fail-fast: false
+      matrix:
+        # Use groups to avoid spamming the web interface. Pay attention
+        # to COMMAS. Don't use a single big group so a single failure
+        # does not block all other builds.
+        platform: [tgl tgl-h,
+                   imx8 imx8x imx8m imx8ulp,
+                   rn rmb,
+                   mt8186 mt8195,
+        ]
+
     steps:
       - uses: actions/checkout@v2
         with: {fetch-depth: 5, submodules: recursive}
@@ -139,8 +151,11 @@ jobs:
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
       - name: xtensa-build-all.sh -a
-        run: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -a ||
-             ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -a -j 1
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh ${PLATFORM} ||
+          ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh ${PLATFORM} -j 1
 
 
   gcc-build-only:
@@ -153,7 +168,7 @@ jobs:
         # to COMMAS. Don't use a single big group so a single failure
         # does not block all other builds.
         platform: [imx8ulp,
-                   sue jsl tgl,
+                   tgl tgl-h,
                    rn rmb,
                    mt8186 mt8195,
         ]
@@ -190,7 +205,6 @@ jobs:
         # The main reason for these groups is to avoid the matrix
         # swarming the Github web interface and burying other checks.
         platform: [imx8 imx8x imx8m,
-                   byt cht, bdw hsw, apl skl kbl, cnl icl,
         ]
 
     steps:
