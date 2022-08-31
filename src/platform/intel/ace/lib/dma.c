@@ -211,6 +211,16 @@ int dmac_init(struct sof *sof)
 			z_dev = DEVICE_DT_GET(DT_NODELABEL(hda_host_out));
 #endif
 			break;
+		case DMA_LINK_IN_DMAC:
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_link_in), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(hda_link_in));
+#endif
+			break;
+		case DMA_LINK_OUT_DMAC:
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_link_out), okay)
+			z_dev = DEVICE_DT_GET(DT_NODELABEL(hda_link_out));
+#endif
+			break;
 		case DMA_GP_LP_DMAC0:
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
 			z_dev = DEVICE_DT_GET(DT_NODELABEL(lpgpdma0));
