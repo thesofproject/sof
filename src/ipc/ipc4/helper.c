@@ -18,7 +18,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 
 #include <sof/sof.h>
 #include <rtos/spinlock.h>

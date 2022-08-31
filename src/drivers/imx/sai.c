@@ -12,7 +12,7 @@
 #include <sof/drivers/sai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <errno.h>

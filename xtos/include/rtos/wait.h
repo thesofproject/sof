@@ -9,17 +9,19 @@
  * Simple wait for event completion and signaling with timeouts.
  */
 
-#ifndef __SOF_LIB_WAIT_H__
-#define __SOF_LIB_WAIT_H__
+#ifndef __XTOS_RTOS_WAIT_H__
+#define __XTOS_RTOS_WAIT_H__
 
+#include <stddef.h>
+#include <stdint.h>
+
+#if !CONFIG_LIBRARY
 #include <arch/lib/wait.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-
-#include <stddef.h>
-#include <stdint.h>
 
 extern struct tr_ctx wait_tr;
 
@@ -36,7 +38,6 @@ static inline void wait_for_interrupt(int level)
 	tr_dbg(&wait_tr, "WFX");
 }
 
-#if !CONFIG_LIBRARY
 /**
  * \brief Waits at least passed number of clocks.
  * \param[in] number_of_clks Minimum number of clocks to wait.
@@ -63,4 +64,4 @@ static inline void wait_delay_us(uint64_t us) {}
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us);
 
-#endif /* __SOF_LIB_WAIT_H__ */
+#endif /* __XTOS_RTOS_WAIT_H__ */

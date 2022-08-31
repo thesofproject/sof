@@ -9,7 +9,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>

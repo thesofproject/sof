@@ -11,6 +11,7 @@
 #define __SOF_DRIVERS_MU_H__
 
 #include <rtos/bit.h>
+#include <sof/lib/clk.h>
 #include <stdint.h>
 
 enum imx_mu_type {

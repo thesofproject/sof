@@ -8,7 +8,7 @@
 #ifndef __XTOS_RTOS_KERNEL_H__
 #define __XTOS_RTOS_KERNEL_H__
 
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 
 #include <stdint.h>
 

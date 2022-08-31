@@ -11,7 +11,7 @@
 #include <rtos/bit.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>

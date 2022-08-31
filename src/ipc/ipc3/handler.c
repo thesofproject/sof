@@ -19,6 +19,7 @@
 #include <sof/debug/gdb/gdb.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>

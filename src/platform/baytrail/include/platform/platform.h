@@ -20,7 +20,6 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <arch/lib/wait.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
@@ -90,13 +89,7 @@ static inline void platform_panic(uint32_t p)
  * May be power-optimized using platform specific capabilities.
  * @param level Interrupt level.
  */
-static inline void platform_wait_for_interrupt(int level)
-{
-	if (arch_interrupt_get_level())
-		panic(SOF_IPC_PANIC_WFI);
-
-	arch_wait_for_interrupt(level);
-}
+void platform_wait_for_interrupt(int level);
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \

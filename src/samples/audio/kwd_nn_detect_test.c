@@ -11,7 +11,7 @@
 #include <sof/samples/audio/kwd_nn/kwd_nn_process.h>
 #include <sof/samples/audio/detect_test.h>
 #include <sof/audio/component.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <stdint.h>
 
 static __aligned(64) uint8_t preprocessed_data[KWD_NN_CONFIG_PREPROCESSED_SIZE];

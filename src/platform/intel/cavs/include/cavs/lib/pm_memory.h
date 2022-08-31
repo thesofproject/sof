@@ -14,12 +14,13 @@
 #ifndef __CAVS_LIB_PM_MEMORY_H__
 #define __CAVS_LIB_PM_MEMORY_H__
 
+#include <sof/platform.h>
 #include <cavs/version.h>
 #include <rtos/bit.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/math/numbers.h>
 
 #include <stdbool.h>

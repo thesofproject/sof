@@ -9,6 +9,7 @@
 #define __SOF_DRIVERS_TIMER_H__
 
 #include <arch/drivers/timer.h>
+#include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
 #include <sof/platform.h>

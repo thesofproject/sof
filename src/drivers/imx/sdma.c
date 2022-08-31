@@ -12,7 +12,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <sof/lib/wait.h>
+#include <rtos/wait.h>
 #include <sof/platform.h>
 #include <errno.h>
 #include <stddef.h>
