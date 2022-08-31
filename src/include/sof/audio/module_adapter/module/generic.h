@@ -190,12 +190,12 @@ struct module_interface {
 	/**
 	 * Module specific reset procedure, called as part of module_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
-	 * but leave allocated memory intact.
+	 * and free all memory allocated during prepare().
 	 */
 	int (*reset)(struct processing_module *mod);
 	/**
 	 * Module specific free procedure, called as part of module_adapter component
-	 * free in .free(). This should free all memory allocated by module.
+	 * free in .free(). This should free all memory allocated during module initialization.
 	 */
 	int (*free)(struct processing_module *mod);
 };

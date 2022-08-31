@@ -96,22 +96,20 @@ passthrough_codec_process(struct processing_module *mod,
 
 static int passthrough_codec_reset(struct processing_module *mod)
 {
+	struct module_data *codec = &mod->priv;
+
 	comp_info(mod->dev, "passthrough_codec_reset()");
 
-	/* nothing to do */
+	rfree(codec->mpd.in_buff);
+	rfree(codec->mpd.out_buff);
 	return 0;
 }
 
 static int passthrough_codec_free(struct processing_module *mod)
 {
-	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = &mod->priv;
-
 	comp_info(dev, "passthrough_codec_free()");
 
-	rfree(codec->mpd.in_buff);
-	rfree(codec->mpd.out_buff);
-
+	/* Nothing to do */
 	return 0;
 }
 
