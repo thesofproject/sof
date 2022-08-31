@@ -520,7 +520,7 @@ static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint3
 	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
 	 * converted into ms value required by firmware
 	 */
-	cd->initial_ramp = Q_MULTSR_32X32(curve_duration,
+	cd->initial_ramp = Q_MULTSR_32X32((int64_t)curve_duration,
 					  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
 
 	if (!cd->initial_ramp) {
