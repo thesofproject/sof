@@ -653,7 +653,6 @@ cadence_codec_process(struct processing_module *mod,
 
 static int cadence_codec_reset(struct processing_module *mod)
 {
-	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
@@ -674,12 +673,6 @@ static int cadence_codec_reset(struct processing_module *mod)
 
 	rfree(cd->self);
 	cd->self = NULL;
-
-	ret = cadence_codec_prepare(mod);
-	if (ret) {
-		comp_err(dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
-			ret);
-	}
 
 	return ret;
 }
