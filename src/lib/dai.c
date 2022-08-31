@@ -142,6 +142,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_INTEL_ALH
 	DT_FOREACH_STATUS_OKAY(intel_alh_dai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_INTEL_HDA
+	DT_FOREACH_STATUS_OKAY(intel_hda_dai, GET_DEVICE_LIST)
+#endif
 };
 
 static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
@@ -166,18 +169,23 @@ static void dai_set_device_params(struct dai *d)
 	switch (d->type) {
 	case SOF_DAI_INTEL_SSP:
 		d->dma_dev = DMA_DEV_SSP;
+		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		d->dma_dev = DMA_DEV_DMIC;
+		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
 		break;
 	case SOF_DAI_INTEL_ALH:
 		d->dma_dev = DMA_DEV_ALH;
+		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		break;
+	case SOF_DAI_INTEL_HDA:
+		d->dma_dev = DMA_DEV_HDA;
+		d->dma_caps = DMA_CAP_HDA;
 		break;
 	default:
 		break;
 	}
-
-	d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
 }
 
 /* called from ipc/ipc3/handler.c and some platform.c files */
