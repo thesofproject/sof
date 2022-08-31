@@ -432,12 +432,18 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 		if (pm_policy_state_lock_is_active(state->state, state->substate_id))
 			continue;
 
+		if (state->state == PM_STATE_RUNTIME_IDLE) {
+			/* No D0i3 when secondary cores are active! */
+			if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID))
+				continue;
+		}
+
 		min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
 		exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
 
 		if (ticks == K_TICKS_FOREVER ||
 		    (ticks >= (min_residency + exit_latency))) {
-			/* TODO: PM_STATE_SUSPEND_TO_IDLE requires substates to be defined
+			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
 			 * to handle case with enabled PG andf disabled CG.
 			 */
 			return state;
@@ -451,7 +457,7 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 static inline void ace_pm_runtime_dis_dsp_pg(uint32_t index)
 {
 	ARG_UNUSED(index);
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	/* Disable power gating when preventing */
 	DFDSPBRCP.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
 		DFDSPBRCP_BCTL_WAITIPCG | DFDSPBRCP_BCTL_WAITIPPG;
@@ -537,7 +543,7 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		cavs_pm_runtime_core_dis_hp_clk(index);
 		break;
 	case PM_RUNTIME_DSP:
-		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 		break;
 	default:
 		break;
