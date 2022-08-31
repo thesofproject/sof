@@ -5,14 +5,23 @@
 # stop on most errors
 set -e
 
-# Platforms with a toolchain available in the latest Docker image and
-# built by the -a option.
-DEFAULT_PLATFORMS=(  byt cht bdw hsw tgl tgl-h apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp rn rmb mt8186 mt8195 )
+# Platforms built and tested by default in CI using the `-a` option.
+# They must have a toolchain available in the latest Docker image.
+DEFAULT_PLATFORMS=(
+    tgl tgl-h
+    imx8 imx8x imx8m imx8ulp
+    rn rmb
+    mt8186 mt8195
+)
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
+
+# Not actually "supported" in the main branch anymore (go to stable-v2.3
+# instead) but kept here for historical reasons and experimentation
+# convenience.
+SUPPORTED_PLATFORMS+=( byt hsw cht bdw apl skl kbl cnl sue icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -58,7 +67,7 @@ https://thesofproject.github.io/latest/developer_guides/firmware/cmake.html
 usage: $0 [options] platform(s)
 
        -r Build rom if available (gcc only)
-       -a Build all platforms which have a toolchain in the latest Docker image
+       -a Build all default platforms fully supported by the latest Docker image and CI
        -u Force CONFIG_MULTICORE=n
        -d Enable debug build
        -c Interactive menuconfig
@@ -102,7 +111,7 @@ myXtensa/
 
 $ XTENSA_TOOLS_ROOT=/path/to/myXtensa $0 ...
 
-Supported platforms ${SUPPORTED_PLATFORMS[*]}
+Known platforms: ${SUPPORTED_PLATFORMS[*]}
 
 EOF
 }
@@ -155,7 +164,7 @@ for arg in "$@"; do
 	done
 	if [ "$platform" == "none" ]; then
 		echo "Error: Unknown platform specified: $arg"
-		echo "Supported platforms are: ${SUPPORTED_PLATFORMS[*]}"
+		echo "Known platforms are: ${SUPPORTED_PLATFORMS[*]}"
 		exit 1
 	fi
 done
@@ -163,7 +172,7 @@ done
 # check target platform(s) have been passed in
 if [ ${#PLATFORMS[@]} -eq 0 ];
 then
-	echo "Error: No platforms specified. Supported are: " \
+	echo "Error: No platform specified. Known platforms: " \
 		"${SUPPORTED_PLATFORMS[*]}"
 	print_usage
 	exit 1
