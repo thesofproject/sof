@@ -205,6 +205,7 @@ struct ipc_cmd_hdr;
 #define SOF_IPC_GLB_TEST			SOF_GLB_TYPE(0xBU)
 #define SOF_IPC_GLB_PROBE			SOF_GLB_TYPE(0xCU)
 #define SOF_IPC_GLB_DEBUG			SOF_GLB_TYPE(0xDU)
+#define SOF_IPC_GLB_INPUT_EVENT			SOF_GLB_TYPE(0xFU)
 
 /** @} */
 
@@ -318,6 +319,14 @@ struct ipc_cmd_hdr;
  */
 
 #define SOF_IPC_TEST_IPC_FLOOD			SOF_CMD_TYPE(0x001)
+
+/** @} */
+
+/** \name DSP Command: Input event
+ *  @{
+ */
+
+#define SOF_IPC_INPUT_EVENT			SOF_CMD_TYPE(0x001)
 
 /** @} */
 
