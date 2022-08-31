@@ -272,6 +272,128 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	return 0;
 }
 
+int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
+			    bool first_block,
+			    bool last_block,
+			    uint32_t data_offset,
+			    char *data)
+{
+	int ret;
+	int valid_data_size;
+
+	if (!blob_handler) {
+		comp_err(blob_handler->dev,
+			 "ipc4_comp_data_blob_set(): blob_handler is NULL!");
+		return -EINVAL;
+	}
+
+	comp_dbg(blob_handler->dev,
+		 "ipc4_comp_data_blob_set(): data_offset = %d",
+		 data_offset);
+
+	/* in case when the current package is the first, we should allocate
+	 * memory for whole model data
+	 */
+	if (first_block) {
+		if (!data_offset)
+			return 0;
+
+		if (blob_handler->single_blob) {
+			if (data_offset != blob_handler->data_size) {
+				blob_handler->free(blob_handler->data);
+				blob_handler->data = NULL;
+			} else {
+				blob_handler->data_new = blob_handler->data;
+				blob_handler->data = NULL;
+			}
+		}
+
+		if (!blob_handler->data_new) {
+			blob_handler->data_new =
+				blob_handler->alloc(data_offset);
+
+			if (!blob_handler->data_new) {
+				comp_err(blob_handler->dev,
+					 "ipc4_comp_data_blob_set(): blob_handler allocation failed!");
+				return -ENOMEM;
+			}
+		}
+
+		blob_handler->new_data_size = data_offset;
+		blob_handler->data_ready = false;
+		blob_handler->data_pos = 0;
+
+		valid_data_size = last_block ? data_offset : MAILBOX_DSPBOX_SIZE;
+
+		ret = memcpy_s((char *)blob_handler->data_new,
+			       valid_data_size, data, valid_data_size);
+		assert(!ret);
+
+		blob_handler->data_pos += valid_data_size;
+	} else {
+		/* return an error in case when we do not have allocated memory for
+		 * model data
+		 */
+		if (!blob_handler->data_new) {
+			comp_err(blob_handler->dev,
+				 "ipc4_comp_data_blob_set(): Buffer not allocated!");
+			return -ENOMEM;
+		}
+
+		if (blob_handler->data_pos != data_offset) {
+			comp_err(blob_handler->dev,
+				 "ipc4_comp_data_blob_set(): Wrong data offset received!");
+			return -EINVAL;
+		}
+
+		valid_data_size = MAILBOX_DSPBOX_SIZE;
+
+		if (last_block)
+			valid_data_size = blob_handler->new_data_size - data_offset;
+
+		ret = memcpy_s((char *)blob_handler->data_new + data_offset,
+			       valid_data_size, data, valid_data_size);
+		assert(!ret);
+
+		blob_handler->data_pos += valid_data_size;
+	}
+
+	if (last_block) {
+		comp_dbg(blob_handler->dev,
+			 "ipc4_comp_data_blob_set(): final package received");
+
+		/* If component state is READY we can omit old
+		 * configuration immediately. When in playback/capture
+		 * the new configuration presence is checked in copy().
+		 */
+		if (blob_handler->dev->state ==  COMP_STATE_READY) {
+			blob_handler->free(blob_handler->data);
+			blob_handler->data = NULL;
+		}
+
+		/* If there is no existing configuration the received
+		 * can be set to current immediately. It will be
+		 * applied in prepare() when streaming starts.
+		 */
+		if (!blob_handler->data) {
+			blob_handler->data = blob_handler->data_new;
+			blob_handler->data_size = blob_handler->new_data_size;
+
+			blob_handler->data_new = NULL;
+
+			/* The new configuration has been applied */
+			blob_handler->data_ready = false;
+			blob_handler->new_data_size = 0;
+			blob_handler->data_pos = 0;
+		} else {
+			/* The new configuration is ready to be applied */
+			blob_handler->data_ready = true;
+		}
+	}
+
+	return 0;
+}
+
 int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			   struct sof_ipc_ctrl_data *cdata)
 {
