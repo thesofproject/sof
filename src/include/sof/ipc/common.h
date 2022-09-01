@@ -65,6 +65,9 @@ struct ipc {
 	/* processing task */
 	struct task ipc_task;
 
+	/* task for flushing outbound messages */
+	struct task ipc_tx_task;
+
 	void *private;
 };
 

@@ -49,16 +49,10 @@ static uint64_t task_main_deadline(void *data)
 
 enum task_state task_main_primary_core(void *data)
 {
-	struct ipc *ipc = ipc_get();
-
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
-
-		if (!ipc->pm_prepare_D3)
-			ipc_send_queued_msg();
-
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
