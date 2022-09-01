@@ -946,16 +946,14 @@ static int src_check_buffer_sizes(struct comp_data *cd,
 
 	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
 	if (source_stream->size < n) {
-		comp_cl_err(&comp_src, "Source size %d is less than required %d",
-			source_stream->size, n);
-		return -ENOBUFS;
+		comp_cl_warn(&comp_src, "Source size %d is less than required %d",
+			     source_stream->size, n);
 	}
 
 	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
 	if (sink_stream->size < n) {
-		comp_cl_err(&comp_src, "Sink size %d is less than required %d",
-			sink_stream->size, n);
-		return -ENOBUFS;
+		comp_cl_warn(&comp_src, "Sink size %d is less than required %d",
+			     sink_stream->size, n);
 	}
 
 	return 0;
