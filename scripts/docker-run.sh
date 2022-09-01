@@ -27,7 +27,7 @@ fi
 
 # Not fatal, just a warning to allow other "creative" solutions.
 # TODO: fix this with 'adduser' like in zephyr/docker-build.sh
-test "$(id -n)" = 1001 ||
+test "$(id -u)" = 1001 ||
     >&2 printf "Warning: this script should be run as user ID 1001 to match the container\n"
 
 set -x
