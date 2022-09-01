@@ -36,6 +36,15 @@ DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
 
 /* No private data for IPC */
 
+
+#if CONFIG_IPC_MAJOR_4
+#if CAVS_VERSION < CAVS_VERSION_1_8
+#error "Invalid configuration for IPC4."
+#endif
+#define IPC4_EARLY_ACK 1   /* ack with DONE immediately */
+#endif
+
+
 #if CONFIG_DEBUG_IPC_COUNTERS
 static inline void increment_ipc_received_counter(void)
 {
@@ -185,6 +194,15 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	hdr = mailbox_validate();
 #endif
 
+#ifdef IPC4_EARLY_ACK
+	/*
+	 * notify host that we have received the message and
+	 * do this before we send the response
+	 */
+	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
+	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
+#endif
+
 	/* perform command */
 	ipc_cmd(hdr);
 
@@ -204,8 +222,10 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
 #else
+#ifndef IPC4_EARLY_ACK
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
+#endif
 #endif
 
 #if CONFIG_DEBUG_IPC_COUNTERS
