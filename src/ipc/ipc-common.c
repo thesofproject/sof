@@ -14,6 +14,7 @@
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/ipc/schedule.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
@@ -168,6 +169,9 @@ void ipc_send_queued_msg(void)
 
 	key = k_spin_lock(&ipc->lock);
 
+	if (ipc->pm_prepare_D3)
+		goto out;
+
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->msg_list))
 		goto out;
@@ -186,6 +190,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
+	bool resched = false;
 	int ret;
 
 	key = k_spin_lock(&ipc->lock);
@@ -209,15 +214,32 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 			list_item_prepend(&msg->list, &ipc->msg_list);
 		else
 			list_item_append(&msg->list, &ipc->msg_list);
+
+		resched = true;
 	}
 
 out:
 	k_spin_unlock(&ipc->lock, key);
+
+	if (resched)
+		schedule_task(&ipc->ipc_tx_task, IPC_PERIOD_USEC, IPC_PERIOD_USEC);
 }
 
 void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
+}
+
+static enum task_state ipc_tx_task_run(void *data)
+{
+	struct ipc *ipc = data;
+
+	ipc_send_queued_msg();
+
+	if (!list_is_empty(&ipc->msg_list))
+		return SOF_TASK_STATE_RESCHEDULE;
+
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 int ipc_init(struct sof *sof)
@@ -232,6 +254,10 @@ int ipc_init(struct sof *sof)
 	k_spinlock_init(&sof->ipc->lock);
 	list_init(&sof->ipc->msg_list);
 	list_init(&sof->ipc->comp_list);
+
+	schedule_task_init_ll(&sof->ipc->ipc_tx_task, SOF_UUID(ipc_uuid),
+			      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_MED,
+			      ipc_tx_task_run, sof->ipc, 0, 0);
 
 	return platform_ipc_init(sof->ipc);
 }
