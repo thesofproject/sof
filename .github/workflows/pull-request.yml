@@ -143,42 +143,6 @@ jobs:
              ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -a -j 1
 
 
-  gcc-build-only:
-    runs-on: ubuntu-20.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        # Use groups to avoid spamming the web interface. Pay attention
-        # to COMMAS. Don't use a single big group so a single failure
-        # does not block all other builds.
-        platform: [imx8ulp,
-                   tgl,
-                   rn rmb,
-                   mt8186 mt8195,
-        ]
-
-    steps:
-
-      - uses: actions/checkout@v2
-        with: {fetch-depth: 0, submodules: recursive}
-
-      - name: docker
-        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
-
-      - name: xtensa-build-all.sh platforms
-        env:
-          PLATFORM: ${{ matrix.platform }}
-        run: ./scripts/docker-run.sh
-          ./scripts/xtensa-build-all.sh -r ${PLATFORM}
-
-  # Warning: there is a fair amount of duplication between 'build-only'
-  # and 'qemu-boot' because github does not support YAML anchors as of Jan
-  # 2021.  Defining our new actions would be overkill. Another popular
-  # option is to generate this file from a source with YAML anchors
-  # before committing it; also deemed overkill for the current amount of
-  # duplication.
-
   qemu-boot-test:
     runs-on: ubuntu-20.04
 
