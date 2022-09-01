@@ -51,8 +51,6 @@ jobs:
       # Note: env variables can be passed to the container with
       # -e https_proxy=...
       - name: build
-        run: docker run -v "$(pwd)/workspace":/workspace
-             --workdir /workspace
-             ghcr.io/zephyrproject-rtos/zephyr-build:latest
+        run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
