@@ -24,7 +24,7 @@ main()
 
     set -x
 
-    docker run -v "$(west topdir)":/zep_workspace \
+    docker run -i -v "$(west topdir)":/zep_workspace \
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
            ghcr.io/zephyrproject-rtos/zephyr-build:latest \
