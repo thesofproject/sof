@@ -54,9 +54,10 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 		if (!msg_pool_elem)
 			return NULL;
 		msg = ipc_msg_init(header, SRAM_OUTBOX_SIZE);
-		if (!msg)
+		if (!msg) {
 			rfree(msg_pool_elem);
 			return NULL;
+		}
 		msg_pool_elem->msg = msg;
 		ext_lib->lib_notif_count++;
 		list_init(&msg_pool_elem->list);
