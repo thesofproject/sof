@@ -311,10 +311,11 @@ then
 		$shell_name
 
 	#execute alsatplg to create topology binary
+	# $TEST_STRINGS is a very long line of comma-delimited filenames.
 	printf '%s generating %s/*.tplg files with alsatplg...\n' \
 		"$0" "$BUILD_OUTPUT"
 	TEST_STRINGS=${TEST_STRINGS%?}
 	echo $TEST_STRINGS | tr '\n' ',' |
-		xargs ${VERBOSE:+-t} -d ',' -P${NO_PROCESSORS} -n1 -I string \
+		xargs ${VERBOSE:+-t} -d ',' -P${NO_PROCESSORS} -I string \
 		    alsatplg ${VERBOSE:+-v 1} -c string".conf" -o string".tplg"
 fi
