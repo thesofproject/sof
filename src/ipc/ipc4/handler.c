@@ -986,6 +986,7 @@ void ipc_send_buffer_status_notify(void)
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 	msg_notify.extension = 0;
 	msg_notify.tx_size = 0;
+	list_init(&msg_notify.list);
 
 	ipc_msg_send(&msg_notify, NULL, true);
 }
@@ -1014,6 +1015,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	msg_reply.tx_size = 0;
 	msg_reply.header = in->primary.dat;
 	msg_reply.extension = in->extension.dat;
+	list_init(&msg_reply.list);
 
 	target = in->primary.r.msg_tgt;
 
