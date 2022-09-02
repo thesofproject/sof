@@ -39,10 +39,7 @@ SOF2="$SOF_PARENT"/sof-bind-mount-DO-NOT-DELETE
 # considerably, replace "sof" with something of the same length:
 # SOF2="$SOF_PARENT"/sog
 
-
-# Test with one of each: unsigned, CSS signature v1.5, v1.8 and v2.5
-# This also provides some C code coverage diversity.
-PLATFS=(byt skl apl tgl)
+PLATFS=(tgl)
 
 # diffoscope is great but it has hundreds of dependencies, too long to
 # install for CI so we don't use it here. This is just an alias
