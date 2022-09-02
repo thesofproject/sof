@@ -57,3 +57,7 @@ endif()
 if(CONFIG_MATH_AUDITORY)
 	 add_subdirectory(auditory)
 endif()
+
+if(CONFIG_MATH_DCT)
+	 add_local_sources(sof dct.c)
+endif()
