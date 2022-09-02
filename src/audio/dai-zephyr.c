@@ -200,7 +200,7 @@ int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
 
-	return props->fifo_address;
+	return props->fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
