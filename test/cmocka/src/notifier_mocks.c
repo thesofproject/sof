@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/common.h>

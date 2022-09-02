@@ -11,7 +11,7 @@
 #include <math.h>
 #include <sof/sof.h>
 #include <sof/schedule/task.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/notifier.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>

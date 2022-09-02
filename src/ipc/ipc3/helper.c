@@ -14,7 +14,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>

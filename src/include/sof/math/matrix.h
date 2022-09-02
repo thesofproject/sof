@@ -10,7 +10,7 @@
 #ifndef __SOF_MATH_MATRIX_H__
 #define __SOF_MATH_MATRIX_H__
 
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <ipc/topology.h>
 #include <stdint.h>
 #include <string.h>

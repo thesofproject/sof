@@ -7,7 +7,7 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/drivers/pmc.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/shim.h>
 #include <rtos/wait.h>
 #include <sof/platform.h>

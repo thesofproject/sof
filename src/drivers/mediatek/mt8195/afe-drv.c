@@ -7,7 +7,7 @@
 
 #include <sof/common.h>
 #include <sof/lib/io.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <sof/lib/uuid.h>

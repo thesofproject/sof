@@ -11,7 +11,7 @@
 #include <platform/chip_offset_byte.h>
 #include <sof/drivers/acp_dai_dma.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
 #include <sof/lib/notifier.h>

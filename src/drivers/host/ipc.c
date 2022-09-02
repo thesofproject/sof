@@ -7,7 +7,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/ipc/driver.h>
 #include <stdlib.h>
 

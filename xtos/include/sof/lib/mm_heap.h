@@ -10,7 +10,7 @@
 #define __SOF_LIB_MM_HEAP_H__
 
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>

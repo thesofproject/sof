@@ -19,7 +19,7 @@
 #include <platform/lib/dma.h>
 #include <rtos/atomic.h>
 #include <rtos/bit.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>

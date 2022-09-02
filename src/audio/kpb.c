@@ -23,7 +23,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

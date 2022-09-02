@@ -6,7 +6,7 @@
 
 #include <ipc/topology.h>
 #include <sof/audio/tdfb/tdfb_comp.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/math/iir_df2t.h>
 #include <sof/math/trig.h>
 #include <sof/math/sqrt.h>

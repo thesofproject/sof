@@ -11,7 +11,7 @@
 #include <sof/drivers/mn.h>
 #include <sof/drivers/timestamp.h>
 #include <sof/drivers/ssp.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

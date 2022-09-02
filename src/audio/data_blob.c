@@ -6,7 +6,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/sof.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <ipc/topology.h>
 #include <ipc/control.h>
 #include <sof/audio/component.h>

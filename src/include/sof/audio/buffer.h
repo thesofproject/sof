@@ -13,7 +13,7 @@
 #include <sof/math/numbers.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>

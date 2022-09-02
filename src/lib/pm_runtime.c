@@ -11,7 +11,7 @@
  */
 
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>

@@ -7,7 +7,7 @@
 #include <rtos/atomic.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>

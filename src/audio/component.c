@@ -9,7 +9,7 @@
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>

@@ -9,7 +9,7 @@
 #include <sof/drivers/edma.h>
 #include <sof/drivers/esai.h>
 #include <rtos/interrupt.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/uuid.h>

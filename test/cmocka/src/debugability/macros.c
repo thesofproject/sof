@@ -4,7 +4,7 @@
 //
 // Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
 
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 
 #include <stdio.h>
 #include <stdarg.h>

@@ -25,7 +25,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <sof/lib/agent.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/mm_heap.h>

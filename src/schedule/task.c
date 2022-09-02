@@ -12,7 +12,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>

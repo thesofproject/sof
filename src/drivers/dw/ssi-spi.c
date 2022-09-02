@@ -10,7 +10,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <sof/drivers/spi.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/dma.h>

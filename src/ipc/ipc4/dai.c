@@ -11,7 +11,7 @@
 #include <sof/common.h>
 #include <sof/drivers/alh.h>
 #include <sof/drivers/idc.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>

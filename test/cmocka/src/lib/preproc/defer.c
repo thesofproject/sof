@@ -6,7 +6,7 @@
 
 #include <test_simple_macro.h>
 
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
