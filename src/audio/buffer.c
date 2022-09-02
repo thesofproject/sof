@@ -8,7 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

@@ -11,7 +11,7 @@
 #include <sof/drivers/hda-dma.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>

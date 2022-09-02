@@ -6,7 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/ipc/driver.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>

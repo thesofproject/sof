@@ -22,7 +22,7 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/list.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>

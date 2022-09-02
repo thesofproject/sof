@@ -5,7 +5,7 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 #include <sof/audio/format.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/math/auditory.h>
 #include <sof/math/decibels.h>
 #include <sof/math/fft.h>

@@ -8,7 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/drivers/afe-drv.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>

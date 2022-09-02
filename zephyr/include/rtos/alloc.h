@@ -1,20 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
-/**
- * \file xtos/include/sof/lib/alloc.h
- * \brief Memory Allocation API definition
- * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
- * \author Keyon Jie <yang.jie@linux.intel.com>
- */
-
-#ifndef __SOF_LIB_ALLOC_H__
-#define __SOF_LIB_ALLOC_H__
+#ifndef __ZEPHYR_RTOS_ALLOC_H__
+#define __ZEPHYR_RTOS_ALLOC_H__
 
 #include <rtos/bit.h>
 #include <rtos/string.h>
@@ -145,28 +135,9 @@ static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
  */
 void rfree(void *ptr);
 
-/**
- * Allocates memory block from the system heap reserved for the specified core.
- * @param core Core id.
- * @param bytes Size in bytes.
- */
-void *rzalloc_core_sys(int core, size_t bytes);
-
-/**
- * Calculates length of the null-terminated string.
- * @param s String.
- * @return Length of the string in bytes.
- */
-int rstrlen(const char *s);
-
-/**
- * Compares two strings, see man strcmp.
- * @param s1 First string to compare.
- * @param s2 Second string to compare.
- * @return See man strcmp.
- */
-int rstrcmp(const char *s1, const char *s2);
+/* TODO: remove - debug only - only needed for linking */
+static inline void heap_trace_all(int force) {}
 
 /** @}*/
 
-#endif /* __SOF_LIB_ALLOC_H__ */
+#endif /* __ZEPHYR_RTOS_ALLOC_H__ */

@@ -15,7 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>

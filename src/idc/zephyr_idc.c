@@ -25,7 +25,7 @@
 #include <sof/drivers/idc.h>
 #include <sof/init.h>
 #include <sof/ipc/common.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <rtos/spinlock.h>
 #include <ipc/topology.h>
 

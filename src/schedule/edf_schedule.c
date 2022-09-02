@@ -9,7 +9,7 @@
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>

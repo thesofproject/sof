@@ -12,7 +12,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>

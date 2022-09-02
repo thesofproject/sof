@@ -11,7 +11,7 @@
 #include <sof/drivers/afe-dai.h>
 #include <sof/drivers/afe-memif.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
 #include <sof/lib/notifier.h>

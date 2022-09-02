@@ -6,7 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/debug/panic.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>

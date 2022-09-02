@@ -8,7 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/math/fft.h>
 
 struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)

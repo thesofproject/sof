@@ -28,7 +28,7 @@
 #include <rtos/atomic.h>
 #include <sof/audio/component.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>

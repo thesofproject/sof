@@ -6,7 +6,7 @@
 
 /* Generic scheduler */
 
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/schedule/schedule.h>

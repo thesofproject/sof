@@ -6,7 +6,7 @@
  */
 
 #include <sof/init.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/drivers/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
@@ -264,10 +264,6 @@ void rfree(void *ptr)
 	heap_free(&sof_heap, ptr);
 }
 
-/* debug only - only needed for linking */
-void heap_trace_all(int force)
-{
-}
 
 /*
  * Interrupts.

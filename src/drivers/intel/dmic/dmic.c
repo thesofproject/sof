@@ -13,7 +13,7 @@
 #include <sof/drivers/dmic.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/timestamp.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

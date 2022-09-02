@@ -11,7 +11,7 @@
  */
 
 #include <ipc/topology.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/notifier.h>
 
 static struct notify *host_notify;

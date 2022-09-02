@@ -7,7 +7,7 @@
 #include <sof/audio/component.h>
 #include <sof/drivers/sdma.h>
 #include <rtos/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
 #include <sof/lib/notifier.h>

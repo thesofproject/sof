@@ -8,7 +8,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <ipc/topology.h>
 

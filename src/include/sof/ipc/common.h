@@ -10,7 +10,7 @@
 #define __SOF_IPC_COMMON_H__
 
 #include <rtos/bit.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <rtos/spinlock.h>

@@ -10,7 +10,7 @@
 #include <sof/probe/probe.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>

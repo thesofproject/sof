@@ -11,7 +11,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <stdint.h>
 #include <stdlib.h>
 

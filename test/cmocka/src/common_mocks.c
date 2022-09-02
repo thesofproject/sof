@@ -6,7 +6,7 @@
 // Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
 
 #include <errno.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <rtos/timer.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/ipc/topology.h>

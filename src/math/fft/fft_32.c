@@ -7,7 +7,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/math/fft.h>
 #include <sof/audio/coefficients/fft/twiddle_32.h>
 

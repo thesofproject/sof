@@ -18,7 +18,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/debug/panic.h>
 #include <sof/math/numbers.h>
-#include <sof/lib/alloc.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cache.h>
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
