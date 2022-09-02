@@ -10,7 +10,7 @@
 
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <ipc/trace.h>
 
 #include <xtensa/xtruntime.h>

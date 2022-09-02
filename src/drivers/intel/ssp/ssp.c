@@ -12,7 +12,7 @@
 #include <sof/drivers/timestamp.h>
 #include <sof/drivers/ssp.h>
 #include <rtos/alloc.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>

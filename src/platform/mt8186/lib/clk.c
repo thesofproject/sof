@@ -7,7 +7,7 @@
 
 #include <platform/drivers/mt_reg_base.h>
 #include <sof/common.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>

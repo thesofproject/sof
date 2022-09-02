@@ -10,7 +10,7 @@
 #ifndef __CAVS_DRIVERS_INTERRUPT_H__
 #define __CAVS_DRIVERS_INTERRUPT_H__
 
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 
 extern const char irq_name_level2[];
 extern const char irq_name_level3[];

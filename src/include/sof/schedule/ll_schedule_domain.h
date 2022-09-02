@@ -12,7 +12,7 @@
 #include <sof/debug/panic.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <rtos/spinlock.h>

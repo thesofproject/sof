@@ -16,7 +16,7 @@
 #include <rtos/timer.h>
 #include <sof/lib/agent.h>
 #include <rtos/alloc.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/debug/panic.h>

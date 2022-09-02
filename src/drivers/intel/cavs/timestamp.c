@@ -7,7 +7,7 @@
 #include <sof/drivers/dmic.h>
 #include <sof/drivers/ssp.h>
 #include <sof/drivers/timestamp.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/io.h>
 #include <ipc/dai.h>

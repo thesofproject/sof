@@ -12,7 +12,7 @@
 #define __PLATFORM_PLATFORM_H__
 
 #include <rtos/wait.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/mailbox.h>
 #include <stdint.h>
 

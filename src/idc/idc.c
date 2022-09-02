@@ -13,7 +13,7 @@
 #include <sof/ipc/schedule.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

@@ -17,7 +17,7 @@
 #include <sof/schedule/schedule.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/component_ext.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <arch/lib/cpu.h>

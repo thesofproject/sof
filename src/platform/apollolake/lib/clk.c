@@ -7,7 +7,7 @@
 
 #include <sof/common.h>
 #include <sof/drivers/ssp.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 
 static const struct freq_table platform_cpu_freq[] = {
 	{ 100000000, 100000 },

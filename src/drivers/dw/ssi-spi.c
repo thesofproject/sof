@@ -12,7 +12,7 @@
 #include <sof/drivers/spi.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cache.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
 #include <sof/lib/mailbox.h>
