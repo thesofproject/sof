@@ -154,7 +154,6 @@ config MATH_AUDITORY
 	  Hz, initialize a Mel filterbank and apply Mel filterbank to convert
 	  a linear power spectrum into an auditory power spectrum.
 
-
 menu "Supported Mel filterbank word lengths"
 	visible if MATH_AUDITORY
 
@@ -177,5 +176,17 @@ config MATH_32BIT_MEL_FILTERBANK
 	  logarithmic Mel spectrum.
 
 endmenu
+
+config MATH_DCT
+	bool "DCT transform library"
+	default n
+	select MATH_MATRIX
+	select CORDIC_FIXED
+	help
+	  Select this to build library for discrete cosine transform
+	  (DCT). The library currently supports initialization of a
+	  matrix for ortho normalized DCT type II. The actual DCT
+	  transform for data is done as matrix multiply with the
+	  returned DCT matrix.
 
 endmenu
