@@ -8,7 +8,7 @@
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/dw-dma.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/drivers/pmc.h>
 #include <rtos/timer.h>

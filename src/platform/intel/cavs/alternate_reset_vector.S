@@ -6,7 +6,7 @@
 
 #include <rtos/bit.h>
 #include <sof/common.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #if CONFIG_XT_BOOT_LOADER && !CONFIG_VM_ROM
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>

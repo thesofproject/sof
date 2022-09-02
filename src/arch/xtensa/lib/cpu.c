@@ -12,7 +12,7 @@
 
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>

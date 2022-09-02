@@ -8,7 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/agent.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>

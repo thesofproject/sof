@@ -10,7 +10,7 @@
 #include <xtensa/core-macros.h>
 #include <platform/chip_offset_byte.h>
 #include <platform/chip_registers.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/schedule.h>

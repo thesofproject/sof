@@ -8,7 +8,7 @@
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/edma.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <rtos/timer.h>
 #include <sof/fw-ready-metadata.h>

@@ -7,7 +7,7 @@
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/component.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/notifier.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>

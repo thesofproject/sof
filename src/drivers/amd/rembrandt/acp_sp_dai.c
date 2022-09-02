@@ -7,7 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/drivers/acp_dai_dma.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

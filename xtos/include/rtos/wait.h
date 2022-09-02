@@ -17,7 +17,7 @@
 
 #if !CONFIG_LIBRARY
 #include <arch/lib/wait.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>

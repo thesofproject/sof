@@ -3,8 +3,8 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
-#ifndef __SOF_DRIVERS_TIMER1_H__
-#define __SOF_DRIVERS_TIMER1_H__
+#ifndef __ZEPHYR_RTOS_TIMER_H__
+#define __ZEPHYR_RTOS_TIMER_H__
 
 #include <stdint.h>
 #include <sof/lib/cpu.h>
@@ -37,4 +37,4 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock);
 
-#endif /* __SOF_DRIVERS_TIMER_H1__ */
+#endif /* __ZEPHYR_RTOS_TIMER_H__ */

@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

@@ -10,7 +10,7 @@
 #include <sof/common.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/hda-dma.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>

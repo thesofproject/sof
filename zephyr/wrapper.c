@@ -8,7 +8,7 @@
 #include <sof/init.h>
 #include <sof/lib/alloc.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
@@ -279,6 +279,8 @@ void heap_trace_all(int force)
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
 
+/* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
+#if defined(CONFIG_IMX)
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
 #ifdef CONFIG_DYNAMIC_INTERRUPTS
@@ -291,7 +293,6 @@ int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 #endif
 }
 
-#if !CONFIG_LIBRARY
 /* unregister an IRQ handler - matches on IRQ number and data ptr */
 void interrupt_unregister(uint32_t irq, const void *arg)
 {
@@ -325,24 +326,6 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
  * i.MX uses the IRQ_STEER
  */
 #if !CONFIG_IMX
-/*
- * CAVS IRQs are multilevel whereas BYT and BDW are DSP level only.
- */
-int interrupt_get_irq(unsigned int irq, const char *cascade)
-{
-#if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
-	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
-	CONFIG_LIBRARY
-	return irq;
-#else
-	if (cascade == irq_name_level2)
-		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
-	if (cascade == irq_name_level5)
-		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
-
-	return SOC_AGGREGATE_IRQ(0, irq);
-#endif
-}
 
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
@@ -352,11 +335,6 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
 	/* TODO: how do we unmask on other cores with Zephyr APIs */
-}
-
-void platform_interrupt_init(void)
-{
-	/* handled by zephyr - needed for linkage */
 }
 
 void platform_interrupt_set(uint32_t irq)

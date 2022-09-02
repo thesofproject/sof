@@ -10,7 +10,7 @@
 #include <cavs/mem_window.h>
 #include <sof/common.h>
 #include <sof/platform.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>

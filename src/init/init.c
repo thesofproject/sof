@@ -10,7 +10,7 @@
  */
 
 #include <sof/debug/panic.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>

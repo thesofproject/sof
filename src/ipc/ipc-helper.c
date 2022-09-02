@@ -10,7 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>

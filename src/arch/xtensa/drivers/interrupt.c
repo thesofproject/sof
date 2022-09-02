@@ -4,7 +4,7 @@
 //
 // Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 
 #if CONFIG_WAKEUP_HOOK
 void arch_interrupt_on_wakeup(void)

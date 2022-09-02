@@ -8,7 +8,7 @@
 
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/drivers/acp_dai_dma.h>
 #include <sof/ipc/driver.h>
 #include <rtos/timer.h>

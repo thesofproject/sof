@@ -8,7 +8,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
