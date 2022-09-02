@@ -704,10 +704,15 @@ static int mixin_copy(struct comp_dev *dev)
 		mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
 		src_info = find_mixout_source_info(mixed_data_info, dev);
 		if (!src_info) {
-			comp_err(dev, "No source info");
+			/*
+			 * This can happen if the mixout pipeline has already
+			 * been stopped and its reset has cleared its source
+			 * info array.
+			 */
+			comp_dbg(dev, "No source info");
 			mixed_data_info_release(mixed_data_info);
 			buffer_release(source_c);
-			return -EINVAL;
+			return 0;
 		}
 
 		sink_c = buffer_acquire(sink);
