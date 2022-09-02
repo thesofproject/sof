@@ -10,7 +10,7 @@
 #ifndef __ARCH_DEBUG_PANIC_H__
 #define __ARCH_DEBUG_PANIC_H__
 
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <ipc/trace.h>
 #include <ipc/xtensa.h>
 #include <xtensa/config/core-isa.h>

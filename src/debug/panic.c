@@ -8,7 +8,7 @@
 #include <sof/debug/debug.h>
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <rtos/string.h>

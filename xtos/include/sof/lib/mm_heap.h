@@ -11,7 +11,7 @@
 
 #include <sof/common.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <rtos/spinlock.h>

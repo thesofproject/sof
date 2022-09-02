@@ -20,7 +20,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 
 /** \brief IDC send blocking flag. */
 #define IDC_BLOCKING		0

@@ -26,7 +26,7 @@
 #include <sof/ipc/schedule.h>
 #include <sof/lib/agent.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/pm_runtime.h>

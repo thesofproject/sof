@@ -11,7 +11,7 @@
 #define __CAVS_LIB_MEMORY_H__
 
 #include <sof/common.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <sof/lib/cpu.h>
 #endif

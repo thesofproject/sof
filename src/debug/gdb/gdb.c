@@ -12,7 +12,7 @@
 
 #include <sof/debug/gdb/gdb.h>
 #include <sof/debug/gdb/ringbuffer.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <string.h>
 
 /* local functions */

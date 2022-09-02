@@ -14,7 +14,7 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/coherent.h>
