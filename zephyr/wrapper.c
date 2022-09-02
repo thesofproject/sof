@@ -174,8 +174,11 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		ptr = (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, 0, bytes);
 	} else {
 		/*
-		 * XTOS alloc implementation has used dcache alignment,
-		 * so SOF application code is expecting this behaviour.
+		 * XTOS alloc implementation has used dcache alignment, so SOF
+		 * application code is expecting this behaviour. Besides, when
+		 * using memory with the coherent API, we will force cache
+		 * invalidation and writeback accordingly, so we must take care
+		 * not to corrupt adjacent memory from the same cache line.
 		 */
 		ptr = heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
 	}
