@@ -6,7 +6,7 @@
 
 #include <sof/common.h>
 #include <rtos/bit.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>

@@ -16,7 +16,7 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/shim.h>

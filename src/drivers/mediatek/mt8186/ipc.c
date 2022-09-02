@@ -6,7 +6,7 @@
 //         Tinghan Shen <tinghan.shen@mediatek.com>
 
 #include <sof/debug/panic.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/schedule.h>

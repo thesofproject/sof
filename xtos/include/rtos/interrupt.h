@@ -135,6 +135,11 @@ void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq, void *arg);
 uint32_t interrupt_disable(uint32_t irq, void *arg);
 
+/* Zephyr compat */
+#if !defined(__ZEPHYR__)
+#define arch_irq_lock() arch_interrupt_disable_mask(0xffffffff)
+#endif
+
 void platform_interrupt_init(void);
 
 void platform_interrupt_set(uint32_t irq);

@@ -6,7 +6,7 @@
 //        Allen-KH Cheng <allen-kh.cheng@mediatek.com>
 
 #include <sof/audio/component_ext.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <platform/drivers/timer.h>

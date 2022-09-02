@@ -7,7 +7,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>

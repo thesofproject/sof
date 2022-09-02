@@ -19,7 +19,7 @@
 #include <sof/debug/gdb/gdb.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
@@ -661,7 +661,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* TODO: mask ALL platform interrupts except DMA */
 
 	/* mask all DSP interrupts */
-	arch_interrupt_disable_mask(0xffffffff);
+	arch_irq_lock();
 
 	/* TODO: mask ALL platform interrupts inc DMA */
 

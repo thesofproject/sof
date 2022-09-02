@@ -11,7 +11,7 @@
 #include <sof/audio/format.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/dmic.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/drivers/timestamp.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>

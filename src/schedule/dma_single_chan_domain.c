@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <rtos/bit.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>

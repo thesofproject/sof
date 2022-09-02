@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/audio/component_ext.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>

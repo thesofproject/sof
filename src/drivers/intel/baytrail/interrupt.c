@@ -6,7 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/shim.h>
 
 #include <stdint.h>

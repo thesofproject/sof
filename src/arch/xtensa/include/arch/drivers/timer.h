@@ -10,7 +10,7 @@
 #ifndef __ARCH_DRIVERS_TIMER_H__
 #define __ARCH_DRIVERS_TIMER_H__
 
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/lib/memory.h>
 #include <stdint.h>
 

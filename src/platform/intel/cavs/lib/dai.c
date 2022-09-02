@@ -9,7 +9,7 @@
 
 #include <sof/common.h>
 #include <sof/drivers/hda.h>
-#include <sof/drivers/interrupt.h>
+#include <rtos/interrupt.h>
 #include <sof/drivers/mn.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
