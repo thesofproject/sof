@@ -7,7 +7,7 @@
 #include <sof/audio/component.h>
 #include <rtos/bit.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>

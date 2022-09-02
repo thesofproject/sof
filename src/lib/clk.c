@@ -7,7 +7,7 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

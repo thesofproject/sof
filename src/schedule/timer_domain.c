@@ -4,7 +4,7 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>

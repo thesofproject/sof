@@ -14,7 +14,7 @@
 #ifndef __SOF_LIB_PERF_CNT_H__
 #define __SOF_LIB_PERF_CNT_H__
 
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 
 struct perf_cnt_data {
 	uint32_t plat_ts;

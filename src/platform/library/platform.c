@@ -6,7 +6,7 @@
 
 #include <sof/sof.h>
 #include <sof/ipc/driver.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/agent.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>

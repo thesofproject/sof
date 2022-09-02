@@ -26,7 +26,7 @@
 #include <sof/common.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>

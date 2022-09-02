@@ -7,7 +7,7 @@
 
 #include <errno.h>
 #include <sof/lib/alloc.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/msg.h>

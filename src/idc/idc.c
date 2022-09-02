@@ -11,7 +11,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/schedule.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>

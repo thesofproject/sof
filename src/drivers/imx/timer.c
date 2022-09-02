@@ -6,7 +6,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
