@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <xtensa/config/core-isa.h>
 
 #define BOOT_WITH_DRAM /*Use DRAM as SRAM1 for heap related*/

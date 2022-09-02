@@ -9,7 +9,7 @@
 #include <sof/drivers/idc.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

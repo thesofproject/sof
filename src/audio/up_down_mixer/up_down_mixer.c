@@ -13,7 +13,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>

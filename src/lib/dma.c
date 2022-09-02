@@ -8,7 +8,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>

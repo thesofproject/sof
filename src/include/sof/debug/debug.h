@@ -11,7 +11,7 @@
 
 #include <sof/common.h>
 #include <sof/debug/panic.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
 #include <rtos/string.h>

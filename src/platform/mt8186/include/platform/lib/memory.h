@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN sizeof(void *)

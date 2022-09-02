@@ -19,7 +19,7 @@
 #include <sof/debug/panic.h>
 #include <sof/math/numbers.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
 

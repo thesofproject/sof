@@ -11,7 +11,7 @@
 #include <sof/ipc/schedule.h>
 #include <sof/drivers/spi.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <rtos/clk.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>

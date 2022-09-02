@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <platform/chip_offset_byte.h>
 
 /* data cache line alignment */

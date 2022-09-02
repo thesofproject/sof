@@ -10,7 +10,7 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>

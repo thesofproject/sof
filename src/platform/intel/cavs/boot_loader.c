@@ -6,7 +6,7 @@
 
 #include <cavs/lib/pm_memory.h>
 #include <rtos/bit.h>
-#include <sof/lib/cache.h>
+#include <rtos/cache.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
