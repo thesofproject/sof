@@ -309,7 +309,8 @@ endchoice
 config MAX_CORE_COUNT
 	int
 	default 2 if APOLLOLAKE
-	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE || METEORLAKE
+	default 3 if METEORLAKE
+	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
 	default 1
 	help
 	  Maximum number of cores per configuration
