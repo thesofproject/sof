@@ -1003,8 +1003,40 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 }
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
+
+static bool is_notification_queued(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct list_item *slist;
+	struct ipc_msg *msg;
+	k_spinlock_key_t key;
+	bool queued = false;
+
+	key = k_spin_lock(&ipc->lock);
+	if (list_is_empty(&ipc->msg_list))
+		goto out;
+
+	list_for_item(slist, &ipc->msg_list) {
+		msg = container_of(slist, struct ipc_msg, list);
+
+		if (msg == &msg_notify) {
+			queued = true;
+			break;
+		}
+	}
+
+out:
+	k_spin_unlock(&ipc->lock, key);
+
+	return queued;
+}
+
 void ipc_send_buffer_status_notify(void)
 {
+	/* a single msg_notify object is used */
+	if (is_notification_queued())
+		return;
+
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 	msg_notify.extension = 0;
 	msg_notify.tx_size = 0;
