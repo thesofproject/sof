@@ -23,7 +23,7 @@
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/cache.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

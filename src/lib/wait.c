@@ -8,7 +8,7 @@
  * Simple wait for event completion and signaling with timeouts.
  */
 
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/io.h>
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>

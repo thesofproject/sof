@@ -10,7 +10,7 @@
 #include <sof/audio/component_ext.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>

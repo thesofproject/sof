@@ -11,7 +11,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/schedule.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>

@@ -14,7 +14,7 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <rtos/interrupt.h>
-#include <sof/lib/clk.h>
+#include <rtos/clk.h>
 #include <sof/lib/mailbox.h>
 #include <stddef.h>
 #include <stdint.h>
