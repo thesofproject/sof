@@ -7,7 +7,7 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 
 void platform_host_timestamp(struct comp_dev *host,
 			     struct sof_ipc_stream_posn *posn)

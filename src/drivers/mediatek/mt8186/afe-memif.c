@@ -10,7 +10,7 @@
 #include <sof/drivers/afe-drv.h>
 #include <sof/drivers/afe-dai.h>
 #include <sof/drivers/afe-memif.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>

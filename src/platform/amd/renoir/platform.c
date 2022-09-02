@@ -11,7 +11,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/acp_dai_dma.h>
 #include <sof/ipc/driver.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/clk.h>

@@ -9,7 +9,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>

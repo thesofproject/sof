@@ -11,7 +11,7 @@
 #include <platform/fw_scratch_mem.h>
 #include <platform/chip_offset_byte.h>
 #include <sof/drivers/acp_dai_dma.h>
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
