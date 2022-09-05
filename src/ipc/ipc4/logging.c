@@ -43,6 +43,12 @@ LOG_MODULE_REGISTER(mtrace, CONFIG_SOF_LOG_LEVEL);
  */
 #define IPC4_MTRACE_AGING_TIMER_MIN_MS 100
 
+/**
+ * Shortest time between IPC notifications sent to host. This
+ * is used as protection against a flood of log messages.
+ */
+#define IPC4_MTRACE_NOTIFY_MIN_DELTA_MS 10
+
 /* bb2aa22e-1ab6-4650-8501-6e67fcc04f4e */
 DECLARE_SOF_UUID("mtrace-task", mtrace_task_uuid, 0xbb2aa22e, 0x1ab6, 0x4650,
 		 0x85, 0x01, 0x6e, 0x67, 0xfc, 0xc0, 0x4f, 0x4e);
@@ -59,21 +65,28 @@ struct task mtrace_task;
 
 static void mtrace_log_hook(size_t written, size_t space_left)
 {
-	if (arch_proc_id() == MTRACE_IPC_CORE &&
-	    (space_left < NOTIFY_BUFFER_STATUS_THRESHOLD ||
-	     k_uptime_get() - mtrace_notify_last_sent >= mtrace_aging_timer)) {
+	uint64_t delta;
+
+	mtrace_bytes_pending += written;
+
+	/* TODO: if hook is called on non-zero core, logs
+	 * maybe lost with too slow aging timer. need to
+	 * figure out a safe way to wake up the mtrace task
+	 * from another core.
+	 */
+	if (arch_proc_id() != MTRACE_IPC_CORE)
+		return;
+
+	delta = k_uptime_get() - mtrace_notify_last_sent;
+
+	if (delta < IPC4_MTRACE_NOTIFY_MIN_DELTA_MS)
+		return;
+
+	if (space_left < NOTIFY_BUFFER_STATUS_THRESHOLD ||
+	    delta >= mtrace_aging_timer) {
 		ipc_send_buffer_status_notify();
 		mtrace_notify_last_sent = k_uptime_get();
 		mtrace_bytes_pending = 0;
-
-	} else {
-		mtrace_bytes_pending += written;
-
-		/* TODO: if hook is called on non-zero core, logs
-		 * maybe lost with too slow aging timer. need to
-		 * figure out a safe way to wake up the mtrace task
-		 * from another core.
-		 */
 	}
 }
 
