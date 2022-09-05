@@ -11,6 +11,9 @@
 #include <stddef.h>
 #include <errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* missing from zephyr - TODO: convert to memset() */
 #define bzero(ptr, size) \
 	memset(ptr, 0, size)
@@ -59,5 +62,9 @@ static inline int memset_s(void *dest, size_t dest_size, int data, size_t count)
 
 	return 0;
 }
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif /* __ZEPHYR_RTOS_STRING_H__ */
