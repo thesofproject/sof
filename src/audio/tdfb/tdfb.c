@@ -806,7 +806,7 @@ static int tdfb_prepare(struct comp_dev *dev)
 	/* The max. amount of processing need to be limited for sound direction
 	 * processing. Max frames is used in tdfb_direction_init() and copy().
 	 */
-	cd->max_frames = Q_MULTSR_32X32(dev->frames, TDFB_MAX_FRAMES_MULT_Q14, 0, 14, 0);
+	cd->max_frames = Q_MULTSR_16X16((int32_t)dev->frames, TDFB_MAX_FRAMES_MULT_Q14, 0, 14, 0);
 	comp_info(dev, "dev_frames = %d, max_frames = %d", dev->frames, cd->max_frames);
 
 	/* Initialize tracking */
