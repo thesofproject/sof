@@ -993,7 +993,8 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 		return -EINVAL;
 	}
 
-	if (cd->endpoint_num && sink_fmt->sink_id == IPC4_COPIER_GATEWAY_PIN) {
+	if (cd->endpoint_num && cd->bsource_buffer &&
+	    sink_fmt->sink_id == IPC4_COPIER_GATEWAY_PIN) {
 		comp_err(dev, "can't change gateway format");
 		return -EINVAL;
 	}
