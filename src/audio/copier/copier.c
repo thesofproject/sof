@@ -151,6 +151,8 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		cd->endpoint_buffer[cd->endpoint_num]->chmap[i] = (mask >> i * 4) & 0xf;
+
+	cd->endpoint_buffer[cd->endpoint_num]->hw_params_configured = true;
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
@@ -755,6 +757,10 @@ static int do_conversion_copy(struct comp_dev *dev,
 	int i;
 	int ret;
 
+	/* buffer params might be not yet configured by component on another pipeline */
+	if (!src->hw_params_configured || !sink->hw_params_configured)
+		return 0;
+
 	comp_get_copy_limits(src, sink, processed_data);
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
@@ -840,6 +846,7 @@ static int copier_copy(struct comp_dev *dev)
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
+		processed_data.sink_bytes = 0;
 		ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
 		buffer_release(sink_c);
 		if (ret < 0) {
