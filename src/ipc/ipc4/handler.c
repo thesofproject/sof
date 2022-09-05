@@ -1009,6 +1009,8 @@ void ipc_send_buffer_status_notify(void)
 	msg_notify.extension = 0;
 	msg_notify.tx_size = 0;
 
+	tr_dbg(&ipc_tr, "tx-notify\t: %#x|%#x", msg_notify.header, msg_notify.extension);
+
 	ipc_msg_send(&msg_notify, NULL, true);
 }
 #endif
@@ -1029,6 +1031,8 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 	if (!in)
 		return;
+
+	tr_dbg(&ipc_tr, "rx\t: %#x|%#x", in->primary.dat, in->extension.dat);
 
 	/* no process on scheduled thread */
 	msg_data.delayed_reply = 0;
@@ -1083,6 +1087,10 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 			reply.primary.r.status = err;
 
 		msg_reply.header = reply.primary.dat;
+
+		tr_dbg(&ipc_tr, "tx-reply\t: %#x|%#x", reply.primary.dat,
+		       reply.extension.dat);
+
 		ipc_msg_send(&msg_reply, data, true);
 	}
 }
