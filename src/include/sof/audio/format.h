@@ -79,6 +79,18 @@
 #define Q_SHIFT_LEFT(x, src_q, dst_q) ((x) << ((dst_q) - (src_q)))
 
 /* Fractional multiplication with shift
+ * Note that the parameters px and py must be cast to (int32_t) if other type.
+ */
+#define Q_MULTS_16X16(px, py, qx, qy, qp) \
+	((px) * (py) >> (((qx) + (qy) - (qp))))
+
+/* Fractional multiplication with shift and round
+ * Note that the parameters px and py must be cast to (int32_t) if other type.
+ */
+#define Q_MULTSR_16X16(px, py, qx, qy, qp) \
+	((((px) * (py) >> ((qx) + (qy) - (qp) - 1)) + 1) >> 1)
+
+/* Fractional multiplication with shift
  * Note that the parameters px and py must be cast to (int64_t) if other type.
  */
 #define Q_MULTS_32X32(px, py, qx, qy, qp) \
