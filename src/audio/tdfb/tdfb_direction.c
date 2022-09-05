@@ -218,7 +218,7 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	/* Calculate max lag to search and allocate delay line for cross correlation
 	 * compute. Add one to make sure max possible lag is in search window.
 	 */
-	cd->direction.max_lag = Q_MULTSR_32X32(fs, t_max, 0, 15, 0) + 1;
+	cd->direction.max_lag = Q_MULTSR_32X32((int64_t)fs, t_max, 0, 15, 0) + 1;
 	n = (cd->max_frames + (2 * cd->direction.max_lag + 1)) * ch_count;
 	cd->direction.d_size =  n * sizeof(int16_t);
 	cd->direction.d = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, cd->direction.d_size);
@@ -291,7 +291,7 @@ static void level_update(struct tdfb_comp_data *cd, int frames, int ch_count, in
 	ambient = cd->direction.level_ambient;
 	shift = (level < ambient) ? FAST_LEVEL_SHIFT : SLOW_LEVEL_SHIFT;
 	ambient = (level >> shift) - (ambient >> shift) + ambient;
-	thr = sat_int32(Q_MULTS_32X32(ambient >> 32, POWER_THRESHOLD, 31, 10, 31));
+	thr = sat_int32(Q_MULTS_32X32(ambient >> 32, POWER_THRESHOLD, 31, 10, 31)); /* int64_t */
 	cd->direction.level_ambient = ambient;
 	cd->direction.trigger <<= 1;
 	if (cd->direction.level > thr)
@@ -391,8 +391,8 @@ static void theoretical_time_differences(struct tdfb_comp_data *cd, int16_t az)
 
 	sin_az = sin_fixed_16b(Q_SHIFT_LEFT((int32_t)az, 12, 28)); /* Q1.15 */
 	cos_az = cos_fixed_16b(Q_SHIFT_LEFT((int32_t)az, 12, 28)); /* Q1.15 */
-	src_x = Q_MULTSR_32X32((int32_t)cos_az, SOURCE_DISTANCE, 15, 12, 12);
-	src_y = Q_MULTSR_32X32((int32_t)sin_az, SOURCE_DISTANCE, 15, 12, 12);
+	src_x = Q_MULTSR_16X16((int32_t)cos_az, SOURCE_DISTANCE, 15, 12, 12);
+	src_y = Q_MULTSR_16X16((int32_t)sin_az, SOURCE_DISTANCE, 15, 12, 12);
 
 	for (i = 0; i < n_mic; i++)
 		d[i] = distance_from_source(cd, i, src_x, src_y, 0);
@@ -491,8 +491,8 @@ static void iterate_source_angle(struct tdfb_comp_data *cd)
 			az += 360;
 	}
 
-	az_slow = Q_MULTSR_32X32((int32_t)az, SLOW_AZ_C1, 12, 15, 12) +
-		Q_MULTSR_32X32((int32_t)cd->direction.az_slow, SLOW_AZ_C2, 12, 15, 12);
+	az_slow = Q_MULTSR_16X16((int32_t)az, SLOW_AZ_C1, 12, 15, 12) +
+		Q_MULTSR_16X16((int32_t)cd->direction.az_slow, SLOW_AZ_C2, 12, 15, 12);
 	cd->direction.az_slow = unwrap_radians(az_slow);
 }
 
@@ -510,7 +510,7 @@ static int convert_angle_to_enum(struct tdfb_comp_data *cd)
 	/* Update azimuth enum with radians to degrees to enum step conversion. First
 	 * convert radians to deg, subtract angle offset, and make angles positive.
 	 */
-	deg = Q_MULTS_32X32((int32_t)cd->direction.az_slow, COEF_RAD_TO_DEG, 12, 9, 0) -
+	deg = Q_MULTS_16X16((int32_t)cd->direction.az_slow, COEF_RAD_TO_DEG, 12, 9, 0) -
 		cd->config->angle_enum_offs;
 
 	/* Divide and round to enum angle scale, remove duplicate 0 and 360 degree angle
