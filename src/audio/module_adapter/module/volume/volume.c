@@ -932,7 +932,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 
 	/* return if more fragments are expected or if the module is not prepared */
 	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
-	    md->state < MODULE_IDLE)
+	    md->state < MODULE_INITIALIZED)
 		return 0;
 
 	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(fragment, 8);
@@ -946,7 +946,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	switch (config_id) {
 	case IPC4_VOLUME:
 		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
-			for (i = 0; i < cd->channels; i++) {
+			for (i = 0; i < cd->base.audio_fmt.channels_count; i++) {
 				set_volume_ipc4(cd, i, cdata->target_volume,
 						cdata->curve_type,
 						cdata->curve_duration);
