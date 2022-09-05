@@ -61,7 +61,7 @@ static void mtrace_log_hook(size_t written, size_t space_left)
 {
 	if (arch_proc_id() == MTRACE_IPC_CORE &&
 	    (space_left < NOTIFY_BUFFER_STATUS_THRESHOLD ||
-	     k_uptime_delta(&mtrace_notify_last_sent) >= mtrace_aging_timer)) {
+	     k_uptime_get() - mtrace_notify_last_sent >= mtrace_aging_timer)) {
 		ipc_send_buffer_status_notify();
 		mtrace_notify_last_sent = k_uptime_get();
 		mtrace_bytes_pending = 0;
@@ -79,7 +79,7 @@ static void mtrace_log_hook(size_t written, size_t space_left)
 
 static enum task_state mtrace_task_run(void *data)
 {
-	if (k_uptime_delta(&mtrace_notify_last_sent) >= mtrace_aging_timer &&
+	if (k_uptime_get() - mtrace_notify_last_sent >= mtrace_aging_timer &&
 	    mtrace_bytes_pending)
 		mtrace_log_hook(0, 0);
 
