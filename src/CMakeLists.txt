@@ -31,3 +31,7 @@ endif()
 if (CONFIG_MULTICORE)
 	add_subdirectory(idc)
 endif()
+
+if (CONFIG_LOADABLE_MODULES)
+	add_subdirectory(library_manager)
+endif()
