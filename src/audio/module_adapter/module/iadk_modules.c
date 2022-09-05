@@ -55,12 +55,15 @@ static int iadk_modules_init(struct processing_module *mod)
 	uint32_t module_entry_point;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
+	struct ipc4_base_module_cfg *src_cfg =
+				(struct ipc4_base_module_cfg *)md->cfg.data;
 	int ret = 0;
 	byte_array_t mod_cfg;
 
 	mod_cfg.data = md->cfg.data;
 	/* Intel modules expects DW size here */
 	mod_cfg.size = (md->cfg.size >> 2);
+	md->private = md->cfg.data;
 
 	struct comp_ipc_config *config = &(mod->dev->ipc_config);
 
@@ -81,6 +84,23 @@ static int iadk_modules_init(struct processing_module *mod)
 					   instance_id, 0, log_handle, (void *)&mod_cfg);
 
 	md->module_adapter = mod_adp;
+
+	/* Allocate module buffers */
+	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
+	if (!md->mpd.in_buff) {
+		comp_err(dev, "iadk_modules_init(): Failed to alloc in_buff");
+		return -ENOMEM;
+	}
+	md->mpd.in_buff_size = src_cfg->ibs;
+
+	md->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->obs);
+	if (!md->mpd.out_buff) {
+		comp_err(dev, "iadk_modules_init(): Failed to alloc out_buff");
+		rfree(md->mpd.in_buff);
+		return -ENOMEM;
+	}
+	md->mpd.out_buff_size = src_cfg->obs;
+
 	/* Call module specific init function if exists. */
 	ret = iadk_wrapper_init(mod->priv.module_adapter);
 	return ret;
@@ -101,26 +121,10 @@ static int iadk_modules_prepare(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
-	struct ipc4_base_module_cfg *src_cfg =
-			(struct ipc4_base_module_cfg *)lib_manager_get_config(dev);
 	int ret = 0;
 
 	comp_info(dev, "iadk_modules_prepare()");
 
-	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
-	if (!codec->mpd.in_buff) {
-		comp_err(dev, "iadk_modules_prepare(): Failed to alloc in_buff");
-		return -ENOMEM;
-	}
-	codec->mpd.in_buff_size = src_cfg->ibs;
-
-	codec->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->obs);
-	if (!codec->mpd.out_buff) {
-		comp_err(dev, "iadk_modules_prepare(): Failed to alloc out_buff");
-		rfree(codec->mpd.in_buff);
-		return -ENOMEM;
-	}
-	codec->mpd.out_buff_size = src_cfg->obs;
 	/* Call module specific prepare function if exists. */
 	ret = iadk_wrapper_prepare(mod->priv.module_adapter);
 	return 0;
