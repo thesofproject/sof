@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <sys/util.h>
 #include <user/trace.h>
+#include <rtos/string.h>
 
 #ifdef __XTENSA__
   #define RESTRICT __restrict
