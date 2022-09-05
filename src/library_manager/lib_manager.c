@@ -343,9 +343,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 	struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
 #if CONFIG_INTEL_MODULES
-	/* Declare new dynamic module with Module Adapter */
-	/* TODO: Here we should decide whether use Module Adapter or component device API */
-	DECLARE_DYNAMIC_MODULE_ADAPTER(drv, SOF_COMP_DYNAMIC, *uid, lib_manager_tr);
+	DECLARE_DYNAMIC_MODULE_ADAPTER(drv, SOF_COMP_MODULE_ADAPTER, *uid, lib_manager_tr);
 #else
 	ret = -ENOTSUP;
 	goto cleanup;
@@ -389,7 +387,7 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 		return -ENOMEM;
 	}
 
-	bzero((__sparse_force void __sparce_cache *)buffer->addr, size);
+	bzero((__sparse_force void __sparse_cache *)buffer->addr, size);
 	dcache_writeback_region((void *)buffer->addr, size);
 
 	/* initialise the DMA buffer */
@@ -582,16 +580,16 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext, void *
 		return ret;
 
 	/* Copy data from temp_mft_buf to destination memory (pointed by library_base_address) */
-	memcpy_s((void *)library_base_address, CAVS18_MAX_MANIFEST_SIZE,
-		 (void *)man_buffer, CAVS18_MAX_MANIFEST_SIZE);
+	memcpy_s((void *)library_base_address, MAN_MAX_SIZE_V1_8,
+		 (void *)man_buffer, MAN_MAX_SIZE_V1_8);
 
 	dcache_writeback_invalidate_region((void *)library_base_address,
-					   CAVS18_MAX_MANIFEST_SIZE);
+					   MAN_MAX_SIZE_V1_8);
 
 	/* Copy remaining library part into storage buffer */
 	ret = lib_manager_store_data(dma_ext,
-				     (void *)(library_base_address + CAVS18_MAX_MANIFEST_SIZE),
-				     (preload_size - CAVS18_MAX_MANIFEST_SIZE));
+				     (void *)(library_base_address + MAN_MAX_SIZE_V1_8),
+				     (preload_size - MAN_MAX_SIZE_V1_8));
 	if (ret < 0)
 		return ret;
 
@@ -619,7 +617,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		goto cleanup;
 
 	/* allocate temporary manifest buffer */
-	man_tmp_buffer = rballoc_align(0, SOF_MEM_CAPS_DMA, CAVS18_MAX_MANIFEST_SIZE, addr_align);
+	man_tmp_buffer = rballoc_align(0, SOF_MEM_CAPS_DMA, MAN_MAX_SIZE_V1_8, addr_align);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
 		goto cleanup;
@@ -630,7 +628,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		goto cleanup;
 
 	/* Load manifest to temporary buffer */
-	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, CAVS18_MAX_MANIFEST_SIZE);
+	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
 		goto cleanup;
 

@@ -63,8 +63,7 @@
 #define __SOF_LIB_MANAGER_H__
 
 #include <stdint.h>
-#include <rimage/cavs/cavs_ext_manifest.h>
-#include <rimage/sof/user/manifest.h>
+#include <rimage/manifest.h>
 
 #define LIB_MANAGER_MAX_LIBS				16
 #define LIB_MANAGER_LIB_ID_SHIFT			12
