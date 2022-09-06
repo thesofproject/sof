@@ -12,7 +12,11 @@ cmocka_test(alloc
 	alloc.c
 	${PROJECT_SOURCE_DIR}/src/lib/alloc.c
 	${PROJECT_SOURCE_DIR}/src/debug/panic.c
+
+	if(CONFIG_CAVS)
 	${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/lib/memory.c
+	endif()
+
 	${PROJECT_SOURCE_DIR}/src/spinlock.c
 )
 endif()

@@ -88,6 +88,13 @@ platform_list = [
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
 		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
+	{
+		"name": "mtl",
+		"PLAT_CONFIG": "intel_adsp_ace15_mtpm",
+		"XTENSA_CORE": "ace10_LX7HiFi4_RI_2020_5",
+		"XTENSA_TOOLS_VERSION": f"RI-2020.5{xtensa_tools_version_postfix}",
+		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
+	},
 	# NXP platforms
 	{
 		"name": "imx8",

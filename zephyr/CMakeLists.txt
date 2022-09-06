@@ -461,6 +461,36 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
+# Intel ACE 1.5 and newer platforms
+if (CONFIG_ACE_VERSION_1_5)
+
+	# Driver sources
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/ace/ipc.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/ace/platform.c
+		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
+		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
+	)
+
+	set(PLATFORM "meteorlake")
+
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/meteorlake/include)
+endif()
+
 # NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
