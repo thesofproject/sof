@@ -750,6 +750,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc.c
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
+	${SOF_AUDIO_PATH}/drc/drc_math_generic.c
+	${SOF_AUDIO_PATH}/drc/drc_hifi3.c
+	${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
