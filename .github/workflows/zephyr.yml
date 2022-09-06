@@ -20,6 +20,7 @@ jobs:
           icl jsl,
           tgl tgl-h,
           imx8 imx8x imx8m,
+          mtl,
           # only tgl has IPC4 overlay file now
           -i IPC4 tgl,
         ]
