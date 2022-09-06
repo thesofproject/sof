@@ -50,7 +50,7 @@ static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
 #if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
 	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
-	CONFIG_LIBRARY
+	CONFIG_LIBRARY || CONFIG_ACE
 	return irq;
 #else
 	if (cascade == irq_name_level2)
