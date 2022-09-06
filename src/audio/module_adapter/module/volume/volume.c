@@ -840,7 +840,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 			comp_info(dev, "volume_set_config(), channel = %d, value = %u",
 				  ch, val);
 			if (ch >= SOF_IPC_MAX_CHANNELS) {
-				comp_err(dev, "volume_ctrl_set_cmd(), illegal channel = %d",
+				comp_err(dev, "volume_set_config(), illegal channel = %d",
 					 ch);
 				return -EINVAL;
 			}
