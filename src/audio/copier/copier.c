@@ -52,17 +52,18 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type);
 
-static void create_endpoint_buffer(struct comp_dev *parent_dev,
-				   struct copier_data *cd,
-				   struct comp_ipc_config *config,
-				   struct ipc4_copier_module_cfg *copier_cfg,
-				   enum ipc4_gateway_type type,
-				   int index)
+static int create_endpoint_buffer(struct comp_dev *parent_dev,
+				  struct copier_data *cd,
+				  struct comp_ipc_config *config,
+				  struct ipc4_copier_module_cfg *copier_cfg,
+				  enum ipc4_gateway_type type,
+				  int index)
 {
 	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
+	struct comp_buffer *buffer;
 	uint32_t buf_size;
 	uint32_t mask;
 	int i;
@@ -128,16 +129,16 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
-	cd->endpoint_buffer[cd->endpoint_num] = buffer_new(&ipc_buf);
 
-	cd->endpoint_buffer[cd->endpoint_num]->stream.channels =
-		copier_cfg->base.audio_fmt.channels_count;
-	cd->endpoint_buffer[cd->endpoint_num]->stream.rate =
-		copier_cfg->base.audio_fmt.sampling_frequency;
-	cd->endpoint_buffer[cd->endpoint_num]->stream.frame_fmt = config->frame_fmt;
-	cd->endpoint_buffer[cd->endpoint_num]->stream.valid_sample_fmt = valid_fmt;
-	cd->endpoint_buffer[cd->endpoint_num]->buffer_fmt =
-		copier_cfg->base.audio_fmt.interleaving_style;
+	buffer = buffer_new(&ipc_buf);
+	if (!buffer)
+		return -ENOMEM;
+
+	buffer->stream.channels = copier_cfg->base.audio_fmt.channels_count;
+	buffer->stream.rate = copier_cfg->base.audio_fmt.sampling_frequency;
+	buffer->stream.frame_fmt = config->frame_fmt;
+	buffer->stream.valid_sample_fmt = valid_fmt;
+	buffer->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
 
 	if (type == ipc4_gtw_alh) {
 		struct sof_alh_configuration_blob *alh_blob;
@@ -150,9 +151,13 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 	}
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		cd->endpoint_buffer[cd->endpoint_num]->chmap[i] = (mask >> i * 4) & 0xf;
+		buffer->chmap[i] = (mask >> i * 4) & 0xf;
 
-	cd->endpoint_buffer[cd->endpoint_num]->hw_params_configured = true;
+	buffer->hw_params_configured = true;
+
+	cd->endpoint_buffer[cd->endpoint_num] = buffer;
+
+	return 0;
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
@@ -169,6 +174,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct ipc_config_host ipc_host;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
+	int ret;
 
 	drv = ipc4_get_drv((uint8_t *)&host);
 	if (!drv)
@@ -176,15 +182,19 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	config->type = SOF_COMP_HOST;
 
-	create_endpoint_buffer(parent_dev, cd, config, copier_cfg, ipc4_gtw_host, 0);
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier_cfg, ipc4_gtw_host, 0);
+	if (ret < 0)
+		return ret;
 
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
 	dev = drv->ops.create(drv, config, &ipc_host);
-	if (!dev)
-		return -EINVAL;
+	if (!dev) {
+		ret = -EINVAL;
+		goto e_buf;
+	}
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -205,12 +215,17 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 				   ipc4_gtw_host, IPC4_DIRECTION(dir));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(parent_dev, "failed to get converter for host, dir %d", dir);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto e_buf;
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
 
 	return 0;
+
+e_buf:
+	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
+	return ret;
 }
 
 static int init_dai(struct comp_dev *parent_dev,
@@ -227,11 +242,15 @@ static int init_dai(struct comp_dev *parent_dev,
 	int ret;
 
 	cd = comp_get_drvdata(parent_dev);
-	create_endpoint_buffer(parent_dev, cd, config, copier, type, index);
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, index);
+	if (ret < 0)
+		return ret;
 
 	dev = drv->ops.create(drv, config, dai);
-	if (!dev)
-		return -EINVAL;
+	if (!dev) {
+		ret = -EINVAL;
+		goto e_buf;
+	}
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
 		pipeline->sink_comp = dev;
@@ -245,7 +264,7 @@ static int init_dai(struct comp_dev *parent_dev,
 
 	ret = comp_dai_config(dev, dai, copier);
 	if (ret < 0)
-		return ret;
+		goto e_buf;
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
@@ -269,6 +288,10 @@ static int init_dai(struct comp_dev *parent_dev,
 	cd->endpoint[cd->endpoint_num++] = dev;
 
 	return 0;
+
+e_buf:
+	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
+	return ret;
 }
 
 /* if copier is linked to non-host gateway, it will manage link dma,
