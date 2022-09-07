@@ -205,7 +205,7 @@ static struct comp_dev *mixout_new(const struct comp_driver *drv,
 
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 
-	md->mixed_data_info = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	md->mixed_data_info = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 				      sizeof(struct mixed_data_info));
 	if (!md->mixed_data_info) {
 		rfree(md);
