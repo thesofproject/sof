@@ -29,10 +29,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Some jobs may not need submodules but for now our CMakeLists.txt
-# systemically downloads them anyway when missing at build time. Easier
-# and cleaner to clone everything at once.
-
 jobs:
 
   doxygen:
@@ -97,31 +93,6 @@ jobs:
 
       - name: build sof-docs
         run: make -C sof-docs/ html SOF_DOC_BUILD="$(pwd)"/doxybuild/
-
-
-  testbench:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v2
-        with: {fetch-depth: 5}
-
-      - name: apt get
-        run: sudo apt-get update &&
-             sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
-             octave octave-io octave-signal
-
-      # testbench needs some topologies.
-      - name: build test topologies
-        run: ./scripts/build-tools.sh -t ||
-             VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
-             ./scripts/build-tools.sh -t
-
-      - name: build testbench
-        run: ./scripts/rebuild-testbench.sh
-
-      - name: run testbench
-        run: ./scripts/host-testbench.sh
 
 
   # This is a bit redundant with the other jobs below and with the (much
