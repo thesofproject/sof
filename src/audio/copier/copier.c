@@ -721,6 +721,11 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (cmd == COMP_TRIGGER_START) {
 		struct ipc4_pipeline_registers pipe_reg;
 
+		if (list_is_empty(&dai_copier->bsource_list)) {
+			comp_err(dev, "No source buffer binded to dai_copier");
+			return -EINVAL;
+		}
+
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
 		pipe_reg.stream_start_offset = posn.dai_posn + latency * buffer->stream.size;
 		pipe_reg.stream_end_offset = 0;
@@ -738,6 +743,11 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		pipe_reg.stream_end_offset = mailbox_sw_reg_read64(cd->pipeline_reg_offset +
 			sizeof(pipe_reg.stream_start_offset));
 		pipe_reg.stream_start_offset += posn.dai_posn - pipe_reg.stream_end_offset;
+
+		if (list_is_empty(&dai_copier->bsource_list)) {
+			comp_err(dev, "No source buffer binded to dai_copier");
+			return -EINVAL;
+		}
 
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
 		pipe_reg.stream_start_offset += latency * buffer->stream.size;
@@ -820,6 +830,11 @@ static int copier_copy(struct comp_dev *dev)
 		src_c = buffer_acquire(cd->endpoint_buffer[0]);
 	} else {
 		/* component as input */
+		if (list_is_empty(&dev->bsource_list)) {
+			comp_err(dev, "No source buffer binded");
+			return -EINVAL;
+		}
+
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		src_c = buffer_acquire(src);
 
