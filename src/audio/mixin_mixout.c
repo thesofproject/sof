@@ -213,7 +213,7 @@ static struct comp_dev *mixout_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	coherent_init(md->mixed_data_info, c);
+	coherent_init_thread(md->mixed_data_info, c);
 	comp_set_drvdata(dev, md);
 
 	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
@@ -242,7 +242,7 @@ static void mixout_free(struct comp_dev *dev)
 
 	mixout_data = comp_get_drvdata(dev);
 
-	coherent_free(mixout_data->mixed_data_info, c);
+	coherent_free_thread(mixout_data->mixed_data_info, c);
 	rfree(mixout_data->mixed_data_info);
 	rfree(mixout_data);
 	rfree(dev);
@@ -1059,7 +1059,7 @@ static int mixout_prepare(struct comp_dev *dev)
 		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
 
 		if (mixin->pipeline && mixin->pipeline->core != dev->pipeline->core) {
-			coherent_shared(md->mixed_data_info, c);
+			coherent_shared_thread(md->mixed_data_info, c);
 			break;
 		}
 	}
