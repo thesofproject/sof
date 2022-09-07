@@ -574,6 +574,10 @@ def build_platforms():
 
 	src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
 
+	src_dest_list += [(pathlib.Path(SOF_TOP) /
+		"tools" / "mtrace"/ "mtrace-reader.py",
+		tools_output_dir)]
+
 	# Append future files to `src_dest_list` here (but prefer
 	# copying entire directories; more flexible)
 
