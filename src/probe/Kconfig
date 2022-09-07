@@ -6,7 +6,7 @@ menu "Probe"
 
 config PROBE
 	bool "Probes enabled"
-	default n
+	default y if CAVS
 	help
 	  Select for enabling debug probes to extract/inject buffers
 
