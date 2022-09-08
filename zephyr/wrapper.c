@@ -377,15 +377,6 @@ unsigned int _xtos_ints_off(unsigned int mask)
 	return 0;
 }
 
-void ipc_send_queued_msg(void);
-
-static void ipc_send_queued_callback(void *private_data, enum notify_id event_type,
-				     void *caller_data)
-{
-	if (!ipc_get()->pm_prepare_D3)
-		ipc_send_queued_msg();
-}
-
 /*
  * Audio components.
  *
@@ -624,11 +615,6 @@ int task_main_start(struct sof *sof)
 	 */
 	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
 	w_core_enable_mask |= BIT(PLATFORM_PRIMARY_CORE_ID);
-
-	/* Temporary fix for issue #4356 */
-	(void)notifier_register(NULL, scheduler_get_data(SOF_IPC_QUEUED_DOMAIN),
-				NOTIFIER_ID_LL_POST_RUN,
-				ipc_send_queued_callback, 0);
 
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
