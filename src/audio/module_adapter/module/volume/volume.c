@@ -925,6 +925,8 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 
 	comp_dbg(dev, "volume_set_config()");
 
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)fragment, fragment_size);
+
 	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
 				       fragment_size, response, response_size);
 	if (ret < 0)
@@ -936,8 +938,6 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		return 0;
 
 	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(fragment, 8);
-	// BUG: data is the IPC data from sof->ipc->comp_data which is uncached
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)cdata, sizeof(*cdata));
 	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
 
 	init_ramp(cd, cdata->curve_duration, cdata->target_volume);
