@@ -33,7 +33,8 @@ SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
 west_top = pathlib.Path(SOF_TOP, "..").resolve()
 default_rimage_key = pathlib.Path(SOF_TOP, "keys", "otc_private_key.pem")
 
-sof_version = None
+sof_fw_version = None
+sof_build_version = None
 
 if py_platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
@@ -387,16 +388,17 @@ def west_update():
 	execute_command(["west", "update"], check=True, timeout=3000, cwd=west_top)
 
 
-def get_sof_version(abs_build_dir):
-	"""[summary] Get version string major.minor.micro of SOF firmware
-	file. When building multiple platforms from the same SOF commit,
-	all platforms share the same version. So for the 1st platform,
-	generate the version string from sof_version.h and later platforms
-	will reuse it.
+def get_build_and_sof_version(abs_build_dir):
+	"""[summary] Get version string major.minor.micro and build of SOF
+	firmware file. When building multiple platforms from the same SOF
+	commit, all platforms share the same version. So for the 1st platform,
+	generate the version string from sof_version.h and later platforms will
+	reuse it.
 	"""
-	global sof_version
-	if sof_version:
-		return sof_version
+	global sof_fw_version
+	global sof_build_version
+	if sof_fw_version and sof_build_version:
+		return sof_fw_version, sof_build_version
 
 	versions = {}
 	with open(pathlib.Path(abs_build_dir,
@@ -405,9 +407,11 @@ def get_sof_version(abs_build_dir):
 			words = hline.split()
 			if words[0] == '#define':
 				versions[words[1]] = words[2]
-	sof_version = versions['SOF_MAJOR'] + '.' + versions['SOF_MINOR'] + '.' + \
+	sof_fw_version = versions['SOF_MAJOR'] + '.' + versions['SOF_MINOR'] + '.' + \
 		      versions['SOF_MICRO']
-	return sof_version
+	sof_build_version = versions['SOF_BUILD']
+
+	return sof_fw_version, sof_build_version
 
 def build_platforms():
 	global west_top, SOF_TOP
@@ -540,7 +544,11 @@ def build_platforms():
 
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
 
-		sign_cmd += ["-f", get_sof_version(abs_build_dir)]
+		sof_fw_version, sof_build_version = get_build_and_sof_version(abs_build_dir)
+
+		sign_cmd += ["-f", sof_fw_version]
+
+		sign_cmd += ["-b", sof_build_version]
 
 		if args.fw_naming == "AVS":
 			output_fwname="dsp_basefw.bin"
