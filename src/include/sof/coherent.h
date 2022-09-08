@@ -86,13 +86,13 @@ struct coherent {
 #endif
 
 #ifdef __ZEPHYR__
-#define CHECK_ISR()		__ASSERT(!arch_is_in_isr(), "Attempt to sleep in ISR!")
+#define CHECK_ISR()		__ASSERT(!k_is_in_isr(), "Attempt to sleep in ISR!")
 #define CHECK_SLEEP(_c)		__ASSERT((_c)->sleep_allowed, \
 				"This context hasn't been initialized for sleeping!")
 #define CHECK_ATOMIC(_c)	__ASSERT(!(_c)->sleep_allowed, \
 				"This context has been initialized for sleeping!")
 #else
-#define CHECK_ISR()		assert(!arch_is_in_isr())
+#define CHECK_ISR()		assert(!k_is_in_isr())
 #define CHECK_SLEEP(_c)		assert((_c)->sleep_allowed)
 #define CHECK_ATOMIC(_c)	assert(!(_c)->sleep_allowed)
 #endif
