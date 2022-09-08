@@ -28,6 +28,8 @@
 
 static const struct comp_driver comp_up_down_mixer;
 
+LOG_MODULE_REGISTER(up_down_mixer, CONFIG_SOF_LOG_LEVEL);
+
 /* these ids aligns windows driver requirement to support windows driver */
 /* 42f8060c-832f-4dbf-b247-51e961997b34 */
 DECLARE_SOF_RT_UUID("up_down_mixer", up_down_mixer_comp_uuid, 0x42f8060c, 0x832f,
