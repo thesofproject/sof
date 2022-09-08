@@ -168,6 +168,9 @@ void ipc_send_queued_msg(void)
 
 	key = k_spin_lock(&ipc->lock);
 
+	if (ipc_get()->pm_prepare_D3)
+		goto out;
+
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->msg_list))
 		goto out;
@@ -180,6 +183,19 @@ void ipc_send_queued_msg(void)
 		list_item_del(&msg->list);
 out:
 	k_spin_unlock(&ipc->lock, key);
+}
+
+static void schedule_ipc_worker(void)
+{
+	/*
+	 * note: in XTOS builds, this is handled in
+	 * task_main_primary_core()
+	 */
+#ifdef __ZEPHYR__
+	struct ipc *ipc = ipc_get();
+
+	k_work_schedule(&ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
+#endif
 }
 
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
@@ -212,9 +228,28 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 			list_item_append(&msg->list, &ipc->msg_list);
 	}
 
+	schedule_ipc_worker();
+
 out:
 	k_spin_unlock(&ipc->lock, key);
 }
+
+#ifdef __ZEPHYR__
+static void ipc_work_handler(struct k_work *work)
+{
+	struct ipc *ipc = ipc_get();
+	k_spinlock_key_t key;
+
+	ipc_send_queued_msg();
+
+	key = k_spin_lock(&ipc->lock);
+
+	if (!list_is_empty(&ipc->msg_list) && !ipc->pm_prepare_D3)
+		schedule_ipc_worker();
+
+	k_spin_unlock(&ipc->lock, key);
+}
+#endif
 
 void ipc_schedule_process(struct ipc *ipc)
 {
@@ -233,6 +268,10 @@ int ipc_init(struct sof *sof)
 	k_spinlock_init(&sof->ipc->lock);
 	list_init(&sof->ipc->msg_list);
 	list_init(&sof->ipc->comp_list);
+
+#ifdef __ZEPHYR__
+	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
+#endif
 
 	return platform_ipc_init(sof->ipc);
 }

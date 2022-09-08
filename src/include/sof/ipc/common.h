@@ -65,6 +65,10 @@ struct ipc {
 	/* processing task */
 	struct task ipc_task;
 
+#ifdef __ZEPHYR__
+	struct k_work_delayable z_delayed_work;
+#endif
+
 	void *private;
 };
 
