@@ -29,6 +29,8 @@
 
 static const struct comp_driver comp_aria;
 
+LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
+
 /* these ids aligns windows driver requirement to support windows driver */
 /* 99f7166d-372c-43ef-81f6-22007aa15f03 */
 DECLARE_SOF_RT_UUID("aria", aria_comp_uuid, 0x99f7166d, 0x372c, 0x43ef,
