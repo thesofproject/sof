@@ -715,7 +715,8 @@ out:
 	return ret;
 }
 
-static int module_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
+					 bool set)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
@@ -743,17 +744,22 @@ static int module_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_d
 	}
 
 	/* IPC3 does not use config_id, so pass 0 for config ID as it will be ignored anyway */
-	if (md->ops->set_configuration)
+	if (set && md->ops->set_configuration)
 		return md->ops->set_configuration(mod, 0, pos, data_offset_size,
 						  (const uint8_t *)cdata->data[0].data,
 						  cdata->num_elems, NULL, 0);
+	else if (!set && md->ops->get_configuration)
+		return md->ops->get_configuration(mod, pos, &data_offset_size,
+						  (uint8_t *)cdata->data[0].data,
+						  cdata->num_elems);
 
-	comp_warn(dev, "module_adapter_set_params(): no set_configuration op set for %d",
+	comp_warn(dev, "module_adapter_get_set_params(): no configuration op set for %d",
 		  dev_comp_id(dev));
 	return 0;
 }
 
-static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
+					    bool set)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -773,7 +779,7 @@ static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctr
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = module_adapter_set_params(dev, cdata);
+		ret = module_adapter_get_set_params(dev, cdata, set);
 		break;
 	default:
 		comp_err(dev, "module_adapter_ctrl_set_data error: unknown set data command");
@@ -796,11 +802,10 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
-		ret = module_adapter_ctrl_set_data(dev, cdata);
+		ret = module_adapter_ctrl_get_set_data(dev, cdata, true);
 		break;
 	case COMP_CMD_GET_DATA:
-		comp_err(dev, "module_adapter_cmd() get_data not implemented yet.");
-		ret = -ENODATA;
+		ret = module_adapter_ctrl_get_set_data(dev, cdata, false);
 		break;
 	case COMP_CMD_SET_VALUE:
 		/*
