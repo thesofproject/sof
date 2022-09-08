@@ -1413,6 +1413,7 @@ int man_write_fw_ace_v1_5(struct image *image)
 	m->css.version.build_version = image->fw_ver_build;
 	m->desc.header.major_version = image->fw_ver_major;
 	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.hotfix_version = image->fw_ver_micro;
 	m->desc.header.build_version = image->fw_ver_build;
 
 	m->desc.header.feature_mask = 0x2; // -> should be feature mask - to fix
