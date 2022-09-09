@@ -19,6 +19,7 @@ function ref_auditory()
 	opt.fft_size = 512;
 	opt.norm_slaney = 0;
 	opt.mel_log = 'MEL_DB';
+	opt.shift = 0;
 	opt.bits = 16;
 	get_ref_mel_filterbank(opt);
 	opt.bits = 32;
@@ -31,6 +32,7 @@ function ref_auditory()
 	opt.fft_size = 512;
 	opt.norm_slaney = 1;
 	opt.mel_log = 'MEL_LOG';
+	opt.shift = 1;
 	opt.bits = 16;
 	get_ref_mel_filterbank(opt);
 	opt.bits = 32;
@@ -43,6 +45,7 @@ function ref_auditory()
 	opt.fft_size = 128;
 	opt.norm_slaney = 0;
 	opt.mel_log = 'MEL_LOG10';
+	opt.shift = 2;
 	opt.bits = 16;
 	get_ref_mel_filterbank(opt);
 	opt.bits = 32;
@@ -55,6 +58,7 @@ function ref_auditory()
 	opt.fft_size = 1024;
 	opt.norm_slaney = 1;
 	opt.mel_log = 'MEL_DB';
+	opt.shift = 3;
 	opt.bits = 16;
 	get_ref_mel_filterbank(opt);
 	opt.bits = 32;
@@ -103,7 +107,7 @@ function get_ref_mel_filterbank(opt)
 	end
 
 	s_half = complex(f_real, f_imag);
-	mel_log = mfcc_power_to_mel_log(state, param, s_half);
+	mel_log = mfcc_power_to_mel_log(state, param, s_half, opt.shift);
 	q_mel_log = export_quant_qxy(mel_log, 16, 7); %Q8.7
 
 	define_prefix = sprintf('MEL_FILTERBANK_%d_TEST%d_', opt.bits, opt.test_n);
@@ -117,6 +121,7 @@ function get_ref_mel_filterbank(opt)
 	export_ndefine(fh, [define_prefix 'NUM_MEL_BINS'], opt.num_mel_bins);
 	export_ndefine(fh, [define_prefix 'NORM_SLANEY'], opt.norm_slaney);
 	export_sdefine(fh, [define_prefix 'MEL_LOG'], opt.mel_log);
+	export_ndefine(fh, [define_prefix 'SHIFT'], opt.shift);
 
 	export_vector(fh, opt.bits, [vector_prefix 'real'], q_real);
 	export_vector(fh, opt.bits, [vector_prefix 'imag'], q_imag);
