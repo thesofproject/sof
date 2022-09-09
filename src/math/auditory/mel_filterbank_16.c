@@ -73,10 +73,11 @@ void psy_apply_mel_filterbank_16(struct psy_mel_filterbank *fb, struct icomplex1
 		/* Compensate Mel triangles scale */
 		log += fb->scale_log2;
 
-		/* Change Q5.26 Q5.16 Subtract the applied lshift for power spectra
-		 * log2(x * 2^n) = log2(x) - n
+		/* Subtract the applied lshift for power spectra
+		 * log2(x * 2^(-n)) = log2(x) - n. Note that the bitshift need to be subtracted
+		 * as doubled because it was applied in linear domain, from log(x * 2^(-2 * n))
 		 */
-		log -= ((int32_t)(lshift + bitshift) << 16);
+		log -= ((int32_t)lshift + 2 * bitshift) << 16;
 
 		/* Scale for desired log  */
 		log = Q_MULTSR_32X32((int64_t)log, fb->log_mult, 16, 29, 7);
