@@ -41,7 +41,7 @@
 static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 			       const int16_t *ref_mel_log,
 			       int num_fft_bins, int num_mel_bins, int norm_slaney,
-			       enum psy_mel_log_scale mel_log_type)
+			       enum psy_mel_log_scale mel_log_type, int shift)
 {
 	struct psy_mel_filterbank fb;
 	struct icomplex16 *fft_buf;
@@ -101,7 +101,7 @@ static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 
 	/* Run filterbank */
 	power_spectra = (int32_t *)&fft_buf[0];
-	psy_apply_mel_filterbank_16(&fb, fft_out, power_spectra, mel_log, 0);
+	psy_apply_mel_filterbank_16(&fb, fft_out, power_spectra, mel_log, shift);
 
 	/* Check */
 	for (i = 0; i < num_mel_bins; i++) {
@@ -144,7 +144,7 @@ err_out_alloc:
 static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 			       const int16_t *ref_mel_log,
 			       int num_fft_bins, int num_mel_bins, int norm_slaney,
-			       enum psy_mel_log_scale mel_log_type)
+			       enum psy_mel_log_scale mel_log_type, int shift)
 {
 	struct psy_mel_filterbank fb;
 	struct icomplex32 *fft_buf;
@@ -204,7 +204,7 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 
 	/* Run filterbank */
 	power_spectra = (int32_t *)&fft_buf[0];
-	psy_apply_mel_filterbank_32(&fb, fft_out, power_spectra, mel_log, 0);
+	psy_apply_mel_filterbank_32(&fb, fft_out, power_spectra, mel_log, shift);
 
 	/* Check */
 	for (i = 0; i < num_mel_bins; i++) {
@@ -312,7 +312,8 @@ static void test_mel_filterbank_16_test1(void **state)
 			   MEL_FILTERBANK_16_TEST1_FFT_SIZE,
 			   MEL_FILTERBANK_16_TEST1_NUM_MEL_BINS,
 			   MEL_FILTERBANK_16_TEST1_NORM_SLANEY,
-			   MEL_FILTERBANK_16_TEST1_MEL_LOG);
+			   MEL_FILTERBANK_16_TEST1_MEL_LOG,
+			   MEL_FILTERBANK_16_TEST1_SHIFT);
 }
 
 static void test_mel_filterbank_32_test1(void **state)
@@ -325,7 +326,8 @@ static void test_mel_filterbank_32_test1(void **state)
 			   MEL_FILTERBANK_32_TEST1_FFT_SIZE,
 			   MEL_FILTERBANK_32_TEST1_NUM_MEL_BINS,
 			   MEL_FILTERBANK_32_TEST1_NORM_SLANEY,
-			   MEL_FILTERBANK_32_TEST1_MEL_LOG);
+			   MEL_FILTERBANK_32_TEST1_MEL_LOG,
+			   MEL_FILTERBANK_32_TEST1_SHIFT);
 }
 
 static void test_mel_filterbank_16_test2(void **state)
@@ -338,7 +340,8 @@ static void test_mel_filterbank_16_test2(void **state)
 			   MEL_FILTERBANK_16_TEST2_FFT_SIZE,
 			   MEL_FILTERBANK_16_TEST2_NUM_MEL_BINS,
 			   MEL_FILTERBANK_16_TEST2_NORM_SLANEY,
-			   MEL_FILTERBANK_16_TEST2_MEL_LOG);
+			   MEL_FILTERBANK_16_TEST2_MEL_LOG,
+			   MEL_FILTERBANK_16_TEST2_SHIFT);
 }
 
 static void test_mel_filterbank_32_test2(void **state)
@@ -351,7 +354,8 @@ static void test_mel_filterbank_32_test2(void **state)
 			   MEL_FILTERBANK_32_TEST2_FFT_SIZE,
 			   MEL_FILTERBANK_32_TEST2_NUM_MEL_BINS,
 			   MEL_FILTERBANK_32_TEST2_NORM_SLANEY,
-			   MEL_FILTERBANK_32_TEST2_MEL_LOG);
+			   MEL_FILTERBANK_32_TEST2_MEL_LOG,
+			   MEL_FILTERBANK_32_TEST2_SHIFT);
 }
 
 static void test_mel_filterbank_16_test3(void **state)
@@ -364,7 +368,8 @@ static void test_mel_filterbank_16_test3(void **state)
 			   MEL_FILTERBANK_16_TEST3_FFT_SIZE,
 			   MEL_FILTERBANK_16_TEST3_NUM_MEL_BINS,
 			   MEL_FILTERBANK_16_TEST3_NORM_SLANEY,
-			   MEL_FILTERBANK_16_TEST3_MEL_LOG);
+			   MEL_FILTERBANK_16_TEST3_MEL_LOG,
+			   MEL_FILTERBANK_16_TEST3_SHIFT);
 }
 
 static void test_mel_filterbank_32_test3(void **state)
@@ -377,7 +382,8 @@ static void test_mel_filterbank_32_test3(void **state)
 			   MEL_FILTERBANK_32_TEST3_FFT_SIZE,
 			   MEL_FILTERBANK_32_TEST3_NUM_MEL_BINS,
 			   MEL_FILTERBANK_32_TEST3_NORM_SLANEY,
-			   MEL_FILTERBANK_32_TEST3_MEL_LOG);
+			   MEL_FILTERBANK_32_TEST3_MEL_LOG,
+			   MEL_FILTERBANK_32_TEST3_SHIFT);
 }
 
 static void test_mel_filterbank_16_test4(void **state)
@@ -390,7 +396,8 @@ static void test_mel_filterbank_16_test4(void **state)
 			   MEL_FILTERBANK_16_TEST4_FFT_SIZE,
 			   MEL_FILTERBANK_16_TEST4_NUM_MEL_BINS,
 			   MEL_FILTERBANK_16_TEST4_NORM_SLANEY,
-			   MEL_FILTERBANK_16_TEST4_MEL_LOG);
+			   MEL_FILTERBANK_16_TEST4_MEL_LOG,
+			   MEL_FILTERBANK_16_TEST4_SHIFT);
 }
 
 static void test_mel_filterbank_32_test4(void **state)
@@ -403,7 +410,8 @@ static void test_mel_filterbank_32_test4(void **state)
 			   MEL_FILTERBANK_32_TEST4_FFT_SIZE,
 			   MEL_FILTERBANK_32_TEST4_NUM_MEL_BINS,
 			   MEL_FILTERBANK_32_TEST4_NORM_SLANEY,
-			   MEL_FILTERBANK_32_TEST4_MEL_LOG);
+			   MEL_FILTERBANK_32_TEST4_MEL_LOG,
+			   MEL_FILTERBANK_32_TEST4_SHIFT);
 }
 
 int main(void)

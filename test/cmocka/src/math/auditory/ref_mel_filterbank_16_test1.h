@@ -3,12 +3,13 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
-/* Created 01-Sep-2022 13:41:14 with script ref_matrix.m v1.9-rc1-1702-gba40860ea */
+/* Created 13-Sep-2022 11:32:32 with script ref_matrix.m v1.9-rc1-1767-gf95e12db0 */
 
 #define MEL_FILTERBANK_16_TEST1_FFT_SIZE  512
 #define MEL_FILTERBANK_16_TEST1_NUM_MEL_BINS  23
 #define MEL_FILTERBANK_16_TEST1_NORM_SLANEY  0
 #define MEL_FILTERBANK_16_TEST1_MEL_LOG  MEL_DB
+#define MEL_FILTERBANK_16_TEST1_SHIFT  0
 
 static const int16_t mel_filterbank_16_test1_real[257] = {
 	 32767,  32767,  32767,  32767,  32767,  32767,  32767,  32767,  32767,  32767,
