@@ -53,6 +53,24 @@ include(`platform/intel/intel-generic-dmic.m4')
 '
 )
 
+# Add HDMI-SSP Audio Offload pass-through
+ifdef(`HDMI_1_SSP_NUM',
+`	define(`HDMI_SSP_NUM', HDMI_1_SSP_NUM)
+	define(`HDMI_SSP_PIPELINE_CP_ID', `8')
+	define(`HDMI_SSP_DAI_LINK_ID', 6)
+	define(`HDMI_SSP_PCM_ID', `3') dnl use fixed PCM_ID
+	include(`platform/intel/intel-hdmi-ssp.m4')
+'
+)
+
+ifdef(`HDMI_2_SSP_NUM',
+`	define(`HDMI_SSP_NUM', HDMI_2_SSP_NUM)
+	define(`HDMI_SSP_PIPELINE_CP_ID', `9')
+	define(`HDMI_SSP_DAI_LINK_ID', 7)
+	define(`HDMI_SSP_PCM_ID', `4') dnl use fixed PCM_ID
+	include(`platform/intel/intel-hdmi-ssp.m4')
+'
+)
 
 DEBUG_START
 #
@@ -68,6 +86,16 @@ ifelse(CHANNELS, `0',
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 5)
 # PCM6  ----> Volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 6)
 # PCM7  ----> volume (pipe 7)   -----> iDisp3 (HDMI/DP playback, BE link 7)
+ifdef(`HDMI_1_SSP_NUM',
+`
+# PCM3 <---- volume <----- HDMI_1_SSP_NUM (lt6911)
+'
+)
+ifdef(`HDMI_2_SSP_NUM',
+`
+# PCM4 <---- volume <----- HDMI_2_SSP_NUM (lt6911)
+'
+)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline with priority 0 on core 0
