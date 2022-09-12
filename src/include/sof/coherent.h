@@ -97,6 +97,64 @@ struct coherent {
 #define CHECK_ATOMIC(_c)	assert(!(_c)->sleep_allowed)
 #endif
 
+/* cache poison value - must cause an exception on deref */
+#define POISON_CACHE	0x6b6b6b6b
+
+/*
+ * Poison Acquire. - TODO needs Kconfig and XCHAL_DCACHE_LINE_LOCKABLE on xtensa
+ *
+ * Intent is to inject errors into any usage of object without lock.
+ *
+ * Poison the uncache memory alias after acquire. Lock must be held.
+ * We do not poison the struct coherent part but the object contents.
+ *
+ * 1. Invalidate (done prior to this macro).
+ * 2. for (each object cache line).
+ *        copy uncache line to cache alias and lock line
+ * 3. Poison the uncache contents so that usage should cause an exception.
+ *
+ * Locking should prevent uncache contents being written back from cache
+ * alias.
+ */
+#define POISON_ACQUIRE(c, u)						\
+	do {								\
+		void *obj = (void *)c + sizeof(struct coherent);	\
+		int lines = sizeof(u) / DCACHE_LINE_SIZE;		\
+		sizeof(u) % DCACHE_LINE_SIZE ? lines += 1; line += 0;	\
+		while (lines--)	{					\
+			xthal_dcache_line_lock(obj);			\
+			obj += DCACHE_LINE_SIZE;			\
+		}							\
+		obj = (void *)u + sizeof(struct coherent);		\
+		memset(u, POISON_CACHE, lines * DCACHE_LINE_SIZE);	\
+	} while (0);
+
+/*
+ * Poison Release.
+ *
+ * Intent is to inject errors into any usage of object without lock.
+ *
+ * Poison the cache memory alias after release. Lock must be held.
+ * We do not poison the struct coherent part but the object contents.
+ *
+ * 1. Check uncache for non poison and assert. TODO
+ * 2. for (each object cache line)
+ *        writeback each cache line and unlock
+ * 3. Poison the uncache contents so that usag
+ *
+ */
+#define POISON_RELEASE(c, u)				\
+	do {								\
+		void *obj = (void *)c + sizeof(struct coherent);	\
+		int lines = sizeof(u) / DCACHE_LINE_SIZE;		\
+		sizeof(u) % DCACHE_LINE_SIZE ? lines += 1; line += 0;	\
+		while (lines--)	{					\
+			xthal_dcache_line_writeback(obj);		\
+			xthal_dcache_line_unlock(obj);			\
+			obj += DCACHE_LINE_SIZE;			\
+		}							\
+	} while (0);
+
 #if CONFIG_INCOHERENT
 /* When coherent_acquire() is called, we are sure not to have cache for this memory */
 __must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
@@ -127,6 +185,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 
 		/* invalidate local copy */
 		dcache_invalidate_region(cc, size);
+
+		POISON_ACQUIRE(cc, c);
 	}
 
 	/* client can now use cached object safely */
@@ -148,6 +208,8 @@ static inline void coherent_release(struct coherent __sparse_cache *c,
 
 		/* wtb and inv local data to coherent object */
 		dcache_writeback_invalidate_region(c, size);
+
+		POISON_RELEASE(c, uc);
 
 		/* unlock on uncache alias */
 		k_spin_unlock(&uc->lock, uc->key);
