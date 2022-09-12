@@ -228,7 +228,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 	audio_stream_produce(&buffer->stream, bytes);
 
 	/* Notifier looks for the pointer value to match it against registration */
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
+	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
@@ -260,7 +260,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 
 	audio_stream_consume(&buffer->stream, bytes);
 
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
+	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	buf_dbg(buffer, "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
