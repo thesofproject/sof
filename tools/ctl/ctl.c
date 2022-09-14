@@ -41,6 +41,13 @@ struct ctl_data {
 	bool no_abi;
 	/* component specific type, default 0 */
 	uint32_t type;
+	/* ipc version, 0: IPC3 or 1: IPC4, default 0 for IPC3 */
+	uint8_t ipc_version;
+	/* ipc message cmd type, used in IPC4 message: */
+	/*  0: init_instance, 2: set_config, 4 set_largeconfig */
+	uint8_t blob_type;
+	/* ipc message param_id value in extension field, used in IPC4 message */
+	uint32_t param_id;
 	/* set or get control value */
 	bool set;
 	/* print ABI header */
@@ -78,9 +85,14 @@ static void usage(char *name)
 	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
 	fprintf(stdout, " -o specify the output file.\n");
 	fprintf(stdout, " -t specify the component specified type.\n");
+	fprintf(stdout, " -I specify the IPC message version. It supports 'IPC3' or 'IPC4'.\n");
+	fprintf(stdout, " -T specify the IPC command type. Used in IPC4 mode.");
+	fprintf(stdout, " 0: InitInstance, 2: MOD_CONFIG, 4: MOD_LARGECONFIG.\n");
+	fprintf(stdout, " -p specify the IPC message param_id value in extension field.");
+	fprintf(stdout, " Used in IPC4 mode.\n");
 }
 
-static void header_init(struct ctl_data *ctl_data)
+static void header_ipc3_init(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
@@ -90,11 +102,37 @@ static void header_init(struct ctl_data *ctl_data)
 	hdr->abi = SOF_ABI_VERSION;
 }
 
+static void header_ipc4_init(struct ctl_data *ctl_data)
+{
+	struct sof_ipc4_abi_hdr *hdr =
+		(struct sof_ipc4_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
+
+	hdr->magic = SOF_IPC4_ABI_MAGIC;
+	/*
+	 * TODO: use IPC4 ABI version after it's determined.
+	 *   Using IPC3 ABI as IPC4 ABI is still in discussion.
+	 */
+	hdr->abi = SOF_ABI_VERSION;
+	hdr->blob_type = ctl_data->blob_type;
+	hdr->param_id = ctl_data->param_id;
+}
+
+static void header_init(struct ctl_data *ctl_data)
+{
+	/* Currently only ipc3 or ipc4 is supported */
+	if (ctl_data->ipc_version == 4)
+		header_ipc4_init(ctl_data);
+	else
+		header_ipc3_init(ctl_data);
+}
+
 /* Returns the number of bytes written to the control buffer */
 static int read_setup(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
+	struct sof_ipc4_abi_hdr *ipc4_hdr =
+		(struct sof_ipc4_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 	int n_max = ctl_data->ctrl_size;
 	char *mode = ctl_data->binary ? "rb" : "r";
 	int abi_size = 0;
@@ -115,7 +153,10 @@ static int read_setup(struct ctl_data *ctl_data)
 	/* create abi header*/
 	if (ctl_data->no_abi) {
 		header_init(ctl_data);
-		abi_size = sizeof(struct sof_abi_hdr);
+		if (ctl_data->ipc_version == 4)
+			abi_size = sizeof(struct sof_ipc4_abi_hdr);
+		else
+			abi_size = sizeof(struct sof_abi_hdr);
 		data_start_int_index += abi_size / sizeof(uint32_t);
 	}
 
@@ -146,7 +187,10 @@ static int read_setup(struct ctl_data *ctl_data)
 
 read_done:
 	if (ctl_data->no_abi) {
-		hdr->size = n;
+		if (ctl_data->ipc_version == 4)
+			ipc4_hdr->size = n;
+		else
+			hdr->size = n;
 		n += abi_size;
 	}
 
@@ -160,7 +204,7 @@ read_done:
 	return n;
 }
 
-static void header_dump(struct ctl_data *ctl_data)
+static void header_ipc3_dump(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
@@ -172,6 +216,29 @@ static void header_dump(struct ctl_data *ctl_data)
 		SOF_ABI_VERSION_MAJOR(hdr->abi),
 		SOF_ABI_VERSION_MINOR(hdr->abi),
 		SOF_ABI_VERSION_PATCH(hdr->abi));
+}
+
+static void header_ipc4_dump(struct ctl_data *ctl_data)
+{
+	struct sof_ipc4_abi_hdr *hdr =
+		(struct sof_ipc4_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
+
+	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
+	fprintf(stdout, "hdr: size %d bytes\n", hdr->size);
+	fprintf(stdout, "hdr: abi %d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(hdr->abi),
+		SOF_ABI_VERSION_MINOR(hdr->abi),
+		SOF_ABI_VERSION_PATCH(hdr->abi));
+	fprintf(stdout, "hdr: blob_type %d\n", hdr->blob_type);
+	fprintf(stdout, "hdr: param_id %d\n", hdr->param_id);
+}
+
+static void header_dump(struct ctl_data *ctl_data)
+{
+	if (ctl_data->ipc_version == 4)
+		header_ipc4_dump(ctl_data);
+	else
+		header_ipc3_dump(ctl_data);
 }
 
 /* dump binary data out with 16bit hex format */
@@ -190,10 +257,17 @@ static void hex_data_dump(struct ctl_data *ctl_data)
 
 	/* exclude abi header if '-r' specified */
 	if (ctl_data->no_abi) {
-		int_offset += sizeof(struct sof_abi_hdr) /
-			      sizeof(uint32_t);
-		n -= sizeof(struct sof_abi_hdr) /
-		     sizeof(uint16_t);
+		if (ctl_data->ipc_version == 4) {
+			int_offset += sizeof(struct sof_ipc4_abi_hdr) /
+				sizeof(uint32_t);
+			n -= sizeof(struct sof_ipc4_abi_hdr) /
+				sizeof(uint16_t);
+		} else {
+			int_offset += sizeof(struct sof_abi_hdr) /
+				sizeof(uint32_t);
+			n -= sizeof(struct sof_abi_hdr) /
+				sizeof(uint16_t);
+		}
 	}
 
 	/* get the dumping start address */
@@ -222,8 +296,12 @@ static void csv_data_dump(struct ctl_data *ctl_data, FILE *fh)
 	config = &ctl_data->buffer[BUFFER_ABI_OFFSET];
 	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint32_t);
 
-	if (ctl_data->no_abi)
-		s = sizeof(struct sof_abi_hdr) / sizeof(uint32_t);
+	if (ctl_data->no_abi) {
+		if (ctl_data->ipc_version == 4)
+			s = sizeof(struct sof_ipc4_abi_hdr) / sizeof(uint32_t);
+		else
+			s = sizeof(struct sof_abi_hdr) / sizeof(uint32_t);
+	}
 
 	/* Print out in CSV txt formal */
 	for (i = s; i < n; i++) {
@@ -347,8 +425,12 @@ static int ctl_setup(struct ctl_data *ctl_data)
 		}
 
 		/* need more space for raw data file(no header in the file) */
-		if (ctl_data->no_abi)
-			ctrl_size += sizeof(struct sof_abi_hdr);
+		if (ctl_data->no_abi) {
+			if (ctl_data->ipc_version == 4)
+				ctrl_size += sizeof(struct sof_ipc4_abi_hdr);
+			else
+				ctrl_size += sizeof(struct sof_abi_hdr);
+		}
 	} else {
 		/* Get control attributes from info. */
 		ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
@@ -426,9 +508,15 @@ static void ctl_dump(struct ctl_data *ctl_data)
 			n = ctl_data->buffer[BUFFER_SIZE_OFFSET];
 
 			if (ctl_data->no_abi) {
-				offset += sizeof(struct sof_abi_hdr) /
+				if (ctl_data->ipc_version == 4) {
+					offset += sizeof(struct sof_ipc4_abi_hdr) /
 					  sizeof(int);
-				n -= sizeof(struct sof_abi_hdr);
+					n -= sizeof(struct sof_ipc4_abi_hdr);
+				} else {
+					offset += sizeof(struct sof_abi_hdr) /
+					  sizeof(int);
+					n -= sizeof(struct sof_abi_hdr);
+				}
 			}
 			n = fwrite(&ctl_data->buffer[offset],
 				   1, n, fh);
@@ -508,6 +596,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	int opt;
 	struct sof_abi_hdr *hdr;
+	struct sof_ipc4_abi_hdr *ipc4_hdr;
 
 	ctl_data = calloc(1, sizeof(struct ctl_data));
 	if (!ctl_data) {
@@ -518,7 +607,10 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:br")) != -1) {
+	/* set default ipc_version to 3 */
+	ctl_data->ipc_version = 3;
+
+	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:I:T:p:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -551,6 +643,38 @@ int main(int argc, char *argv[])
 			ctl_data->print_abi_header = true;
 			ctl_data->print_abi_size = atoi(optarg);
 			break;
+		case 'I':
+		{
+			char *ipcv = optarg;
+
+			if (!strcmp(ipcv, "IPC3")) {
+				ctl_data->ipc_version = 3;
+				break;
+			} else if (!strcmp(ipcv, "IPC4")) {
+				ctl_data->ipc_version = 4;
+				break;
+			}
+
+			fprintf(stdout, "Unsupported ipc_version: %s, set it to IPC3\n", ipcv);
+			ctl_data->ipc_version = 3;
+			break;
+		}
+		case 'T':
+			ctl_data->blob_type = atoi(optarg);
+			break;
+		case 'p':
+		{
+			char *param_id = optarg;
+			int ret;
+
+			ret = strtoul(param_id, NULL, 0);
+			if (ret < 0) {
+				fprintf(stderr, "Parsing -p fails, error %s\n", strerror(errno));
+				goto struct_free;
+			}
+			ctl_data->param_id = ret;
+			break;
+		}
 		case 'h':
 		/* pass through */
 		default:
@@ -571,12 +695,21 @@ int main(int argc, char *argv[])
 
 	/* Just print the ABI header if requested */
 	if (ctl_data->print_abi_header) {
-		ctl_data->ctrl_size = sizeof(struct sof_abi_hdr);
+		if (ctl_data->ipc_version == 4)
+			ctl_data->ctrl_size = sizeof(struct sof_ipc4_abi_hdr);
+		else /* only ipc3 and ipc4 is supported */
+			ctl_data->ctrl_size = sizeof(struct sof_abi_hdr);
 		buffer_alloc(ctl_data);
 		header_init(ctl_data);
-		hdr = (struct sof_abi_hdr *)
-			&ctl_data->buffer[BUFFER_ABI_OFFSET];
-		hdr->size = ctl_data->print_abi_size;
+		if (ctl_data->ipc_version == 4) {
+			ipc4_hdr = (struct sof_ipc4_abi_hdr *)
+				&ctl_data->buffer[BUFFER_ABI_OFFSET];
+			ipc4_hdr->size = ctl_data->print_abi_size;
+		} else {
+			hdr = (struct sof_abi_hdr *)
+				&ctl_data->buffer[BUFFER_ABI_OFFSET];
+			hdr->size = ctl_data->print_abi_size;
+		}
 		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size;
 		ctl_dump(ctl_data);
 		buffer_free(ctl_data);
