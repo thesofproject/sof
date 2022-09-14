@@ -24,4 +24,6 @@
 #define CAVS_VERSION CAVS_VERSION_2_5
 #endif
 
+#define HW_CFG_VERSION	CAVS_VERSION
+
 #endif /* __CAVS_VERSION_H__ */
