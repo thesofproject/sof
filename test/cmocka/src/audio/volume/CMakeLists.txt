@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 cmocka_test(volume_process
-	volume_process.c
+	volume_process.c ../module_adapter_test.c
 )
 
 target_include_directories(volume_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
