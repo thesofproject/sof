@@ -48,9 +48,7 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
  */
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
-	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
-	CONFIG_LIBRARY
+#ifdef CONFIG_LIBRARY
 	return irq;
 #else
 	if (cascade == irq_name_level2)
