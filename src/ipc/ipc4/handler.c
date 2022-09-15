@@ -309,7 +309,8 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			return ret;
 		}
 
-		if (status == COMP_STATE_READY)
+		if (status == COMP_STATE_READY ||
+		    status == COMP_STATE_PAUSED)
 			return 0;
 
 		cmd = COMP_TRIGGER_PAUSE;
