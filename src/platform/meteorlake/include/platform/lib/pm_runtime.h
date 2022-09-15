@@ -16,6 +16,7 @@
 #define __PLATFORM_LIB_PM_RUNTIME_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
  /**
  * \brief extra pwr flag to power up a core with a specific reason
@@ -56,6 +57,8 @@ void platform_pm_runtime_prepare_d0ix_en(uint32_t index);
 void platform_pm_runtime_enable(uint32_t context, uint32_t index);
 
 void platform_pm_runtime_disable(uint32_t context, uint32_t index);
+
+bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
 
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
