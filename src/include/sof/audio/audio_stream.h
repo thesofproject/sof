@@ -491,9 +491,8 @@ static inline void audio_stream_produce(struct audio_stream __sparse_cache *buff
 	buffer->w_ptr = audio_stream_wrap(buffer,
 					  (char *)buffer->w_ptr + bytes);
 
-	/* "overwrite" old data in circular wrap case */
-	if (bytes > audio_stream_get_free_bytes(buffer))
-		buffer->r_ptr = buffer->w_ptr;
+	/* Component did not check amount of free before write to sink */
+	assert(bytes <= audio_stream_get_free_bytes(buffer));
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
