@@ -105,48 +105,6 @@ zephyr_include_directories(
 # SOC level sources
 # Files that are commented may not be needed.
 
-# Intel BYT, CHT, BSW platforms
-if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
-
-	# Driver sources
-	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/baytrail/ipc.c
-		${SOF_DRIVERS_PATH}/intel/baytrail/ssp.c
-		${SOF_DRIVERS_PATH}/intel/pmc-ipc.c
-	)
-
-	# Platform sources
-	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/baytrail/platform.c
-		${SOF_PLATFORM_PATH}/baytrail/lib/dai.c
-		${SOF_PLATFORM_PATH}/baytrail/lib/clk.c
-		${SOF_PLATFORM_PATH}/baytrail/lib/dma.c
-		${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
-	)
-
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/ll_schedule.c
-	)
-
-	set(PLATFORM "baytrail")
-endif()
-
-# Intel HSW, BDW platforms
-if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
-	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/haswell/ipc.c
-		${SOF_DRIVERS_PATH}/intel/haswell/ssp.c
-	)
-
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/ll_schedule.c
-	)
-
-	set(PLATFORM "haswell")
-endif()
-
 # Intel APL, KBL, SKL CAVS 1.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 
