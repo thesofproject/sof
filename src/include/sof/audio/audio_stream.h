@@ -485,28 +485,7 @@ audio_stream_avail_frames_aligned(const struct audio_stream __sparse_cache *sour
  * @param buffer Buffer to update.
  * @param bytes Number of written bytes.
  */
-static inline void audio_stream_produce(struct audio_stream __sparse_cache *buffer,
-					uint32_t bytes)
-{
-	buffer->w_ptr = audio_stream_wrap(buffer,
-					  (char *)buffer->w_ptr + bytes);
-
-	/* "overwrite" old data in circular wrap case */
-	if (bytes > audio_stream_get_free_bytes(buffer))
-		buffer->r_ptr = buffer->w_ptr;
-
-	/* calculate available bytes */
-	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = (char *)buffer->w_ptr - (char *)buffer->r_ptr;
-	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = buffer->size; /* full */
-	else
-		buffer->avail = buffer->size -
-			((char *)buffer->r_ptr - (char *)buffer->w_ptr);
-
-	/* calculate free bytes */
-	buffer->free = buffer->size - buffer->avail;
-}
+void audio_stream_produce(struct audio_stream __sparse_cache *buffer, uint32_t bytes);
 
 /**
  * Updates the buffer state after reading from the buffer.

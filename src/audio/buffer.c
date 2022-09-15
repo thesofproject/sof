@@ -26,6 +26,27 @@ DECLARE_SOF_RT_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
 		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
+void audio_stream_produce(struct audio_stream __sparse_cache *buffer, uint32_t bytes)
+{
+	buffer->w_ptr = audio_stream_wrap(buffer,
+					  (char *)buffer->w_ptr + bytes);
+
+	if (bytes > audio_stream_get_free_bytes(buffer))
+		tr_dbg(&buffer_tr, "bytes > audio_stream_get_free_bytes()");
+
+	/* calculate available bytes */
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = (char *)buffer->w_ptr - (char *)buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = buffer->size; /* full */
+	else
+		buffer->avail = buffer->size -
+			((char *)buffer->r_ptr - (char *)buffer->w_ptr);
+
+	/* calculate free bytes */
+	buffer->free = buffer->size - buffer->avail;
+}
+
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 {
 	struct comp_buffer *buffer;
