@@ -87,11 +87,13 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 	acp_i2stdm_ier_t sp_ier;
 	acp_i2stdm_iter_t sp_iter;
 	acp_i2stdm_irer_t sp_irer;
+	uint32_t acp_pdm_en;
 
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
 	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en)
+	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en && !acp_pdm_en)
 		/* Request SMU to set aclk to 600 Mhz */
 		acp_change_clock_notify(600000000);
 
@@ -142,6 +144,7 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 {
 	acp_i2stdm_irer_t sp_irer;
 	acp_i2stdm_iter_t sp_iter;
+	uint32_t acp_pdm_en;
 
 	switch (channel->status) {
 	case COMP_STATE_READY:
@@ -168,10 +171,13 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 	}
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
 	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+
 	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), SP_IER_DISABLE);
 		/* Request SMU to scale down aclk to minimum clk */
-		acp_change_clock_notify(0);
+		if (!acp_pdm_en)
+			acp_change_clock_notify(0);
 	}
 
 	return 0;

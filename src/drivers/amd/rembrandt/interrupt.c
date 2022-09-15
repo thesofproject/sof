@@ -413,8 +413,7 @@ void acp_ack_intr_from_host(void)
 	/* acknowledge the host interrupt */
 	acp_dsp_sw_intr_stat_t sw_intr_stat;
 
-	sw_intr_stat = (acp_dsp_sw_intr_stat_t)io_reg_read(PU_REGISTER_BASE +
-							ACP_DSP_SW_INTR_STAT);
+	sw_intr_stat.u32all = 0;
 	sw_intr_stat.bits.host_to_dsp0_intr1_stat = INTERRUPT_ENABLE;
 	io_reg_write((PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT), sw_intr_stat.u32all);
 }
