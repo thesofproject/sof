@@ -82,9 +82,20 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 	acp_wov_pdm_decimation_factor_t deci_fctr;
 	acp_wov_misc_ctrl_t wov_misc_ctrl;
 	acp_wov_pdm_dma_enable_t  pdm_dma_enable;
+	acp_hstdm_iter_t	hs_iter;
+	acp_hstdm_irer_t	hs_irer;
+	uint32_t		acp_pdm_en;
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
+
+	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
+	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en)
+		/* Request SMU to set aclk to 600 Mhz */
+		acp_change_clock_notify(600000000);
 	channel->status = COMP_STATE_ACTIVE;
 	if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		/* Channel for DMIC */
@@ -140,6 +151,9 @@ static int acp_dmic_dma_pause(struct dma_chan_data *channel)
 static int acp_dmic_dma_stop(struct dma_chan_data *channel)
 {
 	acp_wov_pdm_dma_enable_t  pdm_dma_enable;
+	acp_hstdm_iter_t	hs_iter;
+	acp_hstdm_irer_t	hs_irer;
+	uint32_t acp_pdm_en;
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
@@ -175,6 +189,13 @@ static int acp_dmic_dma_stop(struct dma_chan_data *channel)
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE, 0);
 	/* Clear PDM FIFO */
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_FIFO_FLUSH, 1);
+	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
+	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en)
+		/* Request SMU to set aclk to minimum aclk */
+		acp_change_clock_notify(0);
 	return 0;
 }
 
