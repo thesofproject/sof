@@ -593,8 +593,7 @@ zephyr_library_sources(
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 	${SOF_SRC_PATH}/schedule/zephyr_domain.c
 	${SOF_SRC_PATH}/schedule/schedule.c
-	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
-	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
+
 	${SOF_SRC_PATH}/idc/zephyr_idc.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
@@ -602,6 +601,13 @@ zephyr_library_sources(
 	edf_schedule.c
 	schedule.c
 )
+
+if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL)
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
+endif()
+if(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL)
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c)
+endif()
 
 if(CONFIG_COMP_BLOB)
 	zephyr_library_sources(
