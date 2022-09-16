@@ -58,3 +58,47 @@ jobs:
         run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
+
+
+  # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of sparse.c is an
+  # unusable mess and always zero in practice. "Send patches"? So for now the only purpose
+  # of this check is to keep sparse _usable_ and demo how to use it but not to catch any
+  # regression.
+  #
+  # The only, undocumented way to make sparse return a non-zero exit status is to use its
+  # -Wsparse-error option; see check_symbols() code in sparse.c. Without -Wsparse-error,
+  # sparse.c always returns zero no matter how many warnings and errors it printed. BUT of
+  # course -Wsparse-error has another, intended and expected effect documented in "man
+  # sparse": promote all our (very many) warnings into errors. Which means we cannot use
+  # -Wsparse-error yet, otherwise it would be "always red".
+  #
+  # Note sparse does not support promoting individual warning types to errors either.
+  sparse_always_green:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [
+          {platform: tgl,
+           real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
+        ]
+
+    steps:
+      - uses: actions/checkout@v2
+        # From time to time this will catch a git tag and change SOF_VERSION
+        with:
+          fetch-depth: 10
+          path: ./workspace/sof
+
+      - name: west clones
+        run: pip3 install west && cd workspace/sof/ && west init -l &&
+               west update --narrow --fetch-opt=--depth=5
+
+      - name: build
+        run: cd workspace &&
+             ZSDK=/opt/toolchains/zephyr-sdk-0.15.0;
+             _RCC=${{ matrix.platforms.real_cc }};
+             REAL_CC="$ZSDK/$_RCC" ./sof/zephyr/docker-run.sh
+             ./sof/zephyr/docker-build.sh ${{ matrix.platforms.platform }}
+             --cmake-args=-DSPARSE=y  # --cmake-args=-DEXTRA_CFLAGS=-Wsparse-error
