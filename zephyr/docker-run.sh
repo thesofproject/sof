@@ -53,6 +53,7 @@ main()
     docker run -i -v "$(west topdir)":/zep_workspace \
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
+           --env REAL_CC \
            ghcr.io/zephyrproject-rtos/zephyr-build:latest \
            "$@"
 }
