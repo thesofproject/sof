@@ -5,12 +5,19 @@ function eq = eq_blob_plot(blobfn, eqtype, fs, f, doplot)
 % Plot frequency response of IIR or FIR EQ coefficients blob
 %
 % Inputs
+%   blobfn - filename of the blob
+%   eqtype - 'iir' or 'fir', if omitted done via string search from blobfn
+%   fs     - sample rate, defaults to 48 kHz if omitted
+%   f      - frequency vector
+%   doplot - 0 or 1, don't plot if 0
 %
-% blobfn - filename of the blob
-% eqtype - 'iir' or 'fir', if omitted done via string search from blobfn
-% fs     - sample rate, defaults to 48 kHz if omitted
-% f      - frequency vector
-% dpplot
+% Output
+%   eq.f - frequency vector
+%   eq.m - magnitude response
+%   eq.gd - group delay
+%   eq.b_fir - FIR coefficients
+%   eq.b - IIR numerator coefficients
+%   eq.a - IIR denominator coefficients
 %
 % Examples
 % eq_blob_plot('../../topology/topology1/m4/eq_iir_coef_loudness.m4', 'iir');
@@ -19,7 +26,7 @@ function eq = eq_blob_plot(blobfn, eqtype, fs, f, doplot)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2016-2020, Intel Corporation. All rights reserved.
+% Copyright (c) 2016-2022, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -68,11 +75,14 @@ switch lower(eqtype)
 		hd = eq_fir_blob_decode(blob);
 		eq.m = zeros(length(eq.f), hd.channels_in_config);
 		for i = 1:hd.channels_in_config
-			teq = eq_fir_blob_decode(blob, hd.assign_response(i));
-			h = freqz(teq.b, 1, eq.f, fs);
+			decoded_eq = eq_fir_blob_decode(blob, hd.assign_response(i));
+			eq.b_fir = decoded_eq.b;
+			eq.b = 1;
+			eq.a = 1;
+			h = freqz(eq.b_fir, 1, eq.f, fs);
 			eq.m(:,i) = 20*log10(abs(h));
 			if do_group_delay
-				gd = grpdelay(teq.b, 1, eq.f, fs) / fs;
+				gd = grpdelay(eq.b_fir, 1, eq.f, fs) / fs;
 				eq.gd(:,i) = gd;
 			end
 		end
@@ -81,8 +91,10 @@ switch lower(eqtype)
 		hd = eq_iir_blob_decode(blob);
 		eq.m = zeros(length(eq.f), hd.channels_in_config);
 		for i = 1:hd.channels_in_config
-			teq = eq_iir_blob_decode(blob, hd.assign_response(i));
-			h = freqz(teq.b, teq.a, eq.f, fs);
+			decoded_eq = eq_iir_blob_decode(blob, hd.assign_response(i));
+			eq.b = decoded_eq.b;
+			eq.a = decodec_eq.a;
+			h = freqz(eq.b, eq.a, eq.f, fs);
 			eq.m(:,i) = 20*log10(abs(h));
 			if do_group_delay
 				gd = grpdelay(teq.b, teq.a, eq.f, fs) / fs;
