@@ -143,4 +143,11 @@ struct module_interface {
 	int (*free)(struct processing_module *mod);
 };
 
+/* Convert first_block/last_block indicator to fragment position */
+static inline enum module_cfg_fragment_position
+first_last_block_to_frag_pos(bool first_block, bool last_block)
+{
+	return (last_block << 1) | first_block;
+}
+
 #endif /* __SOF_MODULE_INTERFACE__ */

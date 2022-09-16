@@ -917,17 +917,7 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 	size_t fragment_size;
 
 	/* set fragment position */
-	if (first_block) {
-		if (last_block)
-			pos = MODULE_CFG_FRAGMENT_SINGLE;
-		else
-			pos = MODULE_CFG_FRAGMENT_FIRST;
-	} else {
-		if (!last_block)
-			pos = MODULE_CFG_FRAGMENT_MIDDLE;
-		else
-			pos = MODULE_CFG_FRAGMENT_LAST;
-	}
+	pos = first_last_block_to_frag_pos(first_block, last_block);
 
 	switch (pos) {
 	case MODULE_CFG_FRAGMENT_SINGLE:
