@@ -15,6 +15,10 @@ unset ZEPHYR_BASE
 # Make sure we're in the right place
 test -e ./sof/scripts/xtensa-build-zephyr.py
 
+# See .github/workflows/zephyr.yml
+PATH="$PATH":/opt/sparse/bin
+command -v sparse  || true
+: REAL_CC="$REAL_CC"
 
 # See https://stackoverflow.com/questions/35291520/docker-and-userns-remap-how-to-manage-volume-permissions-to-share-data-betwee + many others
 exec_as_sof_uid()
@@ -52,7 +56,7 @@ exec_as_sof_uid()
     # Double sudo to work around some funny restriction in
     # zephyr-build:/etc/sudoers: 'user' can do anything but... only as
     # root.
-    sudo sudo -u "$sof_user" "$0" "$@"
+    sudo sudo -u "$sof_user" REAL_CC="$REAL_CC" "$0" "$@"
     exit "$?"
 }
 
@@ -76,4 +80,7 @@ if test -e .west || test -e zephyr; then
 else
     init_update='-u'
 fi
-./sof/scripts/xtensa-build-zephyr.py $init_update --no-interactive "$@"
+
+# To investigate what went wrong enable the trailing comment.
+# This cannot be enabled by default for automation reasons.
+./sof/scripts/xtensa-build-zephyr.py $init_update --no-interactive "$@" # || /bin/bash
