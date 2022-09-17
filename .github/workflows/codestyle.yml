@@ -59,4 +59,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: run yamllint
-        run: yamllint --strict .github/workflows/*.yml
+        # Quoting to please all parsers is hard. This indirection helps.
+        env:
+          yamllint_config: '{extends: default, rules: {line-length: {max: 100}}}'
+        run: yamllint -f parsable
+          -d "$yamllint_config"
+          --strict .github/workflows/*.yml *.yml
