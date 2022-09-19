@@ -23,9 +23,8 @@ manifest:
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
     - name: zephyr
-      repo-path: zephyr
-      revision: 0956647aaf6bd2b1e840adcc86db503f274d84a9
-      remote: zephyrproject
+      url: https://github.com/aborisovich/zephyr
+      revision: ipc-implementation-fix
       # Import some projects listed in zephyr/west.yml@revision
       #
       # Warning: changes to zephyr/west.yml or to any other _imported_
