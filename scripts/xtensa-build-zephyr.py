@@ -464,7 +464,9 @@ def build_platforms():
 			print(f"XTENSA_TOOLCHAIN_PATH={XTENSA_TOOLCHAIN_PATH}")
 			print(f"TOOLCHAIN_VER={TOOLCHAIN_VER}")
 
-			# set variables expected by xcc toolchain
+			# Set variables expected by xcc toolchain. CMake cannot set (evil) build-time
+			# environment variables at configure time:
+			# https://gitlab.kitware.com/cmake/community/-/wikis/FAQ#how-can-i-get-or-set-environment-variables
 			XTENSA_BUILDS_DIR=str(pathlib.Path(xtensa_tools_root_dir, "install", "builds",
 				TOOLCHAIN_VER).absolute())
 			XTENSA_SYSTEM = str(pathlib.Path(XTENSA_BUILDS_DIR, XTENSA_CORE, "config").absolute())
