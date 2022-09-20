@@ -13,10 +13,6 @@
  *
  */
 
-#include <ipc/probe.h>
-#include <sof/math/numbers.h>
-#include "wave.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,6 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <ipc/probe_dma_frame.h>
+#include <sof/math/numbers.h>
+
+#include "wave.h"
 
 #define APP_NAME "sof-probes"
 
@@ -182,39 +183,44 @@ void finalize_wave_files(struct wave_files *files)
 	}
 }
 
-int validate_data_packet(struct probe_data_packet *data_packet)
+int validate_data_packet(struct probe_data_packet *packet)
 {
-	uint32_t received_crc;
-	uint32_t calc_crc;
+	uint64_t *checksump;
+	uint64_t sum;
 
-	received_crc = data_packet->checksum;
-	data_packet->checksum = 0;
-	calc_crc = crc32(0, (char *)data_packet, sizeof(*data_packet));
+	sum = (uint32_t) (packet->sync_word +
+			  packet->buffer_id  +
+			  packet->format +
+			  packet->timestamp_high +
+			  packet->timestamp_low +
+			  packet->data_size_bytes);
 
-	if (received_crc == calc_crc) {
-		return 0;
-	} else {
-		fprintf(stderr, "error: data packet for buffer %d is not valid: crc32: %d/%d\n",
-			data_packet->buffer_id, calc_crc, received_crc);
+	checksump = (uint64_t *) (packet->data + packet->data_size_bytes);
+
+	if (sum != *checksump) {
+		fprintf(stderr, "Checksum error 0x%016lx != 0x%016lx\n", sum, *checksump);
 		return -EINVAL;
 	}
+
+	return 0;
 }
 
 int process_sync(struct probe_data_packet *packet, uint8_t **w_ptr, uint32_t *total_data_to_copy)
 {
 	struct probe_data_packet *temp_packet;
 
-	/* request to copy data_size from probe packet */
-	*total_data_to_copy = packet->data_size_bytes;
+	/* request to copy data_size from probe packet and 64-bit checksum */
+	*total_data_to_copy = packet->data_size_bytes + sizeof(uint64_t);
 
-	if (packet->data_size_bytes > PACKET_MAX_SIZE) {
+	if (*total_data_to_copy > PACKET_MAX_SIZE) {
 		temp_packet = realloc(packet,
-				      sizeof(struct probe_data_packet) + packet->data_size_bytes);
+				      sizeof(struct probe_data_packet) + *total_data_to_copy);
 		if (!temp_packet)
 			return -ENOMEM;
 	}
 
 	*w_ptr = (uint8_t *)&packet->data;
+
 	return 0;
 }
 

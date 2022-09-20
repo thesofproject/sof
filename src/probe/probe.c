@@ -627,7 +627,7 @@ static int probe_gen_header(uint32_t buffer_id, uint32_t size,
 	header->timestamp_low = (uint32_t)timestamp;
 	header->timestamp_high = (uint32_t)(timestamp >> 32);
 	header->data_size_bytes = size;
-#if CONFIG_IPC_MAJOR_4
+
 	/* calc checksum to check validation by probe parse app */
 	*checksum = header->sync_word +
 		    header->buffer_id  +
@@ -635,11 +635,6 @@ static int probe_gen_header(uint32_t buffer_id, uint32_t size,
 		    header->timestamp_high +
 		    header->timestamp_low +
 		    header->data_size_bytes;
-#else
-	/* calc crc to check validation by probe parse app */
-	header->checksum = 0;
-	header->checksum = crc32(0, header, sizeof(*header));
-#endif
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)header, sizeof(*header));
 
@@ -775,12 +770,12 @@ static void probe_logging_hook(uint8_t *buffer, size_t length)
 			      buffer, length);
 	if (ret < 0)
 		return;
-#if CONFIG_IPC_MAJOR_4
+
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      &checksum, sizeof(checksum));
 	if (ret < 0)
 		return;
-#endif
+
 	kick_probe_task(_probe);
 }
 #endif
@@ -857,12 +852,12 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 			if (ret < 0)
 				goto err;
 		}
-#if CONFIG_IPC_MAJOR_4
+
 		ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 				      &checksum, sizeof(checksum));
 		if (ret < 0)
 			goto err;
-#endif
+
 		kick_probe_task(_probe);
 	} else {
 		/* search for DMA used by this probe point */
