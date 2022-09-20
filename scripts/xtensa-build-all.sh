@@ -392,6 +392,8 @@ do
 	then
 		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
+		# CMake cannot set (evil) build-time environment variables at configure time:
+# https://gitlab.kitware.com/cmake/community/-/wikis/FAQ#how-can-i-get-or-set-environment-variables
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
