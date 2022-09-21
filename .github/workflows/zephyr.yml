@@ -14,14 +14,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Using groups to avoid spamming the small results box with too
+        # many lines. Pay attention to COMMAS.
         IPC_platforms: [
-          # IPC3
+          # - IPC3 default
           apl cnl,
           icl jsl,
           tgl tgl-h,
           imx8 imx8x imx8m,
+          # - IPC4 default
           mtl,
-          # only tgl has IPC4 overlay file now
+          # Very few IPC3 platforms support IPC4 too.
           -i IPC4 tgl,
         ]
         zephyr_revision: [
