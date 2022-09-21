@@ -244,7 +244,7 @@ void parse_data(char *file_in)
 	uint32_t total_data_to_copy = 0;
 	uint32_t data_to_copy = 0;
 	uint8_t *w_ptr;
-	int i, j, file;
+	int start, i, j, file;
 
 	enum p_state state = READY;
 
@@ -267,45 +267,39 @@ void parse_data(char *file_in)
 	memset(&data, 0, DATA_READ_LIMIT);
 	memset(&files, 0, sizeof(struct wave_files) * FILES_LIMIT);
 
-	/* data read loop to process DATA_READ_LIMIT bytes at each iteration */
+	start = 0;
+	/* Data read loop to process DATA_READ_LIMIT bytes at each
+	 * iteration.  If there is under sizeof(sync_word) bytes left
+	 * in the buffer when a new frame is searched for, the remaining
+	 * bytes are moved to the beginning of the buffer for the next
+	 * iteration.
+	 */
 	do {
-		i = fread(&data, 1, DATA_READ_LIMIT, fd_in);
+		i = fread(&data[start], 1, DATA_READ_LIMIT - start, fd_in);
+		i += start;
+		j = 0;
+		start = 0;
 
 		/* processing all loaded bytes */
-		for (j = 0; j < i; j++) {
-			/* check for SYNC */
-			if (sync_word_at(&data[j], i - j)) {
-				if (state != READY) {
-					fprintf(stderr, "error: wrong state %d, err %d\n",
-						state, errno);
-					free(packet);
-					exit(0);
-				}
-				memset(packet, 0, PACKET_MAX_SIZE);
-				/* request to copy full data packet */
-				total_data_to_copy = sizeof(struct probe_data_packet);
-				w_ptr = (uint8_t *)packet;
-				state = SYNC;
-			}
-			/* data copying section */
-			if (total_data_to_copy > 0) {
-				/* check if there is enough bytes loaded */
-				/* or copy partially if not */
-				if (j + total_data_to_copy > i) {
-					data_to_copy = i - j;
-					total_data_to_copy -= data_to_copy;
-				} else {
-					data_to_copy = total_data_to_copy;
-					total_data_to_copy = 0;
-				}
-				memcpy(w_ptr, data + j, data_to_copy);
-				w_ptr += data_to_copy;
-				j += data_to_copy - 1;
-			}
-
+		while (j < i) {
 			if (total_data_to_copy == 0) {
 				switch (state) {
 				case READY:
+					/* check for SYNC */
+					if (i - j < sizeof(packet->sync_word)) {
+						start = i - j;
+						memmove(&data[0], &data[j], start);
+						j += start;
+					} else if (sync_word_at(&data[j], i - j)) {
+						memset(packet, 0, PACKET_MAX_SIZE);
+						/* request to copy full data packet */
+						total_data_to_copy =
+							sizeof(struct probe_data_packet);
+						w_ptr = (uint8_t *)packet;
+						state = SYNC;
+					} else {
+						j++;
+					}
 					break;
 				case SYNC:
 					/* SYNC -> CHECK */
@@ -342,6 +336,21 @@ void parse_data(char *file_in)
 					state = READY;
 					break;
 				}
+			}
+			/* data copying section */
+			if (total_data_to_copy > 0) {
+				/* check if there is enough bytes loaded */
+				/* or copy partially if not */
+				if (j + total_data_to_copy > i) {
+					data_to_copy = i - j;
+					total_data_to_copy -= data_to_copy;
+				} else {
+					data_to_copy = total_data_to_copy;
+					total_data_to_copy = 0;
+				}
+				memcpy(w_ptr, data + j, data_to_copy);
+				w_ptr += data_to_copy;
+				j += data_to_copy;
 			}
 		}
 	} while (i > 0);
