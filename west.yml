@@ -8,29 +8,27 @@ manifest:
   remotes:
     - name: thesofproject
       url-base: https://github.com/thesofproject
-    - name: zephyrproject
-      url-base: https://github.com/zephyrproject-rtos
+    - name: github-intel
+      url-base: https://github.com/intel
 
   projects:
     - name: rimage
+      remote: thesofproject
       repo-path: rimage
       path: sof/rimage
-      revision: 02abc5d342a3ee6965bdc933ea1439d85d0256da
+      revision: 6b4848e25d8aaabdf6cd9d402db9a02e5c62ae56
 
     - name: tomlc99
+      remote: thesofproject
       repo-path: tomlc99
       path: sof/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
     - name: zephyr
+      remote: github-intel
+      path: zephyr
       repo-path: zephyr
-      revision: dcda3eab8df7e9b25cdf038232abcb0ddc174461
-      remote: zephyrproject
-      # Import some projects listed in zephyr/west.yml@revision
-      #
-      # Warning: changes to zephyr/west.yml or to any other _imported_
-      # west.yml file are _ignored_ by design!  Only the above
-      # 'revision:' of zephyr/west.yml is used.
+      revision: 9443d6b559b81e1fced3d1f5d761ab7f68b4c467
       import:
         name-whitelist:
           - hal_xtensa
@@ -41,6 +39,4 @@ manifest:
 
   self:
     path: sof
-    # Changes to submanifests/*.yml files _are_ effective; these have no
-    # specified 'revision:'
     import: submanifests
