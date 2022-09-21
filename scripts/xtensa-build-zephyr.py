@@ -152,8 +152,9 @@ def parse_args():
 						help="List of platforms to build")
 	parser.add_argument("-d", "--debug", required=False, action="store_true",
 						help="Enable debug build")
-	parser.add_argument("-i", "--ipc", required=False, choices=["IPC3", "IPC4"],
-						default="IPC3", help="IPC major version")
+	parser.add_argument("-i", "--ipc", required=False, choices=["IPC4"],
+			    help="""Generic shortcut for: --overlay <platform>/ipc4_overlay.conf. Valid only
+for IPC3 platforms supporting IPC4 too.""")
     # NO SOF release will ever user the option --fw-naming.
     # This option is only for disguising SOF IPC4 as CAVS IPC4 and only in cases where
     # the kernel 'ipc_type' expects CAVS IPC4. In this way, developers and CI can test
