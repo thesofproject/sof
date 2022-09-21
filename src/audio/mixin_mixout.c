@@ -742,10 +742,7 @@ static int mixin_copy(struct comp_dev *dev)
 	bytes_to_consume_from_source_buf = 0;
 	if (source_avail_frames > 0) {
 		if (active_mixout_cnt == 0) {
-			/* discard source data */
-			comp_update_buffer_consume(source_c,
-						   audio_stream_period_bytes(&source_c->stream,
-									     source_avail_frames));
+			/* block mixin pipeline until at least one mixout pipeline started */
 			buffer_release(source_c);
 			return 0;
 		}
