@@ -205,21 +205,23 @@ int validate_data_packet(struct probe_data_packet *packet)
 	return 0;
 }
 
-int process_sync(struct probe_data_packet *packet, uint8_t **w_ptr, uint32_t *total_data_to_copy)
+int process_sync(struct probe_data_packet **packet, uint8_t **w_ptr, uint32_t *total_data_to_copy)
 {
 	struct probe_data_packet *temp_packet;
 
 	/* request to copy data_size from probe packet and 64-bit checksum */
-	*total_data_to_copy = packet->data_size_bytes + sizeof(uint64_t);
+	*total_data_to_copy = (*packet)->data_size_bytes + sizeof(uint64_t);
 
 	if (*total_data_to_copy > PACKET_MAX_SIZE) {
 		temp_packet = realloc(packet,
 				      sizeof(struct probe_data_packet) + *total_data_to_copy);
 		if (!temp_packet)
 			return -ENOMEM;
+
+		*packet = temp_packet;
 	}
 
-	*w_ptr = (uint8_t *)&packet->data;
+	*w_ptr = (uint8_t *)&(*packet)->data;
 
 	return 0;
 }
@@ -303,7 +305,7 @@ void parse_data(char *file_in)
 					break;
 				case SYNC:
 					/* SYNC -> CHECK */
-					if (process_sync(packet, &w_ptr, &total_data_to_copy) < 0) {
+					if (process_sync(&packet, &w_ptr, &total_data_to_copy) < 0) {
 						fprintf(stderr, "OOM, quitting\n");
 						goto err;
 					}
