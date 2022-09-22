@@ -265,7 +265,7 @@
 #define RT_SHARED_TIMES	6
 #else
 /* Reserve more memory for RTNR */
-#ifdef CONFIG_COMP_RTNR
+#if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
 #define RT_TIMES	2
 #define RT_SHARED_TIMES	4
 #else
