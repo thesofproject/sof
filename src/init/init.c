@@ -28,6 +28,9 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <ipc/trace.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/fw_reg.h>
+#endif
 
 /* main firmware context */
 static struct sof sof;
@@ -219,6 +222,12 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	if (platform_init(sof) < 0)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
+#if CONFIG_IPC_MAJOR_4
+	/* Set current abi version of the IPC4 FwRegisters layout */
+	size_t ipc4_abi_ver_offset = offsetof(struct ipc4_fw_registers, abi_ver);
+
+	mailbox_sw_reg_write(ipc4_abi_ver_offset, IPC4_FW_REGS_ABI_VER);
+#endif
 	trace_point(TRACE_BOOT_PLATFORM);
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
