@@ -15,6 +15,11 @@
 #include <sof/lib/memory.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+/* Platform defined trace code */
+static inline void platform_trace_point(uint32_t x)
+{ }
+#else
 #define PLATFORM_TRACEP_SECONDARY_CORE(x) \
 	(SRAM_REG_FW_TRACEP_SECONDARY_CORE_BASE + ((x) - 1) * 0x4)
 
@@ -31,7 +36,7 @@ static inline void platform_trace_point(uint32_t x)
 
 	mailbox_sw_reg_write(offset, x);
 }
-
+#endif
 #endif /* __CAVS_TRACE_TRACE_H__ */
 
 #else
