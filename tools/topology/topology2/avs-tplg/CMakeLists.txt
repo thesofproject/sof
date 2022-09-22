@@ -14,13 +14,13 @@ HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true"
 # CAVS SDW topology with passthrough pipelines
-"cavs-sdw\;cavs-sdw"
+"cavs-sdw\;cavs-sdw\;DEEPBUFFER_FW_DMA_MS=100"
 
 # CAVS SDW with SRC gain and mixer support
 "cavs-sdw-src-gain-mixin\;cavs-sdw-src-gain-mixin"
 
 # SDW + HDMI topology with passthrough pipelines
-"cavs-sdw\;cavs-sdw-hdmi\;NUM_HDMIS=4"
+"cavs-sdw\;cavs-sdw-hdmi\;NUM_HDMIS=4,DEEPBUFFER_FW_DMA_MS=100"
 
 # CAVS SSP topology for TGL
 "cavs-nocodec\;sof-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
