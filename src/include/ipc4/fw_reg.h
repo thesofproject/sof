@@ -25,9 +25,9 @@
 #define __IPC4_FW_REG_H__
 
 #include <stdint.h>
+#include <ipc4/error_status.h>
 #include <ipc4/module.h>
 #include <platform/lib/cpu.h>
-#include <platform/lib/dma.h>
 
 /* Reports current ROM/FW status. */
 struct ipc4_fw_status_reg {
@@ -159,7 +159,7 @@ struct ipc4_fw_registers {
 	/* ROM info(at 0x18). */
 	union ipc4_rom_info rom_info;
 
-	/* Version of the layout, set to the current FW_REGS_ABI_VER. */
+	/* Version of the layout, set to the current FW_REGS_ABI_VER (at 0x1C). */
 	uint32_t abi_ver;
 
 	uint8_t slave_core_sts[IPC4_MAX_SUPPORTED_ADSP_CORES];
