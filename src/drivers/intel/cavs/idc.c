@@ -91,8 +91,12 @@ static bool idc_is_received(int target_core)
  */
 static bool idc_is_powered_up(int target_core)
 {
+#if CONFIG_IPC_MAJOR_4
+	return cpu_is_core_enabled(target_core);
+#else
 	return mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(target_core)) ==
 		TRACE_BOOT_PLATFORM;
+#endif
 }
 
 /**
@@ -102,7 +106,11 @@ static bool idc_is_powered_up(int target_core)
  */
 static bool idc_is_powered_down(int target_core)
 {
+#if CONFIG_IPC_MAJOR_4
+	return !cpu_is_core_enabled(target_core);
+#else
 	return mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(target_core)) == 0;
+#endif
 }
 
 /**
@@ -155,17 +163,28 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	case IDC_POWER_UP:
 		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_up);
 		if (ret < 0) {
+#if CONFIG_IPC_MAJOR_4
+			tr_err(&idc_tr, "idc_send_msg(), power up core %d failed",
+			       msg->core);
+#else
 			tr_err(&idc_tr, "idc_send_msg(), power up core %d failed, reason 0x%x",
 			       msg->core,
 			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
+#endif
 		}
 		break;
+
 	case IDC_POWER_DOWN:
 		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_down);
 		if (ret < 0) {
+#if CONFIG_IPC_MAJOR_4
+			tr_err(&idc_tr, "idc_send_msg(), power down core %d failed",
+			       msg->core);
+#else
 			tr_err(&idc_tr, "idc_send_msg(), power down core %d failed, reason 0x%x",
 			       msg->core,
 			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
+#endif
 		}
 		break;
 	}
