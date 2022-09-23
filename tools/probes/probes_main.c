@@ -63,23 +63,6 @@ static void usage(void)
 	exit(0);
 }
 
-int write_data(char *path, char *data)
-{
-	FILE *fd;
-
-	fd = fopen(path, "w");
-	if (!fd) {
-		fprintf(stderr, "error: unable to open file %s, error %d\n",
-			path, errno);
-		return errno;
-	}
-
-	fprintf(fd, "%s", data);
-	fclose(fd);
-
-	return 0;
-}
-
 int get_buffer_file(struct wave_files *files, uint32_t buffer_id)
 {
 	int i;
