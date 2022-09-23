@@ -1003,9 +1003,14 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	if (cd->endpoint_num) {
 		for (i = 0; i < cd->endpoint_num; i++) {
 			update_internal_comp(dev, cd->endpoint[i]);
-			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
-			if (ret < 0)
-				break;
+			if (!cd->endpoint[i]->drv->ops.params) {
+				comp_err(dev, "NULL .params for driver %p",
+					 cd->endpoint[i]->drv);
+			} else {
+				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
+				if (ret < 0)
+					break;
+			}
 		}
 	}
 
