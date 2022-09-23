@@ -72,8 +72,8 @@ define(`ssp_config_list_1', LIST(`',
 		`SSP_TDM(1, 16, 1, 1),'
 		`SSP_MULTI_CONFIG_DATA(ssp_data2, 16))',
 	`MULTI_SSP_CONFIG(hw_config3, eval(HW_CONFIG_ID + 2), DSP_A, SSP_CLOCK(mclk, BT_MCLK, codec_mclk_in),'
-		`SSP_CLOCK(bclk, 1536000, codec_slave),'
-		`SSP_CLOCK(fsync, 48000, codec_slave),'
+		`SSP_CLOCK(bclk, 1536000, codec_consumer),'
+		`SSP_CLOCK(fsync, 48000, codec_consumer),'
 		`SSP_TDM(2, 16, 3, 0),'
 		`SSP_MULTI_CONFIG_DATA(ssp_data3, 16))'))
 

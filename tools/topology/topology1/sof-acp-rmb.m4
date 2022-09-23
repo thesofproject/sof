@@ -31,8 +31,8 @@ PIPELINE_SOURCE_1, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 DAI_CONFIG(ACPHS, 0, 0, acp-headset-codec,
 	   ACPHS_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-                ACP_CLOCK(bclk, 3072000, codec_slave),
-                ACP_CLOCK(fsync, 48000, codec_slave),
+                ACP_CLOCK(bclk, 3072000, codec_consumer),
+                ACP_CLOCK(fsync, 48000, codec_consumer),
                 ACP_TDM(2, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 0, 48000, 2)))
 
 # Capture pipeline 2 on PCM 0 using max 2 channels of s16le.

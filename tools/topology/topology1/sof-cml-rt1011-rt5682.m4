@@ -66,8 +66,8 @@ PCM_PLAYBACK_ADD(Speakers, 5, PIPELINE_PCM_7)
 
 DAI_CONFIG(SSP, SSP1_INDEX, 6, SSP1_NAME,
         SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, SSP1_MCLK_RATE, codec_mclk_in),
-                SSP_CLOCK(bclk, 4800000, codec_slave),
-                SSP_CLOCK(fsync, 48000, codec_slave),
+                SSP_CLOCK(bclk, 4800000, codec_consumer),
+                SSP_CLOCK(fsync, 48000, codec_consumer),
                 SSP_TDM(4, 25, 3, 15),
                 SSP_CONFIG_DATA(SET_SSP1_CONFIG_DATA)))
 

@@ -98,8 +98,8 @@ PCM_PLAYBACK_ADD(PCM Deep Buffer, 1, PIPELINE_PCM_4)
 #
 DAI_CONFIG(SSP, SSP_NUM, 0, SSP2-Codec,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 1920000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 1920000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 20, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 16)))
 

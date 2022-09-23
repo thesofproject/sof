@@ -235,8 +235,8 @@ dnl ssp1-maxmspk, ssp0-RTHeadset
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                      SSP_CLOCK(bclk, 3072000, codec_slave),
-                      SSP_CLOCK(fsync, 48000, codec_slave),
+                      SSP_CLOCK(bclk, 3072000, codec_consumer),
+                      SSP_CLOCK(fsync, 48000, codec_consumer),
                       SSP_TDM(2, 32, 3, 3),
                       SSP_CONFIG_DATA(SSP, 0, 32)))
 

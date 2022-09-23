@@ -268,44 +268,44 @@ dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 DAI_CONFIG(SSP, 0, 0, NoCodec-0,
 	   dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 1536000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 16, 3, 3),
 		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
 		      SSP_CONFIG_DATA(SSP, 0, 16, 0, SSP_QUIRK_LBM)))
 
 DAI_CONFIG(SSP, 1, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 1536000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 1, 16, 0, SSP_QUIRK_LBM)))
 
 #DAI_CONFIG(SSP, 2, 2, NoCodec-2,
 #	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-#		      SSP_CLOCK(bclk, 1536000, codec_slave),
-#		      SSP_CLOCK(fsync, 48000, codec_slave),
+#		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+#		      SSP_CLOCK(fsync, 48000, codec_consumer),
 #		      SSP_TDM(2, 16, 3, 3),
 #		      SSP_CONFIG_DATA(SSP, 2, 16, 0, SSP_QUIRK_LBM)))
 
 DAI_CONFIG(SSP, 3, 3, NoCodec-3,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 1536000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 3, 16, 0, SSP_QUIRK_LBM)))
 
 #DAI_CONFIG(SSP, 4, 4, NoCodec-4,
 #	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-#		      SSP_CLOCK(bclk, 1536000, codec_slave),
-#		      SSP_CLOCK(fsync, 48000, codec_slave),
+#		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+#		      SSP_CLOCK(fsync, 48000, codec_consumer),
 #		      SSP_TDM(2, 16, 3, 3),
 #		      SSP_CONFIG_DATA(SSP, 4, 16, 0, SSP_QUIRK_LBM)))
 
 DAI_CONFIG(SSP, 5, 5, NoCodec-5,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 1536000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 1536000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 5, 16, 0, SSP_QUIRK_LBM)))
 

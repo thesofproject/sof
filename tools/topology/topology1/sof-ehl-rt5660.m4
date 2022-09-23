@@ -189,8 +189,8 @@ PCM_PLAYBACK_ADD(HDMI4, 6, PIPELINE_PCM_8)
 #SSP 2 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 9600000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 2400000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 2400000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 0, 24)))
 

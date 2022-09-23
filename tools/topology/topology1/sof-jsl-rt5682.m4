@@ -175,8 +175,8 @@ dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 # SSP 0 (ID: 0) ALC5682
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-		SSP_CLOCK(bclk, 2400000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 2400000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, eval(SSP_CC_BCLK_ES | SSP_CC_MCLK_AON))))
 
