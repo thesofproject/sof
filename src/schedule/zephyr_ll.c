@@ -12,7 +12,7 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-
+#include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
 
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
@@ -122,30 +122,18 @@ static void zephyr_ll_task_insert_after_unlocked(struct task *task, struct task 
 
 static inline enum task_state do_task_run(struct task *task)
 {
-	uint32_t cycles0, cycles1, diff;
 	enum task_state state;
 
-	cycles0 = k_cycle_get_32();
+#if CONFIG_PERFORMANCE_COUNTERS
+	perf_cnt_init(&task->pcd);
+#endif
 
 	state = task_run(task);
 
-	cycles1 = k_cycle_get_32();
-	if (cycles1 > cycles0)
-		diff = cycles1 - cycles0;
-	else
-		diff = UINT32_MAX - cycles0 + cycles1;
-
-	task->cycles_sum += diff;
-	task->cycles_max = diff > task->cycles_max ? diff : task->cycles_max;
-
-	if (++task->cycles_cnt == 1 << CYCLES_WINDOW_SIZE) {
-		task->cycles_sum >>= CYCLES_WINDOW_SIZE;
-		tr_info(&ll_tr, "ll task %p %pU avg %u, max %u",
-			task, task->uid, task->cycles_sum, task->cycles_max);
-		task->cycles_sum = 0;
-		task->cycles_cnt = 0;
-		task->cycles_max = 0;
-	}
+#if CONFIG_PERFORMANCE_COUNTERS
+	perf_cnt_stamp(&task->pcd, perf_trace_null, NULL);
+	task_perf_cnt_avg(&task->pcd, task_perf_avg_info, &ll_tr, task);
+#endif
 
 	return state;
 }
