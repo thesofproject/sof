@@ -209,17 +209,6 @@ int process_sync(struct probe_data_packet **packet, uint8_t **w_ptr, uint32_t *t
 	return 0;
 }
 
-static bool sync_word_at(uint8_t *buf, size_t len)
-{
-	if (len < sizeof(uint32_t))
-		return false;
-
-	if (*((uint32_t *)buf) == PROBE_EXTRACT_SYNC_WORD)
-		return true;
-
-	return false;
-}
-
 void parse_data(char *file_in)
 {
 	FILE *fd_in;
@@ -275,7 +264,8 @@ void parse_data(char *file_in)
 						start = i - j;
 						memmove(&data[0], &data[j], start);
 						j += start;
-					} else if (sync_word_at(&data[j], i - j)) {
+					} else if (*((uint32_t *)&data[j]) ==
+						   PROBE_EXTRACT_SYNC_WORD) {
 						memset(packet, 0, PACKET_MAX_SIZE);
 						/* request to copy full data packet */
 						total_data_to_copy =
