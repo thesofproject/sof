@@ -216,7 +216,6 @@ void parse_data(char *file_in)
 	struct probe_data_packet *packet;
 	uint8_t data[DATA_READ_LIMIT];
 	uint32_t total_data_to_copy = 0;
-	uint32_t data_to_copy = 0;
 	uint8_t *w_ptr;
 	int start, i, j, file;
 
@@ -314,6 +313,7 @@ void parse_data(char *file_in)
 			}
 			/* data copying section */
 			if (total_data_to_copy > 0) {
+				uint32_t data_to_copy;
 				/* check if there is enough bytes loaded */
 				/* or copy partially if not */
 				if (j + total_data_to_copy > i) {
