@@ -406,7 +406,7 @@ ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
-dnl SSP_CLOCK(clock, freq, codec_master, polarity)
+dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk

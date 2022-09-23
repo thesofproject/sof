@@ -84,7 +84,7 @@ SectionGraph."pipe-sof-imx8-keyword-detect" {
 dnl DAI_CONFIG(type, dai_index, link_id, name, sai_config)
 DAI_CONFIG(SAI, 1, 0, sai1-wm8960-hifi,
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
-	SAI_CLOCK(bclk, 3072000, codec_master),
-	SAI_CLOCK(fsync, 16000, codec_master),
+	SAI_CLOCK(bclk, 3072000, codec_provider),
+	SAI_CLOCK(fsync, 16000, codec_provider),
 	SAI_TDM(2, 32, 3, 3),
 	SAI_CONFIG_DATA(SAI, 1, 0)))
