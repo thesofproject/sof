@@ -30,7 +30,8 @@ include(`bytecontrol.m4')
 #    - [16:31]: reserved 0s
 # - (optional) 12+ bytes codec_param: codec TLV parameters container, for more details please refer
 #                                     struct codec_param under audio/codec_adapter/codec/generic.h
-#    - [0:3]: param ID
+#    - [0:1]: param ID
+#    - [2:3]: codec ID, when supporting multiple codecs, 0 otherwise
 #    - [4:7]: size in bytes (ID + size + data)
 #    - [8:n-1]: data[], the param data
 ifdef(`CA_SETUP_CONTROLBYTES',`', `define(`CA_SETUP_CONTROLBYTES',
