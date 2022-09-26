@@ -50,6 +50,18 @@ enum p_state {
 	CHECK			/**< Check crc and save packet if valid */
 };
 
+struct dma_frame_parser {
+	enum p_state state;
+	struct probe_data_packet *packet;
+	size_t packet_size;
+	uint8_t *w_ptr;				/* Write pointer to copy data to */
+	uint32_t total_data_to_copy;		/* Total bytes left to copy */
+	int start;				/* Start of unfilled data */
+	int len;				/* Data buffer fill level */
+	uint8_t data[DATA_READ_LIMIT];
+	struct wave_files files[FILES_LIMIT];
+};
+
 static uint32_t sample_rate[] = {
 	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100,
 	48000, 64000, 88200, 96000, 128000, 176400, 192000
@@ -188,40 +200,161 @@ int validate_data_packet(struct probe_data_packet *packet)
 	return 0;
 }
 
-int process_sync(struct probe_data_packet **packet, uint8_t **w_ptr, uint32_t *total_data_to_copy)
+int process_sync(struct dma_frame_parser *p)
 {
 	struct probe_data_packet *temp_packet;
 
 	/* request to copy data_size from probe packet and 64-bit checksum */
-	*total_data_to_copy = (*packet)->data_size_bytes + sizeof(uint64_t);
+	p->total_data_to_copy = p->packet->data_size_bytes + sizeof(uint64_t);
 
-	if (sizeof(struct probe_data_packet) + *total_data_to_copy > PACKET_MAX_SIZE) {
-		temp_packet = realloc(packet,
-				      sizeof(struct probe_data_packet) + *total_data_to_copy);
+	if (sizeof(struct probe_data_packet) + p->total_data_to_copy >
+	    p->packet_size) {
+		p->packet_size = sizeof(struct probe_data_packet) +
+			p->total_data_to_copy;
+
+		temp_packet = realloc(p->packet, p->packet_size);
+
 		if (!temp_packet)
 			return -ENOMEM;
 
-		*packet = temp_packet;
+		p->packet = temp_packet;
 	}
 
-	*w_ptr = (uint8_t *)&(*packet)->data;
+	p->w_ptr = (uint8_t *)p->packet->data;
 
+	return 0;
+}
+
+struct dma_frame_parser *parser_init(void)
+{
+	struct dma_frame_parser *p = malloc(sizeof(*p));
+	if (!p) {
+		fprintf(stderr, "error: allocation failed, err %d\n",
+			errno);
+		return NULL;
+	}
+	memset(p, 0, sizeof(*p));
+	p->packet = malloc(PACKET_MAX_SIZE);
+	if (!p) {
+		fprintf(stderr, "error: allocation failed, err %d\n",
+			errno);
+		free(p);
+		return NULL;
+	}
+	memset(p->packet, 0, PACKET_MAX_SIZE);
+	p->packet_size = PACKET_MAX_SIZE;
+	return p;
+}
+
+void parser_free(struct dma_frame_parser *p)
+{
+	free(p->packet);
+	free(p);
+}
+
+void parser_fetch_free_buffer(struct dma_frame_parser *p, uint8_t **d, size_t *len)
+{
+	*d = &p->data[p->start];
+	*len = sizeof(p->data) - p->start;
+}
+
+int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
+{
+	uint i = 0;
+
+	p->len = p->start + d_len;
+	/* processing all loaded bytes */
+	while (i < p->len) {
+		if (p->total_data_to_copy == 0) {
+			switch (p->state) {
+			case READY:
+				/* check for SYNC */
+				if (p->len - i < sizeof(p->packet->sync_word)) {
+					p->start = p->len - i;
+					memmove(&p->data[0], &p->data[i], p->start);
+					i += p->start;
+				} else if (*((uint32_t *)&p->data[i]) ==
+					   PROBE_EXTRACT_SYNC_WORD) {
+					memset(p->packet, 0, p->packet_size);
+					/* request to copy full data packet */
+					p->total_data_to_copy =
+						sizeof(struct probe_data_packet);
+					p->w_ptr = (uint8_t *)p->packet;
+					p->state = SYNC;
+					p->start = 0;
+				} else {
+					i++;
+				}
+				break;
+			case SYNC:
+				/* SYNC -> CHECK */
+				if (process_sync(p) < 0) {
+					fprintf(stderr, "OOM, quitting\n");
+					return -ENOMEM;
+				}
+				p->state = CHECK;
+				break;
+			case CHECK:
+				/* CHECK -> READY */
+				/* find corresponding file and save data if valid */
+				if (validate_data_packet(p->packet) == 0) {
+					int file = get_buffer_file(p->files,
+								   p->packet->buffer_id);
+
+					if (file < 0)
+						file = init_wave(p->files,
+								 p->packet->buffer_id,
+								 p->packet->format);
+
+					if (file < 0) {
+						fprintf(stderr,
+							"unable to open file for %u\n",
+							p->packet->buffer_id);
+						return -EIO;
+					}
+
+					fwrite(p->packet->data, 1,
+					       p->packet->data_size_bytes,
+					       p->files[file].fd);
+					p->files[file].size += p->packet->data_size_bytes;
+					}
+				p->state = READY;
+				break;
+			}
+		}
+		/* data copying section */
+		if (p->total_data_to_copy > 0) {
+			uint data_to_copy;
+
+			/* check if there is enough bytes loaded */
+			/* or copy partially if not */
+			if (i + p->total_data_to_copy > p->len) {
+				data_to_copy = p->len - i;
+				p->total_data_to_copy -= data_to_copy;
+			} else {
+				data_to_copy = p->total_data_to_copy;
+				p->total_data_to_copy = 0;
+			}
+			memcpy(p->w_ptr, &p->data[i], data_to_copy);
+			p->w_ptr += data_to_copy;
+			i += data_to_copy;
+		}
+	}
 	return 0;
 }
 
 void parse_data(char *file_in)
 {
+	struct dma_frame_parser *p = parser_init();
 	FILE *fd_in;
-	struct wave_files files[FILES_LIMIT];
-	struct probe_data_packet *packet;
-	uint8_t data[DATA_READ_LIMIT];
-	uint32_t total_data_to_copy = 0;
-	uint8_t *w_ptr;
-	int start, i, j, file;
+	uint8_t *data;
+	size_t len;
+	int ret;
 
-	enum p_state state = READY;
-
-	fprintf(stdout, "%s:\t Parsing file: %s\n", APP_NAME, file_in);
+	if (!p) {
+		fprintf(stderr, "parser_init() failed\n");
+		exit(1);
+	}
 
 	fd_in = fopen(file_in, "rb");
 	if (!fd_in) {
@@ -230,112 +363,11 @@ void parse_data(char *file_in)
 		exit(0);
 	}
 
-	packet = malloc(PACKET_MAX_SIZE);
-	if (!packet) {
-		fprintf(stderr, "error: allocation failed, err %d\n",
-			errno);
-		fclose(fd_in);
-		exit(0);
-	}
-	memset(&data, 0, DATA_READ_LIMIT);
-	memset(&files, 0, sizeof(struct wave_files) * FILES_LIMIT);
-
-	start = 0;
-	/* Data read loop to process DATA_READ_LIMIT bytes at each
-	 * iteration.  If there is under sizeof(sync_word) bytes left
-	 * in the buffer when a new frame is searched for, the remaining
-	 * bytes are moved to the beginning of the buffer for the next
-	 * iteration.
-	 */
 	do {
-		i = fread(&data[start], 1, DATA_READ_LIMIT - start, fd_in);
-		i += start;
-		j = 0;
-		start = 0;
-
-		/* processing all loaded bytes */
-		while (j < i) {
-			if (total_data_to_copy == 0) {
-				switch (state) {
-				case READY:
-					/* check for SYNC */
-					if (i - j < sizeof(packet->sync_word)) {
-						start = i - j;
-						memmove(&data[0], &data[j], start);
-						j += start;
-					} else if (*((uint32_t *)&data[j]) ==
-						   PROBE_EXTRACT_SYNC_WORD) {
-						memset(packet, 0, PACKET_MAX_SIZE);
-						/* request to copy full data packet */
-						total_data_to_copy =
-							sizeof(struct probe_data_packet);
-						w_ptr = (uint8_t *)packet;
-						state = SYNC;
-					} else {
-						j++;
-					}
-					break;
-				case SYNC:
-					/* SYNC -> CHECK */
-					if (process_sync(&packet, &w_ptr, &total_data_to_copy) < 0) {
-						fprintf(stderr, "OOM, quitting\n");
-						goto err;
-					}
-					state = CHECK;
-					break;
-				case CHECK:
-					/* CHECK -> READY */
-					/* find corresponding file and save data if valid */
-					if (validate_data_packet(packet) == 0) {
-						file = get_buffer_file(files,
-								       packet->buffer_id);
-
-						if (file < 0)
-							file = init_wave(files,
-									 packet->buffer_id,
-									 packet->format);
-
-						if (file < 0) {
-							fprintf(stderr,
-								"unable to open file for %u\n",
-								packet->buffer_id);
-							goto err;
-						}
-
-						fwrite(packet->data, 1,
-						       packet->data_size_bytes, files[file].fd);
-
-						files[file].size += packet->data_size_bytes;
-					}
-					state = READY;
-					break;
-				}
-			}
-			/* data copying section */
-			if (total_data_to_copy > 0) {
-				uint32_t data_to_copy;
-				/* check if there is enough bytes loaded */
-				/* or copy partially if not */
-				if (j + total_data_to_copy > i) {
-					data_to_copy = i - j;
-					total_data_to_copy -= data_to_copy;
-				} else {
-					data_to_copy = total_data_to_copy;
-					total_data_to_copy = 0;
-				}
-				memcpy(w_ptr, data + j, data_to_copy);
-				w_ptr += data_to_copy;
-				j += data_to_copy;
-			}
-		}
-	} while (i > 0);
-
-err:
-	/* all done, can close files */
-	finalize_wave_files(files);
-	free(packet);
-	fclose(fd_in);
-	fprintf(stdout, "%s:\t done\n", APP_NAME);
+		parser_fetch_free_buffer(p, &data, &len);
+		len = fread(data, 1, len, fd_in);
+		ret = parser_parse_data(p, len);
+	} while (!ret && !feof(fd_in));
 }
 
 int main(int argc, char *argv[])
