@@ -260,6 +260,8 @@ static int cadence_codec_apply_config(struct processing_module *mod)
 {
 	int ret = 0;
 	int size;
+	uint16_t param_id;
+	uint16_t codec_id;
 	struct module_config *cfg;
 	void *data;
 	struct module_param *param;
@@ -291,8 +293,20 @@ static int cadence_codec_apply_config(struct processing_module *mod)
 		param = data;
 		comp_dbg(dev, "cadence_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
+
+		param_id = param->id & 0xFF;
+		codec_id = param->id >> 16;
+
+		/* if the parameter is not for current codec skip it! */
+		if (codec_id && codec_id != cd->api_id) {
+			/* Obtain next parameter */
+			data = (char *)data + param->size;
+			size -= param->size;
+			continue;
+		}
+
 		/* Set read parameter */
-		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
+		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param_id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
 			if (LIB_IS_FATAL_ERROR(ret)) {
