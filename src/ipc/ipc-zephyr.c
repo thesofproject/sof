@@ -17,7 +17,11 @@
 #include <sof/ipc/schedule.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+#include <sof/lib/cpu.h>
+#else
 #include <sof/lib/pm_runtime.h>
+#endif
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>
 #include <sof/list.h>
@@ -133,13 +137,25 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command */
 	ipc_cmd(hdr);
 
-#if CONFIG_SOC_SERIES_INTEL_ADSP_CAVS
-	/* are we about to enter D3 ? */
-	if (ipc->pm_prepare_D3) {
-		/* no return - memory will be powered off and IPC sent */
+	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
+	    ipc_get()->pm_prepare_D3) {
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+		/**
+		 * @note For primary core this function
+		 * will only force set lower power state
+		 * in power management settings.
+		 * Core will enter D3 state after exit
+		 * IPC thread during idle.
+		 */
+		cpu_disable_core(PLATFORM_PRIMARY_CORE_ID);
+#else
+		/**
+		 * @note no return - memory will be
+		 * powered off and IPC sent.
+		 */
 		platform_pm_runtime_power_off();
+#endif /* CONFIG_PM_POLICY_CUSTOM  */
 	}
-#endif
 
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	return SOF_TASK_STATE_COMPLETED;
@@ -178,7 +194,7 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
-	/* configure interrupt - some work is done internally by Zephytr API */
+	/* configure interrupt - work is done internally by Zephyr API */
 
 	/* attach handlers */
 	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);

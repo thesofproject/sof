@@ -875,6 +875,9 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 			return IPC4_BUSY;
 		}
 
+#if defined(CONFIG_PM)
+		ipc_get()->task_mask |= IPC_TASK_POWERDOWN;
+#endif
 		/* do platform specific suspending */
 		platform_context_save(sof_get());
 
