@@ -195,7 +195,7 @@ int process_sync(struct probe_data_packet **packet, uint8_t **w_ptr, uint32_t *t
 	/* request to copy data_size from probe packet and 64-bit checksum */
 	*total_data_to_copy = (*packet)->data_size_bytes + sizeof(uint64_t);
 
-	if (*total_data_to_copy > PACKET_MAX_SIZE) {
+	if (sizeof(struct probe_data_packet) + *total_data_to_copy > PACKET_MAX_SIZE) {
 		temp_packet = realloc(packet,
 				      sizeof(struct probe_data_packet) + *total_data_to_copy);
 		if (!temp_packet)
