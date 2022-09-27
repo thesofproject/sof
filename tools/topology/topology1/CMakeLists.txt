@@ -9,8 +9,12 @@ file(GLOB TPLG_DEPS
 )
 
 add_custom_target(abi_v1
+	DEPENDS abi.h
+)
+add_custom_command(OUTPUT abi.h
 	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY}
-	DEPENDS ${TPLG_DEPS}
+	DEPENDS ${TPLG_DEPS} ${SOF_ROOT_SOURCE_DIRECTORY}/src/include/kernel/abi.h
+	# get_abi.h generates (a smaller) abi.h in the current directory
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	VERBATIM
 	USES_TERMINAL
@@ -316,6 +320,8 @@ foreach(tplg ${TPLGS})
 		endforeach()
 	endif()
 
+	# m4
+	# TODO: reduce duplication with subdirectories
 	add_custom_command(
 		OUTPUT production/${output}.conf
 		COMMAND m4 --fatal-warnings
@@ -329,11 +335,16 @@ foreach(tplg ${TPLGS})
 			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 			> production/${output}.conf
 		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
-		DEPENDS abi_v1
+		# The 'abi.h' file is the real dependency that triggers
+		# a rebuild. 'abi_v1' is the target that avoids a race
+		# to rebuild abi.h. See the CMake FAQ or (better) Sam
+		# Thursfield's blog about custom targets.
+		DEPENDS abi_v1 ${CMAKE_CURRENT_BINARY_DIR}/abi.h
 		VERBATIM
 		USES_TERMINAL
 	)
 
+	# alsatplg
 	add_alsatplg_command(production/${output}.conf production/${output}.tplg)
 
 	add_custom_target(topology1_${output} DEPENDS production/${output}.tplg)
