@@ -135,6 +135,13 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+
+	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
+	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	 */
+	mod->period_bytes = audio_stream_period_bytes(&mod->ca_sink->stream, dev->frames);
+	comp_dbg(dev, "codec_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
+
 	/* Prepare codec */
 	ret = module_prepare(dev);
 	if (ret) {
@@ -209,8 +216,6 @@ int codec_adapter_params(struct comp_dev *dev,
 		       params, sizeof(struct sof_ipc_stream_params));
 	assert(!ret);
 
-	mod->period_bytes = params->sample_container_bytes *
-			   params->channels * params->rate / 1000;
 	return 0;
 }
 
