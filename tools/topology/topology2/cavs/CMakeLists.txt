@@ -46,9 +46,12 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-ace-mtl-nocodec.bin"
 )
 
 # generate ABI for IPC4
-execute_process(
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY} "ipc4"
-	OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/abi.conf
+add_custom_command(OUTPUT abi.conf
+	COMMAND > abi.conf  ${CMAKE_CURRENT_SOURCE_DIR}/../get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY} "ipc4"
+	DEPENDS ${SOF_ROOT_SOURCE_DIRECTORY}/src/include/kernel/abi.h
+)
+add_custom_target(cavs_abi_target
+	DEPENDS abi.conf
 )
 
 add_custom_target(topology2_cavs)
@@ -68,7 +71,7 @@ foreach(tplg ${TPLGS})
 		list(GET tplg ${last_index} defines)
 	endif()
 
-	add_alsatplg2_command("${CMAKE_CURRENT_BINARY_DIR}/abi.conf"
+	add_alsatplg2_command("${CMAKE_CURRENT_BINARY_DIR}/abi.conf" cavs_abi_target
 	  "${CMAKE_CURRENT_SOURCE_DIR}/${input}" "${output}"
 	  "${CMAKE_CURRENT_SOURCE_DIR}" "${defines}")
 	add_custom_target(topology2_${output} DEPENDS ${output}.tplg)

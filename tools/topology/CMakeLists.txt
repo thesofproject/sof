@@ -28,17 +28,23 @@ macro(add_alsatplg_command)
 	)
 endmacro()
 
-macro(add_alsatplg2_command conf_header input_name output_name include_path)
+macro(add_alsatplg2_command conf_header conf_target input_name output_name include_path)
 	# command line definitions are optional
 	# Set defines if there is an optional argument
-	if (${ARGC} GREATER 4)
-		set (defines ${ARGV4})
+	if (${ARGC} GREATER 5)
+		set (defines ${ARGV5})
 	else()
 		set (defines "")
 	endif()
 
 	add_custom_command(
 		MAIN_DEPENDENCY ${input_name}.conf
+		# The conf_header file is the real dependency that
+		# triggers a rebuild. conf_target is the target that
+		# avoids a race to rebuild conf_header. See the CMake FAQ
+		# or (better) Sam Thursfield's blog about custom
+		# targets.
+		DEPENDS ${conf_header} ${conf_target}
 		OUTPUT ${output_name}.tplg
 
 		COMMAND cat ${conf_header} ${input_name}.conf > ${output_name}.conf
