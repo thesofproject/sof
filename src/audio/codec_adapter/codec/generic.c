@@ -320,6 +320,7 @@ int codec_reset(struct comp_dev *dev)
 	codec->r_cfg.avail = false;
 	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
+	codec->r_cfg.data = NULL;
 
 	/*
 	 * reset the state to allow the codec's prepare callback to be invoked again for the
@@ -366,9 +367,13 @@ int codec_free(struct comp_dev *dev)
 	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
 	rfree(codec->s_cfg.data);
-	if (codec->runtime_params)
-		rfree(codec->runtime_params);
+	codec->r_cfg.data = NULL;
+	codec->s_cfg.data = NULL;
 
+	if (codec->runtime_params) {
+		rfree(codec->runtime_params);
+		codec->runtime_params = NULL;
+	}
 	codec->state = CODEC_DISABLED;
 
 	return ret;
