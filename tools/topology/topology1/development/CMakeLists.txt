@@ -92,8 +92,8 @@ foreach(tplg ${TPLGS})
 
 	add_alsatplg_command(${output}.conf ${output}.tplg)
 
-	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(dev_topologies1 topology_${output})
+	add_custom_target(dev_topology_${output} DEPENDS ${output}.tplg)
+	add_dependencies(dev_topologies1 dev_topology_${output})
 endforeach()
 
 # Duplicate of above to handle topologies in parent directory
