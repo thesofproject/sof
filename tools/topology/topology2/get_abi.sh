@@ -36,4 +36,4 @@ case "$2" in
 	ipc4) print_2bytes "$ABI_PATCH" ;;
 esac
 
-printf '\"\n\t}\n}'
+printf '\"\n\t}\n}\n'
