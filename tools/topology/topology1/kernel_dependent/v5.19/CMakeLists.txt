@@ -79,6 +79,6 @@ foreach(tplg ${TPLGS_UP})
 	)
 	add_alsatplg_command(${output}.conf ${output}.tplg)
 
-	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(kernel_dependent_v5_19_topologies1 topology_${output})
+	add_custom_target(k519_topology_${output} DEPENDS ${output}.tplg)
+	add_dependencies(kernel_dependent_v5_19_topologies1 k519_topology_${output})
 endforeach()
