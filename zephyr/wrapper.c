@@ -120,6 +120,20 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 }
 #endif
 
+
+/*
+ * Asynchronous Messaging Service
+ *
+ * Use SOF async messaging service.
+ */
+
+static struct async_message_service *host_ams[CONFIG_CORE_COUNT];
+
+struct async_message_service **arch_ams_get(void)
+{
+	return host_ams + cpu_get_id();
+}
+
 /*
  * Notifier.
  *

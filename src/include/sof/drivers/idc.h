@@ -110,6 +110,10 @@
 #define IDC_SCC_REASON_WATCHDOG		0x00
 #define IDC_SCC_REASON_EXCEPTION	0x01
 
+/** \brief IDC process async msg */
+#define IDC_MSG_AMS	IDC_TYPE(0xB)
+#define IDC_MSG_AMS_EXT	IDC_EXTENSION(0x0)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 

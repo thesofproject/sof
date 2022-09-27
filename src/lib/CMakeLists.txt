@@ -25,3 +25,7 @@ add_local_sources(sof
 	wait.c
 	cpu-clk-manager.c
 )
+
+if(CONFIG_AMS)
+add_local_sources(sof ams.c)
+endif()
