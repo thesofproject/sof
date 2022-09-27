@@ -68,15 +68,9 @@ foreach(tplg ${TPLGS})
 		list(GET tplg ${last_index} defines)
 	endif()
 
-	# copy ABI and input conf file contents
-	#
-	# BUG: move this from CMake configuration time to build time to
-	# fix incremental builds
-	configure_file(${CMAKE_CURRENT_BINARY_DIR}/abi.conf ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf)
-	file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${input}.conf CONTENTS)
-	file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf "${CONTENTS}")
-
-	add_alsatplg2_command("${output}.conf" "${output}.tplg" "${CMAKE_CURRENT_SOURCE_DIR}" "${defines}")
+	add_alsatplg2_command("${CMAKE_CURRENT_BINARY_DIR}/abi.conf"
+	  "${CMAKE_CURRENT_SOURCE_DIR}/${input}" "${output}"
+	  "${CMAKE_CURRENT_SOURCE_DIR}" "${defines}")
 	add_custom_target(topology2_${output} DEPENDS ${output}.tplg)
 	add_dependencies(topology2_cavs topology2_${output})
 endforeach()
