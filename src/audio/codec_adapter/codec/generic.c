@@ -321,6 +321,7 @@ int module_reset(struct comp_dev *dev)
 	md->r_cfg.avail = false;
 	md->r_cfg.size = 0;
 	rfree(md->r_cfg.data);
+	md->r_cfg.data = NULL;
 
 	/*
 	 * reset the state to allow the module's prepare callback to be invoked again for the
@@ -367,9 +368,13 @@ int module_free(struct comp_dev *dev)
 	md->r_cfg.size = 0;
 	rfree(md->r_cfg.data);
 	rfree(md->s_cfg.data);
-	if (md->runtime_params)
-		rfree(md->runtime_params);
+	md->r_cfg.data = NULL;
+	md->s_cfg.data = NULL;
 
+	if (md->runtime_params) {
+		rfree(md->runtime_params);
+		md->runtime_params = NULL;
+	}
 	md->state = MODULE_DISABLED;
 
 	return ret;
