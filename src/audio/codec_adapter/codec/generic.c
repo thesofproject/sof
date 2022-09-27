@@ -322,10 +322,11 @@ int module_reset(struct comp_dev *dev)
 	md->r_cfg.size = 0;
 	rfree(md->r_cfg.data);
 
-	/* module resets itself to the initial condition after prepare()
-	 * so let's change its state to reflect that.
+	/*
+	 * reset the state to allow the module's prepare callback to be invoked again for the
+	 * subsequent triggers
 	 */
-	md->state = MODULE_IDLE;
+	md->state = MODULE_INITIALIZED;
 
 	return 0;
 }
