@@ -41,6 +41,6 @@ foreach(tplg ${TPLGS_UP})
 
 	add_alsatplg_command(${output}.conf ${output}.tplg)
 
-	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(dsp_topologies1 topology_${output})
+	add_custom_target(dsp_topology_${output} DEPENDS ${output}.tplg)
+	add_dependencies(dsp_topologies1 dsp_topology_${output})
 endforeach()
