@@ -10,10 +10,10 @@ SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
 print_usage()
 {
         cat <<EOFUSAGE
-Deletes and re-builds from scratch CMake projects in the tools/
-directory.
-Attention: the list below is _not_ exhaustive. To re-build _everything_
-from scratch don't select any particular target; this will build the
+
+Configures and builds selected CMake projects in the tools/ directory.
+Attention: the list of selected shortcuts below is _not_ exhaustive. To
+build _everything_ don't select any particular target; this will build
 CMake's default target "ALL".
 
 usage: $0 [-c|-f|-h|-l|-p|-t|-T]
@@ -28,6 +28,8 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T]
 
        -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
+
+        warn_if_incremental_build
 }
 
 # generate Makefiles
@@ -82,6 +84,20 @@ Build commands for respective tools:
         list of targets:
                     ninja -C "$BUILD_TOOLS_DIR/" help
 EOFUSAGE
+
+       warn_if_incremental_build
+}
+
+warn_if_incremental_build()
+{
+        $warn_incremental_build || return 0
+        cat <<EOF
+
+WARNING: building tools/ is now incremental by default!
+         To build from scratch delete: $BUILD_TOOLS_DIR
+         or use the -C option.
+
+EOF
 }
 
 main()
@@ -107,6 +123,9 @@ main()
         DO_BUILD_topologies=false
         CMAKE_ONLY=false
 
+        # better safe than sorry
+        local warn_incremental_build=true
+
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
         while getopts "cfhlptTC" OPTION; do
@@ -123,19 +142,25 @@ main()
                 esac
         done
         shift "$((OPTIND - 1))"
-        reconfigure_build
 
         if "$CMAKE_ONLY"; then
+                reconfigure_build
                 print_build_info
                 exit
+        fi
+
+        if ! test -e "$BUILD_TOOLS_DIR"/CMakeCache.txt; then
+            warn_incremental_build=false
+            reconfigure_build
         fi
 
         if "$BUILD_ALL"; then
                 # default CMake targets
                 make_tool # trust set -e
 
-                make_fuzzer
-                exit $?
+                make_fuzzer # trust set -e
+                warn_if_incremental_build
+                exit 0
         fi
 
         # Keep 'topologies' first because it's the noisiest.
@@ -154,6 +179,8 @@ main()
         if "$DO_BUILD_fuzzer"; then
                 make_fuzzer
         fi
+
+        warn_if_incremental_build
 }
 
 main "$@"
