@@ -64,12 +64,12 @@ struct codec_interface {
 	/**
 	 * Codec specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
-	 * but leave allocated memory intact.
+	 * and free all memory allocated during prepare().
 	 */
 	int (*reset)(struct comp_dev *dev);
 	/**
 	 * Codec specific free procedure, called as part of codec_adapter component
-	 * free in .free(). This should free all memory allocated by codec.
+	 * free in .free(). This should free all memory allocated during codec initialization.
 	 */
 	int (*free)(struct comp_dev *dev);
 };

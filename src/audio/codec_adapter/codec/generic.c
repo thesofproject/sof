@@ -321,8 +321,9 @@ int codec_reset(struct comp_dev *dev)
 	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
 
-	/* Codec reset itself to the initial condition after prepare()
-	 * so let's change its state to reflect that.
+	/*
+	 * reset the state to allow the codec's prepare callback to be invoked again for the
+	 * subsequent triggers
 	 */
 	codec->state = CODEC_INITIALIZED;
 
