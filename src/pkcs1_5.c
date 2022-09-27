@@ -29,7 +29,8 @@
 enum manver {
 	V15 = 0,
 	V18 = 1,
-	V25 = 2
+	V25 = 2,
+	VACE15 = 3
 };
 
 static void bytes_swap(uint8_t *ptr, uint32_t size)
@@ -183,6 +184,8 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 			       signature, &siglen, priv_rsa);
 		break;
 	case V25:
+		/* fallthrough */
+	case VACE15:
 		ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig, digest, image->md,
 						/* salt length */ 32);
 		if (ret > 0)
@@ -212,7 +215,7 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 	if (ret <= 0)
 		goto out;
 
-	if (ver == V25) {
+	if (ver == V25 || ver == VACE15) {
 		ret = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING);
 		if (ret <= 0) {
 			fprintf(stderr, "error: failed to set rsa padding\n");
@@ -281,6 +284,8 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 		}
 		break;
 	case V25:
+		/* fallthrough */
+	case VACE15:
 		/* decrypt signature */
 		ret = RSA_public_decrypt(RSA_size(priv_rsa), signature, sig, priv_rsa,
 					 RSA_NO_PADDING);
@@ -339,6 +344,8 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 
 		break;
 	case V25:
+		/* fallthrough */
+	case VACE15:
 		ret = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING);
 		if (ret <= 0)
 			goto out;
@@ -523,118 +530,6 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	return ret;
 }
 
-/*
- * RSA signature of manifest. The signature is an RSA PSS
- * of the entire manifest structure, including all
- * extensions, and excluding the last 3 fields of the
- * manifest header (Public Key, Exponent and Signature).
- */
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
-			    struct fw_image_manifest_ace_v1_5 *man,
-			    void *ptr1, unsigned int size1, void *ptr2,
-			    unsigned int size2)
-{
-	RSA *priv_rsa = NULL;
-	EVP_PKEY *privkey;
-	FILE *fp;
-	const BIGNUM *n, *e, *d;
-	unsigned char digest[SHA384_DIGEST_LENGTH];
-	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN_2_5];
-	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
-	char path[256];
-	int ret = -EINVAL, i;
-
-#if DEBUG_PKCS
-	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
-		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
-#endif
-
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new PSS key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " pkcs: PSS signing with key %s\n", path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
-
-	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
-		fprintf(stdout, " pkcs: RSA private key is valid.\n");
-	} else {
-		fprintf(stderr, "error: validating RSA private key.\n");
-		return -EINVAL;
-	}
-
-	/* calculate the digest - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
-
-	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
-
-	/* sign the manifest */
-	ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig,
-			digest, image->md, /* salt length */ 32);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to sign manifest %s\n", path);
-	}
-
-	/* encrypt the signature using the private key */
-	ret = RSA_private_encrypt(RSA_size(priv_rsa), sig,
-		     (unsigned char *)man->css.signature, priv_rsa, RSA_NO_PADDING);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to encrypt signature %s\n", path);
-	}
-
-	/* copy public key modulus and exponent to manifest */
-	RSA_get0_key(priv_rsa, &n, &e, &d);
-	BN_bn2bin(n, mod);
-	BN_bn2bin(e, (unsigned char *)man->css.exponent);
-
-	/* modulus is reversed  */
-	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN_2_5; i++)
-		man->css.modulus[i] = mod[MAN_RSA_KEY_MODULUS_LEN_2_5 - (1 + i)];
-
-	/* signature is reversed, swap it */
-	bytes_swap(man->css.signature, sizeof(man->css.signature));
-
-	EVP_PKEY_free(privkey);
-	return ret;
-}
-#else
-int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
-			    struct fw_image_manifest_ace_v1_5 *man,
-			    void *ptr1, unsigned int size1, void *ptr2,
-			    unsigned int size2)
-{
-	return -EINVAL;
-}
-#endif
-
 int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
@@ -675,6 +570,66 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 
 	/* sign the manifest */
 	ret = rimage_sign(privkey, image, V25, digest,
+			  (unsigned char *)man->css.signature);
+	if (ret <= 0) {
+		fprintf(stderr, "error: failed to sign manifest\n");
+		return ret;
+	}
+
+	/* copy public key modulus and exponent to manifest */
+	rimage_set_modexp(privkey, mod, (unsigned char *)man->css.exponent);
+
+	/* modulus is reversed  */
+	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN_2_5; i++)
+		man->css.modulus[i] = mod[MAN_RSA_KEY_MODULUS_LEN_2_5 - (1 + i)];
+
+	/* signature is reversed, swap it */
+	bytes_swap(man->css.signature, sizeof(man->css.signature));
+
+	EVP_PKEY_free(privkey);
+	return ret;
+}
+
+int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
+				struct fw_image_manifest_ace_v1_5 *man,
+				void *ptr1, unsigned int size1, void *ptr2,
+				unsigned int size2)
+{
+	EVP_PKEY *privkey;
+	unsigned char digest[SHA384_DIGEST_LENGTH];
+	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN_2_5];
+	int ret = -EINVAL, i;
+
+#if DEBUG_PKCS
+	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
+		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
+#endif
+
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
+
+	/* validate RSA private key */
+	if (rimage_check_key(privkey) > 0) {
+		fprintf(stdout, " pkcs: RSA private key is valid.\n");
+	} else {
+		fprintf(stderr, "error: validating RSA private key.\n");
+		return -EINVAL;
+	}
+
+	/* calculate the digest - SHA384 on CAVS2_5+ */
+	module_sha384_create(image);
+	module_sha_update(image, ptr1, size1);
+	module_sha_update(image, ptr2, size2);
+	module_sha_complete(image, digest);
+
+	fprintf(stdout, " pkcs: digest for manifest is ");
+	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
+		fprintf(stdout, "%02x", digest[i]);
+	fprintf(stdout, "\n");
+
+	/* sign the manifest */
+	ret = rimage_sign(privkey, image, VACE15, digest,
 			  (unsigned char *)man->css.signature);
 	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
@@ -924,6 +879,59 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 
 	/* verify */
 	ret = rimage_verify(privkey, image, V25, digest,
+			    (unsigned char *)man->css.signature);
+
+	if (ret <= 0)
+		fprintf(stderr, "error: failed to verify manifest\n");
+	else
+		fprintf(stdout, "pkcs: signature is valid !\n");
+
+	EVP_PKEY_free(privkey);
+	return ret;
+}
+
+int pkcs_v1_5_verify_man_ace_v1_5(struct image *image,
+				  struct fw_image_manifest_ace_v1_5 *man,
+				  void *ptr1, unsigned int size1, void *ptr2,
+				  unsigned int size2)
+{
+	EVP_PKEY *privkey;
+	unsigned char digest[SHA384_DIGEST_LENGTH];
+	int ret = -EINVAL, i;
+
+#if DEBUG_PKCS
+	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
+		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
+#endif
+
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
+
+	/* validate RSA private key */
+	if (rimage_check_key(privkey) > 0) {
+		fprintf(stdout, " pkcs: RSA private key is valid.\n");
+	} else {
+		fprintf(stderr, "error: validating RSA private key.\n");
+		return -EINVAL;
+	}
+
+	/* calculate the digest - SHA384 on CAVS2_5+ */
+	module_sha384_create(image);
+	module_sha_update(image, ptr1, size1);
+	module_sha_update(image, ptr2, size2);
+	module_sha_complete(image, digest);
+
+	fprintf(stdout, " pkcs: digest for manifest is ");
+	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
+		fprintf(stdout, "%02x", digest[i]);
+	fprintf(stdout, "\n");
+
+	/* signature is reversed, swap it */
+	bytes_swap(man->css.signature, sizeof(man->css.signature));
+
+	/* verify */
+	ret = rimage_verify(privkey, image, VACE15, digest,
 			    (unsigned char *)man->css.signature);
 
 	if (ret <= 0)

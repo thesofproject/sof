@@ -190,9 +190,9 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
 int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
-			    struct fw_image_manifest_ace_v1_5 *man,
-			    void *ptr1, unsigned int size1, void *ptr2,
-			    unsigned int size2);
+				struct fw_image_manifest_ace_v1_5 *man,
+				void *ptr1, unsigned int size1, void *ptr2,
+				unsigned int size2);
 
 int verify_image(struct image *image);
 int ri_manifest_verify_v1_5(struct image *image);
@@ -209,6 +209,10 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
+int pkcs_v1_5_verify_man_ace_v1_5(struct image *image,
+				  struct fw_image_manifest_ace_v1_5 *man,
+				  void *ptr1, unsigned int size1, void *ptr2,
+				  unsigned int size2);
 
 int resign_image(struct image *image);
 int get_key_size(struct image *image);
