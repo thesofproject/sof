@@ -96,6 +96,12 @@
 #define IDC_MSG_SECONDARY_CORE_CRASHED		IDC_TYPE(0xA)
 #define IDC_MSG_SECONDARY_CORE_CRASHED_EXT(x)	IDC_EXTENSION(x)
 
+/** \brief IDC process async msg */
+#define IDC_MSG_AMS	IDC_TYPE(0xB)
+#define IDC_MSG_AMS_EXT	IDC_EXTENSION(0x0)
+
+#define IDC_HEADER_TO_AMS_SLOT_MASK(x)	(x & 0xFFFF)
+
 /** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
 #define IDC_SCC_CORE_SHIFT		0
 #define IDC_SCC_CORE_MASK		0xff

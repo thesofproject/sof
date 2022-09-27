@@ -38,6 +38,7 @@
 #include <sof_versions.h>
 #include <version.h>
 #endif
+#include <sof/lib/ams.h>
 
 LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
 
@@ -188,6 +189,12 @@ int secondary_core_init(struct sof *sof)
 	if (err < 0)
 		return err;
 
+#if CONFIG_AMS
+	err = ams_init();
+	if (err < 0)
+		return err;
+#endif
+
 	trace_point(TRACE_BOOT_PLATFORM);
 
 #ifndef __ZEPHYR__
@@ -271,6 +278,11 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	/* init the platform */
 	if (platform_init(sof) < 0)
 		sof_panic(SOF_IPC_PANIC_PLATFORM);
+
+#if CONFIG_AMS
+	if (ams_init())
+		LOG_ERR("AMS Init failed!");
+#endif
 
 #if CONFIG_IPC_MAJOR_4
 	/* Set current abi version of the IPC4 FwRegisters layout */

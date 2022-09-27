@@ -54,6 +54,9 @@ struct core_context {
 	struct task *main_task;
 	struct schedulers *schedulers;
 	struct notify *notify;
+#ifdef CONFIG_AMS
+	struct async_message_service *ams;
+#endif
 	struct idc *idc;
 };
 
