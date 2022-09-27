@@ -32,6 +32,7 @@
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+#include <sof/lib/ams.h>
 
 LOG_MODULE_REGISTER(idc, CONFIG_SOF_LOG_LEVEL);
 
@@ -274,6 +275,15 @@ static void idc_prepare_d0ix(void)
 	platform_pm_runtime_prepare_d0ix_en(cpu_get_id());
 }
 
+static void idc_process_async_msg(uint32_t slot)
+{
+#if CONFIG_AMS
+	process_incoming_message(slot);
+#else
+	tr_err(&idc_tr, "idc_cmd(): AMS not enabled");
+#endif
+}
+
 /**
  * \brief Handle IDC secondary core crashed message.
  * \param[in] header IDC message header
@@ -334,6 +344,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_SECONDARY_CORE_CRASHED):
 		idc_secondary_core_crashed(msg->header);
+		break;
+	case iTS(IDC_MSG_AMS):
+		idc_process_async_msg(IDC_HEADER_TO_AMS_SLOT_MASK(msg->header));
 		break;
 	default:
 		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",

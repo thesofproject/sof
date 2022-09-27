@@ -23,6 +23,7 @@ struct ipc;
 struct ll_schedule_domain;
 struct mm;
 struct mn;
+struct ams_shared_context;
 struct notify_data;
 struct pm_runtime_data;
 struct sa;
@@ -75,6 +76,11 @@ struct sof {
 
 	/* runtime power management data */
 	struct pm_runtime_data *prd;
+
+#ifdef CONFIG_AMS
+	/* asynchronous messaging service */
+	struct ams_shared_context *ams_shared_ctx;
+#endif
 
 	/* shared notifier data */
 	struct notify_data *notify_data;

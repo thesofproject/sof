@@ -471,6 +471,13 @@ config HAVE_AGENT
 	  with DMA based scheduling, where asynchronous interrupts
 	  can potentially starve the agent.
 
+config AMS
+	bool "Enable Async Messaging Service"
+	default n
+	help
+	  Enables Async Messaging Service.
+	  Async messages are used to send messages between modules.
+
 config AGENT_PANIC_ON_DELAY
 	bool "Enable system agent time verification panic"
 	default n
