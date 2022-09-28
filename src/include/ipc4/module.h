@@ -24,6 +24,8 @@
 #ifndef __IPC4_MODULE_H__
 #define __IPC4_MODULE_H__
 
+#include <ipc4/error_status.h>
+
 #include <stdint.h>
 
 /* TODO: revisit it. Now it aligns with audio sdk
