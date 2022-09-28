@@ -13,8 +13,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
 
-struct k_work_q edf_workq;
-K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);
+static struct k_work_q edf_workq;
+static K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);
 
 /*
  * since only IPC is using the EDF scheduler - we schedule the work in the
