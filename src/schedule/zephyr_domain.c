@@ -22,6 +22,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
+#include <zephyr/timeout_q.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -100,8 +101,18 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer);
 	int core;
 
-	if (!zephyr_domain)
+	/*
+	 * A race is possible when the Zephyr LL scheduling domain is being
+	 * unregistered while a timer IRQ is processed on a different core. Then
+	 * the timer is removed by the former but then re-added by the latter,
+	 * but this time with no user data and no handler set. This leads to the
+	 * timer continuing to trigger and then leading to a lock up when it is
+	 * registered again next time.
+	 */
+	if (!zephyr_domain) {
+		z_abort_timeout(&timer->timeout);
 		return;
+	}
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
