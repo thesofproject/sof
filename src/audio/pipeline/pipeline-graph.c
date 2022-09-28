@@ -19,6 +19,7 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/module.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -345,9 +346,14 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	pipe_dbg(current->pipeline, "pipeline_comp_reset(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
-	/* reset should propagate to the connected pipelines,
-	 * which need to be scheduled together
+	/*
+	 * Reset should propagate to the connected pipelines, which need to be
+	 * scheduled together, except for IPC4, where each pipeline receives
+	 * commands from the host separately
 	 */
+	if (!is_single_ppl && IPC4_MOD_ID(current->ipc_config.id))
+		return 0;
+
 	if (!is_single_ppl && !is_same_sched) {
 		/* If pipeline connected to the starting one is in improper
 		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
