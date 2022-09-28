@@ -175,6 +175,9 @@ struct processing_module {
 	 * period_bytes every copy
 	 */
 	bool simple_copy;
+
+	/* module-specific flags for comp_verify_params() */
+	uint32_t verify_params_flags;
 };
 
 /*****************************************************************************/

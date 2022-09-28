@@ -369,7 +369,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 
-	ret = comp_verify_params(dev, 0, params);
+	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
 		comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
 		return ret;
