@@ -17,6 +17,7 @@
 
 #ifdef UNIT_TEST
 void sys_comp_mixer_init(void);
+extern struct comp_driver_info comp_mixer_info;
 #endif
 
 #define MIXER_GENERIC

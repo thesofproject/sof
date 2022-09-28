@@ -19,6 +19,7 @@ endif()
 
 cmocka_test(pipeline_new
 	pipeline_new.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -29,11 +30,13 @@ cmocka_test(pipeline_new
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 )
 
 cmocka_test(pipeline_connect_upstream
 	pipeline_connect_upstream.c
 	pipeline_connection_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -44,11 +47,13 @@ cmocka_test(pipeline_connect_upstream
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 )
 
 cmocka_test(pipeline_free
 	pipeline_free.c
 	pipeline_connection_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -59,4 +64,5 @@ cmocka_test(pipeline_free
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 )

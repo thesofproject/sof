@@ -3,6 +3,7 @@
 cmocka_test(mixer
 	mixer_test.c
 	comp_mock.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer.c

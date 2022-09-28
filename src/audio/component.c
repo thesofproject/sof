@@ -234,3 +234,27 @@ void audio_stream_copy_to_linear(const struct audio_stream __sparse_cache *sourc
 		snk += bytes_copied;
 	}
 }
+
+/** See comp_ops::copy */
+int comp_copy(struct comp_dev *dev)
+{
+	int ret = 0;
+
+	assert(dev->drv->ops.copy);
+
+	/* copy only if we are the owner of the component */
+	if (cpu_is_me(dev->ipc_config.core)) {
+#if CONFIG_PERFORMANCE_COUNTERS
+		perf_cnt_init(&dev->pcd);
+#endif
+
+		ret = dev->drv->ops.copy(dev);
+
+#if CONFIG_PERFORMANCE_COUNTERS
+		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
+		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
+#endif
+	}
+
+	return ret;
+}

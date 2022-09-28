@@ -39,7 +39,7 @@ struct comp_dev *post_mixer_comp;
 struct comp_buffer *post_mixer_buf;
 
 /* Mocking comp_register here so we can register our components properly */
-int comp_register(struct comp_driver_info *info)
+int mock_comp_register(struct comp_driver_info *info)
 {
 	void *dst;
 	int err;
@@ -61,6 +61,12 @@ int comp_register(struct comp_driver_info *info)
 	}
 
 	return err;
+}
+
+static void ut_comp_mixer_init(void)
+{
+	mock_comp_register(platform_shared_get(&comp_mixer_info,
+					       sizeof(comp_mixer_info)));
 }
 
 struct source {
@@ -180,7 +186,7 @@ static void activate_periph_comps(struct mix_test_case *tc)
 
 static int test_group_setup(void **state)
 {
-	sys_comp_mixer_init();
+	ut_comp_mixer_init();
 	sys_comp_mock_init();
 
 	return 0;

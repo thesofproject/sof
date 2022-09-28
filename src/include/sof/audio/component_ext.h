@@ -171,35 +171,8 @@ static inline int comp_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-/** See comp_ops::copy */
-static inline int comp_copy(struct comp_dev *dev)
-{
-	int ret = 0;
+int comp_copy(struct comp_dev *dev);
 
-	assert(dev->drv->ops.copy);
-
-	/* copy only if we are the owner of the component */
-	if (cpu_is_me(dev->ipc_config.core)) {
-/* BugLink: https://github.com/zephyrproject-rtos/zephyr/issues/43786
- * TODO: Remove this once the bug gets fixed.
- */
-#ifndef __ZEPHYR__
-		perf_cnt_init(&dev->pcd);
-#endif
-
-		ret = dev->drv->ops.copy(dev);
-
-/* BugLink: https://github.com/zephyrproject-rtos/zephyr/issues/43786
- * TODO: Remove this once the bug gets fixed.
- */
-#ifndef __ZEPHYR__
-		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
-		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
-#endif
-	}
-
-	return ret;
-}
 
 /** See comp_ops::get_attribute */
 static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,

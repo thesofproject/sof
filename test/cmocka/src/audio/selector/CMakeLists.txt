@@ -25,6 +25,7 @@ add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
 )
 sof_append_relative_path_definitions(audio_for_selector)
 
