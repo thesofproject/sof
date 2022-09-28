@@ -847,6 +847,15 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
+	/*
+	 * If the module doesn't support pause, keep it active along with the rest of the
+	 * downstream modules
+	 */
+	if (cmd == COMP_TRIGGER_PAUSE && mod->no_pause) {
+		dev->state = COMP_STATE_ACTIVE;
+		return PPL_STATUS_PATH_STOP;
+	}
+
 	return comp_set_state(dev, cmd);
 }
 
