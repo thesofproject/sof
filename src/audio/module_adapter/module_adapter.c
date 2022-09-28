@@ -158,6 +158,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_adapter_prepare() start");
 
+	/*
+	 * check if the component is already active. This could happen in the case of mixer when
+	 * one of the sources is already active
+	 */
+	if (dev->state == COMP_STATE_ACTIVE)
+		return 0;
+
 	/* Are we already prepared? */
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -182,6 +189,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* Prepare module */
 	ret = module_prepare(mod);
 	if (ret) {
+		if (ret == PPL_STATUS_PATH_STOP)
+			return ret;
+
 		comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
 			 ret);
 
@@ -596,38 +606,52 @@ int module_adapter_copy(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c = NULL, *sink_c = NULL;
+	struct comp_buffer __sparse_cache *source_c[PLATFORM_MAX_STREAMS];
+	struct comp_buffer __sparse_cache *sink_c = NULL;
 	struct comp_copy_limits c;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
+	uint32_t num_input_buffers = 0;
 	int ret, i = 0;
 
 	comp_dbg(dev, "module_adapter_copy(): start");
 
 	/*
 	 * Simplify calculation of bytes_to_process for modules that produce period_bytes every
-	 * period and have only 1 source and 1 sink buffer
+	 * period and have N sources and only 1 sink buffer
 	 */
 	if (mod->simple_copy) {
-		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
-		source_c = buffer_acquire(source);
 		sink_c = buffer_acquire(sink);
-		comp_get_copy_limits_frame_aligned(source_c, sink_c, &c);
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer, sink_list);
+			source_c[i] = buffer_acquire(source);
 
-		buffer_stream_invalidate(source_c, c.frames * c.source_frame_bytes);
+			mod->input_buffers[i].size = 0;
 
-		/* note that the size is in number of frames not the number of bytes */
-		mod->input_buffers[0].size = c.frames;
-		mod->input_buffers[0].consumed = 0;
+			/* check if the source dev is in the same state as the dev */
+			if (!source_c[i]->source || source_c[i]->source->state != dev->state)
+				continue;
+
+			num_input_buffers++;
+
+			comp_get_copy_limits_frame_aligned(source_c[i], sink_c, &c);
+
+			buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
+
+			/* note that the size is in number of frames not the number of bytes */
+			mod->input_buffers[i].size = c.frames;
+			mod->input_buffers[i].consumed = 0;
+
+			mod->input_buffers[i].data = &source_c[i]->stream;
+			i++;
+		}
+
 		mod->output_buffers[0].size = 0;
-
-		mod->input_buffers[0].data = &source_c->stream;
 		mod->output_buffers[0].data = &sink_c->stream;
 
-		/* Keep source_c and sink_c, we'll use and release it below */
+		/* Keep source_c 's and sink_c, we'll use and release it below */
 	} else {
 		list_for_item(blist, &mod->sink_buffer_list) {
 			sink = container_of(blist, struct comp_buffer, sink_list);
@@ -640,31 +664,39 @@ int module_adapter_copy(struct comp_dev *dev)
 
 		/* copy source samples into input buffer */
 		list_for_item(blist, &dev->bsource_list) {
+			struct comp_buffer __sparse_cache *src_c;
 			uint32_t bytes_to_process;
 			int frames, source_frame_bytes;
 
 			source = container_of(blist, struct comp_buffer, sink_list);
-			source_c = buffer_acquire(source);
+			src_c = buffer_acquire(source);
+
+			/* check if the source dev is in the same state as the dev */
+			if (!src_c->source || src_c->source->state != dev->state) {
+				buffer_release(src_c);
+				continue;
+			}
 
 			frames = MIN(min_free_frames,
-				     audio_stream_get_avail_frames(&source_c->stream));
-			source_frame_bytes = audio_stream_frame_bytes(&source_c->stream);
+				     audio_stream_get_avail_frames(&src_c->stream));
+			source_frame_bytes = audio_stream_frame_bytes(&src_c->stream);
 
 			bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
 
-			buffer_stream_invalidate(source_c, bytes_to_process);
+			buffer_stream_invalidate(src_c, bytes_to_process);
 			mod->input_buffers[i].size = bytes_to_process;
 			mod->input_buffers[i].consumed = 0;
 
-			ca_copy_from_source_to_module(&source_c->stream, mod->input_buffers[i].data,
+			ca_copy_from_source_to_module(&src_c->stream, mod->input_buffers[i].data,
 						      md->mpd.in_buff_size, bytes_to_process);
-			buffer_release(source_c);
+			buffer_release(src_c);
 
 			i++;
 		}
+		num_input_buffers = mod->num_input_buffers;
 	}
 
-	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
+	ret = module_process(mod, mod->input_buffers, num_input_buffers,
 			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
@@ -677,20 +709,26 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
-		comp_update_buffer_consume(source_c, mod->input_buffers[0].consumed);
+		i = 0;
+		list_for_item(blist, &dev->bsource_list) {
+			comp_update_buffer_consume(source_c[i], mod->input_buffers[i].consumed);
+			buffer_release(source_c[i]);
+			mod->input_buffers[i].size = 0;
+			mod->input_buffers[i].consumed = 0;
+			i++;
+		}
 		buffer_release(sink_c);
-		buffer_release(source_c);
-		mod->input_buffers[0].size = 0;
-		mod->input_buffers[0].consumed = 0;
 	} else {
 		i = 0;
 		/* consume from all input buffers */
 		list_for_item(blist, &dev->bsource_list) {
-			source = container_of(blist, struct comp_buffer, sink_list);
-			source_c = buffer_acquire(source);
+			struct comp_buffer __sparse_cache *src_c;
 
-			comp_update_buffer_consume(source_c, mod->input_buffers[i].consumed);
-			buffer_release(source_c);
+			source = container_of(blist, struct comp_buffer, sink_list);
+			src_c = buffer_acquire(source);
+
+			comp_update_buffer_consume(src_c, mod->input_buffers[i].consumed);
+			buffer_release(src_c);
 
 			bzero((__sparse_force void *)mod->input_buffers[i].data, size);
 			mod->input_buffers[i].size = 0;
@@ -706,7 +744,9 @@ int module_adapter_copy(struct comp_dev *dev)
 out:
 	if (mod->simple_copy) {
 		buffer_release(sink_c);
-		buffer_release(source_c);
+		i = 0;
+		list_for_item(blist, &dev->bsource_list)
+			buffer_release(source_c[i++]);
 	}
 
 	for (i = 0; i < mod->num_output_buffers; i++)
@@ -843,8 +883,37 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	return ret;
 }
 
+static int module_source_status_count(struct comp_dev *dev, uint32_t status)
+{
+	struct list_item *blist;
+	int count = 0;
+
+	/* count source with state == status */
+	list_for_item(blist, &dev->bsource_list) {
+		/*
+		 * FIXME: this is racy, state can be changed by another core.
+		 * This is implicitly protected by serialised IPCs. Even when
+		 * IPCs are processed in the pipeline thread, the next IPC will
+		 * not be sent until the thread has processed and replied to the
+		 * current one.
+		 */
+		struct comp_buffer *source = container_of(blist, struct comp_buffer,
+							  sink_list);
+		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+
+		if (source_c->source && source_c->source->state == status)
+			count++;
+		buffer_release(source_c);
+	}
+
+	return count;
+}
+
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
+
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
 	/*
@@ -854,6 +923,25 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 	if (cmd == COMP_TRIGGER_PAUSE && mod->no_pause) {
 		dev->state = COMP_STATE_ACTIVE;
 		return PPL_STATUS_PATH_STOP;
+	}
+
+	if (mod->num_input_buffers > 1) {
+		bool sources_active;
+
+		sources_active = module_source_status_count(dev, COMP_STATE_ACTIVE) ||
+				 module_source_status_count(dev, COMP_STATE_PAUSED);
+
+		/* don't stop/start module if one of the sources is active/paused */
+		if ((cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PRE_START) && sources_active) {
+			dev->state = COMP_STATE_ACTIVE;
+			return PPL_STATUS_PATH_STOP;
+		}
+
+		ret = comp_set_state(dev, cmd);
+		if (ret == COMP_STATUS_STATE_ALREADY_SET)
+			return PPL_STATUS_PATH_STOP;
+
+		return ret;
 	}
 
 	return comp_set_state(dev, cmd);

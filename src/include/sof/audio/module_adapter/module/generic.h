@@ -171,7 +171,7 @@ struct processing_module {
 	uint32_t num_input_buffers; /**< number of input buffers */
 	uint32_t num_output_buffers; /**< number of output buffers */
 	/*
-	 * flag set by a module when it has 1 input buffer and 1 output buffer and produces
+	 * flag set by a module when it has N input buffer and 1 output buffer and produces
 	 * period_bytes every copy
 	 */
 	bool simple_copy;
