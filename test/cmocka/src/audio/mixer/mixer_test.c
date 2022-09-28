@@ -19,6 +19,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/mixer.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include "../module_adapter.h"
 
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
@@ -30,55 +32,10 @@
 
 #define MIX_TEST_SAMPLES 32
 
-struct comp_driver drv_mock;
-
-struct comp_driver mixer_drv_mock;
-struct comp_dev *mixer_dev_mock;
-
-struct comp_dev *post_mixer_comp;
-struct comp_buffer *post_mixer_buf;
-
-/* Mocking comp_register here so we can register our components properly */
-int mock_comp_register(struct comp_driver_info *info)
-{
-	void *dst;
-	int err;
-	switch (info->drv->type) {
-	case SOF_COMP_MIXER:
-		dst = &mixer_drv_mock;
-		err = memcpy_s(dst, sizeof(mixer_drv_mock),
-			       info->drv, sizeof(struct comp_driver));
-		break;
-
-	case SOF_COMP_MOCK:
-		dst = &drv_mock;
-		err = memcpy_s(dst, sizeof(drv_mock), info->drv,
-			       sizeof(struct comp_driver));
-		break;
-
-	default:
-		return -ENOTSUP;
-	}
-
-	return err;
-}
-
-static void ut_comp_mixer_init(void)
-{
-	mock_comp_register(platform_shared_get(&comp_mixer_info,
-					       sizeof(comp_mixer_info)));
-}
-
-struct source {
-	struct comp_dev *comp;
-	struct comp_buffer *buf;
-};
-
 struct mix_test_case {
 	int num_sources;
 	int num_chans;
 	const char *name;
-	struct source *sources;
 };
 
 #define TEST_CASE(_num_sources, _num_chans) \
@@ -88,7 +45,6 @@ struct mix_test_case {
 		.name = ("test_audio_mixer_copy_" \
 			 #_num_sources "_srcs_" \
 			 #_num_chans "ch"), \
-		.sources = NULL \
 	}
 
 static struct mix_test_case mix_test_cases[] = {
@@ -104,211 +60,88 @@ static struct mix_test_case mix_test_cases[] = {
 	TEST_CASE(8, 2)
 };
 
-static struct sof_ipc_comp mock_comp = {
-	.type = SOF_COMP_MOCK
-};
-
-static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
-				    struct comp_driver *drv,
-				    struct comp_ipc_config *ipc_config)
-{
-	struct comp_dev *cd = drv->ops.create(drv, ipc_config, NULL);
-
-	assert_non_null(cd);
-
-	cd->drv = drv;
-	list_init(&cd->bsource_list);
-	list_init(&cd->bsink_list);
-
-	return cd;
-}
-
-static void destroy_comp(struct comp_driver *drv, struct comp_dev *dev)
-{
-	drv->ops.free(dev);
-}
-
-static void init_buffer_pcm_params(struct comp_buffer *buf, int num_chans)
-{
-	buf->stream.channels = num_chans;
-	buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
-}
-
-static void create_sources(struct mix_test_case *tc)
-{
-	int src_idx;
-
-	tc->sources = malloc(tc->num_sources * sizeof(struct source));
-
-	static struct comp_ipc_config ipc_config = {};
-
-	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
-		struct source *src = &tc->sources[src_idx];
-
-		struct sof_ipc_buffer buf = {
-			.size = (MIX_TEST_SAMPLES * sizeof(uint32_t)) *
-				tc->num_chans
-		};
-
-		src->comp = create_comp(&mock_comp, &drv_mock, &ipc_config);
-		src->buf = buffer_new(&buf);
-		init_buffer_pcm_params(src->buf, tc->num_chans);
-
-		src->buf->source = src->comp;
-		src->buf->sink = mixer_dev_mock;
-
-		list_item_prepend(&src->buf->source_list,
-				  &src->comp->bsink_list);
-		list_item_prepend(&src->buf->sink_list,
-				  &mixer_dev_mock->bsource_list);
-	}
-}
-
-static void destroy_sources(struct mix_test_case *tc)
-{
-	int src_idx;
-
-	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx)
-		destroy_comp(&drv_mock, tc->sources[src_idx].comp);
-
-	free(tc->sources);
-}
-
-static void activate_periph_comps(struct mix_test_case *tc)
-{
-	int src_idx;
-
-	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx)
-		tc->sources[src_idx].comp->state = COMP_STATE_ACTIVE;
-
-	post_mixer_comp->state = COMP_STATE_ACTIVE;
-}
-
-static int test_group_setup(void **state)
-{
-	ut_comp_mixer_init();
-	sys_comp_mock_init();
-
-	return 0;
-}
-
 static int test_setup(void **state)
 {
-	static struct sof_ipc_comp_mixer mixer = {
-		.comp = {
-			.type = SOF_COMP_MIXER,
-		},
-		.config = {
-			.hdr = {
-				.size = sizeof(struct sof_ipc_comp_config)
-			}
-		}
-	};
-
-	static struct comp_ipc_config ipc_config = {};
-
-	mixer_dev_mock = create_comp((struct sof_ipc_comp *)&mixer,
-				     &mixer_drv_mock, &ipc_config);
-
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
+	struct processing_module_test_parameters test_parameters = {
+		tc->num_chans, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, NULL
+	};
+	struct processing_module_test_data *test_data;
+	struct module_data *mod_data;
+	struct mixer_data *md;
 
-	if (tc) {
-		struct sof_ipc_buffer buf = {
-			.size = (MIX_TEST_SAMPLES * sizeof(uint32_t)) *
-				tc->num_chans
-		};
 
-		post_mixer_buf = buffer_new(&buf);
+	/* allocate and set new processing module, device and mixer data */
+	test_data = test_malloc(sizeof(*test_data));
+	test_data->parameters = test_parameters;
+	test_data->num_sources = tc->num_sources;
+	test_data->num_sinks = 1;
+	module_adapter_test_setup(test_data);
 
-		create_sources(tc);
-		post_mixer_comp = create_comp(&mock_comp, &drv_mock, &ipc_config);
+	mod_data = &test_data->mod->priv;
+	md = test_malloc(sizeof(*md));
+	mod_data->private = md;
 
-		post_mixer_buf->source = mixer_dev_mock;
-		post_mixer_buf->sink = post_mixer_comp;
-		init_buffer_pcm_params(post_mixer_buf, tc->num_chans);
+	md->mix_func = mixer_get_processing_function(test_data->mod->dev, test_data->sinks[0]);
 
-		list_item_prepend(&post_mixer_buf->source_list,
-				  &mixer_dev_mock->bsink_list);
-		list_item_prepend(&post_mixer_buf->sink_list,
-				  &post_mixer_comp->bsource_list);
-
-		mixer_drv_mock.ops.prepare(mixer_dev_mock);
-
-		mixer_dev_mock->state = COMP_STATE_ACTIVE;
-		activate_periph_comps(tc);
-
-		mixer_dev_mock->frames = MIX_TEST_SAMPLES;
-	}
+	*state = test_data;
 
 	return 0;
 }
 
 static int test_teardown(void **state)
 {
-	destroy_comp(&mixer_drv_mock, mixer_dev_mock);
+	struct processing_module_test_data *test_data = *state;
+	struct mixer_data *md = module_get_private_data(test_data->mod);
 
-	struct mix_test_case *tc = *((struct mix_test_case **)state);
-
-	if (tc) {
-		buffer_free(post_mixer_buf);
-		destroy_sources(tc);
-	}
+	test_free(md);
+	module_adapter_test_free(test_data);
+	test_free(test_data);
 
 	return 0;
-}
-
-/*
- * Tests
- */
-
-static void test_audio_mixer_new(void **state)
-{
-	assert_non_null(mixer_dev_mock->priv_data);
-}
-
-static void test_audio_mixer_prepare_no_sources(void **state)
-{
-	int downstream = mixer_drv_mock.ops.prepare(mixer_dev_mock);
-
-	assert_int_equal(downstream, 0);
 }
 
 static void test_audio_mixer_copy(void **state)
 {
 	int src_idx;
 	int smp;
-	struct mix_test_case *tc = *((struct mix_test_case **)state);
+	struct processing_module_test_data *tc = *state;
+	struct processing_module *mod = tc->mod;
+	struct mixer_data *md = module_get_private_data(tc->mod);
+	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
 
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
-		uint32_t *samples = tc->sources[src_idx].buf->stream.addr;
+		uint32_t *samples = tc->sources[src_idx]->stream.addr;
 
-		for (smp = 0; smp < MIX_TEST_SAMPLES; ++smp) {
+		for (smp = 0; smp < tc->sources[src_idx]->stream.size / sizeof(int32_t); ++smp) {
 			double rad = M_PI / (180.0 / (smp * (src_idx + 1)));
 
 			samples[smp] = ((sin(rad) + 1) / 2) * (0xFFFFFFFF / 2);
 		}
 
-		audio_stream_produce(&tc->sources[src_idx].buf->stream,
-				     sizeof(uint32_t) * MIX_TEST_SAMPLES);
+		audio_stream_produce(&tc->sources[src_idx]->stream,
+				     tc->sources[src_idx]->stream.size / sizeof(int32_t));
+
+		sources_stream[src_idx] = &tc->sources[src_idx]->stream;
 	}
 
-	mixer_drv_mock.ops.copy(mixer_dev_mock);
+	md->mix_func(mod->dev, &tc->sinks[0]->stream, sources_stream, tc->num_sources,
+		     mod->dev->frames);
 
-	for (smp = 0; smp < MIX_TEST_SAMPLES; ++smp) {
+	for (smp = 0; smp < tc->sinks[0]->stream.size / sizeof(int32_t); ++smp) {
 		uint64_t sum = 0;
 
 		for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
-			assert_non_null(tc->sources[src_idx].buf);
+			assert_non_null(tc->sources[src_idx]);
 
-			uint32_t *samples =
-				tc->sources[src_idx].buf->stream.addr;
+			uint32_t *samples = tc->sources[src_idx]->stream.addr;
 
 			sum += samples[smp];
 		}
 
 		sum = sat_int32(sum);
 
-		uint32_t *out_samples = post_mixer_buf->stream.addr;
+		uint32_t *out_samples = tc->sinks[0]->stream.addr;
 
 		assert_int_equal(out_samples[smp], sum);
 	}
@@ -316,24 +149,12 @@ static void test_audio_mixer_copy(void **state)
 
 int main(void)
 {
-	struct CMUnitTest tests[ARRAY_SIZE(mix_test_cases) + 2];
+	struct CMUnitTest tests[ARRAY_SIZE(mix_test_cases)];
 
 	int i;
 	int cur_test_case = 0;
 
-	tests[0].test_func = test_audio_mixer_new;
-	tests[0].initial_state = NULL;
-	tests[0].setup_func = test_setup;
-	tests[0].teardown_func = test_teardown;
-	tests[0].name = "test_audio_mixer_new";
-
-	tests[1].test_func = test_audio_mixer_prepare_no_sources;
-	tests[1].initial_state = NULL;
-	tests[1].setup_func = test_setup;
-	tests[1].teardown_func = test_teardown;
-	tests[1].name = "test_audio_mixer_prepare_no_sources";
-
-	for (i = 2; i < ARRAY_SIZE(tests); (++i, ++cur_test_case)) {
+	for (i = 0; i < ARRAY_SIZE(tests); (++i, ++cur_test_case)) {
 		tests[i].test_func = test_audio_mixer_copy;
 		tests[i].initial_state = &mix_test_cases[cur_test_case];
 		tests[i].setup_func = test_setup;
@@ -343,5 +164,5 @@ int main(void)
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-	return cmocka_run_group_tests(tests, test_group_setup, NULL);
+	return cmocka_run_group_tests(tests, NULL, NULL);
 }
