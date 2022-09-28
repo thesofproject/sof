@@ -49,10 +49,10 @@ struct ipc4_msg_data {
 	uint32_t delayed_error;
 };
 
-struct ipc4_msg_data msg_data;
+static struct ipc4_msg_data msg_data;
 
 /* fw sends a fw ipc message to send the status of the last host ipc message */
-struct ipc_msg msg_reply;
+static struct ipc_msg msg_reply;
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 static struct ipc_msg msg_notify;
@@ -61,7 +61,7 @@ static struct ipc_msg msg_notify;
 /*
  * Global IPC Operations.
  */
-static int ipc4_create_pipeline(struct ipc4_message_request *ipc4)
+static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
@@ -90,6 +90,7 @@ static int ipc4_comp_params(struct comp_dev *current,
 	if (current->state == COMP_STATE_ACTIVE)
 		return 0;
 
+	/* Stay on the current pipeline */
 	if (current->pipeline != ((struct pipeline_data *)ctx->comp_data)->p)
 		return 0;
 
@@ -376,19 +377,17 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
-	int ret = 0;
 
 	while (msg_data.delayed_reply) {
 		k_sleep(Z_TIMEOUT_US(250));
 
 		if (!try_count--) {
-			ret = IPC4_FAILURE;
 			tr_err(&ipc_tr, "failed to wait schedule thread");
-			break;
+			return IPC4_FAILURE;
 		}
 	}
 
-	return ret;
+	return IPC4_SUCCESS;
 }
 
 /* In ipc3 path, host driver sends pcm_hw_param message to fw and
@@ -569,7 +568,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 
 	/* pipeline settings */
 	case SOF_IPC4_GLB_CREATE_PIPELINE:
-		ret = ipc4_create_pipeline(ipc4);
+		ret = ipc4_new_pipeline(ipc4);
 		break;
 	case SOF_IPC4_GLB_DELETE_PIPELINE:
 		ret = ipc4_delete_pipeline(ipc4);
