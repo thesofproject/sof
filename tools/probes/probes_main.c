@@ -15,7 +15,6 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -25,7 +24,6 @@
 #include <unistd.h>
 
 #include <ipc/probe_dma_frame.h>
-#include <sof/math/numbers.h>
 
 #include "wave.h"
 
