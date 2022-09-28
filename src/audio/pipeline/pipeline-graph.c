@@ -336,14 +336,13 @@ static int pipeline_comp_reset(struct comp_dev *current,
 			       struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline *p = ctx->comp_data;
-	int stream_direction = dir;
+	struct pipeline *p_current = current->pipeline;
 	int end_type;
 	int is_single_ppl = comp_is_single_pipeline(current, p->source_comp);
-	int is_same_sched =
-		pipeline_is_same_sched_comp(current->pipeline, p);
+	int is_same_sched = pipeline_is_same_sched_comp(p_current, p);
 	int err;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_reset(), current->comp.id = %u, dir = %u",
+	pipe_dbg(p_current, "pipeline_comp_reset(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	/*
@@ -361,14 +360,14 @@ static int pipeline_comp_reset(struct comp_dev *current,
 		 * trusted at this point, as it might not be configured yet,
 		 * hence checking for endpoint component type.
 		 */
-		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
-		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+		end_type = comp_get_endpoint_type(p_current->sink_comp);
+		switch (dir) {
+		case SOF_IPC_STREAM_PLAYBACK:
 			if (end_type == COMP_ENDPOINT_HOST ||
 			    end_type == COMP_ENDPOINT_NODE)
 				return 0;
-		}
-
-		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
+			break;
+		case SOF_IPC_STREAM_CAPTURE:
 			if (end_type == COMP_ENDPOINT_DAI ||
 			    end_type == COMP_ENDPOINT_NODE)
 				return 0;
