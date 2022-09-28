@@ -79,6 +79,6 @@ static struct comp_driver_info comp_mock_info = {
 
 void sys_comp_mock_init(void)
 {
-	comp_register(&comp_mock_info);
+	mock_comp_register(&comp_mock_info);
 }
 

@@ -470,7 +470,10 @@ static const struct comp_driver comp_mixer = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_mixer_info = {
+#ifndef UNIT_TEST
+static
+#endif
+SHARED_DATA struct comp_driver_info comp_mixer_info = {
 	.drv = &comp_mixer,
 };
 
