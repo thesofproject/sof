@@ -36,6 +36,8 @@
 #include <google_rtc_audio_processing_platform.h>
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE 48000
+#define GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS 2
+#define GOOGLE_RTC_AUDIO_PROCESSING_NUM_CAPTURE_CHANNELS 1
 
 LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
@@ -225,12 +227,17 @@ static struct comp_dev *google_rtc_audio_processing_create(
 	if (!cd->tuning_handler)
 		goto fail;
 
-	cd->state = GoogleRtcAudioProcessingCreate();
+	cd->num_aec_reference_channels = GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS;
+	cd->state = GoogleRtcAudioProcessingCreateWithConfig(GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE,
+							     GOOGLE_RTC_AUDIO_PROCESSING_NUM_CAPTURE_CHANNELS,
+							     GOOGLE_RTC_AUDIO_PROCESSING_NUM_CAPTURE_CHANNELS,
+							     GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE,
+							     cd->num_aec_reference_channels,
+							     /*config=*/NULL, /*config_size=*/0);
 	if (!cd->state) {
 		comp_err(dev, "Failed to initialized GoogleRtcAudioProcessing");
 		goto fail;
 	}
-	cd->num_aec_reference_channels = 2;
 	cd->num_frames = GOOGLE_RTC_AUDIO_PROCESSING_SAMPLERATE *
 					 GoogleRtcAudioProcessingGetFramesizeInMs(cd->state) / 1000;
 
