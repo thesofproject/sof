@@ -8,8 +8,6 @@ manifest:
   remotes:
     - name: thesofproject
       url-base: https://github.com/thesofproject
-    - name: github-intel
-      url-base: https://github.com/intel
 
   projects:
     - name: rimage
@@ -25,10 +23,10 @@ manifest:
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
     - name: zephyr
-      remote: github-intel
+      remote: thesofproject
       path: zephyr
       repo-path: zephyr
-      revision: 9443d6b559b81e1fced3d1f5d761ab7f68b4c467
+      revision: 4cc1b29c4d5afdbfbcde0b404a88da32e7937895
       import:
         name-whitelist:
           - hal_xtensa
