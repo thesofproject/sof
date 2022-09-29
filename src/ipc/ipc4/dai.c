@@ -171,7 +171,7 @@ static void get_llp_reg_info(struct comp_dev *dev, uint32_t *node_id, uint32_t *
 			*offset = offsetof(struct ipc4_fw_registers, llp_sndw_reading_slots);
 			*offset += id * sizeof(struct ipc4_llp_reading_slot);
 		} else {
-			comp_err(dev, "get_llp_reg_info(): sndw id %u out of array bounds.", id);
+			comp_dbg(dev, "get_llp_reg_info(): sndw id %u out of array bounds.", id);
 			*node_id = 0;
 		}
 
@@ -181,7 +181,7 @@ static void get_llp_reg_info(struct comp_dev *dev, uint32_t *node_id, uint32_t *
 			*offset = offsetof(struct ipc4_fw_registers, llp_gpdma_reading_slots);
 			*offset += id * sizeof(struct ipc4_llp_reading_slot);
 		} else {
-			comp_err(dev, "get_llp_reg_info(): gpdma id %u out of array bounds.", id);
+			comp_dbg(dev, "get_llp_reg_info(): gpdma id %u out of array bounds.", id);
 			*node_id = 0;
 		}
 
