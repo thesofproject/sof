@@ -42,6 +42,7 @@ enum p_state {
 };
 
 struct dma_frame_parser {
+	bool log_to_stdout;
 	enum p_state state;
 	struct probe_data_packet *packet;
 	size_t packet_size;
@@ -85,13 +86,13 @@ bool is_audio_format(uint32_t format)
 	return (format & PROBE_MASK_FMT_TYPE) != 0 && (format & PROBE_MASK_AUDIO_FMT) == 0;
 }
 
-int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
+int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 {
 	bool audio = is_audio_format(format);
 	char path[FILE_PATH_LIMIT];
 	int i;
 
-	i = get_buffer_file_free(files);
+	i = get_buffer_file_free(p->files);
 	if (i == -1) {
 		fprintf(stderr, "error: too many buffers\n");
 		exit(0);
@@ -99,37 +100,41 @@ int init_wave(struct wave_files *files, uint32_t buffer_id, uint32_t format)
 
 	sprintf(path, "buffer_%d.%s", buffer_id, audio ? "wav" : "bin");
 
-	fprintf(stdout, "%s:\t Creating file %s\n", APP_NAME, path);
+	fprintf(stderr, "%s:\t Creating file %s\n", APP_NAME, path);
 
-	files[i].fd = fopen(path, "wb");
-	if (!files[i].fd) {
-		fprintf(stderr, "error: unable to create file %s, error %d\n",
-			path, errno);
-		exit(0);
+	if (!audio && p->log_to_stdout) {
+		p->files[i].fd = stdout;
+	} else {
+		p->files[i].fd = fopen(path, "wb");
+		if (!p->files[i].fd) {
+			fprintf(stderr, "error: unable to create file %s, error %d\n",
+				path, errno);
+			exit(0);
+		}
 	}
 
-	files[i].buffer_id = buffer_id;
-	files[i].fmt = format;
+	p->files[i].buffer_id = buffer_id;
+	p->files[i].fmt = format;
 
 	if (!audio)
 		return i;
 
-	files[i].header.riff.chunk_id = HEADER_RIFF;
-	files[i].header.riff.format = HEADER_WAVE;
-	files[i].header.fmt.subchunk_id = HEADER_FMT;
-	files[i].header.fmt.subchunk_size = 16;
-	files[i].header.fmt.audio_format = 1;
-	files[i].header.fmt.num_channels = ((format & PROBE_MASK_NB_CHANNELS) >> PROBE_SHIFT_NB_CHANNELS) + 1;
-	files[i].header.fmt.sample_rate = sample_rate[(format & PROBE_MASK_SAMPLE_RATE) >> PROBE_SHIFT_SAMPLE_RATE];
-	files[i].header.fmt.bits_per_sample = (((format & PROBE_MASK_CONTAINER_SIZE) >> PROBE_SHIFT_CONTAINER_SIZE) + 1) * 8;
-	files[i].header.fmt.byte_rate = files[i].header.fmt.sample_rate *
-					files[i].header.fmt.num_channels *
-					files[i].header.fmt.bits_per_sample / 8;
-	files[i].header.fmt.block_align = files[i].header.fmt.num_channels *
-					  files[i].header.fmt.bits_per_sample / 8;
-	files[i].header.data.subchunk_id = HEADER_DATA;
+	p->files[i].header.riff.chunk_id = HEADER_RIFF;
+	p->files[i].header.riff.format = HEADER_WAVE;
+	p->files[i].header.fmt.subchunk_id = HEADER_FMT;
+	p->files[i].header.fmt.subchunk_size = 16;
+	p->files[i].header.fmt.audio_format = 1;
+	p->files[i].header.fmt.num_channels = ((format & PROBE_MASK_NB_CHANNELS) >> PROBE_SHIFT_NB_CHANNELS) + 1;
+	p->files[i].header.fmt.sample_rate = sample_rate[(format & PROBE_MASK_SAMPLE_RATE) >> PROBE_SHIFT_SAMPLE_RATE];
+	p->files[i].header.fmt.bits_per_sample = (((format & PROBE_MASK_CONTAINER_SIZE) >> PROBE_SHIFT_CONTAINER_SIZE) + 1) * 8;
+	p->files[i].header.fmt.byte_rate = p->files[i].header.fmt.sample_rate *
+					p->files[i].header.fmt.num_channels *
+					p->files[i].header.fmt.bits_per_sample / 8;
+	p->files[i].header.fmt.block_align = p->files[i].header.fmt.num_channels *
+					  p->files[i].header.fmt.bits_per_sample / 8;
+	p->files[i].header.data.subchunk_id = HEADER_DATA;
 
-	fwrite(&files[i].header, sizeof(struct wave), 1, files[i].fd);
+	fwrite(&p->files[i].header, sizeof(struct wave), 1, p->files[i].fd);
 
 	return i;
 }
@@ -236,6 +241,11 @@ void parser_free(struct dma_frame_parser *p)
 	free(p);
 }
 
+void parser_log_to_stdout(struct dma_frame_parser *p)
+{
+	p->log_to_stdout = true;
+}
+
 void parser_fetch_free_buffer(struct dma_frame_parser *p, uint8_t **d, size_t *len)
 {
 	*d = &p->data[p->start];
@@ -286,8 +296,7 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
 								   p->packet->buffer_id);
 
 					if (file < 0)
-						file = init_wave(p->files,
-								 p->packet->buffer_id,
+						file = init_wave(p, p->packet->buffer_id,
 								 p->packet->format);
 
 					if (file < 0) {
@@ -326,4 +335,3 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
 	}
 	return 0;
 }
-
