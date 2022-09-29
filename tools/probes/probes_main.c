@@ -29,11 +29,12 @@ static void usage(void)
 {
 	fprintf(stdout, "Usage %s <option(s)> <buffer_id/file>\n\n", APP_NAME);
 	fprintf(stdout, "%s:\t -p file\tParse extracted file\n\n", APP_NAME);
+	fprintf(stdout, "%s:\t -l \t\tLog to stdout\n\n", APP_NAME);
 	fprintf(stdout, "%s:\t -h \t\tHelp, usage info\n", APP_NAME);
 	exit(0);
 }
 
-void parse_data(char *file_in)
+void parse_data(const char *file_in, bool log_to_stdout)
 {
 	struct dma_frame_parser *p = parser_init();
 	FILE *fd_in;
@@ -46,11 +47,18 @@ void parse_data(char *file_in)
 		exit(1);
 	}
 
-	fd_in = fopen(file_in, "rb");
-	if (!fd_in) {
-		fprintf(stderr, "error: unable to open file %s, error %d\n",
-			file_in, errno);
-		exit(0);
+	if (log_to_stdout)
+		parser_log_to_stdout(p);
+
+	if (file_in) {
+		fd_in = fopen(file_in, "rb");
+		if (!fd_in) {
+			fprintf(stderr, "error: unable to open file %s, error %d\n",
+				file_in, errno);
+			exit(0);
+		}
+	} else {
+		fd_in = stdin;
 	}
 
 	do {
@@ -62,18 +70,25 @@ void parse_data(char *file_in)
 
 int main(int argc, char *argv[])
 {
+	const char *fname = NULL;
+	bool log_to_stdout = false;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "hp:")) != -1) {
+	while ((opt = getopt(argc, argv, "lhp:")) != -1) {
 		switch (opt) {
 		case 'p':
-			parse_data(optarg);
+			fname = optarg;
+			break;
+		case 'l':
+			log_to_stdout = true;
 			break;
 		case 'h':
 		default:
 			usage();
+			return 0;
 		}
 	}
+	parse_data(fname, log_to_stdout);
 
 	return 0;
 }

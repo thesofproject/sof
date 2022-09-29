@@ -3,17 +3,20 @@
 // Copyright(c) 2022 Intel Corporation. All rights reserved.
 //
 // Author: Jyri Sarha <jyri.sarha@intel.com>
-//         
+//
 
 #ifndef _PROBES_DEMUX_H_
 #define _PROBES_DEMUX_H_
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 struct dma_frame_parser;
 
 struct dma_frame_parser *parser_init(void);
+
+void parser_log_to_stdout(struct dma_frame_parser *p);
 
 void parser_free(struct dma_frame_parser *p);
 
