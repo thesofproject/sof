@@ -76,7 +76,6 @@ struct perf_cnt_data {
 #define perf_trace_simple(pcd, arg) perf_cnt_trace(arg, pcd)
 
 #if CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE
-
 /* perf measurement windows size 2^x */
 #define PERF_CNT_CHECK_WINDOW_SIZE 10
 #define task_perf_avg_info(pcd, task_p, class)					\
@@ -111,6 +110,8 @@ struct perf_cnt_data {
 			trace_m(pcd, arg);                                   \
 			(pcd)->cpu_delta_sum = 0;                            \
 			(pcd)->sample_cnt = 0;                               \
+			(pcd)->plat_delta_peak = 0;                          \
+			(pcd)->cpu_delta_peak = 0;                           \
 		}                                                            \
 	} while (0)
 
@@ -133,12 +134,16 @@ struct perf_cnt_data {
 			(uint32_t)sof_cycle_get_64();				\
 		uint32_t cpu_ts =						\
 			(uint32_t)perf_cnt_get_cpu_ts();			\
-		if ((pcd)->plat_ts) {						\
+		if (plat_ts > (pcd)->plat_ts)					\
 			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;	\
-			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;		\
-		}								\
-		(pcd)->plat_ts = plat_ts;					\
-		(pcd)->cpu_ts = cpu_ts;						\
+		else                                             \
+			(pcd)->plat_delta_last = UINT32_MAX - (pcd)->plat_ts   \
+									+ plat_ts; \
+		if (cpu_ts > (pcd)->cpu_ts)			\
+			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts; \
+		else								\
+			(pcd)->cpu_delta_last = UINT32_MAX - (pcd)->cpu_ts	\
+									+ cpu_ts;\
 		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)		\
 			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;	\
 		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {		\
