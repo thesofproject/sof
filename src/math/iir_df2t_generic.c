@@ -60,8 +60,9 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 		return x;
 
 	/* Coefficients order in coef[] is {a2, a1, b2, b1, b0, shift, gain} */
-	in = x;
 	for (j = 0; j < iir->biquads; j += iir->biquads_in_series) {
+		/* the first for loop is for parallel EQs, and they have the same input */
+		in = x;
 		for (i = 0; i < iir->biquads_in_series; i++) {
 			/* Compute output: Delay is Q3.61
 			 * Q2.30 x Q1.31 -> Q3.61
