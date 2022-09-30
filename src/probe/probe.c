@@ -338,6 +338,29 @@ static enum task_state probe_task(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+static void probe_auto_enable_logs(uint32_t stream_tag)
+{
+	struct probe_point log_point = {
+#if CONFIG_IPC_MAJOR_4
+		.buffer_id = {
+			.full_id = 0,
+		},
+#else
+		.buffer_id = 0,
+#endif
+		.purpose = PROBE_PURPOSE_EXTRACTION,
+		.stream_tag = stream_tag,
+	};
+	int ret;
+
+	ret = probe_point_add(1, &log_point);
+
+	if (ret)
+		tr_err(&pr_tr, "probe_auto_enable_logs() failed");
+}
+#endif
+
 int probe_init(const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -402,6 +425,10 @@ int probe_init(const struct probe_dma *probe_dma)
 				      SOF_UUID(probe_task_uuid),
 				      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_LOW,
 				      probe_task, _probe, 0, 0);
+
+#if CONFIG_LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+		probe_auto_enable_logs(probe_dma->stream_tag);
+#endif
 	} else {
 		tr_dbg(&pr_tr, "\tno extraction DMA setup");
 
