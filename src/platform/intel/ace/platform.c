@@ -73,6 +73,9 @@ int platform_boot_complete(uint32_t boot_message)
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
+	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
+	platform_clock_init(sof);
+
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
 
