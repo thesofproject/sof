@@ -108,6 +108,16 @@ config LOG_BACKEND_SOF_PROBE
 		Logging is enabled by setting up a probe point with
 		probe purpose value of PROBE_PURPOSE_LOGGING.
 
+config LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+	bool "Automatically enable probes logging when probe dma is started"
+	depends on LOG_BACKEND_SOF_PROBE
+	help
+		Automatically enable logging as soon as probes DMA
+		starts. This option simplifies probes logging back
+		end usage as there is no need to enable logs after
+		every boot. The probes DMA is still needed before the
+		log output can be enabled.
+
 config LOG_BACKEND_SOF_PROBE_OUTPUT_DICTIONARY
 	bool "Dictionary"
 	select LOG_DICTIONARY_SUPPORT
