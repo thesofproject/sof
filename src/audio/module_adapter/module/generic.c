@@ -281,11 +281,10 @@ int module_reset(struct processing_module *mod)
 	rfree(md->cfg.data);
 	md->cfg.data = NULL;
 
-	/*
-	 * reset the state to allow the module's prepare callback to be invoked again for the
-	 * subsequent triggers
+	/* module resets itself to the initial condition after prepare()
+	 * so let's change its state to reflect that.
 	 */
-	md->state = MODULE_INITIALIZED;
+	md->state = MODULE_IDLE;
 
 	return 0;
 }
