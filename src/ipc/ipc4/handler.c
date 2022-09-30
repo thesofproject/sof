@@ -1070,7 +1070,8 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	if (!in)
 		return;
 
-	tr_dbg(&ipc_tr, "rx\t: %#x|%#x", in->primary.dat, in->extension.dat);
+	if (cpu_is_primary(cpu_get_id()))
+		tr_info(&ipc_tr, "rx\t: %#x|%#x", in->primary.dat, in->extension.dat);
 
 	/* no process on scheduled thread */
 	atomic_set(&msg_data.delayed_reply, 0);
