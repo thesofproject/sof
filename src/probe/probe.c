@@ -260,6 +260,8 @@ static enum task_state probe_task(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+static void probe_auto_enable_logs(uint32_t stream_tag);
+
 int probe_init(struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -323,6 +325,10 @@ int probe_init(struct probe_dma *probe_dma)
 	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
 		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+	if (probe_dma)
+		probe_auto_enable_logs(probe_dma->stream_tag);
+#endif
 	return 0;
 }
 
@@ -1204,6 +1210,27 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 	}
 
 	return 0;
+}
+
+static void probe_auto_enable_logs(uint32_t stream_tag)
+{
+	struct probe_point log_point = {
+#if CONFIG_IPC_MAJOR_4
+		.buffer_id = {
+			.full_id = 0,
+		},
+#else
+		.buffer_id = 0,
+#endif
+		.purpose = PROBE_PURPOSE_EXTRACTION,
+		.stream_tag = stream_tag,
+	};
+	int ret;
+	ret = probe_point_add(1, &log_point);
+
+	if (ret)
+		tr_err(&pr_tr, "probe_auto_enable_logs() failed");
+
 }
 
 #if CONFIG_IPC_MAJOR_3
