@@ -39,8 +39,6 @@ struct sof;
 #define NUM_CLOCKS	(CLK_SSP + 1)
 
 extern const struct freq_table *cpu_freq;
-extern const uint32_t cpu_freq_enc[];
-extern const uint32_t cpu_freq_status_mask[];
 
 void platform_clock_init(struct sof *sof);
 
