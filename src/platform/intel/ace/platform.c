@@ -58,16 +58,14 @@ int platform_boot_complete(uint32_t boot_message)
 
 	/* get any IPC specific boot message and optional data */
 	ipc_boot_complete_msg(&header, 0);
+	struct ipc_msg *msg = ipc_msg_w_ext_init(header.pri, header.ext, 0);
 
-	struct ipc_msg msg = {
-		.header = header.pri,
-		.extension = header.ext,
-		.tx_size = sizeof(ready),
-		.tx_data = (void *)&ready,
-	};
+	msg->tx_size = sizeof(ready);
+	msg->tx_data = (void *)&ready;
 
 	/* send fimrware ready message. */
-	return ipc_platform_send_msg(&msg);
+	ipc_msg_send(msg, NULL, true);
+	return 0;
 }
 
 /* Runs on the primary core only */
