@@ -433,6 +433,7 @@ if (CONFIG_ACE_VERSION_1_5)
 		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
 		${SOF_PLATFORM_PATH}/intel/ace/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/dma.c
 	)
 
 	# SOF core infrastructure - runs on top of Zephyr
