@@ -73,6 +73,8 @@ int platform_boot_complete(uint32_t boot_message)
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
+	int ret;
+
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
 
@@ -86,6 +88,12 @@ int platform_init(struct sof *sof)
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
+
+	/* init DMACs */
+	trace_point(TRACE_BOOT_PLATFORM_DMA);
+	ret = dmac_init(sof);
+	if (ret < 0)
+		return ret;
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
