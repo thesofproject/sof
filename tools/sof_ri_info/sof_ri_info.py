@@ -582,9 +582,8 @@ def parse_cse_manifest(reader):
     # Try to detect signature first
     sig = reader.read_string(4)
     if sig != '$CPD':
-        reader.error('CSE Manifest magic number NOT found, instead: ('
+        raise Exception('CSE Manifest magic number NOT found, instead: ('
                      + sig + ')', -4)
-        sys.exit(1)
     reader.info('CSE Manifest (' + sig + ')', -4)
 
     # Read the header
@@ -654,8 +653,7 @@ def parse_css_manifest(css_mft, reader, limit):
         reader.info('CSS Manifest type 4')
         return parse_css_manifest_4(css_mft, reader, limit)
 
-    reader.error('CSS Manifest NOT found or NOT recognized!')
-    sys.exit(1)
+    raise Exception('CSS Manifest NOT found or NOT recognized!')
 
 def parse_css_manifest_4(css_mft, reader, size_limit):
     """ Parses CSS manifest type 4 from sof binary
@@ -768,12 +766,10 @@ def parse_adsp_manifest_hdr(reader):
     try:
         sig = reader.read_string(4)
     except UnicodeDecodeError:
-        print('\n' + reader.offset_to_string() + \
+        raise Exception('\n' + reader.offset_to_string() + \
               '\terror: Failed to decode signature, wrong position?')
-        sys.exit(1)
     if sig != '$AM1':
-        reader.error('ADSP Manifest NOT found!', -4)
-        sys.exit(1)
+        raise Exception('ADSP Manifest NOT found!', -4)
     reader.info('ADSP Manifest (' + sig + ')', -4)
 
     hdr = Component('adsp_mft_hdr', 'ADSP Manifest Header',
@@ -802,12 +798,10 @@ def parse_adsp_manifest_mod_entry(index, reader):
     try:
         sig = reader.read_string(4)
     except UnicodeDecodeError:
-        print(reader.offset_to_string() + \
+        raise Exception(reader.offset_to_string() + \
               '\terror: Failed to decode ModuleEntry signature')
-        sys.exit(1)
     if sig != '$AME':
-        reader.error('ModuleEntry signature NOT found!')
-        sys.exit(1)
+        raise Exception('ModuleEntry signature NOT found!')
     reader.info('Module Entry signature found (' + sig + ')', -4)
 
     mod = AdspModuleEntry('mod_entry_'+repr(index),
@@ -1622,8 +1616,7 @@ def EraseVariables(input_path, parsed_fw, output_path):
     assert input_path.stat().st_size == output_path.stat().st_size
 
     with open(output_path, 'rb') as output:
-        chk256 = hashlib.sha256(output.read()).hexdigest()
-        print('sha256sum {0}\n{1} {0}'.format(output_path, chk256))
+        return hashlib.sha256(output.read()).hexdigest()
 
 
 def main(args):
@@ -1652,8 +1645,10 @@ def main(args):
         mem.dump_info()
 
     if args.erased_vars_image:
-        EraseVariables(pathlib.Path(args.sof_ri_path), fw_bin,
+        chk256 = EraseVariables(pathlib.Path(args.sof_ri_path), fw_bin,
                        args.erased_vars_image)
+        print('sha256sum {0}\n{1} {0}'.format(args.erased_vars_image, chk256))
+
 
 if __name__ == "__main__":
     ARGS = parse_params()
