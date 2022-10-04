@@ -249,6 +249,7 @@ set(TPLGS
 	"sof-glk-es8336\;sof-tgl-es8336-dmic4ch-ssp2\;-DPLATFORM=tgl\;-DSSP_NUM=2\;-DCHANNELS=4"
 
 	"sof-imx8-nocodec\;sof-imx8-nocodec"
+	"sof-imx8-wm8960-cs42888\;sof-imx8-wm8960-cs42888"
 	"sof-imx8-cs42888\;sof-imx8-cs42888"
 	"sof-imx8-nocodec-sai\;sof-imx8-nocodec-sai"
 	"sof-imx8-wm8960\;sof-imx8-wm8960\;-DPPROC=volume"
