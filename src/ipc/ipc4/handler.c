@@ -31,6 +31,7 @@
 #include <ipc/trace.h>
 #include <user/trace.h>
 
+#include <rtos/atomic.h>
 #include <rtos/kernel.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/lib_manager.h>
@@ -45,7 +46,7 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 struct ipc4_msg_data {
 	struct ipc_cmd_hdr msg_in; /* local copy of current message from host header */
 	struct ipc_cmd_hdr msg_out; /* local copy of current message to host header */
-	int delayed_reply;
+	atomic_t delayed_reply;
 	uint32_t delayed_error;
 };
 
@@ -342,30 +343,34 @@ static void ipc_compound_pre_start(int msg_id)
 	/* ipc thread will wait for all scheduled ipc messages to be complete
 	 * Use a reference count to check status of these ipc messages.
 	 */
-	msg_data.delayed_reply++;
+	int old_val __unused = atomic_add(&msg_data.delayed_reply, 1);
+
+	assert(old_val == 0);
 }
 
 static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
 	if (ret) {
 		tr_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
-		msg_data.delayed_reply--;
+		atomic_set(&msg_data.delayed_reply, 0);
 		return;
 	}
 
 	/* decrease counter if it is not scheduled by another thread */
 	if (!delayed)
-		msg_data.delayed_reply--;
+		atomic_sub(&msg_data.delayed_reply, 1);
 }
 
 static void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
-	if (!msg_data.delayed_reply) {
+	if (!atomic_read(&msg_data.delayed_reply)) {
 		tr_err(&ipc_tr, "unexpected delayed reply");
 		return;
 	}
 
-	msg_data.delayed_reply--;
+	int old_val __unused = atomic_sub(&msg_data.delayed_reply, 1);
+
+	assert(old_val == 1);
 
 	/* error reported in delayed pipeline task */
 	if (error < 0) {
@@ -378,7 +383,7 @@ static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
 
-	while (msg_data.delayed_reply) {
+	while (atomic_read(&msg_data.delayed_reply)) {
 		k_sleep(Z_TIMEOUT_US(250));
 
 		if (!try_count--) {
@@ -531,11 +536,11 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		return ret;
 	}
 
-	msg_data.delayed_reply = 1;
+	atomic_set(&msg_data.delayed_reply, 1);
 	ret = ipc4_trigger_chain_dma(ipc, &cdma);
 	/* it is not scheduled in another thread */
 	if (ret != PPL_STATUS_SCHEDULED) {
-		msg_data.delayed_reply = 0;
+		atomic_set(&msg_data.delayed_reply, 0);
 		msg_data.delayed_error = 0;
 	} else {
 		ret = 0;
@@ -1068,7 +1073,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	tr_dbg(&ipc_tr, "rx\t: %#x|%#x", in->primary.dat, in->extension.dat);
 
 	/* no process on scheduled thread */
-	msg_data.delayed_reply = 0;
+	atomic_set(&msg_data.delayed_reply, 0);
 	msg_data.delayed_error = 0;
 	msg_reply.tx_size = 0;
 	msg_reply.header = in->primary.dat;
