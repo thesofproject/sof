@@ -253,6 +253,7 @@ set(TPLGS
 	"sof-glk-es8336\;sof-adl-es8336-ssp1-hdmi-ssp02\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=0\;-DHDMI_1_SSP_NUM=0\;-DHDMI_2_SSP_NUM=2"
 
 	"sof-imx8-nocodec\;sof-imx8-nocodec"
+	"sof-imx8-wm8960-cs42888\;sof-imx8-wm8960-cs42888"
 	"sof-imx8-cs42888\;sof-imx8-cs42888"
 	"sof-imx8-nocodec-sai\;sof-imx8-nocodec-sai"
 	"sof-imx8-wm8960\;sof-imx8-wm8960\;-DPPROC=volume"
