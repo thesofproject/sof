@@ -37,10 +37,9 @@ SOF_TOP="$(cd "$(dirname "$0")"/.. && /bin/pwd)"
 main()
 {
     # Log container versions
-    for rep in zephyrprojectrtos/zephyr-build \
-               ghcr.io/zephyrproject-rtos/zephyr-build ; do
-        docker images --digests "$rep"
-    done
+    # Header
+    docker images --digests | grep REPOSITORY
+    docker images --digests | grep -i zephyr | sort
 
     if tty --quiet; then
         SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
