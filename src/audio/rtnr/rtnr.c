@@ -38,6 +38,14 @@
 #define RTNR_BLK_LENGTH			4 /* Must be power of 2 */
 #define RTNR_BLK_LENGTH_MASK	(RTNR_BLK_LENGTH - 1)
 
+/* RTNR configuration & data */
+#define SOF_RTNR_CONFIG 0
+#define SOF_RTNR_DATA 1
+
+/* ID for RTNR data */
+#define RTNR_DATA_ID_PRESET 12345678
+
+
 static const struct comp_driver comp_rtnr;
 
 /** \brief RTNR processing functions map item. */
@@ -53,6 +61,10 @@ DECLARE_SOF_RT_UUID("rtnr", rtnr_uuid, 0x5c7ca334, 0xe15d, 0x11eb, 0xba, 0x80,
 DECLARE_TR_CTX(rtnr_tr, SOF_UUID(rtnr_uuid), LOG_LEVEL_INFO);
 
 /* Generic processing */
+
+/* Static functions */
+static int rtnr_set_comp_config_by_ipc_config_process(struct comp_dev *dev,
+					struct ipc_config_process *ipc_config);
 
 /* Called by the processing library for debugging purpose */
 void rtnr_printf(int a, int b, int c, int d, int e)
@@ -189,20 +201,19 @@ static inline void rtnr_set_process_sample_rate(struct comp_dev *dev, uint32_t s
 static int32_t rtnr_check_config_validity(struct comp_dev *dev,
 									    struct comp_data *cd)
 {
-	struct sof_rtnr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	int ret = 0;
+	comp_dbg(dev, "rtnr_check_config_validity() sample_rate:%d enabled: %d",
+		cd->config.params.sample_rate, cd->config.params.enabled);
 
-	if (!p_config) {
-		comp_err(dev, "rtnr_check_config_validity() error: invalid cd->model_handler");
-		ret = -EINVAL;
-	} else {
-		comp_info(dev, "rtnr_check_config_validity() sample_rate:%d",
-				p_config->params.sample_rate);
-
-		rtnr_set_process_sample_rate(dev, p_config->params.sample_rate);
+	if ((cd->config.params.sample_rate != 48000) &&
+		(cd->config.params.sample_rate != 16000)) {
+		comp_err(dev, "rtnr_check_config_validity() invalid sample_rate:%d",
+			cd->config.params.sample_rate);
+		return -EINVAL;
 	}
 
-	return ret;
+	rtnr_set_process_sample_rate(dev, cd->config.params.sample_rate);
+
+	return 0;
 }
 
 static struct comp_dev *rtnr_new(const struct comp_driver *drv,
@@ -240,24 +251,24 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 
 	cd->process_enable = true;
 
-	/* Handler for configuration data */
+	/* Handler for component data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): comp_data_blob_handler_new() failed.");
 		goto cd_fail;
 	}
 
-	/* Get configuration data */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_rtnr->data);
+	/* Get initial configuration from topology */
+	ret = rtnr_set_comp_config_by_ipc_config_process(dev, ipc_rtnr);
 	if (ret < 0) {
-		comp_cl_err(&comp_rtnr, "rtnr_new(): comp_init_data_blob() failed.");
+		comp_cl_err(&comp_rtnr, "rtnr_new(): failed setting initial config");
 		goto cd_fail;
 	}
 
 	/* Component defaults */
 	cd->source_channel = 0;
 
-	/* Get default sample rate from topology */
+	/* check validity of initial config */
 	ret = rtnr_check_config_validity(dev, cd);
 	if (ret < 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): rtnr_check_config_validity() failed.");
@@ -270,6 +281,13 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 		goto cd_fail;
 	}
 	comp_cl_info(&comp_rtnr, "rtnr_new(): RTKMA_API_Context_Create succeeded.");
+
+	/* comp_is_new_data_blob_available always returns false for the first
+	 * control write with non-empty config. The first non-empty write may
+	 * happen after prepare (e.g. during copy). Default to true so that
+	 * copy keeps checking until a non-empty config is applied.
+	 */
+	cd->reconfigure = true;
 
 	/* Done. */
 	dev->state = COMP_STATE_READY;
@@ -361,17 +379,82 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	return 0;
 }
 
+static int rtnr_get_comp_config(struct comp_data *cd, struct sof_ipc_ctrl_data *cdata,
+				int max_data_size)
+{
+	int ret;
+
+	if (sizeof(cd->config) > max_data_size)
+		return -EINVAL;
+
+	ret = memcpy_s(cdata->data->data, max_data_size, &cd->config, sizeof(cd->config));
+	if (ret)
+		return ret;
+
+	cdata->data->abi = SOF_ABI_VERSION;
+	cdata->data->size = sizeof(cd->config);
+	return 0;
+}
+
+static int rtnr_get_comp_data(struct comp_data *cd, struct sof_ipc_ctrl_data *cdata,
+				    int max_data_size)
+{
+	uint8_t *config;
+	size_t size;
+	int ret;
+
+	config = comp_get_data_blob(cd->model_handler, &size, NULL);
+
+	if (size > max_data_size || size < 0)
+		return -EINVAL;
+
+	ret = memcpy_s(cdata->data->data,
+				max_data_size,
+				config,
+				size);
+	if (ret)
+		return ret;
+
+	cdata->data->abi = SOF_ABI_VERSION;
+	cdata->data->size = size;
+
+	return 0;
+}
+
+static int rtnr_get_bin_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
+				  int max_data_size)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (!cd)
+		return -ENODEV;
+
+	comp_err(dev, "rtnr_get_bin_data(): type = %u, index = %u, size = %d",
+		 cdata->data->type, cdata->msg_index, cdata->num_elems);
+
+	switch (cdata->data->type) {
+	case SOF_RTNR_CONFIG:
+		comp_err(dev, "rtnr_get_bin_data(): SOF_RTNR_CONFIG");
+		return rtnr_get_comp_config(cd, cdata, max_data_size);
+	case SOF_RTNR_DATA:
+		comp_err(dev, "rtnr_get_bin_data(): SOF_RTNR_DATA");
+		return rtnr_get_comp_data(cd, cdata, max_data_size);
+	default:
+		comp_err(dev, "rtnr_get_bin_data(): unknown binary data type");
+		return -EINVAL;
+	}
+}
+
 static int rtnr_cmd_get_data(struct comp_dev *dev,
 						struct sof_ipc_ctrl_data *cdata, int max_size)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
+
+	comp_dbg(dev, "rtnr_cmd_get_data(), SOF_CTRL_CMD_BINARY");
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "rtnr_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
-		break;
+		return rtnr_get_bin_data(dev, cdata, max_size);
 	default:
 		comp_err(dev, "rtnr_cmd_get_data() error: invalid command %d", cdata->cmd);
 		ret = -EINVAL;
@@ -381,17 +464,149 @@ static int rtnr_cmd_get_data(struct comp_dev *dev,
 	return ret;
 }
 
-static int rtnr_cmd_set_data(struct comp_dev *dev,
+static int rtnr_reconfigure(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint8_t *config;
+	size_t size;
+
+	comp_dbg(dev, "rtnr_reconfigure()");
+
+	config = comp_get_data_blob(cd->model_handler, &size, NULL);
+	comp_dbg(dev, "rtnr_reconfigure() size: %d", size);
+
+	if (size == 0) {
+		/* No data to be handled */
+		return 0;
+	}
+
+	if (!config) {
+		comp_err(dev, "rtnr_reconfigure(): Config not set");
+		return -EINVAL;
+	}
+
+	comp_info(dev, "rtnr_reconfigure(): New data applied %p (%zu bytes)",
+		  config, size);
+
+	cd->reconfigure = false;
+
+	RTKMA_API_Set(cd->rtk_agl, config, size, RTNR_DATA_ID_PRESET);
+
+	return 0;
+}
+
+static int rtnr_set_comp_config_by_ipc_config_process(struct comp_dev *dev,
+							struct ipc_config_process *config)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "rtnr_set_comp_config_by_ipc_config(): %d", config->size);
+	if (config->size != sizeof(cd->config)) {
+		comp_err(dev, "rtnr_set_comp_config_by_ipc_config(): invalid size %d",
+			config->size);
+		return -EINVAL;
+	}
+
+	ret = memcpy_s(&cd->config,
+				sizeof(cd->config),
+				config->data,
+				config->size);
+	if (ret)
+		return ret;
+
+	comp_info(dev,
+		"rtnr_set_comp_config_by_ipc_config(): sample_rate = %d, enabled=%d",
+		cd->config.params.sample_rate,
+		cd->config.params.enabled);
+
+	return ret;
+}
+
+static int rtnr_set_comp_config_by_ipc_ctrl_data(struct comp_dev *dev,
 							struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "rtnr_set_comp_config_by_ipc_ctrl_data(): size: %d",
+		cdata->data->size);
+
+	if (cdata->data->size != sizeof(cd->config)) {
+		comp_err(dev,
+			"rtnr_set_comp_config_by_ipc_ctrl_data(): invalid size %d",
+			cdata->data->size);
+
+		return -EINVAL;
+	}
+
+	ret = memcpy_s(&cd->config,
+				sizeof(cd->config),
+				cdata->data->data,
+				cdata->data->size);
+	if (ret)
+		return ret;
+
+	comp_info(dev,
+		"rtnr_set_comp_config_by_ipc_ctrl_data(): sample_rate = %d, enabled=%d",
+		cd->config.params.sample_rate,
+		cd->config.params.enabled);
+
+	return ret;
+}
+
+static int rtnr_set_bin_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
 
+	assert(cd);
+	comp_dbg(dev,
+		 "rtnr_set_bin_data(): type = %u", cdata->data->type);
+
+	if (dev->state < COMP_STATE_READY) {
+		comp_err(dev, "rtnr_set_bin_data(): driver in init!");
+		return -EBUSY;
+	}
+
+	switch (cdata->data->type) {
+	case SOF_RTNR_CONFIG:
+		return rtnr_set_comp_config_by_ipc_ctrl_data(dev, cdata);
+	case SOF_RTNR_DATA:
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
+		if (ret)
+			return ret;
+		/* Accept the new blob immediately so that userspace can write
+		 * the control in quick succession without error.
+		 * This ensures the last successful control write from userspace
+		 * before prepare/copy is applied.
+		 * The config blob is not referenced after reconfigure() returns
+		 * so it is safe to call comp_get_data_blob here which frees the
+		 * old blob. This assumes cmd() and prepare()/copy() cannot run
+		 * concurrently which is the case when there is no preemption.
+		 */
+		if (comp_is_new_data_blob_available(cd->model_handler)) {
+			comp_dbg(dev, "rtnr_set_bin_data(), new data blob available");
+			comp_get_data_blob(cd->model_handler, NULL, NULL);
+			cd->reconfigure = true;
+		}
+		break;
+	default:
+		comp_err(dev, "rtnr_set_bin_data(): unknown binary data type");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int rtnr_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "rtnr_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		break;
+		return rtnr_set_bin_data(dev, cdata);
 	default:
 		comp_err(dev, "rtnr_cmd_set_data() error: invalid command %d", cdata->cmd);
 		ret = -EINVAL;
@@ -540,6 +755,13 @@ static int rtnr_copy(struct comp_dev *dev)
 	struct audio_stream_rtnr *sources_stream[RTNR_MAX_SOURCES];
 	struct audio_stream_rtnr *sink_stream = &cd->sink_stream;
 	int32_t i;
+	int ret;
+
+	if (cd->reconfigure) {
+		ret = rtnr_reconfigure(dev);
+		if (ret)
+			return ret;
+	}
 
 	for (i = 0; i < RTNR_MAX_SOURCES; ++i)
 		sources_stream[i] = &cd->sources_stream[i];
@@ -655,7 +877,10 @@ static int rtnr_prepare(struct comp_dev *dev)
 	/* Clear in/out buffers */
 	RTKMA_API_Prepare(cd->rtk_agl);
 
-	return 0;
+	/* Blobs sent during COMP_STATE_READY is assigned to blob_handler->data
+	 * directly, so comp_is_new_data_blob_available always returns false.
+	 */
+	return rtnr_reconfigure(dev);
 
 err:
 	comp_set_state(dev, COMP_TRIGGER_RESET);
