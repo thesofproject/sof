@@ -344,9 +344,15 @@ endif()
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
+	if (CONFIG_IPC_MAJOR_4 AND CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	zephyr_library_sources(
+		${SOF_IPC_PATH}/ipc-zephyr.c
+	)
+	else()
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
 	)
+	endif()
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
@@ -424,7 +430,7 @@ if (CONFIG_ACE_VERSION_1_5)
 
 	# Driver sources
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/ace/ipc.c
+		${SOF_IPC_PATH}/ipc-zephyr.c
 	)
 
 	# Platform sources

@@ -9,12 +9,9 @@
 //         Andrey Borisovich <andrey.borisovich@intel.com>
 //         Adrian Warecki <adrian.warecki@intel.com>
 
-#include <ace/version.h>
-
 #include <autoconf.h>
 
 #include <intel_adsp_ipc.h>
-#include <ace_v1x-regs.h>
 #include <sof/ipc/common.h>
 
 #include <sof/ipc/schedule.h>
