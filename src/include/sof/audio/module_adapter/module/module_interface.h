@@ -147,7 +147,9 @@ struct module_interface {
 static inline enum module_cfg_fragment_position
 first_last_block_to_frag_pos(bool first_block, bool last_block)
 {
-	return (last_block << 1) | first_block;
+	int frag_position = (last_block << 1) | first_block;
+
+	return (enum module_cfg_fragment_position)frag_position;
 }
 
 #endif /* __SOF_MODULE_INTERFACE__ */

@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_REGISTER(lib_manager, CONFIG_SOF_LOG_LEVEL);
 /* 54cf5598-8b29-11ec-a8a3-0242ac120002 */
 
 DECLARE_SOF_UUID("lib_manager", lib_manager_uuid, 0x54cf5598, 0x8b29, 0x11ec,
@@ -312,7 +313,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 {
 	/* allocate new  comp_driver_info */
 	struct comp_driver_info *new_drv_info;
-	struct comp_driver *drv;
+	struct comp_driver *drv = NULL;
 	struct sof_man_module *mod;
 	int ret;
 
@@ -380,7 +381,7 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 				       uint32_t align)
 {
 	/* allocate new buffer */
-	buffer->addr = rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
+	buffer->addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
 
 	if (!buffer->addr) {
 		tr_err(&lib_manager_tr, "dma_buffer_init(): alloc failed");
@@ -604,7 +605,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	struct lib_manager_dma_ext dma_ext;
 	uint32_t addr_align;
 	int ret;
-	void *man_tmp_buffer;
+	void *man_tmp_buffer = NULL;
 
 	lib_manager_init();
 
