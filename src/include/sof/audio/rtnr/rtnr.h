@@ -49,7 +49,7 @@ typedef void (*rtnr_func)(struct comp_dev *dev,
 /* RTNR component private data */
 struct comp_data {
 	struct comp_data_blob_handler *model_handler;
-	struct sof_rtnr_config *config;      /**< pointer to setup blob */
+	struct sof_rtnr_config config;      /**< config */
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 	enum sof_ipc_frame ref_format;
@@ -66,6 +66,7 @@ struct comp_data {
 	void *rtk_agl;
 	struct audio_stream_rtnr sources_stream[RTNR_MAX_SOURCES];
 	struct audio_stream_rtnr sink_stream;
+	bool reconfigure;
 };
 
 /* Called by the processing library for debugging purpose */
