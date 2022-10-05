@@ -8,9 +8,12 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/util.h>
 #include <user/trace.h>
 #include <rtos/string.h>
+
+#ifdef __ZEPHYR__
+#include <zephyr/sys/util.h>
+#endif /* __ZEPHYR__ */
 
 #ifdef __XTENSA__
   #define RESTRICT __restrict

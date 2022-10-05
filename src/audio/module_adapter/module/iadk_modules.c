@@ -38,6 +38,7 @@
  *  - Processing Module Adapter - SOF base FW side of ProcessingModuleInterface API
  */
 
+LOG_MODULE_REGISTER(iadk_modules, CONFIG_SOF_LOG_LEVEL);
 /* ee2585f2-e7d8-43dc-90ab-4224e00c3e84 */
 DECLARE_SOF_RT_UUID("iadk_modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
 		    0x90, 0xab, 0x42, 0x24, 0xe0, 0x0c, 0x3e, 0x84);
@@ -120,7 +121,6 @@ static int iadk_modules_init(struct processing_module *mod)
 static int iadk_modules_prepare(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *codec = &mod->priv;
 	int ret = 0;
 
 	comp_info(dev, "iadk_modules_prepare()");
@@ -245,12 +245,12 @@ static int iadk_modules_set_configuration(struct processing_module *mod, uint32_
  * \return: 0 upon success or error upon failure
  */
 static int iadk_modules_get_configuration(struct processing_module *mod, uint32_t config_id,
-					  enum module_cfg_fragment_position pos,
-					  uint32_t data_offset_size, const uint8_t *fragment,
+					  uint32_t *data_offset_size, uint8_t *fragment,
 					  size_t fragment_size)
 {
-	return iadk_wrapper_get_configuration(mod->priv.module_adapter, config_id, pos,
-					      data_offset_size, fragment, fragment_size);
+	return iadk_wrapper_get_configuration(mod->priv.module_adapter, config_id,
+					      MODULE_CFG_FRAGMENT_SINGLE, *data_offset_size,
+					      fragment, fragment_size);
 }
 
 /**
