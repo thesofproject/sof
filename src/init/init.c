@@ -31,6 +31,13 @@
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
 #endif
+#ifdef CONFIG_ZEPHYR_LOG
+#include <user/abi_dbg.h>
+#include <sof_versions.h>
+#include <version.h>
+#endif
+
+LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
 
 /* main firmware context */
 static struct sof sof;
@@ -187,6 +194,28 @@ int secondary_core_init(struct sof *sof)
 
 #endif
 
+static void print_version_banner(void)
+{
+	/*
+	 * Non-Zephyr builds emit the version banner in DMA-trace
+	 * init and this is done at a later time as otherwise the
+	 * banner would be lost. With Zephyr logging subsystem in use,
+	 * we can simply print the banner at boot.
+	 *
+	 * META_QUOTE(SOF_SRC_HASH) is part of the format string so it
+	 * is part of log dictionary meta data and does not go to
+	 * the firmware binary (in case dictionary logging is used).
+	 * The value printed to log will be different from
+	 * SOF_SRC_HASH in case of mismatch.
+	 */
+#ifdef CONFIG_ZEPHYR_LOG
+	LOG_INF("FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG " zephyr:" \
+		META_QUOTE(BUILD_VERSION) " src hash 0x%08x (ref hash " \
+		META_QUOTE(SOF_SRC_HASH) ")",
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+#endif
+}
+
 static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	/* setup context */
@@ -211,6 +240,8 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_TRACES);
 	trace_init(sof);
 #endif
+
+	print_version_banner();
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
