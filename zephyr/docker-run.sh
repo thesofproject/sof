@@ -55,7 +55,7 @@ main()
            $SOF_DOCKER_RUN \
            --env REAL_CC \
            ghcr.io/zephyrproject-rtos/zephyr-build:latest \
-           "$@"
+           ./sof/scripts/sudo-cwd.sh "$@"
 }
 
 main "$@"
