@@ -25,10 +25,12 @@ if tty --quiet; then
     SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
 fi
 
-# Not fatal, just a warning to allow other "creative" solutions.
-# TODO: fix this with 'adduser' like in zephyr/docker-build.sh
-test "$(id -u)" = 1001 ||
-    >&2 printf "Warning: this script should be run as user ID 1001 to match the container\n"
+# The --user option below can cause the command to run as a user who
+# does not exist in the container. So far so good but in case something
+# ever goes wrong try replacing --user with the newer
+# scripts/sudo-cwd.sh script.
+test "$(id -u)" = 1000 ||
+  >&2 printf "Warning: this script should be run as user ID 1000 to match the container's account\n"
 
 set -x
 docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
