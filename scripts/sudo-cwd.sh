@@ -27,46 +27,43 @@
 set -e
 set -x
 
-# TODO: rename the "sof_" bits
-
 main()
 {
-    sof_uid="$(stat --printf='%u' .)"
+    cwd_uid="$(stat --printf='%u' .)"
     local current_uid; current_uid="$(id -u)"
-    if test "$current_uid" = "$sof_uid"; then
+    if test "$current_uid" = "$cwd_uid"; then
         exec "$@"
     else
-        exec_as_sof_uid "$@"
+        exec_as_cwd_uid "$@"
     fi
 }
 
-exec_as_sof_uid()
+exec_as_cwd_uid()
 {
-    # Add new container user matching the host user owning the SOF
-    # checkout
-    local sof_user; sof_user="$(id "$sof_uid")" || {
-        sof_user=sof_zephyr_docker_builder
+    # If missing, add new user owning the current directory
+    local cwd_user; cwd_user="$(id "$cwd_uid")" || {
+        cwd_user='cwd_user'
 
-        local sof_guid; sof_guid="$(stat --printf='%g' .)"
+        local cwd_guid; cwd_guid="$(stat --printf='%g' .)"
 
-        getent group "$sof_guid" ||
-            sudo groupadd -g  "$sof_guid" sof_zephyr_docker_group
+        getent group "$cwd_guid" ||
+            sudo groupadd -g  "$cwd_guid" 'cwd_group'
 
-        sudo useradd -m -u "$sof_uid" -g "$sof_guid" "$sof_user"
+        sudo useradd -m -u "$cwd_uid" -g "$cwd_guid" "$cwd_user"
 
         local current_user; current_user="$(id -un)"
 
         # Copy sudo permissions just in case the build needs it
-        sudo sed -e "s/$current_user/$sof_user/" /etc/sudoers.d/"$current_user" |
-            sudo tee -a /etc/sudoers.d/"$sof_user"
+        sudo sed -e "s/$current_user/$cwd_user/" /etc/sudoers.d/"$current_user" |
+            sudo tee -a /etc/sudoers.d/"$cwd_user"
         sudo chmod --reference=/etc/sudoers.d/"$current_user" \
-             /etc/sudoers.d/"$sof_user"
+             /etc/sudoers.d/"$cwd_user"
     }
 
     # Double sudo to work around some funny restriction in
     # zephyr-build:/etc/sudoers: 'user' can do anything but... only as
     # root.
-    sudo sudo -u "$sof_user" REAL_CC="$REAL_CC" "$@"
+    sudo sudo -u "$cwd_user" REAL_CC="$REAL_CC" "$@"
     exit "$?"
 }
 
