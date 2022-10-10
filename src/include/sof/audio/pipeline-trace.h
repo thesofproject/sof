@@ -39,13 +39,23 @@ extern struct tr_ctx pipe_tr;
 /* device tracing */
 #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
 
-#define pipe_err(pipe_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+#if CONFIG_IPC_MAJOR_4
+#define __PIPE_FMT "pipe:%u %#x "
+#else
+#define __PIPE_FMT "pipe:%u.%u "
+#endif
 
-#define pipe_warn(pipe_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+#define pipe_err(pipe_p, __e, ...) LOG_ERR(__PIPE_FMT __e, trace_pipe_get_id(pipe_p), \
+					   trace_pipe_get_subid(pipe_p), ##__VA_ARGS__)
 
-#define pipe_info(pipe_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+#define pipe_warn(pipe_p, __e, ...) LOG_WRN(__PIPE_FMT __e, trace_pipe_get_id(pipe_p), \
+					    trace_pipe_get_subid(pipe_p), ##__VA_ARGS__)
 
-#define pipe_dbg(pipe_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+#define pipe_info(pipe_p, __e, ...) LOG_INF(__PIPE_FMT __e, trace_pipe_get_id(pipe_p), \
+					    trace_pipe_get_subid(pipe_p), ##__VA_ARGS__)
+
+#define pipe_dbg(pipe_p, __e, ...) LOG_DBG(__PIPE_FMT __e, trace_pipe_get_id(pipe_p), \
+					   trace_pipe_get_subid(pipe_p), ##__VA_ARGS__)
 
 #else
 
