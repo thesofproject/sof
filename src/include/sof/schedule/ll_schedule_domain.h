@@ -41,6 +41,7 @@ struct ll_schedule_domain_ops {
 	void (*domain_clear)(struct ll_schedule_domain *domain);
 	bool (*domain_is_pending)(struct ll_schedule_domain *domain,
 				  struct task *task, struct comp_dev **comp);
+	void (*domain_task_cancel)(struct ll_schedule_domain *domain, uint32_t num_tasks);
 };
 
 struct ll_schedule_domain {
@@ -118,6 +119,14 @@ static inline void domain_clear(struct ll_schedule_domain *domain)
 
 	/* reset to denote no tick/interrupt is set */
 	domain->next_tick = UINT64_MAX;
+}
+
+/* let the domain know that a task has been cancelled */
+static inline void domain_task_cancel(struct ll_schedule_domain *domain,
+				      uint32_t num_tasks)
+{
+	if (domain->ops->domain_task_cancel)
+		domain->ops->domain_task_cancel(domain, num_tasks);
 }
 
 static inline int domain_register(struct ll_schedule_domain *domain,
