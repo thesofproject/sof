@@ -62,3 +62,20 @@ C_CONTROLBYTES(CA_RUNTIME_CONTROLBYTES_NAME_PIPE, PIPELINE_ID,
         ,
         CA_RUNTIME_PARAMS)
 
+ifdef(`CODEC_CONFIG_MODE_SEL', `
+
+# Codec adapter enum control for config mode selection
+define(`CA_CONFIG_MODE_SEL_NAME_PIPE', concat(`DTS Codec Config Mode ', PIPELINE_ID))
+
+define(`CONTROL_NAME', `CA_CONFIG_MODE_SEL_NAME_PIPE')
+# Codec adapter enum list. 0: bypass (optional), 1: speaker, 2: headphone.
+CONTROLENUM_LIST(`CA_CONFIG_MODE_VALUES',
+	LIST(`   ', `"bypass"', `"speaker"', `"headphone"'))
+
+# Codec adapter enm control
+C_CONTROLENUM(CA_CONFIG_MODE_SEL_NAME_PIPE, PIPELINE_ID,
+	CA_CONFIG_MODE_VALUES,
+	LIST(`  ', ENUM_CHANNEL(FC, 3, 0)),
+	CONTROLENUM_OPS(enum, 257 binds the mixer control to enum get/put handlers, 257, 257))
+undefine(`CONTROL_NAME')
+')

@@ -13,6 +13,7 @@ include(`pipeline.m4')
 include(`codec_adapter.m4')
 include(`bytecontrol.m4')
 include(`eq_iir.m4')
+include(`enumcontrol.m4')
 
 #
 # Controls
@@ -54,7 +55,8 @@ ifdef(`CA_SCHEDULE_CORE',`', `define(`CA_SCHEDULE_CORE', `SCHEDULE_CORE')')
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, SCHEDULE_CORE)
 
 W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, DAI_PERIODS, CA_SCHEDULE_CORE,
-        LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE", "CA_RUNTIME_CONTROLBYTES_NAME_PIPE"))
+        LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE", "CA_RUNTIME_CONTROLBYTES_NAME_PIPE"),
+        ifdef(`CODEC_CONFIG_MODE_SEL', `LIST(`          ', "CA_CONFIG_MODE_SEL_NAME_PIPE")'))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
@@ -96,6 +98,8 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 
 PCM_CAPABILITIES(Passthrough Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`CA_CONFIG_MODE_VALUES')
+undefine(`CA_CONFIG_MODE_SEL_NAME_PIPE')
 undefine(`CA_RUNTIME_CONTROLBYTES_NAME_PIPE')
 undefine(`CA_RUNTIME_PARAMS')
 undefine(`CA_SETUP_CONTROLBYTES_NAME_PIPE')

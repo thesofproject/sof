@@ -52,7 +52,9 @@ define(`W_CODEC_ADAPTER',
 `	bytes ['
 		$6
 `	]'
-
+`	enum ['
+		$7
+`	]'
 `}')
 
 divert(0)dnl

@@ -241,7 +241,7 @@ set(TPLGS
 
 	"sof-acp-renoir\;sof-acp"
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019"
-	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019-dts\;-DDTS=`DTS'"
+	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019-dts\;-DCODEC_CONFIG_MODE_SEL\;-DDTS=`DTS'"
 	"sof-rn-rt5682-max98360\;sof-rn-rt5682-max98360"
 )
 
