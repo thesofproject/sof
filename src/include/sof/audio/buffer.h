@@ -51,13 +51,23 @@ extern struct tr_ctx buffer_tr;
 
 #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
 
-#define buf_err(buf_ptr, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+#if CONFIG_IPC_MAJOR_4
+#define __BUF_FMT "buf:%u %#x "
+#else
+#define __BUF_FMT "buf:%u.%u "
+#endif
 
-#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+#define buf_err(buf_ptr, __e, ...) LOG_ERR(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+					   trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
 
-#define buf_info(buf_ptr, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+					    trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
 
-#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+#define buf_info(buf_ptr, __e, ...) LOG_INF(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+					    trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
+
+#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+					   trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
 
 #else
 /** \brief Trace error message from buffer */
