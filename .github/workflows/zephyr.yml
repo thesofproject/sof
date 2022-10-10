@@ -82,6 +82,16 @@ jobs:
         platforms: [
           {platform: tgl,
            real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
+          # This is the WRONG compiler for MTL but for now this is the
+          # one and only one expected by the Zephyr build system so it
+          # must be set to this value to sparse MTL.
+          # Sparse needs a REAL_CC but it does not matter which one, it
+          # does not affect sparse results.
+          # As soon as sof/west.yml is updated to a fixed Zephyr version
+          # this will fail with an error message that will show the
+          # exact value that must replace this one.
+          {platform: mtl,
+           real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
         ]
 
     steps:
