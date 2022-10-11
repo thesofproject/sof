@@ -867,7 +867,7 @@ class BinReader():
         self.verbose = verbose
         self.cur_offset = 0
         self.ext_mft_length = 0
-        self.info('Reading SOF ri image ' + path, show_offset=False)
+        self.info(f'Reading SOF ri image {path}', show_offset=False)
         self.file_name = path
         # read the content
         self.data = open(path, 'rb').read()
