@@ -37,6 +37,10 @@ import warnings
 from anytree import AnyNode, RenderTree
 from packaging import version
 
+# https://chrisyeh96.github.io/2017/08/08/definitive-guide-python-imports.html#case-3-importing-from-parent-directory
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+from tools.sof_ri_info import sof_ri_info
+
 MIN_PYTHON_VERSION = 3, 8
 assert sys.version_info >= MIN_PYTHON_VERSION, \
 	f"Python {MIN_PYTHON_VERSION} or above is required."
@@ -597,6 +601,8 @@ def build_platforms():
 
 		execute_command(sign_cmd, cwd=west_top)
 
+		if platform not in NO_RIMAGE_PLATFORMS:
+			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
 		# Install to STAGING_DIR
 		abs_build_dir = pathlib.Path(west_top) / platform_build_dir_name / "zephyr"
@@ -647,6 +653,22 @@ def build_platforms():
 			  "zephyr" / "soc" / "xtensa" / "intel_adsp" / "tools",
 			tools_output_dir,
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
+
+
+NO_RIMAGE_PLATFORMS = ['imx8', 'imx8x', 'imx8m']
+RI_INFO_FIXME = ['mtl']
+
+def reproducible_checksum(platform, ri_file):
+
+	if platform in RI_INFO_FIXME:
+		print(f"FIXME: sof_ri_info does not support '{platform}'")
+		return
+
+	parsed_ri = sof_ri_info.parse_fw_bin(ri_file, False, False)
+	repro_output = ri_file.parent / ("reproducible-" + ri_file.name)
+	chk256 = sof_ri_info.EraseVariables(ri_file, parsed_ri, west_top / repro_output)
+	print('sha256sum {0}\n{1} {0}'.format(repro_output, chk256))
+
 
 def main():
 	parse_args()
