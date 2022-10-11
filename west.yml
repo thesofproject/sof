@@ -12,6 +12,24 @@ manifest:
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
 
+  # When upgrading projects here please run git log --oneline in the
+  # project and if not too long then include the output in your commit
+  # message. See examples of good commit messages at
+  # https://github.com/thesofproject/sof/commits/4e1d3ba61abd3/rimage
+  # (git log 4e1d3ba61abd3 -- rimage/)
+
+  # WARNING: for backwards compatibility with non-Zephyr platforms,
+  # rimage and toml99 are STILL git submodules! Every time you change
+  # their `revision` revision here you MUST keep their git submodules in
+  # sync. This is as simple as `git add rimage` before committing (+
+  # `git commit --amend` if you forgot and already committed this
+  # west manifest file).
+
+  # When a submodule is out of sync then both `git status` and `git
+  # describe` notice and a "-dirty" suffix appears in the SOF version.
+  # It is generally very bad practice to git push without looking
+  # at "git status"; even without submodules.
+
   projects:
     - name: rimage
       repo-path: rimage
@@ -41,6 +59,10 @@ manifest:
           - tinycrypt
 
   self:
+    # sof can unfortunately NOT be cloned as "sof2" nor "sof-topic1"
+    # because for now rimage is cloned as "sof/rimage", tomlc99 as
+    # "sof/rimage/tomlc99" and probably other build issues that we have
+    # not discovered yet.
     path: sof
     # Changes to submanifests/*.yml files _are_ effective; these have no
     # specified 'revision:'
