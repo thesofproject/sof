@@ -9,12 +9,19 @@
 #include <ipc4/logging.h>
 #include <sof_versions.h>
 
+#if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
+#include <zephyr/device.h>
+#include <zephyr/drivers/counter.h>
+#endif
+
 LOG_MODULE_REGISTER(basefw, CONFIG_SOF_LOG_LEVEL);
 
 /* 0e398c32-5ade-ba4b-93b1-c50432280ee4 */
 DECLARE_SOF_RT_UUID("basefw", basefw_comp_uuid, 0xe398c32, 0x5ade, 0xba4b,
 		    0x93, 0xb1, 0xc5, 0x04, 0x32, 0x28, 0x0e, 0xe4);
 DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_comp_uuid), LOG_LEVEL_INFO);
+
+static struct ipc4_system_time_info global_system_time_info;
 
 static inline void set_tuple(struct ipc4_tuple *tuple, uint32_t type, uint32_t length, void *data)
 {
@@ -228,6 +235,94 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static uint32_t basefw_set_system_time(uint32_t param_id,
+				       bool first_block,
+				       bool last_block,
+				       uint32_t data_offset,
+				       char *data)
+{
+	/* TODO: configurate time to logging subsystem */
+	if (!(first_block && last_block))
+		return IPC4_INVALID_REQUEST;
+
+	global_system_time_info.host_time.val_l = ((struct ipc4_system_time *)data)->val_l;
+	global_system_time_info.host_time.val_u = ((struct ipc4_system_time *)data)->val_u;
+
+	uint64_t current_dsp_time = sof_cycle_get_64();
+
+	global_system_time_info.dsp_time.val_l = (uint32_t)(current_dsp_time);
+	global_system_time_info.dsp_time.val_u = (uint32_t)(current_dsp_time >> 32);
+
+	return IPC4_SUCCESS;
+}
+
+static uint32_t basefw_get_system_time(uint32_t *data_offset, char *data)
+{
+	struct ipc4_system_time *system_time = (struct ipc4_system_time *)data;
+
+	system_time->val_l = global_system_time_info.host_time.val_l;
+	system_time->val_u = global_system_time_info.host_time.val_u;
+	*data_offset = sizeof(struct ipc4_system_time);
+	return IPC4_SUCCESS;
+}
+
+static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
+{
+#if CONFIG_ACE_V1X_ART_COUNTER && CONFIG_ACE_V1X_RTC_COUNTER
+	struct ipc4_ext_system_time *ext_system_time = (struct ipc4_ext_system_time *)(data);
+	struct ipc4_ext_system_time ext_system_time_data = {0};
+
+	uint64_t host_time = ((uint64_t)global_system_time_info.host_time.val_u << 32)
+				| (uint64_t)global_system_time_info.host_time.val_l;
+	uint64_t dsp_time = ((uint64_t)global_system_time_info.dsp_time.val_u << 32)
+				| (uint64_t)global_system_time_info.dsp_time.val_l;
+
+	if (host_time == 0 || dsp_time == 0)
+		return IPC4_INVALID_RESOURCE_STATE;
+
+	uint64_t art = 0;
+	uint64_t wallclk = 0;
+	uint64_t rtc = 0;
+
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(ace_art_counter));
+
+	if (!dev) {
+		LOG_DBG("board: ART counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &art);
+
+	wallclk = sof_cycle_get_64();
+	ext_system_time_data.art_l = (uint32_t)art;
+	ext_system_time_data.art_u = (uint32_t)(art >> 32);
+	uint64_t delta = (wallclk - dsp_time) / (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000000);
+
+	uint64_t new_host_time = (host_time + delta);
+
+	ext_system_time_data.utc_l = (uint32_t)new_host_time;
+	ext_system_time_data.utc_u = (uint32_t)(new_host_time >> 32);
+
+	dev = DEVICE_DT_GET(DT_NODELABEL(ace_rtc_counter));
+
+	if (!dev) {
+		LOG_DBG("board: RTC counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &rtc);
+	ext_system_time_data.rtc_l = (uint32_t)rtc;
+	ext_system_time_data.rtc_u = (uint32_t)(rtc >> 32);
+
+	memcpy_s(ext_system_time, sizeof(ext_system_time), &ext_system_time_data,
+		 sizeof(ext_system_time));
+	*data_offset = sizeof(struct ipc4_ext_system_time);
+
+	return IPC4_SUCCESS;
+#endif
+	return IPC4_UNAVAILABLE;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -235,6 +330,8 @@ static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t *data_offset,
 				   char *data)
 {
+	uint32_t ret = -EINVAL;
+
 	switch (param_id) {
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
@@ -251,6 +348,16 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		return basefw_hw_config(data_offset, data);
 	case IPC4_MEMORY_STATE_INFO_GET:
 		return basefw_mem_state_info(data_offset, data);
+	case IPC4_SYSTEM_TIME:
+		return basefw_get_system_time(data_offset, data);
+	case IPC4_EXTENDED_SYSTEM_TIME:
+		ret = basefw_get_ext_system_time(data_offset, data);
+		if (ret == IPC4_UNAVAILABLE) {
+			tr_warn(&basefw_comp_tr, "returning success for get host EXTENDED_SYSTEM_TIME without handling it");
+			return 0;
+		} else {
+			return ret;
+		}
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
@@ -283,8 +390,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 		tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
 		return 0;
 	case IPC4_SYSTEM_TIME:
-		tr_warn(&basefw_comp_tr, "returning success for Set SYSTEM_TIME without handling it");
-		return 0;
+		return basefw_set_system_time(param_id, first_block,
+						last_block, data_offset, data);
 	case IPC4_ENABLE_LOGS:
 		return ipc4_logging_enable_logs(first_block, last_block, data_offset, data);
 	default:

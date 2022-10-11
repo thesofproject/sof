@@ -558,6 +558,21 @@ struct ipc4_system_time_info {
 	struct ipc4_system_time dsp_time;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_ext_system_time {
+	/* Lower DWORD of current system time value. */
+	uint32_t utc_l;
+	/* Upper DWORD of current system time value. */
+	uint32_t utc_u;
+	/* Lower DWORD of current RTC value. */
+	uint32_t rtc_l;
+	/* Upper DWORD of current RTC value. */
+	uint32_t rtc_u;
+	/* Lower DWORD of current ART value. */
+	uint32_t art_l;
+	/* Upper DWORD of current ART value. */
+	uint32_t art_u;
+};
+
 enum ipc4_pipeline_attributes {
 	/* Determines whether on pipeline will be allocated module(s) with ULP capability */
 	IPC4_ULTRA_LOW_POWER     = 0,
