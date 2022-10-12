@@ -298,6 +298,12 @@ struct processing_module {
 	 * period_bytes every copy
 	 */
 	bool simple_copy;
+
+	/*
+	 * for AMD branch only. It is configured by enum control for config blob selection for the
+	 * inner module.
+	 */
+	uint32_t config_mode;
 };
 
 /*****************************************************************************/

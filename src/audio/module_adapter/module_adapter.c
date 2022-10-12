@@ -724,6 +724,52 @@ static int module_adapter_ctrl_set_data(struct comp_dev *dev, struct sof_ipc_ctr
 	return ret;
 }
 
+/*
+ * For AMD branch only (implemented by johnylin@google.com).
+ * It returns the present value of config_mode.
+ */
+static int module_adapter_ctrl_get_config_mode(struct comp_dev *dev,
+					       struct sof_ipc_ctrl_data *cdata)
+{
+	int i;
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "module_adapter_ctrl_get_config_mode() start, state %d, cmd %d",
+		 mod->priv.state, cdata->cmd);
+
+	for (i = 0; i < cdata->num_elems; i++)
+		cdata->chanv[i].value = mod->config_mode;
+
+	comp_dbg(dev, "module_adapter_ctrl_get_config_mode() get config_mode = %u",
+		 mod->config_mode);
+	return 0;
+}
+
+/*
+ * For AMD branch only (implemented by johnylin@google.com).
+ * It configures the value of config_mode, which is assumed to be settled prior to
+ * module_adapter_prepare call for the module config selection. values are stored and
+ * transmitted by enumerated indices (see "enum dts_config_mode_id" in dts.c).
+ */
+static int module_adapter_ctrl_set_config_mode(struct comp_dev *dev,
+					       struct sof_ipc_ctrl_data *cdata)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "module_adapter_ctrl_set_config_mode() start, state %d, cmd %d",
+		 mod->priv.state, cdata->cmd);
+
+	if (cdata->num_elems != 1) {
+		comp_err(dev, "module_adapter_ctrl_set_config_mode() error: num_elems != 1");
+		return -EINVAL;
+	}
+
+	mod->config_mode = cdata->chanv[0].value;
+	comp_dbg(dev, "module_adapter_ctrl_set_config_mode() set config_mode = %u",
+		 mod->config_mode);
+	return 0;
+}
+
 /* Used to pass standard and bespoke commands (with data) to component */
 int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size)
 {
@@ -743,6 +789,12 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 		ret = -ENODATA;
 		break;
 	case COMP_CMD_SET_VALUE:
+		/* For AMD branch only. */
+		if (cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			ret = module_adapter_ctrl_set_config_mode(dev, cdata);
+			break;
+		}
+
 		/*
 		 * IPC3 does not use config_id, so pass 0 for config ID as it will be ignored
 		 * anyway. Also, pass the 0 as the fragment size as it is not relevant for the
@@ -753,6 +805,12 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 							  (const uint8_t *)cdata, 0, NULL, 0);
 		break;
 	case COMP_CMD_GET_VALUE:
+		/* For AMD branch only. */
+		if (cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			ret = module_adapter_ctrl_get_config_mode(dev, cdata);
+			break;
+		}
+
 		/*
 		 * IPC3 does not use config_id, so pass 0 for config ID as it will be ignored
 		 * anyway. Also, pass the 0 as the fragment size and data offset as they are not
@@ -815,6 +873,8 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	rfree(mod->stream_params);
 	mod->stream_params = NULL;
+
+	mod->config_mode = 0;
 
 	comp_dbg(dev, "module_adapter_reset(): done");
 
