@@ -1506,12 +1506,24 @@ TGL_H_MEMORY_SPACE = DspMemory('Intel Tigerlake-H',
 
 DSP_MEM_SPACE_EXT = {
     'apl' : APL_MEMORY_SPACE,
+    'glk' : APL_MEMORY_SPACE,
+
     'cnl' : CNL_MEMORY_SPACE,
+    'cfl' : CNL_MEMORY_SPACE,
+    'cml' : CNL_MEMORY_SPACE,
+
     'icl' : ICL_MEMORY_SPACE,
-    'tgl' : TGL_LP_MEMORY_SPACE,
+
     'jsl' : JSL_MEMORY_SPACE,
-    'tgl-h' : TGL_H_MEMORY_SPACE,
+
+    'tgl' : TGL_LP_MEMORY_SPACE,
     'ehl' : TGL_LP_MEMORY_SPACE,
+    'adl' : TGL_LP_MEMORY_SPACE,
+    'rpl' : TGL_LP_MEMORY_SPACE,
+
+    'tgl-h' : TGL_H_MEMORY_SPACE,
+    'adl-s' : TGL_H_MEMORY_SPACE,
+    'rpl-s' : TGL_H_MEMORY_SPACE,
 }
 
 
