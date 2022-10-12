@@ -479,9 +479,15 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/ll_schedule.c
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
+
+	# Zephyr DMA domain should only be used with zephyr_ll
+	if (NOT(CONFIG_DMA_DOMAIN))
+		zephyr_library_sources(${SOF_SRC_PATH}/schedule/ll_schedule.c)
+	else()
+		zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
+	endif()
 
 	set(PLATFORM "imx8")
 endif()
@@ -506,9 +512,15 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/ll_schedule.c
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
+
+	# Zephyr DMA domain should only be used with zephyr_ll
+	if (NOT(CONFIG_DMA_DOMAIN))
+		zephyr_library_sources(${SOF_SRC_PATH}/schedule/ll_schedule.c)
+	else()
+		zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
+	endif()
 
 	set(PLATFORM "imx8m")
 endif()
@@ -569,11 +581,14 @@ zephyr_library_sources(
 	schedule.c
 )
 
-if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL)
+if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
 	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
 endif()
-if(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL)
+if(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
 	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c)
+endif()
+if (CONFIG_DMA_DOMAIN)
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_dma_domain.c)
 endif()
 
 if(CONFIG_COMP_BLOB)

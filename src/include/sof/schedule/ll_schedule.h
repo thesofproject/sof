@@ -34,7 +34,7 @@ struct ll_task_pdata {
 	uint16_t skip_cnt;	/**< how many times the task was skipped for execution */
 };
 
-#if !defined(__ZEPHYR__) || defined(CONFIG_IMX)
+#if !defined(__ZEPHYR__) || (defined(CONFIG_IMX) && !CONFIG_DMA_DOMAIN)
 int scheduler_init_ll(struct ll_schedule_domain *domain);
 
 int schedule_task_init_ll(struct task *task,

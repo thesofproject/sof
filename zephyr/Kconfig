@@ -28,4 +28,13 @@ config SOF_ZEPHYR_STRICT_HEADERS
 	  choice will be removed.
 	  If unsure, say n.
 
+config DMA_DOMAIN
+	bool "Experimental: Enable the usage of DMA domain."
+	default n
+	help
+	  This enables the usage of the DMA domain in scheduling.
+	  This will most likely come to replace dma_multi_chan
+	  and dma_single_chan in Zephyr once it becomes more
+	  stable.
+
 endif
