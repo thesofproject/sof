@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <rtos/kernel.h>
+#include <sof/lib/perf_cnt.h>
+
 
 struct comp_dev;
 struct sof;
@@ -71,6 +73,9 @@ struct task {
 	uint32_t cycles_sum;
 	uint32_t cycles_max;
 	uint32_t cycles_cnt;
+#endif
+#if CONFIG_PERFORMANCE_COUNTERS
+	struct perf_cnt_data pcd;
 #endif
 };
 
