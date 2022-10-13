@@ -346,7 +346,7 @@ count = 13
 	instance_count = "15"
 	domain_types = "0"
 	load_type = "1"
-	module_type = "0xB"
+	module_type = "11"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
