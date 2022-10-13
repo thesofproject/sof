@@ -395,7 +395,7 @@ static int ipc_wait_for_compound_msg(void)
  * after pipeline is complete. In ipc4 path, direction is figured out and
  * set it to each component after connected pipeline are complete.
  */
-static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
+static int update_dir_to_pipeline_component(const uint32_t *ppl_id, uint32_t count)
 {
 	struct ipc_comp_dev *icd;
 	struct ipc_comp_dev *pipe;
@@ -456,11 +456,11 @@ static int update_dir_to_pipeline_component(uint32_t *ppl_id, uint32_t count)
 
 static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_pipeline_set_state_data *ppl_data;
+	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
 	uint32_t status = COMP_STATE_INIT;
-	uint32_t cmd, ppl_count;
-	uint32_t *ppl_id, id;
+	uint32_t cmd, ppl_count, id;
+	const uint32_t *ppl_id;
 	int ret = 0;
 	int i;
 
@@ -468,8 +468,9 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	state.extension.dat = ipc4->extension.dat;
 	cmd = state.primary.r.ppl_state;
 
-	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data, sizeof(*ppl_data));
+	ppl_data = (const struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data,
+				 sizeof(*ppl_data));
 	if (state.extension.r.multi_ppl) {
 		ppl_count = ppl_data->pipelines_count;
 		ppl_id = ppl_data->ppl_id;
@@ -752,7 +753,8 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE, config.extension.r.data_off_size);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 config.extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
@@ -776,7 +778,7 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 					config.extension.r.init_block,
 					config.extension.r.final_block,
 					config.extension.r.data_off_size,
-					(char *)MAILBOX_HOSTBOX_BASE);
+					(const char *)MAILBOX_HOSTBOX_BASE);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
 		       (uint32_t)config.primary.r.module_id,

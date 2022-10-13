@@ -493,7 +493,7 @@ struct comp_ops {
 				bool first_block,
 				bool last_block,
 				uint32_t data_offset,
-				char *data);
+				const char *data);
 
 	/**
 	 * Returns total data processed in number bytes.

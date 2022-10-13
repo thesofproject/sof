@@ -276,7 +276,7 @@ static int basefw_set_large_config(struct comp_dev *dev,
 				   bool first_block,
 				   bool last_block,
 				   uint32_t data_offset,
-				   char *data)
+				   const char *data)
 {
 	switch (param_id) {
 	case IPC4_FW_CONFIG:

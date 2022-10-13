@@ -48,7 +48,7 @@ int probe_deinit(void);
  * param[in] count - number of DMAs configured during this call
  * param[in] probe_dma - Array of size 'count' with configuration data for DMAs
  */
-int probe_dma_add(uint32_t count, struct probe_dma *probe_dma);
+int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma);
 
 /*
  * \brief Get info about connected injection DMAs
@@ -65,7 +65,7 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size);
  * param[in] stream_tag - array for size 'count' with stream tags associated
  *			  with DMAs to be removed
  */
-int probe_dma_remove(uint32_t count, uint32_t *stream_tag);
+int probe_dma_remove(uint32_t count, const uint32_t *stream_tag);
 
 /*
  * \brief Set probe points
@@ -73,7 +73,7 @@ int probe_dma_remove(uint32_t count, uint32_t *stream_tag);
  * param[in] count - number of probe points configured this call
  * param[in] probe - array of size 'count' with configuration of probe points
  */
-int probe_point_add(uint32_t count, struct probe_point *probe);
+int probe_point_add(uint32_t count, const struct probe_point *probe);
 
 /*
  * \brief Get info about connected probe points
@@ -90,7 +90,7 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size);
  * param[in] buffer_id - array of size 'count' with IDs of buffers to which
  *			 probes were attached
  */
-int probe_point_remove(uint32_t count, uint32_t *buffer_id);
+int probe_point_remove(uint32_t count, const uint32_t *buffer_id);
 
 /**
  * \brief Retrieves probes structure.

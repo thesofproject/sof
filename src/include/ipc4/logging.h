@@ -11,7 +11,7 @@
 int ipc4_logging_enable_logs(bool first_block,
 			     bool last_block,
 			     uint32_t data_offset_or_size,
-			     char *data);
+			     const char *data);
 
 int ipc4_logging_shutdown(void);
 

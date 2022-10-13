@@ -914,7 +914,7 @@ void module_adapter_free(struct comp_dev *dev)
 
 #if CONFIG_IPC_MAJOR_4
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset_size, char *data)
+			    bool last_block, uint32_t data_offset_size, const char *data)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
@@ -994,7 +994,7 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return -EINVAL;
 }
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset, char *data)
+			    bool last_block, uint32_t data_offset, const char *data)
 {
 	return 0;
 }

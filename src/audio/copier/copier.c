@@ -47,8 +47,8 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt,
+static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
+					     const struct ipc4_audio_format *out_fmt,
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type);
 
@@ -568,8 +568,8 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 	return false;
 }
 
-static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt,
+static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
+					     const struct ipc4_audio_format *out_fmt,
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type dir)
 {
@@ -1012,13 +1012,11 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	return ret;
 }
 
-static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
+static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 			       int max_data_size)
 {
-	struct ipc4_copier_config_set_sink_format *sink_fmt;
+	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct copier_data *cd = comp_get_drvdata(dev);
-
-	sink_fmt = (struct ipc4_copier_config_set_sink_format *)data;
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -1051,7 +1049,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 	return 0;
 }
 
-static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, char *data)
+static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
@@ -1064,7 +1062,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, char *dat
 		return -EINVAL;
 	}
 
-	attenuation = *(uint32_t *)data;
+	attenuation = *(const uint32_t *)data;
 	if (attenuation > 31) {
 		comp_err(dev, "attenuation %d is out of range", attenuation);
 		return -EINVAL;
@@ -1088,7 +1086,7 @@ static int copier_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				   bool first_block,
 				   bool last_block,
 				   uint32_t data_offset,
-				   char *data)
+				   const char *data)
 {
 	comp_dbg(dev, "copier_set_large_config()");
 

@@ -108,10 +108,10 @@ static uint64_t mtrace_task_deadline(void *data)
 int ipc4_logging_enable_logs(bool first_block,
 			     bool last_block,
 			     uint32_t data_offset_or_size,
-			     char *data)
+			     const char *data)
 {
 	const struct log_backend *log_backend = log_backend_adsp_mtrace_get();
-	struct ipc4_log_state_info *log_state;
+	const struct ipc4_log_state_info *log_state;
 	struct task_ops ops = {
 		.run = mtrace_task_run,
 		.get_deadline = mtrace_task_deadline,
@@ -134,7 +134,7 @@ int ipc4_logging_enable_logs(bool first_block,
 	 * TODO: support is missing for extended log state info that
 	 *       allows to configure logging type
 	 */
-	log_state = (struct ipc4_log_state_info *)data;
+	log_state = (const struct ipc4_log_state_info *)data;
 
 	if (log_state->enable) {
 		adsp_mtrace_log_init(mtrace_log_hook);
@@ -173,7 +173,7 @@ int ipc4_logging_shutdown(void)
 int ipc4_logging_enable_logs(bool first_block,
 			     bool last_block,
 			     uint32_t data_offset_or_size,
-			     char *data)
+			     const char *data)
 {
 	return IPC4_UNKNOWN_MESSAGE_TYPE;
 }
