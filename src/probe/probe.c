@@ -1052,6 +1052,8 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 	/* add all probe points if they are corresponding to valid component and DMA */
 	for (i = 0; i < count; i++) {
+		uint32_t stream_tag;
+
 		tr_dbg(&pr_tr, "\tprobe[%u] buffer_id = %u, purpose = %u, stream_tag = %u",
 		       i, probe[i].buffer_id.full_id, probe[i].purpose,
 		       probe[i].stream_tag);
@@ -1145,7 +1147,6 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 				    _probe->inject_dma[j].stream_tag ==
 				    probe[i].stream_tag) {
 					dma_found = 1;
-					probe[i].stream_tag = probe[i].stream_tag;
 					break;
 				}
 			}
@@ -1161,6 +1162,8 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 				return -EBUSY;
 			}
+
+			stream_tag = probe[i].stream_tag;
 		} else {
 			/* prepare extraction DMA */
 			for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
@@ -1173,14 +1176,13 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 				schedule_task(&_probe->dmap_work, 1000, 1000);
 			}
 			/* ignore probe stream tag for extraction probes */
-			probe[i].stream_tag = _probe->ext_dma.stream_tag;
+			stream_tag = _probe->ext_dma.stream_tag;
 		}
 
 		/* probe point valid, save it */
 		_probe->probe_points[first_free].buffer_id = probe[i].buffer_id;
 		_probe->probe_points[first_free].purpose = probe[i].purpose;
-		_probe->probe_points[first_free].stream_tag =
-			probe[i].stream_tag;
+		_probe->probe_points[first_free].stream_tag = stream_tag;
 
 		if (fw_logs) {
 #if CONFIG_LOG_BACKEND_SOF_PROBE
