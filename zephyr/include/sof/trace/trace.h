@@ -35,7 +35,7 @@ uint64_t platform_timer_get(struct timer *timer);
 #define mtrace_printf(level, format, ...)					\
 	do {									\
 		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)				\
-			printk("%llu: " format "\n", k_cycle_get_64(),		\
+			printk("%llu: " format "\n", sof_cycle_get_64(),	\
 				##__VA_ARGS__);					\
 	} while (0)
 #else
