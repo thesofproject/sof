@@ -204,7 +204,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void module_adapter_free(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset, char *data);
+			    bool last_block, uint32_t data_offset, const char *data);
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset, char *data);
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);

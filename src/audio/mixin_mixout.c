@@ -1356,9 +1356,9 @@ static int mixout_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 }
 
 static int mixin_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-				  bool last_block, uint32_t data_offset_or_size, char *data)
+				  bool last_block, uint32_t data_offset_or_size, const char *data)
 {
-	struct ipc4_mixer_mode_config *cfg;
+	const struct ipc4_mixer_mode_config *cfg;
 	struct mixin_data *mixin_data;
 	int i;
 	uint32_t sink_index;
@@ -1387,7 +1387,7 @@ static int mixin_set_large_config(struct comp_dev *dev, uint32_t param_id, bool 
 		return -EINVAL;
 	}
 
-	cfg = (struct ipc4_mixer_mode_config *)data;
+	cfg = (const struct ipc4_mixer_mode_config *)data;
 
 	if (cfg->mixer_mode_config_count < 1 || cfg->mixer_mode_config_count > MIXIN_MAX_SINKS) {
 		comp_err(dev, "mixin_set_large_config() invalid mixer_mode_config_count: %u",
