@@ -1189,15 +1189,17 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			return -EINVAL;
 #endif
 		} else {
+			probe_point_id_t *new_buf_id = &_probe->probe_points[first_free].buffer_id;
+
 #if CONFIG_IPC_MAJOR_4
-			notifier_register(&probe[i].buffer_id.full_id, buf, NOTIFIER_ID_BUFFER_PRODUCE,
+			notifier_register(&new_buf_id->full_id, buf, NOTIFIER_ID_BUFFER_PRODUCE,
 					  &probe_cb_produce, 0);
-			notifier_register(&probe[i].buffer_id.full_id, buf, NOTIFIER_ID_BUFFER_FREE,
+			notifier_register(&new_buf_id->full_id, buf, NOTIFIER_ID_BUFFER_FREE,
 					  &probe_cb_free, 0);
 #else
-			notifier_register(&probe[i].buffer_id.full_id, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
+			notifier_register(&new_buf_id->full_id, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
 					  &probe_cb_produce, 0);
-			notifier_register(&probe[i].buffer_id.full_id, dev->cb, NOTIFIER_ID_BUFFER_FREE,
+			notifier_register(&new_buf_id->full_id, dev->cb, NOTIFIER_ID_BUFFER_FREE,
 					  &probe_cb_free, 0);
 #endif
 		}
