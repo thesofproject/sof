@@ -250,50 +250,48 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
-		/* nothing to do if the pipeline is already running */
-		if (status == COMP_STATE_ACTIVE)
-			return 0;
-
-		if (status != COMP_STATE_PAUSED && status != COMP_STATE_READY) {
-			tr_err(&ipc_tr, "ipc: current status %d", status);
-			return IPC4_INVALID_REQUEST;
-		}
-
 		/* init params when pipeline is complete or reset */
-		if (status == COMP_STATE_READY) {
+		switch (status) {
+		case COMP_STATE_ACTIVE:
+			/* nothing to do if the pipeline is already running */
+			return 0;
+		case COMP_STATE_READY:
 			cmd = COMP_TRIGGER_PRE_START;
 
 			ret = ipc4_pcm_params(host);
 			if (ret < 0)
 				return IPC4_INVALID_REQUEST;
-		} else {
+			break;
+		case COMP_STATE_PAUSED:
 			cmd = COMP_TRIGGER_PRE_RELEASE;
+			break;
+		default:
+			tr_err(&ipc_tr, "ipc: current status %d", status);
+			return IPC4_INVALID_REQUEST;
 		}
-
 		break;
 	case SOF_IPC4_PIPELINE_STATE_RESET:
-		if (status == COMP_STATE_INIT) {
+		switch (status) {
+		case COMP_STATE_INIT:
 			ret = ipc_pipeline_complete(ipc, id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
 			*ppl_status = COMP_STATE_READY;
 			return ret;
-		}
-
-		/* initialized -> pause -> reset */
-		if (status == COMP_STATE_READY)
+		case COMP_STATE_READY:
+			/* initialized -> pause -> reset */
 			return 0;
-
-		if (status == COMP_STATE_ACTIVE || status == COMP_STATE_PAUSED) {
+		case COMP_STATE_ACTIVE:
+		case COMP_STATE_PAUSED:
 			ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 				       id, cmd, ret);
 				return IPC4_PIPELINE_STATE_NOT_SET;
-			} else if (ret == PPL_STATUS_SCHEDULED) {
-				*delayed = true;
 			}
+			if (ret == PPL_STATUS_SCHEDULED)
+				*delayed = true;
 		}
 
 		/*
@@ -309,18 +307,19 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 
 		return ret;
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
-		if (status == COMP_STATE_INIT) {
+		switch (status) {
+		case COMP_STATE_INIT:
 			ret = ipc_pipeline_complete(ipc, id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
 			*ppl_status = COMP_STATE_READY;
 			return ret;
-		}
-
-		/* return if pipeline is not active yet or if it is already paused */
-		if (status == COMP_STATE_READY || status == COMP_STATE_PAUSED)
+		case COMP_STATE_READY:
+		case COMP_STATE_PAUSED:
+			/* return if pipeline is not active yet or if it is already paused */
 			return 0;
+		}
 
 		cmd = COMP_TRIGGER_PAUSE;
 		break;
