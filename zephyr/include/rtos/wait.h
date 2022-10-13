@@ -12,11 +12,9 @@
 #include <stdbool.h>
 #include <zephyr/kernel.h>
 
-/* TODO: use equivalent Zephyr */
 static inline void idelay(int n)
 {
-	while (n--)
-		asm volatile("nop");
+	k_busy_wait((uint32_t)n);
 }
 
 /* DSP default delay in cycles - all platforms use this today */
@@ -24,20 +22,21 @@ static inline void idelay(int n)
 
 static inline void wait_delay(uint64_t number_of_clks)
 {
-	uint64_t timeout = sof_cycle_get_64() + number_of_clks;
+	uint64_t timeout;
 
-	while (sof_cycle_get_64() < timeout)
-		idelay(PLATFORM_DEFAULT_DELAY);
+	timeout = number_of_clks * NSEC_PER_SEC / CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+
+	k_busy_wait((uint32_t)timeout);
 }
 
 static inline void wait_delay_ms(uint64_t ms)
 {
-	wait_delay(k_ms_to_cyc_ceil64(ms));
+	k_busy_wait((uint32_t)(ms * 1000));
 }
 
 static inline void wait_delay_us(uint64_t us)
 {
-	wait_delay(k_us_to_cyc_ceil64(us));
+	k_busy_wait((uint32_t)us);
 }
 
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
