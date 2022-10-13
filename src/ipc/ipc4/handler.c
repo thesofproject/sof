@@ -1133,4 +1133,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 		ipc_msg_send(&msg_reply, data, true);
 	}
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 MAILBOX_HOSTBOX_SIZE);
 }
