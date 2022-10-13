@@ -370,7 +370,7 @@ int probe_deinit(void)
 	return 0;
 }
 
-int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
+int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -456,7 +456,7 @@ static int is_probe_stream_used(uint32_t stream_tag)
 	return 0;
 }
 
-int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
+int probe_dma_remove(uint32_t count, const uint32_t *stream_tag)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -1008,7 +1008,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 }
 #endif
 
-static bool enable_logs(struct probe_point *probe)
+static bool enable_logs(const struct probe_point *probe)
 {
 #if CONFIG_IPC_MAJOR_4
 	return probe->buffer_id.fields.module_id == 0;
@@ -1029,7 +1029,7 @@ static bool verify_purpose(uint32_t purpose)
 #endif
 }
 
-int probe_point_add(uint32_t count, struct probe_point *probe)
+int probe_point_add(uint32_t count, const struct probe_point *probe)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -1052,10 +1052,11 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 	/* add all probe points if they are corresponding to valid component and DMA */
 	for (i = 0; i < count; i++) {
+		const probe_point_id_t *buf_id = &probe[i].buffer_id;
 		uint32_t stream_tag;
 
 		tr_dbg(&pr_tr, "\tprobe[%u] buffer_id = %u, purpose = %u, stream_tag = %u",
-		       i, probe[i].buffer_id.full_id, probe[i].purpose,
+		       i, buf_id->full_id, probe[i].purpose,
 		       probe[i].stream_tag);
 
 		if (!verify_purpose(probe[i].purpose)) {
@@ -1075,30 +1076,31 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 		if (!fw_logs && probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
 #if CONFIG_IPC_MAJOR_4
-			dev = ipc_get_comp_by_id(ipc_get(), IPC4_COMP_ID(probe[i].buffer_id.fields.module_id,
-									 probe[i].buffer_id.fields.instance_id));
+			dev = ipc_get_comp_by_id(ipc_get(),
+						 IPC4_COMP_ID(buf_id->fields.module_id,
+							      buf_id->fields.instance_id));
 #else
-			dev = ipc_get_comp_by_id(ipc_get(), probe[i].buffer_id.full_id);
+			dev = ipc_get_comp_by_id(ipc_get(), buf_id->full_id);
 #endif
 			/* check if buffer exists */
 			if (!dev) {
 				tr_err(&pr_tr, "probe_point_add(): No device with ID %u found.",
-				       probe[i].buffer_id.full_id);
+				       buf_id->full_id);
 
 				return -EINVAL;
 			}
 #if CONFIG_IPC_MAJOR_4
-			buf = ipc4_get_buffer(dev, probe[i].buffer_id);
+			buf = ipc4_get_buffer(dev, *buf_id);
 			if (!buf) {
 				tr_err(&pr_tr, "probe_point_add(): buffer %u not found.",
-				       probe[i].buffer_id.full_id);
+				       buf_id->full_id);
 
 				return -EINVAL;
 			}
 #else
 			if (dev->type != COMP_TYPE_BUFFER) {
 				tr_err(&pr_tr, "probe_point_add(): Device ID %u is not a buffer.",
-				       probe[i].buffer_id.full_id);
+				       buf_id->full_id);
 
 				return -EINVAL;
 			}
@@ -1118,7 +1120,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			}
 			/* and check if probe is already attached */
 			buffer_id = _probe->probe_points[j].buffer_id.full_id;
-			if (buffer_id == probe[i].buffer_id.full_id) {
+			if (buffer_id == buf_id->full_id) {
 				if (_probe->probe_points[j].purpose ==
 				    probe[i].purpose) {
 					tr_err(&pr_tr, "probe_point_add(): Probe already attached to buffer %u with purpose %u",
@@ -1171,6 +1173,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 				    probe_purpose_needs_ext_dma(_probe->probe_points[j].purpose))
 					break;
 			}
+
 			if (j == CONFIG_PROBE_POINTS_MAX) {
 				tr_dbg(&pr_tr, "probe_point_add(): start probe task");
 				schedule_task(&_probe->dmap_work, 1000, 1000);
@@ -1180,7 +1183,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		}
 
 		/* probe point valid, save it */
-		_probe->probe_points[first_free].buffer_id = probe[i].buffer_id;
+		_probe->probe_points[first_free].buffer_id = *buf_id;
 		_probe->probe_points[first_free].purpose = probe[i].purpose;
 		_probe->probe_points[first_free].stream_tag = stream_tag;
 
@@ -1287,7 +1290,7 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 }
 #endif
 
-int probe_point_remove(uint32_t count, uint32_t *buffer_id)
+int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct ipc_comp_dev *dev;
@@ -1308,22 +1311,28 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 		tr_dbg(&pr_tr, "\tbuffer_id[%u] = %u", i, buffer_id[i]);
 
 		for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
+			probe_point_id_t *buf_id = &_probe->probe_points[j].buffer_id;
+
 			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
-			    _probe->probe_points[j].buffer_id.full_id == buffer_id[i]) {
+			    buf_id->full_id == buffer_id[i]) {
 #if CONFIG_IPC_MAJOR_4
-				dev = ipc_get_comp_by_id(ipc_get(), IPC4_COMP_ID(_probe->probe_points[j].buffer_id.fields.module_id,
-										 _probe->probe_points[j].buffer_id.fields.instance_id));
+				dev = ipc_get_comp_by_id(ipc_get(),
+							 IPC4_COMP_ID(buf_id->fields.module_id,
+								      buf_id->fields.instance_id));
 				if (dev) {
-					buf = ipc4_get_buffer(dev, _probe->probe_points[j].buffer_id);
+					buf = ipc4_get_buffer(dev, *buf_id);
 					if (buf) {
-						notifier_unregister(NULL, buf, NOTIFIER_ID_BUFFER_PRODUCE);
-						notifier_unregister(NULL, buf, NOTIFIER_ID_BUFFER_FREE);
+						notifier_unregister(NULL, buf,
+								    NOTIFIER_ID_BUFFER_PRODUCE);
+						notifier_unregister(NULL, buf,
+								    NOTIFIER_ID_BUFFER_FREE);
 					}
 				}
 #else
 				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
 				if (dev) {
-					notifier_unregister(_probe, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE);
+					notifier_unregister(_probe, dev->cb,
+							    NOTIFIER_ID_BUFFER_PRODUCE);
 					notifier_unregister(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE);
 				}
 #endif
@@ -1381,19 +1390,21 @@ static int probe_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				  bool first_block,
 				  bool last_block,
 				  uint32_t data_offset,
-				  char *data)
+				  const char *data)
 {
 	comp_dbg(dev, "probe_set_large_config()");
 
 	switch (param_id) {
 	case IPC4_PROBE_MODULE_PROBE_POINTS_ADD:
-		return probe_point_add(data_offset / sizeof(struct probe_point), (struct probe_point *)data);
+		return probe_point_add(data_offset / sizeof(struct probe_point),
+				       (const struct probe_point *)data);
 	case IPC4_PROBE_MODULE_DISCONNECT_PROBE_POINTS:
-		return probe_point_remove(data_offset / sizeof(uint32_t), (uint32_t *)data);
+		return probe_point_remove(data_offset / sizeof(uint32_t), (const uint32_t *)data);
 	case IPC4_PROBE_MODULE_INJECTION_DMA_ADD:
-		return probe_dma_add(data_offset / (2 * sizeof(uint32_t)), (struct probe_dma *)data);
+		return probe_dma_add(data_offset / (2 * sizeof(uint32_t)),
+				     (const struct probe_dma *)data);
 	case IPC4_PROBE_MODULE_INJECTION_DMA_DETACH:
-		return probe_dma_remove(data_offset / sizeof(uint32_t), (uint32_t *)data);
+		return probe_dma_remove(data_offset / sizeof(uint32_t), (const uint32_t *)data);
 	default:
 		return -EINVAL;
 	}
