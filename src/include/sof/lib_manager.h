@@ -132,7 +132,7 @@ struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id);
  */
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 				     struct comp_ipc_config *ipc_config,
-				     void *ipc_specific_config);
+				     const void *ipc_specific_config);
 
 /*
  * \brief Free module

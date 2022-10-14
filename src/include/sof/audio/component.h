@@ -291,8 +291,8 @@ struct comp_ops {
 	 * All parameters should be initialized to their default values.
 	 */
 	struct comp_dev *(*create)(const struct comp_driver *drv,
-				   struct comp_ipc_config *ipc_config,
-				   void *ipc_specific_config);
+				   const struct comp_ipc_config *ipc_config,
+				   const void *ipc_specific_config);
 
 	/**
 	 * Called to delete the specified component device.
@@ -335,7 +335,7 @@ struct comp_ops {
 	 * Mandatory for components that allocate DAI.
 	 */
 	int (*dai_config)(struct comp_dev *dev, struct ipc_config_dai *dai_config,
-			  void *dai_spec_config);
+			  const void *dai_spec_config);
 
 	/**
 	 * Used to pass standard and bespoke commands (with optional data).

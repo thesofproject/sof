@@ -353,7 +353,7 @@ static int eq_fir_init(struct processing_module *mod)
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
 	 * the EQ is configured later in run-time the size is zero.
 	 */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
 		comp_err(dev, "eq_fir_init(): comp_init_data_blob() failed.");
 		goto err_init;

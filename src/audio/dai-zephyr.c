@@ -123,15 +123,14 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 
 /* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
 int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-		   void *spec_config)
+		   const void *spec_config)
 {
 	const struct device *dev = dai->dev;
-	struct sof_ipc_dai_config *sof_cfg;
+	const struct sof_ipc_dai_config *sof_cfg = spec_config;
 	struct dai_config cfg;
-	void *cfg_params;
+	const void *cfg_params;
 	bool is_blob;
 
-	sof_cfg = spec_config;
 	cfg.dai_index = common_config->dai_index;
 	is_blob = common_config->is_config_blob;
 	cfg.format = sof_cfg->format;
@@ -292,11 +291,11 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 }
 
 static struct comp_dev *dai_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
 	struct comp_dev *dev;
-	struct ipc_config_dai *dai_cfg = spec;
+	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
 	uint32_t dir;
 

@@ -192,7 +192,7 @@ static int nhlt_dmic_dai_params_get(struct dai *dai, uint32_t *outcontrol,
 }
 #endif
 
-int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
+int dmic_set_config_nhlt(struct dai *dai, const void *spec_config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	struct nhlt_pdm_ctrl_cfg *pdm_cfg[DMIC_HW_CONTROLLERS_MAX];

@@ -377,11 +377,11 @@ static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
  */
 
 static struct comp_dev *tone_new(const struct comp_driver *drv,
-				 struct comp_ipc_config *config,
-				 void *spec)
+				 const struct comp_ipc_config *config,
+				 const void *spec)
 {
 	struct comp_dev *dev;
-	struct ipc_config_tone *ipc_tone = spec;
+	const struct ipc_config_tone *ipc_tone = spec;
 	struct comp_data *cd;
 	int i;
 

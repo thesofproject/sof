@@ -261,11 +261,11 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 }
 
 static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
-					 struct comp_ipc_config *config,
-					 void *spec)
+					 const struct comp_ipc_config *config,
+					 const void *spec)
 {
 	struct comp_dev *dev = NULL;
-	struct ipc_config_process *ipc_keyword = spec;
+	const struct ipc_config_process *ipc_keyword = spec;
 	struct comp_data *cd = NULL;
 	struct sof_detect_test_config *cfg;
 	int ret = 0;

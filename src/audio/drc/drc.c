@@ -140,12 +140,12 @@ static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
  */
 
 static struct comp_dev *drc_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
 	struct comp_dev *dev = NULL;
 	struct drc_comp_data *cd = NULL;
-	struct ipc_config_process *ipc_drc = spec;
+	const struct ipc_config_process *ipc_drc = spec;
 	size_t bs = ipc_drc->size;
 	int ret;
 

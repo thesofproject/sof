@@ -91,7 +91,7 @@ struct ipc_config_process {
 	uint32_t size;	/**< size of bespoke data section in bytes */
 	uint32_t type;	/**< sof_ipc_process_type */
 
-	unsigned char *data;
+	const unsigned char *data;
 };
 
 /* file IO ipc comp */

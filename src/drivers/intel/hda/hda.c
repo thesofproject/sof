@@ -28,11 +28,11 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 }
 
 static int hda_set_config(struct dai *dai,  struct ipc_config_dai *common_config,
-			  void *spec_config)
+			  const void *spec_config)
 {
 	struct hda_pdata *hda = dai_get_drvdata(dai);
-	struct sof_ipc_dai_config *dai_config = spec_config;
-	struct sof_ipc_dai_hda_params *params = &dai_config->hda;
+	const struct sof_ipc_dai_config *dai_config = spec_config;
+	const struct sof_ipc_dai_hda_params *params = &dai_config->hda;
 
 	/* no params in blob which only includes lp mode setting */
 	if (common_config->is_config_blob)

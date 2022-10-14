@@ -25,9 +25,9 @@ DECLARE_SOF_UUID("acp_dmic_dai", acp_dmic_dai_uuid, 0x0ae40946, 0xdfd2, 0x4140,
 DECLARE_TR_CTX(acp_dmic_dai_tr, SOF_UUID(acp_dmic_dai_uuid), LOG_LEVEL_INFO);
 
 static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-					  void *spec_config)
+					  const void *spec_config)
 {
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	struct acp_pdata *acpdata = dai_get_drvdata(dai);
 	acp_wov_clk_ctrl_t clk_ctrl;
 

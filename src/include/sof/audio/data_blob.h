@@ -53,7 +53,7 @@ bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
  * @param init_data Initial data blob values
  */
 int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
-			uint32_t size, void *init_data);
+			uint32_t size, const void *init_data);
 
 /**
  * Handles IPC set command.

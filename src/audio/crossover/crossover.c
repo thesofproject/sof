@@ -321,12 +321,12 @@ static int crossover_setup(struct comp_data *cd, int nch)
  * \return Pointer to Crossover Filter component device.
  */
 static struct comp_dev *crossover_new(const struct comp_driver *drv,
-				      struct comp_ipc_config *config,
-				      void *spec)
+				      const struct comp_ipc_config *config,
+				      const void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	struct ipc_config_process *ipc_crossover = spec;;
+	const struct ipc_config_process *ipc_crossover = spec;
 	size_t bs = ipc_crossover->size;
 	int ret;
 

@@ -324,14 +324,14 @@ static int asrc_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 #endif
 
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
-				 struct comp_ipc_config *config,
-				 void *spec)
+				 const struct comp_ipc_config *config,
+				 const void *spec)
 {
 	struct comp_dev *dev;
 #ifndef CONFIG_IPC_MAJOR_4
-	struct ipc_config_asrc *ipc_asrc = spec;
+	const struct ipc_config_asrc *ipc_asrc = spec;
 #else
-	struct ipc4_asrc_module_cfg *ipc_asrc = spec;
+	const struct ipc4_asrc_module_cfg *ipc_asrc = spec;
 #endif
 	struct comp_data *cd;
 

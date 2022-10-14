@@ -80,7 +80,7 @@ struct sof_ipc_stream_params;
  */
 struct dai_ops {
 	int (*set_config)(struct dai *dai, struct ipc_config_dai *config,
-			  void *spec_config);
+			  const void *spec_config);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*get_hw_params)(struct dai *dai,
 			     struct sof_ipc_stream_params *params, int dir);
@@ -395,7 +395,7 @@ void dai_put(struct dai *dai);
  * \brief Digital Audio interface formatting
  */
 static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
-				 void *spec_config)
+				 const void *spec_config)
 {
 	return dai->drv->ops.set_config(dai, config, spec_config);
 }
@@ -532,7 +532,7 @@ static inline const struct dai_info *dai_info_get(void)
 /**
  * \brief Configure DMA channel for DAI
  */
-int dai_config_dma_channel(struct comp_dev *dev, void *config);
+int dai_config_dma_channel(struct comp_dev *dev, const void *config);
 
 /**
  * \brief Reset DAI DMA config
@@ -543,7 +543,7 @@ void dai_dma_release(struct comp_dev *dev);
  * \brief Configure DAI physical interface.
  */
 int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_config,
-	       void *spec_config);
+	       const void *spec_config);
 
 /**
  * \brief Assign DAI to a group for simultaneous triggering.

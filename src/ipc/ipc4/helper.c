@@ -71,7 +71,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
-	struct ipc_config_process spec;
 
 	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp->id));
 	if (!drv)
@@ -92,16 +91,18 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	ipc_config.pipeline_id = comp->pipeline_id;
 	ipc_config.core = comp->core;
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)(MAILBOX_HOSTBOX_BASE),
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
-		spec.data = (unsigned char *)MAILBOX_HOSTBOX_BASE;
-		/* spec_size in IPC4 is in DW. Convert to bytes. */
-		spec.size = comp->ext_data_length * 4;
-		dev = drv->ops.create(drv, &ipc_config, (void *)&spec);
+		const struct ipc_config_process spec = {
+			.data = (const unsigned char *)MAILBOX_HOSTBOX_BASE,
+			/* spec_size in IPC4 is in DW. Convert to bytes. */
+			.size = comp->ext_data_length * 4,
+		};
+		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
 	} else {
-		dev = drv->ops.create(drv, &ipc_config, (void *)MAILBOX_HOSTBOX_BASE);
+		dev = drv->ops.create(drv, &ipc_config, (const void *)MAILBOX_HOSTBOX_BASE);
 	}
 	if (!dev)
 		return NULL;

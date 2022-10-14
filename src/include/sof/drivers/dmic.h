@@ -556,7 +556,7 @@ struct nhlt_pdm_fir_coeffs {
 
 int dmic_set_config_computed(struct dai *dai);
 int dmic_get_hw_params_computed(struct dai *dai, struct sof_ipc_stream_params *params, int dir);
-int dmic_set_config_nhlt(struct dai *dai, void *spec_config);
+int dmic_set_config_nhlt(struct dai *dai, const void *spec_config);
 int dmic_get_hw_params_nhlt(struct dai *dai, struct sof_ipc_stream_params *params, int dir);
 
 extern const struct dai_driver dmic_driver;

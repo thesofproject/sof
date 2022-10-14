@@ -209,10 +209,10 @@ static void ssp_bclk_disable_unprepare(struct dai *dai)
 
 /* Digital Audio interface formatting */
 static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_config,
-			       void *spec_config)
+			       const void *spec_config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t sscr2;
@@ -794,9 +794,9 @@ out:
 }
 
 static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_config,
-			       void *spec_config)
+			       const void *spec_config)
 {
-	struct ipc4_ssp_configuration_blob *blob = spec_config;
+	const struct ipc4_ssp_configuration_blob *blob = spec_config;
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t ssc0, sstsa, ssrsa;
 
@@ -860,7 +860,7 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 }
 
 static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			  void *spec_config)
+			  const void *spec_config)
 {
 	if (!common_config->is_config_blob)
 		return ssp_set_config_tplg(dai, common_config, spec_config);

@@ -219,10 +219,10 @@ static int32_t rtnr_check_config_validity(struct comp_dev *dev,
 }
 
 static struct comp_dev *rtnr_new(const struct comp_driver *drv,
-								struct comp_ipc_config *config,
-								void *spec)
+				 const struct comp_ipc_config *config,
+				 const void *spec)
 {
-	struct ipc_config_process *ipc_rtnr = spec;
+	const struct ipc_config_process *ipc_rtnr = spec;
 	struct comp_dev *dev;
 	struct comp_data *cd;
 	size_t bs = ipc_rtnr->size;

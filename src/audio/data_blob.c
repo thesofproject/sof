@@ -114,7 +114,7 @@ bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
 }
 
 int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
-			uint32_t size, void *init_data)
+			uint32_t size, const void *init_data)
 {
 	int ret;
 

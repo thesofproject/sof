@@ -54,14 +54,14 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 
 static int create_endpoint_buffer(struct comp_dev *parent_dev,
 				  struct copier_data *cd,
-				  struct comp_ipc_config *config,
-				  struct ipc4_copier_module_cfg *copier_cfg,
+				  const struct comp_ipc_config *config,
+				  const struct ipc4_copier_module_cfg *copier_cfg,
 				  enum ipc4_gateway_type type,
 				  int index)
 {
 	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
-	enum sof_ipc_frame valid_fmt;
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
 	uint32_t buf_size;
@@ -99,11 +99,11 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	 */
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (config->type == SOF_COMP_HOST) {
-			config->frame_fmt = in_frame_fmt;
+			frame_fmt = in_frame_fmt;
 			valid_fmt = in_valid_fmt;
 			buf_size = copier_cfg->base.ibs * 2;
 		} else {
-			config->frame_fmt = out_frame_fmt;
+			frame_fmt = out_frame_fmt;
 			valid_fmt = out_valid_fmt;
 			buf_size = copier_cfg->base.obs * 2;
 		}
@@ -111,11 +111,11 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 		mask = copier_cfg->out_fmt.ch_map;
 	} else {
 		if (config->type == SOF_COMP_HOST) {
-			config->frame_fmt = out_frame_fmt;
+			frame_fmt = out_frame_fmt;
 			valid_fmt = out_valid_fmt;
 			buf_size = copier_cfg->base.obs * 2;
 		} else {
-			config->frame_fmt = in_frame_fmt;
+			frame_fmt = in_frame_fmt;
 			valid_fmt = in_valid_fmt;
 			buf_size = copier_cfg->base.ibs * 2;
 		}
@@ -123,7 +123,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 		mask = copier_cfg->base.audio_fmt.ch_map;
 	}
 
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
+	parent_dev->ipc_config.frame_fmt = frame_fmt;
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
@@ -136,7 +136,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 
 	buffer->stream.channels = copier_cfg->base.audio_fmt.channels_count;
 	buffer->stream.rate = copier_cfg->base.audio_fmt.sampling_frequency;
-	buffer->stream.frame_fmt = config->frame_fmt;
+	buffer->stream.frame_fmt = frame_fmt;
 	buffer->stream.valid_sample_fmt = valid_fmt;
 	buffer->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
 
@@ -166,7 +166,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
  */
 static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 		       struct comp_ipc_config *config,
-		       struct ipc4_copier_module_cfg *copier_cfg,
+		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       int dir)
 {
 	struct sof_uuid host = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
@@ -231,7 +231,7 @@ e_buf:
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
-		    struct ipc4_copier_module_cfg *copier,
+		    const struct ipc4_copier_module_cfg *copier,
 		    struct pipeline *pipeline,
 		    struct ipc_config_dai *dai,
 		    enum ipc4_gateway_type type,
@@ -300,7 +300,7 @@ e_buf:
  */
 static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		      struct comp_ipc_config *config,
-		      struct ipc4_copier_module_cfg *copier,
+		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
@@ -372,7 +372,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 			dai_count = alh_blob->alh_cfg.count;
 			for (i = 0; i < dai_count; i++)
 				dai_index[i] =
-				IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
+					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
 		} else {
 			dai_index[dai_count - 1] = IPC4_ALH_DAI_INDEX(node_id.f.v_index);
 		}
@@ -429,10 +429,10 @@ static int init_pipeline_reg(struct comp_dev *dev)
 }
 
 static struct comp_dev *copier_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
-	struct ipc4_copier_module_cfg *copier = spec;
+	const struct ipc4_copier_module_cfg *copier = spec;
 	union ipc4_connector_node_id node_id;
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
@@ -481,7 +481,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			if (create_host(dev, cd, config, copier, cd->direction)) {
+			if (create_host(dev, cd, &dev->ipc_config, copier, cd->direction)) {
 				comp_cl_err(&comp_copier, "unenable to create host");
 				goto error_cd;
 			}
@@ -502,17 +502,17 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-		if (create_dai(dev, cd, config, copier, ipc_pipe->pipeline)) {
-			comp_cl_err(&comp_copier, "unenable to create dai");
-			goto error_cd;
-		}
+			if (create_dai(dev, cd, &dev->ipc_config, copier, ipc_pipe->pipeline)) {
+				comp_cl_err(&comp_copier, "unenable to create dai");
+				goto error_cd;
+			}
 
-		if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-			ipc_pipe->pipeline->sink_comp = dev;
-		else
-			ipc_pipe->pipeline->source_comp = dev;
+			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+				ipc_pipe->pipeline->sink_comp = dev;
+			else
+				ipc_pipe->pipeline->source_comp = dev;
 
-		break;
+			break;
 		default:
 			comp_cl_err(&comp_copier, "unsupported dma type %x",
 				    (uint32_t)node_id.f.dma_type);
