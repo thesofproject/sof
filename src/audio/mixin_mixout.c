@@ -935,16 +935,9 @@ static int mixin_reset(struct comp_dev *dev)
 
 static int mixout_reset(struct comp_dev *dev)
 {
-	struct mixout_data *mixout_data;
-	struct mixed_data_info __sparse_cache *mixed_data_info;
 	struct list_item *blist;
 
 	comp_dbg(dev, "mixout_reset()");
-
-	mixout_data = comp_get_drvdata(dev);
-	mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
-	memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
-	mixed_data_info_release(mixed_data_info);
 
 	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
