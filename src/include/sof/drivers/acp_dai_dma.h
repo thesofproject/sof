@@ -40,7 +40,8 @@ int acp_dma_init(struct sof *sof);
 #define ACP_DMA_TRANS_SIZE_128		128
 #define ACP_DAI_DMA_BUFFER_PERIOD_COUNT 2
 #define ACP_DRAM_ADDRESS_MASK		0x0FFFFFFF
-
+#define ACP_ACLK_CLK_SEL		0x3
+#define ACP_INTERNAL_CLK_SEL		0x0
 
 extern const struct dai_driver acp_spdai_driver;
 extern const struct dai_driver acp_btdai_driver;

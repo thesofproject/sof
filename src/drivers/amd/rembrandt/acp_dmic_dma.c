@@ -93,9 +93,11 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en)
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
 		/* Request SMU to set aclk to 600 Mhz */
 		acp_change_clock_notify(600000000);
+	}
 	channel->status = COMP_STATE_ACTIVE;
 	if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		/* Channel for DMIC */
@@ -193,9 +195,11 @@ static int acp_dmic_dma_stop(struct dma_chan_data *channel)
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en)
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
 		/* Request SMU to set aclk to minimum aclk */
 		acp_change_clock_notify(0);
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
+	}
 	return 0;
 }
 
