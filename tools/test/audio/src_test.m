@@ -263,9 +263,7 @@ end
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 test.f_start = 20;
 test.f_end = prm.c_pb*min(t.fs1, t.fs2);
-test.fu = prm.c_pb*min(t.fs1, t.fs2);
-%test.f_end = 0.4535*min(t.fs1, t.fs2);
-%test.fu = 0.4535*min(t.fs1, t.fs2);
+test.fu = prm.c_pb * t.fs2;
 
 %% Create input file
 test = thdnf_test_input(test);
