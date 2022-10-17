@@ -263,6 +263,21 @@ struct mixout_source_info *find_mixout_source_info(struct mixed_data_info __spar
 	return NULL;
 }
 
+/* Clears counters for not yet produced frames in mixout sink buffer. Preserves binded mixins
+ * pointers as these pointers should only be cleared on unbind event.
+ * This function is intended to be called on mixout sink buffer stream reset, i.e.,
+ * in mixout_prepare().
+ */
+static void reset_mixed_data_info_frame_counters(struct mixed_data_info __sparse_cache *mdi)
+{
+	int i;
+
+	mdi->mixed_frames = 0;
+
+	for (i = 0; i < MIXOUT_MAX_SOURCES; i++)
+		mdi->source_info[i].consumed_yet_not_produced_frames = 0;
+}
+
 #if CONFIG_FORMAT_S16LE
 /* Instead of using sink->channels and source->channels, sink_channel_count and
  * source_channel_count are supplied as parameters. This is done to reuse the function
@@ -935,16 +950,9 @@ static int mixin_reset(struct comp_dev *dev)
 
 static int mixout_reset(struct comp_dev *dev)
 {
-	struct mixout_data *mixout_data;
-	struct mixed_data_info __sparse_cache *mixed_data_info;
 	struct list_item *blist;
 
 	comp_dbg(dev, "mixout_reset()");
-
-	mixout_data = comp_get_drvdata(dev);
-	mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
-	memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
-	mixed_data_info_release(mixed_data_info);
 
 	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
@@ -1039,6 +1047,7 @@ static int mixout_prepare(struct comp_dev *dev)
 	struct mixout_data *md;
 	int ret;
 	struct list_item *blist;
+	struct mixed_data_info __sparse_cache *mixed_data_info;
 
 	comp_dbg(dev, "mixout_prepare()");
 
@@ -1060,6 +1069,13 @@ static int mixout_prepare(struct comp_dev *dev)
 			break;
 		}
 	}
+
+	/* Since mixout sink buffer stream is reset on .prepare(), let's
+	 * reset counters for not yet produced frames in that buffer.
+	 */
+	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
+	reset_mixed_data_info_frame_counters(mixed_data_info);
+	mixed_data_info_release(mixed_data_info);
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -1254,7 +1270,7 @@ static int mixout_bind(struct comp_dev *dev, void *data)
 		source_info = find_mixout_source_info(mixed_data_info, mixin);
 		if (source_info) {
 			/* this should never happen as source_info should
-			 * have been already cleared in minxout_unbind()
+			 * have been already cleared in mixout_unbind()
 			 */
 			memset(source_info, 0, sizeof(*source_info));
 		}
@@ -1287,11 +1303,8 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 	md = comp_get_drvdata(dev);
 	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
 
-	/* mixout -> new sink */
-	if (dev->ipc_config.id == src_id) {
-		mixed_data_info->mixed_frames = 0;
-		memset(mixed_data_info->source_info, 0, sizeof(mixed_data_info->source_info));
-	} else { /* new mixin -> mixout */
+	/* mixin -> mixout */
+	if (dev->ipc_config.id != src_id) {
 		struct comp_dev *mixin;
 		struct mixout_source_info *source_info;
 
