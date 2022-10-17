@@ -439,6 +439,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	struct copier_data *cd;
 	struct comp_dev *dev;
 	size_t size, config_size;
+	int i;
 
 	comp_cl_dbg(&comp_copier, "copier_new()");
 
@@ -459,7 +460,9 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	size = sizeof(*copier);
 	mailbox_hostbox_read(&cd->config, size, 0, size);
-	cd->out_fmt[0] = cd->config.out_fmt;
+
+	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
+		cd->out_fmt[i] = cd->config.out_fmt;
 	comp_set_drvdata(dev, cd);
 
 	list_init(&dev->bsource_list);
@@ -590,7 +593,7 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret;
+	int ret, i;
 
 	comp_dbg(dev, "copier_prepare()");
 
@@ -608,7 +611,6 @@ static int copier_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	if (cd->endpoint_num) {
-		int i;
 
 		for (i = 0; i < cd->endpoint_num; i++) {
 			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
@@ -618,13 +620,15 @@ static int copier_prepare(struct comp_dev *dev)
 	} else {
 		/* set up format conversion function */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
-						      &cd->config.out_fmt, ipc4_gtw_none,
-						      ipc4_bidirection);
+							      &cd->config.out_fmt, ipc4_gtw_none,
+							      ipc4_bidirection);
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
-
 			ret = -EINVAL;
+		} else {
+			for (i = 1; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
+				cd->converter[i] = cd->converter[i];
 		}
 	}
 
