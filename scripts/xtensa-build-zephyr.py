@@ -1,11 +1,28 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 
-# W0311, W0312, C0103, C0116
-#pylint:disable=bad-indentation
-#pylint:disable=mixed-indentation
-#pylint:disable=invalid-name
-#pylint:disable=missing-function-docstring
+# Too much noise for now, these can be re-enabled after they've been
+# fixed (if that does not break `git blame` too much)
+
+# W0311, W0312, W0603
+# pylint:disable=bad-indentation
+# pylint:disable=mixed-indentation
+# pylint:disable=global-statement
+
+# C0103, C0114, C0116
+# pylint:disable=invalid-name
+# pylint:disable=missing-module-docstring
+# pylint:disable=missing-function-docstring
+
+# Non-indentation whitespace has been removed from newer pylint. It does
+# not hurt to keep them for older versions. The recommendation is to use
+# a formatter like `black` instead, unfortunately this would totally
+# destroy git blame, git revert, etc.
+
+# C0326, C0330
+# pylint:disable=bad-whitespace
+# pylint:disable=bad-continuation
+
 import argparse
 import shlex
 import subprocess
