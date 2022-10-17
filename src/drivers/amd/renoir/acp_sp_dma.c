@@ -93,10 +93,11 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en && !acp_pdm_en)
+	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en && !acp_pdm_en) {
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
 		/* Request SMU to set aclk to 200 Mhz */
 		acp_change_clock_notify(200000000);
-
+	}
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
 		channel->status = COMP_STATE_ACTIVE;
 		prev_tx_pos = 0;
@@ -186,8 +187,10 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), SP_IER_DISABLE);
 		/* Request SMU to scale down aclk to minimum clk */
-		if (!acp_pdm_en)
+		if (!acp_pdm_en) {
 			acp_change_clock_notify(0);
+			io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
+		}
 	}
 
 	return 0;
