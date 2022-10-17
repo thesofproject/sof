@@ -22,13 +22,19 @@
 #include <sof/ut.h>
 #include <user/trace.h>
 #include <stdint.h>
-
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/base-config.h>
+#endif
 struct comp_buffer;
 struct comp_dev;
 
 /** \brief Supported streams count. */
+#if CONFIG_IPC_MAJOR_3
 #define MUX_MAX_STREAMS 4
-
+#else
+#define MUX_MAX_STREAMS 2
+#endif
+#define BASE_CFG_QUEUED_ID 0
 /** guard against invalid amount of streams defined */
 STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
 	      unsupported_amount_of_streams_for_mux);
@@ -115,7 +121,50 @@ struct sof_mux_config {
 	struct mux_stream_data streams[];
 } __attribute__((packed, aligned(4)));
 
+#if CONFIG_IPC_MAJOR_4
+/**
+ * \brief MUX module configuration in IPC4.
+ *
+ * This module output map is statically defined by the adapter (shim) as:
+ *  - Input pin 0 channel "x" ("x" = 0.."M", "M" <=3) to output channel "x",
+ *    where "M" is number of channels on input pin 0,
+ *  - Input pin 1 (reference) channel "y" (y = 0..1) to output channel "M"+1+"y".
+ *
+ * If input pin 0 is not connected, module will not produce any output.
+ * If input pin 1 (know also as reference pin) is not connected then module will
+ * in output (for time slot meant for pin 1) generate zeros.
+ *
+ * Setting masks for streams is done according to the order of pins and channels.
+ * First the first input stream, then the reference.
+ * For example, for base config 2-channel and reference 2-channel, masks
+ * should look like: mask[] = { 0b00000001, 0b00000010 } for the first
+ * stream and mask[] = { 0b00000100, 0b00001000 } for the second
+ * (reference)
+ *           +---+           +---+
+ *           | 0 |---------> | 0 |
+ * INPUT     +---+           +---+
+ * STREAM 0  | 1 |---------> | 1 |
+ *           +---+           +---+  OUTPUT
+ *                    +----> | 2 |  STREAM
+ *           +---+    |      +---+
+ *           | 0 |----+  +-> | 3 |
+ * INPUT     +---+       |   +---+
+ * STREAM 1  | 1 |-------+
+ *           +---+
+ */
+struct mux_data {
+	struct ipc4_base_module_cfg base_cfg;
+	 //! Reference pin format.
+	struct ipc4_audio_format reference_format;
+	 //! Output pin format.
+	struct ipc4_audio_format output_format;
+};
+#endif
+
 struct comp_data {
+#if CONFIG_IPC_MAJOR_4
+	struct mux_data md;
+#endif
 	union {
 		mux_func mux;
 		demux_func demux;

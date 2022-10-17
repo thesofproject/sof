@@ -34,11 +34,15 @@
 static const struct comp_driver comp_mux;
 
 LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
-
+#if CONFIG_IPC_MAJOR_3
 /* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
 DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
-		 0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
-
+		     0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
+#else
+/* 64ce6e35-857a-4878-ace8-e2a2f42e3069 */
+DECLARE_SOF_RT_UUID("mux", mux_uuid, 0x64ce6e35, 0x857a, 0x4878,
+		    0xac, 0xe8, 0xe2, 0xa2, 0xf4, 0x2e, 0x30, 0x69);
+#endif
 DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
 
 /* c4b26868-1430-470e-a089-15d1c77f851a */
@@ -158,6 +162,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static struct comp_dev *mux_new(const struct comp_driver *drv,
 				struct comp_ipc_config *config,
 				void *spec)
@@ -200,6 +205,200 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
+#else
+static int build_config(struct comp_data *cd, struct comp_dev *dev)
+{
+	dev->ipc_config.type = SOF_COMP_MUX;
+	cd->config.num_streams = MUX_MAX_STREAMS;
+	int mask = 1;
+	int i;
+
+	/* clear masks */
+	for (i = 0; i < cd->config.num_streams; i++)
+		memset(cd->config.streams[i].mask, 0, sizeof(cd->config.streams[i].mask));
+
+	/* Setting masks for streams */
+	for (i = 0; i < cd->md.base_cfg.audio_fmt.channels_count; i++) {
+		cd->config.streams[0].mask[i] = mask;
+		mask <<= 1;
+	}
+
+	for (i = 0; i < cd->md.reference_format.channels_count; i++) {
+		cd->config.streams[1].mask[i] = mask;
+		mask <<= 1;
+	}
+
+	/* validation of matrix mixing */
+	if (mux_mix_check(&cd->config)) {
+		comp_cl_err(&comp_mux, "build_config(): mux component is not able to mix channels");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static struct comp_dev *mux_new(const struct comp_driver *drv,
+				struct comp_ipc_config *config,
+				void *spec)
+{
+	struct mux_data *ipc_process = spec;
+	struct comp_dev *dev;
+	struct comp_data *cd;
+	int ret;
+
+	comp_cl_info(&comp_mux, "mux_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+	dev->ipc_config = *config;
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	if (!cd) {
+		rfree(dev);
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, cd);
+
+	ret = memcpy_s(&cd->md, sizeof(cd->md), ipc_process, sizeof(*ipc_process));
+	assert(!ret);
+	ret = build_config(cd, dev);
+
+	if (ret < 0) {
+		rfree(cd);
+		rfree(dev);
+		return NULL;
+	}
+
+	dev->state = COMP_STATE_READY;
+	return dev;
+}
+
+/* In ipc4 case param is figured out by module config so we need to first
+ * set up param then verify param. BTW for IPC3 path, the param is sent by
+ * host driver.
+ */
+static void set_mux_params(struct comp_dev *dev,
+			   struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sink, *source;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct list_item *source_list;
+	int i, j, valid_bit_depth;
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+	params->direction = dev->direction;
+	params->channels =  cd->md.base_cfg.audio_fmt.channels_count;
+	params->rate = cd->md.base_cfg.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cd->md.base_cfg.audio_fmt.depth / 8;
+	params->sample_valid_bytes = cd->md.base_cfg.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
+	params->buffer.size = cd->md.base_cfg.ibs;
+	params->no_stream_position = 1;
+
+	/* There are two input pins and one output pin in the mux.
+	 * For the first input we assign parameters from base_cfg,
+	 * for the second from reference_format
+	 * and for sink output_format.
+	 */
+
+	/* update sink format */
+	if (!list_is_empty(&dev->bsink_list)) {
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		audio_stream_init_alignment_constants(byte_align, frame_align_req,
+						      &sink_c->stream);
+
+		if (!sink_c->hw_params_configured) {
+			struct ipc4_audio_format out_fmt;
+
+			out_fmt = cd->md.output_format;
+			sink_c->stream.channels = out_fmt.channels_count;
+			sink_c->stream.rate = out_fmt.sampling_frequency;
+			audio_stream_fmt_conversion(out_fmt.depth,
+						    out_fmt.valid_bit_depth,
+						    &sink_c->stream.frame_fmt,
+						    &sink_c->stream.valid_sample_fmt,
+						    out_fmt.s_type);
+
+			sink_c->buffer_fmt = out_fmt.interleaving_style;
+			params->frame_fmt = sink_c->stream.frame_fmt;
+
+			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+				sink_c->chmap[i] = (out_fmt.ch_map >> i * 4) & 0xf;
+
+			sink_c->hw_params_configured = true;
+		}
+		buffer_release(sink_c);
+	}
+
+	/* update each source format */
+	if (!list_is_empty(&dev->bsource_list)) {
+		list_for_item(source_list, &dev->bsource_list)
+		{
+			source = container_of(source_list, struct comp_buffer, sink_list);
+			source_c = buffer_acquire(source);
+			audio_stream_init_alignment_constants(byte_align, frame_align_req,
+							      &source_c->stream);
+			j = source_c->id;
+			cd->config.streams[j].pipeline_id = source_c->pipeline_id;
+			valid_bit_depth = cd->md.base_cfg.audio_fmt.valid_bit_depth;
+			if (j == BASE_CFG_QUEUED_ID) {
+				source_c->stream.channels =
+						cd->md.base_cfg.audio_fmt.channels_count;
+				source_c->stream.rate =
+						cd->md.base_cfg.audio_fmt.sampling_frequency;
+				audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
+							    valid_bit_depth,
+							    &source_c->stream.frame_fmt,
+							    &source_c->stream.valid_sample_fmt,
+							    cd->md.base_cfg.audio_fmt.s_type);
+
+				source_c->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
+
+				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+					source_c->chmap[i] =
+						(cd->md.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
+			} else {
+				/* set parameters for reference input channels */
+				source_c->stream.channels =
+						cd->md.reference_format.channels_count;
+				source_c->stream.rate = cd->md.reference_format.sampling_frequency;
+				audio_stream_fmt_conversion(cd->md.reference_format.depth,
+							    cd->md.reference_format.valid_bit_depth,
+							    &source_c->stream.frame_fmt,
+							    &source_c->stream.valid_sample_fmt,
+							    cd->md.reference_format.s_type);
+				source_c->buffer_fmt = cd->md.reference_format.interleaving_style;
+
+				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+					source_c->chmap[i] =
+						(cd->md.reference_format.ch_map >> i * 4) & 0xf;
+			}
+			source_c->hw_params_configured = true;
+			buffer_release(source_c);
+		}
+	}
+
+	mux_prepare_look_up_table(dev);
+}
+
+static int mux_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->md.base_cfg;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+#endif
 
 static void mux_free(struct comp_dev *dev)
 {
@@ -247,7 +446,9 @@ static int mux_params(struct comp_dev *dev,
 	int ret;
 
 	comp_info(dev, "mux_params()");
-
+#if CONFIG_IPC_MAJOR_4
+	set_mux_params(dev, params);
+#endif
 	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0)
 		comp_err(dev, "mux_params(): comp_verify_params() failed.");
@@ -711,13 +912,30 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	 */
 	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
 	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
-
+#if CONFIG_IPC_MAJOR_4
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_START:
+			if (src_n_active || src_n_paused)
+				return PPL_STATUS_PATH_STOP;
+			break;
+		case COMP_TRIGGER_PRE_RELEASE:
+			dev->state = COMP_STATE_PRE_ACTIVE;
+			break;
+		case COMP_TRIGGER_RELEASE:
+			dev->state = COMP_STATE_ACTIVE;
+			break;
+		default:
+			break;
+		}
+	}
+#else
 	switch (cmd) {
 	case COMP_TRIGGER_PRE_START:
 		if (src_n_active || src_n_paused)
 			return PPL_STATUS_PATH_STOP;
 	}
-
+#endif
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -755,6 +973,9 @@ static const struct comp_driver comp_mux = {
 		.prepare	= mux_prepare,
 		.reset		= mux_reset,
 		.trigger	= mux_trigger,
+#if CONFIG_IPC_MAJOR_4
+		.get_attribute = mux_get_attribute,
+#endif
 	},
 };
 
