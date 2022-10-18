@@ -589,12 +589,12 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
  */
 
 static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
 	struct comp_dev *dev = NULL;
 	struct comp_data *cd = NULL;
-	struct ipc_config_process *ipc_iir = spec;
+	const struct ipc_config_process *ipc_iir = spec;
 	size_t bs = ipc_iir->size;
 	int i;
 	int ret;

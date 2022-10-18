@@ -227,12 +227,12 @@ static int multiband_drc_setup(struct multiband_drc_comp_data *cd, int16_t chann
  */
 
 static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
-					  struct comp_ipc_config *config,
-					  void *spec)
+					  const struct comp_ipc_config *config,
+					  const void *spec)
 {
 	struct comp_dev *dev = NULL;
 	struct multiband_drc_comp_data *cd = NULL;
-	struct ipc_config_process *ipc_multiband_drc = spec;
+	const struct ipc_config_process *ipc_multiband_drc = spec;
 	size_t bs = ipc_multiband_drc->size;
 	int ret;
 

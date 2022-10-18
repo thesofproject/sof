@@ -260,7 +260,7 @@ static enum task_state probe_task(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
-int probe_init(struct probe_dma *probe_dma)
+int probe_init(const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -1356,9 +1356,9 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 
 #if CONFIG_IPC_MAJOR_4
 static struct comp_dev *probe_new(const struct comp_driver *drv,
-				  struct comp_ipc_config *config, void *spec)
+				  const struct comp_ipc_config *config, const void *spec)
 {
-	struct ipc4_probe_module_cfg *probe_cfg = spec;
+	const struct ipc4_probe_module_cfg *probe_cfg = spec;
 	struct comp_dev *dev;
 	int ret;
 

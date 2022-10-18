@@ -39,11 +39,11 @@ struct smart_amp_data {
 };
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
-				      struct comp_ipc_config *config,
-				      void *spec)
+				      const struct comp_ipc_config *config,
+				      const void *spec)
 {
 	struct comp_dev *dev = NULL;
-	struct ipc_config_process *ipc_sa = spec;
+	const struct ipc_config_process *ipc_sa = spec;
 	struct smart_amp_data *sad = NULL;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;

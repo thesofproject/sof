@@ -533,12 +533,12 @@ static enum file_format get_file_format(char *filename)
 }
 
 static struct comp_dev *file_new(const struct comp_driver *drv,
-				 struct comp_ipc_config *config,
-				 void *spec)
+				 const struct comp_ipc_config *config,
+				 const void *spec)
 {
 	const struct dai_driver *fdrv;
 	struct comp_dev *dev;
-	struct ipc_comp_file *ipc_file = spec;
+	const struct ipc_comp_file *ipc_file = spec;
 	struct dai_data *dd;
 	struct dai *fdai;
 	struct file_comp_data *cd;

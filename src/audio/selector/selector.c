@@ -167,10 +167,10 @@ static int selector_verify_params(struct comp_dev *dev,
 }
 
 static struct comp_dev *selector_new(const struct comp_driver *drv,
-				     struct comp_ipc_config *config,
-				     void *spec)
+				     const struct comp_ipc_config *config,
+				     const void *spec)
 {
-	struct ipc_config_process *ipc_process = spec;
+	const struct ipc_config_process *ipc_process = spec;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;

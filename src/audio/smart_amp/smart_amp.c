@@ -211,11 +211,11 @@ static inline int smart_amp_alloc_caldata(struct comp_dev *dev,
 }
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
-				      struct comp_ipc_config *config,
-				      void *spec)
+				      const struct comp_ipc_config *config,
+				      const void *spec)
 {
 	struct comp_dev *dev;
-	struct ipc_config_process *ipc_sa = spec;
+	const struct ipc_config_process *ipc_sa = spec;
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;

@@ -31,12 +31,13 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
  * \return: a pointer to newly created module adapter component on success. NULL on error.
  */
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
-				    struct comp_ipc_config *config,
-				    struct module_interface *interface, void *spec)
+				    const struct comp_ipc_config *config,
+				    struct module_interface *interface, const void *spec)
 {
 	int ret;
 	struct comp_dev *dev;
 	struct processing_module *mod;
+	struct module_config *dst;
 
 	comp_cl_dbg(drv, "module_adapter_new() start");
 
@@ -61,19 +62,20 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
+	dst = &mod->priv.cfg;
 	mod->dev = dev;
 
 	comp_set_drvdata(dev, mod);
 	list_init(&mod->sink_buffer_list);
 
 #if CONFIG_IPC_MAJOR_3
-	unsigned char *data;
+	const unsigned char *data;
 	uint32_t size;
 
 	switch (config->type) {
 	case SOF_COMP_VOLUME:
 	{
-		struct ipc_config_volume *ipc_volume = spec;
+		const struct ipc_config_volume *ipc_volume = spec;
 
 		size = sizeof(*ipc_volume);
 		data = spec;
@@ -81,7 +83,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	}
 	default:
 	{
-		struct ipc_config_process *ipc_module_adapter = spec;
+		const struct ipc_config_process *ipc_module_adapter = spec;
 
 		size = ipc_module_adapter->size;
 		data = ipc_module_adapter->data;
@@ -97,22 +99,19 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				 ret);
 			goto err;
 		}
+		dst->init_data = dst->data;
 	}
 #else
-	struct module_data *md = &mod->priv;
-	struct module_config *dst = &md->cfg;
-
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
-		struct ipc_config_process *ipc_module_adapter = spec;
+		const struct ipc_config_process *ipc_module_adapter = spec;
 
-		dst->data = ipc_module_adapter->data;
+		dst->init_data = ipc_module_adapter->data;
 		dst->size = ipc_module_adapter->size;
 
 		memcpy(&dst->base_cfg, ipc_module_adapter->data, sizeof(dst->base_cfg));
 	} else {
-		dst->data = spec;
+		dst->init_data = spec;
 	}
-
 #endif
 
 	/* Init processing module */
@@ -124,7 +123,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	}
 
 #if CONFIG_IPC_MAJOR_4
-	dst->data = NULL;
+	dst->init_data = NULL;
 #endif
 	dev->state = COMP_STATE_READY;
 

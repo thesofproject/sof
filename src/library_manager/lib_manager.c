@@ -231,11 +231,11 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 				     struct comp_ipc_config *ipc_config,
-				     void *ipc_specific_config)
+				     const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
-	struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
+	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);

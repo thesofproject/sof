@@ -200,8 +200,8 @@ static int google_rtc_audio_processing_cmd(struct comp_dev *dev, int cmd, void *
 
 static struct comp_dev *google_rtc_audio_processing_create(
 	const struct comp_driver *drv,
-	struct comp_ipc_config *config,
-	void *spec)
+	const struct comp_ipc_config *config,
+	const void *spec)
 {
 	struct comp_dev *dev;
 	struct google_rtc_audio_processing_comp_data *cd;

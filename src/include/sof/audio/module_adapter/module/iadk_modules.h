@@ -36,8 +36,8 @@
 
 
 struct comp_dev *iadk_modules_shim_new(const struct comp_driver *drv,
-				       struct comp_ipc_config *config,
-				       void *spec);
+				       const struct comp_ipc_config *config,
+				       const void *spec);
 
 #define DECLARE_DYNAMIC_MODULE_ADAPTER(comp_dynamic_module, mtype, uuid, tr) \
 do { \

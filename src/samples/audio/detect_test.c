@@ -232,7 +232,7 @@ static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 }
 
 static int test_keyword_apply_config(struct comp_dev *dev,
-				     struct sof_detect_test_config *cfg)
+				     const struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t sample_width;
@@ -266,17 +266,17 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 }
 
 static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
-					 struct comp_ipc_config *config,
-					 void *spec)
+					 const struct comp_ipc_config *config,
+					 const void *spec)
 {
 	struct comp_dev *dev = NULL;
 #if CONFIG_IPC_MAJOR_4
-	struct sof_detect_test_config *ipc_keyword = spec;
+	const struct sof_detect_test_config *ipc_keyword = spec;
 #else
-	struct ipc_config_process *ipc_keyword = spec;
+	const struct ipc_config_process *ipc_keyword = spec;
 #endif /* CONFIG_IPC_MAJOR_4 */
 	struct comp_data *cd = NULL;
-	struct sof_detect_test_config *cfg;
+	const struct sof_detect_test_config *cfg;
 	int ret = 0;
 	size_t bs;
 
@@ -308,7 +308,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	cfg = ipc_keyword;
 	bs = sizeof(*ipc_keyword);
 #else
-	cfg = (struct sof_detect_test_config *)ipc_keyword->data;
+	cfg = (const struct sof_detect_test_config *)ipc_keyword->data;
 	bs = ipc_keyword->size;
 #endif /* CONFIG_IPC_MAJOR_4 */
 
@@ -403,14 +403,14 @@ static void test_keyword_set_params(struct comp_dev *dev,
 	params->frame_fmt = frame_fmt;
 }
 
-static int test_keyword_set_config(struct comp_dev *dev, char *data,
+static int test_keyword_set_config(struct comp_dev *dev, const char *data,
 				   uint32_t data_size)
 {
-	struct sof_detect_test_config *cfg;
+	const struct sof_detect_test_config *cfg;
 	size_t cfg_size;
 
 	/* Copy new config */
-	cfg = (struct sof_detect_test_config *)data;
+	cfg = (const struct sof_detect_test_config *)data;
 	cfg_size = data_size;
 
 	comp_info(dev, "test_keyword_set_config(): config size = %u",
@@ -455,7 +455,7 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 					 bool first_block,
 					 bool last_block,
 					 uint32_t data_offset,
-					 char *data)
+					 const char *data)
 {
 	comp_dbg(dev, "test_keyword_set_large_config()");
 	struct comp_data *cd = comp_get_drvdata(dev);

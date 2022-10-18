@@ -25,8 +25,8 @@ DECLARE_SOF_RT_UUID("switch", switch_uuid, 0x385cc44b, 0xf34e, 0x4b9b,
 DECLARE_TR_CTX(switch_tr, SOF_UUID(switch_uuid), LOG_LEVEL_INFO);
 
 static struct comp_dev *switch_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
 	comp_cl_info(&comp_switch, "switch_new()");
 

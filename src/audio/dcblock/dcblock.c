@@ -67,12 +67,12 @@ static void dcblock_init_state(struct comp_data *cd)
  * \return Pointer to DC Blocking Filter component device.
  */
 static struct comp_dev *dcblock_new(const struct comp_driver *drv,
-				    struct comp_ipc_config *config,
-				    void *spec)
+				    const struct comp_ipc_config *config,
+				    const void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	struct ipc_config_process *ipc_dcblock = spec;
+	const struct ipc_config_process *ipc_dcblock = spec;
 	size_t bs = ipc_dcblock->size;
 	int ret;
 

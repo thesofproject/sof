@@ -122,10 +122,10 @@ int aria_process_data(struct comp_dev *dev,
 	return aria_algo_buffer_data(dev, src, src_size);
 }
 
-static int init_aria(struct comp_dev *dev, struct comp_ipc_config *config,
-		     void *spec)
+static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
+		     const void *spec)
 {
-	struct ipc4_aria_module_cfg *aria = spec;
+	const struct ipc4_aria_module_cfg *aria = spec;
 	struct aria_data *cd;
 	size_t ibs, chc, sgs, sgc, req_mem, att;
 	void *buf, *buf_in, *buf_out;
@@ -181,7 +181,8 @@ static int init_aria(struct comp_dev *dev, struct comp_ipc_config *config,
 }
 
 static struct comp_dev *aria_new(const struct comp_driver *drv,
-				 struct comp_ipc_config *config, void *spec)
+				 const struct comp_ipc_config *config,
+				 const void *spec)
 {
 	struct comp_dev *dev;
 	int ret;

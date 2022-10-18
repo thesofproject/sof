@@ -164,10 +164,10 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 #if CONFIG_IPC_MAJOR_3
 static struct comp_dev *mux_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
-	struct ipc_config_process *ipc_process = spec;
+	const struct ipc_config_process *ipc_process = spec;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -237,10 +237,10 @@ static int build_config(struct comp_data *cd, struct comp_dev *dev)
 }
 
 static struct comp_dev *mux_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
-	struct mux_data *ipc_process = spec;
+	const struct mux_data *ipc_process = spec;
 	struct comp_dev *dev;
 	struct comp_data *cd;
 	int ret;
