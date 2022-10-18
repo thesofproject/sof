@@ -141,6 +141,7 @@ class validate_platforms_arguments(argparse.Action):
 					raise argparse.ArgumentError(self, f"Unsupported platform: {value}")
 		setattr(namespace, "platforms", values)
 
+args = None
 def parse_args():
 	global args
 	global west_top
@@ -337,7 +338,7 @@ def west_reinitialize(west_root_dir: pathlib.Path, west_manifest_path: pathlib.P
 	print(f"{question}")
 	while True:
 		reinitialize_answer = input().lower()
-		if reinitialize_answer == "y" or reinitialize_answer == "n":
+		if reinitialize_answer in ["y", "n"]:
 			break
 		sys.stdout.write('Please respond with \'Y\' or \'n\'.\n')
 
@@ -438,6 +439,7 @@ def get_build_and_sof_version(abs_build_dir):
 
 	return sof_fw_version, sof_build_version
 
+STAGING_DIR = None
 def build_platforms():
 	global west_top, SOF_TOP
 	print(f"SOF_TOP={SOF_TOP}")
@@ -540,12 +542,16 @@ def build_platforms():
 				sys.exit("Zephyr project not found. Please run this script with -u flag or `west update zephyr` manually.")
 			else: # unknown failure
 				raise cpe
+
+		# Building smex and rimage once per platform is a small waste of time
+		# but it saves a lot of code in this script.
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
 		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
 		input_elf_file = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.elf")
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
+
 		# CMake - configure rimage module
 		rimage_dir_name="build-rimage"
 		rimage_source_dir = pathlib.Path(SOF_TOP, "rimage")
@@ -554,6 +560,7 @@ def build_platforms():
 		# CMake build rimage module
 		execute_command(["cmake", "--build", rimage_dir_name, "-j", str(args.jobs)],
 			cwd=west_top)
+
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
 		rimage_config = pathlib.Path(SOF_TOP, "rimage", "config")
@@ -571,11 +578,11 @@ def build_platforms():
 
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
 
-		sof_fw_version, sof_build_version = get_build_and_sof_version(abs_build_dir)
+		sof_fw_vers, sof_build_vers = get_build_and_sof_version(abs_build_dir)
 
-		sign_cmd += ["-f", sof_fw_version]
+		sign_cmd += ["-f", sof_fw_vers]
 
-		sign_cmd += ["-b", sof_build_version]
+		sign_cmd += ["-b", sof_build_vers]
 
 		if args.fw_naming == "AVS":
 			output_fwname="dsp_basefw.bin"
