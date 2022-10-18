@@ -585,16 +585,17 @@ def build_platforms():
 
 		sign_cmd += ["-b", sof_build_vers]
 
-		if args.fw_naming == "AVS":
-			output_fwname="dsp_basefw.bin"
-		else:
-			output_fwname="".join(["sof-", platform, ".ri"])
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
 			sign_cmd += ["-c", str(rimage_desc)]
 
 		execute_command(sign_cmd, cwd=west_top)
+
 		# Install by copy
+		if args.fw_naming == "AVS":
+			output_fwname="dsp_basefw.bin"
+		else:
+			output_fwname="".join(["sof-", platform, ".ri"])
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
 		if args.key_type_subdir == "none":
 			fw_file_installed = pathlib.Path(sof_platform_output_dir,
