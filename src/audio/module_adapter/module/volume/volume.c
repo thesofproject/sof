@@ -541,6 +541,7 @@ static int volume_init(struct processing_module *mod)
 	struct module_config *cfg = &md->cfg;
 	struct comp_dev *dev = mod->dev;
 	struct ipc4_peak_volume_module_cfg *vol = cfg->data;
+	uint32_t target_volume[SOF_IPC_MAX_CHANNELS];
 	struct vol_data *cd;
 	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
 	uint32_t channels_count;
@@ -575,16 +576,16 @@ static int volume_init(struct processing_module *mod)
 		else
 			channel_cfg = channel;
 
-		vol->config[channel].target_volume =
+		target_volume[channel] =
 			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
 
 		set_volume_ipc4(cd, channel,
-				vol->config[channel_cfg].target_volume,
+				target_volume[channel_cfg],
 				vol->config[channel_cfg].curve_type,
 				vol->config[channel_cfg].curve_duration);
 	}
 
-	init_ramp(cd, vol->config[0].curve_duration, vol->config[0].target_volume);
+	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
 
 	instance_id = IPC4_INST_ID(dev_comp_id(dev));
 	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
