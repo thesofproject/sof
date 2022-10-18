@@ -63,8 +63,8 @@ static int iadk_modules_init(struct processing_module *mod)
 
 	mod_cfg.data = md->cfg.data;
 	/* Intel modules expects DW size here */
-	mod_cfg.size = (md->cfg.size >> 2);
-	md->private = md->cfg.data;
+	mod_cfg.size = md->cfg.size >> 2;
+	md->private = mod;
 
 	struct comp_ipc_config *config = &(mod->dev->ipc_config);
 
