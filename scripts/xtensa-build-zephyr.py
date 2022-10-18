@@ -591,21 +591,27 @@ def build_platforms():
 
 		execute_command(sign_cmd, cwd=west_top)
 
-		# Install by copy
+
+		# Install to STAGING_DIR
+		abs_build_dir = pathlib.Path(west_top) / platform_build_dir_name / "zephyr"
+
 		if args.fw_naming == "AVS":
+			# Disguise ourselves for local testing purposes
 			output_fwname="dsp_basefw.bin"
 		else:
+			# Regular name
 			output_fwname="".join(["sof-", platform, ".ri"])
-		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
-		if args.key_type_subdir == "none":
-			fw_file_installed = pathlib.Path(sof_platform_output_dir,
-							 f"{output_fwname}")
-		else:
-			fw_file_installed = pathlib.Path(sof_platform_output_dir, args.key_type_subdir,
-							 f"{output_fwname}")
-		os.makedirs(os.path.dirname(fw_file_installed), exist_ok=True)
+
+		shutil.copy2(abs_build_dir / "zephyr.ri", abs_build_dir / output_fwname)
+		fw_file_to_copy = abs_build_dir / output_fwname
+
+		install_key_dir = sof_platform_output_dir
+		if args.key_type_subdir != "none":
+			install_key_dir = install_key_dir / args.key_type_subdir
+
+		os.makedirs(install_key_dir, exist_ok=True)
 		# looses file owner and group - file is commonly accessible
-		shutil.copy2(str(fw_file_to_copy), str(fw_file_installed))
+		shutil.copy2(fw_file_to_copy, install_key_dir)
 
 	src_dest_list = []
 
