@@ -372,7 +372,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 			dai_count = alh_blob->alh_cfg.count;
 			for (i = 0; i < dai_count; i++)
 				dai_index[i] =
-				IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
+					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
 		} else {
 			dai_index[dai_count - 1] = IPC4_ALH_DAI_INDEX(node_id.f.v_index);
 		}
@@ -505,17 +505,17 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-		if (create_dai(dev, cd, config, copier, ipc_pipe->pipeline)) {
-			comp_cl_err(&comp_copier, "unenable to create dai");
-			goto error_cd;
-		}
+			if (create_dai(dev, cd, config, copier, ipc_pipe->pipeline)) {
+				comp_cl_err(&comp_copier, "unenable to create dai");
+				goto error_cd;
+			}
 
-		if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-			ipc_pipe->pipeline->sink_comp = dev;
-		else
-			ipc_pipe->pipeline->source_comp = dev;
+			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+				ipc_pipe->pipeline->sink_comp = dev;
+			else
+				ipc_pipe->pipeline->source_comp = dev;
 
-		break;
+			break;
 		default:
 			comp_cl_err(&comp_copier, "unsupported dma type %x",
 				    (uint32_t)node_id.f.dma_type);
