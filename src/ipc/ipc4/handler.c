@@ -250,6 +250,10 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
+		/* nothing to do if the pipeline is already running */
+		if (status == COMP_STATE_ACTIVE)
+			return 0;
+
 		if (status != COMP_STATE_PAUSED && status != COMP_STATE_READY) {
 			tr_err(&ipc_tr, "ipc: current status %d", status);
 			return IPC4_INVALID_REQUEST;
