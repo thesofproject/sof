@@ -394,8 +394,8 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 	/* initialise the DMA buffer */
 
 	lib_manager_dma_buffer_update(buffer, buffer->addr, size);
-	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): 0x%x, 0x%x",
-	       buffer->addr, buffer->end_addr);
+	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %p, %p",
+	       (void *)buffer->addr, (void *)buffer->end_addr);
 	return 0;
 }
 
@@ -567,7 +567,7 @@ static int lib_manager_allocate_store_mem(uint32_t *address, uint32_t size, uint
 static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext, void *man_buffer,
 				     uint32_t lib_id, uint32_t addr_align)
 {
-	uint32_t library_base_address;
+	uint32_t library_base_address = 0;
 	struct sof_man_fw_desc *man_desc =
 			(struct sof_man_fw_desc *)((char *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
 	uint32_t preload_size = man_desc->header.preload_page_count * CONFIG_MM_DRV_PAGE_SIZE;
