@@ -295,18 +295,22 @@ def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
 	then presents them in similar way to linux tree command."""
 	graph_root = AnyNode(name=STAGING_DIR.name, long_name=STAGING_DIR.name, parent=None)
-	relative_entries = [entry.relative_to(STAGING_DIR) for entry in STAGING_DIR.glob("**/*")]
+	relative_entries = [
+		entry.relative_to(STAGING_DIR) for entry in sorted(STAGING_DIR.glob("**/*"))
+	]
 	nodes = [ graph_root ]
 	for entry in relative_entries:
+		# Node's documentation does allow random attributes
+		# pylint: disable=no-member
 		if str(entry.parent) == ".":
 			nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=graph_root))
 		else:
-			node_parent = [node for node in nodes if node.long_name == str(entry.parent)][0]
-			if not node_parent:
-				warnings.warn("Failed to construct installed files tree")
-				return
-			nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=node_parent))
-	for pre, fill, node in RenderTree(graph_root):
+			# sorted() makes sure our parent is already there.
+			# This is slightly awkward, a recursive function would be more readable
+			matches = [node for node in nodes if node.long_name == str(entry.parent)]
+			assert len(matches) == 1, f'"{entry}" does not have exactly one parent'
+			nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=matches[0]))
+	for pre, _, node in RenderTree(graph_root):
 		print(f"{pre}{node.name}")
 
 def check_west_installation():
