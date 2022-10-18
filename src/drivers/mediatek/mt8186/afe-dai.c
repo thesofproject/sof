@@ -33,9 +33,9 @@ static int afe_dai_drv_trigger(struct dai *dai, int cmd, int direction)
 }
 
 static int afe_dai_drv_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-				  void *spec_config)
+				  const void *spec_config)
 {
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	struct mtk_base_afe *afe = dai_get_drvdata(dai);
 
 	return afe_dai_set_config(afe,

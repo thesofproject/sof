@@ -216,7 +216,7 @@ void dai_put(struct dai *dai);
 /**
  * \brief Digital Audio interface formatting
  */
-int dai_set_config(struct dai *dai, struct ipc_config_dai *config, void *spec_config);
+int dai_set_config(struct dai *dai, struct ipc_config_dai *config, const void *spec_config);
 
 /**
  * \brief Get Digital Audio interface DMA Handshake
@@ -241,7 +241,7 @@ int dai_get_stream_id(struct dai *dai, int direction);
 /**
  * \brief Configure DMA channel for DAI
  */
-int dai_config_dma_channel(struct comp_dev *dev, void *config);
+int dai_config_dma_channel(struct comp_dev *dev, const void *config);
 
 /**
  * \brief Reset DAI DMA config
@@ -251,7 +251,7 @@ void dai_dma_release(struct comp_dev *dev);
 /**
  * \brief Configure DAI physical interface.
  */
-int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_cfg, void *spec_cfg);
+int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_cfg, const void *spec_cfg);
 
 /**
  * \brief Assign DAI to a group for simultaneous triggering.

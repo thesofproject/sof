@@ -24,7 +24,7 @@ DECLARE_SOF_UUID("hsdai", hsdai_uuid, 0x8f00c3bb, 0xe835, 0x4767,
 DECLARE_TR_CTX(hsdai_tr, SOF_UUID(hsdai_uuid), LOG_LEVEL_INFO);
 
 static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-				   void *spec_config)
+				   const void *spec_config)
 {
 	/* set master clk for hs dai */
 	io_reg_write(PU_REGISTER_BASE + ACP_I2STDM2_MSTRCLKGEN, 0x40081);

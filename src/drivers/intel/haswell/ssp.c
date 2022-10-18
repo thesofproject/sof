@@ -24,9 +24,9 @@
 
 /* Digital Audio interface formatting */
 static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			  void *spec_config)
+			  const void *spec_config)
 {
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0;
 	uint32_t sscr1;

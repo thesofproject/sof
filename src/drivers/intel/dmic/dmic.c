@@ -154,14 +154,15 @@ static int dmic_get_hw_params(struct dai *dai,
 #endif
 }
 
-static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config, void *spec_config)
+static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			   const void *spec_config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int ret = 0;
 	int di = dai->index;
 	k_spinlock_key_t key;
 #if CONFIG_INTEL_DMIC_TPLG_PARAMS
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	int i;
 	int j;
 #endif
