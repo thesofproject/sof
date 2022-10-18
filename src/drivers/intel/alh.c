@@ -34,10 +34,10 @@ static int alh_trigger(struct dai *dai, int cmd, int direction)
 }
 
 static int alh_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_config,
-			       void *spec_config)
+			       const void *spec_config)
 {
 	struct alh_pdata *alh = dai_get_drvdata(dai);
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 
 	dai_info(dai, "alh_set_config_tplg() config->format = 0x%4x", config->format);
 
@@ -54,11 +54,11 @@ static int alh_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 }
 
 static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_config,
-			       void *spec_config)
+			       const void *spec_config)
 {
 	struct alh_pdata *alh = dai_get_drvdata(dai);
-	struct sof_alh_configuration_blob *blob = spec_config;
-	struct ipc4_alh_multi_gtw_cfg *alh_cfg = &blob->alh_cfg;
+	const struct sof_alh_configuration_blob *blob = spec_config;
+	const struct ipc4_alh_multi_gtw_cfg *alh_cfg = &blob->alh_cfg;
 	int i;
 
 	dai_info(dai, "alh_set_config_blob()");
@@ -80,7 +80,7 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 }
 
 static int alh_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			  void *spec_config)
+			  const void *spec_config)
 {
 	if (!common_config->is_config_blob)
 		return alh_set_config_tplg(dai, common_config, spec_config);

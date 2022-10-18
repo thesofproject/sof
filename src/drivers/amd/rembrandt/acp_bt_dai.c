@@ -25,7 +25,7 @@ DECLARE_SOF_UUID("btdai", btdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
 DECLARE_TR_CTX(btdai_tr, SOF_UUID(btdai_uuid), LOG_LEVEL_INFO);
 
 static inline int btdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-				   void *spec_config)
+				   const void *spec_config)
 {
 	/* nothing to do on rembrandt */
 	return 0;

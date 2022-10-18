@@ -29,10 +29,10 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
+int dai_config_dma_channel(struct comp_dev *dev, const void *spec_config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	int channel;
 	int handshake;
@@ -284,9 +284,9 @@ void dai_dma_release(struct comp_dev *dev)
 }
 
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
-	       void *spec_config)
+	       const void *spec_config)
 {
-	struct sof_ipc_dai_config *config = spec_config;
+	const struct sof_ipc_dai_config *config = spec_config;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 

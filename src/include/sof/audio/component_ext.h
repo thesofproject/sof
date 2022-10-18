@@ -219,7 +219,7 @@ static inline int comp_reset(struct comp_dev *dev)
 
 /** See comp_ops::dai_config */
 static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
-				  void *spec_config)
+				  const void *spec_config)
 {
 	if (dev->drv->ops.dai_config)
 		return dev->drv->ops.dai_config(dev, config, spec_config);

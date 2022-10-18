@@ -24,7 +24,7 @@ DECLARE_SOF_UUID("spdai", spdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
 DECLARE_TR_CTX(spdai_tr, SOF_UUID(spdai_uuid), LOG_LEVEL_INFO);
 
 static inline int spdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-				   void *spec_config)
+				   const void *spec_config)
 {
 	/* nothing to do on rembrandt for SP dai */
 	return 0;

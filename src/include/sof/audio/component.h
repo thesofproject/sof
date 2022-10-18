@@ -348,7 +348,7 @@ struct comp_ops {
 	 * Mandatory for components that allocate DAI.
 	 */
 	int (*dai_config)(struct comp_dev *dev, struct ipc_config_dai *dai_config,
-			  void *dai_spec_config);
+			  const void *dai_spec_config);
 
 	/**
 	 * Used to pass standard and bespoke commands (with optional data).
