@@ -653,7 +653,8 @@ static int waves_codec_init(struct processing_module *mod)
 
 		/* copy the setup config */
 		setup_cfg->size = codec->cfg.size;
-		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
+		ret = memcpy_s(setup_cfg->data, setup_cfg->size,
+			       codec->cfg.init_data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "waves_codec_init(): failed to copy setup config %d", ret);
 			module_free_memory(mod, waves_codec);

@@ -540,7 +540,7 @@ static int volume_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
 	struct comp_dev *dev = mod->dev;
-	struct ipc4_peak_volume_module_cfg *vol = cfg->data;
+	const struct ipc4_peak_volume_module_cfg *vol = cfg->init_data;
 	uint32_t target_volume[SOF_IPC_MAX_CHANNELS];
 	struct vol_data *cd;
 	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
@@ -1291,8 +1291,8 @@ static int volume_reset(struct processing_module *mod)
 static const struct comp_driver comp_volume;
 
 static struct comp_dev *volume_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
 	struct processing_module *mod;
 	struct module_config *dst;
@@ -1499,7 +1499,7 @@ static const struct comp_driver comp_volume = {
 	.uid	= SOF_RT_UUID(volume_uuid),
 	.tctx	= &volume_tr,
 	.ops	= {
-		.create	= volume_new,
+		.create		= volume_new,
 		.free		= volume_legacy_free,
 		.cmd		= volume_cmd,
 		.trigger	= volume_trigger,

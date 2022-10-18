@@ -104,7 +104,7 @@ static int mfcc_init(struct processing_module *mod)
 	}
 
 	/* Get configuration data */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
 		comp_err(mod->dev, "mfcc_init(): comp_init_data_blob() failed.");
 		goto err_init;

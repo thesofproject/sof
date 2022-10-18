@@ -56,12 +56,11 @@ static int iadk_modules_init(struct processing_module *mod)
 	uint32_t module_entry_point;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct ipc4_base_module_cfg *src_cfg =
-				(struct ipc4_base_module_cfg *)md->cfg.data;
+	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
 	int ret = 0;
 	byte_array_t mod_cfg;
 
-	mod_cfg.data = md->cfg.data;
+	mod_cfg.data = (uint8_t *)&md->cfg.base_cfg;
 	/* Intel modules expects DW size here */
 	mod_cfg.size = md->cfg.size >> 2;
 	md->private = mod;
@@ -69,7 +68,7 @@ static int iadk_modules_init(struct processing_module *mod)
 	struct comp_ipc_config *config = &(mod->dev->ipc_config);
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	module_entry_point = lib_manager_allocate_module(dev->drv, config, md->cfg.data);
+	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg);
 	if (module_entry_point == 0) {
 		comp_err(dev, "iadk_modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
@@ -82,7 +81,7 @@ static int iadk_modules_init(struct processing_module *mod)
 	uint32_t log_handle = (uint32_t) mod->dev->drv->tctx;
 	/* Connect loadable module interfaces with module adapter entity. */
 	void *mod_adp = system_agent_start(md->module_entry_point, module_id,
-					   instance_id, 0, log_handle, (void *)&mod_cfg);
+					   instance_id, 0, log_handle, &mod_cfg);
 
 	md->module_adapter = mod_adp;
 
@@ -316,8 +315,8 @@ static struct module_interface iadk_interface = {
  *        happens at this point.
  */
 struct comp_dev *iadk_modules_shim_new(const struct comp_driver *drv,
-				       struct comp_ipc_config *config,
-				       void *spec)
+				       const struct comp_ipc_config *config,
+				       const void *spec)
 {
 	return module_adapter_new(drv, config, &iadk_interface, spec);
 }

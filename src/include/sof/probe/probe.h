@@ -32,7 +32,7 @@ void probe_logging_init(probe_logging_hook_t hook);
  *		      In case extraction_probe_dma is NULL, extraction probes
  *		      are unavailable.
  */
-int probe_init(struct probe_dma *extraction_probe_dma);
+int probe_init(const struct probe_dma *extraction_probe_dma);
 
 /*
  * \brief Deinitialize probes subsystem.

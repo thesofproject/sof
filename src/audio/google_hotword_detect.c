@@ -88,8 +88,8 @@ static void notify_kpb(const struct comp_dev *dev)
 }
 
 static struct comp_dev *ghd_create(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;

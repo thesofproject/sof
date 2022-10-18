@@ -139,8 +139,8 @@ struct mixout_data {
 };
 
 static struct comp_dev *mixin_new(const struct comp_driver *drv,
-				  struct comp_ipc_config *config,
-				  void *spec)
+				  const struct comp_ipc_config *config,
+				  const void *spec)
 {
 	struct comp_dev *dev;
 	struct mixin_data *md;
@@ -182,8 +182,8 @@ static struct comp_dev *mixin_new(const struct comp_driver *drv,
 }
 
 static struct comp_dev *mixout_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
 	struct comp_dev *dev;
 	struct mixout_data *md;

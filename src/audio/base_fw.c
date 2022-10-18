@@ -239,14 +239,14 @@ static uint32_t basefw_set_system_time(uint32_t param_id,
 				       bool first_block,
 				       bool last_block,
 				       uint32_t data_offset,
-				       char *data)
+				       const char *data)
 {
 	/* TODO: configurate time to logging subsystem */
 	if (!(first_block && last_block))
 		return IPC4_INVALID_REQUEST;
 
-	global_system_time_info.host_time.val_l = ((struct ipc4_system_time *)data)->val_l;
-	global_system_time_info.host_time.val_u = ((struct ipc4_system_time *)data)->val_u;
+	global_system_time_info.host_time.val_l = ((const struct ipc4_system_time *)data)->val_l;
+	global_system_time_info.host_time.val_u = ((const struct ipc4_system_time *)data)->val_u;
 
 	uint64_t current_dsp_time = sof_cycle_get_64();
 

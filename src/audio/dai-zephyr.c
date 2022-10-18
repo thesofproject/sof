@@ -291,11 +291,11 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 }
 
 static struct comp_dev *dai_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
 	struct comp_dev *dev;
-	struct ipc_config_dai *dai_cfg = spec;
+	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
 	uint32_t dir;
 

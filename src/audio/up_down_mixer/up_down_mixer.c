@@ -408,8 +408,8 @@ static int init_up_down_mixer(struct comp_dev *dev, struct comp_ipc_config *conf
 }
 
 static struct comp_dev *up_down_mixer_new(const struct comp_driver *drv,
-					  struct comp_ipc_config *config,
-					  void *spec)
+					  const struct comp_ipc_config *config,
+					  const void *spec)
 {
 	struct comp_dev *dev;
 	int ret;

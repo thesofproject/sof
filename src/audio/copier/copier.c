@@ -55,7 +55,7 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 static int create_endpoint_buffer(struct comp_dev *parent_dev,
 				  struct copier_data *cd,
 				  struct comp_ipc_config *config,
-				  struct ipc4_copier_module_cfg *copier_cfg,
+				  const struct ipc4_copier_module_cfg *copier_cfg,
 				  enum ipc4_gateway_type type,
 				  int index)
 {
@@ -166,7 +166,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
  */
 static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 		       struct comp_ipc_config *config,
-		       struct ipc4_copier_module_cfg *copier_cfg,
+		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       int dir)
 {
 	struct sof_uuid host = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
@@ -231,7 +231,7 @@ e_buf:
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
-		    struct ipc4_copier_module_cfg *copier,
+		    const struct ipc4_copier_module_cfg *copier,
 		    struct pipeline *pipeline,
 		    struct ipc_config_dai *dai,
 		    enum ipc4_gateway_type type,
@@ -300,7 +300,7 @@ e_buf:
  */
 static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		      struct comp_ipc_config *config,
-		      struct ipc4_copier_module_cfg *copier,
+		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
@@ -429,10 +429,10 @@ static int init_pipeline_reg(struct comp_dev *dev)
 }
 
 static struct comp_dev *copier_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+				   const struct comp_ipc_config *config,
+				   const void *spec)
 {
-	struct ipc4_copier_module_cfg *copier = spec;
+	const struct ipc4_copier_module_cfg *copier = spec;
 	union ipc4_connector_node_id node_id;
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
@@ -484,7 +484,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			if (create_host(dev, cd, config, copier, cd->direction)) {
+			if (create_host(dev, cd, &dev->ipc_config, copier, cd->direction)) {
 				comp_cl_err(&comp_copier, "unenable to create host");
 				goto error_cd;
 			}
@@ -505,7 +505,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-			if (create_dai(dev, cd, config, copier, ipc_pipe->pipeline)) {
+			if (create_dai(dev, cd, &dev->ipc_config, copier, ipc_pipe->pipeline)) {
 				comp_cl_err(&comp_copier, "unenable to create dai");
 				goto error_cd;
 			}

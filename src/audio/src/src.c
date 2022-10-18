@@ -489,9 +489,9 @@ static int src_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 	return 0;
 }
 
-static int src_rate_check(void *spec)
+static int src_rate_check(const void *spec)
 {
-	struct ipc4_config_src *ipc_src = spec;
+	const struct ipc4_config_src *ipc_src = spec;
 
 	if (ipc_src->base.audio_fmt.sampling_frequency == 0 && ipc_src->sink_rate == 0)
 		return -EINVAL;
@@ -546,9 +546,9 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 }
 
 #elif CONFIG_IPC_MAJOR_3
-static int src_rate_check(void *spec)
+static int src_rate_check(const void *spec)
 {
-	struct ipc_config_src *ipc_src = spec;
+	const struct ipc_config_src *ipc_src = spec;
 
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0)
 		return -EINVAL;
@@ -573,8 +573,8 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static struct comp_dev *src_new(const struct comp_driver *drv,
-				struct comp_ipc_config *config,
-				void *spec)
+				const struct comp_ipc_config *config,
+				const void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;

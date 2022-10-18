@@ -304,8 +304,8 @@ struct comp_ops {
 	 * All parameters should be initialized to their default values.
 	 */
 	struct comp_dev *(*create)(const struct comp_driver *drv,
-				   struct comp_ipc_config *ipc_config,
-				   void *ipc_specific_config);
+				   const struct comp_ipc_config *ipc_config,
+				   const void *ipc_specific_config);
 
 	/**
 	 * Called to delete the specified component device.

@@ -20,7 +20,7 @@ LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 /*****************************************************************************/
 static int validate_config(struct module_config *cfg);
 
-int module_load_config(struct comp_dev *dev, void *cfg, size_t size)
+int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
