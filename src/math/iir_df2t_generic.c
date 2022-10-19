@@ -96,7 +96,7 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 			/* Proceed to next biquad coefficients and delay
 			 * lines.
 			 */
-			c += SOF_EQ_IIR_NBIQUAD_DF2T;
+			c += SOF_EQ_IIR_NBIQUAD;
 			d += IIR_DF2T_NUM_DELAYS;
 		}
 		/* Output of previous section is in variable in */

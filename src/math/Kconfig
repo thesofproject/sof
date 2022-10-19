@@ -115,11 +115,18 @@ config MATH_FIR
 	  impulse response.
 
 config MATH_IIR_DF2T
-	bool "IIR filter library"
+	bool "IIR DF2T filter library"
 	default n
 	help
 	  Select this to build IIR (Infinite Impulse Response) filter
 	  or type 2-transposed library.
+
+config MATH_IIR_DF1
+	bool "IIR DF1 filter library"
+	default y
+	help
+	  Select this to build IIR (Infinite Impulse Response) filter
+	  or type Direct-1 library.
 
 config MATH_WINDOW
 	bool "Window functions library"

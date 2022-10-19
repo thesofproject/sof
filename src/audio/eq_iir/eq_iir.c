@@ -21,6 +21,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
@@ -44,12 +45,18 @@ DECLARE_SOF_RT_UUID("eq-iir", eq_iir_uuid, 0x5150c0e6, 0x27f9, 0x4ec8,
 
 DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
 
-/* IIR component private data */
 struct comp_data {
+#if CONFIG_MATH_IIR_DF1
+	/* IIR component Direct-I private data */
+	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	int32_t *iir_delay;			/**< pointer to allocated RAM */
+#else
+	/* IIR component Direct-II transport private data */
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	int64_t *iir_delay;			/**< pointer to allocated RAM */
+#endif
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
-	int64_t *iir_delay;			/**< pointer to allocated RAM */
 	size_t iir_delay_size;			/**< allocated size */
 	eq_iir_func eq_iir_func;		/**< processing function */
 };
@@ -65,7 +72,11 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *filter1;
+#else
 	struct iir_state_df2t *filter;
+#endif
 	int16_t *x0;
 	int16_t *y0;
 	int16_t *x;
@@ -91,9 +102,15 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 		for (i = 0; i < nch; i++) {
 			x0 = x + i;
 			y0 = y + i;
+#if CONFIG_MATH_IIR_DF1
+			filter1 = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1_s16(filter1, *x0);
+#else
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
 				*y0 = iir_df2t_s16(filter, *x0);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
@@ -112,7 +129,11 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *filter1;
+#else
 	struct iir_state_df2t *filter;
+#endif
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -138,9 +159,15 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 		for (i = 0; i < nch; i++) {
 			x0 = x + i;
 			y0 = y + i;
+#if CONFIG_MATH_IIR_DF1
+			filter1 = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1_s24(filter1, *x0);
+#else
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
 				*y0 = iir_df2t_s24(filter, *x0);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
@@ -159,7 +186,11 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *filter1;
+#else
 	struct iir_state_df2t *filter;
+#endif
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -185,9 +216,15 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 		for (i = 0; i < nch; i++) {
 			x0 = x + i;
 			y0 = y + i;
+#if CONFIG_MATH_IIR_DF1
+			filter1 = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1(filter1, *x0);
+#else
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
 				*y0 = iir_df2t(filter, *x0);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
@@ -205,7 +242,11 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 				  struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *filter1;
+#else
 	struct iir_state_df2t *filter;
+#endif
 	int32_t *x0;
 	int16_t *y0;
 	int32_t *x;
@@ -231,9 +272,15 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 		for (i = 0; i < nch; i++) {
 			x0 = x + i;
 			y0 = y + i;
+#if CONFIG_MATH_IIR_DF1
+			filter1 = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1_s32_s16(filter1, *x0);
+#else
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
 				*y0 = iir_df2t_s32_s16(filter, *x0);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
@@ -251,7 +298,11 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 				  struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *filter1;
+#else
 	struct iir_state_df2t *filter;
+#endif
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -277,9 +328,15 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 		for (i = 0; i < nch; i++) {
 			x0 = x + i;
 			y0 = y + i;
+#if CONFIG_MATH_IIR_DF1
+			filter1 = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1_s32_s24(filter1, *x0);
+#else
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
 				*y0 = iir_df2t_s32_s24(filter, *x0);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
@@ -431,7 +488,11 @@ static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
 
 static void eq_iir_free_delaylines(struct comp_data *cd)
 {
+#if CONFIG_MATH_IIR_DF1
+	struct iir_state_df1 *iir = cd->iir;
+#else
 	struct iir_state_df2t *iir = cd->iir;
+#endif
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
@@ -445,10 +506,15 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 }
 
 static int eq_iir_init_coef(struct sof_eq_iir_config *config,
+#if CONFIG_MATH_IIR_DF1
+			    struct iir_state_df1 *iir, int nch)
+#else
 			    struct iir_state_df2t *iir, int nch)
+#endif
 {
-	struct sof_eq_iir_header_df2t *lookup[SOF_EQ_IIR_MAX_RESPONSES];
-	struct sof_eq_iir_header_df2t *eq;
+	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
+	struct sof_eq_iir_header *eq;
+
 	int32_t *assign_response;
 	int32_t *coef_data;
 	int size_sum = 0;
@@ -480,10 +546,10 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 				   4);
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			eq = (struct sof_eq_iir_header_df2t *)&coef_data[j];
+			eq = (struct sof_eq_iir_header *)&coef_data[j];
 			lookup[i] = eq;
-			j += SOF_EQ_IIR_NHEADER_DF2T
-				+ SOF_EQ_IIR_NBIQUAD_DF2T * eq->num_sections;
+			j += SOF_EQ_IIR_NHEADER
+				+ SOF_EQ_IIR_NBIQUAD * eq->num_sections;
 		} else {
 			lookup[i] = NULL;
 		}
@@ -506,7 +572,11 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			 */
 			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
 				     i);
+#if CONFIG_MATH_IIR_DF1
+			iir_reset_df1(&iir[i]);
+#else
 			iir_reset_df2t(&iir[i]);
+#endif
 			continue;
 		}
 
@@ -518,7 +588,11 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 
 		/* Initialize EQ coefficients */
 		eq = lookup[resp];
+#if CONFIG_MATH_IIR_DF1
+		s = iir_delay_size_df1(eq);
+#else
 		s = iir_delay_size_df2t(eq);
+#endif
 		if (s > 0) {
 			size_sum += s;
 		} else {
@@ -527,7 +601,11 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			return -EINVAL;
 		}
 
+#if CONFIG_MATH_IIR_DF1
+		iir_init_coef_df1(&iir[i], eq);
+#else
 		iir_init_coef_df2t(&iir[i], eq);
+#endif
 		comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to response %d",
 			     i, resp);
 	}
@@ -535,6 +613,22 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 	return size_sum;
 }
 
+#if CONFIG_MATH_IIR_DF1
+static void eq_iir_init_delay(struct iir_state_df1 *iir,
+			      int32_t *delay_start, int nch)
+{
+	int32_t *delay = delay_start;
+	int i;
+
+	/* Initialize second phase to set EQ delay lines pointers. A
+	 * bypass mode filter is indicated by biquads count of zero.
+	 */
+	for (i = 0; i < nch; i++) {
+		if (iir[i].biquads > 0)
+			iir_init_delay_df1(&iir[i], &delay);
+	}
+}
+#else
 static void eq_iir_init_delay(struct iir_state_df2t *iir,
 			      int64_t *delay_start, int nch)
 {
@@ -549,6 +643,7 @@ static void eq_iir_init_delay(struct iir_state_df2t *iir,
 			iir_init_delay_df2t(&iir[i], &delay);
 	}
 }
+#endif
 
 static int eq_iir_setup(struct comp_data *cd, int nch)
 {
@@ -642,8 +737,11 @@ static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+#if CONFIG_MATH_IIR_DF1
+		iir_reset_df1(&cd->iir[i]);
+#else
 		iir_reset_df2t(&cd->iir[i]);
-
+#endif
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -960,7 +1058,11 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 	cd->eq_iir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+#if CONFIG_MATH_IIR_DF1
+		iir_reset_df1(&cd->iir[i]);
+#else
 		iir_reset_df2t(&cd->iir[i]);
+#endif
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
