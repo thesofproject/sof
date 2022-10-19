@@ -1090,18 +1090,19 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	switch (target) {
 	case SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG:
 		err = ipc4_process_glb_message(in);
+		if (err)
+			tr_err(&ipc_tr, "ipc4: FW_GEN_MSG failed with err %d", err);
 		break;
 	case SOF_IPC4_MESSAGE_TARGET_MODULE_MSG:
 		err = ipc4_process_module_message(in);
+		if (err)
+			tr_err(&ipc_tr, "ipc4: MODULE_MSG failed with err %d", err);
 		break;
 	default:
 		/* should not reach here as we only have 2 message types */
 		tr_err(&ipc_tr, "ipc4: invalid target %d", target);
 		err = IPC4_UNKNOWN_MESSAGE_TYPE;
 	}
-
-	if (err)
-		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
 
 	/* FW sends an ipc message to host if request bit is clear */
 	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
