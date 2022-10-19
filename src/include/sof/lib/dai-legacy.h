@@ -156,6 +156,14 @@ struct dai_plat_data {
 };
 
 /**
+ * \brief llp slot info for memory window
+ */
+struct llp_slot_info {
+	uint32_t node_id;
+	uint32_t reg_offset;
+};
+
+/**
  * \brief DAI runtime data
  */
 struct dai_data {
@@ -190,6 +198,9 @@ struct dai_data {
 	 * the SOF_DAI_CONFIG_FLAGS_PAUSE flag.
 	 */
 	bool delayed_dma_stop;
+
+	/* llp slot info in memory windows */
+	struct llp_slot_info slot_info;
 };
 
 struct dai {
