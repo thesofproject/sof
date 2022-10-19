@@ -27,7 +27,7 @@
 #define DAI_NUM_HDA_OUT		9
 
 /** \brief Number of HD/A Link Inputs */
-#define DAI_NUM_HDA_IN		7
+#define DAI_NUM_HDA_IN		10
 
 /* ALH */
 
