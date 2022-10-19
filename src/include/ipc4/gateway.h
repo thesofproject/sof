@@ -86,6 +86,9 @@ enum ipc4_connector_node_id_type {
 /**< Invalid raw node id (to indicate uninitialized node id). */
 #define IPC4_INVALID_NODE_ID	0xffffffff
 
+/**< all bits of v_index and dma_type */
+#define IPC4_NODE_ID_MASK	0x1fff
+
 /**< Base top-level structure of an address of a gateway. */
 /*!
  * The virtual index value, presented on the top level as raw 8 bits,
@@ -186,6 +189,8 @@ struct ipc4_gateway_config_blob {
 	 */
 	uint32_t threshold_low;
 } __attribute__((packed, aligned(4)));
+
+#define ALH_MULTI_GTW_BASE	0x50
 
 enum ipc4_gateway_type {
 	ipc4_gtw_none	= BIT(0),

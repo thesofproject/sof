@@ -240,6 +240,81 @@ void dai_dma_release(struct comp_dev *dev)
 	}
 }
 
+static int dai_get_unused_llp_slot(struct comp_dev *dev,
+				   union ipc4_connector_node_id *node)
+{
+	struct ipc4_llp_reading_slot slot;
+	k_spinlock_key_t key;
+	uint32_t max_slot;
+	uint32_t offset;
+	int i;
+
+	/* sdw with multiple gateways uses sndw_reading_slots */
+	if (node->f.dma_type == ipc4_alh_link_output_class &&
+	    node->f.v_index >= ALH_MULTI_GTW_BASE) {
+		offset = SRAM_REG_LLP_SNDW_READING_SLOTS;
+		max_slot = IPC4_MAX_LLP_SNDW_READING_SLOTS - 1;
+	} else {
+		offset = SRAM_REG_LLP_GPDMA_READING_SLOTS;
+		max_slot = IPC4_MAX_LLP_GPDMA_READING_SLOTS;
+	}
+
+	key = k_spin_lock(&sof_get()->fw_reg_lock);
+
+	/* find unused llp slot offset with node_id of zero */
+	for (i = 0; i < max_slot; i++, offset += sizeof(slot)) {
+		uint32_t node_id;
+
+		node_id = mailbox_sw_reg_read(offset);
+		if (!node_id)
+			break;
+	}
+
+	if (i >= max_slot) {
+		comp_err(dev, "can't find free slot");
+		k_spin_unlock(&sof_get()->fw_reg_lock, key);
+		return -EINVAL;
+	}
+
+	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+	slot.node_id = node->dw & IPC4_NODE_ID_MASK;
+	mailbox_sw_regs_write(offset, &slot, sizeof(slot));
+
+	k_spin_unlock(&sof_get()->fw_reg_lock, key);
+
+	return offset;
+}
+
+static int dai_init_llp_info(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct ipc4_copier_module_cfg *copier_cfg;
+	union ipc4_connector_node_id node;
+	int ret;
+
+	copier_cfg = dd->dai_spec_config;
+	node = copier_cfg->gtw_cfg.node_id;
+
+	/* HDA doesn't use llp slot */
+	if (dd->ipc_config.type == SOF_DAI_INTEL_HDA)
+		return 0;
+
+	/* don't support more gateway like EVAD */
+	if (node.f.dma_type >= ipc4_max_connector_node_id_type) {
+		comp_err(dev, "unsupported gateway %d", (int)node.f.dma_type);
+		return -EINVAL;
+	}
+
+	ret = dai_get_unused_llp_slot(dev, &node);
+	if (ret < 0)
+		return ret;
+
+	dd->slot_info.node_id = node.dw & IPC4_NODE_ID_MASK;
+	dd->slot_info.reg_offset = ret;
+
+	return 0;
+}
+
 static void dai_dma_position_init(struct comp_dev *dev)
 {
 	struct ipc4_llp_reading_slot slot;
