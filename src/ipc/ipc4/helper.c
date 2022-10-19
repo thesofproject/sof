@@ -357,7 +357,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *src, *sink;
 	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
-	uint32_t flags;
 	int ret;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
@@ -392,10 +391,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!buffer)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	irq_local_disable(flags);
-	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_COMP_TO_BUFFER));
-	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_BUFFER_TO_COMP));
-	irq_local_enable(flags);
+	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
+	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 
 	buffer_free(buffer);
 
