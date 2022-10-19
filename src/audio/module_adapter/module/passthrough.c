@@ -107,7 +107,7 @@ static int passthrough_codec_reset(struct processing_module *mod)
 
 static int passthrough_codec_free(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_free()");
+	comp_info(mod->dev, "passthrough_codec_free()");
 
 	/* Nothing to do */
 	return 0;
