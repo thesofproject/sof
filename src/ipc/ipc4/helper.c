@@ -324,8 +324,8 @@ err:
 	return IPC4_INVALID_RESOURCE_STATE;
 }
 
-/* when both module instances are parts of the same pipeline Unbind IPC would
- * be ignored by FW since FW does not support changing internal topology of pipeline
+/* when both module instances are part of the same pipeline Unbind IPC would
+ * be ignored since FW does not support changing internal topology of pipeline
  * during run-time. The only way to change pipeline topology is to delete the whole
  * pipeline and create it in modified form.
  */
@@ -389,10 +389,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	return IPC4_SUCCESS;
 }
 
-/* dma index may be for playback or capture. Current
- * hw supports PLATFORM_MAX_DMA_CHAN of playback
- * and the index more than this will be capture. This function
- * convert dma id to dma channel
+/* dma index may be for playback or capture. Current hw supports PLATFORM_MAX_DMA_CHAN playback
+ * channels and the rest are for capture. This function converts DMA ID to DMA channel.
  */
 static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *chan)
 {
@@ -494,7 +492,7 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 
 /* host does not send any params to FW since it expects simple copy
  * but sof needs hw params to feed pass-through pipeline. This
- * function rebuild the hw params based on fifo_size since only 48K
+ * function rebuilds the hw params based on fifo_size since only 48K
  * and 44.1K sample rate and 16 & 24bit are supported by chain dma.
  */
 static int construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t fifo_size,

@@ -745,7 +745,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		struct ipc4_pipeline_registers pipe_reg;
 
 		if (list_is_empty(&dai_copier->bsource_list)) {
-			comp_err(dev, "No source buffer binded to dai_copier");
+			comp_err(dev, "No source buffer bound to dai_copier");
 			return -EINVAL;
 		}
 
@@ -768,7 +768,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		pipe_reg.stream_start_offset += posn.dai_posn - pipe_reg.stream_end_offset;
 
 		if (list_is_empty(&dai_copier->bsource_list)) {
-			comp_err(dev, "No source buffer binded to dai_copier");
+			comp_err(dev, "No source buffer bound to dai_copier");
 			return -EINVAL;
 		}
 
@@ -854,7 +854,7 @@ static int copier_copy(struct comp_dev *dev)
 	} else {
 		/* component as input */
 		if (list_is_empty(&dev->bsource_list)) {
-			comp_err(dev, "No source buffer binded");
+			comp_err(dev, "No source buffer bound");
 			return -EINVAL;
 		}
 

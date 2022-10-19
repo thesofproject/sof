@@ -185,9 +185,9 @@ static bool is_any_ppl_active(void)
  * RUNNING     <-------> TRIGGER START
  * INIT + PAUSED  <-------> PIPELINE COMPLETE
  * INIT + RESET <-------> PIPELINE COMPLETE
- * PAUSED      <-------> TRIGER_PAUSE
- * RESET       <-------> TRIGER_STOP + RESET
- * EOS(end of stream) <-------> NOT SUPPORT NOW
+ * PAUSED      <-------> TRIGGER_PAUSE
+ * RESET       <-------> TRIGGER_STOP + RESET
+ * EOS(end of stream) <-------> NOT SUPPORTED YET
  *
  *   IPC4 pipeline state machine
  *
