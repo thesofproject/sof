@@ -29,6 +29,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 					  void *spec_config)
 {
 	dai_info(dai, "ACP: acp_dmic_set_config");
+	acp_wov_pdm_no_of_channels_t pdm_channels;
 	struct sof_ipc_dai_config *config = spec_config;
 	struct acp_pdata *acpdata = dai_get_drvdata(dai);
 	acp_wov_clk_ctrl_t clk_ctrl;
@@ -37,6 +38,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 	acpdata->dmic_params = config->acpdmic;
 	clk_ctrl = (acp_wov_clk_ctrl_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
 	clk_ctrl.u32all = 0;
+	pdm_channels.u32all = io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_NO_OF_CHANNELS);
 	switch (acpdata->dmic_params.pdm_rate) {
 	case 48000:
 		/* DMIC Clock for 48K sample rate */
@@ -47,10 +49,23 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 		clk_ctrl.bits.brm_clk_ctrl = 1;
 		break;
 	default:
-		dai_info(dai, "ACP:acp_dmic_set_config unsupported samplerate");
+		dai_err(dai, "ACP:acp_dmic_set_config unsupported samplerate");
 		return -EINVAL;
 	}
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL, clk_ctrl.u32all);
+	switch (acpdata->dmic_params.pdm_ch) {
+	case 2:
+		pdm_channels.bits.pdm_no_of_channels = 0;
+		break;
+	case 4:
+		pdm_channels.bits.pdm_no_of_channels = 1;
+		break;
+	default:
+		dai_err(dai, "ACP:acp_dmic_set_config unsupported channels");
+		return -EINVAL;
+	}
+	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_NO_OF_CHANNELS,
+		     pdm_channels.u32all);
 	return 0;
 }
 
@@ -121,10 +136,18 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 		params->rate = acpdata->dmic_params.pdm_rate;
 		break;
 	default:
-		dai_info(dai, "ACP:unsupported samplerate %d", acpdata->dmic_params.pdm_rate);
-		params->rate = ACP_DEFAULT_SAMPLE_RATE;
+		dai_err(dai, "ACP:unsupported samplerate %d", acpdata->dmic_params.pdm_rate);
+		return -EINVAL;
 	}
-	params->channels = ACP_DEFAULT_NUM_CHANNELS;
+	switch (acpdata->dmic_params.pdm_ch) {
+	case 2:
+	case 4:
+		params->channels = acpdata->dmic_params.pdm_ch;
+		break;
+	default:
+		dai_err(dai, "ACP:unsupported channels %d", acpdata->dmic_params.pdm_ch);
+		return -EINVAL;
+	}
 	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 	return 0;
