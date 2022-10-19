@@ -1,8 +1,8 @@
 function y = stdlpf(x, fu, fs)
 
-%% y = stdhpf(x, fu, fs)
+%% y = stdlpf(x, fu, fs)
 %
-% Standard high-pass filter
+% Standard low-pass filter
 %
 % Input
 % x - input signal
