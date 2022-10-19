@@ -534,10 +534,14 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 
 	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
 		ret = ipc4_create_chain_dma(ipc, &cdma);
-		if (ret)
+		if (ret) {
 			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
+			return ret;
+		}
 
-		return ret;
+		/* if enable is not set, chain dma pipeline is not going to be triggered */
+		if (!cdma.primary.r.enable)
+			return ret;
 	}
 
 	atomic_set(&msg_data.delayed_reply, 1);
