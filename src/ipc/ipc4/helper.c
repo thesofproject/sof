@@ -182,18 +182,39 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
 	while (icd) {
-		struct comp_buffer *sink;
-		struct list_item *sink_list;
-		struct list_item *tmp_list;
+		struct list_item *list, *_list;
+		struct comp_buffer *buffer;
 
 		/* free sink buffer allocated by current component in bind function */
-		list_for_item_safe(sink_list, tmp_list, &icd->cd->bsink_list) {
-			sink = container_of(sink_list, struct comp_buffer, source_list);
+		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
+			struct comp_buffer __sparse_cache *buffer_c;
+			struct comp_dev *sink;
 
-			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_COMP_TO_BUFFER);
-			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_BUFFER_TO_COMP);
+			buffer = container_of(list, struct comp_buffer, source_list);
+			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
+			buffer_c = buffer_acquire(buffer);
+			sink = buffer_c->sink;
+			buffer_release(buffer_c);
 
-			buffer_free(sink);
+			/* free the buffer only when the sink module has also been disconnected */
+			if (!sink)
+				buffer_free(buffer);
+		}
+
+		/* free source buffer allocated by current component in bind function */
+		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
+			struct comp_buffer __sparse_cache *buffer_c;
+			struct comp_dev *source;
+
+			buffer = container_of(list, struct comp_buffer, sink_list);
+			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+			buffer_c = buffer_acquire(buffer);
+			source = buffer_c->source;
+			buffer_release(buffer_c);
+
+			/* free the buffer only when the source module has also been disconnected */
+			if (!source)
+				buffer_free(buffer);
 		}
 
 		ret = ipc_comp_free(ipc, icd->id);
