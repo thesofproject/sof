@@ -292,6 +292,7 @@ set(TPLGS
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019-dts\;-DDTS=`DTS'"
 	"sof-rn-rt5682-max98360\;sof-rn-rt5682-max98360"
 	"sof-acp-rmb\;sof-acp-rmb"
+	"sof-acp-rmb-dmic4ch\;sof-acp-rmb-dmic4ch"
 	"sof-acp-rmb\;sof-rmb-rt5682s-rt1019"
 	"sof-acp-rmb\;sof-rmb-nau8825-max9860"
 )
