@@ -31,7 +31,6 @@ import errno
 import platform as py_platform
 import sys
 import shutil
-import multiprocessing
 import os
 import warnings
 # anytree module is defined in Zephyr build requirements
@@ -202,9 +201,8 @@ Noted that with fw_naming set as 'AVS', there will be output subdirectories for 
     └── cnl"""
 	)
 	parser.add_argument("-j", "--jobs", required=False, type=int,
-						default=multiprocessing.cpu_count(),
-						help="Set number of make build jobs for rimage."
-						" Jobs=number of cores by default. Ignored by west build.")
+						help="Number of concurrent jobs. Passed to west build and"
+						" to cmake (for rimage)")
 	parser.add_argument("-k", "--key", type=pathlib.Path, required=False,
 						help="Path to a non-default rimage signing key.")
 	parser.add_argument("-o", "--overlay", type=pathlib.Path, required=False, action='append',
@@ -514,6 +512,9 @@ def build_platforms():
 		if args.pristine:
 			build_cmd += ["-p", "always"]
 
+		if args.jobs is not None:
+			build_cmd += [f"--build-opt=-j{args.jobs}"]
+
 		build_cmd.append('--')
 		if args.cmake_args:
 			build_cmd += args.cmake_args
@@ -559,8 +560,12 @@ def build_platforms():
 		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)],
 			cwd=west_top)
 		# CMake build rimage module
-		execute_command(["cmake", "--build", rimage_dir_name, "-j", str(args.jobs)],
-			cwd=west_top)
+		rimage_build_cmd = ["cmake", "--build", rimage_dir_name]
+		if args.jobs is not None:
+			rimage_build_cmd.append(f"-j{args.jobs}")
+		if args.verbose > 1:
+			rimage_build_cmd.append("-v")
+		execute_command(rimage_build_cmd, cwd=west_top)
 
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
