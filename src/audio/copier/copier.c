@@ -130,7 +130,8 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
 
-	comp_err(parent_dev, "requesting new buf of size %#x\n", buf_size);
+	comp_err(parent_dev, "requesting new buf of size %#x ibs %#x obs %#x\n", buf_size,
+		 copier_cfg->base.ibs, copier_cfg->base.obs);
 	buffer = buffer_new(&ipc_buf);
 	if (!buffer)
 		return -ENOMEM;
@@ -464,6 +465,9 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	size = sizeof(*copier);
 	mailbox_hostbox_read(&cd->config, size, 0, size);
+
+	/* use the copied data from the copier data from here on */
+	copier = &cd->config;
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
