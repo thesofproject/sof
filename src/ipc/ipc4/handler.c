@@ -296,10 +296,16 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			}
 		}
 
-		/* resource is not released by triggering reset which is used by current FW */
-		ret = pipeline_reset(host->cd->pipeline, host->cd);
-		if (ret < 0)
-			ret = IPC4_INVALID_REQUEST;
+		/*
+		 * reset the pipeline components if STOP trigger is executed in the same thread.
+		 * Otherwise, the pipeline will be reset after the STOP trigger has finished
+		 * executing in the pipeline task.
+		 */
+		if (!*delayed) {
+			ret = pipeline_reset(host->cd->pipeline, host->cd);
+			if (ret < 0)
+				ret = IPC4_INVALID_REQUEST;
+		}
 
 		return ret;
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
