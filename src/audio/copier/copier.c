@@ -130,6 +130,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
 
+	comp_err(parent_dev, "requesting new buf of size %#x\n", buf_size);
 	buffer = buffer_new(&ipc_buf);
 	if (!buffer)
 		return -ENOMEM;
@@ -446,6 +447,9 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
+
+	comp_err(dev, "copier ibs %#x obs %#x\n",
+		 copier->base.ibs, copier->base.obs);
 
 	dev->ipc_config = *config;
 
