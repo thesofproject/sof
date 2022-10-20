@@ -19,6 +19,7 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/module.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -43,9 +44,10 @@ static void pipeline_schedule_cancel(struct pipeline *p)
 static enum task_state pipeline_task_cmd(struct pipeline *p,
 					 struct sof_ipc_reply *reply)
 {
+	struct comp_dev *host = p->trigger.host;
 	int err, cmd = p->trigger.cmd;
 
-	if (!p->trigger.host) {
+	if (!host) {
 		int ret;
 
 		p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
@@ -84,7 +86,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		return ret;
 	}
 
-	err = pipeline_trigger_run(p, p->trigger.host, cmd);
+	err = pipeline_trigger_run(p, host, cmd);
 	if (err < 0) {
 		pipe_err(p, "pipeline_task_cmd(): failed to trigger components: %d", err);
 		reply->error = err;
@@ -123,6 +125,12 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			/* No delay: the final stage has already run too */
 			err = SOF_TASK_STATE_RESCHEDULE;
 		} else if (p->status == COMP_STATE_PAUSED) {
+			/* reset the pipeline components for IPC4 after the STOP trigger */
+			if (cmd == COMP_TRIGGER_STOP && IPC4_MOD_ID(host->ipc_config.id)) {
+				err = pipeline_reset(host->pipeline, host);
+				if (err < 0)
+					reply->error = err;
+			}
 			err = SOF_TASK_STATE_COMPLETED;
 		} else {
 			p->status = COMP_STATE_ACTIVE;
