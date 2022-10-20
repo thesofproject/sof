@@ -246,8 +246,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
 	const int fir_length = fir->fir_delay_size;
-	const int rewind = nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch;
+	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
@@ -347,8 +346,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
 	const int fir_length = fir->fir_delay_size;
-	const int rewind = nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch;
+	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
