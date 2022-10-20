@@ -129,7 +129,6 @@ typedef int32_t (*vol_ramp_func)(struct processing_module *mod, int32_t ramp_tim
 
 struct vol_data {
 #if CONFIG_IPC_MAJOR_4
-	struct ipc4_base_module_cfg base;	/**< module config */
 	uint32_t mailbox_offset;		/**< store peak volume in mailbox */
 
 	/**< these values will be stored to mailbox for host (IPC4) */
@@ -209,16 +208,15 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 							 struct comp_buffer __sparse_cache *sinkb)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct vol_data *cd = module_get_private_data(mod);
 
-	switch (cd->base.audio_fmt.depth) {
+	switch (mod->priv.cfg.base_cfg.audio_fmt.depth) {
 	case IPC4_DEPTH_16BIT:
 		return volume_func_map[0].func;
 	case IPC4_DEPTH_32BIT:
 		return volume_func_map[2].func;
 	default:
 		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
-			 cd->base.audio_fmt.depth);
+			 mod->priv.cfg.base_cfg.audio_fmt.depth);
 		return NULL;
 	}
 }

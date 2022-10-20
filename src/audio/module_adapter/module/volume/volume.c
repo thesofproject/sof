@@ -566,9 +566,7 @@ static int volume_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	mailbox_hostbox_read(&cd->base, sizeof(cd->base), 0, sizeof(cd->base));
-
-	channels_count = cd->base.audio_fmt.channels_count;
+	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 
 	for (channel = 0; channel < channels_count ; channel++) {
 		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
@@ -947,7 +945,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	switch (config_id) {
 	case IPC4_VOLUME:
 		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
-			for (i = 0; i < cd->base.audio_fmt.channels_count; i++) {
+			for (i = 0; i < mod->priv.cfg.base_cfg.audio_fmt.channels_count; i++) {
 				set_volume_ipc4(cd, i, cdata->target_volume,
 						cdata->curve_type,
 						cdata->curve_duration);
@@ -1012,7 +1010,6 @@ static int volume_get_config(struct processing_module *mod,
 
 static int volume_params(struct processing_module *mod)
 {
-	struct vol_data *cd = module_get_private_data(mod);
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct sof_ipc_stream_params vol_params;
 	struct comp_dev *dev = mod->dev;
@@ -1024,19 +1021,19 @@ static int volume_params(struct processing_module *mod)
 	comp_dbg(dev, "volume_params()");
 
 	vol_params = *params;
-	vol_params.channels = cd->base.audio_fmt.channels_count;
-	vol_params.rate = cd->base.audio_fmt.sampling_frequency;
-	vol_params.buffer_fmt = cd->base.audio_fmt.interleaving_style;
+	vol_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	vol_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+	vol_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
 
-	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
-				    cd->base.audio_fmt.valid_bit_depth,
+	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
+				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
-				    cd->base.audio_fmt.s_type);
+				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	vol_params.frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		vol_params.chmap[i] = (cd->base.audio_fmt.ch_map >> i * 4) & 0xf;
+		vol_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
 
 	component_set_nearest_period_frames(dev, vol_params.rate);
 
