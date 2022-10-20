@@ -107,6 +107,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 
 		dst->data = ipc_module_adapter->data;
 		dst->size = ipc_module_adapter->size;
+
+		memcpy(&dst->base_cfg, ipc_module_adapter->data, sizeof(dst->base_cfg));
 	} else {
 		dst->data = spec;
 	}
@@ -977,8 +979,8 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
-		memcpy_s(value, sizeof(struct ipc4_base_module_cfg), mod->priv.private,
-			 sizeof(struct ipc4_base_module_cfg));
+		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
+			 &mod->priv.cfg.base_cfg, sizeof(mod->priv.cfg.base_cfg));
 		break;
 	default:
 		return -EINVAL;

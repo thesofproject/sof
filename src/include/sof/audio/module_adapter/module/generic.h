@@ -108,6 +108,9 @@ struct module_config {
 	size_t size; /**< Specifies the size of whole config */
 	bool avail; /**< Marks config as available to use.*/
 	void *data; /**< tlv config, a pointer to memory where config is stored. */
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_base_module_cfg base_cfg;
+#endif
 };
 
 /**
