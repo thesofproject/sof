@@ -572,26 +572,26 @@ UT_STATIC void sys_comp_selector_init(void)
 
 DECLARE_MODULE(sys_comp_selector_init);
 #else
-static void build_config(struct comp_data *cd)
+static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
 	enum sof_ipc_frame valid_format;
 	int i;
 
-	cd->source_format = cd->md.base_cfg.audio_fmt.depth;
-	audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
-				    cd->md.base_cfg.audio_fmt.valid_bit_depth,
+	cd->source_format = cfg->base_cfg.audio_fmt.depth;
+	audio_stream_fmt_conversion(cfg->base_cfg.audio_fmt.depth,
+				    cfg->base_cfg.audio_fmt.valid_bit_depth,
 				    &cd->source_format,
 				    &valid_format,
-				    cd->md.base_cfg.audio_fmt.s_type);
+				    cfg->base_cfg.audio_fmt.s_type);
 
-	audio_stream_fmt_conversion(cd->md.output_format.depth,
-				    cd->md.output_format.valid_bit_depth,
+	audio_stream_fmt_conversion(cd->output_format.depth,
+				    cd->output_format.valid_bit_depth,
 				    &cd->sink_format,
 				    &valid_format,
-				    cd->md.output_format.s_type);
+				    cd->output_format.s_type);
 
-	cd->config.in_channels_count = cd->md.base_cfg.audio_fmt.channels_count;
-	cd->config.out_channels_count = cd->md.output_format.channels_count;
+	cd->config.in_channels_count = cfg->base_cfg.audio_fmt.channels_count;
+	cd->config.out_channels_count = cd->output_format.channels_count;
 
 	/* Build default coefficient array (unity Q10 on diagonal, i.e. pass-through mode) */
 	memset(&cd->coeffs_config, 0, sizeof(cd->coeffs_config));
@@ -603,6 +603,7 @@ static int selector_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
+	const struct ipc4_base_module_cfg *base_cfg = cfg->data;
 	struct comp_data *cd;
 	int ret;
 
@@ -614,10 +615,11 @@ static int selector_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	ret = memcpy_s(&cd->md, sizeof(cd->md), cfg->data, sizeof(cd->md));
+	ret = memcpy_s(&cd->output_format, sizeof(cd->output_format),
+		       base_cfg + 1, sizeof(struct ipc4_audio_format));
 	assert(!ret);
 
-	build_config(cd);
+	build_config(cd, cfg);
 
 	return 0;
 }
@@ -638,10 +640,10 @@ static void set_selector_params(struct processing_module *mod,
 	else
 		params->channels = cd->config.out_channels_count;
 
-	params->rate = cd->md.base_cfg.audio_fmt.sampling_frequency;
+	params->rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
 	params->frame_fmt = cd->source_format;
 
-	out_fmt = &cd->md.output_format;
+	out_fmt = &cd->output_format;
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
 
@@ -679,7 +681,7 @@ static void set_selector_params(struct processing_module *mod,
 	if (!source->hw_params_configured) {
 		struct ipc4_audio_format *in_fmt;
 
-		in_fmt = &cd->md.base_cfg.audio_fmt;
+		in_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 		source->stream.channels = in_fmt->channels_count;
 		source->stream.rate = in_fmt->sampling_frequency;
 		audio_stream_fmt_conversion(in_fmt->depth,
