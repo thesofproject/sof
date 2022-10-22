@@ -135,14 +135,16 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
-	assert(!ret);
+	if (ret < 0) {
+		pipe_err(p, "pipeline_new(): failed to copy trace settings");
+		goto free;
+	}
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_new(): pipeline_posn_offset_get failed %d",
 			 ret);
-		rfree(p);
-		return NULL;
+		goto free;
 	}
 
 	/* just for retrieving valid ipc_msg header */
@@ -152,12 +154,14 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 		p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
 		if (!p->msg) {
 			pipe_err(p, "pipeline_new(): ipc_msg_init failed");
-			rfree(p);
-			return NULL;
+			goto free;
 		}
 	}
 
 	return p;
+free:
+	rfree(p);
+	return NULL;
 }
 
 static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
