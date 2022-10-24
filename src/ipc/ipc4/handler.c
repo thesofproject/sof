@@ -209,7 +209,7 @@ static bool is_any_ppl_active(void)
  *     ERROR Stop       EOS       |______\ SAVE
  *                                      /
  */
-static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t *ppl_status)
+static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct ipc_comp_dev *host = NULL;
@@ -227,7 +227,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 	}
 
 	status = pcm_dev->pipeline->status;
-	*ppl_status = status;
 	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
 	if (status != COMP_STATE_INIT) {
 		int host_id;
@@ -277,7 +276,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
-			*ppl_status = COMP_STATE_READY;
 			return ret;
 		case COMP_STATE_READY:
 			/* initialized -> pause -> reset */
@@ -313,7 +311,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
-			*ppl_status = COMP_STATE_READY;
 			return ret;
 		case COMP_STATE_READY:
 		case COMP_STATE_PAUSED:
@@ -344,7 +341,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed, uint32_t
 		ret = 0;
 	}
 
-	*ppl_status = host->cd->pipeline->status;
 	return ret;
 }
 
@@ -405,75 +401,10 @@ static int ipc_wait_for_compound_msg(void)
 	return IPC4_SUCCESS;
 }
 
-/* In ipc3 path, host driver sends pcm_hw_param message to fw and
- * direction is included. The direction is set to each component
- * after pipeline is complete. In ipc4 path, direction is figured out and
- * set it to each component after connected pipeline are complete.
- */
-static int update_dir_to_pipeline_component(const uint32_t *ppl_id, uint32_t count)
-{
-	struct ipc_comp_dev *icd;
-	struct ipc_comp_dev *pipe;
-	struct comp_dev *dir_src = NULL;
-	struct list_item *clist;
-	struct ipc *ipc;
-	uint32_t i;
-
-	ipc = ipc_get();
-
-	for (i = 0; i < count; i++) {
-		pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
-		if (!pipe) {
-			tr_info(&ipc_tr, "ppl_id %u: no pipeline is found", ppl_id[i]);
-			continue;
-		}
-
-		if (pipe->pipeline->source_comp->direction_set) {
-			dir_src = pipe->pipeline->source_comp;
-			break;
-		} else if (pipe->pipeline->sink_comp->direction_set) {
-			dir_src = pipe->pipeline->sink_comp;
-			break;
-		}
-	}
-	if (!dir_src) {
-		tr_err(&ipc_tr, "no direction source in pipeline");
-		return IPC4_INVALID_RESOURCE_STATE;
-	}
-
-	/* set direction to the component in the pipeline array */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type != COMP_TYPE_COMPONENT)
-			continue;
-
-		for (i = 0; i < count; i++) {
-			if (ipc_comp_pipe_id(icd) == ppl_id[i]) {
-				struct comp_dev *dev = icd->cd;
-
-				/* don't update direction for host & dai since they
-				 * have direction. Especially in dai copier to dai copier
-				 * case the direction can't be modified to single value
-				 * since one of them is for playback and the other one
-				 * is for capture
-				 */
-				if (dev->direction_set)
-					break;
-
-				icd->cd->direction = dir_src->direction;
-				break;
-			}
-		}
-	}
-
-	return 0;
-}
-
 static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
-	uint32_t status = COMP_STATE_INIT;
 	uint32_t cmd, ppl_count, id;
 	const uint32_t *ppl_id;
 	int ret = 0;
@@ -501,16 +432,12 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 		bool delayed = false;
 
 		ipc_compound_pre_start(state.primary.r.type);
-		ret = set_pipeline_state(ppl_id[i], cmd, &delayed, &status);
+		ret = set_pipeline_state(ppl_id[i], cmd, &delayed);
 		ipc_compound_post_start(state.primary.r.type, ret, delayed);
 
 		if (ret != 0)
 			return ret;
 	}
-
-	/* update direction after all connected pipelines are complete */
-	if (status == COMP_STATE_READY)
-		ret = update_dir_to_pipeline_component(ppl_id, ppl_count);
 
 	return ret;
 }

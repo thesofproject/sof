@@ -318,6 +318,22 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (ret < 0)
 		return IPC4_INVALID_RESOURCE_ID;
 
+	/* update direction for sink component if it is not set already */
+	if (!sink->direction_set && source->direction_set) {
+		sink->direction = source->direction;
+		sink->direction_set = true;
+	}
+
+	/* update direction for source component if it is not set already */
+	if (!source->direction_set && sink->direction_set) {
+		source->direction = sink->direction;
+		source->direction_set = true;
+	}
+
+	/* both sink and source components should have their direction set during module binding */
+	if (!sink->direction_set || !source->direction_set)
+		return IPC4_INVALID_RESOURCE_STATE;
+
 	return IPC4_SUCCESS;
 
 err:
