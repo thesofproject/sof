@@ -277,7 +277,7 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_NONE:
 		config->process.type = proc->type;
 		config->process.size = proc->size;
-#if CONFIG_LIBRARY
+#if CONFIG_LIBRARY || UNIT_TEST
 		config->process.data = proc->data + comp->ext_data_length;
 #else
 		config->process.data = proc->data;
