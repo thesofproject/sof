@@ -251,7 +251,7 @@ int comp_copy(struct comp_dev *dev)
 		ret = dev->drv->ops.copy(dev);
 
 #if CONFIG_PERFORMANCE_COUNTERS
-		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
+		perf_cnt_stamp(&dev->pcd, perf_trace_null, dev);
 		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
 #endif
 	}
