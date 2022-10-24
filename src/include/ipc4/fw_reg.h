@@ -119,7 +119,7 @@ union ipc4_rom_info {
 	} platform;
 } __attribute__((packed, aligned(4)));
 
-/* Number of pipeline registers slots in FW Regs. */
+/* Number of dsp core supported in FW Regs. */
 #define IPC4_MAX_SUPPORTED_ADSP_CORES 8
 
 /* Number of pipeline registers slots in FW Regs. */
