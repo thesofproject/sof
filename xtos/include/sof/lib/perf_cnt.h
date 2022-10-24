@@ -75,7 +75,6 @@ struct perf_cnt_data {
  */
 #define perf_trace_simple(pcd, arg) perf_cnt_trace(arg, pcd)
 
-#if CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE
 /* perf measurement windows size 2^x */
 #define PERF_CNT_CHECK_WINDOW_SIZE 10
 #define task_perf_avg_info(pcd, task_p, class)					\
@@ -114,12 +113,6 @@ struct perf_cnt_data {
 			(pcd)->cpu_delta_peak = 0;                           \
 		}                                                            \
 	} while (0)
-
-#else
-#define perf_cnt_average(pcd, trace_m, arg)
-#define task_perf_cnt_avg(pcd, trace_m, arg, class)
-#define task_perf_avg_info(pcd, task_p, class)
-#endif /* CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE */
 
 /** \brief Reads the timers and computes delta to the previous readings.
  *

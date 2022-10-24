@@ -86,14 +86,12 @@ static void perf_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
 
-#if CONFIG_PERFORMANCE_COUNTERS_RUN_AVERAGE
 static void perf_avg_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 {
 	tr_info(&ll_tr, "perf ll_work cpu avg %u (current peak %u)",
 		(uint32_t)((pcd)->cpu_delta_sum),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
-#endif
 
 #endif
 
