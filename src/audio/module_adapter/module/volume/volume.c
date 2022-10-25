@@ -277,9 +277,14 @@ static void volume_ramp(struct processing_module *mod)
 
 	/* No need to ramp in idle state, jump volume to request. */
 	if (dev->state == COMP_STATE_READY) {
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			cd->volume[i] = cd->tvolume[i];
-
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			vol = cd->tvolume[i];
+			cd->volume[i] = vol;
+			cd->vol[i] = vol;
+			cd->vol[i + cd->channels * 1] = vol;
+			cd->vol[i + cd->channels * 2] = vol;
+			cd->vol[i + cd->channels * 3] = vol;
+		}
 		cd->ramp_finished = true;
 		return;
 	}
@@ -312,29 +317,32 @@ static void volume_ramp(struct processing_module *mod)
 			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
 				cd->ramp_coef[i] = 0;
-				cd->volume[i] = cd->tvolume[i];
+				vol = cd->tvolume[i];
 			} else {
 				ramp_finished = false;
-				cd->volume[i] = vol;
 			}
 		} else {
 			/* ramp down */
 			if (vol <= 0) {
 				/* cannot ramp down below 0 */
-				cd->volume[i] = cd->tvolume[i];
+				vol = cd->tvolume[i];
 				cd->ramp_coef[i] = 0;
 			} else {
 				/* ramp completed ? */
 				if (vol <= cd->tvolume[i] ||
 				    vol <= cd->vol_min) {
 					cd->ramp_coef[i] = 0;
-					cd->volume[i] = cd->tvolume[i];
+					vol = cd->tvolume[i];
 				} else {
 					ramp_finished = false;
-					cd->volume[i] = vol;
 				}
 			}
 		}
+		cd->volume[i] = vol;
+		cd->vol[i] = vol;
+		cd->vol[i + cd->channels * 1] = vol;
+		cd->vol[i + cd->channels * 2] = vol;
+		cd->vol[i + cd->channels * 3] = vol;
 	}
 
 	if (ramp_finished) {
