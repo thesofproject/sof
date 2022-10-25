@@ -838,16 +838,16 @@ static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 
 	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
 
+	/* only module 0 can be used to set d0ix state */
 	if (d0ix.primary.r.module_id || d0ix.primary.r.instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	/* only module 0 can be used to set d0ix state */
 	if (d0ix.extension.r.prevent_power_gating)
-		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
-		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	return 0;
 }
