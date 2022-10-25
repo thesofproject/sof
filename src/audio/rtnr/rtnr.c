@@ -62,8 +62,8 @@ DECLARE_TR_CTX(rtnr_tr, SOF_UUID(rtnr_uuid), LOG_LEVEL_INFO);
 /* Generic processing */
 
 /* Static functions */
-static int rtnr_set_comp_config_by_ipc_config_process(struct comp_dev *dev,
-					struct ipc_config_process *ipc_config);
+static int rtnr_set_config_bytes(struct comp_dev *dev,
+				 unsigned char *data, uint32_t size);
 
 /* Called by the processing library for debugging purpose */
 void rtnr_printf(int a, int b, int c, int d, int e)
@@ -258,7 +258,7 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 	}
 
 	/* Get initial configuration from topology */
-	ret = rtnr_set_comp_config_by_ipc_config_process(dev, ipc_rtnr);
+	ret = rtnr_set_config_bytes(dev, ipc_rtnr->data, ipc_rtnr->size);
 	if (ret < 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): failed setting initial config");
 		goto cd_fail;
@@ -407,12 +407,16 @@ static int rtnr_get_comp_data(struct comp_data *cd, struct sof_ipc_ctrl_data *cd
 	if (size > max_data_size || size < 0)
 		return -EINVAL;
 
-	ret = memcpy_s(cdata->data->data,
-				max_data_size,
-				config,
-				size);
-	if (ret)
-		return ret;
+	if (size > 0) {
+		ret = memcpy_s(cdata->data->data,
+			       max_data_size,
+			       config,
+			       size);
+		comp_cl_info(&comp_rtnr, "rtnr_get_comp_data(): size= %d, ret = %d",
+			     size, ret);
+		if (ret)
+			return ret;
+	}
 
 	cdata->data->abi = SOF_ABI_VERSION;
 	cdata->data->size = size;
@@ -494,62 +498,33 @@ static int rtnr_reconfigure(struct comp_dev *dev)
 	return 0;
 }
 
-static int rtnr_set_comp_config_by_ipc_config_process(struct comp_dev *dev,
-							struct ipc_config_process *config)
+static int rtnr_set_config_bytes(struct comp_dev *dev,
+				 unsigned char *data, uint32_t size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "rtnr_set_comp_config_by_ipc_config(): %d", config->size);
-	if (config->size != sizeof(cd->config)) {
-		comp_err(dev, "rtnr_set_comp_config_by_ipc_config(): invalid size %d",
-			config->size);
+	/*
+	 * The received data could be the combined blob of the control
+	 * widgets defined in the topology, or the config received by
+	 * SOF_CTRL_CMD_BINARY. In either case we just have to check if
+	 * the whole config data is received.
+	 */
+	if (size < sizeof(cd->config)) {
+		comp_err(dev, "rtnr_set_config_data(): invalid size %d",
+			 size);
 		return -EINVAL;
 	}
 
 	ret = memcpy_s(&cd->config,
-				sizeof(cd->config),
-				config->data,
-				config->size);
-	if (ret)
-		return ret;
+		       sizeof(cd->config),
+		       data,
+		       sizeof(cd->config));
 
 	comp_info(dev,
-		"rtnr_set_comp_config_by_ipc_config(): sample_rate = %d, enabled=%d",
-		cd->config.params.sample_rate,
-		cd->config.params.enabled);
-
-	return ret;
-}
-
-static int rtnr_set_comp_config_by_ipc_ctrl_data(struct comp_dev *dev,
-							struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_dbg(dev, "rtnr_set_comp_config_by_ipc_ctrl_data(): size: %d",
-		cdata->data->size);
-
-	if (cdata->data->size != sizeof(cd->config)) {
-		comp_err(dev,
-			"rtnr_set_comp_config_by_ipc_ctrl_data(): invalid size %d",
-			cdata->data->size);
-
-		return -EINVAL;
-	}
-
-	ret = memcpy_s(&cd->config,
-				sizeof(cd->config),
-				cdata->data->data,
-				cdata->data->size);
-	if (ret)
-		return ret;
-
-	comp_info(dev,
-		"rtnr_set_comp_config_by_ipc_ctrl_data(): sample_rate = %d, enabled=%d",
-		cd->config.params.sample_rate,
-		cd->config.params.enabled);
+		  "rtnr_set_config_data(): sample_rate = %d, enabled=%d",
+		  cd->config.params.sample_rate,
+		  cd->config.params.enabled);
 
 	return ret;
 }
@@ -570,7 +545,9 @@ static int rtnr_set_bin_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cda
 
 	switch (cdata->data->type) {
 	case SOF_RTNR_CONFIG:
-		return rtnr_set_comp_config_by_ipc_ctrl_data(dev, cdata);
+		return rtnr_set_config_bytes(dev,
+					     (unsigned char *)cdata->data->data,
+					     cdata->data->size);
 	case SOF_RTNR_DATA:
 		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		if (ret)
