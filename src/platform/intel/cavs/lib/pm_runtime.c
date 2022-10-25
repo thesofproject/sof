@@ -428,13 +428,12 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
-#ifdef __ZEPHYR__
+#ifndef __ZEPHYR__
 		/*
 		 * In Zephyr secondary power-up needs to go via Zephyr
 		 * SMP kernel core, so we can't program PWRCTL directly here.
 		 */
-		cpu_enable_core(index);
-#else
+
 		/* Secondary core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
 			     SHIM_PWRCTL_TCPDSPPG(index) |

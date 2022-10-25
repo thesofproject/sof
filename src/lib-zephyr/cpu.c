@@ -97,6 +97,9 @@ int cpu_enable_core(int id)
 	atomic_set(&start_flag, 1);
 #ifndef CONFIG_PM
 	w_core_enable_mask |= BIT(id);
+
+	/* keep pm_runtime up-to-speed with core power status */
+	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 #endif
 	return 0;
 }
