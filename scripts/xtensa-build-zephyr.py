@@ -657,28 +657,28 @@ def build_platforms():
 def install_platform(platform, sof_platform_output_dir):
 
 	# Keep in sync with caller
-		platform_build_dir_name = f"build-{platform}"
+	platform_build_dir_name = f"build-{platform}"
 
-		# Install to STAGING_DIR
-		abs_build_dir = pathlib.Path(west_top) / platform_build_dir_name / "zephyr"
+	# Install to STAGING_DIR
+	abs_build_dir = pathlib.Path(west_top) / platform_build_dir_name / "zephyr"
 
-		if args.fw_naming == "AVS":
-			# Disguise ourselves for local testing purposes
-			output_fwname="dsp_basefw.bin"
-		else:
-			# Regular name
-			output_fwname="".join(["sof-", platform, ".ri"])
+	if args.fw_naming == "AVS":
+		# Disguise ourselves for local testing purposes
+		output_fwname = "dsp_basefw.bin"
+	else:
+		# Regular name
+		output_fwname = "".join(["sof-", platform, ".ri"])
 
-		shutil.copy2(abs_build_dir / "zephyr.ri", abs_build_dir / output_fwname)
-		fw_file_to_copy = abs_build_dir / output_fwname
+	shutil.copy2(abs_build_dir / "zephyr.ri", abs_build_dir / output_fwname)
+	fw_file_to_copy = abs_build_dir / output_fwname
 
-		install_key_dir = sof_platform_output_dir
-		if args.key_type_subdir != "none":
-			install_key_dir = install_key_dir / args.key_type_subdir
+	install_key_dir = sof_platform_output_dir
+	if args.key_type_subdir != "none":
+		install_key_dir = install_key_dir / args.key_type_subdir
 
-		os.makedirs(install_key_dir, exist_ok=True)
-		# looses file owner and group - file is commonly accessible
-		shutil.copy2(fw_file_to_copy, install_key_dir)
+	os.makedirs(install_key_dir, exist_ok=True)
+	# looses file owner and group - file is commonly accessible
+	shutil.copy2(fw_file_to_copy, install_key_dir)
 
 
 # As of October 2022, sof_ri_info.py expects .ri files to include a CSE manifest / signature.
