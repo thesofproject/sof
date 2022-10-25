@@ -33,6 +33,11 @@ import sys
 import shutil
 import os
 import warnings
+import fnmatch
+import hashlib
+import gzip
+from dataclasses import dataclass
+
 # anytree module is defined in Zephyr build requirements
 from anytree import AnyNode, RenderTree
 from packaging import version
@@ -293,6 +298,7 @@ def execute_command(*run_args, **run_kwargs):
 
 	return subprocess.run(*run_args, **run_kwargs)
 
+
 def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
 	then presents them in similar way to linux tree command."""
@@ -309,8 +315,37 @@ def show_installed_files():
 		matches = [node for node in nodes if node.long_name == str(entry.parent)]
 		assert len(matches) == 1, f'"{entry}" does not have exactly one parent'
 		nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=matches[0]))
+
 	for pre, _, node in RenderTree(graph_root):
-		print(f"{pre}{node.name}")
+		fpath = STAGING_DIR / node.long_name
+		stem = node.name[:-3] if node.name.endswith(".gz") else node.name
+
+		shasum_trailer = ""
+		if checksum_wanted(stem) and fpath.is_file() and not fpath.is_symlink():
+			shasum_trailer =  "\tsha256=" + checksum(fpath)
+
+		print(f"{pre}{node.name} {shasum_trailer}")
+
+
+# TODO: among other things in this file it should be less SOF-specific;
+# try to move as much as possible to generic Zephyr code. See
+# discussions in https://github.com/zephyrproject-rtos/zephyr/pull/51954
+def checksum_wanted(stem):
+	for pattern in CHECKSUM_WANTED:
+		if fnmatch.fnmatch(stem, pattern):
+			return True
+	return False
+
+
+def checksum(fpath):
+	if fpath.suffix == ".gz":
+		inputf = gzip.GzipFile(fpath, "rb")
+	else:
+		inputf = open(fpath, "rb")
+	chksum = hashlib.sha256(inputf.read()).hexdigest()
+	inputf.close()
+	return chksum
+
 
 def check_west_installation():
 	west_path = shutil.which("west")
@@ -679,6 +714,64 @@ def install_platform(platform, sof_platform_output_dir):
 	os.makedirs(install_key_dir, exist_ok=True)
 	# looses file owner and group - file is commonly accessible
 	shutil.copy2(fw_file_to_copy, install_key_dir)
+
+
+	# sof-info/ directory
+
+	@dataclass
+	class InstFile:
+		'How to install one file'
+		name: str
+		renameTo: str = None
+		# TODO: upgrade this to 3 states: optional/warning/error
+		optional: bool = False
+		gzip: bool = True
+
+	installed_files = [
+		# Fail if one of these is missing
+		InstFile(".config", "config"),
+		InstFile(BIN_NAME + ".elf"),
+		InstFile(BIN_NAME + ".lst"),
+		InstFile(BIN_NAME + ".map"),
+
+		# CONFIG_BUILD_OUTPUT_STRIPPED
+		InstFile(BIN_NAME + '.strip', optional=True),
+
+		# Not every platform has intermediate rimage modules
+		InstFile("main-stripped.mod", optional=True),
+		InstFile("boot.mod", optional=True),
+		InstFile("main.mod", optional=True),
+	]
+
+	sof_info = pathlib.Path(STAGING_DIR) / "sof-info" / platform
+	sof_info.mkdir(parents=True, exist_ok=True)
+	for f in installed_files:
+		if not pathlib.Path(abs_build_dir / f.name).is_file() and f.optional:
+			continue
+		dstname = f.renameTo or f.name
+		shutil.copy2(abs_build_dir / f.name, sof_info / dstname)
+		if f.gzip:
+			gzip_compress(sof_info / dstname)
+
+
+# Zephyr's CONFIG_KERNEL_BIN_NAME default value
+BIN_NAME = 'zephyr'
+
+CHECKSUM_WANTED = [
+	'*.ri',     # Some .ri files have a non-deterministic signature, others not
+	'*.strip', '*stripped*', # stripped ELF files are reproducible
+	'boot.mod', # no debug section -> no need to strip this ELF
+	BIN_NAME + '.lst',       # objdump --disassemble
+	'*.ldc',
+]
+
+def gzip_compress(fname, gzdst=None):
+	gzdst = gzdst or pathlib.Path(f"{fname}.gz")
+	with open(fname, 'rb') as inputf:
+		# mtime=0 for recursive diff convenience
+		with gzip.GzipFile(gzdst, 'wb', mtime=0) as gzf:
+			shutil.copyfileobj(inputf, gzf)
+	os.remove(fname)
 
 
 # As of October 2022, sof_ri_info.py expects .ri files to include a CSE manifest / signature.
