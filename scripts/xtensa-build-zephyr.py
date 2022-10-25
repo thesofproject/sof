@@ -174,8 +174,8 @@ def parse_args():
 	parser.add_argument("-d", "--debug", required=False, action="store_true",
 						help="Enable debug build")
 	parser.add_argument("-i", "--ipc", required=False, choices=["IPC4"],
-			    help="""Generic shortcut for: --overlay <platform>/ipc4_overlay.conf. Valid only
-for IPC3 platforms supporting IPC4 too.""")
+			    help="""Applies --overlay <platform>/ipc4_overlay.conf
+and a different rimage config. Valid only for IPC3 platforms supporting IPC4 too.""")
     # NO SOF release will ever user the option --fw-naming.
     # This option is only for disguising SOF IPC4 as CAVS IPC4 and only in cases where
     # the kernel 'ipc_type' expects CAVS IPC4. In this way, developers and CI can test
@@ -530,8 +530,9 @@ def build_platforms():
 		if args.debug:
 			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
-		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay', we are good if both
-		# are provided, because it's no harm to merge the same overlay twice.
+		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay' (and more), we
+		# are good if both are provided, because it's no harm to merge the same
+		# overlay twice.
 		if args.ipc == "IPC4":
 			overlays.append(str(pathlib.Path(SOF_TOP, "app", "overlays", platform,
                             platform_dict["IPC4_CONFIG_OVERLAY"])))
