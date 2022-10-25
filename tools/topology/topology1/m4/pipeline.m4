@@ -48,6 +48,33 @@ define(`W_PIPELINE',
 `	]'
 `}')
 
+dnl W_PIPELINE_TOP(stream_index, stream_name, period, priority, core, time_domain, platform)
+define(`W_PIPELINE_TOP',
+`SectionVendorTuples."PIPELINE.$1.$2_tuples" {'
+`	tokens "sof_sched_tokens"'
+`	tuples."word" {'
+`		SOF_TKN_SCHED_PERIOD'		STR($3)
+`		SOF_TKN_SCHED_PRIORITY'		STR($4)
+`		SOF_TKN_SCHED_CORE'		STR($5)
+`		SOF_TKN_SCHED_FRAMES'		"0"
+`		SOF_TKN_SCHED_TIME_DOMAIN'	STR($6)
+`		SOF_TKN_SCHED_DYNAMIC_PIPELINE'	ifdef(`DYNAMIC', "1", ifelse(DYNAMIC_PIPE, `1', "1", "0"))
+`	}'
+`}'
+`SectionData."PIPELINE.$1.$2_data" {'
+`	tuples "PIPELINE.$1.$2_tuples"'
+`}'
+`SectionWidget."PIPELINE.$1.$2" {'
+`	index "$1"'
+`	type "scheduler"'
+`	no_pm "true"'
+`	stream_name "'$2`"'
+`	data ['
+`		"PIPELINE.$1.$2_data"'
+`		"'$7`"'
+`	]'
+`}')
+
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
