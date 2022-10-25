@@ -483,8 +483,6 @@ static inline const void *smex_placeholder_f(void)
  */
 const void *_smex_placeholder;
 
-static int w_core_enable_mask;
-
 int task_main_start(struct sof *sof)
 {
 	_smex_placeholder = smex_placeholder_f();
@@ -626,7 +624,6 @@ int task_main_start(struct sof *sof)
 	 * (only called from single core, no RMW lock)
 	 */
 	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-	w_core_enable_mask |= BIT(PLATFORM_PRIMARY_CORE_ID);
 
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
@@ -681,116 +678,6 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
  * Mostly empty today waiting pending Zephyr CAVS SMP integration.
  */
 #if CONFIG_MULTICORE && CONFIG_SMP
-static atomic_t start_flag;
-static atomic_t ready_flag;
-
-/* Zephyr kernel_internal.h interface */
-void smp_timer_init(void);
-
-static FUNC_NORETURN void secondary_init(void *arg)
-{
-	struct k_thread dummy_thread;
-
-	/*
-	 * This is an open-coded version of zephyr/kernel/smp.c
-	 * smp_init_top(). We do this so that we can call SOF
-	 * secondary_core_init() for each core.
-	 */
-
-	atomic_set(&ready_flag, 1);
-	z_smp_thread_init(arg, &dummy_thread);
-	smp_timer_init();
-
-	secondary_core_init(sof_get());
-
-#ifdef CONFIG_THREAD_STACK_INFO
-	dummy_thread.stack_info.start = (uintptr_t)z_interrupt_stacks +
-		arch_curr_cpu()->id * Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-	dummy_thread.stack_info.size = Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-#endif
-
-	z_smp_thread_swap();
-
-	CODE_UNREACHABLE; /* LCOV_EXCL_LINE */
-}
-
-int arch_cpu_enable_core(int id)
-{
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask |= BIT(id);
-
-	return 0;
-}
-
-int z_wrapper_cpu_enable_secondary_core(int id)
-{
-	/*
-	 * This is an open-coded version of zephyr/kernel/smp.c
-	 * z_smp_start_cpu(). We do this, so we can use a customized
-	 * secondary_init() for SOF.
-	 */
-
-	if (arch_cpu_active(id))
-		return 0;
-
-#if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	z_init_cpu(id);
-#endif
-
-	atomic_clear(&start_flag);
-	atomic_clear(&ready_flag);
-
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
-		       secondary_init, &start_flag);
-
-	while (!atomic_get(&ready_flag))
-		k_busy_wait(100);
-
-	atomic_set(&start_flag, 1);
-
-	return 0;
-}
-
-int arch_cpu_restore_secondary_cores(void)
-{
-	/* TODO: use Zephyr version */
-	return 0;
-}
-
-int arch_cpu_secondary_cores_prepare_d0ix(void)
-{
-	/* TODO: use Zephyr version */
-	return 0;
-}
-
-void arch_cpu_disable_core(int id)
-{
-	/* TODO: call Zephyr API */
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask &= ~BIT(id);
-}
-
-int arch_cpu_is_core_enabled(int id)
-{
-	return w_core_enable_mask & BIT(id);
-}
-
-void cpu_power_down_core(uint32_t flags)
-{
-	/* TODO: use Zephyr version */
-}
-
-int arch_cpu_enabled_cores(void)
-{
-	return w_core_enable_mask;
-}
 
 static struct idc idc[CONFIG_MP_NUM_CPUS];
 static struct idc *p_idc[CONFIG_MP_NUM_CPUS];

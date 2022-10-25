@@ -52,7 +52,7 @@ DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
  * To support Zephyr, some adaptation is needed to the driver.
  */
 #ifdef __ZEPHYR__
-extern int z_wrapper_cpu_enable_secondary_core(int id);
+extern int cpu_enable_secondary_core(int id);
 #endif
 
 /**
@@ -434,7 +434,7 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		 * In Zephyr secondary power-up needs to go via Zephyr
 		 * SMP kernel core, so we can't program PWRCTL directly here.
 		 */
-		z_wrapper_cpu_enable_secondary_core(index);
+		cpu_enable_secondary_core(index);
 #else
 		/* Secondary core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
