@@ -13,6 +13,7 @@
 
 #ifndef __SOF_LIB_CPU_H__
 #define __SOF_LIB_CPU_H__
+#ifndef __ZEPHYR__
 
 #include <platform/lib/cpu.h>
 
@@ -88,5 +89,5 @@ static inline int cpu_secondary_cores_prepare_d0ix(void)
 }
 
 #endif
-
+#endif
 #endif /* __SOF_LIB_CPU_H__ */
