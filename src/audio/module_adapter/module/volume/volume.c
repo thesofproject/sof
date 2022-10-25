@@ -919,7 +919,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct ipc4_peak_volume_config *cdata;
+	struct ipc4_peak_volume_config cdata;
 	int i, ret;
 
 	comp_dbg(dev, "volume_set_config()");
@@ -936,19 +936,19 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	    md->state < MODULE_INITIALIZED)
 		return 0;
 
-	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(fragment, 8);
-	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
+	cdata = *(const struct ipc4_peak_volume_config *)fragment;
+	cdata.target_volume = convert_volume_ipc4_to_ipc3(dev, cdata.target_volume);
 
-	init_ramp(cd, cdata->curve_duration, cdata->target_volume);
+	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
 	cd->ramp_finished = true;
 
 	switch (config_id) {
 	case IPC4_VOLUME:
-		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
+		if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
 			for (i = 0; i < mod->priv.cfg.base_cfg.audio_fmt.channels_count; i++) {
-				set_volume_ipc4(cd, i, cdata->target_volume,
-						cdata->curve_type,
-						cdata->curve_duration);
+				set_volume_ipc4(cd, i, cdata.target_volume,
+						cdata.curve_type,
+						cdata.curve_duration);
 
 				cd->volume[i] = cd->vol_min;
 				volume_set_chan(mod, i, cd->tvolume[i], true);
@@ -956,14 +956,14 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 					cd->ramp_finished = false;
 			}
 		} else {
-			set_volume_ipc4(cd, cdata->channel_id, cdata->target_volume,
-					cdata->curve_type,
-					cdata->curve_duration);
+			set_volume_ipc4(cd, cdata.channel_id, cdata.target_volume,
+					cdata.curve_type,
+					cdata.curve_duration);
 
-			cd->volume[cdata->channel_id] = cd->vol_min;
-			volume_set_chan(mod, cdata->channel_id, cd->tvolume[cdata->channel_id],
+			cd->volume[cdata.channel_id] = cd->vol_min;
+			volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
 					true);
-			if (cd->volume[cdata->channel_id] != cd->tvolume[cdata->channel_id])
+			if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
 				cd->ramp_finished = false;
 		}
 
