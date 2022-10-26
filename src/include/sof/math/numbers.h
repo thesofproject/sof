@@ -105,19 +105,9 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes);
 #define merge_4b4b(high, low) (((uint8_t)(high) << 4) | \
 			       ((low) & 0xF))
 
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef INT_MIN
-#undef INT_MIN
-#endif
-
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef INT_MAX
-#undef INT_MAX
-#endif
-
 /* Get max and min signed integer values for N bits word length */
-#define INT_MAX(N)	((int64_t)((1ULL << ((N) - 1)) - 1))
-#define INT_MIN(N)	((int64_t)(-((1ULL << ((N) - 1)) - 1) - 1))
+#define INT_MAX_FOR_NUMBER_OF_BITS(N)	((int64_t)((1ULL << ((N) - 1)) - 1))
+#define INT_MIN_FOR_NUMBER_OF_BITS(N)	((int64_t)(-((1ULL << ((N) - 1)) - 1) - 1))
 
 /* Speed of sound (m/s) in 20 C temperature at standard atmospheric pressure */
 #define SPEED_OF_SOUND		343
