@@ -65,7 +65,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
 #if CONFIG_COMP_PEAK_VOL
-	int32_t tmp = INT_MIN(32);
+	int32_t tmp = INT_MIN_FOR_NUMBER_OF_BITS(32);
 #endif
 
 	x = source->r_ptr;
@@ -128,7 +128,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
 #if CONFIG_COMP_PEAK_VOL
-	int32_t tmp = INT_MIN(32);
+	int32_t tmp = INT_MIN_FOR_NUMBER_OF_BITS(32);
 #endif
 
 	x = source->r_ptr;
@@ -195,7 +195,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
 #if CONFIG_COMP_PEAK_VOL
-	int16_t tmp = INT_MIN(16);
+	int16_t tmp = INT_MIN_FOR_NUMBER_OF_BITS(16);
 #endif
 
 	x = source->r_ptr;

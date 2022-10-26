@@ -431,7 +431,7 @@ static int select_mode(struct dai *dai,
 	/* Calculate remaining gain to FIR in Q format used for gain
 	 * values.
 	 */
-	fir_in_max = INT_MAX(DMIC_HW_BITS_FIR_INPUT);
+	fir_in_max = INT_MAX_FOR_NUMBER_OF_BITS(DMIC_HW_BITS_FIR_INPUT);
 	if (cfg->cic_shift >= 0)
 		cic_out_max = g_cic >> cfg->cic_shift;
 	else
