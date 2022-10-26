@@ -389,7 +389,7 @@ def create_zephyr_directory():
 		# _better_ error message:
 		#         "zephyrproject already exists"
 
-	west_top.mkdir(mode=511, parents=False, exist_ok=False)
+	west_top.mkdir(parents=False, exist_ok=False)
 	west_top = west_top.resolve(strict=True)
 
 def create_zephyr_sof_symlink():
@@ -397,7 +397,7 @@ def create_zephyr_sof_symlink():
 	if not west_top.exists():
 		raise FileNotFoundError("No west top: {}".format(west_top))
 	audio_modules_dir = pathlib.Path(west_top, "modules", "audio")
-	audio_modules_dir.mkdir(mode=511, parents=True, exist_ok=True)
+	audio_modules_dir.mkdir(parents=True, exist_ok=True)
 	sof_symlink = pathlib.Path(audio_modules_dir, "sof")
 	# Symlinks creation requires administrative privileges in Windows or special user rights
 	try:
@@ -457,7 +457,7 @@ def build_platforms():
 
 	# smex does not use 'install -D'
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
-	sof_output_dir.mkdir(mode=511, parents=True, exist_ok=True)
+	sof_output_dir.mkdir(parents=True, exist_ok=True)
 	for platform in args.platforms:
 		if args.use_platform_subdir:
 			sof_platform_output_dir = pathlib.Path(sof_output_dir, platform)
