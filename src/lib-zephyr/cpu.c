@@ -123,6 +123,7 @@ int cpu_enabled_cores(void)
 
 #else /* CONFIG_ACE */
 #include <sof/trace/trace.h>
+#include <rtos/wait.h>
 #include <zephyr/pm/pm.h>
 
 LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
