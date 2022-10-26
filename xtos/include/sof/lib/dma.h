@@ -398,8 +398,8 @@ static inline int dma_get_data_size_legacy(struct dma_chan_data *channel,
 	return channel->dma->ops->get_data_size(channel, avail, free);
 }
 
-static inline int dma_get_attribute(struct dma *dma, uint32_t type,
-				    uint32_t *value)
+static inline int dma_get_attribute_legacy(struct dma *dma, uint32_t type,
+					   uint32_t *value)
 {
 	return dma->ops->get_attribute(dma, type, value);
 }
