@@ -151,8 +151,13 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	}
 
 	/* get required address alignment for dma buffer */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	err = dma_get_attribute(dma->dc.dmac->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&addr_align);
+#else
 	err = dma_get_attribute_legacy(dma->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				       &addr_align);
+#endif
 	if (err < 0)
 		return err;
 
@@ -226,9 +231,13 @@ static enum task_state probe_task(void *data)
 
 	if (!_probe->ext_dma.dmapb.avail)
 		return SOF_TASK_STATE_RESCHEDULE;
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	err = dma_get_attribute(_probe->ext_dma.dc.dmac->z_dev, DMA_ATTR_COPY_ALIGNMENT,
+				&copy_align);
+#else
 	err = dma_get_attribute_legacy(_probe->ext_dma.dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
 				       &copy_align);
+#endif
 	if (err < 0) {
 		tr_err(&pr_tr, "probe_task(): dma_get_attribute failed.");
 		return SOF_TASK_STATE_COMPLETED;
