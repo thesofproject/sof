@@ -224,6 +224,9 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 			return IPC4_INVALID_REQUEST;
 	}
 
+	if (!ipc_pipe->pipeline)
+		goto out;
+
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret != IPC4_SUCCESS) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
@@ -238,6 +241,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	ipc_pipe->pipeline = NULL;
+out:
 	list_item_del(&ipc_pipe->list);
 	rfree(ipc_pipe);
 
