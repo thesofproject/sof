@@ -83,6 +83,7 @@ static void set_mux_adsp_bus_src_sel(uint32_t value)
 {
 	io_reg_write(MTK_ADSP_BUS_SRC, value);
 	io_reg_write(MTK_ADSP_CLK_BUS_UPDATE, MTK_ADSP_CLK_BUS_UPDATE_BIT);
+	wait_delay_us(1);
 
 	tr_dbg(&clkdrv_tr, "adsp_bus_mux=%x, MTK_ADSP_BUS_SRC=0x%08x\n",
 	       value, io_reg_read(MTK_ADSP_BUS_SRC));
@@ -133,6 +134,6 @@ void platform_clock_init(struct sof *sof)
 		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
-	/* DSP bus clock */
 	set_mux_adsp_bus_src_sel(MTK_ADSP_CLK_BUS_SRC_EMI);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 }
