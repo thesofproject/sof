@@ -25,6 +25,7 @@
 /* Zephyr includes */
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
+#include <zephyr/pm/policy.h>
 #include <version.h>
 #include <zephyr/sys/__assert.h>
 #include <soc.h>
@@ -624,7 +625,10 @@ int task_main_start(struct sof *sof)
 	 * (only called from single core, no RMW lock)
 	 */
 	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
+#if defined(CONFIG_PM)
+	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+#endif
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
 
