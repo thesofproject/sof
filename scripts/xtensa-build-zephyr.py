@@ -601,7 +601,7 @@ def build_platforms():
 
 		execute_command(sign_cmd, cwd=west_top)
 
-		if platform not in NO_RIMAGE_PLATFORMS:
+		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
 		# Install to STAGING_DIR
@@ -654,8 +654,15 @@ def build_platforms():
 			tools_output_dir,
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 
+# As of October 2022, sof_ri_info.py expects .ri files to include a CSE manifest / signature.
+# Don't run sof_ri_info and ignore silently .ri files that don't have one.
+RI_INFO_UNSUPPORTED = []
 
-NO_RIMAGE_PLATFORMS = ['imx8', 'imx8x', 'imx8m']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m']
+RI_INFO_UNSUPPORTED += ['rn']
+RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
+
+# sof_ri_info.py has not caught up with the latest rimage yet: these will print a warning.
 RI_INFO_FIXME = ['mtl']
 
 def reproducible_checksum(platform, ri_file):
