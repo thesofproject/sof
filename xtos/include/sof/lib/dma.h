@@ -96,11 +96,16 @@ enum dma_irq_cmd {
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 #define DMA_CORE_INVALID	0xFFFFFFFF
 
+/* Attributes have been ported to Zephyr. This condition is necessary until full support of
+ * CONFIG_SOF_ZEPHYR_STRICT_HEADERS.
+ */
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT		0
 #define DMA_ATTR_COPY_ALIGNMENT			1
 #define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
 #define DMA_ATTR_BUFFER_PERIOD_COUNT		3
+#endif
 
 struct dma;
 

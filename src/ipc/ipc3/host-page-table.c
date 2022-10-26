@@ -115,7 +115,11 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to minimum DMA copy size */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	ret = dma_get_attribute(dmac->z_dev, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
+#else
 	ret = dma_get_attribute_legacy(dmac, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
+#endif
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_get_attribute() failed");
 		goto out;
