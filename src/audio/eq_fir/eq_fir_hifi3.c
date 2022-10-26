@@ -207,7 +207,12 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 
 			/* Shift and round to Q1.23 format */
 			d0 = AE_SRAI32R(z0, 8);
+			d0 = AE_SLAI32S(d0, 8);
+			d0 = AE_SRAI32(d0, 8);
+
 			d1 = AE_SRAI32R(z1, 8);
+			d1 = AE_SLAI32S(d1, 8);
+			d1 = AE_SRAI32(d1, 8);
 
 			/* Store output and update output pointers */
 			fir_comp_setup_circular(sink);
@@ -277,6 +282,8 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 			/* Round to Q1.23 and store output sample */
 			fir_comp_setup_circular(sink);
 			d = AE_SRAI32R(out, 8);
+			d = AE_SLAI32S(d, 8);
+			d = AE_SRAI32(d, 8);
 			AE_S32_L_XC(d, y, inc);
 		}
 	}
