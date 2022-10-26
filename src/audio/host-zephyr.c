@@ -797,8 +797,8 @@ static int host_params(struct comp_dev *dev,
 	hd->cont_update_posn = params->cont_update_posn;
 
 	/* retrieve DMA buffer address alignment */
-	err = dma_get_attribute_legacy(hd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				       &addr_align);
+	err = dma_get_attribute(hd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&addr_align);
 	if (err < 0) {
 		comp_err(dev, "host_params(): could not get dma buffer address alignment, err = %d",
 			 err);
@@ -806,7 +806,7 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* retrieve DMA buffer size alignment */
-	err = dma_get_attribute_legacy(hd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
+	err = dma_get_attribute(hd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
 	if (err < 0 || !align) {
 		comp_err(dev, "host_params(): could not get valid dma buffer alignment, err = %d, align = %u",
 			 err, align);
@@ -968,8 +968,8 @@ static int host_params(struct comp_dev *dev,
 		goto out;
 	}
 
-	err = dma_get_attribute_legacy(hd->dma, DMA_ATTR_COPY_ALIGNMENT,
-				       &hd->dma_copy_align);
+	err = dma_get_attribute(hd->dma->z_dev, DMA_ATTR_COPY_ALIGNMENT,
+				&hd->dma_copy_align);
 
 	if (err < 0) {
 		comp_err(dev, "host_params(): dma_get_attribute()");
