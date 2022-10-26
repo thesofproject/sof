@@ -20,7 +20,7 @@ struct sof;
 #define CLK_DEFAULT_CPU_HZ			26000000
 #define CLK_MAX_CPU_HZ				800000000
 #define NUM_CLOCKS				1
-#define NUM_CPU_FREQ				5
+#define NUM_CPU_FREQ				3
 
 /* MTK_ADSP_CLK_BUS_UPDATE */
 #define MTK_ADSP_CLK_BUS_UPDATE_BIT		BIT(31)
@@ -41,6 +41,13 @@ struct sof;
 #define MTK_CLK_ADSP_DSPPLL_2			3
 #define MTK_CLK_ADSP_DSPPLL_4			4
 #define MTK_CLK_ADSP_DSPPLL_8			5
+
+#define MTK_PLL_BASE_EN				BIT(0)
+#define MTK_PLL_PWR_ON				BIT(0)
+#define MTK_PLL_ISO_EN				BIT(1)
+
+#define MTK_PLL_DIV_RATIO_800M			0x810F6276
+#define MTK_PLL_DIV_RATIO_400M			0x831EC4ED
 
 /* List resource from low to high request */
 /* 0 is the lowest request */

@@ -6,15 +6,16 @@
 //         Tinghan Shen <tinghan.shen@mediatek.com>
 
 #include <platform/drivers/mt_reg_base.h>
-#include <sof/common.h>
 #include <rtos/clk.h>
+#include <rtos/spinlock.h>
+#include <rtos/wait.h>
+#include <sof/common.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/sof.h>
-#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 
 /* 53863428-9a72-44df-af0f-fe45ea2348ba */
@@ -26,8 +27,6 @@ DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_uuid), LOG_LEVEL_INFO);
 /* default voltage is 0.8V */
 const struct freq_table platform_cpu_freq[] = {
 	{  26000000, 26000},
-	{ 100000000, 26000},
-	{ 200000000, 26000},
 	{ 400000000, 26000},
 	{ 800000000, 26000},
 };
@@ -36,6 +35,39 @@ STATIC_ASSERT(ARRAY_SIZE(platform_cpu_freq) == NUM_CPU_FREQ,
 	      invalid_number_of_cpu_frequencies);
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+
+static void clk_dsppll_enable(uint32_t value)
+{
+	tr_dbg(&clkdrv_tr, "clk_dsppll_enable: %d\n", value);
+
+	switch (value) {
+	case MTK_CLK_ADSP_DSPPLL:
+		io_reg_write(MTK_ADSPPLL_CON1, MTK_PLL_DIV_RATIO_800M);
+		break;
+	case MTK_CLK_ADSP_DSPPLL_2:
+		io_reg_write(MTK_ADSPPLL_CON1, MTK_PLL_DIV_RATIO_400M);
+		break;
+	default:
+		tr_err(&clkdrv_tr, "invalid dsppll: %d\n", value);
+		return;
+	}
+
+	io_reg_update_bits(MTK_ADSPPLL_CON3, MTK_PLL_PWR_ON, MTK_PLL_PWR_ON);
+	wait_delay_us(20);
+	io_reg_update_bits(MTK_ADSPPLL_CON3, MTK_PLL_ISO_EN, 0);
+	wait_delay_us(1);
+	io_reg_update_bits(MTK_ADSPPLL_CON0, MTK_PLL_BASE_EN, MTK_PLL_BASE_EN);
+	wait_delay_us(20);
+}
+
+static void clk_dsppll_disable(void)
+{
+	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+
+	io_reg_update_bits(MTK_ADSPPLL_CON0, MTK_PLL_BASE_EN, 0);
+	io_reg_update_bits(MTK_ADSPPLL_CON3, MTK_PLL_ISO_EN, MTK_PLL_ISO_EN);
+	io_reg_update_bits(MTK_ADSPPLL_CON3, MTK_PLL_PWR_ON, 0);
+}
 
 static void set_mux_adsp_sel(uint32_t value)
 {
@@ -61,21 +93,20 @@ static int clock_platform_set_dsp_freq(int clock, int freq_idx)
 	switch (freq_idx) {
 	case ADSP_CLK_26M:
 		set_mux_adsp_sel(MTK_CLK_ADSP_26M);
-		break;
-	case ADSP_CLK_PLL_800M_D_8:
-		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_8);
-		break;
-	case ADSP_CLK_PLL_800M_D_4:
-		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_4);
+		clk_dsppll_disable();
 		break;
 	case ADSP_CLK_PLL_800M_D_2:
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
+		clk_dsppll_enable(MTK_CLK_ADSP_DSPPLL_2);
 		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_2);
 		break;
 	case ADSP_CLK_PLL_800M:
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
+		clk_dsppll_enable(MTK_CLK_ADSP_DSPPLL);
 		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL);
 		break;
 	default:
-		set_mux_adsp_sel(MTK_CLK_ADSP_26M);
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
 		break;
 	}
 
