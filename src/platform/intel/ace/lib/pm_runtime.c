@@ -9,6 +9,7 @@
 #include <sof_versions.h>
 #include <stdint.h>
 
+#include <ace_v1x-regs.h>
 #include <zephyr/pm/policy.h>
 
 /* 76cc9773-440c-4df9-95a8-72defe7796fc */
@@ -58,6 +59,31 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 	return NULL;
 }
 #endif /* CONFIG_PM_POLICY_CUSTOM */
+
+void platform_pm_runtime_enable(uint32_t context, uint32_t index)
+{
+	switch (context) {
+	case PM_RUNTIME_DSP:
+		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		break;
+	default:
+		break;
+	}
+}
+
+void platform_pm_runtime_disable(uint32_t context, uint32_t index)
+{
+	switch (context) {
+	case PM_RUNTIME_DSP:
+		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		/* Disable power gating when preventing */
+		DFDSPBRCP.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
+			DFDSPBRCP_BCTL_WAITIPCG | DFDSPBRCP_BCTL_WAITIPPG;
+		break;
+	default:
+		break;
+	}
+}
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 { }
