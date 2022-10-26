@@ -9,11 +9,55 @@
 #include <sof_versions.h>
 #include <stdint.h>
 
+#include <zephyr/pm/policy.h>
+
 /* 76cc9773-440c-4df9-95a8-72defe7796fc */
 DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 		 0x95, 0xa8, 0x72, 0xde, 0xfe, 0x77, 0x96, 0xfc);
 
 DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
+
+#if defined(CONFIG_PM_POLICY_CUSTOM)
+const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
+{
+	unsigned int num_cpu_states;
+	const struct pm_state_info *cpu_states;
+
+	num_cpu_states = pm_state_cpu_get_all(cpu, &cpu_states);
+
+	for (int i = num_cpu_states - 1; i >= 0; i--) {
+		const struct pm_state_info *state = &cpu_states[i];
+		uint32_t min_residency, exit_latency;
+
+		/* policy cannot lead to D3 */
+		if (state->state == PM_STATE_SOFT_OFF)
+			continue;
+
+		/* check if there is a lock on state + substate */
+		if (pm_policy_state_lock_is_active(state->state, state->substate_id))
+			continue;
+
+		if (state->state == PM_STATE_RUNTIME_IDLE) {
+			/* No D0i3 when secondary cores are active! */
+			if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID))
+				continue;
+		}
+
+		min_residency = k_us_to_ticks_ceil32(state->min_residency_us);
+		exit_latency = k_us_to_ticks_ceil32(state->exit_latency_us);
+
+		if (ticks == K_TICKS_FOREVER ||
+		    (ticks >= (min_residency + exit_latency))) {
+			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
+			 * to handle case with enabled PG andf disabled CG.
+			 */
+			return state;
+		}
+	}
+
+	return NULL;
+}
+#endif /* CONFIG_PM_POLICY_CUSTOM */
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 { }
