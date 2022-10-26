@@ -151,8 +151,8 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	}
 
 	/* get required address alignment for dma buffer */
-	err = dma_get_attribute(dma->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	err = dma_get_attribute_legacy(dma->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				       &addr_align);
 	if (err < 0)
 		return err;
 
@@ -227,8 +227,8 @@ static enum task_state probe_task(void *data)
 	if (!_probe->ext_dma.dmapb.avail)
 		return SOF_TASK_STATE_RESCHEDULE;
 
-	err = dma_get_attribute(_probe->ext_dma.dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
-				&copy_align);
+	err = dma_get_attribute_legacy(_probe->ext_dma.dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
+				       &copy_align);
 	if (err < 0) {
 		tr_err(&pr_tr, "probe_task(): dma_get_attribute failed.");
 		return SOF_TASK_STATE_COMPLETED;

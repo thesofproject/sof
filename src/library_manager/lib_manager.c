@@ -425,8 +425,8 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	}
 
 	/* get required address alignment for dma buffer */
-	ret = dma_get_attribute(dma_ext->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	ret = dma_get_attribute_legacy(dma_ext->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				       &addr_align);
 	if (ret < 0)
 		return ret;
 
@@ -612,8 +612,8 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	ret = lib_manager_dma_init(&dma_ext, dma_id);
 	if (ret < 0)
 		goto cleanup;
-	ret = dma_get_attribute(dma_ext.dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	ret = dma_get_attribute_legacy(dma_ext.dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				       &addr_align);
 	if (ret < 0)
 		goto cleanup;
 

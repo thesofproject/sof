@@ -200,8 +200,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		goto out;
 	}
 
-	ret = dma_get_attribute(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
-				&d->dma_copy_align);
+	ret = dma_get_attribute_legacy(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
+				       &d->dma_copy_align);
 
 	if (ret < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR,
@@ -274,8 +274,8 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 		return -ENODEV;
 	}
 
-	err = dma_get_attribute(d->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	err = dma_get_attribute_legacy(d->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				       &addr_align);
 	if (err < 0)
 		return err;
 
