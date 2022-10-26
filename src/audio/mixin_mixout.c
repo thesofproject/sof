@@ -886,11 +886,8 @@ static int mixout_copy(struct comp_dev *dev)
 		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
 
 		src_info = find_mixout_source_info(mixed_data_info, mixin);
-		if (!src_info) {
-			comp_err(dev, "No source info");
-			mixed_data_info_release(mixed_data_info);
-			return -EINVAL;
-		}
+		if (!src_info)
+			continue;
 
 		/* Inactive sources should not block other active sources */
 		if (comp_get_state(dev, mixin) == COMP_STATE_ACTIVE)
@@ -925,6 +922,20 @@ static int mixout_copy(struct comp_dev *dev)
 		comp_update_buffer_produce(sink_c,
 					   audio_stream_period_bytes(&sink_c->stream,
 								     frames_to_produce));
+		buffer_release(sink_c);
+	} else {
+		struct comp_buffer *sink;
+		struct comp_buffer __sparse_cache *sink_c;
+		uint32_t sink_bytes;
+
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+		sink_c = buffer_acquire(sink);
+		sink_bytes = dev->frames * audio_stream_frame_bytes(&sink_c->stream);
+		if (!audio_stream_set_zero(&sink_c->stream, sink_bytes)) {
+			buffer_stream_writeback(sink_c, sink_bytes);
+			comp_update_buffer_produce(sink_c, sink_bytes);
+		}
 		buffer_release(sink_c);
 	}
 
