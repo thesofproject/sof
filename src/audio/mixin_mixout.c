@@ -242,7 +242,7 @@ static void mixout_free(struct comp_dev *dev)
 
 	mixout_data = comp_get_drvdata(dev);
 
-	coherent_free_thread(mixout_data->mixed_data_info, c);
+//	coherent_free_thread(mixout_data->mixed_data_info, c);
 	rfree(mixout_data->mixed_data_info);
 	rfree(mixout_data);
 	rfree(dev);
