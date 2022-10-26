@@ -153,12 +153,6 @@ int platform_boot_complete(uint32_t boot_message)
 	/* now interrupt host to tell it we are done booting */
 	trigger_irq_to_host_req();
 
-	/* boot now complete so we can relax the CPU */
-	/* For now skip this to gain more processing performance
-	 * for SRC component.
-	 */
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
-
 	return 0;
 }
 
