@@ -183,16 +183,21 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
 	while (icd) {
-		struct comp_buffer *sink;
 		struct list_item *sink_list;
 		struct list_item *tmp_list;
 
 		/* free sink buffer allocated by current component in bind function */
 		list_for_item_safe(sink_list, tmp_list, &icd->cd->bsink_list) {
-			sink = container_of(sink_list, struct comp_buffer, source_list);
+			struct comp_buffer *sink = container_of(sink_list, struct comp_buffer,
+								source_list);
+			struct __sparse_cache comp_buffer *sink_c = buffer_acquire(sink);
+			struct comp_dev *comp_source = sink_c->source;
+			struct comp_dev *comp_sink = sink_c->sink;
 
-			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_COMP_TO_BUFFER);
-			pipeline_disconnect(icd->cd, sink, PPL_CONN_DIR_BUFFER_TO_COMP);
+			buffer_release(sink_c);
+
+			pipeline_disconnect(comp_source, sink, PPL_CONN_DIR_COMP_TO_BUFFER);
+			pipeline_disconnect(comp_sink, sink, PPL_CONN_DIR_BUFFER_TO_COMP);
 
 			buffer_free(sink);
 		}
