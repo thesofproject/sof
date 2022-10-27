@@ -886,17 +886,22 @@ static int copier_copy(struct comp_dev *dev)
 
 	/* zero or more components on outputs */
 	list_for_item(sink_list, &dev->bsink_list) {
+		struct comp_dev *sink_dev;
+
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
+		sink_dev = sink_c->sink;
 		processed_data.sink_bytes = 0;
-		ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
+		if (sink_dev->state == COMP_STATE_ACTIVE) {
+			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
+			cd->output_total_data_processed += processed_data.sink_bytes;
+		}
 		buffer_release(sink_c);
 		if (ret < 0) {
 			comp_err(dev, "failed to copy buffer for comp %x",
 				 dev->ipc_config.id);
 			break;
 		}
-		cd->output_total_data_processed += processed_data.sink_bytes;
 	}
 
 	if (!ret) {
