@@ -111,6 +111,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_buffer *sink;
 	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
@@ -127,6 +128,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
 		return PPL_STATUS_PATH_STOP;
 	}
+
+	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
+	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	 */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
 
 	/* Prepare module */
 	ret = module_prepare(mod);
@@ -329,8 +337,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 			return ret;
 	}
 
-	mod->period_bytes = params->sample_container_bytes *
-			   params->channels * params->rate / 1000;
 	return 0;
 }
 
@@ -471,6 +477,7 @@ static void module_adapter_process_output(struct comp_dev *dev)
 			sink = container_of(blist, struct comp_buffer, source_list);
 			ca_copy_from_module_to_sink(&sink->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
+			buffer_stream_writeback(sink, mod->output_buffers[i].size);
 			audio_stream_produce(&sink->stream, mod->output_buffers[i].size);
 			mod->output_buffers[i].size = 0;
 			i++;
@@ -522,6 +529,7 @@ int module_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
@@ -546,13 +554,13 @@ int module_adapter_copy(struct comp_dev *dev)
 		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 		source = buffer_release(source);
 
-		bytes_to_process = frames * source_frame_bytes;
+		bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
 
 		buffer_stream_invalidate(source, bytes_to_process);
 		mod->input_buffers[i].size = bytes_to_process;
 		mod->input_buffers[i].consumed = 0;
 		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
-					      bytes_to_process, bytes_to_process);
+					      md->mpd.in_buff_size, bytes_to_process);
 		i++;
 	}
 

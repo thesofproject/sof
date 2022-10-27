@@ -29,19 +29,19 @@
 	} while (0)
 
 #define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
-static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
+static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *drv, \
 					 struct comp_ipc_config *config, \
 					 void *spec) \
 { \
 	return module_adapter_new(drv, config, &(adapter), spec);\
 } \
 \
-static const struct comp_driver comp_module_adapter = { \
+static const struct comp_driver comp_##adapter##_module = { \
 	.type = SOF_COMP_MODULE_ADAPTER, \
 	.uid = SOF_RT_UUID(uuid), \
 	.tctx = &(tr), \
 	.ops = { \
-		.create = adapter_shim_new, \
+		.create = module_##adapter##_shim_new, \
 		.prepare = module_adapter_prepare, \
 		.params = module_adapter_params, \
 		.copy = module_adapter_copy, \
@@ -54,14 +54,14 @@ static const struct comp_driver comp_module_adapter = { \
 	}, \
 }; \
 \
-static SHARED_DATA struct comp_driver_info comp_module_adapter_info = { \
-	.drv = &comp_module_adapter, \
+static SHARED_DATA struct comp_driver_info comp_module_##adapter##_info = { \
+	.drv = &comp_##adapter##_module, \
 }; \
 \
 UT_STATIC void sys_comp_module_##adapter##_init(void) \
 { \
-	comp_register(platform_shared_get(&comp_module_adapter_info, \
-					  sizeof(comp_module_adapter_info))); \
+	comp_register(platform_shared_get(&comp_module_##adapter##_info, \
+					  sizeof(comp_module_##adapter##_info))); \
 } \
 \
 DECLARE_MODULE(sys_comp_module_##adapter##_init)
