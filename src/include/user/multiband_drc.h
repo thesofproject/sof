@@ -46,13 +46,13 @@
   *         Crossover, and the number of DRC components.
   *     uint32_t enable_emp_deemp
   *         1=enable Emphasis and Deemphasis Equalizer; 0=disable (passthrough)
-  *     struct sof_eq_iir_biquad_df2t emp_coef[2]
+  *     struct sof_eq_iir_biquad emp_coef[2]
   *         The coefficient data for Emphasis Equalizer, which is a cascade of 2
   *         biquad filters.
-  *     struct sof_eq_iir_biquad_df2t deemp_coef[2]
+  *     struct sof_eq_iir_biquad deemp_coef[2]
   *         The coefficient data for Deemphasis Equalizer, which is a cascade of
   *         2 biquad filters.
-  *     struct sof_eq_iir_biquad_df2t crossover_coef[6]
+  *     struct sof_eq_iir_biquad crossover_coef[6]
   *         The coefficient data for Crossover LR4 filters. Please refer
   *         src/include/user/crossover.h for details. Zeros will be filled if
   *         the entries are useless. For example, when 2-way crossover is used:
@@ -70,13 +70,13 @@ struct sof_multiband_drc_config {
 	uint32_t reserved[8];
 
 	/* config of emphasis eq-iir */
-	struct sof_eq_iir_biquad_df2t emp_coef[SOF_EMP_DEEMP_BIQUADS];
+	struct sof_eq_iir_biquad emp_coef[SOF_EMP_DEEMP_BIQUADS];
 
 	/* config of deemphasis eq-iir */
-	struct sof_eq_iir_biquad_df2t deemp_coef[SOF_EMP_DEEMP_BIQUADS];
+	struct sof_eq_iir_biquad deemp_coef[SOF_EMP_DEEMP_BIQUADS];
 
 	/* config of crossover */
-	struct sof_eq_iir_biquad_df2t crossover_coef[SOF_CROSSOVER_MAX_LR4];
+	struct sof_eq_iir_biquad crossover_coef[SOF_CROSSOVER_MAX_LR4];
 
 	/* config of multi-band drc */
 	struct sof_drc_params drc_coef[];

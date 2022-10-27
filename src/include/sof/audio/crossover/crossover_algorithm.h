@@ -17,7 +17,7 @@
 void crossover_reset_state_ch(struct crossover_state *ch_state);
 
 /* crossover init function */
-int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
+int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
 			   struct crossover_state *ch_state,
 			   int32_t num_sinks);
 

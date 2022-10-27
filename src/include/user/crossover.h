@@ -60,7 +60,7 @@
   *                  |
   *                  o--- LR4 HP0 ---> HIGH assign_sink[1]
   *
-  *         struct sof_eq_iir_biquad_df2t coef[(num_sinks - 1)*2]
+  *         struct sof_eq_iir_biquad coef[(num_sinks - 1)*2]
   *             The coefficients data for the LR4s. Depending on many
   *             sinks are set, the number entries of this field can vary.
   *             Each entry of the array defines the coefficients for one biquad
@@ -98,7 +98,7 @@ struct sof_crossover_config {
 	uint32_t reserved[4];
 
 	uint32_t assign_sink[SOF_CROSSOVER_MAX_STREAMS];
-	struct sof_eq_iir_biquad_df2t coef[];
+	struct sof_eq_iir_biquad coef[];
 };
 
 #endif // __USER_CROSSOVER_H__

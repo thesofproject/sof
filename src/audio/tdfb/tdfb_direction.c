@@ -174,7 +174,7 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 
 int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 {
-	struct sof_eq_iir_header_df2t *filt;
+	struct sof_eq_iir_header *filt;
 	int64_t *delay;
 	int32_t d_max;
 	int32_t t_max;
@@ -185,10 +185,10 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	/* Select emphasis response per sample rate */
 	switch (fs) {
 	case 16000:
-		filt = (struct sof_eq_iir_header_df2t *)iir_emphasis_16k;
+		filt = (struct sof_eq_iir_header *)iir_emphasis_16k;
 		break;
 	case 48000:
-		filt = (struct sof_eq_iir_header_df2t *)iir_emphasis_48k;
+		filt = (struct sof_eq_iir_header *)iir_emphasis_48k;
 		break;
 	default:
 		return -EINVAL;

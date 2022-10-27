@@ -187,7 +187,7 @@ static int crossover_assign_sinks(struct comp_dev *dev,
  *	       high/low pass filter.
  * \param[out] lr4 initialized struct
  */
-static int crossover_init_coef_lr4(struct sof_eq_iir_biquad_df2t *coef,
+static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 				   struct iir_state_df2t *lr4)
 {
 	int ret;
@@ -197,19 +197,19 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad_df2t *coef,
 	 * iir_state_df2t, it requires two copies of coefficients in a row.
 	 */
 	lr4->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			    sizeof(struct sof_eq_iir_biquad_df2t) * 2);
+			    sizeof(struct sof_eq_iir_biquad) * 2);
 	if (!lr4->coef)
 		return -ENOMEM;
 
 	/* coefficients of the first biquad */
-	ret = memcpy_s(lr4->coef, sizeof(struct sof_eq_iir_biquad_df2t),
-		       coef, sizeof(struct sof_eq_iir_biquad_df2t));
+	ret = memcpy_s(lr4->coef, sizeof(struct sof_eq_iir_biquad),
+		       coef, sizeof(struct sof_eq_iir_biquad));
 	assert(!ret);
 
 	/* coefficients of the second biquad */
-	ret = memcpy_s(lr4->coef + SOF_EQ_IIR_NBIQUAD_DF2T,
-		       sizeof(struct sof_eq_iir_biquad_df2t),
-		       coef, sizeof(struct sof_eq_iir_biquad_df2t));
+	ret = memcpy_s(lr4->coef + SOF_EQ_IIR_NBIQUAD,
+		       sizeof(struct sof_eq_iir_biquad),
+		       coef, sizeof(struct sof_eq_iir_biquad));
 	assert(!ret);
 
 	/* LR4 filters are two 2nd order filters, so only need 4 delay slots
@@ -230,7 +230,7 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad_df2t *coef,
 /**
  * \brief Initializes the crossover coefficients for one channel
  */
-int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
+int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
 			   struct crossover_state *ch_state,
 			   int32_t num_sinks)
 {
@@ -264,7 +264,7 @@ int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
  */
 static int crossover_init_coef(struct comp_data *cd, int nch)
 {
-	struct sof_eq_iir_biquad_df2t *crossover;
+	struct sof_eq_iir_biquad *crossover;
 	struct sof_crossover_config *config = cd->config;
 	int ch, err;
 

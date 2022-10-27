@@ -58,12 +58,12 @@ struct iir_state_df2t {
 	int64_t *delay; /* Pointer to IIR delay line */
 };
 
-struct sof_eq_iir_header_df2t;
+struct sof_eq_iir_header;
 
 int iir_init_coef_df2t(struct iir_state_df2t *iir,
-		       struct sof_eq_iir_header_df2t *config);
+		       struct sof_eq_iir_header *config);
 
-int iir_delay_size_df2t(struct sof_eq_iir_header_df2t *config);
+int iir_delay_size_df2t(struct sof_eq_iir_header *config);
 
 void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay);
 

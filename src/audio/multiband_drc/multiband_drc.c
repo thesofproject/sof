@@ -70,19 +70,19 @@ static inline void multiband_drc_reset_state(struct multiband_drc_state *state)
 		multiband_drc_iir_reset_state_ch(&state->deemphasis[i]);
 }
 
-static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
+static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 					 struct iir_state_df2t *eq)
 {
 	int ret;
 
 	eq->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			   sizeof(struct sof_eq_iir_biquad_df2t) * SOF_EMP_DEEMP_BIQUADS);
+			   sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
 	if (!eq->coef)
 		return -ENOMEM;
 
 	/* Coefficients of the first biquad and second biquad */
-	ret = memcpy_s(eq->coef, sizeof(struct sof_eq_iir_biquad_df2t) * SOF_EMP_DEEMP_BIQUADS,
-		       coef, sizeof(struct sof_eq_iir_biquad_df2t) * SOF_EMP_DEEMP_BIQUADS);
+	ret = memcpy_s(eq->coef, sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS,
+		       coef, sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
 	assert(!ret);
 
 	/* EQ filters are two 2nd order filters, so only need 4 delay slots
@@ -102,9 +102,9 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
 
 static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t nch, uint32_t rate)
 {
-	struct sof_eq_iir_biquad_df2t *crossover;
-	struct sof_eq_iir_biquad_df2t *emphasis;
-	struct sof_eq_iir_biquad_df2t *deemphasis;
+	struct sof_eq_iir_biquad *crossover;
+	struct sof_eq_iir_biquad *emphasis;
+	struct sof_eq_iir_biquad *deemphasis;
 	struct sof_multiband_drc_config *config = cd->config;
 	struct multiband_drc_state *state = &cd->state;
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
