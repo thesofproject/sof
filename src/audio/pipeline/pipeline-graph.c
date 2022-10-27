@@ -239,6 +239,7 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 		dcache_writeback_invalidate_region(uncache_to_cache(buf_list->prev),
 						   sizeof(struct list_item));
 	list_item_del(buf_list);
+	buffer_set_comp(buffer, NULL, dir);
 	irq_local_enable(flags);
 }
 
