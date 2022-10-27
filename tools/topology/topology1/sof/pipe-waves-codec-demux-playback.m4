@@ -36,22 +36,14 @@ define(`SETUP_PARAMS_NAME', `Waves' `ENDPOINT_NAME' `Setup' PIPELINE_ID)
 CONTROLBYTES_PRIV(PP_SETUP_CONFIG,
 `       bytes "0x53,0x4f,0x46,0x00,'
 `       0x00,0x00,0x00,0x00,'
-`       0x20,0x00,0x00,0x00,'
+`       0x0c,0x00,0x00,0x00,'
 `       0x00,0x10,0x00,0x03,'
 `       0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,'
-
-`       0x00,0x01,0x41,0x57,'
-`       0x00,0x00,0x00,0x00,'
-`       0x80,0xBB,0x00,0x00,'
-`       0x20,0x00,0x00,0x00,'
-`       0x02,0x00,0x00,0x00,'
-
 `       0x00,0x00,0x00,0x00,'
 `       0x0c,0x00,0x00,0x00,'
-
 `       0x00,0x00,0x00,0x00"'
 )
 
@@ -63,28 +55,6 @@ C_CONTROLBYTES(SETUP_PARAMS_NAME, PIPELINE_ID,
         CONTROLBYTES_MAX(, 8192),
         ,
         PP_SETUP_CONFIG)
-
-define(`RUNTIME_PARAMS_NAME', `Waves' `ENDPOINT_NAME' `Runtime' PIPELINE_ID)
-
-CONTROLBYTES_PRIV(PP_RUNTIME_PARAMS,
-`       bytes "0x53,0x4f,0x46,0x00,'
-`       0x01,0x00,0x00,0x00,'
-`       0x00,0x00,0x00,0x00,'
-`       0x00,0x10,0x00,0x03,'
-`       0x00,0x00,0x00,0x00,'
-`       0x00,0x00,0x00,0x00,'
-`       0x00,0x00,0x00,0x00,'
-`       0x00,0x00,0x00,0x00"'
-)
-
-# Post process Bytes control for runtime config
-C_CONTROLBYTES(RUNTIME_PARAMS_NAME, PIPELINE_ID,
-        CONTROLBYTES_OPS(bytes),
-        CONTROLBYTES_EXTOPS(void, 258, 258),
-        , , ,
-        CONTROLBYTES_MAX(, 8192),
-        ,
-        PP_RUNTIME_PARAMS)
 
 # demux Bytes control with max value of 255
 C_CONTROLBYTES(concat(`DEMUX', PIPELINE_ID), PIPELINE_ID,
@@ -125,7 +95,7 @@ W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0, SCHEDULE_CORE)
 
 W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, DAI_PERIODS, SCHEDULE_CORE,
-        LIST(`          ', "RUNTIME_PARAMS_NAME", "SETUP_PARAMS_NAME"))
+        LIST(`          ', "SETUP_PARAMS_NAME"))
 
 # "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
 W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
