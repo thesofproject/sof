@@ -447,8 +447,8 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			    struct iir_state_df2t *iir, int nch)
 {
-	struct sof_eq_iir_header_df2t *lookup[SOF_EQ_IIR_MAX_RESPONSES];
-	struct sof_eq_iir_header_df2t *eq;
+	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
+	struct sof_eq_iir_header *eq;
 	int32_t *assign_response;
 	int32_t *coef_data;
 	int size_sum = 0;
@@ -480,10 +480,10 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 				   4);
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			eq = (struct sof_eq_iir_header_df2t *)&coef_data[j];
+			eq = (struct sof_eq_iir_header *)&coef_data[j];
 			lookup[i] = eq;
-			j += SOF_EQ_IIR_NHEADER_DF2T
-				+ SOF_EQ_IIR_NBIQUAD_DF2T * eq->num_sections;
+			j += SOF_EQ_IIR_NHEADER
+				+ SOF_EQ_IIR_NBIQUAD * eq->num_sections;
 		} else {
 			lookup[i] = NULL;
 		}

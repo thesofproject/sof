@@ -91,7 +91,7 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 			delayp++; /* Point to d1 */
 			AE_MULAF32R_HH(acc, coef_b0shift, in); /* Coef b0 */
 			acc = AE_SLAI64S(acc, 1); /* Convert to Q17.47 */
-			tmp = AE_ROUND32F48SSYM(acc); /* Rount to Q1.31 */
+			tmp = AE_ROUND32F48SSYM(acc); /* Round to Q1.31 */
 
 			/* Compute 1st delay d0 */
 			acc = AE_SRAI64(*delayp, 1); /* Convert d1 to Q18.46 */

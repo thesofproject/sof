@@ -14,18 +14,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-int iir_delay_size_df2t(struct sof_eq_iir_header_df2t *config)
+int iir_delay_size_df2t(struct sof_eq_iir_header *config)
 {
 	int n = config->num_sections; /* One section uses two unit delays */
 
-	if (n > SOF_EQ_IIR_DF2T_BIQUADS_MAX || n < 1)
+	if (n > SOF_EQ_IIR_BIQUADS_MAX || n < 1)
 		return -EINVAL;
 
 	return 2 * n * sizeof(int64_t);
 }
 
 int iir_init_coef_df2t(struct iir_state_df2t *iir,
-		       struct sof_eq_iir_header_df2t *config)
+		       struct sof_eq_iir_header *config)
 {
 	iir->biquads = config->num_sections;
 	iir->biquads_in_series = config->num_sections_in_series;
