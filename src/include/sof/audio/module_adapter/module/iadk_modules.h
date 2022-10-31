@@ -44,7 +44,7 @@ do { \
 	(comp_dynamic_module)->type = mtype; \
 	(comp_dynamic_module)->uid = SOF_RT_UUID(uuid); \
 	(comp_dynamic_module)->tctx = &(tr); \
-	(comp_dynamic_module)->ops.create = *iadk_modules_shim_new; \
+	(comp_dynamic_module)->ops.create = iadk_modules_shim_new; \
 	(comp_dynamic_module)->ops.prepare = module_adapter_prepare; \
 	(comp_dynamic_module)->ops.params = module_adapter_params; \
 	(comp_dynamic_module)->ops.copy = module_adapter_copy; \
