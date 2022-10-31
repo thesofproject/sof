@@ -1,12 +1,24 @@
 % process_test - test objective audio quality parameters
 %
-% process_test(comp, bits_in_list, bits_out_list, fs)
+% process_test(comp, bits_in_list, bits_out_list, fs, fulltest, xtrun)
+%
+% Inputs
+%   comp - component to test
+%   bits_in_list - input word lengths
+%   bits_out_list - output workd lengths
+%   fs - sample rate
+%   fulltest - 0 perform only chirp test, 1 perform all
+%   xtrun - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
+%
+% E.g.
+% process_test('eq-iir', 32, 32, 48000, 0, 'xt-run --turbo');
+% process_test('eq-iir', 32, 32);
 
 % SPDX-License-Identifier: BSD-3-Clause
 % Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest)
+function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest, xtrun)
 	%% Defaults for call parameters
 	if nargin < 1
 		comp = 'EQIIR';
@@ -28,6 +40,10 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 		fulltest = 1;
 	end
 
+	if nargin < 6
+		xtrun = '';
+	end
+
 	%% Paths
 	t.blobpath = '../../topology/topology1/m4';
 	plots = 'plots';
@@ -44,6 +60,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	t.bits_in = bits_in_list;              % Input word length from func arguments
 	t.bits_out = bits_out_list;            % Output word length from func arguments
 	t.full_test = fulltest;                % 0 is quick check only, 1 is full test
+	t.xtrun = xtrun;
 
 	%% Show graphics or not. With visible plot windows Octave may freeze if too
 	%  many windows are kept open. As workaround setting close windows to
@@ -335,6 +352,7 @@ function test = test_defaults(t)
 	test.ch = t.ch;
 	test.fs = t.fs;
 	test.plot_visible = t.plot_visible;
+	test.xtrun = t.xtrun;
 
 	% Misc
 	test.quick = 0;

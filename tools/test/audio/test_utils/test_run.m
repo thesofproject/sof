@@ -86,6 +86,12 @@ else
 	fprintf(fh, 'FN_TRACE=\"/dev/null"\n');
 end
 
+if isfield(test, 'xtrun')
+	fprintf(fh, 'XTRUN=\"%s\"\n', test.xtrun);
+else
+	fprintf(fh, 'XTRUN=\n');
+end
+
 % Override defaults in comp_run.sh
 fprintf(fh, 'VALGRIND=false\n');
 fclose(fh);
