@@ -275,6 +275,7 @@ static void volume_ramp(struct processing_module *mod)
 	int i;
 	bool ramp_finished = true;
 
+	cd->copy_gain = true;
 	/* No need to ramp in idle state, jump volume to request. */
 	if (dev->state == COMP_STATE_READY) {
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -361,6 +362,7 @@ static void reset_state(struct vol_data *cd)
 	cd->vol_ramp_frames = 0;
 	cd->vol_ramp_elapsed_frames = 0;
 	cd->sample_rate = 0;
+	cd->copy_gain = true;
 }
 
 #if CONFIG_IPC_MAJOR_3
