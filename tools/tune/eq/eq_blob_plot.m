@@ -93,11 +93,11 @@ switch lower(eqtype)
 		for i = 1:hd.channels_in_config
 			decoded_eq = eq_iir_blob_decode(blob, hd.assign_response(i));
 			eq.b = decoded_eq.b;
-			eq.a = decodec_eq.a;
+			eq.a = decoded_eq.a;
 			h = freqz(eq.b, eq.a, eq.f, fs);
 			eq.m(:,i) = 20*log10(abs(h));
 			if do_group_delay
-				gd = grpdelay(teq.b, teq.a, eq.f, fs) / fs;
+				gd = grpdelay(eq.b, eq.a, eq.f, fs) / fs;
 				eq.gd(:,i) = gd;
 			end
 		end
