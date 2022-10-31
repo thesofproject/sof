@@ -233,6 +233,16 @@ set(TPLGS
 	"sof-glk-es8336\;sof-jsl-es8336-dmic4ch-ssp1\;-DPLATFORM=jsl\;-DSSP_NUM=1\;-DCHANNELS=4"
 	"sof-glk-es8336\;sof-jsl-es8336-dmic4ch-ssp2\;-DPLATFORM=jsl\;-DSSP_NUM=2\;-DCHANNELS=4"
 
+	"sof-glk-es8336\;sof-icl-es8336-ssp0\;-DPLATFORM=jsl\;-DSSP_NUM=0\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-icl-es8336-ssp1\;-DPLATFORM=jsl\;-DSSP_NUM=1\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-icl-es8336-ssp2\;-DPLATFORM=jsl\;-DSSP_NUM=2\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-icl-es8336-dmic2ch-ssp0\;-DPLATFORM=jsl\;-DSSP_NUM=0\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-icl-es8336-dmic2ch-ssp1\;-DPLATFORM=jsl\;-DSSP_NUM=1\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-icl-es8336-dmic2ch-ssp2\;-DPLATFORM=jsl\;-DSSP_NUM=2\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-icl-es8336-dmic4ch-ssp0\;-DPLATFORM=jsl\;-DSSP_NUM=0\;-DCHANNELS=4"
+	"sof-glk-es8336\;sof-icl-es8336-dmic4ch-ssp1\;-DPLATFORM=jsl\;-DSSP_NUM=1\;-DCHANNELS=4"
+	"sof-glk-es8336\;sof-icl-es8336-dmic4ch-ssp2\;-DPLATFORM=jsl\;-DSSP_NUM=2\;-DCHANNELS=4"
+
 	"sof-glk-es8336\;sof-cml-es8336-ssp0\;-DPLATFORM=cml\;-DSSP_NUM=0\;-DCHANNELS=0"
 	"sof-glk-es8336\;sof-cml-es8336-ssp1\;-DPLATFORM=cml\;-DSSP_NUM=1\;-DCHANNELS=0"
 	"sof-glk-es8336\;sof-cml-es8336-ssp2\;-DPLATFORM=cml\;-DSSP_NUM=2\;-DCHANNELS=0"
