@@ -5,33 +5,109 @@
 # fail on any errors
 set -e
 
+# Defaults
+BUILD_TYPE=native
+BUILD_DIR_NAME=build_testbench
+BUILD_TARGET=install
+
 print_usage()
 {
     cat <<EOFUSAGE
-usage: $0 [-f]
+usage: $0 [-f] [-p <platform>]
+       -p Build testbench binary for xt-run for selected platform, e.g. -p tgl
        -f Build testbench with compiler provided by fuzzer
           (default path: $HOME/sof/work/AFL/afl-gcc)
 EOFUSAGE
+}
+
+# die is copy from xtensa-build-all.sh
+die()
+{
+    >&2 printf '%s ERROR: ' "$0"
+    # We want die() to be usable exactly like printf
+    # shellcheck disable=SC2059
+    >&2 printf "$@"
+    exit 1
 }
 
 rebuild_testbench()
 {
     cd "$BUILD_TESTBENCH_DIR"
 
-    rm -rf build_testbench
-
-    mkdir build_testbench
-    cd build_testbench
+    rm -rf "$BUILD_DIR_NAME"
+    mkdir "$BUILD_DIR_NAME"
+    cd "$BUILD_DIR_NAME"
 
     cmake -DCMAKE_INSTALL_PREFIX=install  ..
 
-    cmake --build .  --  -j"$(nproc)" install
+    cmake --build .  --  -j"$(nproc)" $BUILD_TARGET
 }
 
 export_CC_with_afl()
 {
     printf 'export CC=%s\n' "${SOF_AFL}"
     export CC=${SOF_AFL}
+}
+
+setup_xtensa_tools_build()
+{
+    BUILD_TYPE=xt
+    BUILD_TARGET=
+    BUILD_DIR_NAME=build_xt_testbench
+
+    # check needed environment variables
+    test -n "${XTENSA_TOOLS_ROOT}" || die "XTENSA_TOOLS_ROOT need to be set.\n"
+
+    # Get compiler version for platform
+    source "$SCRIPT_DIR/set_xtensa_params.sh" "$BUILD_PLATFORM"
+
+    test -n "${XTENSA_TOOLS_VERSION}" ||
+	die "Illegal platform $BUILD_PLATFORM, no XTENSA_TOOLS_VERSION found.\n"
+    test -n "${XTENSA_CORE}" ||
+	die "Illegal platform $BUILD_PLATFORM, no XTENSA_CORE found.\n"
+
+    compiler="xt-xcc"
+    install_bin=install/tools/$XTENSA_TOOLS_VERSION/XtensaTools/bin
+    tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
+    testbench_sections="-Wl,--sections-placement $BUILD_TESTBENCH_DIR/testbench_xcc_sections.txt"
+    export CC=$tools_bin/$compiler
+    export LD=$tools_bin/xt-ld
+    export OBJDUMP=$tools_bin/xt-objdump
+    export LDFLAGS="-mlsp=sim -Wl,-LE $testbench_sections"
+    export XTENSA_CORE
+}
+
+export_xtensa_setup()
+{
+    export_dir=$BUILD_TESTBENCH_DIR/$BUILD_DIR_NAME
+    export_script=$export_dir/xtrun_env.sh
+    xtbench=$export_dir/testbench
+    xtbench_run="XTENSA_CORE=$XTENSA_CORE \$XTENSA_TOOLS_ROOT/$install_bin/xt-run $xtbench"
+    cat <<EOFSETUP > "$export_script"
+export XTENSA_TOOLS_ROOT=$XTENSA_TOOLS_ROOT
+export XTENSA_CORE=$XTENSA_CORE
+XTENSA_PATH=$tools_bin
+EOFSETUP
+}
+
+testbench_usage()
+{
+    case "$BUILD_TYPE" in
+	xt)
+	    export_xtensa_setup
+	    cat <<EOFUSAGE
+Success! Testbench binary for $BUILD_PLATFORM is in $xtbench
+it can be run with command:
+
+$xtbench_run -h
+
+Alternatively with environment setup to match build:
+
+source $export_script
+\$XTENSA_PATH/xt-run $xtbench -h
+
+EOFUSAGE
+    esac
 }
 
 main()
@@ -41,8 +117,12 @@ main()
     BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
     : "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
 
-    while getopts "fh" OPTION; do
+    while getopts "fhp:" OPTION; do
 	case "$OPTION" in
+	    p)
+		BUILD_PLATFORM="$OPTARG"
+		setup_xtensa_tools_build
+		;;
 	    f) export_CC_with_afl;;
 	    h) print_usage; exit 1;;
 	    *) print_usage; exit 1;;
@@ -50,6 +130,8 @@ main()
     done
 
     rebuild_testbench
+
+    testbench_usage
 }
 
 main "$@"
