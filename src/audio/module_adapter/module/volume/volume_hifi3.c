@@ -42,6 +42,7 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 		cd->vol[i + channels_count * 2] = cd->volume[i];
 		cd->vol[i + channels_count * 3] = cd->volume[i];
 	}
+	cd->copy_gain = false;
 }
 
 static inline void peak_vol_calc(struct vol_data *cd, ae_f32x2 out_sample, size_t channel)
@@ -84,7 +85,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
-	vol_store_gain(cd, channels_count);
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
+
 	buf = (ae_f32x2 *)cd->vol;
 	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
 	vol = (ae_f32x2 *)buf;
@@ -175,7 +178,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
-	vol_store_gain(cd, channels_count);
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
+
 	buf = (ae_f32x2 *)cd->vol;
 	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
 	vol = (ae_f32x2 *)buf;
@@ -270,7 +275,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
-	vol_store_gain(cd, channels_count);
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
+
 	buf = (ae_f32x2 *)cd->vol;
 	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 4);
 	vol = buf;
