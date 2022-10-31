@@ -157,6 +157,44 @@ static void kpb_lock_init(struct comp_data *kpb)
 
 #endif /* __ZEPHYR__ */
 
+/**
+ * \brief Set and verify ipc parameters.
+ * \param[in] dev - component device pointer.
+ * \param[in] ipc_config - ipc config pointer type.
+ * \return: none.
+ */
+static int kpb_set_verify_ipc_params(struct comp_dev *dev,
+				     const struct ipc_config_process *ipc_config)
+{
+	struct comp_data *kpb;
+	int ret;
+
+	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_config->data,
+		       ipc_config->size);
+	assert(!ret);
+
+	/* Initialize sinks */
+	kpb->sel_sink = NULL;
+	kpb->host_sink = NULL;
+
+	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
+		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling width not supported");
+		return -EINVAL;
+	}
+
+	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
+		comp_err(dev, "kpb_set_verify_ipc_params(): no of channels exceeded the limit");
+		return -EINVAL;
+	}
+
+	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
+		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling frequency not supported");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * \brief Create a key phrase buffer component.
  * \param[in] config - generic ipc component pointer.
@@ -168,10 +206,14 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 				const void *spec)
 {
 	const struct ipc_config_process *ipc_process = spec;
+	size_t ipc_config_size = ipc_process->size;
+	size_t kpb_config_size = sizeof(struct sof_kpb_config);
+
 	struct task_ops ops = {
 		.run = kpb_draining_task,
 		.get_deadline = kpb_task_deadline,
 	};
+
 	struct comp_dev *dev;
 	struct comp_data *kpb;
 	int ret;
@@ -179,9 +221,9 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	comp_cl_info(&comp_kpb, "kpb_new()");
 
 	/* make sure data size is not bigger than config space */
-	if (ipc_process->size > sizeof(struct sof_kpb_config)) {
-		comp_cl_err(&comp_kpb, "kpb_new(): data size %u too big",
-			    ipc_process->size);
+	if (ipc_config_size > kpb_config_size) {
+		comp_cl_err(&comp_kpb, "kpb_new(): ipc config size %u too big",
+			    ipc_config_size);
 		return NULL;
 	}
 
@@ -198,24 +240,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, kpb);
 
-	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
-		       ipc_process->size);
-	assert(!ret);
-
-	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
-		comp_err(dev, "kpb_new(): requested sampling width not supported");
-		rfree(dev);
-		return NULL;
-	}
-
-	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		comp_err(dev, "kpb_new(): no of channels exceeded the limit");
-		rfree(dev);
-		return NULL;
-	}
-
-	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
-		comp_err(dev, "kpb_new(): requested sampling frequency not supported");
+	ret = kpb_set_verify_ipc_params(dev, ipc_process);
+	if (ret) {
 		rfree(dev);
 		return NULL;
 	}
@@ -512,8 +538,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* Init private data */
 	kpb->kpb_no_of_clients = 0;
 	kpb->hd.buffered = 0;
-	kpb->sel_sink = NULL;
-	kpb->host_sink = NULL;
 
 	if (kpb->hd.c_hb && kpb->hd.buffer_size < hb_size_req) {
 		/* Host params has changed, we need to allocate new buffer */
@@ -1638,14 +1662,14 @@ static const struct comp_driver comp_kpb = {
 	.uid = SOF_RT_UUID(kpb_uuid),
 	.tctx = &kpb_tr,
 	.ops = {
-		.create = kpb_new,
-		.free = kpb_free,
-		.cmd = kpb_cmd,
-		.trigger = kpb_trigger,
-		.copy = kpb_copy,
-		.prepare = kpb_prepare,
-		.reset = kpb_reset,
-		.params = kpb_params,
+		.create		= kpb_new,
+		.free		= kpb_free,
+		.cmd		= kpb_cmd,
+		.trigger	= kpb_trigger,
+		.copy		= kpb_copy,
+		.prepare	= kpb_prepare,
+		.reset		= kpb_reset,
+		.params		= kpb_params,
 	},
 };
 
