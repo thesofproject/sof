@@ -27,7 +27,8 @@ FS_OUT=48000
 FN_IN=input.raw
 FN_OUT=output.raw
 FN_TRACE:=trace.txt # This is default value if FN_TRACE is not set via -e option
-VALGRIND=yes
+VALGRIND=true
+XTRUN=
 EOFHELP
 }
 
@@ -42,10 +43,11 @@ parse_args ()
     FS_IN=48000
     FS_OUT=
     VALGRIND=true
-    DEBUG=
+    DEBUG=-q
     SOURCED_CONFIG=false
     FN_TRACE=
     EXTRA_OPTS=
+    XTRUN=
 
     while getopts ":he:t:" opt; do
 	case "${opt}" in
@@ -121,18 +123,42 @@ run_testbench ()
 
 parse_args "$@"
 
-# Paths
-HOST_ROOT=../../testbench/build_testbench
-HOST_EXE=$HOST_ROOT/install/bin/testbench
-HOST_LIB=$HOST_ROOT/sof_ep/install/lib
-TPLG_LIB=$HOST_ROOT/sof_parser/install/lib
+# Path to topologies
 TPLG_DIR=../../build_tools/test/topology
+
+# Testbench path and executable
+if [[ -z $XTRUN ]]; then
+    TESTBENCH=../../testbench/build_testbench/install/bin/testbench
+else
+    BUILD_DIR=../../testbench/build_xt_testbench
+    TESTBENCH="$BUILD_DIR"/testbench
+    source "$BUILD_DIR"/xtrun_env.sh
+    XTRUN_CMD=$XTENSA_PATH/$XTRUN
+    if $VALGRIND; then
+	>&2 printf "WARNING: Ignoring VALGRIND with xt-run\n"
+	VALGRIND=false
+    fi
+fi
+
+if $VALGRIND; then
+    VALGRIND_CMD="valgrind --leak-check=yes --error-exitcode=1"
+else
+    VALGRIND_CMD=
+fi
+
+HOST_EXE="$XTRUN_CMD $TESTBENCH"
 
 # Use topology from component test topologies
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_OUT}le
 TPLGFN=test-${DIRECTION}-ssp5-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-24576k-codec.tplg
 TPLG=${TPLG_DIR}/${TPLGFN}
+[ -f "$TPLG" ] || {
+    echo
+    echo "Error: topology $TPLGFN does not exist."
+    echo "Please run scripts/build-tools.sh -t"
+    exit 1
+}
 
 # If binary test vectors
 if [ "${FN_IN: -4}" == ".raw" ]; then
@@ -146,17 +172,9 @@ OPTS="$DEBUG -r $FS_IN -R $FS_OUT -c $CHANNELS_IN -n $CHANNELS_OUT $BINFMT -t $T
 DATA="-i $FN_IN -o $FN_OUT"
 ARG="$OPTS $EXTRA_OPTS $DATA"
 CMD="$HOST_EXE $ARG"
-if "$VALGRIND"; then
-    VALGRIND_CMD="valgrind --leak-check=yes --error-exitcode=1"
-else
-    VALGRIND_CMD=
-fi
-
-export LD_LIBRARY_PATH=$HOST_LIB:$TPLG_LIB
 
 # Run test bench
 echo "Command:         $HOST_EXE"
 echo "Argument:        $ARG"
-echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
 
 run_testbench
