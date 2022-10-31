@@ -3,15 +3,17 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 set(TPLGS
 # HDMI only topology with passthrough pipelines
-"sof-hda-generic\;sof-hda-generic-idisp\;USE_CHAIN_DMA=true"
+"sof-hda-generic\;sof-hda-generic-idisp\;USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 # HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,USE_CHAIN_DMA=true"
+"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
 "sof-hda-generic\;sof-hda-generic-4ch\;PLATFORM=mtl,\
-HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin"
+HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,DEEPBUFFER_FW_DMA_MS=100"
 "sof-hda-generic\;sof-hda-generic-2ch\;PLATFORM=mtl,\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin"
+HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,\
+DEEPBUFFER_FW_DMA_MS=100"
 
 # SDW topology with passthrough pipelines
 "cavs-sdw\;mtl-sdw"
