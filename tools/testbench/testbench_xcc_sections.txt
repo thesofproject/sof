@@ -1,0 +1,18 @@
+#
+# IRAM placement
+#
+# put: .iram0.text	.literal
+# put: .iram0.text	.text
+
+#put: .iram0.text	.static_uuids
+#put: .iram0.text	.trace_ctx
+#put: .text	.static_uuids
+#put: .text	.trace_ctx
+put: .bss	.static_uuids
+put: .bss	.trace_ctx
+
+# sections order
+
+# .text
+# .static_uuids
+# .trace_ctx
