@@ -197,7 +197,12 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
+	const struct dai_properties *props;
+
+	if (!dai)
+		return 0;
+
+	props = dai_get_properties(dai->dev, direction, 0);
 
 	return props->fifo_depth;
 }
@@ -1321,7 +1326,12 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props = dai_get_properties(dai->dev, 0, 0);
+	const struct dai_properties *props;
+
+	if (!dai)
+		return 0;
+
+	props = dai_get_properties(dai->dev, 0, 0);
 
 	return props->reg_init_delay;
 }
