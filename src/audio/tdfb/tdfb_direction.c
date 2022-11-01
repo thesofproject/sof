@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2021 Intel Corporation. All rights reserved.
+// Copyright(c) 2021-2022 Intel Corporation. All rights reserved.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 #include <ipc/topology.h>
 #include <sof/audio/tdfb/tdfb_comp.h>
 #include <rtos/alloc.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/math/trig.h>
 #include <sof/math/sqrt.h>
 #include <user/eq.h>
@@ -83,7 +83,7 @@ void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int ch_count, int *
 	if (!cd->direction_updates)
 		return;
 
-	y = iir_df2t(&cd->direction.emphasis[*ch], x);
+	y = iir_df1(&cd->direction.emphasis[*ch], x);
 	*cd->direction.wp = sat_int16(Q_SHIFT_RND(y, 31, 18)); /* 18 dB boost after high-pass */
 	cd->direction.wp++;
 	tdfb_cinc_s16(&cd->direction.wp, cd->direction.d_end, cd->direction.d_size);
@@ -175,7 +175,7 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 {
 	struct sof_eq_iir_header *filt;
-	int64_t *delay;
+	int32_t *delay;
 	int32_t d_max;
 	int32_t t_max;
 	size_t size;
@@ -195,15 +195,15 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	}
 
 	/* Allocate delay lines for IIR filters and initialize them */
-	size = ch_count * iir_delay_size_df2t(filt);
+	size = ch_count * iir_delay_size_df1(filt);
 	delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
 	if (!delay)
 		return -ENOMEM;
 
-	cd->direction.df2t_delay = delay;
+	cd->direction.df1_delay = delay;
 	for (i = 0; i < ch_count; i++) {
-		iir_init_coef_df2t(&cd->direction.emphasis[i], filt);
-		iir_init_delay_df2t(&cd->direction.emphasis[i], &delay);
+		iir_init_coef_df1(&cd->direction.emphasis[i], filt);
+		iir_init_delay_df1(&cd->direction.emphasis[i], &delay);
 	}
 
 	/* Unit delay length in Q1.31 seconds */
@@ -251,14 +251,14 @@ err_free_all:
 	cd->direction.d = NULL;
 
 err_free_iir:
-	rfree(cd->direction.df2t_delay);
-	cd->direction.df2t_delay = NULL;
+	rfree(cd->direction.df1_delay);
+	cd->direction.df1_delay = NULL;
 	return -ENOMEM;
 }
 
 void tdfb_direction_free(struct tdfb_comp_data *cd)
 {
-	rfree(cd->direction.df2t_delay);
+	rfree(cd->direction.df1_delay);
 	rfree(cd->direction.d);
 	rfree(cd->direction.r);
 }

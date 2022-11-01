@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2017 Intel Corporation. All rights reserved.
+// Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
@@ -20,7 +20,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
@@ -46,10 +46,10 @@ DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
 
 /* IIR component private data */
 struct comp_data {
-	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
-	int64_t *iir_delay;			/**< pointer to allocated RAM */
+	int32_t *iir_delay;			/**< pointer to allocated RAM */
 	size_t iir_delay_size;			/**< allocated size */
 	eq_iir_func eq_iir_func;		/**< processing function */
 };
@@ -65,7 +65,7 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct iir_state_df2t *filter;
+	struct iir_state_df1 *filter;
 	int16_t *x0;
 	int16_t *y0;
 	int16_t *x;
@@ -93,7 +93,7 @@ static void eq_iir_s16_default(const struct comp_dev *dev,
 			y0 = y + i;
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df2t_s16(filter, *x0);
+				*y0 = iir_df1_s16(filter, *x0);
 				x0 += nch;
 				y0 += nch;
 			}
@@ -112,7 +112,7 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct iir_state_df2t *filter;
+	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -140,7 +140,7 @@ static void eq_iir_s24_default(const struct comp_dev *dev,
 			y0 = y + i;
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df2t_s24(filter, *x0);
+				*y0 = iir_df1_s24(filter, *x0);
 				x0 += nch;
 				y0 += nch;
 			}
@@ -159,7 +159,7 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 			       struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct iir_state_df2t *filter;
+	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -187,7 +187,7 @@ static void eq_iir_s32_default(const struct comp_dev *dev,
 			y0 = y + i;
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df2t(filter, *x0);
+				*y0 = iir_df1(filter, *x0);
 				x0 += nch;
 				y0 += nch;
 			}
@@ -205,7 +205,7 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 				  struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct iir_state_df2t *filter;
+	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int16_t *y0;
 	int32_t *x;
@@ -233,7 +233,7 @@ static void eq_iir_s32_16_default(const struct comp_dev *dev,
 			y0 = y + i;
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df2t_s32_s16(filter, *x0);
+				*y0 = iir_df1_s32_s16(filter, *x0);
 				x0 += nch;
 				y0 += nch;
 			}
@@ -251,7 +251,7 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 				  struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct iir_state_df2t *filter;
+	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
 	int32_t *x;
@@ -279,7 +279,7 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 			y0 = y + i;
 			filter = &cd->iir[i];
 			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df2t_s32_s24(filter, *x0);
+				*y0 = iir_df1_s32_s24(filter, *x0);
 				x0 += nch;
 				y0 += nch;
 			}
@@ -431,7 +431,7 @@ static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
 
 static void eq_iir_free_delaylines(struct comp_data *cd)
 {
-	struct iir_state_df2t *iir = cd->iir;
+	struct iir_state_df1 *iir = cd->iir;
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
@@ -445,7 +445,7 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 }
 
 static int eq_iir_init_coef(struct sof_eq_iir_config *config,
-			    struct iir_state_df2t *iir, int nch)
+			    struct iir_state_df1 *iir, int nch)
 {
 	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header *eq;
@@ -506,7 +506,7 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			 */
 			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
 				     i);
-			iir_reset_df2t(&iir[i]);
+			iir_reset_df1(&iir[i]);
 			continue;
 		}
 
@@ -518,7 +518,7 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 
 		/* Initialize EQ coefficients */
 		eq = lookup[resp];
-		s = iir_delay_size_df2t(eq);
+		s = iir_delay_size_df1(eq);
 		if (s > 0) {
 			size_sum += s;
 		} else {
@@ -527,7 +527,7 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			return -EINVAL;
 		}
 
-		iir_init_coef_df2t(&iir[i], eq);
+		iir_init_coef_df1(&iir[i], eq);
 		comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to response %d",
 			     i, resp);
 	}
@@ -535,10 +535,10 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 	return size_sum;
 }
 
-static void eq_iir_init_delay(struct iir_state_df2t *iir,
-			      int64_t *delay_start, int nch)
+static void eq_iir_init_delay(struct iir_state_df1 *iir,
+			      int32_t *delay_start, int nch)
 {
-	int64_t *delay = delay_start;
+	int32_t *delay = delay_start;
 	int i;
 
 	/* Initialize second phase to set EQ delay lines pointers. A
@@ -546,7 +546,7 @@ static void eq_iir_init_delay(struct iir_state_df2t *iir,
 	 */
 	for (i = 0; i < nch; i++) {
 		if (iir[i].biquads > 0)
-			iir_init_delay_df2t(&iir[i], &delay);
+			iir_init_delay_df1(&iir[i], &delay);
 	}
 }
 
@@ -642,7 +642,7 @@ static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		iir_reset_df2t(&cd->iir[i]);
+		iir_reset_df1(&cd->iir[i]);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -960,7 +960,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 	cd->eq_iir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		iir_reset_df2t(&cd->iir[i]);
+		iir_reset_df1(&cd->iir[i]);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
