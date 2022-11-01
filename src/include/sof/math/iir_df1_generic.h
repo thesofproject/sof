@@ -30,5 +30,5 @@ static inline int32_t iir_df1_s32_s24(struct iir_state_df1 *iir, int32_t x)
 	return sat_int24(Q_SHIFT_RND(iir_df1(iir, x), 31, 23));
 }
 
-#endif /* __IIR_DF2T_GENERIC_H__ */
+#endif /* __IIR_DF1_GENERIC_H__ */
 

@@ -134,7 +134,7 @@ config COMP_IIR
 	bool "IIR component"
 	select COMP_BLOB
 	default y
-	select MATH_IIR_DF2T
+	select MATH_IIR_DF1
 	help
 	  Select for IIR component
 
@@ -427,7 +427,7 @@ endif # COMP_ASRC
 config COMP_TDFB
 	bool "TDFB component"
 	select MATH_FIR
-	select MATH_IIR_DF2T
+	select MATH_IIR_DF1
 	select SQRT_FIXED
 	select CORDIC_FIXED
 	select COMP_BLOB

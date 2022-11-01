@@ -13,7 +13,7 @@
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <user/tdfb.h>
 
 /* Select optimized code variant when xt-xcc compiler is used */
@@ -57,7 +57,7 @@
 /* TDFB component private data */
 
 struct tdfb_direction_data {
-	struct iir_state_df2t emphasis[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 emphasis[PLATFORM_MAX_CHANNELS];
 	int32_t timediff[PLATFORM_MAX_CHANNELS];
 	int32_t timediff_iter[PLATFORM_MAX_CHANNELS];
 	int64_t level_ambient;
@@ -65,7 +65,7 @@ struct tdfb_direction_data {
 	int32_t level;
 	int32_t unit_delay; /* Q1.31 seconds */
 	int32_t frame_count_since_control;
-	int64_t *df2t_delay;
+	int32_t *df1_delay;
 	int32_t *r;
 	int16_t *d;
 	int16_t *d_end;
