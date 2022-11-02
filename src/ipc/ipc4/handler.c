@@ -397,6 +397,9 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	int ret = 0;
 	int i;
 
+	/* raise an assert on purpose for testing */
+	assert(0);
+
 	state.primary.dat = ipc4->primary.dat;
 	state.extension.dat = ipc4->extension.dat;
 	cmd = state.primary.r.ppl_state;
