@@ -26,10 +26,8 @@ DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_uuid), LOG_LEVEL_INFO);
 /* default voltage is 0.8V */
 const struct freq_table platform_cpu_freq[] = {
 	{  26000000, 26000},
-	{ 100000000, 26000},
-	{ 200000000, 26000},
+	{ 300000000, 26000},
 	{ 400000000, 26000},
-	{ 800000000, 26000},
 };
 
 STATIC_ASSERT(ARRAY_SIZE(platform_cpu_freq) == NUM_CPU_FREQ,
@@ -62,20 +60,17 @@ static int clock_platform_set_dsp_freq(int clock, int freq_idx)
 	case ADSP_CLK_26M:
 		set_mux_adsp_sel(MTK_CLK_ADSP_26M);
 		break;
-	case ADSP_CLK_PLL_800M_D_8:
-		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_8);
+	case ADSP_CLK_PLL_300M:
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
+		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL);
 		break;
-	case ADSP_CLK_PLL_800M_D_4:
-		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_4);
-		break;
-	case ADSP_CLK_PLL_800M_D_2:
-		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL_2);
-		break;
-	case ADSP_CLK_PLL_800M:
+	case ADSP_CLK_PLL_400M:
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
 		set_mux_adsp_sel(MTK_CLK_ADSP_DSPPLL);
 		break;
 	default:
-		set_mux_adsp_sel(MTK_CLK_ADSP_26M);
+		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
+		tr_err(&clkdrv_tr, "unknown freq index %x\n", freq_idx);
 		break;
 	}
 
