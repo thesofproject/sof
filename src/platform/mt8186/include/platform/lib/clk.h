@@ -30,10 +30,8 @@ struct sof;
 #define MTK_ADSP_CLK_BUS_SRC_EMI		0
 #define MTK_ADSP_CLK_BUS_SRC_LOCAL		1
 
-/* MTK_CLK_CFG_UPDATE */
-#define MTK_CLK_CFG_ADSP_UPDATE			BIT(16)
-
 /* MTK_CLK_CFG_11 */
+#define MTK_CLK_CFG_ADSP_UPDATE			BIT(16)
 #define MTK_CLK_ADSP_OFFSET			24
 #define MTK_CLK_ADSP_MASK			0x7
 #define MTK_CLK_ADSP_26M			0
@@ -42,6 +40,25 @@ struct sof;
 #define MTK_CLK_ADSP_DSPPLL_2			3
 #define MTK_CLK_ADSP_DSPPLL_4			4
 #define MTK_CLK_ADSP_DSPPLL_8			5
+
+/* MTK_CLK_CFG_15 */
+#define MTK_CLK_CFG_ADSP_BUS_UPDATE		BIT(31)
+#define MTK_CLK_ADSP_BUS_OFFSET			17
+#define MTK_CLK_ADSP_BUS_MASK			0x7
+#define MTK_CLK_ADSP_BUS_26M			0
+#define MTK_CLK_ADSP_BUS_ULPOSC_D_2		1
+#define MTK_CLK_ADSP_BUS_MAINPPLL_D_5		2
+#define MTK_CLK_ADSP_BUS_MAINPPLL_D_2_D_2	3
+#define MTK_CLK_ADSP_BUS_MAINPPLL_D_3		4
+#define MTK_CLK_ADSP_BUS_RESERVED		5
+#define MTK_CLK_ADSP_BUS_UNIVPLL_D_3		6
+
+#define MTK_PLL_BASE_EN				BIT(0)
+#define MTK_PLL_PWR_ON				BIT(0)
+#define MTK_PLL_ISO_EN				BIT(1)
+
+#define MTK_PLL_DIV_RATIO_300M			0x831713B2
+#define MTK_PLL_DIV_RATIO_400M			0x831EC4ED
 
 /* List resource from low to high request */
 /* 0 is the lowest request */
