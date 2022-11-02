@@ -28,3 +28,6 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 
 void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
 { }
+
+void platform_pm_runtime_power_off(void)
+{ }
