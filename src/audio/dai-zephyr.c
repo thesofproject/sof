@@ -1005,6 +1005,11 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				return ret;
 
+			/* dma_config needed after stop */
+			ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
+			if (ret < 0)
+				return ret;
+
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
