@@ -125,6 +125,14 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command */
 	ipc_cmd(hdr);
 
+#if CONFIG_SOC_SERIES_INTEL_ADSP_CAVS
+	/* are we about to enter D3 ? */
+	if (ipc->pm_prepare_D3) {
+		/* no return - memory will be powered off and IPC sent */
+		platform_pm_runtime_power_off();
+	}
+#endif
+
 	return SOF_TASK_STATE_COMPLETED;
 }
 
