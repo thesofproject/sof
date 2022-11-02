@@ -456,20 +456,6 @@ struct comp_ops {
 			  struct timestamp_data *tsd);
 
 	/**
-	 * Bind, atomic - used to notify component of bind event.
-	 * @param dev Component device.
-	 * @param data Bind info
-	 */
-	int (*bind)(struct comp_dev *dev, void *data);
-
-	/**
-	 * Unbind, atomic - used to notify component of unbind event.
-	 * @param dev Component device.
-	 * @param data unBind info
-	 */
-	int (*unbind)(struct comp_dev *dev, void *data);
-
-	/**
 	 * Gets config in component.
 	 * @param dev Component device
 	 * @param param_id param id for each component

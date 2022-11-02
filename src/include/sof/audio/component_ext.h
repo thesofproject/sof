@@ -340,26 +340,6 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 	return sof_get()->comp_drivers;
 }
 
-static inline int comp_bind(struct comp_dev *dev, void *data)
-{
-	int ret = 0;
-
-	if (dev->drv->ops.bind)
-		ret = dev->drv->ops.bind(dev, data);
-
-	return ret;
-}
-
-static inline int comp_unbind(struct comp_dev *dev, void *data)
-{
-	int ret = 0;
-
-	if (dev->drv->ops.unbind)
-		ret = dev->drv->ops.unbind(dev, data);
-
-	return ret;
-}
-
 static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint32_t stream_no,
 						     bool input)
 {

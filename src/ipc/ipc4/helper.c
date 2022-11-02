@@ -331,14 +331,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto err;
 	}
 
-	ret = comp_bind(source, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
-
-	ret = comp_bind(sink, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
-
 	/* update direction for sink component if it is not set already */
 	if (!sink->direction_set && source->direction_set) {
 		sink->direction = source->direction;
@@ -374,7 +366,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *src, *sink;
 	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
-	int ret;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -412,14 +403,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 
 	buffer_free(buffer);
-
-	ret = comp_unbind(src, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
-
-	ret = comp_unbind(sink, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
 
 	return IPC4_SUCCESS;
 }
