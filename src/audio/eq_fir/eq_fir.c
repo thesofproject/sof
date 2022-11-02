@@ -455,7 +455,8 @@ static int eq_fir_process(struct processing_module *mod,
 	return 0;
 }
 
-static void eq_fir_set_alignment(struct audio_stream *source, struct audio_stream *sink)
+static void eq_fir_set_alignment(struct audio_stream __sparse_cache *source,
+				 struct audio_stream __sparse_cache *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
