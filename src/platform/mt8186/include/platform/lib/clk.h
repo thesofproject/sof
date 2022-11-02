@@ -18,9 +18,10 @@ struct sof;
 
 #define CLK_CPU(x)				(x)
 #define CLK_DEFAULT_CPU_HZ			26000000
-#define CLK_MAX_CPU_HZ				800000000
+/* check vcore voltage before select higher frequency than 300M */
+#define CLK_MAX_CPU_HZ				300000000
 #define NUM_CLOCKS				1
-#define NUM_CPU_FREQ				5
+#define NUM_CPU_FREQ				3
 
 /* MTK_ADSP_CLK_BUS_UPDATE */
 #define MTK_ADSP_CLK_BUS_UPDATE_BIT		BIT(31)
@@ -46,10 +47,8 @@ struct sof;
 /* 0 is the lowest request */
 enum ADSP_HW_DSP_CLK {
 	ADSP_CLK_26M = 0,
-	ADSP_CLK_PLL_800M_D_8,
-	ADSP_CLK_PLL_800M_D_4,
-	ADSP_CLK_PLL_800M_D_2,
-	ADSP_CLK_PLL_800M,
+	ADSP_CLK_PLL_300M,
+	ADSP_CLK_PLL_400M,
 };
 
 void platform_clock_init(struct sof *sof);
