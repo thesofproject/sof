@@ -149,6 +149,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer __sparse_cache *sink_c;
 	struct comp_buffer *sink;
 	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
@@ -171,8 +172,12 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
 	 */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+	sink_c = buffer_acquire(sink);
+
+	mod->period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
+
+	buffer_release(sink_c);
 
 	/* Prepare module */
 	ret = module_prepare(mod);
@@ -271,7 +276,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
-		mod->input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		mod->input_buffers[i].data =
+			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -283,7 +289,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
+		mod->output_buffers[i].data =
+			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM,
+								      md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
