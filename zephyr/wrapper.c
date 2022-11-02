@@ -185,6 +185,14 @@ static inline const void *smex_placeholder_f(void)
  */
 const void *_smex_placeholder;
 
+static struct k_timer dummy_timer;
+
+static void dummy_timer_fn(struct k_timer *timer)
+{
+	static unsigned int counter = 0;
+	printk("Timer %u\n", counter++);
+}
+
 int task_main_start(struct sof *sof)
 {
 	_smex_placeholder = smex_placeholder_f();
@@ -194,6 +202,12 @@ int task_main_start(struct sof *sof)
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
+
+	printk("Starting timer\n");
+	k_timeout_t start = {0};
+	k_timer_init(&dummy_timer, dummy_timer_fn, NULL);
+	k_timer_user_data_set(&dummy_timer, &dummy_timer);
+	k_timer_start(&dummy_timer, start, K_USEC(1000));
 
 	return 0;
 }
