@@ -65,18 +65,6 @@ DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
  */
 
 /*
- * Source data is consumed by mixins in mixin_copy() but sink data cannot be
- * immediately produced. Sink data is produced by mixout in mixout_copy() after
- * ensuring all connected mixins have mixed their data into mixout sink buffer.
- * So for each connected mixin, mixout keeps knowledge of data already consumed
- * by mixin but not yet produced in mixout.
- */
-struct mixout_source_info {
-	struct comp_dev *mixin;
-	uint32_t consumed_yet_not_produced_frames;
-};
-
-/*
  * Data used by both mixin and mixout: number of currently mixed frames in
  * mixout sink buffer and each mixin consumed data amount (and so mixout should
  * produce the appropreate amount of data).
@@ -85,7 +73,6 @@ struct mixout_source_info {
 struct mixed_data_info {
 	struct coherent c;
 	uint32_t mixed_frames;
-	struct mixout_source_info source_info[MIXOUT_MAX_SOURCES];
 };
 
 __must_check static inline
@@ -127,6 +114,14 @@ struct mixin_data {
 			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count);
 
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
+
+	/* Source data is consumed by mixins in mixin_copy() but sink data cannot be
+	 * immediately produced. Sink data is produced by mixout in mixout_copy() after
+	 * ensuring all connected mixins have mixed their data into mixout sink buffer.
+	 * So for each connected mixin, mixout saves knowledge of data already consumed
+	 * by mixin but not yet produced in mixout.
+	 */
+	uint32_t consumed_yet_not_produced_frames;
 };
 
 /* mixout component private data */
@@ -248,34 +243,31 @@ static void mixout_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static
-struct mixout_source_info *find_mixout_source_info(struct mixed_data_info __sparse_cache *mdi,
-						   const struct comp_dev *mixin)
-{
-	/* mixin == NULL is also a valid input -- this will find first unused entry */
-	int i;
-
-	for (i = 0; i < MIXOUT_MAX_SOURCES; i++) {
-		if (mdi->source_info[i].mixin == mixin)
-			return &mdi->source_info[i];
-	}
-
-	return NULL;
-}
-
-/* Clears counters for not yet produced frames in mixout sink buffer. Preserves binded mixins
- * pointers as these pointers should only be cleared on unbind event.
+/* Clears counters for not yet produced frames in mixout sink buffer.
  * This function is intended to be called on mixout sink buffer stream reset, i.e.,
  * in mixout_prepare().
  */
-static void reset_mixed_data_info_frame_counters(struct mixed_data_info __sparse_cache *mdi)
+static void reset_mixed_data_info_frame_counters(struct comp_dev *mixout_dev)
 {
-	int i;
+	struct mixed_data_info __sparse_cache *mixed_data_info;
+	struct mixout_data *md = comp_get_drvdata(mixout_dev);
+	struct list_item *blist;
 
-	mdi->mixed_frames = 0;
+	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
+	mixed_data_info->mixed_frames = 0;
+	mixed_data_info_release(mixed_data_info);
 
-	for (i = 0; i < MIXOUT_MAX_SOURCES; i++)
-		mdi->source_info[i].consumed_yet_not_produced_frames = 0;
+	list_for_item(blist, &mixout_dev->bsource_list) {
+		struct comp_buffer *unused_in_between_buf;
+		struct mixin_data *mixin_data;
+		struct comp_dev *mixin;
+
+		unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
+							 PPL_DIR_UPSTREAM);
+		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
+		mixin_data = comp_get_drvdata(mixin);
+		mixin_data->consumed_yet_not_produced_frames = 0;
+	}
 }
 
 #if CONFIG_FORMAT_S16LE
@@ -695,7 +687,6 @@ static int mixin_copy(struct comp_dev *dev)
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
-		struct mixout_source_info *src_info;
 		struct comp_buffer __sparse_cache *sink_c;
 		uint32_t free_frames;
 
@@ -717,13 +708,6 @@ static int mixin_copy(struct comp_dev *dev)
 
 		mixout_data = comp_get_drvdata(mixout);
 		mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
-		src_info = find_mixout_source_info(mixed_data_info, dev);
-		if (!src_info) {
-			comp_err(dev, "No source info");
-			mixed_data_info_release(mixed_data_info);
-			buffer_release(source_c);
-			return -EINVAL;
-		}
 
 		sink_c = buffer_acquire(sink);
 
@@ -745,10 +729,10 @@ static int mixin_copy(struct comp_dev *dev)
 		 * consumed and written there by mixin on previous mixin_copy() run.
 		 * We do NOT want to overwrite that data.
 		 */
-		assert(free_frames >= src_info->consumed_yet_not_produced_frames);
+		assert(free_frames >= mixin_data->consumed_yet_not_produced_frames);
 		sinks_free_frames = MIN(sinks_free_frames,
 					free_frames -
-					src_info->consumed_yet_not_produced_frames);
+					mixin_data->consumed_yet_not_produced_frames);
 
 		buffer_release(sink_c);
 		mixed_data_info_release(mixed_data_info);
@@ -782,7 +766,6 @@ static int mixin_copy(struct comp_dev *dev)
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
-		struct mixout_source_info *src_info;
 		uint32_t start_frame;
 		struct comp_buffer __sparse_cache *sink_c;
 		uint32_t writeback_size;
@@ -792,19 +775,12 @@ static int mixin_copy(struct comp_dev *dev)
 
 		mixout_data = comp_get_drvdata(mixout);
 		mixed_data_info = mixed_data_info_acquire(mixout_data->mixed_data_info);
-		src_info = find_mixout_source_info(mixed_data_info, dev);
-		if (!src_info) {
-			comp_err(dev, "No source info");
-			mixed_data_info_release(mixed_data_info);
-			buffer_release(source_c);
-			return -EINVAL;
-		}
 
 		/* Skip data from previous run(s) not yet produced in mixout_copy().
 		 * Normally start_frame would be 0 unless mixout pipeline has serious
 		 * performance problems with processing data on time in mixout.
 		 */
-		start_frame = src_info->consumed_yet_not_produced_frames;
+		start_frame = mixin_data->consumed_yet_not_produced_frames;
 		assert(sinks_free_frames >= start_frame);
 
 		sink_c = buffer_acquire(sink);
@@ -842,7 +818,7 @@ static int mixin_copy(struct comp_dev *dev)
 			buffer_stream_writeback(sink_c, writeback_size);
 		buffer_release(sink_c);
 
-		src_info->consumed_yet_not_produced_frames += frames_to_copy;
+		mixin_data->consumed_yet_not_produced_frames += frames_to_copy;
 
 		if (frames_to_copy + start_frame > mixed_data_info->mixed_frames)
 			mixed_data_info->mixed_frames = frames_to_copy + start_frame;
@@ -879,39 +855,43 @@ static int mixout_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *mixin;
-		struct mixout_source_info *src_info;
+		struct mixin_data *mixin_data;
 
 		unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
 							 PPL_DIR_UPSTREAM);
 		mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
+		mixin_data = comp_get_drvdata(mixin);
 
-		src_info = find_mixout_source_info(mixed_data_info, mixin);
-		/* this shouldn't happen but skip even if it does and move to the next source */
-		if (!src_info)
+		if (mixin->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* Inactive sources should not block other active sources */
 		if (comp_get_state(dev, mixin) == COMP_STATE_ACTIVE)
 			frames_to_produce = MIN(frames_to_produce,
-						src_info->consumed_yet_not_produced_frames);
+						mixin_data->consumed_yet_not_produced_frames);
 	}
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
-		int i;
 		struct comp_buffer *sink;
 		struct comp_buffer __sparse_cache *sink_c;
 
-		for (i = 0; i < MIXOUT_MAX_SOURCES; i++) {
-			if (!mixed_data_info->source_info[i].mixin)
+		list_for_item(blist, &dev->bsource_list) {
+			struct comp_buffer *unused_in_between_buf;
+			struct mixin_data *mixin_data;
+			struct comp_dev *mixin;
+
+			unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
+								 PPL_DIR_UPSTREAM);
+			mixin = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
+			mixin_data = comp_get_drvdata(mixin);
+
+			if (mixin->state != COMP_STATE_ACTIVE)
 				continue;
 
-			if (mixed_data_info->source_info[i].consumed_yet_not_produced_frames >=
-				frames_to_produce)
-				mixed_data_info->source_info[i].consumed_yet_not_produced_frames -=
-					frames_to_produce;
+			if (mixin_data->consumed_yet_not_produced_frames >= frames_to_produce)
+				mixin_data->consumed_yet_not_produced_frames -= frames_to_produce;
 			else
-				mixed_data_info->source_info[i].consumed_yet_not_produced_frames =
-					0;
+				mixin_data->consumed_yet_not_produced_frames = 0;
 		}
 
 		assert(mixed_data_info->mixed_frames >= frames_to_produce);
@@ -1059,7 +1039,6 @@ static int mixout_prepare(struct comp_dev *dev)
 	struct mixout_data *md;
 	int ret;
 	struct list_item *blist;
-	struct mixed_data_info __sparse_cache *mixed_data_info;
 
 	comp_dbg(dev, "mixout_prepare()");
 
@@ -1085,9 +1064,7 @@ static int mixout_prepare(struct comp_dev *dev)
 	/* Since mixout sink buffer stream is reset on .prepare(), let's
 	 * reset counters for not yet produced frames in that buffer.
 	 */
-	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
-	reset_mixed_data_info_frame_counters(mixed_data_info);
-	mixed_data_info_release(mixed_data_info);
+	reset_mixed_data_info_frame_counters(dev);
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -1246,93 +1223,6 @@ static int mixout_params(struct comp_dev *dev,
 			 sink_stream_size, sink_period_bytes);
 		return -ENOMEM;
 	}
-
-	return 0;
-}
-
-static int mixout_bind(struct comp_dev *dev, void *data)
-{
-	struct ipc4_module_bind_unbind *bu;
-	int src_id;
-	struct mixout_data *md;
-	struct mixed_data_info __sparse_cache *mixed_data_info;
-
-	bu = (struct ipc4_module_bind_unbind *)data;
-	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
-
-	md = comp_get_drvdata(dev);
-	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
-
-	/*
-	 * If dev->ipc_config.id == src_id then we're called for the downstream
-	 * link, nothing to do
-	 */
-	if (dev->ipc_config.id != src_id) {
-		/* new mixin -> mixout */
-		struct comp_dev *mixin;
-		struct mixout_source_info *source_info;
-
-		mixin = ipc4_get_comp_dev(src_id);
-		if (!mixin) {
-			comp_err(dev, "mixout_bind: no source with ID %d found", src_id);
-			mixed_data_info_release(mixed_data_info);
-			return -EINVAL;
-		}
-
-		source_info = find_mixout_source_info(mixed_data_info, mixin);
-		if (source_info) {
-			/* this should never happen as source_info should
-			 * have been already cleared in mixout_unbind()
-			 */
-			memset(source_info, 0, sizeof(*source_info));
-		}
-		source_info = find_mixout_source_info(mixed_data_info, NULL);
-		if (!source_info) {
-			/* no free space in source_info table */
-			comp_err(dev, "Too many mixout inputs!");
-			mixed_data_info_release(mixed_data_info);
-			return -ENOMEM;
-		}
-		source_info->mixin = mixin;
-		source_info->consumed_yet_not_produced_frames = 0;
-	}
-
-	mixed_data_info_release(mixed_data_info);
-
-	return 0;
-}
-
-static int mixout_unbind(struct comp_dev *dev, void *data)
-{
-	struct ipc4_module_bind_unbind *bu;
-	int src_id;
-	struct mixout_data *md;
-	struct mixed_data_info __sparse_cache *mixed_data_info;
-
-	bu = (struct ipc4_module_bind_unbind *)data;
-	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
-
-	md = comp_get_drvdata(dev);
-	mixed_data_info = mixed_data_info_acquire(md->mixed_data_info);
-
-	/* mixin -> mixout */
-	if (dev->ipc_config.id != src_id) {
-		struct comp_dev *mixin;
-		struct mixout_source_info *source_info;
-
-		mixin = ipc4_get_comp_dev(src_id);
-		if (!mixin) {
-			comp_err(dev, "mixout_bind: no source with ID %d found", src_id);
-			mixed_data_info_release(mixed_data_info);
-			return -EINVAL;
-		}
-
-		source_info = find_mixout_source_info(mixed_data_info, mixin);
-		if (source_info)
-			memset(source_info, 0, sizeof(*source_info));
-	}
-
-	mixed_data_info_release(mixed_data_info);
 
 	return 0;
 }
@@ -1499,8 +1389,6 @@ static const struct comp_driver comp_mixout = {
 		.prepare = mixout_prepare,
 		.trigger = mixinout_trigger,
 		.copy    = mixout_copy,
-		.bind    = mixout_bind,
-		.unbind  = mixout_unbind,
 		.reset   = mixout_reset,
 		.get_attribute = mixout_get_attribute,
 	},
