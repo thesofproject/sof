@@ -34,6 +34,10 @@
 #include <zephyr/arch/xtensa/cache.h>
 #endif
 
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+#include <zephyr/sys/sys_heap.h>
+#endif
+
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
 
 extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
@@ -108,10 +112,19 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 {
 	k_spinlock_key_t key;
 	void *ret;
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+	struct sys_memory_stats stats;
+#endif
 
 	key = k_spin_lock(&h->lock);
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
 	k_spin_unlock(&h->lock, key);
+
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+	sys_heap_runtime_stats_get(&h->heap, &stats);
+	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+#endif
 
 	return ret;
 }
