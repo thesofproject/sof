@@ -101,8 +101,8 @@ static bool mux_mix_check(struct sof_mux_config *cfg)
 static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 			  struct sof_mux_config *cfg)
 {
-	uint8_t i;
-	uint8_t j;
+	unsigned int i;
+	unsigned int j;
 
 	comp_info(dev, "mux_set_values()");
 
