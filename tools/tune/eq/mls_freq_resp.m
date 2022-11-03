@@ -57,8 +57,8 @@ if strcmp(id, 'selftest')
 else
 	selftest = 0;
 end
-measfn = sprintf('mls-%s.wav', id);
-csvfn = sprintf('mls-%s.txt', id);
+measfn = sprintf('mls-%d.wav', id);
+csvfn = sprintf('mls-%d.txt', id);
 
 %% Paths
 addpath('../../test/audio/test_utils');
@@ -101,10 +101,10 @@ mixfn = 'mlsmix.wav';
 recfn = 'recch.wav';
 y = [];
 if selftest
-	labels = cell(play_cfg.nch * rec_cfg.nch + 1, 1);
+	labels = cellstr(char(play_cfg.nch * rec_cfg.nch + 1, 1));
 	labels(end) = 'Reference';
 else
-	labels = cell(play_cfg.nch * rec_cfg.nch, 1);
+	labels = cellstr(char(play_cfg.nch * rec_cfg.nch, 1));
 end
 label_idx = 1;
 for i=1:play_cfg.nch
@@ -130,7 +130,7 @@ for i=1:play_cfg.nch
 		r = get_recording(recfn, rec_cfg);
 	end
 	for j = 1:rec_cfg.nch
-		labels(label_idx) = sprintf('p%d-r%d', i, j);
+		labels{label_idx} = sprintf('p%d-r%d', i, j);
 		label_idx = label_idx + 1;
 	end
 	[d, nt] = find_test_signal(r(:,1), fnd);
@@ -200,7 +200,7 @@ end
 legend(labels);
 
 if selftest
-        idx = find(f < f_hi);
+        idx = f < f_hi;
         idx = find(f(idx) > f_lo);
         m_lin = 10.^(m_db_align(idx)/20);
         ref_lin = 10.^(ref_db_align(idx)/20);
@@ -330,14 +330,14 @@ function [f, m, sens, desc] = get_calibration(fn)
 	sens =[];
 	desc = '';
 	str = fgets(fh);
-	idx = findstr(str, '"');
-	while length(idx) > 0
+	idx = strfind(str, '"');
+	while ~isempty(idx)
 		line = str(idx(1)+1:idx(2)-1);
 		desc = sprintf('%s%s ', desc, line);
 		str = fgets(fh);
-		idx = findstr(str, '"');
+		idx = strfind(str, '"');
 	end
-	if length(strfind(str, 'Sens'))
+	if contains(str, 'Sens')
 		desc = str;
 		str = fgets(fh);
 	end
@@ -403,7 +403,7 @@ end
 
 function [cal_f, cal_m_db] = apply_mic_calibration(f, m_db, rec)
 
-	if length(rec.cm) > 0
+	if ~isempty(rec.cm)
 		if ~isvector(rec.cm)
 			error('Calibration can be for one channel only');
 		end

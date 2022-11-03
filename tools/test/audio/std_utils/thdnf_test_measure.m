@@ -7,18 +7,14 @@ function test = thdnf_test_measure(test)
 test.ph = [];
 test.fh = [];
 
-if isempty(test.thdnf_mask_f)
-	if ~isempty(test.thdnf_max)
-		test.thdnf_mask_f = [1 test.fs/2]; % Start from 1 due to log()
-		test.thdnf_mask_hi = test.thdnf_max * [1 1];
-	end
-else
-	if ~isempty(test.thdnf_max)
-		error('Set either thdnf_max or thdnf_mask_f & thdnf_mask_hi but not both');
-	end
-	if isempty(test.thdnf_mask_hi)
-		error('thdnf_mask_hi must be set when thdnf_mask_f is defined');
-	end
+if ~isempty(test.thdnf_max)
+    test.thdnf_mask_f = [1 test.fs/2]; % Start from 1 due to log()
+    test.thdnf_mask_hi = test.thdnf_max * [1 1];
+end
+if isempty(test.thdnf_max)
+    error('Set either thdnf_max or thdnf_mask_f & thdnf_mask_hi but not both');
+elseif isempty(test.thdnf_mask_hi)
+    error('thdnf_mask_hi must be set when thdnf_mask_f is defined');
 end
 
 %% Reference: AES17 6.3.2 THD+N ratio vs frequency

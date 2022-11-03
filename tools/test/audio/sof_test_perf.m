@@ -128,8 +128,8 @@ function [fail, fr_db, fr_hz, fr_3db_hz] = fr_test(test)
 %% Reference: AES17 6.2.3 Frequency response
 c1 = 20/48;
 c2 = 23.9/48;
-test.f_lo = 20;            % Measure start at 20 Hz
-test.f_hi = c1 * test.fs;  % Measure end e.g. at 20 kHz
+test.fr_lo = 20;            % Measure start at 20 Hz
+test.fr_hi = c1 * test.fs;  % Measure end e.g. at 20 kHz
 test.f_max = c2 * test.fs; % Sweep max e.g. at 23.9 kHz
 
 %% Create input file
@@ -144,7 +144,7 @@ test = fr_test_measure(test);
 
 fail = test.fail;
 fr_db = test.rp;
-fr_hz = [test.f_lo test.f_hi];
+fr_hz = [test.fr_lo test.fr_hi];
 fr_3db_hz = test.fr3db_hz;
 delete_check(test.files_delete, test.fn_in);
 delete_check(test.files_delete, test.fn_out);

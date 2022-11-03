@@ -5,7 +5,7 @@ qf_iir = 30;
 
 addpath ./../eq
 
-if length(lowpass) != length(highpass)
+if length(lowpass) ~= length(highpass)
 	error("length of lowpass and highpass array do not match");
 end
 
@@ -20,8 +20,8 @@ for i = 1:n
 	hp_a = eq_coef_quant(-hp.a(3:-1:2), bits_iir, qf_iir);
 	hp_b = eq_coef_quant(hp.b(3:-1:1), bits_iir, qf_iir);
 
-	crossover_quant.lp_coef(i) = [lp_a lp_b 0 16384];
-	crossover_quant.hp_coef(i) = [hp_a hp_b 0 16384];
+	crossover_quant.lp_coef{i} = [lp_a lp_b 0 16384];
+	crossover_quant.hp_coef{i} = [hp_a hp_b 0 16384];
 end
 
 crossover_quant.lp_coef = cell2mat(crossover_quant.lp_coef);
