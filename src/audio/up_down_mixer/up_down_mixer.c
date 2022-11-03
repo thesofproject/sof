@@ -337,9 +337,10 @@ static void up_down_mixer_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int init_up_down_mixer(struct comp_dev *dev, struct comp_ipc_config *config, void *spec)
+static int init_up_down_mixer(struct comp_dev *dev, const struct comp_ipc_config *config,
+			      const void *spec)
 {
-	struct ipc4_up_down_mixer_module_cfg *up_down_mixer = spec;
+	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = spec;
 	struct up_down_mixer_data *cd;
 	int ret;
 
