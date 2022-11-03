@@ -45,7 +45,7 @@ ifdef(`AMP_SSP',`',`fatal_error(note: Define AMP_SSP for speaker amp SSP Index)'
 #define smart amplifier SSP index
 define(`SMART_SSP_INDEX', AMP_SSP)
 #define SSP BE dai_link name
-define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
+define(`SMART_SSP_NAME', `SSP-SPK')
 #define BE dai_link ID
 define(`SMART_BE_ID', 7)
 #define SSP mclk
@@ -95,6 +95,7 @@ include(`platform/intel/intel-generic-dmic-kwd.m4')
 
 # BT offload support
 ifdef(`BT_OFFLOAD', `
+define(`BT_SSP_NAME', `SSP-BT')
 define(`BT_PIPELINE_PB_ID', eval(SMART_REF_PPL_ID + 1))
 define(`BT_PIPELINE_CP_ID', eval(SMART_REF_PPL_ID + 2))
 define(`BT_DAI_LINK_ID', eval(SMART_BE_ID + 1))
@@ -173,14 +174,14 @@ dnl     frames, deadline, priority, core)
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        2, SSP, 0, SSP0-Codec,
+        2, SSP, 0, SSP-HP,
         PIPELINE_SOURCE_2, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        3, SSP, 0, SSP0-Codec,
+        3, SSP, 0, SSP-HP,
         PIPELINE_SINK_3, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -233,7 +234,7 @@ dnl mclk_id is optional
 dnl ssp1-maxmspk, ssp0-RTHeadset
 
 #SSP 0 (ID: 0)
-DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
+DAI_CONFIG(SSP, 0, 0, SSP-HP,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
                       SSP_CLOCK(bclk, 3072000, codec_slave),
                       SSP_CLOCK(fsync, 48000, codec_slave),
