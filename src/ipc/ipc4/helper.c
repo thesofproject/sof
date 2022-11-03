@@ -171,6 +171,9 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(*pipe_desc));
+
 	return ipc4_create_pipeline(ipc, pipe_desc->primary.r.instance_id,
 		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size);
 }

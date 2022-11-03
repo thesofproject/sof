@@ -75,6 +75,10 @@ static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 	struct ipc *ipc = ipc_get();
 
 	pipe = (struct ipc4_pipeline_delete *)ipc4;
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(*pipe));
+
 	tr_dbg(&ipc_tr, "ipc4 delete pipeline %x:", (uint32_t)pipe->primary.r.instance_id);
 
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
@@ -466,6 +470,9 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
 
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(cdma));
+
 	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
 		ret = ipc4_create_chain_dma(ipc, &cdma);
 		if (ret) {
@@ -573,6 +580,9 @@ static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	struct comp_dev *dev;
 
 	memcpy_s(&module, sizeof(module), ipc4, sizeof(module));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(module));
+
 	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
@@ -598,6 +608,8 @@ static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 	struct ipc *ipc = ipc_get();
 
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_bind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
@@ -611,6 +623,9 @@ static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	struct ipc *ipc = ipc_get();
 
 	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(bu));
 	tr_dbg(&ipc_tr, "ipc4_unbind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
@@ -630,6 +645,9 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(config));
 	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
@@ -743,6 +761,8 @@ static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 	int ret;
 
 	memcpy_s(&module, sizeof(module), ipc4, sizeof(module));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(module));
 	tr_dbg(&ipc_tr, "ipc4_delete_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
