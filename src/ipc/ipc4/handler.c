@@ -353,9 +353,7 @@ static void ipc_compound_pre_start(int msg_id)
 	/* ipc thread will wait for all scheduled ipc messages to be complete
 	 * Use a reference count to check status of these ipc messages.
 	 */
-	int old_val __unused = atomic_add(&msg_data.delayed_reply, 1);
-
-	assert(old_val == 0);
+	atomic_add(&msg_data.delayed_reply, 1);
 }
 
 static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
@@ -378,9 +376,7 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 		return;
 	}
 
-	int old_val __unused = atomic_sub(&msg_data.delayed_reply, 1);
-
-	assert(old_val == 1);
+	atomic_sub(&msg_data.delayed_reply, 1);
 
 	/* error reported in delayed pipeline task */
 	if (error < 0) {
