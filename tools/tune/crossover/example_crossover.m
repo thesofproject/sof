@@ -1,10 +1,10 @@
 function example_crossover();
 
 % Set the parameters here
-tplg_fn = "../../topology/topology1/m4/crossover_coef_default.m4" % Control Bytes File
+tplg_fn = "../../topology/topology1/m4/crossover_coef_default.m4"; % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob_fn = "../../ctl/crossover_coef.blob" % Blob binary file
-alsa_fn = "../../ctl/crossover_coef.txt" % ALSA CSV format file
+blob_fn = "../../ctl/crossover_coef.blob"; % Blob binary file
+alsa_fn = "../../ctl/crossover_coef.txt"; % ALSA CSV format file
 
 endian = "little";
 
@@ -51,4 +51,4 @@ alsactl_write(alsa_fn, blob8);
 crossover_plot_freq(crossover.lp, crossover.hp, fs, num_sinks);
 rmpath ./../common
 
-endfunction
+end

@@ -72,16 +72,16 @@ for i = 1:length(test.ch);
 	test.thdnf_high(:,i) = test.thdnf(:,1);
 	test.thdnf_low(:,i) = test.thdnf(:,2);
 
-	fidx = find(test.thdnf(idx, 1) > mask_hi);
-	if length(fidx) > 0
+	fidx = find(test.thdnf(idx, 1) > mask_hi, 1);
+	if ~isempty(fidx)
 		fail_hi = 1;
 		fprintf('Failed THD+N mask with high input.\n');
 	else
 		fail_hi = 0;
 	end
 
-	fidx = find(test.thdnf(idx, 2) > mask_hi);
-	if length(fidx) > 0
+	fidx = find(test.thdnf(idx, 2) > mask_hi, 1);
+	if ~isempty(fidx)
 		fail_lo = 1;
 		fprintf('Failed THD+N mask with low input.\n');
 	else

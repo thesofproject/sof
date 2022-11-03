@@ -97,17 +97,17 @@ drc_params(4).band_lower_freq = 10000 / nyquist;
 [emp_coefs, deemp_coefs] = iir_gen_quant_coefs(iir_params);
 
 % Generate Crossover quantized coefs struct from parameters
-crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate,
-					    drc_params(2).band_lower_freq,
-					    drc_params(3).band_lower_freq,
+crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate,...
+					    drc_params(2).band_lower_freq, ...
+					    drc_params(3).band_lower_freq, ...
 					    drc_params(4).band_lower_freq);
 
 % Generate DRC quantized coefs struct from parameters
 drc_coefs = drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
 
 % Convert quantized coefs structs to binary blob
-blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs,
-				 deemp_coefs, crossover_coefs, drc_coefs,
+blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs,...
+				 deemp_coefs, crossover_coefs, drc_coefs,...
 				 endian);
 
 % Generate output files
@@ -119,4 +119,4 @@ alsactl_write(alsa_fn, blob8);
 
 rmpath ../common
 
-endfunction
+end

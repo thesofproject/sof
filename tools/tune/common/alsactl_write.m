@@ -21,4 +21,4 @@ for i=1:n_new-1
 end
 fprintf(fh, '%ld,\n', blob32(end));
 fclose(fh);
-endfunction
+end

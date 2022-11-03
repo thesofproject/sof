@@ -78,13 +78,23 @@ end
 
 function plot_phase_resp(f,varargin)
 n = length(varargin);
-labels = cellstr(n);
+
+labels = cellstr(char(n));
+
 hold on
 grid on
 for i=1:n
-	h = varargin{i};
-	semilogx(f, unwrap(arg(h)) * 180 / pi)
-	labels(i) = sprintf("out%d", i);
+    h = varargin{i};
+    if exist('OCTAVE_VERSION', 'builtin')
+        semilogx(f, unwrap(arg(h)) * 180 / pi)
+    else
+        semilogx(f, unwrap(angle(h)) * 180 / pi);
+    end
+    if exist('OCTAVE_VERSION', 'builtin')
+		labels(i) = sprintf("out%d", i);
+    else
+        labels{i} = sprintf("out%d", i);
+    end
 end
 legend(labels, 'Location', 'NorthEast')
 xlabel('Frequency (Hz)');
@@ -95,13 +105,18 @@ end
 
 function plot_mag_resp(f,varargin)
 n = length(varargin);
-labels = cellstr(n);
+labels = cellstr(char(n));
 hold on
 grid on
 for i=1:n
 	h = varargin{i};
-	semilogx(f,20*log10(h))
-	labels(i) = sprintf("out%d", i);
+    semilogx(f,20*log10(abs(h)));
+    if exist('OCTAVE_VERSION', 'builtin')
+		labels(i) = sprintf("out%d", i);
+    else
+        labels{i} = sprintf("out%d", i);
+    end
+
 end
 legend(labels, 'Location', 'NorthEast')
 xlabel('Frequency (Hz)');

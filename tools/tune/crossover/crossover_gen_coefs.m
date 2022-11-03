@@ -11,8 +11,8 @@ rmpath ./../eq
 end
 
 function crossover_2way = crossover_generate_2way(fs, fc);
-	crossover_2way.lp = [lp_iir(fs, fc, 0)];
-	crossover_2way.hp = [hp_iir(fs, fc, 0)];
+	crossover_2way.lp = lp_iir(fs, fc, 0);
+	crossover_2way.hp = hp_iir(fs, fc, 0);
 end
 
 function crossover_3way = crossover_generate_3way(fs, fc_low, fc_high);
@@ -29,13 +29,13 @@ end
 
 % Generate the a,b coefficients for a second order
 % low pass butterworth filter
-function lp = lp_iir(fs, fc, gain_db)
+function lp = lp_iir(fs, fc, ~)
 [lp.b, lp.a] = low_pass_2nd_resonance(fc, 0, fs);
 end
 
 % Generate the a,b coefficients for a second order
 % low pass butterworth filter
-function hp = hp_iir(fs, fc, gain_db)
+function hp = hp_iir(fs, fc, ~)
 [hp.b, hp.a] = high_pass_2nd_resonance(fc, 0, fs);
 end
 
@@ -54,7 +54,7 @@ function [b, a] = high_pass_2nd_resonance(f, resonance, fs)
 		b = [1 - cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	% Compute biquad coefficients for highpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -90,7 +90,7 @@ function [b, a] = low_pass_2nd_resonance(f, resonance, fs)
 		b = [cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	% Compute biquad coefficients for lowpass filter
 	resonance = max(0.0, resonance); % can't go negative

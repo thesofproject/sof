@@ -4,7 +4,7 @@ function  test = mix_sweep(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-%% Adjust tone lengt to integer number of samples
+%% Adjust tone length to integer number of samples
 test.nt = round(test.tl*test.fs); % Make number of samples per tone
 test.tl = test.nt/test.fs;        % an integer by adjusting tl.
 test.nf = length(test.f); % Number of frequencies

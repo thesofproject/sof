@@ -6,7 +6,7 @@ qy_R = 30;
 
 if nargin < 2
         endian = 'little'
-endif
+end
 
 %% Shift values for little/big endian
 switch lower(endian)
@@ -49,7 +49,7 @@ for i=1:length(blob_struct.all_coef)
 	j=j+4;
 end
 
-endfunction
+end
 
 function bytes = word2byte(word, sh)
 bytes = uint8(zeros(1,4));

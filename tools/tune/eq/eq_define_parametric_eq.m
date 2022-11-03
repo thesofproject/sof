@@ -73,10 +73,10 @@ for i=1:sp(1)
                         otherwise
                                 error('Unknown parametric EQ type');
                 end
-                if length(a0) > 0
+                if ~isempty(a0)
                         [z0, p0, k0] = tf2zp(b0, a0);
                 end
-                if length(k0) > 0
+                if ~isempty(k0)
                         z = [z ; z0(:)];
                         p = [p ; p0(:)];
                         k = k * k0;
@@ -127,15 +127,15 @@ function [b, a] = peak_2nd(fhz, gdb, Q, fs)
 	A = 10^(gdb/40); % Square root of linear gain
 	wc = 2*pi*fhz/fs;
 
-	if Q <= 0
-		% To fix gui edge cases, comment from CRAS code:
-		% When Q = 0, the above formulas have problems. If we
-		% look at the z-transform, we can see that the limit
-		% as Q->0 is A^2, so set the filter that way.
-		b = [A * A, 0, 0]
-		a = [1, 0, 0];
-		return;
-	endif
+    if Q <= 0
+        % To fix gui edge cases, comment from CRAS code:
+        % When Q = 0, the above formulas have problems. If we
+        % look at the z-transform, we can see that the limit
+        % as Q->0 is A^2, so set the filter that way.
+        b = [A * A, 0, 0];
+        a = [1, 0, 0];
+        return;
+    end
 
 	alpha = sin(wc)/(2*Q);
 	b0 = 1 + alpha * A;
@@ -163,7 +163,7 @@ function [b, a] = high_pass_2nd_reasonance(f, resonance, fs)
 		b = [1 - cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	% Compute biquad coefficients for highpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -199,7 +199,7 @@ function [b, a] = low_pass_2nd_reasonance(f, resonance, fs)
 		b = [cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	% Compute biquad coefficients for lowpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -239,7 +239,7 @@ function [b, a] = band_pass_2nd(f, Q, fs)
 		b = [0, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 	if (Q <= 0)
 		% When Q = 0, the above formulas have problems. If we
 		% look at the z-transform, we can see that the limit
@@ -247,7 +247,7 @@ function [b, a] = band_pass_2nd(f, Q, fs)
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	w0 = pi * frequency;
 	alpha = sin(w0) / (2 * Q);
@@ -271,20 +271,20 @@ function [b, a] = notch_2nd(f, Q, fs)
 	% Don't let Q go negative, which causes an unstable filter.
 	Q = max(0.0, Q);
 
-	if frequency <= 0 || frequency >= 1
-		% When frequency is 0 or 1, the z-transform is 1.
-		b = [1, 0, 0];
-		a = [1, 0, 0];
-		return;
-	endif
-	if Q <= 0
-		% When Q = 0, the above formulas have problems. If we
-		% look at the z-transform, we can see that the limit
-		% as Q->0 is 0, so set the filter that way.
-		b = [0, 0, 0];
-		a = [1, 0, 0];
-		return;
-	endif
+    if frequency <= 0 || frequency >= 1
+        % When frequency is 0 or 1, the z-transform is 1.
+        b = [1, 0, 0];
+        a = [1, 0, 0];
+        return;
+    end
+    if Q <= 0
+        % When Q = 0, the above formulas have problems. If we
+        % look at the z-transform, we can see that the limit
+        % as Q->0 is 0, so set the filter that way.
+        b = [0, 0, 0];
+        a = [1, 0, 0];
+        return;
+    end
 
 	w0 = pi * frequency;
 	alpha = sin(w0) / (2 * Q);
@@ -313,13 +313,13 @@ function [b, a] = low_shelf_2nd_google(f, db_gain, fs)
 		b = [A * A, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 	if (frequency <= 0)
 		% When frequency is 0, the z-transform is 1.
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	w0 = pi * frequency;
 	S = 1; % filter slope (1 is max value)
@@ -353,13 +353,13 @@ function [b, a] = high_shelf_2nd_google(f, db_gain, fs)
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 	if (frequency <= 0)
 		% When frequency = 0, the filter is just a gain, A^2.
 		b = [A * A, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+    end
 
 	w0 = pi * frequency;
 	S = 1; % filter slope (1 is max value)

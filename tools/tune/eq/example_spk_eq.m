@@ -90,7 +90,7 @@ eq.raw_m_db = [ ...
 %  The lowest and highest frequeciens below and above speaker
 %  capability are attenuated with high-pass and low-pass
 %  filtering.
-if eq.enable_iir;
+if eq.enable_iir
 	eq.peq = [ ...
 			 eq.PEQ_HP2   100 NaN NaN; ...
 			 eq.PEQ_PN2  1480  -7 2.0; ...
@@ -102,12 +102,12 @@ end
 %% With FIR EQ try to flatten frequency response within
 %  1 - 13 kHz frequency band.
 if eq.enable_fir
-        eq.fir_minph = 1;
-	eq.fir_beta = 4;
-	eq.fir_length = 63;
-	eq.fir_autoband = 0;
-	eq.fmin_fir = 900;
-	eq.fmax_fir = 10700;
+    eq.fir_minph = 1;
+    eq.fir_beta = 4;
+    eq.fir_length = 63;
+    eq.fir_autoband = 0;
+    eq.fmin_fir = 900;
+    eq.fmax_fir = 10700;
 end
 
 %% Design EQ
@@ -125,7 +125,7 @@ if eq.enable_fir
         bm_fir = eq_fir_blob_merge(channels_in_config, ...
                 num_responses, ...
                 assign_response, ...
-                [ bq_fir ]);
+                 bq_fir );
         bp_fir = eq_fir_blob_pack(bm_fir);
         eq_alsactl_write(fn_fir_sofctl, bp_fir);
         eq_blob_write(fn_fir_blob, bp_fir);
@@ -138,7 +138,7 @@ if eq.enable_iir
         bm_iir = eq_iir_blob_merge(channels_in_config, ...
                 num_responses, ...
                 assign_response, ...
-                [ bq_iir ]);
+                ( bq_iir ));
         bp_iir = eq_iir_blob_pack(bm_iir);
         eq_alsactl_write(fn_iir_sofctl, bp_iir);
         eq_blob_write(fn_iir_blob, bp_iir);
