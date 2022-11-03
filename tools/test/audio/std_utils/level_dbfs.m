@@ -6,7 +6,7 @@ function dbfs = level_dbfs(x)
 % x - signal
 %
 % Output
-% dbfs - sigmal level in dBFS
+% dbfs - signal level in dBFS
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
@@ -14,7 +14,6 @@ function dbfs = level_dbfs(x)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% Reference AES 17 3.12.3
-level_ms = mean(x.^2);
-dbfs = 10*log10(level_ms + 1e-20) + 20*log10(sqrt(2));
+dbfs = 20*log10(rms(x) * sqrt(2));
 
 end

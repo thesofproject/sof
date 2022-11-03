@@ -46,8 +46,6 @@ mkdir_check('reports');
 test = get_config(test);
 
 %% Run tests
-fail = 0;
-pass = 0;
 test.tf = [];
 
 % Check that the configuration has been edited
@@ -68,6 +66,9 @@ if tf(1) == 0
 
 	%% Total harmonic distortion plus noise
 	[tf(3), thdnf_low, thdnf_high] = thdnf_test(test);
+
+	%% Dynamic range
+	[tf(4), dynamic_range]= dr_test(test);
 end
 
 %% Print results
@@ -81,6 +82,7 @@ if tf(1) == 0
 	print_val(test, tf(2), fr_3db_hz / 1000, 'kHz', '-3 dB frequency');
 	print_val(test, tf(3), thdnf_low, 'dB', 'THD+N -20 dBFS');
 	print_val(test, tf(3), thdnf_high, 'dB', 'THD+N -1 dBFS');
+	print_val(test, tf(4), dynamic_range, 'dB', 'dr_db_min');
 else
 	fprintf(1, '\n');
 	fprintf(1, 'Warning: The gain test must pass before other tests are executed.\n');
@@ -182,6 +184,28 @@ test_result_print(test, 'THD+N ratio vs. frequency', 'THDNF');
 
 end
 
+%% Reference: AES17 6.4.1 Dynamic range
+function [fail, dr_db] = dr_test(t)
+
+test = test_defaults(t);
+
+% Create input file
+test = dr_test_input(test);
+
+% Run test
+% test = test_run_process(test, t);
+test = remote_test_run(test);
+
+% Measure
+test = dr_test_measure(test);
+
+% Get output parameters
+fail = test.fail;
+dr_db = test.dr_db;
+delete_check(test.files_delete, test.fn_in);
+delete_check(test.files_delete, test.fn_out);
+
+end
 %%
 %% Utilities
 %%
