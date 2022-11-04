@@ -613,6 +613,7 @@ if XTENSA
 config INCOHERENT
 	bool "Enable cached data access via the Coherent API"
 	default y if TIGERLAKE
+	default y if METEORLAKE
 	default n
 	help
 	  The architecture is cache incoherent. i.e FW has to manually manage
