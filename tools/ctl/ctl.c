@@ -64,6 +64,7 @@ static void usage(char *name)
 	fprintf(stdout, " [-s <data>]\n");
 	fprintf(stdout, "\t %s [-D <device>] [-n <control id>]", name);
 	fprintf(stdout, " [-s <data>]\n");
+	fprintf(stdout, "\t %s [-s <data>] [-o <file>]\n", name);
 	fprintf(stdout, "\t %s -g <size>\n", name);
 	fprintf(stdout, "\t %s -h\n", name);
 	fprintf(stdout, "\nWhere:\n");
@@ -291,7 +292,6 @@ static void buffer_free(struct ctl_data *ctl_data)
 static int ctl_setup(struct ctl_data *ctl_data)
 {
 	int mode = SND_CTL_NONBLOCK;
-	int ctrl_size;
 	int read;
 	int write;
 	int type;
@@ -338,23 +338,11 @@ static int ctl_setup(struct ctl_data *ctl_data)
 		goto value_free;
 	}
 
-	if (ctl_data->binary && ctl_data->set) {
-		/* set ctrl_size to file size */
-		ctrl_size = get_file_size(ctl_data->in_fd);
-		if (ctrl_size <= 0) {
-			fprintf(stderr, "Error: Input file unavailable.\n");
-			goto value_free;
-		}
-
-		/* need more space for raw data file(no header in the file) */
-		if (ctl_data->no_abi)
-			ctrl_size += sizeof(struct sof_abi_hdr);
-	} else {
+	if (!(ctl_data->binary && ctl_data->set)) {
 		/* Get control attributes from info. */
-		ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
+		ctl_data->ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
 	}
 
-	fprintf(stderr, "Control size is %d.\n", ctrl_size);
 	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
 	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
 	type = snd_ctl_elem_info_get_type(ctl_data->info);
@@ -365,16 +353,6 @@ static int ctl_setup(struct ctl_data *ctl_data)
 	}
 	if (type != SND_CTL_ELEM_TYPE_BYTES) {
 		fprintf(stderr, "Error: control type has no bytes support.\n");
-		goto value_free;
-	}
-
-	ctl_data->ctrl_size = ctrl_size;
-
-	/* allocate buffer for tlv data */
-	ret = buffer_alloc(ctl_data);
-	if (ret < 0) {
-		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
-			ret);
 		goto value_free;
 	}
 
@@ -394,8 +372,6 @@ ctl_close:
 static int ctl_free(struct ctl_data *ctl_data)
 {
 	int ret;
-
-	buffer_free(ctl_data);
 
 	snd_ctl_elem_value_free(ctl_data->value);
 	snd_ctl_elem_id_free(ctl_data->id);
@@ -425,7 +401,7 @@ static void ctl_dump(struct ctl_data *ctl_data)
 			offset = BUFFER_ABI_OFFSET;
 			n = ctl_data->buffer[BUFFER_SIZE_OFFSET];
 
-			if (ctl_data->no_abi) {
+			if (!ctl_data->no_abi) {
 				offset += sizeof(struct sof_abi_hdr) /
 					  sizeof(int);
 				n -= sizeof(struct sof_abi_hdr);
@@ -461,10 +437,6 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 	}
 
 	if (ctl_data->set) {
-		fprintf(stdout, "Applying configuration \"%s\" ",
-			ctl_data->input_file);
-		fprintf(stdout, "into device %s control %s.\n",
-			ctl_data->dev, ctl_data->cname);
 		n = read_setup(ctl_data);
 		if (n < 1) {
 			fprintf(stderr, "Error: failed data read from %s.\n",
@@ -473,11 +445,17 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 		}
 
 		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n;
-		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
-					     ctl_data->buffer);
-		if (ret < 0) {
-			fprintf(stderr, "Error: failed TLV write (%d)\n", ret);
-			return ret;
+		if (ctl_data->cname) {
+			fprintf(stdout, "Applying configuration \"%s\" ",
+				ctl_data->input_file);
+			fprintf(stdout, "into device %s control %s.\n",
+				ctl_data->dev, ctl_data->cname);
+			ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
+						     ctl_data->buffer);
+			if (ret < 0) {
+				fprintf(stderr, "Error: failed TLV write (%d)\n", ret);
+				return ret;
+			}
 		}
 		fprintf(stdout, "Success.\n");
 
@@ -503,6 +481,7 @@ int main(int argc, char *argv[])
 {
 	char *input_file = NULL;
 	char *output_file = NULL;
+	bool using_control;
 	struct ctl_data *ctl_data;
 	char nname[256];
 	int ret = 0;
@@ -558,6 +537,7 @@ int main(int argc, char *argv[])
 			goto struct_free;
 		}
 	}
+	using_control = ((intptr_t)ctl_data->cname);
 
 	/* open output file */
 	if (output_file) {
@@ -583,14 +563,6 @@ int main(int argc, char *argv[])
 		goto out_fd_close;
 	}
 
-	/* The control need to be defined. */
-	if (!ctl_data->cname) {
-		fprintf(stderr, "Error: No control was requested.\n");
-		usage(argv[0]);
-		goto out_fd_close;
-
-	}
-
 	/* open input file */
 	if (input_file) {
 		ctl_data->in_fd = open(input_file, O_RDONLY);
@@ -598,13 +570,44 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "error: %s\n", strerror(errno));
 			goto out_fd_close;
 		}
+		if (ctl_data->binary && ctl_data->set) {
+			/* set ctrl_size to file size */
+			ctl_data->ctrl_size = get_file_size(ctl_data->in_fd);
+			if (ctl_data->ctrl_size <= 0) {
+				fprintf(stderr, "Error: Input file unavailable.\n");
+				goto out_fd_close;
+			}
+
+			/* need more space for raw data file(no header in the file) */
+			if (ctl_data->no_abi)
+				ctl_data->ctrl_size += sizeof(struct sof_abi_hdr);
+		}
 	}
 
-	/* set up ctl_elem, allocate buffers */
-	ret = ctl_setup(ctl_data);
+	/* Source and a sink need to be defined */
+	if (!(using_control ^ ctl_data->out_fd ? ctl_data->in_fd : ctl_data->out_fd)) {
+		fprintf(stderr, "Error: Missing >1 endpoints\n");
+		usage(argv[0]);
+		goto out_fd_close;
+	}
+
+	if (using_control) {
+		/* set up ctl_elem, allocate buffers */
+		ret = ctl_setup(ctl_data);
+		if (ret < 0) {
+			fprintf(stderr, "Error: ctl_data setup failed, ret:%d", ret);
+			goto in_fd_close;
+		}
+	}
+
+	fprintf(stderr, "Control size is %d.\n", ctl_data->ctrl_size);
+
+	/* allocate buffer for tlv data */
+	ret = buffer_alloc(ctl_data);
 	if (ret < 0) {
-		fprintf(stderr, "Error: ctl_data setup failed, ret:%d", ret);
-		goto in_fd_close;
+		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
+			ret);
+		goto data_free;
 	}
 
 	/* set/get the tlv bytes kcontrol */
@@ -619,7 +622,10 @@ int main(int argc, char *argv[])
 	ctl_dump(ctl_data);
 
 data_free:
-	ret = ctl_free(ctl_data);
+	if (using_control)
+		ret = ctl_free(ctl_data);
+	buffer_free(ctl_data);
+
 
 in_fd_close:
 	if (ctl_data->out_fd)
