@@ -43,6 +43,12 @@ set(TPLGS_UP
 	"sof-tgl-rt711-rt1308\;sof-rpl-rt711-4ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DBT_OFFLOAD\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=rpl"
 	"sof-tgl-rt711-rt1308\;sof-rpl-rt711\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=0\;-DBT_OFFLOAD\;-DPLATFORM=rpl"
 	## end SoundWire topologies
+
+	## SoundWire NOJACK topologies
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt1316-l2-mono-rt714-l0\;-DDYNAMIC=1\;-DPLATFORM=adl\;-DMONO\;-DNOJACK\;-DAMP_1_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=0"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt1316-l12-rt714-l0\;-DDYNAMIC=1\;-DPLATFORM=adl\;-DNOJACK\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=0"
+	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-adl-rt1316-l2-mono-rt714-l3\;-DDYNAMIC=1\;-DPLATFORM=adl\;-DMONO\;-DNOJACK\;-DAMP_1_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=3"
+	## end SoundWire NOJACK topologies
 )
 
 add_custom_target(kernel_dependent_v5_19_topologies1)
