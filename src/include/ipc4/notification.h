@@ -81,3 +81,38 @@ union ipc4_notification_header {
 		uint32_t _reserved_0 : 1;
 	} r;
 } __packed __aligned(4);
+
+/**
+ * \brief This notification is reported by the Detector module
+ * upon key phrase detection.
+ */
+struct ipc4_voice_cmd_notification {
+	union {
+		uint32_t dat;
+
+		struct {
+			/**< ID of detected keyword */
+			uint32_t word_id : 16;
+			/**< Notification::PHRASE_DETECTED */
+			uint32_t notif_type : 8;
+			/**< Global::NOTIFICATION */
+			uint32_t type : 5;
+			/**< Msg::MSG_NOTIFICATION */
+			uint32_t rsp : 1;
+			/**< Msg::FW_GEN_MSG */
+			uint32_t msg_tgt : 1;
+			uint32_t _reserved_0 : 1;
+		} r;
+	} primary;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/**< Final speaker verification score in range of 0..8192 */
+			uint32_t sv_score : 16;
+			uint32_t rsvd1 : 14;
+			uint32_t _reserved_2 : 2;
+		} r;
+	} extension;
+} __packed __aligned(4);
