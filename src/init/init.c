@@ -144,6 +144,7 @@ static int secondary_core_restore(void)
 int secondary_core_init(struct sof *sof)
 {
 	int err;
+	struct ll_schedule_domain *dma_domain;
 
 #ifndef __ZEPHYR__
 	/* init architecture */
@@ -174,7 +175,10 @@ int secondary_core_init(struct sof *sof)
 #endif
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_ll(timer_domain_get());
-	scheduler_init_ll(dma_domain_get());
+
+	dma_domain = dma_domain_get();
+	if (dma_domain)
+		scheduler_init_ll(dma_domain);
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
