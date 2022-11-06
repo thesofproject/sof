@@ -934,6 +934,7 @@ static int dai_reset(struct comp_dev *dev)
 		dai_dma_release(dev);
 
 	dma_sg_free(&config->elem_array);
+	rfree(dd->z_config->head_block);
 	rfree(dd->z_config);
 
 	if (dd->dma_buffer) {
