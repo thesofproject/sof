@@ -128,7 +128,10 @@ void dma_put(struct dma *dma)
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&dma->lock);
-	--dma->sref;
+	if (--dma->sref == 0) {
+		rfree(dma->chan);
+		dma->chan = NULL;
+	}
 
 	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
