@@ -2,7 +2,7 @@ function cnv = src_param(fs1, fs2, coef_bits, q, gain)
 
 % src_param - get converter parameters
 %
-% cnv = src_param(fs1, fs2, coef_bits, q)
+% cnv = src_param(fs1, fs2, coef_bits, q, gain)
 %
 % fs1       - input rate
 % fs2       - output rate
@@ -53,6 +53,9 @@ if nargin < 4
 	q = 1.0;
 end
 
+%% Create plots
+cnv.do_plots = 0;
+
 %% Copy input parameters
 cnv.fs1 = fs1;
 cnv.fs2 = fs2;
@@ -64,11 +67,11 @@ cnv.design = 'kaiser'; % Use firpm or kaiser
 %% Default SRC quality
 cnv.c_pb = q * 20/44.1; % Gives 20 kHz BW @ 44.1 kHz
 cnv.c_sb = 0.5; % Start stopband at Fs/2
-cnv.rs = 70; % Stopband attenuation in dB
+cnv.rs = 63; % Stopband attenuation in dB, initial value that will stepped to meet THD+N
+cnv.rs_max = 120; % Do not exceed this
 cnv.rp = 0.1; % Passband ripple in dB
 cnv.rp_tot = 0.1; % Max +/- passband ripple allowed, used in test script only
 cnv.gain = gain; % Gain in decibels at 0 Hz
-
 
 %% Constrain sub-filter lengths. Make subfilters lengths multiple of four
 %  is a good assumption for processors.
