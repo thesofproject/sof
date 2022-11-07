@@ -564,6 +564,7 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-stream.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
+	${SOF_AUDIO_PATH}/pipeline/chain_dma.c
 
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/init/init.c

@@ -590,6 +590,43 @@ static int construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t 
 	return IPC4_SUCCESS;
 }
 
+#include "sof/mem_win_debug.h"
+int ipc4_create_io_driver_for_chain(struct ipc4_chain_dma *cdma)
+{
+	struct sof_uuid uuid = {0x6a0a274f, 0x27cc, 0x4afb, {0xa3, 0xe7, 0x34,
+			0x44, 0x72, 0x3f, 0x43, 0x2e}};
+
+	const struct comp_driver *drv;
+	struct comp_dev *dev;
+	uint32_t dir, host_chan, link_chan;
+	int ret;
+
+	drv = ipc4_get_drv((uint8_t *)&uuid);
+	MEM_WIN_DEBUG0(0xbbb0,drv,0,0);
+	if (!drv)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	ret = process_dma_index(cdma->primary.r.host_dma_id, &dir, &host_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	ret = process_dma_index(cdma->primary.r.link_dma_id, &dir, &link_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	dev = drv->ops.chain_dma_create(drv, (uint8_t)host_chan, (uint8_t)link_chan,
+					cdma->extension.r.fifo_size, cdma->primary.r.scs);
+
+	if (!dev)
+		return NULL;
+
+	ipc4_add_comp_dev(dev);
+	//dev->ipc_config.id
+
+	return IPC4_SUCCESS;
+}
+
+//deprecated
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
 	struct ipc4_copier_module_cfg copier_cfg;
@@ -723,6 +760,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	return ret;
 }
 
+//deprecated
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
 	struct ipc_comp_dev *ipc_pipe;
@@ -793,6 +831,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	return IPC4_SUCCESS;
 }
 
+#include "mem_win_debug.h"
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
@@ -807,6 +846,7 @@ const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
 	list_for_item(clist, &drivers->list) {
 		info = container_of(clist, struct comp_driver_info,
 				    list);
+		MEM_WIN_DEBUG0(0x01d01d, info->drv->uid->a, info->drv->uid->b, 0);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
 			tr_dbg(&comp_tr,
 			       "found type %d, uuid %pU",

@@ -307,6 +307,10 @@ struct comp_ops {
 				   const struct comp_ipc_config *ipc_config,
 				   const void *ipc_specific_config);
 
+	struct comp_dev *(*chain_dma_create)(const struct comp_driver *drv,
+					uint8_t host_dma_id, uint8_t link_dma_id,
+					uint32_t fifo_size, bool scs);
+
 	/**
 	 * Called to delete the specified component device.
 	 * @param dev Component device to be deleted.

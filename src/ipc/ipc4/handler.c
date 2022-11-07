@@ -14,6 +14,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/chain_dma.h>
 #include <sof/common.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
@@ -458,36 +459,101 @@ static int ipc4_load_library(struct ipc4_message_request *ipc4)
 }
 #endif
 
+#include "sof/mem_win_debug.h"
 static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
+	struct sof_uuid uuid = {0x6a0a274f, 0x27cc, 0x4afb, {0xa3, 0xe7, 0x34,
+			0x44, 0x72, 0x3f, 0x43, 0x2e}};
 	struct ipc4_chain_dma cdma;
 	struct ipc *ipc = ipc_get();
-	int ret;
+	int ret = IPC4_INVALID_REQUEST;
 
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
 
-	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
-		ret = ipc4_create_chain_dma(ipc, &cdma);
-		if (ret) {
-			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
-			return ret;
-		}
+	const uint8_t link_dma_id = cdma.primary.r.link_dma_id;
+	const uint8_t host_dma_id = cdma.primary.r.host_dma_id;
 
-		/* if enable is not set, chain dma pipeline is not going to be triggered */
-		if (!cdma.primary.r.enable)
-			return ret;
-	}
+	const uint32_t fifo_size = cdma.extension.r.fifo_size;
+	const bool allocate = cdma.primary.r.allocate;
+	const bool enable = cdma.primary.r.enable;
+	const bool scs = cdma.primary.r.scs;
 
-	atomic_set(&msg_data.delayed_reply, 1);
-	ret = ipc4_trigger_chain_dma(ipc, &cdma);
-	/* it is not scheduled in another thread */
-	if (ret != PPL_STATUS_SCHEDULED) {
-		atomic_set(&msg_data.delayed_reply, 0);
-		msg_data.delayed_error = 0;
-	} else {
-		ret = 0;
-	}
+	MEM_WIN_DEBUG0(0xaaa0,0,0,0);
+	int comp_id = IPC4_COMP_ID(host_dma_id + IPC4_MAX_MODULE_COUNT,
+			link_dma_id);
 
+    if (allocate)
+    {
+		ret = ipc4_create_io_driver_for_chain(&cdma);
+		struct ipc_comp_dev* cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
+		MEM_WIN_DEBUG0(0xaab0,cdma_comp,0,0);
+		assert(cdma_comp != NULL);
+        if(ret == IPC4_SUCCESS || ret == IPC4_INVALID_CHAIN_STATE_TRANSITION)
+        {
+            // valid ret code.
+        }
+        else
+        {
+            return IPC4_INVALID_REQUEST;
+        }
+		const struct comp_driver *drv;
+		drv = ipc4_get_drv((uint8_t *)&uuid);
+		MEM_WIN_DEBUG0(0xaab1,drv,0,0);
+		assert(drv != NULL);
+        if (enable)
+        {
+			drv->ops.trigger(cdma_comp->cd, COMP_TRIGGER_START);
+        }
+        else
+        {
+			drv->ops.trigger(cdma_comp->cd, COMP_TRIGGER_PAUSE);
+        }
+		MEM_WIN_DEBUG0(0xaab2,drv,0,0);
+    }
+    else
+    {
+		const struct comp_driver *drv;
+		drv = ipc4_get_drv((uint8_t *)&uuid);
+		struct ipc_comp_dev* cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
+        if (enable)
+        {
+            return IPC4_INVALID_REQUEST;
+        }
+        else
+        {
+            //ret = chain_dma_mgr->PauseChain(host_dma_id);
+			drv->ops.trigger(cdma_comp->cd, COMP_TRIGGER_PAUSE);
+        }
+        if (ret == IPC4_SUCCESS)
+        {
+            //ret = chain_dma_mgr->RemoveChain(host_dma_id);
+			drv->ops.free(cdma_comp->cd);
+        }
+    }
+
+	//PREVIOUS IMPLEMENTATION
+	// if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
+	// 	ret = ipc4_create_chain_dma(ipc, &cdma);
+	// 	if (ret) {
+	// 		tr_err(&ipc_tr, "failed to create chain dma %d", ret);
+	// 		return ret;
+	// 	}
+
+	// 	/* if enable is not set, chain dma pipeline is not going to be triggered */
+	// 	if (!cdma.primary.r.enable)
+	// 		return ret;
+	// }
+
+	// atomic_set(&msg_data.delayed_reply, 1);
+	// ret = ipc4_trigger_chain_dma(ipc, &cdma);
+	// /* it is not scheduled in another thread */
+	// if (ret != PPL_STATUS_SCHEDULED) {
+	// 	atomic_set(&msg_data.delayed_reply, 0);
+	// 	msg_data.delayed_error = 0;
+	// } else {
+	// 	ret = 0;
+	// }
+	MEM_WIN_DEBUG0(0xaaa1,0,0,0);
 	return ret;
 }
 

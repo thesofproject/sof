@@ -6,4 +6,5 @@ add_local_sources(sof
 	pipeline-params.c
 	pipeline-xrun.c
 	pipeline-schedule.c
+	chain_dma.c
 )

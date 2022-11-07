@@ -28,6 +28,7 @@ enum sof_comp_type {
 	SOF_COMP_NONE = 0,
 	SOF_COMP_HOST,
 	SOF_COMP_DAI,
+	SOF_COMP_CHAIN_DMA,
 	SOF_COMP_SG_HOST,	/**< scatter gather variant */
 	SOF_COMP_SG_DAI,	/**< scatter gather variant */
 	SOF_COMP_VOLUME,
