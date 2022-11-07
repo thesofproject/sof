@@ -144,7 +144,13 @@ ifdef(`IGO', `define(`DMIC_PIPELINE_48k_CORE_ID', 1)')
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 # include the generic dmic with kwd
-include(`platform/intel/intel-generic-dmic-kwd.m4')
+ifdef(`NOHOTWORD',
+`
+define(NO16KDMIC)
+define(DMIC_48k_CORE_ID, 1)
+define(DMICPROC, passthrough)
+include(`platform/intel/intel-generic-dmic.m4')',
+`include(`platform/intel/intel-generic-dmic-kwd.m4')')
 
 # define(`SSP_MCLK', )
 ifdef(`SSP_MCLK',`',`define(`SSP_MCLK', 19200000)')
