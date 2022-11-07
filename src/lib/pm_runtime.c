@@ -20,6 +20,10 @@
 #include <ipc/topology.h>
 #include <stdint.h>
 
+#if defined(__ZEPHYR__)
+#include <zephyr/pm/policy.h>
+#endif
+
 LOG_MODULE_REGISTER(pm_runtime, CONFIG_SOF_LOG_LEVEL);
 
 /* d7f6712d-131c-45a7-82ed-6aa9dc2291ea */
@@ -130,11 +134,14 @@ bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_is_active() context %d index %d", context,
 	       index);
-
+#if defined(__ZEPHYR__) && defined(CONFIG_PM)
+	return pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+#else
 	switch (context) {
 	default:
 		return platform_pm_runtime_is_active(context, index);
 	}
+#endif
 }
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
