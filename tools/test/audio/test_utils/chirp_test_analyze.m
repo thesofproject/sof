@@ -16,6 +16,16 @@ end
 
 %% Find sync
 [d, nt, nt_use, nt_skip] = find_test_signal(x(:,test.ch(1)), test);
+if isempty(d)
+	t = (((1:size(x, 1)) - 1)/test.fs)';
+	figure;
+	plot(t, x)
+	grid on;
+	xlabel('Time (s)');
+	ylabel('PCM sample values');
+	test.fail = -1;
+	return;
+end
 
 %% Trim sample
 i1 = d+nt_skip;
