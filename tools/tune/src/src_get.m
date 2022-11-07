@@ -37,6 +37,7 @@ function src = src_get(cnv)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+debug = 0;
 use_firpm = 0;
 use_remez = 0;
 use_kaiser = 0;
@@ -53,22 +54,31 @@ switch lower(cnv.design)
 		error('Unknown FIR design request!');
 end
 
+%% Default minimum needed for scripts to work
+src.active = 0;
+src.L=1;
+src.M=1;
+src.odm=1;
+src.idm=1;
+src.MOPS=0;
+src.c_pb = 0;
+src.c_sb = 0;
+src.fir_delay_size = 0;
+src.out_delay_size = 0;
+src.blk_in = 1;
+src.blk_out = 1;
+src.gain = 1;
+src.filter_length = 0;
+src.c_pbi = 0;
+src.c_sbi = 0;
+
 if abs(cnv.fs1-cnv.fs2) < 1
-        %% Return minimum needed for scripts to work
-        src.L=1;
-        src.M=1;
-        src.odm=1;
-        src.idm=1;
-        src.MOPS=0;
-        src.c_pb = 0;
-        src.c_sb = 0;
-        src.fir_delay_size = 0;
-        src.out_delay_size = 0;
-        src.blk_in = 1;
-        src.blk_out = 1;
-        src.gain = 1;
-	src.filter_length = 0;
         return
+end
+
+if cnv.rs > cnv.rs_max
+	fprintf(1, 'Requested stop-band %.1f dB exceeds maximum %.1f.\n', cnv.rs, cnv.rs_max);
+	error('Failed');
 end
 
 %% fractional SRC parameters
@@ -152,14 +162,13 @@ while (stopband_ok) == 0 && (n < n_max)
                 b = fir1(nfir, kw, kftype, kaiser(nfir+1, kbeta));
         end
 	m_b = max(abs(b));
-	%sref = 2^(cnv.coef_bits-1);
-	%bq = round(b*sref/m_b)*m_b/sref;
-        bq = b;
-        h_sb = freqz(bq, 1, f_sb, fs3);
+        h_sb = freqz(b, 1, f_sb, fs3);
         m_sb = 20*log10(abs(h_sb));
 	delta_prev = delta;
         delta = cnv.rs+max(m_sb);
-        fprintf('Step=%3d, Delta=%f dB, N=%d\n', n, delta, nfir);
+	if debug
+		fprintf('Step=%3d, Delta=%f dB, N=%d\n', n, delta, nfir);
+	end
         dn(n) = delta;
         fn(n) = nfir;
         if delta < 0
@@ -188,14 +197,14 @@ while (stopband_ok) == 0 && (n < n_max)
 end
 
 f_p = linspace(0, fs3/2, 2000);
-m_db = 20*log10(abs(freqz(bq, 1, f_p, fs3)));
+m_db = 20*log10(abs(freqz(b, 1, f_p, fs3)));
 i_pb = find(f_p < src.f_pb);
 i_m3 = find(m_db > -3);
 f_m3 = f_p(i_m3(end));
 g_dc = m_db(1);
 g_dc_comp_lin = 10^(-g_dc/20);
 
-if 1
+if cnv.do_plots
         p_ymin = floor((-cnv.rs-50)/10)*10;
         p_ymax = 10;
         figure(1);
@@ -221,29 +230,18 @@ if 1
         box off;
 end
 
+%% Make output struct
 src.subfilter_length = ceil((nfir+1)/src.num_of_subfilters);
 src.filter_length = src.subfilter_length*src.num_of_subfilters;
-src.b = zeros(src.filter_length,1);
+src.coefs = zeros(src.filter_length,1);
 src.gain = 1;
-src.b(1:nfir+1) = b * src.L * g_dc_comp_lin * 10^(cnv.gain/20);
-m = max(abs(src.b));
+src.coefs(1:nfir+1) = b * src.L * g_dc_comp_lin * 10^(cnv.gain/20);
+m = max(abs(src.coefs));
 gmax = (32767/32768)/m;
 maxshift = floor(log(gmax)/log(2));
-src.b = src.b * 2^maxshift;
+src.coefs = src.coefs * 2^maxshift;
 src.gain = 1/2^maxshift;
 src.shift = maxshift;
-
-%% Reorder coefficients
-if 1
-        src.coefs = src.b;
-else
-        src.coefs = zeros(src.filter_length,1);
-        for n = 1:src.num_of_subfilters
-                i11 = (n-1)*src.subfilter_length+1;
-                i12 = i11+src.subfilter_length-1;
-                src.coefs(i11:i12) = src.b(n:src.num_of_subfilters:end);
-        end
-end
 
 src.halfband = 0;
 src.blk_in = M;
@@ -252,5 +250,8 @@ src.MOPS = cnv.fs1/M*src.filter_length/1e6;
 src.fir_delay_size = src.subfilter_length + ...
         (src.num_of_subfilters-1)*src.idm + src.blk_in;
 src.out_delay_size = (src.num_of_subfilters-1)*src.odm + 1;
+src.c_pbi = round(src.c_pb * 1e4);
+src.c_sbi = round(src.c_sb * 1e4);
+src.active = 1;
 
 end

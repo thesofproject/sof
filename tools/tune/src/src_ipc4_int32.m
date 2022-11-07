@@ -30,6 +30,7 @@ fs_matrix = [
 cfg.ctype = 'int32';
 cfg.profile = 'ipc4';
 cfg.quality = 1.0;
+cfg.thdn = -92;
 cfg.speed = 0;
 cfg.gain = 0; % Make gain 0 dB
 

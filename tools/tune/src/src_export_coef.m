@@ -37,6 +37,9 @@ else
         sfn = sprintf('src_%s_%d_%d_%d_%d', ctype, src.L, src.M, pbi, sbi);
 
         fprintf('Exporting %s ...\n', hfn);
+	if exist(hfn, 'file')
+		fprintf(1, 'Overwrite %s\n', hfn);
+	end
         fh = fopen(hfn, 'w');
 	y = datestr(now(), 'yyyy');
 
