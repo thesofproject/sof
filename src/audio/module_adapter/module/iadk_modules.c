@@ -60,7 +60,7 @@ static int iadk_modules_init(struct processing_module *mod)
 	int ret = 0;
 	byte_array_t mod_cfg;
 
-	mod_cfg.data = (uint8_t *)&md->cfg.base_cfg;
+	mod_cfg.data = (uint8_t *)md->cfg.init_data;
 	/* Intel modules expects DW size here */
 	mod_cfg.size = md->cfg.size >> 2;
 	md->private = mod;
