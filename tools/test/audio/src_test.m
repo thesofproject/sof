@@ -1,14 +1,16 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
 %
 % src_test(bits_in, bits_out, fs_in, fs_out)
 %
-% bits_in  - input word length
-% bits_out - output word length
-% fs_in    - vector of rates in
-% fs_out   - vector of rates out
+% bits_in    - input word length
+% bits_out   - output word length
+% fs_in      - vector of rates in
+% fs_out     - vector of rates out
+% full_test  - set to 0 for chirp only, 1 for all, default 1
+% show_plots - set to 1 to see plots, default 0
 %
 % A default in-out matrix with 32 bits data is tested if the
 % parameters are omitted.
@@ -39,6 +41,12 @@ if nargin < 4
 	fs_out_list = [ 8 11.025 12 16 22.05 24 32 44.1 48 ...
 		        50 64 88.2 96 176.4 192] * 1e3;
 end
+if nargin < 5
+	full_test = 1;
+end
+if nargin < 6
+	show_plots = 0;
+end
 
 %% Generic test pass/fail criteria
 %  Note that AAP and AIP are relaxed a bit from THD+N due to inclusion
@@ -54,12 +62,12 @@ t.aap_db_max = -60;
 t.aip_db_max = -60;
 
 %% Defaults for test
-t.fmt = 'raw';         % Can be 'raw' (fast binary) or 'txt' (debug)
-t.nch = 2;             % Number of channels
-t.ch = 0;              % 1..nch. With value 0 test a randomly selected channel.
-t.bits_in = bits_in;   % Input word length
-t.bits_out = bits_out; % Output word length
-t.full_test = 1;       % 0 is quick check only, 1 is full set
+t.fmt = 'raw';          % Can be 'raw' (fast binary) or 'txt' (debug)
+t.nch = 2;              % Number of channels
+t.ch = 0;               % 1..nch. With value 0 test a randomly selected channel.
+t.bits_in = bits_in;    % Input word length
+t.bits_out = bits_out;  % Output word length
+t.full_test = full_test; % 0 is quick check only, 1 is full set
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -67,8 +75,13 @@ t.full_test = 1;       % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
-t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+if show_plots
+	t.plot_close_windows = 0;
+	t.plot_visible = 'on';
+else
+	t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
+	t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+end
 t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 %% Init for test loop
@@ -456,9 +469,7 @@ else
         title(tstr);
 end
 pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
-% The print command caused a strange error with __osmesa_print__
-% so disable it for now until solved.
-%print(pfn, '-dpng');
+print(pfn, '-dpng');
 if t.plot_close_windows
 	close all;
 end
