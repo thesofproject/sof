@@ -52,6 +52,9 @@ do { \
 	(comp_dynamic_module)->ops.trigger = module_adapter_trigger; \
 	(comp_dynamic_module)->ops.reset = module_adapter_reset; \
 	(comp_dynamic_module)->ops.free = module_adapter_free; \
+	(comp_dynamic_module)->ops.set_large_config = module_set_large_config;\
+	(comp_dynamic_module)->ops.get_large_config = module_get_large_config;\
+	(comp_dynamic_module)->ops.get_attribute = module_adapter_get_attribute; \
 } while (0)
 
 #endif /* __SOF_AUDIO_IADK_MODULES__ */
