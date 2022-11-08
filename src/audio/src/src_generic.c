@@ -64,9 +64,10 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 			y1 += (int64_t)(*coef) * data[1];
 		}
 
-		if (data == fir_end)
-			data = fir_start;
-
+		/* No need to check for circular wrap. Pointer data is moved to
+		 * fir_start to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start;
 		for (i = 0; i < n2; i++, coef++, data += 2) {
 			y0 += (int64_t)(*coef) * data[0];
 			y1 += (int64_t)(*coef) * data[1];
@@ -98,9 +99,10 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
 
-		if (data >= fir_end)
-			data -= fir_delay_length;
-
+		/* No need to check for circular wrap. Pointer data is moved to fir_start
+		 * plus actual channel to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start + nch - j - 1;
 		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
 
@@ -159,9 +161,10 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 			y1 += (int64_t)scaled_coef * data[1];
 		}
 
-		if (data == fir_end)
-			data = fir_start;
-
+		/* No need to check for circular wrap. Pointer data is moved to
+		 * fir_start to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start;
 		for (i = 0; i < n2; i++, coef++, data += 2) {
 			scaled_coef = *coef >> 8;
 			y0 += (int64_t)scaled_coef * data[0];
@@ -193,9 +196,10 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
 
-		if (data >= fir_end)
-			data -= fir_delay_length;
-
+		/* No need to check for circular wrap. Pointer data is moved to fir_start
+		 * plus actual channel to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start + nch - j - 1;
 		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
 
