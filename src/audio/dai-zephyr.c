@@ -504,7 +504,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dma_cfg) {
 		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
 		err = -ENOMEM;
-		goto out;
+		goto free;
 	}
 
 	dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
@@ -530,7 +530,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		rfree(dma_cfg);
 		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
 		err = -ENOMEM;
-		goto out;
+		goto free;
 	}
 
 	dma_cfg->head_block = dma_block_cfg;
@@ -546,6 +546,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
+free:
+	dma_sg_free(&config->elem_array);
 out:
 	buffer_release(dma_buf);
 
@@ -630,7 +632,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	if (!dma_cfg) {
 		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
 		err = -ENOMEM;
-		goto out;
+		goto free;
 	}
 
 	dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
@@ -656,7 +658,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		rfree(dma_cfg);
 		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
 		err = -ENOMEM;
-		goto out;
+		goto free;
 	}
 
 	dma_cfg->head_block = dma_block_cfg;
@@ -672,6 +674,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
+free:
+	dma_sg_free(&config->elem_array);
 out:
 	buffer_release(dma_buf);
 
@@ -936,6 +940,7 @@ static int dai_reset(struct comp_dev *dev)
 	dma_sg_free(&config->elem_array);
 	rfree(dd->z_config->head_block);
 	rfree(dd->z_config);
+	dd->z_config = NULL;
 
 	if (dd->dma_buffer) {
 		buffer_free(dd->dma_buffer);
