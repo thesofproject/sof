@@ -4,6 +4,8 @@
 # compile every Zephyr module that can be found.
 if(CONFIG_SOF)
 
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+
 if(CONFIG_LIBRARY)
 	set(PLATFORM "library")
 	set(ARCH host)
