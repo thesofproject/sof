@@ -28,6 +28,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/detect_test.h>
+#include <ipc4/notification.h>
 #include <kernel/abi.h>
 #include <sof/samples/audio/detect_test.h>
 #include <user/trace.h>
@@ -126,7 +127,11 @@ static void notify_host(const struct comp_dev *dev)
 
 	comp_info(dev, "notify_host()");
 
+#if CONFIG_IPC_MAJOR_4
+	ipc_msg_send(cd->msg, NULL, true);
+#else
 	ipc_msg_send(cd->msg, &cd->event, true);
+#endif /* CONFIG_IPC_MAJOR_4 */
 }
 
 static void notify_kpb(const struct comp_dev *dev)
@@ -265,119 +270,10 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 	return 0;
 }
 
-static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
-					 const struct comp_ipc_config *config,
-					 const void *spec)
-{
-	struct comp_dev *dev = NULL;
 #if CONFIG_IPC_MAJOR_4
-	const struct sof_detect_test_config *ipc_keyword = spec;
-#else
-	const struct ipc_config_process *ipc_keyword = spec;
-#endif /* CONFIG_IPC_MAJOR_4 */
-	struct comp_data *cd = NULL;
-	const struct sof_detect_test_config *cfg;
-	int ret = 0;
-	size_t bs;
+#define NOTIFICATION_DEFAULT_WORD_ID 1
+#define NOTIFICATION_DEFAULT_SCORE 100
 
-	comp_cl_info(&comp_keyword, "test_keyword_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-
-	if (!cd)
-		goto fail;
-
-#if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
-	cd->detect_func = kwd_nn_detect_test;
-#else
-	/* using default processing function */
-	cd->detect_func = default_detect_test;
-#endif
-
-	comp_set_drvdata(dev, cd);
-
-	/* component model data handler */
-	cd->model_handler = comp_data_blob_handler_new(dev);
-
-#if CONFIG_IPC_MAJOR_4
-	cfg = ipc_keyword;
-	bs = sizeof(*ipc_keyword);
-#else
-	cfg = (const struct sof_detect_test_config *)ipc_keyword->data;
-	bs = ipc_keyword->size;
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-	if (bs > 0) {
-		if (bs < sizeof(struct sof_detect_test_config)) {
-			comp_err(dev, "test_keyword_new(): invalid data size");
-			goto cd_fail;
-		}
-
-		if (test_keyword_apply_config(dev, cfg)) {
-			comp_err(dev, "test_keyword_new(): failed to apply config");
-			goto cd_fail;
-		}
-	}
-
-	ret = comp_init_data_blob(cd->model_handler, INITIAL_MODEL_DATA_SIZE,
-				  NULL);
-	if (ret < 0) {
-		comp_err(dev, "test_keyword_new(): model data initial failed");
-		goto cd_fail;
-	}
-
-	/* build component event */
-	ipc_build_comp_event(&cd->event, dev->ipc_config.type, dev->ipc_config.id);
-	cd->event.event_type = SOF_CTRL_EVENT_KD;
-	cd->event.num_elems = 0;
-
-	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
-	if (!cd->msg) {
-		comp_err(dev, "test_keyword_new(): ipc notification init failed");
-		goto cd_fail;
-	}
-
-#if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
-	/* global buffer to accumulate data for processing */
-	cd->input = rballoc_align(0, SOF_MEM_CAPS_RAM,
-				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
-	if (!cd->input) {
-		comp_err(dev, "test_keyword_new(): input alloc failed");
-		goto cd_fail;
-	}
-	bzero(cd->input, sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE);
-	cd->input_size = 0;
-#endif
-
-	dev->state = COMP_STATE_READY;
-	return dev;
-
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-fail:
-	rfree(dev);
-	return NULL;
-}
-
-static void test_keyword_free(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_info(dev, "test_keyword_free()");
-
-	ipc_msg_free(cd->msg);
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-	rfree(dev);
-}
-
-#if CONFIG_IPC_MAJOR_4
 static void test_keyword_set_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
@@ -491,7 +387,49 @@ static int test_keyword_get_large_config(struct comp_dev *dev,
 	}
 }
 
-#else
+static int test_keyword_get_attribute(struct comp_dev *dev,
+				      uint32_t type,
+				      void *value)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->config.base;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static struct ipc_msg *ipc4_kd_notification_init(uint32_t word_id,
+						 uint32_t score)
+{
+	struct ipc4_voice_cmd_notification notif;
+	struct ipc_msg *msg;
+
+	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+
+	notif.primary.r.word_id = word_id;
+	notif.primary.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	notif.extension.r.sv_score = score;
+
+	msg = ipc_msg_w_ext_init(notif.primary.dat,
+				 notif.extension.dat,
+				 0);
+	if (!msg)
+		return NULL;
+
+	return msg;
+}
+
+#else /* CONFIG_IPC_MAJOR_4 */
 static int test_keyword_set_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
@@ -660,6 +598,126 @@ static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
+
+static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
+					 const struct comp_ipc_config *config,
+					 const void *spec)
+{
+	struct comp_dev *dev = NULL;
+#if CONFIG_IPC_MAJOR_4
+	const struct sof_detect_test_config *ipc_keyword = spec;
+#else
+	const struct ipc_config_process *ipc_keyword = spec;
+#endif /* CONFIG_IPC_MAJOR_4 */
+	struct comp_data *cd = NULL;
+	const struct sof_detect_test_config *cfg;
+	int ret = 0;
+	size_t bs;
+
+	comp_cl_info(&comp_keyword, "test_keyword_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+	dev->ipc_config = *config;
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+
+	if (!cd)
+		goto fail;
+
+#if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
+	cd->detect_func = kwd_nn_detect_test;
+#else
+	/* using default processing function */
+	cd->detect_func = default_detect_test;
+#endif
+
+	comp_set_drvdata(dev, cd);
+
+	/* component model data handler */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+
+#if CONFIG_IPC_MAJOR_4
+	cfg = ipc_keyword;
+	bs = sizeof(*ipc_keyword);
+#else
+	cfg = (const struct sof_detect_test_config *)ipc_keyword->data;
+	bs = ipc_keyword->size;
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+	if (bs > 0) {
+		if (bs < sizeof(struct sof_detect_test_config)) {
+			comp_err(dev, "test_keyword_new(): invalid data size");
+			goto cd_fail;
+		}
+
+		if (test_keyword_apply_config(dev, cfg)) {
+			comp_err(dev, "test_keyword_new(): failed to apply config");
+			goto cd_fail;
+		}
+	}
+
+	ret = comp_init_data_blob(cd->model_handler, INITIAL_MODEL_DATA_SIZE,
+				  NULL);
+	if (ret < 0) {
+		comp_err(dev, "test_keyword_new(): model data initial failed");
+		goto cd_fail;
+	}
+
+	/* build component event */
+	ipc_build_comp_event(&cd->event, dev->ipc_config.type, dev->ipc_config.id);
+	cd->event.event_type = SOF_CTRL_EVENT_KD;
+	cd->event.num_elems = 0;
+
+#if CONFIG_IPC_MAJOR_4
+	cd->msg = ipc4_kd_notification_init(NOTIFICATION_DEFAULT_WORD_ID,
+					    NOTIFICATION_DEFAULT_SCORE);
+#else
+	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+	if (!cd->msg) {
+		comp_err(dev, "test_keyword_new(): ipc notification init failed");
+		goto cd_fail;
+	}
+
+#if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
+	/* global buffer to accumulate data for processing */
+	cd->input = rballoc_align(0, SOF_MEM_CAPS_RAM,
+				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
+	if (!cd->input) {
+		comp_err(dev, "test_keyword_new(): input alloc failed");
+		goto cd_fail;
+	}
+	bzero(cd->input, sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE);
+	cd->input_size = 0;
+#endif
+
+	dev->direction = SOF_IPC_STREAM_CAPTURE;
+	dev->direction_set = true;
+	dev->state = COMP_STATE_READY;
+	return dev;
+
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+fail:
+	rfree(dev);
+	return NULL;
+}
+
+static void test_keyword_free(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_info(dev, "test_keyword_free()");
+
+	ipc_msg_free(cd->msg);
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+	rfree(dev);
+}
 
 static int test_keyword_verify_params(struct comp_dev *dev,
 				      struct sof_ipc_stream_params *params)
@@ -938,9 +996,10 @@ static const struct comp_driver comp_keyword = {
 		.create			= test_keyword_new,
 		.free			= test_keyword_free,
 		.params			= test_keyword_params,
-#ifdef CONFIG_IPC_MAJOR_4
+#if CONFIG_IPC_MAJOR_4
 		.set_large_config	= test_keyword_set_large_config,
 		.get_large_config	= test_keyword_get_large_config,
+		.get_attribute		= test_keyword_get_attribute,
 #else
 		.cmd			= test_keyword_cmd,
 #endif /* CONFIG_IPC_MAJOR_4 */
