@@ -393,7 +393,6 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	 * the period length or just under it.
 	 */
 	s1.times = cd->param.stage1_times;
-	s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
 	s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
 
 	/* The sbuf may limit how many times s1 can be looped. It's harder
@@ -402,11 +401,11 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	 */
 	if (s1_blk_out > sbuf_free) {
 		s1.times = sbuf_free / (cd->src.stage1->blk_out * nch);
-		s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
 		s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
 		comp_dbg(dev, "s1.times = %d", s1.times);
 	}
 
+	s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
 	if (avail_b >= s1_blk_in * sz && sbuf_free >= s1_blk_out) {
 		cd->polyphase_func(&s1);
 
@@ -417,15 +416,14 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 
 	s2.times = cd->param.stage2_times;
 	s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
-	s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
 	if (s2_blk_in > cd->sbuf_avail) {
 		s2.times = cd->sbuf_avail / (cd->src.stage2->blk_in * nch);
 		s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
-		s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
 		comp_dbg(dev, "s2.times = %d", s2.times);
 	}
 
 	/* Test if second stage can be run with default block length. */
+	s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
 	if (cd->sbuf_avail >= s2_blk_in && free_b >= s2_blk_out * sz) {
 		cd->polyphase_func(&s2);
 
