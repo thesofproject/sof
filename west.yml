@@ -59,11 +59,6 @@ manifest:
           - tinycrypt
 
   self:
-    # sof can unfortunately NOT be cloned as "sof2" nor "sof-topic1"
-    # because for now rimage is cloned as "sof/rimage", tomlc99 as
-    # "sof/rimage/tomlc99" and probably other build issues that we have
-    # not discovered yet.
-    path: sof
     # Changes to submanifests/*.yml files _are_ effective; these have no
     # specified 'revision:'
     import: submanifests
