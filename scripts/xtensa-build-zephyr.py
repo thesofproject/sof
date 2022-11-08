@@ -574,7 +574,7 @@ def build_platforms():
 
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
-		rimage_config = pathlib.Path(SOF_TOP, "rimage", "config")
+		rimage_config = pathlib.Path(rimage_source_dir, "config")
 		sign_cmd = ["west"]
 		sign_cmd += ["-v"] * args.verbose
 		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
