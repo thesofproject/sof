@@ -561,7 +561,24 @@ def build_platforms():
 
 		# CMake - configure rimage module
 		rimage_dir_name="build-rimage"
-		rimage_source_dir = pathlib.Path(SOF_TOP, "rimage")
+
+		# Paths in `west.yml` must be "static", we cannot have something like a
+		# variable "$my_sof_path/rimage/" checkout.  In the future "rimage/" will
+		# be moved one level up and it won't be nested inside "sof/" anymore. But
+		# for now we must stick to `sof/rimage/[tomlc99]` for
+		# backwards-compatibility with XTOS platforms and git submodules, see more
+		# detailed comments in west.yml
+		rimage_source_dir = pathlib.Path(west_top, "sof", "rimage")
+
+		# Detect non-west rimage duplicates
+		nested_rimage = pathlib.Path(SOF_TOP, "rimage")
+		if nested_rimage.is_dir() and not nested_rimage.samefile(rimage_source_dir):
+			raise RuntimeError(
+				f"""Two rimage source directories found.
+     Move non-west {nested_rimage} out of west workspace {west_top}.
+     See output of 'west list'."""
+			)
+
 		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)],
 			cwd=west_top)
 		# CMake build rimage module
