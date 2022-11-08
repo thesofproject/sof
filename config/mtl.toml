@@ -49,7 +49,7 @@ name = "ADSPFW"
 load_offset = "0x40000"
 
 [module]
-count = 13
+count = 14
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "2B79E4F3-4675-F649-89DF-3BC194A91AEB"
@@ -338,7 +338,7 @@ count = 13
 
 	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 4096, 100000, 48, 48, 0, 1000, 0]
-	
+
  	[[module.entry]]
 	name = "MUX"
 	uuid = "64ce6e35-857a-4878-ace8-e2a2f42e3069"
@@ -354,5 +354,24 @@ count = 13
 	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
 			0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
 			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
 	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 280, 460700, 16, 16, 0, 0, 0]
+
+	[[module.entry]]
+	name = "KDTEST"
+	uuid = "EBA8D51F-7827-47B5-82EE-DE6E7743AF67"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "1"
+	module_type = "0xC"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 480, 1114000, 64, 64, 0, 0, 0]
