@@ -66,6 +66,7 @@ int dai_config_dma_channel(struct comp_dev *dev, const void *spec_config)
 					    dd->stream_id);
 		break;
 	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
 		break;
@@ -74,6 +75,7 @@ int dai_config_dma_channel(struct comp_dev *dev, const void *spec_config)
 					    dd->stream_id);
 		break;
 	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_HS_VIRTUAL:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
 		break;
@@ -160,6 +162,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_AMD_DMIC:
@@ -171,6 +174,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		}
 		break;
 	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_HS_VIRTUAL:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
