@@ -27,7 +27,51 @@ DECLARE_TR_CTX(spdai_tr, SOF_UUID(spdai_uuid), LOG_LEVEL_INFO);
 static inline int spdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				   const void *spec_config)
 {
-	/* nothing to do on renoir for SP dai */
+	const struct sof_ipc_dai_config *config = spec_config;
+	struct acp_pdata *acpdata = dai_get_drvdata(dai);
+
+	acp_i2stdm_iter_t sp_iter;
+	acp_i2stdm_irer_t sp_irer;
+
+	acpdata->config = *config;
+	acpdata->params = config->acpsp;
+
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read(PU_REGISTER_BASE + ACP_I2STDM_ITER);
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read(PU_REGISTER_BASE + ACP_I2STDM_IRER);
+	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
+	case SOF_DAI_FMT_DSP_A:
+		{
+		acp_i2stdm_txfrmt_t i2stdm_txfrmt;
+		acp_i2stdm_rxfrmt_t reg_i2stdm_rxfrmt;
+
+		i2stdm_txfrmt.u32all = io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_TXFRMT));
+		i2stdm_txfrmt.bits.i2stdm_num_slots = acpdata->params.tdm_slots;
+		i2stdm_txfrmt.bits.i2stdm_slot_len = 16;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_TXFRMT), i2stdm_txfrmt.u32all);
+
+		sp_iter.bits.i2stdm_tx_protocol_mode = 1;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_ITER), sp_iter.u32all);
+
+		reg_i2stdm_rxfrmt.u32all = io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_RXFRMT));
+		reg_i2stdm_rxfrmt.bits.i2stdm_num_slots = 2;
+		reg_i2stdm_rxfrmt.bits.i2stdm_slot_len = 16;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_RXFRMT), reg_i2stdm_rxfrmt.u32all);
+
+		sp_irer.bits.i2stdm_rx_protocol_mode = 1;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
+		}
+		break;
+	case SOF_DAI_FMT_I2S:
+		sp_iter.bits.i2stdm_tx_protocol_mode = 0;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_ITER), sp_iter.u32all);
+
+		sp_irer.bits.i2stdm_rx_protocol_mode = 0;
+		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
+		break;
+	default:
+		dai_err(dai, "hsdai_set_config invalid format");
+		return -EINVAL;
+		}
 	return 0;
 }
 
@@ -39,13 +83,25 @@ static int spdai_trigger(struct dai *dai, int cmd, int direction)
 
 static int spdai_probe(struct dai *dai)
 {
-	/* TODO */
+	struct acp_pdata *acp;
+
+	dai_info(dai, "SP dai probe");
+	/* allocate private data */
+	acp = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*acp));
+	if (!acp) {
+		dai_err(dai, "SP dai probe alloc failed");
+		return -ENOMEM;
+	}
+	dai_set_drvdata(dai, acp);
 	return 0;
 }
 
 static int spdai_remove(struct dai *dai)
 {
-	/* TODO*/
+	struct acp_pdata *acp = dai_get_drvdata(dai);
+
+	rfree(acp);
+	dai_set_drvdata(dai, NULL);
 	return 0;
 }
 
@@ -70,11 +126,21 @@ static int spdai_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params *params,
 			      int dir)
 {
-	/* SP DAI currently supports only these parameters */
-	params->rate = ACP_DEFAULT_SAMPLE_RATE;
-	params->channels = ACP_DEFAULT_NUM_CHANNELS;
-	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+	struct acp_pdata *acpdata = dai_get_drvdata(dai);
+
+	if (dir == DAI_DIR_PLAYBACK) {
+		/* SP DAI currently supports only these parameters */
+		params->rate = ACP_DEFAULT_SAMPLE_RATE;
+		params->channels = acpdata->params.tdm_slots;
+		params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+	} else if (dir == DAI_DIR_CAPTURE) {
+		/* SP DAI currently supports only these parameters */
+		params->rate = ACP_DEFAULT_SAMPLE_RATE;
+		params->channels = 2;
+		params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+	}
 	return 0;
 }
 
@@ -94,3 +160,21 @@ const struct dai_driver acp_spdai_driver = {
 		.get_hw_params          = spdai_get_hw_params,
 	},
 };
+
+const struct dai_driver acp_sp_virtual_dai_driver = {
+	.type = SOF_DAI_AMD_SP_VIRTUAL,
+	.uid = SOF_UUID(spdai_uuid),
+	.tctx = &spdai_tr,
+	.dma_dev = DMA_DEV_SP_VIRTUAL,
+	.dma_caps = DMA_CAP_SP_VIRTUAL,
+	.ops = {
+		.trigger		= spdai_trigger,
+		.set_config		= spdai_set_config,
+		.probe			= spdai_probe,
+		.remove			= spdai_remove,
+		.get_fifo		= spdai_get_fifo,
+		.get_handshake		= spdai_get_handshake,
+		.get_hw_params          = spdai_get_hw_params,
+	},
+};
+

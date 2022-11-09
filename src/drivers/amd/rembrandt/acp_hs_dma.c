@@ -44,7 +44,8 @@ DECLARE_TR_CTX(acp_hs_tr, SOF_UUID(acp_hs_uuid), LOG_LEVEL_INFO);
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
-static uint32_t hs_buff_size;
+static uint32_t hs_buff_size_playback;
+static uint32_t hs_buff_size_capture;
 /* allocate next free DMA channel */
 static struct dma_chan_data *acp_dai_hs_dma_channel_get(struct dma *dma,
 						   unsigned int req_chan)
@@ -107,7 +108,6 @@ static int acp_dai_hs_dma_start(struct dma_chan_data *channel)
 		hs_ier.bits.hstdm_ien = 1;
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IER), hs_ier.u32all);
 		hs_iter.bits.hstdm_txen = 1;
-		hs_iter.bits.hstdm_tx_protocol_mode = 0;
 		hs_iter.bits.hstdm_tx_data_path_mode = 1;
 		hs_iter.bits.hstdm_tx_samp_len = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_ITER), hs_iter.u32all);
@@ -118,7 +118,6 @@ static int acp_dai_hs_dma_start(struct dma_chan_data *channel)
 		hs_ier.bits.hstdm_ien = 1;
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IER), hs_ier.u32all);
 		hs_irer.bits.hstdm_rx_en = 1;
-		hs_irer.bits.hstdm_rx_protocol_mode = 0;
 		hs_irer.bits.hstdm_rx_data_path_mode = 1;
 		hs_irer.bits.hstdm_rx_samplen = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IRER), hs_irer.u32all);
@@ -214,9 +213,10 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 
 	channel->is_scheduling_source = true;
 	channel->direction = config->direction;
-	hs_buff_size = config->elem_array.elems[0].size * config->elem_array.count;
+
 	if (config->direction ==  DMA_DIR_MEM_TO_DEV) {
 
+		hs_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
 		/* HS Transmit FIFO Address and FIFO Size*/
 		hs_fifo_addr = HS_TX_FIFO_ADDR;
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_FIFOADDR), hs_fifo_addr);
@@ -226,7 +226,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 		config->elem_array.elems[0].src = (config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
 		hs_buff_addr = (config->elem_array.elems[0].src | 0x01000000);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_RINGBUFADDR), hs_buff_addr);
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_RINGBUFSIZE), hs_buff_size);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_RINGBUFSIZE), hs_buff_size_playback);
 
 		/* Transmit DMA transfer size in bytes */
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_DMA_SIZE),
@@ -234,10 +234,11 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for HS transmit FIFO - Half of HS buffer size */
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_TX_INTR_WATERMARK_SIZE),
-			     (hs_buff_size >> 1));
+			     (hs_buff_size_playback >> 1));
 
 	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
 
+		hs_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
 		/* HS Receive FIFO Address and FIFO Size*/
 		hs_fifo_addr = HS_RX_FIFO_ADDR;
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_FIFOADDR), hs_fifo_addr);
@@ -249,7 +250,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
 		hs_buff_addr = (config->elem_array.elems[0].dest | 0x01000000);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_RINGBUFADDR), hs_buff_addr);
-		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_RINGBUFSIZE), hs_buff_size);
+		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_RINGBUFSIZE), hs_buff_size_capture);
 
 		/* Receive DMA transfer size in bytes */
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_DMA_SIZE),
@@ -257,7 +258,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for  receive fifo - Half of HS buffer size*/
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_HS_RX_INTR_WATERMARK_SIZE),
-			     (hs_buff_size >> 1));
+			     (hs_buff_size_capture >> 1));
 
 	} else {
 		tr_err(&acp_hs_tr, "Config channel direction undefined %d", channel->direction);
@@ -328,8 +329,8 @@ static int acp_dai_hs_dma_get_data_size(struct dma_chan_data *channel,
 				ACP_P1_HS_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 		prev_tx_pos = curr_tx_pos;
-		*free = (hs_buff_size >> 1);
-		*avail = (hs_buff_size >> 1);
+		*free = (hs_buff_size_playback >> 1);
+		*avail = (hs_buff_size_playback >> 1);
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_RX_LINEARPOSITIONCNTR_LOW);
@@ -337,8 +338,8 @@ static int acp_dai_hs_dma_get_data_size(struct dma_chan_data *channel,
 				ACP_P1_HS_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 		prev_rx_pos = curr_rx_pos;
-		*free = (hs_buff_size >> 1);
-		*avail = (hs_buff_size >> 1);
+		*free = (hs_buff_size_capture >> 1);
+		*avail = (hs_buff_size_capture >> 1);
 	} else {
 		tr_err(&acp_hs_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;
@@ -406,6 +407,23 @@ static int acp_dai_hs_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_
 }
 
 const struct dma_ops acp_dai_hs_dma_ops = {
+	.channel_get		= acp_dai_hs_dma_channel_get,
+	.channel_put		= acp_dai_hs_dma_channel_put,
+	.start			= acp_dai_hs_dma_start,
+	.stop			= acp_dai_hs_dma_stop,
+	.pause			= acp_dai_hs_dma_pause,
+	.release		= acp_dai_hs_dma_release,
+	.copy			= acp_dai_hs_dma_copy,
+	.status			= acp_dai_hs_dma_status,
+	.set_config		= acp_dai_hs_dma_set_config,
+	.interrupt		= acp_dai_hs_dma_interrupt,
+	.probe			= acp_dai_hs_dma_probe,
+	.remove			= acp_dai_hs_dma_remove,
+	.get_data_size		= acp_dai_hs_dma_get_data_size,
+	.get_attribute		= acp_dai_hs_dma_get_attribute,
+};
+
+const struct dma_ops acp_dai_hs_virtual_dma_ops = {
 	.channel_get		= acp_dai_hs_dma_channel_get,
 	.channel_put		= acp_dai_hs_dma_channel_put,
 	.start			= acp_dai_hs_dma_start,

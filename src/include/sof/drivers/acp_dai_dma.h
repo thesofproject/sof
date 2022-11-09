@@ -44,9 +44,11 @@ int acp_dma_init(struct sof *sof);
 #define ACP_INTERNAL_CLK_SEL		0x0
 
 extern const struct dai_driver acp_spdai_driver;
+extern const struct dai_driver acp_sp_virtual_dai_driver;
 extern const struct dai_driver acp_btdai_driver;
 extern const struct dai_driver acp_dmic_dai_driver;
 extern const struct dai_driver acp_hsdai_driver;
+extern const struct dai_driver acp_hs_virtual_dai_driver;
 
 /* ACP private data */
 struct acp_pdata {
