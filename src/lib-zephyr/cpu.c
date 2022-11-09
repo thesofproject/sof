@@ -181,6 +181,9 @@ void cpu_disable_core(int id)
 	if (cpu_is_primary(id))
 		return;
 
+	/* Broadcasting interrupts to other cores. */
+	arch_sched_ipi();
+
 	uint64_t timeout = k_cycle_get_64() +
 		k_ms_to_cyc_ceil64(CONFIG_SECONDARY_CORE_DISABLING_TIMEOUT);
 
