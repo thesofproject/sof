@@ -9,7 +9,7 @@ ifdef(`SSP_INDEX',`',
 `define(SSP_INDEX, `2')')
 
 define(`BT_MCLK', 38400000)
-define(`SSP_NAME', concat(concat(`SSP', SSP_INDEX),`-BT'))
+ifdef(`BT_SSP_NAME',`',`define(`BT_SSP_NAME', concat(concat(`SSP', SSP_INDEX),`-BT'))')
 
 # variable that need to be defined in upper m4
 ifdef(`BT_PIPELINE_PB_ID',`',`fatal_error(note: Need to define playback pcm id for intel-generic-bt
@@ -43,14 +43,14 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 # playback DAI is SSP2 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	BT_PIPELINE_PB_ID, SSP, SSP_INDEX, SSP_NAME,
+	BT_PIPELINE_PB_ID, SSP, SSP_INDEX, BT_SSP_NAME,
 	concat(`PIPELINE_SOURCE_', BT_PIPELINE_PB_ID), 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	BT_PIPELINE_CP_ID, SSP, SSP_INDEX, SSP_NAME,
+	BT_PIPELINE_CP_ID, SSP, SSP_INDEX, BT_SSP_NAME,
 	concat(`PIPELINE_SINK_', BT_PIPELINE_CP_ID), 1, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -77,4 +77,4 @@ define(`ssp_config_list_1', LIST(`',
 		`SSP_TDM(2, 16, 3, 0),'
 		`SSP_MULTI_CONFIG_DATA(ssp_data3, 16))'))
 
-MULTI_DAI_CONFIG(SSP, SSP_INDEX, BT_DAI_LINK_ID, SSP_NAME, ssp_config_list_1, hwconfig_names, data_names)
+MULTI_DAI_CONFIG(SSP, SSP_INDEX, BT_DAI_LINK_ID, BT_SSP_NAME, ssp_config_list_1, hwconfig_names, data_names)
