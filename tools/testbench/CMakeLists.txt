@@ -7,6 +7,8 @@ project(SOF_TESTBENCH C)
 include(../../scripts/cmake/misc.cmake)
 include(CheckCCompilerFlag)
 
+set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
+
 add_executable(testbench
 	testbench.c
 	common_test.c
@@ -30,6 +32,12 @@ target_include_directories(testbench PRIVATE
 	"${PROJECT_SOURCE_DIR}/xtos/include"
 )
 endif()
+
+# Configuration time, make copy
+configure_file(${default_asoc_h} ${CMAKE_CURRENT_BINARY_DIR}/include/alsa/sound/asoc.h)
+
+# Build time
+target_include_directories(testbench PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/include")
 
 # -Wimplicit-fallthrough is preferred, check if it's supported
 check_c_compiler_flag(-Wimplicit-fallthrough supports_implicit_fallthrough)
