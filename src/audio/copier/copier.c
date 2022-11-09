@@ -644,11 +644,6 @@ static int copier_reset(struct comp_dev *dev)
 
 	comp_dbg(dev, "copier_reset()");
 
-	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "copier_config(): Component is in active state. Ignore resetting");
-		return 0;
-	}
-
 	cd->input_total_data_processed = 0;
 	cd->output_total_data_processed = 0;
 
