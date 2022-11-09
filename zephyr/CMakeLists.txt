@@ -208,7 +208,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 endif()
 
 # Intel ACE 1.5 and newer platforms
-if (CONFIG_ACE_VERSION_1_5)
+if (CONFIG_SOC_SERIES_INTEL_ACE)
 
 	# Driver sources
 	zephyr_library_sources(
@@ -218,11 +218,22 @@ if (CONFIG_ACE_VERSION_1_5)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/ace/platform.c
-		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
 		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
 	)
+
+	if (CONFIG_SOC_INTEL_ACE15_MTPM)
+		zephyr_library_sources(
+			${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
+		)
+	endif()
+
+	if (CONFIG_SOC_INTEL_ACE20_LNL)
+		zephyr_library_sources(
+			${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
+		)
+	endif()
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
@@ -246,10 +257,13 @@ if (CONFIG_ACE_VERSION_1_5)
 		${SOF_PLATFORM_PATH}/intel/ace/lib/watchdog.c
 	)
 
-	set(PLATFORM "meteorlake")
-
+	if (CONFIG_SOC_INTEL_ACE15_MTPM)
+		set(PLATFORM "meteorlake")
+	elseif(CONFIG_SOC_INTEL_ACE20_LNL)
+		set(PLATFORM "lunarlake")
+	endif()
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
-	zephyr_include_directories(${SOF_PLATFORM_PATH}/meteorlake/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 endif()
 
 # NXP IMX8 platforms

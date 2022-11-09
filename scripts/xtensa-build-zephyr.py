@@ -104,6 +104,12 @@ platform_configs = {
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
 	),
+	"lnl" : PlatformConfig(
+		"lnl", "intel_adsp_ace20_lnl",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace10_LX7HiFi4_2022_10",
+	),
+
 	#  NXP platforms
 	"imx8" : PlatformConfig(
 		"imx8", "nxp_adsp_imx8",

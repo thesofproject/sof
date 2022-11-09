@@ -9,10 +9,13 @@
 #define __ACE_VERSION_H__
 
 #define ACE_VERSION_1_5		0x10500
+#define ACE_VERSION_2_0		0x20000
 
 /* ACE version defined by CONFIG_ACE_VER_ */
 #if CONFIG_ACE_VERSION_1_5
 #define ACE_VERSION		ACE_VERSION_1_5
+#elif CONFIG_ACE_VERSION_2_0
+#define ACE_VERSION		ACE_VERSION_2_0
 #endif
 
 #define HW_CFG_VERSION		ACE_VERSION
