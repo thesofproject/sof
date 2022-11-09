@@ -28,13 +28,26 @@ define(`ACPSP_CONFIG',
 $6
 )
 
-dnl ACPSP_CONFIG_DATA(type, idx, rate, channel)
+dnl ACPSP_VIRTUAL_CONFIG(format, mclk, bclk, fsync, tdm, esai_config_data)
+define(`ACPSP_VIRTUAL_CONFIG',
+`       format          "'$1`"'
+`       '$2
+`       '$3
+`       '$4
+`       '$5
+`}'
+$6
+)
+
+dnl ACPSP_CONFIG_DATA(type, idx, rate, channel,i2s_tdm_mode)
+#i2s_tdm_mode 1-> tdm mode, 0->i2s mode
 define(`ACPSP_CONFIG_DATA',
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
-`       tokens "sof_acpsp_tokens"'
+`       tokens "sof_acp_tokens"'
 `       tuples."word" {'
-`               SOF_TKN_AMD_ACPSP_RATE'		STR($3)
-`		SOF_TKN_AMD_ACPSP_CH'		STR($4)
+`               SOF_TKN_AMD_ACP_RATE'		STR($3)
+`		SOF_TKN_AMD_ACP_CH'		STR($4)
+`		SOF_TKN_AMD_ACP_I2S_TDM_MODE'		STR($5)
 `       }'
 `}'
 `SectionData."'N_DAI_CONFIG($1$2)`_data" {'
@@ -42,5 +55,20 @@ define(`ACPSP_CONFIG_DATA',
 `}'
 )
 
+dnl ACPSP_VIRTUAL_CONFIG_DATA(type, idx, rate, channel,i2s_tdm_mode)
+#i2s_tdm_mode 1-> tdm mode, 0->i2s mode
+define(`ACPSP_VIRTUAL_CONFIG_DATA',
+`SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
+`       tokens "sof_acp_tokens"'
+`       tuples."word" {'
+`               SOF_TKN_AMD_ACP_RATE'		STR($3)
+`		SOF_TKN_AMD_ACP_CH'		STR($4)
+`		SOF_TKN_AMD_ACP_I2S_TDM_MODE'		STR($5)
+`       }'
+`}'
+`SectionData."'N_DAI_CONFIG($1$2)`_data" {'
+`       tuples "'N_DAI_CONFIG($1$2)`_tuples"'
+`}'
+)
 divert(0)dnl
 
