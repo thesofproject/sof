@@ -43,8 +43,8 @@ DECLARE_TR_CTX(acp_sp_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
-static uint32_t sp_buff_size;
-
+static uint32_t sp_buff_size_playback;
+static uint32_t sp_buff_size_capture;
 /* allocate next free DMA channel */
 static struct dma_chan_data *acp_dai_sp_dma_channel_get(struct dma *dma,
 						   unsigned int req_chan)
@@ -105,7 +105,6 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 		sp_ier.bits.i2stdm_ien = 1;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), sp_ier.u32all);
 		sp_iter.bits.i2stdm_txen = 1;
-		sp_iter.bits.i2stdm_tx_protocol_mode = 0;
 		sp_iter.bits.i2stdm_tx_data_path_mode = 1;
 		sp_iter.bits.i2stdm_tx_samp_len = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_ITER), sp_iter.u32all);
@@ -116,7 +115,6 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 		sp_ier.bits.i2stdm_ien = 1;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IER), sp_ier.u32all);
 		sp_irer.bits.i2stdm_rx_en = 1;
-		sp_irer.bits.i2stdm_rx_protocol_mode = 0;
 		sp_irer.bits.i2stdm_rx_data_path_mode = 1;
 		sp_irer.bits.i2stdm_rx_samplen = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
@@ -127,7 +125,6 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 
 	return 0;
 }
-
 
 static int acp_dai_sp_dma_release(struct dma_chan_data *channel)
 {
@@ -214,10 +211,10 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 		(volatile acp_scratch_mem_config_t *)(PU_REGISTER_BASE + SCRATCH_REG_OFFSET);
 	channel->is_scheduling_source = true;
 	channel->direction = config->direction;
-	sp_buff_size = config->elem_array.elems[0].size * config->elem_array.count;
 
 	if (config->direction ==  DMA_DIR_MEM_TO_DEV) {
 
+		sp_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
 		/* SP Transmit FIFO Address and FIFO Size*/
 		sp_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_fifo_buffer);
 		memset((void *)sp_fifo_addr, 0, SP_FIFO_SIZE);
@@ -227,7 +224,7 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 		/* Transmit RINGBUFFER Address and size*/
 		sp_buff_addr = config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_RINGBUFADDR), sp_buff_addr);
-		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_RINGBUFSIZE), sp_buff_size);
+		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_RINGBUFSIZE), sp_buff_size_playback);
 
 		/* Transmit DMA transfer size in bytes */
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_DMA_SIZE),
@@ -235,10 +232,11 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for SP transmit FIFO - Half of SP buffer size */
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_TX_INTR_WATERMARK_SIZE),
-			     (sp_buff_size >> 1));
+			     (sp_buff_size_playback >> 1));
 
 	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
 
+		sp_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
 		/* SP Receive FIFO Address and FIFO Size*/
 		sp_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_receive_fifo_buffer);
 		memset((void *)sp_fifo_addr, 0, SP_FIFO_SIZE);
@@ -249,7 +247,7 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 		/* Receive RINGBUFFER Address and size*/
 		sp_buff_addr = config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_RINGBUFADDR), sp_buff_addr);
-		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_RINGBUFSIZE), sp_buff_size);
+		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_RINGBUFSIZE), sp_buff_size_capture);
 
 		/* Receive DMA transfer size in bytes */
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_DMA_SIZE),
@@ -257,7 +255,7 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 
 		/* Watermark size for SP receive fifo - Half of SP buffer size*/
 		io_reg_write((PU_REGISTER_BASE + ACP_I2S_RX_INTR_WATERMARK_SIZE),
-			     (sp_buff_size >> 1));
+			     (sp_buff_size_capture >> 1));
 
 	} else {
 		tr_err(&acp_sp_tr, "config channel direction undefined %d", channel->direction);
@@ -327,17 +325,19 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 				ACP_I2S_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 		prev_tx_pos = curr_tx_pos;
-		*free = (sp_buff_size >> 1);
-		*avail = (sp_buff_size >> 1);
+		*free = (sp_buff_size_playback >> 1);
+		*avail = (sp_buff_size_playback >> 1);
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_I2S_RX_LINEARPOSITIONCNTR_LOW);
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_I2S_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
-		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size ? (curr_rx_pos - prev_rx_pos) % sp_buff_size : (curr_rx_pos - prev_rx_pos);
-		*avail = (sp_buff_size >> 1);
-		*free  = (sp_buff_size >> 1);
+		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size_capture ?
+			(curr_rx_pos - prev_rx_pos) % sp_buff_size_capture :
+			(curr_rx_pos - prev_rx_pos);
+		*avail = (sp_buff_size_capture >> 1);
+		*free  = (sp_buff_size_capture >> 1);
 	} else {
 		tr_err(&acp_sp_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;
@@ -405,6 +405,23 @@ static int acp_dai_sp_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_
 }
 
 const struct dma_ops acp_dai_sp_dma_ops = {
+	.channel_get		= acp_dai_sp_dma_channel_get,
+	.channel_put		= acp_dai_sp_dma_channel_put,
+	.start			= acp_dai_sp_dma_start,
+	.stop			= acp_dai_sp_dma_stop,
+	.pause			= acp_dai_sp_dma_pause,
+	.release		= acp_dai_sp_dma_release,
+	.copy			= acp_dai_sp_dma_copy,
+	.status			= acp_dai_sp_dma_status,
+	.set_config		= acp_dai_sp_dma_set_config,
+	.interrupt		= acp_dai_sp_dma_interrupt,
+	.probe			= acp_dai_sp_dma_probe,
+	.remove			= acp_dai_sp_dma_remove,
+	.get_data_size		= acp_dai_sp_dma_get_data_size,
+	.get_attribute		= acp_dai_sp_dma_get_attribute,
+};
+
+const struct dma_ops acp_dai_sp_virtual_dma_ops = {
 	.channel_get		= acp_dai_sp_dma_channel_get,
 	.channel_put		= acp_dai_sp_dma_channel_put,
 	.start			= acp_dai_sp_dma_start,
