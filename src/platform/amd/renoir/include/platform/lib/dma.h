@@ -21,6 +21,9 @@
 #define DMA_ID_DAI		2
 #define DMA_ID_DAI_SP		3
 #define DMA_ID_DAI_DMIC		4
+#define DMA_ID_DAI_HS		5
+#define DMA_ID_DAI_SP_VIRTUAL	6
+#define DMA_ID_DAI_HS_VIRTUAL	7
 
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 

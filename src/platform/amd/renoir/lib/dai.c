@@ -55,6 +55,26 @@ static struct dai spdai[] = {
 	}
 };
 
+static struct dai sp_virtual_dai[] = {
+	{
+		.index = 1,
+		.plat_data = {
+			.base = DAI_BASE,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+				.offset         = DAI_BASE + BT_TX_FIFO_OFFST,
+				.depth          = 8,
+				.handshake      = 5,
+			},
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+				.offset         = DAI_BASE + BT_RX_FIFO_OFFST,
+				.depth          = 8,
+				.handshake      = 4,
+			},
+		},
+		.drv = &acp_sp_virtual_dai_driver,
+	}
+};
+
 #ifdef ACP_BT_ENABLE
 static struct dai btdai[] = {
 	{
@@ -88,6 +108,11 @@ const struct dai_type_info dti[] = {
 		.dai_array	= spdai,
 		.num_dais	= ARRAY_SIZE(spdai)
 	},
+	{
+		.type		= SOF_DAI_AMD_SP_VIRTUAL,
+		.dai_array	= sp_virtual_dai,
+		.num_dais	= ARRAY_SIZE(sp_virtual_dai)
+	},
 #ifdef ACP_BT_ENABLE
 	{
 		.type = SOF_DAI_AMD_BT,
@@ -111,6 +136,9 @@ int dai_init(struct sof *sof)
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(spdai); i++)
 		k_spinlock_init(&spdai[i].lock);
+	/* initialize spin locks early to enable ref counting */
+	for (i = 0; i < ARRAY_SIZE(sp_virtual_dai); i++)
+		k_spinlock_init(&sp_virtual_dai[i].lock);
 #ifdef ACP_BT_ENABLE
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(btdai); i++)

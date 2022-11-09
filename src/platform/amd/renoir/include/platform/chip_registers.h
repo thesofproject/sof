@@ -532,5 +532,26 @@ typedef union acp_future_reg_aclk_0 {
 	unsigned int    u32all;
 } acp_future_reg_aclk_0_t;
 
+typedef	union acp_i2stdm_rxfrmt {
+	struct {
+		unsigned int	i2stdm_frame_len :9;
+		unsigned int	:6;
+		unsigned int	i2stdm_num_slots :3;
+		unsigned int	i2stdm_slot_len :5;
+		unsigned int	:9;
+	} bits;
+	unsigned int	u32all;
+} acp_i2stdm_rxfrmt_t;
+typedef	union acp_i2stdm_txfrmt {
+	struct {
+		unsigned int	i2stdm_frame_len :9;
+		unsigned int	:6;
+		unsigned int	i2stdm_num_slots :3;
+		unsigned int	i2stdm_slot_len :5;
+		unsigned int	:9;
+	} bits;
+	unsigned int	u32all;
+} acp_i2stdm_txfrmt_t;
+
 #endif
 

@@ -782,4 +782,23 @@ typedef union acp_future_reg_aclk_0 {
 	unsigned int    u32all;
 } acp_future_reg_aclk_0_t;
 
+typedef union acp_clkmux_sel {
+	struct {
+		unsigned int acp_clkmux_sel : 3;
+		unsigned int : 13;
+		unsigned int acp_clkmux_div_value : 16;
+	} bits;
+	unsigned int  u32all;
+} acp_clkmux_sel_t;
+
+typedef union acp_i2stdm_mstrclkgen {
+	struct {
+		unsigned int i2stdm_master_mode : 1;
+		unsigned int i2stdm_format_mode : 1;
+		unsigned int i2stdm_lrclk_div_val : 9;
+		unsigned int i2stdm_bclk_div_val : 11;
+		unsigned int : 10;
+	} bits;
+	unsigned int  u32all;
+} acp_i2stdm_mstrclkgen_t;
 #endif
