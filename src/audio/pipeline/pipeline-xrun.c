@@ -53,6 +53,7 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 /* recover the pipeline from a XRUN condition */
 int pipeline_xrun_recover(struct pipeline *p)
 {
+	pipeline_reset(p, p->source_comp);
 	return -EINVAL;
 }
 
