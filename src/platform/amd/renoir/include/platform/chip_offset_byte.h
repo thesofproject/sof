@@ -22,6 +22,7 @@
 #define ACP_DMA_PRIO_0                                0x1240060
 
 /* Registers from ACP_MISC block */
+#define ACP_CLKMUX_SEL                                0x1241424
 #define ACP_EXTERNAL_INTR_ENB                         0x1241800
 #define ACP_EXTERNAL_INTR_STAT                        0x1241808
 #define ACP_DSP0_INTR_CNTL                            0x124180C
