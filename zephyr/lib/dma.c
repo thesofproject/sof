@@ -78,7 +78,12 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_DEV_TO_MEM,
 		.caps		= DMA_CAP_HDA,
+#ifdef CONFIG_SOC_INTEL_ACE20_LNL
+		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
+					  DMA_DEV_DMIC | DMA_DEV_ALH,
+#else
 		.devs		= DMA_DEV_HDA,
+#endif /* CONFIG_SOC_INTEL_ACE20_LNL */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_in), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -90,7 +95,12 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_MEM_TO_DEV,
 		.caps		= DMA_CAP_HDA,
+#ifdef CONFIG_SOC_INTEL_ACE20_LNL
+		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
+					  DMA_DEV_DMIC | DMA_DEV_ALH,
+#else
 		.devs		= DMA_DEV_HDA,
+#endif /* CONFIG_SOC_INTEL_ACE20_LNL */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_out), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
