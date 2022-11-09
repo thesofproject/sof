@@ -38,6 +38,10 @@ HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PL
 "cavs-sdw\;cavs-mtl-sdw-dmic\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl-sdw-dmic.bin"
 
+# SDW external audio interface card(aic with SDW2-Headset codec, SDW0-Spk amp) + DMIC + HDMI topology with passthrough pipelines
+"cavs-sdw-aic\;cavs-mtl-sdw-aic-dmic-hdmi\;NUM_HDMIS=4,HDMI1_ID=6,HDMI2_ID=7,HDMI3_ID=8,HDMI4_ID=9,NUM_DMICS=4,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-mtl-sdw-aic-dmic.bin"
+
 # CAVS SSP topology for TGL
 "cavs-nocodec\;cavs-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-tgl-nocodec.bin"
