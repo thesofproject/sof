@@ -120,6 +120,18 @@ platform_configs_all = {
 		"ace10_LX7HiFi4_2022_10",
 		ipc4 = True
 	),
+	"ptl" : PlatformConfig(
+		"intel", "intel_adsp/ace30_ptl",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace30_LX7HiFi4_PIF",
+		ipc4 = True
+	),
+	"ptl-sim" : PlatformConfig(
+		"intel", "intel_adsp/ace30_ptl_sim",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace30_LX7HiFi4_PIF",
+		ipc4 = True
+	),
 
 	#  NXP platforms
 	"imx8" : PlatformConfig(

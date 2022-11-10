@@ -16,7 +16,6 @@ config TIGERLAKE
 	help
 	  Select if your target platform is Tigerlake-compatible
 
-
 config METEORLAKE
 	bool "Build for Meteorlake"
 	select ACE
@@ -30,6 +29,13 @@ config LUNARLAKE
 	select ACE_VERSION_2_0
 	help
 	  Select if your target platform is Lunarlake-compatible
+
+config PANTHERLAKE
+	bool "Build for Pantherlake"
+	select ACE
+	select ACE_VERSION_3_0
+	help
+	  Select if your target platform is Pantherlake-compatible
 
 config LIBRARY
 	bool "Build Library"
@@ -249,6 +255,7 @@ endchoice
 config MAX_CORE_COUNT
 	int
 	default 5 if LUNARLAKE
+	default 5 if PANTHERLAKE
 	default 4 if TIGERLAKE
 	default 3 if METEORLAKE
 	default 1
@@ -337,6 +344,12 @@ config ACE_VERSION_2_0
 	bool
 	help
 	  Select for ACE version 2.0
+
+config ACE_VERSION_3_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 3.0
 
 config HP_MEMORY_BANKS
 	int "HP memory banks count"

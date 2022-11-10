@@ -1076,7 +1076,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 
 int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
 {
-#if defined(CONFIG_ACE_VERSION_2_0)
+#if ACE_VERSION > ACE_VERSION_1_5
 	uint32_t *dma_config_id = GET_IPC_DMA_CONFIG_ID(data_buffer, size);
 
 	if (*dma_config_id != GTW_DMA_CONFIG_ID)
