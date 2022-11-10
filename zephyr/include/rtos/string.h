@@ -63,6 +63,16 @@ static inline int memset_s(void *dest, size_t dest_size, int data, size_t count)
 	return 0;
 }
 
+static inline void *__vec_memcpy(void *dst, const void *src, size_t len)
+{
+	return memcpy(dst, src, len);
+}
+
+static inline void *__vec_memset(void *dest, int data, size_t src_size)
+{
+	return memset(dest, data, src_size);
+}
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
