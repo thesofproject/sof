@@ -511,7 +511,7 @@ static int rtnr_set_config_bytes(struct comp_dev *dev,
 	 * the whole config data is received.
 	 */
 	if (size < sizeof(cd->config)) {
-		comp_err(dev, "rtnr_set_config_data(): invalid size %d",
+		comp_err(dev, "rtnr_set_config_data(): invalid size %u",
 			 size);
 		return -EINVAL;
 	}
@@ -522,7 +522,7 @@ static int rtnr_set_config_bytes(struct comp_dev *dev,
 		       sizeof(cd->config));
 
 	comp_info(dev,
-		  "rtnr_set_config_data(): sample_rate = %d, enabled=%d",
+		  "rtnr_set_config_data(): sample_rate = %u, enabled=%d",
 		  cd->config.params.sample_rate,
 		  cd->config.params.enabled);
 
