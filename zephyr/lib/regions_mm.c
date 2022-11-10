@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright(c) 2022 - 2023 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022 - 2023 Intel Corporation.
  *
  * Author: Jakub Dabek <jakub.dabek@intel.com>
  */
 
 #include <zephyr/init.h>
+
+#if defined(CONFIG_MM_DRV)
 #include <sof/lib/regions_mm.h>
 
 /* list of vmh_heap objects created */
@@ -715,3 +717,5 @@ struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id)
 	}
 	return NULL;
 }
+
+#endif /* if defined (CONFIG_MM_DRV) */

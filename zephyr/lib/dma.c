@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2022 Intel Corporation. All rights reserved.
+// Copyright(c) 2022-2024 Intel Corporation.
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
@@ -78,12 +78,12 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_DEV_TO_MEM,
 		.caps		= DMA_CAP_HDA,
-#ifdef CONFIG_SOC_INTEL_ACE20_LNL
+#if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30_PTL)
 		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
 					  DMA_DEV_DMIC | DMA_DEV_ALH,
 #else
 		.devs		= DMA_DEV_HDA,
-#endif /* CONFIG_SOC_INTEL_ACE20_LNL */
+#endif /* CONFIG_SOC_INTEL_ACE20_LNL || CONFIG_SOC_INTEL_ACE30_PTL */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_in), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -95,12 +95,12 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_MEM_TO_DEV,
 		.caps		= DMA_CAP_HDA,
-#ifdef CONFIG_SOC_INTEL_ACE20_LNL
+#if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30_PTL)
 		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
 					  DMA_DEV_DMIC | DMA_DEV_ALH,
 #else
 		.devs		= DMA_DEV_HDA,
-#endif /* CONFIG_SOC_INTEL_ACE20_LNL */
+#endif /* CONFIG_SOC_INTEL_ACE20_LNL || CONFIG_SOC_INTEL_ACE30_PTL */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_out), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
