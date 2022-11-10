@@ -1002,7 +1002,8 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 
 void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 {
-	struct ipc4_message_request *in = ipc_from_hdr(_hdr);
+	/* ignoring _hdr as it does not contain valid data in IPC4/IDC case */
+	struct ipc4_message_request *in = ipc_from_hdr(&msg_data.msg_in);
 	enum ipc4_message_target target;
 	int err;
 
