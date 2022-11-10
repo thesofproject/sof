@@ -21,7 +21,7 @@ include(`platform/amd/acp.m4')
 # Playback pipeline 1 on PCM 0 using max 2 channels of s16le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(
-ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-passthrough-playback.m4),
+ifdef(`DTS', sof/pipe-dts-codec-eq-iir-playback.m4, sof/pipe-passthrough-playback.m4),
 	1, 0, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
