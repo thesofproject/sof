@@ -579,6 +579,9 @@ zephyr_library_sources(
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+
+	# Common library functions - Will be moved to Zephyr over time
+	lib.c
 )
 
 if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
