@@ -208,5 +208,6 @@ int platform_init(struct sof *sof)
 
 int platform_context_save(struct sof *sof)
 {
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 	return 0;
 }
