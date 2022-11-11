@@ -12,6 +12,8 @@
 #include <ace_v1x-regs.h>
 #include <zephyr/pm/policy.h>
 
+LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
+
 /* 76cc9773-440c-4df9-95a8-72defe7796fc */
 DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 		 0x95, 0xa8, 0x72, 0xde, 0xfe, 0x77, 0x96, 0xfc);
@@ -52,6 +54,8 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
 			 * to handle case with enabled PG andf disabled CG.
 			 */
+			tr_dbg(&power_tr, "transition to state %x (min_residency = %u, exit_latency = %u)",
+			       state->state, min_residency, exit_latency);
 			return state;
 		}
 	}
@@ -65,6 +69,8 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 	switch (context) {
 	case PM_RUNTIME_DSP:
 		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		tr_dbg(&power_tr, "removing prevent on d0i3 (lock is active=%d)",
+		       pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES));
 		break;
 	default:
 		break;
@@ -75,6 +81,7 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 {
 	switch (context) {
 	case PM_RUNTIME_DSP:
+		tr_dbg(&power_tr, "putting prevent on d0i3");
 		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 		/* Disable power gating when preventing */
 		DFDSPBRCP.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
