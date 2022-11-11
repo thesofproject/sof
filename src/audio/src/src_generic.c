@@ -59,22 +59,17 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 15 for Qx.46 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i++) {
-			y0 += (int64_t)(*coef) * (*data);
-			data++;
-			y1 += (int64_t)(*coef) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n1; i++, coef++, data += 2) {
+			y0 += (int64_t)(*coef) * data[0];
+			y1 += (int64_t)(*coef) * data[1];
 		}
+
 		if (data == fir_end)
 			data = fir_start;
 
-		for (i = 0; i < n2; i++) {
-			y0 += (int64_t)(*coef) * (*data);
-			data++;
-			y1 += (int64_t)(*coef) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n2; i++, coef++, data += 2) {
+			y0 += (int64_t)(*coef) * data[0];
+			y1 += (int64_t)(*coef) * data[1];
 		}
 
 		*wp = sat_int32(y1 >> qshift);
@@ -100,19 +95,14 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 15 for Qx.46 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i += nch) {
+		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
-			coef++;
-			data += nch;
-		}
+
 		if (data >= fir_end)
 			data -= fir_delay_length;
 
-		for (i = 0; i < n2; i += nch) {
+		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
-			coef++;
-			data += nch;
-		}
 
 		*wp = sat_int32(y0 >> qshift);
 		wp++;
@@ -129,6 +119,7 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 {
 	int64_t y0;
 	int64_t y1;
+	int32_t scaled_coef;
 	int32_t *data;
 	const int32_t *coef;
 	int i;
@@ -162,22 +153,19 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 23 for Qx.54 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i++) {
-			y0 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			y1 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n1; i++, coef++, data += 2) {
+			scaled_coef = *coef >> 8;
+			y0 += (int64_t)scaled_coef * data[0];
+			y1 += (int64_t)scaled_coef * data[1];
 		}
+
 		if (data == fir_end)
 			data = fir_start;
 
-		for (i = 0; i < n2; i++) {
-			y0 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			y1 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n2; i++, coef++, data += 2) {
+			scaled_coef = *coef >> 8;
+			y0 += (int64_t)scaled_coef * data[0];
+			y1 += (int64_t)scaled_coef * data[1];
 		}
 		*wp = sat_int32(y1 >> qshift);
 		*(wp + 1) = sat_int32(y0 >> qshift);
@@ -202,19 +190,15 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 23 for Qx.54 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i += nch) {
+		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
-			coef++;
-			data += nch;
-		}
+
 		if (data >= fir_end)
 			data -= fir_delay_length;
 
-		for (i = 0; i < n2; i += nch) {
+		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
-			coef++;
-			data += nch;
-		}
+
 		*wp = sat_int32(y0 >> qshift);
 		wp++;
 	}
