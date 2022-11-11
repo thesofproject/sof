@@ -21,7 +21,6 @@
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int fir_delay_length,
 				      const int taps_x_nch,
 				      const int shift, const int nch)
 {
@@ -115,7 +114,6 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      int fir_delay_length,
 				      const int taps_x_nch, const int shift,
 				      const int nch)
 {
@@ -233,7 +231,6 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const int nch_x_odm = cfg->odm * nch;
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int fir_length = fir->fir_delay_size;
 	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
@@ -276,8 +273,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
-			fir_filter_generic(rp, cp, wp,
-					   fir_delay, fir_end, fir_length,
+			fir_filter_generic(rp, cp, wp, fir_delay, fir_end,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp = (char *)cp + subfilter_size;
@@ -333,7 +329,6 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const int nch_x_odm = cfg->odm * nch;
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int fir_length = fir->fir_delay_size;
 	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
@@ -376,8 +371,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
-			fir_filter_generic(rp, cp, wp,
-					   fir_delay, fir_end, fir_length,
+			fir_filter_generic(rp, cp, wp, fir_delay, fir_end,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp = (char *)cp + subfilter_size;
