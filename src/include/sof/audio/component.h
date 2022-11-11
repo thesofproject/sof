@@ -249,9 +249,9 @@ enum {
 		  (uint32_t)((pcd)->cpu_delta_peak))
 
 #define comp_perf_avg_info(pcd, comp_p)					\
-	comp_info(comp_p, "perf comp_copy samples %u period %u cpu avg %u peak %u",\
+	comp_info(comp_p, "perf comp:%x samples:%u avg:%u peak:%u",\
+		  (uint32_t)((comp_p)->drv->uid->a),            \
 		  (uint32_t)((comp_p)->frames),            \
-		  (uint32_t)((comp_p)->period),			    \
 		  (uint32_t)((pcd)->cpu_delta_sum),			\
 		  (uint32_t)((pcd)->cpu_delta_peak))
 
