@@ -34,6 +34,21 @@ static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int lengt
 	return pMem;
 }
 
+static void dts_effect_free_codec_memory(void *mod_void, void *pMem)
+{
+	struct processing_module *mod = mod_void;
+	struct comp_dev *dev = mod->dev;
+
+	comp_dbg(dev, "dts_effect_free_codec_memory() start");
+
+	int ret = module_free_memory(mod, pMem);
+
+	if (ret)
+		comp_err(dev, "dts_effect_free_codec_memory() module_free_memory failed %d", ret);
+
+	comp_dbg(dev, "dts_effect_free_codec_memory() done");
+}
+
 static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
 	DtsSofInterfaceResult dts_result)
 {
@@ -125,7 +140,7 @@ static int dts_codec_init(struct processing_module *mod)
 	comp_dbg(dev, "dts_codec_init() start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
-		dts_effect_allocate_codec_memory, mod);
+		dts_effect_allocate_codec_memory, dts_effect_free_codec_memory, mod);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
