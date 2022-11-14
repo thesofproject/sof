@@ -44,8 +44,8 @@ foreach(tplg ${TPLGS})
 	endif()
 
 	add_alsatplg2_command("${CMAKE_CURRENT_BINARY_DIR}/../abi.conf" abi_target
-	  "${CMAKE_CURRENT_SOURCE_DIR}/../cavs/${input}" "${output}"
-	  "${CMAKE_CURRENT_SOURCE_DIR}/../cavs" "${defines}")
+	  "${CMAKE_CURRENT_SOURCE_DIR}/../${input}" "${output}"
+	  "${CMAKE_CURRENT_SOURCE_DIR}/../" "${defines}")
 
 	add_custom_target(topology2_avs_${output} DEPENDS ${output}.tplg)
 	add_dependencies(topology2_cavs topology2_avs_${output})
