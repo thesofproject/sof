@@ -43,6 +43,6 @@ cfg.profile = 'tiny';
 cfg.quality = 0.40;
 cfg.thdn = -90;
 cfg.speed = 1;
-cfg.gain = -1; % Make gain -1 dB
+cfg.gain = 0;
 
 src_generate(fs1, fs2, fsm, cfg);
