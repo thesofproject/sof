@@ -17,4 +17,15 @@ else()
 	endif()
 endif()
 
-add_subdirectory(cavs)
+# generate ABI for IPC4
+add_custom_command(OUTPUT abi.conf
+	COMMAND > abi.conf  ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY} "ipc4"
+	DEPENDS ${SOF_ROOT_SOURCE_DIRECTORY}/src/include/kernel/abi.h
+)
+add_custom_target(abi_target
+	DEPENDS abi.conf
+)
+
+add_dependencies(topologies2 topology2_cavs topology2_ace)
+add_subdirectory(avs-tplg)
+add_subdirectory(sof-ace-tplg)
