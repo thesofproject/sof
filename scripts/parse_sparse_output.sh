@@ -13,8 +13,6 @@
 
 main()
 {
-    >&2 printf 'Reminder: to see ALL warnings you must as usual build _from scratch_\n'
-
     # To reproduce an 'error: ' and test this script try commenting out
     # `defined(__CHECKER__)` in common.h.
     #
@@ -22,10 +20,13 @@ main()
     # script try deleting a __sparse_cache annotation like the one in
     # src/audio/mixer/mixer.c
 
-    ! grep -i  \
-        -e '[[:space:]]error:[[:space:]]'  \
-        -e '[[:space:]]warning:[[:space:]].*different address space' \
-
+    ret=0
+    while read -r line; do
+        echo "$line" | grep -q \
+            -e 'error:[[:space:]]\|warning:[[:space:]].*different address spaces' && ret=1
+        printf '%s\n' "$line"
+    done
+    return $ret
 }
 
 main "$@"
