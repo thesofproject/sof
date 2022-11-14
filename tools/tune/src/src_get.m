@@ -189,7 +189,7 @@ while (stopband_ok) == 0 && (n < n_max)
 			else
 				stopband_ok = 1; % Exit after reverse
 				fprintf('Warning: Filter stop band could not be ');
-				fprintf('reached.\n', cnv.coef_bits);
+				fprintf('reached. FIR order is left to %d\n', nfir);
 			end
 		end
         end
