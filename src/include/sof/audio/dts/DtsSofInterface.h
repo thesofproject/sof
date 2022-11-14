@@ -58,14 +58,17 @@ typedef struct DtsSofInterfaceBufferConfiguration
 } DtsSofInterfaceBufferConfiguration;
 
 typedef void* (*DtsSofInterfaceAllocateMemory)(
-	void* pMemoryAllocationContext,
-	unsigned int length,
-	unsigned int alignment);
+		void *pMemoryAllocationContext,
+		unsigned int length,
+		unsigned int alignment);
+
+typedef void (*DtsSofInterfaceFreeMemory)(void *pMemoryAllocationContext, void *pMemory);
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceInit(
-	DtsSofInterfaceInst** ppInst,
-	DtsSofInterfaceAllocateMemory pMemoryAllocationFn,
-	void* MemoryAllocationContext) DTS_SOF_INTERFACE_NOEXCEPT;
+		DtsSofInterfaceInst           **ppInst,
+		DtsSofInterfaceAllocateMemory pMemoryAllocationFn,
+		DtsSofInterfaceFreeMemory     pMemoryFreeFn,
+		void                          *MemoryAllocationContext) DTS_SOF_INTERFACE_NOEXCEPT;
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfacePrepare(
 	DtsSofInterfaceInst* pInst,
