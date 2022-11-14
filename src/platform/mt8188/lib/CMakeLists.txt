@@ -4,4 +4,5 @@ add_local_sources(sof
 	clk.c
 	dma.c
 	memory.c
+	dai.c
 )
