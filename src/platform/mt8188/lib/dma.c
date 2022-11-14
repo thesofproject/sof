@@ -9,9 +9,13 @@
 #include <rtos/interrupt.h>
 #include <rtos/spinlock.h>
 #include <sof/common.h>
+#include <sof/drivers/afe-memif.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
+
+#include <mt8188-afe-reg.h>
+#include <mt8188-afe-common.h>
 
 extern const struct dma_ops dummy_dma_ops;
 
@@ -25,6 +29,17 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops	= &dummy_dma_ops,
 },
+{
+	.plat_data = {
+		.id		= DMA_ID_AFE_MEMIF,
+		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.devs		= DMA_DEV_AFE_MEMIF,
+		.base		= AFE_BASE_ADDR,
+		.channels	= MT8188_MEMIF_NUM,
+	},
+	.ops	= &memif_ops,
+},
+
 };
 
 static const struct dma_info lib_dma = {
