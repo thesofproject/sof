@@ -43,7 +43,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 2e66fac6d3ff66502689a03520737bda7527ef6c
+      # Testing rodata https://github.com/zephyrproject-rtos/zephyr/pull/52233
+      revision: bb817e1c3d5d084b43db37a8ad5c0077b4c605cf
       remote: zephyrproject
       # Import some projects listed in zephyr/west.yml@revision
       #
