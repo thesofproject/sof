@@ -536,7 +536,6 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		uint64_t input_data, output_data;
 		struct ipc4_base_module_cfg input_base_cfg;
 		struct ipc4_base_module_cfg output_base_cfg;
-		const struct comp_driver *drv;
 		int ret;
 
 		/* Calculate pipeline latency */
@@ -545,13 +544,11 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (!input_data || !output_data)
 			return NULL;
 
-		drv = source->drv;
-		ret = drv->ops.get_attribute(source, COMP_ATTR_BASE_CONFIG, &input_base_cfg);
+		ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &input_base_cfg);
 		if (ret < 0)
 			return NULL;
 
-		drv = ipc_sink->cd->drv;
-		ret = drv->ops.get_attribute(ipc_sink->cd, COMP_ATTR_BASE_CONFIG, &output_base_cfg);
+		ret = comp_get_attribute(ipc_sink->cd, COMP_ATTR_BASE_CONFIG, &output_base_cfg);
 		if (ret < 0)
 			return NULL;
 
