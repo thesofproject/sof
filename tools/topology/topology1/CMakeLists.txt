@@ -308,7 +308,7 @@ set(TPLGS
 	"sof-acp-rmb\;sof-acp-rmb"
 	"sof-acp-rmb-dmic4ch\;sof-acp-rmb-dmic4ch"
 	"sof-acp-rmb\;sof-rmb-rt5682s-rt1019"
-	"sof-acp-rmb\;sof-rmb-nau8825-max9860"
+	"sof-acp-rmb\;sof-rmb-nau8825-max98360"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
