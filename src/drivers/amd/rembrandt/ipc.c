@@ -85,9 +85,12 @@ static void irq_handler(void *arg)
 	uint32_t lock;
 	acp_dsp_sw_intr_stat_t swintrstat;
 	acp_sw_intr_trig_t  swintrtrig;
+	acp_future_reg_aclk_0_t acp_reg_aclk;
 
 	swintrstat = (acp_dsp_sw_intr_stat_t)io_reg_read(PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT);
 	status = swintrstat.u32all &  HOST_TO_DSP_INTR;
+	acp_reg_aclk = (acp_future_reg_aclk_0_t)
+				io_reg_read(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0);
 	if (status) {
 		/* Interrupt source */
 		if (sof_ipc_host_status()) {
@@ -98,6 +101,9 @@ static void irq_handler(void *arg)
 			if (sof_ipc_host_ack_flag()) {
 				/* Clear the ACK from host  */
 				sof_ipc_host_ack_clear();
+				acp_reg_aclk.bits.host_aclk = 0;
+				io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0),
+					     acp_reg_aclk.u32all);
 				/* Clear the Host to DSP Status Register */
 				acp_ack_intr_from_host();
 				/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
@@ -112,6 +118,9 @@ static void irq_handler(void *arg)
 			if (sof_ipc_host_msg_flag()) {
 				/* Clear the msg bit from host */
 				sof_ipc_host_msg_clear();
+				acp_reg_aclk.bits.host_msg = 0;
+				io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0),
+					     acp_reg_aclk.u32all);
 				/* Clear the Host to DSP Status Register */
 				acp_ack_intr_from_host();
 				ipc_schedule_process(ipc);
@@ -136,9 +145,14 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	acp_sw_intr_trig_t  sw_intr_trig;
+	acp_future_reg_aclk_0_t acp_reg_aclk;
 
 	/* Set Dsp Ack for msg from host */
 	sof_ipc_dsp_ack_set();
+	acp_reg_aclk = (acp_future_reg_aclk_0_t)
+		io_reg_read(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0);
+	acp_reg_aclk.bits.dsp_aclk = 1;
+	io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0), acp_reg_aclk.u32all);
 	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
 	sw_intr_trig = (acp_sw_intr_trig_t)
 		io_reg_read(PU_REGISTER_BASE + ACP_SW_INTR_TRIG);
@@ -162,6 +176,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	int ret = 0;
 	acp_sw_intr_trig_t  sw_intr_trig;
 	acp_dsp_sw_intr_stat_t sw_intr_stat;
+	acp_future_reg_aclk_0_t acp_reg_aclk;
 	uint32_t status;
 	uint32_t lock;
 	/* Check if host cleared the status for previous messages */
@@ -181,6 +196,10 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	/* Need to set DSP message flag */
 	sof_ipc_dsp_msg_set();
+	acp_reg_aclk = (acp_future_reg_aclk_0_t)
+		io_reg_read(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0);
+	acp_reg_aclk.bits.dsp_msg = 1;
+	io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0), acp_reg_aclk.u32all);
 	/* now interrupt host to tell it we have sent a message */
 	acp_dsp_to_host_intr_trig();
 	/* Disable the trigger bit in ACP_DSP_SW_INTR_TRIG register */
