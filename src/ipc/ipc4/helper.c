@@ -268,12 +268,11 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
 					      uint32_t src_queue, uint32_t dst_queue)
 {
-	const struct comp_driver *drv = src->drv;
 	struct ipc4_base_module_cfg src_cfg;
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size, ret;
 
-	ret = drv->ops.get_attribute(src, COMP_ATTR_BASE_CONFIG, &src_cfg);
+	ret = comp_get_attribute(src, COMP_ATTR_BASE_CONFIG, &src_cfg);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to get base config for src %#x", dev_comp_id(src));
 		return NULL;
