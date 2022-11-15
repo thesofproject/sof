@@ -107,7 +107,6 @@ r.n_na = 0;
 for b = 1:n_fso
         for a = 1:n_fsi
                 v = -ones(n_test,1); % Set pass/fail test verdict to not executed
-                tn = 1;
                 t.fs1 = fs_in_list(a);
                 t.fs2 = fs_out_list(b);
                 v(1) = chirp_test(t);
