@@ -10,6 +10,8 @@ set(TPLGS
 # topologies below.
 "cavs-passthrough-hdmi\;sof-hda-generic-4ch\;PLATFORM=mtl,\
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin"
+"cavs-passthrough-hdmi\;sof-hda-generic-2ch\;PLATFORM=mtl,\
+HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin"
 
 # SDW topology with passthrough pipelines
 "cavs-sdw\;mtl-sdw"
