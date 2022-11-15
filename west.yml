@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: miroox
+      url-base: https://github.com/miroox
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -43,8 +45,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 3301d341637a15a2e3a8820cb7f6b484e318e363
-      remote: thesofproject
+      revision: 6cb0f239ed92d4d9139c2ef2b403368dc9bcf59c
+      remote: miroox
       # Import some projects listed in zephyr/west.yml@revision
       #
       # Warning: changes to zephyr/west.yml or to any other _imported_
