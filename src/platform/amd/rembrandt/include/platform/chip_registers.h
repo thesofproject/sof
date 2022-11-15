@@ -771,4 +771,15 @@ typedef	union acp_hstdm_txfrmt {
 	unsigned int	u32all;
 } acp_hstdm_txfrmt_t;
 
+typedef union acp_future_reg_aclk_0 {
+	struct {
+		unsigned int	dsp_msg:1;
+		unsigned int	dsp_aclk:1;
+		unsigned int	host_msg:1;
+		unsigned int	host_aclk:1;
+		unsigned int	:28;
+	} bits;
+	unsigned int    u32all;
+} acp_future_reg_aclk_0_t;
+
 #endif

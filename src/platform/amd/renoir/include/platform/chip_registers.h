@@ -493,6 +493,7 @@ typedef	union acp_wov_pdm_decimation_factor {
 	} bits;
 unsigned int	u32all;
 } acp_wov_pdm_decimation_factor_t;
+
 typedef	union acp_wov_misc_ctrl {
 	struct {
 	unsigned int	:3;
@@ -519,6 +520,17 @@ typedef	union acp_srbm_cycle_sts {
 	} bits;
 unsigned int	u32all;
 } acp_srbm_cycle_sts_t;
+
+typedef union acp_future_reg_aclk_0 {
+	struct {
+		unsigned int	dsp_msg:1;
+		unsigned int	dsp_aclk:1;
+		unsigned int	host_msg:1;
+		unsigned int	host_aclk:1;
+		unsigned int	:28;
+	} bits;
+	unsigned int    u32all;
+} acp_future_reg_aclk_0_t;
 
 #endif
 
