@@ -32,6 +32,7 @@
 #include <ipc4/fw_reg.h>
 #endif
 #ifdef CONFIG_ZEPHYR_LOG
+#include <zephyr/logging/log_ctrl.h>
 #include <user/abi_dbg.h>
 #include <sof_versions.h>
 #include <version.h>
@@ -220,6 +221,14 @@ static void print_version_banner(void)
 #endif
 }
 
+#ifdef CONFIG_ZEPHYR_LOG
+static log_timestamp_t default_get_timestamp(void)
+{
+	return IS_ENABLED(CONFIG_LOG_TIMESTAMP_64BIT) ?
+		sys_clock_tick_get() : k_cycle_get_32();
+}
+#endif
+
 static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	/* setup context */
@@ -239,6 +248,11 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 
 	interrupt_init(sof);
 #endif /* __ZEPHYR__ */
+
+#ifdef CONFIG_ZEPHYR_LOG
+	log_set_timestamp_func(default_get_timestamp,
+			       sys_clock_hw_cycles_per_sec());
+#endif
 
 #if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
