@@ -76,7 +76,7 @@ int platform_boot_complete(uint32_t boot_message)
 }
 
 static struct pm_notifier pm_state_notifier = {
-	.state_entry = NULL,
+	.state_entry = cpu_notify_state_entry,
 	.state_exit = cpu_notify_state_exit,
 };
 
