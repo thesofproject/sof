@@ -573,12 +573,12 @@ zephyr_library_sources(
 	${SOF_SRC_PATH}/schedule/schedule.c
 
 	${SOF_SRC_PATH}/idc/zephyr_idc.c
-	${SOF_SRC_PATH}/lib-zephyr/cpu.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+	cpu.c
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
