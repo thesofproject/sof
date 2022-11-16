@@ -13,10 +13,14 @@
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/pm_runtime.h>
+#include <ipc/topology.h>
+#include <rtos/alloc.h>
 
 /* Zephyr includes */
 #include <version.h>
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
 #if CONFIG_MULTICORE && CONFIG_SMP
 
@@ -64,6 +68,42 @@ LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx zephyr_tr;
 
+/* address where zephyr PM will save memory during D3 transition */
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+extern void *global_imr_ram_storage;
+#endif
+
+void cpu_notify_state_entry(enum pm_state state)
+{
+	if (!cpu_is_primary(arch_proc_id()))
+		return;
+
+	if (state == PM_STATE_SOFT_OFF) {
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+		size_t storage_buffer_size;
+
+		/* allocate IMR global_imr_ram_storage */
+		const struct device *tlb_dev = DEVICE_DT_GET(DT_NODELABEL(tlb));
+
+		__ASSERT_NO_MSG(tlb_dev);
+		const struct intel_adsp_tlb_api *tlb_api =
+				(struct intel_adsp_tlb_api *)tlb_dev->api;
+
+		/* get HPSRAM storage buffer size */
+		storage_buffer_size = tlb_api->get_storage_size();
+
+		/* add space for LPSRAM */
+		storage_buffer_size += LP_SRAM_SIZE;
+
+		/* allocate IMR buffer and store it in the global pointer */
+		global_imr_ram_storage = rmalloc(SOF_MEM_ZONE_SYS_RUNTIME,
+						 0,
+						 SOF_MEM_CAPS_L3,
+						 storage_buffer_size);
+#endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
+	}
+}
+
 /* notifier called after every power state transition */
 void cpu_notify_state_exit(enum pm_state state)
 {
@@ -74,7 +114,17 @@ void cpu_notify_state_exit(enum pm_state state)
 			 * state and is back in the Idle thread.
 			 */
 			atomic_set(&ready_flag, 1);
+			return;
 		}
+#endif
+
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+		/* free global_imr_ram_storage */
+		rfree(global_imr_ram_storage);
+		global_imr_ram_storage = NULL;
+
+		/* send FW Ready message */
+		platform_boot_complete(0);
 #endif
 	}
 }
