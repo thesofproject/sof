@@ -92,7 +92,7 @@ PIPELINE_PCM_ADD(
 PIPELINE_PCM_ADD(
 	ifdef(`RTNR',
     ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
-    sof/pipe-google-rtc-audio-processing-rtnr-capture.m4,
+    sof/pipe-rtnr-google-rtc-audio-processing-capture.m4,
     sof/pipe-rtnr-capture.m4),
     sof/pipe-passthrough-capture.m4),
 	3, 18, 2, s16le,
