@@ -102,8 +102,7 @@ static int ipc4_comp_params(struct comp_dev *current,
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
-static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host,
-				struct sof_ipc_pcm_params *params)
+static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
 {
 	struct sof_ipc_pcm_params hw_params;
 	struct pipeline_data data = {
@@ -123,10 +122,7 @@ static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
-	struct sof_ipc_pcm_params params;
 	int err, reset_err;
-
-	memset(&params, 0, sizeof(params));
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -135,7 +131,7 @@ static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 	}
 
 	/* configure pipeline audio params */
-	err = ipc4_pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, &params);
+	err = ipc4_pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d params failed %d",
 		       pcm_dev->cd->pipeline->pipeline_id,
