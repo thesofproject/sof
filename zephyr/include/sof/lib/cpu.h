@@ -26,6 +26,8 @@
 
 #include <zephyr/pm/pm.h>
 
+void cpu_notify_state_entry(enum pm_state state);
+
 void cpu_notify_state_exit(enum pm_state state);
 
 #endif /* CONFIG_PM */
