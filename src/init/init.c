@@ -151,7 +151,7 @@ int secondary_core_init(struct sof *sof)
 	trace_point(TRACE_BOOT_ARCH);
 	err = arch_init();
 	if (err < 0)
-		panic(SOF_IPC_PANIC_ARCH);
+		sof_panic(SOF_IPC_PANIC_ARCH);
 
 	/* check whether we are in a cold boot process or not (e.g. D0->D0ix
 	 * flow when primary core disables all secondary cores). If not, we do
@@ -230,7 +230,7 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
 	if (arch_init() < 0)
-		panic(SOF_IPC_PANIC_ARCH);
+		sof_panic(SOF_IPC_PANIC_ARCH);
 
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
@@ -255,7 +255,7 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 
 	/* init the platform */
 	if (platform_init(sof) < 0)
-		panic(SOF_IPC_PANIC_PLATFORM);
+		sof_panic(SOF_IPC_PANIC_PLATFORM);
 
 #if CONFIG_IPC_MAJOR_4
 	/* Set current abi version of the IPC4 FwRegisters layout */
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/* should never get here */
-	panic(SOF_IPC_PANIC_TASK);
+	sof_panic(SOF_IPC_PANIC_TASK);
 	return err;
 }
 

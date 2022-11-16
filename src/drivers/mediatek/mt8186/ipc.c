@@ -142,7 +142,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {
 		tr_err(&ipc_tr, "Unable to find DMA for host page table");
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 #endif
 
@@ -155,25 +155,25 @@ int platform_ipc_init(struct ipc *ipc)
 	mbox_irq0 = mtk_irq_group_id(MTK_DSP_IRQ_MBOX0);
 	if (mbox_irq0 < 0) {
 		tr_err(&ipc_tr, "Invalid ipc mbox 0 IRQ:%d", mbox_irq0);
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
 	mbox_irq1 = mtk_irq_group_id(MTK_DSP_IRQ_MBOX1);
 	if (mbox_irq1 < 0) {
 		tr_err(&ipc_tr, "Invalid ipc mbox 0 IRQ:%d", mbox_irq1);
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
 	ret = interrupt_register(mbox_irq0, mbox0_handler, ipc);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "Unable to register ipc mbox 0 IRQ");
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
 	ret = interrupt_register(mbox_irq1, mbox1_handler, ipc);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "Unable to register ipc mbox 1 IRQ");
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
 	interrupt_enable(mbox_irq0, ipc);

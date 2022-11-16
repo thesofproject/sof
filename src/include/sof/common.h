@@ -52,13 +52,13 @@
 
 #define ALIGN_UP(size, alignment) ({						\
 	if (!is_power_of_2(alignment))						\
-		panic(SOF_IPC_PANIC_ASSERT);					\
+		sof_panic(SOF_IPC_PANIC_ASSERT);				\
 	ALIGN_UP_INTERNAL(size, alignment);					\
 })
 
 #define ALIGN_DOWN(size, alignment) ({						\
 	if (!is_power_of_2(alignment))						\
-		panic(SOF_IPC_PANIC_ASSERT);					\
+		sof_panic(SOF_IPC_PANIC_ASSERT);				\
 	(size) & ~((alignment) - 1);						\
 })
 
@@ -71,14 +71,14 @@
 #define ALIGN_UP(size, alignment) ({						\
 	if (!compile_check(COMPILE_TIME_ALIGNED(alignment)) ||			\
 	    !is_power_of_2(alignment))						\
-		panic(SOF_IPC_PANIC_ASSERT);					\
+		sof_panic(SOF_IPC_PANIC_ASSERT);				\
 	ALIGN_UP_INTERNAL(size, alignment);					\
 })
 
 #define ALIGN_DOWN(size, alignment) ({						\
 	if (!compile_check(COMPILE_TIME_ALIGNED(alignment)) ||			\
 	    !is_power_of_2(alignment))						\
-		panic(SOF_IPC_PANIC_ASSERT);					\
+		sof_panic(SOF_IPC_PANIC_ASSERT);				\
 	(size) & ~((alignment) - 1);						\
 })
 

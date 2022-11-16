@@ -48,7 +48,7 @@ static void alloc_shared_secondary_cores_objects(void)
 
 	dynamic_vectors = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, 0, SOF_DYNAMIC_VECTORS_SIZE);
 	if (dynamic_vectors == NULL)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	shared_vecbase_ptr = dynamic_vectors;
 	dcache_writeback_region(&shared_vecbase_ptr,

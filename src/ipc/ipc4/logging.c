@@ -13,7 +13,6 @@
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 
-#undef panic // SOF headers may redefine panic
 #include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log_backend_adsp_mtrace.h>
 #include <zephyr/logging/log.h>
