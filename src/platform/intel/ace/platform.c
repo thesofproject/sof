@@ -25,6 +25,10 @@
 #include <kernel/abi.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
+#include <adsp_memory.h>
+#include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
+#include <zephyr/pm/pm.h>
+#include <sof/debug/panic.h>
 
 #include <sof_versions.h>
 #include <stdint.h>
@@ -75,9 +79,72 @@ int platform_boot_complete(uint32_t boot_message)
 	return ipc_platform_send_msg(&msg);
 }
 
+/* address where zephyr PM will save memory during D3 transition */
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+extern void *global_imr_ram_storage;
+#endif
+
+/**
+ * @brief Notifier called before every power state transition.
+ * Works on Primary Core only.
+ * @param state Power state being entered.
+ */
+static void notify_pm_state_entry(enum pm_state state)
+{
+	if (!cpu_is_primary(arch_proc_id()))
+		return;
+
+	if (state == PM_STATE_SOFT_OFF) {
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+		size_t storage_buffer_size;
+
+		/* allocate IMR global_imr_ram_storage */
+		const struct device *tlb_dev = DEVICE_DT_GET(DT_NODELABEL(tlb));
+
+		__ASSERT_NO_MSG(tlb_dev);
+		const struct intel_adsp_tlb_api *tlb_api =
+				(struct intel_adsp_tlb_api *)tlb_dev->api;
+
+		/* get HPSRAM storage buffer size */
+		storage_buffer_size = tlb_api->get_storage_size();
+
+		/* add space for LPSRAM */
+		storage_buffer_size += LP_SRAM_SIZE;
+
+		/* allocate IMR buffer and store it in the global pointer */
+		global_imr_ram_storage = rmalloc(SOF_MEM_ZONE_SYS,
+						 0,
+						 SOF_MEM_CAPS_L3,
+						 storage_buffer_size);
+#endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
+	}
+}
+
+/**
+ * @brief Notifier called after every power state transition.
+ * Works on Primary Core only.
+ * @param state Power state being exited.
+ */
+static void notify_pm_state_exit(enum pm_state state)
+{
+	if (!cpu_is_primary(arch_proc_id()))
+		return;
+
+	if (state == PM_STATE_SOFT_OFF)	{
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+		/* free global_imr_ram_storage */
+		rfree(global_imr_ram_storage);
+		global_imr_ram_storage = NULL;
+
+		/* send FW Ready message */
+		platform_boot_complete(0);
+#endif
+	}
+}
+
 static struct pm_notifier pm_state_notifier = {
-	.state_entry = NULL,
-	.state_exit = cpu_notify_state_exit,
+	.state_entry = notify_pm_state_entry,
+	.state_exit = notify_pm_state_exit,
 };
 
 /* Runs on the primary core only */
