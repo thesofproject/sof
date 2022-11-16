@@ -24,6 +24,8 @@ include(`google_rtc_audio_processing_default.m4')
 
 define(DEF_RTNR_PRIV, concat(`rtnr_priv_', PIPELINE_ID))
 define(DEF_RTNR_BYTES, concat(`rtnr_bytes_', PIPELINE_ID))
+define(DEF_RTNR_DATA, concat(`rtnr_data', PIPELINE_ID))
+define(DEF_RTNR_DATA_BYTES, concat(`rtnr_data_', PIPELINE_ID))
 
 ifdef(`RTNR_BUFFER_SIZE_MIN',`', define(RTNR_BUFFER_SIZE_MIN, `65536'))
 ifdef(`RTNR_BUFFER_SIZE_MAX',`', define(RTNR_BUFFER_SIZE_MAX, `65536'))
@@ -47,6 +49,22 @@ C_CONTROLBYTES_READONLY(DEF_RTNR_BYTES, PIPELINE_ID,
         CONTROLBYTES_MAX(, 256),
         ,
         DEF_RTNR_PRIV)
+
+CONTROLBYTES_PRIV(DEF_RTNR_DATA,
+`       bytes "0x53,0x4f,0x46,0x00,0x01,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x30,0x01,0x03,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00"'
+)
+
+# Bytes control for RTNR Data blob
+C_CONTROLBYTES(DEF_RTNR_DATA_BYTES, PIPELINE_ID,
+        CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
+        CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+        , , ,
+        CONTROLBYTES_MAX(, 10240),
+        ,
+        DEF_RTNR_DATA)
 
 # RTNR Enable switch
 define(DEF_RTNR_ENABLE, concat(`rtnr_enable_', PIPELINE_ID))
@@ -83,7 +101,9 @@ W_GOOGLE_RTC_AUDIO_PROCESSING(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
 			LIST(`          ', "Config"))
 
 # "RTNR 0" has 2 sink period and 2 source periods
-W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE, LIST(`                ', "DEF_RTNR_BYTES"), LIST(`                ', "DEF_RTNR_ENABLE"))
+W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
+    LIST(`		', "DEF_RTNR_BYTES", "DEF_RTNR_DATA_BYTES"),
+    LIST(`          ', "DEF_RTNR_ENABLE"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -130,3 +150,7 @@ PCM_CAPABILITIES(Google RTC Audio Processing PCM_ID, CAPABILITY_FORMAT_NAME(PIPE
 	2, 16, 192, 16384, 65536, 65536)
 
 undefine(`DEF_RTNR_ENABLE')
+undefine(`DEF_RTNR_PRIV')
+undefine(`DEF_RTNR_BYTES')
+undefine(`DEF_RTNR_DATA')
+undefine(`DEF_RTNR_DATA_BYTES')

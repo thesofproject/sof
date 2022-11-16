@@ -148,7 +148,7 @@ define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 	`ifdef(`RTNR',
-		`define(`DMICPROC', google-rtc-audio-processing-rtnr)',
+		`define(`DMICPROC', rtnr-google-rtc-audio-processing)',
 		`define(`DMICPROC', google-rtc-audio-processing)')'
 	`define(`DMIC_48k_PERIOD_US', 10000)'
 	,
