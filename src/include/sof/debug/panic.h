@@ -32,7 +32,7 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 
 #ifdef __ZEPHYR__
 #include <rtos/kernel.h>
-#define panic(x) k_panic()
+#define sof_panic(x) k_panic()
 
 #define assert(x) __ASSERT_NO_MSG(x)
 
@@ -49,11 +49,11 @@ void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
  *
  * \param x panic code defined in ipc/trace.h
  */
-#define panic(x) __panic((x), (RELATIVE_FILE), (__LINE__))
+#define sof_panic(x) __panic((x), (RELATIVE_FILE), (__LINE__))
 
 /* runtime assertion */
 #ifndef assert
-#define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
+#define assert(cond) (void)((cond) || (sof_panic(SOF_IPC_PANIC_ASSERT), 0))
 #endif
 
 #endif

@@ -186,7 +186,7 @@ int platform_ipc_init(struct ipc *ipc)
 				       DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {
 		tr_err(&ipc_tr, "Unable to find DMA for host page table");
-		panic(SOF_IPC_PANIC_IPC);
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 #endif
 

@@ -21,7 +21,7 @@ ssize_t _write_r(struct _reent *ptr,
 				  const void *buf,
 				  size_t cnt)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return 0;
 }
 
@@ -36,7 +36,7 @@ off_t _lseek_r(struct _reent *ptr,
 {
 	off_t ret;
 
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return ret;
 }
 
@@ -47,7 +47,7 @@ int _kill_r(struct _reent *ptr,
 			 int pid,
 			 int sig)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return 0;
 }
 
@@ -56,14 +56,14 @@ void *_sbrk_r(struct _reent *ptr,
 void *_sbrk_r(struct _reent *ptr,
 			  ptrdiff_t incr)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return NULL;
 }
 
 void _exit(int __status);
 void _exit(int __status)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 }
 
 
@@ -76,14 +76,14 @@ ssize_t _read_r(struct _reent *ptr,
 				 void *buf,
 				 size_t cnt)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return 0;
 }
 
 int _close_r(struct _reent *ptr, int fd);
 int _close_r(struct _reent *ptr, int fd)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return 0;
 }
 
@@ -91,7 +91,7 @@ int _close_r(struct _reent *ptr, int fd)
 int _getpid_r(struct _reent *ptr);
 int _getpid_r(struct _reent *ptr)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return 0;
 }
 
@@ -100,7 +100,7 @@ int _fstat_r(struct _reent *ptr,
 int _fstat_r(struct _reent *ptr,
 			 int fd, struct stat *pstat)
 {
-	panic(SOF_IPC_PANIC_ARCH);
+	sof_panic(SOF_IPC_PANIC_ARCH);
 	return -1;
 }
 

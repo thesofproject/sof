@@ -149,7 +149,7 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 	size_t alignment = 0;
 
 	if ((heap->caps & caps) != caps)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	/* align address to dcache line size */
 	if (heap->info.used % PLATFORM_DCACHE_ALIGN)
@@ -160,7 +160,7 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 	if (alignment + bytes > heap->info.free) {
 		tr_err(&mem_tr, "rmalloc_sys(): core = %d, bytes = %d",
 		       cpu_get_id(), bytes);
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 	}
 	heap->info.used += alignment;
 
@@ -412,7 +412,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 
 	/* Only allow alignment as a power of 2 */
 	if ((alignment & (alignment - 1)) != 0)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
@@ -515,7 +515,7 @@ static void free_block(void *ptr)
 
 	/* report an error if ptr is not aligned to block */
 	if (block_map->base + block_map->block_size * block != (uint32_t)free_ptr)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	/* There may still be live dirty cache lines in the region
 	 * on the current core. Those must be invalidated, otherwise
@@ -651,7 +651,7 @@ static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 	/* use the heap dedicated for the selected core */
 	cpu_heap = memmap->system_runtime + core;
 	if ((cpu_heap->caps & caps) != caps)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	ptr = get_ptr_from_heap(cpu_heap, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
@@ -736,7 +736,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 
 	default:
 		tr_err(&mem_tr, "rmalloc(): invalid zone");
-		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
+		sof_panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
 		break;
 	}
 
@@ -808,7 +808,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 
 	/* Only allow alignment as a power of 2 */
 	if ((alignment & (alignment - 1)) != 0)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	/*
 	 * There are several cases when a memory allocation request can be
@@ -985,7 +985,7 @@ static void _rfree_unlocked(void *ptr)
 	    (char *)ptr < (char *)heap->heap + heap->size) {
 		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
 		       ptr, cpu_get_id());
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 	}
 
 	/* free the block */
@@ -1048,7 +1048,7 @@ void free_heap(enum mem_zone zone)
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID ||
 	    zone != SOF_MEM_ZONE_SYS) {
 		tr_err(&mem_tr, "free_heap(): critical flow issue");
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 	}
 
 	cpu_heap = memmap->system + cpu_get_id();
@@ -1067,7 +1067,7 @@ void init_heap(struct sof *sof)
 
 	/* sanity check for malformed images or loader issues */
 	if (memmap->system[0].heap != (uintptr_t)&_system_heap_start)
-		panic(SOF_IPC_PANIC_MEM);
+		sof_panic(SOF_IPC_PANIC_MEM);
 #endif
 
 	init_heap_map(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
