@@ -839,16 +839,12 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 
 	/* Deactivating primary core if requested.  */
 	if (dx_info.core_mask & BIT(PLATFORM_PRIMARY_CORE_ID)) {
-		if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID)) {
+		if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID))
 			tr_err(&ipc_tr, "secondary cores 0x%x still active",
 			       cpu_enabled_cores());
-			return IPC4_BUSY;
-		}
 
-		if (is_any_ppl_active()) {
+		if (is_any_ppl_active())
 			tr_err(&ipc_tr, "some pipelines are still active");
-			return IPC4_BUSY;
-		}
 
 		/* do platform specific suspending */
 		platform_context_save(sof_get());
