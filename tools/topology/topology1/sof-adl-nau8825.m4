@@ -93,6 +93,8 @@ ifdef(`BT_OFFLOAD', `
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
+ifdef(`SPK_MIC_PERIOD_US',`', `define(`SPK_MIC_PERIOD_US', 1000)')
+
 ifdef(`NO_AMP',,`
 ifdef(`SMART_AMP',`
 # Smart amplifier related
@@ -170,7 +172,7 @@ ifdef(`SMART_AMP',,`
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	SPK_MIC_PERIOD_US, 0, 0,
 	48000, 48000, 48000)')')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
@@ -274,7 +276,7 @@ ifdef(`SMART_AMP',,`
 DAI_ADD(sof/pipe-dai-playback.m4,
         1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
         PIPELINE_SOURCE_1, 2, FMT,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # The echo refenrence pipeline has no connections in it,
 # it is used for the capture DAI widget to dock.
