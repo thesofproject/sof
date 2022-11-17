@@ -115,6 +115,32 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return dev;
 }
 
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != type)
+			continue;
+
+		/* For IPC4, ipc_comp_dev.id field is equal to Pipeline ID
+		 * in case of type COMP_TYPE_PIPELINE - can check directly here
+		 */
+		if (type == COMP_TYPE_PIPELINE) {
+			if (icd->id == ppl_id)
+				return icd;
+		} else {
+			if (!cpu_is_me(icd->core))
+				continue;
+			if (ipc_comp_pipe_id(icd) == ppl_id)
+				return icd;
+		}
+	}
+	return NULL;
+}
+
 static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t priority,
 				uint32_t memory_size)
 {
