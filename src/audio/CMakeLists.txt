@@ -3,7 +3,7 @@
 if(CONFIG_IPC_MAJOR_3)
 	set(mixer_src mixer/mixer.c mixer/mixer_generic.c mixer/mixer_hifi3.c)
 elseif(CONFIG_IPC_MAJOR_4)
-	set(mixer_src mixin_mixout.c)
+	set(mixer_src mixin_mixout/mixin_mixout.c mixin_mixout/mixin_mixout_generic.c mixin_mixout/mixin_mixout_hifi3.c)
 endif()
 
 if(NOT CONFIG_LIBRARY)

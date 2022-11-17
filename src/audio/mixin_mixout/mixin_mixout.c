@@ -116,16 +116,9 @@ struct mixin_data {
 	 * private data as ipc4_base_module_cfg!
 	 */
 	struct ipc4_base_module_cfg base_cfg;
-
-	void (*mix_channel)(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
-			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
-			    const struct audio_stream __sparse_cache *source,
-			    uint8_t source_channel_index, uint8_t source_channel_count,
-			    uint32_t frame_count, uint16_t gain);
-
-	void (*mute_channel)(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
-			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count);
-
+	normal_mix_func normal_mix_channel;
+	remap_mix_func remap_mix_channel;
+	mute_func mute_channel;
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
 };
 
@@ -278,287 +271,6 @@ static void reset_mixed_data_info_frame_counters(struct mixed_data_info __sparse
 		mdi->source_info[i].consumed_yet_not_produced_frames = 0;
 }
 
-#if CONFIG_FORMAT_S16LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void mix_channel_s16(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
-			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
-			    const struct audio_stream __sparse_cache *source,
-			    uint8_t source_channel_index, uint8_t source_channel_count,
-			    uint32_t frame_count, uint16_t gain)
-{
-	int16_t *dest, *src;
-	uint32_t frames_to_mix, frames_to_copy;
-
-	/* audio_stream_wrap() is required and is done below in a loop */
-	dest = (int16_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int16_t *)source->r_ptr + source_channel_index;
-
-	assert(mixed_frames >= start_frame);
-	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
-	frames_to_copy = frame_count - frames_to_mix;
-
-	/* we do not want to use something like audio_stream_frames_without_wrap() here
-	 * as it uses stream->channels internally. Also we would like to avoid expensive
-	 * division operations.
-	 */
-	while (frames_to_mix) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_mix && src < (int16_t *)source->end_addr &&
-			       dest < (int16_t *)sink->end_addr) {
-				*dest = sat_int16((int32_t)*dest + (int32_t)*src);
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-		else
-			while (frames_to_mix && src < (int16_t *)source->end_addr &&
-			       dest < (int16_t *)sink->end_addr) {
-				*dest = sat_int16((int32_t)*dest +
-						  q_mults_16x16(*src, gain,
-								IPC4_MIXIN_GAIN_SHIFT));
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-	}
-
-	while (frames_to_copy) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_copy && src < (int16_t *)source->end_addr &&
-			       dest < (int16_t *)sink->end_addr) {
-				*dest = *src;
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-		else
-			while (frames_to_copy && src < (int16_t *)source->end_addr &&
-			       dest < (int16_t *)sink->end_addr) {
-				*dest = (int16_t)q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-	}
-}
-
-static void mute_channel_s16(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
-			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count)
-{
-	uint32_t skip_mixed_frames;
-	int16_t *ptr;
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-
-	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (int16_t *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
-
-	while (frame_count) {
-		ptr = audio_stream_wrap(stream, ptr);
-		while (frame_count && ptr < (int16_t *)stream->end_addr) {
-			*ptr = 0;
-			ptr += stream->channels;
-			frame_count--;
-		}
-	}
-}
-#endif	/* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void mix_channel_s24(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
-			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
-			    const struct audio_stream __sparse_cache *source,
-			    uint8_t source_channel_index, uint8_t source_channel_count,
-			    uint32_t frame_count, uint16_t gain)
-{
-	int32_t *dest, *src;
-	uint32_t frames_to_mix, frames_to_copy;
-
-	/* audio_stream_wrap() is required and is done below in a loop */
-	dest = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int32_t *)source->r_ptr + source_channel_index;
-
-	assert(mixed_frames >= start_frame);
-	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
-	frames_to_copy = frame_count - frames_to_mix;
-
-	/* we do not want to use something like audio_stream_frames_without_wrap() here
-	 * as it uses stream->channels internally. Also we would like to avoid expensive
-	 * division operations.
-	 */
-	while (frames_to_mix) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_mix && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = sat_int24(sign_extend_s24(*dest) + sign_extend_s24(*src));
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-		else
-			while (frames_to_mix && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = sat_int24(sign_extend_s24(*dest) +
-						  (int32_t)q_mults_32x32(sign_extend_s24(*src),
-						  gain, IPC4_MIXIN_GAIN_SHIFT));
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-	}
-
-	while (frames_to_copy) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_copy && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = *src;
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-		else
-			while (frames_to_copy && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = (int32_t)q_mults_32x32(sign_extend_s24(*src),
-							       gain, IPC4_MIXIN_GAIN_SHIFT);
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-	}
-}
-
-#endif	/* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void mix_channel_s32(struct audio_stream __sparse_cache *sink, uint8_t sink_channel_index,
-			    uint8_t sink_channel_count, uint32_t start_frame, uint32_t mixed_frames,
-			    const struct audio_stream __sparse_cache *source,
-			    uint8_t source_channel_index, uint8_t source_channel_count,
-			    uint32_t frame_count, uint16_t gain)
-{
-	int32_t *dest, *src;
-	uint32_t frames_to_mix, frames_to_copy;
-
-	/* audio_stream_wrap() is required and is done below in a loop */
-	dest = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int32_t *)source->r_ptr + source_channel_index;
-
-	assert(mixed_frames >= start_frame);
-	frames_to_mix = MIN(mixed_frames - start_frame, frame_count);
-	frames_to_copy = frame_count - frames_to_mix;
-
-	/* we do not want to use something like audio_stream_frames_without_wrap() here
-	 * as it uses stream->channels internally. Also we would like to avoid expensive
-	 * division operations.
-	 */
-	while (frames_to_mix) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_mix && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = sat_int32((int64_t)*dest + (int64_t)*src);
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-		else
-			while (frames_to_mix && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = sat_int32((int64_t)*dest +
-						  q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_mix--;
-			}
-	}
-
-	while (frames_to_copy) {
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
-
-		if (gain == IPC4_MIXIN_UNITY_GAIN)
-			while (frames_to_copy && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = *src;
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-		else
-			while (frames_to_copy && src < (int32_t *)source->end_addr &&
-			       dest < (int32_t *)sink->end_addr) {
-				*dest = (int32_t)q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
-				src += source_channel_count;
-				dest += sink_channel_count;
-				frames_to_copy--;
-			}
-	}
-}
-
-static void mute_channel_s32(struct audio_stream __sparse_cache *stream, uint8_t channel_index,
-			     uint32_t start_frame, uint32_t mixed_frames, uint32_t frame_count)
-{
-	uint32_t skip_mixed_frames;
-	int32_t *ptr;
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-
-	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (int32_t *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
-
-	while (frame_count) {
-		ptr = audio_stream_wrap(stream, ptr);
-		while (frame_count && ptr < (int32_t *)stream->end_addr) {
-			*ptr = 0;
-			ptr += stream->channels;
-			frame_count--;
-		}
-	}
-}
-#endif	/* CONFIG_FORMAT_S32LE */
-
 static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
 			 uint16_t sink_index, struct audio_stream __sparse_cache *sink,
 			 uint32_t start_frame, uint32_t mixed_frames,
@@ -580,8 +292,8 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 		 * channel count is passed as 1, channel index is 0, frame indices (start_frame
 		 * and mixed_frame) and frame count are multiplied by real stream channel count.
 		 */
-		mixin_data->mix_channel(sink, 0, 1, start_frame * sink->channels,
-					mixed_frames * sink->channels, source, 0, 1,
+		mixin_data->normal_mix_channel(sink, start_frame * sink->channels,
+					mixed_frames * sink->channels, source,
 					frame_count * sink->channels, sink_config->gain);
 	} else if (sink_config->mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE) {
 		int i;
@@ -600,7 +312,7 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 						 source->channels);
 					return -EINVAL;
 				}
-				mixin_data->mix_channel(sink, i, sink->channels, start_frame,
+				mixin_data->remap_mix_channel(sink, i, sink->channels, start_frame,
 							mixed_frames, source, source_channel,
 							source->channels, frame_count,
 							sink_config->gain);
@@ -952,7 +664,8 @@ static int mixin_reset(struct comp_dev *dev)
 	comp_dbg(dev, "mixin_reset()");
 
 	mixin_data = comp_get_drvdata(dev);
-	mixin_data->mix_channel = NULL;
+	mixin_data->normal_mix_channel = NULL;
+	mixin_data->remap_mix_channel = NULL;
 	mixin_data->mute_channel = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -1021,26 +734,20 @@ static int mixin_prepare(struct comp_dev *dev)
 
 	/* currently inactive so setup mixer */
 	switch (fmt) {
-#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		md->mix_channel = mix_channel_s16;
-		md->mute_channel = mute_channel_s16;
-		break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		md->mix_channel = mix_channel_s24;
-		md->mute_channel = mute_channel_s32;	/* yes, 32 is correct */
-		break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		md->mix_channel = mix_channel_s32;
-		md->mute_channel = mute_channel_s32;
+		md->normal_mix_channel = normal_mix_get_processing_function(fmt);
+		md->remap_mix_channel = remap_mix_get_processing_function(fmt);
+		md->mute_channel = mute_mix_get_processing_function(fmt);
 		break;
-#endif /* CONFIG_FORMAT_S32LE */
 	default:
 		comp_err(dev, "unsupported data format");
+		return -EINVAL;
+	}
+
+	if (!md->normal_mix_channel || !md->remap_mix_channel || !md->mute_channel) {
+		comp_err(dev, "have not found the suitable processing function");
 		return -EINVAL;
 	}
 
@@ -1322,7 +1029,7 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 
 		mixin = ipc4_get_comp_dev(src_id);
 		if (!mixin) {
-			comp_err(dev, "mixout_bind: no source with ID %d found", src_id);
+			comp_err(dev, "mixout_unbind: no source with ID %d found", src_id);
 			mixed_data_info_release(mixed_data_info);
 			return -EINVAL;
 		}

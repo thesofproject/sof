@@ -693,7 +693,9 @@ if(CONFIG_IPC_MAJOR_3)
 	)
 elseif(CONFIG_IPC_MAJOR_4)
 	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-		${SOF_AUDIO_PATH}/mixin_mixout.c
+		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
+		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
+		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
 	)
 endif()
 
