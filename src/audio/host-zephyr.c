@@ -912,7 +912,7 @@ static int host_params(struct comp_dev *dev,
 	 */
 	channel = dma_request_channel(hd->dma->z_dev, &hda_chan);
 	if (channel < 0) {
-		comp_err(dev, "host_params(): hd->chan is NULL");
+		comp_err(dev, "host_params(): requested channel %d is busy", hda_chan);
 		err = -ENODEV;
 		goto out;
 	}
