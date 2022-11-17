@@ -131,8 +131,6 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	buffer_config->sampleRate = rate;
 	buffer_config->numChannels = channels;
 	buffer_config->periodInFrames = dev->frames;
-	/* totalBufferLengthInBytes will be populated in dtsSofInterfacePrepare */
-	buffer_config->totalBufferLengthInBytes = 0;
 
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() done");
 
@@ -349,6 +347,9 @@ static int dts_codec_apply_config(struct processing_module *mod)
 		if (param->size > param_header_size) {
 			/* Calculate size of param->data */
 			param_data_size = param->size - param_header_size;
+
+			comp_dbg(dev, "dts_codec_apply_config() id %d size %d",
+					param->id, param_data_size);
 
 			if (param_data_size) {
 				dts_result = dtsSofInterfaceApplyConfig(codec->private, param->id,
