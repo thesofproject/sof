@@ -33,6 +33,11 @@ extern "C" {
 
 typedef struct DtsSofInterfaceInst DtsSofInterfaceInst;
 
+typedef enum {
+	// Supported parameter ids
+	DTS_SOF_INTERFACE_PARAMETER_ID_SINGLE_CONFIGURATION = 1,
+} DtsSofInterfaceParameterId;
+
 typedef enum
 {
 	DTS_SOF_INTERFACE_BUFFER_LAYOUT_INTERLEAVED = 0,
@@ -54,7 +59,6 @@ typedef struct DtsSofInterfaceBufferConfiguration
 	unsigned int                sampleRate;
 	unsigned int                numChannels;
 	unsigned int                periodInFrames;
-	unsigned int                totalBufferLengthInBytes;
 } DtsSofInterfaceBufferConfiguration;
 
 typedef void* (*DtsSofInterfaceAllocateMemory)(
@@ -88,7 +92,7 @@ DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceProcess(
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceApplyConfig(
 	DtsSofInterfaceInst* pInst,
 	int parameterId,
-	void* pData,
+	const void *pData,
 	unsigned int dataSize) DTS_SOF_INTERFACE_NOEXCEPT;
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceReset(
