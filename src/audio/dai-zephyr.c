@@ -547,7 +547,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	dd->z_config = dma_cfg;
 
 free:
-	dma_sg_free(&config->elem_array);
+	if (err < 0)
+		dma_sg_free(&config->elem_array);
 out:
 	buffer_release(dma_buf);
 
@@ -675,7 +676,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	dd->z_config = dma_cfg;
 
 free:
-	dma_sg_free(&config->elem_array);
+	if (err < 0)
+		dma_sg_free(&config->elem_array);
 out:
 	buffer_release(dma_buf);
 
