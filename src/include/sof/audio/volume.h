@@ -125,8 +125,6 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream __sparse_cache *source
  * \brief Function for volume ramp shape function
  */
 
-typedef int32_t (*vol_ramp_func)(struct processing_module *mod, int32_t ramp_time, int channel);
-
 struct vol_data {
 #if CONFIG_IPC_MAJOR_4
 	uint32_t mailbox_offset;		/**< store peak volume in mailbox */
@@ -151,14 +149,12 @@ struct vol_data {
 	/**< max number of frames to process per ramp transition */
 	uint32_t vol_ramp_frames;
 	uint32_t vol_ramp_elapsed_frames;	/**< frames since transition */
-	uint32_t sample_rate;			/**< stream sample rate in Hz */
+	int32_t sample_rate_inv;		/**< 1000x inverse of sample rate as Q1.31 */
 	unsigned int channels;			/**< current channels count */
 	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
-	bool vol_ramp_active;			/**< set if volume is ramped */
 	bool ramp_finished;			/**< control ramp launch */
 	vol_scale_func scale_vol;		/**< volume processing function */
 	vol_zc_func zc_get;			/**< function getting nearest zero crossing frame */
-	vol_ramp_func ramp_func;		/**< function for ramp shape */
 	bool copy_gain;				/**< control copy gain or not */
 	uint32_t attenuation;			/**< peakmeter adjustment in range [0 - 31] */
 };

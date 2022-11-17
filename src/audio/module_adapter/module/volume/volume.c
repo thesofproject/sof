@@ -232,10 +232,8 @@ static const struct comp_zc_func_map zc_func_map[] = {
  * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
  * \param[in] channel Current channel to update
  */
-static int32_t volume_linear_ramp(struct processing_module *mod, int32_t ramp_time, int channel)
+static inline int32_t volume_linear_ramp(struct vol_data *cd, int32_t ramp_time, int channel)
 {
-	struct vol_data *cd = module_get_private_data(mod);
-
 	return cd->rvolume[channel] + ramp_time * cd->ramp_coef[channel];
 }
 #endif
@@ -248,10 +246,8 @@ static int32_t volume_linear_ramp(struct processing_module *mod, int32_t ramp_ti
  * \param[in] channel Current channel to update
  */
 
-static int32_t volume_windows_fade_ramp(struct processing_module *mod, int32_t ramp_time,
-					int channel)
+static inline int32_t volume_windows_fade_ramp(struct vol_data *cd, int32_t ramp_time, int channel)
 {
-	struct vol_data *cd = module_get_private_data(mod);
 	int32_t time_ratio; /* Q2.30 */
 	int32_t pow_value; /* Q2.30 */
 	int32_t volume_delta = cd->tvolume[channel] - cd->rvolume[channel]; /* Q16.16 */
@@ -264,86 +260,92 @@ static int32_t volume_windows_fade_ramp(struct processing_module *mod, int32_t r
 
 /**
  * \brief Ramps volume changes over time.
- * \param[in,out] mod Volume processing module handle
-
+ * \param[in,out] vol_data Volume component data
  */
-static void volume_ramp(struct processing_module *mod)
+
+/* Note: Using inline saves 0.4 MCPS */
+static inline void volume_ramp(struct vol_data *cd)
 {
-	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	int32_t vol;
-	int32_t ramp_time;
+	int32_t new_vol;
+	int32_t tvolume;
+	int32_t volume;
 	int i;
-	bool ramp_finished = true;
 
+	cd->ramp_finished = true;
 	cd->copy_gain = true;
-	/* No need to ramp in idle state, jump volume to request. */
-	if (dev->state == COMP_STATE_READY) {
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			cd->volume[i] = cd->tvolume[i];
-
-		cd->ramp_finished = true;
-		return;
-	}
-
-	/* The first is set and cleared to indicate ongoing ramp, the
-	 * latter is set once to enable self launched ramp only once
-	 * in stream start.
-	 */
-	cd->vol_ramp_active = true;
 
 	/* Current ramp time in Q29.3 milliseconds. Note that max. ramp length
 	 * can be 1.3s at 192 kHz rate and 5.5s at 48 kHz rate without
-	 * exceeding int32_t range. Value 8000 is 1000 for converting to
-	 * milliseconds times 8 (2 ^ 3) for fraction.
+	 * exceeding int32_t range. Inverse of sample rate is 1000/sample_rate
+	 * for milliseconds.
 	 */
-	ramp_time = cd->vol_ramp_elapsed_frames * 8000 / cd->sample_rate;
+#if defined CONFIG_COMP_VOLUME_WINDOWS_FADE || defined CONFIG_COMP_VOLUME_LINEAR_RAMP
+	int32_t ramp_time = Q_MULTSR_32X32((int64_t)cd->vol_ramp_elapsed_frames,
+					   cd->sample_rate_inv, 0, 31, 3);
+#endif
 
 	/* Update each volume if it's not at target for active channels */
 	for (i = 0; i < cd->channels; i++) {
 		/* skip if target reached */
-		if (cd->volume[i] == cd->tvolume[i])
+		volume = cd->volume[i];
+		tvolume = cd->tvolume[i];
+		if (volume == tvolume)
 			continue;
 
 		/* Update volume gain with ramp. The ramp gain value is
 		 * calculated from previous gain and ramp time. The slope
 		 * coefficient is calculated in volume_set_chan().
 		 */
-		vol = cd->ramp_func(mod, ramp_time, i);
-		if (cd->volume[i] < cd->tvolume[i]) {
+#if defined CONFIG_COMP_VOLUME_WINDOWS_FADE && defined CONFIG_COMP_VOLUME_LINEAR_RAMP
+		if (cd->ramp_type == SOF_VOLUME_WINDOWS_FADE)
+			new_vol = volume_windows_fade_ramp(cd, ramp_time, i);
+		else
+			new_vol = volume_linear_ramp(cd, ramp_time, i);
+#elif defined CONFIG_COMP_VOLUME_WINDOWS_FADE
+		new_vol = volume_windows_fade_ramp(cd, ramp_time, i);
+#elif defined CONFIG_COMP_VOLUME_LINEAR_RAMP
+		new_vol = volume_linear_ramp(cd, ramp_time, i);
+#else
+		new_vol = tvolume;
+#endif
+		if (volume < tvolume) {
 			/* ramp up, check if ramp completed */
-			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
-				cd->ramp_coef[i] = 0;
-				cd->volume[i] = cd->tvolume[i];
-			} else {
-				ramp_finished = false;
-				cd->volume[i] = vol;
-			}
+			if (new_vol < tvolume)
+				cd->ramp_finished = false;
+			else
+				new_vol = tvolume;
 		} else {
 			/* ramp down */
-			if (vol <= 0) {
-				/* cannot ramp down below 0 */
-				cd->volume[i] = cd->tvolume[i];
-				cd->ramp_coef[i] = 0;
-			} else {
-				/* ramp completed ? */
-				if (vol <= cd->tvolume[i] ||
-				    vol <= cd->vol_min) {
-					cd->ramp_coef[i] = 0;
-					cd->volume[i] = cd->tvolume[i];
-				} else {
-					ramp_finished = false;
-					cd->volume[i] = vol;
-				}
-			}
+			if (new_vol > tvolume)
+				cd->ramp_finished = false;
+			else
+				new_vol = tvolume;
 		}
-	}
-
-	if (ramp_finished) {
-		cd->ramp_finished = true;
-		cd->vol_ramp_active = false;
+		cd->volume[i] = new_vol;
 	}
 }
+
+/**
+ * \brief Ramps volume changes over time.
+ * \param[in,out] mod Volume processing module handle
+ */
+#if CONFIG_IPC_MAJOR_3
+static void volume_ramp_check(struct processing_module *mod)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int i;
+
+	/* No need to ramp in idle state, jump volume to request. */
+	cd->ramp_finished = false;
+	if (dev->state == COMP_STATE_READY) {
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+			cd->volume[i] = cd->tvolume[i];
+
+		cd->ramp_finished = true;
+	}
+}
+#endif
 
 /**
  * \brief Reset state except controls.
@@ -359,10 +361,9 @@ static void reset_state(struct vol_data *cd)
 
 	cd->channels = 0;
 	cd->ramp_finished = true;
-	cd->vol_ramp_active = false;
 	cd->vol_ramp_frames = 0;
 	cd->vol_ramp_elapsed_frames = 0;
-	cd->sample_rate = 0;
+	cd->sample_rate_inv = 0;
 	cd->copy_gain = true;
 }
 
@@ -437,21 +438,17 @@ static int volume_init(struct processing_module *mod)
 		cd->muted[i] = false;
 	}
 
-	cd->ramp_type = vol->ramp;
-	cd->initial_ramp = vol->initial_ramp;
-
 	switch (cd->ramp_type) {
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
 	case SOF_VOLUME_LINEAR:
 	case SOF_VOLUME_LINEAR_ZC:
-		cd->ramp_func = &volume_linear_ramp;
-		break;
 #endif
 #if CONFIG_COMP_VOLUME_WINDOWS_FADE
 	case SOF_VOLUME_WINDOWS_FADE:
-		cd->ramp_func = &volume_windows_fade_ramp;
-		break;
 #endif
+		cd->ramp_type = vol->ramp;
+		cd->initial_ramp = vol->initial_ramp;
+		break;
 	default:
 		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
 		rfree(cd);
@@ -486,12 +483,10 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	cd->muted[channel] = false;
 #if CONFIG_COMP_VOLUME_WINDOWS_FADE
 	/* ATM there is support for the same ramp for all channels */
-	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE) {
+	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE)
 		cd->ramp_type = SOF_VOLUME_WINDOWS_FADE;
-		cd->ramp_func =  &volume_windows_fade_ramp;
-	} else {
+	else
 		cd->ramp_type = SOF_VOLUME_WINDOWS_NO_FADE;
-	}
 #endif
 	return 0;
 }
@@ -696,18 +691,18 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v < VOL_MIN) {
+	if (v < cd->vol_min) {
 		/* No need to fail, just trace the event. */
 		comp_warn(mod->dev, "volume_set_chan: Limited request %d to min. %d",
-			  v, VOL_MIN);
-		v = VOL_MIN;
+			  v, cd->vol_min);
+		v = cd->vol_min;
 	}
 
-	if (v > VOL_MAX) {
+	if (v > cd->vol_max) {
 		/* No need to fail, just trace the event. */
 		comp_warn(mod->dev, "volume_set_chan: Limited request %d to max. %d",
-			  v, VOL_MAX);
-		v = VOL_MAX;
+			  v, cd->vol_max);
+		v = cd->vol_max;
 	}
 
 	cd->tvolume[chan] = v;
@@ -844,10 +839,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 			}
 		}
 
-		if (!cd->vol_ramp_active) {
-			cd->ramp_finished = false;
-			volume_ramp(mod);
-		}
+		volume_ramp_check(mod);
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -870,10 +862,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 				volume_set_chan_mute(mod, ch);
 		}
 
-		if (!cd->vol_ramp_active) {
-			cd->ramp_finished = false;
-			volume_ramp(mod);
-		}
+		volume_ramp_check(mod);
 		break;
 
 	default:
@@ -1172,14 +1161,13 @@ static int volume_process(struct processing_module *mod,
 			frames = cd->vol_ramp_frames;
 		}
 
+		if (!cd->ramp_finished) {
+			volume_ramp(cd);
+			cd->vol_ramp_elapsed_frames += frames;
+		}
+
 		/* copy and scale volume */
 		cd->scale_vol(mod, &input_buffers[0], &output_buffers[0], frames, cd->attenuation);
-
-		if (cd->vol_ramp_active)
-			cd->vol_ramp_elapsed_frames += frames;
-
-		if (!cd->ramp_finished)
-			volume_ramp(mod);
 
 		avail_frames -= frames;
 	}
@@ -1305,21 +1293,15 @@ static int volume_prepare(struct processing_module *mod)
 		goto err;
 	}
 
-	if (cd->initial_ramp && !cd->ramp_func) {
-		comp_err(dev, "volume_prepare(): invalid cd->ramp_func");
-		ret = -EINVAL;
-		goto err;
-	}
-
 	/* Set current volume to min to ensure ramp starts from minimum
 	 * to previous volume request. Copy() checks for ramp finished
 	 * and executes it if it has not yet finished as result of
 	 * driver commands. Ramp is not constant rate to ensure it lasts
 	 * for entire topology specified time.
 	 */
-	cd->ramp_finished = true;
+	cd->ramp_finished = false;
 	cd->channels = sink_c->stream.channels;
-	cd->sample_rate = sink_c->stream.rate;
+	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX / sink_c->stream.rate);
 
 	buffer_release(sink_c);
 
