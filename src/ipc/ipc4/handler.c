@@ -346,8 +346,8 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 
 static void ipc_compound_pre_start(int msg_id)
 {
-	/* ipc thread will wait for all scheduled ipc messages to be complete
-	 * Use a reference count to check status of these ipc messages.
+	/* ipc thread will wait for all scheduled tasks to be complete
+	 * Use a reference count to check status of these tasks.
 	 */
 	atomic_add(&msg_data.delayed_reply, 1);
 }
