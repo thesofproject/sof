@@ -25,6 +25,23 @@
 
 #include <stdint.h>
 #include <rtos/bit.h>
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/format.h>
+#include <sof/platform.h>
+#include <stddef.h>
+
+#define MIXIN_MIXOUT_GENERIC
+
+#if defined(__XCC__)
+
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#undef MIXIN_MIXOUT_GENERIC
+#define MIXIN_MIXOUT_HIFI3
+#endif
+
+#endif
 
 enum ipc4_mixin_config_param {
 	/* large_config_set param id for ipc4_mixer_mode_config */
@@ -84,5 +101,93 @@ struct ipc4_mixer_mode_config {
 	/* Array of settings for sinks, size is mixer_mode_config_count. */
 	struct ipc4_mixer_mode_sink_config mixer_mode_sink_configs[1];
 } __packed __aligned(4);
+
+/**
+ * \brief remap mode mixin_mixout processing function interface
+ */
+typedef void (*remap_mix_func)(struct audio_stream __sparse_cache *sink,
+				int32_t sink_channel_index,
+				int32_t sink_channel_count, int32_t start_frame,
+				int32_t mixed_frames,
+				const struct audio_stream __sparse_cache *source,
+				int32_t source_channel_index, int32_t source_channel_count,
+				int32_t frame_count, uint16_t gain);
+
+/**
+ * \brief normal mode mixin_mixout processing function interface
+ */
+typedef void (*normal_mix_func)(struct audio_stream __sparse_cache *sink, int32_t start_frame,
+				int32_t mixed_frames,
+				const struct audio_stream __sparse_cache *source,
+				int32_t frame_count, uint16_t gain);
+
+/**
+ * \brief mixin_mixout mute processing function interface
+ */
+typedef void (*mute_func) (struct audio_stream __sparse_cache *stream, int32_t channel_index,
+			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count);
+
+/**
+ * @brief mixin_mixout processing functions map.
+ */
+struct mix_func_map {
+	uint16_t frame_fmt;				/* frame format */
+	normal_mix_func normal_func;	/* normal mode mixin_mixout processing function */
+	remap_mix_func remap_func;	/* remap mode mixin_mixout processing function */
+	mute_func mute_func;			/* mute processing function */
+};
+
+extern const struct mix_func_map mix_func_map[];
+extern const size_t mix_count;
+/**
+ * \brief Retrievies normal mode mixer processing function.
+ * \param[in] fmt  stream PCM frame format
+ */
+static inline normal_mix_func normal_mix_get_processing_function(int fmt)
+{
+	int i;
+
+	/* map the normal mode mixin_mixout function for source and sink buffers */
+	for (i = 0; i < mix_count; i++) {
+		if (fmt == mix_func_map[i].frame_fmt)
+			return mix_func_map[i].normal_func;
+	}
+
+	return NULL;
+}
+
+/**
+ * \brief Retrievies normal mode mixer processing function.
+ * \param[in] fmt  stream PCM frame format
+ */
+static inline remap_mix_func remap_mix_get_processing_function(int fmt)
+{
+	int i;
+
+	/* map the remap mode mixin_mixout function for source and sink buffers */
+	for (i = 0; i < mix_count; i++) {
+		if (fmt == mix_func_map[i].frame_fmt)
+			return mix_func_map[i].remap_func;
+	}
+
+	return NULL;
+}
+
+/**
+ * \brief Retrievies normal mode mixer processing function.
+ * \param[in] fmt  stream PCM frame format
+ */
+static inline mute_func mute_mix_get_processing_function(int fmt)
+{
+	int i;
+
+	/* map the mute function for source and sink buffers */
+	for (i = 0; i < mix_count; i++) {
+		if (fmt == mix_func_map[i].frame_fmt)
+			return mix_func_map[i].mute_func;
+	}
+
+	return NULL;
+}
 
 #endif	/* __SOF_IPC4_MIXIN_MIXOUT_H__ */
