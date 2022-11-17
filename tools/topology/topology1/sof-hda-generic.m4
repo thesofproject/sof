@@ -5,6 +5,7 @@
 ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
 ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
 ifdef(`HSPROC', , `define(HSPROC, volume)')
+ifdef(`HSSFX', , `define(HSSFX, volume)')
 
 # Include topology builder
 include(`utils.m4')
@@ -95,9 +96,13 @@ DAI_ADD(PIPE_HEADSET_PLAYBACK,
         NOT_USED_IGNORED, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
 
+# If HSSFX_FILTERx is defined set PIPELINE_FILTERx
+ifdef(`HSSFX_FILTER1', `define(PIPELINE_FILTER1, HSSFX_FILTER1)', `undefine(`PIPELINE_FILTER1')')
+ifdef(`HSSFX_FILTER2', `define(PIPELINE_FILTER2, HSSFX_FILTER2)', `undefine(`PIPELINE_FILTER2')')
+
 # Low Latency playback pipeline 1 on PCM 30 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-host-HSSFX-playback.m4,
 	30, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
