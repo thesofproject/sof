@@ -1055,6 +1055,10 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		char *data = ipc->comp_data;
 		struct ipc4_message_reply reply;
 
+		/* Reply prepared by secondary core */
+		if ((ipc->task_mask & IPC_TASK_SECONDARY_CORE) && cpu_is_primary(cpu_get_id()))
+			return;
+
 		/* Do not send reply for SET_DX if we are going to enter D3
 		 * The reply is going to be sent as part of the power down
 		 * sequence
