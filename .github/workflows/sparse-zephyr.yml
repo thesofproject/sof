@@ -1,0 +1,60 @@
+---
+
+name: Sparse Zephyr
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+# yamllint disable-line rule:truthy
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
+  # sparse.c is an unusable mess and always zero in practice. Moreover
+  # SOF has hundreds of sparse warnings right now. So fail only on a
+  # small subset of specific warnings defined in
+  # sof/scripts/parse_sparse_output.sh
+  warnings-subset:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [
+          {platform: tgl,
+           real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
+          # This is the WRONG compiler for MTL but for now this is the
+          # one and only one expected by the Zephyr build system so it
+          # must be set to this value to sparse MTL.
+          # Sparse needs a REAL_CC but it does not matter which one, it
+          # does not affect sparse results.
+          # As soon as sof/west.yml is updated to a fixed Zephyr version
+          # this will fail with an error message that will show the
+          # exact value that must replace this one.
+          {platform: mtl,
+           real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
+        ]
+
+    steps:
+      - uses: actions/checkout@v2
+        # From time to time this will catch a git tag and change SOF_VERSION
+        with:
+          fetch-depth: 10
+          path: ./workspace/sof
+
+      - name: west clones
+        run: pip3 install west && cd workspace/sof/ && west init -l &&
+               west update --narrow --fetch-opt=--depth=5
+
+      # We have to painfully extract REAL_CC from the docker image to
+      # tell the Zephyr build what it... already knows and wants!! Zephyr
+      # commit 3ebb18b8826 explains this sparse problem.
+      - name: build
+        working-directory: ./workspace
+        run: |
+          ./sof/zephyr/docker-run.sh /bin/sh -c               \
+            'cmake -P ./sof/zephyr/FindZephyr-sdk.cmake > zsdk_location'
+          cat zsdk_location
+          ZSDK=$(cat zsdk_location); _RCC=${{ matrix.platforms.real_cc }}
+          REAL_CC="$ZSDK/$_RCC" ./sof/zephyr/docker-run.sh                          \
+             ./sof/zephyr/docker-build.sh ${{ matrix.platforms.platform }}          \
+             --cmake-args=-DSPARSE=y | ./sof/scripts/parse_sparse_output.sh
