@@ -603,7 +603,7 @@ static int selector_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
-	const struct ipc4_base_module_cfg *base_cfg = cfg->data;
+	const struct ipc4_base_module_cfg *base_cfg = cfg->init_data;
 	struct comp_data *cd;
 	int ret;
 
