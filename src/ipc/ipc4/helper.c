@@ -201,6 +201,10 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
+	/* pass IPC to target core */
+	if (!cpu_is_me(pipe_desc->extension.r.core_id))
+		return ipc4_process_on_core(pipe_desc->extension.r.core_id, false);
+
 	return ipc4_create_pipeline(pipe_desc->primary.r.instance_id,
 		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size,
 		pipe_desc->extension.r.core_id);
@@ -269,7 +273,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (!ipc_pipe)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	/* check core */
+	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc4_process_on_core(ipc_pipe->core, false);
 
@@ -336,6 +340,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
+
+	/* Pass IPC to target core if both modules has the same target core */
+	if (!cpu_is_me(source->ipc_config.core) && source->ipc_config.core == sink->ipc_config.core)
+		return ipc4_process_on_core(source->ipc_config.core, false);
 
 	buffer = ipc4_create_buffer(source, sink, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
@@ -417,6 +425,10 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_warn(&ipc_tr, "ignoring unbinding of src %x and dst %x", src_id, sink_id);
 		return 0;
 	}
+
+	/* Pass IPC to target core if both modules has the same target core */
+	if (!cpu_is_me(src->ipc_config.core) && src->ipc_config.core == sink->ipc_config.core)
+		return ipc4_process_on_core(src->ipc_config.core, false);
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
