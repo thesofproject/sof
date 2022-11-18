@@ -105,7 +105,8 @@ struct ipc4_pipeline_create {
 			uint32_t lp             : 1;
 			uint32_t rsvd1          : 3;
 			uint32_t attributes     : 16;
-			uint32_t rsvd2          : 10;
+			uint32_t core_id        : 4;
+			uint32_t rsvd2          : 6;
 			uint32_t _reserved_2    : 2;
 		} r;
 	} extension;

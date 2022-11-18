@@ -141,11 +141,12 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint
 	return NULL;
 }
 
-static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t priority,
-				uint32_t memory_size)
+static int ipc4_create_pipeline(uint32_t pipeline_id, uint32_t priority,
+				uint32_t memory_size, uint32_t core_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
+	struct ipc *ipc = ipc_get();
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
@@ -173,6 +174,8 @@ static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t 
 	/* sched_id is set in FW so initialize it to a invalid value */
 	pipe->sched_id = 0xFFFFFFFF;
 
+	pipe->core = core_id;
+
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			   sizeof(struct ipc_comp_dev));
@@ -184,6 +187,7 @@ static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 	ipc_pipe->id = pipeline_id;
+	ipc_pipe->core = core_id;
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
@@ -197,8 +201,9 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
-	return ipc4_create_pipeline(ipc, pipe_desc->primary.r.instance_id,
-		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size);
+	return ipc4_create_pipeline(pipe_desc->primary.r.instance_id,
+		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size,
+		pipe_desc->extension.r.core_id);
 }
 
 static int ipc_pipeline_module_free(uint32_t pipeline_id)
@@ -641,7 +646,8 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	/* build a pipeline id based on dma id */
 	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->primary.r.link_dma_id);
-	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->extension.r.fifo_size);
+	ret = ipc4_create_pipeline(pipeline_id, 0, cdma->extension.r.fifo_size,
+			PLATFORM_PRIMARY_CORE_ID);
 	if (ret != IPC4_SUCCESS) {
 		tr_err(&comp_tr, "failed to create pipeline for chain dma");
 		return ret;
