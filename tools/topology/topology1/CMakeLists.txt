@@ -299,6 +299,7 @@ set(TPLGS
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-max98390-rt5682-rtnr\;-DCHANNELS=2\;-DRTNR"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-max98390-rt5682-google-aec-rtnr\;-DGOOGLE_RTC_AUDIO_PROCESSING\;-DCHANNELS=2\;-DRTNR"
 	"sof-mt8186-mt6366\;sof-mt8186"
+	"sof-mt8186-mt6366\;sof-mt8186-dts\;-DDTS=`DTS'"
 	"sof-mt8186-mt6366\;sof-mt8186-mt6366-rt1019-rt5682s-waves\;-DWAVES=1"
 
 	"sof-acp-renoir\;sof-acp"
