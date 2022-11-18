@@ -237,10 +237,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			tr_err(&ipc_tr, "ipc: comp host with ID %d not found", host_id);
 			return IPC4_INVALID_RESOURCE_ID;
 		}
-
-		/* check core */
-		if (!cpu_is_me(host->core))
-			return ipc4_process_on_core(host->core, false);
 	}
 
 	switch (cmd) {
@@ -397,6 +393,8 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
+	struct ipc_comp_dev *pcm_dev;
+	struct ipc *ipc = ipc_get();
 	uint32_t cmd, ppl_count, id;
 	const uint32_t *ppl_id;
 	int ret = 0;
@@ -422,6 +420,19 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 
 	for (i = 0; i < ppl_count; i++) {
 		bool delayed = false;
+
+		pcm_dev = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
+		if (!pcm_dev) {
+			tr_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
+			return IPC4_INVALID_RESOURCE_ID;
+		}
+
+		/* Pass IPC to target core
+		 * Note: current implementation supports only a case with
+		 * all pipelines in cmd allocated on the same core
+		 */
+		if (!cpu_is_me(pcm_dev->core))
+			return ipc4_process_on_core(pcm_dev->core, false);
 
 		ipc_compound_pre_start(state.primary.r.type);
 		ret = set_pipeline_state(ppl_id[i], cmd, &delayed);
@@ -581,6 +592,10 @@ static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
+	/* Pass IPC to target core */
+	if (!cpu_is_me(module.extension.r.core_id))
+		return ipc4_process_on_core(module.extension.r.core_id, false);
+
 	memset(&comp, 0, sizeof(comp));
 	comp.id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
 	comp.pipeline_id = module.extension.r.ppl_instance_id;
@@ -655,6 +670,10 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
+
+		/* Pass IPC to target core */
+		if (!cpu_is_me(dev->ipc_config.core))
+			return ipc4_process_on_core(dev->ipc_config.core, false);
 	}
 
 	data_offset =  config.extension.r.data_off_size;
@@ -723,6 +742,10 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
+
+		/* Pass IPC to target core */
+		if (!cpu_is_me(dev->ipc_config.core))
+			return ipc4_process_on_core(dev->ipc_config.core, false);
 	}
 
 	ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
