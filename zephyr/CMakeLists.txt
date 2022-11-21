@@ -579,6 +579,7 @@ zephyr_library_sources(
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+	lib/alloc.c
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
