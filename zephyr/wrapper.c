@@ -34,7 +34,7 @@
 #include <zephyr/arch/xtensa/cache.h>
 #endif
 
-#if CONFIG_SYS_HEAP_RUNTIME_STATS
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 #include <zephyr/sys/sys_heap.h>
 #endif
 
@@ -112,7 +112,7 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 {
 	k_spinlock_key_t key;
 	void *ret;
-#if CONFIG_SYS_HEAP_RUNTIME_STATS
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	struct sys_memory_stats stats;
 #endif
 
@@ -120,7 +120,7 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
 	k_spin_unlock(&h->lock, key);
 
-#if CONFIG_SYS_HEAP_RUNTIME_STATS
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
 	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
 		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
