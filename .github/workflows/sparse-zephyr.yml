@@ -38,7 +38,19 @@ jobs:
         ]
 
     steps:
-      - uses: actions/checkout@v2
+      - name: git clone sparse analyzer
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 10
+          # TODO: switch to thesofproject/sparse
+          repository: marc-hb/sparse
+          path: workspace/sparse
+
+      - name: build sparse analyzer
+        run: cd workspace/sparse && make -j4
+
+      - name: git clone sof
+        uses: actions/checkout@v3
         # From time to time this will catch a git tag and change SOF_VERSION
         with:
           fetch-depth: 10
@@ -51,7 +63,7 @@ jobs:
       # We have to painfully extract REAL_CC from the docker image to
       # tell the Zephyr build what it... already knows and wants!! Zephyr
       # commit 3ebb18b8826 explains this sparse problem.
-      - name: build
+      - name: analyze zephyr
         working-directory: ./workspace
         run: |
           ./sof/zephyr/docker-run.sh /bin/sh -c               \
