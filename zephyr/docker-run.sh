@@ -47,8 +47,13 @@ main()
 
     cd "$SOF_TOP"
 
+    run_command lsb_release -a
     set -x
+    run_command "$@"
+}
 
+run_command()
+{
     docker run -i -v "$(west topdir)":/zep_workspace \
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
