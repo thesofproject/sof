@@ -16,8 +16,10 @@ unset ZEPHYR_BASE
 test -e ./sof/scripts/xtensa-build-zephyr.py
 
 # See .github/workflows/zephyr.yml
-PATH="$PATH":/opt/sparse/bin
-command -v sparse  || true
+# /opt/sparse is the current location in the zephyr-build image.
+# Give any sparse in the workspace precedence.
+PATH="$(pwd)"/sparse:/opt/sparse/bin:"$PATH"
+command -V sparse  || true
 : REAL_CC="$REAL_CC"
 
 
