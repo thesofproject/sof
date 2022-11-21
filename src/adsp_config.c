@@ -2201,13 +2201,6 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		if (ret < 0)
 			return err_key_parse("module_type", NULL);
 
-		if (strcmp((char *)mod_man->name, "BRNGUP") &&
-		    strcmp((char *)mod_man->name, "BASEFW")) {
-			if (type != i - 1) {
-				log_err(ret, "error: invalid type %d", type);
-				return -EINVAL;
-			}
-		}
 		header->module_type = type;
 
 		ret = parse_scheduling(mod_entry, &ctx_entry,
