@@ -57,4 +57,6 @@ jobs:
           ZSDK=$(cat zsdk_location); _RCC=${{ matrix.platforms.real_cc }}
           REAL_CC="$ZSDK/$_RCC" ./sof/zephyr/docker-run.sh                          \
              ./sof/zephyr/docker-build.sh ${{ matrix.platforms.platform }}          \
-             --cmake-args=-DSPARSE=y | ./sof/scripts/parse_sparse_output.sh
+             --cmake-args=-DSPARSE=y 2>&1 | tee _.log
+             printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
+             (set -x; ./sof/scripts/parse_sparse_output.sh < _.log)
