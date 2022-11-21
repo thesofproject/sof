@@ -14,7 +14,10 @@ jobs:
   # small subset of specific warnings defined in
   # sof/scripts/parse_sparse_output.sh
   warnings-subset:
-    runs-on: ubuntu-22.04
+
+    # We're sharing binaries with the zephyr-build container so keep
+    # this in sync with it.
+    runs-on: ubuntu-20.04
 
     strategy:
       fail-fast: false
