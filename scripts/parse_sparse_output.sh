@@ -22,7 +22,7 @@ main()
     # script try deleting a __sparse_cache annotation like the one in
     # src/audio/mixer/mixer.c
 
-    ! grep -i  \
+    ! grep -v 'alsatplg.*topology2.*skip' | grep -i  \
         -e '[[:space:]]error:[[:space:]]'  \
         -e '[[:space:]]warning:[[:space:]].*different address space' \
 
