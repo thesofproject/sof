@@ -23,4 +23,5 @@ add_local_sources(sof
 	dma.c
 	dai.c
 	wait.c
+	kcps-budget-manager.c
 )
