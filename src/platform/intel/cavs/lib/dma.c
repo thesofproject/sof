@@ -108,6 +108,15 @@ static const struct dw_drv_plat_data dmac1 = {
 	},
 };
 
+/* DMA number of buffer periods */
+#define HDA_DMA_BUFFER_PERIOD_COUNT	2
+
+#if CONFIG_DMA_HW_LLI
+#define DW_DMA_BUFFER_PERIOD_COUNT	4
+#else
+#define DW_DMA_BUFFER_PERIOD_COUNT	2
+#endif
+
 #if CONFIG_SUECREEK
 static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
@@ -122,6 +131,9 @@ static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac0,
+#ifdef __ZEPHYR__
+		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -137,6 +149,9 @@ static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
+#ifdef __ZEPHYR__
+		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -152,6 +167,9 @@ static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
+#ifdef __ZEPHYR__
+		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -172,6 +190,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac0,
+#ifdef __ZEPHYR__
+		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -188,6 +209,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
 		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
+#ifdef __ZEPHYR__
+		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -200,6 +224,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
 		.channels	= DMAC_HOST_IN_CHANNELS_COUNT,
 		.chan_size	= GTW_HOST_IN_STREAM_SIZE,
+#ifdef __ZEPHYR__
+		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &hda_host_dma_ops,
 },
@@ -212,6 +239,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
 		.channels	= DMAC_HOST_OUT_CHANNELS_COUNT,
 		.chan_size	= GTW_HOST_OUT_STREAM_SIZE,
+#ifdef __ZEPHYR__
+		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &hda_host_dma_ops,
 },
@@ -224,6 +254,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
 		.channels	= DMAC_LINK_IN_CHANNELS_COUNT,
 		.chan_size	= GTW_LINK_IN_STREAM_SIZE,
+#ifdef __ZEPHYR__
+		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &hda_link_dma_ops,
 },
@@ -236,6 +269,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
 		.channels	= DMAC_LINK_OUT_CHANNELS_COUNT,
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
+#ifdef __ZEPHYR__
+		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
+#endif
 	},
 	.ops		= &hda_link_dma_ops,
 },};
