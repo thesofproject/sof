@@ -11,8 +11,16 @@
 #include <sof/common.h>
 #include <sof/lib/memory.h>
 #include <rtos/spinlock.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/clock_control.h>
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+
+static int select_cpu_freq(int clock, int hz)
+{
+	return clock_control_set_rate(DEVICE_DT_GET(DT_NODELABEL(clkctl)), NULL,
+				      (clock_control_subsys_rate_t)hz);
+}
 
 void platform_clock_init(struct sof *sof)
 {
@@ -30,6 +38,7 @@ void platform_clock_init(struct sof *sof)
 			.lowest_freq_idx = platform_lowest_clock,
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
+			.set_freq = select_cpu_freq,
 		};
 
 		k_spinlock_init(&sof->clocks[i].lock);
