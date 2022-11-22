@@ -192,7 +192,7 @@ count = 15
 	instance_count = "40"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "5"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -217,7 +217,7 @@ count = 15
 	domain_types = "0"
 
 	load_type = "0"
-	module_type = "6"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -288,7 +288,7 @@ count = 15
 	instance_count = "8"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "8"
+	module_type = "12"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -307,7 +307,7 @@ count = 15
 	instance_count = "15"
 	domain_types = "0"
 	load_type = "1"
-	module_type = "9"
+	module_type = "5"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -332,7 +332,7 @@ count = 15
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "0xA"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -346,7 +346,7 @@ count = 15
 	instance_count = "15"
 	domain_types = "0"
 	load_type = "1"
-	module_type = "0xB"
+	module_type = "6"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -365,7 +365,7 @@ count = 15
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "1"
-	module_type = "0xC"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -383,7 +383,7 @@ count = 15
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "1"
-	module_type = "0xD"
+	module_type = "0xB"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
