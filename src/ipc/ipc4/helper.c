@@ -722,12 +722,13 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	return ret;
 }
 
-int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
+int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma,
+			   bool *delay)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct comp_dev *host;
 	uint32_t pipeline_id;
-	int ret;
+	int ret = 0;
 
 	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->primary.r.link_dma_id);
@@ -746,6 +747,10 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to disable chain dma %d", ret);
 				return IPC4_BAD_STATE;
+			} else if (ret == PPL_STATUS_SCHEDULED) {
+				/* pipeline reset will be done by schedule thread */
+				*delay = true;
+				return IPC4_SUCCESS;
 			}
 		}
 
@@ -788,6 +793,9 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 			return IPC4_BAD_STATE;
 		}
 	}
+
+	if (ret == PPL_STATUS_SCHEDULED)
+		*delay = true;
 
 	return IPC4_SUCCESS;
 }

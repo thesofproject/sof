@@ -454,6 +454,7 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_chain_dma cdma;
 	struct ipc *ipc = ipc_get();
+	bool delay = false;
 	int ret;
 
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
@@ -471,13 +472,25 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	}
 
 	atomic_set(&msg_data.delayed_reply, 1);
-	ret = ipc4_trigger_chain_dma(ipc, &cdma);
+	ret = ipc4_trigger_chain_dma(ipc, &cdma, &delay);
 	/* it is not scheduled in another thread */
-	if (ret != PPL_STATUS_SCHEDULED) {
+	if (!delay) {
 		atomic_set(&msg_data.delayed_reply, 0);
 		msg_data.delayed_error = 0;
-	} else {
-		ret = 0;
+	} else if (!cdma.primary.r.allocate) {
+		uint32_t pipeline_id = IPC4_COMP_ID(cdma.primary.r.host_dma_id
+						    + IPC4_MAX_MODULE_COUNT,
+						    cdma.primary.r.link_dma_id);
+
+		/* waiting for pipeline reset done */
+		ipc_wait_for_compound_msg();
+		ret = ipc_pipeline_free(ipc, pipeline_id);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to free chain dma %d", ret);
+			ret = IPC4_BAD_STATE;
+		} else {
+			ret = IPC4_SUCCESS;
+		}
 	}
 
 	return ret;
