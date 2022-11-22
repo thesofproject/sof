@@ -200,6 +200,9 @@ struct dma_plat_data {
 	const char *irq_name;
 	uint32_t chan_size;
 	const void *drv_plat_data;
+#ifdef __ZEPHYR__
+	uint32_t period_count;
+#endif
 };
 
 struct dma {
