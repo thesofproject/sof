@@ -894,8 +894,11 @@ set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 find_package(Python3 COMPONENTS Interpreter)
 set(PYTHON3 "${Python3_EXECUTABLE}")
 
-# SOF uses GNU C99 extensions. TODO other flags required ?
+# We don't know why we have this https://github.com/thesofproject/sof/issues/5212
 target_compile_options(SOF INTERFACE -fno-inline-functions)
+
+# SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
+# extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
 
 # Toolchain info
