@@ -194,6 +194,11 @@ int platform_ipc_init(struct ipc *ipc)
 	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
+	/* Clear GP pending interrupt #0 and #1 */
+	imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
+
 	/* enable GP #0 for Host -> DSP message notification
 	 * enable GP #1 for DSP -> Host message notification
 	 */
