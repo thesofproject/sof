@@ -814,11 +814,9 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* retrieve DMA buffer period count */
-	err = dma_get_attribute_legacy(hd->dma, DMA_ATTR_BUFFER_PERIOD_COUNT,
-				       &period_count);
-	if (err < 0 || !period_count) {
-		comp_err(dev, "host_params(): could not get valid dma buffer period count, err = %d, period_count = %u",
-			 err, period_count);
+	period_count = hd->dma->plat_data.period_count;
+	if (!period_count) {
+		comp_err(dev, "host_params(): could not get valid dma buffer period count");
 		return -EINVAL;
 	}
 
