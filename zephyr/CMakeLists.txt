@@ -776,6 +776,10 @@ zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 )
 endif()
 
+zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
+	${SOF_AUDIO_PATH}/chain_dma.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_SRC
 	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
 	${SOF_AUDIO_PATH}/src/src_generic.c

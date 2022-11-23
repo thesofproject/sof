@@ -191,6 +191,7 @@ void sys_comp_module_mixout_interface_init(void);
 void sys_comp_dai_init(void);
 void sys_comp_src_init(void);
 void sys_comp_mux_init(void);
+void sys_comp_chain_dma_init(void);
 #if CONFIG_IPC_MAJOR_3
 void sys_comp_src_init(void);
 void sys_comp_selector_init(void);
@@ -389,6 +390,10 @@ int task_main_start(struct sof *sof)
 #endif
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
+
+	/* init chain dma manager*/
+	if (IS_ENABLED(CONFIG_COMP_CHAIN_DMA))
+		sys_comp_chain_dma_init();
 
 #if defined(CONFIG_IMX)
 #define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_DMA
