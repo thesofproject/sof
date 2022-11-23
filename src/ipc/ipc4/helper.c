@@ -659,6 +659,60 @@ static int construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t 
 	return IPC4_SUCCESS;
 }
 
+#if CONFIG_COMP_CHAIN_DMA
+int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
+{
+	const struct sof_uuid uuid = {0x6a0a274f, 0x27cc, 0x4afb, {0xa3, 0xe7, 0x34,
+			0x44, 0x72, 0x3f, 0x43, 0x2e}};
+	const struct comp_driver *drv;
+	struct comp_dev *dev;
+
+	drv = ipc4_get_drv((uint8_t *)&uuid);
+	if (!drv)
+		return -EINVAL;
+
+	dev = drv->ops.create(drv, NULL, cdma);
+	if (!dev)
+		return -EINVAL;
+
+	/* differentiate instance by unique ids assignment */
+	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
+					      + IPC4_MAX_MODULE_COUNT, 0);
+	dev->ipc_config.id = comp_id;
+	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id
+				      + IPC4_MAX_MODULE_COUNT;
+
+	return ipc4_add_comp_dev(dev);
+}
+
+int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
+{
+	const bool allocate = cdma->primary.r.allocate;
+	const bool enable = cdma->primary.r.enable;
+	int ret;
+
+	if (!dev)
+		return -EINVAL;
+
+	if (allocate) {
+		if (enable)
+			ret = comp_trigger(dev, COMP_TRIGGER_START);
+		else
+			ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
+	} else {
+		if (enable)
+			return -EINVAL;
+
+		/* remove chain part */
+		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
+		if (ret < 0)
+			return ret;
+		comp_free(dev);
+	}
+	return ret;
+}
+#endif
+
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
 	struct ipc4_copier_module_cfg copier_cfg;

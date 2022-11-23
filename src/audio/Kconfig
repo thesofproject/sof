@@ -27,6 +27,12 @@ config COMP_DAI_GROUP
 	  Select for grouping physical DAIs into a logical DAI that can be
 	  triggered atomically to synchronise stream start and stop operations.
 
+config COMP_CHAIN_DMA
+	  bool "Chain DMA component"
+	  default n
+	  help
+	    Chain DMA support in hardware
+
 config COMP_ARIA
         bool "ARIA component"
         default n
