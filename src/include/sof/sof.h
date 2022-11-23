@@ -11,6 +11,7 @@
 #include <arch/sof.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>
+#include <rtos/spinlock.h>
 
 struct cascade_root;
 struct clock_info;
@@ -104,6 +105,11 @@ struct sof {
 #ifdef CONFIG_LIBRARY_MANAGER
 	/* dynamically loaded libraries */
 	struct ext_library *ext_library;
+#endif
+
+#if CONFIG_IPC_MAJOR_4
+	/* lock for fw_reg access */
+	struct k_spinlock fw_reg_lock;
 #endif
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
