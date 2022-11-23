@@ -276,7 +276,10 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	size_t ipc4_abi_ver_offset = offsetof(struct ipc4_fw_registers, abi_ver);
 
 	mailbox_sw_reg_write(ipc4_abi_ver_offset, IPC4_FW_REGS_ABI_VER);
+
+	k_spinlock_init(&sof->fw_reg_lock);
 #endif
+
 	trace_point(TRACE_BOOT_PLATFORM);
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
