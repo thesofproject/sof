@@ -144,7 +144,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	set_tuple_uint32(tuple, IPC4_EBB_SIZE_BYTES_HW_CFG, SRAM_BANK_SIZE);
 
 	tuple = next_tuple(tuple);
-	value = DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
+	value = SOF_DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
 	set_tuple_uint32(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
 
 	tuple = next_tuple(tuple);
@@ -181,7 +181,7 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 
 	/* set hpsram */
 	info.free_phys_mem_pages = SRAM_BANK_SIZE * PLATFORM_HPSRAM_EBB_COUNT / HOST_PAGE_SIZE;
-	info.ebb_state_dword_count = DIV_ROUND_UP(PLATFORM_HPSRAM_EBB_COUNT, 32);
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_HPSRAM_EBB_COUNT, 32);
 	info.page_alloc_struct.page_alloc_count = PLATFORM_HPSRAM_EBB_COUNT;
 	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
 		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
@@ -209,7 +209,7 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 
 	/* set lpsram */
 	info.free_phys_mem_pages = 0;
-	info.ebb_state_dword_count = DIV_ROUND_UP(PLATFORM_LPSRAM_EBB_COUNT, 32);
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_LPSRAM_EBB_COUNT, 32);
 	info.page_alloc_struct.page_alloc_count = PLATFORM_LPSRAM_EBB_COUNT;
 	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
 		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
