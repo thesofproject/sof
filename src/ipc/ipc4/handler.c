@@ -240,7 +240,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 
 		/* check core */
 		if (!cpu_is_me(host->core))
-			return ipc_process_on_core(host->core, false);
+			return ipc4_process_on_core(host->core, false);
 	}
 
 	switch (cmd) {
