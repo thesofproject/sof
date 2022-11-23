@@ -194,7 +194,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &dw_dma_ops,
+#endif
 },
 {	/* Low Power GP DMAC 1 */
 	.plat_data = {
@@ -213,7 +215,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &dw_dma_ops,
+#endif
 },
 {	/* Host In DMAC */
 	.plat_data = {
@@ -228,7 +232,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &hda_host_dma_ops,
+#endif
 },
 {	/* Host out DMAC */
 	.plat_data = {
@@ -243,7 +249,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &hda_host_dma_ops,
+#endif
 },
 {	/* Link In DMAC */
 	.plat_data = {
@@ -258,7 +266,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &hda_link_dma_ops,
+#endif
 },
 {	/* Link out DMAC */
 	.plat_data = {
@@ -273,7 +283,9 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 #endif
 	},
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	.ops		= &hda_link_dma_ops,
+#endif
 },};
 #endif
 
