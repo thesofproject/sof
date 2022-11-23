@@ -239,11 +239,8 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 		return IPC4_INVALID_RESOURCE_ID;
 
 	/* check core */
-	if (!cpu_is_me(ipc_pipe->core)) {
-		ret = ipc_process_on_core(ipc_pipe->core, false);
-		if (ret < 0)
-			return IPC4_INVALID_REQUEST;
-	}
+	if (!cpu_is_me(ipc_pipe->core))
+		return ipc4_process_on_core(ipc_pipe->core, false);
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret != IPC4_SUCCESS) {
@@ -796,6 +793,27 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma,
 
 	if (ret == PPL_STATUS_SCHEDULED)
 		*delay = true;
+
+	return IPC4_SUCCESS;
+}
+
+int ipc4_process_on_core(uint32_t core, bool blocking)
+{
+	int ret;
+
+	ret = ipc_process_on_core(core, blocking);
+	switch (ret) {
+	case 0:
+	case 1:
+		return IPC4_SUCCESS;
+	case -EACCES:
+		return IPC4_INVALID_CORE_ID;
+	case -ETIME:
+	case -EBUSY:
+		return IPC4_BUSY;
+	default:
+		return IPC4_FAILURE;
+	}
 
 	return IPC4_SUCCESS;
 }
