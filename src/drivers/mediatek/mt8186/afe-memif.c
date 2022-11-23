@@ -682,7 +682,7 @@ static int memif_get_data_size(struct dma_chan_data *channel, uint32_t *avail, u
 	*avail = (memif->wptr + memif->dma_size - memif->rptr) % memif->dma_size;
 	/* TODO, check if need alignment the available and free size to 1 period */
 	if (memif->direction)
-		*avail = DIV_ROUND_UP(*avail, memif->period_size) * memif->period_size;
+		*avail = SOF_DIV_ROUND_UP(*avail, memif->period_size) * memif->period_size;
 	else
 		*avail = *avail / memif->period_size * memif->period_size;
 
