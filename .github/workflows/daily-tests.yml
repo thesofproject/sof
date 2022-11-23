@@ -1,0 +1,20 @@
+---
+# https://docs.github.com/en/actions/using-workflows/reusing-workflows
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
+
+name: Daily tests
+
+# yamllint disable-line rule:truthy
+on:
+  # To configure goto https://crontab.guru/
+  schedule:
+    # daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  run-all-main-actions:
+    uses: ./.github/workflows/pull-request.yml
+  run-zephyr-builds:
+    uses: ./.github/workflows/zephyr.yml
