@@ -10,6 +10,10 @@ cmocka_test(base2_logarithm
 	${PROJECT_SOURCE_DIR}/src/math/base2log.c
 )
 
+cmocka_test(exponential
+	exponential.c
+	${PROJECT_SOURCE_DIR}/src/math/exp_fcn.c
+)
 cmocka_test(square_root
 	square_root.c
 	${PROJECT_SOURCE_DIR}/src/math/sqrt_int16.c
