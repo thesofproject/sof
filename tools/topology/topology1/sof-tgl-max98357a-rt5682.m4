@@ -172,6 +172,7 @@ ifdef(`NOHOTWORD',
 `
 define(NO16KDMIC)
 define(DMIC_48k_CORE_ID, 1)
+ifdef(`DMICPROC',`',`define(`DMICPROC', passthrough)')
 include(`platform/intel/intel-generic-dmic.m4')',
 `include(`platform/intel/intel-generic-dmic-kwd.m4')')
 
