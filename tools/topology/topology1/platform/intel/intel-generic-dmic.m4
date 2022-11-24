@@ -11,6 +11,8 @@ ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
 # variable that need to be defined in upper m4
+ifdef(`DMICPROC',`',`fatal_error(note: Need to define dmic processing for intel-generic-dmic
+)')
 ifdef(`CHANNELS',`',`fatal_error(note: Need to define channel number for intel-generic-dmic
 )')
 ifdef(`DMIC_PCM_48k_ID',`',`fatal_error(note: Need to define dmic48k pcm id for intel-generic-dmic
