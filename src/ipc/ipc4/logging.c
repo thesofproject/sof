@@ -42,12 +42,6 @@ LOG_MODULE_REGISTER(mtrace, CONFIG_SOF_LOG_LEVEL);
  */
 #define IPC4_MTRACE_AGING_TIMER_MIN_MS 100
 
-/**
- * Shortest time between IPC notifications sent to host. This
- * is used as protection against a flood of log messages.
- */
-#define IPC4_MTRACE_NOTIFY_MIN_DELTA_MS 10
-
 /* bb2aa22e-1ab6-4650-8501-6e67fcc04f4e */
 DECLARE_SOF_UUID("mtrace-task", mtrace_task_uuid, 0xbb2aa22e, 0x1ab6, 0x4650,
 		 0x85, 0x01, 0x6e, 0x67, 0xfc, 0xc0, 0x4f, 0x4e);
@@ -77,9 +71,6 @@ static void mtrace_log_hook(size_t written, size_t space_left)
 		return;
 
 	delta = k_uptime_get() - mtrace_notify_last_sent;
-
-	if (delta < IPC4_MTRACE_NOTIFY_MIN_DELTA_MS)
-		return;
 
 	if (space_left < NOTIFY_BUFFER_STATUS_THRESHOLD ||
 	    delta >= mtrace_aging_timer) {
