@@ -518,6 +518,7 @@ static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *p
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
 
 	memset(params, 0, sizeof(*params));
 	params->channels = cd->ipc_config.base.audio_fmt.channels_count;
@@ -529,7 +530,9 @@ static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *p
 	params->buffer.size = cd->ipc_config.base.ibs;
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sinkb->stream.rate = cd->ipc_config.sink_rate;
+	sink_c = buffer_acquire(sinkb);
+	sink_c->stream.rate = cd->ipc_config.sink_rate;
+	buffer_release(sink_c);
 }
 
 static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb)
