@@ -29,6 +29,11 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
+void dai_set_link_hda_config(uint16_t *link_config,
+			    struct ipc_config_dai *common_config,
+			    const void *spec_config)
+{ }
+
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)
 {
 	const struct sof_ipc_dai_config *config = spec_config;

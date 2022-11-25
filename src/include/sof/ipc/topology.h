@@ -56,6 +56,7 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma, bool *delay);
 int ipc4_process_on_core(uint32_t core, bool blocking);
 int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
+int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size);
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
