@@ -385,7 +385,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	int dai_count;
-	int i;
+	int i, ret;
 
 	drv = ipc4_get_drv((uint8_t *)&id);
 	if (!drv)
@@ -415,6 +415,13 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_ssp;
+		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
+					   copier->gtw_cfg.config_length * 4);
+		if (ret != 0) {
+			comp_err(parent_dev, "No ssp dma_config found in blob!");
+			return -EINVAL;
+		}
+		dai.out_fmt = &copier->out_fmt;
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
@@ -467,14 +474,20 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_dmic;
+
+		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
+					   copier->gtw_cfg.config_length * 4);
+		if (ret != 0) {
+			comp_err(parent_dev, "No dmic dma_config found in blob!");
+			return -EINVAL;
+		}
+		dai.out_fmt = &copier->out_fmt;
 		break;
 	default:
 		return -EINVAL;
 	}
 
 	for (i = 0; i < dai_count; i++) {
-		int ret;
-
 		dai.dai_index = dai_index[i];
 		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i,
 			       dai_count);
@@ -495,8 +508,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	/* create multi_endpoint_buffer for ALH multi-gateway case */
 	if (dai_count > 1) {
-		int ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
-
+		ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
 		if (ret < 0)
 			return ret;
 	}

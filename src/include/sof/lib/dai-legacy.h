@@ -546,6 +546,13 @@ static inline const struct dai_info *dai_info_get(void)
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *config);
 
 /**
+ * \brief Configure HD Audio DMA params for DAI
+ */
+void dai_set_link_hda_config(uint16_t *link_config,
+			     struct ipc_config_dai *common_config,
+			     const void *spec_config);
+
+/**
  * \brief Reset DAI DMA config
  */
 void dai_dma_release(struct dai_data *dd, struct comp_dev *dev);

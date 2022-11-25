@@ -789,3 +789,17 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 
 	return IPC4_SUCCESS;
 };
+
+int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
+{
+#if defined(CONFIG_ACE_VERSION_2_0)
+	uint32_t *dma_config_id = GET_IPC_DMA_CONFIG_ID(data_buffer, size);
+
+	if (*dma_config_id != GTW_DMA_CONFIG_ID)
+		return IPC4_INVALID_REQUEST;
+
+	dai->host_dma_config = GET_IPC_DMA_CONFIG(data_buffer, size);
+#endif
+	return IPC4_SUCCESS;
+}
+

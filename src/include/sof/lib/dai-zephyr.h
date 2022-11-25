@@ -76,6 +76,16 @@ struct timestamp_ops {
 		      struct timestamp_data *tsd);
 };
 
+union hdalink_cfg {
+	uint16_t full;
+	struct {
+		uint16_t lchan	:4;
+		uint16_t hchan	:4;
+		uint16_t stream	:6;
+		uint16_t rsvd	:1;
+		uint16_t dir	:1;
+	} part;
+};
 /**
  * \brief DAI group information
  */
@@ -255,6 +265,12 @@ int dai_get_stream_id(struct dai *dai, int direction);
  */
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *config);
 
+/**
+ * \brief Configure HD Audio DMA params for DAI
+ */
+void dai_set_link_hda_config(uint16_t *link_config,
+			     struct ipc_config_dai *common_config,
+			     const void *spec_config);
 /**
  * \brief Reset DAI DMA config
  */
