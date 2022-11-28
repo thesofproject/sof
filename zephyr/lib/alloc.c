@@ -12,8 +12,6 @@
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
 #include <platform/drivers/interrupt.h>
-#include <platform/lib/memory.h>
-#include <sof/platform.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>
@@ -87,16 +85,60 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
-static int statics_init(const struct device *unused)
+#if CONFIG_L3_HEAP
+static struct k_heap l3_heap;
+
+/**
+ * Returns the start of L3 memory heap.
+ * @return Pointer to the L3 memory location which can be used for L3 heap.
+ */
+static inline uintptr_t get_l3_heap_start(void)
 {
-	ARG_UNUSED(unused);
-
-	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
-
-	return 0;
+	/*
+	 * TODO: parse the actual offset using:
+	 * - HfIMRIA1 register
+	 * - rom_ext_load_offset
+	 * - main_fw_load_offset
+	 * - main fw size in manifest
+	 */
+	return (uintptr_t)z_soc_uncached_ptr(UINT_TO_POINTER
+			(ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE)));
 }
 
-SYS_INIT(statics_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
+/**
+ * Returns the size of L3 memory heap.
+ * @return Size of the L3 memory region which can be used for L3 heap.
+ */
+static inline size_t get_l3_heap_size(void)
+{
+	 /*
+	  * Calculate the IMR heap size using:
+	  * - total IMR size
+	  * - IMR base address
+	  * - actual IMR heap start
+	  */
+	return ROUND_DOWN(IMR_L3_HEAP_SIZE, L3_MEM_PAGE_SIZE);
+}
+
+/**
+ * Checks whether pointer is from L3 heap memory range.
+ * @param ptr Pointer to memory being checked.
+ * @return True if pointer falls into L3 heap region, false otherwise.
+ */
+static bool is_l3_heap_pointer(void *ptr)
+{
+	uintptr_t l3_heap_start = get_l3_heap_start();
+	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
+
+	if (is_cached(ptr))
+		ptr = z_soc_uncached_ptr((__sparse_force void __sparse_cache *)ptr);
+
+	if ((POINTER_TO_UINT(ptr) >= l3_heap_start) && (POINTER_TO_UINT(ptr) < l3_heap_end))
+		return true;
+
+	return false;
+}
+#endif
 
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
@@ -187,15 +229,27 @@ static inline bool zone_is_cached(enum mem_zone zone)
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
+	struct k_heap *heap;
+
+	/* choose a heap */
+	if (caps & SOF_MEM_CAPS_L3) {
+#if CONFIG_L3_HEAP
+		heap = &l3_heap;
+#else
+		k_panic();
+#endif
+	} else {
+		heap = &sof_heap;
+	}
 
 	if (zone_is_cached(zone) && !(flags & SOF_MEM_FLAG_COHERENT)) {
-		ptr = (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, 0, bytes);
 	} else {
 		/*
 		 * XTOS alloc implementation has used dcache alignment,
 		 * so SOF application code is expecting this behaviour.
 		 */
-		ptr = heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
+		ptr = heap_alloc_aligned(heap, PLATFORM_DCACHE_ALIGN, bytes);
 	}
 
 	if (!ptr && zone == SOF_MEM_ZONE_SYS)
@@ -276,5 +330,27 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
+#if CONFIG_L3_HEAP
+	if (is_l3_heap_pointer(ptr)) {
+		heap_free(&l3_heap, ptr);
+		return;
+	}
+#endif
+
 	heap_free(&sof_heap, ptr);
 }
+
+static int heap_init(const struct device *unused)
+{
+	ARG_UNUSED(unused);
+
+	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+
+#if CONFIG_L3_HEAP
+	sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()), get_l3_heap_size());
+#endif
+
+	return 0;
+}
+
+SYS_INIT(heap_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
