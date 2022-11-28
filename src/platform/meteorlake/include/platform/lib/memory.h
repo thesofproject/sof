@@ -10,6 +10,11 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
+
 #include <ace/lib/memory.h>
 #include <mem_window.h>
 #include <sof/lib/cpu.h>
@@ -47,6 +52,11 @@
 #define PLATFORM_HEAP_RUNTIME_SHARED	1
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
+
+/**
+ * size of HPSRAM system heap
+ */
+#define HEAPMEM_SIZE 0x40000
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 

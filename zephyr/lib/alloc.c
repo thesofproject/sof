@@ -69,8 +69,6 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #elif CONFIG_ACE
 
-#define HEAPMEM_SIZE 0x40000
-
 /*
  * System heap definition for ACE is defined below.
  * It needs to be explicitly packed into dedicated section
