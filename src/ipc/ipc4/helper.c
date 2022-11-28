@@ -330,6 +330,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
 	struct comp_dev *sink;
+	uint32_t flags;
 	int src_id, sink_id;
 	int ret;
 
@@ -354,6 +355,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
+
+	/*
+	 * Connect and bind the buffer to both source and sink components with the interrupts
+	 * disabled to prevent the IPC task getting preempted which could result in buffers being
+	 * only half connected when a pipeline task gets executed. A spinlock isn't required
+	 * because all connected pipelines need to be on the same core.
+	 */
+	irq_local_disable(flags);
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -393,6 +402,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!sink->direction_set || !source->direction_set)
 		goto err;
 
+	irq_local_enable(flags);
+
 	return IPC4_SUCCESS;
 err:
 	comp_unbind(sink, bu);
@@ -403,6 +414,7 @@ e_sink_connect:
 e_src_bind:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
+	irq_local_enable(flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -419,6 +431,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *src, *sink;
 	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
+	uint32_t flags;
 	int ret, ret1;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
@@ -459,12 +472,17 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	/*
 	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
-	 * even in case of errors.
+	 * even in case of errors. Disable interrupts during disconnect and unbinding to prevent
+	 * the IPC task getting preempted which could result in buffers being only half connected
+	 * when a pipeline task gets executed. A spinlock isn't required because all connected
+	 * pipelines need to be on the same core.
 	 */
+	irq_local_disable(flags);
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 	ret = comp_unbind(src, bu);
 	ret1 = comp_unbind(sink, bu);
+	irq_local_enable(flags);
 
 	buffer_free(buffer);
 
