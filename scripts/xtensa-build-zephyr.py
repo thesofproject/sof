@@ -906,7 +906,7 @@ RI_INFO_UNSUPPORTED += ['rn']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 
 # sof_ri_info.py has not caught up with the latest rimage yet: these will print a warning.
-RI_INFO_FIXME = ['mtl']
+RI_INFO_FIXME = ['mtl', 'lnl']
 
 def reproducible_checksum(platform, ri_file):
 
