@@ -28,6 +28,7 @@
 #include <version.h>
 #include <zephyr/sys/__assert.h>
 #include <soc.h>
+#include <adsp_memory.h>
 
 #if !CONFIG_KERNEL_COHERENCE
 #include <zephyr/arch/xtensa/cache.h>
@@ -68,8 +69,6 @@ extern struct tr_ctx zephyr_tr;
 __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #elif CONFIG_ACE
-
-#define HEAPMEM_SIZE 0x40000
 
 /*
  * System heap definition for ACE is defined below.

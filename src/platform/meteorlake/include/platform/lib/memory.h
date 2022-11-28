@@ -48,6 +48,11 @@
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
 
+/**
+ * size of HPSRAM system heap
+ */
+#define HEAPMEM_SIZE 0x40000
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else
