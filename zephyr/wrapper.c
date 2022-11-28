@@ -191,8 +191,10 @@ void sys_comp_dai_init(void);
 void sys_comp_src_init(void);
 void sys_comp_mux_init(void);
 #if CONFIG_IPC_MAJOR_3
+void sys_comp_src_init(void);
 void sys_comp_selector_init(void);
 #else
+void sys_comp_module_src_interface_init(void);
 void sys_comp_module_selector_interface_init(void);
 #endif
 void sys_comp_switch_init(void);
@@ -286,8 +288,13 @@ int task_main_start(struct sof *sof)
 	if (IS_ENABLED(CONFIG_COMP_DAI))
 		sys_comp_dai_init();
 
-	if (IS_ENABLED(CONFIG_COMP_SRC))
+	if (IS_ENABLED(CONFIG_COMP_SRC)) {
+#if CONFIG_IPC_MAJOR_3
 		sys_comp_src_init();
+#else
+		sys_comp_module_src_interface_init();
+#endif
+	}
 
 	if (IS_ENABLED(CONFIG_COMP_SEL))
 #if CONFIG_IPC_MAJOR_3
