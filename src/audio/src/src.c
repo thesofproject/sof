@@ -644,7 +644,7 @@ static int src_verify_params(struct comp_dev *dev,
 			return ret;
 		}
 	} else {
-		if (cd->ipc_config.sink_rate && (params->rate != cd->ipc_config.sink_rate)) {
+		if (cd->ipc_config.sink_rate && params->rate != cd->ipc_config.sink_rate) {
 			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
 				 params->rate, cd->ipc_config.sink_rate);
 			return -EINVAL;
@@ -654,9 +654,8 @@ static int src_verify_params(struct comp_dev *dev,
 	/* update downstream (playback) or upstream (capture) buffer parameters
 	 */
 	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
-	if (ret < 0) {
+	if (ret < 0)
 		comp_err(dev, "src_verify_params(): comp_verify_params() failed.");
-	}
 
 	return ret;
 }
