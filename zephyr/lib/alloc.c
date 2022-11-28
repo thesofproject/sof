@@ -121,7 +121,8 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 	return ret;
 }
 
-static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_t bytes)
+static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h,
+						      size_t min_align, size_t bytes)
 {
 	void __sparse_cache *ptr;
 
@@ -224,13 +225,11 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	}
 
 	new_ptr = rballoc_align(flags, caps, bytes, alignment);
-	if (!new_ptr) {
+	if (!new_ptr)
 		return NULL;
-	}
 
-	if (!(flags & SOF_MEM_FLAG_NO_COPY)) {
-		memcpy(new_ptr, ptr, MIN(bytes, old_bytes));
-	}
+	if (!(flags & SOF_MEM_FLAG_NO_COPY))
+		memcpy_s(new_ptr, bytes, ptr, MIN(bytes, old_bytes));
 
 	rfree(ptr);
 
@@ -256,19 +255,19 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 
 /**
  * Allocates memory block from SOF_MEM_ZONE_BUFFER.
- * @param flags Flags, see SOF_MEM_FLAG_...
+ * @param flags see SOF_MEM_FLAG_...
  * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
- * @param alignment Alignment in bytes.
+ * @param align Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  */
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
-		    uint32_t alignment)
+		    uint32_t align)
 {
 	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(&sof_heap, alignment, bytes);
+		return heap_alloc_aligned(&sof_heap, align, bytes);
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
+	return (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, align, bytes);
 }
 
 /*
