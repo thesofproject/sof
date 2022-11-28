@@ -8,6 +8,8 @@
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
 #include <sof_versions.h>
+#include <sof/lib/cpu-clk-manager.h>
+#include <sof/lib/cpu.h>
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -323,6 +325,71 @@ static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 	return IPC4_UNAVAILABLE;
 }
 
+static int basefw_register_kcps(bool first_block,
+				bool last_block,
+				uint32_t data_offset_or_size,
+				const char *data)
+{
+	if (!(first_block && last_block))
+		return -EINVAL;
+
+	/* value of kcps to request on core 0. Can be negative */
+	if (core_kcps_adjust(0, *(int32_t *)data))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
+{
+	if (core_kcps_adjust(request->core_id, request->kcps))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int basefw_resource_allocation_request(bool first_block,
+					      bool last_block,
+					      uint32_t data_offset_or_size,
+					      const char *data)
+{
+	struct ipc4_resource_request *request;
+
+	if (!(first_block && last_block))
+		return -EINVAL;
+
+	request = (struct ipc4_resource_request *)data;
+
+	switch (request->ra_type) {
+	case IPC4_RAT_DSP_KCPS:
+		return basefw_kcps_allocation_request(&request->ra_data.kcps);
+	case IPC4_RAT_MEMORY:
+		return -EINVAL;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
+{
+	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	uint32_t core_kcps[CONFIG_CORE_COUNT] = {0};
+	int core_id;
+
+	set_tuple_uint32(tuple, IPC4_ACTIVE_CORES_MASK, cpu_enabled_cores());
+	tuple = next_tuple(tuple);
+
+	for (core_id = 0; core_id < CONFIG_CORE_COUNT; core_id++) {
+		if (cpu_is_core_enabled(core_id))
+			core_kcps[core_id] = core_kcps_get(core_id);
+	}
+
+	set_tuple(tuple, IPC4_CORE_KCPS, sizeof(core_kcps), core_kcps);
+	tuple = next_tuple(tuple);
+	*data_offset = (int)((char *)tuple - data);
+	return 0;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -358,6 +425,9 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		} else {
 			return ret;
 		}
+	break;
+	case IPC4_POWER_STATE_INFO_GET:
+		return basefw_power_state_info_get(data_offset, data);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
@@ -366,7 +436,6 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	case IPC4_PIPELINE_PROPS_GET:
 	case IPC4_SCHEDULERS_INFO_GET:
 	case IPC4_GATEWAYS_INFO_GET:
-	case IPC4_POWER_STATE_INFO_GET:
 	case IPC4_LIBRARIES_INFO_GET:
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
@@ -394,6 +463,11 @@ static int basefw_set_large_config(struct comp_dev *dev,
 						last_block, data_offset, data);
 	case IPC4_ENABLE_LOGS:
 		return ipc4_logging_enable_logs(first_block, last_block, data_offset, data);
+	case IPC4_REGISTER_KCPS:
+		return basefw_register_kcps(first_block, last_block, data_offset, data);
+	case IPC4_RESOURCE_ALLOCATION_REQUEST:
+		return basefw_resource_allocation_request(first_block, last_block, data_offset,
+							  data);
 	default:
 		break;
 	}
