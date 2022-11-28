@@ -48,10 +48,6 @@
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
 
-/* boot loader in IMR */
-#define IMR_BOOT_LDR_MANIFEST_BASE	0xA1042000
-#define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
-
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

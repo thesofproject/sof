@@ -19,6 +19,9 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/wait.h>
+#ifdef __ZEPHYR__
+#include <adsp_memory.h> /* for IMR_BOOT_LDR_MANIFEST_BASE */
+#endif
 
 #include <sof/sof.h>
 #include <rtos/spinlock.h>
