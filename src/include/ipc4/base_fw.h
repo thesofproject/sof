@@ -667,3 +667,8 @@ struct ipc4_log_state_info {
 	 */
 	uint32_t logs_mask[IPC4_MAX_LIBS_COUNT];
 } __attribute__((packed, aligned(4)));
+
+enum ipc4_power_state_type {
+	IPC4_ACTIVE_CORES_MASK = 0,
+	IPC4_CORE_KCPS = 1,
+};
