@@ -576,6 +576,130 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 #error "No or invalid IPC MAJOR version selected."
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+static int src_verify_params(struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "src_verify_params()");
+
+	/* check whether params->rate (received from driver) are equal
+	 * to src->source_rate (PLAYBACK) or src->sink_rate (CAPTURE) set during
+	 * creating src component in src_new().
+	 * src->source/sink_rate = 0 means that source/sink rate can vary.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = src_stream_pcm_source_rate_check(cd->ipc_config, params);
+		if (ret < 0) {
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+			return ret;
+		}
+	} else {
+		if (cd->ipc_config.sink_rate && params->rate != cd->ipc_config.sink_rate) {
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.sink_rate);
+			return -EINVAL;
+		}
+	}
+
+	/* update downstream (playback) or upstream (capture) buffer parameters
+	 */
+	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
+	if (ret < 0)
+		comp_err(dev, "src_verify_params(): comp_verify_params() failed.");
+
+	return ret;
+}
+
+static int src_get_copy_limits(struct comp_data *cd,
+			       const struct comp_buffer __sparse_cache *source,
+			       const struct comp_buffer __sparse_cache *sink)
+{
+	struct src_param *sp;
+	struct src_stage *s1;
+	struct src_stage *s2;
+	int frames_src;
+	int frames_snk;
+
+	/* Get SRC parameters */
+	sp = &cd->param;
+	s1 = cd->src.stage1;
+	s2 = cd->src.stage2;
+
+	/* Calculate how many blocks can be processed with
+	 * available source and free sink frames amount.
+	 */
+	if (s2->filter_length > 1) {
+		/* Two polyphase filters case */
+		frames_snk = audio_stream_get_free_frames(&sink->stream);
+		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
+		sp->stage2_times = frames_snk / s2->blk_out;
+		frames_src = audio_stream_get_avail_frames(&source->stream);
+		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
+		sp->stage1_times = frames_src / s1->blk_in;
+		sp->blk_in = sp->stage1_times * s1->blk_in;
+		sp->blk_out = sp->stage2_times * s2->blk_out;
+	} else {
+		/* Single polyphase filter case */
+		frames_snk = audio_stream_get_free_frames(&sink->stream);
+		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
+		sp->stage1_times = frames_snk / s1->blk_out;
+		frames_src = audio_stream_get_avail_frames(&source->stream);
+		sp->stage1_times = MIN(sp->stage1_times,
+				       frames_src / s1->blk_in);
+		sp->blk_in = sp->stage1_times * s1->blk_in;
+		sp->blk_out = sp->stage1_times * s1->blk_out;
+	}
+
+	if (sp->blk_in == 0 && sp->blk_out == 0)
+		return -EIO;
+
+	return 0;
+}
+
+static int src_check_buffer_sizes(struct comp_data *cd,
+				  struct audio_stream __sparse_cache *source_stream,
+				  struct audio_stream __sparse_cache *sink_stream)
+{
+	struct src_stage *s1 = cd->src.stage1;
+	struct src_stage *s2 = cd->src.stage2;
+	int stage1_times;
+	int stage2_times;
+	int blk_in;
+	int blk_out;
+	int n;
+
+	if (s2->filter_length > 1) {
+		/* Two polyphase filters case */
+		stage2_times = ceil_divide(cd->sink_frames, s2->blk_out);
+		stage1_times = ceil_divide(cd->source_frames, s1->blk_in);
+		blk_in = stage1_times * s1->blk_in;
+		blk_out = stage2_times * s2->blk_out;
+	} else {
+		/* Single polyphase filter case */
+		stage1_times = ceil_divide(cd->sink_frames, s1->blk_out);
+		n = ceil_divide(cd->source_frames, s1->blk_in);
+		stage1_times = MAX(stage1_times, n);
+		blk_in = stage1_times * s1->blk_in;
+		blk_out = stage1_times * s1->blk_out;
+	}
+
+	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
+	if (source_stream->size < n) {
+		comp_cl_warn(&comp_src, "Source size %d is less than required %d",
+			     source_stream->size, n);
+	}
+
+	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
+	if (sink_stream->size < n) {
+		comp_cl_warn(&comp_src, "Sink size %d is less than required %d",
+			     sink_stream->size, n);
+	}
+
+	return 0;
+}
+
 static struct comp_dev *src_new(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec)
@@ -625,42 +749,6 @@ static void src_free(struct comp_dev *dev)
 
 	rfree(cd);
 	rfree(dev);
-}
-
-static int src_verify_params(struct comp_dev *dev,
-			     struct sof_ipc_stream_params *params)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_dbg(dev, "src_verify_params()");
-
-	/* check whether params->rate (received from driver) are equal
-	 * to src->source_rate (PLAYBACK) or src->sink_rate (CAPTURE) set during
-	 * creating src component in src_new().
-	 * src->source/sink_rate = 0 means that source/sink rate can vary.
-	 */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = src_stream_pcm_source_rate_check(cd->ipc_config, params);
-		if (ret < 0) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
-			return ret;
-		}
-	} else {
-		if (cd->ipc_config.sink_rate && params->rate != cd->ipc_config.sink_rate) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, cd->ipc_config.sink_rate);
-			return -EINVAL;
-		}
-	}
-
-	/* update downstream (playback) or upstream (capture) buffer parameters
-	 */
-	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
-	if (ret < 0)
-		comp_err(dev, "src_verify_params(): comp_verify_params() failed.");
-
-	return ret;
 }
 
 /* set component audio stream parameters */
@@ -816,52 +904,6 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-static int src_get_copy_limits(struct comp_data *cd,
-			       const struct comp_buffer __sparse_cache *source,
-			       const struct comp_buffer __sparse_cache *sink)
-{
-	struct src_param *sp;
-	struct src_stage *s1;
-	struct src_stage *s2;
-	int frames_src;
-	int frames_snk;
-
-	/* Get SRC parameters */
-	sp = &cd->param;
-	s1 = cd->src.stage1;
-	s2 = cd->src.stage2;
-
-	/* Calculate how many blocks can be processed with
-	 * available source and free sink frames amount.
-	 */
-	if (s2->filter_length > 1) {
-		/* Two polyphase filters case */
-		frames_snk = audio_stream_get_free_frames(&sink->stream);
-		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
-		sp->stage2_times = frames_snk / s2->blk_out;
-		frames_src = audio_stream_get_avail_frames(&source->stream);
-		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
-		sp->stage1_times = frames_src / s1->blk_in;
-		sp->blk_in = sp->stage1_times * s1->blk_in;
-		sp->blk_out = sp->stage2_times * s2->blk_out;
-	} else {
-		/* Single polyphase filter case */
-		frames_snk = audio_stream_get_free_frames(&sink->stream);
-		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
-		sp->stage1_times = frames_snk / s1->blk_out;
-		frames_src = audio_stream_get_avail_frames(&source->stream);
-		sp->stage1_times = MIN(sp->stage1_times,
-				       frames_src / s1->blk_in);
-		sp->blk_in = sp->stage1_times * s1->blk_in;
-		sp->blk_out = sp->stage1_times * s1->blk_out;
-	}
-
-	if (sp->blk_in == 0 && sp->blk_out == 0)
-		return -EIO;
-
-	return 0;
-}
-
 static void src_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
 			struct comp_buffer __sparse_cache *sink)
 {
@@ -914,48 +956,6 @@ static int src_copy(struct comp_dev *dev)
 
 	buffer_release(sink_c);
 	buffer_release(source_c);
-
-	return 0;
-}
-
-static int src_check_buffer_sizes(struct comp_data *cd,
-				  struct audio_stream __sparse_cache *source_stream,
-				  struct audio_stream __sparse_cache *sink_stream)
-{
-	struct src_stage *s1 = cd->src.stage1;
-	struct src_stage *s2 = cd->src.stage2;
-	int stage1_times;
-	int stage2_times;
-	int blk_in;
-	int blk_out;
-	int n;
-
-	if (s2->filter_length > 1) {
-		/* Two polyphase filters case */
-		stage2_times = ceil_divide(cd->sink_frames, s2->blk_out);
-		stage1_times = ceil_divide(cd->source_frames, s1->blk_in);
-		blk_in = stage1_times * s1->blk_in;
-		blk_out = stage2_times * s2->blk_out;
-	} else {
-		/* Single polyphase filter case */
-		stage1_times = ceil_divide(cd->sink_frames, s1->blk_out);
-		n = ceil_divide(cd->source_frames, s1->blk_in);
-		stage1_times = MAX(stage1_times, n);
-		blk_in = stage1_times * s1->blk_in;
-		blk_out = stage1_times * s1->blk_out;
-	}
-
-	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
-	if (source_stream->size < n) {
-		comp_cl_warn(&comp_src, "Source size %d is less than required %d",
-			     source_stream->size, n);
-	}
-
-	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
-	if (sink_stream->size < n) {
-		comp_cl_warn(&comp_src, "Sink size %d is less than required %d",
-			     sink_stream->size, n);
-	}
 
 	return 0;
 }
