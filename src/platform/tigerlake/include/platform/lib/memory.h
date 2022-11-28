@@ -15,6 +15,10 @@
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
 
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
 
 /* physical DSP addresses */
 
@@ -358,7 +362,9 @@
  */
 
 /* LP SRAM */
+#ifndef __ZEPHYR__
 #define LP_SRAM_BASE			0xBE800000
+#endif
 
 #if CONFIG_MULTICORE
 /* alternate reset vector */
@@ -436,11 +442,15 @@
 #define ROM_RESET_LIT_SIZE	0x200
 
 /* boot loader in IMR */
+
+#ifndef __ZEPHYR__
 #define IMR_BOOT_LDR_MANIFEST_BASE	0xB0032000
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
 #define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x120
+#endif
+
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + \
 					IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
 #define IMR_BOOT_LDR_LIT_SIZE		0x22
