@@ -4,6 +4,8 @@
 # compile every Zephyr module that can be found.
 if(CONFIG_SOF)
 
+message(FATAL_ERROR "just a test")
+
 if(CONFIG_LIBRARY)
 	set(PLATFORM "library")
 	set(ARCH host)
