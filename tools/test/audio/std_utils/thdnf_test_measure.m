@@ -4,6 +4,7 @@ function test = thdnf_test_measure(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+debug = 0;
 test.ph = [];
 test.fh = [];
 
@@ -62,7 +63,9 @@ for i = 1:length(test.ch);
 	nn = 1;
 	for m=1:test.na
 		for n=1:test.nf
-			fprintf('Measuring %.0f Hz ...\n', test.f(n));
+			if debug
+				fprintf('Measuring %.0f Hz ...\n', test.f(n));
+			end
 			i1 = d+(nn-1)*nt+nt_skip;
 			i2 = i1+nt_use-1;
 			nn = nn+1;
