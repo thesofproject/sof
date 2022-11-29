@@ -196,6 +196,7 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 		 * there is no equation known for minimum size.
 		 */
 		a->sbuf_length = 2 * nch * stage1->blk_out * r1;
+		a->sbuf_length += a->sbuf_length >> 3;
 	}
 
 	a->src_multich = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
@@ -855,7 +856,7 @@ static int src_get_copy_limits(struct comp_data *cd,
 		sp->blk_out = sp->stage1_times * s1->blk_out;
 	}
 
-	if (sp->blk_in == 0 || sp->blk_out == 0)
+	if (sp->blk_in == 0 && sp->blk_out == 0)
 		return -EIO;
 
 	return 0;
