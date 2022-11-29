@@ -456,6 +456,7 @@ end
 function test = test_run_src(test, t)
 test.fs_in = test.fs1;
 test.fs_out = test.fs2;
+test.extra_opts = '-C 300000'; % Limit to 5 min max, assume 1 ms scheduling
 delete_check(1, test.fn_out);
 test = test_run(test);
 end
