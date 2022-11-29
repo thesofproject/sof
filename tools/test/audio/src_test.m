@@ -413,7 +413,9 @@ test = test_run_src(test, t);
 %% Analyze
 test.fs = t.fs2;
 test = chirp_test_analyze(test);
-src_test_result_print(t, 'Chirp', 'chirpf');
+if test.fail >= 0
+	src_test_result_print(t, 'Chirp', 'chirpf');
+end
 
 % Delete files unless e.g. debugging and need data to run
 delete_check(t.files_delete, test.fn_in);
