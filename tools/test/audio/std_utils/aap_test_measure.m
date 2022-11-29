@@ -7,6 +7,8 @@ function test = aap_test_measure(test)
 %% Reference: AES17 6.6.6 Attenuation of alias products
 %  http://www.aes.org/publications/standards/
 
+debug = 0;
+
 %% Load output file
 [x, nx] = load_test_output(test);
 if nx == 0
@@ -21,7 +23,9 @@ end
 win = hamming(nt_use);
 m0 = zeros(test.nf,1);
 for n=1:test.nf
-        fprintf('Measuring %.0f Hz ...\n', test.f(n));
+	if debug
+		fprintf('Measuring %.0f Hz ...\n', test.f(n));
+	end
         i1 = d+(n-1)*nt+nt_skip;
         i2 = i1+nt_use-1;
         m0(n) = level_dbfs(x(i1:i2).*win);
