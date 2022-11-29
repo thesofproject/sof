@@ -26,7 +26,6 @@
 #include <version.h>
 #include <zephyr/sys/__assert.h>
 #include <soc.h>
-#include <adsp_memory.h>
 
 #if !CONFIG_KERNEL_COHERENCE
 #include <zephyr/arch/xtensa/cache.h>

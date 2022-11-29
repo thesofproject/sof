@@ -51,11 +51,6 @@
 #define HOST_WIN_SIZE		0x00000008
 #define HOST_WIN_BASE(x)	(0x00071A00 + x * HOST_WIN_SIZE)
 
-/*
- * size of HPSRAM system heap
- */
-#define HEAPMEM_SIZE 0x40000
-
 /* IRQ controller */
 #define IRQ_BASE		0x00078800
 #define IRQ_SIZE		0x00000200
