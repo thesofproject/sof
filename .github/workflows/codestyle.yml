@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        strictness: [null, --strict]
+        strictness: [null, --subjective]
 
     env:
       PR_NUM: ${{github.event.number}}
