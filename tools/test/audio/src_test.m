@@ -465,7 +465,7 @@ end
 
 function src_test_result_print(t, testverbose, testacronym, ph)
 tstr = sprintf('%s SRC %d, %d', testverbose, t.fs1, t.fs2);
-if nargin > 3
+if nargin > 3 && ~isempty(ph)
         title(ph, tstr);
 else
         title(tstr);
