@@ -15,6 +15,11 @@
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
 
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
+
 /* physical DSP addresses */
 
 /* shim */
@@ -332,7 +337,9 @@
  */
 
 /* LP SRAM */
+#ifndef LP_SRAM_BASE
 #define LP_SRAM_BASE		0xBE800000
+#endif
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8			0
@@ -429,7 +436,9 @@
 					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
+#ifndef IMR_BOOT_LDR_TEXT_ENTRY_BASE
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	BOOT_LDR_TEXT_ENTRY_BASE
+#endif
 
 /* code loader entry point for base fw */
 #define _SRAM_VECBASE_RESET (BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)

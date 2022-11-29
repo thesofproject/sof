@@ -14,6 +14,11 @@
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
 
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
+
 /* physical DSP addresses */
 
 /* shim */
@@ -110,8 +115,12 @@
 #define ROM_SIZE		0x00002000
 
 /* IMR accessible via L2$ */
+#ifndef L2_SRAM_BASE
 #define L2_SRAM_BASE		0xA000A000
+#endif
+#ifndef L2_SRAM_SIZE
 #define L2_SRAM_SIZE		0x00056000
+#endif
 
 #define L2_VECTOR_SIZE			0x1000
 
@@ -365,7 +374,9 @@
  */
 
 /* LP SRAM */
+#ifndef LP_SRAM_BASE
 #define LP_SRAM_BASE		0xBE800000
+#endif
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8		0
@@ -435,6 +446,7 @@
 #define ROM_RESET_LIT_SIZE	0x200
 
 /* boot loader in IMR - APL uses manifest v1.8 and SKL/KBL use v1.5 */
+#ifndef IMR_BOOT_LDR_TEXT_ENTRY_BASE
 #if CONFIG_APOLLOLAKE && !(CONFIG_KABYLAKE || CONFIG_SKYLAKE)
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB000A000
 #elif CONFIG_KABYLAKE || CONFIG_SKYLAKE
@@ -442,6 +454,7 @@
 #else
 #error Platform not specified
 #endif
+#endif  /* IMR_BOOT_LDR_TEXT_ENTRY_BASE */
 
 #define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x86
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + \

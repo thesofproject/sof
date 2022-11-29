@@ -13,6 +13,11 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
+
 struct sof;
 
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
@@ -69,7 +74,9 @@ static inline uint32_t arch_get_stack_size(void)
 #define HP_SRAM_SIZE (SRAM_BANK_SIZE * 47)
 
 #define HP_SRAM_BASE	0xBE000000
+#ifndef LP_SRAM_BASE
 #define LP_SRAM_BASE	0xBE800000
+#endif
 
 #define SOF_FW_END		(HP_SRAM_BASE + HP_SRAM_SIZE)
 
