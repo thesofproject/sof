@@ -20,6 +20,7 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
+#include <rtos/clk.h>
 
 #include <sof_versions.h>
 #include <stdint.h>
@@ -77,6 +78,7 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
