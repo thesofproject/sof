@@ -7,8 +7,8 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 %
 % bits_in    - input word length
 % bits_out   - output word length
-% fs_in      - vector of rates in
-% fs_out     - vector of rates out
+% fs_in      - vector of rates in, default 8 to 192 kHz
+% fs_out     - vector of rates out, default 8 to 192 kHz
 % full_test  - set to 0 for chirp only, 1 for all, default 1
 % show_plots - set to 1 to see plots, default 0
 %
@@ -27,6 +27,8 @@ mkdir_check('plots');
 mkdir_check('reports');
 
 %% Defaults for call parameters
+default_in  = [ 8 11.025 12 16 18.9 22.050 24 32 37.8 44.1 48 50 64 88.2 96 176.4 192] * 1e3;
+default_out = [ 8 11.025 12 16      22.05  24 32      44.1 48 50 64 88.2 96 176.4 192] * 1e3;
 if nargin < 1
 	bits_in = 32;
 end
@@ -34,18 +36,22 @@ if nargin < 2
 	bits_out = 32;
 end
 if nargin < 3
-        fs_in_list = [ 8 11.025 12 16 18.9 22.050 24 32 37.8 44.1 48 ...
-		       50 64 88.2 96 176.4 192] * 1e3;
+	fs_in_list = default_in;
 end
 if nargin < 4
-	fs_out_list = [ 8 11.025 12 16 22.05 24 32 44.1 48 ...
-		        50 64 88.2 96 176.4 192] * 1e3;
+	fs_out_list = default_out;
 end
 if nargin < 5
 	full_test = 1;
 end
 if nargin < 6
 	show_plots = 0;
+end
+if isempty(fs_in_list)
+	fs_in_list = default_in;
+end
+if isempty(fs_out_list)
+	fs_out_list = default_out;
 end
 
 %% Generic test pass/fail criteria
