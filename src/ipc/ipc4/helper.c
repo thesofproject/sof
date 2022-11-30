@@ -419,7 +419,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *src, *sink;
 	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
-	int ret;
+	int ret, ret1;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -457,17 +457,18 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!buffer)
 		return IPC4_INVALID_RESOURCE_ID;
 
+	/*
+	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
+	 * even in case of errors.
+	 */
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+	ret = comp_unbind(src, bu);
+	ret1 = comp_unbind(sink, bu);
 
 	buffer_free(buffer);
 
-	ret = comp_unbind(src, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
-
-	ret = comp_unbind(sink, bu);
-	if (ret < 0)
+	if (ret || ret1)
 		return IPC4_INVALID_RESOURCE_ID;
 
 	return IPC4_SUCCESS;
