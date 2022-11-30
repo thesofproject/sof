@@ -18,9 +18,6 @@ jobs:
         # many lines. Pay attention to COMMAS.
         IPC_platforms: [
           # - IPC3 default
-          apl cnl,
-          icl jsl,
-          tgl tgl-h,
           imx8 imx8x imx8m,
           # - IPC4 default
           mtl,
