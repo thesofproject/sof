@@ -164,7 +164,7 @@ set(TPLGS
 	"sof-adl-nau8825\;sof-adl-nau8825\;-DNO_AMP\;-DBT_OFFLOAD"
 	"sof-adl-nau8825\;sof-adl-max98373-nau8825\;-DAMP_SSP=1\;-DSMART_AMP\;-DBT_OFFLOAD"
 	"sof-adl-nau8825\;sof-adl-max98373-nau8825-dts\;-DAMP_SSP=1\;-DSMART_AMP\;-DBT_OFFLOAD\;-DDTS=`DTS'\;-DSPK_MIC_PERIOD_US=10000"
-	"sof-adl-nau8825\;sof-adl-max98360a-nau8825\;-DCODEC=MAX98360A\;-DFMT=s16le\;-DAMP_SSP=1\;-DBT_OFFLOADi\;-DSPK_MIC_PERIOD_US=10000"
+	"sof-adl-nau8825\;sof-adl-max98360a-nau8825\;-DCODEC=MAX98360A\;-DFMT=s16le\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DSPK_MIC_PERIOD_US=10000"
 	"sof-adl-nau8825\;sof-adl-rt1019-nau8825\;-DCODEC=RT1019P\;-DFMT=s16le\;-DAMP_SSP=2\;-DSPK_MIC_PERIOD_US=10000"
 	"sof-adl-nau8825\;sof-adl-rt1015-nau8825\;-DCODEC=RT1015P\;-DFMT=s32le\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DSPK_MIC_PERIOD_US=10000"
 	"sof-tgl-sdw-max98373-rt5682\;sof-tgl-sdw-max98373-rt5682\;-DCHANNELS=4\;-DPLATFORM=tgl"
