@@ -582,6 +582,9 @@ void dma_trace_flush(void *t)
 
 void dma_trace_on(void)
 {
+	if (!dma_trace_initialized(sof_get()->dmat))
+		return;
+
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
 	if (trace_data->enabled) {
