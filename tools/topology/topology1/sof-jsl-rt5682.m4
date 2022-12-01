@@ -23,7 +23,8 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP1  (Speaker - ALC1015)
+ifdef(`NO_AMP',`',`
+# PCM0 ----> volume -----> SSP1  (Speaker - ALC1015)')
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
 # PCM2 ----> volume -----> iDisp1
 # PCM3 ----> volume -----> iDisp2
@@ -55,6 +56,7 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
+ifdef(`NO_AMP',`',`
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(ENDPOINT_NAME, `Speakers')
@@ -63,7 +65,7 @@ PIPELINE_PCM_ADD(
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
-undefine(ENDPOINT_NAME)
+undefine(ENDPOINT_NAME)')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -113,12 +115,13 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 
+ifdef(`NO_AMP',`',`
 # playback DAI is SSP1 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, SPK_INDEX, SPK_NAME,
 	PIPELINE_SOURCE_1, 2, SPK_DATA_FORMAT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -157,7 +160,8 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)
+ifdef(`NO_AMP',`',`
+PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
@@ -180,9 +184,10 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
 
+ifdef(`NO_AMP',`',`
 # SSP 1 (ID: 6)
 DAI_CONFIG(SSP, SPK_INDEX, 6, SPK_NAME,
-	SET_SSP_CONFIG)
+	SET_SSP_CONFIG)')
 
 # 4 HDMI/DP outputs (ID: 3,4,5)
 DAI_CONFIG(HDA, 0, 3, iDisp1,
