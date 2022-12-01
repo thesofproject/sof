@@ -392,7 +392,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*y_wptr = Q_SHIFT_RND(*fir->out_rp, 31, 15);
+				*y_wptr = sat_int16(Q_SHIFT_RND(*fir->out_rp, 31, 15));
 				y_wptr++;
 				fir->out_rp++;
 			}
