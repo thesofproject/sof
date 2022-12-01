@@ -198,6 +198,7 @@ set(TPLGS
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015-xperi\;-DPLATFORM=jsl-rt1015\;-DINCLUDE_IIR_EQ=1"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-jsl-rt5682\;sof-jsl-cs42l42-mx98360a\;-DPLATFORM=jsl-dedede"
+	"sof-jsl-rt5682\;sof-jsl-rt5682\;-DHEADPHONE=rt5682\;-DPLATFORM=icl\;-DNO_AMP"
 
 	"sof-glk-es8336\;sof-apl-es8336\;-DPLATFORM=bxt\;-DSSP_NUM=2\;-DCHANNELS=0"
 	"sof-glk-es8336\;sof-apl-es8336-ssp0\;-DPLATFORM=bxt\;-DSSP_NUM=0\;-DCHANNELS=0"
