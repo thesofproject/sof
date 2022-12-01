@@ -26,6 +26,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-4ch.bin"
 # SSP topology for MTL
 "cavs-nocodec\;sof-mtl-nocodec\;PLATFORM=mtl,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin"
+
+"cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,NUM_HDMIS=4,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-max98357a-rt5682.bin"
 )
 
 add_custom_target(topology2_ace)
