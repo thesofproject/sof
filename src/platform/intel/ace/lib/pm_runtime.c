@@ -9,7 +9,7 @@
 #include <sof_versions.h>
 #include <stdint.h>
 
-#include <ace_v1x-regs.h>
+#include <adsp_boot.h>
 #include <zephyr/pm/policy.h>
 
 LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
