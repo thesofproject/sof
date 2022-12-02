@@ -357,7 +357,7 @@ static struct comp_dev *google_rtc_audio_processing_create(
 	dev->state = COMP_STATE_READY;
 	comp_dbg(dev, "google_rtc_audio_processing_create(): Ready");
 	return dev;
- fail:
+fail:
 	comp_err(dev, "google_rtc_audio_processing_create(): Failed");
 	if (cd) {
 		rfree(cd->output_buffer);
