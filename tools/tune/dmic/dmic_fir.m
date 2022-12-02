@@ -46,7 +46,7 @@ end
 
 %% Iterate order and passband width
 iterate = 1;
-lo_ind = find(f < passhz/20);
+lo_ind = f < passhz/20;
 pb_ind = find(f < passhz);
 sb_ind = find(f > stophz);
 pb_ripple_min = 1000;

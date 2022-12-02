@@ -2,7 +2,7 @@ function drc_plot_db_curve(coefs);
 
 if exist('OCTAVE_VERSION', 'builtin')
 	pkg load control;
-endif
+end
 
 db_thres = coefs.db_threshold;
 db_knee_thres = db_thres + coefs.db_knee;
@@ -18,20 +18,26 @@ db_ys = db_curve(coefs, db_xs);
 
 % Plot the x-y dB curve
 plot(db_xs, db_ys, "b");
+text(db_xs(end), db_ys(end), "dB curve");
 hold on
 grid on
 % Plot the reference line: x = db_thres
 plot([db_thres, db_thres], [db_ys(1), db_knee_thres], "g");
+text([db_thres, db_thres], [db_ys(1), db_knee_thres], "reference line: x = db thres");
 hold on
 % Plot the reference line: x = db_knee_thres
 plot([db_knee_thres, db_knee_thres], [db_ys(1), db_knee_thres], "g");
+text([db_knee_thres, db_knee_thres], [db_ys(1), db_knee_thres], "reference line: x = db knee thres");
 hold on
 % Plot the reference line: y = x
 plot([db_xs(1), db_knee_thres], [db_xs(1), db_knee_thres], "r");
+text([db_xs(1), db_knee_thres] + 0.5, [db_xs(1), db_knee_thres], "reference line: y = x",'HorizontalAlignment', 'Center', 'VerticalAlignment', 'Bottom');
 hold off
+title('Single band DRC range of db(x) determined by thres(db) and knee thres(db)');
 %pause();
 
 end
+
 
 function db_ys = db_curve(coefs, db_xs);
 
@@ -50,7 +56,7 @@ for i = 1:100
 	else
 		% Among knee curve
 		db_ys(i) = db_knee_curve(coefs, db_x);
-	endif
+    end
 end
 
 end

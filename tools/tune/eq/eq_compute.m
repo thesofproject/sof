@@ -41,7 +41,7 @@ eq = preprocess_responses(eq);
 
 %% Define target (e.g. speaker) response as parametric filter. This could also
 %  be numerical data interpolated to the grid.
-if length(eq.parametric_target_response) > 0
+if ~isempty(eq.parametric_target_response)
         [eq.t_z, eq.t_p, eq.t_k] = eq_define_parametric_eq( ...
                 eq.parametric_target_response, eq.fs);
         eq.t_db = eq_compute_response(eq.t_z, eq.t_p, eq.t_k, eq.f, eq.fs);
@@ -121,7 +121,7 @@ function eq = preprocess_responses(eq)
 %% Smooth response with 1/N octave filter for plotting
 eq.m_db_s = logsmooth(eq.f, eq.m_db, eq.logsmooth_plot);
 
-if length(eq.target_m_db) > 0
+if ~isempty(eq.target_m_db)
         % Use target_m_db as dummy group delay, ignore other than magnitude
         [f0, m0, ~] = fix_response_dcnyquist_mult(eq.target_f, ...
                 eq.target_m_db, [], eq.fs);
@@ -139,14 +139,14 @@ gd_s = gd_s0;
 if min(f_hz) >  0
         f_hz = [0 f_hz];
         m_db = [m_db(1) m_db]; % DC the same as 1st measured point
-        if length(gd_s) > 0
+        if ~isempty(gd_s)
                 gd_s = [gd_s(1) gd_s]; % DC the same as 1st measured point
         end
 end
 if max(f_hz) <  fs/2
         f_hz = [f_hz fs/2];
         m_db = [m_db m_db(end)]; % Fs/2 the same as last measured point
-        if length(gd_s) > 0
+        if ~isempty(gd_s)
                 gd_s = [gd_s gd_s(end)]; % Fs/2 the same as last measured point
         end
 end
@@ -251,17 +251,17 @@ idx = find(fhz > 1e3, 1, 'first') - 1;
 m_db = err2db - err2db(idx);
 if auto
         cf = [1e3 6e3];
-        ind1 = find(fhz < cf(2));
+        ind1 = fhz < cf(2);
         ind2 = find(fhz(ind1) > cf(1));
         ipeak = find(m_db(ind2) == max(m_db(ind2))) + ind2(1);
-        ind1 = find(fhz < cf(1));
+        ind1 = fhz < cf(1);
         ind2 = find(m_db(ind1) > m_db(ipeak));
-        if length(ind2) > 0
+        if ~isempty(ind2)
                 fmin_fir = fhz(ind2(end));
         end
         ind1 = find(fhz > cf(2));
         ind2 = find(m_db(ind1) > m_db(ipeak)) + ind1(1);
-        if length(ind2) > 0
+        if ~isempty(ind2)
                 fmax_fir = fhz(ind2(1));
         end
 end
@@ -270,16 +270,16 @@ end
 ind1 = find(fhz < fmin_fir);
 ind2 = find(fhz > fmax_fir);
 p1 = ind1(end)+1;
-if length(ind2) > 0
+if ~isempty(ind2)
         p2 = ind2(1)-1;
 else
         p2 = length(fhz);
 end
 m_db(ind1) = m_db(p1);
 m_db(ind2) = m_db(p2);
-ind = find(m_db > amax_fir);
+ind = m_db > amax_fir;
 m_db(ind) = amax_fir;
-ind = find(m_db < amin_fir);
+ind = m_db < amin_fir;
 m_db(ind) = amin_fir;
 
 %% Smooth high frequency corner with spline
@@ -342,13 +342,13 @@ blin = compute_linph_fir(f, m_db2, n, fs,  beta);
 %% Find zeros inside unit circle
 myeps = 1e-3;
 hdzeros = roots(blin);
-ind1 = find( abs(hdzeros) < (1-myeps) );
+ind1 =  abs(hdzeros) < (1-myeps) ;
 minzeros = hdzeros(ind1);
 
 %% Find double zeros at unit circle
-ind2 = find( abs(hdzeros) > (1-myeps) );
+ind2 =  abs(hdzeros) > (1-myeps) ;
 outzeros = hdzeros(ind2);
-ind3 = find( abs(outzeros) < (1+myeps) );
+ind3 =  abs(outzeros) < (1+myeps) ;
 circlezeros = outzeros(ind3);
 
 %% Get half of the unit circle zeros
@@ -359,7 +359,7 @@ else
         cangle = angle(circlezeros);
         [sorted_cangle, ind] = sort(cangle);
         sorted_czeros = circlezeros(ind);
-        pos = find(angle(sorted_czeros) > 0);
+        pos = angle(sorted_czeros) > 0;
         neg = find(angle(sorted_czeros) < 0);
         pos_czeros = sorted_czeros(pos);
         neg_czeros = sorted_czeros(neg(end:-1:1));
@@ -369,7 +369,7 @@ else
                 h1 = [h1' complex(cos(x),sin(x))]';
         end
         h2 = [];
-        for i = 1:2:length(neg_czeros)-1;
+        for i = 1:2:length(neg_czeros)-1
                 x=mean(angle(neg_czeros(i:i+1)));
                 h2 = [h2' complex(cos(x),sin(x))]';
         end
@@ -412,7 +412,7 @@ else
         i1 = zeros(1,n1);
         i2 = zeros(1,n1);
         i1(1) = 1;
-        for i = 1:n1-1;
+        for i = 1:n1-1
                 if rem > 0
                         i2(i) = i1(i)+rpb;
                         rem = rem-1;

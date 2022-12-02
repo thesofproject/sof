@@ -88,7 +88,7 @@ test.ie = 20e-3; % Ignore signal from tone end
 test.tr = 10e-3; % Gain ramp time for tones
 test.sm = 3; % Seek start marker from 3s from start
 test.em = 3; % Seek end marker from 3s from end
-test.mt = 0.1; % Error if marker positions delta is greater than 0.1s
+test.mt = 2; % Error if marker positions delta is greater than 2s
 test.tc = 10; % Min. 10 cycles of sine wave for a frequency
 t_min = 0.1;
 % Use t_min or min cycles count as tone length

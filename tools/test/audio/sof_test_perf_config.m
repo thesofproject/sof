@@ -6,7 +6,7 @@
 %%
 
 %% Set user@domain for ssh, need to be set for playback test
-play.user = 'user@host.domain';
+play.user = 'localhost'; % username@ip-address
 
 %% Other playback settings
 play.ssh = 1;			% Set to 1 for for remote play
@@ -41,6 +41,12 @@ test.g_db_expect = 0.0;         % Expected gain
 test.fr_rp_max_db = 1.0;	     % Upper limit for p-p ripple in dB
 test.plot_fr_axis = [10 30e3 -4 1];  % Plot xmin, xmax, ymin, ymax
 
+test.fr_mask_flo = [];
+test.fr_mask_fhi = [];
+test.fr_mask_mlo = [];
+test.fr_mask_mhi = [];
 %% THD+N test case
 test.thdnf_max = -55;			   % Upper limit for THD+N
 test.plot_thdn_axis = [10 30e3 -90 -40]; % Plot xmin xmax ymin ymax
+%% dynamic range test case
+test.dr_db_min = 70;            % Min. DR,80dB

@@ -21,7 +21,7 @@ d = [];
 nt = [];
 nt_use = [];
 nt_skip = [];
-
+trace_en = false; % Enable to trace algorithm -analysis
 %% Use channel with strongest signal
 ch = select_channel(x0);
 x = x0(:, ch);
@@ -35,29 +35,59 @@ n = min(max(round(test.fs*test.sm), n_seek), nx);
 y = x(1:n);
 [r, lags] = xcorr(y, s);
 r2 = r.^2;
-r2_thr = 0.1 * max(r2);
+r2_thr = mean(abs(r2)) + std(abs(r2))*3; %1/3rd of Max value
 idx = find(r2 > r2_thr);
 d_start = lags(idx(1));
+
+fprintf('Finding test start marker.up\n');
+
+if isequal(trace_en,true)
+    fprintf(['%20s|%20s|%20s|%20s|%20s|%20s|%20s|%20s|\n--------------------+--------------------+--------------------+----' ...
+        '----------------+--------------------+--------------------+--------------------+--------------------+\n'], ...
+        'nx', 'n_seek', 'test.fs', 'test.idle_t', 'test.mark_t', 'test.sm', 'n','d_start');
+
+    fprintf('%20d|%20d|%20d|%20.6f|%20.6f|%20d|%20d|%20d|\n',nx, n_seek, test.fs, test.idle_t, test.mark_t, test.sm, n,d_start);
+end
+
 
 %% Find end marker
 fprintf('Finding test end marker...\n');
 s = sync_chirp(test.fs, 'down');
+
+nx = length(x);
 n_seek = round(test.fs*(test.idle_t + test.mark_t));
 n = min(max(round(test.fs*test.em),n_seek), nx);
 y = x(end-n+1:end);
 [r, lags] = xcorr(y, s);
 r2 = r.^2;
-r2_thr = 0.1 * max(r2);
+
+r2_thr = mean(abs(r2)) + std(abs(r2))*3; %1/3rd of Max value
 idx = find(r2 > r2_thr);
 d_end = nx-n+lags(idx(end));
+
+fprintf('Finding test start marker.down\n');
+if isequal(trace_en,true)
+    fprintf(['%20s|%20s|%20s|%20s|%20s|%20s|%20s|%20s|%20s|\n--------------------+--------------------+--------------------+----' ...
+        '----------------+--------------------+--------------------+--------------------+--------------------+--------------------+\n'], ...
+        'nx', 'n_seek', 'test.fs', 'test.idle_t', 'test.mark_t', 'test.sm', 'n','d_start','d_end');
+    fprintf('%20d|%20d|%20d|%20.6f|%20.6f|%20d|%20d|%20d|%20d|\n',nx, n_seek, test.fs, test.idle_t, test.mark_t, test.sm, n,d_start,d_end);
+
+end
+
 
 %% Check correct length of signal
 len = d_end-d_start;
 len_s = len/test.fs;
 ref_s = test.mark_t+test.nf*test.na*test.tl;
-if abs(len_s-ref_s) > test.mt
-        fprintf(1, 'Start and end markers were not found. Signal quality may be poor.\n');
-	return
+
+if isequal(trace_en,true)
+    fprintf(['%20s|%20s|%20s|%20s|\n--------------------+--------------------+' ...
+        '--------------------+--------------------+\n'],'len_s', 'ref_s', 'test.mt','abs(len_s - ref_s)');
+    fprintf('%20f|%20f|%20f|%20f|\n', len_s, ref_s, test.mt,abs(len_s - ref_s));
+end
+if abs(len_s - ref_s) > test.mt %FR , THD, DR,Relaxation may be required.
+    fprintf(1, 'Start and end markers were not found. Signal quality may be poor.\n');
+    return
 end
 
 %% Delay to first tone, length of tone in samples
@@ -65,7 +95,6 @@ d = d_start + round(test.mark_t*test.fs);
 if (d < 0)
 	fprintf(1, 'Invalid delay value. Signal quality may be poor.\n');
 	return
-	d = [];
 end
 nt = round(test.tl*test.fs);
 nt_use = nt -round(test.is*test.fs) -round(test.ie*test.fs);
@@ -92,6 +121,6 @@ function rms_db = get_rms(x)
 	nch = s(2);
 	rms_db = zeros(1, nch);
 	for i = 1:nch
-		rms_db(i) = 20*log10(sqrt(mean(x(:,i).^2)));
+        rms_db(i) = 20*log10(rms(x(:,i)));% very small data
 	end
 end

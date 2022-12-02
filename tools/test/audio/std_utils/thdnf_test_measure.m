@@ -7,18 +7,14 @@ function test = thdnf_test_measure(test)
 test.ph = [];
 test.fh = [];
 
-if isempty(test.thdnf_mask_f)
-	if ~isempty(test.thdnf_max)
-		test.thdnf_mask_f = [1 test.fs/2]; % Start from 1 due to log()
-		test.thdnf_mask_hi = test.thdnf_max * [1 1];
-	end
-else
-	if ~isempty(test.thdnf_max)
-		error('Set either thdnf_max or thdnf_mask_f & thdnf_mask_hi but not both');
-	end
-	if isempty(test.thdnf_mask_hi)
-		error('thdnf_mask_hi must be set when thdnf_mask_f is defined');
-	end
+if ~isempty(test.thdnf_max)
+    test.thdnf_mask_f = [1 test.fs/2]; % Start from 1 due to log()
+    test.thdnf_mask_hi = test.thdnf_max * [1 1];
+end
+if isempty(test.thdnf_max)
+    error('Set either thdnf_max or thdnf_mask_f & thdnf_mask_hi but not both');
+elseif isempty(test.thdnf_mask_hi)
+    error('thdnf_mask_hi must be set when thdnf_mask_f is defined');
 end
 
 %% Reference: AES17 6.3.2 THD+N ratio vs frequency
@@ -76,16 +72,16 @@ for i = 1:length(test.ch);
 	test.thdnf_high(:,i) = test.thdnf(:,1);
 	test.thdnf_low(:,i) = test.thdnf(:,2);
 
-	fidx = find(test.thdnf(idx, 1) > mask_hi);
-	if length(fidx) > 0
+	fidx = find(test.thdnf(idx, 1) > mask_hi, 1);
+	if ~isempty(fidx)
 		fail_hi = 1;
 		fprintf('Failed THD+N mask with high input.\n');
 	else
 		fail_hi = 0;
 	end
 
-	fidx = find(test.thdnf(idx, 2) > mask_hi);
-	if length(fidx) > 0
+	fidx = find(test.thdnf(idx, 2) > mask_hi, 1);
+	if ~isempty(fidx)
 		fail_lo = 1;
 		fprintf('Failed THD+N mask with low input.\n');
 	else

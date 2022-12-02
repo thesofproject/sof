@@ -13,4 +13,4 @@ ylabel('Amplitude');
 tstr = sprintf("DC Blocking Filter Step Response, R = %i", R);
 title(tstr);
 
-endfunction
+end

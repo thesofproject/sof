@@ -53,4 +53,4 @@ drc_plot_db_curve(coefs);
 
 rmpath ./../common
 
-endfunction
+end

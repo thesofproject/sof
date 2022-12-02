@@ -27,4 +27,4 @@ dcblock_plot_stepfn(R_coeffs(1), fs);
 
 rmpath ./../common
 
-endfunction
+end

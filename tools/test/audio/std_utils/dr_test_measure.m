@@ -57,7 +57,7 @@ y_n = y0w(i1:i2);
 level_in = test.a_db;
 level_out = level_dbfs(y);
 level_final = level_dbfs(y_n);
-test.dr_db = level_out-level_final-test.a_db;
+test.dr_db = level_out - level_final - test.a_db;
 fprintf('DR = %5.1f dB\n', test.dr_db);
 if 0
         plot(y);

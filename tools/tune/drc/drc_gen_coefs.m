@@ -2,7 +2,7 @@ function coefs = drc_gen_coefs(params, sample_rate);
 
 if exist('OCTAVE_VERSION', 'builtin')
 	pkg load control;
-endif
+end
 
 % Print out params
 params
@@ -82,7 +82,7 @@ for i = 1:15
 		max_k = k; % k is too high
 	else
 		min_k = k; % k is too low
-	endif
+    end
 
 	% Re-calculate based on geometric mean
 	k = sqrt(min_k * max_k);
@@ -103,7 +103,7 @@ else
 	y2_db = mag2db(knee_curve(linear_threshold, x2, k));
 
 	slope = (y2_db - y_db) / (x2_db - x_db);
-endif
+end
 
 end
 
@@ -114,6 +114,6 @@ if x < linear_threshold
 	y = x;
 else
 	y = linear_threshold + (1 - exp(-k * (x - linear_threshold))) / k;
-endif
+end
 
 end

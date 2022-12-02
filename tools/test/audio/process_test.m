@@ -139,18 +139,15 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	fprintf('Number of skipped tests = %d\n', r.n_skipped);
 	fprintf('============================================================\n');
 
-	n_fail = r.n_fail;
-	n_pass = r.n_pass;
-	n_na = r.n_na;
-	if r.n_fail < 1 && r.n_pass < 1
-		fprintf('\nERROR: No test results.\n');
-		n_fail = 1;
-	elseif r.n_fail > 0
+	if r.n_fail > 0 || r.n_pass < 1
 		fprintf('\nERROR: TEST FAILED!!!\n');
 	else
 		fprintf('\nTest passed.\n');
 	end
 
+	n_fail = r.n_fail;
+	n_pass = r.n_pass;
+	n_na = r.n_na;
 end
 
 %% ------------------------------------------------------------
@@ -350,7 +347,7 @@ function test = test_defaults(t)
 	test.f_start = 20;
 	test.f_end = test.fs * 0.41667; % 20 kHz @ 48 kHz
 	test.fu = test.fs * 0.41667;    % 20 kHz @ 48 kHz
-	test.f_max = 0.999*t.fs/2;      % Measure up to min. Nyquist frequency
+	test.f_max = 0.999*test.fs/2;      % Measure up to min. Nyquist frequency
 	test.fs1 = test.fs;
 	test.fs2 = test.fs;
 
