@@ -306,7 +306,8 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr = rmalloc(zone, flags, caps, bytes);
 
-	memset(ptr, 0, bytes);
+	if (ptr)
+		memset(ptr, 0, bytes);
 
 	return ptr;
 }
