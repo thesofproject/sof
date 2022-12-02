@@ -21,6 +21,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(__XCC__)
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#define STREAMCOPY_HIFI3
+#endif
+#endif
+
 LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
 
 static SHARED_DATA struct comp_driver_list cd;
@@ -169,6 +176,53 @@ void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache 
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
+#ifdef STREAMCOPY_HIFI3
+
+int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
+		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
+{
+	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
+	ae_int16x4 *src = (ae_int16x4 *)((int8_t *)source->r_ptr + ioffset * ssize);
+	ae_int16x4 *dst = (ae_int16x4 *)((int8_t *)sink->w_ptr + ooffset * ssize);
+	int shorts = samples * ssize >> 1;
+	int shorts_src;
+	int shorts_dst;
+	int shorts_copied;
+	int left, m, i;
+	ae_int16x4 in_sample = AE_ZERO16();
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+
+	/* copy with 16bit as the minimum unit since the minimum sample size is 16 bit*/
+	while (shorts) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		shorts_src = audio_stream_samples_without_wrap_s16(source, src);
+		shorts_dst = audio_stream_samples_without_wrap_s16(sink, dst);
+		shorts_copied = AE_MIN_32_signed(shorts_src, shorts_dst);
+		shorts_copied = AE_MIN_32_signed(shorts, shorts_copied);
+		m = shorts_copied >> 2;
+		left = shorts_copied & 0x03;
+		inu = AE_LA64_PP(src);
+		/* copy 4 * 16bit(8 bytes)per loop */
+		for (i = 0; i < m; i++) {
+			AE_LA16X4_IP(in_sample, inu, src);
+			AE_SA16X4_IP(in_sample, outu, dst);
+		}
+		AE_SA64POS_FP(outu, dst);
+
+		/* process the left bits that less than 4 * 16 */
+		for (i = 0; i < left ; i++) {
+			AE_L16_IP(in_sample, (ae_int16 *)src, sizeof(ae_int16));
+			AE_S16_0_IP(in_sample, (ae_int16 *)dst, sizeof(ae_int16));
+		}
+		shorts -= shorts_copied;
+	}
+	return samples;
+}
+
+#else
+
 int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
 		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
 {
@@ -193,6 +247,8 @@ int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t
 
 	return samples;
 }
+
+#endif
 
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 				   struct audio_stream __sparse_cache *sink, int ooffset,
