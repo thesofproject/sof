@@ -401,7 +401,8 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 
 void lib_manager_dma_buffer_free(struct lib_manager_dma_buf *buffer)
 {
-	rfree((void *)buffer->addr);
+	if (buffer->addr)
+		rfree((void *)buffer->addr);
 	memset(buffer, 0, sizeof(struct lib_manager_dma_buf));
 }
 
