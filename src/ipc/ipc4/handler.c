@@ -275,6 +275,9 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 			}
 			if (ret == PPL_STATUS_SCHEDULED)
 				*delayed = true;
+			break;
+		default:
+			ret = 0;
 		}
 
 		/*
