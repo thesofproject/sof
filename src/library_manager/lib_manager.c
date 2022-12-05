@@ -416,6 +416,8 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	int chan_index;
 	int ret;
 
+	/* Initialize dma_ext with zeros */
+	memset(dma_ext, 0, sizeof(struct lib_manager_dma_ext));
 	/* request DMA in the dir HMEM->LMEM */
 	dma_ext->dma = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
 			       DMA_ACCESS_EXCLUSIVE);
@@ -446,8 +448,10 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 
 static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
 {
-	dma_release_channel(dma_ext->dma->z_dev, dma_id);
-	dma_put(dma_ext->dma);
+	if (dma_ext->dma->z_dev)
+		dma_release_channel(dma_ext->dma->z_dev, dma_id);
+	if (dma_ext->dma)
+		dma_put(dma_ext->dma);
 	return 0;
 }
 
@@ -638,8 +642,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 cleanup:
 	lib_manager_dma_buffer_free(&dma_ext.dmabp);
 
-	if (man_tmp_buffer)
-		rfree(man_tmp_buffer);
+	rfree(man_tmp_buffer);
 
 	lib_manager_dma_deinit(&dma_ext, dma_id);
 
