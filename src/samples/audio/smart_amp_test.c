@@ -11,6 +11,14 @@
 #include <sof/ipc/msg.h>
 #include <sof/ut.h>
 
+#ifndef __ZEPHYR__
+#include <rtos/mutex.h>
+#endif
+
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/module.h>
+#endif
+
 static const struct comp_driver comp_smart_amp;
 
 LOG_MODULE_REGISTER(smart_amp_test, CONFIG_SOF_LOG_LEVEL);
@@ -32,6 +40,8 @@ struct smart_amp_data {
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
 
+	struct k_mutex lock; /**< protect feedback_buf updated */
+
 	smart_amp_proc process;
 
 	uint32_t in_channels;
@@ -42,10 +52,12 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      const struct comp_ipc_config *config,
 				      const void *spec)
 {
-	struct comp_dev *dev = NULL;
+#if CONFIG_IPC_MAJOR_3
 	const struct ipc_config_process *ipc_sa = spec;
-	struct smart_amp_data *sad = NULL;
-	struct sof_smart_amp_config *cfg;
+#endif
+	const struct sof_smart_amp_config *cfg;
+	struct smart_amp_data *sad;
+	struct comp_dev *dev;
 	size_t bs;
 
 	dev = comp_alloc(drv, sizeof(*dev));
@@ -64,8 +76,15 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	if (!sad->model_handler)
 		goto sad_fail;
 
+	k_mutex_init(&sad->lock);
+
+#if CONFIG_IPC_MAJOR_4
+	cfg = spec;
+	bs = sizeof(struct sof_smart_amp_config);
+#else
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
+#endif
 
 	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
@@ -84,6 +103,198 @@ sad_fail:
 fail:
 	rfree(dev);
 	return NULL;
+}
+
+#if CONFIG_IPC_MAJOR_4
+static void smart_amp_set_params(struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
+
+	comp_dbg(dev, "smart_amp_set_params()");
+
+	memset(params, 0, sizeof(*params));
+	params->channels = sad->config.base.audio_fmt.channels_count;
+	params->rate = sad->config.base.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = sad->config.base.audio_fmt.depth / 8;
+	params->sample_valid_bytes =
+		sad->config.base.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = sad->config.base.audio_fmt.interleaving_style;
+	params->buffer.size = sad->config.base.ibs;
+
+	/* update sink format */
+	if (!list_is_empty(&dev->bsink_list)) {
+		struct ipc4_output_pin_format *sink_fmt = &sad->config.output_pin_fmt;
+		struct ipc4_audio_format out_fmt = sink_fmt->audio_fmt;
+
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		sink_c->stream.channels = out_fmt.channels_count;
+		sink_c->stream.rate = out_fmt.sampling_frequency;
+
+		audio_stream_fmt_conversion(out_fmt.depth,
+					    out_fmt.valid_bit_depth,
+					    &sink_c->stream.frame_fmt,
+					    &sink_c->stream.valid_sample_fmt,
+					    out_fmt.s_type);
+
+		sink_c->buffer_fmt = out_fmt.interleaving_style;
+		params->frame_fmt = sink_c->stream.frame_fmt;
+
+		sink_c->hw_params_configured = true;
+
+		buffer_release(sink_c);
+	}
+}
+
+static inline int smart_amp_set_config(struct comp_dev *dev, const char *data,
+				       uint32_t data_size)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct sof_smart_amp_config *cfg;
+	uint32_t cfg_size;
+
+	cfg = (struct sof_smart_amp_config *)data;
+	cfg_size = data_size;
+
+	if (cfg_size != sizeof(struct sof_smart_amp_config)) {
+		comp_err(dev, "smart_amp_set_config(): invalid config size %u, expect %u",
+			 cfg_size, sizeof(struct sof_smart_amp_config));
+		return -EINVAL;
+	}
+
+	comp_dbg(dev, "smart_amp_set_config(): config size = %u", cfg_size);
+
+	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg,
+		 sizeof(struct sof_smart_amp_config));
+
+	return 0;
+}
+
+static inline int smart_amp_get_config(struct comp_dev *dev, char *data,
+				       uint32_t *data_size)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	uint32_t cfg_size;
+
+	cfg_size = sizeof(struct smart_amp_data);
+
+	if (cfg_size > *data_size) {
+		comp_err(dev, "smart_amp_get_config(): wrong config size %d",
+			 *data_size);
+	}
+
+	*data_size = cfg_size;
+
+	return memcpy_s(data, cfg_size, &sad->config, cfg_size);
+}
+
+static int smart_amp_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+				      bool last_block, uint32_t data_offset, const char *data)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "smart_amp_set_large_config()");
+
+	switch (param_id) {
+	case SMART_AMP_SET_MODEL:
+		return ipc4_comp_data_blob_set(sad->model_handler,
+					       first_block,
+					       last_block,
+					       data_offset,
+					       data);
+	case SMART_AMP_SET_CONFIG:
+		return smart_amp_set_config(dev, data, data_offset);
+	default:
+		return -EINVAL;
+	}
+}
+
+static int smart_amp_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+				      bool last_block, uint32_t *data_offset, char *data)
+{
+	comp_dbg(dev, "smart_amp_get_large_config()");
+
+	switch (param_id) {
+	case SMART_AMP_GET_CONFIG:
+		return smart_amp_get_config(dev, data, data_offset);
+	default:
+		return -EINVAL;
+	}
+}
+
+static int smart_amp_get_attribute(struct comp_dev *dev, uint32_t type,
+				   void *value)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "smart_amp_get_attribute()");
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = sad->config.base;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int smart_amp_bind(struct comp_dev *dev, void *data)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *source_buffer;
+	struct list_item *blist;
+
+	comp_dbg(dev, "smart_amp_bind()");
+
+	/* searching for feedback source buffers */
+	list_for_item(blist, &dev->bsource_list) {
+		source_buffer = container_of(blist, struct comp_buffer, sink_list);
+
+		k_mutex_lock(&sad->lock, K_FOREVER);
+		buffer_c = buffer_acquire(source_buffer);
+		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+			sad->feedback_buf = source_buffer;
+			buffer_c->stream.channels = sad->config.feedback_channels;
+			buffer_c->stream.rate = sad->config.base.audio_fmt.sampling_frequency;
+
+			buffer_release(buffer_c);
+			k_mutex_unlock(&sad->lock);
+			break;
+		}
+
+		buffer_release(buffer_c);
+		k_mutex_unlock(&sad->lock);
+	}
+
+	return 0;
+}
+
+static int smart_amp_unbind(struct comp_dev *dev, void *data)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct ipc4_module_bind_unbind *bu = data;
+
+	comp_dbg(dev, "smart_amp_unbind()");
+
+	if (bu->extension.r.dst_instance_id == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+		k_mutex_lock(&sad->lock, K_FOREVER);
+		sad->feedback_buf = NULL;
+		k_mutex_unlock(&sad->lock);
+	}
+
+	return 0;
+}
+
+#else
+
+static void smart_amp_set_params(struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params)
+{
+	//nothing to do
 }
 
 static int smart_amp_set_config(struct comp_dev *dev,
@@ -255,6 +466,8 @@ static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 static void smart_amp_free(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
@@ -290,6 +503,8 @@ static int smart_amp_params(struct comp_dev *dev,
 
 	comp_info(dev, "smart_amp_params()");
 
+	smart_amp_set_params(dev, params);
+
 	err = smart_amp_verify_params(dev, params);
 	if (err < 0) {
 		comp_err(dev, "smart_amp_params(): pcm params verification failed.");
@@ -314,11 +529,13 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
+		k_mutex_lock(&sad->lock, K_FOREVER);
 		if (sad->feedback_buf) {
 			struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 			buffer_zero(buf);
 			buffer_release(buf);
 		}
+		k_mutex_unlock(&sad->lock);
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -431,10 +648,11 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	avail_frames = avail_passthrough_frames;
 
+	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
-		if (comp_get_state(dev, buf->source) == dev->state) {
+		if (buf->source && comp_get_state(dev, buf->source) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&buf->stream);
@@ -458,6 +676,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 		buffer_release(buf);
 	}
+	k_mutex_unlock(&sad->lock);
 
 	/* bytes calculation */
 	source_bytes = avail_frames *
@@ -513,11 +732,15 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
 		buffer_c = buffer_acquire(source_buffer);
+
+#if CONFIG_IPC_MAJOR_3
 		/* FIXME: how often can this loop be run? */
 		if (buffer_c->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
+#endif
 			sad->source_buf = source_buffer;
+
 		buffer_release(buffer_c);
 	}
 
@@ -531,6 +754,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	buffer_c = buffer_acquire(sad->source_buf);
 	sad->in_channels = buffer_c->stream.channels;
 
+	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
@@ -538,6 +762,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		buf->stream.rate = buffer_c->stream.rate;
 		buffer_release(buf);
 	}
+	k_mutex_unlock(&sad->lock);
 
 	sad->process = get_smart_amp_process(dev, buffer_c);
 	if (!sad->process) {
@@ -555,14 +780,22 @@ static const struct comp_driver comp_smart_amp = {
 	.uid = SOF_RT_UUID(smart_amp_comp_uuid),
 	.tctx = &smart_amp_comp_tr,
 	.ops = {
-		.create = smart_amp_new,
-		.free = smart_amp_free,
-		.params = smart_amp_params,
-		.prepare = smart_amp_prepare,
-		.cmd = smart_amp_cmd,
-		.trigger = smart_amp_trigger,
-		.copy = smart_amp_copy,
-		.reset = smart_amp_reset,
+		.create			= smart_amp_new,
+		.free			= smart_amp_free,
+		.params			= smart_amp_params,
+		.prepare		= smart_amp_prepare,
+#if CONFIG_IPC_MAJOR_4
+		.set_large_config	= smart_amp_set_large_config,
+		.get_large_config	= smart_amp_get_large_config,
+		.get_attribute		= smart_amp_get_attribute,
+		.bind			= smart_amp_bind,
+		.unbind			= smart_amp_unbind,
+#else
+		.cmd			= smart_amp_cmd,
+#endif /* CONFIG_IPC_MAJOR_4 */
+		.trigger		= smart_amp_trigger,
+		.copy			= smart_amp_copy,
+		.reset			= smart_amp_reset,
 	},
 };
 
