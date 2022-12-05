@@ -47,13 +47,13 @@ int32_t iir_df1(struct iir_state_df1 *iir, int32_t x)
 {
 	ae_int64 acc;
 	ae_valign coef_align = AE_ZALIGN64();
-	ae_int32x2 coef_a2a1;
-	ae_int32x2 coef_b2b1;
-	ae_int32x2 coef_b0;
-	ae_int32x2 gain;
-	ae_int32x2 shift;
-	ae_int32x2 delay_y2y1;
-	ae_int32x2 delay_x2x1;
+	ae_int32x2 coef_a2a1 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 coef_b2b1 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 coef_b0 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 gain = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 shift = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 delay_y2y1 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_int32x2 delay_x2x1 = AE_ZERO32(); /* Note: Init is not needed */
 	ae_int32 in;
 	ae_int32 tmp;
 	ae_int32x2 *coefp;

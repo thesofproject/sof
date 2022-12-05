@@ -95,9 +95,9 @@ void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y,
 	ae_f64 a;
 	ae_valign u;
 	ae_f32x2 data2;
-	ae_f16x4 coefs;
-	ae_f32x2 d0;
-	ae_f32x2 d1;
+	ae_f16x4 coefs = AE_ZERO16(); /* Note: Init is not needed */
+	ae_f32x2 d0 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_f32x2 d1 = AE_ZERO32(); /* Note: Init is not needed */
 	int i;
 	ae_int32 *dp = fir->rwp;
 	ae_int16x4 *coefp = (ae_int16x4 *)fir->coef;
@@ -173,9 +173,9 @@ void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
 	ae_f64 a;
 	ae_f64 b;
 	ae_valign u;
-	ae_f32x2 d0;
-	ae_f32x2 d1;
-	ae_f16x4 coefs;
+	ae_f32x2 d0 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_f32x2 d1 = AE_ZERO32(); /* Note: Init is not needed */
+	ae_f16x4 coefs = AE_ZERO16(); /* Note: Init is not needed */
 	int i;
 	ae_f32x2 *dp;
 	ae_f16x4 *coefp = fir->coef;
