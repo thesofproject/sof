@@ -81,9 +81,9 @@ SystemAgent::SystemAgent(uint32_t module_id,
 			     core_id_(core_id),
 			     module_id_(module_id),
 			     instance_id_(instance_id),
-			     module_handle_(NULL)
+			     module_handle_(NULL),
+			     module_size_(0)
 {}
-
 
 void SystemAgent::CheckIn(ProcessingModuleInterface& processing_module,
 			  ModuleHandle &module_handle,
