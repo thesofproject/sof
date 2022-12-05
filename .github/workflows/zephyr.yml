@@ -30,7 +30,7 @@ jobs:
         ]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         # From time to time this will catch a git tag and change SOF_VERSION
         with:
           fetch-depth: 10
