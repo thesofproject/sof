@@ -149,7 +149,23 @@ do
 			has_rom=true
 			;;
 		imx8 | imx8x | imx8m)
-			READY_IPC="00 00 00 00 00 00 04 c0"
+		# This READY_IPC value comes from:
+		#
+		#   /* Clear GP pending interrupt #0 and #1 */
+		#   imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
+		#           IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
+		#           IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
+		#   /* Enable GP #0 and #1 for Host -> DSP and DSP -> Host message notification */
+		#   imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER,
+		#           IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+		#           IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
+		#   /* Now interrupt host to tell it we are done booting */
+		#   imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR,
+		#           IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
+		#
+		# So, "00 00 00 c0 00 00 04 c0" is the MU's xSR and xCR registers:
+		#    xSR: c0000000 and xCR: c0040000
+			READY_IPC="00 00 00 c0 00 00 04 c0"
 			SHM_IPC_REG=qemu-bridge-mu-io
 			SHM_MBOX=qemu-bridge-mbox-io
 			;;
