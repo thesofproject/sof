@@ -18,3 +18,5 @@ jobs:
     uses: ./.github/workflows/pull-request.yml
   run-zephyr-builds:
     uses: ./.github/workflows/zephyr.yml
+  sparse-zephyr:
+    uses: ./.github/workflows/sparse-zephyr.yml
