@@ -223,6 +223,54 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	  This component takes raw microphones input and playback reference
 	  and outputs an echo-free microphone signal.
 
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Sample rate for Google Real Time Communication Audio processing"
+	default 48000
+	help
+	  Sets the sample rate for the memory buffer for the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Number of channels to process for Google Real Time Communication Audio processing"
+	default 1
+	help
+	  Sets the number of channels to process in the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Number of AEC reference channels for Google Real Time Communication Audio processing"
+	default 2
+	help
+	  Sets the number AEC reference channels in the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Memory buffer size for Google Real Time Communication Audio processing"
+	default 200000
+	help
+	  Sets the size of the memory buffer for the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_ECHO_PATH_DELAY_MS
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Echo path delay for Google Real Time Communication Audio processing"
+	default 44
+	help
+	  Sets the echo path delay to use for the Google real-time communication
+	  audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MIC_HEADROOM_LINEAR
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	int "Microphone headroom for Google Real Time Communication Audio processing"
+	default 4
+	help
+	  Sets the microphone headroom for the Google real-time communication audio
+	  processing.
+
 config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	bool "Google Real Time Communication Audio processing mock"
 	default n
