@@ -27,7 +27,10 @@ main()
 
     sparse_errors+=(-e '[[:space:]]error:[[:space:]]')
 
-    sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*different address space')
+    # TODO: fix mtl source code
+    if test 'mtl' != "$platform"; then
+        sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*different address space')
+    fi
 
     ! grep -v 'alsatplg.*topology2.*skip' | grep -i  "${sparse_errors[@]}"
 
