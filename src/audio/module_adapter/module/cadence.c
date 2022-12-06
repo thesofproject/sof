@@ -633,9 +633,12 @@ cadence_codec_process(struct processing_module *mod,
 
 	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE, NULL, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_process() error %x: processing failed",
-			 ret);
-		return ret;
+		if (LIB_IS_FATAL_ERROR(ret)) {
+			comp_err(dev, "cadence_codec_process() error %x: processing failed",
+				 ret);
+			return ret;
+		}
+		comp_warn(dev, "cadence_codec_process() nonfatal error %x", ret);
 	}
 
 	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->mpd.produced, ret);
