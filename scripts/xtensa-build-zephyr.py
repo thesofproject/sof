@@ -614,7 +614,7 @@ def build_platforms():
 			)
 		# CMake build rimage module
 		if not (pathlib.Path(west_top) / rimage_dir_name / "CMakeCache.txt").is_file():
-			execute_command(["cmake", "-B", rimage_dir_name,
+			execute_command(["cmake", "-B", rimage_dir_name, "-G", "Ninja",
 					 "-S", str(rimage_source_dir)],
 					cwd=west_top)
 		rimage_build_cmd = ["cmake", "--build", rimage_dir_name]
