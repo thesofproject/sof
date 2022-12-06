@@ -63,6 +63,10 @@ jobs:
       # We have to painfully extract REAL_CC from the docker image to
       # tell the Zephyr build what it... already knows and wants!! Zephyr
       # commit 3ebb18b8826 explains this sparse problem.
+      #
+      # --pristine is important to reproduce _warnings_. It makes no
+      # difference for github but it's useful for anyone trying to
+      # reproduce and copying the command from the logs.
       - name: analyze zephyr
         working-directory: ./workspace
         run: |
@@ -72,6 +76,6 @@ jobs:
           ZSDK=$(cat zsdk_location); _RCC=${{ matrix.platforms.real_cc }}
           REAL_CC="$ZSDK/$_RCC" ./sof/zephyr/docker-run.sh                          \
              ./sof/zephyr/docker-build.sh ${{ matrix.platforms.platform }}          \
-             --cmake-args=-DSPARSE=y 2>&1 | tee _.log
+             --cmake-args=-DSPARSE=y --pristine 2>&1 | tee _.log
              printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
              (set -x; ./sof/scripts/parse_sparse_output.sh < _.log)
