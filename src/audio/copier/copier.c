@@ -397,11 +397,11 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i);
 		if (ret) {
 			comp_err(parent_dev, "failed to create dai");
-			break;
+			return ret;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int init_pipeline_reg(struct comp_dev *dev)
