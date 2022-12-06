@@ -611,15 +611,16 @@ static int copier_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (cd->endpoint_num) {
+	for (i = 0; i < cd->endpoint_num; i++) {
+		ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+		if (ret < 0)
+			break;
+	}
 
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
-			if (ret < 0)
-				break;
-		}
-	} else {
-		/* set up format conversion function */
+	if (!cd->endpoint_num) {
+		/* set up format conversion function for pin 0, for other pins (if any)
+		 * format is set in IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT handler
+		 */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
 							      &cd->config.out_fmt, ipc4_gtw_none,
 							      ipc4_bidirection);
@@ -627,9 +628,6 @@ static int copier_prepare(struct comp_dev *dev)
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
 			ret = -EINVAL;
-		} else {
-			for (i = 1; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
-				cd->converter[i] = cd->converter[i];
 		}
 	}
 
