@@ -370,6 +370,11 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		if (copier->gtw_cfg.config_length) {
 			alh_blob = (struct sof_alh_configuration_blob *)copier->gtw_cfg.config_data;
 			dai_count = alh_blob->alh_cfg.count;
+			/* prevent dai_index overflow - validate dai_count */
+			if ((dai_count > IPC4_ALH_MAX_NUMBER_OF_GTW) ||
+			    (dai_count == 0))
+				return -EINVAL;
+
 			for (i = 0; i < dai_count; i++)
 				dai_index[i] =
 					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
