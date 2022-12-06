@@ -618,8 +618,7 @@ static void src_free(struct comp_dev *dev)
 	comp_info(dev, "src_free()");
 
 	/* Free dynamically reserved buffers for SRC algorithm */
-	if (cd->delay_lines)
-		rfree(cd->delay_lines);
+	rfree(cd->delay_lines);
 
 	rfree(cd);
 	rfree(dev);
@@ -730,8 +729,7 @@ static int src_params(struct comp_dev *dev,
 	}
 
 	/* free any existing delay lines. TODO reuse if same size */
-	if (cd->delay_lines)
-		rfree(cd->delay_lines);
+	rfree(cd->delay_lines);
 
 	cd->delay_lines = rballoc(0, SOF_MEM_CAPS_RAM, delay_lines_size);
 	if (!cd->delay_lines) {
