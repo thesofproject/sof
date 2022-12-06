@@ -186,6 +186,8 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
 	struct list_item *comp_list;
+	struct list_item __sparse_cache *needs_sync;
+	bool further_buffers_exist;
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
@@ -202,10 +204,14 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	 * overwriting the modified header. FIXME: this is still a problem with
 	 * different cores.
 	 */
-	if (!list_is_empty(comp_list))
-		dcache_writeback_invalidate_region(uncache_to_cache(comp_list->next),
-						   sizeof(struct list_item));
+	further_buffers_exist = !list_is_empty(comp_list);
+	needs_sync = uncache_to_cache(comp_list->next);
+	if (further_buffers_exist)
+		dcache_writeback_region(needs_sync, sizeof(struct list_item));
+	/* The cache line can be prefetched here, invalidate it after prepending */
 	list_item_prepend(buffer_comp_list(buffer, dir), comp_list);
+	if (further_buffers_exist)
+		dcache_invalidate_region(needs_sync, sizeof(struct list_item));
 	buffer_set_comp(buffer, comp, dir);
 	irq_local_enable(flags);
 
@@ -215,6 +221,8 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
 {
 	struct list_item *buf_list, *comp_list;
+	struct list_item __sparse_cache *needs_sync_prev, *needs_sync_next;
+	bool buffers_after_exist, buffers_before_exist;
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
@@ -233,13 +241,20 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	 * written back, overwriting the modified header. FIXME: this is still a
 	 * problem with different cores.
 	 */
-	if (comp_list != buf_list->next)
-		dcache_writeback_invalidate_region(uncache_to_cache(buf_list->next),
-						   sizeof(struct list_item));
-	if (comp_list != buf_list->prev)
-		dcache_writeback_invalidate_region(uncache_to_cache(buf_list->prev),
-						   sizeof(struct list_item));
+	buffers_after_exist = comp_list != buf_list->next;
+	buffers_before_exist = comp_list != buf_list->prev;
+	needs_sync_prev = uncache_to_cache(buf_list->prev);
+	needs_sync_next = uncache_to_cache(buf_list->next);
+	if (buffers_after_exist)
+		dcache_writeback_region(needs_sync_next, sizeof(struct list_item));
+	if (buffers_before_exist)
+		dcache_writeback_region(needs_sync_prev, sizeof(struct list_item));
+	/* buffers before or after can be prefetched here */
 	list_item_del(buf_list);
+	if (buffers_after_exist)
+		dcache_invalidate_region(needs_sync_next, sizeof(struct list_item));
+	if (buffers_before_exist)
+		dcache_invalidate_region(needs_sync_prev, sizeof(struct list_item));
 	buffer_set_comp(buffer, NULL, dir);
 	irq_local_enable(flags);
 }
