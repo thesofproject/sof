@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 
 # "sparse" is not designed for automated testing: its exit code is
@@ -13,6 +13,8 @@
 
 main()
 {
+    local sparse_errors=()
+
     >&2 printf 'Reminder: to see ALL warnings you must as usual build _from scratch_\n'
 
     # To reproduce an 'error: ' and test this script try commenting out
@@ -22,9 +24,11 @@ main()
     # script try deleting a __sparse_cache annotation like the one in
     # src/audio/mixer/mixer.c
 
-    ! grep -v 'alsatplg.*topology2.*skip' | grep -i  \
-        -e '[[:space:]]error:[[:space:]]'  \
-        -e '[[:space:]]warning:[[:space:]].*different address space' \
+    sparse_errors+=(-e '[[:space:]]error:[[:space:]]')
+
+    sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*different address space')
+
+    ! grep -v 'alsatplg.*topology2.*skip' | grep -i  "${sparse_errors[@]}"
 
 }
 
