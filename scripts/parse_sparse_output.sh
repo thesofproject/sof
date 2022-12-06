@@ -13,6 +13,7 @@
 
 main()
 {
+    local platform="$1" # optional
     local sparse_errors=()
 
     >&2 printf 'Reminder: to see ALL warnings you must as usual build _from scratch_\n'

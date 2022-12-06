@@ -78,4 +78,4 @@ jobs:
              ./sof/zephyr/docker-build.sh ${{ matrix.platforms.platform }}          \
              --cmake-args=-DSPARSE=y --pristine 2>&1 | tee _.log
              printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
-             (set -x; ./sof/scripts/parse_sparse_output.sh < _.log)
+             (set -x; ./sof/scripts/parse_sparse_output.sh ${{ matrix.platforms.platform }} <_.log)
