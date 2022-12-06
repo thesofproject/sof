@@ -586,8 +586,6 @@ def build_platforms():
 			else: # unknown failure
 				raise cpe
 
-		# Building smex and rimage once per platform is a small waste of time
-		# but it saves a lot of code in this script.
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
 			"build", "smex")
 		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
@@ -614,10 +612,11 @@ def build_platforms():
      Move non-west {nested_rimage} out of west workspace {west_top}.
      See output of 'west list'."""
 			)
-
-		execute_command(["cmake", "-B", rimage_dir_name, "-S", str(rimage_source_dir)],
-			cwd=west_top)
 		# CMake build rimage module
+		if not (pathlib.Path(west_top) / rimage_dir_name / "CMakeCache.txt").is_file():
+			execute_command(["cmake", "-B", rimage_dir_name,
+					 "-S", str(rimage_source_dir)],
+					cwd=west_top)
 		rimage_build_cmd = ["cmake", "--build", rimage_dir_name]
 		if args.jobs is not None:
 			rimage_build_cmd.append(f"-j{args.jobs}")
