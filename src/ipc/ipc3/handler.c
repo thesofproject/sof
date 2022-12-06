@@ -369,6 +369,12 @@ static int ipc_stream_pcm_free(uint32_t header)
 		return -ENODEV;
 	}
 
+	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
+		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
+			    free_req.comp_id, pcm_dev->type);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
@@ -404,6 +410,12 @@ static int ipc_stream_position(uint32_t header)
 	if (!pcm_dev) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
+	}
+
+	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
+		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
+			    stream.comp_id, pcm_dev->type);
+		return -EINVAL;
 	}
 
 	/* check core */
@@ -486,6 +498,12 @@ static int ipc_stream_trigger(uint32_t header)
 	if (!pcm_dev->cd->pipeline) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found",
 			    stream.comp_id);
+		return -EINVAL;
+	}
+
+	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
+		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
+			    stream.comp_id, pcm_dev->type);
 		return -EINVAL;
 	}
 
