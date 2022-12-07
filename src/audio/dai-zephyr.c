@@ -367,6 +367,8 @@ static void dai_free(struct comp_dev *dev)
 
 	dma_put(dd->dma);
 
+	dai_release_llp_slot(dev);
+
 	dai_put(dd->dai);
 
 	rfree(dd->dai_spec_config);
