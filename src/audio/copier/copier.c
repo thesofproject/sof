@@ -806,6 +806,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 	i = IPC4_SINK_QUEUE_ID(sink->id);
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
+	assert(i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
 			 processed_data->frames * sink->stream.channels);
 
