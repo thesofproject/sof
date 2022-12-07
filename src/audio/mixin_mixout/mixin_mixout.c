@@ -198,8 +198,10 @@ static struct comp_dev *mixout_new(const struct comp_driver *drv,
 
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 
+	/* align the allocation size to a cache line for the coherent API */
 	md->mixed_data_info = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(struct mixed_data_info));
+				      ALIGN_UP(sizeof(struct mixed_data_info),
+					       PLATFORM_DCACHE_ALIGN));
 	if (!md->mixed_data_info) {
 		rfree(md);
 		rfree(dev);
