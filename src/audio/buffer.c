@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/common.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
@@ -40,9 +41,12 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	/* allocate new buffer */
+	/*
+	 * allocate new buffer, align the allocation size to a cache line for
+	 * the coherent API
+	 */
 	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-			 sizeof(*buffer));
+			 ALIGN_UP(sizeof(*buffer), PLATFORM_DCACHE_ALIGN));
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
 		return NULL;
