@@ -325,7 +325,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 
 		if (source_c->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
 			cd->aec_reference = source;
-			aec_channels = sourcs_c->stream.channels;
+			aec_channels = source_c->stream.channels;
 		} else {
 			cd->raw_microphone = source;
 		}
