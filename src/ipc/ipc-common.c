@@ -188,13 +188,23 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 		assert(!ret);
 	}
 
+	/*
+	 * note: This function can be executed in LL or EDF context, from any core.
+	 * In Zephyr builds, there is IPC queue that is always handled by the primary core,
+	 * whereas submitting to the queue is allowed from any core. Therefore disable option
+	 * of sending IPC immediately by any context/core to secure IPC registers/mailbox
+	 * access.
+	 */
+#ifndef __ZEPHYR__
 	/* try to send critical notifications right away */
 	if (high_priority) {
 		ret = ipc_platform_send_msg(msg);
-		if (!ret)
-			goto out;
+		if (!ret) {
+			k_spin_unlock(&ipc->lock, key);
+			return;
+		}
 	}
-
+#endif
 	/* add to queue unless already there */
 	if (list_is_empty(&msg->list)) {
 		if (high_priority)
@@ -205,7 +215,6 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 
 	schedule_ipc_worker();
 
-out:
 	k_spin_unlock(&ipc->lock, key);
 }
 
