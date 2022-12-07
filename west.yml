@@ -34,7 +34,7 @@ manifest:
     - name: rimage
       repo-path: rimage
       path: sof/rimage
-      revision: 3ee717eebc6a2a512a0216363ae77473f94532c1
+      revision: 80e5d7e128e82047a779963f4cabce6cab179926
 
     - name: tomlc99
       repo-path: tomlc99
@@ -43,7 +43,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: e2371d489f9aec8a3752cc945f8f81b19a7c2baf
+      revision: cd9a478213e0d5b42a73b68e0bab3eec3cd413e3
       remote: thesofproject
       # Import some projects listed in zephyr/west.yml@revision
       #
