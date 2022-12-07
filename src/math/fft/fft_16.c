@@ -10,6 +10,54 @@
 #include <sof/math/fft.h>
 #include <sof/audio/coefficients/fft/twiddle_16.h>
 
+/*
+ * Helpers for 16 bit FFT calculation
+ */
+static inline void icomplex16_add(struct icomplex16 *in1, struct icomplex16 *in2,
+				  struct icomplex16 *out)
+{
+	out->real = in1->real + in2->real;
+	out->imag = in1->imag + in2->imag;
+}
+
+static inline void icomplex16_sub(struct icomplex16 *in1, struct icomplex16 *in2,
+				  struct icomplex16 *out)
+{
+	out->real = in1->real - in2->real;
+	out->imag = in1->imag - in2->imag;
+}
+
+static inline void icomplex16_mul(struct icomplex16 *in1, struct icomplex16 *in2,
+				  struct icomplex16 *out)
+{
+	int32_t real = (int32_t)in1->real * in2->real - (int32_t)in1->imag * in2->imag;
+	int32_t imag = (int32_t)in1->real * in2->imag + (int32_t)in1->imag * in2->real;
+
+	out->real = Q_SHIFT_RND(real, 30, 15);
+	out->imag = Q_SHIFT_RND(imag, 30, 15);
+}
+
+/* complex conjugate */
+static inline void icomplex16_conj(struct icomplex16 *comp)
+{
+	comp->imag = sat_int16(-((int32_t)comp->imag));
+}
+
+/* shift a complex n bits, n > 0: left shift, n < 0: right shift */
+static inline void icomplex16_shift(struct icomplex16 *input, int16_t n, struct icomplex16 *output)
+{
+	int n_rnd = -n - 1;
+
+	if (n >= 0) {
+		/* need saturation handling */
+		output->real = sat_int16((int32_t)input->real << n);
+		output->imag = sat_int16((int32_t)input->imag << n);
+	} else {
+		output->real = sat_int16((((int32_t)input->real >> n_rnd) + 1) >> 1);
+		output->imag = sat_int16((((int32_t)input->imag >> n_rnd) + 1) >> 1);
+	}
+}
+
 /**
  * \brief Execute the 16-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
  *	  For the configured fft_pan.
