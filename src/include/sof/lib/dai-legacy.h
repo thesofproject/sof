@@ -570,6 +570,11 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
  * \brief update dai dma position for host driver.
  */
 void dai_dma_position_update(struct comp_dev *dev);
+
+/**
+ * \brief release llp slot
+ */
+void dai_release_llp_slot(struct comp_dev *dev);
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_LEGACY_H__ */

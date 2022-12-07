@@ -158,12 +158,9 @@ void dai_dma_release(struct comp_dev *dev)
 		if (dd->slot_info.node_id) {
 			k_spinlock_key_t key;
 
-			/* reset llp position to 0 in memory window for reset state.
-			 * clear node id and llp position to 0 when dai is free
-			 */
+			/* reset llp position to 0 in memory window for reset state. */
 			memset_s(&slot, sizeof(slot), 0, sizeof(slot));
-			if (dev->state == COMP_STATE_PAUSED)
-				slot.node_id = dd->slot_info.node_id;
+			slot.node_id = dd->slot_info.node_id;
 
 			key = k_spin_lock(&sof_get()->fw_reg_lock);
 			mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
@@ -191,6 +188,26 @@ void dai_dma_release(struct comp_dev *dev)
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
+}
+
+void dai_release_llp_slot(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct ipc4_llp_reading_slot slot;
+	k_spinlock_key_t key;
+
+	if (!dd->slot_info.node_id)
+		return;
+
+	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+
+	/* clear node id for released llp slot */
+	key = k_spin_lock(&sof_get()->fw_reg_lock);
+	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
+	k_spin_unlock(&sof_get()->fw_reg_lock, key);
+
+	dd->slot_info.reg_offset = 0;
+	dd->slot_info.node_id = 0;
 }
 
 static int dai_get_unused_llp_slot(struct comp_dev *dev,
