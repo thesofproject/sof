@@ -65,7 +65,12 @@
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 /** \brief EDF task's default stack size in bytes. */
+/* increase stack size for RTNR and GOOGLE_RTC_AUDIO_PROCESSING */
+#if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE        0x2000
+#else
 #define PLATFORM_TASK_DEFAULT_STACK_SIZE	0x1000
+#endif
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
