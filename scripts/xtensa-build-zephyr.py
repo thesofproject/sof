@@ -449,8 +449,7 @@ def create_zephyr_sof_symlink():
 def west_update():
 	"""[summary] Clones all west manifest projects to specified revisions"""
 	global west_top
-	execute_command(["west", "update" , "--narrow", "--fetch-opt=--depth=5"],
-			timeout=3000, cwd=west_top)
+	execute_command(["west", "update"], check=True, timeout=3000, cwd=west_top)
 
 
 def get_build_and_sof_version(abs_build_dir):
