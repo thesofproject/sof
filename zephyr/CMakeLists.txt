@@ -72,16 +72,6 @@ ExternalProject_Add(smex_ep
 	INSTALL_COMMAND "" # need smex only at build time
 )
 
-ExternalProject_Add(sof_logger_ep
-	SOURCE_DIR "${ZEPHYR_SOF_MODULE_DIR}/tools/"
-	# The default paths are very "deep"
-	PREFIX     "${PROJECT_BINARY_DIR}/sof-logger_ep"
-	BINARY_DIR "${PROJECT_BINARY_DIR}/sof-logger_ep/build"
-	BUILD_COMMAND cmake --build . --target sof-logger
-	BUILD_ALWAYS 1
-	INSTALL_COMMAND ""
-)
-
 # default SOF includes
 target_include_directories(SOF INTERFACE ../rimage/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)

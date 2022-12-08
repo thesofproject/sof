@@ -626,19 +626,12 @@ def build_platforms():
 		shutil.copy2(fw_file_to_copy, install_key_dir)
 
 	src_dest_list = []
-
-	# Install sof-logger
-	sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
-		"sof-logger_ep", "build", "logger")
-	sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
-	sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
 
-	src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
-
+	mtrace_installed_file = pathlib.Path(tools_output_dir, "mtrace-reader.py").resolve()
 	src_dest_list += [(pathlib.Path(SOF_TOP) /
 		"tools" / "mtrace"/ "mtrace-reader.py",
-		tools_output_dir)]
+		mtrace_installed_file)]
 
 	# Append future files to `src_dest_list` here (but prefer
 	# copying entire directories; more flexible)
