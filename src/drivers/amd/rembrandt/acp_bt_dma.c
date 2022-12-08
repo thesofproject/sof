@@ -238,7 +238,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 		/* Transmit RINGBUFFER Address and size */
 		config->elem_array.elems[0].src =
 			(config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
-		bt_ringbuff_addr = (config->elem_array.elems[0].src | 0x01000000);
+		bt_ringbuff_addr = (config->elem_array.elems[0].src | ACP_SRAM);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFADDR), bt_ringbuff_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFSIZE), bt_buff_size);
 
@@ -259,7 +259,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 		/* Receive RINGBUFFER Address and size */
 		config->elem_array.elems[0].dest =
 			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
-		bt_ringbuff_addr = (config->elem_array.elems[0].dest | 0x01000000);
+		bt_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFADDR), bt_ringbuff_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFSIZE), bt_buff_size);
 

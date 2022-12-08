@@ -463,14 +463,14 @@ static int dma_setup(struct dma_chan_data *channel,
 		if (dir == DMA_DIR_HMEM_TO_LMEM) {
 			/* Playback */
 			dma_config_dscr[dscr_strt_idx].dest_addr =
-				(dma_config_dscr[dscr_strt_idx].dest_addr & 0x0FFFFFFF);
+				(dma_config_dscr[dscr_strt_idx].dest_addr & ACP_DRAM_ADDRESS_MASK);
 			dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr | ACP_SRAM;
 			dma_cfg->wr_size = 0;
 			dma_cfg->rd_size = dma_cfg->size;
 		} else {
 			/* Capture */
 			dma_config_dscr[dscr_strt_idx].src_addr =
-				(dma_config_dscr[dscr_strt_idx].src_addr & 0x0FFFFFFF);
+				(dma_config_dscr[dscr_strt_idx].src_addr & ACP_DRAM_ADDRESS_MASK);
 			dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | ACP_SRAM;
 			dma_cfg->wr_size = dma_cfg->size;
 			dma_cfg->rd_size = 0;

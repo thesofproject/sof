@@ -13,7 +13,7 @@
 /* MAX number of DMA descriptors */
 #define MAX_NUM_DMA_DESC_DSCR	64
 #define SCRATCH_REG_OFFSET	0x1250000
-
+#define ACP_SRAM  0x03800000
 typedef struct acp_atu_grp_pte {
 	uint32_t low_part;
 	uint32_t high_part;
