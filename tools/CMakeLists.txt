@@ -25,5 +25,5 @@ add_subdirectory(topology)
 add_subdirectory(test)
 
 add_subdirectory(probes)
-add_subdirectory(logger)
+
 add_subdirectory(ctl)
