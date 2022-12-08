@@ -476,6 +476,19 @@ static int rtnr_reconfigure(struct comp_dev *dev)
 
 	comp_dbg(dev, "rtnr_reconfigure()");
 
+	if (!comp_is_current_data_blob_valid(cd->model_handler) &&
+	    !comp_is_new_data_blob_available(cd->model_handler)) {
+		/*
+		 * The data blob hasn't been available once so far.
+		 *
+		 * This looks redundant since the same check will be done in
+		 * comp_get_data_blob() below. But without this early return,
+		 * hundreds of warn message lines are produced per second by
+		 * comp_get_data_blob() calls until the data blob is arrived.
+		 */
+		return 0;
+	}
+
 	config = comp_get_data_blob(cd->model_handler, &size, NULL);
 	comp_dbg(dev, "rtnr_reconfigure() size: %d", size);
 
