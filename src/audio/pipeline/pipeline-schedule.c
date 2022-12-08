@@ -91,6 +91,18 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		pipe_err(p, "pipeline_task_cmd(): failed to trigger components: %d", err);
 		reply->error = err;
 		err = SOF_TASK_STATE_COMPLETED;
+		switch (cmd) {
+		case COMP_TRIGGER_START:
+		case COMP_TRIGGER_RELEASE:
+		case COMP_TRIGGER_PRE_START:
+		case COMP_TRIGGER_PRE_RELEASE:
+			p->status = COMP_STATE_PAUSED;
+			break;
+		case COMP_TRIGGER_STOP:
+		case COMP_TRIGGER_PAUSE:
+			p->status = COMP_STATE_ACTIVE;
+		}
+
 	} else {
 		switch (cmd) {
 		case COMP_TRIGGER_START:
