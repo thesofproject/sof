@@ -61,11 +61,13 @@ typedef void* (*DtsSofInterfaceAllocateMemory)(
 	void* pMemoryAllocationContext,
 	unsigned int length,
 	unsigned int alignment);
+typedef void (*DtsSofInterfaceFreeMemory)(void *pMemoryAllocationContext, void *pMemory);
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceInit(
 	DtsSofInterfaceInst** ppInst,
 	DtsSofInterfaceAllocateMemory pMemoryAllocationFn,
-	void* MemoryAllocationContext) DTS_SOF_INTERFACE_NOEXCEPT;
+	DtsSofInterfaceFreeMemory     pMemoryFreeFn,
+	void                          *MemoryAllocationContext) DTS_SOF_INTERFACE_NOEXCEPT;
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfacePrepare(
 	DtsSofInterfaceInst* pInst,
