@@ -109,7 +109,7 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 		psrc_dscr[strt_idx].src_addr  = src;
 		dest = (dest & ACP_DRAM_ADDRESS_MASK);
 		/* Known Data hack */
-		psrc_dscr[strt_idx].dest_addr = (dest | 0x01000000);
+		psrc_dscr[strt_idx].dest_addr = (dest | ACP_SRAM);
 		psrc_dscr[strt_idx].trns_cnt.bits.trns_cnt = bytes;
 		/* Configure a single descrption */
 		dma_config_descriptor(strt_idx, 1, psrc_dscr, pdest_dscr);
@@ -121,11 +121,11 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 			tail = dma_cfg->sys_buff_size - dma_cfg->rd_size;
 			head = bytes - tail;
 			psrc_dscr[strt_idx].trns_cnt.bits.trns_cnt = tail;
-			psrc_dscr[strt_idx+1].src_addr = ACP_SYST_MEM_WINDOW + dma_cfg->phy_off;
+			psrc_dscr[strt_idx + 1].src_addr = ACP_SYST_MEM_WINDOW + dma_cfg->phy_off;
 			dest1 = dest+tail;
 			dest1 = (dest1 & ACP_DRAM_ADDRESS_MASK);
-			psrc_dscr[strt_idx+1].dest_addr = (dest1 | 0x01000000);
-			psrc_dscr[strt_idx+1].trns_cnt.bits.trns_cnt = head;
+			psrc_dscr[strt_idx + 1].dest_addr = (dest1 | ACP_SRAM);
+			psrc_dscr[strt_idx + 1].trns_cnt.bits.trns_cnt = head;
 			dma_config_descriptor(strt_idx, 2, psrc_dscr, pdest_dscr);
 			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
 			dma_cfg->rd_size = 0;
@@ -141,7 +141,7 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 		src = dma_cfg->rd_ptr;
 		dest = dma_cfg->wr_ptr;
 		src = (src & ACP_DRAM_ADDRESS_MASK);
-		psrc_dscr[strt_idx].src_addr = (src | 0x01000000);
+		psrc_dscr[strt_idx].src_addr = (src | ACP_SRAM);
 		psrc_dscr[strt_idx].dest_addr = dest;
 		psrc_dscr[strt_idx].trns_cnt.bits.trns_cnt = bytes;
 		/* Configure a single descrption */
@@ -159,7 +159,7 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 			psrc_dscr[strt_idx+1].dest_addr = ACP_SYST_MEM_WINDOW + dma_cfg->phy_off;
 			psrc_dscr[strt_idx+1].trns_cnt.bits.trns_cnt = head;
 			src1 = (src1 & ACP_DRAM_ADDRESS_MASK);
-			psrc_dscr[strt_idx+1].src_addr = (src1 | 0x01000000);
+			psrc_dscr[strt_idx+1].src_addr = (src1 | ACP_SRAM);
 			dma_config_descriptor(strt_idx, 2, psrc_dscr, pdest_dscr);
 			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
 			dma_cfg->wr_size  = 0;
@@ -424,7 +424,7 @@ static int dma_setup(struct dma_chan_data *channel,
 					sgelems->elems[dscr].src + ACP_SYST_MEM_WINDOW;
 			dest = sgelems->elems[dscr].dest;
 			dest = (dest & ACP_DRAM_ADDRESS_MASK);
-			dma_config_dscr[dscr_strt_idx + dscr].dest_addr = (dest | 0x01000000);
+			dma_config_dscr[dscr_strt_idx + dscr].dest_addr = (dest | ACP_SRAM);
 			dma_config_dscr[dscr_strt_idx + dscr].trns_cnt.u32All = 0;
 			dma_config_dscr[dscr_strt_idx + dscr].trns_cnt.bits.trns_cnt =
 					sgelems->elems[dscr].size;
@@ -438,7 +438,7 @@ static int dma_setup(struct dma_chan_data *channel,
 			src = sgelems->elems[dscr].src;
 			src = (src & ACP_DRAM_ADDRESS_MASK);
 			dma_config_dscr[dscr_strt_idx + dscr].src_addr =
-					(src | 0x01000000);/*rembrandt-arch*/
+					(src | ACP_SRAM);/*rembrandt-arch*/
 			dma_config_dscr[dscr_strt_idx + dscr].trns_cnt.u32All = 0;
 			dma_config_dscr[dscr_strt_idx + dscr].trns_cnt.bits.trns_cnt =
 					sgelems->elems[dscr].size;
@@ -464,14 +464,14 @@ static int dma_setup(struct dma_chan_data *channel,
 			/* Playback */
 			dma_config_dscr[dscr_strt_idx].dest_addr =
 				(dma_config_dscr[dscr_strt_idx].dest_addr & 0x0FFFFFFF);
-			dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr | 0x01000000;
+			dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr | ACP_SRAM;
 			dma_cfg->wr_size = 0;
 			dma_cfg->rd_size = dma_cfg->size;
 		} else {
 			/* Capture */
 			dma_config_dscr[dscr_strt_idx].src_addr =
 				(dma_config_dscr[dscr_strt_idx].src_addr & 0x0FFFFFFF);
-			dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | 0x01000000;
+			dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | ACP_SRAM;
 			dma_cfg->wr_size = dma_cfg->size;
 			dma_cfg->rd_size = 0;
 		}
