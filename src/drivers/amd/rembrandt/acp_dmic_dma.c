@@ -224,7 +224,7 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 		config->elem_array.elems[0].dest =
 			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
-		ring_buff_addr = (config->elem_array.elems[0].dest | 0x01000000);
+		ring_buff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
 		/* Load Ring buffer address */
 		io_reg_write(PU_REGISTER_BASE +
 			ACP_WOV_RX_RINGBUFADDR, ring_buff_addr);
