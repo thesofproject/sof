@@ -290,9 +290,6 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			}
 			if (ret == PPL_STATUS_SCHEDULED)
 				*delayed = true;
-			break;
-		default:
-			ret = 0;
 		}
 
 		/*
