@@ -31,19 +31,33 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        # From time to time this will catch a git tag and change SOF_VERSION
+        # Download a full clone to fix `git describe`, sof_version.h and
+        # build reproducibility. sof.git is still small.
+        # This is especially useful for daily builds (but not just).
         with:
-          fetch-depth: 10
+          fetch-depth: 0
           path: ./workspace/sof
 
+      # As of December 2022 `--shallow-exclude=v3.2.0-rc3` fixes `git
+      # describe`, Zephyr's version.h and build reproducibility while
+      # downloading about 200MB less compared to a full clone.
+      #
+      # Ideally, the --shallow-exclude= argument should be regularly
+      # bumped whenever SOF upgrades Zephyr to keep this as fast as
+      # possible.
+      # In a bigger Zephyr future maybe we could move to a more permanent
+      # git fetch --shallow-since='5 months ago' because Zephyr follows
+      # a "roughly 4-month release" but for now that saves only 100MB
+      # https://docs.zephyrproject.org/latest/project/release_process.html
       - name: west clones
         run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--depth=5
+               west update --narrow --fetch-opt=--depth=5 &&
+               git -C ../zephyr fetch --shallow-exclude=v3.2.0-rc3
 
       - name: select zephyr revision
         run: cd workspace/zephyr/ &&
              if [ 'manifest_revision' != '${{ matrix.zephyr_revision }}' ]; then
-                 git fetch --depth 5 ${{ matrix.zephyr_revision }} &&
+                 git fetch ${{ matrix.zephyr_revision }} &&
                  git checkout FETCH_HEAD;
              fi &&
              git log --oneline -n 5 --decorate --graph --no-abbrev-commit
