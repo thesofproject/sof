@@ -131,7 +131,8 @@ static const char *format_uid(uint32_t uid_ptr, int use_colors, bool be, bool up
 	if (uid_ptr < uids_dict->base_address ||
 	    uid_ptr >= uids_dict->base_address + uids_dict->data_length) {
 		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
-		sprintf(str, BAD_PTR_STR, uid_ptr);
+		if (str)
+			sprintf(str, BAD_PTR_STR, uid_ptr);
 	} else {
 		uid_entry = get_uuid_entry(uid_ptr);
 		str = format_uid_raw(uid_entry, use_colors, 1, be, upper);
@@ -358,8 +359,10 @@ static inline void print_table_header(void)
 		/* e.g.: ktime=4263.487s @ 2021-04-27 14:21:13 -0700 PDT */
 		fprintf(out_fd, "\tktime=%lu.%03lus",
 			ktime.tv_sec, ktime.tv_nsec / 1000000);
-		if (strftime(date_string, sizeof(date_string),
-			     "%F %X %z %Z", localtime(&epoc_secs)))
+		struct tm *info = localtime(&epoc_secs);
+
+		if (info && strftime(date_string, sizeof(date_string),
+				    "%F %X %z %Z", localtime(&epoc_secs)))
 			fprintf(out_fd, "  @  %s", date_string);
 	}
 
@@ -961,7 +964,8 @@ static int verify_ldc_checksum(const uint32_t ldc_sum)
 	count = fread(&ver, sizeof(ver), 1, global_config->version_fd);
 	if (!count) {
 		log_err("Error while reading %s.\n", global_config->version_file);
-		return -ferror(global_config->version_fd);
+		int result = -ferror(global_config->version_fd);
+		return result;
 	}
 
 	/* compare source hash value from version file and ldc file */
@@ -1017,6 +1021,10 @@ static int dump_ldc_info(void)
 	while (remaining > 0) {
 		name = format_uid_raw(&uid_ptr[cnt], 0, 0, false, false);
 		uid_addr = get_uuid_key(&uid_ptr[cnt]);
+		if (!name) {
+			log_err("Failed to allocate memory for uid name\n");
+			exit(1);
+		}
 		fprintf(out_fd, "\t%p  %s\n", (void *)uid_addr, name);
 
 		if (name) {
@@ -1045,19 +1053,25 @@ int convert(struct convert_config *config)
 	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading %s.\n", config->ldc_file);
-		return -ferror(config->ldc_fd);
+		int result = -ferror(config->ldc_fd);
+
+		config = NULL;
+		return result;
 	}
 
 	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
 		log_err("Invalid ldc file signature.\n");
+		config = NULL;
 		return -EINVAL;
 	}
 
 	if (global_config->version_fw && /* -n option */
 	    !global_config->dump_ldc) {
 		ret = verify_ldc_checksum(global_config->logs_header->version.src_hash);
-		if (ret)
+		if (ret) {
+			config = NULL;
 			return ret;
+		}
 	}
 
 	/* default logger and ldc_file abi verification */
@@ -1073,6 +1087,7 @@ int convert(struct convert_config *config)
 			SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
 			SOF_ABI_VERSION_MINOR(snd.version.abi_version),
 			SOF_ABI_VERSION_PATCH(snd.version.abi_version));
+		config = NULL;
 		return -EINVAL;
 	}
 
@@ -1081,7 +1096,10 @@ int convert(struct convert_config *config)
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading uuids header from %s.\n", config->ldc_file);
-		return -ferror(config->ldc_fd);
+		int result = -ferror(config->ldc_fd);
+
+		config = NULL;
+		return result;
 	}
 	if (strncmp((char *)uids_hdr.sig, SND_SOF_UIDS_SIG,
 		    SND_SOF_UIDS_SIG_SIZE)) {
@@ -1118,5 +1136,6 @@ int convert(struct convert_config *config)
 	ret = logger_read();
 out:
 	free(config->uids_dict);
+	config = NULL;
 	return ret;
 }

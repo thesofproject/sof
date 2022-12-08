@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 
 	if (config.input_std) {
 		config.in_fd = stdin;
-	} else if (baud) {
+	} else if (baud && config.in_file) {
 		config.serial_fd = configure_uart(config.in_file, baud);
 		if (config.serial_fd < 0) {
 			ret = -config.serial_fd;
@@ -507,6 +507,9 @@ out:
 
 	if (config.version_fd)
 		fclose(config.version_fd);
+
+	if (config.in_file)
+		fclose(config.in_file);
 
 	return ret;
 }
