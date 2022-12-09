@@ -139,6 +139,8 @@ set(TPLGS
 	"sof-tgl-rt711-rt1308\;sof-adl-rt711-4ch\;-DCHANNELS=4\;-DBT_OFFLOAD\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
 	"sof-tgl-rt711-rt1308\;sof-adl-rt711\;-DCHANNELS=0\;-DBT_OFFLOAD\;-DPLATFORM=adl"
 	"sof-tgl-rt711-rt1308\;sof-adl-rt711-l0-rt1316-l3-2ch\;-DCHANNELS=2\;-DEXT_AMP\;-DEXT_AMP_REF\;-DAMP_1_LINK=3\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
+	"sof-tgl-rt711-rt1308\;sof-adl-rt711-l0-rt1316-l2-2ch\;-DCHANNELS=2\;-DEXT_AMP\;-DEXT_AMP_REF\;-DAMP_1_LINK=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
+	"sof-tgl-rt711-rt1308\;sof-adl-rt711-l0-rt1316-l2-4ch\;-DCHANNELS=4\;-DEXT_AMP\;-DEXT_AMP_REF\;-DAMP_1_LINK=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
 	"sof-tgl-rt711-rt1308\;sof-rpl-rt711-4ch\;-DCHANNELS=4\;-DBT_OFFLOAD\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=rpl"
 	"sof-tgl-rt711-rt1308\;sof-rpl-rt711\;-DCHANNELS=0\;-DBT_OFFLOAD\;-DPLATFORM=rpl"
 	## end SoundWire topologies
