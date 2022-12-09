@@ -734,13 +734,22 @@ def install_platform(platform, sof_platform_output_dir):
 		InstFile(BIN_NAME + ".map"),
 
 		# CONFIG_BUILD_OUTPUT_STRIPPED
-		InstFile(BIN_NAME + '.strip', optional=True),
+		# Renaming ELF files highlights the workaround below that strips the .comment section
+		InstFile(BIN_NAME + ".strip", renameTo=f"stripped-{BIN_NAME}.elf", optional=True),
 
 		# Not every platform has intermediate rimage modules
-		InstFile("main-stripped.mod", optional=True),
+		InstFile("main-stripped.mod", renameTo="stripped-main.elf", optional=True),
 		InstFile("boot.mod", optional=True),
 		InstFile("main.mod", optional=True),
 	]
+
+	# We cannot import at the start because zephyr may not be there yet
+	sys.path.insert(1, os.path.join(sys.path[0],
+					'..', '..', 'zephyr', 'scripts', 'west_commands'))
+	import zcmake
+
+	cmake_cache = zcmake.CMakeCache.from_build_dir(abs_build_dir.parent)
+	objcopy = cmake_cache.get("CMAKE_OBJCOPY")
 
 	sof_info = pathlib.Path(STAGING_DIR) / "sof-info" / platform
 	sof_info.mkdir(parents=True, exist_ok=True)
@@ -748,9 +757,25 @@ def install_platform(platform, sof_platform_output_dir):
 		if not pathlib.Path(abs_build_dir / f.name).is_file() and f.optional:
 			continue
 		dstname = f.renameTo or f.name
-		shutil.copy2(abs_build_dir / f.name, sof_info / dstname)
+
+		src = abs_build_dir / f.name
+		dst = sof_info / dstname
+
+		# Some Xtensa compilers (ab?)use the .ident / .comment
+		# section and append the typically absolute and not
+		# reproducible /path/to/the.c file after the usual
+		# compiler ID.
+		# https://sourceware.org/binutils/docs/as/Ident.html
+		#
+		# --strip-all does not remove the .comment section.
+		# Remove it like some gcc test scripts do:
+		# https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=c7046906c3ae
+		if "strip" in dstname:
+			execute_command([str(x) for x in [objcopy, "--remove-section", ".comment", src, dst]])
+		else:
+			shutil.copy2(src, dst)
 		if f.gzip:
-			gzip_compress(sof_info / dstname)
+			gzip_compress(dst)
 
 
 # Zephyr's CONFIG_KERNEL_BIN_NAME default value
