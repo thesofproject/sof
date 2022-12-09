@@ -464,9 +464,10 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
 {
 	if (dma_ext->dma) {
-		dma_put(dma_ext->dma);
 		if (dma_ext->dma->z_dev)
 			dma_release_channel(dma_ext->dma->z_dev, dma_id);
+
+		dma_put(dma_ext->dma);
 	}
 	return 0;
 }
