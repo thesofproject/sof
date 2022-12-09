@@ -9,6 +9,8 @@
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
+
+#ifdef FFT_GENERIC
 #include <sof/audio/coefficients/fft/twiddle_32.h>
 
 /*
@@ -17,21 +19,21 @@
  * and _mul() assumes Q1.31 * Q1.31 so the output will be shifted to be Q1.31.
  */
 
-static inline void icomplex32_add(struct icomplex32 *in1, struct icomplex32 *in2,
+static inline void icomplex32_add(const struct icomplex32 *in1, const struct icomplex32 *in2,
 				  struct icomplex32 *out)
 {
 	out->real = in1->real + in2->real;
 	out->imag = in1->imag + in2->imag;
 }
 
-static inline void icomplex32_sub(struct icomplex32 *in1, struct icomplex32 *in2,
+static inline void icomplex32_sub(const struct icomplex32 *in1, const struct icomplex32 *in2,
 				  struct icomplex32 *out)
 {
 	out->real = in1->real - in2->real;
 	out->imag = in1->imag - in2->imag;
 }
 
-static inline void icomplex32_mul(struct icomplex32 *in1, struct icomplex32 *in2,
+static inline void icomplex32_mul(const struct icomplex32 *in1, const struct icomplex32 *in2,
 				  struct icomplex32 *out)
 {
 	out->real = ((int64_t)in1->real * in2->real - (int64_t)in1->imag * in2->imag) >> 31;
@@ -45,7 +47,8 @@ static inline void icomplex32_conj(struct icomplex32 *comp)
 }
 
 /* shift a complex n bits, n > 0: left shift, n < 0: right shift */
-static inline void icomplex32_shift(struct icomplex32 *input, int32_t n, struct icomplex32 *output)
+static inline void icomplex32_shift(const struct icomplex32 *input, int32_t n,
+				    struct icomplex32 *output)
 {
 	if (n > 0) {
 		/* need saturation handling */
@@ -134,3 +137,5 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 			icomplex32_shift(&outb[i], plan->len, &outb[i]);
 	}
 }
+
+#endif
