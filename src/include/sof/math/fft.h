@@ -14,6 +14,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define FFT_GENERIC
+#if defined(__XCC__)
+
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#undef FFT_GENERIC
+#define FFT_HIFI3
+#endif
+
+#endif
+
 #define FFT_SIZE_MAX	1024
 
 struct icomplex32 {

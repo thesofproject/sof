@@ -8,26 +8,28 @@
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <sof/math/fft.h>
+
+#ifdef FFT_GENERIC
 #include <sof/audio/coefficients/fft/twiddle_16.h>
 
 /*
  * Helpers for 16 bit FFT calculation
  */
-static inline void icomplex16_add(struct icomplex16 *in1, struct icomplex16 *in2,
+static inline void icomplex16_add(const struct icomplex16 *in1, const struct icomplex16 *in2,
 				  struct icomplex16 *out)
 {
 	out->real = in1->real + in2->real;
 	out->imag = in1->imag + in2->imag;
 }
 
-static inline void icomplex16_sub(struct icomplex16 *in1, struct icomplex16 *in2,
+static inline void icomplex16_sub(const struct icomplex16 *in1, const struct icomplex16 *in2,
 				  struct icomplex16 *out)
 {
 	out->real = in1->real - in2->real;
 	out->imag = in1->imag - in2->imag;
 }
 
-static inline void icomplex16_mul(struct icomplex16 *in1, struct icomplex16 *in2,
+static inline void icomplex16_mul(const struct icomplex16 *in1, const struct icomplex16 *in2,
 				  struct icomplex16 *out)
 {
 	int32_t real = (int32_t)in1->real * in2->real - (int32_t)in1->imag * in2->imag;
@@ -44,17 +46,20 @@ static inline void icomplex16_conj(struct icomplex16 *comp)
 }
 
 /* shift a complex n bits, n > 0: left shift, n < 0: right shift */
-static inline void icomplex16_shift(struct icomplex16 *input, int16_t n, struct icomplex16 *output)
+static inline void icomplex16_shift(const struct icomplex16 *input, int16_t n,
+				    struct icomplex16 *output)
 {
-	int n_rnd = -n - 1;
+	int n1, n2;
 
 	if (n >= 0) {
 		/* need saturation handling */
 		output->real = sat_int16((int32_t)input->real << n);
 		output->imag = sat_int16((int32_t)input->imag << n);
 	} else {
-		output->real = sat_int16((((int32_t)input->real >> n_rnd) + 1) >> 1);
-		output->imag = sat_int16((((int32_t)input->imag >> n_rnd) + 1) >> 1);
+		n1 = -n;
+		n2 = 1 << (n1 - 1);
+		output->real = sat_int16(((int32_t)input->real + n2) >> n1);
+		output->imag = sat_int16(((int32_t)input->imag  + n2) >> n1);
 	}
 }
 
@@ -135,3 +140,4 @@ void fft_execute_16(struct fft_plan *plan, bool ifft)
 			icomplex16_shift(&outb[i], plan->len, &outb[i]);
 	}
 }
+#endif
