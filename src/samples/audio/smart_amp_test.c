@@ -276,7 +276,7 @@ static int smart_amp_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
-		comp_err(dev, "volume_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "smart_amp_verify_params() error: comp_verify_params() failed.");
 		return ret;
 	}
 
