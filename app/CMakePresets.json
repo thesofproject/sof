@@ -1,0 +1,171 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": {
+	  "major": 3,
+	  "minor": 21,
+	  "patch": 0
+	},
+
+	"configurePresets": [
+	{
+		"name": "common-settings",
+		"description": "List of common settings used by all configurations",
+		"hidden": true,
+		"generator": "Ninja",
+		"environment": {
+			"ZEPHYR_BASE": "${sourceDir}/../../zephyr"
+		}
+	},
+	{
+		"name": "mtl-xtensa-windows",
+		"displayName": "MTL Xtensa",
+		"inherits": [ "mtl-xtensa", "xtensa-toolchain-windows" ],
+		"environment": {
+			"XTENSA_TOOLS_VERSION": "RI-2020.5-win32"
+		}
+	},
+	{
+		"name": "mtl-xtensa-linux",
+		"displayName": "MTL Xtensa",
+		"inherits": [ "mtl-xtensa", "xtensa-toolchain-linux" ],
+		"environment": {
+			"XTENSA_TOOLS_VERSION": "RI-2020.5-linux"
+		}
+	},
+	{
+		"name": "mtl-xtensa",
+		"hidden": true,
+		"description": "Meteorlake build using Xtensa toolchain",
+		"inherits": "common-settings",
+		"binaryDir": "${sourceDir}/../../build-mtl",
+		"cacheVariables": {
+			"BOARD": "intel_adsp_ace15_mtpm",
+			"ZEPHYR_TOOLCHAIN_VARIANT":"xcc"
+		},
+		"environment": {
+			"XTENSA_CORE": "ace10_LX7HiFi4_RI_2020_5"
+		}
+	},
+	{
+		"name": "tgl-xtensa-windows",
+		"displayName": "TGL Xtensa",
+		"inherits": [ "tgl-xtensa", "xtensa-toolchain-windows" ],
+		"environment": {
+			"XTENSA_TOOLS_VERSION": "RG-2017.8-Win32"
+		}
+	},
+	{
+		"name": "tgl-xtensa-linux",
+		"displayName": "TGL Xtensa",
+		"inherits": [ "tgl-xtensa", "xtensa-toolchain-linux" ],
+		"environment": {
+			"XTENSA_TOOLS_VERSION": "RG-2017.8-linux"
+		}
+	},
+	{
+		"name": "tgl-xtensa",
+		"hidden": true,
+		"description": "Tigerlake build using Xtensa toolchain",
+		"inherits": "common-settings",
+		"binaryDir": "${sourceDir}/../../build-tgl",
+		"cacheVariables": {
+			"BOARD": "intel_adsp_cavs25",
+			"ZEPHYR_TOOLCHAIN_VARIANT":"xcc",
+			"OVERLAY_CONFIG": "overlays/tgl/ipc4_overlay.conf"
+		},
+		"environment": {
+			"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8"
+		}
+	},
+	{
+		"name": "xtensa-toolchain-windows",
+		"hidden": true,
+		"inherits": [ "windows", "xtensa-toolchain" ],
+		"environment": {
+			"XTENSA_INSTALL_PATH": "C:/usr/xtensa"
+		}
+	},
+	{
+		"name": "xtensa-toolchain-linux",
+		"hidden": true,
+		"inherits": [ "linux", "xtensa-toolchain" ],
+		"environment": {
+			"XTENSA_INSTALL_PATH": "~/xtensa"
+		}
+	},
+	{
+		"name": "xtensa-toolchain",
+		"description": "Common settings for Xtensa tools",
+		"hidden": true,
+		"environment": {
+			"XTENSA_TOOLS_DIR": "$env{XTENSA_INSTALL_PATH}/XtDevTools/install/tools",
+			"XTENSA_BUILDS_DIR": "$env{XTENSA_INSTALL_PATH}/XtDevTools/install/builds",
+			"XTENSA_TOOLCHAIN_PATH": "$env{XTENSA_TOOLS_DIR}/$env{XTENSA_TOOLS_VERSION}",
+			"XTENSA_TOOLS": "$env{XTENSA_TOOLS_DIR}/$env{XTENSA_TOOLS_VERSION}/XtensaTools",
+			"XTENSA_SYSTEM": "$env{XTENSA_BUILDS_DIR}/$env{XTENSA_TOOLS_VERSION}/$env{XTENSA_CORE}/config"
+		}
+	},
+	{
+		"name": "windows",
+		"description": "Indicates that preset is Windows specific",
+		"hidden": true,
+		"condition": {
+			"type": "equals",
+			"lhs": "${hostSystemName}",
+			"rhs": "Windows"
+		}
+	},
+	{
+		"name": "linux",
+		"description": "Indicates that preset is Linux specific",
+		"hidden": true,
+		"condition": {
+			"type": "equals",
+			"lhs": "${hostSystemName}",
+			"rhs": "Linux"
+		}
+	}
+	],
+
+	"buildPresets": [
+	{
+		"name": "mtl-xtensa-windows",
+		"displayName": "MTL Xtensa",
+		"description": "Build MTL with Xtensa toolchain",
+		"configurePreset": "mtl-xtensa-windows"
+	},
+	{
+		"name": "mtl-xtensa-windows-rebuild",
+		"displayName": "MTL Xtensa rebuild",
+		"description": "Cleans build files and rebuilds MTL with Xtensa toolchain",
+		"inherits": "mtl-xtensa-windows",
+		"cleanFirst": true
+	},
+	{
+		"name": "mtl-xtensa-linux",
+		"displayName": "MTL Xtensa",
+		"description": "Build MTL with Xtensa toolchain",
+		"configurePreset": "mtl-xtensa-linux"
+	},
+	{
+		"name": "mtl-xtensa-linux-rebuild",
+		"displayName": "MTL Xtensa rebuild",
+		"description": "Cleans build files and rebuilds MTL with Xtensa toolchain",
+		"inherits": "mtl-xtensa-linux",
+		"cleanFirst": true
+	},
+	{
+		"name": "tgl-xtensa-windows",
+		"displayName": "TGL Xtensa",
+		"description": "Build TGL with Xtensa toolchain",
+		"configurePreset": "tgl-xtensa-windows"
+	},
+	{
+		"name": "tgl-xtensa-windows-rebuild",
+		"displayName": "TGL Xtensa rebuild",
+		"description": "Cleans build files and rebuilds TGL with Xtensa toolchain",
+		"configurePreset": "tgl-xtensa-windows",
+		"cleanFirst": true
+	}
+	]
+}
