@@ -384,6 +384,12 @@ ifelse(
                 SSP_CLOCK(fsync, 48000, codec_slave),
                 SSP_TDM(2, 32, 3, 3),
                 SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
+	CODEC, `NAU8318', `
+        SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
+                SSP_CLOCK(bclk, 1536000, codec_slave),
+                SSP_CLOCK(fsync, 48000, codec_slave),
+                SSP_TDM(2, 16, 3, 3),
+                SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
 )')')
 
 DEBUG_END
