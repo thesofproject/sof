@@ -23,6 +23,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
 #include <zephyr/timeout_q.h>
+#include <zephyr/drivers/watchdog.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -55,6 +56,14 @@ struct zephyr_domain {
 /* perf measurement windows size 2^x */
 #define CYCLES_WINDOW_SIZE	10
 
+#if CONFIG_WDT_DW
+#define GET_DEVICE_LIST(node) DEVICE_DT_GET(node),
+
+const struct device *watchdog[CONFIG_MAX_CORE_COUNT] = {
+	DT_FOREACH_STATUS_OKAY(snps_designware_watchdog, GET_DEVICE_LIST)
+};
+#endif
+
 static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct zephyr_domain *zephyr_domain = p1;
@@ -66,6 +75,12 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&dt->sem, K_FOREVER);
+
+#if CONFIG_WDT_DW
+		/* Feed the watchdog */
+		if (watchdog[core])
+			wdt_feed(watchdog[core], 0);
+#endif
 
 		cycles0 = k_cycle_get_32();
 		dt->handler(dt->arg);
@@ -92,6 +107,12 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 			runs = 0;
 			overruns = 0;
 		}
+
+#if CONFIG_WDT_DW
+		/* Feed the watchdog */
+		if (watchdog[core])
+			wdt_feed(watchdog[core], 0);
+#endif
 	}
 }
 
@@ -168,6 +189,18 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 		k_timer_user_data_set(&zephyr_domain->timer, zephyr_domain);
 
 		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
+
+#if CONFIG_WDT_DW
+		if (watchdog[core]) {
+			/* Watchdog timeout configuration. */
+			const struct wdt_timeout_cfg watchdog_config = {
+				.window.max = 2 * LL_TIMER_PERIOD_US / 1000,
+			};
+
+			wdt_install_timeout(watchdog[core], &watchdog_config);
+			wdt_setup(watchdog[core], 0);
+		}
+#endif
 	}
 
 	k_spin_unlock(&domain->lock, key);
