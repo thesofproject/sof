@@ -677,6 +677,8 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
+		if (!source_c)
+			return -ENODATA;
 		comp_update_buffer_consume(source_c, mod->input_buffers[0].consumed);
 		buffer_release(sink_c);
 		buffer_release(source_c);
