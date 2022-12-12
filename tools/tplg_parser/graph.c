@@ -20,38 +20,25 @@
 #include <tplg_parser/tokens.h>
 
 /* load pipeline graph DAPM widget*/
-int tplg_create_graph(int num_comps, int pipeline_id,
+int tplg_create_graph(struct tplg_context *ctx, int num_comps, int pipeline_id,
 		    struct comp_info *temp_comp_list, char *pipeline_string,
-		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
+		    struct sof_ipc_pipe_comp_connect *connection,
 		    int route_num, int count)
 {
 	struct snd_soc_tplg_dapm_graph_elem *graph_elem;
 	char *source = NULL, *sink = NULL;
-	int j, ret = 0;
-	size_t size;
+	int j;
 
 	/* configure route */
 	connection->hdr.size = sizeof(*connection);
 	connection->hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_CONNECT;
 
-	/* allocate memory for graph elem */
-	size = sizeof(struct snd_soc_tplg_dapm_graph_elem);
-	graph_elem = (struct snd_soc_tplg_dapm_graph_elem *)malloc(size);
-	if (!graph_elem) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
 
 	/* set up component connections */
 	connection->source_id = -1;
 	connection->sink_id = -1;
 
-	size = sizeof(struct snd_soc_tplg_dapm_graph_elem);
-	ret = fread(graph_elem, size, 1, file);
-	if (ret != 1) {
-		free(graph_elem);
-		return -EINVAL;
-	}
+	graph_elem = tplg_get_graph(ctx);
 
 	/* look up component id from the component list */
 	for (j = 0; j < num_comps; j++) {
@@ -71,7 +58,6 @@ int tplg_create_graph(int num_comps, int pipeline_id,
 	if (!source || !sink) {
 		fprintf(stderr, "%s() error: source=%p, sink=%p\n",
 			__func__, source, sink);
-		free(graph_elem);
 		return -EINVAL;
 	}
 
@@ -85,6 +71,5 @@ int tplg_create_graph(int num_comps, int pipeline_id,
 		strcat(pipeline_string, "\n");
 	}
 
-	free(graph_elem);
 	return 0;
 }

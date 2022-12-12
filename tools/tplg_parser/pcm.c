@@ -28,9 +28,8 @@ static const struct sof_topology_token pcm_tokens[] = {
 int tplg_create_pcm(struct tplg_context *ctx, int dir,
 		  struct sof_ipc_comp_host *host)
 {
-	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t total_array_size = 0, read_size;
-	FILE *file = ctx->file;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
+	size_t total_array_size = 0;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
@@ -44,32 +43,14 @@ int tplg_create_pcm(struct tplg_context *ctx, int dir,
 	host->direction = dir;
 	host->config.hdr.size = sizeof(host->config);
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
-
 	/* read vendor tokens */
 	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1)
-			return -EINVAL;
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load pcm array size mismatch\n");
 			free(array);
 			return -EINVAL;
-		}
-
-		ret = tplg_read_array(array, file);
-		if (ret) {
-			fprintf(stderr, "error: read array fail\n");
-			free(array);
-			return ret;
 		}
 
 		/* parse comp tokens */
@@ -79,7 +60,6 @@ int tplg_create_pcm(struct tplg_context *ctx, int dir,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse comp tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 
@@ -89,14 +69,13 @@ int tplg_create_pcm(struct tplg_context *ctx, int dir,
 				       array->size);
 		if (ret != 0) {
 			fprintf(stderr, "error: parse pcm tokens %d\n", size);
-			free(array);
 			return -EINVAL;
 		}
 
 		total_array_size += array->size;
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
 	}
 
-	free(array);
 	return 0;
 }
 
