@@ -551,6 +551,12 @@ static int volume_init(struct processing_module *mod)
 	uint8_t channel;
 	uint32_t instance_id;
 
+	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	if (channels_count > SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "volume_init(): Invalid channels count %u", channels_count);
+		return -EINVAL;
+	}
+
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
 	if (!cd)
 		return -ENOMEM;
@@ -567,8 +573,6 @@ static int volume_init(struct processing_module *mod)
 	}
 
 	md->private = cd;
-
-	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 
 	for (channel = 0; channel < channels_count ; channel++) {
 		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
@@ -922,7 +926,8 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct ipc4_peak_volume_config cdata;
-	int i, ret;
+	int ret;
+	uint32_t i, channels_count;
 
 	comp_dbg(dev, "volume_set_config()");
 
@@ -941,13 +946,25 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	cdata = *(const struct ipc4_peak_volume_config *)fragment;
 	cdata.target_volume = convert_volume_ipc4_to_ipc3(dev, cdata.target_volume);
 
+	if ((cdata.channel_id != IPC4_ALL_CHANNELS_MASK) &&
+	    (cdata.channel_id >= SOF_IPC_MAX_CHANNELS)) {
+		comp_err(dev, "Invalid channel_id %u", config_id);
+		return -EINVAL;
+	}
+
 	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
 	cd->ramp_finished = true;
+
+	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	if (channels_count > SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "Invalid channels count %u", channels_count);
+		return -EINVAL;
+	}
 
 	switch (config_id) {
 	case IPC4_VOLUME:
 		if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
-			for (i = 0; i < mod->priv.cfg.base_cfg.audio_fmt.channels_count; i++) {
+			for (i = 0; i < channels_count; i++) {
 				set_volume_ipc4(cd, i, cdata.target_volume,
 						cdata.curve_type,
 						cdata.curve_duration);
