@@ -69,9 +69,8 @@ void mailbox_dspbox_read(void *dest, size_t dest_size,
 
 #if CONFIG_LIBRARY
 
-static inline
-void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
-{}
+#define mailbox_hostbox_write(_offset, _src, _bytes) \
+	memcpy((char *)ipc->comp_data + _offset, _src, _bytes)
 
 #else
 
