@@ -311,7 +311,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			list_item_append(&buffer->sink_list, &mod->sink_buffer_list);
+			buffer_attach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
 
 			buffer_c = buffer_acquire(buffer);
 			buffer_set_params(buffer_c, mod->stream_params, BUFFER_UPDATE_FORCE);
@@ -347,7 +347,7 @@ free:
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
 
-		list_item_del(&buffer->sink_list);
+		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
 		buffer_free(buffer);
 	}
 out_free:
@@ -911,7 +911,7 @@ void module_adapter_free(struct comp_dev *dev)
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
 
-		list_item_del(&buffer->sink_list);
+		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
 		buffer_free(buffer);
 	}
 
