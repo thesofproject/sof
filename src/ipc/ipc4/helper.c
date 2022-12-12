@@ -371,9 +371,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto free;
 	}
 
-	ret = comp_bind(source, bu);
-	if (ret < 0)
-		goto e_src_bind;
 
 	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
@@ -381,6 +378,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
 		goto e_sink_connect;
 	}
+
+	ret = comp_bind(source, bu);
+	if (ret < 0)
+		goto e_src_bind;
 
 	ret = comp_bind(sink, bu);
 	if (ret < 0)
@@ -408,10 +409,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 err:
 	comp_unbind(sink, bu);
 e_sink_bind:
-	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-e_sink_connect:
 	comp_unbind(source, bu);
 e_src_bind:
+	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
 	irq_local_enable(flags);
