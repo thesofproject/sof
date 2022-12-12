@@ -677,6 +677,12 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
+		if (!source_c) {
+			ret = -ENODATA;
+			comp_err(dev, "comp_update_buffer_consume() %x: NULL dereference error",
+				 ret);
+			goto out;
+		}
 		comp_update_buffer_consume(source_c, mod->input_buffers[0].consumed);
 		buffer_release(sink_c);
 		buffer_release(source_c);
