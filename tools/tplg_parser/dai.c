@@ -34,9 +34,8 @@ static const struct sof_topology_token dai_tokens[] = {
 /* load dai component */
 int tplg_create_dai(struct tplg_context *ctx, struct sof_ipc_comp_dai *comp_dai)
 {
-	struct snd_soc_tplg_vendor_array *array;
-	size_t total_array_size = 0, read_size;
-	FILE *file = ctx->file;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
+	size_t total_array_size = 0;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
@@ -49,34 +48,13 @@ int tplg_create_dai(struct tplg_context *ctx, struct sof_ipc_comp_dai *comp_dai)
 	comp_dai->comp.pipeline_id = ctx->pipeline_id;
 	comp_dai->config.hdr.size = sizeof(comp_dai->config);
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
-
 	/* read vendor tokens */
 	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1) {
-			free(array);
-			return -EINVAL;
-		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load dai array size mismatch\n");
-			free(array);
 			return -EINVAL;
-		}
-
-		ret = tplg_read_array(array, file);
-		if (ret) {
-			fprintf(stderr, "error: read array fail\n");
-			free(array);
-			return ret;
 		}
 
 		ret = sof_parse_tokens(comp_dai, dai_tokens,
@@ -85,7 +63,6 @@ int tplg_create_dai(struct tplg_context *ctx, struct sof_ipc_comp_dai *comp_dai)
 		if (ret != 0) {
 			fprintf(stderr, "error: parse dai tokens failed %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 
@@ -96,13 +73,12 @@ int tplg_create_dai(struct tplg_context *ctx, struct sof_ipc_comp_dai *comp_dai)
 		if (ret != 0) {
 			fprintf(stderr, "error: parse filewrite tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 		total_array_size += array->size;
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
 	}
 
-	free(array);
 	return 0;
 }
 

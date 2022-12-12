@@ -649,7 +649,6 @@ static int test_pipeline_load(struct pipeline_thread_data *ptdata, struct tplg_c
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->comp_id = 1000 * ptdata->core_id;
 	ctx->core_id = ptdata->core_id;
-	ctx->file = tp->file;
 	ctx->sof = sof_get();
 	ctx->tp = tp;
 	ctx->tplg_file = tp->tplg_file;

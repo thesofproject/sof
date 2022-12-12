@@ -39,10 +39,8 @@ static const struct sof_topology_token buffer_comp_tokens[] = {
 int tplg_create_buffer(struct tplg_context *ctx,
 		     struct sof_ipc_buffer *buffer)
 {
-	struct snd_soc_tplg_vendor_array *array;
-	size_t read_size;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
 	size_t parsed_size = 0;
-	FILE *file = ctx->file;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
@@ -55,36 +53,13 @@ int tplg_create_buffer(struct tplg_context *ctx,
 	buffer->comp.type = SOF_COMP_BUFFER;
 	buffer->comp.hdr.size = sizeof(struct sof_ipc_buffer);
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: malloc fail during load_buffer\n");
-		return -errno;
-	}
-
 	/* read vendor tokens */
 	while (parsed_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1) {
-			fprintf(stderr,
-				"error: fread fail during load_buffer\n");
-			free(array);
-			return -EINVAL;
-		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(parsed_size, size, array)) {
 			fprintf(stderr, "error: load buffer array size mismatch\n");
-			free(array);
 			return -EINVAL;
-		}
-
-		ret = tplg_read_array(array, file);
-		if (ret) {
-			fprintf(stderr, "error: read array fail\n");
-			free(array);
-			return ret;
 		}
 
 		/* parse buffer comp tokens */
@@ -94,7 +69,6 @@ int tplg_create_buffer(struct tplg_context *ctx,
 		if (ret) {
 			fprintf(stderr, "error: parse buffer comp tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 
@@ -105,14 +79,13 @@ int tplg_create_buffer(struct tplg_context *ctx,
 		if (ret) {
 			fprintf(stderr, "error: parse buffer tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 
 		parsed_size += array->size;
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
 	}
 
-	free(array);
 	return 0;
 }
 
@@ -126,7 +99,7 @@ int tplg_new_buffer(struct tplg_context *ctx, struct sof_ipc_buffer *buffer,
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, ctx->file, rctl, 0) < 0) {
+	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}

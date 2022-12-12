@@ -149,7 +149,7 @@ int tplg_register_buffer(struct tplg_context *ctx)
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, ctx->file, NULL, 0) < 0) {
+	if (tplg_create_controls(ctx, 0, NULL, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}
@@ -164,18 +164,18 @@ int tplg_register_buffer(struct tplg_context *ctx)
 }
 
 /* load pipeline graph DAPM widget*/
-int tplg_register_graph(void *dev, struct comp_info *temp_comp_list,
-			char *pipeline_string, FILE *file,
+int tplg_register_graph(struct tplg_context *ctx, struct comp_info *temp_comp_list,
+			char *pipeline_string,
 			int count, int num_comps, int pipeline_id)
 {
 	struct sof_ipc_pipe_comp_connect connection;
-	struct sof *sof = (struct sof *)dev;
+	struct sof *sof = ctx->sof;
 	int ret = 0;
 	int i;
 
 	for (i = 0; i < count; i++) {
-		ret = tplg_create_graph(num_comps, pipeline_id, temp_comp_list,
-				      pipeline_string, &connection, file, i,
+		ret = tplg_create_graph(ctx, num_comps, pipeline_id, temp_comp_list,
+				      pipeline_string, &connection, i,
 				      count);
 		if (ret < 0)
 			return ret;
@@ -233,7 +233,7 @@ int tplg_register_pga(struct tplg_context *ctx)
 	struct sof *sof = ctx->sof;
 	int ret;
 
-	ret = tplg_new_pga(ctx, comp, MAX_TPLG_OBJECT_SIZE, NULL, 0);
+	ret = tplg_new_pga(ctx, comp, MAX_TPLG_OBJECT_SIZE, NULL, 0, NULL, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "error: failed to create PGA\n");
 		return ret;
@@ -256,15 +256,14 @@ int tplg_register_pga(struct tplg_context *ctx)
 int tplg_register_pipeline(struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_pipe_new pipeline = {{0}};
-	FILE *file = ctx->file;
+	struct sof_ipc_pipe_new pipeline = {0};
 	int ret;
 
 	ret = tplg_create_pipeline(ctx, &pipeline);
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, file, NULL, 0) < 0) {
+	if (tplg_create_controls(ctx, 0, NULL, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}
@@ -289,7 +288,7 @@ int load_process(struct tplg_context *ctx)
 	struct sof_ipc_comp_process *process_ipc = NULL;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
 	struct sof_ipc_comp_ext comp_ext;
-	char *priv_data = NULL;
+	struct snd_soc_tplg_private *priv_data = NULL;
 	int ret = 0;
 	int i;
 
@@ -301,7 +300,7 @@ int load_process(struct tplg_context *ctx)
 
 	ret = tplg_create_process(ctx, process, &comp_ext);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	printf("debug uuid:\n");
 	for (i = 0; i < SOF_UUID_SIZE; i++)
@@ -310,23 +309,19 @@ int load_process(struct tplg_context *ctx)
 
 	/* Get control into ctl and priv_data */
 	for (i = 0; i < widget->num_kcontrols; i++) {
-		ret = tplg_create_single_control(&ctl, &priv_data, ctx->file);
+		ret = tplg_create_single_control(ctx, &ctl, &priv_data);
 
 		if (ret < 0) {
 			fprintf(stderr, "error: failed control load\n");
-			return ret;
+			goto out;
 		}
 
 		/* Merge process and priv_data into process_ipc */
 		if (priv_data)
 			ret = tplg_process_append_data(&process_ipc, process, ctl, priv_data);
-
-		free(ctl);
-		free(priv_data);
 		if (ret) {
 			fprintf(stderr, "error: private data append failed\n");
-			free(process_ipc);
-			return ret;
+			goto out;
 		}
 	}
 
@@ -334,7 +329,7 @@ int load_process(struct tplg_context *ctx)
 	if (!process_ipc) {
 		ret = tplg_process_init_data(&process_ipc, process);
 		if (ret)
-			return ret;
+			goto out;
 	}
 
 	/* load process component */
@@ -342,6 +337,8 @@ int load_process(struct tplg_context *ctx)
 
 	/* Instantiate */
 	ret = ipc_comp_new(sof->ipc, ipc_to_comp_new(process_ipc));
+
+out:
 	free(process_ipc);
 	free(process);
 
@@ -390,44 +387,61 @@ int tplg_register_src(struct tplg_context *ctx)
 	return ret;
 }
 
-/* load dapm widget */
-int load_widget(struct tplg_context *ctx)
+/*
+ * create a list with all widget info
+ * containing mapping between component names and ids
+ * which will be used for setting up component connections
+ */
+static inline int insert_comp(struct tplg_context *ctx)
 {
 	struct comp_info *temp_comp_list = ctx->info;
 	int comp_index = ctx->info_index;
 	int comp_id = ctx->comp_id;
+
+	/* mapping should be empty */
+	if (temp_comp_list[comp_index].name) {
+		fprintf(stderr, "comp index %d already in use with %d:%s cant insert %d:%s\n",
+			comp_index,
+			temp_comp_list[comp_index].id, temp_comp_list[comp_index].name,
+			ctx->widget->id, ctx->widget->name);
+		return -EINVAL;
+	}
+
+	temp_comp_list[comp_index].id = comp_id;
+	temp_comp_list[comp_index].name = ctx->widget->name;
+	temp_comp_list[comp_index].type = ctx->widget->id;
+	temp_comp_list[comp_index].pipeline_id = ctx->pipeline_id;
+
+	printf("debug: loading comp_id %d: widget %s type %d size %d at offset %ld\n",
+		comp_id, ctx->widget->name, ctx->widget->id, ctx->widget->size,
+		ctx->tplg_offset);
+
+	return 0;
+}
+
+/* load dapm widget */
+int load_widget(struct tplg_context *ctx)
+{
+	struct comp_info *temp_comp_list = ctx->info;
+	int comp_id = ctx->comp_id;
 	int ret = 0;
 	int dev_type = ctx->dev_type;
+
+	/* get next widget */
+	ctx->widget = tplg_get_widget(ctx);
+	ctx->widget_size = ctx->widget->size;
 
 	if (!temp_comp_list) {
 		fprintf(stderr, "load_widget: temp_comp_list argument NULL\n");
 		return -EINVAL;
 	}
 
-	/* allocate memory for widget */
-	ctx->widget_size = sizeof(struct snd_soc_tplg_dapm_widget);
-	ctx->widget = malloc(ctx->widget_size);
-	if (!ctx->widget) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
+	/* insert widget into mapping */
+	ret = insert_comp(ctx);
+	if (ret < 0) {
+		fprintf(stderr, "plug_load_widget: invalid widget index\n");
+		return ret;
 	}
-
-	/* read widget data */
-	ret = fread(ctx->widget, ctx->widget_size, 1, ctx->file);
-	if (ret != 1) {
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	/*
-	 * create a list with all widget info
-	 * containing mapping between component names and ids
-	 * which will be used for setting up component connections
-	 */
-	temp_comp_list[comp_index].id = comp_id;
-	temp_comp_list[comp_index].name = strdup(ctx->widget->name);
-	temp_comp_list[comp_index].type = ctx->widget->id;
-	temp_comp_list[comp_index].pipeline_id = ctx->pipeline_id;
 
 	printf("debug: loading comp_id %d: widget %s id %d\n",
 	       comp_id, ctx->widget->name, ctx->widget->id);
@@ -481,7 +495,7 @@ int load_widget(struct tplg_context *ctx)
 
 	case SND_SOC_TPLG_DAPM_SCHEDULER:
 		/* find comp id for scheduling comp */
-		if (dev_type == FUZZER_DEV)
+		if (dev_type == TPLG_PARSER_FUZZER_DEV)
 			ctx->sched_id = find_widget(temp_comp_list, comp_id, ctx->widget->sname);
 
 		if (tplg_register_pipeline(ctx) < 0) {
@@ -521,27 +535,15 @@ int load_widget(struct tplg_context *ctx)
 		break;
 	/* unsupported widgets */
 	default:
-		if (fseek(ctx->file, ctx->widget->priv.size, SEEK_CUR)) {
-			fprintf(stderr, "error: fseek unsupported widget\n");
-			ret = -errno;
-			goto exit;
-		}
-
-		printf("info: Widget type not supported %d\n", ctx->widget->id);
-		ret = tplg_create_controls(ctx->widget->num_kcontrols, ctx->file, NULL, 0);
-		if (ret < 0) {
-			fprintf(stderr, "error: loading controls\n");
-			goto exit;
-		}
-		ret = 0;
+		printf("info: Widget %s id %d unsupported and skipped: size %d priv size %d\n",
+			ctx->widget->name, ctx->widget->id,
+			ctx->widget->size, ctx->widget->priv.size);
 		break;
 	}
 
 	ret = 1;
 
 exit:
-	/* free allocated widget data */
-	free(ctx->widget);
 	return ret;
 }
 
@@ -549,40 +551,19 @@ exit:
 static int tplg_load_fileread(struct tplg_context *ctx,
 			      struct sof_ipc_comp_file *fileread)
 {
-	struct snd_soc_tplg_vendor_array *array = NULL;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
 	size_t total_array_size = 0;
-	size_t read_size;
-	FILE *file = ctx->file;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
-
 	/* read vendor tokens */
 	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1) {
-			fprintf(stderr,
-				"error: fread failed during load_fileread\n");
-			free(array);
-			return -EINVAL;
-		}
-
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: filewrite array size mismatch for widget size %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
-
-		tplg_read_array(array, file);
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&fileread->config, comp_tokens,
@@ -591,14 +572,12 @@ static int tplg_load_fileread(struct tplg_context *ctx,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse comp tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
 
 		total_array_size += array->size;
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
 	}
-
-	free(array);
 
 	/* configure fileread */
 	fileread->mode = FILE_READ;
@@ -617,37 +596,18 @@ static int tplg_load_fileread(struct tplg_context *ctx,
 static int tplg_load_filewrite(struct tplg_context *ctx,
 			       struct sof_ipc_comp_file *filewrite)
 {
-	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t read_size;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
 	size_t total_array_size = 0;
-	FILE *file = ctx->file;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
-
 	/* read vendor tokens */
 	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1) {
-			free(array);
-			return -EINVAL;
-		}
-
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: filewrite array size mismatch\n");
-			free(array);
 			return -EINVAL;
 		}
-
-		tplg_read_array(array, file);
 
 		ret = sof_parse_tokens(&filewrite->config, comp_tokens,
 				       ARRAY_SIZE(comp_tokens), array,
@@ -655,13 +615,12 @@ static int tplg_load_filewrite(struct tplg_context *ctx,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse filewrite tokens %d\n",
 				size);
-			free(array);
 			return -EINVAL;
 		}
-		total_array_size += array->size;
-	}
 
-	free(array);
+		total_array_size += array->size;
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
+	}
 
 	/* configure filewrite */
 	filewrite->comp.core = ctx->core_id;
@@ -679,7 +638,6 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
 	struct testbench_prm *tp = ctx->tp;
-	FILE *file = ctx->file;
 	struct sof_ipc_comp_file fileread = {{{0}}};
 	int ret;
 
@@ -689,7 +647,7 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, file, NULL, 0) < 0) {
+	if (tplg_create_controls(ctx, 0, NULL, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}
@@ -717,6 +675,7 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 	register_comp(fileread.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&fileread)) < 0) {
 		fprintf(stderr, "error: file read\n");
+		free(fileread.fn);
 		return -EINVAL;
 	}
 
@@ -729,7 +688,6 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
 	struct testbench_prm *tp = ctx->tp;
-	FILE *file = ctx->file;
 	struct sof_ipc_comp_file filewrite = {{{0}}};
 	int ret;
 
@@ -737,7 +695,7 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, file, NULL, 0) < 0) {
+	if (tplg_create_controls(ctx, 0, NULL, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}
@@ -767,6 +725,7 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	register_comp(filewrite.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&filewrite)) < 0) {
 		fprintf(stderr, "error: new file write\n");
+		free(filewrite.fn);
 		return -EINVAL;
 	}
 
@@ -790,116 +749,79 @@ int load_dai_in_out(struct tplg_context *ctx, int dir)
 		return load_fileread(ctx, dir);
 }
 
-static int get_next_hdr(struct tplg_context *ctx, struct snd_soc_tplg_hdr *hdr, size_t file_size)
-{
-	if (fseek(ctx->file, hdr->payload_size, SEEK_CUR)) {
-		fprintf(stderr, "error: fseek payload size\n");
-		return -errno;
-	}
-
-	if (ftell(ctx->file) == file_size)
-		return 0;
-
-	return 1;
-}
-
 /* parse topology file and set up pipeline */
 int parse_topology(struct tplg_context *ctx)
+
 {
 	struct snd_soc_tplg_hdr *hdr;
-	struct testbench_prm *tp = ctx->tp;
 	struct comp_info *comp_list_realloc = NULL;
-	char message[DEBUG_MSG_LEN];
+	char pipeline_string[256] = {0};
 	int i;
-	int next;
 	int ret = 0;
-	size_t file_size;
+	FILE *file;
 	size_t size;
-	bool pipeline_match;
-
-	/* initialize output file index */
-	tp->output_file_index = 0;
 
 	/* open topology file */
-	ctx->file = fopen(ctx->tplg_file, "rb");
-	if (!ctx->file) {
-		fprintf(stderr, "error: opening file %s\n", ctx->tplg_file);
-		fprintf(stderr, "error: %s\n", strerror(errno));
+	file = fopen(ctx->tplg_file, "rb");
+	if (!file) {
+		fprintf(stderr, "error: can't open topology %s : %s\n", ctx->tplg_file,
+			strerror(errno));
 		return -errno;
 	}
-	tp->file = ctx->file; /* duplicated until we can merge tp with ctx */
 
 	/* file size */
-	if (fseek(ctx->file, 0, SEEK_END)) {
-		fprintf(stderr, "error: seek to end of topology\n");
-		fclose(ctx->file);
+	if (fseek(file, 0, SEEK_END)) {
+		fprintf(stderr, "error: can't seek to end of topology: %s\n",
+			strerror(errno));
+		fclose(file);
 		return -errno;
 	}
-	file_size = ftell(ctx->file);
-	if (fseek(ctx->file, 0, SEEK_SET)) {
-		fprintf(stderr, "error: seek to beginning of topology\n");
-		fclose(ctx->file);
-		return -errno;
-	}
-
-	/* allocate memory */
-	size = sizeof(struct snd_soc_tplg_hdr);
-	hdr = (struct snd_soc_tplg_hdr *)malloc(size);
-	if (!hdr) {
-		fprintf(stderr, "error: mem alloc\n");
-		fclose(ctx->file);
+	ctx->tplg_size = ftell(file);
+	if (fseek(file, 0, SEEK_SET)) {
+		fprintf(stderr, "error: can't seek to beginning of topology: %s\n",
+			strerror(errno));
+		fclose(file);
 		return -errno;
 	}
 
-	debug_print("topology parsing start\n");
-	while (1) {
-		/* read topology header */
-		ret = fread(hdr, sizeof(struct snd_soc_tplg_hdr), 1, ctx->file);
-		if (ret != 1)
-			goto out;
+	/* load whole topology into memory */
+	ctx->tplg_base = calloc(ctx->tplg_size, 1);
+	if (!ctx->tplg_base) {
+		fprintf(stderr, "error: can't alloc buffer for topology %zu bytes\n",
+			ctx->tplg_size);
+		fclose(file);
+		return -ENOMEM;
+	}
+	ret = fread(ctx->tplg_base, ctx->tplg_size, 1, file);
+	if (ret != 1) {
+		fprintf(stderr, "error: can't read topology: %s\n",
+			strerror(errno));
+		free(ctx->tplg_base);
+		fclose(file);
+		return -errno;
+	}
+	fclose(file);
 
-		sprintf(message, "type: %x, size: 0x%x count: %d index: %d\n",
+	while (ctx->tplg_offset < ctx->tplg_size) {
+
+		/* read next topology header */
+		hdr = tplg_get_hdr(ctx);
+
+		fprintf(stdout, "type: %x, size: 0x%x count: %d index: %d\n",
 			hdr->type, hdr->payload_size, hdr->count, hdr->index);
 
-		debug_print(message);
-
 		ctx->hdr = hdr;
-
-		pipeline_match = false;
-		for (i = 0; i < tp->pipeline_num; i++) {
-			if (hdr->index == tp->pipelines[i]) {
-				pipeline_match = true;
-				break;
-			}
-		}
-
-		if (!pipeline_match) {
-			sprintf(message, "skipped pipeline %d\n", hdr->index);
-			debug_print(message);
-			next = get_next_hdr(ctx, hdr, file_size);
-			if (next < 0)
-				goto out;
-			else if (next > 0)
-				continue;
-			else
-				goto finish;
-
-		}
 
 		/* parse header and load the next block based on type */
 		switch (hdr->type) {
 		/* load dapm widget */
 		case SND_SOC_TPLG_TYPE_DAPM_WIDGET:
 
-			sprintf(message, "number of DAPM widgets %d\n",
+			fprintf(stdout, "number of DAPM widgets %d\n",
 				hdr->count);
-
-			debug_print(message);
 
 			/* update max pipeline_id */
 			ctx->pipeline_id = hdr->index;
-			if (hdr->index > tp->max_pipeline_id)
-				tp->max_pipeline_id = hdr->index;
 
 			ctx->info_elems += hdr->count;
 			size = sizeof(struct comp_info) * ctx->info_elems;
@@ -922,7 +844,7 @@ int parse_topology(struct tplg_context *ctx)
 				ret = load_widget(ctx);
 				if (ret < 0) {
 					printf("error: loading widget\n");
-					goto finish;
+					goto out;
 				} else if (ret > 0)
 					ctx->comp_id++;
 			}
@@ -930,39 +852,26 @@ int parse_topology(struct tplg_context *ctx)
 
 		/* set up component connections from pipeline graph */
 		case SND_SOC_TPLG_TYPE_DAPM_GRAPH:
-			if (tplg_register_graph(ctx->sof, ctx->info,
-						tp->pipeline_string,
-						tp->file, hdr->count,
+			if (tplg_register_graph(ctx, ctx->info,
+						pipeline_string,
+						hdr->count,
 						ctx->comp_id,
 						hdr->index) < 0) {
 				fprintf(stderr, "error: pipeline graph\n");
 				ret = -EINVAL;
 				goto out;
 			}
-			if (ftell(ctx->file) == file_size)
-				goto finish;
 			break;
 
 		default:
-			next = get_next_hdr(ctx, hdr, file_size);
-			if (next < 0)
-				goto out;
-			else if (next == 0)
-				goto finish;
+			tplg_skip_hdr_payload(ctx);
 			break;
 		}
 	}
-finish:
-	debug_print("topology parsing end\n");
 
 out:
 	/* free all data */
-	free(hdr);
-
-	for (i = 0; i < ctx->info_elems; i++)
-		free(ctx->info[i].name);
-
 	free(ctx->info);
-	fclose(ctx->file);
+	free(ctx->tplg_base);
 	return ret;
 }

@@ -44,9 +44,8 @@ static const struct sof_topology_token sched_tokens[] = {
 int tplg_create_pipeline(struct tplg_context *ctx,
 		       struct sof_ipc_pipe_new *pipeline)
 {
-	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t total_array_size = 0, read_size;
-	FILE *file = ctx->file;
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
+	size_t total_array_size = 0;
 	int size = ctx->widget->priv.size;
 	int comp_id = ctx->comp_id;
 	int ret;
@@ -57,33 +56,12 @@ int tplg_create_pipeline(struct tplg_context *ctx,
 	pipeline->hdr.size = sizeof(*pipeline);
 	pipeline->hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_PIPE_NEW;
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
-	}
-
 	/* read vendor arrays */
 	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1) {
-			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
-			return -EINVAL;
-		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load pipeline array size mismatch\n");
-			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
-			return -EINVAL;
-		}
-
-		ret = tplg_read_array(array, file);
-		if (ret) {
-			fprintf(stderr, "error: read array fail\n");
-			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
 			return -EINVAL;
 		}
 
@@ -94,7 +72,6 @@ int tplg_create_pipeline(struct tplg_context *ctx,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse pipeline tokens %d\n",
 				size);
-			free(MOVE_POINTER_BY_BYTES(array, -total_array_size));
 			return -EINVAL;
 		}
 
@@ -104,10 +81,6 @@ int tplg_create_pipeline(struct tplg_context *ctx,
 		array = MOVE_POINTER_BY_BYTES(array, array->size);
 	}
 
-	/* point to the start of array so it gets freed properly */
-	array = MOVE_POINTER_BY_BYTES(array, -total_array_size);
-
-	free(array);
 	return 0;
 }
 
@@ -122,7 +95,7 @@ int tplg_new_pipeline(struct tplg_context *ctx, struct sof_ipc_pipe_new *pipelin
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx->widget->num_kcontrols, ctx->file, rctl, 0) < 0) {
+	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, 0) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}

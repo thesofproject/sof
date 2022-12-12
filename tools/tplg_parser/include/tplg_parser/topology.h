@@ -17,8 +17,15 @@
 #include <ipc/stream.h>
 #include <kernel/tokens.h>
 
-#define SOF_DEV 1
-#define FUZZER_DEV 2
+/* temporary - current MAXLEN is not define in UAPI header - fix pending */
+#ifndef SNDRV_CTL_ELEM_ID_NAME_MAXLEN
+#define SNDRV_CTL_ELEM_ID_NAME_MAXLEN	44
+#endif
+
+#include <alsa/sound/asoc.h>
+
+#define TPLG_PARSER_SOF_DEV 1
+#define TPLG_PARSER_FUZZER_DEV 2
 
 #define MOVE_POINTER_BY_BYTES(p, b) ((typeof(p))((uint8_t *)(p) + (b)))
 
@@ -26,6 +33,9 @@ struct testbench_prm;
 struct snd_soc_tplg_vendor_array;
 struct snd_soc_tplg_ctl_hdr;
 struct sof_topology_token;
+struct sof;
+struct fuzz;
+struct sof_topology_module_desc;
 
 struct comp_info {
 	char *name;
@@ -38,9 +48,6 @@ struct frame_types {
 	char *name;
 	enum sof_ipc_frame frame;
 };
-
-struct sof;
-struct fuzz;
 
 /*
  * Per topology data.
@@ -78,8 +85,10 @@ struct tplg_context {
 	enum sof_ipc_frame frame_fmt;
 
 	/* global data */
-	FILE *file;
 	struct testbench_prm *tp;
+	void *tplg_base;
+	size_t tplg_size;
+	long tplg_offset;
 	struct sof *sof;
 	const char *tplg_file;
 	struct fuzz *fuzzer;
@@ -97,6 +106,49 @@ enum sof_ipc_process_type {
 	SOF_PROCESS_DEMUX,
 	SOF_PROCESS_DCBLOCK,
 };
+
+#define tplg_get(ctx) ((void *)(ctx->tplg_base + ctx->tplg_offset))
+
+#define tplg_get_hdr(ctx)							\
+	({struct snd_soc_tplg_hdr *ptr;						\
+	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
+	if (ptr->size != sizeof(*ptr)) {					\
+		printf("%s %d hdr size mismatch 0x%x:0x%lx at offset %ld\n",	\
+				__func__, __LINE__, ptr->size, sizeof(*ptr),	\
+				ctx->tplg_offset); assert(0);			\
+	}									\
+	ctx->tplg_offset += sizeof(*ptr); (void *)ptr; })
+
+#define tplg_skip_hdr_payload(ctx)						\
+	({struct snd_soc_tplg_hdr *ptr;						\
+	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
+	ctx->tplg_offset += hdr->payload_size; (void *)ptr; })
+
+#define tplg_get_object(ctx, obj)						\
+	({void *ptr; ptr = ctx->tplg_base + ctx->tplg_offset;			\
+	ctx->tplg_offset += sizeof(*(obj)); ptr; })
+
+#define tplg_get_object_priv(ctx, obj, priv_size)				\
+	({void *ptr; ptr = ctx->tplg_base + ctx->tplg_offset;			\
+	ctx->tplg_offset += sizeof(*(obj)) + priv_size; ptr; })
+
+#define tplg_get_widget(ctx)							\
+	({struct snd_soc_tplg_dapm_widget *w;					\
+	w = (struct snd_soc_tplg_dapm_widget *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*w) + w->priv.size; w; })
+
+#define tplg_get_graph(ctx)							\
+	({struct snd_soc_tplg_dapm_graph_elem *w;				\
+	w = (struct snd_soc_tplg_dapm_graph_elem *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*w); w; })
+
+static inline int tplg_valid_widget(struct snd_soc_tplg_dapm_widget *widget)
+{
+	if (widget->size == sizeof(struct snd_soc_tplg_dapm_widget))
+		return 1;
+	else
+		return 0;
+}
 
 enum sof_ipc_frame find_format(const char *name);
 
@@ -149,12 +201,12 @@ enum sof_comp_type tplg_get_process_type(enum sof_ipc_process_type type);
 int tplg_process_append_data(struct sof_ipc_comp_process **process_ipc,
 			       struct sof_ipc_comp_process *process,
 			       struct snd_soc_tplg_ctl_hdr *ctl,
-			       char *priv_data);
+			       struct snd_soc_tplg_private *priv_data);
 
 int tplg_process_init_data(struct sof_ipc_comp_process **process_ipc,
 			     struct sof_ipc_comp_process *process);
 
-int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file);
+int tplg_read_array(struct snd_soc_tplg_vendor_array *array);
 int tplg_create_buffer(struct tplg_context *ctx,
 		     struct sof_ipc_buffer *buffer);
 int tplg_new_buffer(struct tplg_context *ctx, struct sof_ipc_buffer *buffer,
@@ -170,9 +222,12 @@ int tplg_create_pipeline(struct tplg_context *ctx,
 int tplg_new_pipeline(struct tplg_context *ctx, struct sof_ipc_pipe_new *pipeline,
 		struct snd_soc_tplg_ctl_hdr *rctl);
 
-int tplg_create_single_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv,
-			  FILE *file);
-int tplg_create_controls(int num_kcontrols, FILE *file, struct snd_soc_tplg_ctl_hdr *rctl,
+int tplg_create_single_control(struct tplg_context *ctx,
+		struct snd_soc_tplg_ctl_hdr **ctl,
+		struct snd_soc_tplg_private **priv);
+
+int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
+		struct snd_soc_tplg_ctl_hdr *rctl,
 		size_t max_ctl_size);
 
 int tplg_create_src(struct tplg_context *ctx,
@@ -193,13 +248,15 @@ int tplg_create_process(struct tplg_context *ctx,
 int tplg_new_process(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
 		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
 
-int tplg_create_graph(int num_comps, int pipeline_id,
+int tplg_create_graph(struct tplg_context *ctx, int num_comps, int pipeline_id,
 		    struct comp_info *temp_comp_list, char *pipeline_string,
-		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
+		    struct sof_ipc_pipe_comp_connect *connection,
 		    int route_num, int count);
 
 int tplg_new_pga(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
-		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+		struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size, void *arg,
+		int (*ctl_cb)(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
+				struct sof_ipc_comp *comp, void *arg));
 int tplg_register_pga(struct tplg_context *ctx);
 int tplg_register_pga_ipc(struct tplg_context *ctx, struct snd_soc_tplg_ctl_hdr *ctl,
 			  char *mailbox, size_t size);
@@ -215,8 +272,8 @@ int tplg_register_mixer(struct tplg_context *ctx);
 int tplg_new_mixer(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
 		struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size);
 
-int tplg_register_graph(void *dev, struct comp_info *temp_comp_list,
-			char *pipeline_string, FILE *file,
+int tplg_register_graph(struct tplg_context *ctx, struct comp_info *temp_comp_list,
+			char *pipeline_string,
 			int count, int num_comps, int pipeline_id);
 int load_process(struct tplg_context *ctx);
 int load_widget(struct tplg_context *ctx);
