@@ -179,8 +179,7 @@ void buffer_free(struct comp_buffer *buffer)
 		.buffer = buffer,
 	};
 
-	if (!buffer)
-		return;
+	assert(buffer != NULL);
 
 	buf_dbg(buffer, "buffer_free()");
 
@@ -209,6 +208,8 @@ void buffer_free(struct comp_buffer *buffer)
  */
 void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
+	assert(buffer != NULL);
+
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
@@ -242,6 +243,8 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 
 void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
 {
+	assert(buffer != NULL);
+
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
