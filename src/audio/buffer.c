@@ -274,3 +274,54 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 		((char *)buffer->stream.r_ptr - (char *)buffer->stream.addr) << 16 |
 		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
 }
+
+void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
+{
+	struct list_item __sparse_cache *needs_sync;
+	bool further_buffers_exist;
+
+	/*
+	 * There can already be buffers on the target list. If we just link this
+	 * buffer, we modify the first buffer's list header via uncached alias,
+	 * so its cached copy can later be written back, overwriting the
+	 * modified header. FIXME: this is still a problem with different cores.
+	 */
+	further_buffers_exist = !list_is_empty(head);
+	needs_sync = uncache_to_cache(head->next);
+	if (further_buffers_exist)
+		dcache_writeback_region(needs_sync, sizeof(struct list_item));
+	/* The cache line can be prefetched here, invalidate it after prepending */
+	list_item_prepend(buffer_comp_list(buffer, dir), head);
+	if (further_buffers_exist)
+		dcache_invalidate_region(needs_sync, sizeof(struct list_item));
+}
+
+void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
+{
+	struct list_item __sparse_cache *needs_sync_prev, *needs_sync_next;
+	bool buffers_after_exist, buffers_before_exist;
+	struct list_item *buf_list = buffer_comp_list(buffer, dir);
+
+	/*
+	 * There can be more buffers linked together with this one, that will
+	 * still be staying on their respective pipelines and might get used via
+	 * their cached aliases. If we just unlink this buffer, we modify their
+	 * list header via uncached alias, so their cached copy can later be
+	 * written back, overwriting the modified header. FIXME: this is still a
+	 * problem with different cores.
+	 */
+	buffers_after_exist = head != buf_list->next;
+	buffers_before_exist = head != buf_list->prev;
+	needs_sync_prev = uncache_to_cache(buf_list->prev);
+	needs_sync_next = uncache_to_cache(buf_list->next);
+	if (buffers_after_exist)
+		dcache_writeback_region(needs_sync_next, sizeof(struct list_item));
+	if (buffers_before_exist)
+		dcache_writeback_region(needs_sync_prev, sizeof(struct list_item));
+	/* buffers before or after can be prefetched here */
+	list_item_del(buf_list);
+	if (buffers_after_exist)
+		dcache_invalidate_region(needs_sync_next, sizeof(struct list_item));
+	if (buffers_before_exist)
+		dcache_invalidate_region(needs_sync_prev, sizeof(struct list_item));
+}

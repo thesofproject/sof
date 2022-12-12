@@ -238,6 +238,22 @@ static inline void buffer_release(struct comp_buffer __sparse_cache *buffer)
 	coherent_release_thread(&buffer->c, sizeof(*buffer));
 }
 
+/*
+ * Attach a new buffer at the beginning of the list. Note, that "head" must
+ * really be the head of the list, not a list head within another buffer. We
+ * don't synchronise its cache, so it must not be embedded in an object, using
+ * the coherent API. The caller takes care to protect list heads.
+ */
+void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
+
+/*
+ * Detach a buffer from anywhere in the list. "head" is again the head of the
+ * list, we need it to verify, whether this buffer was the first or the last on
+ * the list. Again it is assumed that the head's cache doesn't need to be
+ * synchronized. The caller takes care to protect list heads.
+ */
+void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
+
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
 	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
