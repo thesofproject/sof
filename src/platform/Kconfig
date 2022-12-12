@@ -42,6 +42,13 @@ config LIBRARY
 	  Library builds are not intended to be run on DSP, but to be used by
 	  user-space applications.
 
+config LIBRARY_STATIC
+	bool "Build Library as static archive"
+	depends on LIBRARY
+	help
+	  Select if you want to build a static library otherwise a dynamic
+	  shared library will be built.
+
 config ZEPHYR_POSIX
 	bool "Build for Zephyr native_posix board"
 	help

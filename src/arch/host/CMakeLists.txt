@@ -19,7 +19,7 @@ if (supports_implicit_fallthrough)
 endif()
 
 # C & ASM flags
-target_compile_options(sof_options INTERFACE -g -O3 -Wall -Werror -Wmissing-prototypes
+target_compile_options(sof_options INTERFACE -g -O3 -fPIC -DPIC -Wall -Werror -Wmissing-prototypes
    ${implicit_fallthrough} -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wpointer-arith
   -DCONFIG_LIBRARY "-imacros${CONFIG_H_PATH}")
 
