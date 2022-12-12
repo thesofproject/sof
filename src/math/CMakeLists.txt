@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(BUILD_LIBRARY)
+	add_local_sources(sof numbers.c)
 	return()
 endif()
 
