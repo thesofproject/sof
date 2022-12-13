@@ -107,8 +107,8 @@ static inline uintptr_t get_l3_heap_start(void)
 	 * - main_fw_load_offset
 	 * - main fw size in manifest
 	 */
-	return (uintptr_t)z_soc_uncached_ptr(UINT_TO_POINTER
-			(ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE)));
+	return (uintptr_t)z_soc_uncached_ptr((__sparse_force void __sparse_cache *)
+					     ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
 }
 
 /**
