@@ -574,21 +574,22 @@ DECLARE_MODULE(sys_comp_selector_init);
 #else
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
-	enum sof_ipc_frame valid_format;
+	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 	int i;
 
-	cd->source_format = cfg->base_cfg.audio_fmt.depth;
+	frame_fmt = cfg->base_cfg.audio_fmt.depth;
 	audio_stream_fmt_conversion(cfg->base_cfg.audio_fmt.depth,
 				    cfg->base_cfg.audio_fmt.valid_bit_depth,
-				    &cd->source_format,
-				    &valid_format,
+				    &frame_fmt, &valid_fmt,
 				    cfg->base_cfg.audio_fmt.s_type);
+	cd->source_format = frame_fmt;
 
+	frame_fmt = cd->sink_format;
 	audio_stream_fmt_conversion(cd->output_format.depth,
 				    cd->output_format.valid_bit_depth,
-				    &cd->sink_format,
-				    &valid_format,
+				    &frame_fmt, &valid_fmt,
 				    cd->output_format.s_type);
+	cd->sink_format = frame_fmt;
 
 	cd->config.in_channels_count = cfg->base_cfg.audio_fmt.channels_count;
 	cd->config.out_channels_count = cd->output_format.channels_count;
