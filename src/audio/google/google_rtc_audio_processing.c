@@ -377,7 +377,7 @@ static struct comp_dev *google_rtc_audio_processing_create(
 						 &capture_headroom_linear,
 						 &echo_path_delay_ms);
 
-	if (!cd->state) {
+	if (ret < 0) {
 		comp_err(dev, "Failed to apply GoogleRtcAudioProcessingParameters");
 		goto fail;
 	}
