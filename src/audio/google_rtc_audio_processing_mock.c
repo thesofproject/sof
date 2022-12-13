@@ -4,6 +4,7 @@
 //
 // Author: Lionel Koenig <lionelk@google.com>
 #include "google_rtc_audio_processing.h"
+#include "google_rtc_audio_processing_sof_message_reader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,7 @@ struct GoogleRtcAudioProcessingState {
 };
 
 static void SetFormats(GoogleRtcAudioProcessingState *const state,
-		       capture_sample_rate_hz,
+		       int capture_sample_rate_hz,
 		       int num_capture_input_channels,
 		       int num_capture_output_channels,
 		       int render_sample_rate_hz,
@@ -67,7 +68,7 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreateWithConfig(int capt
 		return NULL;
 
 	s->aec_reference = NULL;
-	SetFormats(state,
+	SetFormats(s,
 		   capture_sample_rate_hz,
 		   num_capture_input_channels,
 		   num_capture_output_channels,
