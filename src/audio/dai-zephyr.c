@@ -452,7 +452,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = local_buf->stream.frame_fmt;
 	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
-	uint32_t fifo;
+	uint32_t fifo, max_block_count, buf_size;
 	int i, err = 0;
 
 	buffer_release(local_buf);
@@ -486,6 +486,27 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				    dd->stream_id);
 
 		comp_dbg(dev, "dai_playback_params() fifo 0x%x", fifo);
+
+		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT,
+					&max_block_count);
+		if (err < 0) {
+			comp_err(dev, "dai_playback_params(): could not get dma attr max block count, err = %d", err);
+			goto out;
+		}
+
+		if (max_block_count < period_count) {
+			comp_dbg(dev, "dai_playback_params(): block count = %d not supported by DMA", period_count);
+			buf_size = period_count * period_bytes;
+			do {
+				if (IS_ALIGNED(buf_size, max_block_count)) {
+					period_count = max_block_count;
+					period_bytes = buf_size / period_count;
+					break;
+				} else {
+					comp_warn(dev, "dai_playback_params(): alignment error for buffer = %d, block count = %d", buf_size, max_block_count);
+				}
+			} while (--max_block_count > 0);
+		}
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -569,7 +590,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = local_buf->stream.frame_fmt;
 	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
-	uint32_t fifo;
+	uint32_t fifo, max_block_count, buf_size;
 	int i, err = 0;
 
 	buffer_release(local_buf);
@@ -615,6 +636,27 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				    dd->stream_id);
 
 		comp_dbg(dev, "dai_capture_params() fifo 0x%x", fifo);
+
+		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT,
+					&max_block_count);
+		if (err < 0) {
+			comp_err(dev, "dai_capture_params(): could not get dma attr max block count, err = %d", err);
+			goto out;
+		}
+
+		if (max_block_count < period_count) {
+			comp_dbg(dev, "dai_capture_params(): block count = %d not supported by DMA", period_count);
+			buf_size = period_count * period_bytes;
+			do {
+				if (IS_ALIGNED(buf_size, max_block_count)) {
+					period_count = max_block_count;
+					period_bytes = buf_size / period_count;
+					break;
+				} else {
+					comp_warn(dev, "dai_capture_params(): alignment error for buffer = %d, block count = %d", buf_size, max_block_count);
+				}
+			} while (--max_block_count > 0);
+		}
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
