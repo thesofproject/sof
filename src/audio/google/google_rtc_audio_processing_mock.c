@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "sof/lib/alloc.h"
+#include <rtos/alloc.h>
 #include "ipc/topology.h"
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES 100
