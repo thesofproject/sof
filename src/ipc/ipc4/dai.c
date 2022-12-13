@@ -114,13 +114,12 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		 * all formats, such as 8/16/24/32 bits.
 		 */
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
-		dd->dma_buffer->stream.frame_fmt = dev->ipc_config.frame_fmt;
 
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 
+		comp_dbg(dev, "dai_data_config() SOF_DAI_INTEL_ALH dev->ipc_config.frame_fmt: %d, stream_id: %d",
+			 dev->ipc_config.frame_fmt, dd->stream_id);
 
-		comp_dbg(dev, "dai_data_config() SOF_DAI_INTEL_ALH dd->dma_buffer->stream.frame_fmt %#x stream_id %d",
-			 dd->dma_buffer->stream.frame_fmt, dd->stream_id);
 		break;
 	default:
 		/* other types of DAIs not handled for now */
