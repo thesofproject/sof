@@ -290,6 +290,21 @@ config MT8186
 	help
 	 Select if your target platform is mt8186-compatible
 
+config MT8188
+	bool "Build for MTK MT8188"
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_4
+	select DUMMY_DMA
+	select HOST_PTABLE
+	select XT_WAITI_DELAY
+	select MEDIATEK
+	select XTENSA_EXCLUSIVE
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is mt8188-compatible.
+
 config MT8195
 	bool "Build for MTK MT8195"
 	select XT_INTERRUPT_LEVEL_1
@@ -528,6 +543,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8ulp" if IMX8ULP
 	default "rn" if RENOIR
 	default "mt8186" if MT8186
+	default "mt8188" if MT8188
 	default "mt8195" if MT8195
 	default ""
 	help

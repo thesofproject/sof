@@ -18,6 +18,9 @@ DEFAULT_PLATFORMS=(
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 
+# Waiting for container work in progress
+SUPPORTED_PLATFORMS+=( mt8188 )
+
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
@@ -355,6 +358,12 @@ do
 			PLATFORM="mt8186"
 			XTENSA_CORE="hifi5_7stg_I64D128"
 			HOST="xtensa-mt8186-elf"
+			XTENSA_TOOLS_VERSION="RI-2020.5-linux"
+			;;
+		mt8188)
+			PLATFORM="mt8188"
+			XTENSA_CORE="hifi5_7stg_I64D128"
+			HOST="xtensa-mt8188-elf"
 			XTENSA_TOOLS_VERSION="RI-2020.5-linux"
 			;;
 		mt8195)
