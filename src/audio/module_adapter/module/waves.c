@@ -806,6 +806,12 @@ static int waves_codec_reset(struct processing_module *mod)
 	if (ret)
 		comp_err(dev, "waves_codec_reset() failed %d", ret);
 
+	if (codec->mpd.in_buff)
+		module_free_memory(mod, codec->mpd.in_buff);
+
+	if (codec->mpd.out_buff)
+		module_free_memory(mod, codec->mpd.out_buff);
+
 	comp_dbg(dev, "waves_codec_reset() done");
 	return ret;
 }
