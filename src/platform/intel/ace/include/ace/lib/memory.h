@@ -40,14 +40,19 @@
 #define SRAM_ALIAS_OFFSET		0x60000000
 
 #if !defined UNIT_TEST
-#define uncache_to_cache(address) \
-				((__typeof__(address))(((uint32_t)(address) &  \
-				~SRAM_ALIAS_MASK) | SRAM_CACHED_BASE))
+static inline void __sparse_cache *uncache_to_cache(void *address)
+{
+	return (void __sparse_cache *)(((uintptr_t)(address) & ~SRAM_ALIAS_MASK) |
+				       SRAM_CACHED_BASE);
+}
+
+static inline void *cache_to_uncache(void __sparse_cache *address)
+{
+	return (void *)(((uintptr_t)(address) & ~SRAM_ALIAS_MASK) | SRAM_BASE);
+}
+
 #define is_uncached(address) \
 				(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_BASE)
-#define cache_to_uncache(address) \
-				((__typeof__(address))(((uint32_t)(address) & \
-				~SRAM_ALIAS_MASK) | SRAM_BASE))
 #else
 #define uncache_to_cache(address)       address
 #define cache_to_uncache(address)       address
