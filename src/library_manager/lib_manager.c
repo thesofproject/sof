@@ -12,6 +12,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/common.h>
+#include <sof/compiler_attributes.h>
 #include <sof/ipc/topology.h>
 
 #include <sof/sof.h>
@@ -54,19 +55,19 @@ struct lib_manager_dma_ext {
 
 static struct ext_library loader_ext_lib;
 
-static int lib_manager_load_data_from_storage(uint8_t *vma, uint8_t *s_addr,
+static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
 					      uint32_t size, uint32_t flags)
 {
-	int ret = sys_mm_drv_map_region(vma, POINTER_TO_UINT(NULL),
+	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL),
 					size, SYS_MM_MEM_PERM_RW | SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		return ret;
 
-	ret = memcpy_s((void *)vma, size, (void *)s_addr, size);
+	ret = memcpy_s((__sparse_force void *)vma, size, s_addr, size);
 	if (ret < 0)
 		return ret;
 
-	dcache_writeback_region((void *)vma, size);
+	dcache_writeback_region(vma, size);
 
 	/* TODO: Change attributes for memory to FLAGS  */
 	return 0;
@@ -78,10 +79,12 @@ static int lib_manager_load_module(uint32_t module_id, struct sof_man_module *mo
 	struct ext_library *ext_lib = ext_lib_get();
 	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
 	size_t load_offset = (size_t)((void *)ext_lib->desc[lib_id]);
-	void *va_base_text = (void *)mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
+	void __sparse_cache *va_base_text = (void __sparse_cache *)
+		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
 	void *src_txt = (void *)(mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset + load_offset);
 	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
-	void *va_base_rodata = (void *)mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
+	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
+		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
 	void *src_rodata =
 		(void *)(mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset + load_offset);
 	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
@@ -125,8 +128,8 @@ static int lib_manager_load_module(uint32_t module_id, struct sof_man_module *mo
 	return 0;
 
 err:
-	sys_mm_drv_unmap_region(va_base_text, st_text_size);
-	sys_mm_drv_unmap_region(va_base_rodata, st_rodata_size);
+	sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
+	sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
 
 	return ret;
 }
@@ -136,20 +139,22 @@ static int lib_manager_unload_module(uint32_t module_id, struct sof_man_module *
 {
 	struct ext_library *ext_lib = ext_lib_get();
 	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	void *va_base_text = (void *)mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
+	void __sparse_cache *va_base_text = (void __sparse_cache *)
+		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
 	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
-	void *va_base_rodata = (void *)mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
+	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
+		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
 	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
 	int ret;
 
 	st_text_size = st_text_size * CONFIG_MM_DRV_PAGE_SIZE;
 	st_rodata_size = st_rodata_size * CONFIG_MM_DRV_PAGE_SIZE;
 
-	ret = sys_mm_drv_unmap_region(va_base_text, st_text_size);
+	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
 
 	dcache_invalidate_region(va_base_text, st_text_size);
 
-	ret = sys_mm_drv_unmap_region(va_base_rodata, st_rodata_size);
+	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
 
 	dcache_invalidate_region(va_base_rodata, st_rodata_size);
 
@@ -178,18 +183,21 @@ static int lib_manager_unload_module(uint32_t module_id, struct sof_man_module *
 	return ret;
 }
 
-static uint8_t *lib_manager_get_instance_bss_address(uint32_t module_id, uint32_t instance_id,
-						     struct sof_man_module *mod)
+static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
+								 uint32_t instance_id,
+								 struct sof_man_module *mod)
 {
 	uint32_t instance_bss_size =
 		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
 	uint32_t inst_offset = instance_bss_size * CONFIG_MM_DRV_PAGE_SIZE * instance_id;
-	uint8_t *va_base =
-		(uint8_t *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr + inst_offset);
+	void __sparse_cache *va_base =
+		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
+					inst_offset);
 
 	tr_dbg(&lib_manager_tr,
-	       "lib_manager_get_instance_bss_address() instance_bss_size: 0x%x, pointer: 0x%p",
-	       instance_bss_size, va_base);
+	       "lib_manager_get_instance_bss_address() instance_bss_size: %#x, pointer: %p",
+	       instance_bss_size, (__sparse_force void *)va_base);
+
 	return va_base;
 }
 
@@ -199,20 +207,24 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
 			 * CONFIG_MM_DRV_PAGE_SIZE;
-	uint8_t *va_base = lib_manager_get_instance_bss_address(module_id, instance_id, mod);
+	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
+									    instance_id, mod);
 
 	if ((is_pages * CONFIG_MM_DRV_PAGE_SIZE) > bss_size) {
 		tr_err(&lib_manager_tr,  "is_pages (%d) invalid, required: %d",
 		       is_pages, bss_size / CONFIG_MM_DRV_PAGE_SIZE);
 		return -ENOMEM;
 	}
+
 	/*
 	 * Map bss memory and clear it.
 	 */
-	if (sys_mm_drv_map_region(va_base, POINTER_TO_UINT(NULL),
+	if (sys_mm_drv_map_region((__sparse_force void *)va_base, POINTER_TO_UINT(NULL),
 				  bss_size, SYS_MM_MEM_PERM_RW) < 0)
 		return -ENOMEM;
-	memset(va_base, 0, bss_size);
+
+	memset((__sparse_force void *)va_base, 0, bss_size);
+
 	return 0;
 }
 
@@ -222,11 +234,12 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
 			 * CONFIG_MM_DRV_PAGE_SIZE;
-	uint8_t *va_base = lib_manager_get_instance_bss_address(module_id, instance_id, mod);
+	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
+									    instance_id, mod);
 	/*
 	 * Unmap bss memory.
 	 */
-	return sys_mm_drv_unmap_region(va_base, bss_size);
+	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
@@ -301,7 +314,7 @@ struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
 	return (struct sof_man_fw_desc *)(buffptr + SOF_MAN_ELF_TEXT_OFFSET);
 }
 
-void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t lib_id)
+static void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 
@@ -366,11 +379,10 @@ cleanup:
 	return ret;
 }
 
-static void lib_manager_dma_buffer_update(struct lib_manager_dma_buf *buffer, uintptr_t addr,
+static void lib_manager_dma_buffer_update(struct lib_manager_dma_buf *buffer,
 					  uint32_t size)
 {
 	buffer->size = size;
-	buffer->addr = addr;
 	buffer->w_ptr = buffer->addr;
 	buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->size;
@@ -388,14 +400,12 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 		return -ENOMEM;
 	}
 
-	bzero((__sparse_force void __sparse_cache *)buffer->addr, size);
-	dcache_writeback_region((void *)buffer->addr, size);
+	bzero((void *)buffer->addr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr, size);
 
-	/* initialise the DMA buffer */
+	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %#lx, %#lx",
+	       buffer->addr, buffer->end_addr);
 
-	lib_manager_dma_buffer_update(buffer, buffer->addr, size);
-	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %p, %p",
-	       (void *)buffer->addr, (void *)buffer->end_addr);
 	return 0;
 }
 
@@ -509,98 +519,98 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	if (ret < 0)
 		goto return_on_fail;
 
-	dcache_invalidate_region((void *)dma_ext->dmabp.addr, size);
+	dcache_invalidate_region((void __sparse_cache *)dma_ext->dmabp.addr, size);
 
 return_on_fail:
 	rfree(dma_block_cfg);
 	return ret;
 }
 
-static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext, void *dst_addr,
-				  uint32_t dst_size)
+static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
+				  void __sparse_cache *dst_addr, uint32_t dst_size)
 {
+	struct lib_manager_dma_buf *const dma_buf = &dma_ext->dmabp;
 	uint32_t copied_bytes = 0;
-	uint32_t bytes_to_copy = 0;
-	struct lib_manager_dma_buf *dma_buf = &dma_ext->dmabp;
-	int ret;
 
 	while (copied_bytes < dst_size) {
+		uint32_t bytes_to_copy;
+		int ret;
+
 		if ((dst_size - copied_bytes) > MAN_MAX_SIZE_V1_8)
 			bytes_to_copy = MAN_MAX_SIZE_V1_8;
 		else
-			bytes_to_copy = (dst_size - copied_bytes);
+			bytes_to_copy = dst_size - copied_bytes;
 
-		lib_manager_dma_buffer_update(dma_buf, dma_ext->dmabp.addr,
-					      bytes_to_copy);
+		lib_manager_dma_buffer_update(dma_buf, bytes_to_copy);
 
 		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
 		if (ret < 0)
 			return ret;
-		memcpy_s((void *)((char *)dst_addr + copied_bytes), bytes_to_copy,
-			 (void *)dma_ext->dmabp.addr, bytes_to_copy);
+		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
+			 (void *)dma_buf->addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
 	}
+
 	dcache_writeback_region(dst_addr, dst_size);
 
 	return 0;
 }
 
-static int lib_manager_allocate_store_mem(uint32_t *address, uint32_t size, uint32_t attribs)
+static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
+							   uint32_t attribs)
 {
-	void *local_add;
+	void __sparse_cache *local_add;
 #if CONFIG_L3_HEAP
 	uint32_t caps = SOF_MEM_CAPS_L3 | SOF_MEM_CAPS_DMA;
 
-	/* allocate new buffer */
-	local_add = rmalloc(SOF_MEM_ZONE_SYS, 0, caps, size);
+	/* allocate new buffer: cached alias */
+	local_add = (__sparse_force void __sparse_cache *)rmalloc(SOF_MEM_ZONE_SYS, 0, caps, size);
 #else
 	uint32_t addr_align = CONFIG_MM_DRV_PAGE_SIZE;
 	uint32_t caps = SOF_MEM_CAPS_DMA;
 
-	/* allocate new buffer */
-	local_add = rballoc_align(0, caps, size, addr_align);
+	/* allocate new buffer: cached alias */
+	local_add = (__sparse_force void __sparse_cache *)rballoc_align(0, caps, size, addr_align);
 #endif
 	if (!local_add) {
 		tr_err(&lib_manager_tr, "dma_buffer_init(): alloc failed");
-		return -ENOMEM;
+		return NULL;
 	}
 
-	*address = (uint32_t)local_add;
-	return 0;
+	return local_add;
 }
 
-static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext, void *man_buffer,
+static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
+				     void __sparse_cache *man_buffer,
 				     uint32_t lib_id, uint32_t addr_align)
 {
-	uint32_t library_base_address = 0;
-	struct sof_man_fw_desc *man_desc =
-			(struct sof_man_fw_desc *)((char *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
+	void __sparse_cache *library_base_address;
+	struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
+		((__sparse_force uint8_t *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
 	uint32_t preload_size = man_desc->header.preload_page_count * CONFIG_MM_DRV_PAGE_SIZE;
 	int ret;
 
-	/* Prepare storage memory */
-	ret = lib_manager_allocate_store_mem((void *)&library_base_address, preload_size, 0);
-
-	tr_err(&lib_manager_tr, "mm_map() :%d, pointer: 0x%x", ret, library_base_address);
-	if (ret < 0)
-		return ret;
+	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
+	library_base_address = lib_manager_allocate_store_mem(preload_size, 0);
+	tr_err(&lib_manager_tr, "lib_manager_store_library(): pointer: %p",
+	       (__sparse_force void *)library_base_address);
+	if (!library_base_address)
+		return -ENOMEM;
 
 	/* Copy data from temp_mft_buf to destination memory (pointed by library_base_address) */
-	memcpy_s((void *)library_base_address, MAN_MAX_SIZE_V1_8,
-		 (void *)man_buffer, MAN_MAX_SIZE_V1_8);
+	memcpy_s((__sparse_force void *)library_base_address, MAN_MAX_SIZE_V1_8,
+		 (__sparse_force void *)man_buffer, MAN_MAX_SIZE_V1_8);
 
-	dcache_writeback_invalidate_region((void *)library_base_address,
-					   MAN_MAX_SIZE_V1_8);
+	dcache_writeback_invalidate_region(library_base_address, MAN_MAX_SIZE_V1_8);
 
 	/* Copy remaining library part into storage buffer */
-	ret = lib_manager_store_data(dma_ext,
-				     (void *)(library_base_address + MAN_MAX_SIZE_V1_8),
-				     (preload_size - MAN_MAX_SIZE_V1_8));
+	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
+				     MAN_MAX_SIZE_V1_8, preload_size - MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
 		return ret;
 
 	/* Now update sof context with new library */
-	lib_manager_update_sof_ctx((struct sof_man_fw_desc *)library_base_address, lib_id);
+	lib_manager_update_sof_ctx((__sparse_force void *)library_base_address, lib_id);
 
 	return 0;
 }
@@ -610,13 +620,14 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	struct lib_manager_dma_ext dma_ext;
 	uint32_t addr_align;
 	int ret;
-	void *man_tmp_buffer = NULL;
+	void __sparse_cache *man_tmp_buffer = NULL;
 
 	lib_manager_init();
 
 	ret = lib_manager_dma_init(&dma_ext, dma_id);
 	if (ret < 0)
 		goto cleanup;
+
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	ret = dma_get_attribute(dma_ext.dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
@@ -628,7 +639,8 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		goto cleanup;
 
 	/* allocate temporary manifest buffer */
-	man_tmp_buffer = rballoc_align(0, SOF_MEM_CAPS_DMA, MAN_MAX_SIZE_V1_8, addr_align);
+	man_tmp_buffer = (__sparse_force void __sparse_cache *)rballoc_align(0, SOF_MEM_CAPS_DMA,
+								MAN_MAX_SIZE_V1_8, addr_align);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
 		goto cleanup;
@@ -648,8 +660,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 cleanup:
 	lib_manager_dma_buffer_free(&dma_ext.dmabp);
 
-	if (man_tmp_buffer)
-		rfree(man_tmp_buffer);
+	rfree((__sparse_force void *)man_tmp_buffer);
 
 	lib_manager_dma_deinit(&dma_ext, dma_id);
 
