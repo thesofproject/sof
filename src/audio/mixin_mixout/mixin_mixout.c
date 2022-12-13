@@ -9,6 +9,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
+#include <sof/compiler_attributes.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -241,9 +242,9 @@ static void mixout_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static
-struct mixout_source_info *find_mixout_source_info(struct mixed_data_info __sparse_cache *mdi,
-						   const struct comp_dev *mixin)
+static struct mixout_source_info __sparse_cache
+				*find_mixout_source_info(struct mixed_data_info __sparse_cache *mdi,
+							 const struct comp_dev *mixin)
 {
 	/* mixin == NULL is also a valid input -- this will find first unused entry */
 	int i;
@@ -407,7 +408,7 @@ static int mixin_copy(struct comp_dev *dev)
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
-		struct mixout_source_info *src_info;
+		struct mixout_source_info __sparse_cache *src_info;
 		struct comp_buffer __sparse_cache *sink_c;
 		uint32_t free_frames;
 
@@ -494,7 +495,7 @@ static int mixin_copy(struct comp_dev *dev)
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct mixed_data_info __sparse_cache *mixed_data_info;
-		struct mixout_source_info *src_info;
+		struct mixout_source_info __sparse_cache *src_info;
 		uint32_t start_frame;
 		struct comp_buffer __sparse_cache *sink_c;
 		uint32_t writeback_size;
@@ -591,7 +592,7 @@ static int mixout_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *mixin;
-		struct mixout_source_info *src_info;
+		struct mixout_source_info __sparse_cache *src_info;
 
 		unused_in_between_buf = buffer_from_list(blist, struct comp_buffer,
 							 PPL_DIR_UPSTREAM);
@@ -977,7 +978,7 @@ static int mixout_bind(struct comp_dev *dev, void *data)
 	if (dev->ipc_config.id != src_id) {
 		/* new mixin -> mixout */
 		struct comp_dev *mixin;
-		struct mixout_source_info *source_info;
+		struct mixout_source_info __sparse_cache *source_info;
 
 		mixin = ipc4_get_comp_dev(src_id);
 		if (!mixin) {
@@ -991,7 +992,7 @@ static int mixout_bind(struct comp_dev *dev, void *data)
 			/* this should never happen as source_info should
 			 * have been already cleared in mixout_unbind()
 			 */
-			memset(source_info, 0, sizeof(*source_info));
+			memset((__sparse_force void *)source_info, 0, sizeof(*source_info));
 		}
 		source_info = find_mixout_source_info(mixed_data_info, NULL);
 		if (!source_info) {
@@ -1025,7 +1026,7 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 	/* mixin -> mixout */
 	if (dev->ipc_config.id != src_id) {
 		struct comp_dev *mixin;
-		struct mixout_source_info *source_info;
+		struct mixout_source_info __sparse_cache *source_info;
 
 		mixin = ipc4_get_comp_dev(src_id);
 		if (!mixin) {
@@ -1036,7 +1037,7 @@ static int mixout_unbind(struct comp_dev *dev, void *data)
 
 		source_info = find_mixout_source_info(mixed_data_info, mixin);
 		if (source_info)
-			memset(source_info, 0, sizeof(*source_info));
+			memset((__sparse_force void *)source_info, 0, sizeof(*source_info));
 	}
 
 	mixed_data_info_release(mixed_data_info);
