@@ -224,7 +224,7 @@ static void kpb_set_params(struct comp_dev *dev,
 	params->sample_valid_bytes =
 		kpb->ipc4_cfg.base_cfg.audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = kpb->ipc4_cfg.base_cfg.audio_fmt.interleaving_style;
-	params->buffer.size = kpb->ipc4_cfg.base_cfg.obs * KPB_MAX_BUFF_TIME * 2;
+	params->buffer.size = kpb->ipc4_cfg.base_cfg.obs * KPB_MAX_BUFF_TIME * params->channels;
 
 	params->host_period_bytes = params->channels *
 				    params->sample_container_bytes *
@@ -704,7 +704,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
 	int i;
-	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
+	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width, kpb->config.channels);
 
 	comp_dbg(dev, "kpb_prepare()");
 
@@ -1807,13 +1807,13 @@ static inline bool validate_host_params(struct comp_dev *dev,
 		comp_err(dev, "kpb: host_period_size (%d) cannot be 0 and host_buffer_size (%d) cannot be 0",
 			 host_period_size, host_buffer_size);
 		return false;
-	} else if (HOST_BUFFER_MIN_SIZE(hb_size_req) >
+	} else if (HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels) >
 		   host_buffer_size) {
 		/* Host buffer size is too small - history data
 		 * may get overwritten.
 		 */
 		comp_err(dev, "kpb: host_buffer_size (%d) must be at least %d",
-			 host_buffer_size, HOST_BUFFER_MIN_SIZE(hb_size_req));
+			 host_buffer_size, HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels));
 		return false;
 	} else if (kpb->sync_draining_mode) {
 		/* Sync draining allowed. Check if we can perform draining
