@@ -814,8 +814,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		ret = -EIO;
 	}
 
-	/* Disallow sync_draining_mode for now */
-	kpb->sync_draining_mode = false;
+	kpb->sync_draining_mode = true;
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
