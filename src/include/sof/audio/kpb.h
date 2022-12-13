@@ -26,26 +26,25 @@ struct comp_buffer;
 #endif
 
 #define KPB_MAX_DRAINING_REQ (KPB_MAX_BUFF_TIME - HOST_WAKEUP_TIME)
-#define KPB_MAX_SUPPORTED_CHANNELS 2 /**< number of supported channels */
+#define KPB_MAX_SUPPORTED_CHANNELS 6 /**< number of supported channels */
 /**< number of samples taken each milisecond */
 #define	KPB_SAMPLES_PER_MS (KPB_SAMPLNG_FREQUENCY / 1000)
 #define	KPB_SAMPLNG_FREQUENCY 16000 /**< supported sampling frequency in Hz */
-#define KPB_NUM_OF_CHANNELS 2
 #define KPB_SAMPLE_CONTAINER_SIZE(sw) ((sw == 16) ? 16 : 32)
-#define KPB_MAX_BUFFER_SIZE(sw) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
+#define KPB_MAX_BUFFER_SIZE(sw, channels_number) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
-	KPB_NUM_OF_CHANNELS)
+	 (channels_number))
 #define KPB_MAX_NO_OF_CLIENTS 2
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
-#define KPB_BYTES_TO_FRAMES(bytes, sample_width) \
-	(bytes / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
-	KPB_NUM_OF_CHANNELS))
+#define KPB_BYTES_TO_FRAMES(bytes, sample_width, channels_number) \
+	((bytes) / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
+	 (channels_number)))
 /**< Defines how much faster draining is in comparison to pipeline copy. */
 #define KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE 2
 /**< Host buffer shall be at least two times bigger than history buffer. */
-#define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
+#define HOST_BUFFER_MIN_SIZE(hb, channels_number) ((hb) * (channels_number))
 
 /**< Convert with right shift a bytes count to samples count */
 #define KPB_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
