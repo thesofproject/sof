@@ -12,6 +12,14 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+#if defined(__XCC__)
+
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#define KPB_HIFI3
+#endif
+
+#endif
 struct comp_buffer;
 
 /* KPB internal defines */

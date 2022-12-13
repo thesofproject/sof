@@ -107,7 +107,7 @@ static void kpb_free_history_buffer(struct history_buffer *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer __sparse_cache *sink,
 			     struct comp_buffer __sparse_cache *source, size_t size,
-			     size_t sample_width);
+			     size_t sample_width, uint32_t channels);
 static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *sink,
 			      size_t size, size_t sample_width);
 static void kpb_buffer_samples(const struct audio_stream __sparse_cache *source,
@@ -914,6 +914,7 @@ static int kpb_copy(struct comp_dev *dev)
 	size_t sample_width = kpb->config.sampling_width;
 	struct draining_data *dd = &kpb->draining_task_data;
 	uint32_t avail_bytes;
+	uint32_t channels = kpb->config.channels;
 
 	comp_dbg(dev, "kpb_copy()");
 
@@ -965,7 +966,7 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width);
+		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
 
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
@@ -1025,7 +1026,7 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width);
+		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
 
 		comp_update_buffer_produce(sink_c, copy_bytes);
 		comp_update_buffer_consume(source_c, copy_bytes);
@@ -1593,6 +1594,77 @@ out:
 	return SOF_TASK_STATE_COMPLETED;
 }
 
+#ifdef KPB_HIFI3
+static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
+				   struct audio_stream __sparse_cache *sink, int ooffset,
+				   unsigned int n_samples)
+{
+	int ssize = audio_stream_sample_bytes(sink);
+	uint8_t *in = (uint8_t *)linear_source + ioffset * ssize;
+	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	ae_int32x2 *buf_end;
+	ae_int32x2 *buf;
+
+	buf = (ae_int32x2 *)(sink->addr);
+	buf_end = (ae_int32x2 *)(sink->end_addr);
+	ae_int32x2 *out_ptr = (ae_int32x2 *)buf;
+
+	AE_SETCBEGIN0(buf);
+	AE_SETCEND0(buf_end);
+	out_ptr = (ae_int32x2 *)out;
+
+	ae_valign align_in = AE_LA64_PP(in);
+	int i = 0;
+	ae_int24x2 d24 = AE_ZERO24();
+
+	if (!IS_ALIGNED((uintptr_t)out_ptr, 8)) {
+		AE_LA24_IP(d24, align_in, in);
+		ae_int32x2 d320 = d24;
+		int higher = AE_MOVAD32_H(d320);
+		*(ae_int32 *)(out_ptr) = higher << 8;
+		out_ptr = (ae_int32x2 *)(out + 4);
+		++i;
+	}
+	/* process two samples in single iteration to increase performance */
+	while (i < (int)n_samples - 1) {
+		AE_LA24X2_IP(d24, align_in, in);
+		ae_int32x2 d320 = d24;
+
+		d320 = AE_SLAI32(d320, 8);
+		AE_S32X2_XC(d320, out_ptr, 8);
+		i += 2;
+	}
+	if (i != (int)n_samples) {
+		AE_LA24X2_IP(d24, align_in, in);
+		ae_int32x2 d320 = d24;
+		int higher = AE_MOVAD32_H(d320);
+		*(ae_int32 *)(out_ptr) = higher << 8;
+	}
+}
+#else
+static void kpb_convert_24b_to_32b(const void *source, int ioffset,
+				   struct audio_stream __sparse_cache *sink,
+				   int ooffset, unsigned int samples)
+{
+	int ssize = audio_stream_sample_bytes(sink);
+	uint8_t *src = (uint8_t *)source + ioffset * 3;
+	int32_t *dst = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	int processed;
+	int nmax, i, n;
+
+	for (processed = 0; processed < samples; processed += n) {
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = KPB_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i += 1) {
+			*dst = (src[2] << 16) | (src[1] << 8) | src[0];
+			dst++;
+			src += 3;
+		}
+	}
+}
+#endif
 /**
  * \brief Drain data samples safe, according to configuration.
  *
@@ -1616,6 +1688,9 @@ static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
+		samples = size / ((sample_width >> 3) * sink->channels);
+		kpb_convert_24b_to_32b(source, 0, sink, 0, samples);
+		break;
 	case 32:
 		samples = KPB_BYTES_TO_S32_SAMPLES(size);
 		audio_stream_copy_from_linear(source, 0, sink, 0, samples);
@@ -1627,6 +1702,68 @@ static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *
 	}
 }
 
+#ifdef KPB_HIFI3
+static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *source, int ioffset,
+				   void *linear_sink, int ooffset, unsigned int n_samples)
+{
+	int ssize = audio_stream_sample_bytes(source);
+	uint8_t *in = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *out = (uint8_t *)linear_sink + ooffset * ssize;
+
+	const ae_f24x2 *sin = (const ae_f24x2 *)in;
+	ae_f24x2 *sout = (ae_f24x2 *)out;
+
+	ae_f24x2 vs = AE_ZERO24();
+	ae_valign align_out = AE_ZALIGN64();
+
+	if (!IS_ALIGNED((uintptr_t)sin, 8)) {
+		AE_L32F24_XC(vs, (const ae_f24 *)sin, 4);
+		AE_SA24_IP(vs, align_out, sout);
+		n_samples--;
+	}
+
+	unsigned int size = n_samples >> 1;
+	size_t i;
+
+	for (i = 0; i < size; i++) {
+		AE_L32X2F24_XC(vs, sin, 8);
+		AE_SA24X2_IP(vs, align_out, sout);
+	}
+	AE_SA64POS_FP(align_out, sout);
+
+	if (n_samples & 1) {
+		AE_L32X2F24_XC(vs, sin, 4);
+		ae_f24 tmp = AE_MOVAD32_H(AE_MOVINT24X2_FROMF24X2(vs));
+
+		AE_SA24_IP(tmp, align_out, sout);
+		AE_SA64POS_FP(align_out, sout);
+	}
+}
+#else
+static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *source, int ioffset,
+				   void *sink, int ooffset, unsigned int samples)
+{
+	int ssize = audio_stream_sample_bytes(source);
+	int32_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *dst = (uint8_t *)sink + ooffset * 3;
+	int processed;
+	int nmax, i, n;
+
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		n = samples - processed;
+		nmax = KPB_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i += 1) {
+			dst[0] = *src & 0xFF;
+			dst[1] = (*src >> 8) & 0xFF;
+			dst[2] = (*src >> 16) & 0xFF;
+			dst += 3;
+			src++;
+		}
+	}
+}
+#endif
 /**
  * \brief Buffers data samples safe, according to configuration.
  * \param[in,out] source Pointer to source buffer.
@@ -1653,6 +1790,11 @@ static void kpb_buffer_samples(const struct audio_stream __sparse_cache *source,
 #endif
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
+		samples_count =  size / ((sample_width >> 3) * source->channels);
+		samples_offset = offset / ((sample_width >> 3) * source->channels);
+		kpb_convert_32b_to_24b(source, samples_offset,
+				       sink, 0, samples_count);
+		break;
 	case 32:
 		samples_count = KPB_BYTES_TO_S32_SAMPLES(size);
 		samples_offset = KPB_BYTES_TO_S32_SAMPLES(offset);
@@ -1716,6 +1858,66 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	return ret;
 }
 
+#ifdef KPB_HIFI3
+static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
+				struct audio_stream __sparse_cache *sink, uint32_t ooffset,
+				uint32_t n_samples)
+{
+	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
+	uint8_t *in = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+
+	const ae_int32x2 *sin = (const ae_int32x2 *)in;
+	ae_int32x2 *sout = (ae_int32x2 *)out;
+	ae_int32x2 vs = AE_ZERO32();
+
+	if (!IS_ALIGNED((uintptr_t)sin, 8)) {
+		AE_L32_IP(vs, (const ae_int32 *)sin, 4);
+		AE_S32_L_IP(vs, (ae_int32 *)sout, 4);
+		n_samples--;
+	}
+	ae_valign align_out = AE_ZALIGN64();
+	size_t size = n_samples >> 1;
+	size_t i;
+
+	for (i = 0; i < size; i++) {
+		AE_L32X2_IP(vs, sin, 8);
+		AE_SA32X2_IP(vs, align_out, sout);
+	}
+	AE_SA64POS_FP(align_out, sout);
+	if (n_samples & 1) {
+		vs = AE_L32_I((const ae_int32 *)sin, 0);
+		AE_S32_L_I(vs, (ae_int32 *)sout, 0);
+	}
+}
+#else
+static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source,
+				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
+				uint32_t ooffset, uint32_t samples)
+{
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = KPB_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, src));
+		n = MIN(n, nmax);
+		nmax = KPB_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, dst));
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 8;
+			src++;
+			dst++;
+		}
+	}
+}
+#endif
 /**
  * \brief Copy data samples safe, according to configuration.
  *
@@ -1727,10 +1929,11 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
  */
 static void kpb_copy_samples(struct comp_buffer __sparse_cache *sink,
 			     struct comp_buffer __sparse_cache *source, size_t size,
-			     size_t sample_width)
+			     size_t sample_width, uint32_t channels)
 {
 	struct audio_stream __sparse_cache *istream = &source->stream;
 	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	unsigned int samples;
 
 	buffer_stream_invalidate(source, size);
 	switch (sample_width) {
@@ -1741,6 +1944,9 @@ static void kpb_copy_samples(struct comp_buffer __sparse_cache *sink,
 #endif
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
+		samples = size / ((sample_width >> 3) * channels);
+		kpb_copy_24b_in_32b(istream, 0, ostream, 0, samples);
+		break;
 	case 32:
 		audio_stream_copy(istream, 0, ostream, 0, KPB_BYTES_TO_S32_SAMPLES(size));
 		break;
