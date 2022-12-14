@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-//
-// Copyright(c) 2022 Mediatek
-//
-// Author: Chunxu Li <chunxu.li@mediatek.com>
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Chunxu Li <chunxu.li@mediatek.com>
+ */
 
 #ifndef _MT8186_REG_H_
 #define _MT8186_REG_H_

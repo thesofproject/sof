@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2022 Mediatek. All rights reserved.
-//
-// Author: Zhengnan Chen <zhengnan.chen@mediatek.com>
-//         Allen-KH Cheng <allen-kh.cheng@mediatek.com>
-//         Tinghan Shen <tinghan.shen@mediatek.com>
+/* SPDX-License-Identifier: BSD-3-Clause */
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Zhengnan Chen <zhengnan.chen@mediatek.com>
+ *         Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ *         Tinghan Shen <tinghan.shen@mediatek.com>
+ */
 
 #ifdef __SOF_DRIVERS_INTERRUPT_H__
 

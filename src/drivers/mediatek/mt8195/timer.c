@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2021 Mediatek
-//
-// Author:Fengquan Chen <fengquan.chen@mediatek.com>
-//        Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+/*
+ * Copyright(c) 2021 MediaTek. All rights reserved.
+ *
+ * Author:Fengquan Chen <fengquan.chen@mediatek.com>
+ *        Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ */
 
 #include <sof/audio/component_ext.h>
 #include <rtos/interrupt.h>
