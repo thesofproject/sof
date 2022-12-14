@@ -176,7 +176,7 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	int ret;
 
-	comp_cl_info(&comp_selector, "selector_new()");
+	comp_cl_dbg(&comp_selector, "selector_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -206,7 +206,7 @@ static void selector_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "selector_free()");
+	comp_dbg(dev, "selector_free()");
 
 	rfree(cd);
 	rfree(dev);
@@ -224,7 +224,7 @@ static int selector_params(struct comp_dev *dev,
 {
 	int err;
 
-	comp_info(dev, "selector_params()");
+	comp_dbg(dev, "selector_params()");
 
 	err = selector_verify_params(dev, params);
 	if (err < 0) {
@@ -250,7 +250,7 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_dbg(dev, "selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
 
 		cfg = (struct sof_sel_config *)
 		      ASSUME_ALIGNED(&cdata->data->data, 4);
@@ -286,7 +286,7 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
+		comp_dbg(dev, "selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Copy back to user space */
 		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
@@ -321,7 +321,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 	int ret = 0;
 
-	comp_info(dev, "selector_cmd()");
+	comp_dbg(dev, "selector_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -331,10 +331,10 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
 		break;
 	case COMP_CMD_SET_VALUE:
-		comp_info(dev, "selector_cmd(), COMP_CMD_SET_VALUE");
+		comp_dbg(dev, "selector_cmd(), COMP_CMD_SET_VALUE");
 		break;
 	case COMP_CMD_GET_VALUE:
-		comp_info(dev, "selector_cmd(), COMP_CMD_GET_VALUE");
+		comp_dbg(dev, "selector_cmd(), COMP_CMD_GET_VALUE");
 		break;
 	default:
 		comp_err(dev, "selector_cmd(): invalid command");
@@ -357,7 +357,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	enum sof_comp_type type;
 	int ret;
 
-	comp_info(dev, "selector_trigger()");
+	comp_dbg(dev, "selector_trigger()");
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -443,7 +443,7 @@ static int selector_prepare(struct comp_dev *dev)
 	size_t sink_size;
 	int ret;
 
-	comp_info(dev, "selector_prepare()");
+	comp_dbg(dev, "selector_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -473,10 +473,10 @@ static int selector_prepare(struct comp_dev *dev)
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
-	comp_info(dev, "selector_prepare(): sourceb->schannels = %u",
-		  source_c->stream.channels);
-	comp_info(dev, "selector_prepare(): sinkb->channels = %u",
-		  sink_c->stream.channels);
+	comp_dbg(dev, "selector_prepare(): sourceb->schannels = %u",
+		 source_c->stream.channels);
+	comp_dbg(dev, "selector_prepare(): sinkb->channels = %u",
+		 sink_c->stream.channels);
 
 	sink_size = sink_c->stream.size;
 
@@ -531,7 +531,7 @@ static int selector_reset(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "selector_reset()");
+	comp_dbg(dev, "selector_reset()");
 
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;
@@ -774,7 +774,7 @@ static int selector_params(struct processing_module *mod)
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	int err;
 
-	comp_info(mod->dev, "selector_params()");
+	comp_dbg(mod->dev, "selector_params()");
 
 	set_selector_params(mod, params);
 
@@ -850,7 +850,7 @@ static int selector_prepare(struct processing_module *mod)
 	size_t sink_size;
 	int ret;
 
-	comp_info(dev, "selector_prepare()");
+	comp_dbg(dev, "selector_prepare()");
 
 	ret = selector_params(mod);
 	if (ret < 0)
@@ -881,10 +881,8 @@ static int selector_prepare(struct processing_module *mod)
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
-	comp_info(dev, "selector_prepare(): sourceb->schannels = %u",
-		  source_c->stream.channels);
-	comp_info(dev, "selector_prepare(): sinkb->channels = %u",
-		  sink_c->stream.channels);
+	comp_info(dev, "selector_prepare(): source sink channel = %u %u",
+		  source_c->stream.channels, sink_c->stream.channels);
 
 	sink_size = sink_c->stream.size;
 
@@ -938,7 +936,7 @@ static int selector_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "selector_reset()");
+	comp_dbg(mod->dev, "selector_reset()");
 
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;

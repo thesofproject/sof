@@ -104,7 +104,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	unsigned int i;
 	unsigned int j;
 
-	comp_info(dev, "mux_set_values()");
+	comp_dbg(dev, "mux_set_values()");
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
@@ -245,7 +245,7 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	int ret;
 
-	comp_cl_info(&comp_mux, "mux_new()");
+	comp_cl_dbg(&comp_mux, "mux_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -404,7 +404,7 @@ static void mux_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "mux_free()");
+	comp_dbg(dev, "mux_free()");
 
 	rfree(cd);
 	rfree(dev);
@@ -445,7 +445,7 @@ static int mux_params(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_info(dev, "mux_params()");
+	comp_dbg(dev, "mux_params()");
 #if CONFIG_IPC_MAJOR_4
 	set_mux_params(dev, params);
 #endif
@@ -463,8 +463,8 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 	struct sof_mux_config *cfg;
 	int ret = 0;
 
-	comp_info(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
-		  cdata->cmd);
+	comp_dbg(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
+		 cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -525,7 +525,7 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
-	comp_info(dev, "mux_cmd() cmd = 0x%08x", cmd);
+	comp_dbg(dev, "mux_cmd() cmd = 0x%08x", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -807,7 +807,7 @@ static int mux_reset(struct comp_dev *dev)
 	struct list_item *blist;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "mux_reset()");
+	comp_dbg(dev, "mux_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
@@ -840,7 +840,7 @@ static int mux_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 	int ret;
 
-	comp_info(dev, "mux_prepare()");
+	comp_dbg(dev, "mux_prepare()");
 
 	if (dev->state != COMP_STATE_ACTIVE) {
 		if (dev->ipc_config.type == SOF_COMP_MUX)
@@ -903,7 +903,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	unsigned int src_n_active, src_n_paused;
 	int ret;
 
-	comp_info(dev, "mux_trigger(), command = %u", cmd);
+	comp_dbg(dev, "mux_trigger(), command = %u", cmd);
 
 	/*
 	 * We are in a TRIGGER IPC. IPCs are serialised, while we're processing

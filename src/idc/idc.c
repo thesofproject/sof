@@ -353,7 +353,7 @@ int idc_init(void)
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 #endif
 
-	tr_info(&idc_tr, "idc_init()");
+	tr_dbg(&idc_tr, "idc_init()");
 
 	/* initialize idc data */
 	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));

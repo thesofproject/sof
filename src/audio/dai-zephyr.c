@@ -485,7 +485,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_playback_params() fifo 0x%x", fifo);
+		comp_dbg(dev, "dai_playback_params() fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -614,7 +614,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_capture_params() fifo 0x%x", fifo);
+		comp_dbg(dev, "dai_capture_params() fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -844,7 +844,7 @@ static int dai_config_prepare(struct comp_dev *dev)
 	}
 
 	channel = dai_config_dma_channel(dev, dd->dai_spec_config);
-	comp_info(dev, "dai_config_prepare(), channel = %d", channel);
+	comp_dbg(dev, "dai_config_prepare(), channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
 	if (channel == DMA_CHAN_INVALID) {
@@ -863,8 +863,8 @@ static int dai_config_prepare(struct comp_dev *dev)
 	dd->chan = &dd->dma->chan[channel];
 	dd->chan->dev_data = dd;
 
-	comp_info(dev, "dai_config_prepare(): new configured dma channel index %d",
-		  dd->chan->index);
+	comp_dbg(dev, "dai_config_prepare(): new configured dma channel index %d",
+		 dd->chan->index);
 
 	/* setup callback */
 	notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
@@ -879,7 +879,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
 
-	comp_info(dev, "dai_prepare()");
+	comp_dbg(dev, "dai_prepare()");
 
 	ret = dai_config_prepare(dev);
 	if (ret < 0)
@@ -930,7 +930,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	comp_info(dev, "dai_reset()");
+	comp_dbg(dev, "dai_reset()");
 
 	/*
 	 * DMA channel release should be skipped now for DAI's that support the two-step stop
