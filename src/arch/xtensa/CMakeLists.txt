@@ -554,7 +554,7 @@ set(UNSIGNED_RI         byt cht hsw bdw sue)
 list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
 list(APPEND UNSIGNED_RI rn rmb)
-# Mediatek
+# MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 
 # Signed and non-deterministic but sof_ri_info.py is not compatible with

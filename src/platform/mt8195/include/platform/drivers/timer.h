@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2021 Mediatek
+ * Copyright(c) 2021 MediaTek. All rights reserved.
  *
  * Author: Author: Fengquan Chen <fengquan.chen@mediatek.com>
  */

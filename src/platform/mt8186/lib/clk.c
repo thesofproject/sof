@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2022 Mediatek. All rights reserved.
-//
-// Author: Allen-KH Cheng <allen-kh.cheng@mediatek.com>
-//         Tinghan Shen <tinghan.shen@mediatek.com>
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ *         Tinghan Shen <tinghan.shen@mediatek.com>
+ */
 
 #include <platform/drivers/mt_reg_base.h>
 #include <rtos/clk.h>

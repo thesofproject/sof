@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2021 Mediatek
-//
-// Author: Allen-KH Cheng <Allen-KH.Cheng@mediatek.com>
+/*
+ * Copyright(c) 2021 MediaTek. All rights reserved.
+ *
+ * Author: Allen-KH Cheng <Allen-KH.Cheng@mediatek.com>
+ */
 
 #include <sof/debug/panic.h>
 #include <rtos/interrupt.h>

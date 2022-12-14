@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2021 Mediatek
-//
-// Author: YC Hung <yc.hung@mediatek.com>
-//         Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+/* SPDX-License-Identifier: BSD-3-Clause */
+/*
+ * Copyright(c) 2021 MediaTek. All rights reserved.
+ *
+ * Author: YC Hung <yc.hung@mediatek.com>
+ *         Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ */
 
 #ifndef MT_REG_BASE_H
 #define MT_REG_BASE_H

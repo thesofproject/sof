@@ -369,8 +369,8 @@ config  MEDIATEK
 	bool
 	default n
 	help
-	  This has to be selected for every Mediatek platform.
-	  It enables Mediatek platforms-specific features.
+	  This has to be selected for every MediaTek platform.
+	  It enables MediaTek platforms-specific features.
 
 config CAVS
 	bool

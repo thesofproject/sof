@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2021 Mediatek
-//
-// Author: Bo Pan <bo.pan@mediatek.com>
+/* SPDX-License-Identifier: BSD-3-Clause */
+/*
+ * Copyright(c) 2021 MediaTek. All rights reserved.
+ *
+ * Author: Bo Pan <bo.pan@mediatek.com>
+ */
 
 #ifdef __SOF_LIB_DMA_H__
 

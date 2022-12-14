@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2022 Mediatek
-//
-// Author: Bo Pan <bo.pan@mediatek.com>
-//         Chunxu Li <chunxu.li@mediatek.com>
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Bo Pan <bo.pan@mediatek.com>
+ *         Chunxu Li <chunxu.li@mediatek.com>
+ */
 
 #include <sof/audio/component.h>
 #include <sof/drivers/afe-drv.h>
