@@ -340,7 +340,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	};
 	int ret;
 
-	pipe_info(p, "pipe prepare");
+	pipe_dbg(p, "pipe prepare");
 
 	ppl_data.start = dev;
 

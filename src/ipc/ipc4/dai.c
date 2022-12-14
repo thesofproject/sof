@@ -77,8 +77,8 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	comp_info(dev, "dai_data_config() dai type = %d index = %d dd %p",
-		  dai->type, dai->dai_index, dd);
+	comp_dbg(dev, "dai_data_config() dai type = %d index = %d dd %p",
+		 dai->type, dai->dai_index, dd);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
@@ -96,7 +96,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_INTEL_DMIC:
 		/* Depth is passed by DMIC driver that retrieves it from blob */
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
-		comp_info(dev, "dai_data_config() burst_elems = %d", dd->config.burst_elems);
+		comp_dbg(dev, "dai_data_config() burst_elems = %d", dd->config.burst_elems);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		break;

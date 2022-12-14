@@ -242,7 +242,7 @@ void ipc_schedule_process(struct ipc *ipc)
 
 int ipc_init(struct sof *sof)
 {
-	tr_info(&ipc_tr, "ipc_init()");
+	tr_dbg(&ipc_tr, "ipc_init()");
 
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));

@@ -808,8 +808,8 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
-			comp_info(dev, "volume_set_config(), channel = %d, value = %u",
-				  ch, val);
+			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
+				 ch, val);
 
 			if (ch >= SOF_IPC_MAX_CHANNELS) {
 				comp_err(dev, "volume_set_config(), illegal channel = %d",
@@ -838,8 +838,8 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
-			comp_info(dev, "volume_set_config(), channel = %d, value = %u",
-				  ch, val);
+			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
+				 ch, val);
 			if (ch >= SOF_IPC_MAX_CHANNELS) {
 				comp_err(dev, "volume_set_config(), illegal channel = %d",
 					 ch);
@@ -889,18 +889,18 @@ static int volume_get_config(struct processing_module *mod,
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
-			comp_info(dev, "volume_get_config(), channel = %u, value = %u",
-				  cdata->chanv[j].channel,
-				  cdata->chanv[j].value);
+			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
+				 cdata->chanv[j].channel,
+				 cdata->chanv[j].value);
 		}
 		break;
 	case SOF_CTRL_CMD_SWITCH:
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = !cd->muted[j];
-			comp_info(dev, "volume_get_config(), channel = %u, value = %u",
-				  cdata->chanv[j].channel,
-				  cdata->chanv[j].value);
+			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
+				 cdata->chanv[j].channel,
+				 cdata->chanv[j].value);
 		}
 		break;
 	default:

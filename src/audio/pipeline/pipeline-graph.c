@@ -218,9 +218,9 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		comp_info(comp, "disconnect buffer %d as sink", buffer->id);
+		comp_dbg(comp, "disconnect buffer %d as sink", buffer->id);
 	else
-		comp_info(comp, "disconnect buffer %d as source", buffer->id);
+		comp_dbg(comp, "disconnect buffer %d as source", buffer->id);
 
 	irq_local_disable(flags);
 	buf_list = buffer_comp_list(buffer, dir);
@@ -247,7 +247,7 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 /* pipelines must be inactive */
 int pipeline_free(struct pipeline *p)
 {
-	pipe_info(p, "pipeline_free()");
+	pipe_dbg(p, "pipeline_free()");
 
 	/*
 	 * pipeline_free should always be called only after all the widgets in the pipeline have
@@ -311,7 +311,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 #endif
 	int ret;
 
-	pipe_info(p, "pipeline complete, clock freq %dHz", freq);
+	pipe_dbg(p, "pipeline complete, clock freq %dHz", freq);
 
 	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
@@ -398,7 +398,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	};
 	int ret;
 
-	pipe_info(p, "pipe reset");
+	pipe_dbg(p, "pipe reset");
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {

@@ -703,7 +703,7 @@ static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	comp_info(dev, "host_free()");
+	comp_dbg(dev, "host_free()");
 
 	dma_put(hd->dma);
 

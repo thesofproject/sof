@@ -81,7 +81,7 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "module_init() start");
+	comp_dbg(dev, "module_init() start");
 
 	if (mod->priv.state == MODULE_INITIALIZED)
 		return 0;
@@ -114,7 +114,7 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 		return ret;
 	}
 
-	comp_info(dev, "module_init() done");
+	comp_dbg(dev, "module_init() done");
 	md->state = MODULE_INITIALIZED;
 
 	return ret;
