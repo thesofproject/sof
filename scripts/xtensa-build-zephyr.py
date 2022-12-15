@@ -728,6 +728,7 @@ def install_platform(platform, sof_platform_output_dir):
 	installed_files = [
 		# Fail if one of these is missing
 		InstFile(".config", "config"),
+		InstFile("misc/generated/configs.c", "generated_configs.c"),
 		InstFile(BIN_NAME + ".elf"),
 		InstFile(BIN_NAME + ".lst"),
 		InstFile(BIN_NAME + ".map"),
@@ -757,6 +758,7 @@ BIN_NAME = 'zephyr'
 
 CHECKSUM_WANTED = [
 	'*.ri',     # Some .ri files have a non-deterministic signature, others not
+	'*configs.c', # deterministic unlike .config
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
 	'boot.mod', # no debug section -> no need to strip this ELF
 	BIN_NAME + '.lst',       # objdump --disassemble
