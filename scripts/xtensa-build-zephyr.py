@@ -37,6 +37,7 @@ import fnmatch
 import hashlib
 import gzip
 from dataclasses import dataclass
+import concurrent.futures as concurrent
 
 # anytree module is defined in Zephyr build requirements
 from anytree import AnyNode, RenderTree
@@ -752,6 +753,8 @@ def install_platform(platform, sof_platform_output_dir):
 
 	sof_info = pathlib.Path(STAGING_DIR) / "sof-info" / platform
 	sof_info.mkdir(parents=True, exist_ok=True)
+	gzip_threads = concurrent.ThreadPoolExecutor()
+	gzip_futures = []
 	for f in installed_files:
 		if not pathlib.Path(abs_build_dir / f.name).is_file() and f.optional:
 			continue
@@ -774,7 +777,10 @@ def install_platform(platform, sof_platform_output_dir):
 		else:
 			shutil.copy2(src, dst)
 		if f.gzip:
-			gzip_compress(dst)
+			gzip_futures.append(gzip_threads.submit(gzip_compress, dst))
+	for gzip_res in concurrent.as_completed(gzip_futures):
+		gzip_res.result() # throws exception if gzip unexpectedly failed
+	gzip_threads.shutdown()
 
 
 # Zephyr's CONFIG_KERNEL_BIN_NAME default value
