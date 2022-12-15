@@ -11,6 +11,8 @@ set(TPLGS
 	"sof-apl-dmic\;sof-apl-dmic-2ch\;-DCHANNELS=2\;-DCPROC=volume"
 	"sof-apl-dmic\;sof-apl-dmic-4ch\;-DCHANNELS=4\;-DCPROC=volume"
 	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-nohdmi\;-DPPROC=volume"
+	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-drc\;-DPPROC=drc"
+	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-mdrc\;-DPPROC=multiband-drc"
 	"sof-apl-src-50khz-pcm512x\;sof-apl-src-50khz-pcm512x"
 	"sof-cnl-rt5682-sdw2\;sof-cnl-rt5682-sdw2\;-DPLATFORM=cnl"
 	"sof-cml-src-rt5682\;sof-cml-src-rt5682"
