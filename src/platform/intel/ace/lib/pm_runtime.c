@@ -2,6 +2,7 @@
 //
 // Copyright(c) 2022 Intel Corporation. All rights reserved.
 
+#include <sof/ipc/common.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
@@ -40,9 +41,14 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 		if (pm_policy_state_lock_is_active(state->state, state->substate_id))
 			continue;
 
+		/* checking conditions for D0i3 */
 		if (state->state == PM_STATE_RUNTIME_IDLE) {
-			/* No D0i3 when secondary cores are active! */
+			/* skipping when secondary cores are active */
 			if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID))
+				continue;
+
+			/* skipping when some ipc task is not finished */
+			if (ipc_get()->task_mask)
 				continue;
 		}
 

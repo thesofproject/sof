@@ -28,8 +28,6 @@
 #include <rtos/spinlock.h>
 #include <ipc/header.h>
 
-#include <zephyr/pm/policy.h>
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -70,13 +68,6 @@ static bool message_handler(const struct device *dev, void *arg, uint32_t data, 
 #if CONFIG_DEBUG_IPC_COUNTERS
 	increment_ipc_received_counter();
 #endif
-
-	/* Preventing d0i3 state during IPC processing in case if a host previously allowed for
-	 * power state transitions. Transition can occur only in the Idle thread and this lock acts
-	 * as a safeguard in case of the remaining threads to be non active
-	 * (e.g. waiting for a semaphore).
-	 */
-	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	ipc_schedule_process(ipc);
 
 	k_spin_unlock(&ipc->lock, key);
@@ -141,7 +132,6 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	}
 #endif
 
-	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	return SOF_TASK_STATE_COMPLETED;
 }
 
