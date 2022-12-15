@@ -63,7 +63,12 @@ exec_as_cwd_uid()
     # Double sudo to work around some funny restriction in
     # zephyr-build:/etc/sudoers: 'user' can do anything but... only as
     # root.
-    sudo sudo -u "$cwd_user" REAL_CC="$REAL_CC" "$@"
+    # Passing empty http[s]_proxy is OK
+    # shellcheck disable=SC2154
+    sudo sudo -u "$cwd_user" REAL_CC="$REAL_CC" \
+         http_proxy="$http_proxy"  https_proxy="$https_proxy" \
+         "$@"
+
     exit "$?"
 }
 
