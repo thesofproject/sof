@@ -719,8 +719,8 @@ def install_platform(platform, sof_platform_output_dir):
 	@dataclass
 	class InstFile:
 		'How to install one file'
-		name: str
-		renameTo: str = None
+		name: pathlib.Path
+		renameTo: pathlib.Path = None
 		# TODO: upgrade this to 3 states: optional/warning/error
 		optional: bool = False
 		gzip: bool = True
