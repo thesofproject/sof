@@ -21,8 +21,8 @@ jobs:
           imx8 imx8x imx8m,
           # - IPC4 default
           mtl,
-          # Very few IPC3 platforms support IPC4 too.
-          -i IPC4 tgl,
+          # Some IPC3 platforms support IPC4 too.
+          -i IPC4 tgl, -i IPC4 tgl-h,
         ]
         zephyr_revision: [
           manifest_revision,
