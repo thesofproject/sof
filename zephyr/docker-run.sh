@@ -57,7 +57,7 @@ run_command()
     docker run -i -v "$(west topdir)":/zep_workspace \
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
-           --env REAL_CC \
+           --env REAL_CC --env http_proxy --env https_proxy \
            ghcr.io/zephyrproject-rtos/zephyr-build:latest \
            ./sof/scripts/sudo-cwd.sh "$@"
 }
