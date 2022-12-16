@@ -10,7 +10,6 @@ on: [push, pull_request, workflow_dispatch, workflow_call]
 jobs:
   build:
     runs-on: ubuntu-20.04
-
     strategy:
       fail-fast: false
       matrix:
@@ -70,3 +69,133 @@ jobs:
         run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      # FIXME: Create common matrix for build-linux and build-windows
+      matrix:
+        # Using groups to avoid spamming the small results box with too
+        # many lines. Pay attention to COMMAS.
+        platforms: [
+          # - IPC3 default
+          imx8 imx8x imx8m,
+          tgl tgl-h,  # UNSUPPORTED! Will be removed
+          # - IPC4 default
+          mtl,
+          # Very few IPC3 platforms support IPC4 too.
+          -i IPC4 tgl tgl-h,
+        ]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: ./workspace/sof
+
+      # Cache artifacts so we do not overload external servers with downloads
+      # Remember to change step key if you change the tools so old cache is not restored,
+      # or delete cache manually in Github Actions tab
+      - name: Cache unzip
+        id: cache-unzip
+        uses: actions/cache@v3.0.11
+        with:
+          path: unzip-5.51-1-bin.zip
+          key: ${{ runner.os }}-cache-unzip-5-51-1
+
+      - name: Cache wget
+        id: cache-wget
+        uses: actions/cache@v3.0.11
+        with:
+          path: wget-1.11.4-1-bin.zip
+          key: ${{ runner.os }}-cache-wget-1-11-4-1
+
+      - name: Cache Zephyr SDK
+        id: cache-zephyr-sdk
+        uses: actions/cache@v3.0.11
+        with:
+          path: zephyr-sdk-0.15.2_windows-x86_64.zip
+          key: ${{ runner.os }}-cache-zephyr-sdk-0-15-2
+
+      # Unzip is needed by Zephyr SDK setup.cmd installation script
+      - name: Download unzip
+        if: ${{ steps.cache-unzip.outputs.cache-hit != 'true' }}
+        run: |
+          curl -L -o unzip-5.51-1-bin.zip `
+          https://gnuwin32.sourceforge.net/downlinks/unzip-bin-zip.php
+
+      # Wget is needed by Zephyr SDK setup.cmd installation script
+      - name: Download wget
+        if: ${{ steps.cache-wget.outputs.cache-hit != 'true' }}
+        run: |
+          curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
+
+      - name: Download Zephyr SDK
+        if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
+        run: |  # yamllint disable-line rule:line-length
+          curl -L -O `
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.15.2/zephyr-sdk-0.15.2_windows-x86_64.zip
+
+      # Unzips every .zip package to directory matching its name without extension
+      - name: Unzip downloaded packages
+        run: 7z x *.zip -o*
+
+      - name: Add unzip to system PATH
+        run: |
+          echo "${{ github.workspace }}/unzip-5.51-1-bin/bin" | `
+          Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Add wget to system PATH
+        run: |
+          echo "${{ github.workspace }}/wget-1.11.4-1-bin/bin" | `
+          Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # Install Zephyr SDK - all toolchains including Host Tools
+      # and registering CMake package in the registry
+      # setup.cmd may not be called in from msys shell as it does not parse
+      # forward slash script input arguments correctly.
+      - name: Install Zephyr SDK
+        run: zephyr-sdk-0.15.2_windows-x86_64/zephyr-sdk-0.15.2/setup.cmd /t all /h /c
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: West install
+        run: pip3 install west
+
+      - name: West clone
+        working-directory: ${{ github.workspace }}/workspace
+        run: west init -l sof && west update
+
+      # Call Setup Python again to save the PIP packages in cache
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        id: cache-python
+        with:
+          python-version: '3.8'
+          cache: 'pip'
+          cache-dependency-path: workspace/zephyr/scripts/requirements.txt
+
+      # All requirements will be satisfied if the restored cache matches existing state
+      - name: Validate python PIP cache
+        working-directory: ${{ github.workspace }}/workspace
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      # MSYS2 provides gcc x64_86 toolchain & openssl
+      - name: Initialize MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          install: gcc openssl-devel
+          path-type: inherit
+
+      - name: Build
+        shell: msys2 {0}
+        working-directory: ${{ github.workspace }}/workspace
+        run: python sof/scripts/xtensa-build-zephyr.py
+          --no-interactive
+          --cmake-args=-DEXTRA_CFLAGS=-Werror
+          --cmake-args=--warn-uninitialized ${{ matrix.platforms }}
