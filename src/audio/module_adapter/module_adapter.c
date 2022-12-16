@@ -1121,6 +1121,89 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 
 	return 0;
 }
+
+int module_adapter_bind(struct comp_dev *dev, void *data)
+{
+	struct module_source_info __sparse_cache *mod_source_info;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct ipc4_module_bind_unbind *bu;
+	struct comp_dev *source_dev;
+	int source_index;
+	int src_id;
+
+	bu = (struct ipc4_module_bind_unbind *)data;
+	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+
+	/* nothing to do if this module is the source during bind */
+	if (dev->ipc_config.id == src_id)
+		return 0;
+
+	source_dev = ipc4_get_comp_dev(src_id);
+	if (!source_dev) {
+		comp_err(dev, "module_adapter_bind: no source with ID %d found", src_id);
+		return -EINVAL;
+	}
+
+	mod_source_info = module_source_info_acquire(mod->source_info);
+
+	source_index = find_module_source_index(mod_source_info, source_dev);
+	/*
+	 * this should never happen as source_info should have been already cleared in
+	 * module_adapter_unbind()
+	 */
+	if (source_index >= 0)
+		mod_source_info->sources[source_index] = NULL;
+
+	/* find an empty slot in the source_info array */
+	source_index = find_module_source_index(mod_source_info, NULL);
+	if (source_index < 0) {
+		/* no free slot in module source_info array */
+		comp_err(dev, "Too many inputs!");
+		module_source_info_release(mod_source_info);
+		return -ENOMEM;
+	}
+
+	/* set the source dev pointer */
+	mod_source_info->sources[source_index] = source_dev;
+
+	module_source_info_release(mod_source_info);
+
+	return 0;
+}
+
+int module_adapter_unbind(struct comp_dev *dev, void *data)
+{
+	struct module_source_info __sparse_cache *mod_source_info;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct ipc4_module_bind_unbind *bu;
+	struct comp_dev *source_dev;
+	int source_index;
+	int src_id;
+
+	bu = (struct ipc4_module_bind_unbind *)data;
+	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+
+	/* nothing to do if this module is the source during unbind */
+	if (dev->ipc_config.id == src_id)
+		return 0;
+
+	source_dev = ipc4_get_comp_dev(src_id);
+	if (!source_dev) {
+		comp_err(dev, "module_adapter_bind: no source with ID %d found", src_id);
+		return -EINVAL;
+	}
+
+	mod_source_info = module_source_info_acquire(mod->source_info);
+
+	/* find the index of the source in the sources array and clear it */
+	source_index = find_module_source_index(mod_source_info, source_dev);
+	if (source_index >= 0)
+		mod_source_info->sources[source_index] = NULL;
+
+	module_source_info_release(mod_source_info);
+
+	return 0;
+}
 #else
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
@@ -1134,6 +1217,16 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset, char *data)
+{
+	return 0;
+}
+
+int module_adapter_bind(struct comp_dev *dev, void *data)
+{
+	return 0;
+}
+
+int module_adapter_unbind(struct comp_dev *dev, void *data)
 {
 	return 0;
 }
