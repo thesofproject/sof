@@ -981,7 +981,9 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	ret = module_reset(mod);
 	if (ret) {
-		comp_err(dev, "module_adapter_reset(): failed with error: %d", ret);
+		if (ret != PPL_STATUS_PATH_STOP)
+			comp_err(dev, "module_adapter_reset(): failed with error: %d", ret);
+		return ret;
 	}
 
 	if (!mod->simple_copy)
