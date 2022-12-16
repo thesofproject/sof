@@ -828,11 +828,9 @@ static int selector_process(struct processing_module *mod,
 
 	comp_dbg(mod->dev, "selector_process()");
 
-	if (!avail_frames)
-		return PPL_STATUS_PATH_STOP;
-
-	/* copy selected channels from in to out */
-	cd->sel_func(mod, input_buffers, output_buffers, avail_frames);
+	if (avail_frames)
+		/* copy selected channels from in to out */
+		cd->sel_func(mod, input_buffers, output_buffers, avail_frames);
 
 	return 0;
 }
