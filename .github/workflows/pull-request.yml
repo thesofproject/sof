@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: apt get doxygen graphviz
         run: sudo apt-get -y install ninja-build doxygen graphviz
@@ -156,7 +156,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with: {fetch-depth: 0, submodules: recursive}
 
       - name: turn off HAVE_AGENT
