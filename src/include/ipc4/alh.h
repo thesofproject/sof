@@ -36,6 +36,14 @@
 #define IPC4_ALH_DAI_INDEX(x) ((((x) & 0xF0) << DAI_NUM_ALH_BI_DIR_LINKS_GROUP) + \
 				(((x) & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET))
 
+/* Multi-gateways addressing starts from IPC4_ALH_MULTI_GTW_BASE */
+#define IPC4_ALH_MULTI_GTW_BASE 0x50
+
+static inline bool is_multi_gateway(const union ipc4_connector_node_id node_id)
+{
+	return node_id.f.v_index >= IPC4_ALH_MULTI_GTW_BASE;
+}
+
 struct ipc4_alh_multi_gtw_cfg {
 	/* Number of single channels (valid items in mapping array). */
 	uint32_t count;

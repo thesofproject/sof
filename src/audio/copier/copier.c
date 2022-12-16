@@ -52,11 +52,30 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type);
 
+static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
+{
+	int i;
+	int channel_count = 0;
+	uint32_t nibble_map = 0;
+
+	for (i = 0; i < 8; i++)
+		if (bitmask & BIT(i)) {
+			nibble_map |= i << (channel_count * 4);
+			channel_count++;
+		}
+
+	/* absent channel is represented as 0xf nibble */
+	nibble_map |= 0xFFFFFFFF << (channel_count * 4);
+
+	return nibble_map;
+}
+
 static int create_endpoint_buffer(struct comp_dev *parent_dev,
 				  struct copier_data *cd,
 				  struct comp_ipc_config *config,
 				  const struct ipc4_copier_module_cfg *copier_cfg,
 				  enum ipc4_gateway_type type,
+				  bool create_multi_endpoint_buffer,
 				  int index)
 {
 	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
@@ -65,7 +84,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
 	uint32_t buf_size;
-	uint32_t mask;
+	uint32_t chan_map;
 	int i;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
@@ -108,7 +127,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 			buf_size = copier_cfg->base.obs * 2;
 		}
 
-		mask = copier_cfg->out_fmt.ch_map;
+		chan_map = copier_cfg->out_fmt.ch_map;
 	} else {
 		if (config->type == SOF_COMP_HOST) {
 			config->frame_fmt = out_frame_fmt;
@@ -120,7 +139,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 			buf_size = copier_cfg->base.ibs * 2;
 		}
 
-		mask = copier_cfg->base.audio_fmt.ch_map;
+		chan_map = copier_cfg->base.audio_fmt.ch_map;
 	}
 
 	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
@@ -140,22 +159,40 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	buffer->stream.valid_sample_fmt = valid_fmt;
 	buffer->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
 
-	if (type == ipc4_gtw_alh) {
-		struct sof_alh_configuration_blob *alh_blob;
-
+	/* For ALH multi-gateway case, configuration blob contains struct ipc4_alh_multi_gtw_cfg
+	 * with channel map and channels number for each individual gateway.
+	 */
+	if (type == ipc4_gtw_alh && is_multi_gateway(copier_cfg->gtw_cfg.node_id) &&
+	    !create_multi_endpoint_buffer) {
 		if (copier_cfg->gtw_cfg.config_length) {
-			alh_blob = (struct sof_alh_configuration_blob *)
-				copier_cfg->gtw_cfg.config_data;
-			mask = alh_blob->alh_cfg.mapping[index].channel_mask;
+			int channels;
+			const struct sof_alh_configuration_blob *alh_blob =
+				(const struct sof_alh_configuration_blob *)
+					copier_cfg->gtw_cfg.config_data;
+			uint8_t chan_bitmask = alh_blob->alh_cfg.mapping[index].channel_mask;
+
+			channels = popcount(chan_bitmask);
+			if (channels < 1 || channels > SOF_IPC_MAX_CHANNELS) {
+				comp_err(parent_dev, "Invalid channels mask: 0x%x", chan_bitmask);
+				return -EINVAL;
+			}
+			buffer->stream.channels = channels;
+			chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
+		} else {
+			comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
+			return -EINVAL;
 		}
 	}
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer->chmap[i] = (mask >> i * 4) & 0xf;
+		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
 
 	buffer->hw_params_configured = true;
 
-	cd->endpoint_buffer[cd->endpoint_num] = buffer;
+	if (create_multi_endpoint_buffer)
+		cd->multi_endpoint_buffer = buffer;
+	else
+		cd->endpoint_buffer[cd->endpoint_num] = buffer;
 
 	return 0;
 }
@@ -182,7 +219,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	config->type = SOF_COMP_HOST;
 
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier_cfg, ipc4_gtw_host, 0);
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier_cfg, ipc4_gtw_host, false, 0);
 	if (ret < 0)
 		return ret;
 
@@ -242,7 +279,7 @@ static int init_dai(struct comp_dev *parent_dev,
 	int ret;
 
 	cd = comp_get_drvdata(parent_dev);
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, index);
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, false, index);
 	if (ret < 0)
 		return ret;
 
@@ -306,7 +343,6 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
 				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
-	struct sof_alh_configuration_blob *alh_blob;
 	union ipc4_connector_node_id node_id;
 	enum ipc4_gateway_type type;
 	const struct comp_driver *drv;
@@ -366,12 +402,24 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		 * }
 		 */
 		 /* get gtw node id in config data */
-		if (copier->gtw_cfg.config_length) {
-			alh_blob = (struct sof_alh_configuration_blob *)copier->gtw_cfg.config_data;
-			dai_count = alh_blob->alh_cfg.count;
-			for (i = 0; i < dai_count; i++)
-				dai_index[i] =
+		if (is_multi_gateway(node_id)) {
+			if (copier->gtw_cfg.config_length) {
+				const struct sof_alh_configuration_blob *alh_blob =
+					(const struct sof_alh_configuration_blob *)
+						copier->gtw_cfg.config_data;
+
+				dai_count = alh_blob->alh_cfg.count;
+				if (dai_count > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_count < 0) {
+					comp_err(parent_dev, "Invalid dai_count: %d", dai_count);
+					return -EINVAL;
+				}
+				for (i = 0; i < dai_count; i++)
+					dai_index[i] =
 					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
+			} else {
+				comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
+				return -EINVAL;
+			}
 		} else {
 			dai_index[dai_count - 1] = IPC4_ALH_DAI_INDEX(node_id.f.v_index);
 		}
@@ -396,6 +444,14 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 			comp_err(parent_dev, "failed to create dai");
 			return ret;
 		}
+	}
+
+	/* create multi_endpoint_buffer for ALH multi-gateway case */
+	if (dai_count > 1) {
+		int ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
+
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;
@@ -592,6 +648,84 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type, dir);
 }
 
+static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
+				    int dst_channel,
+				    const struct audio_stream __sparse_cache *src,
+				    int src_channel, int frame_count)
+{
+	int16_t *r_ptr = (int16_t *)src->r_ptr + src_channel;
+	int16_t *w_ptr = (int16_t *)dst->w_ptr + dst_channel;
+
+	/* We have to iterate over frames here. However, tracking frames requires using
+	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
+	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
+	 * is NOT number of samples we need to copy but total samples for all channels. We just
+	 * track them to know when to stop.
+	 */
+	int src_stream_sample_count = frame_count * src->channels;
+
+	while (src_stream_sample_count) {
+		int src_samples_without_wrap;
+		int16_t *r_end_ptr, *r_ptr_before_loop;
+
+		r_ptr = audio_stream_wrap(src, r_ptr);
+		w_ptr = audio_stream_wrap(dst, w_ptr);
+
+		src_samples_without_wrap = audio_stream_samples_without_wrap_s16(src, r_ptr);
+		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
+			r_ptr + src_stream_sample_count : (int16_t *)src->end_addr;
+
+		r_ptr_before_loop = r_ptr;
+
+		do {
+			*w_ptr = *r_ptr;
+			r_ptr += src->channels;
+			w_ptr += dst->channels;
+		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)dst->end_addr);
+
+		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
+	}
+}
+
+static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
+				    int dst_channel,
+				    const struct audio_stream __sparse_cache *src,
+				    int src_channel, int frame_count)
+{
+	int32_t *r_ptr = (int32_t *)src->r_ptr + src_channel;
+	int32_t *w_ptr = (int32_t *)dst->w_ptr + dst_channel;
+
+	/* We have to iterate over frames here. However, tracking frames requires using
+	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
+	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
+	 * is NOT number of samples we need to copy but total samples for all channels. We just
+	 * track them to know when to stop.
+	 */
+	int src_stream_sample_count = frame_count * src->channels;
+
+	while (src_stream_sample_count) {
+		int src_samples_without_wrap;
+		int32_t *r_end_ptr, *r_ptr_before_loop;
+
+		r_ptr = audio_stream_wrap(src, r_ptr);
+		w_ptr = audio_stream_wrap(dst, w_ptr);
+
+		src_samples_without_wrap = audio_stream_samples_without_wrap_s32(src, r_ptr);
+		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
+			r_ptr + src_stream_sample_count : (int32_t *)src->end_addr;
+
+		r_ptr_before_loop = r_ptr;
+
+		do {
+			*w_ptr = *r_ptr;
+			r_ptr += src->channels;
+			w_ptr += dst->channels;
+		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)dst->end_addr);
+
+		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
+	}
+}
+
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -615,7 +749,7 @@ static int copier_prepare(struct comp_dev *dev)
 	for (i = 0; i < cd->endpoint_num; i++) {
 		ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
 		if (ret < 0)
-			break;
+			return ret;
 	}
 
 	if (!cd->endpoint_num) {
@@ -628,11 +762,33 @@ static int copier_prepare(struct comp_dev *dev)
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
-			ret = -EINVAL;
+			return -EINVAL;
 		}
 	}
 
-	return ret;
+	/* select channel copy func now to avoid unnecessary "switch" logic at processing stage */
+	if (cd->multi_endpoint_buffer) {
+		struct comp_buffer __sparse_cache *buf_c;
+		int container_size;
+
+		buf_c = buffer_acquire(cd->multi_endpoint_buffer);
+		container_size = audio_stream_sample_bytes(&buf_c->stream);
+		buffer_release(buf_c);
+
+		switch (container_size) {
+		case 2:
+			cd->copy_single_channel = copy_single_channel_c16;
+			break;
+		case 4:
+			cd->copy_single_channel = copy_single_channel_c32;
+			break;
+		default:
+			comp_err(dev, "Unexpected container size: %d", container_size);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
 }
 
 static int copier_reset(struct comp_dev *dev)
@@ -780,6 +936,138 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+static inline struct comp_buffer *get_endpoint_buffer(struct copier_data *cd)
+{
+	return cd->multi_endpoint_buffer ? cd->multi_endpoint_buffer :
+		cd->endpoint_buffer[IPC4_COPIER_GATEWAY_PIN];
+}
+
+static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
+{
+	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
+	int endp_idx, endp_channel;
+	uint32_t avail_frames, avail_bytes;
+
+	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
+
+	/* NOTE: free space in destination buffers is not checked. This is done to have
+	 * behaviour consistent with copier_copy() which does not check for free space either.
+	 * However, quite probably, such behaviour is just a bug and have to be fixed in both
+	 * copier_copy() and here.
+	 */
+
+	avail_frames = audio_stream_get_avail_frames(&multi_buf_c->stream);
+
+	avail_bytes = avail_frames * audio_stream_frame_bytes(&multi_buf_c->stream);
+	buffer_stream_invalidate(multi_buf_c, avail_bytes);
+
+	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
+		uint32_t bytes_produced;
+
+		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
+
+		for (endp_channel = 0; endp_channel < endp_buf_c->stream.channels;
+				endp_channel++) {
+			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
+
+			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
+						&multi_buf_c->stream, multi_buf_channel,
+						avail_frames);
+		}
+
+		bytes_produced = avail_frames * audio_stream_frame_bytes(&endp_buf_c->stream);
+		buffer_stream_writeback(endp_buf_c, bytes_produced);
+		comp_update_buffer_produce(endp_buf_c, bytes_produced);
+		buffer_release(endp_buf_c);
+	}
+
+	comp_update_buffer_consume(multi_buf_c, avail_bytes);
+	buffer_release(multi_buf_c);
+
+	return 0;
+}
+
+static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
+{
+	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
+	int endp_idx, endp_channel;
+	uint32_t avail_frames = UINT32_MAX;
+	uint32_t bytes_produced;
+
+	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
+		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
+		avail_frames = MIN(avail_frames,
+				   audio_stream_get_avail_frames(&endp_buf_c->stream));
+		buffer_release(endp_buf_c);
+	}
+
+	/* NOTE: free space in destination buffer is not checked. This is done to have
+	 * behaviour consistent with copier_copy() which does not check for free space either.
+	 * However, quite probably, such behaviour is just a bug and have to be fixed in both
+	 * copier_copy() and here.
+	 */
+
+	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
+
+	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
+		uint32_t endp_buf_avail_bytes;
+
+		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
+
+		endp_buf_avail_bytes = avail_frames * audio_stream_frame_bytes(&endp_buf_c->stream);
+		buffer_stream_invalidate(endp_buf_c, endp_buf_avail_bytes);
+
+		for (endp_channel = 0; endp_channel < endp_buf_c->stream.channels;
+				endp_channel++) {
+			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
+
+			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
+						&endp_buf_c->stream, endp_channel,
+						avail_frames);
+		}
+
+		comp_update_buffer_consume(endp_buf_c, endp_buf_avail_bytes);
+		buffer_release(endp_buf_c);
+	}
+
+	bytes_produced = avail_frames * audio_stream_frame_bytes(&multi_buf_c->stream);
+	buffer_stream_writeback(multi_buf_c, bytes_produced);
+	comp_update_buffer_produce(multi_buf_c, bytes_produced);
+
+	buffer_release(multi_buf_c);
+
+	return 0;
+}
+
+static int do_endpoint_copy(struct copier_data *cd)
+{
+	if (cd->multi_endpoint_buffer) {
+		int i;
+		int ret = 0;
+
+		/* multiple gateways on output */
+		if (cd->bsource_buffer) {
+			ret = demux_from_multi_endpoint_buffer(cd);
+			if (ret < 0)
+				return ret;
+		}
+
+		for (i = 0; i < cd->endpoint_num; i++) {
+			ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
+			if (ret < 0)
+				return ret;
+		}
+
+		/* multiple gateways on input */
+		if (!cd->bsource_buffer)
+			ret = mux_into_multi_endpoint_buffer(cd);
+
+		return ret;
+	} else {
+		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+	}
+}
+
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
 			      struct comp_buffer __sparse_cache *src,
@@ -837,19 +1125,13 @@ static int copier_copy(struct comp_dev *dev)
 
 	processed_data.source_bytes = 0;
 
-	if (cd->endpoint_num >= 2) {
-		// TODO: Add implementation for multichannel ALH represented as multiple gateways
-		comp_err(dev, "Multichannel ALH (multiple gateways) support is NOT IMPLEMENTED");
-		return -1;
-	}
-
 	if (cd->endpoint_num && !cd->bsource_buffer) {
-		/* gateway as input */
-		ret = cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+		/* gateway(s) as input */
+		ret = do_endpoint_copy(cd);
 		if (ret < 0)
 			return ret;
 
-		src_c = buffer_acquire(cd->endpoint_buffer[0]);
+		src_c = buffer_acquire(get_endpoint_buffer(cd));
 	} else {
 		/* component as input */
 		if (list_is_empty(&dev->bsource_list)) {
@@ -861,8 +1143,8 @@ static int copier_copy(struct comp_dev *dev)
 		src_c = buffer_acquire(src);
 
 		if (cd->endpoint_num) {
-			/* gateway on output */
-			sink_c = buffer_acquire(cd->endpoint_buffer[0]);
+			/* gateway(s) on output */
+			sink_c = buffer_acquire(get_endpoint_buffer(cd));
 			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
 			buffer_release(sink_c);
 
@@ -871,7 +1153,7 @@ static int copier_copy(struct comp_dev *dev)
 				return ret;
 			}
 
-			ret = cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+			ret = do_endpoint_copy(cd);
 			if (ret < 0) {
 				buffer_release(src_c);
 				return ret;
@@ -1007,7 +1289,24 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	if (cd->endpoint_num) {
 		for (i = 0; i < cd->endpoint_num; i++) {
 			update_internal_comp(dev, cd->endpoint[i]);
-			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
+
+			/* For ALH multi-gateway case, params->channels is a total multiplexed
+			 * number of channels. Demultiplexed number of channels for each individual
+			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
+			 */
+			if (cd->multi_endpoint_buffer) {
+				struct comp_buffer __sparse_cache *buf_c;
+				struct sof_ipc_stream_params demuxed_params = *params;
+
+				buf_c = buffer_acquire(cd->endpoint_buffer[i]);
+				demuxed_params.channels = buf_c->stream.channels;
+				buffer_release(buf_c);
+
+				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
+								       &demuxed_params);
+			} else {
+				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
+			}
 			if (ret < 0)
 				break;
 		}
