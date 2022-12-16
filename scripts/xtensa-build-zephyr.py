@@ -477,6 +477,26 @@ def get_build_and_sof_version(abs_build_dir):
 
 	return sof_fw_version, sof_build_version
 
+def rmtree_if_exists(directory):
+	"This is different from ignore_errors=False because it deletes everything or nothing"
+	if os.path.exists(directory):
+		shutil.rmtree(directory)
+
+def clean_staging(platform):
+	print(f"Cleaning {platform} from {STAGING_DIR}")
+
+	rmtree_if_exists(STAGING_DIR / "sof-info" / platform)
+
+	sof_output_dir = STAGING_DIR / "sof"
+
+	# --use-platform-subdir
+	rmtree_if_exists(sof_output_dir / platform)
+
+	# Remaining .ri and .ldc files
+	for f in sof_output_dir.glob(f"**/sof-{platform}.*"):
+		os.remove(f)
+
+
 STAGING_DIR = None
 def build_platforms():
 	global west_top, SOF_TOP
@@ -485,9 +505,19 @@ def build_platforms():
 
 	global STAGING_DIR
 	STAGING_DIR = pathlib.Path(west_top, "build-sof-staging")
+	# Don't leave the install of an old build behind
 	if args.pristine:
-		if os.path.exists(STAGING_DIR):
-			shutil.rmtree(STAGING_DIR)
+		rmtree_if_exists(STAGING_DIR)
+	else:
+		# This is important in (at least) two use cases:
+		# - when switching `--use-platform-subdir` on/off or changing key subdir,
+		# - when the build starts failing after a code change.
+		# Do not delete platforms that were not requested so this script can be
+		# invoked once per platform.
+		for platform in args.platforms:
+			clean_staging(platform)
+		rmtree_if_exists(STAGING_DIR / "tools")
+
 
 	# smex does not use 'install -D'
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
