@@ -633,7 +633,9 @@ static int mixout_copy(struct comp_dev *dev)
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
-		/* writeback is already done in mixin while mixing */
+		buffer_stream_writeback(sink_c,
+					audio_stream_period_bytes(&sink_c->stream,
+								  frames_to_produce));
 		comp_update_buffer_produce(sink_c,
 					   audio_stream_period_bytes(&sink_c->stream,
 								     frames_to_produce));
