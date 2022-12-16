@@ -63,16 +63,12 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	}
 
 	/* align the allocation size to a cache line for the coherent API */
-	mod->source_info = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-				   ALIGN_UP(sizeof(struct module_source_info),
-					    PLATFORM_DCACHE_ALIGN));
+	mod->source_info = coherent_init_thread(struct module_source_info, c);
 	if (!mod->source_info) {
 		rfree(dev);
 		rfree(mod);
 		return NULL;
 	}
-
-	coherent_init_thread(mod->source_info, c);
 
 	dst = &mod->priv.cfg;
 	mod->dev = dev;
@@ -142,6 +138,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
+	coherent_free_thread(mod->source_info, c);
 	rfree(mod);
 	rfree(dev);
 	return NULL;
@@ -1042,7 +1039,6 @@ void module_adapter_free(struct comp_dev *dev)
 	}
 
 	coherent_free_thread(mod->source_info, c);
-	rfree(mod->source_info);
 	rfree(mod);
 	rfree(dev);
 }

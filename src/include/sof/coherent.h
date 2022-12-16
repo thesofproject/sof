@@ -154,10 +154,15 @@ static inline void coherent_release(struct coherent __sparse_cache *c,
 	}
 }
 
-static inline void __coherent_init(struct coherent *c, const size_t size)
+static inline void *__coherent_init(size_t offset, const size_t size)
 {
-	/* assert if someone passes a cache/local address in here. */
-	ADDR_IS_COHERENT(c);
+	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
+	struct coherent *c;
+
+	if (!object)
+		return NULL;
+
+	c = (struct coherent *)((uint8_t *)object + offset);
 
 	/* TODO static assert if we are not cache aligned */
 	k_spinlock_init(&c->lock);
@@ -167,10 +172,12 @@ static inline void __coherent_init(struct coherent *c, const size_t size)
 	list_init(&c->list);
 	/* inv local data to coherent object */
 	dcache_invalidate_region(uncache_to_cache(c), size);
+
+	return object;
 }
 
-#define coherent_init(object, member) __coherent_init(&(object)->member, \
-						      sizeof(*object))
+#define coherent_init(type, member) __coherent_init(offsetof(type, member), \
+						    sizeof(type))
 
 /* set the object to shared mode with coherency managed by SW */
 static inline void __coherent_shared(struct coherent *c, const size_t size)
@@ -236,10 +243,15 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 	}
 }
 
-static inline void __coherent_init_thread(struct coherent *c, const size_t size)
+static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
-	/* assert if someone passes a cache/local address in here. */
-	ADDR_IS_COHERENT(c);
+	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
+	struct coherent *c;
+
+	if (!object)
+		return NULL;
+
+	c = (struct coherent *)((uint8_t *)object + offset);
 
 	/* TODO static assert if we are not cache aligned */
 	k_mutex_init(&c->mutex);
@@ -249,10 +261,12 @@ static inline void __coherent_init_thread(struct coherent *c, const size_t size)
 	list_init(&c->list);
 	/* inv local data to coherent object */
 	dcache_invalidate_region(uncache_to_cache(c), size);
+
+	return object;
 }
 
-#define coherent_init_thread(object, member) __coherent_init_thread(&(object)->member, \
-								    sizeof(*object))
+#define coherent_init_thread(type, member) __coherent_init_thread(offsetof(type, member), \
+								  sizeof(type))
 
 static inline void __coherent_shared_thread(struct coherent *c, const size_t size)
 {
@@ -279,6 +293,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 		/* wtb and inv local data to coherent object */			\
 		dcache_writeback_invalidate_region(uncache_to_cache(object),	\
 						   sizeof(*object));		\
+		rfree(object);							\
 	} while (0)
 
 #else /* CONFIG_INCOHERENT */
@@ -314,19 +329,29 @@ static inline void coherent_release(struct coherent __sparse_cache *c,
 	}
 }
 
-static inline void __coherent_init(struct coherent *c, const size_t size)
+static inline void *__coherent_init(size_t offset, const size_t size)
 {
+	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
+	struct coherent *c;
+
+	if (!object)
+		return NULL;
+
+	c = (struct coherent *)((uint8_t *)object + offset);
+
 	/* TODO static assert if we are not cache aligned */
 	k_spinlock_init(&c->lock);
 	c->shared = 0;
 	c->core = cpu_get_id();
 	list_init(&c->list);
+
+	return object;
 }
 
-#define coherent_init(object, member) __coherent_init(&(object)->member, \
-						      sizeof(*object))
+#define coherent_init(type, member) __coherent_init(offsetof(type, member), \
+						    sizeof(type))
 
-#define coherent_free(object, member) do {} while (0)
+#define coherent_free(object, member) rfree(object)
 
 static inline void __coherent_shared(struct coherent *c, const size_t size)
 {
@@ -367,17 +392,33 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 	}
 }
 
-static inline void __coherent_init_thread(struct coherent *c, const size_t size)
+static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
+	/*
+	 * Allocate an object with an uncached alias but align size on a cache-
+	 * line boundary to avoid sharing a cache line with the adjacent
+	 * allocation
+	 */
+	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			       ALIGN_UP(size, PLATFORM_DCACHE_ALIGN));
+	struct coherent *c;
+
+	if (!object)
+		return NULL;
+
+	c = (struct coherent *)((uint8_t *)object + offset);
+
 	/* TODO static assert if we are not cache aligned */
 	k_mutex_init(&c->mutex);
 	c->shared = 0;
 	c->core = cpu_get_id();
 	list_init(&c->list);
+
+	return object;
 }
 
-#define coherent_init_thread(object, member) __coherent_init_thread(&(object)->member, \
-								    sizeof(*object))
+#define coherent_init_thread(type, member) __coherent_init_thread(offsetof(type, member), \
+								  sizeof(type))
 
 static inline void __coherent_shared_thread(struct coherent *c, const size_t size)
 {

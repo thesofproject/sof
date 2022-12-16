@@ -45,8 +45,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	 * allocate new buffer, align the allocation size to a cache line for
 	 * the coherent API
 	 */
-	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-			 ALIGN_UP(sizeof(*buffer), PLATFORM_DCACHE_ALIGN));
+	buffer = coherent_init_thread(struct comp_buffer, c);
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
 		return NULL;
@@ -62,8 +61,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
-
-	coherent_init_thread(buffer, c);
 
 	/* From here no more uncached access to the buffer object, except its list headers */
 	buffer_c = buffer_acquire(buffer);
@@ -194,9 +191,8 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
-	coherent_free_thread(buffer, c);
 	rfree(buffer->stream.addr);
-	rfree(buffer);
+	coherent_free_thread(buffer, c);
 }
 
 /*
