@@ -63,6 +63,14 @@
 void trigger_irq_to_host_req(void);
 void trigger_irq_to_host_rsp(void);
 
+static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	volatile uint32_t *ptr;
+
+	ptr = (volatile uint32_t *)(MAILBOX_DEBUG_BASE + offset);
+	*ptr = src;
+}
+
 #endif /* __PLATFORM_LIB_MAILBOX_H__ */
 
 #else
