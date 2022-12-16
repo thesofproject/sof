@@ -62,6 +62,18 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
+	/* align the allocation size to a cache line for the coherent API */
+	mod->source_info = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+				   ALIGN_UP(sizeof(struct module_source_info),
+					    PLATFORM_DCACHE_ALIGN));
+	if (!mod->source_info) {
+		rfree(dev);
+		rfree(mod);
+		return NULL;
+	}
+
+	coherent_init_thread(mod->source_info, c);
+
 	dst = &mod->priv.cfg;
 	mod->dev = dev;
 
@@ -200,9 +212,22 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	mod->deep_buff_bytes = 0;
 
-	/* compute number of input buffers */
-	list_for_item(blist, &dev->bsource_list)
+	/*
+	 * compute number of input buffers and make the source_info shared if the module is on a
+	 * different core than any of it's sources
+	 */
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *buf;
+		struct comp_dev *source;
+
+		buf = buffer_from_list(blist, struct comp_buffer, PPL_DIR_UPSTREAM);
+		source = buffer_get_comp(buf, PPL_DIR_UPSTREAM);
+
+		if (source->pipeline && source->pipeline->core != dev->pipeline->core)
+			coherent_shared_thread(mod->source_info, c);
+
 		mod->num_input_buffers++;
+	}
 
 	/* compute number of output buffers */
 	list_for_item(blist, &dev->bsink_list)
@@ -1011,6 +1036,8 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
+	coherent_free_thread(mod->source_info, c);
+	rfree(mod->source_info);
 	rfree(mod);
 	rfree(dev);
 }

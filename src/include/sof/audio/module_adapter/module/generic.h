@@ -23,6 +23,7 @@
 
 #define module_get_private_data(mod) (mod->priv.private)
 #define MAX_BLOB_SIZE 8192
+#define MODULE_MAX_SOURCES 8
 
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
@@ -152,6 +153,16 @@ struct module_data {
 	uint32_t module_entry_point; /**<loadable module entry point address */
 };
 
+/*
+ * Used by the module to keep track of the number of sources bound to it and can be accessed
+ * from different cores
+ */
+struct module_source_info {
+	struct coherent c;
+	struct comp_dev *sources[MODULE_MAX_SOURCES];
+	void *private; /**< additional module-specific private info */
+};
+
 /* module_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
@@ -181,6 +192,9 @@ struct processing_module {
 
 	/* flag to indicate module does not pause */
 	bool no_pause;
+
+	/* table containing the list of connected sources */
+	struct module_source_info *source_info;
 };
 
 /*****************************************************************************/
