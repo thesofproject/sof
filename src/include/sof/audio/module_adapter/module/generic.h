@@ -244,4 +244,35 @@ static inline void module_update_buffer_position(struct input_stream_buffer *inp
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
 }
 
+__must_check static inline
+struct module_source_info __sparse_cache *
+module_source_info_acquire(struct module_source_info __sparse_cache *msi)
+{
+	struct coherent __sparse_cache *c;
+
+	c = coherent_acquire_thread(&msi->c, sizeof(*msi));
+
+	return attr_container_of(c, struct module_source_info __sparse_cache, c, __sparse_cache);
+}
+
+static inline void module_source_info_release(struct module_source_info __sparse_cache *msi)
+{
+	coherent_release_thread(&msi->c, sizeof(*msi));
+}
+
+/* when source argument is NULL, this function returns the first unused entry */
+static inline
+int find_module_source_index(struct module_source_info __sparse_cache *msi,
+			     const struct comp_dev *source)
+{
+	int i;
+
+	for (i = 0; i < MODULE_MAX_SOURCES; i++) {
+		if (msi->sources[i] == source)
+			return i;
+	}
+
+	return -EINVAL;
+}
+
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */
