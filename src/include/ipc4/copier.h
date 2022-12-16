@@ -320,11 +320,21 @@ struct ipc4_data_segment_enabled {
 	uint32_t data_seg_size;
 } __attribute__((packed, aligned(4)));
 
+/* One of copy_single_channel_cXX() to mux/demux channels into/from copier multi_endpoint_buffer */
+typedef void (* channel_copy_func)(struct audio_stream __sparse_cache *dst,
+				   int dst_channel,
+				   const struct audio_stream __sparse_cache *src,
+				   int src_channel, int frame_count);
+
 struct copier_data {
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
+
+	/* buffer to mux/demux data from/to multiple endpoint buffers for ALH multi-gateway case */
+	struct comp_buffer *multi_endpoint_buffer;
+	channel_copy_func copy_single_channel;
 
 	bool bsource_buffer;
 
