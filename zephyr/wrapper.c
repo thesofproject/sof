@@ -186,7 +186,7 @@ void sys_comp_host_init(void);
 #if CONFIG_IPC_MAJOR_3
 void sys_comp_module_mixer_interface_init(void);
 #else
-void sys_comp_mixer_init(void);
+void sys_comp_module_mixout_interface_init(void);
 #endif
 void sys_comp_dai_init(void);
 void sys_comp_src_init(void);
@@ -283,7 +283,7 @@ int task_main_start(struct sof *sof)
 #if CONFIG_IPC_MAJOR_3
 		sys_comp_module_mixer_interface_init();
 #else
-		sys_comp_mixer_init();
+		sys_comp_module_mixout_interface_init();
 		sys_comp_mixin_init();
 #endif
 	}
