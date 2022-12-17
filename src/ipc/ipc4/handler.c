@@ -104,7 +104,7 @@ static int ipc4_comp_params(struct comp_dev *current,
 
 static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
 {
-	struct sof_ipc_pcm_params hw_params;
+	struct sof_ipc_pcm_params hw_params = {{ 0 }};
 	struct pipeline_data data = {
 		.start = host,
 		.params = &hw_params,
