@@ -907,6 +907,7 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int module_source_status_count(struct comp_dev *dev, uint32_t status)
 {
 	struct list_item *blist;
@@ -932,11 +933,11 @@ static int module_source_status_count(struct comp_dev *dev, uint32_t status)
 
 	return count;
 }
+#endif
 
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	int ret;
 
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
@@ -949,8 +950,10 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+#if CONFIG_IPC_MAJOR_3
 	if (mod->num_input_buffers > 1) {
 		bool sources_active;
+		int ret;
 
 		sources_active = module_source_status_count(dev, COMP_STATE_ACTIVE) ||
 				 module_source_status_count(dev, COMP_STATE_PAUSED);
@@ -967,7 +970,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 
 		return ret;
 	}
-
+#endif
 	return comp_set_state(dev, cmd);
 }
 
