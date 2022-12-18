@@ -8,7 +8,7 @@ name: Zephyr
 on: [push, pull_request, workflow_dispatch, workflow_call]
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
