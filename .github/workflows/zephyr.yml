@@ -7,6 +7,13 @@ name: Zephyr
 # yamllint disable-line rule:truthy
 on: [push, pull_request, workflow_dispatch, workflow_call]
 
+# Specifies group name that stops previous wokrflows if the name matches
+concurrency:
+  # eg. "Zephyr-pull_request-my_fork_branch_to_merge"
+  # eg. "Zephyr-push-refs/heads/my_branch_merging"
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-linux:
     runs-on: ubuntu-20.04
