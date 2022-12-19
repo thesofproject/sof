@@ -18,7 +18,7 @@
 #include <zephyr/device.h>
 
 #define DW_DMA_BUFFER_PERIOD_COUNT	0x4
-#define HDA_DMA_BUFFER_PERIOD_COUNT	2
+#define HDA_DMA_BUFFER_PERIOD_COUNT	4
 
 SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
