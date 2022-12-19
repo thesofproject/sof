@@ -131,6 +131,10 @@ static const char *format_uid(uint32_t uid_ptr, int use_colors, bool be, bool up
 	if (uid_ptr < uids_dict->base_address ||
 	    uid_ptr >= uids_dict->base_address + uids_dict->data_length) {
 		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
+		if (!str) {
+			log_err("can't allocate memory\n");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(str, BAD_PTR_STR, uid_ptr);
 	} else {
 		uid_entry = get_uuid_entry(uid_ptr);
