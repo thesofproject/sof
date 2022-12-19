@@ -1014,9 +1014,11 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-			if (ret < 0)
-				return ret;
+			if (dev->state == COMP_STATE_ACTIVE) {
+				ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+				if (ret < 0)
+					return ret;
+			}
 
 			/* dma_config needed after stop */
 			ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
@@ -1054,12 +1056,23 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		if (dev->state == COMP_STATE_ACTIVE) {
+			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		} else {
+			comp_warn(dev, "dma was stopped earlier");
+			ret = 0;
+		}
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
-		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
+		if (dev->state == COMP_STATE_ACTIVE) {
+			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
+		} else {
+			comp_warn(dev, "dma was stopped earlier");
+			ret = 0;
+		}
+
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 		break;
 	case COMP_TRIGGER_PRE_START:
