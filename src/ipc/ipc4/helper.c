@@ -696,6 +696,11 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	}
 
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
+	if (!ipc_pipe) {
+		tr_err(&comp_tr, "ipc_pipe not found with pipeline_id %d",
+			pipeline_id);
+		return IPC4_INVALID_REQUEST;
+	}
 
 	host_id = pipeline_id + 1;
 	host = ipc4_create_host(pipeline_id, host_id, dir);
