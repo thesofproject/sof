@@ -217,7 +217,7 @@ void sys_comp_volume_init(void);
 void sys_comp_module_volume_interface_init(void);
 #endif
 void sys_comp_module_gain_interface_init(void);
-void sys_comp_mixin_init(void);
+void sys_comp_module_mixin_interface_init(void);
 void sys_comp_aria_init(void);
 void sys_comp_crossover_init(void);
 void sys_comp_drc_init(void);
@@ -284,7 +284,7 @@ int task_main_start(struct sof *sof)
 		sys_comp_module_mixer_interface_init();
 #else
 		sys_comp_module_mixout_interface_init();
-		sys_comp_mixin_init();
+		sys_comp_module_mixin_interface_init();
 #endif
 	}
 
