@@ -54,7 +54,7 @@ const struct dma_ops dw_dma_ops = {
 #define HDA_DMA_BUFFER_ALIGNMENT		0x20
 #define HDA_DMA_COPY_ALIGNMENT			0x20
 #define HDA_DMA_BUFFER_ADDRESS_ALIGNMENT	0x80
-#define HDA_DMA_BUFFER_PERIOD_COUNT		2
+#define HDA_DMA_BUFFER_PERIOD_COUNT		4
 
 static int hda_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 {
