@@ -235,6 +235,11 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	if (mod->simple_copy && mod->num_input_buffers > 1 && mod->num_output_buffers > 1) {
+		comp_err(dev, "module_adapter_prepare(): Invalid use of simple_copy");
+		return -EINVAL;
+	}
+
 	/* allocate memory for input buffers */
 	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
@@ -553,22 +558,25 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *blist;
-	int i;
+	int i = 0;
 
 	/*
 	 * When a module produces only period_bytes every period, the produced samples are written
 	 * to the output buffer stream directly. So, just writeback buffer stream and reset size.
 	 */
 	if (mod->simple_copy) {
-		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
+		list_for_item(blist, &dev->bsink_list) {
+			sink = container_of(blist, struct comp_buffer, source_list);
+			sink_c = buffer_acquire(sink);
 
-		buffer_stream_writeback(sink_c, mod->output_buffers[0].size);
-		comp_update_buffer_produce(sink_c, mod->output_buffers[0].size);
+			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
+			comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
 
-		buffer_release(sink_c);
+			buffer_release(sink_c);
 
-		mod->output_buffers[0].size = 0;
+			mod->output_buffers[i].size = 0;
+			i++;
+		}
 		return;
 	}
 
@@ -576,7 +584,6 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	 * copy all produced output samples to output buffers. This loop will do nothing when
 	 * there are no samples produced.
 	 */
-	i = 0;
 	list_for_item(blist, &mod->sink_buffer_list) {
 		if (mod->output_buffers[i].size > 0) {
 			struct comp_buffer *buffer;
@@ -623,54 +630,126 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	}
 }
 
+static uint32_t
+module_single_sink_setup(struct comp_dev *dev,
+			 struct comp_buffer __sparse_cache **source_c,
+			 struct comp_buffer __sparse_cache **sinks_c)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_copy_limits c;
+	struct list_item *blist;
+	uint32_t num_input_buffers = 0;
+	int i = 0;
+
+	list_for_item(blist, &dev->bsource_list) {
+		/* check if the source dev is in the same state as the dev */
+		if (!source_c[i]->source || source_c[i]->source->state != dev->state) {
+			i++;
+			continue;
+		}
+
+		comp_get_copy_limits_frame_aligned(source_c[i], sinks_c[0], &c);
+
+		buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
+
+		/*
+		 * note that the size is in number of frames not the number of
+		 * bytes
+		 */
+		mod->input_buffers[num_input_buffers].size = c.frames;
+		mod->input_buffers[num_input_buffers].consumed = 0;
+
+		mod->input_buffers[num_input_buffers].data = &source_c[i]->stream;
+		num_input_buffers++;
+		i++;
+	}
+
+	mod->output_buffers[0].size = 0;
+	mod->output_buffers[0].data = &sinks_c[0]->stream;
+
+	return num_input_buffers;
+}
+
+static uint32_t
+module_single_source_setup(struct comp_dev *dev,
+			   struct comp_buffer __sparse_cache **source_c,
+			   struct comp_buffer __sparse_cache **sinks_c)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_copy_limits c;
+	struct list_item *blist;
+	uint32_t min_frames = UINT32_MAX;
+	uint32_t num_output_buffers = 0;
+	uint32_t source_frame_bytes = 0;
+	int i = 0;
+
+	list_for_item(blist, &dev->bsink_list) {
+		/* check if the sink dev is in the same state as the dev */
+		if (!sinks_c[i]->sink || sinks_c[i]->sink->state != dev->state) {
+			i++;
+			continue;
+		}
+
+		comp_get_copy_limits_frame_aligned(source_c[0], sinks_c[i], &c);
+
+		min_frames = MIN(min_frames, c.frames);
+		source_frame_bytes = c.source_frame_bytes;
+
+		mod->output_buffers[num_output_buffers].size = 0;
+		mod->output_buffers[num_output_buffers].data = &sinks_c[i]->stream;
+		num_output_buffers++;
+		i++;
+	}
+
+	buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
+	/* note that the size is in number of frames not the number of bytes */
+	mod->input_buffers[0].size = min_frames;
+	mod->input_buffers[0].consumed = 0;
+	mod->input_buffers[0].data = &source_c[0]->stream;
+
+	return num_output_buffers;
+}
+
 int module_adapter_copy(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c[PLATFORM_MAX_STREAMS];
+	struct comp_buffer __sparse_cache *sinks_c[PLATFORM_MAX_STREAMS];
 	struct comp_buffer __sparse_cache *sink_c = NULL;
-	struct comp_copy_limits c;
 	struct list_item *blist;
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
 	uint32_t num_input_buffers = 0;
+	uint32_t num_output_buffers = 0;
 	int ret, i = 0;
 
 	comp_dbg(dev, "module_adapter_copy(): start");
 
 	/*
 	 * Simplify calculation of bytes_to_process for modules that produce period_bytes every
-	 * period and have N sources and only 1 sink buffer
+	 * period and have a 1:1, 1:N or N:1 source:sink buffer configuration
 	 */
 	if (mod->simple_copy) {
-		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
+		list_for_item(blist, &dev->bsink_list) {
+			sink = container_of(blist, struct comp_buffer, source_list);
+			sinks_c[i++] = buffer_acquire(sink);
+		}
+		i = 0;
 		list_for_item(blist, &dev->bsource_list) {
 			source = container_of(blist, struct comp_buffer, sink_list);
-			source_c[i] = buffer_acquire(source);
-
-			/* check if the source dev is in the same state as the dev */
-			if (!source_c[i]->source || source_c[i]->source->state != dev->state) {
-				i++;
-				continue;
-			}
-
-			comp_get_copy_limits_frame_aligned(source_c[i], sink_c, &c);
-
-			buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
-
-			/* note that the size is in number of frames not the number of bytes */
-			mod->input_buffers[num_input_buffers].size = c.frames;
-			mod->input_buffers[num_input_buffers].consumed = 0;
-
-			mod->input_buffers[num_input_buffers].data = &source_c[i]->stream;
-			num_input_buffers++;
-			i++;
+			source_c[i++] = buffer_acquire(source);
 		}
-
-		mod->output_buffers[0].size = 0;
-		mod->output_buffers[0].data = &sink_c->stream;
+		if (mod->num_output_buffers == 1) {
+			num_input_buffers = module_single_sink_setup(dev, source_c, sinks_c);
+			if (sinks_c[0]->sink && sinks_c[0]->sink->state == dev->state)
+				num_output_buffers = 1;
+		} else {
+			num_output_buffers = module_single_source_setup(dev, source_c, sinks_c);
+			if (source_c[0]->source && source_c[0]->source->state == dev->state)
+				num_input_buffers = 1;
+		}
 
 		/* Keep source_c 's and sink_c, we'll use and release it below */
 	} else {
@@ -715,10 +794,11 @@ int module_adapter_copy(struct comp_dev *dev)
 			i++;
 		}
 		num_input_buffers = mod->num_input_buffers;
+		num_output_buffers = mod->num_output_buffers;
 	}
 
 	ret = module_process(mod, mod->input_buffers, num_input_buffers,
-			     mod->output_buffers, mod->num_output_buffers);
+			     mod->output_buffers, num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
 			comp_err(dev, "module_adapter_copy() error %x: module processing failed",
@@ -738,7 +818,9 @@ int module_adapter_copy(struct comp_dev *dev)
 			mod->input_buffers[i].consumed = 0;
 			i++;
 		}
-		buffer_release(sink_c);
+		i = 0;
+		list_for_item(blist, &dev->bsink_list)
+			buffer_release(sinks_c[i++]);
 	} else {
 		i = 0;
 		/* consume from all input buffers */
@@ -764,7 +846,9 @@ int module_adapter_copy(struct comp_dev *dev)
 
 out:
 	if (mod->simple_copy) {
-		buffer_release(sink_c);
+		i = 0;
+		list_for_item(blist, &dev->bsink_list)
+			buffer_release(sinks_c[i++]);
 		i = 0;
 		list_for_item(blist, &dev->bsource_list)
 			buffer_release(source_c[i++]);
