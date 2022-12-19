@@ -77,6 +77,14 @@ jobs:
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build-output
+          path: |
+            ${{ github.workspace }}/workspace/build-sof-staging
+            ${{ github.workspace }}/workspace/**/compile_commands.json
+
   build-windows:
     runs-on: windows-latest
     strategy:
@@ -206,3 +214,11 @@ jobs:
           --no-interactive
           --cmake-args=-DEXTRA_CFLAGS=-Werror
           --cmake-args=--warn-uninitialized ${{ matrix.platforms }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build-output
+          path: |
+            ${{ github.workspace }}/workspace/build-sof-staging
+            ${{ github.workspace }}/workspace/**/compile_commands.json
