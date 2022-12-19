@@ -223,6 +223,11 @@ static void *wait_open(const char *watched_dir, const char *expected_file)
 
 	char * const fpath = malloc(strlen(watched_dir) + 1 + strlen(expected_file) + 1);
 
+	if (!fpath) {
+		fprintf(stderr, "error: can't allocate memory\n");
+		exit(EXIT_FAILURE);
+	}
+
 	strcpy(fpath, watched_dir);
 	strcat(fpath, "/");
 	strcat(fpath, expected_file);
