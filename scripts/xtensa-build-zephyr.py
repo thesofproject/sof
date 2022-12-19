@@ -39,7 +39,7 @@ import gzip
 from dataclasses import dataclass
 
 # anytree module is defined in Zephyr build requirements
-from anytree import AnyNode, RenderTree
+from anytree import AnyNode, RenderTree, render
 from packaging import version
 
 # https://chrisyeh96.github.io/2017/08/08/definitive-guide-python-imports.html#case-3-importing-from-parent-directory
@@ -316,7 +316,7 @@ def show_installed_files():
 		assert len(matches) == 1, f'"{entry}" does not have exactly one parent'
 		nodes.append(AnyNode(name=entry.name, long_name=str(entry), parent=matches[0]))
 
-	for pre, _, node in RenderTree(graph_root):
+	for pre, _, node in RenderTree(graph_root, render.AsciiStyle):
 		fpath = STAGING_DIR / node.long_name
 		stem = node.name[:-3] if node.name.endswith(".gz") else node.name
 
