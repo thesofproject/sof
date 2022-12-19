@@ -441,6 +441,11 @@ int main(int argc, char *argv[])
 	if (!config.in_file && !config.dump_ldc)
 		config.in_file = "/sys/kernel/debug/sof/etrace";
 
+	if (!config.in_file && baud) {
+		fprintf(stderr, "error: No UART device specified\n");
+		usage();
+	}
+
 	if (config.input_std) {
 		config.in_fd = stdin;
 	} else if (baud) {
