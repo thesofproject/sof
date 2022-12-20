@@ -282,6 +282,8 @@ cleanup:
 }
 #endif // HAS_INOTIFY
 
+static struct convert_config _global_config;
+struct convert_config * const global_config = &_global_config;
 
 int main(int argc, char *argv[])
 {
@@ -498,7 +500,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = -convert(&config);
+	_global_config = config;
+	ret = -convert();
 
 out:
 	/* free memory */
