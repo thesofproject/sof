@@ -7,6 +7,7 @@
 
 #include "../../util.h"
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/mux.h>
 
@@ -19,6 +20,7 @@
 
 struct test_data {
 	struct comp_dev *dev;
+	struct processing_module *mod;
 	struct comp_data *cd;
 	struct comp_buffer *sink;
 };
@@ -26,38 +28,68 @@ struct test_data {
 static int setup_group(void **state)
 {
 	sys_comp_init(sof_get());
-	sys_comp_mux_init();
+	sys_comp_module_mux_interface_init();
 
 	return 0;
 }
 
+static struct sof_ipc_comp_process *create_mux_comp_ipc(struct test_data *td)
+{
+	struct sof_ipc_comp_process *ipc;
+	struct sof_mux_config *mux;
+	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
+	size_t mux_size = sizeof(struct sof_mux_config) +
+		MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
+	const struct sof_uuid uuid = {
+		.a = 0xc607ff4d, .b = 0x9cb6, .c = 0x49dc,
+		.d = {0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57}
+	};
+	int i, j;
+
+	ipc = calloc(1, ipc_size + mux_size + SOF_UUID_SIZE);
+	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
+	mux = (struct sof_mux_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
+	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
+	ipc->comp.type = SOF_COMP_MUX;
+	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	ipc->size = mux_size;
+	ipc->comp.ext_data_length = SOF_UUID_SIZE;
+
+	mux->num_streams = MUX_MAX_STREAMS;
+	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
+		mux->streams[i].pipeline_id = i;
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
+			mux->streams[i].mask[j] = 0;
+	}
+
+	return ipc;
+}
+
+
 static int setup_test_case(void **state)
 {
-	struct test_data *td = malloc(sizeof(struct test_data));
-	struct sof_ipc_comp_process ipc = {
-		.comp = {
-			.hdr = {
-				.size = sizeof(struct sof_ipc_comp_process)
-			},
-			.type = SOF_COMP_MUX
-		},
-		.config = {
-			.hdr = {
-				.size = sizeof(struct sof_ipc_comp_config)
-			}
-		}
-	};
+	struct test_data *td;
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct sof_ipc_comp_process *ipc;
 
-	td->dev = comp_new((struct sof_ipc_comp *)&ipc);
-	if (!td->dev)
+	td = test_malloc(sizeof(*td));
+	if (!td)
+		return -ENOMEM;
+
+	ipc = create_mux_comp_ipc(td);
+	dev = comp_new((struct sof_ipc_comp *)ipc);
+	free(ipc);
+	if (!dev)
 		return -EINVAL;
 
-	td->cd = (struct comp_data *)td->dev->priv_data;
-
-	td->sink = create_test_sink(td->dev, 0, 0, 0, 4);
+	mod = comp_get_drvdata(dev);
+	td->dev = dev;
+	td->mod = mod;
+	td->cd = module_get_private_data(mod);
+	td->sink = create_test_sink(dev, 0, 0, 0, 4);
 
 	*state = td;
-
 	return 0;
 }
 
@@ -67,7 +99,7 @@ static int teardown_test_case(void **state)
 
 	free_test_sink(td->sink);
 	comp_free(td->dev);
-	free(td);
+	test_free(td);
 
 	return 0;
 }
@@ -81,7 +113,7 @@ static void test_mux_get_processing_function_invalid_float(void **state)
 	/* set frame format value to unsupported value */
 	td->sink->stream.frame_fmt = SOF_IPC_FRAME_FLOAT;
 
-	func = mux_get_processing_function(td->dev);
+	func = mux_get_processing_function(td->mod);
 
 	assert_ptr_equal(func, NULL);
 }
@@ -95,7 +127,7 @@ static void test_mux_get_processing_function_valid_s16le(void **state)
 
 	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S16_LE;
 
-	func = mux_get_processing_function(td->dev);
+	func = mux_get_processing_function(td->mod);
 
 	assert_ptr_not_equal(func, NULL);
 }
@@ -109,7 +141,7 @@ static void test_mux_get_processing_function_valid_s24_4le(void **state)
 
 	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S24_4LE;
 
-	func = mux_get_processing_function(td->dev);
+	func = mux_get_processing_function(td->mod);
 
 	assert_ptr_not_equal(func, NULL);
 }
@@ -123,7 +155,7 @@ static void test_mux_get_processing_function_valid_s32le(void **state)
 
 	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
 
-	func = mux_get_processing_function(td->dev);
+	func = mux_get_processing_function(td->mod);
 
 	assert_ptr_not_equal(func, NULL);
 }
