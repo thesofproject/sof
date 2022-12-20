@@ -280,15 +280,13 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct comp_dev *dev,
 	 * sink buffer (mux has one sink buffer), so dest min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest -
-		lookup->copy_elem[0].out_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
 	min_frames = audio_stream_frames_without_wrap(sink, ptr);
 
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		source = sources[lookup->copy_elem[elem].stream_id];
 
-		ptr = (int32_t *)lookup->copy_elem[elem].src -
-			lookup->copy_elem[elem].in_ch;
+		ptr = (int32_t *)lookup->copy_elem[elem].src - lookup->copy_elem[elem].in_ch;
 		frames = audio_stream_frames_without_wrap(source, ptr);
 
 		min_frames = (frames < min_frames) ? frames : min_frames;
@@ -311,12 +309,10 @@ static uint32_t demux_calc_frames_without_wrap_s32(struct comp_dev *dev,
 	 * each copy_elem refers to the same sink/source buffer, so min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest -
-		lookup->copy_elem[0].out_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
 	min_frames = audio_stream_frames_without_wrap(sink, ptr);
 
-	ptr = (int32_t *)lookup->copy_elem[0].src -
-		lookup->copy_elem[0].in_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].src - lookup->copy_elem[0].in_ch;
 	frames = audio_stream_frames_without_wrap(source, ptr);
 
 	min_frames = (frames < min_frames) ? frames : min_frames;
@@ -503,8 +499,7 @@ void mux_prepare_look_up_table(struct comp_dev *dev)
 					/* MUX component has only one sink */
 					cd->lookup[0].copy_elem[idx].in_ch = j;
 					cd->lookup[0].copy_elem[idx].out_ch = k;
-					cd->lookup[0].copy_elem[idx].stream_id =
-						i;
+					cd->lookup[0].copy_elem[idx].stream_id = i;
 					cd->lookup[0].num_elems = ++idx;
 				}
 			}
@@ -529,8 +524,7 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 					/* DEMUX component has only one source */
 					cd->lookup[i].copy_elem[idx].in_ch = k;
 					cd->lookup[i].copy_elem[idx].out_ch = j;
-					cd->lookup[i].copy_elem[idx].stream_id =
-						i;
+					cd->lookup[i].copy_elem[idx].stream_id = i;
 					cd->lookup[i].num_elems = ++idx;
 				}
 			}
