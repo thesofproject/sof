@@ -177,6 +177,8 @@ config COMP_MIXER
 
 config COMP_MUX
 	bool "MUX component"
+	select COMP_BLOB
+	depends on COMP_MODULE_ADAPTER
 	default y
 	help
 	  Select for MUX component

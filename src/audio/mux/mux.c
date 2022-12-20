@@ -7,7 +7,9 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/mux.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
@@ -30,7 +32,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_mux;
+#define MUX_BLOB_STREAMS_SIZE	(MUX_MAX_STREAMS * sizeof(struct mux_stream_data))
+#define MUX_BLOB_MAX_SIZE	(sizeof(struct sof_mux_config) + MUX_BLOB_STREAMS_SIZE)
 
 LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
 
@@ -98,9 +101,12 @@ static bool mux_mix_check(struct sof_mux_config *cfg)
 	return false;
 }
 
-static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
-			  struct sof_mux_config *cfg)
+#if CONFIG_IPC_MAJOR_3
+static int mux_set_values(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct sof_mux_config *cfg = &cd->config;
 	unsigned int i;
 	unsigned int j;
 
@@ -108,7 +114,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		comp_cl_err(&comp_mux, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
+		comp_err(dev, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
 			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
@@ -118,8 +124,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		for (j = i + 1; j < cfg->num_streams; j++) {
 			if (cfg->streams[i].pipeline_id ==
 				cfg->streams[j].pipeline_id) {
-				comp_cl_err(&comp_mux, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
-					    cfg->streams[i].pipeline_id);
+				comp_err(dev, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
+					 cfg->streams[i].pipeline_id);
 				return -EINVAL;
 			}
 		}
@@ -128,7 +134,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	for (i = 0; i < cfg->num_streams; i++) {
 		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
 			if (popcount(cfg->streams[i].mask[j]) > 1) {
-				comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+				comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
 				return -EINVAL;
 			}
 		}
@@ -136,7 +142,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	if (dev->ipc_config.type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg))
-			comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+			comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
@@ -148,70 +154,31 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	cd->config.num_streams = cfg->num_streams;
 
 	if (dev->ipc_config.type == SOF_COMP_MUX)
-		mux_prepare_look_up_table(dev);
+		mux_prepare_look_up_table(mod);
 	else
-		demux_prepare_look_up_table(dev);
+		demux_prepare_look_up_table(mod);
 
 	if (dev->state > COMP_STATE_INIT) {
 		if (dev->ipc_config.type == SOF_COMP_MUX)
-			cd->mux = mux_get_processing_function(dev);
+			cd->mux = mux_get_processing_function(mod);
 		else
-			cd->demux = demux_get_processing_function(dev);
+			cd->demux = demux_get_processing_function(mod);
 	}
 
 	return 0;
 }
+#endif /* CONFIG_IPC_MAJOR_3 */
 
-#if CONFIG_IPC_MAJOR_3
-static struct comp_dev *mux_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
+#if CONFIG_IPC_MAJOR_4
+static int build_config(struct processing_module *mod)
 {
-	const struct ipc_config_process *ipc_process = spec;
-	size_t bs = ipc_process->size;
-	struct comp_dev *dev;
-	struct comp_data *cd;
-	int ret;
-
-	comp_cl_info(&comp_mux, "mux_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, cd);
-
-	memcpy_s(&cd->config, sizeof(struct sof_mux_config) +
-		 MUX_MAX_STREAMS * sizeof(struct mux_stream_data),
-		 ipc_process->data, bs);
-
-	/* verification of initial parameters */
-	ret = mux_set_values(dev, cd, &cd->config);
-
-	if (ret < 0) {
-		rfree(cd);
-		rfree(dev);
-		return NULL;
-	}
-
-	dev->state = COMP_STATE_READY;
-	return dev;
-}
-#else
-static int build_config(struct comp_data *cd, struct comp_dev *dev)
-{
-	dev->ipc_config.type = SOF_COMP_MUX;
-	cd->config.num_streams = MUX_MAX_STREAMS;
+	struct comp_dev *dev = mod->dev;
+	struct comp_data *cd = module_get_private_data(mod);
 	int mask = 1;
 	int i;
+
+	dev->ipc_config.type = SOF_COMP_MUX;
+	cd->config.num_streams = MUX_MAX_STREAMS;
 
 	/* clear masks */
 	for (i = 0; i < cd->config.num_streams; i++)
@@ -230,58 +197,70 @@ static int build_config(struct comp_data *cd, struct comp_dev *dev)
 
 	/* validation of matrix mixing */
 	if (mux_mix_check(&cd->config)) {
-		comp_cl_err(&comp_mux, "build_config(): mux component is not able to mix channels");
+		comp_err(dev, "build_config(): mux component is not able to mix channels");
 		return -EINVAL;
 	}
 	return 0;
 }
+#endif
 
-static struct comp_dev *mux_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
+static int mux_init(struct processing_module *mod)
 {
-	const struct mux_data *ipc_process = spec;
-	struct comp_dev *dev;
+	struct module_data *module_data = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *cfg = &module_data->cfg;
 	struct comp_data *cd;
 	int ret;
 
-	comp_cl_dbg(&comp_mux, "mux_new()");
+	comp_dbg(dev, "mux_init()");
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
+	if (cfg->size > MUX_BLOB_MAX_SIZE) {
+		comp_err(dev, "mux_init(): blob size %d exceeds %d", cfg->size, MUX_BLOB_MAX_SIZE);
+		return -EINVAL;
 	}
 
-	comp_set_drvdata(dev, cd);
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		     sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
+	if (!cd)
+		return -ENOMEM;
 
-	ret = memcpy_s(&cd->md, sizeof(cd->md), ipc_process, sizeof(*ipc_process));
-	assert(!ret);
-	ret = build_config(cd, dev);
+	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_err(dev, "mux_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
+		goto err;
+	}
 
+	module_data->private = cd;
+	ret = comp_init_data_blob(cd->model_handler, cfg->size, cfg->init_data);
 	if (ret < 0) {
-		rfree(cd);
-		rfree(dev);
-		return NULL;
+		comp_err(dev, "mux_init(): comp_init_data_blob() failed.");
+		goto err_init;
 	}
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
+	mod->simple_copy = true;
+	mod->no_pause = true;
+	return 0;
+
+err_init:
+	comp_data_blob_handler_free(cd->model_handler);
+
+err:
+	rfree(cd);
+	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_4
 /* In ipc4 case param is figured out by module config so we need to first
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static void set_mux_params(struct comp_dev *dev,
-			   struct sof_ipc_stream_params *params)
+static void set_mux_params(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *source_list;
@@ -382,35 +361,23 @@ static void set_mux_params(struct comp_dev *dev,
 		}
 	}
 
-	mux_prepare_look_up_table(dev);
+	mux_prepare_look_up_table(mod);
 }
+#endif /* CONFIG_IPC_MAJOR_4 */
 
-static int mux_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
+
+static int mux_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->md.base_cfg;
-		break;
-	default:
-		return -EINVAL;
-	}
+	comp_dbg(mod->dev, "mux_free()");
+
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
 	return 0;
 }
-#endif
 
-static void mux_free(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "mux_free()");
-
-	rfree(cd);
-	rfree(dev);
-}
-
-static int get_stream_index(struct comp_data *cd, uint32_t pipe_id)
+static int get_stream_index(struct comp_dev *dev, struct comp_data *cd, uint32_t pipe_id)
 {
 	int idx;
 
@@ -418,13 +385,12 @@ static int get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 		if (cd->config.streams[idx].pipeline_id == pipe_id)
 			return idx;
 
-	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
-		    pipe_id);
-
+	comp_err(dev, "get_stream_index(): couldn't find configuration for connected pipeline %u",
+		 pipe_id);
 	return -EINVAL;
 }
 
-static struct mux_look_up *get_lookup_table(struct comp_data *cd,
+static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_data *cd,
 					    uint32_t pipe_id)
 {
 	int i;
@@ -433,115 +399,15 @@ static struct mux_look_up *get_lookup_table(struct comp_data *cd,
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return &cd->lookup[i];
 
-	comp_cl_err(&comp_mux, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
-		    pipe_id);
-
+	comp_err(dev, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
+		 pipe_id);
 	return 0;
 }
 
-/* set component audio stream parameters */
-static int mux_params(struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "mux_params()");
-#if CONFIG_IPC_MAJOR_4
-	set_mux_params(dev, params);
-#endif
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
-	if (ret < 0)
-		comp_err(dev, "mux_params(): comp_verify_params() failed.");
-
-	return ret;
-}
-
-static int mux_ctrl_set_cmd(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_mux_config *cfg;
-	int ret = 0;
-
-	comp_dbg(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
-		 cdata->cmd);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		cfg = (struct sof_mux_config *)
-		      ASSUME_ALIGNED(&cdata->data->data, 4);
-
-		ret = mux_set_values(dev, cd, cfg);
-		break;
-	default:
-		comp_err(dev, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
-			 cdata->cmd);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-static int mux_ctrl_get_cmd(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata, int size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_mux_config *cfg = &cd->config;
-	uint32_t reply_size;
-	int ret = 0;
-
-	comp_cl_info(&comp_mux, "mux_ctrl_get_cmd(), cdata->cmd = 0x%08x",
-		     cdata->cmd);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		/* calculate config size */
-		reply_size = sizeof(struct sof_mux_config) + cfg->num_streams *
-			sizeof(struct mux_stream_data);
-
-		/* copy back to user space */
-		const int mux_memcpy_err __unused =
-			memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
-						     (cdata->data))->size, cfg, reply_size);
-		assert(!mux_memcpy_err);
-
-		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = reply_size;
-		break;
-	default:
-		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
-			    cdata->cmd);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-/* used to pass standard and bespoke commands (with data) to component */
-static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
-		   int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-
-	comp_dbg(dev, "mux_cmd() cmd = 0x%08x", cmd);
-
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		return mux_ctrl_set_cmd(dev, cdata);
-	case COMP_CMD_GET_DATA:
-		return mux_ctrl_get_cmd(dev, cdata, max_data_size);
-	default:
-		return -EINVAL;
-	}
-}
-
-static void mux_prepare_active_look_up(struct comp_dev *dev,
+static void mux_prepare_active_look_up(struct comp_data *cd,
 				       struct audio_stream __sparse_cache *sink,
 				       const struct audio_stream __sparse_cache **sources)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	const struct audio_stream __sparse_cache *source;
 	uint8_t active_elem;
 	uint8_t elem;
@@ -568,12 +434,11 @@ static void mux_prepare_active_look_up(struct comp_dev *dev,
 	}
 }
 
-static void demux_prepare_active_look_up(struct comp_dev *dev,
+static void demux_prepare_active_look_up(struct comp_data *cd,
 					 struct audio_stream __sparse_cache *sink,
 					 const struct audio_stream __sparse_cache *source,
 					 struct mux_look_up *look_up)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	uint8_t active_elem;
 	uint8_t elem;
 
@@ -597,214 +462,123 @@ static void demux_prepare_active_look_up(struct comp_dev *dev,
 }
 
 /* process and copy stream data from source to sink buffers */
-static int demux_copy(struct comp_dev *dev)
+static int demux_process(struct processing_module *mod,
+			 struct input_stream_buffer *input_buffers, int num_input_buffers,
+			 struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	struct comp_buffer __sparse_cache *sinks[MUX_MAX_STREAMS] = { NULL };
-	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
-	struct mux_look_up *look_up;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct list_item *clist;
-	uint32_t num_sinks = 0;
-	uint32_t frames = -1;
-	uint32_t source_bytes;
-	uint32_t avail;
-	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
-	int i, ret = 0;
+	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
+	struct audio_stream __sparse_cache *sinks_stream[MUX_MAX_STREAMS] = { NULL };
+	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
+	int frames;
+	int sink_bytes;
+	int source_bytes;
+	int i;
 
-	comp_dbg(dev, "demux_copy()");
+	comp_dbg(dev, "demux_process()");
 
-	if (!cd->demux) {
-		comp_err(dev, "demux_copy(): no demux processing function for component.");
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
-	}
-
-	// align sink streams with their respective configurations
+	/* align sink streams with their respective configurations */
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
-
 		if (sink_c->sink->state == dev->state) {
-			num_sinks++;
-			i = get_stream_index(cd, sink_c->pipeline_id);
+			i = get_stream_index(dev, cd, sink_c->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
-				ret = i;
-				goto out_sink;
+				buffer_release(sink_c);
+				return i;
 			}
-			look_up = get_lookup_table(cd, sink_c->pipeline_id);
-			sinks[i] = sink_c;
-			look_ups[i] = look_up;
-		} else {
-			buffer_release(sink_c);
+
+			look_ups[i] = get_lookup_table(dev, cd, sink_c->pipeline_id);
+			sinks_stream[i] = &sink_c->stream;
 		}
+
+		buffer_release(sink_c);
 	}
 
 	/* if there are no sinks active, then sinks[] is also empty */
-	if (num_sinks == 0)
+	if (num_output_buffers == 0)
 		return 0;
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	source_c = buffer_acquire(source);
-
-	/* check if source is active */
-	if (source_c->source->state != dev->state)
-		goto out_source;
-
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sinks[i])
-			continue;
-		avail = audio_stream_avail_frames(&source_c->stream,
-						  &sinks[i]->stream);
-		frames = MIN(frames, avail);
-	}
-
-	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
-		if (sinks[i])
-			sinks_bytes[i] = frames *
-				audio_stream_frame_bytes(&sinks[i]->stream);
+	frames = input_buffers[0].size;
+	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
+	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 
 	/* produce output, one sink at a time */
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sinks[i])
-			continue;
-
-		demux_prepare_active_look_up(dev, &sinks[i]->stream,
-					     &source_c->stream, look_ups[i]);
-		buffer_stream_invalidate(source_c, source_bytes);
-		cd->demux(dev, &sinks[i]->stream, &source_c->stream, frames,
-			  &cd->active_lookup);
-		buffer_stream_writeback(sinks[i], sinks_bytes[i]);
+	for (i = 0; i < num_output_buffers; i++) {
+		demux_prepare_active_look_up(cd, sinks_stream[i],
+					     input_buffers[0].data, look_ups[i]);
+		cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
+		mod->output_buffers[i].size = sink_bytes;
 	}
 
-	/* update components */
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
-		if (sinks[i])
-			comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
-
-	comp_update_buffer_consume(source_c, source_bytes);
-
-out_source:
-	buffer_release(source_c);
-out_sink:
-	/* Release buffers in reverse order */
-	for (i = MUX_MAX_STREAMS - 1; i >= 0; i--)
-		if (sinks[i])
-			buffer_release(sinks[i]);
-
-	return ret;
+	/* Update consumed */
+	mod->input_buffers[0].consumed = source_bytes;
+	return 0;
 }
 
 /* process and copy stream data from source to sink buffers */
-static int mux_copy(struct comp_dev *dev)
+static int mux_process(struct processing_module *mod,
+		       struct input_stream_buffer *input_buffers, int num_input_buffers,
+		       struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	struct comp_buffer __sparse_cache *sources[MUX_MAX_STREAMS] = { NULL };
-	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *source;
+	struct comp_buffer __sparse_cache *source_c;
 	struct list_item *clist;
-	uint32_t num_sources = 0;
-	uint32_t frames = -1;
-	uint32_t sources_bytes[MUX_MAX_STREAMS] = { 0 };
-	uint32_t sink_bytes;
+	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
+	int frames;
+	int sink_bytes;
+	int source_bytes;
 	int i;
 
-	comp_dbg(dev, "mux_copy()");
-
-	if (!cd->mux) {
-		comp_err(dev, "mux_copy(): no mux processing function for component.");
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
-	}
+	comp_dbg(dev, "mux_process()");
 
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
-
 		if (source_c->source->state == dev->state) {
-			num_sources++;
-			i = get_stream_index(cd, source_c->pipeline_id);
+			i = get_stream_index(dev, cd, source_c->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
-				unsigned int j;
-
-				for (j = 0; j < MUX_MAX_STREAMS; j++)
-					if (sources[j])
-						buffer_release(sources[j]);
+				buffer_release(source_c);
 				return i;
 			}
-			sources[i] = source_c;
+
 			sources_stream[i] = &source_c->stream;
-		} else {
-			buffer_release(source_c);
 		}
+		buffer_release(source_c);
 	}
 
 	/* check if there are any sources active */
-	if (num_sources == 0)
+	if (num_input_buffers == 0)
 		return 0;
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	sink_c = buffer_acquire(sink);
-
-	/* check if sink is active */
-	if (sink_c->sink->state != dev->state)
-		goto out;
-
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		uint32_t avail_frames;
-		if (!sources[i])
-			continue;
-		avail_frames = audio_stream_avail_frames(sources_stream[i],
-							 &sink_c->stream);
-		frames = MIN(frames, avail_frames);
-	}
-
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sources[i])
-			continue;
-		sources_bytes[i] = frames *
-				   audio_stream_frame_bytes(sources_stream[i]);
-		buffer_stream_invalidate(sources[i], sources_bytes[i]);
-	}
-	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
-
-	mux_prepare_active_look_up(dev, &sink_c->stream, &sources_stream[0]);
+	frames = input_buffers[0].size;
+	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
+	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	mux_prepare_active_look_up(cd, output_buffers[0].data, &sources_stream[0]);
 
 	/* produce output */
-	cd->mux(dev, &sink_c->stream, &sources_stream[0], frames,
-		&cd->active_lookup);
-	buffer_stream_writeback(sink_c, sink_bytes);
+	cd->mux(dev, output_buffers[0].data, &sources_stream[0], frames, &cd->active_lookup);
 
-	/* update components */
-	comp_update_buffer_produce(sink_c, sink_bytes);
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
-		if (sources[i])
-			comp_update_buffer_consume(sources[i], sources_bytes[i]);
-
-out:
-	buffer_release(sink_c);
-
-	for (i = MUX_MAX_STREAMS - 1; i >= 0; i--)
-		if (sources[i])
-			buffer_release(sources[i]);
-
+	/* Update consumed and produced */
+	mod->input_buffers[0].consumed = source_bytes;
+	mod->output_buffers[0].size = sink_bytes;
 	return 0;
 }
 
-static int mux_reset(struct comp_dev *dev)
+static int mux_reset(struct processing_module *mod)
 {
-	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int dir = dev->pipeline->source_comp->direction;
 
 	comp_dbg(dev, "mux_reset()");
 
@@ -824,48 +598,63 @@ static int mux_reset(struct comp_dev *dev)
 		}
 	}
 
-	if (dev->ipc_config.type == SOF_COMP_MUX)
-		cd->mux = NULL;
-	else
-		cd->demux = NULL;
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	cd->mux = NULL;
+	cd->demux = NULL;
 	return 0;
 }
 
-static int mux_prepare(struct comp_dev *dev)
+static int mux_prepare(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_dev *dev = mod->dev;
+	struct comp_data *cd = module_get_private_data(mod);
 	struct list_item *blist;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer __sparse_cache *sink_c;
+	struct sof_mux_config *config;
+	size_t blob_size;
+	int state;
 	int ret;
 
 	comp_dbg(dev, "mux_prepare()");
 
-	if (dev->state != COMP_STATE_ACTIVE) {
-		if (dev->ipc_config.type == SOF_COMP_MUX)
-			cd->mux = mux_get_processing_function(dev);
-		else
-			cd->demux = demux_get_processing_function(dev);
-
-		if (!cd->mux && !cd->demux) {
-			comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
-			return -EINVAL;
-		}
-
-		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-		if (ret) {
-			comp_info(dev, "mux_prepare() comp_set_state() returned non-zero.");
-			return ret;
-		}
+	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+	if (blob_size > MUX_BLOB_MAX_SIZE) {
+		comp_err(dev, "mux_prepare(): illegal blob size %d", blob_size);
+		return -EINVAL;
 	}
 
-	/* check each mux source state */
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  sink_list);
-		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
-		int state = source_c->source->state;
+	memcpy_s(&cd->config, MUX_BLOB_MAX_SIZE, config, blob_size);
 
+#if CONFIG_IPC_MAJOR_4
+	ret = build_config(mod);
+#else
+	ret = mux_set_values(mod);
+#endif
+	if (ret < 0)
+		return ret;
+
+#if CONFIG_IPC_MAJOR_4
+	set_mux_params(mod);
+#endif
+
+	if (dev->ipc_config.type == SOF_COMP_MUX)
+		cd->mux = mux_get_processing_function(mod);
+	else
+		cd->demux = demux_get_processing_function(mod);
+
+	if (!cd->mux && !cd->demux) {
+		comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
+		return -EINVAL;
+	}
+
+	/* check each mux source state, set source align to 1 byte, 1 frame */
+	list_for_item(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		source_c = buffer_acquire(source);
+		state = source_c->source->state;
+		audio_stream_init_alignment_constants(1, 1, &source_c->stream);
 		buffer_release(source_c);
 
 		/* only prepare downstream if we have no active sources */
@@ -873,144 +662,67 @@ static int mux_prepare(struct comp_dev *dev)
 			return PPL_STATUS_PATH_STOP;
 	}
 
+	/* set sink align to 1 byte, 1 frame */
+	list_for_item(blist, &dev->bsink_list) {
+		sink = container_of(blist, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		audio_stream_init_alignment_constants(1, 1, &sink_c->stream);
+		buffer_release(sink_c);
+	}
+
 	/* prepare downstream */
 	return 0;
 }
 
-static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
+static int mux_get_config(struct processing_module *mod,
+			  uint32_t config_id, uint32_t *data_offset_size,
+			  uint8_t *fragment, size_t fragment_size)
 {
-	struct list_item *blist;
-	int count = 0;
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	/* count source with state == status */
-	list_for_item(blist, &mux->bsource_list) {
-		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  sink_list);
-		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+	comp_dbg(mod->dev, "mux_get_config()");
 
-		if (source_c->source->state == status)
-			count++;
-		buffer_release(source_c);
-	}
-
-	return count;
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static int mux_trigger(struct comp_dev *dev, int cmd)
+static int mux_set_config(struct processing_module *mod, uint32_t config_id,
+			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			  size_t response_size)
 {
-	int dir = dev->pipeline->source_comp->direction;
-	unsigned int src_n_active, src_n_paused;
-	int ret;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(dev, "mux_trigger(), command = %u", cmd);
+	comp_dbg(mod->dev, "mux_set_config()");
 
-	/*
-	 * We are in a TRIGGER IPC. IPCs are serialised, while we're processing
-	 * this one, no other IPCs can be received until we have replied to the
-	 * current one
-	 */
-	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
-	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
-#if CONFIG_IPC_MAJOR_4
-	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		switch (cmd) {
-		case COMP_TRIGGER_PRE_START:
-			if (src_n_active || src_n_paused)
-				return PPL_STATUS_PATH_STOP;
-			break;
-		case COMP_TRIGGER_PRE_RELEASE:
-			dev->state = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_RELEASE:
-			dev->state = COMP_STATE_ACTIVE;
-			break;
-		default:
-			break;
-		}
-	}
-#else
-	switch (cmd) {
-	case COMP_TRIGGER_PRE_START:
-		if (src_n_active || src_n_paused)
-			return PPL_STATUS_PATH_STOP;
-	}
-#endif
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		ret = PPL_STATUS_PATH_STOP;
-
-	/* nothing else to check for capture streams */
-	if (dir == SOF_IPC_STREAM_CAPTURE)
-		return ret;
-
-	/* don't stop mux if at least one source is active */
-	if (src_n_active && (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
-		dev->state = COMP_STATE_ACTIVE;
-		ret = PPL_STATUS_PATH_STOP;
-	/* don't stop mux if at least one source is paused */
-	} else if (src_n_paused && cmd == COMP_TRIGGER_STOP) {
-		dev->state = COMP_STATE_PAUSED;
-		ret = PPL_STATUS_PATH_STOP;
-	}
-
-	return ret;
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+				  fragment, fragment_size);
 }
 
-static const struct comp_driver comp_mux = {
-	.type	= SOF_COMP_MUX,
-	.uid	= SOF_RT_UUID(mux_uuid),
-	.tctx	= &mux_tr,
-	.ops	= {
-		.create		= mux_new,
-		.free		= mux_free,
-		.params		= mux_params,
-		.cmd		= mux_cmd,
-		.copy		= mux_copy,
-		.prepare	= mux_prepare,
-		.reset		= mux_reset,
-		.trigger	= mux_trigger,
-#if CONFIG_IPC_MAJOR_4
-		.get_attribute = mux_get_attribute,
-#endif
-	},
+static struct module_interface mux_interface = {
+	.init  = mux_init,
+	.set_configuration = mux_set_config,
+	.get_configuration = mux_get_config,
+	.prepare = mux_prepare,
+	.process = mux_process,
+	.reset = mux_reset,
+	.free = mux_free,
 };
 
-static SHARED_DATA struct comp_driver_info comp_mux_info = {
-	.drv = &comp_mux,
+DECLARE_MODULE_ADAPTER(mux_interface, mux_uuid, mux_tr);
+SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
+
+static struct module_interface demux_interface = {
+	.init  = mux_init,
+	.set_configuration = mux_set_config,
+	.get_configuration = mux_get_config,
+	.prepare = mux_prepare,
+	.process = demux_process,
+	.reset = mux_reset,
+	.free = mux_free,
 };
 
-static const struct comp_driver comp_demux = {
-	.type	= SOF_COMP_DEMUX,
-	.uid	= SOF_RT_UUID(demux_uuid),
-	.tctx	= &demux_tr,
-	.ops	= {
-		.create		= mux_new,
-		.free		= mux_free,
-		.params		= mux_params,
-		.cmd		= mux_cmd,
-		.copy		= demux_copy,
-		.prepare	= mux_prepare,
-		.reset		= mux_reset,
-		.trigger	= mux_trigger,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_demux_info = {
-	.drv = &comp_demux,
-};
-
-UT_STATIC void sys_comp_mux_init(void)
-{
-	comp_register(platform_shared_get(&comp_mux_info,
-					  sizeof(comp_mux_info)));
-	comp_register(platform_shared_get(&comp_demux_info,
-					  sizeof(comp_demux_info)));
-}
-
-DECLARE_MODULE(sys_comp_mux_init);
-SOF_MODULE_INIT(mux, sys_comp_mux_init);
+DECLARE_MODULE_ADAPTER(demux_interface, demux_uuid, demux_tr);
+SOF_MODULE_INIT(demux, sys_comp_module_demux_interface_init);
 
 #endif /* CONFIG_COMP_MUX */
