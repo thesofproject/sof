@@ -65,9 +65,6 @@ static const char *BAD_PTR_STR = "<bad uid ptr 0x%.8x>";
 #define UUID_LOWER "%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s"
 #define UUID_UPPER "%s%s%s<%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X>%s%s%s"
 
-/* pointer to config for global context */
-struct convert_config *global_config;
-
 static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_address);
 
 char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first,
@@ -1037,14 +1034,20 @@ static int dump_ldc_info(void)
 	return 0;
 }
 
-int convert(struct convert_config *config)
+int convert(void)
 {
 	struct snd_sof_logs_header snd;
 	struct snd_sof_uids_header uids_hdr;
 	int count, ret = 0;
 
+	/* const pointer initialized at build time */
+	if (!global_config)
+		abort();
+
+	/* just a shorter alias */
+	struct convert_config * const config = global_config;
+
 	config->logs_header = &snd;
-	global_config = config;
 
 	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
 	if (!count) {

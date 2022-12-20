@@ -22,8 +22,6 @@
 #define COMPONENTS_SEPARATOR ','
 #define COMPONENT_NAME_SCAN_STRING_LENGTH 32
 
-extern struct convert_config *global_config;
-
 /** map between log level given by user and enum value */
 static const struct {
 	const char name[16];

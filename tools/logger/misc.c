@@ -41,8 +41,6 @@ char *log_asprintf(const char *format, ...)
 	return result;
 }
 
-extern struct convert_config *global_config;
-
 /** Prints 1. once to stderr. 2. a second time to the global out_fd if
  * out_fd is neither stderr nor stdout (because the -o option was used).
  */
