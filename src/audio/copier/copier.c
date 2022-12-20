@@ -312,7 +312,6 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	int dai_count;
-	int ret;
 	int i;
 
 	drv = ipc4_get_drv((uint8_t *)&id);
@@ -388,15 +387,17 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	}
 
 	for (i = 0; i < dai_count; i++) {
+		int ret;
+
 		dai.dai_index = dai_index[i];
 		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i);
 		if (ret) {
 			comp_err(parent_dev, "failed to create dai");
-			break;
+			return ret;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int init_pipeline_reg(struct comp_dev *dev)
