@@ -796,6 +796,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 	comp_get_copy_limits(src, sink, processed_data);
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
+	if (i >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
+		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
