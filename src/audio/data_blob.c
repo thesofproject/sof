@@ -281,11 +281,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	int ret;
 	int valid_data_size;
 
-	if (!blob_handler) {
-		comp_err(blob_handler->dev,
-			 "ipc4_comp_data_blob_set(): blob_handler is NULL!");
-		return -EINVAL;
-	}
+	assert(blob_handler);
 
 	comp_dbg(blob_handler->dev,
 		 "ipc4_comp_data_blob_set(): data_offset = %d",
