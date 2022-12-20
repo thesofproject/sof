@@ -33,6 +33,7 @@
 static const struct comp_driver comp_mux;
 
 LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
+
 #if CONFIG_IPC_MAJOR_3
 /* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
 DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
@@ -46,7 +47,7 @@ DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
 
 /* c4b26868-1430-470e-a089-15d1c77f851a */
 DECLARE_SOF_RT_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
-		 0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
+		    0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
 
 DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
@@ -561,8 +562,7 @@ static void mux_prepare_active_look_up(struct comp_dev *dev,
 		    (sink->channels - 1)))
 			continue;
 
-		cd->active_lookup.copy_elem[active_elem] =
-			cd->lookup[0].copy_elem[elem];
+		cd->active_lookup.copy_elem[active_elem] = cd->lookup[0].copy_elem[elem];
 		active_elem++;
 		cd->active_lookup.num_elems = active_elem;
 	}
