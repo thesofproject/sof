@@ -15,19 +15,9 @@ NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,DEEPBUFFER_FW_DMA_MS=100"
 HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,\
 DEEPBUFFER_FW_DMA_MS=100"
 
-# SDW topology with passthrough pipelines
-"cavs-sdw\;mtl-sdw"
-
-# SDW + HDMI topology with passthrough pipelines
-"cavs-sdw\;mtl-sdw-hdmi\;"
-
 # SDW + DMIC topology with passthrough pipelines
 "cavs-sdw\;sof-mtl-rt711-4ch\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-4ch.bin,DEEPBUFFER_FW_DMA_MS=100"
-
-# SSP topology for MTL
-"cavs-nocodec\;sof-mtl-nocodec\;PLATFORM=mtl,NUM_DMICS=2,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,DEEPBUFFER_FW_DMA_MS=100"
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-max98357a-rt5682.bin,DEEPBUFFER_FW_DMA_MS=10"
