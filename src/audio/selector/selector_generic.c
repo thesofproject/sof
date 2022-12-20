@@ -216,6 +216,8 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 	int processed = 0;
 	int source_frame_bytes = audio_stream_frame_bytes(source);
 	int sink_frame_bytes = audio_stream_frame_bytes(sink);
+	int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, source->channels);
+	int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, sink->channels);
 
 	while (processed < frames) {
 		n = frames - processed;
@@ -224,7 +226,7 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 		nmax = audio_stream_bytes_without_wrap(sink, dest) / sink_frame_bytes;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			process_frame_s16le(dest, sink->channels, src, source->channels,
+			process_frame_s16le(dest, n_chan_sink, src, n_chan_source,
 					    &cd->coeffs_config);
 			src += source->channels;
 			dest += sink->channels;
@@ -285,6 +287,8 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 	int processed = 0;
 	int source_frame_bytes = audio_stream_frame_bytes(source);
 	int sink_frame_bytes = audio_stream_frame_bytes(sink);
+	int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, source->channels);
+	int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, sink->channels);
 
 	while (processed < frames) {
 		n = frames - processed;
@@ -293,7 +297,7 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 		nmax = audio_stream_bytes_without_wrap(sink, dest) / sink_frame_bytes;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			process_frame_s32le(dest, sink->channels, src, source->channels,
+			process_frame_s32le(dest, n_chan_sink, src, n_chan_source,
 					    &cd->coeffs_config);
 			src += source->channels;
 			dest += sink->channels;
