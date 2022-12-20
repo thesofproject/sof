@@ -1036,7 +1036,7 @@ static int dump_ldc_info(void)
 
 int convert(void)
 {
-	struct snd_sof_logs_header snd;
+	struct snd_sof_logs_header * const logs_hdr = malloc(sizeof(*logs_hdr));
 	struct snd_sof_uids_header uids_hdr;
 	int count, ret = 0;
 
@@ -1044,32 +1044,35 @@ int convert(void)
 	if (!global_config)
 		abort();
 
+	if (!logs_hdr)
+		abort();
+
 	/* just a shorter alias */
 	struct convert_config * const config = global_config;
 
-	config->logs_header = &snd;
+	config->logs_header = logs_hdr;
 
-	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
+	count = fread(logs_hdr, sizeof(*logs_hdr), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading %s.\n", config->ldc_file);
 		return -ferror(config->ldc_fd);
 	}
 
-	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
+	if (strncmp((char *)logs_hdr->sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
 		log_err("Invalid ldc file signature.\n");
 		return -EINVAL;
 	}
 
 	if (global_config->version_fw && /* -n option */
 	    !global_config->dump_ldc) {
-		ret = verify_ldc_checksum(global_config->logs_header->version.src_hash);
+		ret = verify_ldc_checksum(logs_hdr->version.src_hash);
 		if (ret)
 			return ret;
 	}
 
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
-					 snd.version.abi_version)) {
+					 logs_hdr->version.abi_version)) {
 		log_err("abi version in %s file does not coincide with abi version used by logger.\n",
 			config->ldc_file);
 		log_err("logger ABI Version is %d:%d:%d\n",
@@ -1077,14 +1080,14 @@ int convert(void)
 			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 		log_err("ldc_file ABI Version is %d:%d:%d\n",
-			SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
-			SOF_ABI_VERSION_MINOR(snd.version.abi_version),
-			SOF_ABI_VERSION_PATCH(snd.version.abi_version));
+			SOF_ABI_VERSION_MAJOR(logs_hdr->version.abi_version),
+			SOF_ABI_VERSION_MINOR(logs_hdr->version.abi_version),
+			SOF_ABI_VERSION_PATCH(logs_hdr->version.abi_version));
 		return -EINVAL;
 	}
 
 	/* read uuid section header */
-	fseek(config->ldc_fd, snd.data_offset + snd.data_length, SEEK_SET);
+	fseek(config->ldc_fd, logs_hdr->data_offset + logs_hdr->data_length, SEEK_SET);
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading uuids header from %s.\n", config->ldc_file);
