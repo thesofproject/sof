@@ -7,6 +7,7 @@
 
 #include "../../util.h"
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/mux.h>
@@ -20,12 +21,14 @@
 #include <cmocka.h>
 
 struct test_data {
-	uint32_t format;
-	uint8_t mask[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
-	void *output;
 	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct comp_data *cd;
 	struct comp_buffer *sources[MUX_MAX_STREAMS];
 	struct comp_buffer *sink;
+	void *output;
+	uint32_t format;
+	uint8_t mask[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
 };
 
 static int16_t input_16b[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS] = {
@@ -100,27 +103,33 @@ static uint8_t masks[][MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS] = {
 static int setup_group(void **state)
 {
 	sys_comp_init(sof_get());
-	sys_comp_mux_init();
-
+	sys_comp_module_mux_interface_init();
 	return 0;
 }
 
 static struct sof_ipc_comp_process *create_mux_comp_ipc(struct test_data *td)
 {
+	struct sof_ipc_comp_process *ipc;
+	struct sof_mux_config *mux;
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
-	size_t mux_size = sizeof(struct sof_mux_config)
-			  + MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
-	struct sof_ipc_comp_process *ipc = calloc(1, ipc_size + mux_size);
-	struct sof_mux_config *mux = (struct sof_mux_config *)&ipc->data;
+	size_t mux_size = sizeof(struct sof_mux_config) +
+		MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
+	const struct sof_uuid uuid = {
+		.a = 0xc607ff4d, .b = 0x9cb6, .c = 0x49dc,
+		.d = {0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57}
+	};
 	int i, j;
 
-	ipc->comp.hdr.size = sizeof(struct sof_ipc_comp_process);
+	ipc = calloc(1, ipc_size + mux_size + SOF_UUID_SIZE);
+	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
+	mux = (struct sof_mux_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
+	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
 	ipc->comp.type = SOF_COMP_MUX;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	ipc->size = mux_size;
+	ipc->comp.ext_data_length = SOF_UUID_SIZE;
 
 	mux->num_streams = MUX_MAX_STREAMS;
-
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
@@ -169,26 +178,27 @@ static void prepare_sources(struct test_data *td, size_t sample_size)
 static int setup_test_case(void **state)
 {
 	struct test_data *td = *((struct test_data **)state);
-	struct sof_ipc_comp_process *ipc = create_mux_comp_ipc(td);
-	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ?
-			     sizeof(int16_t) : sizeof(int32_t);
-	int ret = 0;
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct sof_ipc_comp_process *ipc;
+	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ? sizeof(int16_t) : sizeof(int32_t);
 
-	td->dev = comp_new((struct sof_ipc_comp *)ipc);
+	ipc = create_mux_comp_ipc(td);
+	dev = comp_new((struct sof_ipc_comp *)ipc);
 	free(ipc);
-
-	if (!td->dev)
+	if (!dev)
 		return -EINVAL;
 
-	prepare_sink(td, sample_size);
+	mod = comp_get_drvdata(dev);
+	td->dev = dev;
+	td->mod = mod;
+	td->cd = module_get_private_data(mod);
 
+	prepare_sink(td, sample_size);
 	prepare_sources(td, sample_size);
 
-	ret = comp_prepare(td->dev);
-	if (ret)
-		return ret;
+	return comp_prepare(td->dev);
 
-	return 0;
 }
 
 static int teardown_test_case(void **state)
@@ -200,9 +210,7 @@ static int teardown_test_case(void **state)
 		free_test_source(td->sources[i]);
 
 	free_test_sink(td->sink);
-
 	comp_free(td->dev);
-
 	return 0;
 }
 
@@ -292,13 +300,14 @@ static char *get_test_name(int mask_index, const char *format_name)
 
 int main(void)
 {
-	int i, j;
+	struct test_data *td;
 	struct CMUnitTest tests[ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks)];
+	int i, j, ti, ret;
 
 	for (i = 0; i < ARRAY_SIZE(valid_formats); ++i) {
 		for (j = 0; j < ARRAY_SIZE(masks); ++j) {
-			int ti = i * ARRAY_SIZE(masks) + j;
-			struct test_data *td = malloc(sizeof(struct test_data));
+			ti = i * ARRAY_SIZE(masks) + j;
+			td = malloc(sizeof(struct test_data));
 
 			td->format = valid_formats[i];
 
@@ -339,6 +348,10 @@ int main(void)
 	}
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
+	ret = cmocka_run_group_tests(tests, setup_group, NULL);
 
-	return cmocka_run_group_tests(tests, setup_group, NULL);
+	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++)
+		free(tests[ti].initial_state);
+
+	return ret;
 }
