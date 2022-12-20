@@ -979,41 +979,33 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 	struct comp_buffer *buf;
 	struct comp_buffer __sparse_cache *buf_c;
 	struct list_item *sink_list, *source_list;
+	unsigned int queue_id;
 
 	switch (probe_point.fields.type) {
 	case PROBE_TYPE_INPUT:
-		if (list_is_empty(&dev->cd->bsource_list))
-			return NULL;
-
 		list_for_item(source_list, &dev->cd->bsource_list) {
 			buf = container_of(source_list, struct comp_buffer, sink_list);
 			buf_c = buffer_acquire(buf);
-
-			if (IPC4_SRC_QUEUE_ID(buf_c->id) == probe_point.fields.index)
-				break;
-
+			queue_id = IPC4_SRC_QUEUE_ID(buf_c->id);
 			buffer_release(buf_c);
+
+			if (queue_id == probe_point.fields.index)
+				return buf;
 		}
 		break;
 	case PROBE_TYPE_OUTPUT:
-		if (list_is_empty(&dev->cd->bsink_list))
-			return NULL;
-
 		list_for_item(sink_list, &dev->cd->bsink_list) {
 			buf = container_of(sink_list, struct comp_buffer, source_list);
 			buf_c = buffer_acquire(buf);
-
-			if (IPC4_SINK_QUEUE_ID(buf_c->id) == probe_point.fields.index)
-				break;
-
+			queue_id = IPC4_SINK_QUEUE_ID(buf_c->id);
 			buffer_release(buf_c);
+
+			if (queue_id == probe_point.fields.index)
+				return buf;
 		}
-		break;
-	default:
-		return NULL;
 	}
-	buffer_release(buf_c);
-	return buf;
+
+	return NULL;
 }
 #endif
 
