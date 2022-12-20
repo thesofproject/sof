@@ -359,11 +359,14 @@ static inline void print_table_header(void)
 	fprintf(out_fd, "%s", "CONTENT");
 
 	if (global_config->time_precision >= 0) {
+		struct tm *ltime = localtime(&epoc_secs);
+
 		/* e.g.: ktime=4263.487s @ 2021-04-27 14:21:13 -0700 PDT */
 		fprintf(out_fd, "\tktime=%lu.%03lus",
 			ktime.tv_sec, ktime.tv_nsec / 1000000);
-		if (strftime(date_string, sizeof(date_string),
-			     "%F %X %z %Z", localtime(&epoc_secs)))
+
+		if (ltime && strftime(date_string, sizeof(date_string),
+			     "%F %X %z %Z", ltime))
 			fprintf(out_fd, "  @  %s", date_string);
 	}
 
