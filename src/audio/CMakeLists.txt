@@ -163,7 +163,7 @@ check_optimization(fma -mfma -ftree-vectorize -DOPS_FMA)
 check_optimization(hifi2ep -mhifi2ep "" -DOPS_HIFI2EP)
 check_optimization(hifi3 -mhifi3 "" -DOPS_HIFI3)
 
-set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc mfcc)
+set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc mfcc mux)
 
 # sources for each module
 set(volume_sources module_adapter/module_adapter.c module_adapter/module/generic.c module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c)
@@ -178,6 +178,7 @@ set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c tdfb/tdfb_direction.c)
 set(drc_sources drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 set(multiband_drc_sources multiband_drc/multiband_drc_generic.c crossover/crossover.c crossover/crossover_generic.c drc/drc.c drc/drc_generic.c drc/drc_math_generic.c multiband_drc/multiband_drc.c )
 set(mfcc_sources module_adapter/module_adapter.c module_adapter/module/generic.c mfcc/mfcc.c mfcc/mfcc_setup.c mfcc/mfcc_generic.c)
+set(mux_sources module_adapter/module_adapter.c module_adapter/module/generic.c mux/mux.c mux/mux_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
 	# first compile with no optimizations
