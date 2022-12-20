@@ -47,4 +47,8 @@ struct convert_config {
 };
 
 uint32_t get_uuid_key(const struct sof_uuid_entry *entry);
-int convert(struct convert_config *config);
+
+/* pointer to config for global context */
+extern struct convert_config * const global_config;
+
+int convert(void);
