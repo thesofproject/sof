@@ -435,6 +435,10 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	    md->state < MODULE_INITIALIZED)
 		return 0;
 
+	/* return if configuration size is 0 */
+	if (!md->new_cfg_size)
+		return 0;
+
 	/* whole configuration received, apply it now */
 	ret = dts_codec_apply_config(mod);
 	if (ret) {
