@@ -275,6 +275,10 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 			}
 			if (ret == PPL_STATUS_SCHEDULED)
 				*delayed = true;
+			break;
+		default:
+			tr_err(&ipc_tr, "ipc: invalid status %d for RESET", status);
+			return IPC4_INVALID_REQUEST;
 		}
 
 		/*
