@@ -552,7 +552,7 @@ static int volume_init(struct processing_module *mod)
 	uint32_t instance_id;
 
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	if (channels_count > SOF_IPC_MAX_CHANNELS) {
+	if (channels_count > SOF_IPC_MAX_CHANNELS || !channels_count) {
 		comp_err(dev, "volume_init(): Invalid channels count %u", channels_count);
 		return -EINVAL;
 	}
