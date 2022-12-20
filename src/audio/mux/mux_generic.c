@@ -6,6 +6,7 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
@@ -471,9 +472,9 @@ const struct comp_func_map mux_func_map[] = {
 #endif
 };
 
-void mux_prepare_look_up_table(struct comp_dev *dev)
+void mux_prepare_look_up_table(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
@@ -495,9 +496,9 @@ void mux_prepare_look_up_table(struct comp_dev *dev)
 	}
 }
 
-void demux_prepare_look_up_table(struct comp_dev *dev)
+void demux_prepare_look_up_table(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
@@ -520,8 +521,9 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 	}
 }
 
-mux_func mux_get_processing_function(struct comp_dev *dev)
+mux_func mux_get_processing_function(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	uint32_t i;
 
@@ -535,7 +537,6 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sinkb);
 		enum sof_ipc_frame fmt = sink_c->stream.frame_fmt;
 
-		buffer_release(sink_c);
 
 		if (fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].mux_proc_func;
@@ -544,8 +545,9 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 	return NULL;
 }
 
-demux_func demux_get_processing_function(struct comp_dev *dev)
+demux_func demux_get_processing_function(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb;
 	uint32_t i;
 
