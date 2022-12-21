@@ -378,7 +378,11 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 
 		break;
 	case ipc4_dmic_link_input_class:
-		dai_index[dai_count - 1] = (dai_index[dai_count - 1] >> 5) & 0x7;
+		/* For some unknown reason Linux and Windows hosts use different range of node_id
+		 * for DMIC. Let's workaround to support both ranges.
+		 */
+		if (dai_index[dai_count - 1] >= BIT(5))
+			dai_index[dai_count - 1] = (dai_index[dai_count - 1] >> 5) & 0x7;
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_dmic;
