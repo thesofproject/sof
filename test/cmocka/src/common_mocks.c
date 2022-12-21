@@ -76,19 +76,19 @@ void WEAK rfree(void *ptr)
 }
 
 int WEAK memcpy_s(void *dest, size_t dest_size,
-		  const void *src, size_t src_size)
+		  const void *src, size_t count)
 {
 	if (!dest || !src)
 		return -EINVAL;
 
-	if ((dest >= src && (char *)dest < ((char *)src + src_size)) ||
+	if ((dest >= src && (char *)dest < ((char *)src + count)) ||
 	    (src >= dest && (char *)src < ((char *)dest + dest_size)))
 		return -EINVAL;
 
-	if (src_size > dest_size)
+	if (count > dest_size)
 		return -EINVAL;
 
-	memcpy(dest, src, src_size);
+	memcpy(dest, src, count);
 
 	return 0;
 }
