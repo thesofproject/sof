@@ -409,12 +409,8 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 				       const struct audio_stream __sparse_cache **sources)
 {
 	const struct audio_stream __sparse_cache *source;
-	uint8_t active_elem;
-	uint8_t elem;
-
-	cd->active_lookup.num_elems = 0;
-
-	active_elem = 0;
+	int elem;
+	int active_elem = 0;
 
 	/* init pointers */
 	for (elem = 0; elem < cd->lookup[0].num_elems; elem++) {
@@ -422,16 +418,15 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 		if (!source)
 			continue;
 
-		if ((cd->lookup[0].copy_elem[elem].in_ch >
-		    (source->channels - 1)) ||
-		    (cd->lookup[0].copy_elem[elem].out_ch >
-		    (sink->channels - 1)))
+		if (cd->lookup[0].copy_elem[elem].in_ch >= source->channels ||
+		    cd->lookup[0].copy_elem[elem].out_ch >= sink->channels)
 			continue;
 
 		cd->active_lookup.copy_elem[active_elem] = cd->lookup[0].copy_elem[elem];
 		active_elem++;
-		cd->active_lookup.num_elems = active_elem;
 	}
+
+	cd->active_lookup.num_elems = active_elem;
 }
 
 static void demux_prepare_active_look_up(struct comp_data *cd,
@@ -439,26 +434,20 @@ static void demux_prepare_active_look_up(struct comp_data *cd,
 					 const struct audio_stream __sparse_cache *source,
 					 struct mux_look_up *look_up)
 {
-	uint8_t active_elem;
-	uint8_t elem;
-
-	cd->active_lookup.num_elems = 0;
-
-	active_elem = 0;
+	int elem;
+	int active_elem = 0;
 
 	/* init pointers */
 	for (elem = 0; elem < look_up->num_elems; elem++) {
-		if ((look_up->copy_elem[elem].in_ch >
-		    (source->channels - 1)) ||
-		    (look_up->copy_elem[elem].out_ch >
-		    (sink->channels - 1)))
+		if (look_up->copy_elem[elem].in_ch >= source->channels ||
+		    look_up->copy_elem[elem].out_ch >= sink->channels)
 			continue;
 
-		cd->active_lookup.copy_elem[active_elem] =
-			look_up->copy_elem[elem];
+		cd->active_lookup.copy_elem[active_elem] = look_up->copy_elem[elem];
 		active_elem++;
-		cd->active_lookup.num_elems = active_elem;
 	}
+
+	cd->active_lookup.num_elems = active_elem;
 }
 
 /* process and copy stream data from source to sink buffers */
