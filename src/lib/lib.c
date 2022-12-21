@@ -69,9 +69,9 @@ int memcmp(const void *p, const void *q, size_t count)
 #endif
 
 int memcpy_s(void *dest, size_t dest_size,
-	     const void *src, size_t src_size)
+	     const void *src, size_t count)
 {
-	return arch_memcpy_s(dest, dest_size, src, src_size);
+	return arch_memcpy_s(dest, dest_size, src, count);
 }
 
 int memset_s(void *dest, size_t dest_size, int data, size_t count)

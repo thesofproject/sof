@@ -26,28 +26,28 @@ void *xthal_memcpy(void *dst, const void *src, size_t len);
 int memset_s(void *dest, size_t dest_size,
 	     int data, size_t count);
 int memcpy_s(void *dest, size_t dest_size,
-	     const void *src, size_t src_size);
+	     const void *src, size_t count);
 
 void *__vec_memcpy(void *dst, const void *src, size_t len);
 void *__vec_memset(void *dest, int data, size_t src_size);
 
 static inline int arch_memcpy_s(void *dest, size_t dest_size,
-				const void *src, size_t src_size)
+				const void *src, size_t count)
 {
 	if (!dest || !src)
 		return -EINVAL;
 
-	if ((dest >= src && (char *)dest < ((char *)src + src_size)) ||
+	if ((dest >= src && (char *)dest < ((char *)src + count)) ||
 	    (src >= dest && (char *)src < ((char *)dest + dest_size)))
 		return -EINVAL;
 
-	if (src_size > dest_size)
+	if (count > dest_size)
 		return -EINVAL;
 
 #if __XCC__ && XCHAL_HAVE_HIFI3 && !CONFIG_LIBRARY
-	__vec_memcpy(dest, src, src_size);
+	__vec_memcpy(dest, src, count);
 #else
-	memcpy(dest, src, src_size);
+	memcpy(dest, src, count);
 #endif
 
 	return 0;

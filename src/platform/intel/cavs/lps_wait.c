@@ -21,7 +21,7 @@
 #ifdef __ZEPHYR__
 /* TODO: declare local copy to avoid naming collisions with Zephyr and SOF */
 /* headers until common functions can be separated out */
-int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size);
+int memcpy_s(void *dest, size_t dest_size, const void *src, size_t count);
 #endif
 
 #define LPSRAM_MAGIC_VALUE 0x13579BDF
