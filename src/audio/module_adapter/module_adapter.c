@@ -938,6 +938,7 @@ static int module_source_status_count(struct comp_dev *dev, uint32_t status)
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
 
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
@@ -953,7 +954,6 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 #if CONFIG_IPC_MAJOR_3
 	if (mod->num_input_buffers > 1) {
 		bool sources_active;
-		int ret;
 
 		sources_active = module_source_status_count(dev, COMP_STATE_ACTIVE) ||
 				 module_source_status_count(dev, COMP_STATE_PAUSED);
@@ -971,7 +971,11 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 	}
 #endif
-	return comp_set_state(dev, cmd);
+	ret = comp_set_state(dev, cmd);
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return ret;
 }
 
 int module_adapter_reset(struct comp_dev *dev)
