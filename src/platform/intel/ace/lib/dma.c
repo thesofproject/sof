@@ -19,7 +19,7 @@
 
 #define DW_DMA_BUFFER_ALIGNMENT		0x4
 #define DW_DMA_COPY_ALIGNMENT		0x4
-#define DW_DMA_BUFFER_PERIOD_COUNT	0x4
+#define DW_DMA_BUFFER_PERIOD_COUNT	0x8
 
 static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
 				uint32_t *value)
