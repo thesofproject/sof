@@ -463,9 +463,10 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	struct ipc4_chain_dma cdma;
 	struct ipc *ipc = ipc_get();
 	bool delay = false;
-	int ret;
+	int ret = memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
 
 	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
 		ret = ipc4_create_chain_dma(ipc, &cdma);
@@ -584,9 +585,12 @@ static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	struct ipc4_module_init_instance module = {};
 	struct sof_ipc_comp comp;
 	struct comp_dev *dev;
-
 	/* we only need the common header here, all we have from the IPC */
-	memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
+	int ret = memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
+
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
@@ -614,8 +618,11 @@ static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
+	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	tr_dbg(&ipc_tr, "ipc4_bind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
@@ -627,8 +634,11 @@ static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
+	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	tr_dbg(&ipc_tr, "ipc4_unbind_module_instance %x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
@@ -645,9 +655,11 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
 	void *response_buffer;
-	int ret;
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
@@ -718,9 +730,11 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
 	const struct comp_driver *drv;
-	int ret;
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 config.extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
@@ -766,9 +780,11 @@ static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 	struct ipc4_module_delete_instance module;
 	struct ipc *ipc = ipc_get();
 	uint32_t comp_id;
-	int ret;
+	int ret = memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	tr_dbg(&ipc_tr, "ipc4_delete_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
@@ -789,8 +805,11 @@ static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_set_d0ix d0ix;
 	uint32_t module_id, instance_id;
+	int ret = memcpy_s(&d0ix, sizeof(d0ix), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&d0ix, sizeof(d0ix), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	module_id = d0ix.primary.r.module_id;
 	instance_id = d0ix.primary.r.instance_id;
 
@@ -817,9 +836,11 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 	struct ipc4_dx_state_info dx_info;
 	uint32_t module_id, instance_id;
 	uint32_t core_id;
-	int ret;
+	int ret = memcpy_s(&dx, sizeof(dx), ipc4, sizeof(*ipc4));
 
-	memcpy_s(&dx, sizeof(dx), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return IPC4_FAILURE;
+
 	module_id = dx.primary.r.module_id;
 	instance_id = dx.primary.r.instance_id;
 
@@ -829,8 +850,12 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
-	memcpy_s(&dx_info, sizeof(dx_info), (const void *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 sizeof(dx_info));
+	ret = memcpy_s(&dx_info, sizeof(dx_info),
+		       (const void *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
+	if (ret < 0)
+		return IPC4_FAILURE;
 
 	/* check if core enable mask is valid */
 	if (dx_info.core_mask > MASK(CONFIG_CORE_COUNT - 1, 0)) {
