@@ -22,7 +22,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [tgl, mtl, lnl]
+        platform: [
+          imx8, imx8m,    # IPC3, see platform_configs in xtensa-build-zephyr.py
+          tgl, mtl, lnl,  # IPC4
+        ]
 
     steps:
       - name: git clone sparse analyzer
