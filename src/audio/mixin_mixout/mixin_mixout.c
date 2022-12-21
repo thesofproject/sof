@@ -517,14 +517,16 @@ static int mixout_process(struct processing_module *mod,
 	 */
 	for (i = 0; i < num_input_buffers; i++) {
 		const struct audio_stream __sparse_cache *source_stream;
-		struct comp_buffer *unused_in_between_buf;
+		struct comp_buffer __sparse_cache *unused_in_between_buf;
 		struct comp_dev *source;
 		int source_index;
 
 		source_stream = mod->input_buffers[i].data;
-		unused_in_between_buf = container_of(source_stream, struct comp_buffer, stream);
+		unused_in_between_buf = attr_container_of(source_stream,
+							  struct comp_buffer __sparse_cache,
+							  stream, __sparse_cache);
 
-		source = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
+		source = unused_in_between_buf->source;
 
 		source_index = find_module_source_index(mod_source_info, source);
 		/* this shouldn't happen but skip even if it does and move to the next source */
@@ -538,16 +540,17 @@ static int mixout_process(struct processing_module *mod,
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_input_buffers; i++) {
 			const struct audio_stream __sparse_cache *source_stream;
-			struct comp_buffer *unused_in_between_buf;
+			struct comp_buffer __sparse_cache *unused_in_between_buf;
 			struct comp_dev *source;
 			int source_index;
 			uint32_t pending_frames;
 
 			source_stream = mod->input_buffers[i].data;
-			unused_in_between_buf = container_of(source_stream, struct comp_buffer,
-							     stream);
+			unused_in_between_buf = attr_container_of(source_stream,
+								  struct comp_buffer __sparse_cache,
+								  stream, __sparse_cache);
 
-			source = buffer_get_comp(unused_in_between_buf, PPL_DIR_UPSTREAM);
+			source = unused_in_between_buf->source;
 
 			source_index = find_module_source_index(mod_source_info, source);
 			if (source_index < 0)
