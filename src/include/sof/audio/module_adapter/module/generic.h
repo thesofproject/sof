@@ -249,8 +249,7 @@ static inline void module_update_buffer_position(struct input_stream_buffer *inp
 }
 
 __must_check static inline
-struct module_source_info __sparse_cache *
-module_source_info_acquire(struct module_source_info __sparse_cache *msi)
+struct module_source_info __sparse_cache *module_source_info_acquire(struct module_source_info *msi)
 {
 	struct coherent __sparse_cache *c;
 
