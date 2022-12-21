@@ -65,6 +65,8 @@ static const char *BAD_PTR_STR = "<bad uid ptr 0x%.8x>";
 #define UUID_LOWER "%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s"
 #define UUID_UPPER "%s%s%s<%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X>%s%s%s"
 
+static const char *missing = "<missing>";
+
 static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_address);
 
 char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first,
@@ -249,6 +251,8 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* check for string printing, because it leads to logger crash */
 			log_err("String printing is not supported\n");
 			pe->params[i] = (uintptr_t)log_asprintf("<String @ 0x%08x>", raw_param);
+			if (!pe->params[i])
+				abort();
 			pe->subst_mask |= 1 << i;
 			++i;
 			p += 2;
@@ -257,6 +261,8 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* substitute UUID entry address with formatted string pointer from heap */
 			pe->params[i] = (uintptr_t)asprintf_uuid(p, raw_param, use_colors,
 								 &uuid_fmt_len);
+			if (!pe->params[i])
+				abort();
 			pe->subst_mask |= 1 << i;
 			++i;
 			/* replace uuid formatter with %s */
@@ -268,7 +274,12 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* %pQ format specifier */
 			/* substitute log entry address with formatted entry text */
 			pe->params[i] = (uintptr_t)asprintf_entry_text(raw_param);
-			pe->subst_mask |= 1 << i;
+
+			if (pe->params[i])
+				pe->subst_mask |= 1 << i;
+			else
+				pe->params[i] = (uintptr_t)missing;
+
 			++i;
 
 			/* replace entry formatter with %s */
@@ -1021,7 +1032,7 @@ static int dump_ldc_info(void)
 	while (remaining > 0) {
 		name = format_uid_raw(&uid_ptr[cnt], 0, 0, false, false);
 		uid_addr = get_uuid_key(&uid_ptr[cnt]);
-		fprintf(out_fd, "\t%p  %s\n", (void *)uid_addr, name);
+		fprintf(out_fd, "\t%p  %s\n", (void *)uid_addr, name ? name : missing);
 
 		if (name) {
 			free(name);
