@@ -277,7 +277,17 @@ set(TPLGS
 	"sof-glk-es8336\;sof-tgl-es8336-dmic4ch-ssp1\;-DPLATFORM=tgl\;-DSSP_NUM=1\;-DCHANNELS=4"
 	"sof-glk-es8336\;sof-tgl-es8336-dmic4ch-ssp2\;-DPLATFORM=tgl\;-DSSP_NUM=2\;-DCHANNELS=4"
 
+	"sof-glk-es8336\;sof-adl-es8336\;-DPLATFORM=adl\;-DSSP_NUM=0\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-adl-es8336-ssp0\;-DPLATFORM=adl\;-DSSP_NUM=0\;-DCHANNELS=0"
 	"sof-glk-es8336\;sof-adl-es8336-ssp1\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-adl-es8336-ssp2\;-DPLATFORM=adl\;-DSSP_NUM=2\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-adl-es8336-dmic2ch-ssp0\;-DPLATFORM=adl\;-DSSP_NUM=0\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-adl-es8336-dmic2ch-ssp1\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-adl-es8336-dmic2ch-ssp2\;-DPLATFORM=adl\;-DSSP_NUM=2\;-DCHANNELS=2"
+	"sof-glk-es8336\;sof-adl-es8336-dmic4ch-ssp0\;-DPLATFORM=adl\;-DSSP_NUM=0\;-DCHANNELS=4"
+	"sof-glk-es8336\;sof-adl-es8336-dmic4ch-ssp1\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=4"
+	"sof-glk-es8336\;sof-adl-es8336-dmic4ch-ssp2\;-DPLATFORM=adl\;-DSSP_NUM=2\;-DCHANNELS=4"
+
 	#sof-adl-es8336-ssp1-hdmi-ssp02 supports es8336 codec along with 2xHDMI_over_SSP Capture's.
 	"sof-glk-es8336\;sof-adl-es8336-ssp1-hdmi-ssp02\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=0\;-DHDMI_1_SSP_NUM=0\;-DHDMI_2_SSP_NUM=2"
 
