@@ -71,11 +71,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	if (dev->state == requested_state) {
 		comp_info(dev, "comp_set_state(), state already set to %u",
 			  dev->state);
-#ifdef CONFIG_IPC_MAJOR_4
-		return 0;
-#else
 		return COMP_STATUS_STATE_ALREADY_SET;
-#endif
 	}
 
 	switch (cmd) {
