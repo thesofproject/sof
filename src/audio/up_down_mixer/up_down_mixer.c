@@ -9,6 +9,7 @@
 #include <sof/audio/up_down_mixer/up_down_mixer.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -26,8 +27,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_up_down_mixer;
-
 LOG_MODULE_REGISTER(up_down_mixer, CONFIG_SOF_LOG_LEVEL);
 
 /* these ids aligns windows driver requirement to support windows driver */
@@ -40,12 +39,13 @@ DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_comp_uuid),
 
 int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
-static int set_downmix_coefficients(struct comp_dev *dev,
+static int set_downmix_coefficients(struct processing_module *mod,
 				    const struct ipc4_audio_format *format,
 				    const enum ipc4_channel_config out_channel_config,
 				    const downmix_coefficients downmix_coefficients)
 {
-	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
+	struct up_down_mixer_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	if (cd->downmix_coefficients) {
@@ -235,7 +235,7 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 			return upmix16bit_2_0_to_5_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_mono(): invalid channel config.");
+			comp_err(dev, "select_mix_out_5_1(): invalid channel config.");
 			return NULL;
 		}
 	} else {
@@ -252,19 +252,19 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 			return downmix32bit_7_1_to_5_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_mono(): invalid channel config.");
+			comp_err(dev, "select_mix_out_5_1(): invalid channel config.");
 			return NULL;
 		}
 	}
 }
 
-static int init_mix(struct comp_dev *dev,
+static int init_mix(struct processing_module *mod,
 		    const struct ipc4_audio_format *format,
 		    enum ipc4_channel_config out_channel_config,
 		    const downmix_coefficients downmix_coefficients)
 {
-	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
-	int ret;
+	struct up_down_mixer_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
 	if (!format)
 		return -EINVAL;
@@ -320,232 +320,146 @@ static int init_mix(struct comp_dev *dev,
 	cd->in_channel_map = format->ch_map;
 	cd->in_channel_config = format->ch_cfg;
 
-	ret = set_downmix_coefficients(dev, format, out_channel_config, downmix_coefficients);
-	if (ret < 0)
-		return ret;
-
-	return 0;
+	return set_downmix_coefficients(mod, format, out_channel_config, downmix_coefficients);
 }
 
-static void up_down_mixer_free(struct comp_dev *dev)
+static int up_down_mixer_free(struct processing_module *mod)
 {
-	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
+	struct up_down_mixer_data *cd = module_get_private_data(mod);
 
 	rfree(cd->buf_in);
 	rfree(cd->buf_out);
 	rfree(cd);
-	rfree(dev);
+
+	return 0;
 }
 
-static int init_up_down_mixer(struct comp_dev *dev, const struct comp_ipc_config *config,
-			      const void *spec)
+static int up_down_mixer_init(struct processing_module *mod)
 {
-	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = spec;
+	struct module_config *dst = &mod->priv.cfg;
+	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = dst->init_data;
+	struct module_data *mod_data = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 	struct up_down_mixer_data *cd;
 	int ret;
 
-	dev->ipc_config = *config;
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)spec,
-				 sizeof(*up_down_mixer));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
 		return -ENOMEM;
 	}
 
-	comp_set_drvdata(dev, cd);
+	mod_data->private = cd;
+	mod->simple_copy = true;
 
-	/* Copy received data format to local structures */
-	ret = memcpy_s(&cd->base, sizeof(struct ipc4_base_module_cfg),
-		       &up_down_mixer->base_cfg,
-		       sizeof(struct ipc4_base_module_cfg));
-	if (ret < 0) {
-		up_down_mixer_free(dev);
-		return ret;
-	}
-
-	cd->buf_in = rballoc(0, SOF_MEM_CAPS_RAM, cd->base.ibs);
-	cd->buf_out = rballoc(0, SOF_MEM_CAPS_RAM, cd->base.obs);
+	cd->buf_in = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.ibs);
+	cd->buf_out = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.obs);
 	if (!cd->buf_in || !cd->buf_out) {
-		up_down_mixer_free(dev);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	switch (up_down_mixer->coefficients_select) {
 	case DEFAULT_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
-		ret = init_mix(dev, &up_down_mixer->base_cfg.audio_fmt, up_down_mixer->out_channel_config, NULL);
+		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
+			       up_down_mixer->out_channel_config, NULL);
 		break;
 	case CUSTOM_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
-		ret = init_mix(dev, &up_down_mixer->base_cfg.audio_fmt, up_down_mixer->out_channel_config,
-			       up_down_mixer->coefficients);
+		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
+			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
 		break;
 	case DEFAULT_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
-		ret = init_mix(dev, &up_down_mixer->base_cfg.audio_fmt, up_down_mixer->out_channel_config, NULL);
+		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
+			       up_down_mixer->out_channel_config, NULL);
 		break;
 	case CUSTOM_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
-		ret = init_mix(dev, &up_down_mixer->base_cfg.audio_fmt, up_down_mixer->out_channel_config,
-			       up_down_mixer->coefficients);
+		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
+			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
 		break;
 	default:
-		comp_err(dev, "init_up_down_mixer(): unsupported coefficient type");
-		up_down_mixer_free(dev);
-		return -EINVAL;
+		comp_err(dev, "up_down_mixer_init(): unsupported coefficient type");
+		ret = -EINVAL;
+		break;
 	}
 
-	if (!cd->mix_routine || ret < 0) {
-		up_down_mixer_free(dev);
-		comp_err(dev, "init_up_down_mixer(): mix routine uninitialized.");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static struct comp_dev *up_down_mixer_new(const struct comp_driver *drv,
-					  const struct comp_ipc_config *config,
-					  const void *spec)
-{
-	struct comp_dev *dev;
-	int ret;
-
-	comp_cl_info(&comp_up_down_mixer, "up_down_mixer_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	ret = init_up_down_mixer(dev, config, spec);
 	if (ret < 0) {
-		comp_free(dev);
-		return NULL;
+		comp_err(dev, "up_down_mixer_init(): failed to initialize up_down_mix");
+		goto err;
 	}
-	dev->state = COMP_STATE_READY;
 
-	return dev;
+	return 0;
+
+err:
+	up_down_mixer_free(mod);
+	return ret;
 }
 
-static int up_down_mixer_prepare(struct comp_dev *dev)
+/* just stubs for now. Remove these after making these ops optional in the module adapter */
+static int up_down_mixer_prepare(struct processing_module *mod)
 {
-	int ret;
+	struct up_down_mixer_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
-	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "up_down_mixer_prepare(): Component is in active state.");
-		return 0;
+	if (!cd->mix_routine) {
+		comp_err(dev, "up_down_mixer_prepare(): mix routine not initialized");
+		return -EINVAL;
 	}
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	return 0;
 }
 
-static int up_down_mixer_reset(struct comp_dev *dev)
+static int up_down_mixer_reset(struct processing_module *mod)
 {
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static int up_down_mixer_copy(struct comp_dev *dev)
+static int
+up_down_mixer_process(struct processing_module *mod,
+		      struct input_stream_buffer *input_buffers, int num_input_buffers,
+		      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct up_down_mixer_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	uint32_t source_bytes, sink_bytes;
 	uint32_t mix_frames;
 
-	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
+	comp_dbg(dev, "up_down_mixer_process()");
 
-	comp_dbg(dev, "up_down_mixer_copy()");
+	mix_frames = audio_stream_avail_frames(mod->input_buffers[0].data,
+					       mod->output_buffers[0].data);
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
-
-	mix_frames = MIN(audio_stream_get_avail_frames(&source_c->stream),
-			 audio_stream_get_free_frames(&sink_c->stream));
-
-	source_bytes = mix_frames * audio_stream_frame_bytes(&source_c->stream);
-	sink_bytes = mix_frames * audio_stream_frame_bytes(&sink_c->stream);
+	source_bytes = mix_frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
+	sink_bytes = mix_frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 
 	if (source_bytes) {
-		buffer_stream_invalidate(source_c, source_bytes);
-		audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0,
+		uint32_t sink_sample_bytes;
+
+		audio_stream_copy_to_linear(mod->input_buffers[0].data, 0, cd->buf_in, 0,
 					    source_bytes /
-					    audio_stream_sample_bytes(&source_c->stream));
+					    audio_stream_sample_bytes(mod->input_buffers[0].data));
 
 		cd->mix_routine(cd, (uint8_t *)cd->buf_in, source_bytes, (uint8_t *)cd->buf_out);
 
-		audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0,
-					      sink_bytes /
-					      audio_stream_sample_bytes(&sink_c->stream));
-		buffer_stream_writeback(sink_c, sink_bytes);
-
-		comp_update_buffer_produce(sink_c, sink_bytes);
-		comp_update_buffer_consume(source_c, source_bytes);
-	}
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
-	return 0;
-}
-
-static int up_down_mixer_trigger(struct comp_dev *dev, int cmd)
-{
-	return comp_set_state(dev, cmd);
-}
-
-static int up_down_mixer_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct up_down_mixer_data *cd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->base;
-		break;
-	default:
-		return -EINVAL;
+		sink_sample_bytes = audio_stream_sample_bytes(mod->output_buffers[0].data);
+		audio_stream_copy_from_linear(cd->buf_out, 0, mod->output_buffers[0].data, 0,
+					      sink_bytes / sink_sample_bytes);
+		mod->output_buffers[0].size = sink_bytes;
+		mod->input_buffers[0].consumed = source_bytes;
 	}
 
 	return 0;
 }
 
-static const struct comp_driver comp_up_down_mixer = {
-	.uid	= SOF_RT_UUID(up_down_mixer_comp_uuid),
-	.tctx	= &up_down_mixer_comp_tr,
-	.ops	= {
-		.create			= up_down_mixer_new,
-		.free			= up_down_mixer_free,
-		.trigger		= up_down_mixer_trigger,
-		.copy			= up_down_mixer_copy,
-		.prepare		= up_down_mixer_prepare,
-		.reset			= up_down_mixer_reset,
-		.get_attribute		= up_down_mixer_get_attribute,
-	},
+static struct module_interface up_down_mixer_interface = {
+	.init  = up_down_mixer_init,
+	.prepare = up_down_mixer_prepare,
+	.process = up_down_mixer_process,
+	.reset = up_down_mixer_reset,
+	.free = up_down_mixer_free
 };
 
-static SHARED_DATA struct comp_driver_info comp_up_down_mixer_info = {
-	.drv = &comp_up_down_mixer,
-};
-
-UT_STATIC void sys_comp_up_down_mixer_init(void)
-{
-	comp_register(platform_shared_get(&comp_up_down_mixer_info,
-					  sizeof(comp_up_down_mixer_info)));
-}
-
-DECLARE_MODULE(sys_comp_up_down_mixer_init);
+DECLARE_MODULE_ADAPTER(up_down_mixer_interface, up_down_mixer_comp_uuid, up_down_mixer_comp_tr);

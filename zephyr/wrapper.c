@@ -226,7 +226,7 @@ void sys_comp_multiband_drc_init(void);
 void sys_comp_google_rtc_audio_processing_init(void);
 void sys_comp_igo_nr_init(void);
 void sys_comp_rtnr_init(void);
-void sys_comp_up_down_mixer_init(void);
+void sys_comp_module_up_down_mixer_interface_init(void);
 void sys_comp_tdfb_init(void);
 void sys_comp_ghd_init(void);
 void sys_comp_module_dts_interface_init(void);
@@ -371,7 +371,7 @@ int task_main_start(struct sof *sof)
 		sys_comp_rtnr_init();
 
 	if (IS_ENABLED(CONFIG_COMP_UP_DOWN_MIXER))
-		sys_comp_up_down_mixer_init();
+		sys_comp_module_up_down_mixer_interface_init();
 
 	if (IS_ENABLED(CONFIG_COMP_TDFB))
 		sys_comp_tdfb_init();
