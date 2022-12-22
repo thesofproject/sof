@@ -629,6 +629,11 @@ static int mux_reset(struct comp_dev *dev)
 	comp_info(dev, "mux_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		/*
+		 * On playback path, stop propagating reset signal to downstream if any of the
+		 * source is active. The condition is only applicable to comp MUX (multi-source to
+		 * single-sink).
+		 */
 		list_for_item(blist, &dev->bsource_list) {
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
@@ -643,16 +648,33 @@ static int mux_reset(struct comp_dev *dev)
 				return PPL_STATUS_PATH_STOP;
 		}
 	} else {
+		/*
+		 * On capture path, stop propagating reset signal to upstream if any of the sink is
+		 * active. The condition is only applicable to comp DEMUX (single-source to
+		 * multi-sink).
+		 *
+		 * One exception is that the active sink of DEMUX is on playback path, e.g. DEMUX
+		 * on Echo Reference path (capture) linked to the sink SMART_AMP on Speakers path
+		 * (playback). In practice, the playback sink state should not affect the reset
+		 * process through the capture path DEMUX locates on.
+		 */
 		list_for_item(blist, &dev->bsink_list) {
 			struct comp_buffer *sink = container_of(blist, struct comp_buffer,
 								source_list);
 			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
 			int state = -1;
+			int direction = -1;
 
-			if (sink_c->sink)
+			if (sink_c->sink) {
 				state = sink_c->sink->state;
+				direction = sink_c->sink->direction;
+			}
 
 			buffer_release(sink_c);
+
+			/* no need to regard the playback sink state */
+			if (direction == SOF_IPC_STREAM_PLAYBACK)
+				continue;
 
 			if (state > COMP_STATE_READY)
 				/* should not reset the upstream components */
@@ -719,11 +741,18 @@ static int mux_prepare(struct comp_dev *dev)
 								source_list);
 			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
 			int state = -1;
+			int direction = -1;
 
-			if (sink_c->sink)
+			if (sink_c->sink) {
 				state = sink_c->sink->state;
+				direction = sink_c->sink->direction;
+			}
 
 			buffer_release(sink_c);
+
+			/* no need to regard the playback sink state */
+			if (direction == SOF_IPC_STREAM_PLAYBACK)
+				continue;
 
 			/* only prepare upstream if we have no active sinks */
 			if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
