@@ -60,6 +60,12 @@ jobs:
         run: pip3 install west && cd workspace/sof/ && west init -l &&
                west update --narrow --fetch-opt=--depth=5
 
+      # Not strictly necessary but saves a lot of scrolling in the next step
+      # TODO, research caching:
+      # https://stackoverflow.com/questions/66421411/how-to-run-cached-docker-image-in-github-action
+      - name: docker pull         zephyrproject-rtos/zephyr-build
+        run: docker  pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
+
       # We have to painfully extract REAL_CC from the docker image to
       # tell the Zephyr build what it... already knows and wants!! Zephyr
       # commit 3ebb18b8826 explains this sparse problem.
