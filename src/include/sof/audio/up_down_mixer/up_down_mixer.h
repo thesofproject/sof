@@ -114,7 +114,6 @@ static inline enum ipc4_channel_index get_channel_index(const channel_map map,
  * \brief up_down_mixer component private data.
  */
 struct up_down_mixer_data {
-	struct ipc4_base_module_cfg base;
 	/** Number of channels in the input buffer. */
 	size_t in_channel_no;
 
