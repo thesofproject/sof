@@ -5,6 +5,8 @@
 
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/thesofproject/community)
 
+[#sof channel on discord.com](https://discord.com/channels/720317445772017664/930855494472589362)
+
 ### Documentation
 
 See [docs](https://thesofproject.github.io/latest/index.html)
