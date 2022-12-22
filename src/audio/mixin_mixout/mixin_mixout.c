@@ -121,6 +121,7 @@ static int mixin_init(struct processing_module *mod)
 
 	dev->ipc_config.frame_fmt = frame_fmt;
 	mod->simple_copy = true;
+	mod->skip_src_buffer_invalidate = true;
 
 	return 0;
 }
@@ -149,6 +150,7 @@ static int mixout_init(struct processing_module *mod)
 
 	dev->ipc_config.frame_fmt = frame_fmt;
 	mod->simple_copy = true;
+	mod->skip_sink_buffer_writeback = true;
 
 	return 0;
 }

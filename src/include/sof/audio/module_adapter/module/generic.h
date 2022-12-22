@@ -195,6 +195,18 @@ struct processing_module {
 	/* flag to indicate module does not pause */
 	bool no_pause;
 
+	/*
+	 * flag to indicate that the sink buffer writeback should be skipped. It will be handled
+	 * in the module's process callback
+	 */
+	bool skip_sink_buffer_writeback;
+
+	/*
+	 * flag to indicate that the source buffer invalidate should be skipped. It will be handled
+	 * in the module's process callback
+	 */
+	bool skip_src_buffer_invalidate;
+
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
 };
