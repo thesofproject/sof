@@ -569,7 +569,8 @@ static void module_adapter_process_output(struct comp_dev *dev)
 			sink = container_of(blist, struct comp_buffer, source_list);
 			sink_c = buffer_acquire(sink);
 
-			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
+			if (!mod->skip_sink_buffer_writeback)
+				buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
 			comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
 
 			buffer_release(sink_c);
@@ -650,7 +651,8 @@ module_single_sink_setup(struct comp_dev *dev,
 
 		comp_get_copy_limits_frame_aligned(source_c[i], sinks_c[0], &c);
 
-		buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
+		if (!mod->skip_src_buffer_invalidate)
+			buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
 
 		/*
 		 * note that the size is in number of frames not the number of
@@ -701,7 +703,9 @@ module_single_source_setup(struct comp_dev *dev,
 		i++;
 	}
 
-	buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
+	if (!mod->skip_src_buffer_invalidate)
+		buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
+
 	/* note that the size is in number of frames not the number of bytes */
 	mod->input_buffers[0].size = min_frames;
 	mod->input_buffers[0].consumed = 0;
