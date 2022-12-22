@@ -1,8 +1,8 @@
 # Sound Open Firmware
 
 ### Status
-[![GitHub Actions](https://github.com/thesofproject/sof/workflows/GitHub%20Actions/badge.svg)](https://github.com/thesofproject/sof/actions)
-[![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof/branches)
+[![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
+
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/thesofproject/community)
 
 ### Documentation
