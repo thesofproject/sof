@@ -803,7 +803,7 @@ def install_platform(platform, sof_platform_output_dir):
 		# --strip-all does not remove the .comment section.
 		# Remove it like some gcc test scripts do:
 		# https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=c7046906c3ae
-		if "strip" in dstname:
+		if "strip" in str(dstname):
 			execute_command([str(x) for x in [objcopy, "--remove-section", ".comment", src, dst]])
 		else:
 			shutil.copy2(src, dst)
