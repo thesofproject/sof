@@ -755,14 +755,15 @@ def install_platform(platform, sof_platform_output_dir):
 		# TODO: upgrade this to 3 states: optional/warning/error
 		optional: bool = False
 		gzip: bool = True
+		txt: bool = False
 
 	installed_files = [
 		# Fail if one of these is missing
-		InstFile(".config", "config"),
-		InstFile("misc/generated/configs.c", "generated_configs.c"),
+		InstFile(".config", "config", txt=True),
+		InstFile("misc/generated/configs.c", "generated_configs.c", txt=True),
 		InstFile(BIN_NAME + ".elf"),
-		InstFile(BIN_NAME + ".lst"),
-		InstFile(BIN_NAME + ".map"),
+		InstFile(BIN_NAME + ".lst", txt=True),
+		InstFile(BIN_NAME + ".map", txt=True),
 
 		# CONFIG_BUILD_OUTPUT_STRIPPED
 		# Renaming ELF files highlights the workaround below that strips the .comment section
@@ -805,6 +806,8 @@ def install_platform(platform, sof_platform_output_dir):
 		# https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=c7046906c3ae
 		if "strip" in str(dstname):
 			execute_command([str(x) for x in [objcopy, "--remove-section", ".comment", src, dst]])
+		elif f.txt:
+			dos2unix(src, dst)
 		else:
 			shutil.copy2(src, dst)
 		if f.gzip:
@@ -825,6 +828,15 @@ CHECKSUM_WANTED = [
 	BIN_NAME + '.lst',       # objdump --disassemble
 	'*.ldc',
 ]
+
+# Prefer CRLF->LF because unlike LF->CRLF it's (normally) idempotent.
+def dos2unix(in_name, out_name):
+	with open(in_name, "rb") as inf:
+		# must read all at once otherwise could fall between CR and LF
+		content = inf.read()
+		assert content
+		with open(out_name, "wb") as outf:
+			outf.write(content.replace(b"\r\n", b"\n"))
 
 def gzip_compress(fname, gzdst=None):
 	gzdst = gzdst or pathlib.Path(f"{fname}.gz")
