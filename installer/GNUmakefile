@@ -201,7 +201,8 @@ endif
 # config file included here.
 ${BUILD_SOF_RIS}: ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri: | ${BUILDS_ROOT}
 	cd ${BUILDS_ROOT} && bdir="$$(dirname $@)" &&  \
-      if [ -d $${bdir} ] && [ xcc != "${TOOLCHAIN}" ] ; then \
+      if [ -e $${bdir}/build.ninja -o -e $${bdir}/Makefile ] && \
+          [ xcc != "${TOOLCHAIN}" ] ; then \
         cmake --build $${bdir} -- bin; else \
       $(CURDIR)/../scripts/xtensa-build-all.sh -i "${IPC_VERSION}" $*; fi
 
@@ -294,7 +295,8 @@ build_tools: ${BUILD_TOOLS}
 # We could use more targets rather than "set -e" with a multi-lines "for" loop.
 # That would be more flexible but also quite verbose.
 ${BUILD_TOOLS}:
-	set -e; if test -d ${BUILD_TOOLS}; then \
+	set -e; if test -e ${BUILD_TOOLS}/build.ninja || \
+                   test -e ${BUILD_TOOLS}/Makefile; then \
         for i in topologies ${TOOLS_TARGETS}; do \
           cmake --build ${BUILD_TOOLS} -- $$i; done; else         \
           BUILD_TOOLS_DIR=${BUILD_TOOLS} ../scripts/build-tools.sh -T ${TOOLS_FLAGS} ; \

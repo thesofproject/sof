@@ -149,10 +149,11 @@ main()
                 exit
         fi
 
-        if ! test -e "$BUILD_TOOLS_DIR"/CMakeCache.txt; then
+        test -e "$BUILD_TOOLS_DIR"/build.ninja ||
+        test -e "$BUILD_TOOLS_DIR"/Makefile    || {
             warn_incremental_build=false
             reconfigure_build
-        fi
+        }
 
         if "$BUILD_ALL"; then
                 # default CMake targets
