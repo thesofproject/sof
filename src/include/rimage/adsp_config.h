@@ -5,5 +5,5 @@
 #include <rimage/rimage.h>
 #include <stdbool.h>
 
-int adsp_parse_config(const char *file, struct adsp *out, bool verbose);
+int adsp_parse_config(const char *file, struct image *image);
 void adsp_free(struct adsp *adsp);

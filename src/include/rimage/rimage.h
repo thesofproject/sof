@@ -77,7 +77,7 @@ struct image {
 	FILE *out_fd;
 	void *pos;
 
-	const struct adsp *adsp;
+	struct adsp *adsp;
 	int abi;
 	int verbose;
 	int reloc;	/* ELF data is relocatable */
@@ -111,6 +111,8 @@ struct image {
 	uint16_t fw_ver_minor;
 	uint16_t fw_ver_micro;
 	uint16_t fw_ver_build;
+
+	uint32_t imr_type;
 };
 
 struct mem_zone {
