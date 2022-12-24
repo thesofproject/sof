@@ -418,8 +418,7 @@ static int mixin_process(struct processing_module *mod,
 		 * Normally start_frame would be 0 unless mixout pipeline has serious
 		 * performance problems with processing data on time in mixout.
 		 */
-		start_frame = mixout_data->pending_frames[source_index];
-		assert(sinks_free_frames >= start_frame);
+		start_frame = 0;
 
 		sink_c = buffer_acquire(sink);
 
