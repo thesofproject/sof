@@ -85,8 +85,9 @@ jobs:
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
+        if: ${{ matrix.zephyr_revision == 'manifest_revision' }}
         with:
-          name: linux-build-output
+          name: linux-build ${{ matrix.IPC_platforms }}
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
@@ -224,7 +225,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: windows-build-output
+          name: windows-build ${{ matrix.platforms}}
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
