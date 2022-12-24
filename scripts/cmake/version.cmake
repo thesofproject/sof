@@ -89,7 +89,8 @@ if(NOT SOF_TAG)
 endif()
 
 # Calculate source hash value, used to check ldc file and firmware compatibility
-if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
+# To temporarily turn off this mostly flawed feature, append AND FALSE:
+if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/) # AND FALSE)
 	set(SOURCE_HASH_DIR "${SOF_ROOT_BINARY_DIRECTORY}/source_hash")
 	file(MAKE_DIRECTORY ${SOURCE_HASH_DIR})
 
@@ -109,6 +110,7 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	endif()
 
 	# list tracked files from src directory
+	# While not documented, git ls-files seems to sort the output.
 	execute_process(COMMAND git ls-files src/ scripts/ ${_sof_zephyr_dir}
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
@@ -117,15 +119,12 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	execute_process(COMMAND git hash-object --no-filters --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
-			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
+			# Don't use a file to avoid CRLF mismatches.
+			OUTPUT_VARIABLE file_hashes
 		)
 	# then calculate single hash of previously calculated hash list
-	execute_process(COMMAND git hash-object --no-filters --stdin
-			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
-			OUTPUT_VARIABLE SOF_SRC_HASH_LONG
-		)
+	string(SHA256 SOF_SRC_HASH_LONG ${file_hashes})
+
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
 Note: by design, source hash is broken by config changes. See #3890.")
