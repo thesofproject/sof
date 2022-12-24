@@ -284,7 +284,8 @@ static int mixin_process(struct processing_module *mod,
 {
 	struct mixin_data *mixin_data = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	uint32_t source_avail_frames, sinks_free_frames;
+	uint32_t source_avail_frames = 0;
+	uint32_t sinks_free_frames = UINT32_MAX;
 	struct comp_dev *active_mixouts[MIXIN_MAX_SINKS];
 	uint16_t sinks_ids[MIXIN_MAX_SINKS];
 	uint32_t bytes_to_consume_from_source_buf;
@@ -294,12 +295,8 @@ static int mixin_process(struct processing_module *mod,
 
 	comp_dbg(dev, "mixin_process()");
 
-	source_avail_frames = audio_stream_get_avail_frames(mod->input_buffers[0].data);
-	sinks_free_frames = INT32_MAX;
-
-	/* block mixin pipeline until at least one mixout pipeline started */
-	if (num_output_buffers == 0)
-		return 0;
+	if (num_input_buffers == 1)
+		source_avail_frames = audio_stream_get_avail_frames(mod->input_buffers[0].data);
 
 	if (num_output_buffers >= MIXIN_MAX_SINKS) {
 		comp_err(dev, "mixin_process(): Invalid output buffer count %d",
@@ -485,6 +482,9 @@ static int mixout_process(struct processing_module *mod,
 	int i;
 
 	comp_dbg(dev, "mixout_process()");
+
+	if (num_output_buffers == 0)
+		return 0;
 
 	mod_source_info = module_source_info_acquire(mod->source_info);
 	md = mod_source_info->private;
