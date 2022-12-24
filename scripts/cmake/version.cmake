@@ -117,15 +117,11 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	execute_process(COMMAND git hash-object --no-filters --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
-			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
+			OUTPUT_VARIABLE file_hash_list
 		)
 	# then calculate single hash of previously calculated hash list
-	execute_process(COMMAND git hash-object --no-filters --stdin
-			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
-			OUTPUT_VARIABLE SOF_SRC_HASH_LONG
-		)
+	string(SHA256 SOF_SRC_HASH_LONG ${file_hash_list})
+
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
 Note: by design, source hash is broken by config changes. See #3890.")
