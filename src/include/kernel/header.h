@@ -36,4 +36,26 @@ struct sof_abi_hdr {
 	uint32_t data[0];	/**< Component data - opaque to core */
 } __attribute__((packed));
 
+/**
+ * struct sof_ipc4_abi_hdr - Used by any bespoke component data structures or binary blobs.
+ * @magic: The magic number for the header. The value is 'S', 'O', 'F', '4'
+ * @size: The size in bytes of the data, excluding this struct
+ * @abi: SOF ABI version
+ * @blob_type: Type of blob: INIT_INSTANCE, CONFIG_SET or LARGE_CONFIG_SET
+ *             The value is of type enum sof_ipc4_module_type
+ * @param_id: ID indicating which parameter to update with the new data. The validity of
+ *            the param_id with blob_type is dependent on the module implementation.
+ * @reserved: Reserved for future use
+ * @data: Component data - opaque to core
+ */
+struct sof_ipc4_abi_hdr {
+	uint32_t magic;
+	uint32_t size;
+	uint32_t abi;
+	uint32_t blob_type;
+	uint32_t param_id;
+	uint32_t reserved[3];
+	uint32_t data[];
+}  __packed;
+
 #endif /* __KERNEL_HEADER_H__ */
