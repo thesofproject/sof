@@ -190,6 +190,7 @@ config COMP_SEL
 config COMP_CROSSOVER
 	bool "Crossover Filter component"
 	select COMP_BLOB
+	select MATH_IIR_DF2T
 	default n
 	help
 	  Select for Crossover Filter component. A crossover can be used to
