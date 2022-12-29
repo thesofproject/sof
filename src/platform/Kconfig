@@ -622,4 +622,14 @@ config INCOHERENT
 
 endif
 
+config LL_WATCHDOG
+	bool "Enable watchdog support in ll scheduler"
+	default n
+	help
+	  Select if you want to protect ll scheduler with a watchdog timer.
+	  The watchdog is enabled after creating a ll thread for specified
+	  core. When all tasks are finished, the watchdog will be disabled
+	  before stopping the thread. Periodically, after each tick has been
+	  handled, the watchdog counter is reseted.
+
 endmenu
