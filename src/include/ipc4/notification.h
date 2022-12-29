@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2021 Intel Corporation. All rights reserved.
+ * Copyright(c) 2023 Intel Corporation. All rights reserved.
  */
 
 /*
@@ -115,3 +115,56 @@ struct ipc4_voice_cmd_notification {
 		} r;
 	} extension;
 } __packed __aligned(4);
+
+/**
+ * \brief This notification is reported by the Base FW when DSP core receive WDT timeout interrupt.
+ */
+struct ipc4_watchdog_timeout_notification {
+	union {
+		uint32_t dat;
+
+		struct {
+			/* ID of a core that timeouted. */
+			uint32_t core_id : 4;
+			/* Indicates that it was first timeout and crash dump was done */
+			uint32_t first_timeout : 1;
+			uint32_t rsvd : 11;
+			/* Notification::WATCHDOG_TIMEOUT */
+			uint32_t notif_type : 8;
+			/* Global::NOTIFICATION */
+			uint32_t type : 5;
+			/* Msg::MSG_NOTIFICATION (0) */
+			uint32_t rsp : 1;
+			/* Msg::FW_GEN_MSG */
+			uint32_t msg_tgt : 1;
+			uint32_t _hw_rsvd_0 : 1;
+		} r;
+	} primary;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd1 : 30;
+			uint32_t _hw_rsvd_2 : 2;
+		} r;
+	} extension;
+} __packed __aligned(4);
+
+static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_notification *notif,
+						   uint32_t core_id, bool first_timeout)
+{
+	notif->primary.dat = 0;
+	notif->extension.dat = 0;
+
+	/* ID of a core that timeouted. */
+	notif->primary.r.core_id = core_id;
+
+	/* Indicates that it was first timeout and crash dump was done */
+	notif->primary.r.first_timeout = first_timeout;
+
+	notif->primary.r.notif_type = SOF_IPC4_WATCHDOG_TIMEOUT;
+	notif->primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif->primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif->primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+}
