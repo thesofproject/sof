@@ -22,7 +22,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define LL_TIMER_PERIOD_US 1000ULL /* default period in microseconds */
+#define LL_TIMER_PERIOD_US	1000ULL /* default period in microseconds */
+
+/* Default ll watchdog timeout in microseconds.
+ * It was decided to have a timeout of two periods to give a safe margin of time between the start
+ * of the watchdog and its first feeding.
+ */
+#define LL_WATCHDOG_TIMEOUT_US	(2 * LL_TIMER_PERIOD_US)
+
 
 struct dma;
 struct ll_schedule_domain;
