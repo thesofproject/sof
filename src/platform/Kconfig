@@ -625,6 +625,7 @@ endif
 config LL_WATCHDOG
 	bool "Enable watchdog support in ll scheduler"
 	default n
+	depends on ACE
 	help
 	  Select if you want to protect ll scheduler with a watchdog timer.
 	  The watchdog is enabled after creating a ll thread for specified

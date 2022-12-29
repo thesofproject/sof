@@ -454,6 +454,10 @@ if (CONFIG_ACE_VERSION_1_5)
 		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
 	)
 
+	zephyr_library_sources_ifdef(CONFIG_LL_WATCHDOG
+		${SOF_PLATFORM_PATH}/intel/ace/lib/watchdog.c
+	)
+
 	set(PLATFORM "meteorlake")
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
