@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright(c) 2021 MediaTek. All rights reserved.
+ * Copyright(c) 2023 MediaTek. All rights reserved.
  *
  * Author: Bo Pan <bo.pan@mediatek.com>
- *         YC Hung <yc.hung@mediatek.com>
+ *	   YC Hung <yc.hung@mediatek.com>
+ *         Chunxu Li <chunxu.li@mediatek.com>
+ *	   Trevor Wu <trevor.wu@mediatek.com>
  */
 
 #include <sof/audio/component.h>
@@ -39,21 +41,24 @@ static int afe_dai_drv_set_config(struct dai *dai, struct ipc_config_dai *common
 	const struct sof_ipc_dai_config *config = spec_config;
 	struct mtk_base_afe *afe = dai_get_drvdata(dai);
 
-	afe_dai_set_config(afe,
-			   dai->index,
-			   config->afe.dai_channels,
-			   config->afe.dai_rate,
-			   config->afe.dai_format);
-	return 0;
+	return afe_dai_set_config(afe,
+				  dai->index,
+				  config->afe.dai_channels,
+				  config->afe.dai_rate,
+				  config->afe.dai_format);
 }
 
-/* get HDA hw params */
+/* get AFE hw params */
 static int afe_dai_drv_get_hw_params(struct dai *dai, struct sof_ipc_stream_params *params, int dir)
 {
+	int ret;
 	struct mtk_base_afe *afe = dai_get_drvdata(dai);
 	unsigned int channel, rate, format;
 
-	afe_dai_get_config(afe, dai->index, &channel, &rate, &format);
+	ret = afe_dai_get_config(afe, dai->index, &channel, &rate, &format);
+	if (ret < 0)
+		return ret;
+
 	params->rate = rate;
 	params->channels = channel;
 	params->buffer_fmt = format;

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+add_local_sources(sof afe-memif.c afe-dai.c afe-drv.c)
+if(CONFIG_MT8186)
+        add_subdirectory(mt8186)
+endif()
+if(CONFIG_MT8195)
+        add_subdirectory(mt8195)
+endif()
