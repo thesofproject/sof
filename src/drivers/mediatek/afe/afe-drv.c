@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright(c) 2021 MediaTek. All rights reserved.
+ * Copyright(c) 2023 MediaTek. All rights reserved.
  *
  * Author: Bo Pan <bo.pan@mediatek.com>
- *         YC Hung <yc.hung@mediatek.com>
+ *	   YC Hung <yc.hung@mediatek.com>
+ *         Chunxu Li <chunxu.li@mediatek.com>
+ *	   Trevor Wu <trevor.wu@mediatek.com>
  */
 
 #include <sof/common.h>
@@ -53,9 +55,6 @@ static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int 
 	struct mtk_base_afe_memif *memif = &afe->memif[id];
 	unsigned int mono;
 
-	if (memif->data->mono_shift < 0)
-		return 0;
-
 	if (memif->data->ch_num_reg >= 0) {
 		afe_reg_update_bits(afe, memif->data->ch_num_reg,
 				    memif->data->ch_num_maskbit << memif->data->ch_num_shift,
@@ -63,7 +62,7 @@ static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int 
 	}
 
 	if (memif->data->quad_ch_mask) {
-		unsigned int quad_ch = channel == 4;
+		unsigned int quad_ch = (channel == 4);
 
 		afe_reg_update_bits(afe, memif->data->quad_ch_reg,
 				    memif->data->quad_ch_mask << memif->data->quad_ch_shift,
@@ -71,8 +70,16 @@ static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int 
 	}
 
 	mono = (bool)memif->data->mono_invert ^ (channel == 1);
-	afe_reg_update_bits(afe, memif->data->mono_reg, 1 << memif->data->mono_shift,
-			    mono << memif->data->mono_shift);
+
+	if (memif->data->int_odd_flag_reg > 0)
+		afe_reg_update_bits(afe, memif->data->int_odd_flag_reg,
+				    1 << memif->data->int_odd_flag_shift,
+				    mono << memif->data->int_odd_flag_shift);
+
+	if (memif->data->mono_reg > 0 && memif->data->mono_shift >= 0)
+		afe_reg_update_bits(afe, memif->data->mono_reg,
+				    1 << memif->data->mono_shift,
+				    mono << memif->data->mono_shift);
 	return 0;
 }
 
@@ -82,8 +89,10 @@ static int afe_memif_set_rate(struct mtk_base_afe *afe, int id, unsigned int rat
 	int fs;
 
 	fs = afe->afe_fs(rate, memif->data->id);
-	if (fs < 0)
+	if (fs < 0) {
+		tr_err(&afedrv_tr, "invalid fs:%d\n", fs);
 		return -EINVAL;
+	}
 
 	afe_reg_update_bits(afe, memif->data->fs_reg,
 			    memif->data->fs_maskbit << memif->data->fs_shift,
@@ -111,6 +120,7 @@ static int afe_memif_set_format(struct mtk_base_afe *afe, int id, unsigned int f
 			hd_audio = 1;
 		break;
 	default:
+		tr_err(&afedrv_tr, "not support format:%u\n", format);
 		return -EINVAL;
 	}
 
@@ -156,7 +166,7 @@ int afe_memif_set_addr(struct mtk_base_afe *afe, int id, unsigned int dma_addr,
 
 	memif->afe_addr = phys_buf_addr;
 	memif->buffer_size = dma_bytes;
-	tr_dbg(&afedrv_tr, "dma_addr:%u, size:%u\n", dma_addr, dma_bytes);
+	tr_dbg(&afedrv_tr, "dma_addr:0x%x, size:%u\n", dma_addr, dma_bytes);
 	/* start */
 	afe_reg_write(afe, memif->data->reg_ofs_base, phys_buf_addr);
 	/* end */
@@ -173,12 +183,12 @@ int afe_memif_set_addr(struct mtk_base_afe *afe, int id, unsigned int dma_addr,
 	}
 
 	/* set MSB to 33-bit */
-	if (memif->data->msb_reg >= 0)
+	if (memif->data->msb_reg > 0)
 		afe_reg_update_bits(afe, memif->data->msb_reg, 1 << memif->data->msb_shift,
 				    msb_at_bit33 << memif->data->msb_shift);
 
 	/* set MSB to 33-bit, for memif end address */
-	if (memif->data->msb2_reg >= 0)
+	if (memif->data->msb2_reg > 0)
 		afe_reg_update_bits(afe, memif->data->msb2_reg, 1 << memif->data->msb2_shift,
 				    msb_at_bit33 << memif->data->msb2_shift);
 
@@ -301,7 +311,6 @@ int afe_irq_config(struct mtk_base_afe *afe, int id, unsigned int rate, unsigned
 
 	/* set irq fs */
 	fs = afe->irq_fs(rate);
-
 	if (fs < 0)
 		return -EINVAL;
 
@@ -410,6 +419,5 @@ void afe_remove(struct mtk_base_afe *afe)
 
 	rfree(afe->irqs);
 	afe->irqs = NULL;
-
 }
 

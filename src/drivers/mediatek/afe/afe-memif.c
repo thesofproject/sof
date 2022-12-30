@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright(c) 2022 MediaTek. All rights reserved.
+ * Copyright(c) 2023 MediaTek. All rights reserved.
  *
  * Author: Bo Pan <bo.pan@mediatek.com>
+ *	   YC Hung <yc.hung@mediatek.com>
  *         Chunxu Li <chunxu.li@mediatek.com>
+ *	   Trevor Wu <trevor.wu@mediatek.com>
  */
 
 #include <sof/common.h>
@@ -24,9 +26,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* 76f4e24c-cd46-4564-8d1d-2e93ddbf14f0 */
-DECLARE_SOF_UUID("memif", memif_uuid, 0x76f4e24c, 0xcd46, 0x4564,
-		 0x8d, 0x1d, 0x2e, 0x93, 0xdd, 0xbf, 0x14, 0xf0);
+/* df5e94d7-fd93-42e9-bb94-ab40becc7151 */
+DECLARE_SOF_UUID("memif", memif_uuid, 0xdf5e94d7, 0xfd93, 0x42e9,
+		 0xbb, 0x94, 0xab, 0x40, 0xbe, 0xcc, 0x71, 0x51);
 
 DECLARE_TR_CTX(memif_tr, SOF_UUID(memif_uuid), LOG_LEVEL_INFO);
 
@@ -310,11 +312,14 @@ static int memif_remove(struct dma *dma)
 	int channel;
 	struct mtk_base_afe *afe = afe_get();
 
-	if (dma->chan) {
-		for (channel = 0; channel < dma->plat_data.channels; channel++) {
-			/* TODO Disable HW requests for this channel */
-			rfree(dma_chan_get_data(&dma->chan[channel]));
-		}
+	if (!dma->chan) {
+		tr_err(&memif_tr, "MEMIF: remove called without probe, it's a no-op");
+		return 0;
+	}
+	for (channel = 0; channel < dma->plat_data.channels; channel++) {
+		/* TODO Disable HW requests for this channel */
+
+		rfree(dma_chan_get_data(&dma->chan[channel]));
 	}
 	rfree(dma->chan);
 	dma->chan = NULL;
@@ -389,14 +394,11 @@ static int memif_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 
 	switch (cmd) {
 	case DMA_IRQ_STATUS_GET:
-		ret = afe_irq_get_status(afe, memif->irq_id);
-		break;
+		return afe_irq_get_status(afe, memif->irq_id);
 	case DMA_IRQ_CLEAR:
-		ret = afe_irq_clear(afe, memif->irq_id);
-		break;
+		return afe_irq_clear(afe, memif->irq_id);
 	case DMA_IRQ_MASK:
-		ret = afe_irq_disable(afe, memif->irq_id);
-		break;
+		return afe_irq_disable(afe, memif->irq_id);
 	case DMA_IRQ_UNMASK:
 		sample_size = ((memif->format == SOF_IPC_FRAME_S16_LE) ? 2 : 4) * memif->channel;
 		period = memif->period_size / sample_size;
@@ -406,12 +408,10 @@ static int memif_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 		ret = afe_irq_enable(afe, memif->irq_id);
 		if (ret < 0)
 			return ret;
-		break;
+		return 0;
 	default:
 		return -EINVAL;
 	}
-
-	return ret;
 }
 
 /* TODO need convert number to platform MACRO */
