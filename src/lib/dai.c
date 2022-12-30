@@ -157,7 +157,7 @@ static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
 
 	for (i = 0; i < ARRAY_SIZE(zephyr_dev); i++) {
 		cfg = dai_config_get(zephyr_dev[i], dir);
-		if (cfg->type == type && cfg->dai_index == index)
+		if (cfg && cfg->type == type && cfg->dai_index == index)
 			return zephyr_dev[i];
 	}
 
