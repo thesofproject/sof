@@ -21,34 +21,35 @@
 /* scheduling */
 static const struct sof_topology_token sched_tokens[] = {
 	{SOF_TKN_SCHED_PERIOD, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, period), 0},
 	{SOF_TKN_SCHED_PRIORITY, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, priority), 0},
 	{SOF_TKN_SCHED_MIPS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, period_mips), 0},
 	{SOF_TKN_SCHED_CORE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, core), 0},
 	{SOF_TKN_SCHED_FRAMES, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, frames_per_sched), 0},
 	{SOF_TKN_SCHED_TIME_DOMAIN, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, time_domain), 0},
 };
 
-/* load scheduler dapm widget */
-int tplg_create_pipeline(struct tplg_context *ctx,
-		       struct sof_ipc_pipe_new *pipeline)
+/* Pipeline - IPC3 */
+static const struct sof_topology_token_group pipeline_ipc3_tokens[] = {
+	{sched_tokens, ARRAY_SIZE(sched_tokens),
+		0},
+};
+
+static int pipeline_ipc3_build(struct tplg_context *ctx, void *_pipeline)
 {
-	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
-	size_t total_array_size = 0;
-	int size = ctx->widget->priv.size;
+	struct sof_ipc_pipe_new *pipeline = _pipeline;
 	int comp_id = ctx->comp_id;
-	int ret;
 
 	/* configure pipeline */
 	pipeline->comp_id = comp_id;
@@ -56,49 +57,37 @@ int tplg_create_pipeline(struct tplg_context *ctx,
 	pipeline->hdr.size = sizeof(*pipeline);
 	pipeline->hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_PIPE_NEW;
 
-	/* read vendor arrays */
-	while (total_array_size < size) {
-
-		/* check for array size mismatch */
-		if (!is_valid_priv_size(total_array_size, size, array)) {
-			fprintf(stderr, "error: load pipeline array size mismatch\n");
-			return -EINVAL;
-		}
-
-		/* parse scheduler tokens */
-		ret = sof_parse_tokens(pipeline, sched_tokens,
-				       ARRAY_SIZE(sched_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse pipeline tokens %d\n",
-				size);
-			return -EINVAL;
-		}
-
-		total_array_size += array->size;
-
-		/* read next array */
-		array = MOVE_POINTER_BY_BYTES(array, array->size);
-	}
-
 	return 0;
 }
 
+/* Pipeline - IPC4 */
+static const struct sof_topology_token pipeline4_tokens[] = {
+	/* TODO */
+};
+
+static const struct sof_topology_token_group pipeline_ipc4_tokens[] = {
+	{pipeline4_tokens, ARRAY_SIZE(pipeline4_tokens)},
+};
+
+static int pipeline_ipc4_build(struct tplg_context *ctx, void *pipeline)
+{
+	/* TODO */
+	return 0;
+}
+
+static const struct sof_topology_module_desc pipeline_ipc[] = {
+	{3, pipeline_ipc3_tokens, ARRAY_SIZE(pipeline_ipc3_tokens),
+		pipeline_ipc3_build, sizeof(struct sof_ipc_pipe_new)},
+	{4, pipeline_ipc4_tokens, ARRAY_SIZE(pipeline_ipc4_tokens), pipeline_ipc4_build},
+};
 
 /* load pipeline dapm widget */
-int tplg_new_pipeline(struct tplg_context *ctx, struct sof_ipc_pipe_new *pipeline,
-		struct snd_soc_tplg_ctl_hdr *rctl)
+int tplg_new_pipeline(struct tplg_context *ctx, void *pipeline,
+		      size_t pipeline_size, struct snd_soc_tplg_ctl_hdr *rctl)
 {
 	int ret;
 
-	ret = tplg_create_pipeline(ctx, pipeline);
-	if (ret < 0)
-		return ret;
-
-	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, 0) < 0) {
-		fprintf(stderr, "error: loading controls\n");
-		return -EINVAL;
-	}
-
+	ret = tplg_create_object(ctx, pipeline_ipc, ARRAY_SIZE(pipeline_ipc),
+				 "pipeline", pipeline, pipeline_size);
 	return ret;
 }

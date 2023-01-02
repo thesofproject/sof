@@ -18,9 +18,9 @@
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
 
-int tplg_create_single_control(struct tplg_context *ctx,
-		struct snd_soc_tplg_ctl_hdr **ctl,
-		struct snd_soc_tplg_private **priv_data)
+int tplg_get_single_control(struct tplg_context *ctx,
+			    struct snd_soc_tplg_ctl_hdr **ctl,
+			    struct snd_soc_tplg_private **priv_data)
 {
 	struct snd_soc_tplg_ctl_hdr *ctl_hdr;
 	struct snd_soc_tplg_mixer_control *mixer_ctl = NULL;
@@ -71,7 +71,8 @@ int tplg_create_single_control(struct tplg_context *ctx,
 		break;
 
 	default:
-		printf("info: control type not supported\n");
+		printf("info: control type %d not supported\n",
+		       ctl_hdr->ops.info);
 		return -EINVAL;
 	}
 
@@ -84,7 +85,7 @@ int tplg_create_single_control(struct tplg_context *ctx,
  */
 int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 			 struct snd_soc_tplg_ctl_hdr *rctl,
-			 size_t max_ctl_size)
+			 size_t max_ctl_size, void *object)
 {
 	struct snd_soc_tplg_ctl_hdr *ctl_hdr = NULL;
 	struct snd_soc_tplg_mixer_control *mixer_ctl;
@@ -128,9 +129,13 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 			tplg_get_object_priv(ctx, bytes_ctl, bytes_ctl->priv.size);
 			break;
 		default:
-			printf("info: control type not supported\n");
+			printf("info: control type %d not supported\n",
+			       ctl_hdr->ops.info);
 			return -EINVAL;
 		}
+
+		if (ctx->ctl_cb && object)
+			ctx->ctl_cb(ctl_hdr, object, ctx->ctl_arg);
 	}
 
 	if (rctl && ctl_hdr) {

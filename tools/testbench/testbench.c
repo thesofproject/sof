@@ -17,6 +17,9 @@
 #include "testbench/file.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#define TESTBENCH_NCH	2
 
 #ifdef TESTBENCH_CACHE_CHECK
 #include <arch/lib/cache.h>
@@ -419,7 +422,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* input samples bit format */
 		case 'b':
 			tp->bits_in = strdup(optarg);
-			tp->cmd_frame_fmt = find_format(tp->bits_in);
+			tp->frame_fmt = tplg_find_format(tp->bits_in);
 			break;
 
 		/* override default libraries */
@@ -429,22 +432,22 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 		/* input sample rate */
 		case 'r':
-			tp->cmd_fs_in = atoi(optarg);
+			tp->fs_in = atoi(optarg);
 			break;
 
 		/* output sample rate */
 		case 'R':
-			tp->cmd_fs_out = atoi(optarg);
+			tp->fs_out = atoi(optarg);
 			break;
 
 		/* input/output channels */
 		case 'c':
-			tp->cmd_channels_in = atoi(optarg);
+			tp->channels_in = atoi(optarg);
 			break;
 
 		/* output channels */
 		case 'n':
-			tp->cmd_channels_out = atoi(optarg);
+			tp->channels_out = atoi(optarg);
 			break;
 
 			/* enable debug prints */
@@ -581,13 +584,13 @@ static int test_pipeline_params(struct pipeline_thread_data *ptdata, struct tplg
 		p = pcm_dev->cd->pipeline;
 
 		/* input and output sample rate */
-		if (!ctx->fs_in)
-			ctx->fs_in = p->period * p->frames_per_sched;
+		if (!tp->fs_in)
+			tp->fs_in = p->period * p->frames_per_sched;
 
-		if (!ctx->fs_out)
-			ctx->fs_out = p->period * p->frames_per_sched;
+		if (!tp->fs_out)
+			tp->fs_out = p->period * p->frames_per_sched;
 
-		ret = tb_pipeline_params(ipc, p, ctx);
+		ret = tb_pipeline_params(tp, ipc, p, ctx);
 		if (ret < 0) {
 			fprintf(stderr, "error: pipeline params failed: %s\n",
 				strerror(ret));
@@ -650,16 +653,11 @@ static int test_pipeline_load(struct pipeline_thread_data *ptdata, struct tplg_c
 	ctx->comp_id = 1000 * ptdata->core_id;
 	ctx->core_id = ptdata->core_id;
 	ctx->sof = sof_get();
-	ctx->tp = tp;
 	ctx->tplg_file = tp->tplg_file;
-	ctx->fs_in = tp->cmd_fs_in;
-	ctx->fs_out = tp->cmd_fs_out;
-	ctx->channels_in = tp->cmd_channels_in;
-	ctx->channels_out = tp->cmd_channels_out;
-	ctx->frame_fmt = tp->cmd_frame_fmt;
+	ctx->ipc_major = 3;
 
 	/* parse topology file and create pipeline */
-	ret = parse_topology(ctx);
+	ret = tb_parse_topology(tp, ctx);
 	if (ret < 0)
 		fprintf(stderr, "error: parsing topology\n");
 
@@ -704,11 +702,11 @@ static void test_pipeline_stats(struct pipeline_thread_data *ptdata,
 	p = icd->cd->pipeline;
 
 	/* input and output sample rate */
-	if (!ctx->fs_in)
-		ctx->fs_in = p->period * p->frames_per_sched;
+	if (!tp->fs_in)
+		tp->fs_in = p->period * p->frames_per_sched;
 
-	if (!ctx->fs_out)
-		ctx->fs_out = p->period * p->frames_per_sched;
+	if (!tp->fs_out)
+		tp->fs_out = p->period * p->frames_per_sched;
 
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
@@ -722,8 +720,8 @@ static void test_pipeline_stats(struct pipeline_thread_data *ptdata,
 	test_pipeline_get_file_stats(ctx->pipeline_id);
 
 	printf("Input bit format: %s\n", tp->bits_in);
-	printf("Input sample rate: %d\n", ctx->fs_in);
-	printf("Output sample rate: %d\n", ctx->fs_out);
+	printf("Input sample rate: %d\n", tp->fs_in);
+	printf("Output sample rate: %d\n", tp->fs_out);
 	for (i = 0; i < tp->input_file_num; i++) {
 		printf("Input[%d] read from file: \"%s\"\n",
 		       i, tp->input_file[i]);
@@ -732,10 +730,10 @@ static void test_pipeline_stats(struct pipeline_thread_data *ptdata,
 		printf("Output[%d] written to file: \"%s\"\n",
 		       i, tp->output_file[i]);
 	}
-	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / ctx->channels_in);
-	printf("Output sample (frame) count: %d (%d)\n", n_out, n_out / ctx->channels_out);
+	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / tp->channels_in);
+	printf("Output sample (frame) count: %d (%d)\n", n_out, n_out / tp->channels_out);
 	printf("Total execution time: %zu us, %.2f x realtime\n\n",
-	       delta, (double)((double)n_out / ctx->channels_out / ctx->fs_out) * 1000000 / delta);
+	       delta, (double)((double)n_out / tp->channels_out / tp->fs_out) * 1000000 / delta);
 }
 
 /*
@@ -855,8 +853,8 @@ int main(int argc, char **argv)
 
 	/* initialize input and output sample rates, files, etc. */
 	debug = 0;
-	tp.cmd_fs_in = 0;
-	tp.cmd_fs_out = 0;
+	tp.fs_in = 0;
+	tp.fs_out = 0;
 	tp.bits_in = 0;
 	tp.tplg_file = NULL;
 	tp.input_file_num = 0;
@@ -867,8 +865,8 @@ int main(int argc, char **argv)
 	for (i = 0; i < MAX_INPUT_FILE_NUM; i++)
 		tp.input_file[i] = NULL;
 
-	tp.cmd_channels_in = TESTBENCH_NCH;
-	tp.cmd_channels_out = 0;
+	tp.channels_in = TESTBENCH_NCH;
+	tp.channels_out = 0;
 	tp.max_pipeline_id = 0;
 	tp.copy_check = false;
 	tp.quiet = 0;
@@ -886,8 +884,8 @@ int main(int argc, char **argv)
 	if (err < 0)
 		goto out;
 
-	if (!tp.cmd_channels_out)
-		tp.cmd_channels_out = tp.cmd_channels_in;
+	if (!tp.channels_out)
+		tp.channels_out = tp.channels_in;
 
 	/* check mandatory args */
 	if (!tp.tplg_file) {

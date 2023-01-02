@@ -18,52 +18,19 @@
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
 
-/* load mixer dapm widget */
-int tplg_create_mixer(struct tplg_context *ctx,
-		    struct sof_ipc_comp_mixer *mixer, size_t max_comp_size)
+
+/* MIXER - IPC3 */
+static const struct sof_topology_token_group mixer_ipc3_tokens[] = {
+	{comp_tokens, ARRAY_SIZE(comp_tokens),
+		offsetof(struct sof_ipc_comp_mixer, config)},
+	{comp_ext_tokens, ARRAY_SIZE(comp_ext_tokens),
+		sizeof(struct sof_ipc_comp_mixer)},
+};
+
+static int mixer_ipc3_build(struct tplg_context *ctx, void *_mixer)
 {
-	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
-	size_t total_array_size = 0;
-	int size = ctx->widget->priv.size;
+	struct sof_ipc_comp_mixer *mixer = _mixer;
 	int comp_id = ctx->comp_id;
-	char uuid[UUID_SIZE];
-	int ret;
-
-	if (max_comp_size < sizeof(struct sof_ipc_comp_mixer) + UUID_SIZE)
-		return -EINVAL;
-
-	/* read vendor tokens */
-	while (total_array_size < size) {
-
-		/* check for array size mismatch */
-		if (!is_valid_priv_size(total_array_size, size, array)) {
-			fprintf(stderr, "error: load mixer array size mismatch\n");
-			return -EINVAL;
-		}
-
-		/* parse comp tokens */
-		ret = sof_parse_tokens(&mixer->config, comp_tokens,
-				       ARRAY_SIZE(comp_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse src comp_tokens %d\n",
-				size);
-			return -EINVAL;
-		}
-		/* parse uuid token */
-		ret = sof_parse_tokens(uuid, comp_ext_tokens,
-				       ARRAY_SIZE(comp_ext_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse mixer uuid token %d\n", size);
-			return -EINVAL;
-		}
-
-		total_array_size += array->size;
-
-		/* read next array */
-		array = MOVE_POINTER_BY_BYTES(array, array->size);
-	}
 
 	/* configure mixer */
 	mixer->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
@@ -73,22 +40,43 @@ int tplg_create_mixer(struct tplg_context *ctx,
 	mixer->comp.pipeline_id = ctx->pipeline_id;
 	mixer->comp.ext_data_length = UUID_SIZE;
 	mixer->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-	memcpy(mixer + 1, &uuid, UUID_SIZE);
 
 	return 0;
 }
 
-int tplg_new_mixer(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t max_comp_size,
-		struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
+/* MIXER - IPC4 */
+static const struct sof_topology_token mixer4_tokens[] = {
+	/* TODO */
+};
+
+static const struct sof_topology_token_group mixer_ipc4_tokens[] = {
+	{mixer4_tokens, ARRAY_SIZE(mixer4_tokens)},
+};
+
+static int mixer_ipc4_build(struct tplg_context *ctx, void *mixer)
 {
-	struct sof_ipc_comp_mixer *mixer = (struct sof_ipc_comp_mixer *)comp;
+	/* TODO */
+	return 0;
+}
+
+static const struct sof_topology_module_desc mixer_ipc[] = {
+	{3, mixer_ipc3_tokens, ARRAY_SIZE(mixer_ipc3_tokens),
+		mixer_ipc3_build, sizeof(struct sof_ipc_comp_mixer) + UUID_SIZE},
+	{4, mixer_ipc4_tokens, ARRAY_SIZE(mixer_ipc4_tokens), mixer_ipc4_build},
+};
+
+int tplg_new_mixer(struct tplg_context *ctx, void *mixer, size_t mixer_size,
+		   struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
+{
 	int ret;
 
-	ret = tplg_create_mixer(ctx, mixer, max_comp_size);
+	ret = tplg_create_object(ctx, mixer_ipc, ARRAY_SIZE(mixer_ipc),
+				 "mixer", mixer, mixer_size);
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, max_ctl_size) < 0) {
+	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols,
+				 rctl, max_ctl_size, mixer) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}
