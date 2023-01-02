@@ -946,20 +946,20 @@ static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
 {
 	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
 	int endp_idx, endp_channel;
-	uint32_t avail_frames, avail_bytes;
+	uint32_t frame_count, byte_count;
 
 	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
 
-	/* NOTE: free space in destination buffers is not checked. This is done to have
-	 * behaviour consistent with copier_copy() which does not check for free space either.
-	 * However, quite probably, such behaviour is just a bug and have to be fixed in both
-	 * copier_copy() and here.
-	 */
+	frame_count = audio_stream_get_avail_frames(&multi_buf_c->stream);
 
-	avail_frames = audio_stream_get_avail_frames(&multi_buf_c->stream);
+	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
+		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
+		frame_count = MIN(frame_count, audio_stream_get_free_frames(&endp_buf_c->stream));
+		buffer_release(endp_buf_c);
+	}
 
-	avail_bytes = avail_frames * audio_stream_frame_bytes(&multi_buf_c->stream);
-	buffer_stream_invalidate(multi_buf_c, avail_bytes);
+	byte_count = frame_count * audio_stream_frame_bytes(&multi_buf_c->stream);
+	buffer_stream_invalidate(multi_buf_c, byte_count);
 
 	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
 		uint32_t bytes_produced;
@@ -972,16 +972,16 @@ static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
 
 			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
 						&multi_buf_c->stream, multi_buf_channel,
-						avail_frames);
+						frame_count);
 		}
 
-		bytes_produced = avail_frames * audio_stream_frame_bytes(&endp_buf_c->stream);
+		bytes_produced = frame_count * audio_stream_frame_bytes(&endp_buf_c->stream);
 		buffer_stream_writeback(endp_buf_c, bytes_produced);
 		comp_update_buffer_produce(endp_buf_c, bytes_produced);
 		buffer_release(endp_buf_c);
 	}
 
-	comp_update_buffer_consume(multi_buf_c, avail_bytes);
+	comp_update_buffer_consume(multi_buf_c, byte_count);
 	buffer_release(multi_buf_c);
 
 	return 0;
@@ -991,31 +991,26 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 {
 	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
 	int endp_idx, endp_channel;
-	uint32_t avail_frames = UINT32_MAX;
+	uint32_t frame_count = UINT32_MAX;
 	uint32_t bytes_produced;
 
 	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
 		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
-		avail_frames = MIN(avail_frames,
-				   audio_stream_get_avail_frames(&endp_buf_c->stream));
+		frame_count = MIN(frame_count, audio_stream_get_avail_frames(&endp_buf_c->stream));
 		buffer_release(endp_buf_c);
 	}
 
-	/* NOTE: free space in destination buffer is not checked. This is done to have
-	 * behaviour consistent with copier_copy() which does not check for free space either.
-	 * However, quite probably, such behaviour is just a bug and have to be fixed in both
-	 * copier_copy() and here.
-	 */
-
 	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
 
+	frame_count = MIN(frame_count, audio_stream_get_free_frames(&multi_buf_c->stream));
+
 	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
-		uint32_t endp_buf_avail_bytes;
+		uint32_t endp_buf_byte_count;
 
 		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
 
-		endp_buf_avail_bytes = avail_frames * audio_stream_frame_bytes(&endp_buf_c->stream);
-		buffer_stream_invalidate(endp_buf_c, endp_buf_avail_bytes);
+		endp_buf_byte_count = frame_count * audio_stream_frame_bytes(&endp_buf_c->stream);
+		buffer_stream_invalidate(endp_buf_c, endp_buf_byte_count);
 
 		for (endp_channel = 0; endp_channel < endp_buf_c->stream.channels;
 				endp_channel++) {
@@ -1023,14 +1018,14 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 
 			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
 						&endp_buf_c->stream, endp_channel,
-						avail_frames);
+						frame_count);
 		}
 
-		comp_update_buffer_consume(endp_buf_c, endp_buf_avail_bytes);
+		comp_update_buffer_consume(endp_buf_c, endp_buf_byte_count);
 		buffer_release(endp_buf_c);
 	}
 
-	bytes_produced = avail_frames * audio_stream_frame_bytes(&multi_buf_c->stream);
+	bytes_produced = frame_count * audio_stream_frame_bytes(&multi_buf_c->stream);
 	buffer_stream_writeback(multi_buf_c, bytes_produced);
 	comp_update_buffer_produce(multi_buf_c, bytes_produced);
 
