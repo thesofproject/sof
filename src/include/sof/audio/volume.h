@@ -210,9 +210,11 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 
-	switch (mod->priv.cfg.base_cfg.audio_fmt.depth) {
+	switch (mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth) {
 	case IPC4_DEPTH_16BIT:
 		return volume_func_map[0].func;
+	case IPC4_DEPTH_24BIT:
+		return volume_func_map[1].func;
 	case IPC4_DEPTH_32BIT:
 		return volume_func_map[2].func;
 	default:
