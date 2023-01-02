@@ -22,76 +22,33 @@
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
 
-/* ASRC */
-static const struct sof_topology_token asrc_tokens[] = {
-	{SOF_TKN_ASRC_RATE_IN, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+/* ASRC - IPC3 */
+static const struct sof_topology_token asrc3_tokens[] = {
+	{SOF_TKN_ASRC_RATE_IN, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_asrc, source_rate), 0},
 	{SOF_TKN_ASRC_RATE_OUT, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_asrc, sink_rate), 0},
 	{SOF_TKN_ASRC_ASYNCHRONOUS_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_asrc, asynchronous_mode), 0},
 	{SOF_TKN_ASRC_OPERATION_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-		get_token_uint32_t,
+		tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_asrc, operation_mode), 0},
 };
 
-/* load asrc dapm widget */
-int tplg_create_asrc(struct tplg_context *ctx, struct sof_ipc_comp_asrc *asrc,
-		     size_t max_comp_size)
+static const struct sof_topology_token_group asrc_ipc3_tokens[] = {
+	{asrc3_tokens, ARRAY_SIZE(asrc3_tokens)},
+	{comp_tokens, ARRAY_SIZE(comp_tokens),
+		offsetof(struct sof_ipc_comp_asrc, config)},
+	{comp_ext_tokens, ARRAY_SIZE(comp_ext_tokens),
+		sizeof(struct sof_ipc_comp_asrc)},
+};
+
+static int asrc_ipc3_build(struct tplg_context *ctx, void *_asrc)
 {
-	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
-	size_t total_array_size = 0;
-	int ret, comp_id = ctx->comp_id;
-	int size = ctx->widget_size;
-	char uuid[UUID_SIZE];
-
-	if (max_comp_size < sizeof(struct sof_ipc_comp_asrc) + UUID_SIZE)
-		return -EINVAL;
-
-	/* read vendor tokens */
-	while (total_array_size < size) {
-
-		/* check for array size mismatch */
-		if (!is_valid_priv_size(total_array_size, size, array)) {
-			fprintf(stderr, "error: load asrc array size mismatch\n");
-			return -EINVAL;
-		}
-
-		/* parse comp tokens */
-		ret = sof_parse_tokens(&asrc->config, comp_tokens,
-				       ARRAY_SIZE(comp_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse asrc comp_tokens %d\n",
-				size);
-			return -EINVAL;
-		}
-
-		/* parse asrc tokens */
-		ret = sof_parse_tokens(asrc, asrc_tokens,
-				       ARRAY_SIZE(asrc_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse asrc tokens %d\n", size);
-			return -EINVAL;
-		}
-
-		/* parse uuid token */
-		ret = sof_parse_tokens(uuid, comp_ext_tokens,
-				       ARRAY_SIZE(comp_ext_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse asrc uuid token %d\n", size);
-			return -EINVAL;
-		}
-
-		total_array_size += array->size;
-
-		/* read next array */
-		array = MOVE_POINTER_BY_BYTES(array, array->size);
-	}
+	struct sof_ipc_comp_asrc *asrc = _asrc;
+	int comp_id = ctx->comp_id;
 
 	/* configure asrc */
 	asrc->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
@@ -101,23 +58,44 @@ int tplg_create_asrc(struct tplg_context *ctx, struct sof_ipc_comp_asrc *asrc,
 	asrc->comp.pipeline_id = ctx->pipeline_id;
 	asrc->comp.ext_data_length = UUID_SIZE;
 	asrc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-	memcpy(asrc + 1, &uuid, UUID_SIZE);
 
 	return 0;
 }
 
-/* load asrc dapm widget */
-int tplg_new_asrc(struct tplg_context *ctx, struct sof_ipc_comp *comp, size_t comp_size,
-		struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
+/* ASRC - IPC4 */
+static const struct sof_topology_token asrc4_tokens[] = {
+	/* TODO */
+};
+
+static const struct sof_topology_token_group asrc_ipc4_tokens[] = {
+	{asrc4_tokens, ARRAY_SIZE(asrc4_tokens)},
+};
+
+static int asrc_ipc4_build(struct tplg_context *ctx, void *asrc)
 {
-	struct sof_ipc_comp_asrc *asrc = (struct sof_ipc_comp_asrc *)comp;
+	/* TODO */
+	return 0;
+}
+
+static const struct sof_topology_module_desc asrc_ipc[] = {
+	{3, asrc_ipc3_tokens, ARRAY_SIZE(asrc_ipc3_tokens),
+		asrc_ipc3_build, sizeof(struct sof_ipc_comp_asrc) + UUID_SIZE},
+	{4, asrc_ipc4_tokens, ARRAY_SIZE(asrc_ipc4_tokens), asrc_ipc4_build},
+};
+
+/* load asrc dapm widget */
+int tplg_new_asrc(struct tplg_context *ctx, void *asrc, size_t asrc_size,
+		  struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
+{
 	int ret;
 
-	ret = tplg_create_asrc(ctx, asrc, comp_size);
+	ret = tplg_create_object(ctx, asrc_ipc, ARRAY_SIZE(asrc_ipc),
+				 "asrc", asrc, asrc_size);
 	if (ret < 0)
 		return ret;
 
-	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, max_ctl_size) < 0) {
+	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols,
+				 rctl, max_ctl_size, asrc) < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		return -EINVAL;
 	}

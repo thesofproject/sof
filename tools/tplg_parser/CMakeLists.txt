@@ -30,6 +30,7 @@ target_sources(sof_tplg_parser PUBLIC
 	src.c
 	buffer.c
 	graph.c
+	object.c
 )
 
 sof_append_relative_path_definitions(sof_tplg_parser)

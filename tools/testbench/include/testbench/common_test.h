@@ -44,6 +44,7 @@ struct testbench_prm {
 	char *bits_in; /* input bit format */
 	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int pipeline_num;
+	struct tplg_context *ctx;
 
 	int fr_id;
 	int fw_id;
@@ -62,12 +63,21 @@ struct testbench_prm {
 	int output_file_index;
 	int input_file_index;
 
-	/* global cmd line args that can override topology */
-	enum sof_ipc_frame cmd_frame_fmt;
-	uint32_t cmd_fs_in;
-	uint32_t cmd_fs_out;
-	uint32_t cmd_channels_in;
-	uint32_t cmd_channels_out;
+	struct tplg_comp_info *info;
+	int info_index;
+	int info_elems;
+
+	/*
+	 * input and output sample rate parameters
+	 * By default, these are calculated from pipeline frames_per_sched
+	 * and period but they can also be overridden via input arguments
+	 * to the testbench.
+	 */
+	uint32_t fs_in;
+	uint32_t fs_out;
+	uint32_t channels_in;
+	uint32_t channels_out;
+	enum sof_ipc_frame frame_fmt;
 };
 
 struct shared_lib_table {
@@ -83,6 +93,8 @@ extern struct shared_lib_table lib_table[];
 
 extern int debug;
 
+int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx);
+
 int edf_scheduler_init(void);
 
 void sys_comp_file_init(void);
@@ -94,7 +106,7 @@ void tb_free(struct sof *sof);
 
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p);
 
-int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
+int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipeline *p,
 		       struct tplg_context *ctx);
 
 int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p);

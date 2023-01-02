@@ -35,20 +35,34 @@ static const struct sof_topology_token tone_tokens[] = {
 /* Generic components */
 static const struct sof_topology_token comp_tokens[] = {
 	{SOF_TKN_COMP_PERIOD_SINK_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_config, periods_sink), 0},
 	{SOF_TKN_COMP_PERIOD_SOURCE_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp_config, periods_source), 0},
 	{SOF_TKN_COMP_FORMAT,
-		SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
+		SND_SOC_TPLG_TUPLE_TYPE_STRING, tplg_token_get_comp_format,
 		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
 };
 
 /* Component extended tokens */
 static const struct sof_topology_token comp_ext_tokens[] = {
-	{SOF_TKN_COMP_UUID, SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid, 0, 0},
+	{SOF_TKN_COMP_UUID, SND_SOC_TPLG_TUPLE_TYPE_UUID, tplg_token_get_uuid, 0, 0},
 
+};
+
+struct sof_topology_token_group {
+	const struct sof_topology_token *tokens;
+	const int num_tokens;
+	const int grp_offset;
+};
+
+struct sof_topology_module_desc {
+	const int abi_major;
+	const struct sof_topology_token_group *grp;
+	const int num_groups;
+	int (*builder)(struct tplg_context *ctx, void *data);
+	const int min_size;
 };
 
 #endif

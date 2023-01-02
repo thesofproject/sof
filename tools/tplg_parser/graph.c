@@ -20,10 +20,10 @@
 #include <tplg_parser/tokens.h>
 
 /* load pipeline graph DAPM widget*/
-int tplg_create_graph(struct tplg_context *ctx, int num_comps, int pipeline_id,
-		    struct comp_info *temp_comp_list, char *pipeline_string,
-		    struct sof_ipc_pipe_comp_connect *connection,
-		    int route_num, int count)
+int tplg_create_graph(struct tplg_context *ctx, int count, int pipeline_id,
+		      struct tplg_comp_info *temp_comp_list, char *pipeline_string,
+		      struct sof_ipc_pipe_comp_connect *connection,
+		      int route_num)
 {
 	struct snd_soc_tplg_dapm_graph_elem *graph_elem;
 	char *source = NULL, *sink = NULL;
@@ -41,7 +41,7 @@ int tplg_create_graph(struct tplg_context *ctx, int num_comps, int pipeline_id,
 	graph_elem = tplg_get_graph(ctx);
 
 	/* look up component id from the component list */
-	for (j = 0; j < num_comps; j++) {
+	for (j = 0; j < count; j++) {
 		if (strcmp(temp_comp_list[j].name,
 			   graph_elem->source) == 0) {
 			connection->source_id = temp_comp_list[j].id;

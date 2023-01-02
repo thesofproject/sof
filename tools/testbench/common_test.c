@@ -172,7 +172,7 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p)
 }
 
 /* pipeline pcm params */
-int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
+int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipeline *p,
 		       struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
@@ -191,16 +191,16 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	period = p->period;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + ctx->fs_in * period / 1e6);
+	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 
 	/* set pcm params */
 	params.comp_id = p->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = ctx->frame_fmt;
-	params.params.rate = ctx->fs_in;
-	params.params.channels = ctx->channels_in;
+	params.params.frame_fmt = tp->frame_fmt;
+	params.params.rate = tp->fs_in;
+	params.params.channels = tp->channels_in;
 
 	switch (params.params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -235,6 +235,10 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 
 	/* Set pipeline params direction from scheduling component */
 	params.params.direction = cd->direction;
+
+	printf("test params: rate %d channels %d format %d\n",
+	       params.params.rate, params.params.channels,
+	       params.params.frame_fmt);
 
 	/* pipeline params */
 	ret = pipeline_params(p, cd, &params);

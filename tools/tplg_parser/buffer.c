@@ -23,27 +23,30 @@
 
 /* Buffers */
 static const struct sof_topology_token buffer_tokens[] = {
-	{SOF_TKN_BUF_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+	{SOF_TKN_BUF_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_buffer, size), 0},
-	{SOF_TKN_BUF_CAPS, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+	{SOF_TKN_BUF_CAPS, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_buffer, caps), 0},
 };
 
 static const struct sof_topology_token buffer_comp_tokens[] = {
-	{SOF_TKN_COMP_CORE_ID, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+	{SOF_TKN_COMP_CORE_ID, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_comp, core), 0},
 };
 
 
-/* load buffer DAPM widget */
-int tplg_create_buffer(struct tplg_context *ctx,
-		     struct sof_ipc_buffer *buffer)
+/* Buffer - IPC3 */
+static const struct sof_topology_token_group buffer_ipc3_tokens[] = {
+	{buffer_comp_tokens, ARRAY_SIZE(buffer_comp_tokens),
+		offsetof(struct sof_ipc_buffer, comp)},
+	{buffer_tokens, ARRAY_SIZE(buffer_tokens),
+		0},
+};
+
+static int buffer_ipc3_build(struct tplg_context *ctx, void *_buffer)
 {
-	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
-	size_t parsed_size = 0;
-	int size = ctx->widget->priv.size;
+	struct sof_ipc_buffer *buffer = _buffer;
 	int comp_id = ctx->comp_id;
-	int ret;
 
 	/* configure buffer */
 	buffer->comp.core = 0;
@@ -53,56 +56,37 @@ int tplg_create_buffer(struct tplg_context *ctx,
 	buffer->comp.type = SOF_COMP_BUFFER;
 	buffer->comp.hdr.size = sizeof(struct sof_ipc_buffer);
 
-	/* read vendor tokens */
-	while (parsed_size < size) {
-
-		/* check for array size mismatch */
-		if (!is_valid_priv_size(parsed_size, size, array)) {
-			fprintf(stderr, "error: load buffer array size mismatch\n");
-			return -EINVAL;
-		}
-
-		/* parse buffer comp tokens */
-		ret = sof_parse_tokens(&buffer->comp, buffer_comp_tokens,
-				       ARRAY_SIZE(buffer_comp_tokens), array,
-				       array->size);
-		if (ret) {
-			fprintf(stderr, "error: parse buffer comp tokens %d\n",
-				size);
-			return -EINVAL;
-		}
-
-		/* parse buffer tokens */
-		ret = sof_parse_tokens(buffer, buffer_tokens,
-				       ARRAY_SIZE(buffer_tokens), array,
-				       array->size);
-		if (ret) {
-			fprintf(stderr, "error: parse buffer tokens %d\n",
-				size);
-			return -EINVAL;
-		}
-
-		parsed_size += array->size;
-		array = MOVE_POINTER_BY_BYTES(array, array->size);
-	}
-
 	return 0;
 }
 
-/* load pipeline dapm widget */
-int tplg_new_buffer(struct tplg_context *ctx, struct sof_ipc_buffer *buffer,
-		struct snd_soc_tplg_ctl_hdr *rctl)
+/* MIXER - IPC4 */
+static const struct sof_topology_token buffer4_tokens[] = {
+	/* TODO */
+};
+
+static const struct sof_topology_token_group buffer_ipc4_tokens[] = {
+	{buffer4_tokens, ARRAY_SIZE(buffer4_tokens)},
+};
+
+static int buffer_ipc4_build(struct tplg_context *ctx, void *buffer)
+{
+	/* TODO */
+	return 0;
+}
+
+static const struct sof_topology_module_desc buffer_ipc[] = {
+	{3, buffer_ipc3_tokens, ARRAY_SIZE(buffer_ipc3_tokens),
+		buffer_ipc3_build, sizeof(struct sof_ipc_buffer)},
+	{4, buffer_ipc4_tokens, ARRAY_SIZE(buffer_ipc4_tokens), buffer_ipc4_build},
+};
+
+int tplg_new_buffer(struct tplg_context *ctx, void *buffer, size_t buffer_size,
+		    struct snd_soc_tplg_ctl_hdr *rctl, size_t buffer_ctl_size)
 {
 	int ret;
 
-	ret = tplg_create_buffer(ctx, buffer);
-	if (ret < 0)
-		return ret;
-
-	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols, rctl, 0) < 0) {
-		fprintf(stderr, "error: loading controls\n");
-		return -EINVAL;
-	}
+	ret = tplg_create_object(ctx, buffer_ipc, ARRAY_SIZE(buffer_ipc),
+				 "buffer", buffer, buffer_size);
 
 	return ret;
 }
