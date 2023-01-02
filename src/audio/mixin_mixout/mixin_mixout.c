@@ -423,7 +423,6 @@ static int mixin_process(struct processing_module *mod,
 		 * performance problems with processing data on time in mixout.
 		 */
 		start_frame = mixout_data->pending_frames[source_index];
-		assert(sinks_free_frames >= start_frame);
 
 		sink_c = buffer_acquire(sink);
 
