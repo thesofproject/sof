@@ -165,6 +165,9 @@ static int dai_get_hw_params(struct dai *dai, struct sof_ipc_stream_params  *par
 {
 	const struct dai_config *cfg = dai_config_get(dai->dev, dir);
 
+	if (!cfg)
+		return -EINVAL;
+
 	params->rate = cfg->rate;
 	params->buffer_fmt = 0;
 	params->channels = cfg->channels;
