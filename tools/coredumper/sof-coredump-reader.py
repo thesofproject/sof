@@ -719,6 +719,9 @@ class CoreDumpReader(object):
 
 		stdoutOpen()
 
+		# disable confirmation request for undefined breakpoint
+		stdoutPrint("set confirm off\n")
+
 		# for XTOS SOF build
 		stdoutPrint("break _MemErrorVector\n")
 		# for Zephyr SOF build
