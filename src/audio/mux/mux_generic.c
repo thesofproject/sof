@@ -472,10 +472,9 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream __sparse_cache *
 		frames -= frames_without_wrap;
 	}
 }
-
 #endif /* CONFIG_FORMAT_S24LE CONFIG_FORMAT_S32LE */
 
-const struct comp_func_map mux_func_map[] = {
+static const struct comp_func_map mux_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, &mux_s16le, &demux_s16le },
 #endif

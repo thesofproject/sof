@@ -5,8 +5,6 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-
-
 #if CONFIG_COMP_MUX
 
 #include <sof/audio/component.h>
@@ -31,9 +29,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_mux;
-
 LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
+
+static const struct comp_driver comp_mux;
 #if CONFIG_IPC_MAJOR_3
 /* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
 DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
@@ -45,6 +43,7 @@ DECLARE_SOF_RT_UUID("mux", mux_uuid, 0x64ce6e35, 0x857a, 0x4878,
 #endif
 DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
 
+static const struct comp_driver comp_demux;
 /* c4b26868-1430-470e-a089-15d1c77f851a */
 DECLARE_SOF_RT_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
 		 0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
@@ -86,10 +85,10 @@ static bool mux_mix_check(struct sof_mux_config *cfg)
 			channel_set = false;
 			for (k = 0 ; k < cfg->num_streams; k++) {
 				if (cfg->streams[k].mask[i] & (1 << j)) {
-					if (!channel_set)
-						channel_set = true;
-					else
+					if (channel_set)
 						return true;
+
+					channel_set = true;
 				}
 			}
 		}
@@ -108,8 +107,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		comp_cl_err(&comp_mux, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
-			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
+		comp_err(dev, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
+			 META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
 
@@ -118,8 +117,9 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		for (j = i + 1; j < cfg->num_streams; j++) {
 			if (cfg->streams[i].pipeline_id ==
 				cfg->streams[j].pipeline_id) {
-				comp_cl_err(&comp_mux, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
-					    cfg->streams[i].pipeline_id);
+				comp_err(dev,
+					 "mux_set_values(): multiple configured streams have same pipeline ID = %u",
+					 cfg->streams[i].pipeline_id);
 				return -EINVAL;
 			}
 		}
@@ -128,7 +128,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	for (i = 0; i < cfg->num_streams; i++) {
 		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
 			if (popcount(cfg->streams[i].mask[j]) > 1) {
-				comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+				comp_err(dev,
+					 "mux_set_values(): mux component is not able to mix channels");
 				return -EINVAL;
 			}
 		}
@@ -136,7 +137,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	if (dev->ipc_config.type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg))
-			comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+			comp_err(dev,
+				 "mux_set_values(): mux component is not able to mix channels");
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
@@ -173,7 +175,10 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	int ret;
 
-	comp_cl_info(&comp_mux, "mux_new()");
+	if (drv->type == SOF_COMP_MUX)
+		comp_cl_info(&comp_mux, "mux_new()");
+	else
+		comp_cl_info(&comp_demux, "demux_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -230,7 +235,7 @@ static int build_config(struct comp_data *cd, struct comp_dev *dev)
 
 	/* validation of matrix mixing */
 	if (mux_mix_check(&cd->config)) {
-		comp_cl_err(&comp_mux, "build_config(): mux component is not able to mix channels");
+		comp_err(dev, "build_config(): mux component is not able to mix channels");
 		return -EINVAL;
 	}
 	return 0;
@@ -245,7 +250,10 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	int ret;
 
-	comp_cl_info(&comp_mux, "mux_new()");
+	if (drv->type == SOF_COMP_MUX)
+		comp_cl_info(&comp_mux, "mux_new()");
+	else
+		comp_cl_info(&comp_demux, "demux_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -410,31 +418,32 @@ static void mux_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int get_stream_index(struct comp_data *cd, uint32_t pipe_id)
+static int get_stream_index(struct comp_dev *dev, uint32_t pipe_id)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int idx;
 
 	for (idx = 0; idx < MUX_MAX_STREAMS; idx++)
 		if (cd->config.streams[idx].pipeline_id == pipe_id)
 			return idx;
 
-	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
-		    pipe_id);
+	comp_err(dev, "get_stream_index(): couldn't find configuration for connected pipeline %u",
+		 pipe_id);
 
 	return -EINVAL;
 }
 
-static struct mux_look_up *get_lookup_table(struct comp_data *cd,
-					    uint32_t pipe_id)
+static struct mux_look_up *get_lookup_table(struct comp_dev *dev, uint32_t pipe_id)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++)
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return &cd->lookup[i];
 
-	comp_cl_err(&comp_mux, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
-		    pipe_id);
+	comp_err(dev, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
+		 pipe_id);
 
 	return 0;
 }
@@ -491,8 +500,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 	uint32_t reply_size;
 	int ret = 0;
 
-	comp_cl_info(&comp_mux, "mux_ctrl_get_cmd(), cdata->cmd = 0x%08x",
-		     cdata->cmd);
+	comp_info(dev, "mux_ctrl_get_cmd(), cdata->cmd = 0x%08x", cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -510,8 +518,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 		cdata->data->size = reply_size;
 		break;
 	default:
-		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
-			    cdata->cmd);
+		comp_err(dev, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x", cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -629,13 +636,13 @@ static int demux_copy(struct comp_dev *dev)
 
 		if (sink_c->sink->state == dev->state) {
 			num_sinks++;
-			i = get_stream_index(cd, sink_c->pipeline_id);
+			i = get_stream_index(dev, sink_c->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
 				ret = i;
 				goto out_sink;
 			}
-			look_up = get_lookup_table(cd, sink_c->pipeline_id);
+			look_up = get_lookup_table(dev, sink_c->pipeline_id);
 			sinks[i] = sink_c;
 			look_ups[i] = look_up;
 		} else {
@@ -730,7 +737,7 @@ static int mux_copy(struct comp_dev *dev)
 
 		if (source_c->source->state == dev->state) {
 			num_sources++;
-			i = get_stream_index(cd, source_c->pipeline_id);
+			i = get_stream_index(dev, source_c->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
 				unsigned int j;
@@ -897,12 +904,39 @@ static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
 	return count;
 }
 
-static int mux_trigger(struct comp_dev *dev, int cmd)
+static int demux_trigger_playback(struct comp_dev *dev, int cmd)
 {
-	int dir = dev->pipeline->source_comp->direction;
-	unsigned int src_n_active, src_n_paused;
-	int ret;
+	return -EOPNOTSUPP;
+}
 
+static int demux_trigger_capture(struct comp_dev *dev, int cmd)
+{
+	int ret;
+#if CONFIG_IPC_MAJOR_3
+	unsigned int src_n_active, src_n_paused;
+
+	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
+	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
+
+	switch (cmd) {
+	case COMP_TRIGGER_PRE_START:
+		if (src_n_active || src_n_paused)
+			return PPL_STATUS_PATH_STOP;
+	}
+#endif
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		ret = PPL_STATUS_PATH_STOP;
+
+	/* nothing else to check for capture streams */
+	return ret;
+}
+
+static int demux_trigger(struct comp_dev *dev, int cmd)
+{
 	comp_info(dev, "mux_trigger(), command = %u", cmd);
 
 	/*
@@ -910,24 +944,34 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	 * this one, no other IPCs can be received until we have replied to the
 	 * current one
 	 */
+	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+		return demux_trigger_playback(dev, cmd);
+
+	return demux_trigger_capture(dev, cmd);
+}
+
+static int mux_trigger_playback(struct comp_dev *dev, int cmd)
+{
+	unsigned int src_n_active, src_n_paused;
+	int ret;
+
 	src_n_active = mux_source_status_count(dev, COMP_STATE_ACTIVE);
 	src_n_paused = mux_source_status_count(dev, COMP_STATE_PAUSED);
+
 #if CONFIG_IPC_MAJOR_4
-	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		switch (cmd) {
-		case COMP_TRIGGER_PRE_START:
-			if (src_n_active || src_n_paused)
-				return PPL_STATUS_PATH_STOP;
-			break;
-		case COMP_TRIGGER_PRE_RELEASE:
-			dev->state = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_RELEASE:
-			dev->state = COMP_STATE_ACTIVE;
-			break;
-		default:
-			break;
-		}
+	switch (cmd) {
+	case COMP_TRIGGER_PRE_START:
+		if (src_n_active || src_n_paused)
+			return PPL_STATUS_PATH_STOP;
+		break;
+	case COMP_TRIGGER_PRE_RELEASE:
+		dev->state = COMP_STATE_PRE_ACTIVE;
+		break;
+	case COMP_TRIGGER_RELEASE:
+		dev->state = COMP_STATE_ACTIVE;
+		break;
+	default:
+		break;
 	}
 #else
 	switch (cmd) {
@@ -943,10 +987,6 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		ret = PPL_STATUS_PATH_STOP;
 
-	/* nothing else to check for capture streams */
-	if (dir == SOF_IPC_STREAM_CAPTURE)
-		return ret;
-
 	/* don't stop mux if at least one source is active */
 	if (src_n_active && (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
 		dev->state = COMP_STATE_ACTIVE;
@@ -958,6 +998,26 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	return ret;
+}
+
+static int mux_trigger_capture(struct comp_dev *dev, int cmd)
+{
+	return -EOPNOTSUPP;
+}
+
+static int mux_trigger(struct comp_dev *dev, int cmd)
+{
+	comp_info(dev, "mux_trigger(), command = %u", cmd);
+
+	/*
+	 * We are in a TRIGGER IPC. IPCs are serialised, while we're processing
+	 * this one, no other IPCs can be received until we have replied to the
+	 * current one
+	 */
+	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+		return mux_trigger_playback(dev, cmd);
+
+	return mux_trigger_capture(dev, cmd);
 }
 
 static const struct comp_driver comp_mux = {
@@ -995,7 +1055,7 @@ static const struct comp_driver comp_demux = {
 		.copy		= demux_copy,
 		.prepare	= mux_prepare,
 		.reset		= mux_reset,
-		.trigger	= mux_trigger,
+		.trigger	= demux_trigger,
 	},
 };
 

@@ -16,6 +16,13 @@
 
 #if CONFIG_COMP_MUX
 
+/*
+ * Currently this driver is only used in its demux function and only in capture
+ * paths. We disable all other provisional support until it's really required.
+ * If you need to re-enable it, define the MUX_DEMUX_ENABLE_EXPERIMENTAL macro
+ * or remove it everywhere.
+ */
+
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
@@ -180,8 +187,6 @@ struct comp_func_map {
 	mux_func mux_proc_func;
 	demux_func demux_proc_func;
 };
-
-extern const struct comp_func_map mux_func_map[];
 
 void mux_prepare_look_up_table(struct comp_dev *dev);
 void demux_prepare_look_up_table(struct comp_dev *dev);
