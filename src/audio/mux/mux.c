@@ -172,6 +172,8 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct comp_data *cd;
 	int ret;
+	uint32_t *hex;
+	int i;
 
 	comp_cl_info(&comp_mux, "mux_new()");
 
@@ -203,6 +205,11 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	}
 
 	dev->state = COMP_STATE_READY;
+
+	hex = (uint32_t *)(&cd->config);
+	for (i = 0; i < (bs >> 2); i++)
+		comp_info(dev, "0x%08x", hex[i]);
+
 	return dev;
 }
 #else
@@ -839,6 +846,9 @@ static int mux_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct list_item *blist;
 	int ret;
+	uint32_t *hex;
+	int i;
+	int bs = sizeof(struct sof_mux_config) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
 
 	comp_info(dev, "mux_prepare()");
 
@@ -873,6 +883,10 @@ static int mux_prepare(struct comp_dev *dev)
 		if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
 			return PPL_STATUS_PATH_STOP;
 	}
+
+	hex = (uint32_t *)(&cd->config);
+	for (i = 0; i < (bs >> 2); i++)
+		comp_info(dev, "0x%08x", hex[i]);
 
 	/* prepare downstream */
 	return 0;
