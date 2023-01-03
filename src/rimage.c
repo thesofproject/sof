@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
 	int imr_type = MAN_DEFAULT_IMR_TYPE;
 	int use_ext_man = 0;
 	unsigned int pv_bit = 0;
+	bool imr_type_override = false;
 
 	memset(&image, 0, sizeof(image));
 
@@ -68,6 +69,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			imr_type = atoi(optarg);
+			imr_type_override = true;
 			break;
 		case 'f':
 			image.fw_ver_string = optarg;
@@ -170,17 +172,20 @@ int main(int argc, char *argv[])
 
 	/* set IMR Type and the PV bit in found machine definition */
 	if (image.adsp->man_v1_8) {
-		image.adsp->man_v1_8->adsp_file_ext.imr_type = imr_type;
+		if (imr_type_override)
+			image.adsp->man_v1_8->adsp_file_ext.imr_type = imr_type;
 		image.adsp->man_v1_8->css.reserved0 = pv_bit;
 	}
 
 	if (image.adsp->man_v2_5) {
-		image.adsp->man_v2_5->adsp_file_ext.imr_type = imr_type;
+		if (imr_type_override)
+			image.adsp->man_v2_5->adsp_file_ext.imr_type = imr_type;
 		image.adsp->man_v2_5->css.reserved0 = pv_bit;
 	}
 
 	if (image.adsp->man_ace_v1_5) {
-		image.adsp->man_ace_v1_5->adsp_file_ext.imr_type = imr_type;
+		if (imr_type_override)
+			image.adsp->man_ace_v1_5->adsp_file_ext.imr_type = imr_type;
 		image.adsp->man_ace_v1_5->css.reserved0 = pv_bit;
 	}
 

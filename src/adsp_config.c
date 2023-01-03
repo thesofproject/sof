@@ -1579,7 +1579,8 @@ static int parse_adsp_file_ext_v1_8(const toml_table_t *toml, struct parse_ctx *
 	out->ext_len = sizeof(struct sof_man_adsp_meta_file_ext_v1_8);
 
 	/* configurable fields */
-	out->imr_type = parse_uint32_hex_key(adsp_file_ext, &ctx, "imr_type", 0, &ret);
+	out->imr_type = parse_uint32_hex_key(adsp_file_ext, &ctx, "imr_type",
+					     MAN_DEFAULT_IMR_TYPE, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1699,7 +1700,8 @@ static int parse_adsp_file_ext_v2_5(const toml_table_t *toml, struct parse_ctx *
 	out->ext_len = sizeof(struct sof_man_adsp_meta_file_ext_v2_5);
 
 	/* configurable fields */
-	out->imr_type = parse_uint32_hex_key(adsp_file_ext, &ctx, "imr_type", 0, &ret);
+	out->imr_type = parse_uint32_hex_key(adsp_file_ext, &ctx, "imr_type",
+					     MAN_DEFAULT_IMR_TYPE, &ret);
 	if (ret < 0)
 		return ret;
 
