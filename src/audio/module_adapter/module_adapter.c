@@ -561,27 +561,6 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	int i = 0;
 
 	/*
-	 * When a module produces only period_bytes every period, the produced samples are written
-	 * to the output buffer stream directly. So, just writeback buffer stream and reset size.
-	 */
-	if (mod->simple_copy) {
-		list_for_item(blist, &dev->bsink_list) {
-			sink = container_of(blist, struct comp_buffer, source_list);
-			sink_c = buffer_acquire(sink);
-
-			if (!mod->skip_sink_buffer_writeback)
-				buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
-			comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
-
-			buffer_release(sink_c);
-
-			mod->output_buffers[i].size = 0;
-			i++;
-		}
-		return;
-	}
-
-	/*
 	 * copy all produced output samples to output buffers. This loop will do nothing when
 	 * there are no samples produced.
 	 */
@@ -814,17 +793,42 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
+		/* consume from all active input buffers */
+		for (i = 0; i < num_input_buffers; i++) {
+			struct comp_buffer __sparse_cache *src_c;
+
+			src_c = attr_container_of(mod->input_buffers[i].data,
+						  struct comp_buffer __sparse_cache,
+						  stream, __sparse_cache);
+			comp_update_buffer_consume(src_c, mod->input_buffers[i].consumed);
+		}
+
+		/* release all source buffers */
 		i = 0;
 		list_for_item(blist, &dev->bsource_list) {
-			comp_update_buffer_consume(source_c[i], mod->input_buffers[i].consumed);
 			buffer_release(source_c[i]);
 			mod->input_buffers[i].size = 0;
 			mod->input_buffers[i].consumed = 0;
 			i++;
 		}
+
+		/* produce data into all active output buffers */
+		for (i = 0; i < num_output_buffers; i++) {
+			sink_c = attr_container_of(mod->output_buffers[i].data,
+						   struct comp_buffer __sparse_cache,
+						   stream, __sparse_cache);
+
+			if (!mod->skip_sink_buffer_writeback)
+				buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
+			comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
+		}
+
+		/* release all sink buffers */
 		i = 0;
-		list_for_item(blist, &dev->bsink_list)
-			buffer_release(sinks_c[i++]);
+		list_for_item(blist, &dev->bsink_list) {
+			buffer_release(sinks_c[i]);
+			mod->output_buffers[i++].size = 0;
+		}
 	} else {
 		i = 0;
 		/* consume from all input buffers */
@@ -842,9 +846,8 @@ int module_adapter_copy(struct comp_dev *dev)
 			mod->input_buffers[i].consumed = 0;
 			i++;
 		}
+		module_adapter_process_output(dev);
 	}
-
-	module_adapter_process_output(dev);
 
 	return 0;
 
