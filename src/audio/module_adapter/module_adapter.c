@@ -635,6 +635,7 @@ int module_adapter_copy(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 	uint32_t min_free_frames = UINT_MAX;
 	uint32_t num_input_buffers = 0;
+	unsigned int skip_list = 0;
 	int ret, i = 0;
 
 	comp_dbg(dev, "module_adapter_copy(): start");
@@ -652,6 +653,7 @@ int module_adapter_copy(struct comp_dev *dev)
 
 			/* check if the source dev is in the same state as the dev */
 			if (!source_c[i]->source || source_c[i]->source->state != dev->state) {
+				skip_list |= BIT(i);
 				i++;
 				continue;
 			}
@@ -730,12 +732,18 @@ int module_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (mod->simple_copy) {
+		int mod_input = 0;
 		i = 0;
 		list_for_item(blist, &dev->bsource_list) {
-			comp_update_buffer_consume(source_c[i], mod->input_buffers[i].consumed);
+			/* some sources may be skipped, so skip_list must be used */
+			if (!(skip_list & BIT(i))) {
+				comp_update_buffer_consume(source_c[i],
+							   mod->input_buffers[mod_input].consumed);
+				mod->input_buffers[mod_input].size = 0;
+				mod->input_buffers[mod_input].consumed = 0;
+				mod_input++;
+			}
 			buffer_release(source_c[i]);
-			mod->input_buffers[i].size = 0;
-			mod->input_buffers[i].consumed = 0;
 			i++;
 		}
 		buffer_release(sink_c);
