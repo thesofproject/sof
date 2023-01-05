@@ -114,7 +114,8 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
 	# calculate hash of each listed files (from file version saved in file system)
-	execute_process(COMMAND git hash-object --no-filters --stdin-paths
+	# TODO: add autocrlf warning MESSAGE
+	execute_process(COMMAND git hash-object --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
