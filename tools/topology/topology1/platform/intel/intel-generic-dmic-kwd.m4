@@ -44,6 +44,9 @@ ifdef(`DMIC_PIPELINE_48k_CORE_ID',`',define(DMIC_PIPELINE_48k_CORE_ID, 0))
 # define(DMIC_DAI_LINK_16k_NAME, `dmic16k')
 ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 
+dnl Align the core target for dmic16k to dmic01 (48k)
+define(DMIC_PIPELINE_16k_CORE_ID, DMIC_PIPELINE_48k_CORE_ID)
+
 # DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
 ifdef(`DMICPROC', `', `define(DMICPROC, passthrough)')
 
@@ -89,7 +92,7 @@ undefine(`DMICPROC')
 # Schedule 20000us deadline with priority 0 on core 0
 PIPELINE_PCM_DAI_ADD(sof/pipe-KFBM_TYPE-capture.m4,
         DMIC_PIPELINE_16k_ID, DMIC_PCM_16k_ID, 2, s32le,
-        KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, s32le, 3,
+        KWD_PIPE_SCH_DEADLINE_US, 0, DMIC_PIPELINE_16k_CORE_ID, DMIC, 1, s32le, 3,
         16000, 16000, 16000)
 
 
@@ -115,7 +118,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
         DMIC_PIPELINE_16k_ID, DMIC, 1, DMIC_DAI_LINK_16k_NAME,
         `PIPELINE_SINK_'DMIC_PIPELINE_16k_ID, 3, s32le,
-        KWD_PIPE_SCH_DEADLINE_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        KWD_PIPE_SCH_DEADLINE_US, 0, DMIC_PIPELINE_16k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
@@ -129,7 +132,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp, dynamic)
 PIPELINE_PCM_ADD(sof/pipe-DETECTOR_TYPE.m4,
         DMIC_PIPELINE_KWD_ID, DMIC_PCM_16k_ID, 2, s24le,
-        KWD_PIPE_SCH_DEADLINE_US, 1, 0,
+        KWD_PIPE_SCH_DEADLINE_US, 1, DMIC_PIPELINE_16k_CORE_ID,
         16000, 16000, 16000,
 		SCHEDULE_TIME_DOMAIN_TIMER,
 		`PIPELINE_SCHED_COMP_'DMIC_PIPELINE_16k_ID)
