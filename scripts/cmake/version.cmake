@@ -114,13 +114,13 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
 	# calculate hash of each listed files (from file version saved in file system)
-	execute_process(COMMAND git hash-object --no-filters --stdin-paths
+	execute_process(COMMAND git hash-object --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
 		)
 	# then calculate single hash of previously calculated hash list
-	execute_process(COMMAND git hash-object --no-filters --stdin
+	execute_process(COMMAND git hash-object --stdin
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_STRIP_TRAILING_WHITESPACE
 			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
@@ -128,7 +128,10 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 		)
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
-Note: by design, source hash is broken by config changes. See #3890.")
+Notes:
+  - by design, source hash is broken by Kconfig changes. See #3890.
+  - Source hash is also broken by _asymmetric_ autocrlf=input, see
+    #5917 and reverted #5920.")
 else() # Zephyr, tarball,...
 	if(NOT "${GIT_LOG_HASH}" STREQUAL "")
 		string(SUBSTRING "${GIT_LOG_HASH}" 0 8 SOF_SRC_HASH)
