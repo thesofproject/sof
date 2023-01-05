@@ -130,6 +130,21 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
 Note: by design, source hash is broken by config changes. See #3890.")
+
+	# DEBUG
+	execute_process(COMMAND git hash-object --stdin
+			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
+			OUTPUT_VARIABLE filters_hash_list
+		)
+	message(STATUS "Source filters_hash_list: ${filters_hash_list}")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E cat "${SOURCE_HASH_DIR}/tracked_file_list")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E cat "${SOURCE_HASH_DIR}/tracked_file_hash_list")
+
+#	message(FATAL_ERROR "DEBUG")
+
 else() # Zephyr, tarball,...
 	if(NOT "${GIT_LOG_HASH}" STREQUAL "")
 		string(SUBSTRING "${GIT_LOG_HASH}" 0 8 SOF_SRC_HASH)
