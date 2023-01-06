@@ -54,10 +54,12 @@ exec_as_cwd_uid()
         local current_user; current_user="$(id -un)"
 
         # Copy sudo permissions just in case the build needs it
-        sudo sed -e "s/$current_user/$cwd_user/" /etc/sudoers.d/"$current_user" |
+        if test -e /etc/sudoers.d/"$current_user"; then
+          sudo sed -e "s/$current_user/$cwd_user/" /etc/sudoers.d/"$current_user" |
             sudo tee -a /etc/sudoers.d/"$cwd_user"
-        sudo chmod --reference=/etc/sudoers.d/"$current_user" \
+          sudo chmod --reference=/etc/sudoers.d/"$current_user" \
              /etc/sudoers.d/"$cwd_user"
+        fi
     }
 
     # Double sudo to work around some funny restriction in
