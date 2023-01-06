@@ -72,8 +72,8 @@ jobs:
       # Not strictly necessary but saves a lot of scrolling in the next step
       # TODO, research caching:
       # https://stackoverflow.com/questions/66421411/how-to-run-cached-docker-image-in-github-action
-      - name: docker pull         zephyrproject-rtos/zephyr-build
-        run: docker  pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
+      - name: docker pull         zephyrproject-rtos/ci
+        run: docker  pull ghcr.io/zephyrproject-rtos/ci:latest
 
       # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with

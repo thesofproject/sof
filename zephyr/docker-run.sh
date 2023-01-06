@@ -58,7 +58,7 @@ run_command()
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
            --env REAL_CC --env http_proxy --env https_proxy \
-           ghcr.io/zephyrproject-rtos/zephyr-build:latest \
+           ghcr.io/zephyrproject-rtos/ci:latest \
            ./sof/scripts/sudo-cwd.sh "$@"
 }
 
