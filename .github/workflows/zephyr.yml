@@ -69,6 +69,19 @@ jobs:
              fi &&
              git log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
+      - name: get digest of latest ghcr.io/zephyrproject-rtos/ci
+        id: latest-zephyr-img
+        run: |
+          docker manifest inspect ghcr.io/zephyrproject-rtos/ci:latest -v | jq -r '.[0].Descriptor.digest' | tee latest-img
+          printf 'digest=%s\n' "$(cat latest-img)" >> "${GITHUB_OUTPUT}"
+          tail "${GITHUB_OUTPUT}"
+          df -h ~/
+
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.2.6
+        with: # can't get digest :-(
+          key: zephyr-build-img-${{ steps.latest-zephyr-img.digest }}
+
       # Not strictly necessary but saves a lot of scrolling in the next step
       # TODO, research caching:
       # https://stackoverflow.com/questions/66421411/how-to-run-cached-docker-image-in-github-action
@@ -82,6 +95,12 @@ jobs:
         run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
+
+      - name: debug
+        run: |
+          df -h ~
+          cat latest-img
+          echo steps.latest-zephyr-img.digest=${{ steps.latest-zephyr-img.digest }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
