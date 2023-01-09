@@ -250,6 +250,13 @@ Default key type subdirectory is \"community\".""")
 			    help="""Use an output subdirectory for each platform.
 Otherwise, all firmware files are installed in the same staging directory by default.""")
 
+	parser.add_argument(
+		"--extra-rimage-args",
+		default="",
+		help="""Temporary solution until the `west sign` situation
+is finalized upstream, see zephyrproject-rtos/zephyr/pull/52942 and others.""",
+	)
+
 	parser.add_argument("--no-interactive", default=False, action="store_true",
 			    help="""Run script in non-interactive mode when user input can not be provided.
 This should be used with programmatic script invocations (eg. Continuous Integration).
@@ -647,6 +654,8 @@ def build_platforms():
 		sign_cmd += ["-f", sof_fw_vers]
 
 		sign_cmd += ["-b", sof_build_vers]
+
+		sign_cmd += shlex.split(args.extra_rimage_args)
 
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
