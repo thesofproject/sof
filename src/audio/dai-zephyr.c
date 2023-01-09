@@ -161,34 +161,6 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	return dai_config_set(dev, &cfg, cfg_params);
 }
 
-static int dai_get_hw_params(struct dai *dai, struct sof_ipc_stream_params  *params, int dir)
-{
-	const struct dai_config *cfg = dai_config_get(dai->dev, dir);
-
-	if (!cfg)
-		return -EINVAL;
-
-	params->rate = cfg->rate;
-	params->buffer_fmt = 0;
-	params->channels = cfg->channels;
-
-	switch (cfg->word_size) {
-	case 16:
-		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
-		break;
-	case 24:
-		params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
-		break;
-	case 32:
-		params->frame_fmt = SOF_IPC_FRAME_S32_LE;
-		break;
-	default:
-		tr_warn(&dai_comp_tr, "not supported word size %u", cfg->word_size);
-	}
-
-	return 0;
-}
-
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
@@ -384,17 +356,16 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 				  int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	int ret;
+	const struct dai_config *cfg = dai_config_get(dd->dai->dev, dir);
 
 	comp_dbg(dev, "dai_hw_params()");
 
-	/* fetching hw dai stream params */
-	ret = dai_get_hw_params(dd->dai, params, dir);
-	if (ret < 0) {
-		comp_err(dev, "dai_comp_get_hw_params(): dai_get_hw_params failed ret %d",
-			 ret);
-		return ret;
-	}
+	if (!cfg)
+		return -EINVAL;
+
+	params->rate = cfg->rate;
+	params->buffer_fmt = 0;
+	params->channels = cfg->channels;
 
 	/* dai_comp_get_hw_params() function fetches hardware dai parameters,
 	 * which then are propagating back through the pipeline, so that any
@@ -415,8 +386,13 @@ static int dai_comp_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params
 static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params;
+	int ret;
 
-	dai_comp_get_hw_params(dev, &hw_params, params->direction);
+	ret = dai_comp_get_hw_params(dev, &hw_params, params->direction);
+	if (ret < 0) {
+		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
+		return ret;
+	}
 
 	/* checks whether pcm parameters match hardware DAI parameter set
 	 * during dai_set_config(). If hardware parameter is equal to 0, it
