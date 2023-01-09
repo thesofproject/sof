@@ -256,6 +256,8 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 				""")
 	parser.add_argument("--version", required=False, action="store_true",
 			    help="Prints version of this script.")
+	parser.add_argument("-s", "--signing-tool-args", default=[],
+			    help="Extra option(s) to pass to the signing tool")
 
 	args = parser.parse_args()
 
@@ -651,6 +653,8 @@ def build_platforms():
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
 			sign_cmd += ["-c", str(rimage_desc)]
+
+		sign_cmd.extend(args.signing_tool_args.split(' '))
 
 		execute_command(sign_cmd, cwd=west_top)
 
