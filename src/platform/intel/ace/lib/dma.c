@@ -17,7 +17,7 @@
 #include <rtos/spinlock.h>
 #include <zephyr/device.h>
 
-#define DW_DMA_BUFFER_PERIOD_COUNT	0x4
+#define DW_DMA_BUFFER_PERIOD_COUNT	0x8
 #define HDA_DMA_BUFFER_PERIOD_COUNT	4
 
 SHARED_DATA struct dma dma[] = {
