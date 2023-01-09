@@ -450,6 +450,11 @@ if (CONFIG_ACE_VERSION_1_5)
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
+	# Sources for virtual heap management
+	zephyr_library_sources(
+		lib/regions_mm.c
+	)
+
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
 		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
 	)
