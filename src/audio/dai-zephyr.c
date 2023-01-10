@@ -378,16 +378,18 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 				  int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	const struct dai_config *cfg = dai_config_get(dd->dai->dev, dir);
+	struct dai_config cfg;
+	int ret;
 
 	comp_dbg(dev, "dai_hw_params()");
 
-	if (!cfg)
-		return -EINVAL;
+	ret = dai_config_get(dd->dai->dev, &cfg, dir);
+	if (ret)
+		return ret;
 
-	params->rate = cfg->rate;
+	params->rate = cfg.rate;
 	params->buffer_fmt = 0;
-	params->channels = cfg->channels;
+	params->channels = cfg.channels;
 
 	/* dai_comp_get_hw_params() function fetches hardware dai parameters,
 	 * which then are propagating back through the pipeline, so that any
@@ -397,7 +399,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	 */
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 
-	return 0;
+	return ret;
 }
 
 static int dai_comp_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)

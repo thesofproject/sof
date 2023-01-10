@@ -149,15 +149,16 @@ const struct device *zephyr_dev[] = {
 
 static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
 {
-	const struct dai_config *cfg;
+	struct dai_config cfg;
 	int dir;
 	int i;
 
 	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
 
 	for (i = 0; i < ARRAY_SIZE(zephyr_dev); i++) {
-		cfg = dai_config_get(zephyr_dev[i], dir);
-		if (cfg && cfg->type == type && cfg->dai_index == index)
+		if (dai_config_get(zephyr_dev[i], &cfg, dir))
+			continue;
+		if (cfg.type == type && cfg.dai_index == index)
 			return zephyr_dev[i];
 	}
 
