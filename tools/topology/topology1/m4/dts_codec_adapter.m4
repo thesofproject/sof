@@ -10,8 +10,6 @@ define(`CA_SETUP_CONTROLBYTES',
 define(`CA_SETUP_CONTROLBYTES_MAX', 8192)
 define(`CA_SETUP_CONTROLBYTES_NAME', `DTS Codec Setup ')
 
-define(`CA_SCHEDULE_CORE', 0)
-
 DECLARE_SOF_RT_UUID("DTS codec", dts_uuid, 0xd95fc34f, 0x370f, 0x4ac7, 0xbc, 0x86, 0xbf, 0xdc, 0x5b, 0xe2, 0x41, 0xe6)
 define(`CA_UUID', dts_uuid)
 
