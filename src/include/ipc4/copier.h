@@ -327,6 +327,11 @@ typedef void (* channel_copy_func)(struct audio_stream __sparse_cache *dst,
 				   int src_channel, int frame_count);
 
 struct copier_data {
+	/*
+	 * struct ipc4_copier_module_cfg actually has variable size, but we
+	 * don't need the variable size array at the end, we won't be copying it
+	 * from the IPC data.
+	 */
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
