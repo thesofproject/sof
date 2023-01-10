@@ -50,6 +50,8 @@ define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
 define(`SMART_BE_ID', 7)
 #define SSP mclk
 define(`SSP_MCLK', 24576000)
+# Run Smart Amp pipeline on core#1 by default for low power considering
+define(`SMART_AMP_CORE', 1)
 # Playback related
 define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)

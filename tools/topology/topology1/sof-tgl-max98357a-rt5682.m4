@@ -159,7 +159,8 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
 		`define(`DMIC_48k_PERIOD_US', 5000)')'
 )
 
-ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
+# Run Speakers pipeline on core#1 by default for low power considering
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `1')')
 
 # Google RTC Audio processing processes 10ms at a time. It needs to have time to process it.
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`DMIC_48k_PERIOD', 10000)', `')
