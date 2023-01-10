@@ -294,7 +294,7 @@ static int mixin_process(struct processing_module *mod,
 
 	comp_dbg(dev, "mixin_process()");
 
-	source_avail_frames = audio_stream_get_avail_frames(mod->input_buffers[0].data);
+	source_avail_frames = audio_stream_get_avail_frames_aligned(mod->input_buffers[0].data);
 	sinks_free_frames = INT32_MAX;
 
 	/* block mixin pipeline until at least one mixout pipeline started */
@@ -357,7 +357,7 @@ static int mixin_process(struct processing_module *mod,
 			return -EINVAL;
 		}
 
-		free_frames = audio_stream_get_free_frames(&sink_c->stream);
+		free_frames = audio_stream_get_free_frames_aligned(&sink_c->stream);
 
 		/* mixout sink buffer may still have not yet produced data -- data
 		 * consumed and written there by mixin on previous mixin_process() run.
@@ -391,6 +391,7 @@ static int mixin_process(struct processing_module *mod,
 		 * here frames_to_copy is silence size.
 		 */
 		frames_to_copy = MIN(dev->frames, sinks_free_frames);
+		frames_to_copy &= ~0x03;
 	}
 
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
@@ -602,6 +603,32 @@ static int mixout_reset(struct processing_module *mod)
 	return 0;
 }
 
+/* init and calculate the aligned setting for available frames and free frames retrieve*/
+static inline void mix_set_frame_alignment(struct audio_stream __sparse_cache *source)
+{
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+
+	/* Xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
+	 * requires 16-byte aligned.
+	 */
+	const uint32_t byte_align = source->channels == 6 ? 16 : 8;
+
+	/*There is no limit for frame number, so set it as 1*/
+	const uint32_t frame_align_req = 1;
+
+#else
+
+	/* Since the generic version process signal sample by sample, so there is no
+	 * limit for it, then set the byte_align and frame_align_req to be 1.
+	 */
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+#endif
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+}
+
 static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					     struct sof_ipc_stream_params *params);
 
@@ -652,6 +679,8 @@ static int mixin_params(struct processing_module *mod)
 					    &sink_c->stream.frame_fmt,
 					    &sink_c->stream.valid_sample_fmt,
 					    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+		mix_set_frame_alignment(&sink_c->stream);
 
 		buffer_release(sink_c);
 	}
@@ -774,6 +803,7 @@ static int mixout_params(struct processing_module *mod)
 	/* calculate period size based on config */
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
+	mix_set_frame_alignment(&sink_c->stream);
 	buffer_release(sink_c);
 
 	if (sink_period_bytes == 0) {
