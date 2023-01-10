@@ -7,6 +7,7 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/aec.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -45,10 +46,14 @@ LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 DECLARE_SOF_RT_UUID("google-rtc-audio-processing", google_rtc_audio_processing_uuid,
 					0xb780a0a6, 0x269f, 0x466f, 0xb4, 0x77, 0x23, 0xdf, 0xa0,
 					0x5a, 0xf7, 0x58);
+
 DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
 			   LOG_LEVEL_INFO);
 
 struct google_rtc_audio_processing_comp_data {
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_aec_config config;
+#endif
 	struct comp_buffer *raw_microphone;
 	struct comp_buffer *aec_reference;
 	struct comp_buffer *output;
@@ -82,11 +87,49 @@ static int google_rtc_audio_processing_params(
 	struct sof_ipc_stream_params *params)
 {
 	int ret;
+#if CONFIG_IPC_MAJOR_4
+	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink;
+
+	/* update sink buffer format */
+	memset(params, 0, sizeof(*params));
+	params->channels = cd->config.base_cfg.audio_fmt.channels_count;
+	params->rate = cd->config.base_cfg.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cd->config.base_cfg.audio_fmt.depth / 8;
+	params->sample_valid_bytes =
+		cd->config.base_cfg.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = cd->config.base_cfg.audio_fmt.interleaving_style;
+	params->buffer.size = cd->config.base_cfg.ibs;
+
+	/* update sink format */
+	if (!list_is_empty(&dev->bsink_list)) {
+		struct ipc4_audio_format *out_fmt = &cd->config.output_fmt;
+
+		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		sink_c->stream.channels = cd->config.output_fmt.channels_count;
+		sink_c->stream.rate = cd->config.output_fmt.sampling_frequency;
+
+		audio_stream_fmt_conversion(out_fmt->depth,
+					    out_fmt->valid_bit_depth,
+					    &sink_c->stream.frame_fmt,
+					    &sink_c->stream.valid_sample_fmt,
+					    out_fmt->s_type);
+
+		sink_c->buffer_fmt = out_fmt->interleaving_style;
+		params->frame_fmt = sink_c->stream.frame_fmt;
+
+		sink_c->hw_params_configured = true;
+
+		buffer_release(sink_c);
+	}
+#endif
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
 		comp_err(dev,
-				 "google_rtc_audio_processing_params(): comp_verify_params failed.");
+			 "google_rtc_audio_processing_params(): comp_verify_params failed.");
 		return -EINVAL;
 	}
 
@@ -338,6 +381,10 @@ static struct comp_dev *google_rtc_audio_processing_create(
 	if (!cd)
 		goto fail;
 
+#if CONFIG_IPC_MAJOR_4
+	cd->config = *(const struct sof_ipc4_aec_config *)spec;
+#endif
+
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
 	if (!cd->tuning_handler)
 		goto fail;
@@ -479,7 +526,11 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 							  struct comp_buffer, sink_list);
 		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
 
+#if CONFIG_IPC_MAJOR_4
+		if (IPC4_SINK_QUEUE_ID(source_c->id) == SOF_AEC_FEEDBACK_QUEUE_ID) {
+#else
 		if (source_c->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
+#endif
 			cd->aec_reference = source;
 			aec_channels = source_c->stream.channels;
 		} else {
@@ -663,6 +714,48 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_4
+static int google_rtc_audio_processing_set_large_config(struct comp_dev *dev,
+							uint32_t param_id,
+							bool first_block,
+							bool last_block,
+							uint32_t data_offset,
+							const char *data)
+{
+	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
+	size_t bcfg_size, ext_size;
+
+	switch (param_id) {
+	case IPC4_AEC_SET_EXT_FMT:
+		bcfg_size = sizeof(struct ipc4_base_module_cfg);
+		ext_size = sizeof(cd->config) - bcfg_size;
+		memcpy_s((void *)&cd->config + bcfg_size, ext_size, data, ext_size);
+		return 0;
+	default:
+		comp_err(dev, "Invalid param %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int google_rtc_audio_processing_get_attribute(struct comp_dev *dev,
+						     uint32_t type, void *value)
+{
+	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_BASE_CONFIG:
+		*(struct ipc4_base_module_cfg *)value = cd->config.base_cfg;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
 static const struct comp_driver google_rtc_audio_processing = {
 	.uid = SOF_RT_UUID(google_rtc_audio_processing_uuid),
 	.tctx = &google_rtc_audio_processing_tr,
@@ -675,6 +768,10 @@ static const struct comp_driver google_rtc_audio_processing = {
 		.copy = google_rtc_audio_processing_copy,
 		.prepare = google_rtc_audio_processing_prepare,
 		.reset = google_rtc_audio_processing_reset,
+#if CONFIG_IPC_MAJOR_4
+		.get_attribute = google_rtc_audio_processing_get_attribute,
+		.set_large_config = google_rtc_audio_processing_set_large_config,
+#endif
 	},
 };
 
