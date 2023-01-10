@@ -35,7 +35,7 @@ src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@thesofproject/google
 src/audio/multiband_drc/*		@thesofproject/google
 src/audio/codec_adapter/*		@cujomalainey @mrajwa @dbaluta
-src/audio/google_hotword_detect.c	@thesofproject/google
+src/audio/google/*			@thesofproject/google
 
 # platforms
 src/platform/haswell/*			@randerwang
