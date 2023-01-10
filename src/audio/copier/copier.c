@@ -495,7 +495,6 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	struct ipc *ipc = ipc_get();
 	struct copier_data *cd;
 	struct comp_dev *dev;
-	size_t size, config_size;
 	int i;
 
 	comp_cl_dbg(&comp_copier, "copier_new()");
@@ -506,17 +505,17 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	config_size = copier->gtw_cfg.config_length * sizeof(uint32_t);
-	dcache_invalidate_region((__sparse_force char __sparse_cache *)spec + sizeof(*copier),
-				 config_size);
-
-	size = sizeof(*cd);
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		goto error;
 
-	size = sizeof(*copier);
-	mailbox_hostbox_read(&cd->config, size, 0, size);
+	/*
+	 * Don't copy the config_data[] variable size array, we don't need to
+	 * store it, it's only used during IPC processing, besides we haven't
+	 * allocated space for it, so don't "fix" this!
+	 */
+	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0)
+		goto error_cd;
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
