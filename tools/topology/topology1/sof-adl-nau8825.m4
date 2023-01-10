@@ -95,6 +95,8 @@ ifdef(`BT_OFFLOAD', `
 
 ifdef(`SPK_MIC_PERIOD_US',`', `define(`SPK_MIC_PERIOD_US', 1000)')
 
+ifdef(`SPK_PLAYBACK_CORE', `', `define(`SPK_PLAYBACK_CORE', `0')')
+
 ifdef(`NO_AMP',,`
 ifdef(`SMART_AMP',`
 # Smart amplifier related
@@ -107,6 +109,8 @@ define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
 define(`SMART_BE_ID', 7)
 #define SSP mclk
 define(`SSP_MCLK', 24576000)
+#define Core ID
+define(`SMART_AMP_CORE', SPK_PLAYBACK_CORE)
 # Playback related
 define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)
@@ -178,7 +182,7 @@ ifdef(`SMART_AMP',,`
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	1, 0, 2, s32le,
-	SPK_MIC_PERIOD_US, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)')')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
@@ -282,19 +286,19 @@ ifdef(`SMART_AMP',,`
 DAI_ADD(sof/pipe-dai-playback.m4,
         1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
         PIPELINE_SOURCE_1, 2, FMT,
-        SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # The echo refenrence pipeline has no connections in it,
 # it is used for the capture DAI widget to dock.
 DAI_ADD(sof/pipe-echo-ref-dai-capture.m4,
 	29, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SINK_29, 3, FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	9, 6, 2, s32le,
-	1000, 1, 0,
+	1000, 1, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
