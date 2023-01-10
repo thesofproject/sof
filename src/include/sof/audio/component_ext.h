@@ -316,6 +316,26 @@ static inline int comp_get_endpoint_type(struct comp_dev *dev)
 	}
 }
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/copier.h>
+static inline struct comp_dev *comp_get_dai(struct comp_dev *parent, int index)
+{
+	struct copier_data *cd = comp_get_drvdata(parent);
+
+	if (index >= ARRAY_SIZE(cd->endpoint))
+		return NULL;
+
+	return cd->endpoint[index];
+}
+#elif CONFIG_IPC_MAJOR_3
+static inline struct comp_dev *comp_get_dai(struct comp_dev *parent, int index)
+{
+	return parent;
+}
+#else
+#error Unknown IPC major version
+#endif
+
 /**
  * Called to check whether component schedules its pipeline.
  * @param dev Component device.
