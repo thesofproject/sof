@@ -1413,6 +1413,9 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 {
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct copier_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *sink_c;
+	struct list_item *sink_list;
+	struct comp_buffer *sink;
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -1441,6 +1444,23 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
 							      &sink_fmt->sink_fmt, ipc4_gtw_none,
 							      ipc4_bidirection);
+
+	/* update corresponding sink format */
+	list_for_item(sink_list, &dev->bsink_list) {
+		int sink_id;
+
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+
+		sink_id = IPC4_SINK_QUEUE_ID(sink_c->id);
+		if (sink_id == sink_fmt->sink_id) {
+			update_buffer_format(sink_c, &sink_fmt->sink_fmt);
+			buffer_release(sink_c);
+			break;
+		}
+
+		buffer_release(sink_c);
+	}
 
 	return 0;
 }
