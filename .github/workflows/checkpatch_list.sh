@@ -16,6 +16,11 @@ main()
         ./scripts/checkpatch.pl $@ -g $sha || failures=$((failures+1))
     done
     printf '\n    -------------- \n\n'
+
+    if [ $failures -ne 0 ]; then
+        cat .github/workflows/SPDX-README.md
+    fi
+
     return $failures
 }
 
