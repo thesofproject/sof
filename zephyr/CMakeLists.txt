@@ -89,6 +89,7 @@ ExternalProject_Add(sof_logger_ep
 target_include_directories(SOF INTERFACE ../rimage/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../third_party/include)
 
 # TODO: Zephyr should not need xtos headers: FIX.
 if (CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
@@ -840,7 +841,11 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	${SOF_AUDIO_PATH}/google_rtc_audio_processing.c
+	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing_mock.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
