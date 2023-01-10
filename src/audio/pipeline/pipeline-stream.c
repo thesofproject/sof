@@ -322,9 +322,20 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	case COMP_TRIGGER_PRE_RELEASE:
 	case COMP_TRIGGER_PRE_START:
 		if (comp_get_endpoint_type(current) == COMP_ENDPOINT_DAI) {
-			struct dai_data *dd = comp_get_drvdata(current);
+			/*
+			 * Initialization delay is only used with SSP, where we
+			 * don't use more than one DAI per copier
+			 */
+			struct comp_dev *dai = comp_get_dai(current, 0);
 
-			ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
+			if (dai) {
+				struct dai_data *dd = comp_get_drvdata(dai);
+
+				ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
+			} else {
+				/* Chain DMA case */
+				ppl_data->delay_ms = 0;
+			}
 		}
 		break;
 	default:
