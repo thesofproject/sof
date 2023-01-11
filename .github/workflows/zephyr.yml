@@ -15,6 +15,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  manifest-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: ./workspace/sof
+
+      - name: plain west update
+        run: |
+
+          : This plain 'west update' does not provide 100% certainty that
+          : all the manifest revisions make sense but it is quick and
+          : will catch many revision problems. Other jobs typically
+          : use 'west update --narrow' which is faster but
+          : also able to fetch "wild" SHA1s from any random place! --narrow
+          : is useful for testing unmerged Zephyr commits but risks
+          : accepting "invalid" ones, this will not.
+
+          pip3 install west
+          cd workspace/sof/
+          west init -l
+          west update
+
   build-linux:
     runs-on: ubuntu-20.04
     strategy:
