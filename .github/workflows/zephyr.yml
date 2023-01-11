@@ -70,8 +70,9 @@ jobs:
              git log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
       # Not strictly necessary but saves a lot of scrolling in the next step
-      # TODO, research caching:
-      # https://stackoverflow.com/questions/66421411/how-to-run-cached-docker-image-in-github-action
+      # Caching a 12G image is unfortunately not possible:
+      #   https://github.com/ScribeMD/docker-cache/issues/304
+      # For faster builds we would have to pay for some persistent runners.
       - name: docker pull         zephyrproject-rtos/zephyr-build
         run: docker  pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
 
