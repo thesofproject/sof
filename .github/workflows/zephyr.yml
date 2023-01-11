@@ -215,7 +215,7 @@ jobs:
 
       - name: West clone
         working-directory: ${{ github.workspace }}/workspace
-        run: west init -l sof && west update
+        run: west init -l sof && west update --narrow
 
       # Call Setup Python again to save the PIP packages in cache
       - name: Setup Python
