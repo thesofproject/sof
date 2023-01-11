@@ -43,7 +43,9 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: e4fcb32451c587a3e4ba7f8bf3fc602b16f9652b
+      # Testing new CMake code for sparse from
+      # https://github.com/zephyrproject-rtos/zephyr/pull/52671
+      revision: 69d9e9416e42ce808545a76d51943e4204433c1a
       remote: zephyrproject
       # Import some projects listed in zephyr/west.yml@revision
       #
