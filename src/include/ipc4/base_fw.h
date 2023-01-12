@@ -42,7 +42,7 @@
 #define IPC4_MAX_LIBS_COUNT 16
 
 /* Max pipeline count supported by ipc4 */
-#define IPC4_MAX_PPL_COUNT 16
+#define IPC4_MAX_PPL_COUNT 32
 
 enum ipc4_basefw_params {
 	/* Use LARGE_CONFIG_GET to retrieve fw properties as TLV structure
