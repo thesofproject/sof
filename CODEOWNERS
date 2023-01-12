@@ -14,10 +14,10 @@ src/include/ipc/**			@thesofproject/steering-committee
 src/include/ipc/**			@randerwang @marcinszkudlinski
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
-src/include/sof/debug/gdb/*		@mrajwa
-src/include/sof/audio/kpb.h		@mrajwa
+src/include/sof/debug/gdb/*		@abonislawski
+src/include/sof/audio/kpb.h		@abonislawski
 src/include/sof/audio/mux.h		@akloniex
-src/include/sof/audio/codec_adapter/*	@cujomalainey @mrajwa @dbaluta
+src/include/sof/audio/codec_adapter/*	@cujomalainey @abonislawski @dbaluta
 src/include/sof/drivers/acp_dai_dma.h	@bhiregoudar @sunilkumardommati
 src/include/sof/drivers/afe*		@yaochunhung
 
@@ -27,20 +27,20 @@ src/audio/eq*				@singalsu
 src/audio/eq_fir*			@singalsu
 src/audio/eq_iir*			@singalsu
 src/audio/tone.c			@singalsu
-src/audio/kpb.c				@mrajwa
+src/audio/kpb.c				@abonislawski
 src/audio/mux/*				@akloniex
 src/audio/dcblock*			@thesofproject/google
 src/audio/crossover*			@thesofproject/google
 src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@thesofproject/google
 src/audio/multiband_drc/*		@thesofproject/google
-src/audio/codec_adapter/*		@cujomalainey @mrajwa @dbaluta
+src/audio/codec_adapter/*		@cujomalainey @abonislawski @dbaluta
 src/audio/google/*			@thesofproject/google
 
 # platforms
 src/platform/haswell/*			@randerwang
 src/platform/suecreek/*			@lyakh
-src/arch/xtensa/debug/gdb/*		@mrajwa
+src/arch/xtensa/debug/gdb/*		@abonislawski
 src/platform/imx8/**			@dbaluta
 src/platform/amd/**			@bhiregoudar @sunilkumardommati
 src/platform/mt8195/**		@yaochunhung @kuanhsuncheng
@@ -59,8 +59,8 @@ src/math/*				@singalsu
 src/ipc/*				@bardliao @marcinszkudlinski
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
-src/debug/gdb/*				@mrajwa
-src/schedule				@mrajwa
+src/debug/gdb/*				@abonislawski
+src/schedule				@abonislawski
 
 # other helpers
 # Mostly overridden by *.(ba)sh below
