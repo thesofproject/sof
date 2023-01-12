@@ -7,6 +7,8 @@
 # Order is important. The last matching pattern has the most precedence.
 # So if a pull request only touches javascript files, only these owners
 # will be requested to review.
+# File patterns work mostly like .gitignore. Try to keep this file
+# simple because it's literally impossible to test.
 
 # include files
 src/include/sof/drivers/dmic.h		@singalsu
@@ -63,7 +65,7 @@ src/debug/gdb/*				@abonislawski
 src/schedule				@abonislawski
 
 # other helpers
-# Mostly overridden by *.(ba)sh below
+# Many files overridden by *.(ba)sh pattern below
 scripts/*				@marc-hb @aborisovich
 
 # tools(old 'soft' repo)
@@ -78,11 +80,19 @@ tools/tune/dcblock/*			@thesofproject/google
 tools/tune/drc/*			@thesofproject/google
 tools/oss-fuzz/*			@thesofproject/google
 
-# build system
-**/CMakeLists.txt			@marc-hb @aborisovich
-# **/Kconfig
-# scripts/cmake/**
-# scripts/kconfig/**
+# CMake
+
+# Include only "top-level" CMakeLists.txt files; the other ones are just
+# dumb list of source files and generate too much noise.
+/CMakeLists.txt			@marc-hb @aborisovich
+/*/CMakeLists.txt			@marc-hb @aborisovich
+/test/cmocka/CMakeLists.txt		@marc-hb @aborisovich
+
+# There's a small enough number of files in tools/ and little
+# churn: keep it simple and take them all.
+# FIXME: some topology CMakeLists.txt files are configuration files
+# in disguise. Move them to actual configuration files.
+/tools/**/CMakeLists.txt		@marc-hb @aborisovich
 
 *.sh					@marc-hb
 *.bash					@marc-hb
