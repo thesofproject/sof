@@ -259,3 +259,47 @@ jobs:
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
+
+
+  compare-linux-win:
+
+    runs-on: ubuntu-latest
+
+    # - We don't compare _all_ the builds, and
+    # - even when some of the ones we compare fail, we still want to compare the rest.
+    if: ${{ always() }}
+    needs: [build-linux, build-windows]
+
+    steps:
+      - uses: actions/checkout@v3
+        # we need only one script but it's simpler to get the (last
+        # revision of the) whole repo and it takes seconds.
+        with:
+          # Isolate the clone in a subdirectory to make sure globbing
+          # does not catch random SOF files.
+          path: ./sof
+
+      - name: Download Windows and Linux builds
+        uses: actions/download-artifact@v3
+
+      - name: apt-get dos2unix
+        run: sudo apt-get update; sudo apt-get -y install dos2unix
+
+      - name: Delete and fix expected differences
+        run: |
+          ls -l
+          # run it twice to make sure it's idempotent
+          for i in 0 1; do
+            ./sof/zephyr/scripts/clean-expected-release-differences.sh \
+               windows-build* linux-build*
+          done
+
+      - name: Compare Linux vs Windows builds
+        run: |
+          # FIXME: for windows the Z_SDK version is hardcoded above, for Linux it's not.
+          diffs=0
+          for windir in windows-build*; do
+            lindir=linux-"${windir#windows-}"
+            diff -qr "$lindir" "$windir" || : $((diffs++))
+          done
+          exit $diffs
