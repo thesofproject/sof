@@ -33,7 +33,7 @@ DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 "cavs-sdw-src-gain-mixin\;cavs-sdw-src-gain-mixin"
 
 # SDW + HDMI topology with passthrough pipelines
-"cavs-sdw\;cavs-sdw-hdmi\;DEEPBUFFER_FW_DMA_MS=100"
+"cavs-sdw\;cavs-sdw-hdmi\;NUM_HDMIS=4,DEEPBUFFER_FW_DMA_MS=100"
 
 # CAVS SSP topology for TGL
 "cavs-nocodec\;sof-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
