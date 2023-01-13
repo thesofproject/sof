@@ -29,9 +29,17 @@ SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture"
 "cavs-sdw\;sof-tgl-rt711-rt1308-4ch\;NUM_SDW_AMPS=1,NUM_DMICS=4,DMIC0_ID=3,\
 DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 
-"cavs-sdw\;sof-adl-rt711-4ch\;DEEPBUFFER_FW_DMA_MS=100,NUM_DMICS=4,DMIC0_ID=2,\
-DMIC1_ID=3,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\
-HDMI3_ID=6"
+# CAVS SDW with SRC gain and mixer support
+"cavs-sdw-src-gain-mixin\;cavs-sdw-src-gain-mixin"
+
+# SDW + HDMI topology with passthrough pipelines
+"cavs-sdw\;cavs-sdw-hdmi\;DEEPBUFFER_FW_DMA_MS=100"
+
+# CAVS SSP topology for TGL
+"cavs-nocodec\;sof-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec.bin,DEEPBUFFER_FW_DMA_MS=100"
+"cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec.bin,DEEPBUFFER_FW_DMA_MS=100"
 )
 
 add_custom_target(topology2_cavs)

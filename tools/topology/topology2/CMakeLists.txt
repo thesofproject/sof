@@ -26,7 +26,6 @@ add_custom_target(abi_target
 	DEPENDS abi.conf
 )
 
-add_dependencies(topologies2 topology2_cavs topology2_ace topology2_dev)
+add_dependencies(topologies2 topology2_cavs topology2_ace)
 add_subdirectory(avs-tplg)
-add_subdirectory(development)
 add_subdirectory(sof-ace-tplg)
