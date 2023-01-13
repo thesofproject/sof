@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/host_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -258,6 +259,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->hd = comp_get_drvdata(dev);
 
 	return 0;
 
@@ -746,7 +748,17 @@ static int copier_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			ret = comp_set_state(cd->endpoint[i], COMP_TRIGGER_PREPARE);
+			if (ret < 0)
+				return ret;
+			if (ret == COMP_STATUS_STATE_ALREADY_SET)
+				return PPL_STATUS_PATH_STOP;
+
+			ret = host_prepare_dma(cd->hd);
+		} else {
+			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+		}
 		if (ret < 0)
 			return ret;
 	}
