@@ -52,35 +52,40 @@ if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	message(STATUS "Found ${TARBALL_VERSION_SOURCE_PATH}")
 else()
 	# execute_process() errors are not fatal by default!
-	execute_process(
-	        COMMAND git describe --tags --abbrev=12 --match v* --dirty
-		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
-		OUTPUT_VARIABLE GIT_TAG
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
-
 	execute_process(COMMAND git log --pretty=format:%h -1
 		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 		OUTPUT_VARIABLE GIT_LOG_HASH
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
+
+	execute_process(
+	        COMMAND git describe --tags ${GIT_LOG_HASH} --abbrev=12
+		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+		OUTPUT_VARIABLE GIT_TAG
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
 endif()
 
-if(NOT GIT_TAG MATCHES "^v")
+if(NOT GIT_TAG)
 	message(WARNING
 	  "git describe found ${GIT_TAG} / nothing starting with 'v'. Shallow clone?")
 	set(GIT_TAG "v0.0-0-g0000")
 endif()
 
 message(STATUS "GIT_TAG / GIT_LOG_HASH : ${GIT_TAG} / ${GIT_LOG_HASH}")
+string(REGEX MATCH "v([0-9]+).?([0-9])[\.]?((-hotfix|-rc)?([0-9]+))?-?(([0-9]+))?" ignored "${GIT_TAG}")
 
-string(REGEX MATCH "^v([0-9]+)[.]([0-9]+)([.]([0-9]+))?" ignored "${GIT_TAG}")
 set(SOF_MAJOR ${CMAKE_MATCH_1})
 set(SOF_MINOR ${CMAKE_MATCH_2})
-set(SOF_MICRO ${CMAKE_MATCH_4})
+set(SOF_MICRO ${CMAKE_MATCH_5})
+set(SOF_BUILD ${CMAKE_MATCH_7})
 
 if(NOT SOF_MICRO MATCHES "^[0-9]+$")
 	set(SOF_MICRO 0)
+endif()
+
+if(NOT SOF_BUILD MATCHES "^[0-9]+$")
+	set(SOF_BUILD 0)
 endif()
 
 string(SUBSTRING "${GIT_LOG_HASH}" 0 5 SOF_TAG)
@@ -139,9 +144,6 @@ else() # Zephyr, tarball,...
 source content hash cannot computed for the .ldc. Using SOF_SRC_HASH=${SOF_SRC_HASH} \
 from GIT_LOG_HASH instead")
 endif()
-
-# for SOF_BUILD
-include(${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
 # (Re)-generate "${VERSION_H_PATH}" but overwrite the old one only if
 # different to avoid a full rebuild.  TODO: check how Zephyr solves this
