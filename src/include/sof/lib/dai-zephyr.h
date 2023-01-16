@@ -49,6 +49,7 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
+	struct k_spinlock lock;		/* protect properties */
 };
 
 struct timestamp_cfg {
