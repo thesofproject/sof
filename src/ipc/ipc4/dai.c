@@ -90,8 +90,6 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
 		dd->config.burst_elems = copier_cfg->base.audio_fmt.channels_count;
-		/* DMA buffer size is in fixed format of 32bit in IPC4 case */
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		/* Depth is passed by DMIC driver that retrieves it from blob */
