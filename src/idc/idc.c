@@ -19,6 +19,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/watchdog.h>
 #include <sof/platform.h>
 #include <rtos/wait.h>
 #include <sof/schedule/edf_schedule.h>
@@ -274,6 +275,25 @@ static void idc_prepare_d0ix(void)
 }
 
 /**
+ * \brief Handle IDC secondary core crashed message.
+ * \param[in] header IDC message header
+ */
+static void idc_secondary_core_crashed(const uint32_t header)
+{
+	const uint32_t core = (header >> IDC_SCC_CORE_SHIFT) & IDC_SCC_CORE_MASK;
+	const uint32_t reason = (header >> IDC_SCC_REASON_SHIFT) & IDC_SCC_REASON_MASK;
+
+	(void)core;
+	switch (reason) {
+#if IS_ENABLED(CONFIG_LL_WATCHDOG)
+	case IDC_SCC_REASON_WATCHDOG:
+		watchdog_secondary_core_timeout(core);
+		break;
+#endif
+	}
+}
+
+/**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
  */
@@ -311,6 +331,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_PREPARE_D0ix):
 		idc_prepare_d0ix();
+		break;
+	case iTS(IDC_MSG_SECONDARY_CORE_CRASHED):
+		idc_secondary_core_crashed(msg->header);
 		break;
 	default:
 		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",

@@ -93,6 +93,23 @@
 #define IDC_MSG_PREPARE_D0ix		IDC_TYPE(0x9)
 #define IDC_MSG_PREPARE_D0ix_EXT	IDC_EXTENSION(0x0)
 
+/** \brief IDC secondary core crashed notify message. */
+#define IDC_MSG_SECONDARY_CORE_CRASHED		IDC_TYPE(0xA)
+#define IDC_MSG_SECONDARY_CORE_CRASHED_EXT(x)	IDC_EXTENSION(x)
+
+/** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
+#define IDC_SCC_CORE_SHIFT		0
+#define IDC_SCC_CORE_MASK		0xff
+#define IDC_SCC_CORE(x)			(((x) & IDC_SCC_CORE_MASK) << IDC_SCC_CORE_SHIFT)
+
+#define IDC_SCC_REASON_SHIFT		8
+#define IDC_SCC_REASON_MASK		0xff
+#define IDC_SCC_REASON(x)		(((x) & IDC_SCC_REASON_MASK) << IDC_SCC_REASON_SHIFT)
+
+/** \brief Secondary core crash reasons. */
+#define IDC_SCC_REASON_WATCHDOG		0x00
+#define IDC_SCC_REASON_EXCEPTION	0x01
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
