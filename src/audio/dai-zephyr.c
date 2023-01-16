@@ -22,6 +22,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -164,36 +165,55 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, stream_id);
+	k_spinlock_key_t key = k_spin_lock(&dai->lock);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
+								stream_id);
+	int hs_id = props->dma_hs_id;
 
-	return props->dma_hs_id;
+	k_spin_unlock(&dai->lock, key);
+
+	return hs_id;
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	const struct dai_properties *props;
+	k_spinlock_key_t key;
+	int fifo_depth;
 
 	if (!dai)
 		return 0;
 
+	key = k_spin_lock(&dai->lock);
 	props = dai_get_properties(dai->dev, direction, 0);
+	fifo_depth = props->fifo_depth;
+	k_spin_unlock(&dai->lock, key);
 
-	return props->fifo_depth;
+	return fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
+	k_spinlock_key_t key = k_spin_lock(&dai->lock);
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
+	int stream_id = props->stream_id;
 
-	return props->stream_id;
+	k_spin_unlock(&dai->lock, key);
+
+	return stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, stream_id);
+	k_spinlock_key_t key = k_spin_lock(&dai->lock);
+	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
+								stream_id);
+	int fifo_address = props->fifo_address;
 
-	return props->fifo_address;
+	k_spin_unlock(&dai->lock, key);
+
+	return fifo_address;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -311,6 +331,8 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
 		goto error;
 	}
+
+	k_spinlock_init(&dd->dai->lock);
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
@@ -1374,13 +1396,18 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	const struct dai_properties *props;
+	k_spinlock_key_t key;
+	uint32_t init_delay;
 
 	if (!dai)
 		return 0;
 
+	key = k_spin_lock(&dai->lock);
 	props = dai_get_properties(dai->dev, 0, 0);
+	init_delay = props->reg_init_delay;
+	k_spin_unlock(&dai->lock, key);
 
-	return props->reg_init_delay;
+	return init_delay;
 }
 
 static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
