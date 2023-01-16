@@ -15,23 +15,27 @@ DEEPBUFFER_FW_DMA_MS=100"
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 # CAVS SDW topology with passthrough pipelines
-"cavs-sdw\;cavs-sdw\;DEEPBUFFER_FW_DMA_MS=100"
+"cavs-sdw\;cavs-sdw\;DEEPBUFFER_FW_DMA_MS=100,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-sdw.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1316 Amplifier + rt714 DMIC
-"cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMPS=2,SDW_DMIC=1"
+"cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMPS=2,SDW_DMIC=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt711-rt1316-rt714.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1308 Amplifier + rt715 DMIC
 "cavs-sdw\;sof-tgl-rt715-rt711-rt1308-mono\;NUM_SDW_AMPS=1,SDW_DMIC=1,\
 SDW_JACK_OUT_STREAM=SDW1-Playback,SDW_JACK_IN_STREAM=SDW1-Capture,\
-SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture"
+SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt715-rt711-rt1308-mono.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1308 Amplifier + PCH DMIC
 "cavs-sdw\;sof-tgl-rt711-rt1308-4ch\;NUM_SDW_AMPS=1,NUM_DMICS=4,DMIC0_ID=3,\
-DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
+DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-tgl-rt711-rt1308-4ch.bin"
 
 "cavs-sdw\;sof-adl-rt711-4ch\;DEEPBUFFER_FW_DMA_MS=100,NUM_DMICS=4,DMIC0_ID=2,\
 DMIC1_ID=3,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\
-HDMI3_ID=6"
+HDMI3_ID=6,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-rt711-4ch.bin"
 )
 
 add_custom_target(topology2_cavs)
