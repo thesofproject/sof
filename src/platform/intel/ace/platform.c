@@ -100,6 +100,7 @@ int platform_init(struct sof *sof)
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(sof);
+	idc_init();
 
 	/* show heap status */
 	heap_trace_all(1);
