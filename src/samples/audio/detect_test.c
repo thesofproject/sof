@@ -27,8 +27,10 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#if CONFIG_IPC_MAJOR_4
 #include <ipc4/detect_test.h>
 #include <ipc4/notification.h>
+#endif
 #include <kernel/abi.h>
 #include <sof/samples/audio/detect_test.h>
 #include <user/trace.h>
