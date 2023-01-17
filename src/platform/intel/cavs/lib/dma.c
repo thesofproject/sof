@@ -109,7 +109,7 @@ static const struct dw_drv_plat_data dmac1 = {
 };
 
 /* DMA number of buffer periods */
-#define HDA_DMA_BUFFER_PERIOD_COUNT	2
+#define HDA_DMA_BUFFER_PERIOD_COUNT	4
 
 #if CONFIG_DMA_HW_LLI
 #define DW_DMA_BUFFER_PERIOD_COUNT	4
