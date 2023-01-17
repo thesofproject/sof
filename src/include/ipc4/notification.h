@@ -45,7 +45,7 @@ enum sof_ipc4_notification_type {
 #define SOF_IPC4_GLB_NOTIFY_DIR_MASK		BIT(29)
 #define SOF_IPC4_REPLY_STATUS_MASK		0xFFFFFF
 #define SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT		16
-#define SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT		24
+#define SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT	24
 
 #define SOF_IPC4_FW_READY \
 		(((SOF_IPC4_NOTIFY_FW_READY) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT)) |\
@@ -83,8 +83,7 @@ union ipc4_notification_header {
 } __packed __aligned(4);
 
 /**
- * \brief This notification is reported by the Detector module
- * upon key phrase detection.
+ * \brief This notification is reported by the Detector module upon key phrase detection.
  */
 struct ipc4_voice_cmd_notification {
 	union {
