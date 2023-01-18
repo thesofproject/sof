@@ -761,6 +761,10 @@ def install_platform(platform, sof_platform_output_dir):
 		# Fail if one of these is missing
 		InstFile(".config", "config", txt=True),
 		InstFile("misc/generated/configs.c", "generated_configs.c", txt=True),
+		InstFile("include/generated/version.h", "zephyr_version.h",
+			 gzip=False, txt=True),
+		InstFile("include/generated/sof_versions.h", "sof_versions.h",
+			 gzip=False, txt=True),
 		InstFile(BIN_NAME + ".elf"),
 		InstFile(BIN_NAME + ".lst", txt=True),
 		InstFile(BIN_NAME + ".map", txt=True),
@@ -822,6 +826,7 @@ BIN_NAME = 'zephyr'
 
 CHECKSUM_WANTED = [
 	'*.ri',     # Some .ri files have a non-deterministic signature, others not
+	'*version*.h',
 	'*configs.c', # deterministic unlike .config
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
 	'boot.mod', # no debug section -> no need to strip this ELF
