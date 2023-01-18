@@ -81,6 +81,8 @@ jobs:
       # a "roughly 4-month release" but for now that saves only 100MB
       # https://docs.zephyrproject.org/latest/project/release_process.html
       - name: west clones
+
+        # Get some git tags in Zephyr. keep in sync with build-windows below
         run: pip3 install west && cd workspace/sof/ && west init -l &&
                west update --narrow --fetch-opt=--depth=5 &&
                git -C ../zephyr fetch --shallow-exclude=v3.2.0-rc3
@@ -215,7 +217,10 @@ jobs:
 
       - name: West clone
         working-directory: ${{ github.workspace }}/workspace
-        run: west init -l sof && west update --narrow
+        # Keep in sync with build-linux above
+        run: west init -l sof &&
+             west update --narrow --fetch-opt=--depth=5 &&
+             git -C zephyr fetch --shallow-exclude=v3.2.0-rc3
 
       # Call Setup Python again to save the PIP packages in cache
       - name: Setup Python
