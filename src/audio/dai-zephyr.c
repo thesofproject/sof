@@ -1227,7 +1227,8 @@ static int dai_copy(struct comp_dev *dev)
 	/* get data sizes from DMA */
 	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
 	if (ret < 0) {
-		dai_report_xrun(dev, 0);
+		if (ret == -EPIPE)
+			dai_report_xrun(dev, 0);
 		return ret;
 	}
 	avail_bytes = stat.pending_length;
