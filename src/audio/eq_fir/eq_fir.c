@@ -177,9 +177,8 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 	int j;
 	int s;
 
-	comp_info(dev, "eq_fir_init_coef(), response assign for %u channels, %u responses",
-		  config->channels_in_config,
-		  config->number_of_responses);
+	comp_info(dev, "eq_fir_init_coef(): %u responses, %u channels, stream %d channels",
+		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
