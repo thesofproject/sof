@@ -54,7 +54,7 @@ struct comp_data {
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct input_stream_buffer *bsource,
 			    struct output_stream_buffer *bsink,
-			    int frames, int nch);
+			    int frames);
 };
 
 /*
@@ -141,13 +141,12 @@ static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame
 static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 			       struct input_stream_buffer *bsource,
 			       struct output_stream_buffer *bsink,
-			       int frames, int nch)
+			       int frames)
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
 
-	audio_stream_copy(source, 0, sink, 0, frames * nch);
-
+	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 	module_update_buffer_position(bsource, bsink, frames);
 }
 
@@ -420,7 +419,7 @@ static int eq_fir_process(struct processing_module *mod,
 			  int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	uint32_t frame_count;
+	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
 	comp_dbg(mod->dev, "eq_fir_process()");
@@ -444,13 +443,9 @@ static int eq_fir_process(struct processing_module *mod,
 	 * so it can't be used here.
 	 */
 
-	frame_count = input_buffers->size;
-	if (frame_count >= 2) {
-		frame_count &= ~0x1;
-
-		cd->eq_fir_func(cd->fir, input_buffers, output_buffers, frame_count,
-				mod->stream_params->channels);
-	}
+	frame_count &= ~0x1;
+	if (frame_count)
+		cd->eq_fir_func(cd->fir, &input_buffers[0], &output_buffers[0], frame_count);
 
 	return 0;
 }

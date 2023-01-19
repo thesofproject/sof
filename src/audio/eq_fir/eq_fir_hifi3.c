@@ -25,8 +25,7 @@ LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
  * sample per call.
  */
 void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch)
+		   struct output_stream_buffer *bsink, int frames)
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
@@ -43,6 +42,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
+	int nch = source->channels;
 	int inc_nch_s = nch * sizeof(int32_t);
 	int inc_2nch_s = 2 * inc_nch_s;
 
@@ -151,8 +151,7 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 
 #if CONFIG_FORMAT_S24LE
 void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch)
+		   struct output_stream_buffer *bsink, int frames)
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
@@ -170,6 +169,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
+	int nch = source->channels;
 	int inc_nch_s = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
@@ -294,8 +294,7 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 
 #if CONFIG_FORMAT_S16LE
 void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch)
+		   struct output_stream_buffer *bsink, int frames)
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
@@ -315,6 +314,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
+	int nch = source->channels;
 	int inc_nch_s = nch * sizeof(int16_t);
 
 	for (ch = 0; ch < nch; ch++) {
