@@ -17,7 +17,7 @@ DEEPBUFFER_FW_DMA_MS=100"
 
 # SDW + DMIC topology with passthrough pipelines
 # We will change NUM_HDMIS to 3 once HDMI is enabled on MTL RVP
-"cavs-sdw\;sof-mtl-rt711-4ch\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,NUM_HDMIS=0,\
+"cavs-sdw\;sof-mtl-rt711-4ch\;PLATFORM=mtl,NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,NUM_HDMIS=0,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-4ch.bin,DEEPBUFFER_FW_DMA_MS=100"
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
