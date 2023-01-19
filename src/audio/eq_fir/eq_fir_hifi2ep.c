@@ -65,8 +65,6 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			y0 += inc;
 		}
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -115,8 +113,6 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			y0 += inc;
 		}
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -165,8 +161,6 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			y0 += inc;
 		}
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
