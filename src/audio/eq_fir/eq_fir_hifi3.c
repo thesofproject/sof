@@ -83,8 +83,6 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			AE_L32_XC(d1, y1, inc_2nch_s);
 		}
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 
 /* FIR for any number of frames */
@@ -362,8 +360,6 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			AE_S16_0_XC(d1, y, inc_nch_s);
 		}
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 
 void eq_fir_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,

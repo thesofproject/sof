@@ -147,7 +147,6 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 	struct audio_stream __sparse_cache *sink = bsink->data;
 
 	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
-	module_update_buffer_position(bsource, bsink, frames);
 }
 
 static void eq_fir_free_delaylines(struct comp_data *cd)
@@ -444,8 +443,10 @@ static int eq_fir_process(struct processing_module *mod,
 	 */
 
 	frame_count &= ~0x1;
-	if (frame_count)
+	if (frame_count) {
 		cd->eq_fir_func(cd->fir, &input_buffers[0], &output_buffers[0], frame_count);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
+	}
 
 	return 0;
 }
