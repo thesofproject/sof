@@ -12,6 +12,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
@@ -144,6 +145,91 @@ err:
 	return NULL;
 }
 
+/**
+ * \brief Function to prepare module with input only
+ * @param dev component device pointer.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static int only_input_module_prepare(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source;
+	struct comp_dev *source_comp;
+	uint32_t buff_periods;
+	size_t size;
+	int ret;
+
+	if (list_is_empty(&dev->bsource_list)) {
+		comp_err(dev, "only_input_module_prepare(): no source.");
+		return -EINVAL;
+	}
+
+	mod->deep_buff_bytes = 0;
+	mod->num_input_buffers = 1;
+
+	/* Prepare module */
+	ret = module_prepare(mod);
+	if (ret) {
+		if (ret == PPL_STATUS_PATH_STOP)
+			return ret;
+
+		comp_err(dev, "only_input_module_prepare() error %x: module prepare failed",
+			 ret);
+		return -EIO;
+	}
+
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(source);
+
+	mod->period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
+	comp_dbg(dev, "only_input_module_prepare(): got period_bytes = %u",
+		 mod->period_bytes);
+
+	/* Get source comp dev pointer */
+	source_comp = source_c->source;
+	if (source_comp->pipeline && source_comp->pipeline->core != dev->pipeline->core)
+		coherent_shared_thread(mod->source_info, c);
+	buffer_release(source_c);
+
+	/* allocate memory for input buffer */
+	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
+	if (!mod->input_buffers) {
+		comp_err(dev, "only_input_module_prepare(): failed to allocate input buffer");
+		return -ENOMEM;
+	}
+
+	if (md->mpd.in_buff_size > mod->period_bytes) {
+		buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
+			       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
+			       (md->mpd.in_buff_size / mod->period_bytes) + 1;
+	} else {
+		buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
+			       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
+			       (mod->period_bytes / md->mpd.in_buff_size) + 1;
+	}
+
+	if (md->mpd.in_buff_size != mod->period_bytes)
+		mod->deep_buff_bytes =
+			MIN(mod->period_bytes, md->mpd.in_buff_size) * buff_periods;
+
+	/* allocate memory for input buffer data */
+	size = MAX(mod->deep_buff_bytes, mod->period_bytes);
+
+	mod->input_buffers[0].data =
+		(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM, size);
+	if (!mod->input_buffers[0].data) {
+		comp_err(dev, "only_input_module_prepare(): Failed to alloc input buffer data");
+		rfree((__sparse_force void *)mod->input_buffers[0].data);
+		rfree(mod->input_buffers);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 /*
  * \brief Prepare the module
  * \param[in] dev - component device pointer.
@@ -168,8 +254,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_prepare() start");
 
 	/*
-	 * check if the component is already active. This could happen in the case of mixer when
-	 * one of the sources is already active
+	 * Check if the component is already active. This could happen
+	 * in the case of mixer when one of the sources is already active
 	 */
 	if (dev->state == COMP_STATE_ACTIVE)
 		return 0;
@@ -184,8 +270,18 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
-	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
-	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	/* If module has only input then we don't need to setup output buffers*/
+	if (mod->priv.has_input_only) {
+		ret = only_input_module_prepare(dev);
+		if (ret)
+			return ret;
+		return 0;
+	}
+
+	/*
+	 * Get period_bytes first on prepare(). At this point it is guaranteed
+	 * that the stream parameter from sink buffer is settled, and still prior
+	 * to all references to period_bytes.
 	 */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink_c = buffer_acquire(sink);
@@ -210,8 +306,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	mod->deep_buff_bytes = 0;
 
 	/*
-	 * compute number of input buffers and make the source_info shared if the module is on a
-	 * different core than any of it's sources
+	 * Compute number of input buffers and make the source_info shared
+	 * if the module is on a different core than any of it's sources
 	 */
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *buf;
@@ -258,19 +354,20 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/*
-	 * no need to allocate intermediate sink buffers if the module produces only period bytes
-	 * every period and has only 1 input and 1 output buffer
+	 * No need to allocate intermediate sink buffers if the module produces
+	 * only period bytes every period and has only 1 input and 1 output buffer
 	 */
 	if (mod->simple_copy)
 		return 0;
 
 	/* Module is prepared, now we need to configure processing settings.
 	 * If module internal buffer is not equal to natural multiple of pipeline
-	 * buffer we have a situation where module adapter have to deep buffer certain amount
-	 * of samples on its start (typically few periods) in order to regularly
-	 * generate output once started (same situation happens for compress streams
-	 * as well).
+	 * buffer we have a situation where module adapter have to deep buffer
+	 * certain amount of samples on its start (typically few periods)
+	 * in order to regularly generate output once started
+	 * (same situation happens for compress streams as well).
 	 */
+
 	if (md->mpd.in_buff_size > mod->period_bytes) {
 		buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
 			       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
@@ -282,11 +379,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/*
-	 * deep_buffer_bytes is a measure of how many bytes we need to send to the DAI before
-	 * the module starts producing samples. In a normal copy() walk it might be possible that
-	 * the first period_bytes copied to input_buffer might not be enough for the processing
-	 * to begin. So, in order to prevent the DAI from starving, it needs to be fed zeroes until
-	 * the module starts processing and generating output samples.
+	 * deep_buffer_bytes is a measure of how many bytes we need to send
+	 * to the DAI before the module starts producing samples.
+	 * In a normal copy() walk it might be possible that the first
+	 * period_bytes copied to input_buffer might not be enough for
+	 * the processing to begin. So, in order to prevent the DAI from starving,
+	 * it needs to be fed zeroes until the module starts processing and
+	 * generating output samples.
 	 */
 	if (md->mpd.in_buff_size != mod->period_bytes)
 		mod->deep_buff_bytes = MIN(mod->period_bytes, md->mpd.in_buff_size) * buff_periods;
@@ -302,10 +401,11 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/*
-	 * It is possible that the module process() will produce more data than period_bytes but
-	 * the DAI can consume only period_bytes every period. So, the local buffer needs to be
-	 * large enough to save the produced output samples.
-	 */
+	* It is possible that the module process() will produce more data
+	* than period_bytes but the DAI can consume only period_bytes every period.
+	* So, the local buffer needs to be large enough to save the produced
+	* output samples.
+	*/
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
 	mod->output_buffer_size = buff_size;
 
@@ -340,7 +440,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate buffer for all sinks */
 	if (list_is_empty(&mod->sink_buffer_list)) {
 		for (i = 0; i < mod->num_output_buffers; i++) {
-			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
+			struct comp_buffer *buffer = buffer_alloc(buff_size,
+								  SOF_MEM_CAPS_RAM,
 								  PLATFORM_DCACHE_ALIGN);
 			if (!buffer) {
 				comp_err(dev, "module_adapter_prepare(): failed to allocate local buffer");
@@ -357,7 +458,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 		}
 	} else {
 		list_for_item(blist, &mod->sink_buffer_list) {
-			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
+			struct comp_buffer *buffer = container_of(blist,
+								  struct comp_buffer,
 								  sink_list);
 
 			buffer_c = buffer_acquire(buffer);
@@ -365,7 +467,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			if (ret < 0) {
 				buffer_release(buffer_c);
 				comp_err(dev, "module_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
-					 buff_size);
+					buff_size);
 				goto free;
 			}
 
@@ -405,6 +507,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *sink_list;
 
 	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
@@ -434,6 +537,13 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 		if (ret < 0)
 			return ret;
 	}
+
+	/* Check if module has input buffer only */
+	mod->priv.has_input_only = false;
+
+	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
+	if (list_is_empty(sink_list))
+		mod->priv.has_input_only = true;
 
 	return 0;
 }
@@ -533,8 +643,8 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __spars
 	} else if (!produced) {
 		comp_dbg(dev, "module_copy_samples(): nothing processed in this call");
 		/*
-		 * No data produced anything in this period but there still be data in the buffer
-		 * to copy to sink
+		 * No data produced anything in this period but there still
+		 * be data in the buffer to copy to sink
 		 */
 		if (audio_stream_get_avail_bytes(&src_buffer->stream) < mod->period_bytes)
 			return;
@@ -560,10 +670,15 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	struct list_item *blist;
 	int i = 0;
 
+	/* If module has input only just return */
+	if (mod->priv.has_input_only)
+		return;
+
 	/*
-	 * copy all produced output samples to output buffers. This loop will do nothing when
-	 * there are no samples produced.
+	 * Copy all produced output samples to output buffers.
+	 * This loop will do nothing when there are no samples produced.
 	 */
+	i = 0;
 	list_for_item(blist, &mod->sink_buffer_list) {
 		if (mod->output_buffers[i].size > 0) {
 			struct comp_buffer *buffer;
@@ -830,8 +945,12 @@ int module_adapter_copy(struct comp_dev *dev)
 			continue;
 		}
 
-		frames = MIN(min_free_frames,
-			     audio_stream_get_avail_frames(&src_c->stream));
+		if (!md->has_input_only)
+			frames = MIN(min_free_frames,
+				     audio_stream_get_avail_frames(&src_c->stream));
+		else
+			frames = audio_stream_get_avail_frames(&src_c->stream);
+
 		source_frame_bytes = audio_stream_frame_bytes(&src_c->stream);
 
 		bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);

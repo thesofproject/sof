@@ -153,6 +153,7 @@ struct module_data {
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 	void *module_adapter; /**<loadable module interface handle */
 	uint32_t module_entry_point; /**<loadable module entry point address */
+	bool has_input_only; /**< flag to indicate that module has only input pin*/
 };
 
 /*
