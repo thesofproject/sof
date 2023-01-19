@@ -7,6 +7,7 @@
  */
 
 #include <sof/common.h>
+#include <sof/drivers/afe-memif.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -17,7 +18,6 @@
 #include <mt8186-afe-common.h>
 
 extern const struct dma_ops dummy_dma_ops;
-extern const struct dma_ops memif_ops;
 
 static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {

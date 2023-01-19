@@ -21,5 +21,7 @@ enum {
 	MEM_DIR_PLAYBACK,
 };
 
+extern const struct dma_ops memif_ops;
+
 #endif /* __SOF_DRIVERS_AFE_MEMIF_H__ */
 
