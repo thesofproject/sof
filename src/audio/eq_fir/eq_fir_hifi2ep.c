@@ -66,45 +66,6 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 		}
 	}
 }
-
-/* FIR for any number of frames */
-void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch)
-{
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
-	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x;
-	int32_t *y;
-	int ch;
-	int i;
-	int rshift;
-	int lshift;
-
-	for (ch = 0; ch < nch; ch++) {
-		/* Get FIR instance and get shifts to e.g. apply mute
-		 * without overhead.
-		 */
-		f = &fir[ch];
-		fir_get_lrshifts(f, &lshift, &rshift);
-
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifiep_setup_circular(f);
-
-		x = src++;
-		y = snk++;
-		for (i = 0; i < frames; i++) {
-			fir_32x16_hifiep(f, *x, y, lshift, rshift);
-			x += nch;
-			y += nch;
-		}
-	}
-
-	module_update_buffer_position(bsource, bsink, frames);
-}
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE
@@ -153,47 +114,6 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 		}
 	}
 }
-
-/* FIR for any number of frames */
-void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch)
-{
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
-	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x;
-	int32_t *y;
-	int32_t z;
-	int ch;
-	int i;
-	int rshift;
-	int lshift;
-
-	for (ch = 0; ch < nch; ch++) {
-		/* Get FIR instance and get shifts to e.g. apply mute
-		 * without overhead.
-		 */
-		f = &fir[ch];
-		fir_get_lrshifts(f, &lshift, &rshift);
-
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifiep_setup_circular(f);
-
-		x = src++;
-		y = snk++;
-		for (i = 0; i < frames; i++) {
-			fir_32x16_hifiep(f, *x << 8, &z, lshift, rshift);
-			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			x += nch;
-			y += nch;
-		}
-	}
-
-	module_update_buffer_position(bsource, bsink, frames);
-}
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S16LE
@@ -241,47 +161,6 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			y0 += inc;
 		}
 	}
-}
-
-/* FIR for any number of frames */
-void eq_fir_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch)
-{
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
-	struct fir_state_32x16 *f;
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
-	int16_t *x;
-	int16_t *y;
-	int32_t z;
-	int ch;
-	int i;
-	int rshift;
-	int lshift;
-
-	for (ch = 0; ch < nch; ch++) {
-		/* Get FIR instance and get shifts to e.g. apply mute
-		 * without overhead.
-		 */
-		f = &fir[ch];
-		fir_get_lrshifts(f, &lshift, &rshift);
-
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifiep_setup_circular(f);
-
-		x = src++;
-		y = snk++;
-		for (i = 0; i < frames; i++) {
-			fir_32x16_hifiep(f, *x << 16, &z, lshift, rshift);
-			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			x += nch;
-			y += nch;
-		}
-	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
