@@ -455,7 +455,7 @@ static void eq_fir_set_alignment(struct audio_stream __sparse_cache *source,
 				 struct audio_stream __sparse_cache *sink)
 {
 	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
+	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
