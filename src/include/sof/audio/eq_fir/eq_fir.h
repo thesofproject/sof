@@ -30,32 +30,26 @@
 
 #if CONFIG_FORMAT_S16LE
 void eq_fir_s16(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch);
+		struct output_stream_buffer *bsink, int frames);
 
 void eq_fir_2x_s16(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch);
+		   struct output_stream_buffer *bsink, int frames);
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 void eq_fir_s24(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch);
+		struct output_stream_buffer *bsink, int frames);
 
 void eq_fir_2x_s24(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch);
+		   struct output_stream_buffer *bsink, int frames);
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 void eq_fir_s32(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		struct output_stream_buffer *bsink,
-		int frames, int nch);
+		struct output_stream_buffer *bsink, int frames);
 
 void eq_fir_2x_s32(struct fir_state_32x16 *fir, struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink,
-		   int frames, int nch);
+		   struct output_stream_buffer *bsink, int frames);
 #endif /* CONFIG_FORMAT_S32LE */
 
 #ifdef UNIT_TEST
