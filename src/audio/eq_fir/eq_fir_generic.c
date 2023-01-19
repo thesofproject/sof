@@ -54,8 +54,6 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -94,8 +92,6 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -132,8 +128,6 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
