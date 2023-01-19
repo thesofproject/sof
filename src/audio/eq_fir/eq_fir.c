@@ -104,6 +104,7 @@ static inline void set_s32_fir(struct comp_data *cd)
 #endif /* CONFIG_FORMAT_S32LE */
 #endif
 
+#if CONFIG_IPC_MAJOR_3
 static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -111,19 +112,19 @@ static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_info(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
+		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
 		set_s16_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_info(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
 		set_s24_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_info(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
+		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
 		set_s32_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
@@ -133,6 +134,73 @@ static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame
 	}
 	return 0;
 }
+#endif /* CONFIG_IPC_MAJOR_3 */
+
+#if CONFIG_IPC_MAJOR_4
+static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
+
+	comp_dbg(mod->dev, "set_fir_func(): valid_bit_depth %d", valid_bit_depth);
+	switch (valid_bit_depth) {
+#if CONFIG_FORMAT_S16LE
+	case IPC4_DEPTH_16BIT:
+		set_s16_fir(cd);
+		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	case IPC4_DEPTH_24BIT:
+		set_s24_fir(cd);
+		break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	case IPC4_DEPTH_32BIT:
+		set_s32_fir(cd);
+		break;
+#endif /* CONFIG_FORMAT_S32LE */
+	default:
+		comp_err(mod->dev, "set_fir_func(), invalid valid_bith_depth");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int eq_fir_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct sof_ipc_stream_params comp_params;
+	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	int i, ret;
+
+	comp_dbg(dev, "eq_fir_params()");
+
+	comp_params = *params;
+	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+	comp_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
+
+	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
+				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+	comp_params.frame_fmt = frame_fmt;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
+
+	component_set_nearest_period_frames(dev, comp_params.rate);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ret = buffer_set_params(sink_c, &comp_params, true);
+	buffer_release(sink_c);
+	return ret;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 /* Pass-through functions to replace FIR core while not configured for
  * response.
@@ -417,6 +485,7 @@ static int eq_fir_process(struct processing_module *mod,
 			  int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
@@ -425,10 +494,18 @@ static int eq_fir_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_fir_setup(mod->dev, cd, mod->stream_params->channels);
+		ret = eq_fir_setup(mod->dev, cd, source->channels);
 		if (ret < 0) {
 			comp_err(mod->dev, "eq_fir_process(), failed FIR setup");
 			return ret;
+		} else if (cd->fir_delay_size) {
+			comp_dbg(mod->dev, "eq_fir_process(), active");
+			ret = set_fir_func(mod, source->frame_fmt);
+			if (ret < 0)
+				return ret;
+		} else {
+			cd->eq_fir_func = eq_fir_passthrough;
+			comp_dbg(mod->dev, "eq_fir_process(), pass-through");
 		}
 	}
 
@@ -465,49 +542,46 @@ static int eq_fir_prepare(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	uint32_t sink_period_bytes;
 	struct comp_dev *dev = mod->dev;
-	int ret;
+	int channels;
+	enum sof_ipc_frame frame_fmt;
+	int ret = 0;
 
-	comp_info(dev, "eq_fir_prepare()");
+	comp_dbg(dev, "eq_fir_prepare()");
+
+#if CONFIG_IPC_MAJOR_4
+	ret = eq_fir_params(mod);
+	if (ret < 0) {
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return ret;
+	}
+#endif
 
 	/* EQ component will only ever have 1 source and 1 sink buffer. */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
-
 	eq_fir_set_alignment(&source_c->stream, &sink_c->stream);
-
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
-
-	if (sink_c->stream.size < sink_period_bytes) {
-		comp_err(dev, "eq_fir_prepare(): sink buffer size %d is insufficient < %d",
-			 sink_c->stream.size, sink_period_bytes);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-
-	if (cd->config) {
-		ret = eq_fir_setup(dev, cd, source_c->stream.channels);
-		if (ret < 0)
-			comp_err(dev, "eq_fir_prepare(): eq_fir_setup failed.");
-		else
-			ret = set_fir_func(mod, source_c->stream.frame_fmt);
-	} else {
-		cd->eq_fir_func = eq_fir_passthrough;
-		ret = 0;
-	}
-
-out:
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-
+	channels = source_c->stream.channels;
+	frame_fmt = source_c->stream.frame_fmt;
 	buffer_release(sink_c);
 	buffer_release(source_c);
+
+	cd->eq_fir_func = eq_fir_passthrough;
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	if (cd->config) {
+		ret = eq_fir_setup(dev, cd, channels);
+		if (ret < 0)
+			comp_err(dev, "eq_fir_prepare(): eq_fir_setup failed.");
+		else if (cd->fir_delay_size)
+			ret = set_fir_func(mod, frame_fmt);
+		else
+			comp_dbg(dev, "eq_fir_prepare(): pass-through");
+	}
+
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
 }
