@@ -95,7 +95,8 @@ ifdef(`BT_OFFLOAD', `
 
 ifdef(`SPK_MIC_PERIOD_US',`', `define(`SPK_MIC_PERIOD_US', 1000)')
 
-ifdef(`SPK_PLAYBACK_CORE', `', `define(`SPK_PLAYBACK_CORE', `0')')
+# Run Speakers pipeline on core#1 by default for low power considering
+ifdef(`SPK_PLAYBACK_CORE', `', `define(`SPK_PLAYBACK_CORE', `1')')
 
 ifdef(`NO_AMP',,`
 ifdef(`SMART_AMP',`
