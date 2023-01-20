@@ -124,9 +124,6 @@ enum ipc4_status {
 	/**< Reverted for ULP purposes */
 	IPC4_PIPELINE_STATE_NOT_SET = 164,
 
-	/**< HDA chained gateways wrong state transition*/
-	IPC4_INVALID_CHAIN_STATE_TRANSITION = 3018,
-
 	IPC4_MAX_STATUS = ((1 << IPC4_IXC_STATUS_BITS) - 1)
 };
 #endif
