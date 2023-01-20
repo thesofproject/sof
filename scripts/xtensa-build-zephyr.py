@@ -767,7 +767,7 @@ def install_platform(platform, sof_platform_output_dir):
 
 		# CONFIG_BUILD_OUTPUT_STRIPPED
 		# Renaming ELF files highlights the workaround below that strips the .comment section
-		InstFile(BIN_NAME + ".strip", renameTo=f"stripped-{BIN_NAME}.elf", optional=True),
+		InstFile(BIN_NAME + ".strip", renameTo=f"stripped-{BIN_NAME}.elf"),
 
 		# Not every platform has intermediate rimage modules
 		InstFile("main-stripped.mod", renameTo="stripped-main.elf", optional=True),
