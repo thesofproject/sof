@@ -32,20 +32,12 @@ DECLARE_SOF_RT_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
 		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
-struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align,
-				 bool is_shared)
+static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,
+					       uint32_t flags, bool is_shared)
 {
 	struct comp_buffer *buffer;
-	void *stream_addr;
 
-	tr_dbg(&buffer_tr, "buffer_alloc()");
-
-	/* validate request */
-	if (size == 0) {
-		tr_err(&buffer_tr, "buffer_alloc(): new size = %u is invalid",
-		       size);
-		return NULL;
-	}
+	tr_dbg(&buffer_tr, "buffer_alloc_struct()");
 
 	/* allocate new buffer	 */
 	enum mem_zone zone = is_shared ? SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
@@ -53,7 +45,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	buffer = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
 
 	if (!buffer) {
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
+		tr_err(&buffer_tr, "buffer_alloc_struct(): could not alloc structure");
 		return NULL;
 	}
 
@@ -61,13 +53,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 
 	buffer->is_shared = is_shared;
 	buffer->caps = caps;
-	stream_addr = rballoc_align(0, caps, size, align);
-	if (!stream_addr) {
-		rfree(buffer);
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
-		       size, caps);
-		return NULL;
-	}
 
 	/* From here no more uncached access to the buffer object, except its list headers */
 	audio_stream_set_addr(&buffer->stream, stream_addr);
@@ -78,6 +63,36 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
+
+	return buffer;
+}
+
+struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uint32_t align,
+				 bool is_shared)
+{
+	struct comp_buffer *buffer;
+	void *stream_addr;
+
+	tr_dbg(&buffer_tr, "buffer_alloc()");
+
+	/* validate request */
+	if (size == 0) {
+		tr_err(&buffer_tr, "buffer_alloc(): new size = %zu is invalid", size);
+		return NULL;
+	}
+
+	stream_addr = rballoc_align(0, caps, size, align);
+	if (!stream_addr) {
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %zu bytes of type = %u",
+		       size, caps);
+		return NULL;
+	}
+
+	buffer = buffer_alloc_struct(stream_addr, size, caps, flags, is_shared);
+	if (!buffer) {
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc buffer structure");
+		rfree(stream_addr);
+	}
 
 	return buffer;
 }
