@@ -183,7 +183,6 @@ static void sys_module_init(void)
  */
 
 void sys_comp_host_init(void);
-void sys_comp_dai_init(void);
 void sys_comp_src_init(void);
 void sys_comp_mux_init(void);
 void sys_comp_chain_dma_init(void);
@@ -263,9 +262,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_DAI))
-		sys_comp_dai_init();
-
 	if (IS_ENABLED(CONFIG_COMP_SRC)) {
 #if CONFIG_IPC_MAJOR_3
 		sys_comp_src_init();

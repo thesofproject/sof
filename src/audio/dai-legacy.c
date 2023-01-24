@@ -17,6 +17,7 @@
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <rtos/init.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
@@ -1117,3 +1118,4 @@ UT_STATIC void sys_comp_dai_init(void)
 }
 
 DECLARE_MODULE(sys_comp_dai_init);
+SOF_MODULE_INIT(dai, sys_comp_dai_init);
