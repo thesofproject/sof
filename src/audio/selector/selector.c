@@ -21,6 +21,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -571,6 +572,7 @@ UT_STATIC void sys_comp_selector_init(void)
 }
 
 DECLARE_MODULE(sys_comp_selector_init);
+SOF_MODULE_INIT(selector, sys_comp_selector_init);
 #else
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
@@ -957,4 +959,5 @@ static struct module_interface selector_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(selector_interface, selector_uuid, selector_tr);
+SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #endif

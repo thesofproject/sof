@@ -184,11 +184,6 @@ static void sys_module_init(void)
 
 void sys_comp_host_init(void);
 void sys_comp_mux_init(void);
-#if CONFIG_IPC_MAJOR_3
-void sys_comp_selector_init(void);
-#else
-void sys_comp_module_selector_interface_init(void);
-#endif
 void sys_comp_switch_init(void);
 void sys_comp_tone_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
@@ -258,12 +253,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_SEL))
-#if CONFIG_IPC_MAJOR_3
-		sys_comp_selector_init();
-#else
-		sys_comp_module_selector_interface_init();
-#endif
 	if (IS_ENABLED(CONFIG_COMP_SWITCH))
 		sys_comp_switch_init();
 
