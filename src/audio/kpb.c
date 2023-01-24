@@ -25,6 +25,7 @@
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
@@ -1886,3 +1887,4 @@ UT_STATIC void sys_comp_kpb_init(void)
 }
 
 DECLARE_MODULE(sys_comp_kpb_init);
+SOF_MODULE_INIT(kpb, sys_comp_kpb_init);
