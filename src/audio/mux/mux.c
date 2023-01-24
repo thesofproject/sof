@@ -5,8 +5,6 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-
-
 #if CONFIG_COMP_MUX
 
 #include <sof/audio/component.h>
@@ -15,6 +13,7 @@
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -1012,5 +1011,6 @@ UT_STATIC void sys_comp_mux_init(void)
 }
 
 DECLARE_MODULE(sys_comp_mux_init);
+SOF_MODULE_INIT(mux, sys_comp_mux_init);
 
 #endif /* CONFIG_COMP_MUX */
