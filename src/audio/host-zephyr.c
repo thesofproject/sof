@@ -14,6 +14,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
@@ -1174,3 +1175,4 @@ UT_STATIC void sys_comp_host_init(void)
 }
 
 DECLARE_MODULE(sys_comp_host_init);
+SOF_MODULE_INIT(host, sys_comp_host_init);
