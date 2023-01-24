@@ -15,20 +15,25 @@ function example_spk_eq()
 
 %% Defaults
 fs = 48e3;
-tpath =  '../../topology/topology1/m4';
-cpath = '../../ctl';
-iir_priv = 'DEF_EQIIR_PRIV';
-fir_priv = 'DEF_EQFIR_PRIV';
-iir_comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
-fir_comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
+fn.cpath3 = '../../ctl/ipc3';
+fn.cpath4 = '../../ctl/ipc4';
+fn.tpath1 =  '../../topology/topology1/m4';
+fir.tpath2 =  '../../topology/topology2/include/components/eqfir';
+iir.tpath2 =  '../../topology/topology2/include/components/eqiir';
+iir.priv = 'DEF_EQIIR_PRIV';
+fir.priv = 'DEF_EQFIR_PRIV';
+iir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
+fir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
 
 %% File names
-fn_fir_sofctl = fullfile(cpath, 'eq_fir_spk.txt');
-fn_fir_blob   = fullfile(cpath, 'eq_fir_spk.bin');
-fn_fir_tplg   = fullfile(tpath, 'eq_fir_coef_spk.m4');
-fn_iir_sofctl = fullfile(cpath, 'eq_fir_spk.txt');
-fn_iir_blob   = fullfile(cpath, 'eq_fir_spk.bin');
-fn_iir_tplg   = fullfile(tpath, 'eq_fir_coef_spk.m4');
+fir.txt = 'eq_fir_spk.txt';
+fir.bin = 'eq_fir_spk.bin';
+fir.tplg1 = 'eq_fir_coef_spk.m4';
+fir.tplg2 = 'example_speaker.conf';
+iir.txt = 'eq_fir_spk.txt';
+iir.bin = 'eq_fir_spk.bin';
+iir.tplg1 = 'eq_fir_coef_spk.m4';
+iir.tplg2 = 'example_speaker.conf';
 
 %% Get defaults for equalizer design
 eq = eq_defaults();
@@ -126,10 +131,14 @@ if eq.enable_fir
                 num_responses, ...
                 assign_response, ...
                 [ bq_fir ]);
-        bp_fir = eq_fir_blob_pack(bm_fir);
-        eq_alsactl_write(fn_fir_sofctl, bp_fir);
-        eq_blob_write(fn_fir_blob, bp_fir);
-	eq_tplg_write(fn_fir_tplg, bp_fir, fir_priv, fir_comment);
+        bp_fir = eq_fir_blob_pack(bm_fir, 3); % IPC3
+        eq_alsactl_write(fullfile(fn.cpath3, fir.txt), bp_fir);
+        eq_blob_write(fullfile(fn.cpath3, fir.bin), bp_fir);
+	eq_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
+        bp_fir = eq_fir_blob_pack(bm_fir, 4); % IPC4
+        eq_alsactl_write(fullfile(fn.cpath4, fir.txt), bp_fir);
+        eq_blob_write(fullfile(fn.cpath4, fir.bin), bp_fir);
+	eq_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
 end
 
 %% Export IIR part
@@ -139,10 +148,14 @@ if eq.enable_iir
                 num_responses, ...
                 assign_response, ...
                 [ bq_iir ]);
-        bp_iir = eq_iir_blob_pack(bm_iir);
-        eq_alsactl_write(fn_iir_sofctl, bp_iir);
-        eq_blob_write(fn_iir_blob, bp_iir);
-	eq_tplg_write(fn_iir_tplg, bp_iir, iir_priv, iir_comment);
+        bp_iir = eq_iir_blob_pack(bm_iir, 3); % IPC3
+        eq_alsactl_write(fullfile(fn.cpath3, iir.txt), bp_iir);
+        eq_blob_write(fullfile(fn.cpath3, iir.bin), bp_iir);
+	eq_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
+        bp_iir = eq_iir_blob_pack(bm_iir, 4); % IPC4
+        eq_alsactl_write(fullfile(fn.cpath4, iir.txt), bp_iir);
+        eq_blob_write(fullfile(fn.cpath4, iir.bin), bp_iir);
+	eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
 end
 
 end
