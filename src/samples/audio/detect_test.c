@@ -15,6 +15,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
@@ -1021,3 +1022,4 @@ UT_STATIC void sys_comp_keyword_init(void)
 }
 
 DECLARE_MODULE(sys_comp_keyword_init);
+SOF_MODULE_INIT(keyword, sys_comp_keyword_init);

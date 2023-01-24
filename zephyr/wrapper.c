@@ -184,7 +184,6 @@ static void sys_module_init(void)
 
 void sys_comp_host_init(void);
 void sys_comp_mux_init(void);
-void sys_comp_keyword_init(void);
 void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
 void sys_comp_kpb_init(void);
@@ -249,9 +248,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE))
-		sys_comp_keyword_init();
-
 	if (IS_ENABLED(CONFIG_COMP_KPB))
 		sys_comp_kpb_init();
 
