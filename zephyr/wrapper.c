@@ -184,7 +184,6 @@ static void sys_module_init(void)
 
 void sys_comp_host_init(void);
 void sys_comp_mux_init(void);
-void sys_comp_tone_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
 void sys_comp_keyword_init(void);
 void sys_comp_asrc_init(void);
@@ -252,9 +251,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_TONE))
-		sys_comp_tone_init();
-
 	if (IS_ENABLED(CONFIG_COMP_FIR))
 		sys_comp_module_eq_fir_interface_init();
 
