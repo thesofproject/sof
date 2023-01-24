@@ -135,7 +135,7 @@ function [b, a] = peak_2nd(fhz, gdb, Q, fs)
 		b = [A * A, 0, 0]
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	alpha = sin(wc)/(2*Q);
 	b0 = 1 + alpha * A;
@@ -163,7 +163,7 @@ function [b, a] = high_pass_2nd_reasonance(f, resonance, fs)
 		b = [1 - cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	% Compute biquad coefficients for highpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -199,7 +199,7 @@ function [b, a] = low_pass_2nd_reasonance(f, resonance, fs)
 		b = [cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	% Compute biquad coefficients for lowpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -239,7 +239,7 @@ function [b, a] = band_pass_2nd(f, Q, fs)
 		b = [0, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 	if (Q <= 0)
 		% When Q = 0, the above formulas have problems. If we
 		% look at the z-transform, we can see that the limit
@@ -247,7 +247,7 @@ function [b, a] = band_pass_2nd(f, Q, fs)
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	w0 = pi * frequency;
 	alpha = sin(w0) / (2 * Q);
@@ -276,7 +276,7 @@ function [b, a] = notch_2nd(f, Q, fs)
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 	if Q <= 0
 		% When Q = 0, the above formulas have problems. If we
 		% look at the z-transform, we can see that the limit
@@ -284,7 +284,7 @@ function [b, a] = notch_2nd(f, Q, fs)
 		b = [0, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	w0 = pi * frequency;
 	alpha = sin(w0) / (2 * Q);
@@ -313,13 +313,13 @@ function [b, a] = low_shelf_2nd_google(f, db_gain, fs)
 		b = [A * A, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 	if (frequency <= 0)
 		% When frequency is 0, the z-transform is 1.
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	w0 = pi * frequency;
 	S = 1; % filter slope (1 is max value)
@@ -353,13 +353,13 @@ function [b, a] = high_shelf_2nd_google(f, db_gain, fs)
 		b = [1, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 	if (frequency <= 0)
 		% When frequency = 0, the filter is just a gain, A^2.
 		b = [A * A, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	w0 = pi * frequency;
 	S = 1; % filter slope (1 is max value)
