@@ -10,16 +10,19 @@ function example_fir_eq()
 
 %% Common definitions
 fs = 48e3;
-tpath =  '../../topology/topology1/m4';
-cpath = '../../ctl';
-priv = 'DEF_EQFIR_PRIV';
+fn.cpath3 = '../../ctl/ipc3';
+fn.cpath4 = '../../ctl/ipc4';
+fn.tpath1 =  '../../topology/topology1/m4';
+fn.tpath2 =  '../../topology/topology2/include/components/eqfir';
+fn.priv = 'DEF_EQFIR_PRIV';
 
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-blob_fn = fullfile(cpath, 'eq_fir_loudness.bin');
-alsa_fn = fullfile(cpath, 'eq_fir_loudness.txt');
-tplg_fn = fullfile(tpath, 'eq_fir_coef_loudness.m4');
+fn.bin = 'eq_fir_loudness.bin';
+fn.txt = 'eq_fir_loudness.txt';
+fn.tplg1 = 'eq_fir_coef_loudness.m4';
+fn.tplg2 = 'loudness.conf';
 comment = 'Loudness effect, created with example_fir_eq.m';
 
 %% Design FIR loudness equalizer
@@ -42,14 +45,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       [ bq_pass bq_loud ]);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
+eq_pack_export(bm, fn, comment);
 
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-blob_fn = fullfile(cpath, 'eq_fir_mid.bin');
-alsa_fn = fullfile(cpath, 'eq_fir_mid.txt');
-tplg_fn = fullfile(tpath, 'eq_fir_coef_mid.m4');
+fn.bin = 'eq_fir_mid.bin';
+fn.txt = 'eq_fir_mid.txt';
+fn.tplg1 = 'eq_fir_coef_mid.m4';
+fn.tplg2 = 'midboost.conf';
 comment = 'Mid boost, created with example_fir_eq.m';
 
 %% Define mid frequencies boost EQ
@@ -68,14 +72,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
+eq_pack_export(bm, fn, comment);
 
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-blob_fn = fullfile(cpath, 'eq_fir_flat.bin');
-alsa_fn = fullfile(cpath, 'eq_fir_flat.txt');
-tplg_fn = fullfile(tpath, 'eq_fir_coef_flat.m4');
+fn.bin = 'eq_fir_flat.bin';
+fn.txt = 'eq_fir_flat.txt';
+fn.tplg1 = 'eq_fir_coef_flat.m4';
+fn.tplg2 = 'flat.conf';
 comment = 'Flat response, created with example_fir_eq.m';
 
 %% Define a passthru EQ with one tap
@@ -94,14 +99,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
+eq_pack_export(bm, fn, comment);
 
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-blob_fn = fullfile(cpath, 'eq_fir_pass.bin');
-alsa_fn = fullfile(cpath, 'eq_fir_pass.txt');
-tplg_fn = fullfile(tpath, 'eq_fir_coef_pass.m4');
+fn.bin = 'eq_fir_pass.bin';
+fn.txt = 'eq_fir_pass.txt';
+fn.tplg1 = 'eq_fir_coef_pass.m4';
+fn.tplg2 = 'passthrough.conf';
 comment = 'Pass-through response, created with example_fir_eq.m';
 
 %% Define a passthru EQ with one tap
@@ -120,7 +126,7 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
+eq_pack_export(bm, fn, comment);
 
 
 %% --------------------------
@@ -211,20 +217,28 @@ eq_plot(eq);
 end
 
 % Pack and write file common function for all exports
-function eq_pack_export(bm, bin_fn, ascii_fn, tplg_fn, priv, note)
+function eq_pack_export(bm, fn, note)
 
-bp = eq_fir_blob_pack(bm);
-
-if ~isempty(bin_fn)
-	eq_blob_write(bin_fn, bp);
+bp = eq_fir_blob_pack(bm, 3); % IPC3
+if ~isempty(fn.bin)
+	eq_blob_write(fullfile(fn.cpath3, fn.bin), bp);
+end
+if ~isempty(fn.txt)
+	eq_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
+end
+if ~isempty(fn.tplg1)
+	eq_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
 end
 
-if ~isempty(ascii_fn)
-	eq_alsactl_write(ascii_fn, bp);
+bp = eq_fir_blob_pack(bm, 4); % IPC4
+if ~isempty(fn.bin)
+	eq_blob_write(fullfile(fn.cpath4, fn.bin), bp);
 end
-
-if ~isempty(tplg_fn)
-	eq_tplg_write(tplg_fn, bp, priv, note);
+if ~isempty(fn.txt)
+	eq_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
+end
+if ~isempty(fn.tplg2)
+	eq_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'fir_eq', note);
 end
 
 end

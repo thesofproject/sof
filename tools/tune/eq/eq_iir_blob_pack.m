@@ -1,9 +1,10 @@
-function blob8 = eq_iir_blob_pack(bs, endian)
+function blob8 = eq_iir_blob_pack(bs, ipc_ver, endian)
 
 %% Pack equalizer struct to bytes
 %
 % blob8 = eq_iir_blob_pack(bs, endian)
 % bs - blob struct
+% ipc_ver - optional, use 3 or 4. Default is 3.
 % endian - optional, use 'little' or 'big'. Defaults to little.
 %
 
@@ -14,6 +15,10 @@ function blob8 = eq_iir_blob_pack(bs, endian)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 if nargin < 2
+	ipc_ver = 3;
+end
+
+if nargin < 3
 	endian = 'little';
 end
 
@@ -39,7 +44,7 @@ nbytes_coef = length(bs.all_coefficients)*4;
 nbytes_data = nbytes_head + nbytes_coef;
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = eq_get_abi(nbytes_data);
+[abi_bytes, nbytes_abi] = eq_get_abi(nbytes_data, ipc_ver);
 
 %% Initialize correct size uint8 array
 nbytes = nbytes_abi + nbytes_data;

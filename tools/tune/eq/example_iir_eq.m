@@ -10,16 +10,19 @@ function example_iir_eq()
 
 %% Common definitions
 fs = 48e3;
-tpath =  '../../topology/topology1/m4';
-cpath = '../../ctl';
-priv = 'DEF_EQIIR_PRIV';
+fn.cpath3 = '../../ctl/ipc3';
+fn.cpath4 = '../../ctl/ipc4';
+fn.tpath1 =  '../../topology/topology1/m4';
+fn.tpath2 =  '../../topology/topology2/include/components/eqiir';
+fn.priv = 'DEF_EQIIR_PRIV';
 
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-blob_fn = fullfile(cpath, 'eq_iir_loudness.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_loudness.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_coef_loudness.m4');
+fn.bin = 'eq_iir_loudness.bin';
+fn.txt = 'eq_iir_loudness.txt';
+fn.tplg1 = 'eq_iir_coef_loudness.m4';
+fn.tplg2 = 'loudness.conf';
 comment = 'Loudness effect, created with example_iir_eq.m';
 
 %% Design IIR loudness equalizer
@@ -42,14 +45,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       [bq_pass bq_loud]);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% ------------------------------------
 %% Example 2: Bass boost
 %% ------------------------------------
-blob_fn = fullfile(cpath, 'eq_iir_bassboost.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_bassboost.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_coef_bassboost.m4');
+fn.bin = 'eq_iir_bassboost.bin';
+fn.txt = 'eq_iir_bassboost.txt';
+fn.tplg1 = 'eq_iir_coef_bassboost.m4';
+fn.tplg2 = 'bassboost.conf';
 comment = 'Bass boost, created with example_iir_eq.m';
 
 %% Design IIR bass boost equalizer
@@ -68,14 +72,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_bass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% ------------------------------------
 %% Example 3: Band-pass
 %% ------------------------------------
-blob_fn = fullfile(cpath, 'eq_iir_bandpass.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_bandpass.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_coef_bandpass.m4');
+fn.bin = 'eq_iir_bandpass.bin';
+fn.txt = 'eq_iir_bandpass.txt';
+fn.tplg1 = 'eq_iir_coef_bandpass.m4';
+fn.tplg2 = 'bandpass.conf';
 comment = 'Band-pass, created with example_iir_eq.m';
 
 %% Design IIR bass boost equalizer
@@ -94,14 +99,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_band);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% -------------------
 %% Example 4: Flat IIR
 %% -------------------
-blob_fn = fullfile(cpath, 'eq_iir_flat.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_flat.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_coef_flat.m4');
+fn.bin = 'eq_iir_flat.bin';
+fn.txt = 'eq_iir_flat.txt';
+fn.tplg1 = 'eq_iir_coef_flat.m4';
+fn.tplg2 = 'flat.conf';
 comment = 'Flat response, created with example_iir_eq.m';
 
 %% Define a passthru IIR EQ equalizer
@@ -120,14 +126,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% ---------------------------
 %% Example 5: Pass-through IIR
 %% ---------------------------
-blob_fn = fullfile(cpath, 'eq_iir_pass.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_pass.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_coef_pass.m4');
+fn.bin = 'eq_iir_pass.bin';
+fn.txt = 'eq_iir_pass.txt';
+fn.tplg1 = 'eq_iir_coef_pass.m4';
+fn.tplg2 = 'passthrough.conf';
 comment = 'Pass-through, created with example_iir_eq.m';
 
 %% Define a passthru IIR EQ equalizer
@@ -146,13 +153,13 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% ------------------------------------
 %% Example 6: 20/30/40/50 Hz high-pass
 %% ------------------------------------
 
-blob_fn = ''; % Don't create
+fn.bin = ''; % Don't create
 fs_list = [16e3 48e3];
 fc_list = [20 30 40 50];
 g_list = [0 20];
@@ -163,10 +170,11 @@ for i = 1:length(fs_list)
 			fc = fc_list(j);
 			g = g_list(k);
 			fsk = round(fs/1e3);
-			tplg_fn = sprintf('%s/eq_iir_coef_highpass_%dhz_%ddb_%dkhz.m4', ...
-					  tpath, fc, g, fsk);
-			alsa_fn = sprintf('%s/eq_iir_highpass_%dhz_%ddb_%dkhz.txt', ...
-					  cpath, fc, g, fsk);
+			fn.tplg1 = sprintf('eq_iir_coef_highpass_%dhz_%ddb_%dkhz.m4', ...
+				           fc, g, fsk);
+			fn.tplg2 = sprintf('highpass_%dhz_%ddb_%dkhz.conf', fc, g, fsk);
+			fn.txt = sprintf('eq_iir_highpass_%dhz_%ddb_%dkhz.txt', ...
+					 fc, g, fsk);
 			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with example_iir_eq.m', ...
 					  fc, g);
 
@@ -186,10 +194,7 @@ for i = 1:length(fs_list)
 					       bq_hp);
 
 			%% Pack and write file
-			eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
-			bp = eq_iir_blob_pack(bm);
-			eq_tplg_write(tplg_fn, bp, priv, comment);
-			eq_alsactl_write(alsa_fn, bp);
+			eq_pack_export(bm, fn, comment)
 		end
 	end
 end
@@ -198,9 +203,10 @@ end
 %% Example 7: Merge previous desigs to single blob for use as presets
 %% ------------------------------------------------------------------
 
-blob_fn = fullfile(cpath, 'eq_iir_bundle.bin');
-alsa_fn = fullfile(cpath, 'eq_iir_bundle.txt');
-tplg_fn = fullfile(tpath, 'eq_iir_bundle.m4');
+fn.bin = 'eq_iir_bundle.bin';
+fn.txt = 'eq_iir_bundle.txt';
+fn.tplg1 = 'eq_iir_bundle.m4';
+fn.tplg2 = 'bundle.conf';
 comment = 'Bundle of responses flat/loud/bass/band/high, created with example_iir_eq.m';
 
 %% Build blob
@@ -213,7 +219,7 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       [bq_pass bq_loud bq_bass bq_band bq_hp]);
 
 %% Pack and write file
-eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+eq_pack_export(bm, fn, comment)
 
 %% ------------------------------------
 %% Done.
@@ -340,20 +346,28 @@ eq_plot(eq);
 end
 
 % Pack and write file common function for all exports
-function eq_pack_export(bm, bin_fn, ascii_fn, tplg_fn, priv, note)
+function eq_pack_export(bm, fn, note)
 
-bp = eq_iir_blob_pack(bm);
-
-if ~isempty(bin_fn)
-	eq_blob_write(bin_fn, bp);
+bp = eq_iir_blob_pack(bm, 3); % IPC3
+if ~isempty(fn. bin)
+	eq_blob_write(fullfile(fn.cpath3, fn.bin), bp);
+end
+if ~isempty(fn.txt)
+	eq_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
+end
+if ~isempty(fn.tplg1)
+	eq_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
 end
 
-if ~isempty(ascii_fn)
-	eq_alsactl_write(ascii_fn, bp);
+bp = eq_iir_blob_pack(bm, 4); % IPC4
+if ~isempty(fn.bin)
+	eq_blob_write(fullfile(fn.cpath4, fn.bin), bp);
 end
-
-if ~isempty(tplg_fn)
-	eq_tplg_write(tplg_fn, bp, priv, note);
+if ~isempty(fn.txt)
+	eq_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
+end
+if ~isempty(fn.tplg2)
+	eq_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'iir_eq', note);
 end
 
 end
