@@ -14,6 +14,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -918,6 +919,7 @@ static struct module_interface mixin_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
+SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 
 static struct module_interface mixout_interface = {
 	.init  = mixout_init,
@@ -928,3 +930,4 @@ static struct module_interface mixout_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
+SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
