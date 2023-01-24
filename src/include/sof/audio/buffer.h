@@ -190,6 +190,8 @@ struct buffer_cb_free {
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uint32_t align,
 				 bool is_shared);
+struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
+				       uint32_t flags, uint32_t align, bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 /*
@@ -226,6 +228,8 @@ int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input);
 int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
+int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
+			  uint32_t alignment);
 void buffer_free(struct comp_buffer *buffer);
 void buffer_zero(struct comp_buffer *buffer);
 
