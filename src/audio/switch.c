@@ -13,6 +13,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stddef.h>
+#include <rtos/init.h>
 
 static const struct comp_driver comp_switch;
 
@@ -94,3 +95,4 @@ UT_STATIC void sys_comp_switch_init(void)
 }
 
 DECLARE_MODULE(sys_comp_switch_init);
+SOF_MODULE_INIT(switch, sys_comp_switch_init);
