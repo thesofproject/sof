@@ -18,6 +18,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -1044,6 +1045,7 @@ static struct module_interface src_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
+SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
 
 #elif CONFIG_IPC_MAJOR_3
 static struct comp_dev *src_new(const struct comp_driver *drv,
@@ -1255,6 +1257,7 @@ UT_STATIC void sys_comp_src_init(void)
 }
 
 DECLARE_MODULE(sys_comp_src_init);
+SOF_MODULE_INIT(src, sys_comp_src_init);
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
