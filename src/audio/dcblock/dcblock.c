@@ -14,6 +14,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -431,3 +432,4 @@ UT_STATIC void sys_comp_dcblock_init(void)
 }
 
 DECLARE_MODULE(sys_comp_dcblock_init);
+SOF_MODULE_INIT(dcblock, sys_comp_dcblock_init);
