@@ -10,6 +10,7 @@
  */
 
 #include <sof/debug/panic.h>
+#include <rtos/init.h>
 #include <rtos/interrupt.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
@@ -315,6 +316,17 @@ int sof_main(int argc, char *argv[])
 {
 	trace_point(TRACE_BOOT_START);
 
-	return primary_core_init(argc, argv, &sof);
+	return start_complete();
 }
+
+struct device;
+
+static int sof_init(const struct device *dev)
+{
+	ARG_UNUSED(dev);
+
+	return primary_core_init(0, NULL, &sof);
+}
+
+SYS_INIT(sof_init, POST_KERNEL, 99);
 #endif

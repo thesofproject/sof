@@ -258,8 +258,6 @@ int task_main_start(struct sof *sof)
 {
 	_smex_placeholder = smex_placeholder_f();
 
-	int ret;
-
 	/* init default audio components */
 	sys_comp_init(sof);
 
@@ -269,6 +267,14 @@ int task_main_start(struct sof *sof)
 	/* host is mandatory */
 	sys_comp_host_init();
 
+	/* init pipeline position offsets */
+	pipeline_posn_init(sof);
+
+	return 0;
+}
+
+int start_complete(void)
+{
 	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
 #if CONFIG_COMP_LEGACY_INTERFACE
 		sys_comp_volume_init();
@@ -388,8 +394,6 @@ int task_main_start(struct sof *sof)
 	if (IS_ENABLED(CONFIG_PROBE))
 		sys_comp_probe_init();
 #endif
-	/* init pipeline position offsets */
-	pipeline_posn_init(sof);
 
 	/* init chain dma manager*/
 	if (IS_ENABLED(CONFIG_COMP_CHAIN_DMA))
@@ -410,10 +414,9 @@ int task_main_start(struct sof *sof)
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 #endif
-	/* let host know DSP boot is complete */
-	ret = platform_boot_complete(0);
 
-	return ret;
+	/* let host know DSP boot is complete */
+	return platform_boot_complete(0);
 }
 
 /*

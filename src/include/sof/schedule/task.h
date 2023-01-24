@@ -122,5 +122,6 @@ void task_main_init(void);
 void task_main_free(void);
 
 int task_main_start(struct sof *sof);
+int start_complete(void);
 
 #endif /* __SOF_SCHEDULE_TASK_H__ */
