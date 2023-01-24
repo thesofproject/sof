@@ -212,12 +212,6 @@ void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
 void sys_comp_module_cadence_interface_init(void);
 void sys_comp_module_passthrough_interface_init(void);
-#if CONFIG_COMP_LEGACY_INTERFACE
-void sys_comp_volume_init(void);
-#else
-void sys_comp_module_volume_interface_init(void);
-#endif
-void sys_comp_module_gain_interface_init(void);
 void sys_comp_module_mixin_interface_init(void);
 void sys_comp_aria_init(void);
 void sys_comp_crossover_init(void);
@@ -275,17 +269,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
-#if CONFIG_COMP_LEGACY_INTERFACE
-		sys_comp_volume_init();
-#else
-		sys_comp_module_volume_interface_init();
-#endif
-
-		if (IS_ENABLED(CONFIG_IPC_MAJOR_4))
-			sys_comp_module_gain_interface_init();
-	}
-
 	if (IS_ENABLED(CONFIG_COMP_MIXER)) {
 #if CONFIG_IPC_MAJOR_3
 		sys_comp_module_mixer_interface_init();
