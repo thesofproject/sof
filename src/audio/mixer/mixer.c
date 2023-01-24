@@ -16,6 +16,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -230,3 +231,4 @@ static struct module_interface mixer_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixer_interface, mixer_uuid, mixer_tr);
+SOF_MODULE_INIT(mixer, sys_comp_module_mixer_interface_init);
