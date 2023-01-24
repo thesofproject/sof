@@ -4,6 +4,7 @@
 //
 // Author: Ryan Lee <ryans.lee@maximintegrated.com>
 
+#include <rtos/init.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/msg.h>
 #include <sof/ut.h>
@@ -782,3 +783,4 @@ UT_STATIC void sys_comp_smart_amp_init(void)
 }
 
 DECLARE_MODULE(sys_comp_smart_amp_init);
+SOF_MODULE_INIT(smart_amp, sys_comp_smart_amp_init);

@@ -185,7 +185,6 @@ static void sys_module_init(void)
 void sys_comp_mux_init(void);
 void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
-void sys_comp_smart_amp_init(void);
 void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
 void sys_comp_module_cadence_interface_init(void);
@@ -243,10 +242,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP) ||
-	    IS_ENABLED(CONFIG_MAXIM_DSM))
-		sys_comp_smart_amp_init();
-
 	if (IS_ENABLED(CONFIG_COMP_ASRC))
 		sys_comp_asrc_init();
 
