@@ -17,6 +17,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -544,3 +545,4 @@ static struct module_interface eq_fir_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
+SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
