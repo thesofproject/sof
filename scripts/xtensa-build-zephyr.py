@@ -825,7 +825,12 @@ def install_platform(platform, sof_platform_output_dir):
 BIN_NAME = 'zephyr'
 
 CHECKSUM_WANTED = [
-	'*.ri',     # Some .ri files have a non-deterministic signature, others not
+	# Some .ri files have a deterministic signature, others use
+	# a cryptographic salt. Even for the latter a checksum is still
+	# useful to match an artefact with a specific build log.
+	'*.ri',
+	'dsp_basefw.bin',
+
 	'*version*.h',
 	'*configs.c', # deterministic unlike .config
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
