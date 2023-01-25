@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_aria_init(void);
 void sys_comp_crossover_init(void);
 void sys_comp_drc_init(void);
 void sys_comp_multiband_drc_init(void);
@@ -235,9 +234,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_ARIA))
-		sys_comp_aria_init();
-
 	if (IS_ENABLED(CONFIG_COMP_CROSSOVER))
 		sys_comp_crossover_init();
 
