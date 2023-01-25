@@ -202,6 +202,7 @@ static void eq_iir_s32_default(struct processing_module *mod, struct input_strea
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_IPC_MAJOR_3
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
 static void eq_iir_s32_16_default(struct processing_module *mod,
 				  struct input_stream_buffer *bsource,
@@ -297,6 +298,7 @@ static void eq_iir_s32_24_default(struct processing_module *mod,
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 static void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 			struct output_stream_buffer *bsink, uint32_t frames)
@@ -307,6 +309,7 @@ static void eq_iir_pass(struct processing_module *mod, struct input_stream_buffe
 	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 }
 
+#if CONFIG_IPC_MAJOR_3
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 				struct output_stream_buffer *bsink, uint32_t frames)
@@ -366,7 +369,9 @@ static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stre
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+#endif /* CONFIG_IPC_MAJOR_3 */
 
+#if CONFIG_IPC_MAJOR_3
 const struct eq_iir_func_map fm_configured[] = {
 #if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_default},
@@ -437,6 +442,33 @@ static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
 	return NULL;
 }
 
+#elif CONFIG_IPC_MAJOR_4
+
+static eq_iir_func eq_iir_find_func(struct processing_module *mod)
+{
+	unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
+
+	comp_dbg(mod->dev, "eq_iir_find_func(): valid_bit_depth %d", valid_bit_depth);
+	switch (valid_bit_depth) {
+#if CONFIG_FORMAT_S16LE
+	case IPC4_DEPTH_16BIT:
+		return eq_iir_s16_default;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	case IPC4_DEPTH_24BIT:
+		return eq_iir_s24_default;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	case IPC4_DEPTH_32BIT:
+		return eq_iir_s32_default;
+#endif /* CONFIG_FORMAT_S32LE */
+	default:
+		comp_err(mod->dev, "set_fir_func(), invalid valid_bith_depth");
+	}
+	return NULL;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 static void eq_iir_free_delaylines(struct comp_data *cd)
 {
 	struct iir_state_df1 *iir = cd->iir;
@@ -467,8 +499,8 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	int j;
 	int s;
 
-	comp_info(mod->dev, "eq_iir_init_coef(), response assign for %u channels, %u responses",
-		  config->channels_in_config, config->number_of_responses);
+	comp_info(mod->dev, "eq_iir_init_coef(): %u responses, %u channels, stream %d channels",
+		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
@@ -663,6 +695,7 @@ static int eq_iir_free(struct processing_module *mod)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int eq_iir_verify_params(struct comp_dev *dev,
 				struct sof_ipc_stream_params *params)
 {
@@ -703,6 +736,7 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 
 	return 0;
 }
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 /* used to pass standard and bespoke commands (with data) to component */
 static int eq_iir_set_config(struct processing_module *mod, uint32_t config_id,
@@ -730,6 +764,37 @@ static int eq_iir_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
+static int eq_iir_new_blob(struct processing_module *mod, struct comp_data *cd,
+			   enum sof_ipc_frame source_format, enum sof_ipc_frame sink_format,
+			   int channels)
+{
+	int ret;
+
+	ret = eq_iir_setup(mod, channels);
+	if (ret < 0) {
+		comp_err(mod->dev, "eq_iir_new_blob(), failed IIR setup");
+		return ret;
+	} else if (cd->iir_delay_size) {
+		comp_dbg(mod->dev, "eq_iir_new_blob(), active");
+#if CONFIG_IPC_MAJOR_3
+		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_configured,
+						   ARRAY_SIZE(fm_configured));
+#elif CONFIG_IPC_MAJOR_4
+		cd->eq_iir_func = eq_iir_find_func(mod);
+#endif
+	} else {
+		comp_dbg(mod->dev, "eq_iir_new_blob(), pass-through");
+#if CONFIG_IPC_MAJOR_3
+		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
+						   ARRAY_SIZE(fm_passthrough));
+#elif CONFIG_IPC_MAJOR_4
+		cd->eq_iir_func = eq_iir_pass;
+#endif
+	}
+
+	return 0;
+}
+
 static int eq_iir_process(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
@@ -743,25 +808,16 @@ static int eq_iir_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_iir_setup(mod, mod->stream_params->channels);
-		if (ret < 0) {
-			comp_err(mod->dev, "eq_iir_process(), failed IIR setup");
+		ret = eq_iir_new_blob(mod, cd, source->frame_fmt,
+				      sink->frame_fmt, source->channels);
+		if (ret)
 			return ret;
-		} else if (cd->iir_delay_size) {
-			comp_dbg(mod->dev, "eq_iir_process(), active");
-			cd->eq_iir_func = eq_iir_find_func(source->frame_fmt, sink->frame_fmt,
-							   fm_configured,
-							   ARRAY_SIZE(fm_configured));
-		} else {
-			comp_dbg(mod->dev, "eq_fir_process(), pass-through");
-			cd->eq_iir_func = eq_iir_find_func(source->frame_fmt, sink->frame_fmt,
-							   fm_passthrough,
-							   ARRAY_SIZE(fm_passthrough));
-		}
 	}
 
-	cd->eq_iir_func(mod, &input_buffers[0], &output_buffers[0], frame_count);
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
+	if (frame_count) {
+		cd->eq_iir_func(mod, &input_buffers[0], &output_buffers[0], frame_count);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
+	}
 	return 0;
 }
 
@@ -779,6 +835,54 @@ static void eq_iir_set_alignment(struct audio_stream *source, struct audio_strea
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
 }
 
+#if CONFIG_IPC_MAJOR_4
+static int eq_iir_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct sof_ipc_stream_params comp_params;
+	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *sinkb;
+	struct comp_buffer __sparse_cache *sink_c;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	int i, ret;
+
+	comp_dbg(dev, "eq_iir_params()");
+	comp_params = *params;
+	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+	comp_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
+
+	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
+				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+	comp_params.frame_fmt = frame_fmt;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
+
+	component_set_nearest_period_frames(dev, comp_params.rate);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ret = buffer_set_params(sink_c, &comp_params, true);
+	buffer_release(sink_c);
+	return ret;
+}
+#endif
+
+static void eq_iir_set_passthrough_func(struct comp_data *cd,
+					enum sof_ipc_frame source_format,
+					enum sof_ipc_frame sink_format)
+{
+#if CONFIG_IPC_MAJOR_3
+	cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
+					   ARRAY_SIZE(fm_passthrough));
+#else
+	cd->eq_iir_func = eq_iir_pass;
+#endif
+}
+
 static int eq_iir_prepare(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -788,24 +892,32 @@ static int eq_iir_prepare(struct processing_module *mod)
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 	int channels;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "eq_iir_prepare()");
 
+#if CONFIG_IPC_MAJOR_3
 	ret = eq_iir_verify_params(dev, mod->stream_params);
 	if (ret < 0)
 		return ret;
+
+#elif CONFIG_IPC_MAJOR_4
+	ret = eq_iir_params(mod);
+	if (ret < 0) {
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return ret;
+	}
+#endif
 
 	/* EQ component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
-
 	eq_iir_set_alignment(&source_c->stream, &sink_c->stream);
 
 	/* get source and sink data format */
-	channels = source_c->stream.channels;
+	channels = sink_c->stream.channels;
 	source_format = source_c->stream.frame_fmt;
 	sink_format = sink_c->stream.frame_fmt;
 	buffer_release(sink_c);
@@ -817,21 +929,13 @@ static int eq_iir_prepare(struct processing_module *mod)
 	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 		  source_format, sink_format);
 
-	cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
-					   ARRAY_SIZE(fm_passthrough));
+	eq_iir_set_passthrough_func(cd, source_format, sink_format);
 
 	/* Initialize EQ */
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
-		ret = eq_iir_setup(mod, channels);
-		if (ret < 0)
-			comp_err(dev, "eq_iir_prepare(), IIR setup failed.");
-		else if (cd->iir_delay_size)
-			cd->eq_iir_func = eq_iir_find_func(source_format, sink_format,
-							   fm_configured,
-							   ARRAY_SIZE(fm_configured));
-		else
-			comp_dbg(dev, "eq_iir_prepare(): pass-through");
+		ret = eq_iir_new_blob(mod, cd, source_format, sink_format, channels);
+		if (ret)
+			return ret;
 	}
 
 	if (!cd->eq_iir_func) {
