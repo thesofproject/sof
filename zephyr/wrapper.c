@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_waves_interface_init(void);
 #if CONFIG_IPC_MAJOR_4
 void sys_comp_probe_init(void);
@@ -225,9 +224,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_DTS_CODEC))
-		sys_comp_module_dts_interface_init();
-
 	if (IS_ENABLED(CONFIG_WAVES_CODEC))
 		sys_comp_module_waves_interface_init();
 #if CONFIG_IPC_MAJOR_4

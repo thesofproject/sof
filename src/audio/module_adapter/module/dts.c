@@ -5,6 +5,7 @@
 // Author: Mark Barton <mark.barton@xperi.com>
 
 #include "sof/audio/module_adapter/module/generic.h"
+#include <rtos/init.h>
 
 #include "DtsSofInterface.h"
 
@@ -462,3 +463,4 @@ static struct module_interface dts_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
+SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
