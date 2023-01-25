@@ -7,6 +7,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/debug.h>
 #include <sof/compiler_attributes.h>
+#include <rtos/init.h>
 
 #include "MaxxEffect/MaxxEffect.h"
 #include "MaxxEffect/MaxxStream.h"
@@ -889,3 +890,4 @@ static struct module_interface waves_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
+SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
