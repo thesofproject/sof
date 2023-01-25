@@ -176,16 +176,6 @@ static void sys_module_init(void)
 #endif
 }
 
-/*
- * TODO: all the audio processing components/modules constructor should be
- * linked to the module_init section, but this is not happening. Just call
- * constructors directly atm.
- */
-
-#if CONFIG_IPC_MAJOR_4
-void sys_comp_probe_init(void);
-#endif
-
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
  * sof-logger. This makes smex fail. Define at least one such section to
@@ -223,11 +213,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-#if CONFIG_IPC_MAJOR_4
-	if (IS_ENABLED(CONFIG_PROBE))
-		sys_comp_probe_init();
-#endif
-
 #if defined(CONFIG_IMX)
 #define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_DMA
 #else
