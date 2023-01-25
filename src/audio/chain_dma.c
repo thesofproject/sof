@@ -258,6 +258,8 @@ static int chain_task_start(struct comp_dev *dev)
 		break;
 	case SOF_TASK_STATE_INIT:
 		break;
+	case SOF_TASK_STATE_FREE:
+		break;
 	default:
 		comp_err(dev, "chain_task_start(), bad state transition");
 		ret = -EINVAL;
@@ -284,17 +286,30 @@ static int chain_task_start(struct comp_dev *dev)
 		}
 	}
 
-	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-
-	ret = schedule_task(&cd->chain_task, 0, 0);
-	if (ret) {
-		chain_host_stop(dev);
-		chain_link_stop(dev);
-		goto error;
+	ret = schedule_task_init_ll(&cd->chain_task, SOF_UUID(chain_dma_uuid),
+				    SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
+				    chain_task_run, cd, 0, 0);
+	if (ret < 0) {
+		comp_err(dev, "chain_task_start(), ll task initialization failed");
+		goto error_task;
 	}
 
-	cd->chain_task.state = SOF_TASK_STATE_INIT;
+	ret = schedule_task(&cd->chain_task, 0, 0);
+	if (ret < 0) {
+		comp_err(dev, "chain_task_start(), ll schedule task failed");
+		schedule_task_free(&cd->chain_task);
+		goto error_task;
+	}
 
+	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+	cd->chain_task.state = SOF_TASK_STATE_INIT;
+	k_spin_unlock(&drivers->lock, key);
+
+	return 0;
+
+error_task:
+	chain_host_stop(dev);
+	chain_link_stop(dev);
 error:
 	k_spin_unlock(&drivers->lock, key);
 	return ret;
@@ -321,14 +336,9 @@ static int chain_task_pause(struct comp_dev *dev)
 	}
 	if (!ret)
 		ret = ret2;
-	if (ret < 0)
-		goto error;
 
-	cd->chain_task.state = SOF_TASK_STATE_COMPLETED;
 	schedule_task_free(&cd->chain_task);
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-
-error:
 	k_spin_unlock(&drivers->lock, key);
 	return ret;
 }
@@ -460,10 +470,6 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	void *buff_addr;
 	uint32_t dir;
 	int ret;
-
-	schedule_task_init_ll(&cd->chain_task, SOF_UUID(chain_dma_uuid),
-			      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
-			      chain_task_run, cd, 0, 0);
 
 	ret = get_connector_node_id(host_dma_id, true, &cd->host_connector_node_id);
 	if (ret < 0)
