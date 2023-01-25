@@ -23,6 +23,7 @@
 #include <ipc4/pipeline.h>
 #include <sof/ut.h>
 #include <zephyr/pm/policy.h>
+#include <rtos/init.h>
 
 static const struct comp_driver comp_chain_dma;
 static const uint32_t max_chain_number = DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN;
@@ -653,3 +654,4 @@ UT_STATIC void sys_comp_chain_dma_init(void)
 }
 
 DECLARE_MODULE(sys_comp_chain_dma_init);
+SOF_MODULE_INIT(chain_dma, sys_comp_chain_dma_init);
