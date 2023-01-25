@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_igo_nr_init(void);
 void sys_comp_rtnr_init(void);
 void sys_comp_module_up_down_mixer_interface_init(void);
 void sys_comp_tdfb_init(void);
@@ -230,9 +229,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_IGO_NR))
-		sys_comp_igo_nr_init();
-
 	if (IS_ENABLED(CONFIG_COMP_RTNR))
 		sys_comp_rtnr_init();
 
