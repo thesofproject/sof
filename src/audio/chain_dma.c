@@ -120,99 +120,6 @@ static int chain_host_stop(struct comp_dev *dev)
 	return 0;
 }
 
-static int chain_task_start(struct comp_dev *dev)
-{
-	struct comp_driver_list *drivers = comp_drivers_get();
-	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	k_spinlock_key_t key;
-	int ret;
-
-	comp_info(dev, "chain_task_start(), host_dma_id = 0x%08x", cd->host_connector_node_id.dw);
-
-	key = k_spin_lock(&drivers->lock);
-	switch (cd->chain_task.state) {
-	case SOF_TASK_STATE_QUEUED:
-		k_spin_unlock(&drivers->lock, key);
-		return 0;
-	case SOF_TASK_STATE_COMPLETED:
-		break;
-	case SOF_TASK_STATE_INIT:
-		break;
-	default:
-		comp_err(dev, "chain_task_start(), bad state transition");
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = chain_host_start(dev);
-		if (ret)
-			goto error;
-		ret = chain_link_start(dev);
-		if (ret) {
-			chain_host_stop(dev);
-			goto error;
-		}
-	} else {
-		ret = chain_link_start(dev);
-		if (ret)
-			goto error;
-		ret = chain_host_start(dev);
-		if (ret) {
-			chain_link_stop(dev);
-			goto error;
-		}
-	}
-
-	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-
-	ret = schedule_task(&cd->chain_task, 0, 0);
-	if (ret) {
-		chain_host_stop(dev);
-		chain_link_stop(dev);
-		goto error;
-	}
-
-	cd->chain_task.state = SOF_TASK_STATE_INIT;
-
-error:
-	k_spin_unlock(&drivers->lock, key);
-	return ret;
-}
-
-static int chain_task_pause(struct comp_dev *dev)
-{
-	struct comp_driver_list *drivers = comp_drivers_get();
-	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	k_spinlock_key_t key;
-	int ret, ret2;
-
-	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
-		return 0;
-
-	key = k_spin_lock(&drivers->lock);
-	cd->first_data_received = false;
-	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = chain_host_stop(dev);
-		ret2 = chain_link_stop(dev);
-	} else {
-		ret = chain_link_stop(dev);
-		ret2 = chain_host_stop(dev);
-	}
-	if (!ret)
-		ret = ret2;
-	if (ret < 0)
-		goto error;
-
-	cd->chain_task.state = SOF_TASK_STATE_COMPLETED;
-	schedule_task_free(&cd->chain_task);
-	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-
-error:
-	k_spin_unlock(&drivers->lock, key);
-	return ret;
-}
-
 /* Get size of data, which was consumed by link */
 static size_t chain_get_transferred_data_size(const uint32_t out_read_pos, const uint32_t in_read_pos,
 				       const size_t buff_size)
@@ -331,6 +238,99 @@ static enum task_state chain_task_run(void *data)
 		}
 	}
 	return SOF_TASK_STATE_RESCHEDULE;
+}
+
+static int chain_task_start(struct comp_dev *dev)
+{
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	k_spinlock_key_t key;
+	int ret;
+
+	comp_info(dev, "chain_task_start(), host_dma_id = 0x%08x", cd->host_connector_node_id.dw);
+
+	key = k_spin_lock(&drivers->lock);
+	switch (cd->chain_task.state) {
+	case SOF_TASK_STATE_QUEUED:
+		k_spin_unlock(&drivers->lock, key);
+		return 0;
+	case SOF_TASK_STATE_COMPLETED:
+		break;
+	case SOF_TASK_STATE_INIT:
+		break;
+	default:
+		comp_err(dev, "chain_task_start(), bad state transition");
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = chain_host_start(dev);
+		if (ret)
+			goto error;
+		ret = chain_link_start(dev);
+		if (ret) {
+			chain_host_stop(dev);
+			goto error;
+		}
+	} else {
+		ret = chain_link_start(dev);
+		if (ret)
+			goto error;
+		ret = chain_host_start(dev);
+		if (ret) {
+			chain_link_stop(dev);
+			goto error;
+		}
+	}
+
+	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+
+	ret = schedule_task(&cd->chain_task, 0, 0);
+	if (ret) {
+		chain_host_stop(dev);
+		chain_link_stop(dev);
+		goto error;
+	}
+
+	cd->chain_task.state = SOF_TASK_STATE_INIT;
+
+error:
+	k_spin_unlock(&drivers->lock, key);
+	return ret;
+}
+
+static int chain_task_pause(struct comp_dev *dev)
+{
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	k_spinlock_key_t key;
+	int ret, ret2;
+
+	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
+		return 0;
+
+	key = k_spin_lock(&drivers->lock);
+	cd->first_data_received = false;
+	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = chain_host_stop(dev);
+		ret2 = chain_link_stop(dev);
+	} else {
+		ret = chain_link_stop(dev);
+		ret2 = chain_host_stop(dev);
+	}
+	if (!ret)
+		ret = ret2;
+	if (ret < 0)
+		goto error;
+
+	cd->chain_task.state = SOF_TASK_STATE_COMPLETED;
+	schedule_task_free(&cd->chain_task);
+	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+
+error:
+	k_spin_unlock(&drivers->lock, key);
+	return ret;
 }
 
 static void chain_release(struct comp_dev *dev)
