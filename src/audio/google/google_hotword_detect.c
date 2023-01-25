@@ -14,6 +14,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
@@ -484,3 +485,4 @@ UT_STATIC void sys_comp_ghd_init(void)
 }
 
 DECLARE_MODULE(sys_comp_ghd_init);
+SOF_MODULE_INIT(ghd, sys_comp_ghd_init);
