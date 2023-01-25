@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_drc_init(void);
 void sys_comp_multiband_drc_init(void);
 void sys_comp_google_rtc_audio_processing_init(void);
 void sys_comp_igo_nr_init(void);
@@ -233,9 +232,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_DRC))
-		sys_comp_drc_init();
-
 	if (IS_ENABLED(CONFIG_COMP_MULTIBAND_DRC))
 		sys_comp_multiband_drc_init();
 
