@@ -11,6 +11,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
@@ -1442,4 +1443,5 @@ UT_STATIC void sys_comp_probe_init(void)
 }
 
 DECLARE_MODULE(sys_comp_probe_init);
+SOF_MODULE_INIT(probe, sys_comp_probe_init);
 #endif
