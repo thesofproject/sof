@@ -15,6 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
@@ -463,3 +464,4 @@ static struct module_interface up_down_mixer_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(up_down_mixer_interface, up_down_mixer_comp_uuid, up_down_mixer_comp_tr);
+SOF_MODULE_INIT(up_down_mixer, sys_comp_module_up_down_mixer_interface_init);
