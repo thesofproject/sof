@@ -17,6 +17,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
@@ -690,3 +691,4 @@ UT_STATIC void sys_comp_google_rtc_audio_processing_init(void)
 }
 
 DECLARE_MODULE(sys_comp_google_rtc_audio_processing_init);
+SOF_MODULE_INIT(google_rtc_audio_processing, sys_comp_google_rtc_audio_processing_init);
