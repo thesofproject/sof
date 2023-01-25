@@ -7,6 +7,7 @@
 // Passthrough codec implementation to demonstrate Codec Adapter API
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <rtos/init.h>
 
 /* 376b5e44-9c82-4ec2-bc83-10ea101afa8f */
 DECLARE_SOF_RT_UUID("passthrough_codec", passthrough_uuid, 0x376b5e44, 0x9c82, 0x4ec2,
@@ -122,3 +123,4 @@ static struct module_interface passthrough_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);
+SOF_MODULE_INIT(passthrough, sys_comp_module_passthrough_interface_init);
