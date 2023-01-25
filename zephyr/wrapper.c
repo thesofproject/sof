@@ -153,29 +153,6 @@ unsigned int _xtos_ints_off(unsigned int mask)
 	return 0;
 }
 
-/*
- * Audio components.
- *
- * Integrated except for linkage so symbols are "used" here until linker
- * support is ready in Zephyr. TODO: fix component linkage in Zephyr.
- */
-
-/* TODO: this is not yet working with Zephyr - section has been created but
- *  no symbols are being loaded into ELF file.
- */
-extern intptr_t _module_init_start;
-extern intptr_t _module_init_end;
-
-static void sys_module_init(void)
-{
-#if !CONFIG_LIBRARY
-	intptr_t *module_init = (intptr_t *)(&_module_init_start);
-
-	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)
-		((void(*)(void))(*module_init))();
-#endif
-}
-
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
  * sof-logger. This makes smex fail. Define at least one such section to
@@ -201,9 +178,6 @@ int task_main_start(struct sof *sof)
 
 	/* init default audio components */
 	sys_comp_init(sof);
-
-	/* init self-registered modules */
-	sys_module_init();
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
