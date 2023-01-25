@@ -12,6 +12,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
@@ -378,3 +379,4 @@ UT_STATIC void sys_comp_aria_init(void)
 }
 
 DECLARE_MODULE(sys_comp_aria_init);
+SOF_MODULE_INIT(aria, sys_comp_aria_init);
