@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
 void sys_comp_module_cadence_interface_init(void);
 void sys_comp_module_passthrough_interface_init(void);
@@ -239,9 +238,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_BASEFW_IPC4))
-		sys_comp_basefw_init();
-
 	if (IS_ENABLED(CONFIG_COMP_COPIER))
 		sys_comp_copier_init();
 

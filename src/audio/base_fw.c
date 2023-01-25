@@ -10,6 +10,7 @@
 #include <sof_versions.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
+#include <rtos/init.h>
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -495,3 +496,4 @@ UT_STATIC void sys_comp_basefw_init(void)
 }
 
 DECLARE_MODULE(sys_comp_basefw_init);
+SOF_MODULE_INIT(basefw, sys_comp_basefw_init);
