@@ -184,7 +184,6 @@ static void sys_module_init(void)
 
 void sys_comp_host_init(void);
 void sys_comp_mux_init(void);
-void sys_comp_chain_dma_init(void);
 #if CONFIG_IPC_MAJOR_3
 void sys_comp_selector_init(void);
 #else
@@ -347,10 +346,6 @@ int start_complete(void)
 	if (IS_ENABLED(CONFIG_PROBE))
 		sys_comp_probe_init();
 #endif
-
-	/* init chain dma manager*/
-	if (IS_ENABLED(CONFIG_COMP_CHAIN_DMA))
-		sys_comp_chain_dma_init();
 
 #if defined(CONFIG_IMX)
 #define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_DMA
