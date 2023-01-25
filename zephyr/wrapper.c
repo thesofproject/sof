@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_tdfb_init(void);
 void sys_comp_ghd_init(void);
 void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_waves_interface_init(void);
@@ -227,9 +226,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_TDFB))
-		sys_comp_tdfb_init();
-
 	if (IS_ENABLED(CONFIG_COMP_GOOGLE_HOTWORD_DETECT))
 		sys_comp_ghd_init();
 
