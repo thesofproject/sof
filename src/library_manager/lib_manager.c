@@ -256,6 +256,11 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	tr_dbg(&lib_manager_tr, "lib_manager_allocate_module() mod_id: 0x%x", ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
+	if (!desc) {
+		tr_err(&lib_manager_tr, "lib_manager_get_library_module_desc() failed: NULL");
+		return 0;
+	}
+
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
 	ret = lib_manager_load_module(module_id, mod, desc);
@@ -311,6 +316,8 @@ struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
 	struct ext_library *_ext_lib = ext_lib_get();
 	uint8_t *buffptr = (uint8_t *)_ext_lib->desc[lib_id];
 
+	if (!buffptr)
+		return NULL;
 	return (struct sof_man_fw_desc *)(buffptr + SOF_MAN_ELF_TEXT_OFFSET);
 }
 
