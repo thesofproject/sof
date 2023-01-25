@@ -14,6 +14,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/cadence.h>
 #include <ipc/compress_params.h>
+#include <rtos/init.h>
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b956aa */
 DECLARE_SOF_RT_UUID("cadence_codec", cadence_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
@@ -749,3 +750,4 @@ static struct module_interface cadence_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);
+SOF_MODULE_INIT(cadence, sys_comp_module_cadence_interface_init);
