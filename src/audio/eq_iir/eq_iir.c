@@ -735,6 +735,8 @@ static int eq_iir_process(struct processing_module *mod,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
@@ -745,6 +747,16 @@ static int eq_iir_process(struct processing_module *mod,
 		if (ret < 0) {
 			comp_err(mod->dev, "eq_iir_process(), failed IIR setup");
 			return ret;
+		} else if (cd->iir_delay_size) {
+			comp_dbg(mod->dev, "eq_iir_process(), active");
+			cd->eq_iir_func = eq_iir_find_func(source->frame_fmt, sink->frame_fmt,
+							   fm_configured,
+							   ARRAY_SIZE(fm_configured));
+		} else {
+			comp_dbg(mod->dev, "eq_fir_process(), pass-through");
+			cd->eq_iir_func = eq_iir_find_func(source->frame_fmt, sink->frame_fmt,
+							   fm_passthrough,
+							   ARRAY_SIZE(fm_passthrough));
 		}
 	}
 
@@ -805,32 +817,29 @@ static int eq_iir_prepare(struct processing_module *mod)
 	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 		  source_format, sink_format);
 
-	if (cd->config) {
-		ret = eq_iir_setup(mod, channels);
-		if (ret < 0) {
-			comp_err(dev, "eq_iir_prepare(), setup failed.");
-			return ret;
-		}
-		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_configured,
-						   ARRAY_SIZE(fm_configured));
-		if (!cd->eq_iir_func) {
-			comp_err(dev, "eq_iir_prepare(), No proc func");
-			return -EINVAL;
-		}
-		comp_info(dev, "eq_iir_prepare(), IIR is configured.");
-
-		return 0;
-	}
-
 	cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
 					   ARRAY_SIZE(fm_passthrough));
-	if (!cd->eq_iir_func) {
-		comp_err(dev, "eq_iir_prepare(), No pass func");
-		return -EINVAL;
-	}
-	comp_info(dev, "eq_iir_prepare(), pass-through mode.");
 
-	return 0;
+	/* Initialize EQ */
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	if (cd->config) {
+		ret = eq_iir_setup(mod, channels);
+		if (ret < 0)
+			comp_err(dev, "eq_iir_prepare(), IIR setup failed.");
+		else if (cd->iir_delay_size)
+			cd->eq_iir_func = eq_iir_find_func(source_format, sink_format,
+							   fm_configured,
+							   ARRAY_SIZE(fm_configured));
+		else
+			comp_dbg(dev, "eq_iir_prepare(): pass-through");
+	}
+
+	if (!cd->eq_iir_func) {
+		comp_err(dev, "eq_iir_prepare(), No processing function found");
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static int eq_iir_reset(struct processing_module *mod)
