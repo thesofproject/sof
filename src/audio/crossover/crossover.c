@@ -16,6 +16,7 @@
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
+#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/iir_df2t.h>
@@ -852,3 +853,4 @@ UT_STATIC void sys_comp_crossover_init(void)
 }
 
 DECLARE_MODULE(sys_comp_crossover_init);
+SOF_MODULE_INIT(crossover, sys_comp_crossover_init);
