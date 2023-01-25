@@ -182,7 +182,6 @@ static void sys_module_init(void)
  * constructors directly atm.
  */
 
-void sys_comp_ghd_init(void);
 void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_waves_interface_init(void);
 #if CONFIG_IPC_MAJOR_4
@@ -226,9 +225,6 @@ int task_main_start(struct sof *sof)
 
 int start_complete(void)
 {
-	if (IS_ENABLED(CONFIG_COMP_GOOGLE_HOTWORD_DETECT))
-		sys_comp_ghd_init();
-
 	if (IS_ENABLED(CONFIG_DTS_CODEC))
 		sys_comp_module_dts_interface_init();
 
