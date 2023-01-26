@@ -59,11 +59,25 @@ static FUNC_NORETURN void secondary_init(void *arg)
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
-#include <zephyr/pm/pm.h>
 
 LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx zephyr_tr;
+
+/* notifier called after every power state transition */
+void cpu_notify_state_exit(enum pm_state state)
+{
+	if (state == PM_STATE_SOFT_OFF)	{
+#if CONFIG_MULTICORE
+		if (!cpu_is_primary(arch_proc_id())) {
+			/* Notifying primary core that secondary core successfully exit the D3
+			 * state and is back in the Idle thread.
+			 */
+			atomic_set(&ready_flag, 1);
+		}
+#endif
+	}
+}
 
 int cpu_enable_core(int id)
 {
