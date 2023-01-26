@@ -27,6 +27,11 @@ extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
 static atomic_t start_flag;
 static atomic_t ready_flag;
 
+void ace_mark_thread_as_ready(void)
+{
+	atomic_set(&ready_flag, 1);
+}
+
 /* Zephyr kernel_internal.h interface */
 extern void smp_timer_init(void);
 

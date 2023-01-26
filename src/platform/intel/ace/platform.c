@@ -23,6 +23,7 @@
 #include <ipc/info.h>
 #include <kernel/abi.h>
 #include <rtos/clk.h>
+#include <zephyr/pm/pm.h>
 
 #include <sof_versions.h>
 #include <stdint.h>
@@ -75,6 +76,23 @@ int platform_boot_complete(uint32_t boot_message)
 
 /* Value to be determined experimentaly */
 #define BASE_CPS_USAGE 10000
+
+extern void ace_mark_thread_as_ready(void);
+
+/* notifier called after every power state transition */
+static void notify_pm_state_exit(enum pm_state state)
+{
+	if (state == PM_STATE_SOFT_OFF)	{
+		if (!cpu_is_primary(arch_proc_id()))
+			ace_mark_thread_as_ready();
+	}
+}
+
+static struct pm_notifier pm_state_notifier = {
+	.state_entry = NULL,
+	.state_exit = notify_pm_state_exit,
+};
+
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
@@ -101,6 +119,9 @@ int platform_init(struct sof *sof)
 	ret = dmac_init(sof);
 	if (ret < 0)
 		return ret;
+
+	/* register power states entry / exit notifiers */
+	pm_notifier_register(&pm_state_notifier);
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
