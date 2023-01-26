@@ -39,7 +39,11 @@ struct comp_driver_list {
 	 &(comp)->bsource_list)
 
 /** See comp_ops::new */
+#if CONFIG_IPC_MAJOR_3
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
+#elif CONFIG_IPC_MAJOR_4
+struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init);
+#endif
 
 /** See comp_ops::free */
 static inline void comp_free(struct comp_dev *dev)

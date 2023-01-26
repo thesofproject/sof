@@ -588,32 +588,28 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 
 static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_init_instance module = {};
-	struct sof_ipc_comp comp;
+	struct ipc4_module_init_instance module_init = {};
 	struct comp_dev *dev;
 	/* we only need the common header here, all we have from the IPC */
-	int ret = memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
+	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	tr_dbg(&ipc_tr, "ipc4_init_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
-	       (uint32_t)module.primary.r.instance_id);
+	tr_dbg(&ipc_tr,
+		"ipc4_init_module_instance %x : %x",
+		(uint32_t)module_init.primary.r.module_id,
+		(uint32_t)module_init.primary.r.instance_id);
 
 	/* Pass IPC to target core */
-	if (!cpu_is_me(module.extension.r.core_id))
-		return ipc4_process_on_core(module.extension.r.core_id, false);
+	if (!cpu_is_me(module_init.extension.r.core_id))
+		return ipc4_process_on_core(module_init.extension.r.core_id, false);
 
-	memset(&comp, 0, sizeof(comp));
-	comp.id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
-	comp.pipeline_id = module.extension.r.ppl_instance_id;
-	comp.core = module.extension.r.core_id;
-	comp.ext_data_length = module.extension.r.param_block_size;
-	dev = comp_new(&comp);
+	dev = comp_new_ipc4(&module_init);
 	if (!dev) {
 		tr_err(&ipc_tr, "error: failed to init module %x : %x",
-		       (uint32_t)module.primary.r.module_id,
-		       (uint32_t)module.primary.r.instance_id);
+		       (uint32_t)module_init.primary.r.module_id,
+		       (uint32_t)module_init.primary.r.instance_id);
 		return IPC4_MOD_NOT_INITIALIZED;
 	}
 
