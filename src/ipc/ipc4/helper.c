@@ -69,30 +69,33 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 	posn->rhdr.hdr.size = 0;
 }
 
-struct comp_dev *comp_new(struct sof_ipc_comp *comp)
+struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
+	uint32_t comp_id;
 
-	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp->id));
+	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
+			       module_init->primary.r.instance_id);
+	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
 	if (!drv)
 		return NULL;
 
-	if (ipc4_get_comp_dev(comp->id)) {
-		tr_err(&ipc_tr, "comp %d exists", comp->id);
+	if (ipc4_get_comp_dev(comp_id)) {
+		tr_err(&ipc_tr, "comp %d exists", comp_id);
 		return NULL;
 	}
 
-	if (comp->core >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u", comp->core);
+	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
 		return NULL;
 	}
 
 	memset(&ipc_config, 0, sizeof(ipc_config));
-	ipc_config.id = comp->id;
-	ipc_config.pipeline_id = comp->pipeline_id;
-	ipc_config.core = comp->core;
+	ipc_config.id = comp_id;
+	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
+	ipc_config.core = module_init->extension.r.core_id;
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
@@ -101,7 +104,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		const struct ipc_config_process spec = {
 			.data = (const unsigned char *)MAILBOX_HOSTBOX_BASE,
 			/* spec_size in IPC4 is in DW. Convert to bytes. */
-			.size = comp->ext_data_length * 4,
+			.size = module_init->extension.r.param_block_size * sizeof(uint32_t),
 		};
 		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
 	} else {
