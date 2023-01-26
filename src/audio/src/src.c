@@ -141,7 +141,7 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 	struct src_param *a;
 	int fs_in, fs_out;
 	int source_frames;
-	int r1;
+	int r1, n;
 
 	a = &cd->param;
 	fs_in = cd->source_rate;
@@ -206,8 +206,8 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 		 * variable number of blocks to process per each stage
 		 * there is no equation known for minimum size.
 		 */
-		a->sbuf_length = 2 * nch * stage1->blk_out * r1;
-		a->sbuf_length += a->sbuf_length >> 3;
+		n = 2 * stage1->blk_out * r1;
+		a->sbuf_length = nch * (n + (n >> 3));
 	}
 
 	a->src_multich = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
@@ -771,7 +771,12 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 		goto out;
 	}
 
-	delay_lines_size = sizeof(int32_t) * cd->param.total;
+	/*
+	 * delay_lines_size is used to compute buffer_start which needs to
+	 * be aligned to 8 bytes as required by some Xtensa
+	 * instructions (e.g AE_L32X2F24_XC)
+	 */
+	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
 	if (delay_lines_size == 0) {
 		comp_err(dev, "src_params(): delay_lines_size = 0");
 
@@ -792,7 +797,7 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 
 	/* Clear all delay lines here */
 	memset(cd->delay_lines, 0, delay_lines_size);
-	buffer_start = cd->delay_lines + cd->param.sbuf_length;
+	buffer_start = cd->delay_lines + ALIGN_UP(cd->param.sbuf_length, 2);
 
 	/* Initialize SRC for actual sample rate */
 	n = src_polyphase_init(&cd->src, &cd->param, buffer_start);
