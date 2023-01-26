@@ -20,9 +20,15 @@
 
 #include <stdbool.h>
 
-//#include <zephyr/sys/arch_interface.h>
-
 #include <zephyr/arch/arch_inlines.h>
+
+#if CONFIG_PM
+
+#include <zephyr/pm/pm.h>
+
+void cpu_notify_state_exit(enum pm_state state);
+
+#endif /* CONFIG_PM */
 
 /* let the compiler optimise when in single core mode */
 #if CONFIG_MULTICORE && CONFIG_SMP
