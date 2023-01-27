@@ -5,7 +5,7 @@ menu "Platform"
 choice
 	prompt "Platform"
 	default ZEPHYR_POSIX if ARCH_POSIX
-	default APOLLOLAKE
+	default TIGERLAKE
 
 config BAYTRAIL
 	bool "Build for Baytrail"
