@@ -23,7 +23,6 @@ add_executable(sof-fuzzer
 	main.c
 	qemu-bridge.c
 	topology.c
-	platform/byt-host.c
 	platform/hsw-host.c
 	platform/imx8-host.c
 )

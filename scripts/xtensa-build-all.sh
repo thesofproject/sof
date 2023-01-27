@@ -24,7 +24,7 @@ SUPPORTED_PLATFORMS+=( mt8188 )
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
-SUPPORTED_PLATFORMS+=( byt hsw cht bdw apl skl kbl cnl sue icl jsl )
+SUPPORTED_PLATFORMS+=( hsw bdw apl skl kbl cnl sue icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -204,18 +204,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		byt)
-			PLATFORM="baytrail"
-			XTENSA_CORE="Intel_HiFiEP"
-			HOST="xtensa-byt-elf"
-			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
-			;;
-		cht)
-			PLATFORM="cherrytrail"
-			XTENSA_CORE="CHT_audio_hifiep"
-			HOST="xtensa-byt-elf"
-			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
-			;;
 		bdw)
 			PLATFORM="broadwell"
 			XTENSA_CORE="LX4_langwell_audio_17_8"
@@ -413,7 +401,7 @@ do
 		COMPILER="gcc"
 
 		case "$platform" in
-			byt|cht|cnl|sue) DEFCONFIG_PATCH="_gcc";;
+			cnl|sue) DEFCONFIG_PATCH="_gcc";;
 			*)	     DEFCONFIG_PATCH="";;
 		esac
 	fi
