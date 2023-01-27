@@ -153,6 +153,10 @@ struct adsp {
 	uint32_t image_size;
 	uint32_t dram_offset;
 
+	uint32_t alias_cached;
+	uint32_t alias_uncached;
+	uint32_t alias_mask;
+
 	int (*write_firmware_ext_man)(struct image *image);
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);

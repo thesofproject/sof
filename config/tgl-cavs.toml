@@ -3,6 +3,7 @@ version = [2, 5]
 [adsp]
 name = "tgl"
 image_size = "0x2F0000"
+alias_mask = "0xE0000000"
 
 [[adsp.mem_zone]]
 type = "ROM"
@@ -20,6 +21,13 @@ size = "0x800000"
 type = "LP-SRAM"
 base = "0xBE800000"
 size = "0x40"
+
+[[adsp.mem_alias]]
+type = "uncached"
+base = "0x9E000000"
+[[adsp.mem_alias]]
+type = "cached"
+base = "0xBE000000"
 
 [cse]
 partition_name = "ADSP"

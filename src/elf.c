@@ -12,6 +12,11 @@
 #include <rimage/cse.h>
 #include <rimage/manifest.h>
 
+static unsigned long uncache_to_cache(const struct image *image, unsigned long address)
+{
+	return ((address & ~image->adsp->alias_mask) | image->adsp->alias_cached);
+}
+
 static int elf_read_sections(struct image *image, struct module *module,
 			     int module_index)
 {
@@ -110,6 +115,7 @@ static int elf_read_sections(struct image *image, struct module *module,
 			continue;
 		}
 
+		section[i].vaddr = uncache_to_cache(image, section[i].vaddr);
 		module->num_sections++;
 
 		if (!image->verbose)
@@ -367,8 +373,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 		/* check programs to get LMA */
 		section_lma = section->vaddr;
 		for (j = 0; j < module->hdr.phnum; j++) {
-			if (section->vaddr == module->prg[j].vaddr) {
-				section_lma = module->prg[j].paddr;
+			if (section->vaddr == uncache_to_cache(image, module->prg[j].vaddr)) {
+				section_lma = uncache_to_cache(image, module->prg[j].paddr);
 				break;
 			}
 		}

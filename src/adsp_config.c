@@ -122,7 +122,7 @@ static int assert_everything_parsed(const toml_table_t *table, struct parse_ctx 
 	ctx->array_cnt = toml_table_narr(table) - ctx->array_cnt;
 	ctx->table_cnt = toml_table_ntab(table) - ctx->table_cnt;
 
-	/* when eny field left unparsed, then raise error */
+	/* when any field left unparsed, then raise error */
 	if (ctx->key_cnt != 0)
 		ret = log_err(-EINVAL, "error: %d unparsed keys left in '%s'\n", ctx->key_cnt, key);
 	if (ctx->array_cnt != 0)
@@ -360,14 +360,15 @@ static void dump_adsp(const struct adsp *adsp)
 static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct adsp *out,
 		      bool verbose)
 {
-	toml_array_t *mem_zone_array;
-	toml_table_t *mem_zone;
+	toml_array_t *mem_zone_array, *alias_array;
 	struct mem_zone *zone;
 	struct parse_ctx ctx;
-	char zone_name[32];
 	toml_table_t *adsp;
 	toml_raw_t raw;
 	int zone_idx;
+	char a_kind;
+	int a_size;
+	bool alias_found;
 	int ret;
 	int i;
 
@@ -403,25 +404,67 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 	if (ret < 0)
 		return ret;
 
-	/* check everything parsed, 1 table should be present */
-	ctx.array_cnt += 1;
+	out->alias_mask = parse_uint32_hex_key(adsp, &ctx, "alias_mask", 0, &ret);
+	alias_found = !ret;
+
+	/* check everything parsed, 1 or 2 tables should be present */
+	ctx.array_cnt += 1 + alias_found;
 	ret = assert_everything_parsed(adsp, &ctx);
 	if (ret < 0)
 		return ret;
+
+	if (alias_found) {
+		alias_array = toml_array_in(adsp, "mem_alias");
+		if (!alias_array)
+			return err_key_not_found("mem_alias");
+		a_kind = toml_array_kind(alias_array);
+		a_size = toml_array_nelem(alias_array);
+		if (a_kind != 't' || a_size != 2)
+			return err_key_parse("mem_alias", "wrong array type %c or length %d",
+					     a_kind, a_size);
+
+		/* retrieve "cached" and "uncached" alias base addresses */
+		for (i = 0; i < a_size; ++i) {
+			toml_table_t *alias = toml_table_at(alias_array, i);
+			char alias_name[16];
+			uint32_t base;
+
+			if (!alias)
+				return err_key_parse("mem_alias", NULL);
+
+			parse_str_key(alias, &ctx, "type", alias_name, sizeof(alias_name), &ret);
+			if (ret < 0)
+				return err_key_parse("mem_alias", NULL);
+
+			base = parse_uint32_hex_key(alias, &ctx, "base", -1, &ret);
+
+			if (!strncmp("cached", alias_name, sizeof("cached")))
+				out->alias_cached = base & out->alias_mask;
+			else if (!strncmp("uncached", alias_name, sizeof("uncached")))
+				out->alias_uncached = base & out->alias_mask;
+		}
+	} else {
+		/* Make uncache_to_cache() an identity transform */
+		out->alias_cached = 0;
+		out->alias_mask = 0;
+	}
 
 	/* look for entry array */
 	memset(out->mem_zones, 0, sizeof(out->mem_zones));
 	mem_zone_array = toml_array_in(adsp, "mem_zone");
 	if (!mem_zone_array)
 		return err_key_not_found("mem_zone");
-	if (toml_array_kind(mem_zone_array) != 't' ||
-	    toml_array_nelem(mem_zone_array) > SOF_FW_BLK_TYPE_NUM)
-		return err_key_parse("mem_zone", "wrong array type or length > %d",
-				     SOF_FW_BLK_TYPE_NUM);
+	a_kind = toml_array_kind(mem_zone_array);
+	a_size = toml_array_nelem(mem_zone_array);
+	if (a_kind != 't' || a_size > SOF_FW_BLK_TYPE_NUM)
+		return err_key_parse("mem_zone", "wrong array type %c or length %d",
+				     a_kind, a_size);
 
 	/* parse entry array elements */
-	for (i = 0; i < toml_array_nelem(mem_zone_array); ++i) {
-		mem_zone = toml_table_at(mem_zone_array, i);
+	for (i = 0; i < a_size; ++i) {
+		toml_table_t *mem_zone = toml_table_at(mem_zone_array, i);
+		char zone_name[32];
+
 		if (!mem_zone)
 			return err_key_parse("mem_zone", NULL);
 
@@ -2617,7 +2660,7 @@ static int adsp_parse_config_fd(FILE *fd, struct image *image)
 		goto error;
 	}
 
-	/* run dedicated parser */
+	/* run dedicated toml configuration parser */
 	ret = parser->parse(toml, image);
 error:
 	toml_free(toml);
