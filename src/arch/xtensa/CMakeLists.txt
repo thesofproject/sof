@@ -2,11 +2,7 @@
 
 # platform-specific values
 
-if(CONFIG_BAYTRAIL)
-	set(platform_folder baytrail)
-elseif(CONFIG_CHERRYTRAIL)
-	set(platform_folder baytrail)
-elseif(CONFIG_HASWELL)
+if(CONFIG_HASWELL)
 	set(platform_folder haswell)
 elseif(CONFIG_BROADWELL)
 	set(platform_folder haswell)
@@ -549,7 +545,7 @@ add_custom_target(
 # Keep lists below in sync with rimage/config/*.toml
 
 # .ri not signed: nothing variable in it to erase.
-set(UNSIGNED_RI         byt cht hsw bdw sue)
+set(UNSIGNED_RI         hsw bdw sue)
 # NXP
 list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD

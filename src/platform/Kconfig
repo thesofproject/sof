@@ -7,40 +7,6 @@ choice
 	default ZEPHYR_POSIX if ARCH_POSIX
 	default TIGERLAKE
 
-config BAYTRAIL
-	bool "Build for Baytrail"
-	select HOST_PTABLE
-	select DW_DMA_AGGREGATED_IRQ
-	select DMA_SUSPEND_DRAIN
-	select DMA_FIFO_PARTITION
-	select DW
-	select DW_DMA
-	select XT_HAVE_RESET_VECTOR_ROM
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_4
-	select XT_INTERRUPT_LEVEL_5
-	select INTEL
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	  Select if your target platform is Baytrail-compatible
-
-config CHERRYTRAIL
-	bool "Build for Cherrytrail"
-	select HOST_PTABLE
-	select DW_DMA_AGGREGATED_IRQ
-	select DMA_SUSPEND_DRAIN
-	select DMA_FIFO_PARTITION
-	select DW
-	select DW_DMA
-	select XT_HAVE_RESET_VECTOR_ROM
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_4
-	select XT_INTERRUPT_LEVEL_5
-	select INTEL
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	  Select if your target platform is Cherrytrail-compatible
-
 config HASWELL
 	bool "Build for Haswell"
 	select HOST_PTABLE
@@ -419,14 +385,6 @@ config ACE_VERSION_1_5
 	help
 	  Select for ACE version 1.5
 
-config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
-	bool "Support Cherrytrail 3rd DMAC"
-	default n if !CHERRYTRAIL
-	depends on CHERRYTRAIL
-	help
-	  Select if you need support for all 3 DMACs versus the default 2 used
-	  in baytrail.
-
 config HP_MEMORY_BANKS
 	int "HP memory banks count"
 	depends on CAVS
@@ -528,8 +486,6 @@ config CAVS_IMR_D3_PERSISTENT
 # TODO: it should just take manifest version and offsets
 config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
-	default "byt" if BAYTRAIL
-	default "cht" if CHERRYTRAIL
 	default "hsw" if HASWELL
 	default "bdw" if BROADWELL
 	default "apl" if APOLLOLAKE

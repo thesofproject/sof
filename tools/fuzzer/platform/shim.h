@@ -15,7 +15,7 @@
 #define SHIM_OFFSET	0
 
 /*
- * SHIM registers for BYT, BSW, CHT, HSW, BDW
+ * SHIM registers for HSW, BDW
  */
 
 #define SHIM_CSR		(SHIM_OFFSET + 0x00)
@@ -41,7 +41,7 @@
 #define SHIM_PWMCTRL		0x1000
 
 /*
- * SST SHIM register bits for BYT, BSW, CHT HSW, BDW
+ * SST SHIM register bits for HSW, BDW
  * Register bit naming and functionality can differ between devices.
  */
 
@@ -58,15 +58,10 @@
 #define SHIM_CSR_24MHZ_LPCS \
 	(SHIM_CSR_SBCS0 | SHIM_CSR_SBCS1 | SHIM_CSR_LPCS)
 #define SHIM_CSR_24MHZ_NO_LPCS	(SHIM_CSR_SBCS0 | SHIM_CSR_SBCS1)
-#define SHIM_BYT_CSR_RST	BIT(0)
-#define SHIM_BYT_CSR_VECTOR_SEL	BIT(1)
-#define SHIM_BYT_CSR_STALL	BIT(2)
-#define SHIM_BYT_CSR_PWAITMODE	BIT(3)
 
 /*  ISRX / ISC */
 #define SHIM_ISRX_BUSY		BIT(1)
 #define SHIM_ISRX_DONE		BIT(0)
-#define SHIM_BYT_ISRX_REQUEST	BIT(1)
 
 /*  ISRD / ISD */
 #define SHIM_ISRD_BUSY		BIT(1)
@@ -75,7 +70,6 @@
 /* IMRX / IMC */
 #define SHIM_IMRX_BUSY		BIT(1)
 #define SHIM_IMRX_DONE		BIT(0)
-#define SHIM_BYT_IMRX_REQUEST	BIT(1)
 
 /* IMRD / IMD */
 #define SHIM_IMRD_DONE		BIT(0)
@@ -88,14 +82,10 @@
 /*  IPCX / IPCC */
 #define	SHIM_IPCX_DONE		BIT(30)
 #define	SHIM_IPCX_BUSY		BIT(31)
-#define SHIM_BYT_IPCX_DONE	BIT_ULL(62)
-#define SHIM_BYT_IPCX_BUSY	BIT_ULL(63)
 
 /*  IPCD */
 #define	SHIM_IPCD_DONE		BIT(30)
 #define	SHIM_IPCD_BUSY		BIT(31)
-#define SHIM_BYT_IPCD_DONE	BIT_ULL(62)
-#define SHIM_BYT_IPCD_BUSY	BIT_ULL(63)
 
 /* CLKCTL */
 #define SHIM_CLKCTL_SMOS(x)	((x) << 24)

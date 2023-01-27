@@ -19,10 +19,10 @@ cd scripts/docker_build
 
 After the container is built, it can be used to run the scripts.
 
-To build for baytrail:
-./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt
+To build for tigerlake:
+./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l tgl
 or (may need password test0000 for rimage install)
-./scripts/docker-run.sh ./scripts/xtensa-build-all.sh byt
+./scripts/docker-run.sh ./scripts/xtensa-build-all.sh tgl
 
 To rebuild the topology and logger:
 ./scripts/docker-run.sh ./scripts/build-tools.sh
