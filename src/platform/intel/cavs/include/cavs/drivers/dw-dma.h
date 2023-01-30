@@ -17,11 +17,7 @@
 #include <stdint.h>
 
 /* number of supported DW-DMACs */
-#if CONFIG_SUECREEK
-#define PLATFORM_NUM_DW_DMACS	3
-#else
 #define PLATFORM_NUM_DW_DMACS	2
-#endif
 
 /* index of the first DW-DMAC in the array */
 #define PLATFORM_DW_DMA_INDEX	0

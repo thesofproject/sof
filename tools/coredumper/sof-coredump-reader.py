@@ -56,7 +56,7 @@ VALID_ARCHS = {}
 	]]
 ]
 
-# Exception casues:
+# Exception causes:
 # CODE: [Exception cause, excvaddr loaded]
 EXCCAUSE_CODE = {
 	0: ["IllegalInstructionCause: Illegal instruction", False],

@@ -6,8 +6,6 @@ if(CONFIG_APOLLOLAKE)
 	set(platform_folder apollolake)
 elseif(CONFIG_CANNONLAKE)
 	set(platform_folder cannonlake)
-elseif(CONFIG_SUECREEK)
-	set(platform_folder suecreek)
 elseif(CONFIG_ICELAKE)
 	set(platform_folder icelake)
 elseif(CONFIG_TIGERLAKE)
@@ -541,9 +539,8 @@ add_custom_target(
 # Keep lists below in sync with rimage/config/*.toml
 
 # .ri not signed: nothing variable in it to erase.
-set(UNSIGNED_RI         sue)
 # NXP
-list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
+set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
 list(APPEND UNSIGNED_RI rn rmb)
 # MediaTek

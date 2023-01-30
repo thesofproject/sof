@@ -8,7 +8,7 @@
 /*
  * Entry point from boot loader.
  * Fix link address of this entry to SOF_TEXT_START so that
- * it is easy for boot loader to jump to the baseFW becasue
+ * it is easy for boot loader to jump to the baseFW because
  * the boot loader and baseFW are in different elf file.
  */
 

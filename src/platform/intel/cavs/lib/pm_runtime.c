@@ -36,9 +36,7 @@
 #include <sof_versions.h>
 #include <stdint.h>
 
-#if !CONFIG_SUECREEK
 #include <cavs/lib/power_down.h>
-#endif
 
 LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
 
@@ -229,7 +227,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "dis-dmic-clk-gating index %d CLKCTL %08x", index,
 		shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -249,7 +247,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "en-dmic-clk-gating index %d CLKCTL %08x",
 		index, shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -258,7 +256,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -267,7 +265,7 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
@@ -644,7 +642,6 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 
 }
 
-#if !CONFIG_SUECREEK
 void platform_pm_runtime_power_off(void)
 {
 	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
@@ -665,4 +662,3 @@ void platform_pm_runtime_power_off(void)
 
 	power_down(true, uncache_to_cache(&hpsram_mask[0]));
 }
-#endif

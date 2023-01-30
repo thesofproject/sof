@@ -45,8 +45,6 @@ static inline void shim_write64(uint32_t reg, uint64_t val)
 	*((volatile uint64_t*)(SHIM_BASE + reg)) = val;
 }
 
-#if !CONFIG_SUECREEK
-
 static inline uint32_t sw_reg_read(uint32_t reg)
 {
 	return *((volatile uint32_t*)((SRAM_SW_REG_BASE -
@@ -58,8 +56,6 @@ static inline void sw_reg_write(uint32_t reg, uint32_t val)
 	*((volatile uint32_t*)((SRAM_SW_REG_BASE -
 		SRAM_ALIAS_OFFSET) + reg)) = val;
 }
-
-#endif /* !CONFIG_SUECREEK */
 
 static inline uint32_t mn_reg_read(uint32_t reg, uint32_t id)
 {

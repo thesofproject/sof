@@ -35,9 +35,6 @@
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_SW_REG_BASE    | SW Registers W0|  SRAM_SW_REG_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
- *
- * Note: For suecreek SRAM_SW_REG window does not exist - MAILBOX_SW_REG_BASE
- *	 and MAILBOX_SW_REG_BASE are equal to 0
  */
 
  /* window 3 - trace */

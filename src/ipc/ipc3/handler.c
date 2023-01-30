@@ -829,15 +829,6 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
-#if CONFIG_SUECREEK
-static int ipc_dma_trace_config(uint32_t header)
-{
-	return 0;
-}
-
-static void ipc_dma_trace_free(uint32_t header) {}
-
-#else
 static void ipc_dma_trace_free(uint32_t header)
 {
 	struct dma_trace_data *dmat = dma_trace_data_get();
@@ -914,7 +905,6 @@ processing_error:
 
 	return err;
 }
-#endif /* CONFIG_SUECREEK */
 
 static int ipc_trace_filter_update(uint32_t header)
 {

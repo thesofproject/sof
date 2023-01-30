@@ -198,10 +198,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
-	# Sue Creek - S100 only - already in Zephyr.
-	#${SOF_DRIVERS_PATH}/intel/cavs/sue-ipc.c
-	#${SOF_DRIVERS_PATH}/intel/cavs/sue-iomux.c
-
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 	)

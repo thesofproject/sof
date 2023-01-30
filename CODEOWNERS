@@ -40,7 +40,6 @@ src/audio/codec_adapter/*		@cujomalainey @abonislawski @dbaluta
 src/audio/google/*			@thesofproject/google
 
 # platforms
-src/platform/suecreek/*			@lyakh
 src/arch/xtensa/debug/gdb/*		@abonislawski
 src/platform/imx8/**			@dbaluta
 src/platform/amd/**			@bhiregoudar @sunilkumardommati
@@ -48,7 +47,6 @@ src/platform/mt8195/**		@yaochunhung @kuanhsuncheng
 
 # drivers
 src/drivers/intel/dmic.c		@singalsu
-src/drivers/intel/cavs/sue-iomux.c	@lyakh
 src/drivers/imx/**			@dbaluta
 src/drivers/dw/*			@lyakh
 src/drivers/amd/*			@bhiregoudar @sunilkumardommati
@@ -57,7 +55,6 @@ src/drivers/mediatek/mt8195/*		@yaochunhung @kuanhsuncheng
 # other libs
 src/math/*				@singalsu
 src/ipc/*				@bardliao @marcinszkudlinski
-src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@abonislawski
 src/schedule				@abonislawski

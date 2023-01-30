@@ -471,24 +471,9 @@ int platform_init(struct sof *sof)
 	init_dsp_r_state(r1_r_state);
 #else
 	init_dsp_r_state(r0_r_state);
-#endif
-#endif
-
-#elif CONFIG_SUECREEK
-	/* TODO: need to merge as for APL */
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
-
-	/* prevent Core0 clock gating. */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		SHIM_CLKCTL_TCPLCG(0));
-
-	/* prevent LP GPDMA 0&1 clock gating */
-	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
-	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
-
-	/* prevent DSP Common power gating */
-	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-#endif
+#endif /* CONFIG_CAVS_LPRO_ONLY */
+#endif /* CONFIG_DSP_RESIDENCY_COUNTERS */
+#endif /* CONFIG_APOLLOLAKE */
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

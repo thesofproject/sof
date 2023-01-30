@@ -24,7 +24,7 @@ SUPPORTED_PLATFORMS+=( mt8188 )
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
-SUPPORTED_PLATFORMS+=( apl skl kbl cnl sue icl jsl )
+SUPPORTED_PLATFORMS+=( apl skl kbl cnl icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -253,13 +253,6 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
-		sue)
-			PLATFORM="suecreek"
-			XTENSA_CORE="X6H3CNL_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
 		icl)
 			PLATFORM="icelake"
 			XTENSA_CORE="X6H3CNL_2017_8"
@@ -389,8 +382,8 @@ do
 		COMPILER="gcc"
 
 		case "$platform" in
-			cnl|sue) DEFCONFIG_PATCH="_gcc";;
-			*)	     DEFCONFIG_PATCH="";;
+			cnl) DEFCONFIG_PATCH="_gcc";;
+			*)   DEFCONFIG_PATCH="";;
 		esac
 	fi
 
