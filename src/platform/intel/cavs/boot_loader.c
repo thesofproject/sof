@@ -21,12 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if CONFIG_SUECREEK
-#define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE
-#else
 #define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE
-#endif
-
 #define MANIFEST_SEGMENT_COUNT 3
 
 /* generic string compare cloned into the bootloader to
@@ -112,13 +107,6 @@ static void parse_module(struct sof_man_fw_header *hdr,
 	}
 }
 
-/* On Sue Creek the boot loader is attached separately, no need to skip it */
-#if CONFIG_SUECREEK
-#define MAN_SKIP_ENTRIES 0
-#else
-#define MAN_SKIP_ENTRIES 1
-#endif
-
 /* parse FW manifest and copy modules */
 static void parse_manifest(void)
 {
@@ -129,7 +117,7 @@ static void parse_manifest(void)
 	int i;
 
 	/* copy module to SRAM  - skip bootloader module */
-	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
+	for (i = 1; i < hdr->num_module_entries; i++) {
 		trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
 		mod = (struct sof_man_module *)((char *)desc +
 						SOF_MAN_MODULE_OFFSET(i));
@@ -149,7 +137,7 @@ static uint32_t get_fw_size_in_use(void)
 	int i;
 
 	/* Calculate fw size passed in BASEFW module in MANIFEST */
-	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
+	for (i = 1; i < hdr->num_module_entries; i++) {
 		trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
 		mod = (struct sof_man_module *)((char *)desc +
 						SOF_MAN_MODULE_OFFSET(i));

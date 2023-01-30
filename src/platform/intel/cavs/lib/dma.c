@@ -33,9 +33,6 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
 #define DMAC_LINK_IN_CHANNELS_COUNT 7
 #define DMAC_LINK_OUT_CHANNELS_COUNT 9
-#elif CONFIG_SUECREEK
-#define DMAC0_CLASS 6
-#define DMAC1_CLASS 7
 #endif
 
 static const struct dw_drv_plat_data dmac0 = {
@@ -117,65 +114,6 @@ static const struct dw_drv_plat_data dmac1 = {
 #define DW_DMA_BUFFER_PERIOD_COUNT	2
 #endif
 
-#if CONFIG_SUECREEK
-static struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
-{	/* LP GP DMAC 0 */
-	.plat_data = {
-		.id		= DMA_GP_LP_DMAC0,
-		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
-				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_SSI | DMA_DEV_DMIC,
-		.base		= LP_GP_DMA_BASE(0),
-		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
-		.irq_name	= irq_name_level5,
-		.drv_plat_data	= &dmac0,
-#ifdef __ZEPHYR__
-		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
-#endif
-	},
-	.ops		= &dw_dma_ops,
-},
-{	/* LP GP DMAC 1 */
-	.plat_data = {
-		.id		= DMA_GP_LP_DMAC1,
-		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
-				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
-		.base		= LP_GP_DMA_BASE(1),
-		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
-		.irq_name	= irq_name_level5,
-		.drv_plat_data	= &dmac1,
-#ifdef __ZEPHYR__
-		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
-#endif
-	},
-	.ops		= &dw_dma_ops,
-},
-{	/* LP GP DMAC 2 */
-	.plat_data = {
-		.id		= DMA_GP_LP_DMAC2,
-		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
-				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
-		.base		= LP_GP_DMA_BASE(1),
-		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
-		.irq_name	= irq_name_level5,
-		.drv_plat_data	= &dmac1,
-#ifdef __ZEPHYR__
-		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
-#endif
-	},
-	.ops		= &dw_dma_ops,
-},
-};
-
-#else
 static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
@@ -287,7 +225,6 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &hda_link_dma_ops,
 #endif
 },};
-#endif
 
 static const struct dma_info lib_dma = {
 	.dma_array = cache_to_uncache_init((struct dma *)dma),

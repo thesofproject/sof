@@ -40,25 +40,6 @@ config CANNONLAKE
 	help
 	  Select if your target platform is Cannonlake-compatible
 
-config SUECREEK
-	bool "Build for Suecreek"
-	select XT_BOOT_LOADER
-	select XT_IRQ_MAP
-	select DW
-	select DW_DMA
-	select DW_SPI
-	select INTEL_IOMUX
-	select DW_GPIO
-	select DMA_HW_LLI
-	select DW_DMA_AGGREGATED_IRQ
-	select DMA_FIFO_PARTITION
-	select CAVS
-	select CAVS_VERSION_2_0
-	select XT_WAITI_DELAY
-	select CAVS_USE_LPRO_IN_WAITI
-	help
-	  Select if your target platform is Suecreek-compatible
-
 config ICELAKE
 	bool "Build for Icelake"
 	select XT_BOOT_LOADER
@@ -259,7 +240,7 @@ endchoice
 config MAX_CORE_COUNT
 	int
 	default 2 if APOLLOLAKE
-	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
+	default 4 if ICELAKE || CANNONLAKE || TIGERLAKE
 	default 3 if METEORLAKE
 	default 1
 	help
@@ -458,7 +439,6 @@ config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
 	default "apl" if APOLLOLAKE
 	default "cnl" if CANNONLAKE
-	default "sue" if SUECREEK
 	default "icl" if ICELAKE
 	default "tgl" if TIGERLAKE
 	default "imx8" if IMX8

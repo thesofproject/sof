@@ -64,13 +64,8 @@
 	.literal_position
 
 // VM ROM jumps to boot loader in IMR/SRAM
-#if CONFIG_SUECREEK
-_boot_ldr_entry:
-	.word BOOT_LDR_TEXT_ENTRY_BASE
-#else
 _boot_ldr_entry:
 	.word IMR_BOOT_LDR_TEXT_ENTRY_BASE
-#endif
 	.align 4
 
 _start:
@@ -158,11 +153,7 @@ _start:
 	CALLX	a4
 1:
 	l32r	a0, _boot_ldr_entry	// load SRAM reset handler address
-#if CONFIG_SUECREEK
-	callx8	a0	// jump to the handler
-#else
 	callx12	a0	// jump to the handler
-#endif
 
 dead:	nop
 	j	dead
