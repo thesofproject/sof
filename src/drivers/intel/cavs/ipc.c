@@ -60,23 +60,11 @@ static void ipc_irq_handler(void *arg)
 {
 	struct ipc *ipc = arg;
 	uint32_t dipcctl;
+	uint32_t dipctdr;
+	uint32_t dipcida;
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&ipc->lock);
-
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	uint32_t dipct;
-	uint32_t dipcie;
-
-	dipct = ipc_read(IPC_DIPCT);
-	dipcie = ipc_read(IPC_DIPCIE);
-	dipcctl = ipc_read(IPC_DIPCCTL);
-
-	tr_dbg(&ipc_tr, "ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-	       dipcie, dipcctl);
-#else
-	uint32_t dipctdr;
-	uint32_t dipcida;
 
 	dipctdr = ipc_read(IPC_DIPCTDR);
 	dipcida = ipc_read(IPC_DIPCIDA);
@@ -84,15 +72,9 @@ static void ipc_irq_handler(void *arg)
 
 	tr_dbg(&ipc_tr, "ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
 	       dipctdr, dipcida, dipcctl);
-#endif
 
 	/* new message from host */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
-#else
-	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
-#endif
-	{
+	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
@@ -104,24 +86,14 @@ static void ipc_irq_handler(void *arg)
 	}
 
 	/* reply message(done) from host */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE)
-#else
-	if (dipcida & IPC_DIPCIDA_DONE)
-#endif
-	{
+	if (dipcida & IPC_DIPCIDA_DONE) {
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
 			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
 		/* clear DONE bit - tell host we have completed the operation */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-		ipc_write(IPC_DIPCIE,
-			  ipc_read(IPC_DIPCIE) | IPC_DIPCIE_DONE);
-#else
 		ipc_write(IPC_DIPCIDA,
 			  ipc_read(IPC_DIPCIDA) | IPC_DIPCIDA_DONE);
-#endif
 
 		ipc->is_notification_pending = false;
 
@@ -133,7 +105,6 @@ static void ipc_irq_handler(void *arg)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
@@ -163,27 +134,11 @@ int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
 	return 2; /* number of words written */
 }
 
-#else
-int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
-{
-	return 0; /* number of words written - not used on CAVS1.5 */
-}
-
-int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
-{
-	return 0; /* number of words read - not used on CAVS1.5 */
-}
-#endif
-
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_cmd_hdr *hdr;
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();
-#else
-	hdr = mailbox_validate();
-#endif
 
 	/* perform command */
 	ipc_cmd(hdr);
@@ -201,12 +156,8 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	/* write 1 to clear busy, and trigger interrupt to host*/
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
-#else
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
-#endif
 
 #if CONFIG_DEBUG_IPC_COUNTERS
 	increment_ipc_processed_counter();
@@ -222,14 +173,9 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	struct ipc_cmd_hdr *hdr;
 
 	if (ipc->is_notification_pending ||
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	    ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY) {
-#else
 	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
-	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE) {
-#endif
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
 		return -EBUSY;
-	}
 
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
@@ -240,21 +186,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 
 	/* now interrupt host to tell it we have message sent */
 #if CONFIG_IPC_MAJOR_3
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, hdr->dat[1]);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr->dat[0]);
-#else
 	ipc_write(IPC_DIPCIDD, hdr->dat[1]);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr->dat[0]);
-#endif
 #elif CONFIG_IPC_MAJOR_4
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, hdr->ext);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr->pri);
-#else
 	ipc_write(IPC_DIPCIDD, hdr->ext);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr->pri);
-#endif
 #endif
 
 	return 0;
@@ -296,12 +232,8 @@ void ipc_platform_poll_set_cmd_done(void)
 {
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
-#else
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
-#endif
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
@@ -311,27 +243,13 @@ void ipc_platform_poll_set_cmd_done(void)
 int ipc_platform_poll_is_cmd_pending(void)
 {
 	uint32_t dipcctl;
-
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	uint32_t dipct;
-
-	dipct = ipc_read(IPC_DIPCT);
-	dipcctl = ipc_read(IPC_DIPCCTL);
-
-#else
 	uint32_t dipctdr;
 
 	dipctdr = ipc_read(IPC_DIPCTDR);
 	dipcctl = ipc_read(IPC_DIPCCTL);
-#endif
 
 	/* new message from host */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
-#else
-	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
-#endif
-	{
+	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
@@ -345,38 +263,19 @@ int ipc_platform_poll_is_cmd_pending(void)
 
 int ipc_platform_poll_is_host_ready(void)
 {
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	uint32_t dipcie;
-	uint32_t dipcctl;
-
-	dipcie = ipc_read(IPC_DIPCIE);
-	dipcctl = ipc_read(IPC_DIPCCTL);
-
-#else
 	uint32_t dipcida;
 
 	dipcida = ipc_read(IPC_DIPCIDA);
-#endif
 
 	/* reply message(done) from host */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE)
-#else
-	if (dipcida & IPC_DIPCIDA_DONE)
-#endif
-	{
+	if (dipcida & IPC_DIPCIDA_DONE) {
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
 			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
 		/* clear DONE bit - tell host we have completed the operation */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-		ipc_write(IPC_DIPCIE,
-			  ipc_read(IPC_DIPCIE) | IPC_DIPCIE_DONE);
-#else
 		ipc_write(IPC_DIPCIDA,
 			  ipc_read(IPC_DIPCIDA) | IPC_DIPCIDA_DONE);
-#endif
 
 		/* unmask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
@@ -393,12 +292,8 @@ int ipc_platform_poll_is_host_ready(void)
 int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 {
 
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
-#else
 	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
 	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
-#endif
 		/* cant send message atm */
 		return 0;
 
@@ -406,13 +301,8 @@ int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 
 	/* now interrupt host to tell it we have message sent */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, 0);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
-#else
 	ipc_write(IPC_DIPCIDD, 0);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | msg->header);
-#endif
 
 	/* message sent */
 	return 1;

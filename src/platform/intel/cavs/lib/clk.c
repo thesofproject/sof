@@ -17,17 +17,6 @@
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
-#if CAVS_VERSION == CAVS_VERSION_1_5
-static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
-{
-	uint32_t enc = cpu_freq_enc[freq_idx];
-
-	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL, SHIM_CLKCTL_HDCS, 0);
-	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
-			   enc);
-}
-#else
 static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
@@ -74,7 +63,6 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 	}
 #endif
 }
-#endif
 
 static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {

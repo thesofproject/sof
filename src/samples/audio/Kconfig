@@ -4,7 +4,7 @@ menu "Audio component samples"
 	visible if SAMPLES
 
         config SAMPLE_SMART_AMP
-	        depends on CAVS && !CAVS_VERSION_1_5 || ACE
+	        depends on CAVS || ACE
 	        bool "Smart amplifier test component"
 	        default y
 	        help

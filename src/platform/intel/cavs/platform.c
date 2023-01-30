@@ -316,28 +316,17 @@ int platform_boot_complete(uint32_t boot_message)
 
 	/* tell host we are ready */
 #if CONFIG_IPC_MAJOR_3
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, header.dat[1]);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | header.dat[0]);
-#else
 	ipc_write(IPC_DIPCIDD, header.dat[1]);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.dat[0]);
-#endif
 #elif CONFIG_IPC_MAJOR_4
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, header.ext);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | header.pri);
-#else
 	ipc_write(IPC_DIPCIDD, header.ext);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.pri);
-#endif
 #endif
 	return 0;
 }
 
 #endif
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -355,7 +344,6 @@ static void platform_init_hw(void)
 	io_reg_write(DSP_INIT_LPGPDMA(1),
 		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
 }
-#endif
 
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
@@ -387,10 +375,8 @@ int platform_init(struct sof *sof)
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
-#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
@@ -422,27 +408,8 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
-#if CONFIG_APOLLOLAKE
-	/* initialize PM for boot */
 
-	/* TODO: there are two clk freqs CRO & CRO/4
-	 * Running on CRO all the time atm
-	 */
-
-	shim_write(SHIM_CLKCTL,
-		   SHIM_CLKCTL_HDCS_PLL | /* HP domain clocked by PLL */
-		   SHIM_CLKCTL_LDCS_PLL | /* LP domain clocked by PLL */
-		   SHIM_CLKCTL_DPCS_DIV1(0) | /* Core 0 clk not divided */
-		   SHIM_CLKCTL_DPCS_DIV1(1) | /* Core 1 clk not divided */
-		   SHIM_CLKCTL_HPMPCS_DIV2 | /* HP mem clock div by 2 */
-		   SHIM_CLKCTL_LPMPCS_DIV4 | /* LP mem clock div by 4 */
-		   SHIM_CLKCTL_TCPAPLLS_DIS |
-		   SHIM_CLKCTL_TCPLCG_DIS(0) | SHIM_CLKCTL_TCPLCG_DIS(1));
-
-	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
-
-#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
-
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* initialize PM for boot */
 
 	/* request configured ring oscillator and wait for status ready */
@@ -473,7 +440,7 @@ int platform_init(struct sof *sof)
 	init_dsp_r_state(r0_r_state);
 #endif /* CONFIG_CAVS_LPRO_ONLY */
 #endif /* CONFIG_DSP_RESIDENCY_COUNTERS */
-#endif /* CONFIG_APOLLOLAKE */
+#endif /* CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE */
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -619,13 +586,7 @@ int platform_context_save(struct sof *sof)
 #endif
 
 #if CONFIG_CAVS_IMR_D3_PERSISTENT
-	/*
-	 * Both runtime PM and S2Idle suspend works on APL, while S3 ([deep])
-	 * doesn't. Only support IMR restoring on cAVS 1.8 and onward at the
-	 * moment.
-	 * TODO: Root cause of why IMR restore doesn't work on APL during S3
-	 * cycle.
-	 */
+	/* Only support IMR restoring on cAVS 1.8 and onward at the moment. */
 	imr_layout_update((void *)IMR_BOOT_LDR_TEXT_ENTRY_BASE);
 #endif
 	return 0;

@@ -39,7 +39,6 @@ $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
 $(info ALIAS_list    = ${ALIAS_list}    )
 
-target_of_glk := apl
 target_of_cfl := cnl
 target_of_cml := cnl
 
@@ -312,10 +311,10 @@ COMPARE_REFS ?= /lib/firmware/intel
 checktree:
 	cd ${STAGING_SOF_VERSION} && \
              tree -a -v --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
-	# Update sof-apl-nocodec.tplg when adding or removing a default platform
+	# Update sof-cavs-nocodec.tplg when adding or removing a default platform
 	diff -u tests/staging_sof${IPC_VERSION}_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Check two random topologies are there
-	test -f ${STAGING_SOF_TPLG}/sof-apl-nocodec.tplg
+	test -f ${STAGING_SOF_TPLG}/sof-tgl-nocodec.tplg
 	test -f ${STAGING_SOF_TPLG}/sof-imx8-wm8960.tplg
 	for t in sof-ctl sof-logger sof-probes; do \
 	   test -f ${STAGING_TOOLS}${VERSION_SUFFIX}/$${t}; done

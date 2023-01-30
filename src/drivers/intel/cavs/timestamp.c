@@ -170,42 +170,17 @@ out:
 
 static uint32_t ssp_ts_local_tsctrl_addr(int index)
 {
-#if CONFIG_APOLLOLAKE
-	/* TSCTRL registers for SSP0, 1, 2, and 3 are in continuous
-	 * registers space while SSP4 and more are handled with other
-	 * macro.
-	 */
-	if (index < DAI_NUM_SSP_BASE)
-		return TIMESTAMP_BASE + TS_I2S_LOCAL_TSCTRL(index);
-	else
-		return TIMESTAMP_BASE + TS_I2SE_LOCAL_TSCTRL(index);
-#else
 	return TIMESTAMP_BASE + TS_I2S_LOCAL_TSCTRL(index);
-#endif
 }
 
 static uint32_t ssp_ts_local_sample_addr(int index)
 {
-#if CONFIG_APOLLOLAKE
-	if (index < DAI_NUM_SSP_BASE)
-		return TIMESTAMP_BASE + TS_I2S_LOCAL_SAMPLE(index);
-	else
-		return TIMESTAMP_BASE + TS_I2SE_LOCAL_SAMPLE(index);
-#else
 	return TIMESTAMP_BASE + TS_I2S_LOCAL_SAMPLE(index);
-#endif
 }
 
 static uint32_t ssp_ts_local_walclk_addr(int index)
 {
-#if CONFIG_APOLLOLAKE
-	if (index < DAI_NUM_SSP_BASE)
-		return TIMESTAMP_BASE + TS_I2S_LOCAL_WALCLK(index);
-	else
-		return TIMESTAMP_BASE + TS_I2SE_LOCAL_WALCLK(index);
-#else
 	return TIMESTAMP_BASE + TS_I2S_LOCAL_WALCLK(index);
-#endif
 }
 
 int timestamp_ssp_config(struct dai *dai, struct timestamp_cfg *cfg)

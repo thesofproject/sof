@@ -15,7 +15,7 @@ function usage {
 	echo "        [-j n]    Set number of make build jobs."
 	echo "        [-v]      Verbose output."
 	echo "Examples:"
-	echo "        $0 -t xt -c apollolake \\"
+	echo "        $0 -t xt -c tigerlake \\"
 	echo "                -r \$CONFIG_PATH/xtensa-elf"
 	echo "        $0 -t xtensa-cnl-elf -c cannonlake \\"
 	echo "                -r \`pwd\`/../xtensa-cnl-elf"

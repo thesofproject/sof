@@ -7,7 +7,7 @@
 
 /**
  * \file
- * \brief Runtime power management implementation for Apollolake, Cannonlake
+ * \brief Runtime power management implementation for Cannonlake
  *        and Icelake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
@@ -29,9 +29,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 #include <cavs/drivers/sideband-ipc.h>
-#endif
 
 #include <sof_versions.h>
 #include <stdint.h>
@@ -142,40 +140,6 @@ static inline bool cavs_pm_runtime_is_active_dsp(void)
 }
 
 #if CONFIG_INTEL_SSP
-static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
-{
-#if CONFIG_APOLLOLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) |
-		(index < DAI_NUM_SSP_BASE ?
-			SHIM_CLKCTL_I2SFDCGB(index) :
-			SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE));
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "dis-ssp-clk-gating index %d CLKCTL %08x",
-		index, shim_reg);
-#endif
-}
-
-static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
-{
-#if CONFIG_APOLLOLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) &
-		~(index < DAI_NUM_SSP_BASE ?
-			SHIM_CLKCTL_I2SFDCGB(index) :
-			SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE));
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "en-ssp-clk-gating index %d CLKCTL %08x",
-		index, shim_reg);
-#endif
-}
-
 static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 {
 #if CONFIG_TIGERLAKE
@@ -216,7 +180,7 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 #if CONFIG_INTEL_DMIC
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE
 	(void)index;
 	uint32_t shim_reg;
 
@@ -236,7 +200,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE
 	(void)index;
 	uint32_t shim_reg;
 
@@ -275,16 +239,7 @@ static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 
 static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 {
-#if CONFIG_APOLLOLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_LPGPDMAFDCGB(index);
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "dis-dwdma-clk-gating index %d CLKCTL %08x", index,
-		shim_reg);
-#elif CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE
 	uint32_t shim_reg;
 
 	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) |
@@ -299,16 +254,7 @@ static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 {
-#if CONFIG_APOLLOLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_LPGPDMAFDCGB(index);
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "en-dwdma-clk-gating index %d CLKCTL %08x", index,
-		shim_reg);
-#elif CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE
 	uint32_t shim_reg;
 
 	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) &
@@ -335,7 +281,6 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 
 static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 {
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	void *core_memory_ptr;
 	extern uintptr_t _sof_core_s_start;
 
@@ -347,13 +292,10 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 
 	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
 					  false);
-
-#endif
 }
 
 static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 {
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	void *core_memory_ptr;
 	extern uintptr_t _sof_core_s_start;
 
@@ -365,8 +307,6 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 
 	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
 					  true);
-
-#endif
 }
 #endif
 
@@ -407,7 +347,6 @@ static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
 
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 {
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl, tries = PLATFORM_PM_RUNTIME_DSP_TRIES;
@@ -451,12 +390,10 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 			       index);
 		pprd->dsp_client_bitmap[index] |= flag;
 	}
-#endif
 }
 
 static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 {
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl;
@@ -482,7 +419,6 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 			shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) &
 				     ~SHIM_PWRCTL_TCPDSPPG(index));
 	}
-#endif
 }
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
@@ -503,7 +439,6 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 		break;
 #if CONFIG_INTEL_SSP
 	case SSP_CLK:
-		cavs_pm_runtime_dis_ssp_clk_gating(index);
 		break;
 	case SSP_POW:
 		cavs_pm_runtime_en_ssp_power(index);
@@ -543,7 +478,6 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		break;
 #if CONFIG_INTEL_SSP
 	case SSP_CLK:
-		cavs_pm_runtime_en_ssp_clk_gating(index);
 		break;
 	case SSP_POW:
 		cavs_pm_runtime_dis_ssp_power(index);
@@ -645,7 +579,6 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 void platform_pm_runtime_power_off(void)
 {
 	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	int ret;
 
 	/* check if DSP is busy sending IPC for 2ms */
@@ -655,7 +588,7 @@ void platform_pm_runtime_power_off(void)
 	/* did command succeed */
 	if (ret < 0)
 		tr_err(&power_tr, "failed to wait for DSP sent IPC handled.");
-#endif
+
 	/* power down entire HPSRAM */
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
 		hpsram_mask[i] = HPSRAM_MASK(i);

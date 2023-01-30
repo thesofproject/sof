@@ -7,21 +7,6 @@ choice
 	default ZEPHYR_POSIX if ARCH_POSIX
 	default TIGERLAKE
 
-config APOLLOLAKE
-	bool "Build for Apollolake"
-	select XT_BOOT_LOADER
-	select XT_IRQ_MAP
-	select DMA_GW
-	select DW
-	select DW_DMA
-	select MEM_WND
-	select DMA_HW_LLI
-	select DMA_FIFO_PARTITION
-	select CAVS
-	select CAVS_VERSION_1_5
-	help
-	  Select if your target platform is Apollolake-compatible
-
 config CANNONLAKE
 	bool "Build for Cannonlake"
 	select XT_BOOT_LOADER
@@ -239,7 +224,6 @@ endchoice
 
 config MAX_CORE_COUNT
 	int
-	default 2 if APOLLOLAKE
 	default 4 if ICELAKE || CANNONLAKE || TIGERLAKE
 	default 3 if METEORLAKE
 	default 1
@@ -300,27 +284,20 @@ config CAVS
 	select WAKEUP_HOOK
 	select SCHEDULE_DMA_SINGLE_CHANNEL
 
-config CAVS_VERSION_1_5
-	depends on CAVS
-	bool
-	help
-	  Select for CAVS version 1.5
-
 config CAVS_VERSION_1_8
-	depends on CAVS && !CAVS_VERSION_1_5
+	depends on CAVS
 	bool
 	help
 	  Select for CAVS version 1.8
 
 config CAVS_VERSION_2_0
-	depends on CAVS && !CAVS_VERSION_1_5 && !CAVS_VERSION_1_8
+	depends on CAVS && !CAVS_VERSION_1_8
 	bool
 	help
 	  Select for CAVS version 2.0
 
 config CAVS_VERSION_2_5
-	depends on CAVS && !CAVS_VERSION_1_5 && !CAVS_VERSION_1_8 \
-			&& !CAVS_VERSION_2_0
+	depends on CAVS && !CAVS_VERSION_1_8 && !CAVS_VERSION_2_0
 	bool
 	help
 	  Select for CAVS version 2.5
@@ -397,7 +374,7 @@ config CAVS_LPS
 config CAVS_LPRO_ONLY
 	bool "Use low power ring oscillator always"
 	default n
-	depends on CAVS && !CAVS_VERSION_1_5
+	depends on CAVS
 	help
 	  Select if you want to use only the 120MHz LPRO as the DSP clock source.
 	  This option is for debugging only at the moment, choose n if unclear.
@@ -424,7 +401,7 @@ config L3_HEAP
 
 config CAVS_IMR_D3_PERSISTENT
 	bool "Intel IMR content persistent on DSP in D3"
-	depends on CAVS && !CAVS_VERSION_1_5
+	depends on CAVS
 	default y
 	help
 	  Select this if the Intel cAVS platform can keep the
@@ -437,7 +414,6 @@ config CAVS_IMR_D3_PERSISTENT
 # TODO: it should just take manifest version and offsets
 config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
-	default "apl" if APOLLOLAKE
 	default "cnl" if CANNONLAKE
 	default "icl" if ICELAKE
 	default "tgl" if TIGERLAKE
