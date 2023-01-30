@@ -66,7 +66,7 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-#if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
+#if CONFIG_CAVS
 #include <ipc/header-intel-cavs.h>
 #include <cavs/drivers/sideband-ipc.h>
 #define CAVS_IPC_TYPE_S(x)		((x) & CAVS_IPC_TYPE_MASK)
@@ -1545,7 +1545,7 @@ static int ipc_glb_test_message(uint32_t header)
 }
 #endif
 
-#if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
+#if CONFIG_CAVS
 static struct ipc_cmd_hdr *ipc_cavs_read_set_d0ix(struct ipc_cmd_hdr *hdr)
 {
 	struct sof_ipc_pm_gate *cmd = ipc_get()->comp_data;

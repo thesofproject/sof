@@ -25,7 +25,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 /**
  * Macro powers down entire HPSRAM. On entry literals and code for section from
  * where this code is executed need to be placed in memory which is not
@@ -79,5 +78,4 @@
 	bnez \ax, 1b
 .endm
 
-#endif /* CAVS_VERSION == CAVS_VERSION_1_8 */
 #endif /* __CAVS_LIB_ASM_MEMORY_MANAGEMENT_H__ */

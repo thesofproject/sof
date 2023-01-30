@@ -6,7 +6,7 @@ else()
 		" Please specify toolchain to use.\n"
 		" Examples:\n"
 		" 	1) cmake -DTOOLCHAIN=xt ...\n"
-		" 	2) cmake -DTOOLCHAIN=xtensa-apl-elf ...\n"
+		" 	2) cmake -DTOOLCHAIN=xtensa-cnl-elf ...\n"
 	)
 endif()
 

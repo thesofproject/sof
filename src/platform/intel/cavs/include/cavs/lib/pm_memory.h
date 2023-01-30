@@ -29,8 +29,6 @@
 #define MEMORY_POWER_CHANGE_DELAY 256
 #define MEMORY_POWER_CHANGE_TIMEOUT (256 * MEMORY_POWER_CHANGE_DELAY)
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-
 /**
  * \brief Retrieves register mask for given segment.
  * \param[in] start_bank Start bank id.
@@ -121,8 +119,6 @@ static inline void cavs_pm_memory_hp_sram_banks_power_gate(
  * \param[in] enabled Deciding banks desired state (true powered false gated).
  */
 void cavs_pm_memory_hp_sram_power_gate(void *ptr, uint32_t size, bool enabled);
-
-#endif /* CAVS_VERSION >= CAVS_VERSION_1_8 */
 
 #if CONFIG_LP_SRAM
 

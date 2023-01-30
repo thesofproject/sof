@@ -24,7 +24,7 @@ SUPPORTED_PLATFORMS+=( mt8188 )
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
-SUPPORTED_PLATFORMS+=( apl skl kbl cnl icl jsl )
+SUPPORTED_PLATFORMS+=( cnl icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -204,48 +204,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		apl)
-			PLATFORM="apollolake"
-			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-
-			# test APL compiler aliases
-			if command -v xtensa-bxt-elf-gcc; then
-				HOST="xtensa-bxt-elf"
-			else
-				HOST="xtensa-apl-elf"
-			fi
-
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
-		skl)
-			PLATFORM="skylake"
-			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-
-			# test APL compiler aliases
-			if command -v xtensa-bxt-elf-gcc; then
-				HOST="xtensa-bxt-elf"
-			else
-				HOST="xtensa-apl-elf"
-			fi
-
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
-		kbl)
-			PLATFORM="kabylake"
-			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-
-			# test APL compiler aliases
-			if command -v xtensa-bxt-elf-gcc; then
-				HOST="xtensa-bxt-elf"
-			else
-				HOST="xtensa-apl-elf"
-			fi
-
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
 		cnl)
 			PLATFORM="cannonlake"
 			XTENSA_CORE="X6H3CNL_2017_8"

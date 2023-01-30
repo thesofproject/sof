@@ -2,9 +2,7 @@
 
 # platform-specific values
 
-if(CONFIG_APOLLOLAKE)
-	set(platform_folder apollolake)
-elseif(CONFIG_CANNONLAKE)
+if(CONFIG_CANNONLAKE)
 	set(platform_folder cannonlake)
 elseif(CONFIG_ICELAKE)
 	set(platform_folder icelake)
@@ -546,10 +544,6 @@ list(APPEND UNSIGNED_RI rn rmb)
 # MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 
-# Signed and non-deterministic but sof_ri_info.py is not compatible with
-# manifest v1.5?  "CSE manifest magic number not found"
-set(UNSUPPORTED_RI skl kbl)
-
 if(${fw_name} IN_LIST UNSIGNED_RI) # mere copy
 	add_custom_command(OUTPUT reproducible.ri
 		COMMENT "Copying sof.ri to reproducible.ri as is"
@@ -557,13 +551,6 @@ if(${fw_name} IN_LIST UNSIGNED_RI) # mere copy
 		# edit-in-place and add_custom_target() messes are all fixed
 		DEPENDS glue_binary_files sof-${fw_name}.ri
 		COMMAND cmake -E copy sof-${fw_name}.ri reproducible.ri
-		VERBATIM
-		)
-elseif(${fw_name} IN_LIST UNSUPPORTED_RI)
-	add_custom_command(OUTPUT reproducible.ri
-		COMMENT "WARNING: sof-${fw_name}.ri is NOT reproducible, reproducible.ri is fake"
-		DEPENDS glue_binary_files sof-${fw_name}.ri
-		COMMAND cmake -E touch reproducible.ri
 		VERBATIM
 		)
 else() # strip variables

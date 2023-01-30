@@ -3,7 +3,7 @@
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 set -e
 
-SUPPORTED_PLATFORMS=(apl icl skl kbl cnl imx8 imx8x imx8m)
+SUPPORTED_PLATFORMS=(icl cnl imx8 imx8x imx8m)
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
@@ -81,32 +81,6 @@ do
 
 	has_rom=false
 	case "$platform" in
-		apl)
-		# This READY_IPC value comes from:
-		#   ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header);
-		#   header = FE_READY = 0x7
-		#   IPC_DIPCIDR_BUSY = BIT(31)
-		# So "00 00 00 f0" is just "F0000000"
-			READY_IPC="00 00 00 f0"
-			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-			OUTBOX_OFFSET="7000"
-			SHM_MBOX=qemu-bridge-hp-sram-mem
-			has_rom=true
-			;;
-		skl)
-			READY_IPC="00 00 00 f0"
-			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-			OUTBOX_OFFSET="7000"
-			SHM_MBOX=qemu-bridge-hp-sram-mem
-			has_rom=true
-			;;
-		kbl)
-			READY_IPC="00 00 00 f0"
-			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-			OUTBOX_OFFSET="7000"
-			SHM_MBOX=qemu-bridge-hp-sram-mem
-			has_rom=true
-			;;
 		cnl)
 			READY_IPC="00 00 00 f0"
 			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"

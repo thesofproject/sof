@@ -20,8 +20,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-
 	.section .text, "ax"
 	.align 64
 power_down_literals:
@@ -187,6 +185,3 @@ loop:
     j 1b
 
 .size power_down , . - power_down
-
-#endif /* CAVS_VERSION >= CAVS_VERSION_1_8 */
-

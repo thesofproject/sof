@@ -73,13 +73,6 @@ else:
 platform_list = [
 	# Intel platforms
 	{
-		"name": "apl",
-		"PLAT_CONFIG": "intel_adsp_cavs15",
-		"XTENSA_CORE": "X4H3I16w2D48w3a_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
-	},
-	{
 		"name": "cnl",
 		"PLAT_CONFIG": "intel_adsp_cavs18",
 		"XTENSA_CORE": "X6H3CNL_2017_8",
