@@ -21,8 +21,6 @@ add_custom_command(OUTPUT abi.h
 )
 
 set(TPLGS
-	"sof-bdw-nocodec\;sof-bdw-nocodec"
-
 	## HDaudio codec topologies
 	"sof-hda-generic\;sof-hda-generic\;-DCHANNELS=0\;-DHSPROC=volume\;-DDYNAMIC=1"
 	"sof-hda-generic\;sof-hda-generic-1ch\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
@@ -37,9 +35,6 @@ set(TPLGS
 	"sof-hda-generic-idisp\;sof-hda-generic-idisp-2ch\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
 	"sof-hda-generic-idisp\;sof-hda-generic-idisp-4ch\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1"
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
-	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
-	"sof-bdw-codec\;sof-bdw-rt5640\;-DCODEC=RT5640"
-	"sof-bdw-codec\;sof-bdw-rt5677\;-DCODEC=RT5677"
 	"sof-cnl-rt274\;sof-cnl-rt274"
 	"sof-apl-tdf8532\;sof-apl-tdf8532"
 	"sof-apl-pcm512x\;sof-apl-pcm512x\;-DFSYNC=48000"

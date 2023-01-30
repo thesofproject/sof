@@ -3,7 +3,7 @@
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 set -e
 
-SUPPORTED_PLATFORMS=(bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
+SUPPORTED_PLATFORMS=(apl icl skl kbl cnl imx8 imx8x imx8m)
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
@@ -81,23 +81,6 @@ do
 
 	has_rom=false
 	case "$platform" in
-		bdw)
-			READY_IPC="00 3c 01 80"
-			OUTBOX_OFFSET="9e000"
-			SHM_IPC_REG=qemu-bridge-shim-io
-			SHM_MBOX=qemu-bridge-dram-mem
-			;;
-		hsw)
-		# This READY_IPC value comes from:
-		#   shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
-		#   outbox=MAILBOX_HOST_OFFSET >> 3;
-		#   MAILBOX_HOST_OFFSET>>3 = 0xFC00
-		#   IPC_DIPCIDR_BUSY = BIT(31)
-			READY_IPC="00 fc 00 80"
-			OUTBOX_OFFSET="7e000"
-			SHM_IPC_REG=qemu-bridge-shim-io
-			SHM_MBOX=qemu-bridge-dram-mem # some DMA traces visible here
-			;;
 		apl)
 		# This READY_IPC value comes from:
 		#   ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header);

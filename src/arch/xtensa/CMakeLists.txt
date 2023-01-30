@@ -2,11 +2,7 @@
 
 # platform-specific values
 
-if(CONFIG_HASWELL)
-	set(platform_folder haswell)
-elseif(CONFIG_BROADWELL)
-	set(platform_folder haswell)
-elseif(CONFIG_APOLLOLAKE)
+if(CONFIG_APOLLOLAKE)
 	set(platform_folder apollolake)
 elseif(CONFIG_CANNONLAKE)
 	set(platform_folder cannonlake)
@@ -545,7 +541,7 @@ add_custom_target(
 # Keep lists below in sync with rimage/config/*.toml
 
 # .ri not signed: nothing variable in it to erase.
-set(UNSIGNED_RI         hsw bdw sue)
+set(UNSIGNED_RI         sue)
 # NXP
 list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD

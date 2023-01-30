@@ -24,7 +24,7 @@ SUPPORTED_PLATFORMS+=( mt8188 )
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
-SUPPORTED_PLATFORMS+=( hsw bdw apl skl kbl cnl sue icl jsl )
+SUPPORTED_PLATFORMS+=( apl skl kbl cnl sue icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -204,18 +204,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		bdw)
-			PLATFORM="broadwell"
-			XTENSA_CORE="LX4_langwell_audio_17_8"
-			HOST="xtensa-hsw-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
-		hsw)
-			PLATFORM="haswell"
-			XTENSA_CORE="LX4_langwell_audio_17_8"
-			HOST="xtensa-hsw-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
 		apl)
 			PLATFORM="apollolake"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"

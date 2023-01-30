@@ -6,8 +6,8 @@
  */
 
 /**
- * \file platform/haswell/include/platform/lib/pm_runtime.h
- * \brief Runtime power management header file for Haswell
+ * \file platform/library/include/platform/lib/pm_runtime.h
+ * \brief Runtime power management header file for host-side testing
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 

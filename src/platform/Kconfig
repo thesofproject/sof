@@ -7,36 +7,6 @@ choice
 	default ZEPHYR_POSIX if ARCH_POSIX
 	default TIGERLAKE
 
-config HASWELL
-	bool "Build for Haswell"
-	select HOST_PTABLE
-	select DW_DMA_AGGREGATED_IRQ
-	select DW
-	select DW_DMA
-	select XT_HAVE_RESET_VECTOR_ROM
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_2
-	select XT_INTERRUPT_LEVEL_3
-	select INTEL
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	  Select if your target platform is Haswell-compatible
-
-config BROADWELL
-	bool "Build for Broadwell"
-	select HOST_PTABLE
-	select DW_DMA_AGGREGATED_IRQ
-	select DW
-	select DW_DMA
-	select XT_HAVE_RESET_VECTOR_ROM
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_2
-	select XT_INTERRUPT_LEVEL_3
-	select INTEL
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	  Select if your target platform is Broadwell-compatible
-
 config APOLLOLAKE
 	bool "Build for Apollolake"
 	select XT_BOOT_LOADER
@@ -486,8 +456,6 @@ config CAVS_IMR_D3_PERSISTENT
 # TODO: it should just take manifest version and offsets
 config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
-	default "hsw" if HASWELL
-	default "bdw" if BROADWELL
 	default "apl" if APOLLOLAKE
 	default "cnl" if CANNONLAKE
 	default "sue" if SUECREEK
