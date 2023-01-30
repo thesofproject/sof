@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_HASWELL OR CONFIG_BROADWELL)
-	add_subdirectory(haswell)
-elseif(CONFIG_CAVS)
+if(CONFIG_CAVS)
 	add_subdirectory(cavs)
 endif()
 

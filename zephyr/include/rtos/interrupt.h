@@ -48,7 +48,7 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
 }
 
 /*
- * CAVS IRQs are multilevel whereas BDW is DSP level only.
+ * CAVS IRQs are multilevel
  */
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {

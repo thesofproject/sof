@@ -39,14 +39,6 @@ extern const uint32_t *ssp_freq_sources;
 #define SSTSS		0x38
 #define SSCR2		0x40
 
-#if CONFIG_BROADWELL || CONFIG_HASWELL
-#define SFIFOL		0x68
-#define SFIFOTT		0x6C
-#define SSCR3		0x70
-#define SSCR4		0x74
-#define SSCR5		0x78
-#endif
-
 extern const struct dai_driver ssp_driver;
 
 /* SSCR0 bits */
@@ -99,7 +91,7 @@ extern const struct dai_driver ssp_driver;
 #define SSCR1_TTE	BIT(30)
 #define SSCR1_TTELP	BIT(31)
 
-#if CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
+#if CONFIG_CAVS
 #define SSCR2_TURM1		BIT(1)
 #define SSCR2_PSPSRWFDFD	BIT(3)
 #define SSCR2_PSPSTWFDFD	BIT(4)
@@ -182,7 +174,7 @@ extern const struct dai_driver ssp_driver;
 #define SFIFOL_TFL(x)		((x) & 0xFFFF)
 #define SFIFOL_RFL(x)		((x) >> 16)
 
-#if CONFIG_CAVS || CONFIG_HASWELL || CONFIG_BROADWELL
+#if CONFIG_CAVS
 #define SSTSA_TSEN			BIT(8)
 #define SSRSA_RSEN			BIT(8)
 

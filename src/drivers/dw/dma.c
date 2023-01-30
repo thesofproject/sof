@@ -477,34 +477,6 @@ static int dw_dma_status(struct dma_chan_data *channel,
 	return 0;
 }
 
-/* mask address for dma to identify memory space.
- * It is requested by HSW, BDW. For other
- * platforms, the mask is zero.
- */
-static void dw_dma_mask_address(struct dma_sg_elem *sg_elem,
-				struct dw_lli *lli_desc, uint32_t direction)
-{
-	lli_desc->sar = sg_elem->src;
-	lli_desc->dar = sg_elem->dest;
-
-	switch (direction) {
-	case DMA_DIR_LMEM_TO_HMEM:
-	case DMA_DIR_MEM_TO_DEV:
-		lli_desc->sar |= PLATFORM_DW_DMA_HOST_MASK;
-		break;
-	case DMA_DIR_HMEM_TO_LMEM:
-	case DMA_DIR_DEV_TO_MEM:
-		lli_desc->dar |= PLATFORM_DW_DMA_HOST_MASK;
-		break;
-	case DMA_DIR_MEM_TO_MEM:
-		lli_desc->sar |= PLATFORM_DW_DMA_HOST_MASK;
-		lli_desc->dar |= PLATFORM_DW_DMA_HOST_MASK;
-		break;
-	default:
-		break;
-	}
-}
-
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma_chan_data *channel,
 			     struct dma_sg_config *config)
@@ -736,8 +708,6 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			ret = -EINVAL;
 			goto out;
 		}
-
-		dw_dma_mask_address(sg_elem, lli_desc, config->direction);
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
 			tr_err(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d block size too big %d",
