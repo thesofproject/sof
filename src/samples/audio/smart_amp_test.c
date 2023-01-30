@@ -9,6 +9,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/msg.h>
+#include <rtos/init.h>
 #include <sof/ut.h>
 
 #ifndef __ZEPHYR__
@@ -810,3 +811,4 @@ UT_STATIC void sys_comp_smart_amp_init(void)
 }
 
 DECLARE_MODULE(sys_comp_smart_amp_init);
+SOF_MODULE_INIT(smart_amp_test, sys_comp_smart_amp_init);
