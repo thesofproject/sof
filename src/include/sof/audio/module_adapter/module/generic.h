@@ -212,6 +212,9 @@ struct processing_module {
 	 */
 	bool stream_copy_single_to_single;
 
+	/* flag to insure that module is loadable */
+	bool is_native_sof;
+
 	/* pointer to system services for loadable modules */
 	uint32_t *sys_service;
 

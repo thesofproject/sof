@@ -11,7 +11,8 @@
 #include <iadk_module_adapter.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
- * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
+ * modules developed under IADK (Intel Audio Development Kit)
+ * and LMDK (Loadable Modules Dev Kit) Framework. Modules uses uniform
  * set of interfaces and are linked into separate library. These modules are loaded in runtime
  * through library_manager and then after registration into SOF component infrastructure are
  * interfaced through module adapter API.
@@ -32,6 +33,10 @@
  *                   connect both sides of ProcessingModuleInterface and System Service.
  *  - System Service - exposes of SOF base FW services to the module.
  *  - Processing Module Adapter - SOF base FW side of ProcessingModuleInterface API
+ *
+ * Using the same philosofy loadable modules are using module adapter to interact with SOF FW.
+ * Module recognision is done by checking module API version defined in module_api_ver.h
+ * with version read from elf file.
  */
 
 
