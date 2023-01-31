@@ -32,6 +32,9 @@ DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 	       LOG_LEVEL_INFO);
 
 struct smart_amp_data {
+#if CONFIG_IPC_MAJOR_4
+	struct sof_smart_amp_ipc4_config ipc4_cfg;
+#endif
 	struct sof_smart_amp_config config;
 	struct comp_data_blob_handler *model_handler;
 	void *data_blob;
@@ -55,8 +58,10 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 {
 #if CONFIG_IPC_MAJOR_3
 	const struct ipc_config_process *ipc_sa = spec;
-#endif
 	const struct sof_smart_amp_config *cfg;
+#else
+	const struct ipc4_base_module_extended_cfg *base_cfg = spec;
+#endif
 	struct smart_amp_data *sad;
 	struct comp_dev *dev;
 	size_t bs;
@@ -80,12 +85,23 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	k_mutex_init(&sad->lock);
 
 #if CONFIG_IPC_MAJOR_4
-	cfg = spec;
-	bs = sizeof(struct sof_smart_amp_config);
+	if (base_cfg->base_cfg_ext.nb_input_pins != SMART_AMP_NUM_IN_PINS ||
+	    base_cfg->base_cfg_ext.nb_output_pins != SMART_AMP_NUM_OUT_PINS) {
+		comp_err(dev, "smart_amp_new(): Invalid pin configuration");
+		goto sad_fail;
+	}
+
+	/* Copy the base_cfg */
+	memcpy_s(&sad->ipc4_cfg.base, sizeof(sad->ipc4_cfg.base),
+		 &base_cfg->base_cfg, sizeof(base_cfg->base_cfg));
+
+	/* Copy the pin formats */
+	bs = sizeof(sad->ipc4_cfg.input_pins) + sizeof(sad->ipc4_cfg.output_pin);
+	memcpy_s(sad->ipc4_cfg.input_pins, bs,
+		 base_cfg->base_cfg_ext.pin_formats, bs);
 #else
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
-#endif
 
 	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
@@ -93,6 +109,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	}
 
 	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
+#endif
 
 	dev->state = COMP_STATE_READY;
 
@@ -117,17 +134,17 @@ static void smart_amp_set_params(struct comp_dev *dev,
 	comp_dbg(dev, "smart_amp_set_params()");
 
 	memset(params, 0, sizeof(*params));
-	params->channels = sad->config.base.audio_fmt.channels_count;
-	params->rate = sad->config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = sad->config.base.audio_fmt.depth / 8;
+	params->channels = sad->ipc4_cfg.base.audio_fmt.channels_count;
+	params->rate = sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = sad->ipc4_cfg.base.audio_fmt.depth / 8;
 	params->sample_valid_bytes =
-		sad->config.base.audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = sad->config.base.audio_fmt.interleaving_style;
-	params->buffer.size = sad->config.base.ibs;
+		sad->ipc4_cfg.base.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = sad->ipc4_cfg.base.audio_fmt.interleaving_style;
+	params->buffer.size = sad->ipc4_cfg.base.ibs;
 
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
-		struct ipc4_output_pin_format *sink_fmt = &sad->config.output_pin_fmt;
+		struct ipc4_output_pin_format *sink_fmt = &sad->ipc4_cfg.output_pin;
 		struct ipc4_audio_format out_fmt = sink_fmt->audio_fmt;
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
@@ -235,7 +252,7 @@ static int smart_amp_get_attribute(struct comp_dev *dev, uint32_t type,
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = sad->config.base;
+		*(struct ipc4_base_module_cfg *)value = sad->ipc4_cfg.base;
 		return 0;
 	default:
 		return -EINVAL;
@@ -260,7 +277,7 @@ static int smart_amp_bind(struct comp_dev *dev, void *data)
 		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 			sad->feedback_buf = source_buffer;
 			buffer_c->stream.channels = sad->config.feedback_channels;
-			buffer_c->stream.rate = sad->config.base.audio_fmt.sampling_frequency;
+			buffer_c->stream.rate = sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
 
 			buffer_release(buffer_c);
 			k_mutex_unlock(&sad->lock);
