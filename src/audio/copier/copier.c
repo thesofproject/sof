@@ -266,6 +266,26 @@ e_buf:
 	return ret;
 }
 
+static enum sof_ipc_stream_direction
+	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type)
+{
+	/* WARNING: simple "% 2" formula that was used before does not work for all
+	 * interfaces: at least it does not work for IPC gateway. But it may also
+	 * does not work for other not yet supported interfaces. And so additional
+	 * cases might be required here in future.
+	 */
+	switch (node_id_type) {
+	/* from DSP to host */
+	case ipc4_ipc_output_class:
+		return SOF_IPC_STREAM_CAPTURE;
+	/* from host to DSP */
+	case ipc4_ipc_input_class:
+		return SOF_IPC_STREAM_PLAYBACK;
+	default:
+		return node_id_type % 2;
+	}
+}
+
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
@@ -361,7 +381,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	dai_count = 1;
 	node_id = copier->gtw_cfg.node_id;
 	dai_index[dai_count - 1] = node_id.f.v_index;
-	dai.direction = node_id.f.dma_type % 2;
+	dai.direction = get_gateway_direction(node_id.f.dma_type);
 	dai.is_config_blob = true;
 	dai.sampling_frequency = copier->out_fmt.sampling_frequency;
 
@@ -457,6 +477,72 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	return 0;
 }
 
+#if CONFIG_IPC4_GATEWAY
+static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
+			 struct comp_ipc_config *config,
+			 const struct ipc4_copier_module_cfg *copier)
+{
+	const struct comp_driver *drv;
+	const struct sof_uuid uuid = {0xa814a1ca, 0x0b83, 0x466c, {0x95, 0x87, 0x2f,
+				      0x35, 0xff, 0x8d, 0x12, 0xe8}};
+	int ret;
+	struct comp_dev *dev;
+
+	drv = ipc4_get_drv((uint8_t *)&uuid);
+	if (!drv)
+		return -EINVAL;
+
+	/* create_endpoint_buffer() uses this value to choose between input and
+	 * output formats in copier config to setup buffer. For this purpose
+	 * IPC gateway should be handled similarly as host gateway.
+	 */
+	config->type = SOF_COMP_HOST;
+
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier, ipc4_gtw_none, false, 0);
+	if (ret < 0)
+		return ret;
+
+	dev = drv->ops.create(drv, config, &copier->gtw_cfg);
+	if (!dev) {
+		ret = -EINVAL;
+		goto e_buf;
+	}
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+				    PPL_CONN_DIR_COMP_TO_BUFFER);
+		cd->bsource_buffer = false;
+	} else {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+				    PPL_CONN_DIR_BUFFER_TO_COMP);
+		cd->bsource_buffer = true;
+	}
+
+	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
+		get_converter_func(&copier->base.audio_fmt,
+				   &copier->out_fmt,
+				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction));
+	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
+		comp_err(parent_dev, "failed to get converter for IPC gateway, dir %d",
+			 cd->direction);
+		ret = -EINVAL;
+		drv->ops.free(dev);
+		goto e_buf;
+	}
+
+	cd->endpoint[cd->endpoint_num++] = dev;
+
+	return 0;
+
+e_buf:
+	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
+	return ret;
+}
+#endif
+
 static int init_pipeline_reg(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -536,7 +622,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	node_id = copier->gtw_cfg.node_id;
 	/* copier is linked to gateway */
 	if (node_id.dw != IPC4_INVALID_NODE_ID) {
-		cd->direction = node_id.f.dma_type % 2;
+		cd->direction = get_gateway_direction(node_id.f.dma_type);
 
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
@@ -573,6 +659,21 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				ipc_pipe->pipeline->source_comp = dev;
 
 			break;
+#if CONFIG_IPC4_GATEWAY
+		case ipc4_ipc_output_class:
+		case ipc4_ipc_input_class:
+			if (create_ipcgtw(dev, cd, &dev->ipc_config, copier)) {
+				comp_cl_err(&comp_copier, "unable to create IPC gateway");
+				goto error_cd;
+			}
+
+			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+				ipc_pipe->pipeline->source_comp = dev;
+			else
+				ipc_pipe->pipeline->sink_comp = dev;
+
+			break;
+#endif
 		default:
 			comp_cl_err(&comp_copier, "unsupported dma type %x",
 				    (uint32_t)node_id.f.dma_type);
