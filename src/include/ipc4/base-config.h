@@ -144,4 +144,97 @@ struct ipc4_output_pin_format {
 	struct ipc4_audio_format audio_fmt; /**< format of the output data */
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_base_module_cfg_ext {
+	/* specifies number of items in input_pins array. Maximum size is 8 */
+	uint16_t nb_input_pins;
+	/* specifies number of items in output_pins array. Maximum size is 8 */
+	uint16_t nb_output_pins;
+	uint8_t reserved[12];
+	/* Specifies format of input pins followed by output pins.
+	 * Pin format arrays may be non-continuous i.e. may contain pin #0 format
+	 * followed by pin #2 format in case pin #1 will not be in use.
+	 * FW assigned format of the pin based on pin_index, not on a position of
+	 * the item in the array. Applies to both input and output pins.
+	 */
+	uint8_t pin_formats[];
+} __attribute__((packed, aligned(4)));
+
+#define ipc4_calc_base_module_cfg_ext_size(in_pins, out_pins)		\
+		(sizeof(struct ipc4_base_module_cfg_ext) +		\
+		 (in_pins) * sizeof(struct ipc4_input_pin_format) +	\
+		 (out_pins) * sizeof(struct ipc4_output_pin_format))
+
+/* Struct to combine the base_cfg and base_cfg_ext for easier parsing */
+struct ipc4_base_module_extended_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_base_module_cfg_ext base_cfg_ext;
+} __attribute__((packed, aligned(4)));
+
+/* This enum defines short 16bit parameters common for all modules.
+ * Value of module specific parameters have to be less than 0x3000.
+ */
+enum ipc4_base_module_params {
+	/* handled inside LargeConfigGet of module instance */
+	IPC4_MOD_INST_PROPS  = 0xFE,
+	/* handled inside ConfigSet of module instance */
+	IPC4_MOD_INST_ENABLE = 0x3000
+};
+
+struct ipc4_pin_props {
+	/* type of the connected stream. */
+	enum ipc4_stream_type stream_type;
+
+	/* audio format of the stream. The content is valid in case of ePcm stream_type. */
+	struct ipc4_audio_format format;
+
+	/* unique ID of the physical queue connected to the pin.
+	 * If there is no queue connected, then -1 (invalid queue ID) is set
+	 */
+	uint32_t phys_queue_id;
+} __attribute__((packed, aligned(4)));
+
+struct ipc4_pin_list_info {
+	uint32_t pin_count;
+	struct ipc4_pin_props pin_info[1];
+} __attribute__((packed, aligned(4)));
+
+/* structure describing module instance properties used in response
+ * to module LargeConfigGet with MOD_INST_PROPS parameter.
+ */
+struct ipc4_module_instance_props {
+	uint32_t  id;
+	uint32_t  dp_queue_type;
+	uint32_t  queue_alignment;
+	uint32_t  cp_usage_mask;
+	uint32_t  stack_bytes;
+	uint32_t  bss_total_bytes;
+	uint32_t  bss_used_bytes;
+	uint32_t  ibs_bytes;
+	uint32_t  obs_bytes;
+	uint32_t  cpc;
+	uint32_t  cpc_peak;
+	struct ipc4_pin_list_info input_queues;
+	struct ipc4_pin_list_info output_queues;
+	uint32_t  input_gateway;
+	uint32_t  output_gateway;
+} __attribute__((packed, aligned(4)));
+
+/* Reflects the last two entries in ModuleInstanceProps sttructure */
+struct ipc4_in_out_gateway {
+	uint32_t  input_gateway;
+	uint32_t  output_gateway;
+} __attribute__((packed, aligned(4)));
+
+/* this structure may be used by modules to carry
+ * short 16bit parameters as part of the IxC register content.
+ */
+union ipc4_cfg_param_id_data {
+	uint32_t dw;
+	struct {
+		uint32_t data16 : 16;   /* Input/Output small config data */
+		uint32_t id     : 14;   /* input parameter ID */
+		uint32_t _rsvd  : 2;
+	} f;
+} __attribute__((packed, aligned(4)));
+
 #endif
