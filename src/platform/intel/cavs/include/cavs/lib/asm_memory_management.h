@@ -7,7 +7,7 @@
 
 /**
  * \file
- * \brief Macros for power gating memory banks specific for cAVS 2.0 (IceLake)
+ * \brief Macros for power gating memory banks specific for cAVS 2.5 (Tiger Lake)
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 

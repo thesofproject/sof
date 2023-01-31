@@ -17,8 +17,6 @@ include(`sof/tokens.m4')
 # Include DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 
-ifelse(PLATFORM, `icl', `define(NCORES, 4)')
-ifelse(PLATFORM, `jsl', `define(NCORES, 2)')
 ifelse(PLATFORM, `tgl', `define(NCORES, 4)')
 ifelse(PLATFORM, `ehl', `define(NCORES, 4)')
 ifelse(PLATFORM, `adl', `define(NCORES, 4)')
@@ -235,8 +233,6 @@ PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_9, PIPELINE_PCM_6)
 # BE configurations - overrides config in ACPI if present
 #
 
-ifelse(PLATFORM, `icl', `define(ROOT_CLK, 38_4)')
-ifelse(PLATFORM, `jsl', `define(ROOT_CLK, 38_4)')
 ifelse(PLATFORM, `tgl', `define(ROOT_CLK, 38_4)')
 ifelse(PLATFORM, `ehl', `define(ROOT_CLK, 38_4)')
 ifelse(PLATFORM, `adl', `define(ROOT_CLK, 38_4)')

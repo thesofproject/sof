@@ -7,7 +7,7 @@
 
 /**
  * \file
- * \brief Runtime power management implementation for Icelake
+ * \brief Runtime power management implementation for Tiger Lake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
@@ -179,7 +179,7 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 #if CONFIG_INTEL_DMIC
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -188,7 +188,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -197,7 +197,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -206,7 +206,7 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
@@ -351,11 +351,8 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 	if (index == PLATFORM_PRIMARY_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
 
-#if CONFIG_ICELAKE
-		shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPCTLPG);
-#else
 		shim_write16(SHIM_PWRCTL, 0);
-#endif
+
 		lps_ctl |= SHIM_LPSCTL_BID | SHIM_LPSCTL_BATTR_0;
 		lps_ctl &= ~SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
