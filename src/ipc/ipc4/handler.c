@@ -1138,8 +1138,8 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 		msg_reply.header = reply.primary.dat;
 
-		tr_dbg(&ipc_tr, "tx-reply\t: %#x|%#x", reply.primary.dat,
-		       reply.extension.dat);
+		tr_dbg(&ipc_tr, "tx-reply\t: %#x|%#x", msg_reply.header,
+		       msg_reply.extension);
 
 		ipc_msg_send(&msg_reply, data, true);
 	}
