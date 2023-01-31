@@ -143,8 +143,20 @@ union ipc4_gateway_attributes {
 	} bits; /**<< Bits */
 } __attribute__((packed, aligned(4)));
 
+/**< Gateway configuration BLOB structure. */
+/*!
+ * Actual config_blob content depends on the specific target gateway type.
+ */
+struct ipc4_gateway_config_data {
+	/**< Gateway attributes */
+	union ipc4_gateway_attributes gtw_attributes;
+
+	/**< Configuration BLOB */
+	uint32_t config_blob[0];
+} __attribute__((packed, aligned(4)));
+
 /**< Configuration for the IPC Gateway */
-struct ipc4_gateway_config_blob {
+struct ipc4_ipc_gateway_config_blob {
 
 	/**< Size of the gateway buffer, specified in bytes */
 	uint32_t buffer_size;

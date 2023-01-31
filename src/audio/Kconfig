@@ -34,6 +34,15 @@ config COMP_CHAIN_DMA
 	  help
 	    Chain DMA support in hardware
 
+config IPC4_GATEWAY
+        bool "IPC4 Gateway"
+        default y
+        depends on IPC_MAJOR_4
+        help
+          Select for IPC4 Gateway. IPC4 Gateway is used to transfer audio between
+          host and DSP without using DMA: via memory window (audio payload) and
+          IPC4 messages (set/get/flush commands).
+
 config COMP_ARIA
         bool "ARIA component"
         default n

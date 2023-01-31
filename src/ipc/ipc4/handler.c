@@ -28,6 +28,7 @@
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/notification.h>
+#include <ipc4/ipcgtw.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 
@@ -511,6 +512,45 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 #endif
 }
 
+static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
+{
+#if CONFIG_IPC4_GATEWAY
+	struct ipc *ipc = ipc_get();
+	uint32_t reply_size = 0;
+	int err;
+
+	/* NOTE: reply implementation is messy! First, reply payload is copied
+	 * to ipc->comp_data buffer. Then, new buffer is allocated and assigned
+	 * to msg_reply.tx_data. ipc_msg_send() copies payload from ipc->comp_data
+	 * to msg_reply.tx_data. Then, ipc_prepare_to_send() copies payload from
+	 * msg_reply.tx_data to memory window and frees msg_reply.tx_data. That is
+	 * quite weird: seems one extra copying can be eliminated.
+	 */
+
+	err = ipcgtw_process_cmd((const struct ipc4_ipcgtw_cmd *)ipc4, ipc->comp_data,
+				 &reply_size);
+	/* reply size is returned in header extension dword */
+	msg_reply.extension = reply_size;
+
+	if (reply_size > 0) {
+		msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, reply_size);
+		if (msg_reply.tx_data) {
+			msg_reply.tx_size = reply_size;
+		} else {
+			tr_err(&ipc_tr, "failed to allocate %u bytes for msg_reply.tx_data",
+			       reply_size);
+			msg_reply.extension = 0;
+			return IPC4_OUT_OF_MEMORY;
+		}
+	}
+
+	return err < 0 ? IPC4_FAILURE : IPC4_SUCCESS;
+#else
+	tr_err(&ipc_tr, "CONFIG_IPC4_GATEWAY is disabled");
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
@@ -521,7 +561,6 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 	switch (type) {
 	case SOF_IPC4_GLB_BOOT_CONFIG:
 	case SOF_IPC4_GLB_ROM_CONTROL:
-	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
 	case SOF_IPC4_GLB_PERF_MEASUREMENTS_CMD:
 	case SOF_IPC4_GLB_LOAD_MULTIPLE_MODULES:
 	case SOF_IPC4_GLB_UNLOAD_MULTIPLE_MODULES:
@@ -567,6 +606,10 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 	case SOF_IPC4_GLB_NOTIFICATION:
 		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
 		ret = IPC4_UNAVAILABLE;
+		break;
+
+	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
+		ret = ipc4_process_ipcgtw_cmd(ipc4);
 		break;
 
 	default:
