@@ -8,7 +8,10 @@
 #include <sof/audio/module_adapter/module/iadk_modules.h>
 #include <utilities/array.h>
 #include <system_agent.h>
+#include <native_system_agent.h>
 #include <sof/lib_manager.h>
+#include <sof/audio/module_adapter/module/module_interface.h>
+#include <module_api_ver.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
@@ -80,8 +83,32 @@ static int iadk_modules_init(struct processing_module *mod)
 	uint32_t instance_id = IPC4_INST_ID(mod->dev->ipc_config.id);
 	uint32_t log_handle = (uint32_t) mod->dev->drv->tctx;
 	/* Connect loadable module interfaces with module adapter entity. */
-	void *mod_adp = system_agent_start(md->module_entry_point, module_id,
-					   instance_id, 0, log_handle, &mod_cfg);
+	/* Check if native Zephyr lib is loaded */
+	struct sof_man_fw_desc *desc;
+
+	desc = lib_manager_get_library_module_desc(module_id);
+	if (!desc) {
+		comp_err(dev, "iadk_modules_init(): Failed to load manifest");
+		return -ENOMEM;
+	}
+	struct sof_man_module *module_entry =
+		    (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+
+	sof_module_build_info *mod_buildinfo =
+		(sof_module_build_info *)(module_entry->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr);
+
+	void *mod_adp;
+
+	/* Check if module is FDK*/
+	if (mod_buildinfo->api_version_number.fields.major < _MAJOR_API_MODULE_VERSION) {
+		mod_adp = system_agent_start(md->module_entry_point, module_id,
+					     instance_id, 0, log_handle, &mod_cfg);
+	} else {
+		/* If not start agent for sof loadable */
+		mod->is_native_sof = true;
+		mod_adp = native_system_agent_start(&mod->sys_service, md->module_entry_point, module_id, instance_id,
+						    0, log_handle, &mod_cfg);
+	}
 
 	md->module_adapter = mod_adp;
 
@@ -102,7 +129,14 @@ static int iadk_modules_init(struct processing_module *mod)
 	md->mpd.out_buff_size = src_cfg->obs;
 
 	/* Call module specific init function if exists. */
-	ret = iadk_wrapper_init(md->module_adapter);
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)md->module_adapter;
+
+		ret = mod_in->init(mod);
+	} else {
+		ret = iadk_wrapper_init(md->module_adapter);
+	}
 	return ret;
 }
 
@@ -125,8 +159,15 @@ static int iadk_modules_prepare(struct processing_module *mod)
 	comp_info(dev, "iadk_modules_prepare()");
 
 	/* Call module specific prepare function if exists. */
-	ret = iadk_wrapper_prepare(mod->priv.module_adapter);
-	return 0;
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		ret = mod_in->prepare(mod);
+	} else {
+		ret = iadk_wrapper_prepare(mod->priv.module_adapter);
+	}
+	return ret;
 }
 
 static int iadk_modules_init_process(struct processing_module *mod)
@@ -171,10 +212,17 @@ static int iadk_modules_process(struct processing_module *mod,
 		i++;
 	}
 	/* Call module specific process function. */
-	ret = iadk_wrapper_process(mod->priv.module_adapter,
-				   input_buffers, num_input_buffers,
-				   output_buffers, num_output_buffers);
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
 
+		ret = mod_in->process(mod, input_buffers, num_input_buffers, output_buffers,
+				      num_output_buffers);
+	} else {
+		ret = iadk_wrapper_process(mod->priv.module_adapter, input_buffers,
+					   num_input_buffers, output_buffers,
+					   num_output_buffers);
+	}
 	return ret;
 }
 
@@ -193,7 +241,14 @@ static int iadk_modules_free(struct processing_module *mod)
 	int ret = 0;
 
 	comp_info(dev, "iadk_modules_free()");
-	ret = iadk_wrapper_free(mod->priv.module_adapter);
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		ret = mod_in->free(mod);
+	} else {
+		ret = iadk_wrapper_free(mod->priv.module_adapter);
+	}
 	rfree(md->mpd.in_buff);
 	rfree(md->mpd.out_buff);
 
@@ -226,6 +281,13 @@ static int iadk_modules_set_configuration(struct processing_module *mod, uint32_
 					  size_t fragment_size, uint8_t *response,
 					  size_t response_size)
 {
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		return mod_in->set_configuration(mod, config_id, pos, data_offset_size, fragment,
+						 fragment_size, response, response_size);
+	}
 	return iadk_wrapper_set_configuration(mod->priv.module_adapter, config_id, pos,
 					      data_offset_size, fragment, fragment_size,
 					      response, response_size);
@@ -247,6 +309,13 @@ static int iadk_modules_get_configuration(struct processing_module *mod, uint32_
 					  uint32_t *data_offset_size, uint8_t *fragment,
 					  size_t fragment_size)
 {
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		return mod_in->get_configuration(mod, config_id, data_offset_size,
+						 fragment, fragment_size);
+	}
 	return iadk_wrapper_get_configuration(mod->priv.module_adapter, config_id,
 					      MODULE_CFG_FRAGMENT_SINGLE, *data_offset_size,
 					      fragment, fragment_size);
@@ -262,6 +331,12 @@ static int iadk_modules_get_configuration(struct processing_module *mod, uint32_
 static int iadk_modules_set_processing_mode(struct processing_module *mod,
 					    enum module_processing_mode mode)
 {
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		return mod_in->set_processing_mode(mod, mode);
+	}
 	return iadk_wrapper_set_processing_mode(mod->priv.module_adapter, mode);
 }
 
@@ -285,6 +360,12 @@ static enum module_processing_mode iadk_modules_get_processing_mode(struct proce
  */
 static int iadk_modules_reset(struct processing_module *mod)
 {
+	if (mod->is_native_sof) {
+		struct module_interface *mod_in =
+					(struct module_interface *)mod->priv.module_adapter;
+
+		return mod_in->reset(mod);
+	}
 	return iadk_wrapper_reset(mod->priv.module_adapter);
 }
 

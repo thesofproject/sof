@@ -207,6 +207,9 @@ struct processing_module {
 	 */
 	bool skip_src_buffer_invalidate;
 
+	/* flag to insure that module is loadable */
+	bool is_native_sof;
+
 	/* pointer to system services for loadable modules */
 	struct adsp_system_service *sys_service;
 
