@@ -39,9 +39,6 @@ $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
 $(info ALIAS_list    = ${ALIAS_list}    )
 
-target_of_cfl := cnl
-target_of_cml := cnl
-
 target_of_ehl := tgl
 target_of_adl   := tgl
 target_of_adl-s := tgl-h

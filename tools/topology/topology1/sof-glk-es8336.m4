@@ -30,7 +30,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # define(`SSP_MCLK', )
-ifelse(PLATFORM, `cml', `define(`SSP_MCLK', 24000000)', `define(`SSP_MCLK', 19200000)')
+define(`SSP_MCLK', 19200000)
 
 # Define pipeline id for intel-generic-dmic.m4
 # to generate dmic setting

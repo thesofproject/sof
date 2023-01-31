@@ -542,53 +542,12 @@ out:
 	return ret;
 }
 
-#if CAVS_VERSION >= CAVS_VERSION_2_0
 static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
 					  uint32_t *scr_div)
 {
 	/* since cAVS 2.0 bypassing XTAL (ECS=0) is not supported */
 	return false;
 }
-#else
-/**
- * \brief Checks if XTAL source for BCLK should be used.
- *	  Before cAVS 2.0 BCLK could use XTAL directly (without M/N).
- *	  BCLK that use M/N = 1/1 or bypass XTAL is preferred.
- * \param[in] bclk Bit clock frequency.
- * \param[in] mn_in_use True if M/N source is already locked by another port.
- * \param[out] scr_div SCR divisor.
- * \return true if XTAL source should be used, false otherwise.
- */
-static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
-					  uint32_t *scr_div)
-{
-	struct mn *mn = mn_get();
-	bool ret = false;
-	int i;
-
-	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
-		if (ssp_freq[i].freq % bclk != 0)
-			continue;
-
-		if (ssp_freq_sources[i] == SSP_CLOCK_XTAL_OSCILLATOR) {
-			/* XTAL turned out to be lowest source that can work
-			 * just with SCR, so use it
-			 */
-			*scr_div = ssp_freq[i].freq / bclk;
-			ret = true;
-			break;
-		}
-
-		/* if M/N is already set up for desired clock,
-		 * we can quit and let M/N logic handle it
-		 */
-		if (!mn_in_use || mn->bclk_source_mn_clock == i)
-			break;
-	}
-
-	return ret;
-}
-#endif
 
 int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 		uint32_t *out_scr_div, bool *out_need_ecs)

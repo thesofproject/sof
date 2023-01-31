@@ -2,9 +2,7 @@
 
 # platform-specific values
 
-if(CONFIG_CANNONLAKE)
-	set(platform_folder cannonlake)
-elseif(CONFIG_ICELAKE)
+if(CONFIG_ICELAKE)
 	set(platform_folder icelake)
 elseif(CONFIG_TIGERLAKE)
 	set(platform_folder tigerlake)

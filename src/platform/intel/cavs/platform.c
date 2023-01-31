@@ -154,7 +154,7 @@ const struct ext_man_windows xsram_window
 };
 #endif
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 #if CONFIG_CAVS_LPRO_ONLY
 #define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
@@ -409,7 +409,7 @@ int platform_init(struct sof *sof)
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* initialize PM for boot */
 
 	/* request configured ring oscillator and wait for status ready */
@@ -440,7 +440,7 @@ int platform_init(struct sof *sof)
 	init_dsp_r_state(r0_r_state);
 #endif /* CONFIG_CAVS_LPRO_ONLY */
 #endif /* CONFIG_DSP_RESIDENCY_COUNTERS */
-#endif /* CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE */
+#endif /* CONFIG_ICELAKE || CONFIG_TIGERLAKE */
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

@@ -17,12 +17,6 @@ set(TPLGS_UP
 	"sof-icl-rt700\;sof-icl-rt700\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-icl-rt700\;sof-icl-rt700-4ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-icl-rt700\;sof-icl-rt700-2ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=2\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
-	# sof-cml-r700 is kept for compatibility with CI and previous versions of the kernel.
-	"sof-cml-rt700\;sof-cml-rt700\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
-	"sof-cml-rt700\;sof-cml-rt700-4ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=4\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
-	"sof-cml-rt700\;sof-cml-rt700-2ch\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DCHANNELS=2\;-DPLATFORM=cml\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
-	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-mono-rt715\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DPLATFORM=cml\;-DMONO"
-	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DPLATFORM=cml"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DPLATFORM=icl"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1308-mono-rt715\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DPLATFORM=tgl\;-DMONO\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DMIC_LINK=3"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-l0-rt1316-l1-mono-rt714-l3\;-DHEADSET_DEEP_BUFFER\;-DDYNAMIC=1\;-DPLATFORM=tgl\;-DMONO\;-DUAJ_LINK=0\;-DAMP_1_LINK=1\;-DEXT_AMP_REF\;-DMIC_LINK=3"

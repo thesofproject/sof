@@ -24,7 +24,7 @@ SUPPORTED_PLATFORMS+=( mt8188 )
 # Not actually "supported" in the main branch anymore (go to stable-v2.3
 # instead) but kept here for historical reasons and experimentation
 # convenience.
-SUPPORTED_PLATFORMS+=( cnl icl jsl )
+SUPPORTED_PLATFORMS+=( icl jsl )
 
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -204,13 +204,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		cnl)
-			PLATFORM="cannonlake"
-			XTENSA_CORE="X6H3CNL_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
 		icl)
 			PLATFORM="icelake"
 			XTENSA_CORE="X6H3CNL_2017_8"
@@ -338,11 +331,7 @@ do
 		TOOLCHAIN=$HOST
 		PATH=$SOF_TOP/../$HOST/bin:$OLDPATH
 		COMPILER="gcc"
-
-		case "$platform" in
-			cnl) DEFCONFIG_PATCH="_gcc";;
-			*)   DEFCONFIG_PATCH="";;
-		esac
+		DEFCONFIG_PATCH=""
 	fi
 
 	BUILD_DIR=build_${platform}_${COMPILER}
