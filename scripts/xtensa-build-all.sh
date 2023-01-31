@@ -21,11 +21,6 @@ SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 # Waiting for container work in progress
 SUPPORTED_PLATFORMS+=( mt8188 )
 
-# Not actually "supported" in the main branch anymore (go to stable-v2.3
-# instead) but kept here for historical reasons and experimentation
-# convenience.
-SUPPORTED_PLATFORMS+=( icl jsl )
-
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -204,13 +199,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		icl)
-			PLATFORM="icelake"
-			XTENSA_CORE="X6H3CNL_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
 		tgl)
 			PLATFORM="tgplp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
@@ -229,13 +217,6 @@ do
 			HAVE_ROM='yes'
 			# default key for TGL
 			PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			;;
-		jsl)
-			PLATFORM="jasperlake"
-			XTENSA_CORE="X6H3CNL_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
 			;;
 		imx8)
 			PLATFORM="imx8"

@@ -19,7 +19,7 @@
 #include <zephyr/device.h>
 #endif
 
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_IN_CHANNELS_COUNT 7

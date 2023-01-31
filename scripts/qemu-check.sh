@@ -3,7 +3,7 @@
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 set -e
 
-SUPPORTED_PLATFORMS=(icl imx8 imx8x imx8m)
+SUPPORTED_PLATFORMS=(imx8 imx8x imx8m)
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
@@ -81,13 +81,6 @@ do
 
 	has_rom=false
 	case "$platform" in
-		icl)
-			READY_IPC="00 00 00 f0"
-			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-			OUTBOX_OFFSET="5000"
-			SHM_MBOX=qemu-bridge-hp-sram-mem
-			has_rom=true
-			;;
 		imx8 | imx8x | imx8m)
 		# This READY_IPC value comes from:
 		#

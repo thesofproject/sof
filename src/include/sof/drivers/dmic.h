@@ -35,7 +35,7 @@
 #define DMIC_UNMUTE_CIC		1	/* Unmute CIC at 1 ms */
 #define DMIC_UNMUTE_FIR		2	/* Unmute FIR at 2 ms */
 
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_FIFOS		2
