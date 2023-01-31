@@ -50,7 +50,7 @@ define(`SSP_MCLK_RATE', `19200000')
 
 
 #--------- SSP1 --------------
-#SSP setting for CML platform
+#SSP setting for ICL platform
 define(`SSP1_INDEX', 1)
 define(`SSP1_NAME', `SSP1-Codec')
 define(`SSP1_MCLK_RATE', `24000000')

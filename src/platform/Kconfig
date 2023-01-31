@@ -7,24 +7,6 @@ choice
 	default ZEPHYR_POSIX if ARCH_POSIX
 	default TIGERLAKE
 
-config CANNONLAKE
-	bool "Build for Cannonlake"
-	select XT_BOOT_LOADER
-	select XT_IRQ_MAP
-	select DMA_GW
-	select DW
-	select DW_DMA
-	select MEM_WND
-	select DMA_HW_LLI
-	select DW_DMA_AGGREGATED_IRQ
-	select DMA_FIFO_PARTITION
-	select CAVS
-	select CAVS_VERSION_1_8
-	select XT_WAITI_DELAY
-	select CAVS_USE_LPRO_IN_WAITI
-	help
-	  Select if your target platform is Cannonlake-compatible
-
 config ICELAKE
 	bool "Build for Icelake"
 	select XT_BOOT_LOADER
@@ -224,7 +206,7 @@ endchoice
 
 config MAX_CORE_COUNT
 	int
-	default 4 if ICELAKE || CANNONLAKE || TIGERLAKE
+	default 4 if ICELAKE || TIGERLAKE
 	default 3 if METEORLAKE
 	default 1
 	help
@@ -284,20 +266,14 @@ config CAVS
 	select WAKEUP_HOOK
 	select SCHEDULE_DMA_SINGLE_CHANNEL
 
-config CAVS_VERSION_1_8
-	depends on CAVS
-	bool
-	help
-	  Select for CAVS version 1.8
-
 config CAVS_VERSION_2_0
-	depends on CAVS && !CAVS_VERSION_1_8
+	depends on CAVS
 	bool
 	help
 	  Select for CAVS version 2.0
 
 config CAVS_VERSION_2_5
-	depends on CAVS && !CAVS_VERSION_1_8 && !CAVS_VERSION_2_0
+	depends on CAVS && !CAVS_VERSION_2_0
 	bool
 	help
 	  Select for CAVS version 2.5
@@ -414,7 +390,6 @@ config CAVS_IMR_D3_PERSISTENT
 # TODO: it should just take manifest version and offsets
 config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
-	default "cnl" if CANNONLAKE
 	default "icl" if ICELAKE
 	default "tgl" if TIGERLAKE
 	default "imx8" if IMX8

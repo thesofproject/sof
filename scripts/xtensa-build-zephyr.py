@@ -73,13 +73,6 @@ else:
 platform_list = [
 	# Intel platforms
 	{
-		"name": "cnl",
-		"PLAT_CONFIG": "intel_adsp_cavs18",
-		"XTENSA_CORE": "X6H3CNL_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
-	},
-	{
 		"name": "icl",
 		"PLAT_CONFIG": "intel_adsp_cavs20",
 		"XTENSA_CORE": "X6H3CNL_2017_8",
@@ -192,23 +185,19 @@ Determine firmware naming conversion and folder structure
 For SOF:
     /lib/firmware/intel/sof
     └───────community
-        │   ├── sof-tgl.ri
-        │   └── sof-cnl.ri
+        │   └── sof-tgl.ri
         ├── dbgkey
-        │   ├── sof-tgl.ri
-        │   └── sof-cnl.ri
-        ├── sof-tgl.ri
-        └── sof-cnl.ri
+        │   └── sof-tgl.ri
+        └── sof-tgl.ri
 For AVS(filename dsp_basefw.bin):
 Noted that with fw_naming set as 'AVS', there will be output subdirectories for each platform
     /lib/firmware/intel/sof-ipc4
     └── tgl
-    │   ├── community
-    │   │   └── dsp_basefw.bin
-    │   ├── dbgkey
-    │   │   └── dsp_basefw.bin
-    │   └── dsp_basefw.bin
-    └── cnl"""
+        ├── community
+        │   └── dsp_basefw.bin
+        ├── dbgkey
+        │   └── dsp_basefw.bin
+        └── dsp_basefw.bin"""
 	)
 	parser.add_argument("-j", "--jobs", required=False, type=int,
 						help="Number of concurrent jobs. Passed to west build and"

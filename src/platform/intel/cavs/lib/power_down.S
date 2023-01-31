@@ -8,8 +8,8 @@
 /**
  * \file platform/intel/cavs/lib/power_down.S
  * \brief Power gating memory banks - implementation specific for platforms
- *  with cAVS 1.8 (i.e. CannonLake) and cAVS 2.0 (i.e. IceLake)
-  * \author Lech Betlej <lech.betlej@linux.intel.com>
+ *  with cAVS 2.0 (i.e. IceLake)
+ * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
 

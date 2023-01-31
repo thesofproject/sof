@@ -7,8 +7,7 @@
 
 /**
  * \file
- * \brief Runtime power management implementation for Cannonlake
- *        and Icelake
+ * \brief Runtime power management implementation for Icelake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
@@ -180,18 +179,7 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 #if CONFIG_INTEL_DMIC
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_CANNONLAKE
-	(void)index;
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB;
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "dis-dmic-clk-gating index %d CLKCTL %08x", index,
-		shim_reg);
-#endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -200,18 +188,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 {
-#if CONFIG_CANNONLAKE
-	(void)index;
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_DMICFDCGB;
-
-	shim_write(SHIM_CLKCTL, shim_reg);
-
-	tr_info(&power_tr, "en-dmic-clk-gating index %d CLKCTL %08x",
-		index, shim_reg);
-#endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -220,7 +197,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -229,43 +206,13 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
 #endif
 }
 #endif /* #if defined(CONFIG_INTEL_DMIC) */
-
-static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
-{
-#if CONFIG_CANNONLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) |
-		   SHIM_CLKCTL_LPGPDMAFDCGB;
-
-	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
-
-	tr_info(&power_tr, "dis-dwdma-clk-gating index %d GPDMA_CLKCTL %08x",
-		index, shim_reg);
-#endif
-}
-
-static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
-{
-#if CONFIG_CANNONLAKE
-	uint32_t shim_reg;
-
-	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) &
-		   ~SHIM_CLKCTL_LPGPDMAFDCGB;
-
-	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
-
-	tr_info(&power_tr, "en-dwdma-clk-gating index %d GPDMA_CLKCTL %08x",
-		index, shim_reg);
-#endif
-}
 
 #ifdef __ZEPHYR__
 /* TODO: Zephyr has it's own core start */
@@ -453,7 +400,6 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 		break;
 #endif
 	case DW_DMAC_CLK:
-		cavs_pm_runtime_dis_dwdma_clk_gating(index);
 		break;
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_en_memory(index);
@@ -492,7 +438,6 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		break;
 #endif
 	case DW_DMAC_CLK:
-		cavs_pm_runtime_en_dwdma_clk_gating(index);
 		break;
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_dis_memory(index);

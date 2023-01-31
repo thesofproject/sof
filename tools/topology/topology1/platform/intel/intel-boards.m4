@@ -9,7 +9,6 @@ ifdef(`LINUX_MACHINE_DRIVER',`',`fatal_error(note: Need to define linux machine 
 define(`NUM_DMIC_BE_LINK', `2')
 
 ifelse(
-	PLATFORM, `cml', `define(`NUM_HDMI_BE_LINK', 3)',
 	PLATFORM, `jsl', `define(`NUM_HDMI_BE_LINK', 3)',
 	PLATFORM, `tgl', `define(`NUM_HDMI_BE_LINK', 4)',
 	PLATFORM, `adl', `define(`NUM_HDMI_BE_LINK', 4)',
