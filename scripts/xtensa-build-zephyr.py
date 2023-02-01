@@ -76,25 +76,29 @@ platform_list = [
 		"name": "apl",
 		"PLAT_CONFIG": "intel_adsp_cavs15",
 		"XTENSA_CORE": "X4H3I16w2D48w3a_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
+		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
 	},
 	{
 		"name": "cnl",
 		"PLAT_CONFIG": "intel_adsp_cavs18",
 		"XTENSA_CORE": "X6H3CNL_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
+		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
 	},
 	{
 		"name": "icl",
 		"PLAT_CONFIG": "intel_adsp_cavs20",
 		"XTENSA_CORE": "X6H3CNL_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
+		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
 	},
 	{
 		"name": "jsl",
 		"PLAT_CONFIG": "intel_adsp_cavs20_jsl",
 		"XTENSA_CORE": "X6H3CNL_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}"
+		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc"
 	},
 	{
 		"name": "tgl",
@@ -103,6 +107,7 @@ platform_list = [
 		"IPC4_RIMAGE_DESC": "tgl-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc",
 		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
 	{
@@ -112,13 +117,15 @@ platform_list = [
 		"IPC4_RIMAGE_DESC": "tgl-h-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xcc",
 		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
 	{
 		"name": "mtl",
 		"PLAT_CONFIG": "intel_adsp_ace15_mtpm",
-		"XTENSA_CORE": "ace10_LX7HiFi4_RI_2020_5",
-		"XTENSA_TOOLS_VERSION": f"RI-2020.5{xtensa_tools_version_postfix}",
+		"XTENSA_CORE": "ace10_LX7HiFi4_2022_10",
+		"XTENSA_TOOLS_VERSION": f"RI-2022.10{xtensa_tools_version_postfix}",
+		"DEFAULT_TOOLCHAIN_VARIANT": "xt-clang",
 		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	},
 	# NXP platforms
@@ -542,7 +549,8 @@ def build_platforms():
 					"or is not a directory")
 
 			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
-			os.environ["ZEPHYR_TOOLCHAIN_VARIANT"] = "xcc"
+			os.environ["ZEPHYR_TOOLCHAIN_VARIANT"] = os.environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
+				platform_dict["DEFAULT_TOOLCHAIN_VARIANT"])
 			XTENSA_TOOLCHAIN_PATH = str(pathlib.Path(xtensa_tools_root_dir, "install",
 				"tools").absolute())
 			os.environ["XTENSA_TOOLCHAIN_PATH"] = XTENSA_TOOLCHAIN_PATH
