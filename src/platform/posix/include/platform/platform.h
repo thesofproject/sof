@@ -24,6 +24,8 @@
 
 #define PLATFORM_DEFAULT_DELAY 12
 
+struct sof;
+
 void posix_dma_init(struct sof *sof);
 void posix_dai_init(struct sof *sof);
 
