@@ -59,7 +59,7 @@ count = 12
 	affinity_mask = "0x1"
 	instance_count = "1"
 	domain_types = "0"
-	load_type = "1"
+	load_type = "0"
 	module_type = "0"
 	auto_start = "0"
 
@@ -69,7 +69,7 @@ count = 12
 	affinity_mask = "3"
 	instance_count = "1"
 	domain_types = "0"
-	load_type = "1"
+	load_type = "0"
 	module_type = "0"
 	auto_start = "0"
 
