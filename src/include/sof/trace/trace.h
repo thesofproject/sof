@@ -233,13 +233,18 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 
 #ifdef CONFIG_LIBRARY
 
+#include <sys/time.h>
+
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(ignored_log_func, atomic, level, comp_class, ctx, id_1, id_2, format, ...)	\
 do {								\
 	(void)ctx;						\
 	(void)id_1;						\
 	(void)id_2;						\
+	struct timeval tv;					\
 	char *msg = "(%s:%d) " format;				\
+	gettimeofday(&tv, NULL);				\
+	fprintf(stderr, "%ld.%6.6ld:", tv.tv_sec, tv.tv_usec);	\
 	fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,	\
 		__LINE__, ##__VA_ARGS__);			\
 	fprintf(stderr, "\n");					\
