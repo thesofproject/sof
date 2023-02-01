@@ -7,6 +7,7 @@
 #include <sof/ipc/common.h>
 #include <sof/ipc/schedule.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/audio/component_ext.h>
 
 // 6c8f0d53-ff77-4ca1-b825-c0c4e1b0d322
 DECLARE_SOF_UUID("posix-ipc-task", ipc_task_uuid,
@@ -46,6 +47,8 @@ static uint8_t fuzz_in_sz;
 static void fuzz_isr(const void *arg)
 {
 	size_t rem, i, n = MIN(posix_fuzz_sz, sizeof(fuzz_in) - fuzz_in_sz);
+	bool comp_new = false;
+	int comp_idx = 0;
 
 	for (i = 0; i < n; i++)
 		fuzz_in[fuzz_in_sz++] = posix_fuzz_buf[i];
@@ -58,20 +61,74 @@ static void fuzz_isr(const void *arg)
 
 	size_t maxsz = SOF_IPC_MSG_MAX_SIZE - 4, msgsz = fuzz_in[0] * 2;
 
-	memset(global_ipc->comp_data, 0, maxsz);
 	n = MIN(msgsz, MIN(fuzz_in_sz - 1, maxsz));
 	rem = fuzz_in_sz - (n + 1);
 
-	// The first dword is a size value which fuzzing will stumble
-	// on only one time in 24M, fill it in manually.
-	*(uint32_t *)global_ipc->comp_data = msgsz;
-	for (i = 0; i < n; i++) {
-		uint8_t *cmd = global_ipc->comp_data; // why is it a void*?
-
-		cmd[i + 4] = fuzz_in[i + 1];
-	}
+	memset(global_ipc->comp_data, 0, maxsz);
+	memcpy(global_ipc->comp_data, &fuzz_in[1], n);
 	memmove(&fuzz_in[0], &fuzz_in[n + 1], rem);
 	fuzz_in_sz = rem;
+
+	// One special case: a first byte of 0xff (which is in the
+	// otherwise-ignored size value at the front of the command --
+	// we rewrite those) is interpreted as a "component new"
+	// command, which we format specially, with a driver index
+	// specified by the second byte (modulo the number of
+	// registered drivers).  This command involves matching
+	// against a UUID value, which even fuzzing isn't able to
+	// discover at runtime.  So unless we whitebox this, no
+	// components will be created.
+	if (n > 2 && ((uint8_t *)global_ipc->comp_data)[0] == 0xff) {
+		comp_new = true;
+		comp_idx = ((uint8_t *)global_ipc->comp_data)[1];
+	}
+
+	// The first dword is a size value which fuzzing will stumble
+	// on only rarely, fill it in manually.
+	*(uint32_t *)global_ipc->comp_data = msgsz;
+
+	struct sof_ipc_comp *cc = global_ipc->comp_data;
+
+	// "Adjust" the command to represent a "comp new" command per
+	// above.  Basically we want to copy in the UUID value for one
+	// of the runtime-enumerated drivers based on data already
+	// randomized in the fuzz command.
+	if (comp_new) {
+		struct {
+			struct sof_ipc_comp comp;
+			struct sof_ipc_comp_ext ext;
+		} *cmd = global_ipc->comp_data;
+
+		// Set global/command type fields to TPLG_MSG/TPLG_COMP_NEW
+		cmd->comp.hdr.cmd &= 0x0000ffff;
+		cmd->comp.hdr.cmd |= SOF_IPC_GLB_TPLG_MSG;
+		cmd->comp.hdr.cmd |= SOF_IPC_TPLG_COMP_NEW;
+
+		// We have only one core available in native_posix
+		cmd->comp.core = 0;
+
+		// Fix up cmd size and ext_data_length to match
+		if (cmd->comp.hdr.size < sizeof(*cmd))
+			cmd->comp.hdr.size = sizeof(*cmd);
+		cmd->comp.ext_data_length = cmd->comp.hdr.size - sizeof(cmd->comp);
+
+		// Extract the list of available component drivers (do
+		// it every time; in practice I don't think this
+		// changes at runtime but in principle it might in the
+		// future)
+		int ndrvs = 0;
+		static struct comp_driver_info *drvs[256];
+		struct list_item *iter;
+		struct comp_driver_list *dlist = comp_drivers_get();
+		list_for_item(iter, &dlist->list) {
+			struct comp_driver_info *inf =
+				container_of(iter, struct comp_driver_info, list);
+			drvs[ndrvs++] = inf;
+		}
+
+		struct comp_driver_info *di = drvs[comp_idx % ndrvs];
+		memcpy(cmd->ext.uuid, di->drv->uid, sizeof(cmd->ext.uuid));
+	}
 
 	posix_ipc_isr(NULL);
 }
