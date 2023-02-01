@@ -196,7 +196,7 @@ count = 12
 	instance_count = "40"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "5"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -220,7 +220,7 @@ count = 12
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "6"
+	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
@@ -275,7 +275,7 @@ count = 12
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "8"
+	module_type = "13"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
