@@ -30,6 +30,7 @@ config COMP_DAI_GROUP
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  default n
+	  depends on IPC_MAJOR_4
 	  help
 	    Chain DMA support in hardware
 
