@@ -19,6 +19,7 @@
 #include <sof/lib/dma.h>
 #include <sof/audio/ipc-config.h>
 #include <ipc/stream.h>
+#include <sof/lib/notifier.h>
 
 /** \brief Host copy function interface. */
 typedef int (*host_copy_func)(struct comp_dev *dev);
@@ -90,5 +91,15 @@ struct host_data {
 };
 
 int host_prepare_dma(struct host_data *hd);
+
+int host_verify_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params);
+
+void host_dma_cb(void *arg, enum notify_id type, void *data);
+
+int host_params_dma(struct host_data *hd, struct comp_dev *dev,
+		    struct sof_ipc_stream_params *params, struct list_item *sink_list,
+		    struct list_item *source_list, struct pipeline *pipeline,
+		    uint32_t frames, bool is_scheduling_source);
 
 #endif /* __SOF_host_COPIER_H__ */
