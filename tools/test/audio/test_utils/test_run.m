@@ -60,7 +60,7 @@ fprintf(fh, 'COMP=\"%s\"\n', test.comp);
 fprintf(fh, 'DIRECTION=playback\n');
 fprintf(fh, 'BITS_IN=%d\n', test.bits_in);
 if isfield(test, 'bits_out') && (test.bits_in ~= test.bits_out)
-	fprintf(fh, 'BITS_IN=%d\n', test.bits_out);
+	fprintf(fh, 'BITS_OUT=%d\n', test.bits_out);
 end
 
 fprintf(fh, 'CHANNELS_IN=%d\n', test.nch_in);
