@@ -563,7 +563,7 @@ static int eq_fir_prepare(struct processing_module *mod)
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 	eq_fir_set_alignment(&source_c->stream, &sink_c->stream);
-	channels = source_c->stream.channels;
+	channels = sink_c->stream.channels;
 	frame_fmt = source_c->stream.frame_fmt;
 	buffer_release(sink_c);
 	buffer_release(source_c);
