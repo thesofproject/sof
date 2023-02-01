@@ -579,14 +579,12 @@ static void build_config(struct comp_data *cd, struct module_config *cfg)
 	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 	int i;
 
-	frame_fmt = cfg->base_cfg.audio_fmt.depth;
 	audio_stream_fmt_conversion(cfg->base_cfg.audio_fmt.depth,
 				    cfg->base_cfg.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    cfg->base_cfg.audio_fmt.s_type);
 	cd->source_format = frame_fmt;
 
-	frame_fmt = cd->sink_format;
 	audio_stream_fmt_conversion(cd->output_format.depth,
 				    cd->output_format.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,

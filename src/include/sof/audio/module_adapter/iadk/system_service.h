@@ -13,6 +13,11 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wextern-c-compat"
+#endif //__clang__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -232,5 +237,9 @@ struct SystemService : public AdspSystemService {};
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __clang__
+#pragma clang diagnostic pop // ignored "-Wextern-c-compat"
+#endif //__clang__
 
 #endif /* _ADSP_SYSTEM_SERVICE_H_ */
