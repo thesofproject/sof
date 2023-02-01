@@ -1215,8 +1215,10 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
+	struct comp_dev *child_dev;
 	int ret = 0;
 	int i;
+	bool is_scheduling_source;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -1313,7 +1315,30 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 								       &demuxed_params);
 			} else {
-				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
+				if (dev->ipc_config.type == SOF_COMP_HOST) {
+					child_dev = cd->endpoint[i];
+					ret = host_verify_params(child_dev, params);
+					if (ret < 0) {
+						comp_err(dev, "host_params(): pcm params verification failed.");
+						return -EINVAL;
+					}
+
+					is_scheduling_source =
+						child_dev == child_dev->pipeline->sched_comp;
+					/* copier dev only used for log print */
+					ret = host_params_dma(cd->hd, dev, params,
+							      &child_dev->bsink_list,
+							      &child_dev->bsource_list,
+							      child_dev->pipeline,
+							      child_dev->frames,
+							      is_scheduling_source);
+					/* set up callback */
+					notifier_register(child_dev, cd->hd->chan,
+							  NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
+				} else {
+					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
+									       params);
+				}
 			}
 			if (ret < 0)
 				break;

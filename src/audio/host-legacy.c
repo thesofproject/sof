@@ -355,7 +355,7 @@ static void host_one_shot_cb(struct comp_dev *dev, uint32_t bytes)
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
-static void host_dma_cb(void *arg, enum notify_id type, void *data)
+void host_dma_cb(void *arg, enum notify_id type, void *data)
 {
 	struct dma_cb_data *next = data;
 	struct comp_dev *dev = arg;
@@ -452,16 +452,15 @@ static int host_copy_normal(struct comp_dev *dev)
 	return ret;
 }
 
-static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
-			      uint32_t buffer_bytes)
+static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
+			      uint32_t buffer_bytes, int direction)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
 	int err;
 
-	dir = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+	dir = direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
 
 	/* if host buffer set we need to allocate local buffer */
@@ -624,9 +623,8 @@ static void host_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int host_elements_reset(struct comp_dev *dev)
+static int host_elements_reset(struct host_data *hd, int direction)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *source_elem = NULL;
 	struct dma_sg_elem *sink_elem = NULL;
 	struct dma_sg_elem *local_elem;
@@ -650,7 +648,7 @@ static int host_elements_reset(struct comp_dev *dev)
 		local_elem = hd->config.elem_array.elems;
 		local_elem->dest = sink_elem->dest;
 		local_elem->size =
-			dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+			direction == SOF_IPC_STREAM_PLAYBACK ?
 			sink_elem->size : source_elem->size;
 		local_elem->src = source_elem->src;
 	}
@@ -658,8 +656,8 @@ static int host_elements_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static int host_verify_params(struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params)
+int host_verify_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
 {
 	int ret;
 
@@ -674,11 +672,12 @@ static int host_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
-/* configure the DMA params and descriptors for host buffer IO */
-static int host_params(struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params)
+int host_params_dma(struct host_data *hd, struct comp_dev *dev,
+		    struct sof_ipc_stream_params *params, struct list_item *sink_list,
+		    struct list_item *source_list, struct pipeline *pipeline,
+		    uint32_t frames, bool is_scheduling_source)
+
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &hd->config;
 	struct comp_buffer __sparse_cache *host_buf_c;
 	struct comp_buffer __sparse_cache *dma_buf_c;
@@ -688,14 +687,6 @@ static int host_params(struct comp_dev *dev,
 	uint32_t addr_align;
 	uint32_t align;
 	int err;
-
-	comp_dbg(dev, "host_params()");
-
-	err = host_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "host_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -730,17 +721,17 @@ static int host_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		hd->local_buffer = list_first_item(&dev->bsink_list,
+	if (params->direction == SOF_IPC_STREAM_PLAYBACK)
+		hd->local_buffer = list_first_item(sink_list,
 						   struct comp_buffer,
 						   source_list);
 	else
-		hd->local_buffer = list_first_item(&dev->bsource_list,
+		hd->local_buffer = list_first_item(source_list,
 						   struct comp_buffer,
 						   sink_list);
 	host_buf_c = buffer_acquire(hd->local_buffer);
 
-	period_bytes = dev->frames *
+	period_bytes = frames *
 		audio_stream_frame_bytes(&host_buf_c->stream);
 
 	if (!period_bytes) {
@@ -750,7 +741,7 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* determine source and sink buffer elements */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (params->direction == SOF_IPC_STREAM_PLAYBACK) {
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
@@ -799,7 +790,8 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* create SG DMA elems for local DMA buffer */
-	err = create_local_elems(dev, period_count, buffer_size / period_count);
+	err = create_local_elems(hd, dev, period_count, buffer_size / period_count,
+				 params->direction);
 	if (err < 0)
 		goto out;
 
@@ -807,11 +799,11 @@ static int host_params(struct comp_dev *dev,
 	config->src_width = audio_stream_sample_bytes(&host_buf_c->stream);
 	config->dest_width = audio_stream_sample_bytes(&host_buf_c->stream);
 	config->cyclic = 0;
-	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->period;
+	config->irq_disabled = pipeline_is_timer_driven(pipeline);
+	config->is_scheduling_source = is_scheduling_source;
+	config->period = pipeline->period;
 
-	host_elements_reset(dev);
+	host_elements_reset(hd, params->direction);
 
 	hd->stream_tag -= 1;
 	/* get DMA channel from DMAC
@@ -844,9 +836,6 @@ static int host_params(struct comp_dev *dev,
 	/* minimal copied data shouldn't be less than alignment */
 	hd->period_bytes = ALIGN_UP(period_bytes, hd->dma_copy_align);
 
-	/* set up callback */
-	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
-
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
@@ -857,6 +846,30 @@ static int host_params(struct comp_dev *dev,
 
 out:
 	buffer_release(host_buf_c);
+	return err;
+}
+
+/* configure the DMA params and descriptors for host buffer IO */
+static int host_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int err;
+
+	comp_dbg(dev, "host_params()");
+
+	err = host_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "host_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
+
+	err = host_params_dma(hd, dev, params, &dev->bsink_list, &dev->bsource_list,
+			      dev->pipeline, dev->frames, dev == dev->pipeline->sched_comp);
+
+	/* set up callback */
+	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
+
 	return err;
 }
 
