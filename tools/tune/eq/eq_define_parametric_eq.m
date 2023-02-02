@@ -73,10 +73,10 @@ for i=1:sp(1)
                         otherwise
                                 error('Unknown parametric EQ type');
                 end
-                if length(a0) > 0
+                if ~isempty(a0)
                         [z0, p0, k0] = tf2zp(b0, a0);
                 end
-                if length(k0) > 0
+                if ~isempty(k0)
                         z = [z ; z0(:)];
                         p = [p ; p0(:)];
                         k = k * k0;
@@ -132,7 +132,7 @@ function [b, a] = peak_2nd(fhz, gdb, Q, fs)
 		% When Q = 0, the above formulas have problems. If we
 		% look at the z-transform, we can see that the limit
 		% as Q->0 is A^2, so set the filter that way.
-		b = [A * A, 0, 0]
+		b = [A * A, 0, 0];
 		a = [1, 0, 0];
 		return;
 	end
