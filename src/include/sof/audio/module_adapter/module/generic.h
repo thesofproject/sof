@@ -207,6 +207,9 @@ struct processing_module {
 	 */
 	bool skip_src_buffer_invalidate;
 
+	/* pointer to system services for loadable modules */
+	struct adsp_system_service *sys_service;
+
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
 };
