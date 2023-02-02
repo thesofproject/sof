@@ -91,6 +91,10 @@ struct comp_data {
 #ifdef CONFIG_IPC_MAJOR_4
 	struct ipc4_kpb_module_cfg ipc4_cfg;
 #endif /* CONFIG_IPC_MAJOR_4 */
+	uint32_t num_of_sel_mic;
+	uint32_t num_of_in_channels;
+	uint32_t offsets[KPB_MAX_MICSEL_CHANNELS];
+	struct kpb_micselector_config mic_sel;
 };
 
 /*! KPB private functions */
@@ -808,9 +812,9 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-	if (!kpb->sel_sink || !kpb->host_sink) {
-		comp_info(dev, "kpb_prepare(): could not find sinks: sel_sink %p host_sink %p",
-			  kpb->sel_sink, kpb->host_sink);
+	if (!kpb->sel_sink) {
+		comp_err(dev, "kpb_prepare(): could not find sink: sel_sink %p",
+			 kpb->sel_sink);
 		ret = -EIO;
 	}
 
@@ -2018,9 +2022,9 @@ static inline bool validate_host_params(struct comp_dev *dev,
 		/* Host buffer size is too small - history data
 		 * may get overwritten.
 		 */
-		comp_err(dev, "kpb: host_buffer_size (%d) must be at least %d",
-			 host_buffer_size, HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels));
-		return false;
+		comp_warn(dev, "kpb: host_buffer_size (%d) must be at least %d",
+			  host_buffer_size,
+			  HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels));
 	} else if (kpb->sync_draining_mode) {
 		/* Sync draining allowed. Check if we can perform draining
 		 * with current settings.
@@ -2060,6 +2064,50 @@ static inline void kpb_change_state(struct comp_data *kpb,
 	kpb->state_log = (kpb->state_log << 4) | state;
 }
 
+static int kpb_set_micselect(struct comp_dev *dev, const void *data,
+			     int max_data_size)
+{
+	const struct kpb_micselector_config *mic_sel = data;
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	const size_t mic_cnt = kpb->config.channels - KPB_REFERENCE_SUPPORT_CHANNELS;
+	const uint8_t valid_mask = KPB_COUNT_TO_BITMASK(mic_cnt);
+	size_t i;
+
+	if ((valid_mask & mic_sel->mask) == 0) {
+		comp_err(dev, "error: invalid micselector bit mask");
+		return -EINVAL;
+	}
+	 /* selected mics counter */
+	size_t num_of_sel_mic = 0;
+
+	for (i = 0; i < mic_cnt; i++) {
+		if (KPB_IS_BIT_SET(mic_sel->mask, i)) {
+			kpb->offsets[num_of_sel_mic] = i;
+			num_of_sel_mic++;
+		}
+	}
+	kpb->num_of_sel_mic = num_of_sel_mic;
+	kpb->num_of_in_channels = kpb->config.channels;
+	kpb->mic_sel.mask = mic_sel->mask;
+	return 0;
+}
+
+static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
+				bool first_block,
+				bool last_block,
+				uint32_t data_offset,
+				const char *data)
+{
+	comp_info(dev, "kpb_set_large_config()");
+
+	switch (param_id) {
+	case KP_BUF_CLIENT_MIC_SELECT:
+		return kpb_set_micselect(dev, data, data_offset);
+	default:
+		return -EINVAL;
+	}
+}
+
 static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.uid = SOF_RT_UUID(kpb_uuid),
@@ -2073,6 +2121,7 @@ static const struct comp_driver comp_kpb = {
 		.prepare	= kpb_prepare,
 		.reset		= kpb_reset,
 		.params		= kpb_params,
+		.set_large_config = kpb_set_large_config,
 #ifdef CONFIG_IPC_MAJOR_4
 		.get_attribute	= kpb_get_attribute,
 		.bind		= kpb_bind,

@@ -58,6 +58,15 @@ struct comp_buffer;
 #define KPB_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
 #define KPB_BYTES_TO_S32_SAMPLES(s)	((s) >> 2)
 
+/* Macro that returns mask with selected bits set */
+#define KPB_COUNT_TO_BITMASK(cnt) (((0x1 << (cnt)) - 1))
+#define KPB_IS_BIT_SET(value, idx) ((value) & (1 << (idx)))
+#define KPB_REFERENCE_SUPPORT_CHANNELS 2
+/* Maximum number of channels in the micsel mask is 4,
+ * i.e. number of max supported channels - reference channels)
+ */
+#define KPB_MAX_MICSEL_CHANNELS 4
+
 /** All states below as well as relations between them are documented in
  * the sof-dosc in [kpbm-state-diagram]
  * Therefore any addition of new states or modification of existing ones
@@ -150,6 +159,18 @@ struct history_data {
 	struct history_buffer *c_hb; /**< current buffer used for writing */
 };
 
+enum ipc4_kpb_module_config_params {
+	/* Mic selector for client - sets microphone id for real time sink mic selector
+	 * IPC4-compatible ID - please do not change the number
+	 */
+	KP_BUF_CLIENT_MIC_SELECT = 11,
+};
+
+/* Stores KPB mic selector config */
+struct kpb_micselector_config {
+	/* channel bit set to 1 implies channel selection */
+	uint32_t mask;
+};
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
 #endif
