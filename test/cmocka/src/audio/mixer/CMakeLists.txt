@@ -19,5 +19,6 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
 target_link_libraries(mixer PRIVATE -lm)

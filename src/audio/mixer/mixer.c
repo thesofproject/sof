@@ -98,8 +98,8 @@ static int mixer_process(struct processing_module *mod,
 	for (i = 0; i < num_input_buffers; i++) {
 		uint32_t avail_frames;
 
-		avail_frames = audio_stream_avail_frames(mod->input_buffers[i].data,
-							 mod->output_buffers[0].data);
+		avail_frames = audio_stream_avail_frames_aligned(mod->input_buffers[i].data,
+								 mod->output_buffers[0].data);
 		frames = MIN(frames, avail_frames);
 	}
 
@@ -179,6 +179,32 @@ static int mixer_reset(struct processing_module *mod)
 	return 0;
 }
 
+/* init and calculate the aligned setting for available frames and free frames retrieve*/
+static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache *source)
+{
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+
+	/* Xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
+	 * requires 16-byte aligned.
+	 */
+	const uint32_t byte_align = source->channels == 6 ? 16 : 8;
+
+	/*There is no limit for frame number, so set it as 1*/
+	const uint32_t frame_align_req = 1;
+
+#else
+
+	/* Since the generic version process signal sample by sample, so there is no
+	 * limit for it, then set the byte_align and frame_align_req to be 1.
+	 */
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+#endif
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+}
+
 static int mixer_prepare(struct processing_module *mod)
 {
 	struct mixer_data *md = module_get_private_data(mod);
@@ -191,6 +217,7 @@ static int mixer_prepare(struct processing_module *mod)
 			       source_list);
 	sink_c = buffer_acquire(sink);
 	md->mix_func = mixer_get_processing_function(dev, sink_c);
+	mixer_set_frame_alignment(&sink_c->stream);
 	buffer_release(sink_c);
 
 	/* check each mixer source state */
@@ -209,6 +236,7 @@ static int mixer_prepare(struct processing_module *mod)
 		 */
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
+		mixer_set_frame_alignment(&source_c->stream);
 		stop = source_c->source && (source_c->source->state == COMP_STATE_PAUSED ||
 					    source_c->source->state == COMP_STATE_ACTIVE);
 		buffer_release(source_c);
