@@ -924,6 +924,168 @@ static int kpb_reset(struct comp_dev *dev)
 	return ret;
 }
 
+#ifdef KPB_HIFI3
+#if CONFIG_FORMAT_S16LE
+static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
+				 struct comp_buffer __sparse_cache *source, size_t size,
+				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	uint16_t ch;
+	size_t i;
+
+	AE_SETCBEGIN0(ostream->addr);
+	AE_SETCEND0(ostream->end_addr);
+
+	buffer_stream_invalidate(source, size);
+	const ae_int16 *in_ptr = (const ae_int16 *)istream->r_ptr;
+	ae_int16x4 d16 = AE_ZERO16();
+	const size_t in_offset = in_channels * sizeof(ae_int16);
+	const size_t out_offset = micsel_channels * sizeof(ae_int16);
+	const size_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
+	ae_int16 *out_ptr;
+
+	for (ch = 0; ch < micsel_channels; ch++) {
+		const ae_int16 *input_data = (const ae_int16 *)(in_ptr) + offsets[ch];
+
+		out_ptr = (ae_int16 *)ostream->w_ptr;
+		out_ptr += ch;
+		for (i = 0; i < samples_per_chan; i++) {
+			AE_L16_XP(d16, input_data, in_offset);
+			AE_S16_0_XC(d16, out_ptr, out_offset);
+		}
+	}
+}
+#endif
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
+				 struct comp_buffer __sparse_cache *source, size_t size,
+				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	uint16_t ch;
+	size_t i;
+
+	AE_SETCBEGIN0(ostream->addr);
+	AE_SETCEND0(ostream->end_addr);
+
+	buffer_stream_invalidate(source, size);
+
+	const ae_int32 *in_ptr = (const ae_int32 *)istream->r_ptr;
+	ae_int32x2 d32 = AE_ZERO32();
+	const size_t in_offset = in_channels * sizeof(ae_int32);
+	const size_t out_offset = micsel_channels * sizeof(ae_int32);
+	const size_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
+	ae_int32 *out_ptr;
+
+	for (ch = 0; ch < micsel_channels; ch++) {
+		const ae_int32 *input_data = (const ae_int32 *)(in_ptr) + offsets[ch];
+
+		out_ptr = (ae_int32 *)ostream->w_ptr;
+		out_ptr += ch;
+		for (i = 0; i < samples_per_chan; i++) {
+			AE_L32_XP(d32, input_data, in_offset);
+			AE_S32_L_XC(d32, out_ptr, out_offset);
+		}
+	}
+}
+#endif
+#else
+static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
+				 struct comp_buffer __sparse_cache *source, size_t size,
+				 uint32_t in_channels,  uint32_t micsel_channels, uint32_t *offsets)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	struct audio_stream __sparse_cache *ostream = &sink->stream;
+
+	buffer_stream_invalidate(source, size);
+	size_t out_samples;
+	uint16_t ch;
+
+	const int16_t *in_data;
+	int16_t *out_data;
+	const uint32_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
+
+	for (ch = 0; ch < micsel_channels; ch++) {
+		out_samples = 0;
+		in_data = (int16_t *)istream->r_ptr;
+		out_data = (int16_t *)ostream->w_ptr;
+
+		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			if (&out_data[out_samples + ch]
+					>= (int16_t *)ostream->end_addr) {
+				out_data = (int16_t *)ostream->addr;
+				out_samples = 0;
+			}
+			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_samples += micsel_channels;
+		}
+	}
+}
+
+static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
+				 struct comp_buffer __sparse_cache *source, size_t size,
+				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	struct audio_stream __sparse_cache *ostream = &sink->stream;
+
+	buffer_stream_invalidate(source, size);
+	size_t out_samples;
+	uint16_t ch;
+	const int32_t *in_data;
+	int32_t *out_data;
+	const uint32_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
+
+	for (ch = 0; ch < micsel_channels; ch++) {
+		out_samples = 0;
+		in_data = (int32_t *)istream->r_ptr;
+		out_data = (int32_t *)ostream->w_ptr;
+
+		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			if (&out_data[out_samples + ch]
+					>= (int32_t *)ostream->end_addr) {
+				out_data = (int32_t *)ostream->addr;
+				out_samples = 0;
+			}
+			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_samples += micsel_channels;
+		}
+	}
+}
+#endif
+static void kpb_micselect_copy(struct comp_dev *dev, struct comp_buffer __sparse_cache *sink_c,
+			       struct comp_buffer __sparse_cache *source_c, size_t copy_bytes,
+			       uint32_t channels)
+{
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	size_t sample_width = kpb->config.sampling_width;
+	uint32_t *offsets = kpb->offsets;
+
+	switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+	case 16:
+		kpb_micselect_copy16(sink_c, source_c, copy_bytes,
+				     channels, kpb->num_of_sel_mic, offsets);
+		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+	case 24:
+		kpb_micselect_copy32(sink_c, source_c, copy_bytes,
+				     channels, kpb->num_of_sel_mic, offsets);
+		break;
+	case 32:
+		kpb_micselect_copy32(sink_c, source_c, copy_bytes,
+				     channels, kpb->num_of_sel_mic, offsets);
+		break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+	default:
+		comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
+		return;
+	}
+}
 /**
  * \brief Copy real time input stream into sink buffer,
  *	and in the same time buffers that input for
@@ -941,7 +1103,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c = NULL;
-	size_t copy_bytes = 0;
+	size_t copy_bytes = 0, produced_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
 	struct draining_data *dd = &kpb->draining_task_data;
 	uint32_t avail_bytes;
@@ -997,19 +1159,39 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
+		if (kpb->num_of_sel_mic == 0) {
+			kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
+		} else {
+			uint32_t avail = audio_stream_get_avail_bytes(&source_c->stream);
+			uint32_t free = audio_stream_get_free_bytes(&sink_c->stream);
 
+			copy_bytes = MIN(avail, free * channels / kpb->num_of_sel_mic);
+			copy_bytes = ROUND_DOWN(copy_bytes, (sample_width >> 3) * channels);
+			unsigned int total_bytes_per_sample =
+					(sample_width >> 3) * kpb->num_of_sel_mic;
+
+			produced_bytes = copy_bytes * kpb->num_of_sel_mic / channels;
+			produced_bytes = ROUND_DOWN(produced_bytes, total_bytes_per_sample);
+			if (!copy_bytes) {
+				comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
+					 free,
+					 avail);
+				ret = PPL_STATUS_PATH_STOP;
+				break;
+			}
+			kpb_micselect_copy(dev, sink_c, source_c, produced_bytes, channels);
+		}
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
 		 */
-		if (audio_stream_get_avail_bytes(&source_c->stream) <= kpb->hd.buffer_size) {
+		if (copy_bytes <= kpb->hd.buffer_size) {
 			ret = kpb_buffer_data(dev, source_c, copy_bytes);
+
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				break;
-			} else {
-				ret = PPL_STATUS_PATH_STOP;
 			}
+			ret = PPL_STATUS_PATH_STOP;
 
 			/* Update buffered size. NOTE! We only record buffered
 			 * data up to the size of history buffer.
@@ -1021,7 +1203,11 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_err(dev, "kpb_copy(): too much data to buffer.");
 		}
 
-		comp_update_buffer_produce(sink_c, copy_bytes);
+		if (kpb->num_of_sel_mic == 0)
+			comp_update_buffer_produce(sink_c, copy_bytes);
+		else
+			comp_update_buffer_produce(sink_c, produced_bytes);
+
 		comp_update_buffer_consume(source_c, copy_bytes);
 
 		break;
