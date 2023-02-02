@@ -24,7 +24,6 @@ end
 
 %% Channels count and assign vector lengths must be the same
 if bs.channels_in_config ~= length( bs.assign_response)
-	bs
 	error("Channels # and response assign length must match");
 end
 

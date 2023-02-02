@@ -41,7 +41,6 @@ end
 
 %% Channels count and assign vector length must be the same
 if bs.channels_in_config ~= length( bs.assign_response)
-	bs
 	error("Channels # and response assign length must match");
 end
 
@@ -49,7 +48,6 @@ end
 len = length(bs.all_coefficients);
 len_no_header = len - 10 * bs.number_of_responses_defined;
 if mod(len_no_header, 4) > 0
-	bs
 	error("Coefficient data vector length must be multiple of 4");
 end
 

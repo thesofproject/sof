@@ -32,11 +32,11 @@ end
 ipc4_use_sofctl = 0; % Set to 1 when sof-ctl update is merged
 abifn = 'eq_get_abi.bin';
 switch ipc_ver
-	case 3,
+	case 3
 		%% Use sof-ctl to write ABI header into a file
 		cmd = sprintf('sof-ctl -g %d -t %d -b -o %s', setsize, type, abifn);
 		[bytes, nbytes] = get_abi_with_sofctl(cmd, abifn);
-	case 4,
+	case 4
 		if ipc4_use_sofctl
 			cmd = sprintf('sof-ctl -I IPC4 -g %d -p %d -b -o %s', setsize, param_id, abifn);
 			[bytes, nbytes] = get_abi_with_sofctl(cmd, abifn);
@@ -49,7 +49,7 @@ switch ipc_ver
 			bytes( 9:12) = w32b(setsize);		% size
 			bytes(13:16) = [0x00 0xa0 0x01 0x03];	% ABI
 		end
-	otherwise,
+	otherwise
 		fprintf(1, 'Illegal ipc_ver %d\n', ipc_ver);
 		error('Failed.');
 end
@@ -58,7 +58,7 @@ end
 
 function [bytes, nbytes] = get_abi_with_sofctl(cmd, abifn)
 
-[ret, out] = system(cmd);
+[ret, ~] = system(cmd);
 if ret
 	error('Failed to run sof-ctl. Is it installed?');
 end
