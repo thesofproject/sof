@@ -25,16 +25,12 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	ae_int32x2 val2;
 	ae_int32x2 sample_1;
 	ae_int32x2 sample_2;
-	ae_valign inu[PLATFORM_MAX_CHANNELS];
-	ae_valign outu = AE_ZALIGN64();
-	unsigned int n, m, nmax, i, j, left, left_samples;
+	unsigned int n, m, nmax, i, j, left_samples;
 	unsigned int samples = frames * sink->channels;
 
 	for (j = 0; j < num_sources; j++) {
 		in[j] = sources[j]->r_ptr;
-		inu[j] = AE_ZALIGN64();
 	}
-
 	for (left_samples = samples; left_samples; left_samples -= n) {
 		out = audio_stream_wrap(sink,  out);
 		nmax = audio_stream_samples_without_wrap_s16(sink, out);
@@ -43,17 +39,15 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 			in[j] = audio_stream_wrap(sources[j], in[j]);
 			nmax = audio_stream_samples_without_wrap_s16(sources[j], in[j]);
 			n = MIN(n, nmax);
-			inu[j] = AE_LA64_PP(in[j]);
 		}
 		m = n >> 2;
-		left = n & 0x03;
 
 		for (i = 0; i < m; i++) {
 			val1 = AE_ZERO32();
 			val2 = AE_ZERO32();
 			for (j = 0; j < num_sources; j++) {
-				/* load four 16 bit samples */
-				AE_LA16X4_IP(sample, inu[j], in[j]);
+				/* load four 16 bit samples, 8 is sizeof(ae_int16x4) */
+				AE_L16X4_IP(sample, in[j], 8);
 				sample_1 = AE_SEXT32X2D16_32(sample);
 				sample_2 = AE_SEXT32X2D16_10(sample);
 				val1 = AE_ADD32S(val1, sample_1);
@@ -66,27 +60,8 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 			/* truncate the LSB 16bit of four 32-bit signed elements*/
 			res = AE_CVT16X4(val1, val2);
 
-			/* store four 16 bit samples */
-			AE_SA16X4_IP(res, outu, out);
-		}
-		AE_SA64POS_FP(outu, out);
-
-		/* process the left samples that less than 4
-		 * one by one to avoid memory access overrun
-		 */
-		for (i = 0; i < left ; i++) {
-			val1 = AE_ZERO32();
-			for (j = 0; j < num_sources; j++) {
-				AE_L16_IP(sample, (ae_int16 *)in[j], sizeof(ae_int16));
-				sample_1 = AE_SEXT32X2D16_32(sample);
-				val1 = AE_ADD32S(val1, sample_1);
-			}
-			/*Saturate to 16 bits */
-			val1 = AE_SRAA32S(AE_SLAA32S(val1, 16), 16);
-			/* truncate the LSB 16bit of four 32-bit signed elements*/
-			res = AE_CVT16X4(val1, val1);
-			/* store one 16 bit samples */
-			AE_S16_0_IP(res, (ae_int16 *)out, sizeof(ae_int16));
+			/* store four 16 bit samples, 8 is sizeof(ae_int16x4) */
+			AE_S16X4_IP(res, out, 8);
 		}
 	}
 }
@@ -101,34 +76,28 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
 	ae_int32x2 *out = sink->w_ptr;
 	ae_int32x2 val;
-	ae_valign inu[PLATFORM_MAX_CHANNELS];
-	ae_valign outu = AE_ZALIGN64();
 	ae_int32x2 sample = AE_ZERO32();
-	unsigned int n, m, nmax, i, j, left, left_samples;
+	unsigned int n, m, nmax, i, j, left_samples;
 	unsigned int samples = frames * sink->channels;
 
 	for (j = 0; j < num_sources; j++) {
 		in[j] = sources[j]->r_ptr;
-		inu[j] = AE_ZALIGN64();
 	}
 	for (left_samples = samples; left_samples; left_samples -= n) {
 		out = audio_stream_wrap(sink,  out);
-		nmax = audio_stream_samples_without_wrap_s24(sink, out);
+		nmax = audio_stream_samples_without_wrap_s32(sink, out);
 		n = MIN(left_samples, nmax);
 		for (j = 0; j < num_sources; j++) {
 			in[j] = audio_stream_wrap(sources[j], in[j]);
-			nmax = audio_stream_samples_without_wrap_s24(sources[j], in[j]);
+			nmax = audio_stream_samples_without_wrap_s32(sources[j], in[j]);
 			n = MIN(n, nmax);
-			inu[j] = AE_LA64_PP(in[j]);
 		}
 		m = n >> 1;
-		left = n & 0x01;
-
 		for (i = 0; i < m; i++) {
 			val = AE_ZERO32();
 			for (j = 0; j < num_sources; j++) {
-				/* load two 32 bit samples */
-				AE_LA32X2_IP(sample, inu[j], in[j]);
+				/* load two 32 bit samples, 8 is sizeof(ae_int32x2) */
+				AE_L32X2_IP(sample, in[j], 8);
 				/* Sign extend */
 				sample = AE_SRAA32RS(AE_SLAI32(sample, 8), 8);
 				val = AE_ADD32S(val, sample);
@@ -136,22 +105,8 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 			/*Saturate to 24 bits */
 			val = AE_SRAA32S(AE_SLAA32S(val, 8), 8);
 
-			/* store two 32 bit samples */
-			AE_SA32X2_IP(val, outu, out);
-		}
-		AE_SA64POS_FP(outu, out);
-
-		/* process the left sample to avoid memory access overrun */
-		if (left) {
-			val = AE_ZERO32();
-			for (j = 0; j < num_sources; j++) {
-				AE_L32_IP(sample, (ae_int32 *)in[j], sizeof(ae_int32));
-				sample = AE_SRAA32RS(AE_SLAI32(sample, 8), 8);
-				val = AE_ADD32S(val, sample);
-			}
-			/*Saturate to 24 bits */
-			val = AE_SRAA32RS(AE_SLAA32S(val, 8), 8);
-			AE_S32_L_IP(val, (ae_int32 *)out, sizeof(ae_int32));
+			/* store two 32 bit samples, 8 is sizeof(ae_int32x2) */
+			AE_S32X2_IP(val, out, 8);
 		}
 	}
 }
