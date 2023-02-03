@@ -63,6 +63,7 @@ struct pipeline {
 	uint32_t frames_per_sched;/**< output frames of pipeline, 0 is variable */
 	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
 	uint32_t time_domain;	/**< scheduling time domain */
+	uint32_t attributes;   /**< pipeline attributes from IPC extension msg/ */
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
