@@ -70,6 +70,9 @@ DECLARE_SOF_RT_UUID("kd-test", keyword_uuid, 0xeba8d51f, 0x7827, 0x47b5,
 DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
 
 struct comp_data {
+#ifdef CONFIG_IPC_MAJOR_4
+	struct ipc4_base_module_cfg base_cfg;
+#endif
 	struct sof_detect_test_config config;
 	struct comp_data_blob_handler *model_handler;
 	void *data_blob;
@@ -251,7 +254,7 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 	assert(!ret);
 
 #if CONFIG_IPC_MAJOR_4
-	sample_width = cd->config.base.audio_fmt.depth;
+	sample_width = cd->base_cfg.audio_fmt.depth;
 #else
 	sample_width = cd->config.sample_width;
 #endif /* CONFIG_IPC_MAJOR_4 */
@@ -286,18 +289,18 @@ static void test_keyword_set_params(struct comp_dev *dev,
 	comp_info(dev, "test_keyword_set_params()");
 
 	memset(params, 0, sizeof(*params));
-	params->channels = cd->config.base.audio_fmt.channels_count;
-	params->rate = cd->config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->config.base.audio_fmt.depth / 8;
+	params->channels = cd->base_cfg.audio_fmt.channels_count;
+	params->rate = cd->base_cfg.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cd->base_cfg.audio_fmt.depth / 8;
 	params->sample_valid_bytes =
-		cd->config.base.audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
-	params->buffer.size = cd->config.base.ibs;
+		cd->base_cfg.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = cd->base_cfg.audio_fmt.interleaving_style;
+	params->buffer.size = cd->base_cfg.ibs;
 
-	audio_stream_fmt_conversion(cd->config.base.audio_fmt.depth,
-				    cd->config.base.audio_fmt.valid_bit_depth,
+	audio_stream_fmt_conversion(cd->base_cfg.audio_fmt.depth,
+				    cd->base_cfg.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
-				    cd->config.base.audio_fmt.s_type);
+				    cd->base_cfg.audio_fmt.s_type);
 
 	params->frame_fmt = frame_fmt;
 }
@@ -398,7 +401,7 @@ static int test_keyword_get_attribute(struct comp_dev *dev,
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->config.base;
+		*(struct ipc4_base_module_cfg *)value = cd->base_cfg;
 		break;
 	default:
 		return -EINVAL;
@@ -608,14 +611,14 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 {
 	struct comp_dev *dev = NULL;
 #if CONFIG_IPC_MAJOR_4
-	const struct sof_detect_test_config *ipc_keyword = spec;
+	const struct ipc4_base_module_cfg *base_cfg = spec;
 #else
 	const struct ipc_config_process *ipc_keyword = spec;
+	const struct sof_detect_test_config *cfg;
+	size_t bs;
 #endif /* CONFIG_IPC_MAJOR_4 */
 	struct comp_data *cd = NULL;
-	const struct sof_detect_test_config *cfg;
 	int ret = 0;
-	size_t bs;
 
 	comp_cl_info(&comp_keyword, "test_keyword_new()");
 
@@ -642,12 +645,11 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	cd->model_handler = comp_data_blob_handler_new(dev);
 
 #if CONFIG_IPC_MAJOR_4
-	cfg = ipc_keyword;
-	bs = sizeof(*ipc_keyword);
+	/* For IPC4 we only receive the base_cfg, make a copy of it */
+	memcpy_s(&cd->base_cfg, sizeof(cd->base_cfg), base_cfg, sizeof(*base_cfg));
 #else
 	cfg = (const struct sof_detect_test_config *)ipc_keyword->data;
 	bs = ipc_keyword->size;
-#endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (bs > 0) {
 		if (bs < sizeof(struct sof_detect_test_config)) {
@@ -660,6 +662,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 			goto cd_fail;
 		}
 	}
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 	ret = comp_init_data_blob(cd->model_handler, INITIAL_MODEL_DATA_SIZE,
 				  NULL);
@@ -873,7 +876,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	uint16_t sample_width;
 
 #if CONFIG_IPC_MAJOR_4
-	sample_width = cd->config.base.audio_fmt.depth;
+	sample_width = cd->base_cfg.audio_fmt.depth;
 #else
 	sample_width = cd->config.sample_width;
 #endif /* CONFIG_IPC_MAJOR_4 */
