@@ -21,8 +21,9 @@
 #include <ipc/stream.h>
 #include <sof/lib/notifier.h>
 
+struct host_data;
 /** \brief Host copy function interface. */
-typedef int (*host_copy_func)(struct comp_dev *dev);
+typedef int (*host_copy_func)(struct host_data *hd, struct comp_dev *dev);
 
 /**
  * \brief Host buffer info.
@@ -101,5 +102,21 @@ int host_params_dma(struct host_data *hd, struct comp_dev *dev,
 		    struct sof_ipc_stream_params *params, struct list_item *sink_list,
 		    struct list_item *source_list, struct pipeline *pipeline,
 		    uint32_t frames, bool is_scheduling_source);
+
+void host_new_dma(struct host_data *hd, struct comp_dev *dev,
+		  const struct ipc_config_host *ipc_host, uint32_t config_id);
+
+void host_free_dma(struct host_data *hd);
+
+void host_reset_dma(struct host_data *hd, uint16_t state);
+
+int host_trigger_dma(struct host_data *hd, struct comp_dev *dev, int cmd, uint16_t state);
+
+void host_position_dma(struct host_data *hd, struct sof_ipc_stream_posn *posn);
+
+uint64_t host_get_processed_data_dma(struct host_data *hd, uint32_t stream_no,
+				     bool input, bool source);
+
+int host_copy_dma(struct host_data *hd, struct comp_dev *dev);
 
 #endif /* __SOF_host_COPIER_H__ */

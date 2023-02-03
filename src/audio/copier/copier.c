@@ -213,6 +213,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct ipc_config_host ipc_host;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
+	struct host_data *hd;
 	int ret;
 
 	drv = ipc4_get_drv((uint8_t *)&host);
@@ -229,11 +230,26 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
-	dev = drv->ops.create(drv, config, &ipc_host);
+	//dev = drv->ops.create(drv, config, &ipc_host);
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
 		ret = -EINVAL;
 		goto e_buf;
 	}
+
+	dev->ipc_config = *config;
+
+	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	if (!hd) {
+		rfree(dev);
+		ret = -EINVAL;
+		goto e_buf;
+	}
+	comp_set_drvdata(dev, hd);
+
+	host_new_dma(hd, parent_dev, &ipc_host, dev->ipc_config.id);
+
+	dev->state = COMP_STATE_READY;
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -601,7 +617,12 @@ static void copier_free(struct comp_dev *dev)
 	int i;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			host_free_dma(cd->hd);
+			rfree(cd->endpoint[i]);
+		} else {
+			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		}
 		buffer_free(cd->endpoint_buffer[i]);
 	}
 
@@ -815,9 +836,18 @@ static int copier_reset(struct comp_dev *dev)
 	cd->output_total_data_processed = 0;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-		if (ret < 0)
-			break;
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			if (cd->hd->chan)
+				notifier_unregister(cd->endpoint[i],
+						    cd->hd->chan, NOTIFIER_ID_DMA_COPY);
+
+			host_reset_dma(cd->hd, cd->endpoint[i]->state);
+			cd->endpoint[i]->state = COMP_STATE_READY;
+		} else {
+			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+			if (ret < 0)
+				break;
+		}
 	}
 
 	if (cd->pipeline_reg_offset) {
@@ -851,9 +881,23 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
-		if (ret < 0)
-			break;
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			ret = comp_set_state(cd->endpoint[i], cmd);
+			if (ret < 0)
+				break;
+
+			if (ret == COMP_STATUS_STATE_ALREADY_SET) {
+				ret = PPL_STATUS_PATH_STOP;
+				break;
+			}
+			ret = host_trigger_dma(cd->hd, dev, cmd, cd->endpoint[i]->state);
+			if (ret < 0)
+				break;
+		} else {
+			ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+			if (ret < 0)
+				break;
+		}
 	}
 
 	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)
@@ -1530,10 +1574,16 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
 
 	if (cd->endpoint_num && cd->bsource_buffer != input) {
-		if (stream_no < cd->endpoint_num)
-			ret = comp_get_total_data_processed(cd->endpoint[stream_no], 0, input);
+		if (stream_no < cd->endpoint_num) {
+			if (dev->ipc_config.type == SOF_COMP_HOST)
+				ret = host_get_processed_data_dma(cd->hd, 0, input, source);
+			else
+				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
+								    0, input);
+		}
 	} else {
 		if (stream_no == 0)
 			ret = input ? cd->input_total_data_processed :
@@ -1564,13 +1614,18 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+	int ret = 0;
 
 	/* Exit if no endpoints */
 	if (!cd->endpoint_num)
 		return -EINVAL;
 
+	if (dev->ipc_config.type == SOF_COMP_HOST)
+		host_position_dma(cd->hd, posn);
+	else
+		ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
 	/* Return position from the default gateway pin */
-	return comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+	return ret;
 }
 
 static const struct comp_driver comp_copier = {
