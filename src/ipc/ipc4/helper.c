@@ -147,8 +147,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint
 	return NULL;
 }
 
-static int ipc4_create_pipeline(uint32_t pipeline_id, uint32_t priority,
-				uint32_t memory_size, uint32_t core_id)
+static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
@@ -156,15 +155,15 @@ static int ipc4_create_pipeline(uint32_t pipeline_id, uint32_t priority,
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
-					  pipeline_id);
+					  pipe_desc->primary.r.instance_id);
 	if (ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline id is already taken, pipe_desc->instance_id = %u",
-		       pipeline_id);
+		       (uint32_t)pipe_desc->primary.r.instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipeline_id, priority, 0);
+	pipe = pipeline_new(pipe_desc->primary.r.instance_id, pipe_desc->primary.r.ppl_priority, 0);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
@@ -180,7 +179,7 @@ static int ipc4_create_pipeline(uint32_t pipeline_id, uint32_t priority,
 	/* sched_id is set in FW so initialize it to a invalid value */
 	pipe->sched_id = 0xFFFFFFFF;
 
-	pipe->core = core_id;
+	pipe->core = pipe_desc->extension.r.core_id;
 
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
@@ -192,8 +191,9 @@ static int ipc4_create_pipeline(uint32_t pipeline_id, uint32_t priority,
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
-	ipc_pipe->id = pipeline_id;
-	ipc_pipe->core = core_id;
+	ipc_pipe->id = pipe_desc->primary.r.instance_id;
+	ipc_pipe->core = pipe_desc->extension.r.core_id;
+	ipc_pipe->pipeline->attributes = pipe_desc->extension.r.attributes;
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
@@ -211,9 +211,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	if (!cpu_is_me(pipe_desc->extension.r.core_id))
 		return ipc4_process_on_core(pipe_desc->extension.r.core_id, false);
 
-	return ipc4_create_pipeline(pipe_desc->primary.r.instance_id,
-		pipe_desc->primary.r.ppl_priority, pipe_desc->primary.r.ppl_mem_size,
-		pipe_desc->extension.r.core_id);
+	return ipc4_create_pipeline(pipe_desc);
 }
 
 static int ipc_pipeline_module_free(uint32_t pipeline_id)
