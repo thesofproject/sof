@@ -209,9 +209,11 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 #ifndef CONFIG_IMX8ULP
 	uint32_t sywd = 32;
 	uint32_t twm = ~(BIT(0) | BIT(1));
+	uint32_t clk_div = SAI_CLOCK_DIV;
 #else
 	uint32_t sywd = 16;
 	uint32_t twm = ~BIT(0);
+	uint32_t clk_div = config->sai.fsync_rate == 8000 ? SAI_CLOCK_DIV : SAI_CLOCK_DIV_16K;
 #endif
 
 	sai->config = *config;
@@ -301,7 +303,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		dai_info(dai, "SAI: codec is consumer");
 		val_cr2 |= REG_SAI_CR2_MSEL_MCLK1;
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
-		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
 		break;
 	case SOF_DAI_FMT_CBP_CFP:
@@ -313,11 +315,11 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		break;
 	case SOF_DAI_FMT_CBC_CFP:
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
-		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
 		break;
 	case SOF_DAI_FMT_CBP_CFC:
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
-		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
 		break;
 	default:
 		return -EINVAL;
