@@ -622,12 +622,6 @@ module_single_sink_setup(struct comp_dev *dev,
 	int i = 0;
 
 	list_for_item(blist, &dev->bsource_list) {
-		/* check if the source dev is in the same state as the dev */
-		if (source_c[i]->source->state != dev->state) {
-			i++;
-			continue;
-		}
-
 		comp_get_copy_limits_frame_aligned(source_c[i], sinks_c[0], &c);
 
 		if (!mod->skip_src_buffer_invalidate)
@@ -665,12 +659,6 @@ module_single_source_setup(struct comp_dev *dev,
 	int i = 0;
 
 	list_for_item(blist, &dev->bsink_list) {
-		/* check if the sink dev is in the same state as the dev */
-		if (sinks_c[i]->sink->state != dev->state) {
-			i++;
-			continue;
-		}
-
 		comp_get_copy_limits_frame_aligned(source_c[0], sinks_c[i], &c);
 
 		min_frames = MIN(min_frames, c.frames);
