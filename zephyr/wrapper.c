@@ -23,11 +23,16 @@
 #include <rtos/clk.h>
 
 /* Zephyr includes */
+#include <zephyr/arch/cpu.h>
 #include <zephyr/device.h>
+#include <zephyr/fatal.h>
+#include <zephyr/kernel_structs.h>
 #include <zephyr/kernel.h>
 #include <zephyr/pm/policy.h>
 #include <version.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/logging/log_ctrl.h>
+#include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
 
@@ -322,3 +327,13 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 	return 0;
 }
 
+void k_sys_fatal_error_handler(unsigned int reason,
+			       const z_arch_esf_t *esf)
+{
+	ARG_UNUSED(esf);
+	LOG_PANIC();
+
+	ipc_send_panic_notification();
+
+	LOG_ERR("Halting system");
+}

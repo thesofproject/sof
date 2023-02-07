@@ -156,6 +156,12 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
 void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data);
 
 /**
+ * \brief Send a IPC notification that FW has hit
+ *        a DSP notification.
+ */
+void ipc_send_panic_notification(void);
+
+/**
  * \brief Read a compact IPC message or return NULL for normal message.
  * @return Pointer to the compact message data.
  */
