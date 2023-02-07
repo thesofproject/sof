@@ -210,6 +210,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	return ret;
 }
 
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
+{
+	/* TODO: add support */
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
 	ipc_set_drvdata(ipc, NULL);

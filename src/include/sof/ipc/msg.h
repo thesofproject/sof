@@ -116,6 +116,13 @@ void ipc_send_queued_msg(void);
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
 
 /**
+ * \brief Send an IPC message directly for emergency.
+ * @param msg The IPC message to be freed.
+ * @param data The message data.
+ */
+void ipc_msg_send_direct(struct ipc_msg *msg, void *data);
+
+/**
  * \brief Build stream position IPC message.
  * @param[in,out] posn Stream position message
  * @param[in] type Stream message type
