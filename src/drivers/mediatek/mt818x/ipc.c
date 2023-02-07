@@ -107,6 +107,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	return 0;
 }
 
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
+{
+	/* TODO: add support */
+}
+
 #if CONFIG_HOST_PTABLE
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {

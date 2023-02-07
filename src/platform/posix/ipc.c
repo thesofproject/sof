@@ -196,6 +196,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	return 0;
 }
 
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
+{
+	/* TODO: add support */
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
 	IRQ_CONNECT(CONFIG_ARCH_POSIX_FUZZ_IRQ, 0, fuzz_isr, NULL, 0);

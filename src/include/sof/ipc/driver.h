@@ -53,6 +53,12 @@ void ipc_platform_complete_cmd(struct ipc *ipc);
 int ipc_platform_send_msg(const struct ipc_msg *msg);
 
 /**
+ * \brief Send IPC message to host direct without inserting in msg_list.
+ * @param msg The IPC message to send to host.
+ */
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg);
+
+/**
  * \brief Retrieves the ipc_data_host_buffer allocated by the platform ipc.
  * @return Pointer to the data.
  *
