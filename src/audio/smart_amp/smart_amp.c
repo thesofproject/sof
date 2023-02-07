@@ -597,19 +597,19 @@ static int smart_amp_copy(struct comp_dev *dev)
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&feedback_buf->stream);
 
-			avail_frames = MIN(avail_passthrough_frames,
-					   avail_feedback_frames);
+			avail_feedback_frames = MIN(avail_passthrough_frames,
+						    avail_feedback_frames);
 
-			feedback_bytes = avail_frames *
+			feedback_bytes = avail_feedback_frames *
 				audio_stream_frame_bytes(&feedback_buf->stream);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
-				 avail_frames, avail_passthrough_frames);
+				 avail_feedback_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
 			buffer_stream_invalidate(feedback_buf, feedback_bytes);
 			sad->process(dev, &feedback_buf->stream,
-				     &sink_buf->stream, avail_frames,
+				     &sink_buf->stream, avail_feedback_frames,
 				     sad->config.feedback_ch_map, true);
 
 			comp_update_buffer_cached_consume(feedback_buf, feedback_bytes);
@@ -620,7 +620,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	/* bytes calculation */
 	source_bytes = avail_frames * audio_stream_frame_bytes(&source_buf->stream);
-
 	sink_bytes = avail_frames * audio_stream_frame_bytes(&sink_buf->stream);
 
 	/* process data */
@@ -726,20 +725,18 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		goto error;
 	}
 
-	if (sad->mod_handle->bitwidth != bitwidth)	{
-		sad->mod_handle->bitwidth = bitwidth;
-		comp_info(dev, "[DSM] Re-initialized for %d bit processing", bitwidth);
+	sad->mod_handle->bitwidth = bitwidth;
+	comp_info(dev, "[DSM] Re-initialized for %d bit processing", bitwidth);
 
-		ret = smart_amp_init(sad->mod_handle, dev);
-		if (ret) {
-			comp_err(dev, "[DSM] Re-initialization error.");
-			goto error;
-		}
-		ret = maxim_dsm_restore_param(sad->mod_handle, dev);
-		if (ret) {
-			comp_err(dev, "[DSM] Restoration error.");
-			goto error;
-		}
+	ret = smart_amp_init(sad->mod_handle, dev);
+	if (ret) {
+		comp_err(dev, "[DSM] Re-initialization error.");
+		goto error;
+	}
+	ret = maxim_dsm_restore_param(sad->mod_handle, dev);
+	if (ret) {
+		comp_err(dev, "[DSM] Restoration error.");
+		goto error;
 	}
 
 	sad->process = get_smart_amp_process(dev);
