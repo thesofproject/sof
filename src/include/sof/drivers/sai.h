@@ -250,8 +250,11 @@
  * The division value is (DIV + 1) * 2.
  */
 #ifdef CONFIG_IMX8ULP
-/* frame clk is 16kHz on 8ulp */
+/* frame clk is decided by sai config on 8ulp
+ * 8K --- 0x17, 16K --- 0xB
+ */
 #define SAI_CLOCK_DIV		0x17
+#define SAI_CLOCK_DIV_16K	0xB
 #define SAI_TDM_SLOTS		2
 #else
 #define SAI_CLOCK_DIV		0x7
