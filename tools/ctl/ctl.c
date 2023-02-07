@@ -20,6 +20,13 @@
 #define BUFFER_SIZE_OFFSET	1
 #define BUFFER_ABI_OFFSET	2
 
+/* Definitions for multiple IPCs */
+enum sof_ipc_type {
+	SOF_IPC_TYPE_3,
+	SOF_IPC_TYPE_4,
+	SOF_IPC_TYPE_COUNT
+};
+
 struct ctl_data {
 	/* the input file name */
 	char *input_file;
@@ -35,11 +42,16 @@ struct ctl_data {
 	int buffer_size;
 	int ctrl_size;
 
+	enum sof_ipc_type ipc_type;
+
+	/* IPC type dependent magic number to use, expect */
+	uint32_t magic;
+
 	/* flag for input/output format, binary or CSV */
 	bool binary;
 	/* flag for input/output format, with or without abi header */
 	bool no_abi;
-	/* component specific type, default 0 */
+	/* component specific type / param_id, default 0 */
 	uint32_t type;
 	/* set or get control value */
 	bool set;
@@ -68,16 +80,19 @@ static void usage(char *name)
 	fprintf(stdout, "\t %s -h\n", name);
 	fprintf(stdout, "\nWhere:\n");
 	fprintf(stdout, " -D device name (default is hw:0)\n");
-	fprintf(stdout, " -g <size> generates");
-	fprintf(stdout, " the current ABI header with given payload size\n");
 	fprintf(stdout, " -c control name e.g.");
 	fprintf(stdout, " numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\"\n");
 	fprintf(stdout, " -n control id e.g. 22\n");
+	fprintf(stdout, " -i {3|4} selects the IPC type to use, defaults to 3 (IPC3)\n");
+	fprintf(stdout, " -g <size> generates");
+	fprintf(stdout, " the current ABI header with given payload size\n");
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
 	fprintf(stdout, " -o specify the output file.\n");
-	fprintf(stdout, " -t specify the component specified type.\n");
+	fprintf(stdout, " -t specify the component specified type (IPC3 specific).\n");
+	fprintf(stdout, " -p specify the param_id of the data (IPC4 specific).");
+	fprintf(stdout, " Valid range: 0-255\n");
 }
 
 static void header_init(struct ctl_data *ctl_data)
@@ -85,7 +100,7 @@ static void header_init(struct ctl_data *ctl_data)
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 
-	hdr->magic = SOF_ABI_MAGIC;
+	hdr->magic = ctl_data->magic;
 	hdr->type = ctl_data->type;
 	hdr->abi = SOF_ABI_VERSION;
 }
@@ -156,6 +171,11 @@ read_done:
 		fprintf(stderr, "Please check the data file.\n");
 	}
 
+	if (hdr->magic != ctl_data->magic)
+		fprintf(stderr,
+			"Info: ABI mismatch: expecting: 0x%8.8x, got: 0x%8.8x\n",
+			ctl_data->magic, hdr->magic);
+
 	fclose(fh);
 	return n;
 }
@@ -166,7 +186,10 @@ static void header_dump(struct ctl_data *ctl_data)
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 
 	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
-	fprintf(stdout, "hdr: type %d\n", hdr->type);
+	if (ctl_data->ipc_type == SOF_IPC_TYPE_3)
+		fprintf(stdout, "hdr: type %u\n", hdr->type);
+	else
+		fprintf(stdout, "hdr: param_id %u\n", hdr->type);
 	fprintf(stdout, "hdr: size %d bytes\n", hdr->size);
 	fprintf(stdout, "hdr: abi %d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(hdr->abi),
@@ -504,6 +527,7 @@ int main(int argc, char *argv[])
 	char *input_file = NULL;
 	char *output_file = NULL;
 	struct ctl_data *ctl_data;
+	int ipc_type = 3;
 	char nname[256];
 	int ret = 0;
 	int opt;
@@ -518,7 +542,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:br")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:i:o:t:p:g:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -529,6 +553,9 @@ int main(int argc, char *argv[])
 		case 'n':
 			sprintf(nname, "numid=%d", atoi(optarg));
 			ctl_data->cname = nname;
+			break;
+		case 'i':
+			ipc_type = atoi(optarg);
 			break;
 		case 's':
 			input_file = optarg;
@@ -545,6 +572,7 @@ int main(int argc, char *argv[])
 			ctl_data->no_abi = true;
 			break;
 		case 't':
+		case 'p':
 			ctl_data->type = atoi(optarg);
 			break;
 		case 'g':
@@ -557,6 +585,28 @@ int main(int argc, char *argv[])
 			usage(argv[0]);
 			goto struct_free;
 		}
+	}
+
+	switch (ipc_type) {
+	case 3:
+		ctl_data->ipc_type = SOF_IPC_TYPE_3;
+		ctl_data->magic = SOF_ABI_MAGIC;
+		break;
+	case 4:
+		if (ctl_data->type > 255) {
+			fprintf(stderr, "error: The param_id %u is out of range\n\n",
+				ctl_data->type);
+			usage(argv[0]);
+			goto struct_free;
+		}
+
+		ctl_data->ipc_type = SOF_IPC_TYPE_4;
+		ctl_data->magic = SOF_IPC4_ABI_MAGIC;
+		break;
+	default:
+		fprintf(stderr, "error: Unsupported IPC type: %u\n\n", ipc_type);
+			usage(argv[0]);
+		goto struct_free;
 	}
 
 	/* open output file */
