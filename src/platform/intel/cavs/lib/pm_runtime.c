@@ -367,6 +367,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 
 	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
 					  true);
+	idelay(MEMORY_POWER_CHANGE_DELAY);
 
 #endif
 }
