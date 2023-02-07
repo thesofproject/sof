@@ -1603,6 +1603,11 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 	header->dat[1] = data;
 }
 
+void ipc_send_panic_notification(void)
+{
+	/* nothing to do */
+}
+
 /*
  * Global IPC Operations.
  */
