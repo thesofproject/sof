@@ -402,6 +402,7 @@ count = 16
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "0"
+	init_config = "1"
 	module_type = "13"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
