@@ -28,7 +28,11 @@
 #include <adsp_memory.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 #include <zephyr/pm/pm.h>
-#include <sof/debug/panic.h>
+#include <intel_adsp_ipc_devtree.h>
+#include <rtos/panic.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/policy.h>
+#include <sof/lib/cpu.h>
 
 #include <sof_versions.h>
 #include <stdint.h>
@@ -84,6 +88,14 @@ int platform_boot_complete(uint32_t boot_message)
 extern void *global_imr_ram_storage;
 #endif
 
+/* Reports error message during power state transitions */
+static void power_state_failure_report(int ret, bool enter, enum pm_state state)
+{
+	const char *action_name = enter ? "enter" : "leave";
+
+	__ASSERT(!ret, "Failed to %s power state: %d. Error: %d", action_name, state, ret);
+}
+
 /**
  * @brief Notifier called before every power state transition.
  * Works on Primary Core only.
@@ -116,6 +128,13 @@ static void notify_pm_state_entry(enum pm_state state)
 						 0,
 						 SOF_MEM_CAPS_L3,
 						 storage_buffer_size);
+
+		/* change power state and check if IPC subsystem is prepared to enter D3 */
+		int ret = pm_device_action_run(INTEL_ADSP_IPC_HOST_DEV, PM_DEVICE_ACTION_SUSPEND);
+
+		if (ret)
+			power_state_failure_report(ret, true, PM_STATE_SOFT_OFF);
+
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 	}
 }
@@ -136,7 +155,17 @@ static void notify_pm_state_exit(enum pm_state state)
 		rfree(global_imr_ram_storage);
 		global_imr_ram_storage = NULL;
 
-		/* send FW Ready message */
+		int ret = pm_device_action_run(INTEL_ADSP_IPC_HOST_DEV, PM_DEVICE_ACTION_RESUME);
+
+		if (ret)
+			power_state_failure_report(ret, false, PM_STATE_SOFT_OFF);
+
+		enum pm_device_state ipc_state = PM_DEVICE_STATE_SUSPENDING;
+
+		pm_device_state_get(INTEL_ADSP_IPC_HOST_DEV, &ipc_state);
+		__ASSERT_NO_MSG(ipc_state == PM_DEVICE_STATE_ACTIVE);
+
+		/* sends fw-ready message signalling successful exit from D3 state */
 		platform_boot_complete(0);
 #endif
 	}
