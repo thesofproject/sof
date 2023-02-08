@@ -26,13 +26,18 @@
 #define SOF_MAN_MOD_TYPE_BUILTIN	0
 #define SOF_MAN_MOD_TYPE_MODULE		1
 
+/* module init config */
+#define SOF_MAN_MOD_INIT_CONFIG_BASE_CFG               0 /* Base config only */
+#define SOF_MAN_MOD_INIT_CONFIG_BASE_CFG_WITH_EXT      1 /* Base config with extension */
+
 struct sof_man_module_type {
 	uint32_t load_type:4;	/* SOF_MAN_MOD_TYPE_ */
 	uint32_t auto_start:1;
 	uint32_t domain_ll:1;
 	uint32_t domain_dp:1;
 	uint32_t lib_code:1;
-	uint32_t rsvd_:24;
+	uint32_t init_config:4; /* SOF_MAN_MOD_INIT_CONFIG_ */
+	uint32_t rsvd_:20;
 };
 
 /* segment flags.type */
