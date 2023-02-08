@@ -284,6 +284,7 @@ count = 12
 	domain_types = "0"
 	load_type = "0"
 	module_type = "13"
+	init_config = "1"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
