@@ -37,7 +37,7 @@ struct ipcgtw_data {
 };
 
 /* List of existing IPC gateways */
-static struct list_item ipcgtw_list_head = { 0 };
+static struct list_item ipcgtw_list_head = LIST_INIT(ipcgtw_list_head);
 
 static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 				   const struct comp_ipc_config *config,
@@ -79,9 +79,6 @@ static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 	 */
 	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new(): buffer_size: %u", blob->buffer_size);
 	ipcgtw_data->buf_size = blob->buffer_size;
-
-	if (!ipcgtw_list_head.next)
-		list_init(&ipcgtw_list_head);
 
 	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
 
