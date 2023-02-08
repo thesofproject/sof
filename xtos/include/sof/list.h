@@ -18,6 +18,9 @@ struct list_item {
 	struct list_item *prev;
 };
 
+/* a static list head initialiser */
+#define LIST_INIT(head) {&head, &head}
+
 /* initialise list before any use - list will point to itself */
 static inline void list_init(struct list_item *list)
 {
