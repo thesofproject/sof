@@ -1675,7 +1675,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	}
 
 out:
-	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
+	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", hdr->cmd, ret);
 
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {
