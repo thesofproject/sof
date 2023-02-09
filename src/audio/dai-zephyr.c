@@ -1226,10 +1226,22 @@ static int dai_copy(struct comp_dev *dev)
 
 	/* get data sizes from DMA */
 	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
-	if (ret < 0) {
-		dai_report_xrun(dev, 0);
+	switch (ret) {
+	case 0:
+		break;
+	case -EPIPE:
+		/* DMA status can return -EPIPE and current status content if xrun occurs */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			comp_dbg(dev, "dai_copy(): dma_get_status() underrun occurred, ret = %u",
+				  ret);
+		else
+			comp_dbg(dev, "dai_copy(): dma_get_status() overrun occurred, ret = %u",
+				  ret);
+		break;
+	default:
 		return ret;
 	}
+
 	avail_bytes = stat.pending_length;
 	free_bytes = stat.free;
 
