@@ -404,7 +404,7 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 	if (ret < 0)
 		return ret;
 
-	out->alias_mask = parse_uint32_hex_key(adsp, &ctx, "alias_mask", 0, &ret);
+	out->alias_mask = parse_uint32_hex_key(adsp, &ctx, "alias_mask", -ENODATA, &ret);
 	alias_found = !ret;
 
 	/* check everything parsed, 1 or 2 tables should be present */
