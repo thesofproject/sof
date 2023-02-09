@@ -71,17 +71,22 @@ static inline void cavs_pm_memory_hp_sram_mask_set(uint32_t mask, int segment,
 {
 	uint32_t expected = enabled ? 0 : mask;
 	uint32_t delay = 0;
+	uint32_t i;
 
 	io_reg_update_bits(SHIM_HSPGCTL(segment), mask, enabled ? 0 : mask);
 	io_reg_update_bits(SHIM_HSRMCTL(segment), mask, enabled ? 0 : mask);
 
-	idelay(MEMORY_POWER_CHANGE_DELAY);
-
-	while ((io_reg_read(SHIM_HSPGISTS(segment)) & mask) != expected) {
+	/* Double check of PG status needed to confirm EBB readiness */
+	for (i = 0; i < 2; i++) {
 		idelay(MEMORY_POWER_CHANGE_DELAY);
-		delay += MEMORY_POWER_CHANGE_DELAY;
-		if (delay >= MEMORY_POWER_CHANGE_TIMEOUT)
-			platform_panic(SOF_IPC_PANIC_MEM);
+
+		while ((io_reg_read(SHIM_HSPGISTS(segment)) & mask) != expected) {
+			idelay(MEMORY_POWER_CHANGE_DELAY);
+			delay += MEMORY_POWER_CHANGE_DELAY;
+			if (delay >= MEMORY_POWER_CHANGE_TIMEOUT)
+				platform_panic(SOF_IPC_PANIC_MEM);
+		}
+		delay = 0;
 	}
 }
 
