@@ -522,8 +522,6 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 		goto error;
 	}
 
-	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
-
 	switch (cd->link_connector_node_id.f.dma_type) {
 	case ipc4_hda_link_input_class:
 		/* Increasing buffer size for capture path as L1SEN exit takes sometimes
@@ -543,6 +541,8 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 		fifo_size /= 2;
 		break;
 	}
+
+	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
 
 	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_CAPS_DMA, addr_align);
 
