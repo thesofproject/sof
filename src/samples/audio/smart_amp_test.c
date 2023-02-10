@@ -197,11 +197,12 @@ static inline int smart_amp_get_config(struct comp_dev *dev, char *data,
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	uint32_t cfg_size;
 
-	cfg_size = sizeof(struct smart_amp_data);
+	cfg_size = sizeof(struct sof_smart_amp_config);
 
 	if (cfg_size > *data_size) {
 		comp_err(dev, "smart_amp_get_config(): wrong config size %d",
 			 *data_size);
+		return -EINVAL;
 	}
 
 	*data_size = cfg_size;
