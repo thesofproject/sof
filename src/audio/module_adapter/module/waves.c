@@ -645,7 +645,7 @@ static int waves_codec_init(struct processing_module *mod)
 		struct module_config *setup_cfg = &waves_codec->setup_cfg;
 
 		/* allocate memory for set up config */
-		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
+		setup_cfg->data = module_allocate_memory(mod, codec->cfg.size, 16);
 		if (!setup_cfg->data) {
 			comp_err(dev, "waves_codec_init(): failed to alloc setup config");
 			module_free_memory(mod, waves_codec);
@@ -658,6 +658,7 @@ static int waves_codec_init(struct processing_module *mod)
 			       codec->cfg.init_data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "waves_codec_init(): failed to copy setup config %d", ret);
+			module_free_memory(mod, setup_cfg->data);
 			module_free_memory(mod, waves_codec);
 			return ret;
 		}
