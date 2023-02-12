@@ -650,31 +650,32 @@ static int mux_reset(struct comp_dev *dev)
 	} else {
 		/*
 		 * On capture path, stop propagating reset signal to upstream if any of the sink is
-		 * active. The condition is only applicable to comp DEMUX (single-source to
-		 * multi-sink).
+		 * active and belongs to the pipeline driven by the same scheduling comp. The
+		 * condition is only applicable to comp DEMUX (single-source to multi-sink).
 		 *
-		 * One exception is that the active sink of DEMUX is on playback path, e.g. DEMUX
-		 * on Echo Reference path (capture) linked to the sink SMART_AMP on Speakers path
-		 * (playback). In practice, the playback sink state should not affect the reset
-		 * process through the capture path DEMUX locates on.
+		 * The sink pipeline may be driven by other scheduling comp for DEMUX in particular
+		 * use cases, i.e. the feedback reference path to SMART_AMP in playback pipeline or
+		 * RTC_AUDIO_PROCESSING in capture pipeline. In such cases the sink state should be
+		 * irrelevant to the state change in current pipeline.
 		 */
 		list_for_item(blist, &dev->bsink_list) {
 			struct comp_buffer *sink = container_of(blist, struct comp_buffer,
 								source_list);
 			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
 			int state = -1;
-			int direction = -1;
 
 			if (sink_c->sink) {
+				/* skip if the sink pipeline is driven by other scheduling comp */
+				if (!(sink_c->sink->pipeline &&
+				      pipeline_is_same_sched_comp(dev->pipeline,
+								  sink_c->sink->pipeline))) {
+					buffer_release(sink_c);
+					continue;
+				}
 				state = sink_c->sink->state;
-				direction = sink_c->sink->direction;
 			}
 
 			buffer_release(sink_c);
-
-			/* no need to regard the playback sink state */
-			if (direction == SOF_IPC_STREAM_PLAYBACK)
-				continue;
 
 			if (state > COMP_STATE_READY)
 				/* should not reset the upstream components */
@@ -741,18 +742,19 @@ static int mux_prepare(struct comp_dev *dev)
 								source_list);
 			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
 			int state = -1;
-			int direction = -1;
 
 			if (sink_c->sink) {
+				/* skip if the sink pipeline is driven by other scheduling comp */
+				if (!(sink_c->sink->pipeline &&
+				      pipeline_is_same_sched_comp(dev->pipeline,
+								  sink_c->sink->pipeline))) {
+					buffer_release(sink_c);
+					continue;
+				}
 				state = sink_c->sink->state;
-				direction = sink_c->sink->direction;
 			}
 
 			buffer_release(sink_c);
-
-			/* no need to regard the playback sink state */
-			if (direction == SOF_IPC_STREAM_PLAYBACK)
-				continue;
 
 			/* only prepare upstream if we have no active sinks */
 			if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
