@@ -14,7 +14,7 @@
 
 static unsigned long uncache_to_cache(const struct image *image, unsigned long address)
 {
-	return ((address & ~image->adsp->alias_mask) | image->adsp->alias_cached);
+	return (address & ~image->adsp->alias_mask) | image->adsp->alias_cached;
 }
 
 static int elf_read_sections(struct image *image, struct module *module,
@@ -25,6 +25,8 @@ static int elf_read_sections(struct image *image, struct module *module,
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	unsigned long rom_base = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].base;
+	size_t rom_size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
 
 	/* read in section header */
 	ret = fseek(module->fd, hdr->shoff, SEEK_SET);
@@ -115,7 +117,13 @@ static int elf_read_sections(struct image *image, struct module *module,
 			continue;
 		}
 
-		section[i].vaddr = uncache_to_cache(image, section[i].vaddr);
+		/*
+		 * Don't convert ROM addresses, ROM sections aren't included in
+		 * the output image
+		 */
+		if (section[i].vaddr < rom_base || section[i].vaddr >= rom_base + rom_size)
+			section[i].vaddr = uncache_to_cache(image, section[i].vaddr);
+
 		module->num_sections++;
 
 		if (!image->verbose)
