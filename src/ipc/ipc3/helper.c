@@ -163,6 +163,7 @@ static void comp_common_builder(struct sof_ipc_comp *comp,
 	config->core = comp->core;
 	config->id = comp->id;
 	config->pipeline_id = comp->pipeline_id;
+	config->proc_domain = COMP_PROCESSING_DOMAIN_LL;
 	config->type = comp->type;
 
 	/* buffers dont have the following data */
