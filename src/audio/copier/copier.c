@@ -258,6 +258,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->hd = comp_get_drvdata(dev);
 
 	return 0;
 

@@ -261,6 +261,7 @@ struct copier_data {
 	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint64_t input_total_data_processed;
 	uint64_t output_total_data_processed;
+	struct host_data *hd;
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
