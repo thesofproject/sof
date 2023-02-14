@@ -379,11 +379,6 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 		return err;
 	}
 
-	if (err == PPL_STATUS_PATH_STOP) {
-		current->pipeline->trigger.aborted = true;
-		return err;
-	}
-
 	switch (ppl_data->cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
