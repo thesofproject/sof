@@ -37,4 +37,16 @@ config DMA_DOMAIN
 	  and dma_single_chan in Zephyr once it becomes more
 	  stable.
 
+config ZEPHYR_DP_SCHEDULER
+	bool "use Zephyr thread based DP scheduler"
+	default y if ACE
+	default n
+	depends on IPC_MAJOR_4
+	depends on ZEPHYR_SOF_MODULE
+	help
+	  Enable Data Processing preemptive scheduler based on
+	  Zephyr preemptive threads.
+	  DP modules can be located in dieffrent cores than LL pipeline modules, may have
+	  different tick (i.e. 300ms for speech reccognition, etc.)
+
 endif
