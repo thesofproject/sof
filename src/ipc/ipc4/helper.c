@@ -18,6 +18,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/wait.h>
 #ifdef __ZEPHYR__
 #include <adsp_memory.h> /* for IMR_BOOT_LDR_MANIFEST_BASE */
@@ -97,6 +98,11 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config.core = module_init->extension.r.core_id;
 
+	if (module_init->extension.r.proc_domain)
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	else
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
 
@@ -170,11 +176,7 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	}
 
 	pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
-	/* 1ms
-	 * TODO: add DP scheduler support. Now only the
-	 * LL scheduler tasks is supported.
-	 */
-	pipe->period = 1000;
+	pipe->period = LL_TIMER_PERIOD_US;
 
 	/* sched_id is set in FW so initialize it to a invalid value */
 	pipe->sched_id = 0xFFFFFFFF;

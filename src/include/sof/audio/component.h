@@ -535,6 +535,9 @@ struct comp_driver_info {
 	struct list_item list;		/**< list of component drivers */
 };
 
+#define COMP_PROCESSING_DOMAIN_LL 0
+#define COMP_PROCESSING_DOMAIN_DP 1
+
 /**
  * Audio component base configuration from IPC at creation.
  */
@@ -542,6 +545,7 @@ struct comp_ipc_config {
 	uint32_t core;		/**< core we run on */
 	uint32_t id;		/**< component id */
 	uint32_t pipeline_id;	/**< component pipeline id */
+	uint32_t proc_domain;   /**< processing domain - LL or DP */
 	enum sof_comp_type type;	/**< component type */
 	uint32_t periods_sink;	/**< 0 means variable */
 	uint32_t periods_source;/**< 0 means variable */
@@ -569,9 +573,10 @@ struct comp_dev {
 				     *  to run component's processing
 				     */
 
-	struct task *task;	/**< component's processing task used only
-				  *  for components running on different core
-				  *  than the rest of the pipeline
+	struct task *task;	/**< component's processing task used
+				  *  1) for components running on different core
+				  *    than the rest of the pipeline
+				  *  2) for all DP tasks
 				  */
 	uint32_t size;		/**< component's allocated size */
 	uint32_t period;	/**< component's processing period */
