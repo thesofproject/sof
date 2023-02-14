@@ -31,6 +31,12 @@ enum {
 	SOF_SCHEDULE_LL_DMA,	/**< Low latency DMA, schedules immediately
 				  *  on scheduling component's DMA interrupt
 				  */
+	SOF_SCHEDULE_DP,	/**< DataProcessing scheduler
+				  *  Scheduler based on Zephyr peemptive threads
+				  *  TODO: DP will become the Zephyr EDF scheduler type
+				  *  and will be unified with SOF_SCHEDULE_EDF for Zephyr builds
+				  *  current implementation of Zephyr based EDF is depreciated now
+				  */
 	SOF_SCHEDULE_COUNT	/**< indicates number of scheduler types */
 };
 
@@ -38,7 +44,6 @@ enum {
 #define SOF_SCHEDULER_FREE_IRQ_ONLY	BIT(0) /**< Free function disables only
 						 *  interrupts
 						 */
-
 /**
  * Scheduler operations.
  *
