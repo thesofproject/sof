@@ -15,6 +15,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/watchdog.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
@@ -84,9 +85,17 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
 
-	/* init low latency timer domain and scheduler */
+	/* init low latency timer domain and scheduler. Any failure is fatal */
 	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
-	scheduler_init_ll(sof->platform_timer_domain);
+	ret = scheduler_init_ll(sof->platform_timer_domain);
+	if (ret < 0)
+		return ret;
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	ret = scheduler_dp_init();
+	if (ret < 0)
+		return ret;
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

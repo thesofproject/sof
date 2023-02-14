@@ -220,6 +220,10 @@ if (CONFIG_ACE_VERSION_1_5)
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
+	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
+		${SOF_SRC_PATH}/schedule/zephyr_dp_schedule.c
+	)
+
 	# Sources for virtual heap management
 	zephyr_library_sources(
 		lib/regions_mm.c
