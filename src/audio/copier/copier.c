@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/host_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -212,7 +213,8 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct ipc_config_host ipc_host;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
-	int ret;
+	struct host_data *hd;
+	int ret = 0;
 
 	drv = ipc4_get_drv((uint8_t *)&host);
 	if (!drv)
@@ -228,11 +230,29 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
-	dev = drv->ops.create(drv, config, &ipc_host);
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
 		ret = -EINVAL;
 		goto e_buf;
 	}
+
+	dev->ipc_config = *config;
+
+	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	if (!hd) {
+		rfree(dev);
+		ret = -EINVAL;
+		goto e_buf;
+	}
+	comp_set_drvdata(dev, hd);
+	ret = host_zephyr_new(hd, parent_dev, &ipc_host, dev->ipc_config.id);
+	if (ret < 0) {
+		rfree(dev);
+		ret = -EINVAL;
+		comp_err(parent_dev, "copier: host new failed with exit");
+		goto e_buf;
+	}
+	dev->state = COMP_STATE_READY;
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -260,7 +280,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	cd->endpoint[cd->endpoint_num++] = dev;
 	cd->hd = comp_get_drvdata(dev);
 
-	return 0;
+	return ret;
 
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
@@ -701,7 +721,12 @@ static void copier_free(struct comp_dev *dev)
 	int i;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			host_zephyr_free(cd->hd);
+			rfree(cd->endpoint[i]);
+		} else {
+			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		}
 		buffer_free(cd->endpoint_buffer[i]);
 	}
 

@@ -577,6 +577,44 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+		    const struct ipc_config_host *ipc_host, uint32_t config_id)
+{
+	uint32_t dir;
+	int ret = 0;
+
+	hd->ipc_host = *ipc_host;
+	/* request HDA DMA with shared access privilege */
+	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
+		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+
+	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
+	if (!hd->dma) {
+		comp_err(dev, "host_new(): dma_get() returned NULL");
+		rfree(hd);
+		return -EINVAL;
+	}
+
+	/* init buffer elems */
+	dma_sg_init(&hd->config.elem_array);
+	dma_sg_init(&hd->host.elem_array);
+	dma_sg_init(&hd->local.elem_array);
+
+	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
+
+	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	if (!hd->msg) {
+		comp_err(dev, "host_new(): ipc_msg_init failed");
+		dma_put(hd->dma);
+		rfree(hd);
+		return -EINVAL;
+	}
+	hd->chan = NULL;
+	hd->copy_type = COMP_COPY_NORMAL;
+
+	return ret;
+}
+
 static struct comp_dev *host_new(const struct comp_driver *drv,
 				 const struct comp_ipc_config *config,
 				 const void *spec)
@@ -584,7 +622,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
-	uint32_t dir;
+	int ret = 0;
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
@@ -598,43 +636,27 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		rfree(dev);
 		return NULL;
 	}
-
 	comp_set_drvdata(dev, hd);
-	hd->ipc_host = *ipc_host;
 
-	/* request HDA DMA with shared access privilege */
-	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
-
-	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
-	if (!hd->dma) {
-		comp_err(dev, "host_new(): dma_get() returned NULL");
-		rfree(hd);
+	ret = host_zephyr_new(hd, dev, ipc_host, dev->ipc_config.id);
+	if (ret) {
 		rfree(dev);
+		comp_err(dev, "host: host new dma failed with exit");
 		return NULL;
 	}
 
-	/* init buffer elems */
-	dma_sg_init(&hd->config.elem_array);
-	dma_sg_init(&hd->host.elem_array);
-	dma_sg_init(&hd->local.elem_array);
-
-	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, dev->ipc_config.id);
-
-	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
-	if (!hd->msg) {
-		comp_err(dev, "host_new(): ipc_msg_init failed");
-		dma_put(hd->dma);
-		rfree(hd);
-		rfree(dev);
-		return NULL;
-	}
-
-	hd->chan = NULL;
-	hd->copy_type = COMP_COPY_NORMAL;
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+}
+
+void host_zephyr_free(struct host_data *hd)
+{
+	dma_put(hd->dma);
+
+	ipc_msg_free(hd->msg);
+	dma_sg_free(&hd->config.elem_array);
+	rfree(hd);
 }
 
 static void host_free(struct comp_dev *dev)
@@ -642,12 +664,7 @@ static void host_free(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "host_free()");
-
-	dma_put(hd->dma);
-
-	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
-	rfree(hd);
+	host_zephyr_free(hd);
 	rfree(dev);
 }
 

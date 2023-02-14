@@ -89,4 +89,20 @@ struct host_data {
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 	struct ipc_msg *msg;	/**< host notification */
 };
+
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+		    const struct ipc_config_host *ipc_host, uint32_t config_id);
+
+void host_zephyr_free(struct host_data *hd);
+#else
+static int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+			   const struct ipc_config_host *ipc_host, uint32_t config_id)
+{
+	return 0;
+}
+
+static void host_zephyr_free(struct host_data *hd) {}
+
+#endif
 #endif /* __SOF_host_COPIER_H__ */
