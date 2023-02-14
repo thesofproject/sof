@@ -12,6 +12,7 @@
 #include <sof/lib/agent.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
@@ -30,6 +31,25 @@ LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 /* f11818eb-e92e-4082-82a3-dc54c604ebb3 */
 DECLARE_SOF_UUID("pipe-task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
 		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+
+/* ee755917-96b9-4130-b49e-37b9d0501993 */
+DECLARE_SOF_UUID("dp-task", dp_task_uuid, 0xee755917, 0x96b9, 0x4130,
+		 0xb4,  0x9e, 0x37, 0xb9, 0xd0, 0x50, 0x19, 0x93);
+
+/**
+ * current static stack size for each DP component
+ * TODO: to be taken from module manifest
+ */
+#define TASK_DP_STACK_SIZE 8192
+
+/**
+ * \brief a priority of the DP threads in the system.
+ */
+#define ZEPHYR_DP_THREAD_PRIORITY (CONFIG_NUM_PREEMPT_PRIORITIES - 1)
+
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 static void pipeline_schedule_cancel(struct pipeline *p)
 {
@@ -333,7 +353,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	irq_local_enable(flags);
 }
 
-int pipeline_comp_task_init(struct pipeline *p)
+int pipeline_comp_ll_task_init(struct pipeline *p)
 {
 	uint32_t type;
 
@@ -354,6 +374,40 @@ int pipeline_comp_task_init(struct pipeline *p)
 
 	return 0;
 }
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+static enum task_state dp_task_run(void *data)
+{
+	struct comp_dev *comp = data;
+
+	comp->drv->ops.copy(comp);
+	return SOF_TASK_STATE_RESCHEDULE;
+}
+
+int pipeline_comp_dp_task_init(struct comp_dev *comp)
+{
+	int ret;
+	struct task_ops ops  = {
+		.run		= dp_task_run,
+		.get_deadline	= NULL,
+		.complete	= NULL
+	};
+
+	if (!comp->task) {
+		ret = scheduler_dp_task_init(&comp->task,
+					     SOF_UUID(dp_task_uuid),
+					     &ops,
+					     comp,
+					     comp->ipc_config.core,
+					     TASK_DP_STACK_SIZE,
+					     ZEPHYR_DP_THREAD_PRIORITY);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 				      struct comp_dev *comp,
