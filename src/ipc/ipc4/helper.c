@@ -289,7 +289,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 		return ret;
 	}
 
-	/* free buffer and remove from list */
+	/* free buffer, delete all tasks and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");

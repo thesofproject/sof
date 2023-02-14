@@ -302,8 +302,9 @@ int comp_copy(struct comp_dev *dev)
 
 	assert(dev->drv->ops.copy);
 
-	/* copy only if we are the owner of the component */
-	if (cpu_is_me(dev->ipc_config.core)) {
+	/* copy only if we are the owner of the LL component */
+	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
+	    cpu_is_me(dev->ipc_config.core)) {
 #if CONFIG_PERFORMANCE_COUNTERS
 		perf_cnt_init(&dev->pcd);
 #endif

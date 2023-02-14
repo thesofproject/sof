@@ -340,11 +340,18 @@ static inline bool pipeline_is_this_cpu(struct pipeline *p)
 }
 
 /**
- * \brief Free's a pipeline.
+ * \brief Init an LL task for a pipeline.
  * \param[in] p pipeline.
  * \return 0 on success.
  */
-int pipeline_comp_task_init(struct pipeline *p);
+int pipeline_comp_ll_task_init(struct pipeline *p);
+
+/**
+ * \brief Init a DP task for a component
+ * \param[in] comp a component the task is created for
+ * \return 0 on success.
+ */
+int pipeline_comp_dp_task_init(struct comp_dev *comp);
 
 /**
  * \brief Free's a pipeline.

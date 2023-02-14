@@ -317,7 +317,23 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 		}
 	}
 
-	err = pipeline_comp_task_init(current->pipeline);
+	switch (current->ipc_config.proc_domain) {
+	case COMP_PROCESSING_DOMAIN_LL:
+		/* this is a LL scheduled module */
+		err = pipeline_comp_ll_task_init(current->pipeline);
+		break;
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	case COMP_PROCESSING_DOMAIN_DP:
+		/* this is a DP scheduled module */
+		err = pipeline_comp_dp_task_init(current);
+		break;
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+	default:
+		err = -EINVAL;
+	}
+
 	if (err < 0)
 		return err;
 

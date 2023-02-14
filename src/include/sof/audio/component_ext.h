@@ -50,8 +50,9 @@ static inline void comp_free(struct comp_dev *dev)
 {
 	assert(dev->drv->ops.free);
 
-	/* free task if shared component */
-	if (dev->is_shared && dev->task) {
+	/* free task if shared component or DP task*/
+	if ((dev->is_shared || dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) &&
+	    dev->task) {
 		schedule_task_free(dev->task);
 		rfree(dev->task);
 	}
@@ -147,13 +148,43 @@ static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
+static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
+{
+	int ret;
+
+	ret = dev->drv->ops.trigger(dev, cmd);
+
+	/* start a thread in case of shared component or DP scheduling */
+	if (dev->task) {
+		/* schedule or cancel task */
+		switch (cmd) {
+		case COMP_TRIGGER_START:
+		case COMP_TRIGGER_RELEASE:
+			schedule_task(dev->task, 0, dev->period);
+			break;
+		case COMP_TRIGGER_XRUN:
+		case COMP_TRIGGER_PAUSE:
+		case COMP_TRIGGER_STOP:
+			schedule_task_cancel(dev->task);
+			break;
+		}
+	}
+
+	return ret;
+}
+
 /** See comp_ops::trigger */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret;
 	assert(dev->drv->ops.trigger);
 
-	return (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
-		comp_trigger_remote(dev, cmd) : dev->drv->ops.trigger(dev, cmd);
+	if (dev->is_shared && !cpu_is_me(dev->ipc_config.core))
+		ret = comp_trigger_remote(dev, cmd);
+	else
+		ret = comp_trigger_local(dev, cmd);
+
+	return ret;
 }
 
 /** Runs comp_ops::prepare on the target component's core */
