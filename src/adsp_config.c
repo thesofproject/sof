@@ -2237,7 +2237,7 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 			return err_key_parse("load_type", NULL);
 
 		mod_man->type.init_config = parse_uint32_hex_key(mod_entry, &ctx_entry,
-								"init_config", 1, &ret);
+								"init_config", 0, &ret);
 		if (ret < 0)
 			return err_key_parse("init_config", NULL);
 
