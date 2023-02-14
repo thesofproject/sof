@@ -26,7 +26,7 @@ LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
 #include <sof/audio/volume.h>
 
-#ifdef CONFIG_GENERIC
+#if VOLUME_GENERIC
 
 #if CONFIG_FORMAT_S24LE
 /**

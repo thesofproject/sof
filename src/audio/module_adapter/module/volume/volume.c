@@ -391,7 +391,6 @@ static int volume_init(struct processing_module *mod)
 		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
 		return -ENOMEM;
 	}
-
 	md->private = cd;
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
@@ -572,6 +571,16 @@ static int volume_init(struct processing_module *mod)
 		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
 		return -ENOMEM;
 	}
+	/*
+	 * malloc memory to store temp peak volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	cd->peak_vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
+	if (!cd->peak_vol) {
+		rfree(cd);
+		comp_err(dev, "volume_init(): Failed to allocate peak_vol %d", vol_size);
+		return -ENOMEM;
+	}
 
 	md->private = cd;
 
@@ -650,6 +659,7 @@ static int volume_free(struct processing_module *mod)
 	/* clear mailbox */
 	memset_s(&regs, sizeof(regs), 0, sizeof(regs));
 	mailbox_sw_regs_write(cd->mailbox_offset, &regs, sizeof(regs));
+	rfree(cd->peak_vol);
 #endif
 
 	comp_dbg(mod->dev, "volume_free()");

@@ -6,7 +6,7 @@ if(NOT CONFIG_LIBRARY)
 	endif()
 
 	if(CONFIG_COMP_VOLUME)
-	add_local_sources(sof module/volume/volume_generic.c module/volume/volume_hifi3.c module/volume/volume.c)
+	add_local_sources(sof module/volume/volume_generic.c module/volume/volume_hifi3.c module/volume/volume_hifi4.c module/volume/volume.c)
 	endif()
 
 	if(CONFIG_CADENCE_CODEC)

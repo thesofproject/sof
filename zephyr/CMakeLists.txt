@@ -745,6 +745,7 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 
 zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
 	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3.c
+	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4.c
 	${SOF_AUDIO_MODULES_PATH}/volume/volume_generic.c
 	${SOF_AUDIO_MODULES_PATH}/volume/volume.c
 )

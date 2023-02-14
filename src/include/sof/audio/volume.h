@@ -34,15 +34,30 @@
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
 
-#define CONFIG_GENERIC
-
 #if defined(__XCC__)
 #include <xtensa/config/core-isa.h>
 
-#if XCHAL_HAVE_HIFI3
-#undef CONFIG_GENERIC
+#if XCHAL_HAVE_HIFI4  /* HiFi 4 */
+
+#define VOLUME_GENERIC  0
+#define VOLUME_HIFI3	0
+#define VOLUME_HIFI4	1
+
+#elif XCHAL_HAVE_HIFI3  /* HiFi 3 */
+#define VOLUME_GENERIC  0
+#define VOLUME_HIFI3	1
+#define VOLUME_HIFI4	0
+
+#else /* if others use C version*/
+#define VOLUME_GENERIC  1
+#define VOLUME_HIFI3	0
+#define VOLUME_HIFI4	0
 #endif
 
+#else /* GCC */
+#define VOLUME_GENERIC  1
+#define VOLUME_HIFI3	0
+#define VOLUME_HIFI4	0
 #endif
 
 /**
@@ -133,6 +148,8 @@ struct vol_data {
 
 	/**< these values will be stored to mailbox for host (IPC4) */
 	struct ipc4_peak_volume_regs peak_regs;
+	/**< store temp peak volume 4 times for scale_vol function */
+	int32_t *peak_vol;
 #endif
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
@@ -141,6 +158,7 @@ struct vol_data {
 	int32_t ramp_coef[SOF_IPC_MAX_CHANNELS]; /**< parameter for slope */
 	/**< store current volume 4 times for scale_vol function */
 	int32_t *vol;
+
 	uint32_t initial_ramp;			/**< ramp space in ms */
 	uint32_t ramp_type;			/**< SOF_VOLUME_ */
 	int32_t vol_min;			/**< minimum volume */
