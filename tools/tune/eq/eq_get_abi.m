@@ -29,7 +29,6 @@ if nargin < 4
 	param_id = 0;
 end
 
-ipc4_use_sofctl = 0; % Set to 1 when sof-ctl update is merged
 abifn = 'eq_get_abi.bin';
 switch ipc_ver
 	case 3
@@ -37,18 +36,8 @@ switch ipc_ver
 		cmd = sprintf('sof-ctl -g %d -t %d -b -o %s', setsize, type, abifn);
 		[bytes, nbytes] = get_abi_with_sofctl(cmd, abifn);
 	case 4
-		if ipc4_use_sofctl
-			cmd = sprintf('sof-ctl -I IPC4 -g %d -p %d -b -o %s', setsize, param_id, abifn);
-			[bytes, nbytes] = get_abi_with_sofctl(cmd, abifn);
-		else
-			nbytes = 32;
-			bytes = uint8(zeros(1, nbytes));
-			bytes( 1: 4) = [0x53 0x4f 0x46 0x34];	% SOF4
-			bytes( 5: 5) = param_id;		% param_id
-			bytes( 6: 8) = [0x00 0x00 0x00];	% reserved
-			bytes( 9:12) = w32b(setsize);		% size
-			bytes(13:16) = [0x00 0xa0 0x01 0x03];	% ABI
-		end
+		cmd = sprintf('sof-ctl -i 4 -g %d -p %d -b -o %s', setsize, param_id, abifn);
+		[bytes, nbytes] = get_abi_with_sofctl(cmd, abifn);
 	otherwise
 		fprintf(1, 'Illegal ipc_ver %d\n', ipc_ver);
 		error('Failed.');
