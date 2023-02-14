@@ -2124,6 +2124,7 @@ static void dump_module(struct fw_image_manifest_module *man_cavs)
 	for (i = 0; i < man_cavs->mod_man_count; i++) {
 		DUMP_PRINTABLE_BYTES("module name", man_cavs->mod_man[i].name);
 		DUMP_KEY("load type", "%d", man_cavs->mod_man[i].type.load_type);
+		DUMP_KEY("init config", "%d", man_cavs->mod_man[i].type.init_config);
 		DUMP_KEY("domain ll", "%d", man_cavs->mod_man[i].type.domain_ll);
 		DUMP_KEY("domain dp", "%d", man_cavs->mod_man[i].type.domain_dp);
 		DUMP_KEY("config count", "%d", man_cavs->mod_man[i].cfg_count);
