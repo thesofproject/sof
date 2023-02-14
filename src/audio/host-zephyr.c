@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <sof/audio/host_copier.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pcm_converter.h>
@@ -42,73 +43,6 @@ DECLARE_SOF_RT_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
 		    0x90, 0xa3, 0xe0, 0xe8, 0x05, 0xd0, 0x85, 0x2b);
 
 DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
-
-/** \brief Host copy function interface. */
-typedef int (*host_copy_func)(struct comp_dev *dev);
-
-/**
- * \brief Host buffer info.
- */
-struct hc_buf {
-	struct dma_sg_elem_array elem_array; /**< array of SG elements */
-	uint32_t current;		/**< index of current element */
-	uint32_t current_end;
-};
-
-/**
- * \brief Host component data.
- *
- * Host reports local position in the host buffer every params.host_period_bytes
- * if the latter is != 0. report_pos is used to track progress since the last
- * multiple of host_period_bytes.
- *
- * host_size is the host buffer size (in bytes) specified in the IPC parameters.
- */
-struct host_data {
-	/* local DMA config */
-	struct dma *dma;
-	struct dma_chan_data *chan;
-	struct dma_sg_config config;
-	struct dma_config z_config;
-	struct comp_buffer *dma_buffer;
-	struct comp_buffer *local_buffer;
-
-	/* host position reporting related */
-	uint32_t host_size;	/**< Host buffer size (in bytes) */
-	uint32_t report_pos;	/**< Position in current report period */
-	uint32_t local_pos;	/**< Local position in host buffer */
-	uint32_t host_period_bytes;
-	uint16_t stream_tag;
-	uint16_t no_stream_position; /**< 1 means don't send stream position */
-	uint64_t total_data_processed;
-	uint8_t cont_update_posn; /**< 1 means continuous update stream position */
-
-	/* host component attributes */
-	enum comp_copy_type copy_type;	/**< Current host copy type */
-
-	/* local and host DMA buffer info */
-	struct hc_buf host;
-	struct hc_buf local;
-
-	/* pointers set during params to host or local above */
-	struct hc_buf *source;
-	struct hc_buf *sink;
-
-	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
-				   *  copied by dma connected to host
-				   */
-	uint32_t period_bytes;	/**< number of bytes per one period */
-
-	host_copy_func copy;	/**< host copy function */
-	pcm_converter_func process;	/**< processing function */
-
-	/* IPC host init info */
-	struct ipc_config_host ipc_host;
-
-	/* stream info */
-	struct sof_ipc_stream_posn posn; /* TODO: update this */
-	struct ipc_msg *msg;	/**< host notification */
-};
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -639,6 +573,43 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+		    const struct ipc_config_host *ipc_host, uint32_t config_id)
+{
+	uint32_t dir;
+
+	hd->ipc_host = *ipc_host;
+	/* request HDA DMA with shared access privilege */
+	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
+		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+
+	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
+	if (!hd->dma) {
+		comp_err(dev, "host_new(): dma_get() returned NULL");
+		rfree(hd);
+		return -ENODEV;
+	}
+
+	/* init buffer elems */
+	dma_sg_init(&hd->config.elem_array);
+	dma_sg_init(&hd->host.elem_array);
+	dma_sg_init(&hd->local.elem_array);
+
+	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
+
+	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	if (!hd->msg) {
+		comp_err(dev, "host_new(): ipc_msg_init failed");
+		dma_put(hd->dma);
+		rfree(hd);
+		return -ENOMEM;
+	}
+	hd->chan = NULL;
+	hd->copy_type = COMP_COPY_NORMAL;
+
+	return 0;
+}
+
 static struct comp_dev *host_new(const struct comp_driver *drv,
 				 const struct comp_ipc_config *config,
 				 const void *spec)
@@ -646,7 +617,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
-	uint32_t dir;
+	int ret;
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
@@ -660,43 +631,26 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		rfree(dev);
 		return NULL;
 	}
-
 	comp_set_drvdata(dev, hd);
-	hd->ipc_host = *ipc_host;
 
-	/* request HDA DMA with shared access privilege */
-	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
-
-	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
-	if (!hd->dma) {
-		comp_err(dev, "host_new(): dma_get() returned NULL");
+	ret = host_zephyr_new(hd, dev, ipc_host, dev->ipc_config.id);
+	if (ret) {
 		rfree(hd);
 		rfree(dev);
 		return NULL;
 	}
 
-	/* init buffer elems */
-	dma_sg_init(&hd->config.elem_array);
-	dma_sg_init(&hd->host.elem_array);
-	dma_sg_init(&hd->local.elem_array);
-
-	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, dev->ipc_config.id);
-
-	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
-	if (!hd->msg) {
-		comp_err(dev, "host_new(): ipc_msg_init failed");
-		dma_put(hd->dma);
-		rfree(hd);
-		rfree(dev);
-		return NULL;
-	}
-
-	hd->chan = NULL;
-	hd->copy_type = COMP_COPY_NORMAL;
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+}
+
+void host_zephyr_free(struct host_data *hd)
+{
+	dma_put(hd->dma);
+
+	ipc_msg_free(hd->msg);
+	dma_sg_free(&hd->config.elem_array);
 }
 
 static void host_free(struct comp_dev *dev)
@@ -704,11 +658,7 @@ static void host_free(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "host_free()");
-
-	dma_put(hd->dma);
-
-	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
+	host_zephyr_free(hd);
 	rfree(hd);
 	rfree(dev);
 }

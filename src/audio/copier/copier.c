@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/host_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -212,6 +213,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct ipc_config_host ipc_host;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
+	struct host_data *hd;
 	int ret;
 
 	drv = ipc4_get_drv((uint8_t *)&host);
@@ -228,11 +230,25 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
-	dev = drv->ops.create(drv, config, &ipc_host);
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
-		ret = -EINVAL;
+		ret = -ENOMEM;
 		goto e_buf;
 	}
+	dev->ipc_config = *config;
+
+	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	if (!hd) {
+		ret = -ENOMEM;
+		goto e_dev;
+	}
+	comp_set_drvdata(dev, hd);
+	ret = host_zephyr_new(hd, parent_dev, &ipc_host, dev->ipc_config.id);
+	if (ret < 0) {
+		comp_err(parent_dev, "copier: host new failed with exit");
+		goto e_data;
+	}
+	dev->state = COMP_STATE_READY;
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -254,13 +270,18 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(parent_dev, "failed to get converter for host, dir %d", dir);
 		ret = -EINVAL;
-		goto e_buf;
+		goto e_data;
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->hd = comp_get_drvdata(dev);
 
-	return 0;
+	return ret;
 
+e_data:
+	rfree(hd);
+e_dev:
+	rfree(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
@@ -702,7 +723,17 @@ static void copier_free(struct comp_dev *dev)
 	int i;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		if (cd->endpoint[i]->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+			/*
+			 * host copier endpoint_num will never be greater than 1
+			 */
+			host_zephyr_free(cd->hd);
+			rfree(cd->hd);
+			rfree(cd->endpoint[i]);
+		} else {
+			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+		}
+
 		buffer_free(cd->endpoint_buffer[i]);
 	}
 
