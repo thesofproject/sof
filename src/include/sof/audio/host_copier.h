@@ -106,6 +106,13 @@ uint64_t host_zephyr_get_processed_data(struct host_data *hd, uint32_t stream_no
 					bool input, bool source);
 
 int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd, uint16_t state);
+
+int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params, struct list_item *sink_list,
+		       struct list_item *source_list, struct pipeline *pipeline,
+		       uint32_t frames, bool is_scheduling_source);
+
+void host_dma_cb(void *arg, enum notify_id type, void *data);
 #else
 static int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 			   const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -134,5 +141,15 @@ static int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int c
 {
 	return 0;
 }
+
+static int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params, struct list_item *sink_list,
+			      struct list_item *source_list, struct pipeline *pipeline,
+			      uint32_t frames, bool is_scheduling_source)
+{
+	return 0;
+}
+
+static void host_dma_cb(void *arg, enum notify_id type, void *data) {}
 #endif
 #endif /* __SOF_host_COPIER_H__ */
