@@ -985,9 +985,23 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			ret = comp_set_state(cd->endpoint[i], cmd);
+			if (ret < 0)
+				break;
+
+			if (ret == COMP_STATUS_STATE_ALREADY_SET) {
+				ret = PPL_STATUS_PATH_STOP;
+				break;
+			}
+			ret = host_zephyr_trigger(cd->hd, dev, cmd, cd->endpoint[i]->state);
+			if (ret < 0)
+				break;
+		} else {
+			ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
 		if (ret < 0)
 			break;
+		}
 	}
 
 	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)

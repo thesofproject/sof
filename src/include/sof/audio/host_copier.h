@@ -104,6 +104,8 @@ void host_zephyr_position(struct host_data *hd, struct sof_ipc_stream_posn *posn
 
 uint64_t host_zephyr_get_processed_data(struct host_data *hd, uint32_t stream_no,
 					bool input, bool source);
+
+int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd, uint16_t state);
 #else
 static int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 			   const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -128,5 +130,9 @@ static uint64_t host_zephyr_get_processed_data(struct host_data *hd, uint32_t st
 	return 0;
 }
 
+static int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd, uint16_t state)
+{
+	return 0;
+}
 #endif
 #endif /* __SOF_host_COPIER_H__ */
