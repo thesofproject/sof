@@ -869,6 +869,7 @@ static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	int ret, i;
+	bool host_prepare = false;
 
 	comp_dbg(dev, "copier_prepare()");
 
@@ -886,7 +887,23 @@ static int copier_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+			ret = comp_set_state(cd->endpoint[i], COMP_TRIGGER_PREPARE);
+			if (ret < 0)
+				return ret;
+			if (ret == COMP_STATUS_STATE_ALREADY_SET)
+				return PPL_STATUS_PATH_STOP;
+
+			host_prepare = true;
+		} else {
+			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+		}
+		if (ret < 0)
+			return ret;
+	}
+
+	if (host_prepare) {
+		ret = host_zephyr_prepare(cd->hd);
 		if (ret < 0)
 			return ret;
 	}
@@ -943,9 +960,18 @@ static int copier_reset(struct comp_dev *dev)
 	cd->output_total_data_processed = 0;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-		if (ret < 0)
-			break;
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+			if (cd->hd->chan)
+				notifier_unregister(cd->endpoint[i],
+						    cd->hd->chan, NOTIFIER_ID_DMA_COPY);
+
+			host_zephyr_reset(cd->hd, cd->endpoint[i]->state);
+			cd->endpoint[i]->state = COMP_STATE_READY;
+		} else {
+			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+			if (ret < 0)
+				break;
+		}
 	}
 
 	if (cd->pipeline_reg_offset) {
