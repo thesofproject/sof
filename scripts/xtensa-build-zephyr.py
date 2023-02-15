@@ -590,10 +590,6 @@ def build_platforms():
 			build_cmd += args.cmake_args
 
 		overlays = [str(item.resolve(True)) for item in args.overlay]
-		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
-		# if both are provided, because it's no harm to merge the same overlay twice.
-		if args.debug:
-			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
 		# The '-i IPC4' is a shortcut for '-o path_to_ipc4_overlay' (and more), we
 		# are good if both are provided, because it's no harm to merge the same
@@ -601,6 +597,11 @@ def build_platforms():
 		if args.ipc == "IPC4":
 			overlays.append(str(pathlib.Path(SOF_TOP, "app", "overlays", platform,
                             platform_dict["IPC4_CONFIG_OVERLAY"])))
+
+		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
+		# if both are provided, because it's no harm to merge the same overlay twice.
+		if args.debug:
+			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
 		if overlays:
 			overlays = ";".join(overlays)
