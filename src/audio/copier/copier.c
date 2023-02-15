@@ -1673,10 +1673,18 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
 
 	if (cd->endpoint_num && cd->bsource_buffer != input) {
-		if (stream_no < cd->endpoint_num)
-			ret = comp_get_total_data_processed(cd->endpoint[stream_no], 0, input);
+		if (stream_no < cd->endpoint_num) {
+			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+				if (source == input)
+					ret = cd->hd->total_data_processed;
+			} else {
+				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
+								    0, input);
+			}
+		}
 	} else {
 		if (stream_no == 0)
 			ret = input ? cd->input_total_data_processed :
@@ -1707,13 +1715,20 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+	int ret;
 
 	/* Exit if no endpoints */
 	if (!cd->endpoint_num)
 		return -EINVAL;
 
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+		posn->host_posn = cd->hd->local_pos;
+		ret = posn->host_posn;
+	} else {
+		ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+	}
 	/* Return position from the default gateway pin */
-	return comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+	return ret;
 }
 
 static const struct comp_driver comp_copier = {
