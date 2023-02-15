@@ -201,6 +201,60 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	return IPC4_SUCCESS;
 }
 
+static int ipc4_create_pipeline_old(uint32_t pipeline_id, uint32_t priority,
+				    uint32_t memory_size, uint32_t core_id)
+{
+	struct ipc_comp_dev *ipc_pipe;
+	struct pipeline *pipe;
+	struct ipc *ipc = ipc_get();
+
+	/* check whether pipeline id is already taken or in use */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					  pipeline_id);
+	if (ipc_pipe) {
+		tr_err(&ipc_tr, "ipc: pipeline id is already taken, pipe_desc->instance_id = %u",
+		       pipeline_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	/* create the pipeline */
+	pipe = pipeline_new(pipeline_id, priority, 0);
+	if (!pipe) {
+		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
+		return IPC4_OUT_OF_MEMORY;
+	}
+
+	pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
+	/* 1ms
+	 * TODO: add DP scheduler support. Now only the
+	 * LL scheduler tasks is supported.
+	 */
+	pipe->period = 1000;
+
+	/* sched_id is set in FW so initialize it to a invalid value */
+	pipe->sched_id = 0xFFFFFFFF;
+
+	pipe->core = core_id;
+
+	/* allocate the IPC pipeline container */
+	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			   sizeof(struct ipc_comp_dev));
+	if (!ipc_pipe) {
+		pipeline_free(pipe);
+		return IPC4_OUT_OF_MEMORY;
+	}
+
+	ipc_pipe->pipeline = pipe;
+	ipc_pipe->type = COMP_TYPE_PIPELINE;
+	ipc_pipe->id = pipeline_id;
+	ipc_pipe->core = core_id;
+
+	/* add new pipeline to the list */
+	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+
+	return IPC4_SUCCESS;
+}
+
 int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
