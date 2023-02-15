@@ -106,7 +106,7 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_dev *buff_comp;
-	struct list_item *clist;
+	struct list_item *clist, *blist;
 	struct ipc_comp_dev *next_ppl_icd = NULL;
 
 	list_for_item(clist, &ipc->comp_list) {
@@ -117,17 +117,22 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 		/* first try to find the module in the pipeline */
 		if (dev_comp_pipe_id(icd->cd) == pipeline_id) {
 			struct list_item *buffer_list = comp_buffer_list(icd->cd, dir);
+			bool last_in_pipeline = true;
 
 			/* The component has no buffer in the given direction */
 			if (list_is_empty(buffer_list))
 				return icd;
 
-			/* it's connected pipeline, so find the connected module */
-			buffer = buffer_from_list(buffer_list->next, struct comp_buffer, dir);
-			buff_comp = buffer_get_comp(buffer, dir);
+			/* check all connected modules to see if they are on different pipelines */
+			list_for_item(blist, buffer_list) {
+				buffer = buffer_from_list(blist, struct comp_buffer, dir);
+				buff_comp = buffer_get_comp(buffer, dir);
 
-			/* Next component is placed on another pipeline */
-			if (buff_comp && dev_comp_pipe_id(buff_comp) != pipeline_id)
+				if (buff_comp && dev_comp_pipe_id(buff_comp) == pipeline_id)
+					last_in_pipeline = false;
+			}
+			/* all connected components placed on another pipeline */
+			if (last_in_pipeline)
 				next_ppl_icd = icd;
 		}
 	}
