@@ -946,10 +946,19 @@ out:
 	return err;
 }
 
+int host_zephyr_prepare(struct host_data *hd)
+{
+	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
+
+	buffer_zero(buf_c);
+	buffer_release(buf_c);
+
+	return 0;
+}
+
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c;
 	int ret;
 
 	comp_dbg(dev, "host_prepare()");
@@ -961,23 +970,8 @@ static int host_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	buf_c = buffer_acquire(hd->dma_buffer);
-	buffer_zero(buf_c);
-	buffer_release(buf_c);
 
-	return 0;
-}
-
-static int host_pointer_reset(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	/* reset buffer pointers */
-	hd->local_pos = 0;
-	hd->report_pos = 0;
-	hd->total_data_processed = 0;
-
-	return 0;
+	return host_zephyr_prepare(hd);
 }
 
 static int host_position(struct comp_dev *dev,
@@ -991,18 +985,11 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-static int host_reset(struct comp_dev *dev)
+void host_zephyr_reset(struct host_data *hd, uint16_t state)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "host_reset()");
-
 	if (hd->chan) {
-		if (dev->state == COMP_STATE_ACTIVE)
+		if (state == COMP_STATE_ACTIVE)
 			dma_stop(hd->chan->dma->z_dev, hd->chan->index);
-
-		/* remove callback */
-		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_release_channel(hd->dma->z_dev, hd->chan->index);
 		hd->chan = NULL;
 	}
@@ -1018,10 +1005,26 @@ static int host_reset(struct comp_dev *dev)
 		hd->dma_buffer = NULL;
 	}
 
-	host_pointer_reset(dev);
+	/* reset buffer pointers */
+	hd->local_pos = 0;
+	hd->report_pos = 0;
+	hd->total_data_processed = 0;
+
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
 	hd->sink = NULL;
+}
+
+static int host_reset(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "host_reset()");
+	/* remove callback first for host reset */
+	if (hd->chan)
+		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
+
+	host_zephyr_reset(hd, dev->state);
 	dev->state = COMP_STATE_READY;
 
 	return 0;
