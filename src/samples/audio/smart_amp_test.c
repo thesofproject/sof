@@ -603,11 +603,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
 	struct comp_buffer __sparse_cache *sink_buf = buffer_acquire(sad->sink_buf);
 	uint32_t avail_passthrough_frames;
-	uint32_t avail_feedback_frames;
-	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
-	uint32_t feedback_bytes;
 
 	comp_dbg(dev, "smart_amp_copy()");
 
@@ -644,25 +641,21 @@ static int smart_amp_copy(struct comp_dev *dev)
 #endif
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
+		uint32_t feedback_frames, feedback_bytes;
 
 		if (buf->source && comp_get_state(dev, buf->source) == dev->state) {
-			/* feedback */
-			avail_feedback_frames =
-				audio_stream_get_avail_frames(&buf->stream);
+			feedback_frames = MIN(avail_passthrough_frames,
+					      audio_stream_get_avail_frames(&buf->stream));
 
-			avail_frames = MIN(avail_passthrough_frames,
-					   avail_feedback_frames);
-
-			feedback_bytes = avail_frames *
-				audio_stream_frame_bytes(&buf->stream);
+			feedback_bytes = feedback_frames * audio_stream_frame_bytes(&buf->stream);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
-				 avail_frames, avail_passthrough_frames);
+				 feedback_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
 			buffer_stream_invalidate(buf, feedback_bytes);
 			sad->process(dev, &buf->stream, &sink_buf->stream,
-				     avail_frames, sad->config.feedback_ch_map);
+				     feedback_frames, sad->config.feedback_ch_map);
 
 			comp_update_buffer_consume(buf, feedback_bytes);
 		}
