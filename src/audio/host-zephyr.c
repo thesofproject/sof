@@ -514,29 +514,9 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 	return 0;
 }
 
-/**
- * \brief Command handler.
- * \param[in,out] dev Device
- * \param[in] cmd Command
- * \return 0 if successful, error code otherwise.
- *
- * Used to pass standard and bespoke commands (with data) to component.
- * This function is common for all dma types, with one exception:
- * dw-dma is run on demand, so no start()/stop() is issued.
- */
-static int host_trigger(struct comp_dev *dev, int cmd)
+int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_dbg(dev, "host_trigger()");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	int ret = 0;
 
 	/* we should ignore any trigger commands besides start
 	 * when doing one shot, because transfers will stop automatically
@@ -571,6 +551,33 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	return ret;
+}
+
+/**
+ * \brief Command handler.
+ * \param[in,out] dev Device
+ * \param[in] cmd Command
+ * \return 0 if successful, error code otherwise.
+ *
+ * Used to pass standard and bespoke commands (with data) to component.
+ * This function is common for all dma types, with one exception:
+ * dw-dma is run on demand, so no start()/stop() is issued.
+ */
+static int host_trigger(struct comp_dev *dev, int cmd)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "host_trigger()");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return host_zephyr_trigger(hd, dev, cmd);
 }
 
 int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,

@@ -99,6 +99,8 @@ void host_zephyr_free(struct host_data *hd);
 int host_zephyr_prepare(struct host_data *hd);
 
 void host_zephyr_reset(struct host_data *hd, uint16_t state);
+
+int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd);
 #else
 static inline int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 				  const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -114,6 +116,12 @@ static inline int host_zephyr_prepare(struct host_data *hd)
 }
 
 static inline void host_zephyr_reset(struct host_data *hd, uint16_t state) {}
+
+static inline int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev,
+				      int cmd)
+{
+	return 0;
+}
 
 #endif
 #endif /* __SOF_HOST_COPIER_H__ */
