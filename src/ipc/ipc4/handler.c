@@ -461,55 +461,49 @@ static int ipc4_load_library(struct ipc4_message_request *ipc4)
 
 static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
-#if CONFIG_COMP_CHAIN_DMA
-	struct ipc_comp_dev *cdma_comp;
-	struct ipc *ipc = ipc_get();
 	struct ipc4_chain_dma cdma;
-	int comp_id;
-	int ret;
+	struct ipc *ipc = ipc_get();
+	bool delay = false;
+	int ret = memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(*ipc4));
 
-	ret = memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(*ipc4));
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	comp_id = IPC4_COMP_ID(cdma.primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
-	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-
-	if (!cdma_comp && cdma.primary.r.allocate && cdma.primary.r.enable) {
-		ret = ipc4_chain_manager_create(&cdma);
-		if (ret < 0)
-			return IPC4_FAILURE;
-
-		cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-		if (!cdma_comp) {
-			comp_free(cdma_comp->cd);
-			return IPC4_FAILURE;
+	if (cdma.primary.r.allocate && cdma.extension.r.fifo_size) {
+		ret = ipc4_create_chain_dma(ipc, &cdma);
+		if (ret) {
+			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
+			return ret;
 		}
 
-		ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
-		if (ret < 0) {
-			comp_free(cdma_comp->cd);
-			return IPC4_FAILURE;
-		}
-
-		return IPC4_SUCCESS;
+		/* if enable is not set, chain dma pipeline is not going to be triggered */
+		if (!cdma.primary.r.enable)
+			return ret;
 	}
 
-	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-	if (!cdma_comp)
-		return IPC4_FAILURE;
+	atomic_set(&msg_data.delayed_reply, 1);
+	ret = ipc4_trigger_chain_dma(ipc, &cdma, &delay);
+	/* it is not scheduled in another thread */
+	if (!delay) {
+		atomic_set(&msg_data.delayed_reply, 0);
+		msg_data.delayed_error = 0;
+	} else if (!cdma.primary.r.allocate) {
+		uint32_t pipeline_id = IPC4_COMP_ID(cdma.primary.r.host_dma_id
+						    + IPC4_MAX_MODULE_COUNT,
+						    cdma.primary.r.link_dma_id);
 
-	ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
-	if (ret < 0)
-		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
+		/* waiting for pipeline reset done */
+		ipc_wait_for_compound_msg();
+		ret = ipc_pipeline_free(ipc, pipeline_id);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to free chain dma %d", ret);
+			ret = IPC4_BAD_STATE;
+		} else {
+			ret = IPC4_SUCCESS;
+		}
+	}
 
-	if (!cdma.primary.r.allocate && !cdma.primary.r.enable)
-		list_item_del(&cdma_comp->list);
-
-	return IPC4_SUCCESS;
-#else
-	return IPC4_UNAVAILABLE;
-#endif
+	return ret;
 }
 
 static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)

@@ -569,6 +569,151 @@ static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *ch
 	return IPC4_SUCCESS;
 }
 
+static struct comp_dev *ipc4_create_host(uint32_t pipeline_id, uint32_t id, uint32_t dir)
+{
+	struct sof_uuid uuid = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
+			0xe8, 0x05, 0xd0, 0x85, 0x2b}};
+	struct ipc_config_host ipc_host;
+	struct comp_ipc_config config;
+	const struct comp_driver *drv;
+	struct comp_dev *dev;
+
+	drv = ipc4_get_drv((uint8_t *)&uuid);
+	if (!drv)
+		return NULL;
+
+	memset_s(&config, sizeof(config), 0, sizeof(config));
+	config.type = SOF_COMP_HOST;
+	config.pipeline_id = pipeline_id;
+	config.core = 0;
+	config.id = id;
+
+	memset(&ipc_host, 0, sizeof(ipc_host));
+	ipc_host.direction = dir;
+
+	dev = drv->ops.create(drv, &config, &ipc_host);
+	if (!dev)
+		return NULL;
+
+	dev->direction = dir;
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	return dev;
+}
+
+static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint32_t dir,
+					struct ipc4_copier_module_cfg *copier_cfg,
+					struct sof_ipc_stream_params *params,
+					uint32_t link_chan)
+{
+	struct sof_uuid uuid = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
+				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
+	const struct comp_driver *drv;
+	struct comp_ipc_config config;
+	struct ipc_config_dai dai;
+	struct comp_dev *dev;
+	int ret;
+
+	drv = ipc4_get_drv((uint8_t *)&uuid);
+	if (!drv)
+		return NULL;
+
+	memset_s(&config, sizeof(config), 0, sizeof(config));
+	config.type = SOF_COMP_DAI;
+	config.frame_fmt = params->frame_fmt;
+	config.pipeline_id = pipe->pipeline_id;
+	config.core = 0;
+	config.id = id;
+
+	memset(&dai, 0, sizeof(dai));
+	dai.dai_index = DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN - 1;
+	dai.type = SOF_DAI_INTEL_HDA;
+	dai.is_config_blob = true;
+	dai.direction = dir;
+	dev = drv->ops.create(drv, &config, &dai);
+	if (!dev)
+		return NULL;
+
+	pipe->sched_id = id;
+
+	dev->direction = dir;
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	copier_cfg->gtw_cfg.node_id.dw = link_chan;
+	ret = comp_dai_config(dev, &dai, copier_cfg);
+	if (ret < 0)
+		return NULL;
+
+	return dev;
+}
+
+/* host does not send any params to FW since it expects simple copy
+ * but sof needs hw params to feed pass-through pipeline. This
+ * function rebuilds the hw params based on fifo_size since only 48K
+ * and 44.1K sample rate and 16 & 24bit are supported by chain dma.
+ */
+static int construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t fifo_size,
+			    struct sof_ipc_stream_params *params, uint32_t scs)
+{
+	uint32_t frame_size;
+
+	/* fifo_size = rate * channel * depth
+	 * support stream format : 48k * n,  44.1k * n, 32k *n and 16k * n.
+	 * Since the chain dma is used to just copy data from host to dai
+	 * without any change, 32k * 1 ch makes the same effect as
+	 * 16k * 2ch
+	 */
+	if (fifo_size % 48 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_48000HZ;
+		frame_size = fifo_size / 48;
+	} else if (fifo_size % 44 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_44100HZ;
+		frame_size = fifo_size / 44;
+	} else if (fifo_size % 32 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_32000HZ;
+		frame_size = fifo_size / 32;
+	} else if (fifo_size % 16 == 0) {
+		copier_cfg->base.audio_fmt.sampling_frequency = IPC4_FS_16000HZ;
+		frame_size = fifo_size / 16;
+	} else {
+		tr_err(&comp_tr, "unsupported fifo_size %d", fifo_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	params->rate = copier_cfg->base.audio_fmt.sampling_frequency;
+
+	/* convert double buffer to single buffer */
+	frame_size >>= 1;
+
+	/* two cases based on scs : 16 bits or 32 bits sample size */
+	if (!scs) {
+		copier_cfg->base.audio_fmt.depth = 32;
+		copier_cfg->base.audio_fmt.valid_bit_depth = 32;
+		params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		params->sample_container_bytes = 4;
+		params->sample_valid_bytes = 4;
+	} else {
+		copier_cfg->base.audio_fmt.depth = 16;
+		copier_cfg->base.audio_fmt.valid_bit_depth = 16;
+		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+		params->sample_container_bytes = 2;
+		params->sample_valid_bytes = 2;
+	}
+
+	copier_cfg->base.audio_fmt.channels_count = frame_size /
+		(copier_cfg->base.audio_fmt.depth / 8);
+
+	params->channels = copier_cfg->base.audio_fmt.channels_count;
+	params->buffer.size = fifo_size;
+
+	copier_cfg->out_fmt = copier_cfg->base.audio_fmt;
+	copier_cfg->base.ibs = fifo_size;
+	copier_cfg->base.obs = fifo_size;
+	return IPC4_SUCCESS;
+}
+
 #if CONFIG_COMP_CHAIN_DMA
 int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 {
@@ -622,6 +767,218 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 	return ret;
 }
 #endif
+
+int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
+{
+	struct ipc4_copier_module_cfg copier_cfg;
+	struct sof_ipc_stream_params params;
+	struct ipc_comp_dev *ipc_pipe;
+	struct sof_ipc_buffer ipc_buf;
+	struct comp_dev *host;
+	struct comp_dev *dai;
+	struct comp_buffer *buf;
+	struct comp_dev *src;
+	struct comp_dev *sink;
+	uint32_t pipeline_id;
+	uint32_t host_id;
+	uint32_t dai_id;
+	uint32_t buf_id;
+	uint32_t dir, host_chan, link_chan;
+	int ret;
+
+	ret = process_dma_index(cdma->primary.r.host_dma_id, &dir, &host_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	ret = process_dma_index(cdma->primary.r.link_dma_id, &dir, &link_chan);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	/* build a pipeline id based on dma id */
+	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
+				   cdma->primary.r.link_dma_id);
+	ret = ipc4_create_pipeline_old(pipeline_id, 0, cdma->extension.r.fifo_size,
+			PLATFORM_PRIMARY_CORE_ID);
+	if (ret != IPC4_SUCCESS) {
+		tr_err(&comp_tr, "failed to create pipeline for chain dma");
+		return ret;
+	}
+
+	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
+
+	host_id = pipeline_id + 1;
+	host = ipc4_create_host(pipeline_id, host_id, dir);
+	if (!host) {
+		tr_err(&comp_tr, "failed to create host for chain dma");
+		return IPC4_INVALID_REQUEST;
+	}
+
+	host->period = ipc_pipe->pipeline->period;
+
+	ret = ipc4_add_comp_dev(host);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	memset_s(&params, sizeof(params), 0, sizeof(params));
+	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
+	ret = construct_config(&copier_cfg, cdma->extension.r.fifo_size, &params,
+			       cdma->primary.r.scs);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	params.direction = dir;
+	params.stream_tag = host_chan + 1;
+
+	dai_id = host_id + 1;
+	dai = ipc4_create_dai(ipc_pipe->pipeline, dai_id, dir, &copier_cfg, &params, link_chan);
+	if (!dai) {
+		tr_err(&comp_tr, "failed to create dai for chain dma");
+		return IPC4_INVALID_REQUEST;
+	}
+
+	dai->period = ipc_pipe->pipeline->period;
+
+	ret = ipc4_add_comp_dev(dai);
+	if (ret != IPC4_SUCCESS)
+		return ret;
+
+	buf_id = dai_id + 1;
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		src = host;
+		sink = dai;
+	} else {
+		src = dai;
+		sink = host;
+	}
+
+	memset(&ipc_buf, 0, sizeof(ipc_buf));
+	ipc_buf.size = cdma->extension.r.fifo_size;
+	ipc_buf.comp.id = buf_id;
+	ipc_buf.comp.pipeline_id = pipeline_id;
+	ipc_buf.comp.core = src->ipc_config.core;
+	buf = buffer_new(&ipc_buf);
+	if (!buf) {
+		tr_err(&comp_tr, "failed to create buffer for chain dma");
+		return IPC4_OUT_OF_MEMORY;
+	}
+
+	comp_buffer_connect(src, src->ipc_config.core, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
+	comp_buffer_connect(sink, sink->ipc_config.core, buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+
+	ipc_pipe->pipeline->sched_comp = host;
+	ipc_pipe->pipeline->source_comp = src;
+	ipc_pipe->pipeline->sink_comp = sink;
+
+	ret = ipc_pipeline_complete(ipc, pipeline_id);
+	if (ret < 0)
+		return IPC4_INVALID_RESOURCE_STATE;
+
+	/* set up host & dai and start pipeline */
+	if (cdma->primary.r.enable) {
+		buf->stream.channels = params.channels;
+		buf->stream.frame_fmt = params.frame_fmt;
+		buf->stream.valid_sample_fmt = params.frame_fmt;
+		buf->stream.rate = params.rate;
+
+		ret = host->drv->ops.params(host, &params);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to set host params %d", ret);
+			return IPC4_ERROR_INVALID_PARAM;
+		}
+
+		ret = dai->drv->ops.params(dai, &params);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to set dai params %d", ret);
+			return IPC4_ERROR_INVALID_PARAM;
+		}
+
+		ret = pipeline_prepare(ipc_pipe->pipeline, host);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to prepare for chain dma %d", ret);
+			ret = IPC4_INVALID_RESOURCE_STATE;
+		}
+	}
+
+	return ret;
+}
+
+int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma,
+			   bool *delay)
+{
+	struct ipc_comp_dev *ipc_pipe;
+	struct comp_dev *host;
+	uint32_t pipeline_id;
+	int ret = 0;
+
+	pipeline_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
+				   cdma->primary.r.link_dma_id);
+	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
+	if (!ipc_pipe)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	host = ipc_pipe->pipeline->source_comp;
+	if (host->direction == SOF_IPC_STREAM_CAPTURE)
+		host = ipc_pipe->pipeline->sink_comp;
+
+	/* pause or release chain dma */
+	if (!cdma->primary.r.enable) {
+		if (ipc_pipe->pipeline->status == COMP_STATE_ACTIVE) {
+			ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PAUSE);
+			if (ret < 0) {
+				tr_err(&ipc_tr, "failed to disable chain dma %d", ret);
+				return IPC4_BAD_STATE;
+			} else if (ret == PPL_STATUS_SCHEDULED) {
+				/* pipeline reset will be done by schedule thread */
+				*delay = true;
+				return IPC4_SUCCESS;
+			}
+		}
+
+		/* release chain dma */
+		if (!cdma->primary.r.allocate) {
+			ret = pipeline_reset(ipc_pipe->pipeline, host);
+			if (ret < 0) {
+				tr_err(&ipc_tr, "failed to reset chain dma %d", ret);
+				return IPC4_BAD_STATE;
+			}
+
+			ret = ipc_pipeline_free(ipc, pipeline_id);
+			if (ret < 0) {
+				tr_err(&ipc_tr, "failed to free chain dma %d", ret);
+				return IPC4_BAD_STATE;
+			}
+		}
+
+		return IPC4_SUCCESS;
+	}
+
+	if (!cdma->primary.r.allocate) {
+		tr_err(&ipc_tr, "can't enable chain dma");
+		return IPC4_INVALID_REQUEST;
+	}
+
+	switch (ipc_pipe->pipeline->status) {
+	case COMP_STATE_PAUSED:
+		ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PRE_RELEASE);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to resume chain dma %d", ret);
+			return IPC4_BAD_STATE;
+		}
+		break;
+	case COMP_STATE_READY:
+	case COMP_STATE_PREPARE:
+		ret = pipeline_trigger(ipc_pipe->pipeline, host, COMP_TRIGGER_PRE_START);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to start chain dma %d", ret);
+			return IPC4_BAD_STATE;
+		}
+	}
+
+	if (ret == PPL_STATUS_SCHEDULED)
+		*delay = true;
+
+	return IPC4_SUCCESS;
+}
 
 int ipc4_process_on_core(uint32_t core, bool blocking)
 {
