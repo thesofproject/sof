@@ -980,13 +980,19 @@ static int host_prepare(struct comp_dev *dev)
 	return host_zephyr_prepare(hd);
 }
 
+void host_zephyr_position(struct host_data *hd,
+			  struct sof_ipc_stream_posn *posn)
+{
+	/* TODO: improve accuracy by adding current DMA position */
+	posn->host_posn = hd->local_pos;
+}
+
 static int host_position(struct comp_dev *dev,
 			 struct sof_ipc_stream_posn *posn)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	/* TODO: improve accuracy by adding current DMA position */
-	posn->host_posn = hd->local_pos;
+	host_zephyr_position(hd, posn);
 
 	return 0;
 }
@@ -1085,11 +1091,10 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 	return 0;
 }
 
-static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+uint64_t host_zephyr_get_processed_data(struct host_data *hd, uint32_t stream_no,
+					bool input, bool source)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
-	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
 
 	/* Return value only if direction and stream number match.
 	 * The host supports only one stream.
@@ -1098,6 +1103,14 @@ static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no
 		ret = hd->total_data_processed;
 
 	return ret;
+}
+
+static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+
+	return host_zephyr_get_processed_data(hd, stream_no, input, source);
 }
 
 static const struct comp_driver comp_host = {
