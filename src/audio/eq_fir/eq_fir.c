@@ -313,7 +313,7 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		}
 
 #if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
-		if (fir[i].taps * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
+		if (eq->length * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
 			comp_err(dev, "Filter length %d exceeds limitation for build.",
 				 fir[i].taps);
 			return -EINVAL;
