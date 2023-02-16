@@ -15,6 +15,7 @@
 #define __ARCH_COMPILER_INFO_H__
 
 #include <xtensa/hal.h>
+#include <xtensa/config/core-isa.h>
 
 /* read used compilator name and version */
 /* CC_NAME must consist of 3 characters with null termination */
