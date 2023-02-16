@@ -618,7 +618,7 @@ module_single_sink_setup(struct comp_dev *dev,
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_copy_limits c;
 	struct list_item *blist;
-	uint32_t num_input_buffers = 0;
+	uint32_t num_input_buffers;
 	int i = 0;
 
 	list_for_item(blist, &dev->bsource_list) {
@@ -631,13 +631,14 @@ module_single_sink_setup(struct comp_dev *dev,
 		 * note that the size is in number of frames not the number of
 		 * bytes
 		 */
-		mod->input_buffers[num_input_buffers].size = c.frames;
-		mod->input_buffers[num_input_buffers].consumed = 0;
+		mod->input_buffers[i].size = c.frames;
+		mod->input_buffers[i].consumed = 0;
 
-		mod->input_buffers[num_input_buffers].data = &source_c[i]->stream;
-		num_input_buffers++;
+		mod->input_buffers[i].data = &source_c[i]->stream;
 		i++;
 	}
+
+	num_input_buffers = i;
 
 	mod->output_buffers[0].size = 0;
 	mod->output_buffers[0].data = &sinks_c[0]->stream;
@@ -654,7 +655,7 @@ module_single_source_setup(struct comp_dev *dev,
 	struct comp_copy_limits c;
 	struct list_item *blist;
 	uint32_t min_frames = UINT32_MAX;
-	uint32_t num_output_buffers = 0;
+	uint32_t num_output_buffers;
 	uint32_t source_frame_bytes = 0;
 	int i = 0;
 
@@ -664,11 +665,12 @@ module_single_source_setup(struct comp_dev *dev,
 		min_frames = MIN(min_frames, c.frames);
 		source_frame_bytes = c.source_frame_bytes;
 
-		mod->output_buffers[num_output_buffers].size = 0;
-		mod->output_buffers[num_output_buffers].data = &sinks_c[i]->stream;
-		num_output_buffers++;
+		mod->output_buffers[i].size = 0;
+		mod->output_buffers[i].data = &sinks_c[i]->stream;
 		i++;
 	}
+
+	num_output_buffers = i;
 
 	if (!mod->skip_src_buffer_invalidate)
 		buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
