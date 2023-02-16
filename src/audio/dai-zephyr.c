@@ -1102,9 +1102,8 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		if (prev_state == COMP_STATE_ACTIVE) {
-			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-		} else {
+		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		if (ret) {
 			comp_warn(dev, "dma was stopped earlier");
 			ret = 0;
 		}
