@@ -1297,6 +1297,27 @@ static void update_internal_comp(struct comp_dev *parent, struct comp_dev *child
 	child->direction = parent->direction;
 }
 
+static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
+				 const struct ipc4_audio_format *fmt)
+{
+	int i;
+
+	buf_c->stream.channels = fmt->channels_count;
+	buf_c->stream.rate = fmt->sampling_frequency;
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &buf_c->stream.frame_fmt,
+				    &buf_c->stream.valid_sample_fmt,
+				    fmt->s_type);
+
+	buf_c->buffer_fmt = fmt->interleaving_style;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
+
+	buf_c->hw_params_configured = true;
+}
+
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
@@ -1332,20 +1353,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		sink_c = buffer_acquire(sink);
 
 		j = IPC4_SINK_QUEUE_ID(sink_c->id);
-		sink_c->stream.channels = cd->out_fmt[j].channels_count;
-		sink_c->stream.rate = cd->out_fmt[j].sampling_frequency;
-		audio_stream_fmt_conversion(cd->out_fmt[j].depth,
-					    cd->out_fmt[j].valid_bit_depth,
-					    &sink_c->stream.frame_fmt,
-					    &sink_c->stream.valid_sample_fmt,
-					    cd->out_fmt[j].s_type);
 
-		sink_c->buffer_fmt = cd->out_fmt[j].interleaving_style;
-
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			sink_c->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
-
-		sink_c->hw_params_configured = true;
+		update_buffer_format(sink_c, &cd->out_fmt[j]);
 
 		buffer_release(sink_c);
 	}
@@ -1361,24 +1370,11 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		source_c = buffer_acquire(source);
 
 		if (!source_c->hw_params_configured) {
-			struct ipc4_audio_format in_fmt;
+			struct ipc4_audio_format *in_fmt;
 
-			in_fmt = cd->config.base.audio_fmt;
-			source_c->stream.channels = in_fmt.channels_count;
-			source_c->stream.rate = in_fmt.sampling_frequency;
-			audio_stream_fmt_conversion(in_fmt.depth,
-						    in_fmt.valid_bit_depth,
-						    &source_c->stream.frame_fmt,
-						    &source_c->stream.valid_sample_fmt,
-						    in_fmt.s_type);
-
-			source_c->buffer_fmt = in_fmt.interleaving_style;
-
-			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-				source_c->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
-
-			source_c->hw_params_configured = true;
-		}
+			in_fmt = &cd->config.base.audio_fmt;
+			update_buffer_format(source_c, in_fmt);
+	}
 
 		buffer_release(source_c);
 	}
