@@ -21,8 +21,9 @@
 #include <ipc/stream.h>
 #include <sof/lib/notifier.h>
 
+struct host_data;
 /** \brief Host copy function interface. */
-typedef int (*host_copy_func)(struct comp_dev *dev);
+typedef int (*host_copy_func)(struct host_data *hd, struct comp_dev *dev);
 
 /**
  * \brief Host buffer info.
@@ -108,6 +109,7 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		       uint32_t frames, bool is_scheduling_source);
 
 void host_dma_cb(void *arg, enum notify_id type, void *data);
+int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev);
 #else
 static inline int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 				  const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -140,6 +142,11 @@ static inline int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 }
 
 static inline void host_dma_cb(void *arg, enum notify_id type, void *data) {}
+
+static inline int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev)
+{
+	return 0;
+}
 
 #endif
 #endif /* __SOF_host_COPIER_H__ */
