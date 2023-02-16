@@ -1014,6 +1014,7 @@ static void dai_update_start_position(struct comp_dev *dev)
 static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	int prev_state = dev->state;
 	int ret;
 
 	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
@@ -1101,7 +1102,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		if (dev->state == COMP_STATE_ACTIVE) {
+		if (prev_state == COMP_STATE_ACTIVE) {
 			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 		} else {
 			comp_warn(dev, "dma was stopped earlier");
@@ -1111,7 +1112,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
-		if (dev->state == COMP_STATE_ACTIVE) {
+		if (prev_state == COMP_STATE_ACTIVE) {
 			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		} else {
 			comp_warn(dev, "dma was stopped earlier");
