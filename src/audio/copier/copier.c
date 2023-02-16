@@ -1193,8 +1193,9 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 	return 0;
 }
 
-static int do_endpoint_copy(struct copier_data *cd)
+static int do_endpoint_copy(struct comp_dev *dev)
 {
+	struct copier_data *cd = comp_get_drvdata(dev);
 	if (cd->multi_endpoint_buffer) {
 		int i;
 		int ret = 0;
@@ -1218,7 +1219,14 @@ static int do_endpoint_copy(struct copier_data *cd)
 
 		return ret;
 	} else {
-		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+		if (dev->ipc_config.type == SOF_COMP_HOST) {
+			if (dev->state != COMP_STATE_ACTIVE)
+				return 0;
+			else
+				return host_zephyr_copy(cd->hd, cd->endpoint[0]);
+		} else {
+			return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+		}
 	}
 }
 
@@ -1283,7 +1291,7 @@ static int copier_copy(struct comp_dev *dev)
 
 	if (cd->endpoint_num && !cd->bsource_buffer) {
 		/* gateway(s) as input */
-		ret = do_endpoint_copy(cd);
+		ret = do_endpoint_copy(dev);
 		if (ret < 0)
 			return ret;
 
@@ -1309,7 +1317,7 @@ static int copier_copy(struct comp_dev *dev)
 				return ret;
 			}
 
-			ret = do_endpoint_copy(cd);
+			ret = do_endpoint_copy(dev);
 			if (ret < 0) {
 				buffer_release(src_c);
 				return ret;
