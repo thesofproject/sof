@@ -30,6 +30,9 @@ struct comp_data_blob_handler {
 				  */
 	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
 	void (*free)(void *buf);	/**< alternate free(), maybe null */
+
+	/** validator for new data, maybe null */
+	int (*validator)(struct comp_dev *dev, void *new_data, uint32_t new_data_size);
 };
 
 static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
@@ -44,6 +47,15 @@ static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
 	blob_handler->data = NULL;
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = 0;
+}
+
+void comp_data_blob_set_validator(struct comp_data_blob_handler *blob_handler,
+				  int (*validator)(struct comp_dev *dev, void *new_data,
+						   uint32_t new_data_size))
+{
+	assert(blob_handler);
+
+	blob_handler->validator = validator;
 }
 
 void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
@@ -145,6 +157,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = size;
 	blob_handler->new_data_size = 0;
+	blob_handler->validator = NULL;
 
 	return 0;
 }
@@ -239,6 +252,17 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 	if (pos == MODULE_CFG_FRAGMENT_SINGLE || pos == MODULE_CFG_FRAGMENT_LAST) {
 		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+		if (blob_handler->validator) {
+			comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): validating new data...");
+			ret = blob_handler->validator(blob_handler->dev, blob_handler->data_new,
+						      blob_handler->new_data_size);
+			if (ret < 0) {
+				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): new data is invalid! discarding it...");
+				blob_handler->free(blob_handler->data_new);
+				blob_handler->data_new = NULL;
+				return ret;
+			}
+		}
 
 		/* If component state is READY we can omit old
 		 * configuration immediately. When in playback/capture
@@ -480,6 +504,18 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 
 	if (!cdata->elems_remaining) {
 		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+
+		if (blob_handler->validator) {
+			comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): validating new data blob");
+			ret = blob_handler->validator(blob_handler->dev, blob_handler->data_new,
+						      blob_handler->new_data_size);
+			if (ret < 0) {
+				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): new data blob invalid, discarding");
+				blob_handler->free(blob_handler->data_new);
+				blob_handler->data_new = NULL;
+				return ret;
+			}
+		}
 
 		/* If component state is READY we can omit old
 		 * configuration immediately. When in playback/capture

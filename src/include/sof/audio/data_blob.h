@@ -140,4 +140,16 @@ struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
  */
 void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler);
 
+/**
+ * Add a validator to check that the new data blob is valid for the given component.
+ *
+ * If the given validator is null (the default value), then any data blob will be considered valid.
+ *
+ * @param blob_handler Data blob handler
+ * @param validator Function used to validate the new data blob
+ */
+void comp_data_blob_set_validator(struct comp_data_blob_handler *blob_handler,
+				  int (*validator)(struct comp_dev *dev, void *new_data,
+						   uint32_t new_data_size));
+
 #endif /* __SOF_AUDIO_DATA_BLOB_H__ */
