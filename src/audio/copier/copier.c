@@ -942,7 +942,7 @@ static int copier_reset(struct comp_dev *dev)
 	for (i = 0; i < cd->endpoint_num; i++) {
 		if (dev->ipc_config.type == SOF_COMP_HOST) {
 			if (cd->hd->chan)
-				notifier_unregister(cd->endpoint[i],
+				notifier_unregister(dev,
 						    cd->hd->chan, NOTIFIER_ID_DMA_COPY);
 
 			host_zephyr_reset(cd->hd, cd->endpoint[i]->state);
@@ -1385,6 +1385,26 @@ static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 	buf_c->hw_params_configured = true;
 }
 
+/* This is called by DMA driver every time when DMA completes its current
+ * transfer between host and DSP.
+ */
+static void copier_dma_cb(void *arg, enum notify_id type, void *data)
+{
+	struct dma_cb_data *next = data;
+	struct comp_dev *dev = arg;
+	struct copier_data *cd = comp_get_drvdata(dev);
+	uint32_t bytes = next->elem.size;
+
+	comp_cl_dbg(&comp_copier, "copier_dma_cb() %p", &comp_copier);
+
+	/* update position */
+	host_update_position(cd->hd, dev, bytes);
+
+	/* callback for one shot copy */
+	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)
+		host_one_shot_cb(cd->hd, bytes);
+}
+
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
@@ -1473,7 +1493,6 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 					comp_err(dev, "host_params(): pcm params verification failed.");
 					return -EINVAL;
 				}
-
 				is_scheduling_source =
 					child_dev == child_dev->pipeline->sched_comp;
 				/* copier dev only used for log print */
@@ -1484,8 +1503,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 							 child_dev->frames,
 							 is_scheduling_source);
 				/* set up callback */
-				notifier_register(child_dev, cd->hd->chan,
-						  NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
+				notifier_register(dev, cd->hd->chan,
+						  NOTIFIER_ID_DMA_COPY, copier_dma_cb, 0);
 			} else {
 				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 								       params);
