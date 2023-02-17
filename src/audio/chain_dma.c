@@ -338,6 +338,7 @@ static int chain_task_pause(struct comp_dev *dev)
 	if (!ret)
 		ret = ret2;
 
+	schedule_task_cancel(&cd->chain_task);
 	schedule_task_free(&cd->chain_task);
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	k_spin_unlock(&drivers->lock, key);
