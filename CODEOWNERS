@@ -81,6 +81,8 @@ tools/tune/dcblock/*			@thesofproject/google
 tools/tune/drc/*			@thesofproject/google
 tools/oss-fuzz/*			@thesofproject/google
 
+zephyr/**				@kv2019i @lyakh @iuliana-prodan @dbaluta
+
 # CMake
 
 # Include only "top-level" CMakeLists.txt files; the other ones are just
