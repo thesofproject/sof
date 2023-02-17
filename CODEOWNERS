@@ -70,7 +70,8 @@ scripts/*				@marc-hb @aborisovich
 
 # tools(old 'soft' repo)
 tools/logger/*				@bkokoszx @akloniex
-tools/topology/*			@ranj063
+tools/topology/**			@ranj063
+tools/topology/topology2/**		@ranj063 @jsarha
 tools/testbench/*			@ranj063
 tools/test/audio/*			@singalsu
 tools/ctl/*				@singalsu
