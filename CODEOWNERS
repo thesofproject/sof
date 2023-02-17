@@ -83,6 +83,9 @@ tools/oss-fuzz/*			@thesofproject/google
 
 zephyr/**				@kv2019i @lyakh @iuliana-prodan @dbaluta
 
+# installer
+installer/**				@marc-hb
+
 # CMake
 
 # Include only "top-level" CMakeLists.txt files; the other ones are just
