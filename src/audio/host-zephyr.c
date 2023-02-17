@@ -246,9 +246,8 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev)
 }
 #endif
 
-static void host_update_position(struct comp_dev *dev, uint32_t bytes)
+void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *source;
 	struct comp_buffer __sparse_cache *sink;
 	int ret;
@@ -331,7 +330,7 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
  * This means we must check we do not overflow host period/buffer/page
  * boundaries on each transfer and split the DMA transfer if we do overflow.
  */
-static void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
+void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
 {
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct dma_sg_elem *source_elem;
@@ -375,7 +374,7 @@ void host_dma_cb(void *arg, enum notify_id type, void *data)
 	comp_cl_dbg(&comp_host, "host_dma_cb() %p", &comp_host);
 
 	/* update position */
-	host_update_position(dev, bytes);
+	host_update_position(hd, dev, bytes);
 
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
