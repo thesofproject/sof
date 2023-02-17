@@ -108,8 +108,11 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		       struct list_item *source_list, struct pipeline *pipeline,
 		       uint32_t frames, bool is_scheduling_source);
 
-void host_dma_cb(void *arg, enum notify_id type, void *data);
 int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev);
+
+void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes);
+
+void host_one_shot_cb(struct host_data *hd, uint32_t bytes);
 #else
 static inline int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 				  const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -141,12 +144,15 @@ static inline int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	return 0;
 }
 
-static inline void host_dma_cb(void *arg, enum notify_id type, void *data) {}
-
 static inline int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev)
 {
 	return 0;
 }
+
+static inline void host_update_position(struct host_data *hd,
+					struct comp_dev *dev, uint32_t bytes) {}
+
+static inline void host_one_shot_cb(struct host_data *hd, uint32_t bytes) {}
 
 #endif
 #endif /* __SOF_host_COPIER_H__ */
