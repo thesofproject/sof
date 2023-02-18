@@ -577,7 +577,14 @@ SOF_MODULE_INIT(selector, sys_comp_selector_init);
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
 	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
+	const struct ipc4_audio_format *out_fmt;
 	int i;
+
+	if (cd->sel_ipc4_cfg.init_payload_fmt == IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT)
+		out_fmt = &sel_cfg->pin_cfg.out_pin.audio_fmt;
+	else
+		out_fmt = &sel_cfg->output_format;
 
 	audio_stream_fmt_conversion(cfg->base_cfg.audio_fmt.depth,
 				    cfg->base_cfg.audio_fmt.valid_bit_depth,
@@ -585,14 +592,12 @@ static void build_config(struct comp_data *cd, struct module_config *cfg)
 				    cfg->base_cfg.audio_fmt.s_type);
 	cd->source_format = frame_fmt;
 
-	audio_stream_fmt_conversion(cd->output_format.depth,
-				    cd->output_format.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    cd->output_format.s_type);
+	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, out_fmt->s_type);
 	cd->sink_format = frame_fmt;
 
 	cd->config.in_channels_count = cfg->base_cfg.audio_fmt.channels_count;
-	cd->config.out_channels_count = cd->output_format.channels_count;
+	cd->config.out_channels_count = out_fmt->channels_count;
 
 	/* Build default coefficient array (unity Q10 on diagonal, i.e. pass-through mode) */
 	memset(&cd->coeffs_config, 0, sizeof(cd->coeffs_config));
@@ -604,20 +609,54 @@ static int selector_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
-	const struct ipc4_base_module_cfg *base_cfg = cfg->init_data;
+	const struct ipc4_base_module_extended_cfg *init_cfg_ext;
+	const struct sof_selector_avs_ipc4_config *init_cfg_out_fmt;
+	enum ipc4_selector_init_payload_fmt payload_fmt;
 	struct comp_data *cd;
+	size_t base_cfg_size;
+	size_t bs[2];
 	int ret;
 
 	comp_dbg(mod->dev, "selector_init()");
+
+	init_cfg_ext = cfg->init_data;
+	init_cfg_out_fmt = cfg->init_data;
+	base_cfg_size = sizeof(struct ipc4_base_module_cfg);
+	bs[0] = ipc4_calc_base_module_cfg_ext_size(SEL_NUM_IN_PIN_FMTS,
+						   SEL_NUM_OUT_PIN_FMTS);
+	bs[1] = sizeof(struct ipc4_audio_format);
+
+	if (cfg->size == base_cfg_size + bs[0]) {
+		payload_fmt = IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT;
+
+		if (init_cfg_ext->base_cfg_ext.nb_input_pins != SEL_NUM_IN_PIN_FMTS ||
+		    init_cfg_ext->base_cfg_ext.nb_output_pins != SEL_NUM_OUT_PIN_FMTS) {
+			comp_err(mod->dev, "selector_init(): Invalid pin configuration");
+			return -EINVAL;
+		}
+	} else if (cfg->size == base_cfg_size + bs[1]) {
+		payload_fmt = IPC4_SEL_INIT_PAYLOAD_BASE_WITH_OUT_FMT;
+	} else {
+		comp_err(mod->dev, "selector_init(): Invalid configuration size");
+		return -EINVAL;
+	}
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
+	cd->sel_ipc4_cfg.init_payload_fmt = payload_fmt;
 	md->private = cd;
 
-	ret = memcpy_s(&cd->output_format, sizeof(cd->output_format),
-		       base_cfg + 1, sizeof(struct ipc4_audio_format));
+	if (payload_fmt == IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT) {
+		size_t size = sizeof(struct sof_selector_ipc4_pin_config);
+
+		ret = memcpy_s(&cd->sel_ipc4_cfg.pin_cfg, size,
+			       init_cfg_ext->base_cfg_ext.pin_formats, size);
+	} else {
+		ret = memcpy_s(&cd->sel_ipc4_cfg.output_format, bs[1],
+			       &init_cfg_out_fmt->output_format, bs[1]);
+	}
 	assert(!ret);
 
 	build_config(cd, cfg);
@@ -631,10 +670,16 @@ static void set_selector_params(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer __sparse_cache *source;
-	struct ipc4_audio_format *out_fmt;
+	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
+	const struct ipc4_audio_format *out_fmt = NULL;
 	struct comp_buffer *src_buf;
 	struct list_item *sink_list;
 	int i;
+
+	if (cd->sel_ipc4_cfg.init_payload_fmt == IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT)
+		out_fmt = &sel_cfg->pin_cfg.out_pin.audio_fmt;
+	else
+		out_fmt = &sel_cfg->output_format;
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		params->channels = cd->config.in_channels_count;
@@ -644,7 +689,6 @@ static void set_selector_params(struct processing_module *mod,
 	params->rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
 	params->frame_fmt = cd->source_format;
 
-	out_fmt = &cd->output_format;
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
 
