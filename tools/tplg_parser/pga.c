@@ -94,19 +94,96 @@ err:
 	return ret;
 }
 
-/* ASRC - IPC4 */
+/* Peak Volume - IPC4 */
 static const struct sof_topology_token pga4_tokens[] = {
-	/* TODO */
+#if 0
+	// channel ID tuple ??
+	{SOF_TKN_VOLUME_RAMP_STEP_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, channel_id), 0},
+#endif
+	{SOF_TKN_GAIN_VAL,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, target_volume), 0},
+	{SOF_TKN_GAIN_RAMP_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, curve_type), 0},
+	{SOF_TKN_GAIN_RAMP_DURATION,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint64_t,
+		offsetof(struct ipc4_peak_volume_config, curve_duration), 0},
 };
 
 static const struct sof_topology_token_group pga_ipc4_tokens[] = {
 	{pga4_tokens, ARRAY_SIZE(pga4_tokens)},
 };
 
-static int pga_ipc4_build(struct tplg_context *ctx, void *pga)
+/* TODO: copied from ipc3 volume, needs scale/dB alignment ? */
+static int pga_ipc4_build(struct tplg_context *ctx, void *_pga)
 {
-	/* TODO */
+#if 1
 	return 0;
+#else
+	struct ipc4_peak_volume_module_cfg *volume = _pga;
+	struct snd_soc_tplg_private *priv_data = NULL;
+	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
+	struct snd_soc_tplg_mixer_control *mixer_ctl;
+	int32_t vol_min = 0;
+	int32_t vol_step = 0;
+	int32_t vol_maxs = 0;
+	float vol_min_db;
+	//float vol_max_db;
+	//int channels = 0;
+	int i, ret = 0;
+
+	/* TODO: configure volume */
+	//volume->base_cfg.audio_fmt.;
+	volume->base_cfg.cpc = 0;
+	volume->base_cfg.ibs = 0;
+	volume->base_cfg.is_pages = 0;
+	volume->base_cfg.obs = 0;
+#if 0
+	volume->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
+	volume->comp.id = ctx->comp_id;
+	volume->comp.hdr.size = sizeof(struct sof_ipc_comp_volume) + UUID_SIZE;
+	volume->comp.type = SOF_COMP_VOLUME;
+	volume->comp.pipeline_id = ctx->pipeline_id;
+	volume->comp.ext_data_length = UUID_SIZE;
+	volume->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+#endif
+	/* Get control into ctl and priv_data */
+	for (i = 0; i < ctx->widget->num_kcontrols; i++) {
+
+		ret = tplg_get_single_control(ctx, &ctl, &priv_data);
+		if (ret < 0) {
+			fprintf(stderr, "error: failed control load\n");
+			goto err;
+		}
+
+		/* call ctl creation callback if needed */
+		if (ctx->ctl_cb)
+			ctx->ctl_cb(ctl, volume, ctx->ctl_arg);
+
+		/* we only care about the volume ctl - ignore others atm */
+		if (ctl->ops.get != 256)
+			continue;
+
+		/* Get volume scale */
+		mixer_ctl = (struct snd_soc_tplg_mixer_control *)ctl;
+		vol_min = (int32_t)mixer_ctl->hdr.tlv.scale.min;
+		vol_step = mixer_ctl->hdr.tlv.scale.step;
+		vol_maxs = mixer_ctl->max;
+		//channels = mixer_ctl->num_channels;
+
+		vol_min_db = 0.01 * vol_min;
+		//vol_max_db = 0.01 * (vol_maxs * vol_step) + vol_min_db;
+		//volume->min_value = round(pow(10, vol_min_db / 20.0) * 65535);
+		//volume->max_value = round(pow(10, vol_max_db / 20.0) * 65536);
+		//volume->channels = channels;
+	}
+
+err:
+	return ret;
+#endif
 }
 
 static const struct sof_topology_module_desc pga_ipc[] = {

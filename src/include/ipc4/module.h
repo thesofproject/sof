@@ -69,7 +69,7 @@ struct ipc4_module_init_ext_data {
 	struct ipc4_module_init_ext_init extended_init;
 
 	/**< Data (actual size set to param_block_size) */
-	uint32_t param_data[];
+	uint32_t param_data[0];
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_module_init_gna_config {
