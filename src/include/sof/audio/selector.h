@@ -42,6 +42,10 @@ struct comp_dev;
 
 /** \brief Maximum supported channel count on output. */
 #define SEL_SINK_CHANNELS_MAX   8
+
+#define SEL_NUM_IN_PIN_FMTS	1
+#define SEL_NUM_OUT_PIN_FMTS	1
+
 #endif
 
 #if CONFIG_IPC_MAJOR_4
@@ -62,6 +66,39 @@ struct ipc4_selector_coeffs_config {
 	/** Mixing coefficients in Q10 fixed point format */
 	int16_t coeffs[SEL_SINK_CHANNELS_MAX][SEL_SOURCE_CHANNELS_MAX];
 };
+
+enum ipc4_selector_init_payload_fmt {
+	IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT,
+	IPC4_SEL_INIT_PAYLOAD_BASE_WITH_OUT_FMT,
+};
+
+struct sof_selector_ipc4_pin_config {
+	struct ipc4_input_pin_format in_pin;
+	struct ipc4_output_pin_format out_pin;
+};
+
+/*
+ * Base module config is not added in this structure because it is handled
+ * by module adapter.
+ */
+struct sof_selector_ipc4_config {
+	/*
+	 * Windows will send the base_config + output_format payload, but Linux will
+	 * send the base_config + base_config_ext payload, use a union to make the
+	 * selector module be compatible for both OSes.
+	 */
+	union {
+		struct sof_selector_ipc4_pin_config pin_cfg;
+		struct ipc4_audio_format output_format;
+	};
+	enum ipc4_selector_init_payload_fmt init_payload_fmt;
+};
+
+struct sof_selector_avs_ipc4_config {
+	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_audio_format output_format;
+};
+
 #else
 typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			 const struct audio_stream __sparse_cache *source, uint32_t frames);
@@ -70,7 +107,7 @@ typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream __sparse_cach
 /** \brief Selector component private data. */
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
-	struct ipc4_audio_format output_format;
+	struct sof_selector_ipc4_config sel_ipc4_cfg;
 	struct ipc4_selector_coeffs_config coeffs_config;
 #endif
 
