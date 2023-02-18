@@ -61,6 +61,17 @@ int tplg_token_get_uint32_t(void *elem, void *object, uint32_t offset,
 	return 0;
 }
 
+int tplg_token_get_uint64_t(void *elem, void *object, uint32_t offset,
+			    uint32_t size)
+{
+	struct snd_soc_tplg_vendor_value_elem *velem = elem;
+	char *vobject = object;
+	uint64_t *val = (uint64_t *)(vobject + offset);
+
+	*val = velem->value;
+	return 0;
+}
+
 int tplg_token_get_uuid(void *elem, void *object, uint32_t offset,
 			uint32_t size)
 {
