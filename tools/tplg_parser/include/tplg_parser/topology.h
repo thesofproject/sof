@@ -127,6 +127,9 @@ enum sof_ipc_frame tplg_find_format(const char *name);
 int tplg_token_get_uint32_t(void *elem, void *object, uint32_t offset,
 			    uint32_t size);
 
+int tplg_token_get_uint64_t(void *elem, void *object, uint32_t offset,
+		       uint32_t size);
+
 int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
 			       uint32_t size);
 
