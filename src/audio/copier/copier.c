@@ -1383,30 +1383,28 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		buffer_release(source_c);
 	}
 
-	if (cd->endpoint_num) {
-		for (i = 0; i < cd->endpoint_num; i++) {
-			update_internal_comp(dev, cd->endpoint[i]);
+	for (i = 0; i < cd->endpoint_num; i++) {
+		update_internal_comp(dev, cd->endpoint[i]);
 
-			/* For ALH multi-gateway case, params->channels is a total multiplexed
-			 * number of channels. Demultiplexed number of channels for each individual
-			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
-			 */
-			if (cd->multi_endpoint_buffer) {
-				struct comp_buffer __sparse_cache *buf_c;
-				struct sof_ipc_stream_params demuxed_params = *params;
+		/* For ALH multi-gateway case, params->channels is a total multiplexed
+		 * number of channels. Demultiplexed number of channels for each individual
+		 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
+		 */
+		if (cd->multi_endpoint_buffer) {
+			struct comp_buffer __sparse_cache *buf_c;
+			struct sof_ipc_stream_params demuxed_params = *params;
 
-				buf_c = buffer_acquire(cd->endpoint_buffer[i]);
-				demuxed_params.channels = buf_c->stream.channels;
-				buffer_release(buf_c);
+			buf_c = buffer_acquire(cd->endpoint_buffer[i]);
+			demuxed_params.channels = buf_c->stream.channels;
+			buffer_release(buf_c);
 
-				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
-								       &demuxed_params);
-			} else {
-				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
-			}
-			if (ret < 0)
-				break;
+			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
+							       &demuxed_params);
+		} else {
+			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], params);
 		}
+		if (ret < 0)
+			break;
 	}
 
 	return ret;
