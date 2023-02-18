@@ -15,6 +15,8 @@
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
+#include <ipc4/copier.h>
+#include <ipc4/peak_volume.h>
 #include <kernel/tokens.h>
 
 /* temporary - current MAXLEN is not define in UAPI header - fix pending */
