@@ -553,6 +553,8 @@ static int mixout_process(struct processing_module *mod,
 		sink_bytes = dev->frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 		if (!audio_stream_set_zero(mod->output_buffers[0].data, sink_bytes))
 			mod->output_buffers[0].size = sink_bytes;
+		else
+			mod->output_buffers[0].size = 0;
 	}
 
 	module_source_info_release(mod_source_info);
