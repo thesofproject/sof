@@ -56,6 +56,7 @@ struct comp_data {
 			    struct input_stream_buffer *bsource,
 			    struct output_stream_buffer *bsink,
 			    int frames);
+	int nch;
 };
 
 /*
@@ -246,6 +247,19 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 	int j;
 	int s;
 
+	/* If this function is called with fir==NULL, then it's supposed to validate the
+	 * new configuration without actually altering it.
+	 */
+	if (!fir) {
+		/* Called from validate(), we shall find nch and assign it accordingly,
+		 * as the parameter is not valid
+		 */
+		struct processing_module *mod = comp_get_drvdata(dev);
+		struct comp_data *cd = module_get_private_data(mod);
+
+		nch = cd->nch;
+	}
+
 	comp_info(dev, "eq_fir_init_coef(): %u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
@@ -291,8 +305,10 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			comp_info(dev, "eq_fir_init_coef(), ch %d is set to bypass", i);
-			fir_reset(&fir[i]);
+			if (fir) {
+				comp_info(dev, "eq_fir_init_coef(), ch %d is set to bypass", i);
+				fir_reset(&fir[i]);
+			}
 			continue;
 		}
 
@@ -315,13 +331,16 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 #if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
 		if (eq->length * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
 			comp_err(dev, "Filter length %d exceeds limitation for build.",
-				 fir[i].taps);
+				 eq->length);
 			return -EINVAL;
 		}
 #endif
 
-		fir_init_coef(&fir[i], eq);
-		comp_info(dev, "eq_fir_init_coef(), ch %d is set to response = %d", i, resp);
+		if (fir) {
+			fir_init_coef(&fir[i], eq);
+			comp_info(dev, "eq_fir_init_coef(), ch %d is set to response = %d",
+				  i, resp);
+		}
 	}
 
 	return size_sum;
@@ -347,6 +366,9 @@ static int eq_fir_setup(struct comp_dev *dev, struct comp_data *cd, int nch)
 	/* Free existing FIR channels data if it was allocated */
 	eq_fir_free_delaylines(cd);
 
+	/* Update number of channels */
+	cd->nch = nch;
+
 	/* Set coefficients for each channel EQ from coefficient blob */
 	delay_size = eq_fir_init_coef(dev, cd->config, cd->fir, nch);
 	if (delay_size < 0)
@@ -371,6 +393,11 @@ static int eq_fir_setup(struct comp_dev *dev, struct comp_data *cd, int nch)
 	/* Assign delay line to each channel EQ */
 	eq_fir_init_delay(cd->fir, cd->fir_delay, nch);
 	return 0;
+}
+
+static int eq_fir_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	return eq_fir_init_coef(dev, new_data, NULL, -1);
 }
 
 /*
@@ -405,6 +432,7 @@ static int eq_fir_init(struct processing_module *mod)
 	cd->eq_fir_func = NULL;
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
+	cd->nch = -1;
 
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -584,6 +612,9 @@ static int eq_fir_prepare(struct processing_module *mod)
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
+	/* Ensure concurrent changes don't mess with the playback */
+	comp_data_blob_set_validator(cd->model_handler, eq_fir_validator);
+
 	return ret;
 }
 
@@ -593,6 +624,8 @@ static int eq_fir_reset(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "eq_fir_reset()");
+
+	comp_data_blob_set_validator(cd->model_handler, NULL);
 
 	eq_fir_free_delaylines(cd);
 
