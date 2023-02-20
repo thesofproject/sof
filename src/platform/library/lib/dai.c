@@ -21,3 +21,18 @@ int dai_init(struct sof *sof)
 
 	return 0;
 }
+
+void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+{
+}
+
+struct ipc4_ipcgtw_cmd;
+
+int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
+		       void *reply_payload, uint32_t *reply_payload_size);
+
+int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
+		       void *reply_payload, uint32_t *reply_payload_size)
+{
+	return 0;
+}
