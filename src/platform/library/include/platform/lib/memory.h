@@ -182,6 +182,8 @@ static inline uint32_t arch_get_stack_size(void)
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)
 
+#define IMR_BOOT_LDR_MANIFEST_BASE	NULL
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

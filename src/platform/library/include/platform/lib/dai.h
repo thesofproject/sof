@@ -10,6 +10,12 @@
 #ifndef __PLATFORM_LIB_DAI_H__
 #define __PLATFORM_LIB_DAI_H__
 
+/** \brief Number of HD/A Link Outputs */
+#define DAI_NUM_HDA_OUT		6
+
+/** \brief Number of HD/A Link Inputs */
+#define DAI_NUM_HDA_IN		7
+
 #endif /* __PLATFORM_LIB_DAI_H__ */
 
 #else
