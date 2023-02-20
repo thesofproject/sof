@@ -512,7 +512,9 @@ static int mixout_process(struct processing_module *mod,
 			continue;
 
 		pending_frames = md->pending_frames[source_index];
-		frames_to_produce = MIN(frames_to_produce, pending_frames);
+
+		if (source->state == COMP_STATE_ACTIVE || pending_frames)
+			frames_to_produce = MIN(frames_to_produce, pending_frames);
 	}
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
