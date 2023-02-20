@@ -1516,10 +1516,9 @@ err:
 int verify_image(struct image *image)
 {
 	FILE *in_file;
-	int ret, i;
-	long size;
+	int ret;
 	void *buffer;
-	size_t read;
+	size_t size, read, i;
 
 	/* is verify supported for target ? */
 	if (!image->adsp->verify_firmware) {
@@ -1536,25 +1535,8 @@ int verify_image(struct image *image)
 	}
 
 	/* get file size */
-	ret = fseek(in_file, 0, SEEK_END);
+	ret = get_file_size(in_file, image->verify_file, &size);
 	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek eof %s for reading %d\n",
-			image->verify_file, errno);
-		ret = -errno;
-		goto out;
-	}
-	size = ftell(in_file);
-	if (size < 0) {
-		fprintf(stderr, "error: unable to get file size for %s %d\n",
-			image->verify_file, errno);
-		ret = -errno;
-		goto out;
-	}
-	ret = fseek(in_file, 0, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek %s for reading %d\n",
-			image->verify_file, errno);
-		ret = -errno;
 		goto out;
 	}
 
@@ -1608,27 +1590,8 @@ int resign_image(struct image *image)
 	}
 
 	/* get file size */
-	ret = fseek(in_file, 0, SEEK_END);
+	ret = get_file_size(in_file, image->in_file, &size);
 	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek eof %s for reading %d\n",
-			image->verify_file, errno);
-		ret = -errno;
-		goto out;
-	}
-
-	size = ftell(in_file);
-	if (size < 0) {
-		fprintf(stderr, "error: unable to get file size for %s %d\n",
-			image->verify_file, errno);
-		ret = -errno;
-		goto out;
-	}
-
-	ret = fseek(in_file, 0, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek %s for reading %d\n",
-			image->verify_file, errno);
-		ret = -errno;
 		goto out;
 	}
 
