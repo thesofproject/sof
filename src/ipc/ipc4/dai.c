@@ -170,9 +170,7 @@ void dai_dma_release(struct comp_dev *dev)
 		 * TODO: refine power management when stream is paused
 		 */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-		/* if reset is after pause dma has already been stopped */
-		if (dev->state != COMP_STATE_PAUSED)
-			dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
