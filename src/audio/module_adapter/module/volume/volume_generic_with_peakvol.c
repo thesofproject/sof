@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2022 Intel Corporation. All rights reserved.
 //
-// Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
-//         Keyon Jie <yang.jie@linux.intel.com>
-//         Tomasz Lauda <tomasz.lauda@linux.intel.com>
+// Author: Andrula Song <andrula.song@intel.com>
 
 /**
  * \file
- * \brief Volume generic processing implementation without peak volume detection
- * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
- *          Keyon Jie <yang.jie@linux.intel.com>\n
- *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \brief Volume generic processing implementation with peak volume detection
+ * \authors Andrula Song <andrula.song@intel.com>
  */
 
 #include <sof/audio/buffer.h>
@@ -29,7 +25,7 @@ LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
 #ifdef CONFIG_GENERIC
 
-#if (!CONFIG_COMP_PEAK_VOL)
+#if CONFIG_COMP_PEAK_VOL
 
 #if CONFIG_FORMAT_S24LE
 /**
@@ -67,7 +63,9 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+	int32_t tmp;
 
+	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = source->r_ptr;
 	y = sink->w_ptr;
 
@@ -82,14 +80,19 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 			x0 = x + j;
 			y0 = y + j;
 			vol = cd->volume[j];
+			tmp = 0;
 			for (i = 0; i < n; i += nch) {
 				y0[i] = vol_mult_s24_to_s24(x0[i], vol);
+				tmp = MAX(abs(x0[i]), tmp);
 			}
+			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -116,7 +119,9 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+	int32_t tmp;
 
+	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = source->r_ptr;
 	y = sink->w_ptr;
 	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
@@ -133,15 +138,21 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 			x0 = x + j;
 			y0 = y + j;
 			vol = cd->volume[j];
+			tmp = 0;
 			for (i = 0; i < n; i += nch) {
 				y0[i] = q_multsr_sat_32x32(x0[i], vol,
 							   Q_SHIFT_BITS_64(31, VOL_QXY_Y, 31));
+				tmp = MAX(abs(x0[i]), tmp);
 			}
+			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -168,9 +179,12 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+	int32_t tmp;
 
+	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = source->r_ptr;
 	y = sink->w_ptr;
+
 	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
 	bsink->size += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {
@@ -182,17 +196,23 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			x0 = x + j;
 			y0 = y + j;
 			vol = cd->volume[j];
+			tmp = 0;
 			for (i = 0; i < n; i += nch) {
 				y0[i] = q_multsr_sat_32x32_16(x0[i], vol,
 							      Q_SHIFT_BITS_32(15, VOL_QXY_Y, 15));
+				tmp = MAX(abs(x0[i]), tmp);
 			}
+			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+
+	/* update peak vol */
+	peak_vol_update(cd);
 }
-#endif /* CONFIG_FORMAT_S16LE */
+#endif
 
 const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
@@ -207,6 +227,5 @@ const struct comp_func_map volume_func_map[] = {
 };
 
 const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
-
 #endif
 #endif

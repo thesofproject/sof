@@ -6,7 +6,7 @@
 
 /**
  * \file
- * \brief Volume HiFi3 processing implementation
+ * \brief Volume HiFi3 processing implementation without peak volume detection
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
@@ -21,7 +21,7 @@ LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
 
 #include <sof/audio/volume.h>
 
-#if defined(__XCC__) && XCHAL_HAVE_HIFI3
+#if defined(__XCC__) && XCHAL_HAVE_HIFI3 && (!CONFIG_COMP_PEAK_VOL)
 
 #include <xtensa/tie/xt_hifi3.h>
 
@@ -45,19 +45,12 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 	cd->copy_gain = false;
 }
 
-static inline void peak_vol_calc(struct vol_data *cd, ae_f32x2 out_sample, size_t channel)
-{
-#if CONFIG_COMP_PEAK_VOL
-	cd->peak_regs.peak_meter[channel] = AE_MAX32(out_sample, cd->peak_regs.peak_meter[channel]);
-#endif
-}
-
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
  */
 static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
@@ -90,7 +83,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 
 	buf = (ae_f32x2 *)cd->vol;
 	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
-	vol = (ae_f32x2 *)buf;
+	vol = buf;
 	/* Set buf who stores the volume gain data as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
@@ -99,9 +92,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
-		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
+		m = audio_stream_samples_without_wrap_s24(source, in);
 		n = MIN(m, samples);
-		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, out));
+		m = audio_stream_samples_without_wrap_s24(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -127,19 +120,12 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 
 			/* Store the output sample */
 			AE_SA32X2_IP(out_sample, outu, out);
-
-			/* calc peak vol
-			 * TODO: fix channel value
-			 */
-			peak_vol_calc(cd, out_sample, 0);
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -148,7 +134,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
  * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
  * \param[in,out] mod Pointer to struct processing_module
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
  */
 static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
@@ -183,7 +169,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 
 	buf = (ae_f32x2 *)cd->vol;
 	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
-	vol = (ae_f32x2 *)buf;
+	vol = buf;
 	/* Set buf who stores the volume gain data as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
@@ -192,9 +178,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
-		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, in));
+		m = audio_stream_samples_without_wrap_s32(source, in);
 		n = MIN(m, samples);
-		m = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, out));
+		m = audio_stream_samples_without_wrap_s32(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -223,19 +209,12 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 #error "Need CONFIG_COMP_VOLUME_Qx_y"
 #endif
 			AE_SA32X2_IP(out_sample, outu, out);
-
-			/* calc peak vol
-			 * TODO: fix channel value
-			 */
-			peak_vol_calc(cd, out_sample, 0);
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -244,7 +223,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
  * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
@@ -287,9 +266,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	AE_SETCEND0(buf_end);
 
 	while (samples) {
-		m = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, in));
+		m = audio_stream_samples_without_wrap_s16(source, in);
 		n = MIN(m, samples);
-		m = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, out));
+		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		for (i = 0; i < n; i += 4) {
@@ -323,11 +302,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
 			// AE_SA16X4_IC(out_sample, outu, out);
 			AE_SA16X4_IP(out_sample, outu, out);
-
-			/* calc peak vol
-			 * TODO: fix channel value
-			 */
-			peak_vol_calc(cd, out_sample0, 0);
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
@@ -336,11 +310,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S16LE */
-
 const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16 },

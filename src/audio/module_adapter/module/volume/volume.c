@@ -550,8 +550,12 @@ static int volume_init(struct processing_module *mod)
 	uint32_t channels_count;
 	uint8_t channel_cfg;
 	uint8_t channel;
-	uint32_t instance_id;
+	uint32_t instance_id = IPC4_INST_ID(dev_comp_id(dev));
 
+	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
+		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
+		return -EINVAL;
+	}
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS || !channels_count) {
 		comp_err(dev, "volume_init(): Invalid channels count %u", channels_count);
@@ -573,6 +577,17 @@ static int volume_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
+	/* malloc memory to store temp peak volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	cd->peak_vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
+	if (!cd->peak_vol) {
+		rfree(cd->vol);
+		rfree(cd);
+		comp_err(dev, "volume_init(): Failed to allocate %d for peak_vol", vol_size);
+		return -ENOMEM;
+	}
+
 	md->private = cd;
 
 	for (channel = 0; channel < channels_count ; channel++) {
@@ -591,12 +606,6 @@ static int volume_init(struct processing_module *mod)
 	}
 
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
-
-	instance_id = IPC4_INST_ID(dev_comp_id(dev));
-	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
-		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
-		return -EINVAL;
-	}
 
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
@@ -650,6 +659,7 @@ static int volume_free(struct processing_module *mod)
 	/* clear mailbox */
 	memset_s(&regs, sizeof(regs), 0, sizeof(regs));
 	mailbox_sw_regs_write(cd->mailbox_offset, &regs, sizeof(regs));
+	rfree(cd->peak_vol);
 #endif
 
 	comp_dbg(mod->dev, "volume_free()");
