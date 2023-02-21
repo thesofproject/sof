@@ -42,6 +42,67 @@ enum sof_ipc4_notification_type {
 	SOF_IPC4_MANAGEMENT_SERVICE		= 16,
 };
 
+/**
+ * \brief Resource Event Notification provides unified structure for events that may be raised by
+ * identifiable entity from inside the FW.
+ */
+enum sof_ipc4_resource_event_type {
+	/* MCPS budget for the module exceeded */
+	SOF_IPC4_BUDGET_VIOLATION		= 0,
+	/* Underrun detected by the Mixer */
+	SOF_IPC4_MIXER_UNDERRUN_DETECTED	= 1,
+	/* Stream data segment completed by the gateway */
+	SOF_IPC4_STREAM_DATA_SEGMENT		= 2,
+	/* Error caught during data processing */
+	SOF_IPC4_PROCESS_DATA_ERROR		= 3,
+	/* Stack overflow in a module instance */
+	SOF_IPC4_STACK_OVERFLOW			= 4,
+	/* KPB changed buffering mode */
+	SOF_IPC4_BUFFERING_MODE_CHANGED		= 5,
+	/* Underrun detected by gateway. */
+	SOF_IPC4_GATEWAY_UNDERRUN_DETECTED	= 6,
+	/* Overrun detected by gateway */
+	SOF_IPC4_GATEWAY_OVERRUN_DETECTED	= 7,
+	/* DP task missing the deadline */
+	SOF_IPC4_EDF_DOMAIN_UNSTABLE		= 8,
+	/* Watchdog notification */
+	SOF_IPC4_WATCHDOG_EVENT			= 9,
+	/* IPC gateway reached high threshold */
+	SOF_IPC4_GATEWAY_HIGH_THRES		= 10,
+	/* IPC gateway reached low threshold */
+	SOF_IPC4_GATEWAY_LOW_THRES		= 11,
+	/* Bit Count Error detected on I2S port */
+	SOF_IPC4_I2S_BCE_DETECTED		= 12,
+	/* Clock detected/loss on I2S port */
+	SOF_IPC4_I2S_CLK_STATE_CHANGED		= 13,
+	/* I2S Sink started/stopped dropping data in non-blk mode */
+	SOF_IPC4_I2S_SINK_MODE_CHANGED		= 14,
+	/* I2S Source started/stopped generating 0's in non-blk mode */
+	SOF_IPC4_I2S_SOURCE_MODE_CHANGED	= 15,
+	/* Frequency drift exceeded limit in SRE */
+	SOF_IPC4_SRE_DRIFT_TOO_HIGH		= 16,
+	/* The notification should be sent only once after exceeding threshold or aging timer. */
+	SOF_IPC4_TELEMETRY_DATA_STATUS		= 17,
+	/* SNDW debug notification e.g. external VAD detected */
+	SOF_IPC4_SNDW_DEBUG_INFO		= 18,
+	/* Invalid type */
+	SOF_IPC4_INVALID_RESORUCE_EVENT_TYPE	= 19,
+};
+
+/* Resource Type - source of the event */
+enum sof_ipc4_resource_type {
+	/* Module instance */
+	SOF_IPC4_MODULE_INSTANCE		= 0,
+	/* Pipeline */
+	SOF_IPC4_PIPELINE			= 1,
+	/* Gateway */
+	SOF_IPC4_GATEWAY			= 2,
+	/* EDF Task*/
+	SOF_IPC4_EDF_TASK			= 3,
+	/* Invalid type */
+	SOF_IPC4_INVALID_RESOURCE_TYPE		= 4,
+};
+
 #define SOF_IPC4_GLB_NOTIFY_DIR_MASK		BIT(29)
 #define SOF_IPC4_REPLY_STATUS_MASK		0xFFFFFF
 #define SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT		16
@@ -168,3 +229,28 @@ static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_
 	notif->primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	notif->primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
 }
+
+/**
+ * \brief Input data payload is reserved field in parent technical spec which can be easily
+ * extendable if needed by specific resource event types in the future. For backward compatibility
+ * the size of this structure is 6 dw.
+ */
+union ipc4_resource_event_data {
+	/* Raw data */
+	uint32_t dws[6];
+};
+
+struct ipc4_resource_event_data_notification {
+	/* Type of originator (see sof_ipc4_resource_type) */
+	uint32_t resource_type;
+	/* ID of resource firing event */
+	uint32_t resource_id;
+	/* Type of fired event (see sof_ipc4_resource_event_type enum) */
+	uint32_t event_type;
+	/* Explicit alignment as ipc4_resource_event_data contains 64bit fields and needs
+	 * alignment
+	 */
+	uint32_t reserved0;
+	/* Detailed event data */
+	union ipc4_resource_event_data event_data;
+} __packed __aligned(8);
