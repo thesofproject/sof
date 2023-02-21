@@ -10,7 +10,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>

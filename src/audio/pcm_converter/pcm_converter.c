@@ -13,7 +13,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/pcm_converter.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 
 int pcm_convert_as_linear(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
 			  struct audio_stream __sparse_cache *sink, uint32_t ooffset,

@@ -16,7 +16,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/compiler_attributes.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/math/numbers.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>

@@ -5,7 +5,7 @@
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              Bala Kishore <balakishore.pati@amd.com>
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <xtensa/core-macros.h>
 #include <platform/chip_offset_byte.h>
 #include <platform/chip_registers.h>

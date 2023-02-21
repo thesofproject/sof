@@ -9,7 +9,7 @@
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_fir.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/drivers/dmic.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/timestamp.h>

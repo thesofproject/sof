@@ -19,7 +19,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/list.h>
 #include <rtos/alloc.h>

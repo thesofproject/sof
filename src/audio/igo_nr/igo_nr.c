@@ -10,7 +10,7 @@
 #include <user/igo_nr.h>
 #include <user/trace.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/memory.h>

@@ -5,7 +5,7 @@
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/drivers/gpio.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>

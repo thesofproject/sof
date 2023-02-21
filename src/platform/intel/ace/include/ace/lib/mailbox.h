@@ -11,7 +11,7 @@
 #ifndef __ACE_LIB_MAILBOX_H__
 #define __ACE_LIB_MAILBOX_H__
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/lib/memory.h>
 #include <rtos/string.h>
 #include <stddef.h>
