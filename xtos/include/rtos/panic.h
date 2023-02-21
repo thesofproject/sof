@@ -9,14 +9,6 @@
 #ifndef __XTOS_RTOS_PANIC_H__
 #define __XTOS_RTOS_PANIC_H__
 
-/* TODO: for now this is required by arch/debug/panic.h
- * Maybe remove the #error statement from all arch files
- * as they can be used by some rtos/ files?
- *
- * another example: zephyr/include/rtos/cache.h
- */
-#define __SOF_DEBUG_PANIC_H__
-
 #include <ipc/trace.h>
 #include <stdint.h>
 #include <arch/debug/panic.h>

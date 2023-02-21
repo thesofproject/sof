@@ -5,7 +5,7 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifdef __SOF_DEBUG_PANIC_H__
+#ifdef __XTOS_RTOS_PANIC_H__
 
 #ifndef __ARCH_DEBUG_PANIC_H__
 #define __ARCH_DEBUG_PANIC_H__
@@ -63,6 +63,6 @@ static inline void arch_dump_regs(void *dump_buf, uintptr_t stack_ptr,
 
 #else
 
-#error "This file shouldn't be included from outside of sof/debug/panic.h"
+#error "This file shouldn't be included from outside of XTOS's rtos/panic.h"
 
-#endif /* __SOF_DEBUG_PANIC_H__ */
+#endif /* __XTOS_RTOS_PANIC_H__ */
