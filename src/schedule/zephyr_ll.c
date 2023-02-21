@@ -162,19 +162,20 @@ static void zephyr_ll_run(void *data)
 {
 	struct zephyr_ll *sch = data;
 	struct task *task;
-	struct list_item *list;
+	struct list_item *list, *tmp, task_head = LIST_INIT(task_head);
 	uint32_t flags;
 
 	zephyr_ll_lock(sch, &flags);
 
 	/*
-	 * We have to traverse the list manually, because we drop the lock while
-	 * executing tasks, at that time tasks can be removed from or added to
-	 * the list.
+	 * We drop the lock while executing tasks, at that time tasks can be
+	 * removed from or added to the list, including the task that was
+	 * executed. Use a temporary list to make sure that the main list is
+	 * always consistent and contains the tasks, that we haven't run in this
+	 * cycle yet.
 	 */
-	list = sch->tasks.next;
 
-	while (list != &sch->tasks) {
+	for (list = sch->tasks.next; !list_is_empty(&sch->tasks); list = sch->tasks.next) {
 		enum task_state state;
 		struct zephyr_ll_pdata *pdata;
 
@@ -189,6 +190,10 @@ static void zephyr_ll_run(void *data)
 
 		pdata->run = true;
 		task->state = SOF_TASK_STATE_RUNNING;
+
+		/* Move the task to a temporary list */
+		list_item_del(list);
+		list_item_append(list, &task_head);
 
 		zephyr_ll_unlock(sch, &flags);
 
@@ -206,12 +211,6 @@ static void zephyr_ll_run(void *data)
 		}
 
 		zephyr_ll_lock(sch, &flags);
-
-		/*
-		 * The .next pointer could've been changed while the lock wasn't
-		 * held
-		 */
-		list = list->next;
 
 		if (pdata->freeing) {
 			/*
@@ -236,6 +235,12 @@ static void zephyr_ll_run(void *data)
 				break;
 			}
 		}
+	}
+
+	/* Move tasks back */
+	list_for_item_safe(list, tmp, &task_head) {
+		list_item_del(list);
+		list_item_append(list, &sch->tasks);
 	}
 
 	zephyr_ll_unlock(sch, &flags);
