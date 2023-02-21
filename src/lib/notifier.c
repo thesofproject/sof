@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/drivers/idc.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>

@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <ipc/trace.h>
 
 struct _reent;

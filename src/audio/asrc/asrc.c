@@ -8,7 +8,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>

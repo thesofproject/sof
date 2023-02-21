@@ -10,7 +10,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <sof/lib/agent.h>

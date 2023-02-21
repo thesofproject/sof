@@ -9,7 +9,7 @@
  * initialisation functions.
  */
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/init.h>
 #include <rtos/interrupt.h>
 #include <sof/init.h>

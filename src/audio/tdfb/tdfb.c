@@ -15,7 +15,7 @@
 #include <user/tdfb.h>
 #include <user/trace.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>

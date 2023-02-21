@@ -6,7 +6,7 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>

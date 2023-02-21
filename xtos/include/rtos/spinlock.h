@@ -66,7 +66,7 @@ typedef uint32_t k_spinlock_key_t;
 
 #if CONFIG_DEBUG_LOCKS
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <user/trace.h>

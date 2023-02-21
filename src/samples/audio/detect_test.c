@@ -12,7 +12,7 @@
 #include <sof/audio/kpb.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>

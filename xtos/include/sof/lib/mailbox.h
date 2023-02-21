@@ -12,7 +12,7 @@
 #include <sof/common.h>
 #include <kernel/mailbox.h>
 #include <platform/lib/mailbox.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/cache.h>
 #include <sof/lib/memory.h>
 #include <rtos/string.h>

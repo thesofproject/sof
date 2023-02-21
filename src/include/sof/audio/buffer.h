@@ -12,7 +12,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/math/numbers.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/uuid.h>

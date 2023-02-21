@@ -6,7 +6,7 @@
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 //         Karol Trzcinski <karolx.trzcinski@linux.intel.com>
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <rtos/timer.h>

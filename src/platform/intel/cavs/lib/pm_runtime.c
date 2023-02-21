@@ -14,7 +14,7 @@
 
 #include <cavs/lib/pm_memory.h>
 #include <cavs/version.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>

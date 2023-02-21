@@ -9,7 +9,7 @@
 #define __SOF_SCHEDULE_TASK_H__
 
 #include <arch/schedule/task.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/list.h>
 #include <stdbool.h>
 #include <stdint.h>

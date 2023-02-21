@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>

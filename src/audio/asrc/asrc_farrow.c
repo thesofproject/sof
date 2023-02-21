@@ -5,7 +5,7 @@
 /* @brief    Implementation of the sample rate converter. */
 
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <rtos/string.h>

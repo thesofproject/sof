@@ -27,7 +27,7 @@
 #if !defined(__ASSEMBLER__) && defined(__XTENSA__)
 
 #include <ipc/trace.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #define VERIFY_ALIGN
 
 #endif

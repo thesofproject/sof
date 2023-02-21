@@ -15,7 +15,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/src/src.h>
 #include <sof/audio/src/src_config.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>

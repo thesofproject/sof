@@ -12,7 +12,7 @@
 
 #include "xtos-internal.h"
 #include <sof/common.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>

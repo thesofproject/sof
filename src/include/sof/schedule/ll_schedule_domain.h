@@ -9,7 +9,7 @@
 #define __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__
 
 #include <rtos/atomic.h>
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <rtos/clk.h>
