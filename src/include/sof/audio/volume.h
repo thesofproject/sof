@@ -237,7 +237,7 @@ static inline void peak_vol_update(struct vol_data *cd)
 #if CONFIG_COMP_LEGACY_INTERFACE
 void sys_comp_volume_init(void);
 #else
-void sys_comp_module_volume_interface_init(void);
+void SYS_COMP_MODULE_INIT(volume_interface)(void);
 #endif
 #endif
 

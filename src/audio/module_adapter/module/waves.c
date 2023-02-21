@@ -891,4 +891,4 @@ static struct module_interface waves_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
-SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
+SOF_MODULE_INIT(waves, SYS_COMP_MODULE_INIT(waves_interface));

@@ -974,4 +974,4 @@ static struct module_interface eq_iir_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
-SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
+SOF_MODULE_INIT(eq_iir, SYS_COMP_MODULE_INIT(eq_iir_interface));

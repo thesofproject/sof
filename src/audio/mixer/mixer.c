@@ -259,4 +259,4 @@ static struct module_interface mixer_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixer_interface, mixer_uuid, mixer_tr);
-SOF_MODULE_INIT(mixer, sys_comp_module_mixer_interface_init);
+SOF_MODULE_INIT(mixer, SYS_COMP_MODULE_INIT(mixer_interface));

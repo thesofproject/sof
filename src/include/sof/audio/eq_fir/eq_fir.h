@@ -53,7 +53,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 *fir, struct input_stream_buffer *bsou
 #endif /* CONFIG_FORMAT_S32LE */
 
 #ifdef UNIT_TEST
-void sys_comp_module_eq_fir_interface_init(void);
+void SYS_COMP_MODULE_INIT(eq_fir_interface)(void);
 #endif
 
 #endif /* __SOF_AUDIO_EQ_FIR_EQ_FIR_H__ */

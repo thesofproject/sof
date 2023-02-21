@@ -1556,7 +1556,7 @@ static struct module_interface volume_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
-SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
+SOF_MODULE_INIT(volume, SYS_COMP_MODULE_INIT(volume_interface));
 
 #if CONFIG_COMP_GAIN
 static struct module_interface gain_interface = {
@@ -1570,6 +1570,6 @@ static struct module_interface gain_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
-SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
+SOF_MODULE_INIT(gain, SYS_COMP_MODULE_INIT(gain_interface));
 #endif
 #endif

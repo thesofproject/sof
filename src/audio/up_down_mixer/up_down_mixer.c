@@ -464,4 +464,4 @@ static struct module_interface up_down_mixer_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(up_down_mixer_interface, up_down_mixer_comp_uuid, up_down_mixer_comp_tr);
-SOF_MODULE_INIT(up_down_mixer, sys_comp_module_up_down_mixer_interface_init);
+SOF_MODULE_INIT(up_down_mixer, SYS_COMP_MODULE_INIT(up_down_mixer_interface));

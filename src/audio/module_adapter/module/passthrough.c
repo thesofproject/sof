@@ -123,4 +123,4 @@ static struct module_interface passthrough_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);
-SOF_MODULE_INIT(passthrough, sys_comp_module_passthrough_interface_init);
+SOF_MODULE_INIT(passthrough, SYS_COMP_MODULE_INIT(passthrough_interface));

@@ -33,6 +33,9 @@
 				(value)); \
 	} while (0)
 
+#define SYS_COMP_MODULE_INIT(adapter) \
+	sys_comp_module_##adapter##_init
+
 #define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
 static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *drv, \
 					 const struct comp_ipc_config *config, \
@@ -66,13 +69,13 @@ static SHARED_DATA struct comp_driver_info comp_module_##adapter##_info = { \
 	.drv = &comp_##adapter##_module, \
 }; \
 \
-UT_STATIC void sys_comp_module_##adapter##_init(void) \
+UT_STATIC void SYS_COMP_MODULE_INIT(adapter)(void) \
 { \
 	comp_register(platform_shared_get(&comp_module_##adapter##_info, \
 					  sizeof(comp_module_##adapter##_info))); \
 } \
 \
-DECLARE_MODULE(sys_comp_module_##adapter##_init)
+DECLARE_MODULE(SYS_COMP_MODULE_INIT(adapter))
 
 /**
  * \enum module_state

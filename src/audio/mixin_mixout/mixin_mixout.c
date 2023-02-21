@@ -918,7 +918,7 @@ static struct module_interface mixin_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
-SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
+SOF_MODULE_INIT(mixin, SYS_COMP_MODULE_INIT(mixin_interface));
 
 static struct module_interface mixout_interface = {
 	.init  = mixout_init,
@@ -929,4 +929,4 @@ static struct module_interface mixout_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
-SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
+SOF_MODULE_INIT(mixout, SYS_COMP_MODULE_INIT(mixout_interface));

@@ -614,4 +614,4 @@ static struct module_interface eq_fir_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
-SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
+SOF_MODULE_INIT(eq_fir, SYS_COMP_MODULE_INIT(eq_fir_interface));

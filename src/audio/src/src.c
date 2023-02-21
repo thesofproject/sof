@@ -1050,7 +1050,7 @@ static struct module_interface src_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
-SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
+SOF_MODULE_INIT(src, SYS_COMP_MODULE_INIT(src_interface));
 
 #elif CONFIG_IPC_MAJOR_3
 static struct comp_dev *src_new(const struct comp_driver *drv,

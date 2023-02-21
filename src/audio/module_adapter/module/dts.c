@@ -463,4 +463,4 @@ static struct module_interface dts_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
-SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
+SOF_MODULE_INIT(dts, SYS_COMP_MODULE_INIT(dts_interface));

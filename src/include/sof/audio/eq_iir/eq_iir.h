@@ -33,7 +33,7 @@ struct eq_iir_func_map {
 };
 
 #ifdef UNIT_TEST
-void sys_comp_module_eq_iir_interface_init(void);
+void SYS_COMP_MODULE_INIT(eq_iir_interface)(void);
 #endif
 
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */

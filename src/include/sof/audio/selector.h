@@ -100,7 +100,7 @@ extern const struct comp_func_map func_map[];
 sel_func sel_get_processing_function(struct processing_module *mod);
 
 #ifdef UNIT_TEST
-void sys_comp_module_selector_interface_init(void);
+void SYS_COMP_MODULE_INIT(selector_interface)(void);
 #endif
 #else
 /**

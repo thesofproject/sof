@@ -957,5 +957,5 @@ static struct module_interface selector_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(selector_interface, selector_uuid, selector_tr);
-SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
+SOF_MODULE_INIT(selector, SYS_COMP_MODULE_INIT(selector_interface));
 #endif

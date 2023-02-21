@@ -750,4 +750,4 @@ static struct module_interface cadence_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);
-SOF_MODULE_INIT(cadence, sys_comp_module_cadence_interface_init);
+SOF_MODULE_INIT(cadence, SYS_COMP_MODULE_INIT(cadence_interface));

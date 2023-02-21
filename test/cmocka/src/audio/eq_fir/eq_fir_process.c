@@ -62,7 +62,7 @@ struct test_data {
 static int setup_group(void **state)
 {
 	sys_comp_init(sof_get());
-	sys_comp_module_eq_fir_interface_init();
+	SYS_COMP_MODULE_INIT(eq_fir_interface)();
 	return 0;
 }
 

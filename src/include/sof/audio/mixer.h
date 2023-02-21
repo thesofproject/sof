@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 #ifdef UNIT_TEST
-void sys_comp_module_mixer_interface_init(void);
+void SYS_COMP_MODULE_INIT(mixer_interface)(void);
 #endif
 
 #define MIXER_GENERIC
