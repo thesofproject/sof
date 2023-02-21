@@ -699,7 +699,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */
 #define DECLARE_MODULE(init) __attribute__((constructor)) \
-	static void _module_init(void) { init(); }
+	static void _module_##init(void) { init(); }
 #else
 /** \brief Usage at the end of an independent module file:
  *	DECLARE_MODULE(sys_*_init);
