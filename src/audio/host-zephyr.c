@@ -710,9 +710,7 @@ static int host_verify_params(struct comp_dev *dev,
 }
 
 int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params, struct list_item *sink_list,
-		       struct list_item *source_list, struct pipeline *pipeline,
-		       uint32_t frames, bool is_scheduling_source)
+		       struct sof_ipc_stream_params *params)
 {
 	struct dma_sg_config *config = &hd->config;
 	struct dma_sg_elem *sg_elem;
@@ -726,6 +724,7 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t addr_align;
 	uint32_t align;
 	int i, channel, err;
+	bool is_scheduling_source = dev == dev->pipeline->sched_comp;
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -759,17 +758,16 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	}
 
 	if (params->direction == SOF_IPC_STREAM_PLAYBACK)
-		hd->local_buffer = list_first_item(sink_list,
+		hd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
 						   source_list);
 	else
-		hd->local_buffer = list_first_item(source_list,
+		hd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
 						   sink_list);
 	host_buf_c = buffer_acquire(hd->local_buffer);
 
-	period_bytes = frames *
-		audio_stream_frame_bytes(&host_buf_c->stream);
+	period_bytes = dev->frames * get_frame_bytes(params->frame_fmt, params->channels);
 
 	if (!period_bytes) {
 		comp_err(dev, "host_params(): invalid period_bytes");
@@ -823,6 +821,17 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 
 		dma_buf_c = buffer_acquire(hd->dma_buffer);
 		buffer_set_params(dma_buf_c, params, BUFFER_UPDATE_FORCE);
+
+		/* set processing function */
+		if (params->direction == SOF_IPC_STREAM_CAPTURE)
+			hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
+								  dma_buf_c->stream.frame_fmt);
+		else
+			hd->process = pcm_get_conversion_function(dma_buf_c->stream.frame_fmt,
+								  host_buf_c->stream.frame_fmt);
+
+		config->src_width = audio_stream_sample_bytes(&dma_buf_c->stream);
+		config->dest_width = config->src_width;
 		buffer_release(dma_buf_c);
 	}
 
@@ -833,12 +842,10 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		goto out;
 
 	/* set up DMA configuration - copy in sample bytes. */
-	config->src_width = audio_stream_sample_bytes(&host_buf_c->stream);
-	config->dest_width = audio_stream_sample_bytes(&host_buf_c->stream);
 	config->cyclic = 0;
-	config->irq_disabled = pipeline_is_timer_driven(pipeline);
+	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->is_scheduling_source = is_scheduling_source;
-	config->period = pipeline->period;
+	config->period = dev->pipeline->period;
 
 	host_elements_reset(hd, params->direction);
 
@@ -923,10 +930,6 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
 
-	/* set processing function */
-	hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
-						  host_buf_c->stream.frame_fmt);
-
 out:
 	buffer_release(host_buf_c);
 	return err;
@@ -947,8 +950,7 @@ static int host_params(struct comp_dev *dev,
 		return err;
 	}
 
-	err = host_zephyr_params(hd, dev, params, &dev->bsink_list, &dev->bsource_list,
-				 dev->pipeline, dev->frames, dev == dev->pipeline->sched_comp);
+	err = host_zephyr_params(hd, dev, params);
 	if (err >= 0)
 		/* set up callback */
 		notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
