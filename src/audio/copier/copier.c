@@ -1244,7 +1244,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		return ret;
 	} else {
 		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-			return host_zephyr_copy(cd->hd, cd->endpoint[0]);
+			return host_zephyr_copy(cd->hd, dev);
 
 		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
 	}
@@ -1306,6 +1306,9 @@ static int copier_copy(struct comp_dev *dev)
 	int ret = 0;
 
 	comp_dbg(dev, "copier_copy()");
+
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
+		return do_endpoint_copy(dev);
 
 	processed_data.source_bytes = 0;
 
@@ -1413,7 +1416,9 @@ static void copier_dma_cb(void *arg, enum notify_id type, void *data)
 	struct dma_cb_data *next = data;
 	struct comp_dev *dev = arg;
 	struct copier_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *sink;
 	uint32_t bytes = next->elem.size;
+	int ret, frames;
 
 	comp_dbg(dev, "copier_dma_cb() %p", dev);
 
@@ -1423,6 +1428,24 @@ static void copier_dma_cb(void *arg, enum notify_id type, void *data)
 	/* callback for one shot copy */
 	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_one_shot_cb(cd->hd, bytes);
+
+	/* apply attenuation since copier copy missed this with host device remove */
+	if (cd->attenuation) {
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			sink = buffer_acquire(cd->hd->local_buffer);
+		else
+			sink = buffer_acquire(cd->hd->dma_buffer);
+
+		frames = bytes / get_sample_bytes(sink->stream.frame_fmt);
+		frames = frames / sink->stream.channels;
+
+		ret = apply_attenuation(dev, cd, sink, frames);
+		if (ret < 0)
+			comp_dbg(dev, "copier_dma_cb() apply attenuation failed! %d", ret);
+
+		buffer_stream_writeback(sink, bytes);
+		buffer_release(sink);
+	}
 }
 
 /* configure the DMA params */
@@ -1432,10 +1455,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
-	struct comp_dev *child_dev;
 	int ret = 0;
 	int i;
-	bool is_scheduling_source;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -1468,22 +1489,17 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		buffer_release(sink_c);
 	}
 
-	/* update the source format
-	 * used only for rare cases where two pipelines are connected by a shared
-	 * buffer and 2 copiers, this will set source format only for shared buffers
-	 * for a short time when the second pipeline already started
-	 * and the first one is not ready yet along with sink buffers params
+	/*
+	 * force update the source buffer format to cover cases where the source module
+	 * fails to set the sink buffer params
 	 */
 	if (!list_is_empty(&dev->bsource_list)) {
+		struct ipc4_audio_format *in_fmt;
 		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
 
-		if (!source_c->hw_params_configured) {
-			struct ipc4_audio_format *in_fmt;
-
-			in_fmt = &cd->config.base.audio_fmt;
-			update_buffer_format(source_c, in_fmt);
-	}
+		in_fmt = &cd->config.base.audio_fmt;
+		update_buffer_format(source_c, in_fmt);
 
 		buffer_release(source_c);
 	}
@@ -1507,26 +1523,21 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 							       &demuxed_params);
 		} else {
 			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-				child_dev = cd->endpoint[i];
-				ret = comp_verify_params(child_dev, 0, params);
-				if (ret < 0) {
-					comp_err(dev, "copier_params(): pcm params verification failed.");
-					return -EINVAL;
+				component_set_nearest_period_frames(dev, params->rate);
+				if (params->direction == SOF_IPC_STREAM_CAPTURE) {
+					params->buffer.size = cd->config.base.obs;
+					params->sample_container_bytes = cd->out_fmt->depth / 8;
+					params->sample_valid_bytes =
+						cd->out_fmt->valid_bit_depth / 8;
 				}
 
-				is_scheduling_source =
-					child_dev == child_dev->pipeline->sched_comp;
-				/* copier dev only used for log print */
-				ret = host_zephyr_params(cd->hd, dev, params,
-							 &child_dev->bsink_list,
-							 &child_dev->bsource_list,
-							 dev->pipeline,
-							 child_dev->frames,
-							 is_scheduling_source);
+				ret = host_zephyr_params(cd->hd, dev, params);
 				if (ret >= 0)
 					/* set up callback */
 					notifier_register(dev, cd->hd->chan,
 							  NOTIFIER_ID_DMA_COPY, copier_dma_cb, 0);
+
+				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 			} else {
 				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 								       params);
