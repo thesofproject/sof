@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 enum test_type {
 	SUCCEED = 0,

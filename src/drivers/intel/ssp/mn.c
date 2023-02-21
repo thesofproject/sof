@@ -10,7 +10,7 @@
 #include <sof/lib/shim.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 

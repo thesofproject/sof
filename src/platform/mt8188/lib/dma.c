@@ -12,7 +12,7 @@
 #include <sof/drivers/afe-memif.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 #include <mt8188-afe-reg.h>
 #include <mt8188-afe-common.h>

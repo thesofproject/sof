@@ -17,7 +17,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>

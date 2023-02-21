@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <stdio.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/audio/component_ext.h>
 #include <sof/math/numbers.h>
 #include <sof/audio/format.h>

@@ -13,7 +13,7 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 #include <stddef.h>

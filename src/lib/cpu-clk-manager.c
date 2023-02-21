@@ -5,11 +5,10 @@
 // Author: Krzysztof Frydryk <frydryk.krzysztof@intel.com>
 
 #include <rtos/spinlock.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <stdint.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <rtos/clk.h>
-#include <sof/sof.h>
 #include <sof/math/numbers.h>
 #include <errno.h>
 #ifdef __ZEPHYR__

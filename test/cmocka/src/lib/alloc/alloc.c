@@ -11,7 +11,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/alloc.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/memory.h>

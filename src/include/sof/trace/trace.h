@@ -20,7 +20,7 @@
 #include <platform/trace/trace.h>
 #endif
 #include <sof/common.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/preproc.h>
 
 #include <stdbool.h>

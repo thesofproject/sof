@@ -10,7 +10,7 @@
 #define __SOF_LIB_CLK_H__
 
 #include <platform/lib/clk.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <stdbool.h>
 #include <stdint.h>

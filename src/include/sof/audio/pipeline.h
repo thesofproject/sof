@@ -13,7 +13,7 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/pipeline-trace.h>
 #include <ipc/topology.h>

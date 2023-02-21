@@ -28,7 +28,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/dma.h>
 #include <sof/list.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>

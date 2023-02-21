@@ -19,7 +19,7 @@
 #endif
 
 #include <sof/trace/preproc.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 

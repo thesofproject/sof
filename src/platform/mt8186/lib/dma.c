@@ -11,7 +11,7 @@
 #include <rtos/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 #include <mt8186-afe-regs.h>

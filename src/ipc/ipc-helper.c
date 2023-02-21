@@ -22,7 +22,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>

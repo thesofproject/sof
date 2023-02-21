@@ -7,7 +7,7 @@
 
 #include <test_simple_macro.h>
 #include <sof/trace/preproc.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/alloc.h>
 
 /* CMOCKA SETUP */

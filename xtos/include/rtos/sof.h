@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __SOF_SOF_H__
-#define __SOF_SOF_H__
+#ifndef __XTOS_RTOS_SOF_H__
+#define __XTOS_RTOS_SOF_H__
 
 #include <arch/sof.h>
 #include <sof/common.h>
@@ -58,13 +58,11 @@ struct sof {
 	/* platform clock information */
 	struct clock_info *clocks;
 
-#ifndef __ZEPHYR__
 	/* default platform timer */
 	struct timer *platform_timer;
 
 	/* cpu (arch) timers - 1 per core */
 	struct timer *cpu_timers;
-#endif
 
 	/* timer domain for driving timer LL scheduler */
 	struct ll_schedule_domain *platform_timer_domain;
@@ -117,4 +115,4 @@ struct sof {
 
 struct sof *sof_get(void);
 
-#endif /* __SOF_SOF_H__ */
+#endif /* __XTOS_RTOS_SOF_H__ */

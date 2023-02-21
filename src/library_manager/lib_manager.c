@@ -15,7 +15,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/ipc/topology.h>
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>

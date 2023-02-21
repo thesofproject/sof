@@ -10,7 +10,7 @@
 
 #include <sof/lib/dma.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/trace.h>
 #include <stdint.h>

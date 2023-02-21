@@ -16,7 +16,7 @@
 #define __SOF_LIB_PM_RUNTIME_H__
 
 #include <platform/lib/pm_runtime.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>

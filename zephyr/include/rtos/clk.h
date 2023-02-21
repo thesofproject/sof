@@ -13,7 +13,7 @@
 #include <platform/lib/clk.h>
 
 /* TODO: most of the below is tied to the CLK drivers that need wrapped */
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <stdbool.h>
 #include <stdint.h>

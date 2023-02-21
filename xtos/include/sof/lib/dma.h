@@ -22,7 +22,7 @@
 #include <rtos/alloc.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -5,7 +5,7 @@
 // Author: Jyri Sarha <jyri.sarha@intel.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
 #include <ipc/control.h>

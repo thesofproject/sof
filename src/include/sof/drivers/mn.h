@@ -9,7 +9,7 @@
 #define __SOF_DRIVERS_MN_H__
 
 #include <platform/drivers/mn.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 #include <stdbool.h>
 #include <stdint.h>

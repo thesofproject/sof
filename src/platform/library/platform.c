@@ -4,7 +4,7 @@
 //
 // Author: Curtis Malainey <cujomalainey@chromium.org>
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/ipc/driver.h>
 #include <rtos/timer.h>
 #include <sof/lib/agent.h>

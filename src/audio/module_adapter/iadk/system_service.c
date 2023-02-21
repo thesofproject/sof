@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sof/common.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/string.h>
 #include <ipc4/notification.h>
 #include <sof/ipc/msg.h>

@@ -15,7 +15,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <ipc/topology.h>
 #include <stdint.h>
 

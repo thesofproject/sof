@@ -8,7 +8,7 @@
 #ifndef __SOF_AUDIO_PIPELINE_TRACE_H__
 #define __SOF_AUDIO_PIPELINE_TRACE_H__
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <errno.h>

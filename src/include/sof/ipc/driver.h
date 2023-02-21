@@ -10,7 +10,7 @@
 #define __SOF_IPC_DRIVER_H__
 
 #include <sof/platform.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/ipc/common.h>
 #include <sof/schedule/task.h>
 #include <stdbool.h>

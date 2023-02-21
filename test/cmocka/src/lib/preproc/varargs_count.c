@@ -13,7 +13,7 @@
 #include <cmocka.h>
 
 #include <sof/trace/preproc.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 #define TEST_PREFIX test_lib_preproc
 

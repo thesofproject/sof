@@ -19,7 +19,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
