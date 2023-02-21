@@ -133,6 +133,8 @@ struct vol_data {
 
 	/**< these values will be stored to mailbox for host (IPC4) */
 	struct ipc4_peak_volume_regs peak_regs;
+	/**< store temp peak volume 4 times for scale_vol function */
+	int32_t *peak_vol;
 #endif
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */

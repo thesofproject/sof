@@ -15,6 +15,8 @@ add_library(audio_for_volume STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_hifi3.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_generic_with_peakvol.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/volume/volume_hifi3_with_peakvol.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
