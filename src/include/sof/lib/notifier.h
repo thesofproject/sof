@@ -11,7 +11,7 @@
 #include <rtos/bit.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <stdint.h>
 
 /* notifier target core masks */

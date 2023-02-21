@@ -14,7 +14,7 @@
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <rtos/spinlock.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>

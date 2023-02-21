@@ -9,7 +9,7 @@
 #define __SOF_AUDIO_DATA_BLOB_H__
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 struct comp_dev;
 

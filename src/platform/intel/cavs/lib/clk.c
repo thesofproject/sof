@@ -10,7 +10,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 #include <cavs/version.h>

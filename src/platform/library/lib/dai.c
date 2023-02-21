@@ -4,7 +4,7 @@
 //
 // Author: Curtis Malainey <cujomalainey@chromium.org>
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/lib/dai.h>
 
 const struct dai_type_info dti[] = {

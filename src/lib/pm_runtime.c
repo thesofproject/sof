@@ -15,7 +15,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/topology.h>
 #include <stdint.h>

@@ -12,7 +12,7 @@
 #include <cmocka.h>
 
 #include <sof/trace/preproc.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 static void test_lib_preproc_get_arg_1(void **state)
 {

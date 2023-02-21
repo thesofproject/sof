@@ -14,7 +14,7 @@
 #include <sof/lib/cpu.h>
 #include <rtos/clk.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>

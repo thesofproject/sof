@@ -9,7 +9,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 const struct freq_table platform_cpu_freq[] = {

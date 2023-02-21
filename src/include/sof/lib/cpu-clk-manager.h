@@ -15,7 +15,7 @@
 #define __SOF_LIB_CPU_CLK_MANAGER_H__
 
 #include <rtos/spinlock.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <stdint.h>
 
 /**

@@ -16,7 +16,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 
 /* 19d4e680-4479-48cc-af86-9f63d8b0098b */

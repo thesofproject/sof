@@ -8,7 +8,7 @@
 #include <sof/common.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <ipc/topology.h>
 
 /* Heap blocks for system runtime */

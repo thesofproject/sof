@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <zephyr/kernel.h>
 #include <sof/lib/cpu.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/platform.h>
 
 struct comp_dev;

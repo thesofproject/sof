@@ -5,7 +5,7 @@
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/audio/component.h>
 #include <rtos/alloc.h>
 

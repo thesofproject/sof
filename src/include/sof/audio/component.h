@@ -29,7 +29,7 @@
 #include <sof/lib/perf_cnt.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/schedule.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>

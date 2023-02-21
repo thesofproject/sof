@@ -21,7 +21,7 @@
 #include <rtos/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <sof/drivers/idc.h>
 #include <sof/schedule/schedule.h>

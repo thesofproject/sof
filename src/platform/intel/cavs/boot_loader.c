@@ -12,7 +12,7 @@
 #include <sof/lib/shim.h>
 #include <rtos/wait.h>
 #include <sof/platform.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <rimage/sof/user/manifest.h>

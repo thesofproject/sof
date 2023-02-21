@@ -23,7 +23,7 @@
 #include <adsp_memory.h> /* for IMR_BOOT_LDR_MANIFEST_BASE */
 #endif
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/user/manifest.h>

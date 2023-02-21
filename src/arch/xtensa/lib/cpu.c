@@ -22,7 +22,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <rtos/wait.h>
 #include <sof/schedule/schedule.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <user/trace.h>

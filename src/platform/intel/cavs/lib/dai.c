@@ -14,7 +14,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>

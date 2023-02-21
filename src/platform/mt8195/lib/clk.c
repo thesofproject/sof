@@ -12,7 +12,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 DECLARE_SOF_UUID("clkdrv", clkdrv_uuid, 0x23b12fd5, 0xc2a9, 0x41a8,

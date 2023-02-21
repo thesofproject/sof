@@ -15,7 +15,7 @@
 #include <rtos/panic.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
 #include <ipc/trace.h>

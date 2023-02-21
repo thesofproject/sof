@@ -10,7 +10,7 @@
 #include <sof/common.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/memory.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 /* Heap blocks for system runtime */
 static SHARED_DATA struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];

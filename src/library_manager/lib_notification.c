@@ -12,7 +12,7 @@
  * based on base FW message management. Therefore this code expose notification
  * calls aligned with cAVS/ACE System service API requirements.
  */
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/list.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/memory.h>

@@ -24,7 +24,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>

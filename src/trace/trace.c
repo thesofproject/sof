@@ -17,7 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/preproc.h>

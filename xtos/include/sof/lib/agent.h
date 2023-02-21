@@ -12,7 +12,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/perf_cnt.h>
 #include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 
 #include <stdbool.h>
 #include <stdint.h>

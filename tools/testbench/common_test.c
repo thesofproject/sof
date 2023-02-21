@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <rtos/string.h>
 #include <math.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <sof/schedule/task.h>
 #include <rtos/alloc.h>
 #include <sof/lib/notifier.h>

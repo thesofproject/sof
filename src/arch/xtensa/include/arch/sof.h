@@ -6,7 +6,7 @@
  *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifdef __SOF_SOF_H__
+#ifdef __XTOS_RTOS_SOF_H__
 
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
@@ -20,6 +20,6 @@ void boot_primary_core(void);
 
 #else
 
-#error "This file shouldn't be included from outside of sof/sof.h"
+#error "This file shouldn't be included from outside of XTOS's rtos/sof.h"
 
-#endif /* __SOF_SOF_H__ */
+#endif /* __XTOS_RTOS_SOF_H__ */

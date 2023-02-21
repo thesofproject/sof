@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <stdlib.h>
 
 /* main firmware context */
