@@ -228,7 +228,7 @@ static void kpb_set_params(struct comp_dev *dev,
 	params->sample_valid_bytes =
 		kpb->ipc4_cfg.base_cfg.audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = kpb->ipc4_cfg.base_cfg.audio_fmt.interleaving_style;
-	params->buffer.size = kpb->ipc4_cfg.base_cfg.obs * KPB_MAX_BUFF_TIME * params->channels;
+	params->buffer.size = kpb->ipc4_cfg.base_cfg.ibs * KPB_MAX_BUFF_TIME * params->channels;
 
 	params->host_period_bytes = params->channels *
 				    params->sample_container_bytes *
@@ -808,6 +808,33 @@ static int kpb_prepare(struct comp_dev *dev)
 			break;
 		default:
 			break;
+		}
+	}
+#else
+	/* Update number of sel_sink channels.
+	 * If OBS is not equal to IBS it means that KPB will work in micselector mode.
+	 */
+	if (kpb->ipc4_cfg.base_cfg.ibs != kpb->ipc4_cfg.base_cfg.obs) {
+		struct list_item *sink_list;
+		const uint32_t byte_align = 1;
+		const uint32_t frame_align_req = 1;
+		uint32_t sink_id;
+
+		list_for_item(sink_list, &dev->bsink_list) {
+			struct comp_buffer *sink =
+				container_of(sink_list, struct comp_buffer, source_list);
+			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
+
+			audio_stream_init_alignment_constants(byte_align, frame_align_req,
+							      &sink_c->stream);
+			sink_id = sink_c->id;
+
+			if (sink_id == 0)
+				sink_c->stream.channels = kpb->num_of_sel_mic;
+			else
+				sink_c->stream.channels = kpb->config.channels;
+
+			buffer_release(sink_c);
 		}
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
