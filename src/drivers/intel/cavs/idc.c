@@ -12,7 +12,7 @@
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <errno.h>

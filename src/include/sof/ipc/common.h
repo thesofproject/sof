@@ -12,7 +12,7 @@
 #include <rtos/bit.h>
 #include <rtos/alloc.h>
 #include <sof/list.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/sof.h>
 #include <user/trace.h>

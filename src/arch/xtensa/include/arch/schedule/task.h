@@ -13,7 +13,7 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifdef __SOF_SCHEDULE_TASK_H__
+#ifdef __XTOS_RTOS_TASK_H__
 
 #ifndef __ARCH_SCHEDULE_TASK_H__
 #define __ARCH_SCHEDULE_TASK_H__
@@ -71,6 +71,6 @@ void task_context_cache(void *task_ctx, int cmd);
 
 #else
 
-#error "This file shouldn't be included from outside of sof/schedule/task.h"
+#error "This file shouldn't be included from outside of XTOS's rtos/task.h"
 
-#endif /* __SOF_SCHEDULE_TASK_H__ */
+#endif /* __XTOS_RTOS_TASK_H__ */

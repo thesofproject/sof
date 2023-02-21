@@ -7,7 +7,7 @@
 #define _GNU_SOURCE
 
 #include <sof/audio/component.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>

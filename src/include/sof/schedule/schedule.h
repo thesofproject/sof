@@ -11,7 +11,7 @@
 
 #include <sof/common.h>
 #include <sof/list.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <errno.h>

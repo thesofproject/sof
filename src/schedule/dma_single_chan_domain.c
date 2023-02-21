@@ -17,7 +17,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <limits.h>

@@ -10,7 +10,7 @@
 #include <rtos/string.h>
 #include <math.h>
 #include <rtos/sof.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/alloc.h>
 #include <sof/lib/notifier.h>
 #include <sof/ipc/driver.h>

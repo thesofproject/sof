@@ -16,7 +16,7 @@
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <sof/lib/dma.h>
 #include <ipc4/error_status.h>
 #include <ipc4/module.h>

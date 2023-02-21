@@ -19,7 +19,7 @@
 
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 
 LOG_MODULE_REGISTER(mtrace, CONFIG_SOF_LOG_LEVEL);
 

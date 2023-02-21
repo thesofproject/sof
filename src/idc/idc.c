@@ -25,7 +25,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>

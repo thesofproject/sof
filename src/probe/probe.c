@@ -20,7 +20,7 @@
 #include <rtos/timer.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/gateway.h>
 #include <ipc4/module.h>

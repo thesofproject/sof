@@ -8,7 +8,7 @@
 #ifndef __ARCH_DEBUG_BACKTRACE_H__
 #define __ARCH_DEBUG_BACKTRACE_H__
 
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <xtensa/xtruntime-frames.h>
 #include <stdint.h>
 

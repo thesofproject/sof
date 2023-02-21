@@ -9,7 +9,7 @@
 #ifndef __SOF_IPC_SCHEDULE_H__
 #define __SOF_IPC_SCHEDULE_H__
 
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/sof.h>
 #include <stdbool.h>
 #include <stdint.h>

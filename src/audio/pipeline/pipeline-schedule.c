@@ -13,7 +13,7 @@
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <ipc/header.h>
