@@ -1220,10 +1220,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		return ret;
 	} else {
 		if (dev->ipc_config.type == SOF_COMP_HOST) {
-			if (dev->state != COMP_STATE_ACTIVE)
-				return 0;
-			else
-				return host_zephyr_copy(cd->hd, cd->endpoint[0]);
+			return host_zephyr_copy(cd->hd, dev);
 		} else {
 			return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
 		}
@@ -1286,6 +1283,9 @@ static int copier_copy(struct comp_dev *dev)
 	int ret = 0;
 
 	comp_dbg(dev, "copier_copy()");
+
+	if (dev->ipc_config.type == SOF_COMP_HOST)
+		return do_endpoint_copy(dev);
 
 	processed_data.source_bytes = 0;
 
@@ -1412,7 +1412,6 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
-	struct comp_dev *child_dev;
 	int ret = 0;
 	int i;
 	bool is_scheduling_source;
@@ -1487,20 +1486,20 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 							       &demuxed_params);
 		} else {
 			if (dev->ipc_config.type == SOF_COMP_HOST) {
-				child_dev = cd->endpoint[i];
-				ret = comp_verify_params(child_dev, 0, params);
-				if (ret < 0) {
-					comp_err(dev, "host_params(): pcm params verification failed.");
-					return -EINVAL;
+				component_set_nearest_period_frames(dev, params->rate);
+				is_scheduling_source = dev == dev->pipeline->sched_comp;
+				if (params->direction == SOF_IPC_STREAM_CAPTURE) {
+					params->buffer.size = cd->config.base.obs;
+					params->sample_container_bytes = cd->out_fmt->depth / 8;
+					params->sample_valid_bytes =
+						cd->out_fmt->valid_bit_depth / 8;
 				}
-				is_scheduling_source =
-					child_dev == child_dev->pipeline->sched_comp;
-				/* copier dev only used for log print */
+
 				ret = host_zephyr_params(cd->hd, dev, params,
-							 &child_dev->bsink_list,
-							 &child_dev->bsource_list,
+							 &dev->bsink_list,
+							 &dev->bsource_list,
 							 dev->pipeline,
-							 child_dev->frames,
+							 dev->frames,
 							 is_scheduling_source);
 				/* set up callback */
 				notifier_register(dev, cd->hd->chan,

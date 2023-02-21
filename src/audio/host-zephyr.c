@@ -421,7 +421,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 				  free_bytes, avail_bytes);
 	} else {
 		avail_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
-		copy_bytes = MIN(avail_bytes, free_bytes);
+		copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
 		if (!copy_bytes)
 			comp_info(dev, "no bytes to copy, %d avail in buffer, %d free in DMA",
 				  avail_bytes, free_bytes);
@@ -773,8 +773,7 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 						   sink_list);
 	host_buf_c = buffer_acquire(hd->local_buffer);
 
-	period_bytes = frames *
-		audio_stream_frame_bytes(&host_buf_c->stream);
+	period_bytes = frames * get_frame_bytes(params->frame_fmt, params->channels);
 
 	if (!period_bytes) {
 		comp_err(dev, "host_params(): invalid period_bytes");
@@ -828,6 +827,17 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 
 		dma_buf_c = buffer_acquire(hd->dma_buffer);
 		buffer_set_params(dma_buf_c, params, BUFFER_UPDATE_FORCE);
+
+		/* set processing function */
+		if (params->direction == SOF_IPC_STREAM_CAPTURE)
+			hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
+								  dma_buf_c->stream.frame_fmt);
+		else
+			hd->process = pcm_get_conversion_function(dma_buf_c->stream.frame_fmt,
+								  host_buf_c->stream.frame_fmt);
+
+		config->src_width = audio_stream_sample_bytes(&dma_buf_c->stream);
+		config->dest_width = config->src_width;
 		buffer_release(dma_buf_c);
 	}
 
@@ -838,8 +848,6 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		goto out;
 
 	/* set up DMA configuration - copy in sample bytes. */
-	config->src_width = audio_stream_sample_bytes(&host_buf_c->stream);
-	config->dest_width = audio_stream_sample_bytes(&host_buf_c->stream);
 	config->cyclic = 0;
 	config->irq_disabled = pipeline_is_timer_driven(pipeline);
 	config->is_scheduling_source = is_scheduling_source;
@@ -927,10 +935,6 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
-
-	/* set processing function */
-	hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
-						  host_buf_c->stream.frame_fmt);
 
 out:
 	buffer_release(host_buf_c);
