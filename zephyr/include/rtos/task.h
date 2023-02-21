@@ -5,17 +5,15 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __SOF_SCHEDULE_TASK_H__
-#define __SOF_SCHEDULE_TASK_H__
+#ifndef __ZEPHYR_RTOS_TASK_H__
+#define __ZEPHYR_RTOS_TASK_H__
 
-#include <arch/schedule/task.h>
 #include <rtos/panic.h>
 #include <sof/list.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <rtos/kernel.h>
 #include <sof/lib/perf_cnt.h>
-
 
 struct comp_dev;
 struct sof;
@@ -66,14 +64,10 @@ struct task {
 	struct list_item list;	/**< used by schedulers to hold tasks */
 	void *priv_data;	/**< task private data */
 	struct task_ops ops;	/**< task operations */
-#ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
-#endif
-#if defined(CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS) || defined(__ZEPHYR__)
 	uint32_t cycles_sum;
 	uint32_t cycles_max;
 	uint32_t cycles_cnt;
-#endif
 #if CONFIG_PERFORMANCE_COUNTERS
 	struct perf_cnt_data pcd;
 #endif
@@ -113,15 +107,7 @@ static inline uint64_t task_get_deadline(struct task *task)
 	return task->ops.get_deadline(task->data);
 }
 
-enum task_state task_main_primary_core(void *data);
-
-enum task_state task_main_secondary_core(void *data);
-
-void task_main_init(void);
-
-void task_main_free(void);
-
 int task_main_start(struct sof *sof);
 int start_complete(void);
 
-#endif /* __SOF_SCHEDULE_TASK_H__ */
+#endif /* __ZEPHYR_RTOS_TASK_H__ */

@@ -5,7 +5,7 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
 #include <rtos/wait.h>

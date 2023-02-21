@@ -8,7 +8,7 @@
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <stdint.h>
 #include <rtos/wait.h>
 #include <stdlib.h>

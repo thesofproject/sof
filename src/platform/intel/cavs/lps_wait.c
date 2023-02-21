@@ -14,7 +14,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 
 #include <stdint.h>
 

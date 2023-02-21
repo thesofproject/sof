@@ -12,7 +12,7 @@
 #include <sof/platform.h>
 #include <rtos/sof.h>
 #include <sof/ipc/common.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <stdbool.h>
 #include <stdint.h>
 

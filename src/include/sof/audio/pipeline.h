@@ -12,7 +12,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/pipeline-trace.h>

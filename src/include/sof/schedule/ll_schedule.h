@@ -13,7 +13,7 @@
 #ifndef __SOF_SCHEDULE_LL_SCHEDULE_H__
 #define __SOF_SCHEDULE_LL_SCHEDULE_H__
 
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
