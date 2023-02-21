@@ -5,9 +5,8 @@
 *       @lgirdwood @plbossart @mmaka1 @lbetlej @dbaluta
 
 # Order is important. The last matching pattern has the most precedence.
-# So if a pull request only touches javascript files, only these owners
-# will be requested to review.
-#
+# File patterns work mostly like .gitignore. Try to keep this file
+# simple because it's literally impossible to test.
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # include files
