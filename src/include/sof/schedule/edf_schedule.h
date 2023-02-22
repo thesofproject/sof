@@ -13,6 +13,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+#define EDF_ZEPHYR_PRIORITY 1
+
 #define edf_sch_set_pdata(task, data) \
 	(task->priv_data = data)
 

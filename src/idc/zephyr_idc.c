@@ -25,6 +25,7 @@
 #include <sof/drivers/idc.h>
 #include <sof/init.h>
 #include <sof/ipc/common.h>
+#include <sof/schedule/edf_schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/spinlock.h>
 #include <ipc/topology.h>
@@ -110,8 +111,8 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 
 	idc_send_memcpy_err = memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg));
 	assert(!idc_send_memcpy_err);
-	/* TODO: verify .priority and .deadline */
-	work->priority = K_HIGHEST_THREAD_PRIO + 1;
+	/* Same priority as the IPC thread which is an EDF task and under Zephyr */
+	work->priority = EDF_ZEPHYR_PRIORITY;
 	work->deadline = 0;
 	work->handler = idc_handler;
 	work->sync = mode == IDC_BLOCKING;
