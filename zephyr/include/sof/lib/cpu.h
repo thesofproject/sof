@@ -18,7 +18,6 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <arch/lib/cpu.h>
 #include <stdbool.h>
 
 //#include <zephyr/sys/arch_interface.h>
@@ -50,6 +49,8 @@ void cpu_disable_core(int id);
 int cpu_is_core_enabled(int id);
 
 int cpu_enabled_cores(void);
+
+void cpu_power_down_core(uint32_t flags);
 
 int cpu_restore_secondary_cores(void);
 
