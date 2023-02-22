@@ -229,7 +229,7 @@ static int write_block_reloc(struct image *image, struct module *module)
 		goto out;
 	}
 
-	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
+	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%8.8lx\t%s\n", block_idx++,
 		0, module->file_size, ftell(image->out_fd),
 		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA");
 

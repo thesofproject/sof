@@ -585,7 +585,7 @@ static int man_module_create_reloc(struct image *image, struct module *module,
 		return -errno;
 	}
 
-	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%x\t%s\n", 0,
+	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%x\t%s\n", 0,
 		0, module->file_size, 0, "DATA");
 
 	fprintf(stdout, "\n");

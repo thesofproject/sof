@@ -11,6 +11,7 @@
 #include <rimage/rimage.h>
 #include <rimage/cse.h>
 #include <rimage/manifest.h>
+#include <rimage/file_utils.h>
 
 static unsigned long uncache_to_cache(const struct image *image, unsigned long address)
 {
@@ -604,11 +605,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	module->elf_file = name;
 
 	/* get file size */
-	ret = fseek(module->fd, 0, SEEK_END);
-	if (ret < 0)
-		goto hdr_err;
-	module->file_size = ftell(module->fd);
-	ret = fseek(module->fd, 0, SEEK_SET);
+	ret = get_file_size(module->fd, name, &module->file_size);
 	if (ret < 0)
 		goto hdr_err;
 

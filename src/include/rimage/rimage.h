@@ -61,7 +61,7 @@ struct module {
 	int data_file_size;
 
 	/* total file size */
-	int file_size;
+	size_t file_size;
 
 	/* executable header module */
 	int exec_header;
