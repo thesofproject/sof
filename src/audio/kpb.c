@@ -47,6 +47,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#if CONFIG_AMS
+#include <sof/lib/ams.h>
+#endif
 
 static const struct comp_driver comp_kpb;
 
@@ -91,6 +94,10 @@ struct comp_data {
 #ifdef CONFIG_IPC_MAJOR_4
 	struct ipc4_kpb_module_cfg ipc4_cfg;
 #endif /* CONFIG_IPC_MAJOR_4 */
+
+#if CONFIG_AMS
+	uint32_t am_uuid_id;
+#endif
 };
 
 /*! KPB private functions */
@@ -125,6 +132,52 @@ static uint64_t kpb_task_deadline(void *data)
 {
 	return SOF_TASK_DEADLINE_ALMOST_IDLE;
 }
+
+#if CONFIG_AMS
+void kpb_on_ams_kpd_notification(const struct ams_message_payload *const ams_message_payload,
+				 void *ctx)
+{
+	struct kpb_client *cli_data = (struct kpb_client *)ams_message_payload->message;
+	struct comp_dev *dev = ctx;
+
+	comp_dbg(dev, "kpb_on_ams_kpd_notification()");
+
+	kpb_init_draining(dev, cli_data);
+}
+
+static int kpb_register_ams_consumer(struct comp_dev *dev)
+{
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	uint16_t mod_id, inst_id;
+	int ret;
+
+	comp_dbg(dev, "kpb_register_ams_consumer()");
+
+	mod_id = IPC4_MOD_ID(dev_comp_id(dev));
+	inst_id = IPC4_INST_ID(dev_comp_id(dev));
+
+	ret = ams_get_message_type_id(LP_KEY_PHRASE_DETECTED_UUID,
+				      &kpb->am_uuid_id);
+	if (ret)
+		return ret;
+
+	ret = ams_register_consumer(kpb->am_uuid_id, mod_id, inst_id,
+				    kpb_on_ams_kpd_notification, dev);
+	return ret;
+}
+
+static int kpb_unregister_ams_consumer(struct comp_dev *dev)
+{
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	uint16_t mod_id = IPC4_MOD_ID(dev_comp_id(dev));
+	uint16_t inst_id = IPC4_INST_ID(dev_comp_id(dev));
+
+	comp_dbg(dev, "kpb_unregister_ams_consumer()");
+
+	return ams_unregister_consumer(kpb->am_uuid_id, mod_id, inst_id,
+				       kpb_on_ams_kpd_notification);
+}
+#endif /* CONFIG_AMS */
 
 #ifdef __ZEPHYR__
 
@@ -611,8 +664,17 @@ static void kpb_free(struct comp_dev *dev)
 
 	comp_info(dev, "kpb_free()");
 
+#if CONFIG_AMS
+	/* Unregister KPB as AMS consumer */
+	int ret;
+
+	ret = kpb_unregister_ams_consumer(dev);
+	if (ret)
+		comp_err(dev, "kpb_free(): AMS unregister error %d", ret);
+#else
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+#endif/* CONFIG_AMS */
 
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->hd.c_hb);
@@ -687,6 +749,10 @@ static int kpb_params(struct comp_dev *dev,
 	kpb->host_buffer_size = params->buffer.size;
 	kpb->host_period_size = params->host_period_bytes;
 	kpb->config.sampling_width = params->sample_container_bytes * 8;
+
+#if CONFIG_AMS
+	kpb->am_uuid_id = AMS_INVALID_MSG_TYPE;
+#endif
 
 	return 0;
 }
@@ -763,9 +829,15 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
+#if CONFIG_AMS
+	/* AMS Register KPB for notification */
+	ret = kpb_register_ams_consumer(dev);
+#else
 	/* Register KPB for notification */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
 				kpb_event_handler, 0);
+#endif /* CONFIG_AMS */
+
 	if (ret < 0) {
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
@@ -881,8 +953,10 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
+#ifndef CONFIG_AMS
 		/* Unregister KPB from notifications */
 		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+#endif
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
