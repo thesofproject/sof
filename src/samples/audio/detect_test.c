@@ -41,6 +41,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sof/samples/audio/kwd_nn_detect_test.h>
+#if CONFIG_AMS
+#include <sof/lib/ams.h>
+#endif
 
 #define ACTIVATION_DEFAULT_SHIFT 3
 #define ACTIVATION_DEFAULT_COEF 0.05
@@ -98,6 +101,12 @@ struct comp_data {
 	void (*detect_func)(struct comp_dev *dev,
 			    const struct audio_stream __sparse_cache *source, uint32_t frames);
 	struct sof_ipc_comp_event event;
+
+#if CONFIG_AMS
+	/* AMS related data */
+	uint32_t am_uuid_id;
+	struct ams_message_payload ams_payload;
+#endif
 };
 
 static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
@@ -140,6 +149,63 @@ static void notify_host(const struct comp_dev *dev)
 #endif /* CONFIG_IPC_MAJOR_4 */
 }
 
+#if CONFIG_AMS
+static int test_keyword_register_ams_producer(const struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint16_t mod_id, inst_id;
+	int ret;
+
+	comp_dbg(dev, "test_keyword_register_ams_producer()");
+
+	mod_id = IPC4_MOD_ID(dev_comp_id(dev));
+	inst_id = IPC4_INST_ID(dev_comp_id(dev));
+
+	ret = ams_get_message_type_id(LP_KEY_PHRASE_DETECTED_UUID,
+				      &cd->am_uuid_id);
+	if (ret)
+		return ret;
+
+	ret = ams_register_producer(cd->am_uuid_id, mod_id, inst_id);
+	if (ret)
+		return ret;
+
+	cd->ams_payload.message_type_id = cd->am_uuid_id;
+	cd->ams_payload.producer_module_id = mod_id;
+	cd->ams_payload.producer_instance_id = inst_id;
+	cd->ams_payload.message_length = sizeof(struct kpb_client);
+	cd->ams_payload.message = (uint8_t *)&cd->client_data;
+
+	return 0;
+}
+
+static int test_keyword_unregister_ams_producer(const struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint16_t mod_id = IPC4_MOD_ID(dev_comp_id(dev));
+	uint16_t inst_id = IPC4_INST_ID(dev_comp_id(dev));
+
+	comp_dbg(dev, "test_keyword_unregister_ams_producer()");
+
+	return ams_unregister_producer(cd->am_uuid_id, mod_id, inst_id);
+}
+
+static int ams_notify_kpb(const struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->client_data.r_ptr = NULL;
+	cd->client_data.sink = NULL;
+	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
+	/* time in milliseconds */
+	cd->client_data.drain_req = (cd->drain_req != 0) ?
+				     cd->drain_req :
+				     cd->config.drain_req;
+
+	return ams_send(&cd->ams_payload);
+}
+#endif /* CONFIG_AMS */
+
 static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -164,7 +230,11 @@ static void notify_kpb(const struct comp_dev *dev)
 void detect_test_notify(const struct comp_dev *dev)
 {
 	notify_host(dev);
+#if CONFIG_AMS
+	ams_notify_kpb(dev);
+#else
 	notify_kpb(dev);
+#endif
 }
 
 static void default_detect_test(struct comp_dev *dev,
@@ -719,6 +789,15 @@ static void test_keyword_free(struct comp_dev *dev)
 
 	comp_info(dev, "test_keyword_free()");
 
+#if CONFIG_AMS
+	int ret;
+
+	/* Unregister KD as AMS producer */
+	ret = test_keyword_unregister_ams_producer(dev);
+	if (ret)
+		comp_err(dev, "test_keyword_free(): unregister ams error %d", ret);
+#endif
+
 	ipc_msg_free(cd->msg);
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
@@ -798,6 +877,10 @@ static int test_keyword_params(struct comp_dev *dev,
 
 	cd->config.activation_threshold = err;
 
+#if CONFIG_AMS
+	cd->am_uuid_id = AMS_INVALID_MSG_TYPE;
+#endif
+
 	return 0;
 }
 
@@ -874,6 +957,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	uint16_t sample_width;
+	int ret;
 
 #if CONFIG_IPC_MAJOR_4
 	sample_width = cd->base_cfg.audio_fmt.depth;
@@ -887,7 +971,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 		/* Default threshold value has to be changed
 		 * according to host new format.
 		 */
-		int ret = test_keyword_get_threshold(dev, valid_bits);
+		ret = test_keyword_get_threshold(dev, valid_bits);
 
 		if (ret < 0) {
 			comp_err(dev, "test_keyword_prepare(): unsupported sample width %u",
@@ -901,6 +985,13 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	cd->data_blob = comp_get_data_blob(cd->model_handler,
 					   &cd->data_blob_size,
 					   &cd->data_blob_crc);
+
+#if CONFIG_AMS
+	/* Register KD as AMS producer */
+	ret = test_keyword_register_ams_producer(dev);
+	if (ret)
+		return ret;
+#endif
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
