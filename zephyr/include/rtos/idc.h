@@ -6,15 +6,14 @@
  */
 
 /**
- * \file include/sof/drivers/idc.h
+ * \file include/rtos/idc.h
  * \brief IDC header file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __SOF_DRIVERS_IDC_H__
-#define __SOF_DRIVERS_IDC_H__
+#ifndef __ZEPHYR_RTOS_IDC_H__
+#define __ZEPHYR_RTOS_IDC_H__
 
-#include <arch/drivers/idc.h>
 #include <platform/drivers/idc.h>
 #include <rtos/task.h>
 #include <sof/trace/trace.h>
@@ -169,4 +168,6 @@ int idc_msg_status_get(uint32_t core);
 
 void idc_init_thread(void);
 
-#endif /* __SOF_DRIVERS_IDC_H__ */
+struct idc **idc_get(void);
+
+#endif /* __ZEPHYR_RTOS_IDC_H__ */

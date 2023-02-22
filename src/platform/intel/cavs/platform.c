@@ -16,7 +16,7 @@
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/dw-dma.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/common.h>
 #include <rtos/timer.h>

@@ -6,7 +6,7 @@
 #define PLATFORM_POSIX_DRIVERS_IDC_H
 
 #include <stdint.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 
 struct idc_msg;
 

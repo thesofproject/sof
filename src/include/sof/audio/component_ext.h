@@ -17,7 +17,7 @@
 #define __SOF_AUDIO_COMPONENT_INT_H__
 
 #include <sof/audio/component.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/list.h>
 #include <ipc/topology.h>
 #include <kernel/abi.h>

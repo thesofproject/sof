@@ -22,7 +22,7 @@
 #include <zephyr/kernel.h>
 
 #include <zephyr/sys/p4wq.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/init.h>
 #include <sof/ipc/common.h>
 #include <rtos/alloc.h>

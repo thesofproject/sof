@@ -8,6 +8,8 @@
 #ifndef __ACE_DRIVERS_IDC_H__
 #define __ACE_DRIVERS_IDC_H__
 
+#include <stdint.h>
+
 struct idc_msg;
 
 int idc_send_msg(struct idc_msg *msg, uint32_t mode);

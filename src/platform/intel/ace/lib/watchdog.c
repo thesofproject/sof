@@ -6,7 +6,7 @@
  */
 
 #include <sof/lib/uuid.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/ipc/msg.h>
 #include <ipc4/notification.h>

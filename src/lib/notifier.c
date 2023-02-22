@@ -6,7 +6,7 @@
 
 #include <sof/common.h>
 #include <rtos/panic.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>

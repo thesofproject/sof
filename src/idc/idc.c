@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>

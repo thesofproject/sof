@@ -23,7 +23,7 @@
 #include <rtos/task.h>
 #include <rtos/sof.h>
 #include <sof/trace/trace.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
