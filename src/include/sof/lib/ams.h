@@ -24,6 +24,9 @@
 /* Wildcard for module_id and instance_id values */
 #define AMS_ANY_ID 0xFFFF
 
+/* AMS messages */
+extern const uint8_t LP_KEY_PHRASE_DETECTED_UUID[UUID_SIZE];
+
 /* Size of slots message, module id and instance id */
 #define AMS_SLOT_SIZE(msg) (AMS_MESSAGE_SIZE(msg) + sizeof(uint16_t) * 2)
 #define AMS_MESSAGE_SIZE(msg) (sizeof(*msg) - sizeof(char) + (sizeof(char) * (msg->message_length)))

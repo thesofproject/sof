@@ -32,6 +32,10 @@ DECLARE_TR_CTX(ams_tr, SOF_UUID(ams_uuid), LOG_LEVEL_INFO);
 
 static struct ams_context ctx[CONFIG_CORE_COUNT];
 
+/* AMS messages */
+const uint8_t LP_KEY_PHRASE_DETECTED_UUID[UUID_SIZE] =
+	"LP_KEYPHDET    ";
+
 static struct ams_shared_context __sparse_cache *ams_acquire(struct ams_shared_context *shared)
 {
 	struct coherent __sparse_cache *c = coherent_acquire(&shared->c,
