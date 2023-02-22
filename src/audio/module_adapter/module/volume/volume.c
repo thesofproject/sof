@@ -536,6 +536,7 @@ static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint3
 		cd->vol_min = VOL_MIN;
 		cd->vol_max = VOL_MAX;
 	}
+	cd->copy_gain = true;
 }
 
 static int volume_init(struct processing_module *mod)
