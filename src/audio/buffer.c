@@ -180,7 +180,7 @@ void buffer_free(struct comp_buffer *buffer)
 		.buffer = buffer,
 	};
 
-	if (!buffer)
+	if (!buffer || atomic_get(&buffer->ref_count))
 		return;
 
 	buf_dbg(buffer, "buffer_free()");

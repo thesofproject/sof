@@ -198,6 +198,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_attach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, comp, dir);
+	atomic_inc(&buffer->ref_count);
 
 	irq_local_enable(flags);
 
@@ -219,6 +220,7 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_detach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, NULL, dir);
+	atomic_dec(&buffer->ref_count);
 
 	irq_local_enable(flags);
 }

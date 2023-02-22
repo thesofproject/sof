@@ -159,6 +159,8 @@ struct comp_buffer {
 
 	bool hw_params_configured; /**< indicates whether hw params were set */
 	bool walking;		/**< indicates if the buffer is being walked */
+
+	atomic_t ref_count;
 };
 
 /* Only to be used for synchronous same-core notifications! */
