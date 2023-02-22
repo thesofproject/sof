@@ -36,3 +36,38 @@ int create_file_name(char *new_name, const size_t name_size, const char *templat
 
 	return 0;
 }
+
+/**
+ * Get file size
+ * @param [in] f file handle
+ * @param [in] filename File name used to display the error message
+ * @param [out] size output for file size
+ * @param error code, 0 when success
+ */
+int get_file_size(FILE *f, const char* filename, size_t *size)
+{
+	int ret;
+
+	assert(size);
+
+	/* get file size */
+	ret = fseek(f, 0, SEEK_END);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek eof %s %d\n", filename, errno);
+		return -errno;
+	}
+
+	*size = ftell(f);
+	if (*size < 0) {
+		fprintf(stderr, "error: unable to get file size for %s %d\n", filename, errno);
+		return -errno;
+	}
+
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek set %s %d\n", filename, errno);
+		return -errno;
+	}
+
+	return 0;
+}
