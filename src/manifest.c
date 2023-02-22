@@ -22,13 +22,17 @@
 #include <rimage/cse.h>
 #include <rimage/plat_auth.h>
 #include <rimage/manifest.h>
+#include <rimage/file_utils.h>
 
 static int man_open_rom_file(struct image *image)
 {
 	uint32_t size;
+	int ret;
 
-	sprintf(image->out_rom_file, "%s.rom", image->out_file);
-	unlink(image->out_rom_file);
+	ret = create_file_name(image->out_rom_file, sizeof(image->out_rom_file), image->out_file,
+			       "rom");
+	if (ret)
+		return ret;
 
 	size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
 
@@ -50,8 +54,12 @@ static int man_open_rom_file(struct image *image)
 
 static int man_open_unsigned_file(struct image *image)
 {
-	sprintf(image->out_unsigned_file, "%s.uns", image->out_file);
-	unlink(image->out_unsigned_file);
+	int ret;
+
+	ret = create_file_name(image->out_unsigned_file, sizeof(image->out_unsigned_file),
+			       image->out_file, "uns");
+	if (ret)
+		return ret;
 
 	/* open unsigned FW outfile for writing */
 	image->out_unsigned_fd = fopen(image->out_unsigned_file, "wb");
@@ -66,10 +74,14 @@ static int man_open_unsigned_file(struct image *image)
 
 static int man_open_manifest_file(struct image *image)
 {
-	/* open manifest outfile for writing */
-	sprintf(image->out_man_file, "%s.met", image->out_file);
-	unlink(image->out_man_file);
+	int ret;
 
+	ret = create_file_name(image->out_man_file, sizeof(image->out_man_file), image->out_file,
+			       "met");
+	if (ret)
+		return ret;
+
+	/* open manifest outfile for writing */
 	image->out_man_fd = fopen(image->out_man_file, "wb");
 	if (!image->out_man_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",

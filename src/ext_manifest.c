@@ -14,6 +14,7 @@
 #include <rimage/rimage.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/manifest.h>
+#include <rimage/file_utils.h>
 
 const struct ext_man_header ext_man_template = {
 	.magic = EXT_MAN_MAGIC_NUMBER,
@@ -24,10 +25,14 @@ const struct ext_man_header ext_man_template = {
 
 static int ext_man_open_file(struct image *image)
 {
-	/* open extended manifest outfile for writing */
-	sprintf(image->out_ext_man_file, "%s.xman", image->out_file);
-	unlink(image->out_ext_man_file);
+	int ret;
 
+	ret = create_file_name(image->out_ext_man_file, sizeof(image->out_ext_man_file),
+			       image->out_file, "xman");
+	if (ret)
+		return ret;
+
+	/* open extended manifest outfile for writing */
 	image->out_ext_man_fd = fopen(image->out_ext_man_file, "wb");
 	if (!image->out_ext_man_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
