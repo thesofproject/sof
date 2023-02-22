@@ -20,7 +20,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <rtos/panic.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/list.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>

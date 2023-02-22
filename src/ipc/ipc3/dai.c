@@ -7,7 +7,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>

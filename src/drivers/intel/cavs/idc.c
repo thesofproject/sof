@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <rtos/panic.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>

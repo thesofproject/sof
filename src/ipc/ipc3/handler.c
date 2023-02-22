@@ -18,7 +18,7 @@
 #include <sof/common.h>
 #include <sof/debug/gdb/gdb.h>
 #include <rtos/panic.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>

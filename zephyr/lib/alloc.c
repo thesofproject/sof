@@ -6,7 +6,7 @@
 
 #include <sof/init.h>
 #include <rtos/alloc.h>
-#include <sof/drivers/idc.h>
+#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>

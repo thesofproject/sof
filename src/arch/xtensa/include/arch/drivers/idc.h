@@ -5,14 +5,16 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifdef __XTOS_RTOS_IDC_H__
+
+#ifndef __ARCH_DRIVERS_IDC_H__
+#define __ARCH_DRIVERS_IDC_H__
+
 #include <sof/lib/cpu.h>
-#ifndef __ZEPHYR__
 #include <xtos-structs.h>
-#endif
 
 struct idc;
 
-#ifndef __ZEPHYR__
 /**
  * \brief Returns IDC data.
  * \return Pointer to pointer of IDC data.
@@ -24,8 +26,10 @@ static inline struct idc **idc_get(void)
 	return &ctx->idc;
 }
 
+#endif /* __ARCH_DRIVERS_IDC_H__ */
+
 #else
 
-struct idc **idc_get(void);
+#error "This file shouldn't be included from outside of XTOS's rtos/idc.h"
 
-#endif
+#endif /* __XTOS_RTOS_IDC_H__ */
