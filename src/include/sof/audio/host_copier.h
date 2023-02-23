@@ -109,9 +109,7 @@ uint64_t host_zephyr_get_processed_data(struct host_data *hd, uint32_t stream_no
 int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd, uint16_t state);
 
 int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params, struct list_item *sink_list,
-		       struct list_item *source_list, struct pipeline *pipeline,
-		       uint32_t frames, bool is_scheduling_source);
+		       struct sof_ipc_stream_params *params, bool is_scheduling_source);
 
 int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev);
 
@@ -148,9 +146,8 @@ static int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int c
 }
 
 static int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params, struct list_item *sink_list,
-			      struct list_item *source_list, struct pipeline *pipeline,
-			      uint32_t frames, bool is_scheduling_source)
+			      struct sof_ipc_stream_params *params, bool is_scheduling_source)
+
 {
 	return 0;
 }

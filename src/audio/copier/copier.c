@@ -1496,10 +1496,6 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				}
 
 				ret = host_zephyr_params(cd->hd, dev, params,
-							 &dev->bsink_list,
-							 &dev->bsource_list,
-							 dev->pipeline,
-							 dev->frames,
 							 is_scheduling_source);
 				/* set up callback */
 				notifier_register(dev, cd->hd->chan,

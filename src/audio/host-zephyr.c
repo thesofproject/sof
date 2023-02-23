@@ -715,9 +715,7 @@ static int host_verify_params(struct comp_dev *dev,
 }
 
 int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params, struct list_item *sink_list,
-		       struct list_item *source_list, struct pipeline *pipeline,
-		       uint32_t frames, bool is_scheduling_source)
+		       struct sof_ipc_stream_params *params, bool is_scheduling_source)
 {
 	struct dma_sg_config *config = &hd->config;
 	struct dma_sg_elem *sg_elem;
@@ -764,16 +762,16 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	}
 
 	if (params->direction == SOF_IPC_STREAM_PLAYBACK)
-		hd->local_buffer = list_first_item(sink_list,
+		hd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
 						   source_list);
 	else
-		hd->local_buffer = list_first_item(source_list,
+		hd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
 						   sink_list);
 	host_buf_c = buffer_acquire(hd->local_buffer);
 
-	period_bytes = frames * get_frame_bytes(params->frame_fmt, params->channels);
+	period_bytes = dev->frames * get_frame_bytes(params->frame_fmt, params->channels);
 
 	if (!period_bytes) {
 		comp_err(dev, "host_params(): invalid period_bytes");
@@ -849,9 +847,9 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 
 	/* set up DMA configuration - copy in sample bytes. */
 	config->cyclic = 0;
-	config->irq_disabled = pipeline_is_timer_driven(pipeline);
+	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->is_scheduling_source = is_scheduling_source;
-	config->period = pipeline->period;
+	config->period = dev->pipeline->period;
 
 	host_elements_reset(hd, params->direction);
 
@@ -956,8 +954,7 @@ static int host_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	err = host_zephyr_params(hd, dev, params, &dev->bsink_list, &dev->bsource_list,
-				 dev->pipeline, dev->frames, dev == dev->pipeline->sched_comp);
+	err = host_zephyr_params(hd, dev, params, dev == dev->pipeline->sched_comp);
 
 	/* set up callback */
 	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
