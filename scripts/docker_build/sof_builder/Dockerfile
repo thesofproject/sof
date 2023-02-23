@@ -14,8 +14,9 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git --user `id -u` sof ./incremental.sh
 #
 
-FROM ubuntu:20.04
-ARG UID=1000
+FROM ubuntu:22.04
+# pick random high value to intentionally mismatch local UID
+ARG UID=1999
 
 ARG host_http_proxy
 ARG host_https_proxy
@@ -62,7 +63,11 @@ ARG CLONE_DEFAULTS="--depth 5"
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
+	echo 'sof ALL = NOPASSWD: ALL' > /etc/sudoers.d/sof && \
+	chmod 0440 /etc/sudoers.d/sof && \
 	echo "sof:test0000" | chpasswd && adduser sof sudo
+# allow others to read/traverse sof home
+RUN chmod o+rx /home/sof
 ENV HOME /home/sof
 
 # Use ToT alsa utils for the latest topology patches.
