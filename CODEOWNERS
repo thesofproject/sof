@@ -12,30 +12,39 @@
 # include files
 src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
-src/include/ipc/**			@randerwang @marcinszkudlinski
+src/include/ipc/**			@randerwang @marcinszkudlinski @pblaszko
+src/include/ipc4/**			@randerwang @marcinszkudlinski @pblaszko @aborisovich
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
 src/include/sof/debug/gdb/*		@abonislawski
-src/include/sof/audio/kpb.h		@abonislawski
-src/include/sof/audio/mux.h		@akloniex
+src/include/sof/audio/aria/*		@abonislawski
+src/include/sof/audio/kpb.h		@fkwasowi @iganakov
+src/include/sof/audio/mux.h		@fkwasowi
+src/include/sof/audio/up_down_mixer/*	@abonislawski
 src/include/sof/audio/codec_adapter/*	@cujomalainey @abonislawski @dbaluta
+src/include/sof/audio/module_adapter/*	@ranj063 @jxstelter
 src/include/sof/drivers/acp_dai_dma.h	@bhiregoudar @sunilkumardommati
 src/include/sof/drivers/afe*		@yaochunhung
 
 # audio component
-src/audio/src*				@singalsu
+src/audio/src*				@singalsu @abonislawski
+src/audio/chain_dma*			@makarukp
+src/audio/copier/*			@randerwang @abonislawski @pblaszko
 src/audio/eq*				@singalsu
 src/audio/eq_fir*			@singalsu
 src/audio/eq_iir*			@singalsu
 src/audio/tone.c			@singalsu
-src/audio/kpb.c				@abonislawski
-src/audio/mux/*				@akloniex
+src/audio/kpb.c				@fkwasowi @iganakov
+src/audio/mux/*				@fkwasowi
 src/audio/dcblock*			@thesofproject/google
 src/audio/crossover*			@thesofproject/google
 src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@thesofproject/google
+src/audio/selector/*			@tlissows
+src/audio/up_down_mixer/*		@abonislawski
 src/audio/multiband_drc/*		@thesofproject/google
 src/audio/codec_adapter/*		@cujomalainey @abonislawski @dbaluta
+src/audio/module_adapter/*		@ranj063 @jxstelter
 src/audio/google/*			@thesofproject/google
 
 # platforms
@@ -57,11 +66,14 @@ src/drivers/mediatek/mt8195/*		@yaochunhung @kuanhsuncheng
 
 # other libs
 src/math/*				@singalsu
-src/ipc/*				@bardliao @marcinszkudlinski
+src/ipc/*				@bardliao @marcinszkudlinski @pblaszko @aborisovich
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@abonislawski
-src/schedule				@abonislawski
+src/schedule				@pblaszko @marcinszkudlinski
+
+# samples
+samples/audio/detect_test.c		@iganakov
 
 # other helpers
 # Many files overridden by *.(ba)sh pattern below
@@ -80,7 +92,10 @@ tools/tune/dcblock/*			@thesofproject/google
 tools/tune/drc/*			@thesofproject/google
 tools/oss-fuzz/*			@thesofproject/google
 
-zephyr/**				@kv2019i @lyakh @iuliana-prodan @dbaluta
+zephyr/**				@kv2019i @lyakh @iuliana-prodan @dbaluta @abonislawski
+zephyr/lib/cpu.c			@tmleman
+zephyr/lib/alloc.c			@dabekjakub
+zephyr/lib/regions_mm.c			@dabekjakub
 
 # installer
 installer/**				@marc-hb
