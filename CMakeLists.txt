@@ -20,6 +20,7 @@ add_executable(rimage
 	src/ext_manifest.c
 	src/elf.c
 	src/rimage.c
+	src/toml_utils.c
 	src/adsp_config.c
 	tomlc99/toml.c
 )
