@@ -69,7 +69,6 @@ static void irq_handler(void *arg)
 
 	/* new message from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0)) {
-
 		/* Disable GP interrupt #0 */
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
 
@@ -190,20 +189,41 @@ int platform_ipc_init(struct ipc *ipc)
 	}
 #endif
 
-	/* configure interrupt */
+	/* Disable interrupt for DSP Core */
+	interrupt_disable(PLATFORM_IPC_INTERRUPT, ipc);
+
+	/* Disable interrupt from MU:
+	 * GP #0 for Host -> DSP message notification
+	 * GP #1 for DSP -> Host message confirmation
+	 * GP #2 and #3 not used
+	 */
+	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0,
+		       IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+		       IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1) |
+		       IMX_MU_xCR_GIEn(IMX_MU_VERSION, 2) |
+		       IMX_MU_xCR_GIEn(IMX_MU_VERSION, 3));
+
+	/* Clear all pending interrupts from MU */
+	imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1) |
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 2) |
+		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 3), 0);
+
+	/* Clear pending interrupt for DSP Core */
+	interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
+	/* Configure interrupt for DSP Core */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
-	/* Clear GP pending interrupt #0 and #1 */
-	imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
-
-	/* enable GP #0 for Host -> DSP message notification
-	 * enable GP #1 for DSP -> Host message notification
+	/* Enable interrupt from MU:
+	 * enable GP #0 for Host -> DSP message notification
+	 * enable GP #1 for DSP -> Host message confirmation
 	 */
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER,
-			IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) | IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
+			IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+			IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
 
 	return 0;
 }
