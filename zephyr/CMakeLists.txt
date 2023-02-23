@@ -641,6 +641,7 @@ zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
 	${SOF_IPC_PATH}/ipc4/helper.c
 	${SOF_IPC_PATH}/ipc4/dai.c
 	${SOF_IPC_PATH}/ipc4/logging.c
+	${SOF_IPC_PATH}/ipc4/notification.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
