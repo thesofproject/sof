@@ -34,6 +34,13 @@ config COMP_CHAIN_DMA
 	  help
 	    Chain DMA support in hardware
 
+config XRUN_NOTIFICATIONS_ENABLE
+	bool "Enable xrun notification"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  Enable xrun notifications sending to host
+
 config IPC4_GATEWAY
         bool "IPC4 Gateway"
         default y
