@@ -190,6 +190,8 @@ int platform_ipc_init(struct ipc *ipc)
 	}
 #endif
 
+	interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
