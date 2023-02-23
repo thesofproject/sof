@@ -101,6 +101,10 @@ endif()
 
 # SOF module init
 zephyr_library_named(modules_sof)
+
+# Zephyr C++ code requires 14 or newer standard
+set_property(TARGET modules_sof PROPERTY CXX_STANDARD 17)
+
 zephyr_include_directories(
 	include
 )
