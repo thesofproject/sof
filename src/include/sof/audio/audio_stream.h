@@ -352,6 +352,18 @@ audio_stream_get_avail_frames(const struct audio_stream __sparse_cache *stream)
 }
 
 /**
+ * Calculates aligned available data in frames, handling underrun_permitted behaviour
+ * @param stream audio stream buffer pointer
+ * @return amount of data available for processing in frames
+ */
+static inline uint32_t
+audio_stream_get_avail_frames_aligned(const struct audio_stream __sparse_cache *stream)
+{
+	return (audio_stream_get_avail_bytes(stream) >> stream->frame_align_shift)
+		 * stream->frame_align;
+}
+
+/**
  * Calculates free space in bytes, handling overrun_permitted behaviour
  * @param stream Stream pointer
  * @return amount of space free in bytes
@@ -373,7 +385,7 @@ audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 
 /**
  * Calculates free space in samples, handling overrun_permitted behaviour
- * @param stream Stream pointer
+ * @param stream audio stream buffer pointer
  * @return amount of space free in samples
  */
 static inline uint32_t
@@ -393,6 +405,18 @@ audio_stream_get_free_frames(const struct audio_stream __sparse_cache *stream)
 {
 	return audio_stream_get_free_bytes(stream) /
 		audio_stream_frame_bytes(stream);
+}
+
+/**
+ * Calculates aligned free space in frames, handling overrun_permitted behaviour
+ * @param stream audio stream buffer
+ * @return amount of space free in frames
+ */
+static inline uint32_t
+audio_stream_get_free_frames_aligned(const struct audio_stream __sparse_cache *stream)
+{
+	return (audio_stream_get_free_bytes(stream) >> stream->frame_align_shift)
+	       * stream->frame_align;
 }
 
 /**

@@ -102,7 +102,7 @@ static int mixin_init(struct processing_module *mod)
 	int i;
 	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 
-	comp_dbg(dev, "mixin_init()");
+	comp_info(dev, "mixin_init()");
 
 	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
 	if (!md)
@@ -134,7 +134,7 @@ static int mixout_init(struct processing_module *mod)
 	struct mixout_data *mo_data;
 	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
 
-	comp_dbg(dev, "mixout_new()");
+	comp_info(dev, "mixout_new()");
 
 	mo_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mo_data));
 	if (!mo_data)
@@ -293,9 +293,11 @@ static int mixin_process(struct processing_module *mod,
 	int source_index;
 	int i, ret;
 
-	comp_dbg(dev, "mixin_process()");
+	comp_info(dev, "mixin_process(), num_output_buffers %d", num_output_buffers);
 
-	source_avail_frames = audio_stream_get_avail_frames(input_buffers[0].data);
+	/* get available frames, which is always 8 byte aligned for hifi version*/
+	source_avail_frames = audio_stream_get_avail_frames_aligned(input_buffers[0].data);
+
 	sinks_free_frames = INT32_MAX;
 
 	/* block mixin pipeline until at least one mixout pipeline started */
@@ -357,14 +359,15 @@ static int mixin_process(struct processing_module *mod,
 			module_source_info_release(mod_source_info);
 			return -EINVAL;
 		}
-
-		free_frames = audio_stream_get_free_frames(&sink_c->stream);
-
+		/* get free frames, which is always 8 byte aligned for hifi version */
+		free_frames = audio_stream_get_free_frames_aligned(&sink_c->stream);
 		/* mixout sink buffer may still have not yet produced data -- data
 		 * consumed and written there by mixin on previous mixin_process() run.
 		 * We do NOT want to overwrite that data.
 		 */
 		pending_frames = mixout_data->pending_frames[source_index];
+		comp_info(dev, "source_avail_frames %d,free_frames %d, pending_frames %d",
+			  source_avail_frames, free_frames, pending_frames);
 		assert(free_frames >= pending_frames);
 		sinks_free_frames = MIN(sinks_free_frames, free_frames - pending_frames);
 
@@ -484,8 +487,6 @@ static int mixout_process(struct processing_module *mod,
 	uint32_t sink_bytes;
 	int i;
 
-	comp_dbg(dev, "mixout_process()");
-
 	mod_source_info = module_source_info_acquire(mod->source_info);
 	md = mod_source_info->private;
 
@@ -556,7 +557,8 @@ static int mixout_process(struct processing_module *mod,
 		else
 			output_buffers[0].size = 0;
 	}
-
+	comp_info(dev, "mixout_process()frames_to_produce %d, num_input_buffers %d output_buffers[0].size %d, sink_bytes %d",
+			 frames_to_produce, num_input_buffers, output_buffers[0].size, sink_bytes);
 	module_source_info_release(mod_source_info);
 
 	return 0;
@@ -609,6 +611,31 @@ static int mixout_reset(struct processing_module *mod)
 static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					     struct sof_ipc_stream_params *params);
 
+/* init and calculate the aligned setting for available frames and free frames retrieve*/
+static inline void mix_set_frame_alignment(struct audio_stream __sparse_cache *source)
+{
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+
+	/* Xtensa intrinsics ask for 8-byte aligned.
+	 */
+	const uint32_t byte_align = 8;
+
+	/*There is no limit for frame number, so set it as 1*/
+	const uint32_t frame_align_req = 1;
+
+#else
+
+	/* Since the generic version process signal sample by sample, so there is no
+	 * limit for it, then set the byte_align and frame_align_req to be 1.
+	 */
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+#endif
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+}
+
 /* params are derived from base config for ipc4 path */
 static int mixin_params(struct processing_module *mod)
 {
@@ -618,7 +645,7 @@ static int mixin_params(struct processing_module *mod)
 	struct list_item *blist;
 	int ret;
 
-	comp_dbg(dev, "mixin_params()");
+	comp_info(dev, "mixin_params()");
 
 	base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
@@ -657,6 +684,7 @@ static int mixin_params(struct processing_module *mod)
 					    &sink_c->stream.valid_sample_fmt,
 					    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
+		mix_set_frame_alignment(&sink_c->stream);
 		buffer_release(sink_c);
 	}
 
@@ -778,6 +806,8 @@ static int mixout_params(struct processing_module *mod)
 	/* calculate period size based on config */
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
+
+	mix_set_frame_alignment(&sink_c->stream);
 	buffer_release(sink_c);
 
 	if (sink_period_bytes == 0) {
