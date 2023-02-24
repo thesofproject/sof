@@ -377,6 +377,14 @@ config CAVS_USE_LPRO_IN_WAITI
 	  After waiti exit clock source will be restored.
 	  Choose n if unclear.
 
+config KCPS_DYNAMIC_CLOCK_CONTROL
+	bool "Use KCPS budget to determine DSP clock"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  Select if we want to use compute budget
+	  expressed in Kilo Cycles Per Second (KCPS) to determine DSP clock.
+
 config L3_HEAP
 	bool "Use L3 memory heap"
 	default n
