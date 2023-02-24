@@ -303,7 +303,6 @@ static int chain_task_start(struct comp_dev *dev)
 	}
 
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-	cd->chain_task.state = SOF_TASK_STATE_INIT;
 	k_spin_unlock(&drivers->lock, key);
 
 	return 0;
