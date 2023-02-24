@@ -283,7 +283,7 @@ count = 15
 	instance_count = "1"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "13"
+	module_type = "0xD"
 	init_config = "1"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
@@ -377,7 +377,7 @@ count = 15
 	instance_count = "8"
 	domain_types = "0"
 	load_type = "0"
-	module_type = "12"
+	module_type = "0xC"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
