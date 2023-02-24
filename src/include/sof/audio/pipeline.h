@@ -122,6 +122,7 @@ struct pipeline_data {
 	struct pipeline *p;
 	int cmd;
 	uint32_t delay_ms;		/* between PRE_{START,RELEASE} and {START,RELEASE} */
+	uint32_t kcps[CONFIG_CORE_COUNT]; /**< the max count of KCPS */
 };
 
 /** \brief Task type registered by pipelines. */
