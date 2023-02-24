@@ -498,6 +498,41 @@ def clean_staging(platform):
 		os.remove(f)
 
 
+RIMAGE_BUILD_DIR  = west_top / "build-rimage"
+
+# Paths in `west.yml` must be "static", we cannot have something like a
+# variable "$my_sof_path/rimage/" checkout.  In the future "rimage/" will
+# be moved one level up and it won't be nested inside "sof/" anymore. But
+# for now we must stick to `sof/rimage/[tomlc99]` for
+# backwards-compatibility with XTOS platforms and git submodules, see more
+# detailed comments in west.yml
+RIMAGE_SOURCE_DIR = west_top / "sof" / "rimage"
+
+def build_rimage():
+
+	# Detect non-west rimage duplicates, example: git submdule
+	# SOF_TOP/rimage = sof2/rimage
+	nested_rimage = pathlib.Path(SOF_TOP, "rimage")
+	if nested_rimage.is_dir() and not nested_rimage.samefile(RIMAGE_SOURCE_DIR):
+		raise RuntimeError(
+			f"""Two rimage source directories found.
+     Move non-west {nested_rimage} out of west workspace {west_top}.
+     See output of 'west list'."""
+		)
+	rimage_dir_name = RIMAGE_BUILD_DIR.name
+	# CMake build rimage module
+	if not (RIMAGE_BUILD_DIR / "CMakeCache.txt").is_file():
+		execute_command(["cmake", "-B", rimage_dir_name, "-G", "Ninja",
+				 "-S", str(RIMAGE_SOURCE_DIR)],
+				cwd=west_top)
+	rimage_build_cmd = ["cmake", "--build", rimage_dir_name]
+	if args.jobs is not None:
+		rimage_build_cmd.append(f"-j{args.jobs}")
+	if args.verbose > 1:
+			rimage_build_cmd.append("-v")
+	execute_command(rimage_build_cmd, cwd=west_top)
+
+
 STAGING_DIR = None
 def build_platforms():
 	global west_top, SOF_TOP
@@ -623,40 +658,11 @@ def build_platforms():
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
-		# CMake - configure rimage module
-		rimage_dir_name="build-rimage"
-
-		# Paths in `west.yml` must be "static", we cannot have something like a
-		# variable "$my_sof_path/rimage/" checkout.  In the future "rimage/" will
-		# be moved one level up and it won't be nested inside "sof/" anymore. But
-		# for now we must stick to `sof/rimage/[tomlc99]` for
-		# backwards-compatibility with XTOS platforms and git submodules, see more
-		# detailed comments in west.yml
-		rimage_source_dir = pathlib.Path(west_top, "sof", "rimage")
-
-		# Detect non-west rimage duplicates
-		nested_rimage = pathlib.Path(SOF_TOP, "rimage")
-		if nested_rimage.is_dir() and not nested_rimage.samefile(rimage_source_dir):
-			raise RuntimeError(
-				f"""Two rimage source directories found.
-     Move non-west {nested_rimage} out of west workspace {west_top}.
-     See output of 'west list'."""
-			)
-		# CMake build rimage module
-		if not (pathlib.Path(west_top) / rimage_dir_name / "CMakeCache.txt").is_file():
-			execute_command(["cmake", "-B", rimage_dir_name, "-G", "Ninja",
-					 "-S", str(rimage_source_dir)],
-					cwd=west_top)
-		rimage_build_cmd = ["cmake", "--build", rimage_dir_name]
-		if args.jobs is not None:
-			rimage_build_cmd.append(f"-j{args.jobs}")
-		if args.verbose > 1:
-			rimage_build_cmd.append("-v")
-		execute_command(rimage_build_cmd, cwd=west_top)
+		build_rimage()
 
 		# Sign firmware
-		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
-		rimage_config = pathlib.Path(rimage_source_dir, "config")
+		rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
+		rimage_config = RIMAGE_SOURCE_DIR / "config"
 		sign_cmd = ["west"]
 		sign_cmd += ["-v"] * args.verbose
 		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
