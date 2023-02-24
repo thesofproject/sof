@@ -385,6 +385,8 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	 */
 	switch (task->state) {
 	case SOF_TASK_STATE_INIT:
+		must_wait = false;
+		break;
 	case SOF_TASK_STATE_FREE:
 		on_list = false;
 		/* fall through */
