@@ -17,6 +17,8 @@
 #include <ipc/topology.h>
 #include <ipc4/module.h>
 #include <rtos/kernel.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/lib/cpu-clk-manager.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -24,6 +26,7 @@
 #include <stdint.h>
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
+// LOG_MODULE_REGISTER(cpsBudget, CONFIG_SOF_LOG_LEVEL);
 
 /*
  * Check whether pipeline is incapable of acquiring data for capture.
@@ -266,24 +269,109 @@ static void pipeline_trigger_xrun(struct pipeline *p, struct comp_dev **host)
 	} while (true);
 }
 
+static int add_pipeline_cps_consumption(struct comp_dev *current,
+				  struct comp_buffer *calling_buf,
+				  struct pipeline_walk_context *ctx, int dir)
+{
+	struct pipeline_data *ppl_data = ctx->comp_data;
+	struct ipc4_base_module_cfg *cd  = NULL;
+
+	pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
+
+	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current is from another pipeline");
+		return 0;
+	}
+
+	/* complete component init */
+	current->pipeline = ppl_data->p;
+
+	/* modules created throug module adapter have different priv_data */
+	if(current->drv->type != SOF_COMP_MODULE_ADAPTER) {
+		cd = comp_get_drvdata(current);
+	} else {
+		struct processing_module *mod = comp_get_drvdata(current);
+		struct module_data *md = &mod->priv;
+		cd = &md->cfg.base_cfg;
+	}
+
+	int kcps = cd->cpc * 1000 / ppl_data->p->period;
+	core_kcps_adjust(0, kcps);
+	tr_err(pipe, "Registering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	int summary_cps = core_kcps_get(0);
+	tr_err(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
+	return pipeline_for_each_comp(current, ctx, dir);
+}
+
+static int remove_pipeline_cps_consumption(struct comp_dev *current,
+				  struct comp_buffer *calling_buf,
+				  struct pipeline_walk_context *ctx, int dir)
+{
+	struct pipeline_data *ppl_data = ctx->comp_data;
+	struct ipc4_base_module_cfg *cd  = NULL;
+
+	pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
+
+	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current is from another pipeline");
+		return 0;
+	}
+
+	/* complete component init */
+	current->pipeline = ppl_data->p;
+
+	/* modules created throug module adapter have different priv_data */
+	if(current->drv->type != SOF_COMP_MODULE_ADAPTER) {
+		cd = comp_get_drvdata(current);
+	} else {
+		struct processing_module *mod = comp_get_drvdata(current);
+		struct module_data *md = &mod->priv;
+		cd = &md->cfg.base_cfg;
+	}
+
+	int kcps = cd->cpc * 1000/ppl_data->p->period;
+	core_kcps_adjust(0, -kcps); /* 1000 chunks per second, so cpc value matches kcps? */
+	tr_err(pipe, "Unregistering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	int summary_cps = core_kcps_get(0);
+	tr_err(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
+	return pipeline_for_each_comp(current, ctx, dir);
+}
+
+
+
+
 /* trigger pipeline in IPC context */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
 	int ret;
-
+	bool clocks_handled = false;
+	struct pipeline_data data;
+	struct pipeline_walk_context walk_ctx = {
+		.comp_func = remove_pipeline_cps_consumption,
+		.comp_data = &data,
+	};
 	pipe_info(p, "pipe trigger cmd %d", cmd);
 
 	p->trigger.aborted = false;
 
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
+		/* dirty - dont add kcps on fallthrough */
+		clocks_handled = true;
+		/* setup walking ctx for adding consumption */
+		data.start = p->source_comp;
+		data.p = p;
+		walk_ctx.comp_func = remove_pipeline_cps_consumption;
+
+		ret = walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
 	case COMP_TRIGGER_STOP:
 		if (p->status == COMP_STATE_PAUSED || p->xrun_bytes) {
 			/* The task isn't running, trigger inline */
 			ret = pipeline_trigger_run(p, host, cmd);
 			return ret < 0 ? ret : 0;
 		}
-
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_XRUN:
 		if (cmd == COMP_TRIGGER_XRUN)
@@ -293,6 +381,13 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	case COMP_TRIGGER_PRE_RELEASE:
 	case COMP_TRIGGER_PRE_START:
 		/* Add all connected pipelines to the list and trigger them all */
+		/* setup walking ctx for removing consumption */
+		data.start = p->source_comp;
+		data.p = p;
+		walk_ctx.comp_func = add_pipeline_cps_consumption;
+
+		if(!clocks_handled)
+			ret = walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
 		ret = pipeline_trigger_list(p, host, cmd);
 		if (ret < 0)
 			return ret;
