@@ -14,6 +14,7 @@
 #include <rtos/interrupt.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
@@ -200,6 +201,11 @@ int secondary_core_init(struct sof *sof)
 
 #if CONFIG_AMS
 	err = ams_init();
+	if (err < 0)
+		return err;
+#endif
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	err = core_kcps_adjust(cpu_get_id(), SECONDARY_CORE_BASE_CPS_USAGE);
 	if (err < 0)
 		return err;
 #endif

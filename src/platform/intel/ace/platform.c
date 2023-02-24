@@ -15,6 +15,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/watchdog.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -89,10 +90,11 @@ int platform_init(struct sof *sof)
 	platform_clock_init(sof);
 	kcps_budget_init();
 
-	/* Set DSP clock to MAX using KCPS API. Value should be lowered when KCPS API
-	 * for modules is implemented
-	 */
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	ret = core_kcps_adjust(cpu_get_id(), PRIMARY_CORE_BASE_CPS_USAGE);
+#else
 	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
+#endif
 	if (ret < 0)
 		return ret;
 
