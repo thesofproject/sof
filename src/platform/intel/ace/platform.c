@@ -14,6 +14,7 @@
 #include <sof/lib/agent.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/watchdog.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -72,6 +73,8 @@ int platform_boot_complete(uint32_t boot_message)
 	return ipc_platform_send_msg(&msg);
 }
 
+/* Value to be determined experimentaly */
+#define BASE_CPS_USAGE 10000
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
@@ -79,7 +82,8 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
+	kcps_budget_init();
+	core_kcps_adjust(0, BASE_CPS_USAGE);
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
