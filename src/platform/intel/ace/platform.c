@@ -15,6 +15,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/watchdog.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -176,6 +177,9 @@ static struct pm_notifier pm_state_notifier = {
 	.state_exit = notify_pm_state_exit,
 };
 
+/* Value to be determined experimentaly */
+#define BASE_CPS_USAGE 10000
+
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
@@ -183,13 +187,8 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
-
-	/* Set DSP clock to MAX using KCPS API. Value should be lowered when KCPS API
-	 * for modules is implemented
-	 */
-	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
-	if (ret < 0)
-		return ret;
+	kcps_budget_init();
+	core_kcps_adjust(0, BASE_CPS_USAGE);
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
