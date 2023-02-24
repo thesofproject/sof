@@ -658,8 +658,6 @@ def build_platforms():
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
-		build_rimage()
-
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
 		rimage_config = RIMAGE_SOURCE_DIR / "config"
@@ -905,6 +903,7 @@ def main():
 		create_zephyr_sof_symlink()
 
 	if args.platforms:
+		build_rimage()
 		build_platforms()
 		show_installed_files()
 
