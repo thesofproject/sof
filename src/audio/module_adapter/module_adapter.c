@@ -920,9 +920,12 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 			pos = MODULE_CFG_FRAGMENT_LAST;
 	}
 
-	/* IPC3 does not use config_id, so pass 0 for config ID as it will be ignored anyway */
+	/*
+	 * The type member in struct sof_abi_hdr is used for component's specific blob type
+	 * for IPC3, just like it is used for component's specific blob param_id for IPC4.
+	 */
 	if (set && md->ops->set_configuration)
-		return md->ops->set_configuration(mod, 0, pos, data_offset_size,
+		return md->ops->set_configuration(mod, cdata->data[0].type, pos, data_offset_size,
 						  (const uint8_t *)cdata->data[0].data,
 						  cdata->num_elems, NULL, 0);
 	else if (!set && md->ops->get_configuration)
