@@ -64,7 +64,7 @@ int core_kcps_adjust(int adjusted_core_id, int kcps_delta)
 
 	for (core_id = 0; core_id < CONFIG_CORE_COUNT; core_id++) {
 		/* Convert kcps to cps */
-		ret = request_freq_change(core_id, freq * 1000);
+		ret = request_freq_change(core_id, MIN(freq * 1000, CLK_MAX_CPU_HZ));
 		if (ret < 0)
 			goto out;
 	}

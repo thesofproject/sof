@@ -12,6 +12,7 @@
 #define CPU_DEFAULT_IDX 0
 #define NUM_CLOCKS 1
 #define NUM_CPU_FREQ 1
+#define CLK_MAX_CPU_HZ CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC
 
 struct sof;
 
