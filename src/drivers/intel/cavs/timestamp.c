@@ -77,10 +77,10 @@ int timestamp_hda_get(struct dai *dai, struct timestamp_cfg *cfg,
 		goto out;
 
 	/* NTK was set, get wall clock */
-	tsd->walclk = io_reg_read_64(TIMESTAMP_BASE + TS_HDA_LOCAL_WALCLK);
+	tsd->walclk = io_reg_read64(TIMESTAMP_BASE + TS_HDA_LOCAL_WALCLK);
 
 	/* Sample */
-	tsd->sample = io_reg_read_64(TIMESTAMP_BASE + TS_HDA_LOCAL_SAMPLE);
+	tsd->sample = io_reg_read64(TIMESTAMP_BASE + TS_HDA_LOCAL_SAMPLE);
 
 	/* Clear NTK to enable successive timestamps */
 	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
@@ -148,10 +148,10 @@ int timestamp_dmic_get(struct dai *dai, struct timestamp_cfg *cfg,
 		goto out;
 
 	/* NTK was set, get wall clock */
-	tsd->walclk = io_reg_read_64(TIMESTAMP_BASE + TS_DMIC_LOCAL_WALCLK);
+	tsd->walclk = io_reg_read64(TIMESTAMP_BASE + TS_DMIC_LOCAL_WALCLK);
 
 	/* Sample */
-	tsd->sample = io_reg_read_64(TIMESTAMP_BASE + TS_DMIC_LOCAL_SAMPLE);
+	tsd->sample = io_reg_read64(TIMESTAMP_BASE + TS_DMIC_LOCAL_SAMPLE);
 
 	/* Clear NTK to enable successive timestamps */
 	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
@@ -276,10 +276,10 @@ int timestamp_ssp_get(struct dai *dai, struct timestamp_cfg *cfg,
 		goto out;
 
 	/* NTK was set, get wall clock */
-	tsd->walclk = io_reg_read_64(ssp_ts_local_walclk_addr(cfg->index));
+	tsd->walclk = io_reg_read64(ssp_ts_local_walclk_addr(cfg->index));
 
 	/* Sample */
-	tsd->sample = io_reg_read_64(ssp_ts_local_sample_addr(cfg->index));
+	tsd->sample = io_reg_read64(ssp_ts_local_sample_addr(cfg->index));
 
 	/* Clear NTK to enable successive timestamps */
 	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);

@@ -50,13 +50,13 @@ static inline void io_reg_write16(uint32_t reg, uint16_t val)
 	*((volatile uint16_t*)reg) = val;
 }
 
-static inline uint64_t io_reg_read_64(uint32_t reg)
+static inline uint64_t io_reg_read64(uint32_t reg)
 {
 	return (uint64_t)io_reg_read(reg) +
 		(((uint64_t)io_reg_read(reg + 4)) << 32);
 }
 
-static inline void io_reg_write_64(uint32_t reg, uint64_t val)
+static inline void io_reg_write64(uint32_t reg, uint64_t val)
 {
 	*((volatile uint64_t*)reg) = val;
 }
