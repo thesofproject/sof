@@ -23,6 +23,7 @@
 #include <rimage/rimage.h>
 #include <rimage/css.h>
 #include <rimage/manifest.h>
+#include <rimage/misc_utils.h>
 
 #define DEBUG_PKCS	0
 
@@ -32,18 +33,6 @@ enum manver {
 	V25 = 2,
 	VACE15 = 3
 };
-
-static void bytes_swap(uint8_t *ptr, uint32_t size)
-{
-	uint8_t tmp;
-	uint32_t index;
-
-	for (index = 0; index < (size / 2); index++) {
-		tmp = ptr[index];
-		ptr[index] = ptr[size - 1 - index];
-		ptr[size - 1 - index] = tmp;
-	}
-}
 
 static int rimage_read_key(EVP_PKEY **privkey, struct image *image)
 {
