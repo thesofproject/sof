@@ -1417,17 +1417,13 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	if (!list_is_empty(&dev->bsource_list)) {
+	if (!list_is_empty(&dev->bsource_list) && dev->ipc_config.type != SOF_COMP_DAI) {
+		struct ipc4_audio_format *in_fmt;
+
 		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
-
-		if (!source_c->hw_params_configured) {
-			struct ipc4_audio_format *in_fmt;
-
-			in_fmt = &cd->config.base.audio_fmt;
-			update_buffer_format(source_c, in_fmt);
-	}
-
+		in_fmt = &cd->config.base.audio_fmt;
+		update_buffer_format(source_c, in_fmt);
 		buffer_release(source_c);
 	}
 
