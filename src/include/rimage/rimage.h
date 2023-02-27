@@ -11,9 +11,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/kernel/fw.h>
 
@@ -87,10 +84,8 @@ struct image {
 	int meu_offset;
 	const char *verify_file;
 
-	/* SHA 256 & 384 */
+	/* private key file name*/
 	const char *key_name;
-	EVP_MD_CTX *mdctx;
-	const EVP_MD *md;
 
 	/* file IO */
 	void *fw_image;

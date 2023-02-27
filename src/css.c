@@ -6,6 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <stdio.h>
+#include <errno.h>
 #include <sys/time.h>
 #include <rimage/rimage.h>
 #include <rimage/css.h>

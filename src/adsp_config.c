@@ -18,6 +18,8 @@
 #include "toml.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>

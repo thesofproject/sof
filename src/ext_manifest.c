@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <rimage/ext_manifest_gen.h>
 #include <rimage/sof/kernel/ext_manifest.h>
