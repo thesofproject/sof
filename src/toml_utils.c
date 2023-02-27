@@ -150,7 +150,7 @@ uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
 		*error = err_key_parse(key, NULL);
 		return UINT32_MAX;
 	}
-	val = strtoul(temp_s, 0, 16);
+	val = strtoul(temp_s, 0, 0);
 
 	free(temp_s);
 	/* assert parsing success and value is within uint32_t range */
