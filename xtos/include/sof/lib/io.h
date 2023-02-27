@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __SOF_LIB_IO_H__
-#define __SOF_LIB_IO_H__
+#ifndef __XTOS_SOF_LIB_IO_H__
+#define __XTOS_SOF_LIB_IO_H__
 
 
 #include <stdint.h>
@@ -85,4 +85,4 @@ static inline void io_reg_update_bits8(uint32_t reg, uint8_t mask,
 
 #endif
 
-#endif /* __SOF_LIB_IO_H__ */
+#endif /* __XTOS_SOF_LIB_IO_H__ */
