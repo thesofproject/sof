@@ -23,6 +23,8 @@
 #include <rimage/plat_auth.h>
 #include <rimage/manifest.h>
 #include <rimage/file_utils.h>
+#include <rimage/misc_utils.h>
+#include <rimage/hash.h>
 
 static int man_open_rom_file(struct image *image)
 {
@@ -733,7 +735,8 @@ static void man_create_modules_in_config(struct image *image, struct sof_man_fw_
 static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 {
 	struct sof_man_module *man_module;
-	int i;
+	size_t mod_offset, mod_size;
+	int i, ret = 0;
 
 	for (i = 0; i < image->num_modules; i++) {
 		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
@@ -744,14 +747,19 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 			continue;
 		}
 
-		ri_sha256(image,
-			 man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset,
-			 (man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length +
-			 man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length) *
-			 MAN_PAGE_SIZE, man_module->hash);
+		mod_offset = man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset;
+		mod_size = (man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length +
+			man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length) *
+			MAN_PAGE_SIZE;
+
+		assert((mod_offset + mod_size) <= image->adsp->image_size);
+
+		ret = hash_sha256(image->fw_image + mod_offset, mod_size, man_module->hash, sizeof(man_module->hash));
+		if (ret)
+			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* used by others */
@@ -897,8 +905,7 @@ int man_write_fw_v1_8(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
 	struct fw_image_manifest_v1_8 *m;
-	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
-	int ret, i;
+	int ret;
 
 	/* init image */
 	ret = man_init_image_v1_8(image);
@@ -956,20 +963,31 @@ int man_write_fw_v1_8(struct image *image)
 	/* calculate hash for ADSP meta data extension - 0x480 to end */
 	/* image_end is updated every time a section is added */
 	assert(image->image_end > MAN_FW_DESC_OFFSET_V1_8);
-	ri_sha256(image, MAN_FW_DESC_OFFSET_V1_8, image->image_end
-		  - MAN_FW_DESC_OFFSET_V1_8,
-		  m->adsp_file_ext.comp_desc[0].hash);
+	ret = hash_sha256(image->fw_image + MAN_FW_DESC_OFFSET_V1_8,
+			  image->image_end - MAN_FW_DESC_OFFSET_V1_8,
+			  m->adsp_file_ext.comp_desc[0].hash,
+			  sizeof(m->adsp_file_ext.comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* calculate hash for platform auth data - repeated in hash 2 and 4 */
-	ri_sha256(image, MAN_META_EXT_OFFSET_V1_8,
-		  sizeof(struct sof_man_adsp_meta_file_ext_v1_8), hash);
+	assert(image->image_end > (MAN_FW_DESC_OFFSET_V1_8 +
+				   sizeof(struct sof_man_adsp_meta_file_ext_v1_8)));
+
+	ret = hash_sha256(image->fw_image + MAN_FW_DESC_OFFSET_V1_8,
+			  image->image_end - MAN_FW_DESC_OFFSET_V1_8,
+			  m->signed_pkg.module[0].hash,
+			  sizeof(m->signed_pkg.module[0].hash));
+	if (ret)
+		goto err;
 
 	/* hash values in reverse order */
-	for (i = 0; i < SOF_MAN_MOD_SHA256_LEN; i++) {
-		m->signed_pkg.module[0].hash[i] =
-		m->partition_info.module[0].hash[i] =
-			hash[SOF_MAN_MOD_SHA256_LEN - 1 - i];
-	}
+	bytes_swap(m->signed_pkg.module[0].hash, sizeof(m->signed_pkg.module[0].hash));
+
+	/* Copy module hash to partition_info */
+	assert(sizeof(m->partition_info.module[0].hash) == sizeof(m->signed_pkg.module[0].hash));
+	memcpy(m->partition_info.module[0].hash, m->signed_pkg.module[0].hash,
+	       sizeof(m->partition_info.module[0].hash));
 
 	/* sign manifest */
 	ret = ri_manifest_sign_v1_8(image);
@@ -1059,8 +1077,11 @@ int man_write_fw_meu_v1_5(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension */
-	ri_sha256(image, image->meu_offset, image->image_end -
-		image->meu_offset, meta->comp_desc[0].hash);
+	assert(image->meu_offset < image->image_end);
+	ret = hash_sha256(image->fw_image + image->meu_offset, image->image_end - image->meu_offset,
+			  meta->comp_desc[0].hash, sizeof(meta->comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* write the unsigned files */
 	ret = man_write_unsigned_mod(image, meta_start_offset,
@@ -1140,8 +1161,11 @@ int man_write_fw_meu_v1_8(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension */
-	ri_sha256(image, image->meu_offset, image->image_end -
-		image->meu_offset, meta->comp_desc[0].hash);
+	assert(image->meu_offset < image->image_end);
+	ret = hash_sha256(image->fw_image + image->meu_offset, image->image_end - image->meu_offset,
+			  meta->comp_desc[0].hash, sizeof(meta->comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* write the unsigned files */
 	ret = man_write_unsigned_mod(image, meta_start_offset,
@@ -1223,8 +1247,11 @@ int man_write_fw_meu_v2_5(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension */
-	ri_sha384(image, image->meu_offset, image->image_end -
-		  image->meu_offset, meta->comp_desc[0].hash);
+	assert(image->meu_offset < image->image_end);
+	ret = hash_sha384(image->fw_image + image->meu_offset, image->image_end - image->meu_offset,
+			  meta->comp_desc[0].hash, sizeof(meta->comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* write the unsigned files */
 	ret = man_write_unsigned_mod(image, meta_start_offset,
@@ -1247,8 +1274,7 @@ int man_write_fw_v2_5(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
 	struct fw_image_manifest_v2_5 *m;
-	uint8_t hash[SOF_MAN_MOD_SHA384_LEN];
-	int ret, i;
+	int ret;
 
 	/* init image */
 	ret = man_init_image_v2_5(image);
@@ -1310,22 +1336,28 @@ int man_write_fw_v2_5(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash inside ADSP meta data extension for padding to end */
-	ri_sha384(image, image->meu_offset, image->image_end - image->meu_offset,
-		  m->adsp_file_ext.comp_desc[0].hash);
+	assert(image->meu_offset < image->image_end);
+	ret = hash_sha384(image->fw_image + image->meu_offset, image->image_end - image->meu_offset,
+			  m->adsp_file_ext.comp_desc[0].hash,
+			  sizeof(m->adsp_file_ext.comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* mue writes 0xff to 16 bytes of padding */
-	for (i = 0; i < 16; i++)
-		m->reserved[i] = 0xff;
+	memset(m->reserved, 0xff, 16);
 
 	/* calculate hash inside ext info 16 of sof_man_adsp_meta_file_ext_v2_5 */
-	ri_sha384(image, MAN_META_EXT_OFFSET_V2_5,
-		  sizeof(struct sof_man_adsp_meta_file_ext_v2_5), hash);
+	assert((MAN_META_EXT_OFFSET_V2_5 + sizeof(struct sof_man_adsp_meta_file_ext_v2_5)) <
+	       image->image_end);
+
+	ret = hash_sha384(image->fw_image + MAN_META_EXT_OFFSET_V2_5,
+			  sizeof(struct sof_man_adsp_meta_file_ext_v2_5),
+			  m->signed_pkg.module[0].hash, sizeof(m->signed_pkg.module[0].hash));
+	if (ret)
+		goto err;
 
 	/* hash values in reverse order */
-	for (i = 0; i < SOF_MAN_MOD_SHA384_LEN; i++) {
-		m->signed_pkg.module[0].hash[i] =
-			hash[SOF_MAN_MOD_SHA384_LEN - 1 - i];
-	}
+	bytes_swap(m->signed_pkg.module[0].hash, sizeof(m->signed_pkg.module[0].hash));
 
 	/* sign manifest */
 	ret = ri_manifest_sign_v2_5(image);
@@ -1385,11 +1417,10 @@ static int man_init_image_ace_v1_5(struct image *image)
 
 int man_write_fw_ace_v1_5(struct image *image)
 {
-
+	struct hash_context hash;
 	struct sof_man_fw_desc *desc;
 	struct fw_image_manifest_ace_v1_5 *m;
-	uint8_t hash[SOF_MAN_MOD_SHA384_LEN];
-	int ret, i;
+	int ret;
 
 	/* init image */
 	ret = man_init_image_ace_v1_5(image);
@@ -1455,35 +1486,43 @@ int man_write_fw_ace_v1_5(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash inside ADSP meta data extension for padding to end */
-	ri_sha384(image, image->meu_offset, image->image_end - image->meu_offset,
-		  m->adsp_file_ext.comp_desc[0].hash);
+	assert(image->meu_offset < image->image_end);
+	ret = hash_sha384(image->fw_image + image->meu_offset, image->image_end - image->meu_offset,
+			  m->adsp_file_ext.comp_desc[0].hash,
+			  sizeof(m->adsp_file_ext.comp_desc[0].hash));
+	if (ret)
+		goto err;
 
 	/* mue writes 0xff to 16 bytes of padding */
-	for (i = 0; i < 16; i++)
-		m->reserved[i] = 0xff;
+	memset(m->reserved, 0xff, 16);
 
 	/* calculate hash inside ext info 16 of sof_man_adsp_meta_file_ext_v2_5 */
-	ri_sha384(image, MAN_META_EXT_OFFSET_ACE_V1_5,
-		  sizeof(struct sof_man_adsp_meta_file_ext_v2_5), hash);
+	assert((MAN_META_EXT_OFFSET_ACE_V1_5 + sizeof(struct sof_man_adsp_meta_file_ext_v2_5)) <
+	       image->image_end);
+
+	ret = hash_sha384(image->fw_image + MAN_META_EXT_OFFSET_ACE_V1_5,
+			  sizeof(struct sof_man_adsp_meta_file_ext_v2_5),
+			  m->signed_pkg.module[0].hash, sizeof(m->signed_pkg.module[0].hash));
+	if (ret)
+		goto err;
 
 	/* hash values in reverse order */
-	for (i = 0; i < SOF_MAN_MOD_SHA384_LEN; i++) {
-		m->signed_pkg.module[0].hash[i] =
-			hash[SOF_MAN_MOD_SHA384_LEN - 1 - i];
-	}
+	bytes_swap(m->signed_pkg.module[0].hash, sizeof(m->signed_pkg.module[0].hash));
 
 	/* calculate hash - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, image->fw_image,
-			  sizeof(struct CsePartitionDirHeader_v2_5) +
-			  sizeof(struct CsePartitionDirEntry) * 3);
-	module_sha_update(image, image->fw_image + 0x4c0, image->image_end - 0x4c0);
-	module_sha_complete(image, hash);
+	hash_sha384_init(&hash);
+	hash_update(&hash, image->fw_image,
+		    sizeof(struct CsePartitionDirHeader_v2_5) +
+		    sizeof(struct CsePartitionDirEntry) * 3);
+
+	hash_update(&hash, image->fw_image + 0x4c0, image->image_end - 0x4c0);
+	hash_finalize(&hash);
 
 	/* hash values in reverse order */
-	for (i = 0; i < SOF_MAN_MOD_SHA384_LEN; i++) {
-		m->info_0x16.hash[i] = hash[SOF_MAN_MOD_SHA384_LEN - 1 - i];
-	}
+	ret = hash_get_digest(&hash, m->info_0x16.hash, sizeof(m->info_0x16.hash));
+	if (ret < 0)
+		goto err;
+	bytes_swap(m->info_0x16.hash, sizeof(m->info_0x16.hash));
 
 	/* sign manifest */
 	ret = ri_manifest_sign_ace_v1_5(image);

@@ -24,6 +24,7 @@
 #include <rimage/css.h>
 #include <rimage/manifest.h>
 #include <rimage/misc_utils.h>
+#include <rimage/hash.h>
 
 #define DEBUG_PKCS	0
 
@@ -155,8 +156,8 @@ static void rimage_set_modexp(EVP_PKEY *privkey, unsigned char *mod, unsigned ch
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
-		       unsigned char *digest, unsigned char *signature)
+static int rimage_sign(EVP_PKEY *privkey, enum manver ver, struct hash_context *digest,
+		       unsigned char *signature)
 {
 	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
 	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
@@ -169,13 +170,13 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 	case V15:
 		/* fallthrough */
 	case V18:
-		ret = RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH,
+		ret = RSA_sign(NID_sha256, digest->digest, digest->digest_length,
 			       signature, &siglen, priv_rsa);
 		break;
 	case V25:
 		/* fallthrough */
 	case VACE15:
-		ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig, digest, image->md,
+		ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig, digest->digest, digest->algo,
 						/* salt length */ 32);
 		if (ret > 0)
 			ret = RSA_private_encrypt(RSA_size(priv_rsa), sig, signature, priv_rsa,
@@ -188,12 +189,11 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 	return ret;
 }
 #else
-static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
-		       unsigned char *digest, unsigned char *signature)
+static int rimage_sign(EVP_PKEY *privkey, enum manver ver,
+		       struct hash_context *digest, unsigned char *signature)
 {
 	EVP_PKEY_CTX *ctx = NULL;
 	size_t siglen = MAN_RSA_SIGNATURE_LEN;
-	size_t sig_in = MAN_RSA_SIGNATURE_LEN_2_5;
 	int ret;
 
 	ctx = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
@@ -217,28 +217,19 @@ static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
 			goto out;
 		}
 
-		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384());
-		if (ret <= 0) {
-			fprintf(stderr, "error: failed to set signature\n");
-			goto out;
-		}
-
-		ret = EVP_PKEY_sign(ctx, signature, &sig_in, digest, SHA384_DIGEST_LENGTH);
-		if (ret <= 0) {
-			fprintf(stderr, "error: failed to sign manifest\n");
-			goto out;
-		}
+		siglen = MAN_RSA_SIGNATURE_LEN_2_5;
 	}
-	else {
-		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256());
-		if (ret <= 0) {
-			fprintf(stderr, "error: failed to set signature\n");
-			goto out;
-		}
 
-		ret = EVP_PKEY_sign(ctx, signature, &siglen, digest, SHA256_DIGEST_LENGTH);
-		if (ret <= 0)
-			fprintf(stderr, "error: failed to sign manifest\n");
+	ret = EVP_PKEY_CTX_set_signature_md(ctx, digest->algo);
+	if (ret <= 0) {
+		fprintf(stderr, "error: failed to set signature algorithm\n");
+		goto out;
+	}
+
+	ret = EVP_PKEY_sign(ctx, signature, &siglen, digest->digest, digest->digest_length);
+	if (ret <= 0) {
+		fprintf(stderr, "error: failed to sign manifest\n");
+		goto out;
 	}
 
 out:
@@ -249,8 +240,8 @@ out:
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver,
-			 unsigned char *digest, unsigned char *signature)
+static int rimage_verify(EVP_PKEY *privkey, enum manver ver, struct hash_context *digest,
+			 unsigned char *signature)
 {
 	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
 	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
@@ -264,8 +255,8 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 	case V15:
 		/* fallthrough */
 	case V18:
-		ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, siglen,
-				 priv_rsa);
+		ret = RSA_verify(NID_sha256, digest->digest, digest->digest_length, signature,
+				 siglen, priv_rsa);
 
 		if (ret <= 0) {
 			ERR_error_string(ERR_get_error(), err_buf);
@@ -284,7 +275,7 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 			return ret;
 		}
 
-		ret = RSA_verify_PKCS1_PSS(priv_rsa, digest, image->md, sig, 32);
+		ret = RSA_verify_PKCS1_PSS(priv_rsa, digest->digest, digest->algo, sig, 32);
 		if (ret <= 0) {
 			ERR_error_string(ERR_get_error(), err_buf);
 			fprintf(stderr, "error: verify %s\n", err_buf);
@@ -297,12 +288,11 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 	return ret;
 }
 #else
-static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver,
-			 unsigned char *digest, unsigned char *signature)
+static int rimage_verify(EVP_PKEY *privkey, enum manver ver,struct hash_context *digest,
+			 unsigned char *signature)
 {
 	EVP_PKEY_CTX *ctx = NULL;
 	size_t siglen = MAN_RSA_SIGNATURE_LEN;
-	size_t siglen25 = MAN_RSA_SIGNATURE_LEN_2_5;
 	char err_buf[256];
 	int ret;
 
@@ -314,26 +304,19 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 	if (ret <= 0)
 		goto out;
 
+	ret = EVP_PKEY_CTX_set_signature_md(ctx, digest->algo);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), err_buf);
+		fprintf(stderr, "error: set signature %s\n", err_buf);
+		goto out;
+	}
+
 	switch (ver) {
-	case V15:
-		/* fallthrough */
+	case V15	/* fallthrough */
 	case V18:
-		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256());
-		if (ret <= 0) {
-			ERR_error_string(ERR_get_error(), err_buf);
-			fprintf(stderr, "error: set signature %s\n", err_buf);
-			goto out;
-		}
-
-		ret = EVP_PKEY_verify(ctx, signature, siglen, digest, SHA256_DIGEST_LENGTH);
-		if (ret <= 0) {
-			ERR_error_string(ERR_get_error(), err_buf);
-			fprintf(stderr, "error: verify %s\n", err_buf);
-		}
-
 		break;
-	case V25:
-		/* fallthrough */
+
+	case V25:	/* fallthrough */
 	case VACE15:
 		ret = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING);
 		if (ret <= 0)
@@ -343,20 +326,19 @@ static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver
 		if (ret <= 0)
 			goto out;
 
-		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384());
-		if (ret <= 0)
-			goto out;
-
-		ret = EVP_PKEY_verify(ctx, signature, siglen25, digest, SHA384_DIGEST_LENGTH);
-		if (ret <= 0) {
-			ERR_error_string(ERR_get_error(), err_buf);
-			fprintf(stderr, "error: verify %s\n", err_buf);
-		}
-
+		siglen = MAN_RSA_SIGNATURE_LEN_2_5;
 		break;
 	default:
 		return -EINVAL;
 	}
+
+	ret = EVP_PKEY_verify(ctx, signature, siglen, digest->digest, digest->digest_length);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), err_buf);
+		fprintf(stderr, "error: verify %s\n", err_buf);
+	}
+
+	break;
 
 out:
 	EVP_PKEY_CTX_free(ctx);
@@ -397,7 +379,7 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 			    void *ptr1, unsigned int size1)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
+	struct hash_context digest;
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN];
 	int ret = -EINVAL, i;
 
@@ -418,22 +400,20 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 	}
 
 	/* calculate the digest */
-	module_sha256_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_complete(image, digest);
+	hash_sha256_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* sign the manifest */
-	ret = rimage_sign(privkey, image, V15, digest,
-			  (unsigned char *)man->css_header.signature);
-
+	ret = rimage_sign(privkey, V15, &digest, (unsigned char *)man->css_header.signature);
 	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
-		return ret;
+		goto err;
 	}
 
 	/* copy public key modulus and exponent to manifest */
@@ -448,6 +428,7 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 	bytes_swap(man->css_header.signature,
 		   sizeof(man->css_header.signature));
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -465,7 +446,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 			    unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
+	struct hash_context digest;
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN];
 	int ret = -EINVAL, i;
 
@@ -487,22 +468,21 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	}
 
 	/* calculate the digest */
-	module_sha256_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha256_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* sign the manifest */
-	ret = rimage_sign(privkey, image, V18, digest,
-			  (unsigned char *)man->css.signature);
+	ret = rimage_sign(privkey, V18, &digest, (unsigned char *)man->css.signature);
 	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
-		return ret;
+		goto err;
 	}
 
 	/* copy public key modulus and exponent to manifest */
@@ -515,6 +495,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	/* signature is reveresd, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -525,7 +506,7 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA384_DIGEST_LENGTH];
+	struct hash_context digest;
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN_2_5];
 	int ret = -EINVAL, i;
 
@@ -547,22 +528,21 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 	}
 
 	/* calculate the digest - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha384_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* sign the manifest */
-	ret = rimage_sign(privkey, image, V25, digest,
-			  (unsigned char *)man->css.signature);
+	ret = rimage_sign(privkey, V25, &digest, (unsigned char *)man->css.signature);
 	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
-		return ret;
+		goto err;
 	}
 
 	/* copy public key modulus and exponent to manifest */
@@ -575,6 +555,7 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 	/* signature is reversed, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -585,7 +566,7 @@ int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
 				unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA384_DIGEST_LENGTH];
+	struct hash_context digest;
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN_2_5];
 	int ret = -EINVAL, i;
 
@@ -607,22 +588,21 @@ int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
 	}
 
 	/* calculate the digest - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha384_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* sign the manifest */
-	ret = rimage_sign(privkey, image, VACE15, digest,
-			  (unsigned char *)man->css.signature);
+	ret = rimage_sign(privkey, VACE15, &digest, (unsigned char *)man->css.signature);
 	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
-		return ret;
+		goto err;
 	}
 
 	/* copy public key modulus and exponent to manifest */
@@ -635,6 +615,7 @@ int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
 	/* signature is reversed, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -713,8 +694,8 @@ int pkcs_v1_5_verify_man_v1_5(struct image *image,
 			    void *ptr1, unsigned int size1)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
-	int ret = -EINVAL, i;
+	struct hash_context digest;
+	int ret = -EINVAL;
 
 #if DEBUG_PKCS
 	fprintf(stdout, "offsets 0x%lx size 0x%x\n",
@@ -734,28 +715,27 @@ int pkcs_v1_5_verify_man_v1_5(struct image *image,
 	}
 
 	/* calculate the digest */
-	module_sha256_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_complete(image, digest);
+	hash_sha256_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* signature is reversed, swap it */
 	bytes_swap(man->css_header.signature,
 		   sizeof(man->css_header.signature));
 
 	/* verify */
-	ret = rimage_verify(privkey, image, V15, digest,
-			    (unsigned char *)man->css_header.signature);
+	ret = rimage_verify(privkey, V15, &digest, (unsigned char *)man->css_header.signature);
 	if (ret <= 0)
 		fprintf(stderr, "error: failed to verify manifest\n");
 	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
-
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -773,8 +753,8 @@ int pkcs_v1_5_verify_man_v1_8(struct image *image,
 			    unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
-	int ret = -EINVAL, i;
+	struct hash_context digest;
+	int ret = -EINVAL;
 
 #if DEBUG_PKCS
 	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
@@ -794,27 +774,27 @@ int pkcs_v1_5_verify_man_v1_8(struct image *image,
 	}
 
 	/* calculate the digest */
-	module_sha256_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha256_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* signature is reveresd, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
 	/* verify */
-	ret = rimage_verify(privkey, image, V18, digest,
-			    (unsigned char *)man->css.signature);
+	ret = rimage_verify(privkey, V18, &digest, (unsigned char *)man->css.signature);
 	if (ret <= 0)
 		fprintf(stderr, "error: failed to verify manifest\n");
 	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -832,8 +812,8 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 			    unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA384_DIGEST_LENGTH];
-	int ret = -EINVAL, i;
+	struct hash_context digest;
+	int ret = -EINVAL;
 
 #if DEBUG_PKCS
 	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
@@ -853,28 +833,28 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 	}
 
 	/* calculate the digest - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha384_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* signature is reversed, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
 	/* verify */
-	ret = rimage_verify(privkey, image, V25, digest,
-			    (unsigned char *)man->css.signature);
+	ret = rimage_verify(privkey, V25, &digest, (unsigned char *)man->css.signature);
 
 	if (ret <= 0)
 		fprintf(stderr, "error: failed to verify manifest\n");
 	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
@@ -885,8 +865,8 @@ int pkcs_v1_5_verify_man_ace_v1_5(struct image *image,
 				  unsigned int size2)
 {
 	EVP_PKEY *privkey;
-	unsigned char digest[SHA384_DIGEST_LENGTH];
-	int ret = -EINVAL, i;
+	struct hash_context digest;
+	int ret = -EINVAL;
 
 #if DEBUG_PKCS
 	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
@@ -906,28 +886,27 @@ int pkcs_v1_5_verify_man_ace_v1_5(struct image *image,
 	}
 
 	/* calculate the digest - SHA384 on CAVS2_5+ */
-	module_sha384_create(image);
-	module_sha_update(image, ptr1, size1);
-	module_sha_update(image, ptr2, size2);
-	module_sha_complete(image, digest);
+	hash_sha384_init(&digest);
+	hash_update(&digest, ptr1, size1);
+	hash_update(&digest, ptr2, size2);
+	ret = hash_finalize(&digest);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
-	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
-		fprintf(stdout, "%02x", digest[i]);
-	fprintf(stdout, "\n");
+	hash_print(&digest);
 
 	/* signature is reversed, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
 	/* verify */
-	ret = rimage_verify(privkey, image, VACE15, digest,
-			    (unsigned char *)man->css.signature);
-
+	ret = rimage_verify(privkey, VACE15, &digest, (unsigned char *)man->css.signature);
 	if (ret <= 0)
 		fprintf(stderr, "error: failed to verify manifest\n");
 	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
+err:
 	EVP_PKEY_free(privkey);
 	return ret;
 }
