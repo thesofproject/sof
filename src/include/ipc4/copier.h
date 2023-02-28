@@ -262,6 +262,7 @@ struct copier_data {
 	uint64_t input_total_data_processed;
 	uint64_t output_total_data_processed;
 	struct host_data *hd;
+	bool ipc_gtw;
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,

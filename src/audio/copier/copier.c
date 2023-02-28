@@ -488,6 +488,8 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 	int ret;
 	struct comp_dev *dev;
 
+	cd->ipc_gtw = true;
+
 	drv = ipc4_get_drv((uint8_t *)&uuid);
 	if (!drv)
 		return -EINVAL;
@@ -700,7 +702,7 @@ static void copier_free(struct comp_dev *dev)
 	int i;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type == SOF_COMP_HOST) {
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 			host_zephyr_free(cd->hd);
 		} else {
 			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
@@ -850,7 +852,7 @@ static int copier_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type == SOF_COMP_HOST) {
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 			ret = host_zephyr_prepare(cd->hd);
 		} else {
 			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
@@ -911,7 +913,7 @@ static int copier_reset(struct comp_dev *dev)
 	cd->output_total_data_processed = 0;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type == SOF_COMP_HOST) {
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 			if (cd->hd->chan)
 				notifier_unregister(dev,
 						    cd->hd->chan, NOTIFIER_ID_DMA_COPY);
@@ -955,7 +957,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type == SOF_COMP_HOST) {
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 			ret = host_zephyr_trigger(cd->hd, dev, cmd, dev->state);
 			if (ret < 0)
 				break;
@@ -1181,7 +1183,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 
 		return ret;
 	} else {
-		if (dev->ipc_config.type == SOF_COMP_HOST) {
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 			return host_zephyr_copy(cd->hd, dev);
 		} else {
 			return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
@@ -1246,7 +1248,7 @@ static int copier_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "copier_copy()");
 
-	if (dev->ipc_config.type == SOF_COMP_HOST)
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 		return do_endpoint_copy(dev);
 
 	processed_data.source_bytes = 0;
@@ -1447,7 +1449,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 							       &demuxed_params);
 		} else {
-			if (dev->ipc_config.type == SOF_COMP_HOST) {
+			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
 				component_set_nearest_period_frames(dev, params->rate);
 				is_scheduling_source = dev == dev->pipeline->sched_comp;
 				if (params->direction == SOF_IPC_STREAM_CAPTURE) {
@@ -1680,7 +1682,7 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 
 	if (cd->endpoint_num && cd->bsource_buffer != input) {
 		if (stream_no < cd->endpoint_num) {
-			if (dev->ipc_config.type == SOF_COMP_HOST)
+			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 				ret = host_zephyr_get_processed_data(cd->hd, 0, input, source);
 			else
 				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
@@ -1722,7 +1724,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 	if (!cd->endpoint_num)
 		return -EINVAL;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST)
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 		host_zephyr_position(cd->hd, posn);
 	else
 		ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
