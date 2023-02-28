@@ -230,8 +230,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list)
 		mod->num_output_buffers++;
 
-	if (!mod->num_input_buffers || !mod->num_output_buffers) {
-		comp_err(dev, "module_adapter_prepare(): invalid number of source/sink buffers");
+	if (!mod->num_input_buffers && !mod->num_output_buffers) {
+		comp_err(dev, "module_adapter_prepare(): no source and sink buffers connected!");
 		return -EINVAL;
 	}
 
@@ -241,20 +241,30 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* allocate memory for input buffers */
-	mod->input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				     sizeof(*mod->input_buffers) * mod->num_input_buffers);
-	if (!mod->input_buffers) {
-		comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
-		return -ENOMEM;
+	if (mod->num_input_buffers) {
+		mod->input_buffers =
+			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				sizeof(*mod->input_buffers) * mod->num_input_buffers);
+		if (!mod->input_buffers) {
+			comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
+			return -ENOMEM;
+		}
+	} else {
+		mod->input_buffers = NULL;
 	}
 
 	/* allocate memory for output buffers */
-	mod->output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*mod->output_buffers) * mod->num_output_buffers);
-	if (!mod->output_buffers) {
-		comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
-		ret = -ENOMEM;
-		goto in_free;
+	if (mod->num_output_buffers) {
+		mod->output_buffers =
+			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				sizeof(*mod->output_buffers) * mod->num_output_buffers);
+		if (!mod->output_buffers) {
+			comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
+			ret = -ENOMEM;
+			goto in_out_free;
+		}
+	} else {
+		mod->output_buffers = NULL;
 	}
 
 	/*
@@ -318,7 +328,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
-			goto in_free;
+			goto in_data_free;
 		}
 		i++;
 	}
@@ -332,7 +342,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
-			goto out_free;
+			goto out_data_free;
 		}
 		i++;
 	}
@@ -387,16 +397,17 @@ free:
 		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
 		buffer_free(buffer);
 	}
-out_free:
+
+out_data_free:
 	for (i = 0; i < mod->num_output_buffers; i++)
 		rfree((__sparse_force void *)mod->output_buffers[i].data);
 
-	rfree(mod->output_buffers);
-
-in_free:
+in_data_free:
 	for (i = 0; i < mod->num_input_buffers; i++)
 		rfree((__sparse_force void *)mod->input_buffers[i].data);
 
+in_out_free:
+	rfree(mod->output_buffers);
 	rfree(mod->input_buffers);
 	return ret;
 }
@@ -659,15 +670,20 @@ module_single_source_setup(struct comp_dev *dev,
 	uint32_t source_frame_bytes = 0;
 	int i = 0;
 
-	list_for_item(blist, &dev->bsink_list) {
-		comp_get_copy_limits_frame_aligned(source_c[0], sinks_c[i], &c);
+	if (list_is_empty(&dev->bsink_list)) {
+		min_frames = audio_stream_get_avail_frames(&source_c[0]->stream);
+		source_frame_bytes = audio_stream_frame_bytes(&source_c[0]->stream);
+	} else {
+		list_for_item(blist, &dev->bsink_list) {
+			comp_get_copy_limits_frame_aligned(source_c[0], sinks_c[i], &c);
 
-		min_frames = MIN(min_frames, c.frames);
-		source_frame_bytes = c.source_frame_bytes;
+			min_frames = MIN(min_frames, c.frames);
+			source_frame_bytes = c.source_frame_bytes;
 
-		mod->output_buffers[i].size = 0;
-		mod->output_buffers[i].data = &sinks_c[i]->stream;
-		i++;
+			mod->output_buffers[i].size = 0;
+			mod->output_buffers[i].data = &sinks_c[i]->stream;
+			i++;
+		}
 	}
 
 	num_output_buffers = i;
