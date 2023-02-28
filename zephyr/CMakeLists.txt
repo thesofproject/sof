@@ -170,6 +170,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	endif()
 
 	# Platform sources
+	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
@@ -179,8 +180,18 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
 	)
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	else()
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
+		lib/pm_runtime.c
+		lib/clk.c
+		lib/dma.c
+	)
+	endif()
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
@@ -190,9 +201,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
 		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
 	)
-
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "tigerlake")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
@@ -210,9 +218,9 @@ if (CONFIG_ACE_VERSION_1_5)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/ace/platform.c
 		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/ace/lib/pm_runtime.c
-		${SOF_PLATFORM_PATH}/intel/ace/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/ace/lib/dma.c
+		lib/pm_runtime.c
+		lib/clk.c
+		lib/dma.c
 	)
 
 	# SOF core infrastructure - runs on top of Zephyr
