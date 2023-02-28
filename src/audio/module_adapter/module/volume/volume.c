@@ -611,6 +611,8 @@ static int volume_init(struct processing_module *mod)
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
 
+	cd->attenuation = 0;
+
 	reset_state(cd);
 
 	return 0;
@@ -987,6 +989,41 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 	return 0;
 }
 
+static int volume_set_attenuation(struct processing_module *mod, const uint8_t *data,
+				  int data_size)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct list_item *sink_list;
+	struct comp_buffer *sink;
+	uint32_t attenuation;
+
+	/* only support attenuation in format of 32bit */
+	if (data_size > sizeof(uint32_t)) {
+		comp_err(dev, "attenuation data size %d is incorrect", data_size);
+		return -EINVAL;
+	}
+
+	attenuation = *(const uint32_t *)data;
+	if (attenuation > 31) {
+		comp_err(dev, "attenuation %d is out of range", attenuation);
+		return -EINVAL;
+	}
+
+	list_for_item(sink_list, &dev->bsink_list) {
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		if (sink->stream.frame_fmt < SOF_IPC_FRAME_S24_4LE) {
+			comp_err(dev, "sink %d in format %d isn't supported by attenuation",
+				 sink->id, sink->stream.frame_fmt);
+			return -EINVAL;
+		}
+	}
+
+	cd->attenuation = attenuation;
+
+	return 0;
+}
+
 static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
@@ -1013,6 +1050,8 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	switch (config_id) {
 	case IPC4_VOLUME:
 		return volume_set_volume(mod, fragment, fragment_size);
+	case IPC4_SET_ATTENUATION:
+		return volume_set_attenuation(mod, fragment, fragment_size);
 	default:
 		comp_err(dev, "unsupported param %d", config_id);
 		return -EINVAL;
