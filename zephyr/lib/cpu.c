@@ -57,71 +57,7 @@ static FUNC_NORETURN void secondary_init(void *arg)
 	CODE_UNREACHABLE; /* LCOV_EXCL_LINE */
 }
 
-#ifndef CONFIG_ACE
-static int w_core_enable_mask = 0x1; /*Core 0 is always active*/
-
-int cpu_enable_core(int id)
-{
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask |= BIT(id);
-
-	return 0;
-}
-
-int cpu_enable_secondary_core(int id)
-{
-	/*
-	 * This is an open-coded version of zephyr/kernel/smp.c
-	 * z_smp_start_cpu(). We do this, so we can use a customized
-	 * secondary_init() for SOF.
-	 */
-
-	if (arch_cpu_active(id))
-		return 0;
-
-#if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	z_init_cpu(id);
-#endif
-
-	atomic_clear(&start_flag);
-	atomic_clear(&ready_flag);
-
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
-		       secondary_init, &start_flag);
-
-	while (!atomic_get(&ready_flag))
-		k_busy_wait(100);
-
-	atomic_set(&start_flag, 1);
-
-	return 0;
-}
-
-void cpu_disable_core(int id)
-{
-	/* TODO: call Zephyr API */
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask &= ~BIT(id);
-}
-
-int cpu_is_core_enabled(int id)
-{
-	return w_core_enable_mask & BIT(id);
-}
-
-int cpu_enabled_cores(void)
-{
-	return w_core_enable_mask;
-}
-
-#else /* CONFIG_ACE */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
 #include <zephyr/pm/pm.h>
@@ -217,7 +153,70 @@ int cpu_enabled_cores(void)
 
 	return mask;
 }
-#endif /* CONFIG_ACE */
+#else
+static int w_core_enable_mask = 0x1; /*Core 0 is always active*/
+
+int cpu_enable_core(int id)
+{
+	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
+
+	/* only called from single core, no RMW lock */
+	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
+
+	w_core_enable_mask |= BIT(id);
+
+	return 0;
+}
+
+int cpu_enable_secondary_core(int id)
+{
+	/*
+	 * This is an open-coded version of zephyr/kernel/smp.c
+	 * z_smp_start_cpu(). We do this, so we can use a customized
+	 * secondary_init() for SOF.
+	 */
+
+	if (arch_cpu_active(id))
+		return 0;
+
+#if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
+	z_init_cpu(id);
+#endif
+
+	atomic_clear(&start_flag);
+	atomic_clear(&ready_flag);
+
+	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
+		       secondary_init, &start_flag);
+
+	while (!atomic_get(&ready_flag))
+		k_busy_wait(100);
+
+	atomic_set(&start_flag, 1);
+
+	return 0;
+}
+
+void cpu_disable_core(int id)
+{
+	/* TODO: call Zephyr API */
+
+	/* only called from single core, no RMW lock */
+	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
+
+	w_core_enable_mask &= ~BIT(id);
+}
+
+int cpu_is_core_enabled(int id)
+{
+	return w_core_enable_mask & BIT(id);
+}
+
+int cpu_enabled_cores(void)
+{
+	return w_core_enable_mask;
+}
+#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 void cpu_power_down_core(uint32_t flags)
 {

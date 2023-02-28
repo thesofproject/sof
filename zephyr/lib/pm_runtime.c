@@ -9,8 +9,6 @@
 #include <user/trace.h>
 #include <sof_versions.h>
 #include <stdint.h>
-
-#include <adsp_boot.h>
 #include <zephyr/pm/policy.h>
 
 LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
@@ -89,9 +87,6 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 	case PM_RUNTIME_DSP:
 		tr_dbg(&power_tr, "putting prevent on d0i3");
 		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-		/* Disable power gating when preventing */
-		DSPCS.bootctl[PLATFORM_PRIMARY_CORE_ID].bctl |=
-			DSPBR_BCTL_WAITIPCG | DSPBR_BCTL_WAITIPPG;
 		break;
 	default:
 		break;
