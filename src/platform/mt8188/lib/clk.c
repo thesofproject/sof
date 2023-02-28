@@ -8,7 +8,6 @@
 
 #include <platform/drivers/mt_reg_base.h>
 #include <rtos/clk.h>
-#include <rtos/spinlock.h>
 #include <rtos/wait.h>
 #include <sof/common.h>
 #include <sof/lib/cpu.h>
@@ -138,8 +137,6 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_dsp_freq,
 		};
-
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);

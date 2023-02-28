@@ -26,6 +26,8 @@ DECLARE_SOF_UUID("clock", clock_uuid, 0x8890ea76, 0x0df9, 0x44ae,
 
 DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
+SHARED_DATA struct k_spinlock clk_lock;
+
 struct clock_notify_data clk_notify_data;
 
 static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
@@ -63,7 +65,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 
 	/* atomic context for changing clocks */
-	key = k_spin_lock(&clk_info->lock);
+	key = clock_lock();
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
@@ -90,7 +92,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		       clk_info->notification_mask, &clk_notify_data,
 		       sizeof(clk_notify_data));
 
-	k_spin_unlock(&clk_info->lock, key);
+	clock_unlock(key);
 }
 
 void clock_low_power_mode(int clock, bool enable)

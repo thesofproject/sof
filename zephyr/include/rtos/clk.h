@@ -44,9 +44,8 @@ struct clock_info {
 	uint32_t lowest_freq_idx;	/* lowest possible clock */
 	uint32_t notification_id;
 	uint32_t notification_mask;
-	struct k_spinlock lock;
 
-	/* persistent change clock value in active state */
+	/* persistent change clock value in active state, caller must hold clk_lock */
 	int (*set_freq)(int clock, int freq_idx);
 
 	/* temporary change clock - don't modify default clock settings */
@@ -60,6 +59,18 @@ void clock_set_freq(int clock, uint32_t hz);
 void clock_low_power_mode(int clock, bool enable);
 
 uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate);
+
+extern struct k_spinlock clk_lock;
+
+static inline k_spinlock_key_t clock_lock(void)
+{
+	return k_spin_lock(&clk_lock);
+}
+
+static inline void clock_unlock(k_spinlock_key_t key)
+{
+	k_spin_unlock(&clk_lock, key);
+}
 
 static inline struct clock_info *clocks_get(void)
 {

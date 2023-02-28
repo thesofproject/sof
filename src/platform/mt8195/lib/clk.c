@@ -13,7 +13,6 @@
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>
 #include <rtos/sof.h>
-#include <rtos/spinlock.h>
 
 DECLARE_SOF_UUID("clkdrv", clkdrv_uuid, 0x23b12fd5, 0xc2a9, 0x41a8,
 		 0xa2, 0xb3, 0x23, 0x1a, 0xb7, 0xdc, 0xdc, 0x70);
@@ -191,8 +190,6 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_cpu_freq,
 		};
-
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
 	adsp_clock = 0;

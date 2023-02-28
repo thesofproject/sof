@@ -10,7 +10,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/sof.h>
-#include <rtos/spinlock.h>
 #include <platform/chip_registers.h>
 
 const struct freq_table platform_cpu_freq[] = {
@@ -139,6 +138,5 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
 }

@@ -10,7 +10,6 @@
 #include <rtos/sof.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>
-#include <rtos/spinlock.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/clock_control.h>
 
@@ -40,7 +39,5 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = select_cpu_freq,
 		};
-
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
 }
