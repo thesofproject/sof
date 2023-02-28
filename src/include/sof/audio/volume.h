@@ -160,6 +160,7 @@ struct vol_data {
 	vol_zc_func zc_get;			/**< function getting nearest zero crossing frame */
 	vol_ramp_func ramp_func;		/**< function for ramp shape */
 	bool copy_gain;				/**< control copy gain or not */
+	uint32_t attenuation;			/**< peakmeter adjustment in range [0 - 31] */
 };
 
 /** \brief Volume processing functions map. */
