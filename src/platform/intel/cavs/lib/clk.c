@@ -64,24 +64,26 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 #endif
 }
 
-static inline void select_cpu_clock(int freq_idx, bool release_unused)
+static void select_cpu_clock_unlocked(int freq_idx, bool release_unused)
 {
 	struct clock_info *clk_info = clocks_get();
-	k_spinlock_key_t key[CONFIG_CORE_COUNT];
 	int i;
-
-	/* lock clock for all cores */
-	for (i = 0; i < CONFIG_CORE_COUNT; i++)
-		key[i] = k_spin_lock(&clk_info[CLK_CPU(i)].lock);
 
 	/* change clock */
 	select_cpu_clock_hw(freq_idx, release_unused);
 	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		clk_info[CLK_CPU(i)].current_freq_idx = freq_idx;
+}
 
-	/* unlock clock for all cores */
-	for (i = CONFIG_CORE_COUNT - 1; i >= 0; i--)
-		k_spin_unlock(&clk_info[CLK_CPU(i)].lock, key[i]);
+static inline void select_cpu_clock(int freq_idx, bool release_unused)
+{
+	k_spinlock_key_t key;
+
+	key = clock_lock();
+
+	select_cpu_clock_unlocked(freq_idx, release_unused);
+
+	clock_unlock(key);
 }
 
 /* LPRO_ONLY mode */
@@ -290,7 +292,7 @@ void platform_clock_on_wakeup(void)
 
 static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 {
-	set_cpu_current_freq_idx(freq_idx, true);
+	select_cpu_clock_unlocked(freq_idx, true);
 	return 0;
 }
 
@@ -326,9 +328,9 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = clock_platform_set_cpu_freq,
 			.low_power_mode = platform_clock_low_power_mode,
 		};
-
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
+
+	k_spinlock_init(&clk_lock);
 
 	sof->clocks[CLK_SSP] = (struct clock_info) {
 		.freqs_num = NUM_SSP_FREQ,
@@ -339,6 +341,4 @@ void platform_clock_init(struct sof *sof)
 		.notification_mask = NOTIFIER_TARGET_CORE_ALL_MASK,
 		.set_freq = NULL,
 	};
-
-	k_spinlock_init(&sof->clocks[CLK_SSP].lock);
 }
