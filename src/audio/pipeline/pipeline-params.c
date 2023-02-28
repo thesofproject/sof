@@ -326,7 +326,17 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	case COMP_PROCESSING_DOMAIN_DP:
 		/* this is a DP scheduled module */
-		err = pipeline_comp_dp_task_init(current);
+
+		/*
+		 * workaround - because of some issues with cache, currently we can allow DP
+		 * modules to run on the same core as LL pipeline only.
+		 * to be removed once buffering is fixed
+		 */
+		if (current->pipeline->core != current->ipc_config.core)
+			err = -EINVAL;
+		else
+			err = pipeline_comp_dp_task_init(current);
+
 		break;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
