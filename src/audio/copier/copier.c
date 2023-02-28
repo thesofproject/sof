@@ -208,59 +208,46 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       int dir)
 {
-	struct sof_uuid host = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
-			0xe8, 0x05, 0xd0, 0x85, 0x2b}};
 	struct ipc_config_host ipc_host;
-	const struct comp_driver *drv;
-	struct comp_dev *dev;
 	struct host_data *hd;
 	int ret;
-
-	drv = ipc4_get_drv((uint8_t *)&host);
-	if (!drv)
-		return -EINVAL;
+	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
 
 	config->type = SOF_COMP_HOST;
 
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier_cfg, ipc4_gtw_host, false, 0);
-	if (ret < 0)
-		return ret;
+	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
+				    copier_cfg->base.audio_fmt.valid_bit_depth,
+				    &in_frame_fmt,
+				    &in_valid_fmt,
+				    copier_cfg->base.audio_fmt.s_type);
+
+	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
+				    copier_cfg->out_fmt.valid_bit_depth,
+				    &out_frame_fmt,
+				    &out_valid_fmt,
+				    copier_cfg->out_fmt.s_type);
+
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+		config->frame_fmt = in_frame_fmt;
+	else
+		config->frame_fmt = out_frame_fmt;
+
+	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
-	dev->ipc_config = *config;
-
 	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
-	if (!hd) {
-		ret = -ENOMEM;
-		goto e_dev;
-	}
-	comp_set_drvdata(dev, hd);
-	ret = host_zephyr_new(hd, parent_dev, &ipc_host, dev->ipc_config.id);
+	if (!hd)
+		return -ENOMEM;
+
+	ret = host_zephyr_new(hd, parent_dev, &ipc_host, config->id);
 	if (ret < 0) {
 		comp_err(parent_dev, "copier: host new failed with exit");
-		goto e_data;
-	}
-	dev->state = COMP_STATE_READY;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
-		cd->bsource_buffer = false;
-	} else {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
-		cd->bsource_buffer = true;
+		rfree(hd);
+		return ret;
 	}
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
@@ -269,22 +256,15 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 				   ipc4_gtw_host, IPC4_DIRECTION(dir));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(parent_dev, "failed to get converter for host, dir %d", dir);
-		ret = -EINVAL;
-		goto e_data;
+		host_zephyr_free(hd);
+		rfree(hd);
+		return -EINVAL;
 	}
 
-	cd->endpoint[cd->endpoint_num++] = dev;
-	cd->hd = comp_get_drvdata(dev);
+	cd->endpoint_num++;
+	cd->hd = hd;
 
-	return ret;
-
-e_data:
-	rfree(hd);
-e_dev:
-	rfree(dev);
-e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
-	return ret;
+	return 0;
 }
 
 static enum sof_ipc_stream_direction
@@ -722,19 +702,16 @@ static void copier_free(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	int i;
 
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (cd->endpoint[i]->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-			/*
-			 * host copier endpoint_num will never be greater than 1
-			 */
-			host_zephyr_free(cd->hd);
-			rfree(cd->hd);
-			rfree(cd->endpoint[i]);
-		} else {
-			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-		}
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+		host_zephyr_free(cd->hd);
+		rfree(cd->hd);
+	}
 
-		buffer_free(cd->endpoint_buffer[i]);
+	for (i = 0; i < cd->endpoint_num; i++) {
+		if (dev->ipc_config.type != SOF_COMP_HOST) {
+			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+			buffer_free(cd->endpoint_buffer[i]);
+		}
 	}
 
 	rfree(cd);
@@ -880,17 +857,11 @@ static int copier_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-			ret = comp_set_state(cd->endpoint[i], COMP_TRIGGER_PREPARE);
-			if (ret < 0)
-				return ret;
-			if (ret == COMP_STATUS_STATE_ALREADY_SET)
-				return PPL_STATUS_PATH_STOP;
-
+		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 			ret = host_zephyr_prepare(cd->hd);
-		} else {
+		else
 			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
-		}
+
 		if (ret < 0)
 			return ret;
 	}
@@ -954,8 +925,7 @@ static int copier_reset(struct comp_dev *dev)
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-			host_zephyr_reset(cd->hd, cd->endpoint[i]->state);
-			cd->endpoint[i]->state = COMP_STATE_READY;
+			host_zephyr_reset(cd->hd, dev->state);
 		} else {
 			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
 			if (ret < 0)
@@ -995,14 +965,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-			ret = comp_set_state(cd->endpoint[i], cmd);
-			if (ret < 0)
-				break;
-
-			if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-				ret = PPL_STATUS_PATH_STOP;
-				break;
-			}
 			ret = host_zephyr_trigger(cd->hd, dev, cmd);
 			if (ret < 0)
 				break;
