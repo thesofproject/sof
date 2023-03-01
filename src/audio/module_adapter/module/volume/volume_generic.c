@@ -51,12 +51,14 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 24/32 bit source buffer
  * to 24/32 bit destination buffer.
  */
 static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -100,12 +102,14 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 32 bit source buffer
  * to 32 bit destination buffer.
  */
 static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -152,12 +156,14 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 16 bit source buffer
  * to 16 bit destination buffer.
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;

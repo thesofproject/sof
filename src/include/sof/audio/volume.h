@@ -113,7 +113,7 @@ struct sof_ipc_ctrl_value_chan;
  * \brief volume processing function interface
  */
 typedef void (*vol_scale_func)(struct processing_module *mod, struct input_stream_buffer *source,
-			       struct output_stream_buffer *sink, uint32_t frames);
+			struct output_stream_buffer *sink, uint32_t frames, uint32_t attenuation);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame

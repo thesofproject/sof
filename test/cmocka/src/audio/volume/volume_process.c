@@ -282,7 +282,7 @@ static void test_audio_vol(void **state)
 	vol_state->output_buffers[0]->size = 0;
 
 	cd->scale_vol(mod, vol_state->input_buffers[0], vol_state->output_buffers[0],
-		      mod->dev->frames);
+		      mod->dev->frames, cd->attenuation);
 
 	vol_state->verify(mod, vol_state->sinks[0], vol_state->sources[0]);
 }

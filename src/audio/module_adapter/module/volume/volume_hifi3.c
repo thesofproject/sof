@@ -52,9 +52,11 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  */
 static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -137,9 +139,11 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  */
 static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -227,9 +231,11 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
