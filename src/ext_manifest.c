@@ -201,9 +201,8 @@ int ext_man_write_cavs_25(struct image *image)
 
 	mod_ext = &image->adsp->modules->mod_ext;
 	count = mod_ext->mod_conf_count;
-
-	header.version_major = mod_ext->ext_mod_config_array->header.version_major;
-	header.version_minor = mod_ext->ext_mod_config_array->header.version_minor;
+	header.version_major = EXTENDED_MANIFEST_VERSION_MAJOR;
+	header.version_minor = EXTENDED_MANIFEST_VERSION_MINOR;
 	header.num_module_entries = count;
 	header.id = EXTENDED_MANIFEST_MAGIC_HEADER_ID;
 	header.len = sizeof(const struct fw_ext_man_cavs_header);
