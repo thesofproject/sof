@@ -47,9 +47,11 @@ static inline void vol_store_gain(struct vol_data *cd, const int channels_count)
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -130,7 +132,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
-						  cd->peak_vol[i + channels_count]);
+						  cd->peak_vol[i + channels_count]) << attenuation;
 	/* update peak vol */
 	peak_vol_update(cd);
 }
@@ -143,9 +145,11 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -235,7 +239,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
-						  cd->peak_vol[i + channels_count]);
+						  cd->peak_vol[i + channels_count]) << attenuation;
+
 	/* update peak vol */
 	peak_vol_update(cd);
 }
@@ -248,9 +253,11 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -369,9 +376,11 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -427,6 +436,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 				/* Store the output sample */
 				AE_S32_L_XP(out_sample, out, inc);
 			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation);
 			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
 		}
 		samples -= n;
@@ -445,9 +455,11 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+			       struct output_stream_buffer *bsink, uint32_t frames,
+			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
@@ -503,6 +515,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 #endif
 				AE_S32_L_XP(out_sample, out, inc);
 			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation);
 			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
 		}
 		samples -= n;
@@ -521,9 +534,11 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames)
+			   struct output_stream_buffer *bsink, uint32_t frames,
+			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;

@@ -1173,7 +1173,7 @@ static int volume_process(struct processing_module *mod,
 		}
 
 		/* copy and scale volume */
-		cd->scale_vol(mod, &input_buffers[0], &output_buffers[0], frames);
+		cd->scale_vol(mod, &input_buffers[0], &output_buffers[0], frames, cd->attenuation);
 
 		if (cd->vol_ramp_active)
 			cd->vol_ramp_elapsed_frames += frames;
