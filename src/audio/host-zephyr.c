@@ -19,6 +19,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -531,6 +532,9 @@ static int host_copy_normal(struct comp_dev *dev)
 	if (!copy_bytes)
 		return 0;
 
+	/* Register Host DMA usage */
+	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
+
 	struct dma_cb_data next = {
 		.channel = hd->chan,
 		.elem = { .size = copy_bytes },
@@ -584,6 +588,12 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 	return 0;
 }
 
+static void hda_dma_l1_exit_notify(void *arg, enum notify_id type, void *data)
+{
+	/* Force Host DMA to exit L1 if needed */
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+}
+
 /**
  * \brief Command handler.
  * \param[in,out] dev Device
@@ -625,6 +635,10 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		if (ret < 0)
 			comp_err(dev, "host_trigger(): dma_start() failed, ret = %u",
 				 ret);
+		/* Register common L1 exit for all channels */
+		ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+								NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
+								NOTIFIER_FLAG_AGGREGATE);
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
@@ -633,6 +647,9 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				comp_err(dev, "host_trigger(): dma stop failed: %d",
 					 ret);
+			/* Unregister L1 exit */
+			notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+								NOTIFIER_ID_LL_POST_RUN);
 		}
 
 		break;
@@ -1052,8 +1069,12 @@ static int host_reset(struct comp_dev *dev)
 	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
-		if (dev->state == COMP_STATE_ACTIVE)
+		if (dev->state == COMP_STATE_ACTIVE) {
 			dma_stop(hd->chan->dma->z_dev, hd->chan->index);
+			/* Unregister L1 exit */
+			notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+								NOTIFIER_ID_LL_POST_RUN);
+		}
 
 		/* remove callback */
 		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
