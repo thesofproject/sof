@@ -436,6 +436,7 @@ endif # COMP_ASRC
 
 config COMP_TDFB
 	bool "TDFB component"
+	depends on COMP_MODULE_ADAPTER
 	select MATH_FIR
 	select MATH_IIR_DF1
 	select SQRT_FIXED

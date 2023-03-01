@@ -9,32 +9,33 @@
  * data files for simulated tests with testbench. Matlab or Octave is needed.
  */
 
-#include <ipc/control.h>
-#include <ipc/stream.h>
-#include <ipc/topology.h>
-#include <user/tdfb.h>
-#include <user/trace.h>
-#include <sof/common.h>
-#include <rtos/panic.h>
-#include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
-#include <rtos/init.h>
-#include <sof/lib/memory.h>
-#include <sof/lib/uuid.h>
-#include <sof/list.h>
-#include <sof/platform.h>
-#include <rtos/string.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
-#include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/pipeline.h>
 #include <sof/audio/tdfb/tdfb_comp.h>
+#include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
+#include <sof/platform.h>
 #include <sof/trace/trace.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <rtos/alloc.h>
+#include <rtos/init.h>
+#include <rtos/panic.h>
+#include <rtos/string.h>
+#include <sof/common.h>
+#include <sof/list.h>
 #include <sof/ut.h>
+#include <user/tdfb.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -48,8 +49,6 @@
 #define CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
 #define CTRL_INDEX_FILTERBANK		0	/* bytes */
 
-static const struct comp_driver comp_tdfb;
-
 LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 /* dd511749-d9fa-455c-b3a7-13585693f1af */
@@ -60,10 +59,12 @@ DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
 
 /* IPC */
 
-static int init_get_ctl_ipc(struct comp_dev *dev)
+/* TODO: ALSA control update to user space need to be moved to module adapter */
+
+static int init_get_ctl_ipc(struct processing_module *mod)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-	int comp_id = dev_comp_id(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
+	int comp_id = dev_comp_id(mod->dev);
 
 	cd->ctrl_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, TDFB_GET_CTRL_DATA_SIZE);
 	if (!cd->ctrl_data)
@@ -81,9 +82,9 @@ static int init_get_ctl_ipc(struct comp_dev *dev)
 	return 0;
 }
 
-static void send_get_ctl_ipc(struct comp_dev *dev)
+static void send_get_ctl_ipc(struct processing_module *mod)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
 #if TDFB_ADD_DIRECTION_TO_GET_CMD
 	cd->ctrl_data->chanv[0].channel = 0;
@@ -118,31 +119,31 @@ static inline void set_s32_fir(struct tdfb_comp_data *cd)
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-static inline int set_func(struct comp_dev *dev, enum sof_ipc_frame fmt)
+static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_info(dev, "set_func(), SOF_IPC_FRAME_S16_LE");
+		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S16_LE");
 		set_s16_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_info(dev, "set_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S24_4LE");
 		set_s24_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_info(dev, "set_func(), SOF_IPC_FRAME_S32_LE");
+		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S32_LE");
 		set_s32_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "set_func(), invalid frame_fmt");
+		comp_err(mod->dev, "set_func(), invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -195,11 +196,13 @@ static int wrap_180(int a)
 	return a;
 }
 
-static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
+static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 			  int sink_nch)
 {
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct sof_fir_coef_data *coef_data;
 	struct sof_tdfb_config *config = cd->config;
+	struct comp_dev *dev = mod->dev;
 	int16_t *output_channel_mix_beam_off = NULL;
 	int16_t *coefp;
 	int size_sum = 0;
@@ -216,38 +219,38 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 	/* Sanity checks */
 	if (config->num_output_channels > PLATFORM_MAX_CHANNELS ||
 	    !config->num_output_channels) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_output_channels %d",
-			    config->num_output_channels);
+		comp_err(dev, "tdfb_init_coef(), invalid num_output_channels %d",
+			 config->num_output_channels);
 		return -EINVAL;
 	}
 
 	if (config->num_output_channels != sink_nch) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), stream output channels count %d does not match configuration %d",
-			    sink_nch, config->num_output_channels);
+		comp_err(dev, "tdfb_init_coef(), stream output channels count %d does not match configuration %d",
+			 sink_nch, config->num_output_channels);
 		return -EINVAL;
 	}
 
 	if (config->num_filters > SOF_TDFB_FIR_MAX_COUNT) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_filters %d",
-			    config->num_filters);
+		comp_err(dev, "tdfb_init_coef(), invalid num_filters %d",
+			 config->num_filters);
 		return -EINVAL;
 	}
 
 	if (config->num_angles > SOF_TDFB_MAX_ANGLES) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_angles %d",
-			    config->num_angles);
+		comp_err(dev, "tdfb_init_coef(), invalid num_angles %d",
+			 config->num_angles);
 		return -EINVAL;
 	}
 
 	if (config->beam_off_defined > 1) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid beam_off_defined %d",
-			    config->beam_off_defined);
+		comp_err(dev, "tdfb_init_coef(), invalid beam_off_defined %d",
+			 config->beam_off_defined);
 		return -EINVAL;
 	}
 
 	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_mic_locations %d",
-			    config->num_mic_locations);
+		comp_err(dev, "tdfb_init_coef(), invalid num_mic_locations %d",
+			 config->num_mic_locations);
 		return -EINVAL;
 	}
 
@@ -256,7 +259,7 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 	 * A most basic blob has num_angles equals 1. Mic locations data is optional.
 	 */
 	if (config->num_angles == 0 && config->num_mic_locations == 0) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), ABI version less than 3.19.1 is not supported.");
+		comp_err(dev, "tdfb_init_coef(), ABI version less than 3.19.1 is not supported.");
 		return -EINVAL;
 	}
 
@@ -284,7 +287,7 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 		(&cd->filter_angles[config->num_angles]);
 	if ((uint8_t *)&cd->mic_locations[config->num_mic_locations] !=
 	    (uint8_t *)config + config->size) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid config size");
+		comp_err(dev, "tdfb_init_coef(), invalid config size");
 		return -EINVAL;
 	}
 
@@ -303,15 +306,15 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 
 	idx = cd->filter_angles[min_delta_idx].filter_index;
 	if (cd->beam_on) {
-		comp_cl_info(&comp_tdfb, "tdfb_init_coef(), angle request %d, found %d, idx %d",
-			     target_az, cd->filter_angles[min_delta_idx].azimuth, idx);
+		comp_info(dev, "tdfb_init_coef(), angle request %d, found %d, idx %d",
+			  target_az, cd->filter_angles[min_delta_idx].azimuth, idx);
 	} else if (config->beam_off_defined) {
 		cd->output_channel_mix = output_channel_mix_beam_off;
 		idx = config->num_filters * config->num_angles;
-		comp_cl_info(&comp_tdfb, "tdfb_init_coef(), configure beam off");
+		comp_info(dev, "tdfb_init_coef(), configure beam off");
 	} else {
-		comp_cl_info(&comp_tdfb, "tdfb_init_coef(), beam off is not defined, using filter %d, idx %d",
-			     cd->filter_angles[min_delta_idx].azimuth, idx);
+		comp_info(dev, "tdfb_init_coef(), beam off is not defined, using filter %d, idx %d",
+			  cd->filter_angles[min_delta_idx].azimuth, idx);
 	}
 
 	/* Seek to proper filter for requested angle or beam off configuration */
@@ -325,8 +328,8 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			comp_cl_info(&comp_tdfb, "tdfb_init_coef(), FIR length %d is invalid",
-				     coef_data->length);
+			comp_err(dev, "tdfb_init_coef(), FIR length %d is invalid",
+				 coef_data->length);
 			return -EINVAL;
 		}
 
@@ -348,8 +351,8 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 	 * used for filters input.
 	 */
 	if (max_ch + 1 > source_nch) {
-		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), stream input channels count %d is not sufficient for configuration %d",
-			    source_nch, max_ch + 1);
+		comp_err(dev, "tdfb_init_coef(), stream input channels count %d is not sufficient for configuration %d",
+			 source_nch, max_ch + 1);
 		return -EINVAL;
 	}
 
@@ -368,12 +371,13 @@ static void tdfb_init_delay(struct tdfb_comp_data *cd)
 	}
 }
 
-static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
+static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nch)
 {
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int delay_size;
 
 	/* Set coefficients for each channel from coefficient blob */
-	delay_size = tdfb_init_coef(cd, source_nch, sink_nch);
+	delay_size = tdfb_init_coef(mod, source_nch, sink_nch);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */
 
@@ -390,8 +394,8 @@ static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
 		/* Allocate all FIR channels data in a big chunk and clear it */
 		cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
 		if (!cd->fir_delay) {
-			comp_cl_err(&comp_tdfb, "tdfb_setup(), delay allocation failed for size %d",
-				    delay_size);
+			comp_err(mod->dev, "tdfb_setup(), delay allocation failed for size %d",
+				 delay_size);
 			return -ENOMEM;
 		}
 
@@ -409,36 +413,30 @@ static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
  * End of algorithm code. Next the standard component methods.
  */
 
-static struct comp_dev *tdfb_new(const struct comp_driver *drv,
-				 const struct comp_ipc_config *config,
-				 const void *spec)
+static int tdfb_init(struct processing_module *mod)
 {
-	const struct ipc_config_process *ipc_tdfb = spec;
-	struct comp_dev *dev = NULL;
-	struct tdfb_comp_data *cd = NULL;
-	size_t bs = ipc_tdfb->size;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *cfg = &md->cfg;
+	struct tdfb_comp_data *cd;
+	size_t bs = cfg->size;
 	int ret;
 	int i;
 
-	comp_cl_info(&comp_tdfb, "tdfb_new()");
+	comp_info(dev, "tdfb_init()");
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_TDFB_MAX_SIZE) {
-		comp_cl_err(&comp_tdfb, "tdfb_new() error: configuration blob size = %u > %d",
-			    bs, SOF_TDFB_MAX_SIZE);
-		return NULL;
+		comp_err(dev, "tdfb_init() error: configuration blob size = %u > %d",
+			 bs, SOF_TDFB_MAX_SIZE);
+		return -EINVAL;
 	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto fail;
+		return -ENOMEM;
 
-	comp_set_drvdata(dev, cd);
+	md->private = cd;
 
 	/* Defaults for processing function pointer tdfb_func, fir_delay
 	 * pointer, are NULL. Fir_delay_size is zero from rzalloc().
@@ -449,43 +447,49 @@ static struct comp_dev *tdfb_new(const struct comp_driver *drv,
 	 */
 
 	/* Initialize IPC for direction of arrival estimate update */
-	ret = init_get_ctl_ipc(dev);
+	ret = init_get_ctl_ipc(mod);
 	if (ret)
-		goto cd_fail;
+		goto err_free_cd;
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_tdfb, "tdfb_new(): comp_data_blob_handler_new() failed.");
-		goto cd_fail;
+		comp_err(dev, "tdfb_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	/* Get configuration data and reset FIR filters */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_tdfb->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_cl_err(&comp_tdfb, "tdfb_new(): comp_init_data_blob() failed.");
-		goto cd_fail;
+		comp_err(dev, "tdfb_init(): comp_init_data_blob() failed.");
+		goto err;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+	 /* Allow different number  of channels in source and sink, in other
+	  * aspects TDFB is simple component type.
+	  */
+	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
+	mod->simple_copy = true;
+	return 0;
 
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler); /* works for non-initialized also */
+err:
+	rfree(cd->ctrl_data);
+
+err_free_cd:
 	rfree(cd);
-fail:
-	rfree(dev);
-	return NULL;
+	return ret;
+
 }
 
-static void tdfb_free(struct comp_dev *dev)
+static int tdfb_free(struct processing_module *mod)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "tdfb_free()");
+	comp_info(mod->dev, "tdfb_free()");
 
 	ipc_msg_free(cd->msg);
 	tdfb_free_delaylines(cd);
@@ -493,22 +497,12 @@ static void tdfb_free(struct comp_dev *dev)
 	tdfb_direction_free(cd);
 	rfree(cd->ctrl_data);
 	rfree(cd);
-	rfree(dev);
+	return 0;
 }
 
-static int tdfb_cmd_get_data(struct comp_dev *dev,
-			     struct sof_ipc_ctrl_data *cdata, int max_size)
-{
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-
-	if (cdata->cmd == SOF_CTRL_CMD_BINARY) {
-		comp_dbg(dev, "tdfb_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		return comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
-	}
-
-	comp_err(dev, "tdfb_cmd_get_data() error: invalid cdata->cmd");
-	return -EINVAL;
-}
+/*
+ * Module commands handling
+ */
 
 static int tdfb_cmd_switch_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
 {
@@ -546,35 +540,37 @@ static int tdfb_cmd_enum_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_d
 	return 0;
 }
 
-static int tdfb_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int tdfb_cmd_get_value(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
+		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_ENUM index=%d",
+			 cdata->index);
 		return tdfb_cmd_enum_get(cdata, cd);
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_SWITCH index=%d", cdata->index);
+		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_SWITCH index=%d",
+			 cdata->index);
 		return tdfb_cmd_switch_get(cdata, cd);
 	}
 
-	comp_err(dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
+	comp_err(mod->dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
 	return -EINVAL;
 }
 
-static int tdfb_cmd_set_data(struct comp_dev *dev,
-			     struct sof_ipc_ctrl_data *cdata)
+static int tdfb_get_config(struct processing_module *mod,
+			   uint32_t config_id, uint32_t *data_offset_size,
+			   uint8_t *fragment, size_t fragment_size)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
-	if (cdata->cmd == SOF_CTRL_CMD_BINARY) {
-		comp_dbg(dev, "tdfb_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		return comp_data_blob_set_cmd(cd->model_handler, cdata);
-	}
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
+		return tdfb_cmd_get_value(mod, cdata);
 
-	comp_err(dev, "tdfb_cmd_set_data() error: invalid cdata->cmd");
-	return -EINVAL;
+	comp_dbg(mod->dev, "tdfb_get_config(), binary");
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
 static int tdfb_cmd_enum_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
@@ -620,168 +616,141 @@ static int tdfb_cmd_switch_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp
 	return 0;
 }
 
-static int tdfb_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int tdfb_cmd_set_value(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
+		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_ENUM index=%d",
+			 cdata->index);
 		return tdfb_cmd_enum_set(cdata, cd);
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_SWITCH index=%d", cdata->index);
+		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_SWITCH index=%d",
+			 cdata->index);
 		return tdfb_cmd_switch_set(cdata, cd);
 	}
 
-	comp_err(dev, "tdfb_cmd_set_value() error: invalid cdata->cmd");
+	comp_err(mod->dev, "tdfb_cmd_set_value() error: invalid cdata->cmd");
 	return -EINVAL;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int tdfb_cmd(struct comp_dev *dev, int cmd, void *data,
-		    int max_data_size)
+static int tdfb_set_config(struct processing_module *mod, uint32_t config_id,
+			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			   size_t response_size)
 {
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
-	comp_info(dev, "tdfb_cmd()");
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
+		return tdfb_cmd_set_value(mod, cdata);
 
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		comp_dbg(dev, "tdfb_cmd(): COMP_CMD_SET_DATA");
-		return tdfb_cmd_set_data(dev, cdata);
-	case COMP_CMD_GET_DATA:
-		comp_dbg(dev, "tdfb_cmd(): COMP_CMD_GET_DATA");
-		return tdfb_cmd_get_data(dev, cdata, max_data_size);
-	case COMP_CMD_SET_VALUE:
-		comp_dbg(dev, "tdfb_cmd(): COMP_CMD_SET_VALUE");
-		return tdfb_cmd_set_value(dev, cdata);
-	case COMP_CMD_GET_VALUE:
-		comp_dbg(dev, "tdfb_cmd(): COMP_CMD_GET_VALUE");
-		return tdfb_cmd_get_value(dev, cdata);
-	}
-
-	comp_err(dev, "tdfb_cmd() error: invalid command");
-	return -EINVAL;
+	comp_dbg(mod->dev, "tdfb_set_config(), binary");
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+				  fragment, fragment_size);
 }
 
-static void tdfb_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			 struct comp_buffer __sparse_cache *sink, int frames,
-			 uint32_t source_bytes, uint32_t sink_bytes)
+/*
+ * copy and process stream data from source to sink buffers
+ */
+
+static int tdfb_process(struct processing_module *mod,
+			struct input_stream_buffer *input_buffers, int num_input_buffers,
+			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	struct comp_dev *dev = mod->dev;
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	int frame_count = input_buffers[0].size;
+	int ret;
 
-	buffer_stream_invalidate(source, source_bytes);
-
-	cd->tdfb_func(cd, &source->stream, &sink->stream, frames);
-
-	buffer_stream_writeback(sink, sink_bytes);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
-
-	/* Update sound direction estimate */
-	tdfb_direction_estimate(cd, frames, source->stream.channels);
-	comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
-		 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
-}
-
-/* copy and process stream data from source to sink buffers */
-static int tdfb_copy(struct comp_dev *dev)
-{
-	struct comp_copy_limits cl;
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-	int n;
-
-	comp_dbg(dev, "tdfb_copy()");
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
+	comp_dbg(dev, "tdfb_process()");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = tdfb_setup(cd, source_c->stream.channels, sink_c->stream.channels);
+		ret = tdfb_setup(mod, source->channels, sink->channels);
 		if (ret < 0) {
-			comp_err(dev, "tdfb_copy(), failed FIR setup");
-			goto out;
+			comp_err(dev, "tdfb_process(), failed FIR setup");
+			return ret;
 		}
 	}
 
 	/* Handle enum controls */
 	if (cd->update) {
 		cd->update = false;
-		ret = tdfb_setup(cd, source_c->stream.channels, sink_c->stream.channels);
+		ret = tdfb_setup(mod, source->channels, sink->channels);
 		if (ret < 0) {
-			comp_err(dev, "tdfb_copy(), failed FIR setup");
-			goto out;
+			comp_err(dev, "tdfb_process(), failed FIR setup");
+			return ret;
 		}
 	}
-
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source_c, sink_c, &cl);
 
 	/*
 	 * Process only even number of frames with the FIR function. The
 	 * optimized filter function loads the successive input samples from
 	 * internal delay line with a 64 bit load operation.
 	 */
-	cl.frames = MIN(cl.frames, cd->max_frames);
-	if (cl.frames >= 2) {
-		n = (cl.frames >> 1) << 1;
+	frame_count = MIN(frame_count, cd->max_frames) & ~0x1;
+	if (frame_count) {
+		cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
+		module_update_buffer_position(input_buffers, output_buffers, frame_count);
 
-		/* Run the process function */
-		tdfb_process(dev, source_c, sink_c, n,
-			     n * cl.source_frame_bytes,
-			     n * cl.sink_frame_bytes);
+		/* Update sound direction estimate */
+		tdfb_direction_estimate(cd, frame_count, source->channels);
+		comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
+			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
+
+		if (cd->direction_updates && cd->direction_change) {
+			send_get_ctl_ipc(mod);
+			cd->direction_change = false;
+			comp_dbg(dev, "tdfb_dupd %d %d",
+				 cd->az_value_estimate, cd->direction.az_slow);
+		}
 	}
 
-	if (cd->direction_updates && cd->direction_change) {
-		send_get_ctl_ipc(dev);
-		cd->direction_change = false;
-		comp_dbg(dev, "tdfb_dupd %d %d", cd->az_value_estimate, cd->direction.az_slow);
-	}
-
-out:
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
-	return ret;
+	return 0;
 }
 
-static int tdfb_prepare(struct comp_dev *dev)
+static void tdfb_set_alignment(struct audio_stream __sparse_cache *source,
+			       struct audio_stream __sparse_cache *sink)
 {
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+}
+
+static int tdfb_prepare(struct processing_module *mod)
+{
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_dev *dev = mod->dev;
+	enum sof_ipc_frame frame_fmt;
+	int source_channels;
+	int sink_channels;
+	int rate;
 	int ret;
 
 	comp_info(dev, "tdfb_prepare()");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
 	/* Find source and sink buffers */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
+	tdfb_set_alignment(&source_c->stream, &sink_c->stream);
+
+	frame_fmt = source_c->stream.frame_fmt;
+	source_channels = source_c->stream.channels;
+	sink_channels = sink_c->stream.channels;
+	rate = source_c->stream.rate;
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
@@ -790,7 +759,7 @@ static int tdfb_prepare(struct comp_dev *dev)
 		goto out;
 	}
 
-	ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
+	ret = tdfb_setup(mod, source_channels, sink_channels);
 	if (ret < 0) {
 		comp_err(dev, "tdfb_prepare() error: tdfb_setup failed.");
 		goto out;
@@ -800,7 +769,7 @@ static int tdfb_prepare(struct comp_dev *dev)
 	memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 	memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 
-	ret = set_func(dev, source_c->stream.frame_fmt);
+	ret = set_func(mod, frame_fmt);
 	if (ret)
 		goto out;
 
@@ -808,10 +777,10 @@ static int tdfb_prepare(struct comp_dev *dev)
 	 * processing. Max frames is used in tdfb_direction_init() and copy().
 	 */
 	cd->max_frames = Q_MULTSR_16X16((int32_t)dev->frames, TDFB_MAX_FRAMES_MULT_Q14, 0, 14, 0);
-	comp_info(dev, "dev_frames = %d, max_frames = %d", dev->frames, cd->max_frames);
+	comp_dbg(dev, "dev_frames = %d, max_frames = %d", dev->frames, cd->max_frames);
 
 	/* Initialize tracking */
-	ret = tdfb_direction_init(cd, sourceb->stream.rate, sourceb->stream.channels);
+	ret = tdfb_direction_init(cd, rate, source_channels);
 	if (!ret) {
 		comp_info(dev, "max_lag = %d, xcorr_size = %d",
 			  cd->direction.max_lag, cd->direction.d_size);
@@ -824,34 +793,15 @@ out:
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
 	return ret;
 }
 
-/* set component audio stream parameters */
-static int tdfb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int tdfb_reset(struct processing_module *mod)
 {
-	int err;
-
-	comp_info(dev, "tdfb_params()");
-
-	err = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
-	if (err < 0) {
-		comp_err(dev, "tdfb_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int tdfb_reset(struct comp_dev *dev)
-{
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int i;
-	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "tdfb_reset()");
+	comp_info(mod->dev, "tdfb_reset()");
 
 	tdfb_free_delaylines(cd);
 
@@ -863,47 +813,18 @@ static int tdfb_reset(struct comp_dev *dev)
 	memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 	memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static int tdfb_trigger(struct comp_dev *dev, int cmd)
-{
-	int ret = 0;
-
-	comp_info(dev, "tdfb_trigger(), command = %u", cmd);
-
-	ret = comp_set_state(dev, cmd);
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		ret = PPL_STATUS_PATH_STOP;
-
-	return ret;
-}
-
-static const struct comp_driver comp_tdfb = {
-	.uid = SOF_RT_UUID(tdfb_uuid),
-	.tctx	= &tdfb_tr,
-	.ops = {
-		.create = tdfb_new,
-		.free = tdfb_free,
-		.params = tdfb_params,
-		.cmd = tdfb_cmd,
-		.copy = tdfb_copy,
-		.prepare = tdfb_prepare,
-		.reset = tdfb_reset,
-		.trigger = tdfb_trigger,
-	},
+static struct module_interface tdfb_interface = {
+	.init = tdfb_init,
+	.free = tdfb_free,
+	.set_configuration = tdfb_set_config,
+	.get_configuration = tdfb_get_config,
+	.process = tdfb_process,
+	.prepare = tdfb_prepare,
+	.reset = tdfb_reset,
 };
 
-static SHARED_DATA struct comp_driver_info comp_tdfb_info = {
-	.drv = &comp_tdfb,
-};
-
-UT_STATIC void sys_comp_tdfb_init(void)
-{
-	comp_register(platform_shared_get(&comp_tdfb_info,
-					  sizeof(comp_tdfb_info)));
-}
-
-DECLARE_MODULE(sys_comp_tdfb_init);
-SOF_MODULE_INIT(tdfb, sys_comp_tdfb_init);
+DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
+SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);

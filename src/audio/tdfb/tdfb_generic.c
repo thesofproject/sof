@@ -55,10 +55,11 @@ static inline void tdfb_core(struct tdfb_comp_data *cd, int in_nch, int out_nch)
 
 
 #if CONFIG_FORMAT_S16LE
-void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames)
+void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	int16_t *x = source->r_ptr;
 	int16_t *y = sink->w_ptr;
 	int fmax;
@@ -100,10 +101,11 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 #endif
 
 #if CONFIG_FORMAT_S24LE
-void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames)
+void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	int32_t *x = source->r_ptr;
 	int32_t *y = sink->w_ptr;
 	int fmax;
@@ -145,9 +147,11 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 #endif
 
 #if CONFIG_FORMAT_S32LE
-void tdfb_fir_s32(struct tdfb_comp_data *cd, const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames)
+void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames)
 {
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
 	int32_t *x = source->r_ptr;
 	int32_t *y = sink->w_ptr;
 	int fmax;
