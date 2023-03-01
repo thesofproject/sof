@@ -8,12 +8,13 @@
 #ifndef __SOF_AUDIO_TDFB_CONFIG_H__
 #define __SOF_AUDIO_TDFB_CONFIG_H__
 
-#include <sof/platform.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
+#include <sof/platform.h>
 #include <user/tdfb.h>
 
 /* Select optimized code variant when xt-xcc compiler is used */
@@ -104,27 +105,27 @@ struct tdfb_comp_data {
 	bool beam_on:1;			    /**< set true if beam is off */
 	bool update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
-			  const struct audio_stream __sparse_cache *source,
-			  struct audio_stream __sparse_cache *sink,
+			  struct input_stream_buffer *bsource,
+			  struct output_stream_buffer *bsink,
 			  int frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames);
+		  struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S24LE
 void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames);
+		  struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S32LE
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
-		  const struct audio_stream __sparse_cache *source,
-		  struct audio_stream __sparse_cache *sink, int frames);
+		  struct input_stream_buffer *bsource,
+		  struct output_stream_buffer *bsink, int frames);
 #endif
 
 int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int channels);
@@ -143,5 +144,9 @@ static inline void tdfb_cdec_s16(int16_t **ptr, int16_t *start, size_t size)
 	if (*ptr < start)
 		*ptr = (int16_t *)((uint8_t *)*ptr + size);
 }
+
+#ifdef UNIT_TEST
+void sys_comp_module_tdfb_interface_init(void);
+#endif
 
 #endif /* __SOF_AUDIO_TDFB_CONFIG_H__ */
