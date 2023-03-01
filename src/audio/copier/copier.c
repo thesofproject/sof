@@ -262,6 +262,18 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	cd->endpoint_num++;
 	cd->hd = hd;
 
+	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
+		get_converter_func(&copier_cfg->base.audio_fmt,
+				   &copier_cfg->out_fmt,
+				   ipc4_gtw_host, IPC4_DIRECTION(dir));
+	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
+		comp_err(parent_dev, "failed to get converter for host, dir %d", dir);
+		ret = -EINVAL;
+		goto e_buf;
+	}
+
+	return 0;
+
 e_buf:
 	return ret;
 }
@@ -1460,6 +1472,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				/* set up callback */
 				notifier_register(dev, cd->hd->chan,
 						  NOTIFIER_ID_DMA_COPY, copier_dma_cb, 0);
+
+				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 			} else {
 				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 								       params);
