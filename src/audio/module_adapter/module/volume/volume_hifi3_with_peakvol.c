@@ -61,8 +61,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *vol;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
-	ae_f32x2 *in = (ae_f32x2 *)source->r_ptr;
-	ae_f32x2 *out = (ae_f32x2 *)sink->w_ptr;
+	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)source->r_ptr
+						     + bsource->consumed);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
@@ -163,8 +164,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
-	ae_f32x2 *in = (ae_f32x2 *)source->r_ptr;
-	ae_f32x2 *out = (ae_f32x2 *)sink->w_ptr;
+	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)source->r_ptr
+						     + bsource->consumed);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	ae_f32x2 temp;
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
@@ -265,8 +267,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 *vol;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
-	ae_f16x4 *in = (ae_f16x4 *)source->r_ptr;
-	ae_f16x4 *out = (ae_f16x4 *)sink->w_ptr;
+	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)source->r_ptr
+						     + bsource->consumed);
+	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
@@ -292,9 +295,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	/* Set buf as circular buffer */
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
-
-	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(samples);
-	bsink->size += VOL_S16_SAMPLES_TO_BYTES(samples);
 
 	while (samples) {
 		m = audio_stream_samples_without_wrap_s16(source, in);
@@ -344,6 +344,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		samples -= n;
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
+		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
+		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
 	}
 	for (i = 0; i < channels_count; i++) {
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
@@ -378,8 +380,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 out_sample = AE_ZERO32();
 	ae_f32x2 volume = AE_ZERO32();
 	int channel, n, i, m;
-	ae_f32 *in0 = (ae_f32 *)source->r_ptr;
-	ae_f32 *out0 = (ae_f32 *)sink->w_ptr;
+	ae_f32 *in0 = (ae_f32 *)audio_stream_wrap(source, (char *)source->r_ptr
+						  + bsource->consumed);
+	ae_f32 *out0 = (ae_f32 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	ae_f32 *in, *out;
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
@@ -457,8 +460,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
-	ae_f32 *in0 = (ae_f32 *)source->r_ptr;
-	ae_f32 *out0 = (ae_f32 *)sink->w_ptr;
+	ae_f32 *in0 = (ae_f32 *)audio_stream_wrap(source, (char *)source->r_ptr
+						  + bsource->consumed);
+	ae_f32 *out0 = (ae_f32 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	ae_f32 *in, *out;
 	ae_f32x2 peak_vol;
 	uint32_t *peak_meter = cd->peak_regs.peak_meter;
@@ -531,8 +535,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int i, n, channel, m;
 	ae_f16 *in;
 	ae_f16 *out;
-	ae_f16 *in0 = (ae_f16 *)source->r_ptr;
-	ae_f16 *out0 = (ae_f16 *)sink->w_ptr;
+	ae_f16 *in0 = (ae_f16 *)audio_stream_wrap(source, (char *)source->r_ptr
+						  + bsource->consumed);
+	ae_f16 *out0 = (ae_f16 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f16) * channels_count;
 	int samples = channels_count * frames;
