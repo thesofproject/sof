@@ -1170,7 +1170,6 @@ static int do_conversion_copy(struct comp_dev *dev,
 			      struct comp_copy_limits *processed_data)
 {
 	int i;
-	int ret;
 
 	/* buffer params might be not yet configured by component on another pipeline */
 	if (!src->hw_params_configured || !sink->hw_params_configured)
@@ -1185,12 +1184,6 @@ static int do_conversion_copy(struct comp_dev *dev,
 
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
 			 processed_data->frames * sink->stream.channels);
-
-	if (cd->attenuation) {
-		ret = apply_attenuation(dev, cd, sink, processed_data->frames);
-		if (ret < 0)
-			return ret;
-	}
 
 	buffer_stream_writeback(sink, processed_data->sink_bytes);
 	comp_update_buffer_produce(sink, processed_data->sink_bytes);
