@@ -306,7 +306,7 @@ static int dcblock_copy(struct comp_dev *dev)
 	sink_c = buffer_acquire(sinkb);
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source_c, sink_c, &cl);
+	comp_get_copy_limits_frame_aligned(source_c, sink_c, &cl);
 
 	dcblock_process(dev, source_c, sink_c,
 			cl.frames, cl.source_bytes, cl.sink_bytes);
@@ -317,6 +317,16 @@ static int dcblock_copy(struct comp_dev *dev)
 	return 0;
 }
 
+/* init and calculate the aligned setting for available frames and free frames retrieve*/
+static inline void dcblock_set_frame_alignment(struct audio_stream __sparse_cache *source,
+					       struct audio_stream __sparse_cache *sink)
+{
+	const uint32_t byte_align = 1;
+	const uint32_t frame_align_req = 1;
+
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+}
 /**
  * \brief Prepares DC Blocking Filter component for processing.
  * \param[in,out] dev DC Blocking Filter base component device.
@@ -363,7 +373,7 @@ static int dcblock_prepare(struct comp_dev *dev)
 	}
 
 	dcblock_init_state(cd);
-
+	dcblock_set_frame_alignment(&source_c->stream, &sink_c->stream);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);
 	if (!cd->dcblock_func) {
 		comp_err(dev, "dcblock_prepare(), No processing function matching frames format");
