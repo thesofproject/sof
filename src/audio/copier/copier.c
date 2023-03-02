@@ -488,6 +488,8 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 	int ret;
 	struct comp_dev *dev;
 
+	cd->ipc_gtw = true;
+
 	drv = ipc4_get_drv((uint8_t *)&uuid);
 	if (!drv)
 		return -EINVAL;
