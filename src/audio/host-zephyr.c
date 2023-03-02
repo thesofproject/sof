@@ -410,11 +410,10 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	buffer_c = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
-	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK)
 		free_bytes = audio_stream_get_free_bytes(&buffer_c->stream);
 	else
 		avail_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
-<<<<<<< HEAD
 
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
@@ -423,13 +422,6 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (!copy_bytes)
 		comp_info(dev, "no bytes to copy, available bytes: %d, free_bytes: %d",
 			  avail_bytes, free_bytes);
-=======
-		copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
-		if (!copy_bytes)
-			comp_info(dev, "no bytes to copy, %d avail in buffer, %d free in DMA",
-				  avail_bytes, free_bytes);
-	}
->>>>>>> copier: replace host dev with copier dev
 
 	buffer_release(buffer_c);
 

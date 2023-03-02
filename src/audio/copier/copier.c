@@ -478,74 +478,6 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	return 0;
 }
 
-#if CONFIG_IPC4_GATEWAY
-static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
-			 struct comp_ipc_config *config,
-			 const struct ipc4_copier_module_cfg *copier)
-{
-	const struct comp_driver *drv;
-	const struct sof_uuid uuid = {0xa814a1ca, 0x0b83, 0x466c, {0x95, 0x87, 0x2f,
-				      0x35, 0xff, 0x8d, 0x12, 0xe8}};
-	int ret;
-	struct comp_dev *dev;
-
-	cd->ipc_gtw = true;
-
-	drv = ipc4_get_drv((uint8_t *)&uuid);
-	if (!drv)
-		return -EINVAL;
-
-	/* create_endpoint_buffer() uses this value to choose between input and
-	 * output formats in copier config to setup buffer. For this purpose
-	 * IPC gateway should be handled similarly as host gateway.
-	 */
-	config->type = SOF_COMP_HOST;
-
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, ipc4_gtw_none, false, 0);
-	if (ret < 0)
-		return ret;
-
-	dev = drv->ops.create(drv, config, &copier->gtw_cfg);
-	if (!dev) {
-		ret = -EINVAL;
-		goto e_buf;
-	}
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
-		cd->bsource_buffer = false;
-	} else {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
-		cd->bsource_buffer = true;
-	}
-
-	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
-		get_converter_func(&copier->base.audio_fmt,
-				   &copier->out_fmt,
-				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction));
-	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter for IPC gateway, dir %d",
-			 cd->direction);
-		ret = -EINVAL;
-		drv->ops.free(dev);
-		goto e_buf;
-	}
-
-	cd->endpoint[cd->endpoint_num++] = dev;
-
-	return 0;
-
-e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
-	return ret;
-}
-#endif
-
 static int init_pipeline_reg(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -665,7 +597,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			if (create_ipcgtw(dev, cd, &dev->ipc_config, copier)) {
+			if (create_host(dev, cd, &dev->ipc_config, copier, cd->direction)) {
 				comp_cl_err(&comp_copier, "unable to create IPC gateway");
 				goto error_cd;
 			}
