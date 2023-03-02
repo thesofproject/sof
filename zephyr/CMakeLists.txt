@@ -797,6 +797,17 @@ zephyr_library_sources_ifdef(CONFIG_DW_DMA
 	${SOF_DRIVERS_PATH}/dw/dma.c
 )
 
+if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING AND NOT CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK)
+	zephyr_include_directories(../third_party/include)
+	target_link_directories(SOF INTERFACE ../third_party/lib)
+	target_link_libraries(SOF INTERFACE google_rtc_audio_processing)
+	target_link_libraries(SOF INTERFACE c++)
+	target_link_libraries(SOF INTERFACE c++abi)
+	target_link_libraries(SOF INTERFACE m)
+	target_link_libraries(SOF INTERFACE c)
+	target_link_libraries(SOF INTERFACE gcc)
+endif()
+
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
