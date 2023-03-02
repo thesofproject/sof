@@ -367,4 +367,16 @@ static int heap_init(void)
 	return 0;
 }
 
+/* This is a weak stub for the Cadence libc's allocator (which is just
+ * a newlib build).  It's traditionally been provided like this in SOF
+ * for the benefit of C++ code where the standard library needs to
+ * link to a working malloc() even if it will never call it.
+ */
+struct _reent;
+__weak void *_sbrk_r(struct _reent *ptr, ptrdiff_t incr)
+{
+	k_panic();
+	return NULL;
+}
+
 SYS_INIT(heap_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
