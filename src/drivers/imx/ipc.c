@@ -57,7 +57,8 @@ static void irq_handler(void *arg)
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1));
 
 		/* Clear GP pending interrupt #1 */
-		imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR, IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
+		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1),
+			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
@@ -73,7 +74,8 @@ static void irq_handler(void *arg)
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
 
 		/* Clear GP pending interrupt #0 */
-		imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR, IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0), 0);
+		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0),
+			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
@@ -204,11 +206,11 @@ int platform_ipc_init(struct ipc *ipc)
 		       IMX_MU_xCR_GIEn(IMX_MU_VERSION, 3));
 
 	/* Clear all pending interrupts from MU */
-	imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1) |
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 2) |
-		       IMX_MU_xSR_GIPn(IMX_MU_VERSION, 3), 0);
+	imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
+		     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1) |
+		     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 2) |
+		     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 3),
+		     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
 	/* Clear pending interrupt for DSP Core */
 	interrupt_clear(PLATFORM_IPC_INTERRUPT);
@@ -260,7 +262,8 @@ int ipc_platform_poll_is_cmd_pending(void)
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
 
 		/* Clear GP pending interrupt #0 */
-		imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR, IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0), 0);
+		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0),
+			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
@@ -285,7 +288,8 @@ int ipc_platform_poll_is_host_ready(void)
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1));
 
 		/* Clear GP pending interrupt #1 */
-		imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR, IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
+		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1),
+			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
