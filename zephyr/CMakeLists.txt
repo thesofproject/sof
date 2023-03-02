@@ -710,6 +710,29 @@ zephyr_library_sources_ifdef(CONFIG_DW_DMA
 	${SOF_DRIVERS_PATH}/dw/dma.c
 )
 
+if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+	zephyr_library_sources(${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c)
+	zephyr_library_sources_ifdef(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+		${SOF_AUDIO_PATH}/google/google_rtc_audio_processing_mock.c)
+	zephyr_include_directories(../third_party/include)
+	target_link_directories(SOF INTERFACE ../third_party/lib)
+	target_link_libraries(SOF INTERFACE google_rtc_audio_processing)
+
+	# This isn't quite right, Zephyr should be providing a C++
+	# linkage environment for the toolchain, but the xcc/xt-clang
+	# integration isn't yet.  Note we need to specify libc/libm
+	# because the Cadence C++ standard library is tightly coupled
+	# to their own libc (which is just a newlib).  And I have NO
+	# idea why libgcc isn't on the link currently, that's a Zephyr
+	# mistake and I guess I'm surprised nothing else has broken.
+	# Needs to be cleaned up Zephyr-side.
+	target_link_libraries(SOF INTERFACE c++)
+	target_link_libraries(SOF INTERFACE c++abi)
+	target_link_libraries(SOF INTERFACE m)
+	target_link_libraries(SOF INTERFACE c)
+	target_link_libraries(SOF INTERFACE gcc)
+endif()
+
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
