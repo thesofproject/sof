@@ -153,19 +153,6 @@ out:
 	return NULL;
 }
 
-static int schedule_ll_task_complete(void *data, struct task *task)
-{
-	struct ll_vcore *vc = data;
-
-	/* task is complete so remove it from list */
-	pthread_mutex_lock(&vc->list_mutex);
-	list_item_del(&task->list);
-	task->state = SOF_TASK_STATE_COMPLETED;
-	pthread_mutex_unlock(&vc->list_mutex);
-
-	return 0;
-}
-
 /* schedule new LL task */
 static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 			    uint64_t period)
@@ -285,7 +272,6 @@ static int schedule_ll_task_free(void *data, struct task *task)
 static struct scheduler_ops schedule_ll_ops = {
 	.schedule_task		= schedule_ll_task,
 	.schedule_task_running	= NULL,
-	.schedule_task_complete = schedule_ll_task_complete,
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.schedule_task_free	= schedule_ll_task_free,

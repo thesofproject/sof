@@ -100,17 +100,6 @@ struct scheduler_ops {
 	int (*schedule_task_running)(void *data, struct task *task);
 
 	/**
-	 * Sets task into completed state along with executing additional
-	 * scheduler specific operations.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be set into completed state.
-	 * @return 0 if succeeded, error code otherwise.
-	 *
-	 * This operation is optional.
-	 */
-	int (*schedule_task_complete)(void *data, struct task *task);
-
-	/**
 	 * Reschedules already scheduled task with new start time.
 	 * @param data Private data of selected scheduler.
 	 * @param task Task to be rescheduled.
@@ -215,28 +204,6 @@ static inline int schedule_task_running(struct task *task)
 				return 0;
 
 			return sch->ops->schedule_task_running(sch->data, task);
-		}
-	}
-
-	return -ENODEV;
-}
-
-/** See scheduler_ops::schedule_task_complete */
-static inline int schedule_task_complete(struct task *task)
-{
-	struct schedulers *schedulers = *arch_schedulers_get();
-	struct schedule_data *sch;
-	struct list_item *slist;
-
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type) {
-			/* optional operation */
-			if (!sch->ops->schedule_task_complete)
-				return 0;
-
-			return sch->ops->schedule_task_complete(sch->data,
-								task);
 		}
 	}
 
