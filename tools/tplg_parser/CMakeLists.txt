@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.13)
 project(SOF_TPLG_PARSER C)
 
 include(../../scripts/cmake/misc.cmake)
+include(CheckCCompilerFlag)
 
 set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 
@@ -39,10 +40,16 @@ target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/p
 # TODO: The topology parser should NOT need to include RTOS header. FIX.
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/xtos/include)
 
+# -Wimplicit-fallthrough is preferred, check if it's supported
+check_c_compiler_flag(-Wimplicit-fallthrough supports_implicit_fallthrough)
+if (supports_implicit_fallthrough)
+    set(implicit_fallthrough -Wimplicit-fallthrough)
+endif()
+
 # TODO: add IPC4 option when it's ready.
 target_compile_options(sof_tplg_parser PRIVATE
 	-g -O -Wall -Werror -Wl,-EL -fPIC -DPIC
-	-Wmissing-prototypes -Wimplicit-fallthrough
+	-Wmissing-prototypes ${implicit_fallthrough}
 	-DCONFIG_LIBRARY -DCONFIG_IPC_MAJOR_3)
 
 target_link_libraries(sof_tplg_parser PRIVATE -lm)

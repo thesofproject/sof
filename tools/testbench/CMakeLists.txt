@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.13)
 project(SOF_TESTBENCH C)
 
 include(../../scripts/cmake/misc.cmake)
+include(CheckCCompilerFlag)
 
 add_executable(testbench
 	testbench.c
@@ -30,8 +31,14 @@ target_include_directories(testbench PRIVATE
 )
 endif()
 
+# -Wimplicit-fallthrough is preferred, check if it's supported
+check_c_compiler_flag(-Wimplicit-fallthrough supports_implicit_fallthrough)
+if (supports_implicit_fallthrough)
+    set(implicit_fallthrough -Wimplicit-fallthrough)
+endif()
+
 target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
-  -Wimplicit-fallthrough -DCONFIG_LIBRARY -imacros${config_h})
+  ${implicit_fallthrough} -DCONFIG_LIBRARY -imacros${config_h})
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
 
