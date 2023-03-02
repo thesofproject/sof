@@ -91,21 +91,34 @@ do
 		imx8 | imx8x | imx8m)
 		# This READY_IPC value comes from:
 		#
-		#   /* Clear GP pending interrupt #0 and #1 */
-		#   imx_mu_xsr_rmw(IMX_MU_VERSION, IMX_MU_GSR,
-		#           IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
-		#           IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1), 0);
-		#   /* Enable GP #0 and #1 for Host -> DSP and DSP -> Host message notification */
-		#   imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER,
-		#           IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
-		#           IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
-		#   /* Now interrupt host to tell it we are done booting */
-		#   imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR,
-		#           IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
-		#
-		# So, "00 00 00 c0 00 00 04 c0" is the MU's xSR and xCR registers:
-		#    xSR: c0000000 and xCR: c0040000
-			READY_IPC="00 00 00 c0 00 00 04 c0"
+		#	/* Disable interrupt from MU:
+		#	 * GP #0 for Host -> DSP message notification
+		#	 * GP #1 for DSP -> Host message confirmation
+		#	 * GP #2 and #3 not used
+		#	 */
+		#	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0,
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1) |
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 2) |
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 3));
+		#	/* Clear all pending interrupts from MU */
+		#	imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0) |
+		#			     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1) |
+		#			     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 2) |
+		#			     IMX_MU_xSR_GIPn(IMX_MU_VERSION, 3),
+		#			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
+		#	/* Enable GP #0 and #1 for Host -> DSP and
+		#	 * DSP -> Host message notification
+		#	 */
+		#	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER,
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+		#				   IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
+		#	/* Now interrupt host to tell it we are done booting */
+		#	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR,
+		#				   IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
+		# So, "00 00 00 f0 00 00 04 c0" is the MU's xSR and xCR registers:
+		#    xSR: F0000000 and xCR: C00400000
+			READY_IPC="00 00 00 f0 00 00 04 c0"
 			SHM_IPC_REG=qemu-bridge-mu-io
 			SHM_MBOX=qemu-bridge-mbox-io
 			;;
