@@ -75,12 +75,6 @@ static int schedule_edf_task_cancel(void *data, struct task *task)
 	return 0;
 }
 
-static int schedule_edf_task_complete(void *data, struct task *task)
-{
-	task_complete(task);
-	return 0;
-}
-
 static int schedule_edf_task_running(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_RUNNING;
@@ -99,7 +93,6 @@ static int schedule_edf_task_free(void *data, struct task *task)
 static struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 	.schedule_task_running	= schedule_edf_task_running,
-	.schedule_task_complete = schedule_edf_task_complete,
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
 };

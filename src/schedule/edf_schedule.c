@@ -329,7 +329,6 @@ static void schedule_edf(struct edf_schedule_data *edf_sch)
 static const struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 	.schedule_task_running	= schedule_edf_task_running,
-	.schedule_task_complete = schedule_edf_task_complete,
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
