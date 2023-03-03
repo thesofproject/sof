@@ -482,7 +482,6 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 
 		cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
 		if (!cdma_comp) {
-			comp_free(cdma_comp->cd);
 			return IPC4_FAILURE;
 		}
 
