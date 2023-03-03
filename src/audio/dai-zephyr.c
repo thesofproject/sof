@@ -402,11 +402,6 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	return ret;
 }
 
-static int dai_comp_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
-{
-	return 0;
-}
-
 static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params;
@@ -755,13 +750,6 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	if (err < 0) {
 		comp_err(dev, "dai_params(): pcm params verification failed.");
 		return -EINVAL;
-	}
-
-	/* params verification passed, so now configure hw dai stream params */
-	err = dai_comp_hw_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "dai_params(): dai_comp_hw_params failed err %d", err);
-		return err;
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
