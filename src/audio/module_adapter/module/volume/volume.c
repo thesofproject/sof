@@ -981,7 +981,6 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 						cdata.curve_type,
 						cdata.curve_duration);
 
-				cd->volume[i] = cd->vol_min;
 				volume_set_chan(mod, i, cd->tvolume[i], true);
 				if (cd->volume[i] != cd->tvolume[i])
 					cd->ramp_finished = false;
@@ -991,7 +990,6 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 					cdata.curve_type,
 					cdata.curve_duration);
 
-			cd->volume[cdata.channel_id] = cd->vol_min;
 			volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
 					true);
 			if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
