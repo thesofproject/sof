@@ -1061,7 +1061,7 @@ static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
-	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+	bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
 
 	/* Return value only if direction and stream number match.
 	 * The host supports only one stream.
