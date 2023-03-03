@@ -990,8 +990,13 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 	dai_copier = pipeline_get_dai_comp_latency(dev->pipeline->pipeline_id, &latency);
 	if (!dai_copier) {
-		comp_err(dev, "failed to find dai comp or sink pipeline not running.");
-		return ret;
+		/*
+		 * If the (playback) stream does not have a dai, the offset
+		 * calculation is skipped
+		 */
+		comp_info(dev,
+			  "No dai copier found, start/end offset is not calculated");
+		return 0;
 	}
 
 	dai_cd = comp_get_drvdata(dai_copier);
