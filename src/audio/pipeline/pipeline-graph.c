@@ -486,7 +486,7 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
 }
 
 #if CONFIG_IPC_MAJOR_4
-/* visit connected pipeline to find the dai comp and latency.
+/* Playback only: visit connected pipeline to find the dai comp and latency.
  * This function walks down through a pipelines chain looking for the target dai component.
  * Calculates the delay of each pipeline by determining the number of buffered blocks.
  */
@@ -521,8 +521,6 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		/* Calculate pipeline latency */
 		input_data = comp_get_total_data_processed(source, 0, true);
 		output_data = comp_get_total_data_processed(ipc_sink->cd, 0, false);
-		if (!input_data || !output_data)
-			return NULL;
 
 		ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &input_base_cfg);
 		if (ret < 0)
@@ -532,7 +530,9 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (ret < 0)
 			return NULL;
 
-		*latency += input_data / input_base_cfg.ibs - output_data / output_base_cfg.obs;
+		if (input_data && output_data)
+			*latency += input_data / input_base_cfg.ibs -
+				output_data / output_base_cfg.obs;
 
 		/* If the component doesn't have a sink buffer, this is a dai. */
 		if (list_is_empty(&ipc_sink->cd->bsink_list))
