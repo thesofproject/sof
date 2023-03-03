@@ -551,6 +551,7 @@ e_buf:
 }
 #endif
 
+/* Playback only */
 static int init_pipeline_reg(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -985,6 +986,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 	}
 
+	/* For capture cd->pipeline_reg_offset == 0 */
 	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)
 		return ret;
 
