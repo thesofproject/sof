@@ -1484,7 +1484,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (sink->buffer_fmt < SOF_IPC_FRAME_S24_4LE) {
+		if (sink->stream.frame_fmt < SOF_IPC_FRAME_S24_4LE) {
 			comp_err(dev, "sink %d in format %d isn't supported by attenuation",
 				 sink->id, sink->buffer_fmt);
 			return -EINVAL;
