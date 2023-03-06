@@ -57,7 +57,7 @@ name = "ADSPFW"
 load_offset = "0x40000"
 
 [module]
-count = 16
+count = 18
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "2B79E4F3-4675-F649-89DF-3BC194A91AEB"
@@ -422,4 +422,42 @@ count = 16
 			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
 
 	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# eq iir module config
+	[[module.entry]]
+	name = "EQIIR"
+	uuid = "5150C0E6-27F9-4EC8-8351-C705B642D12F"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+		1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# eq iir module config
+	[[module.entry]]
+	name = "EQFIR"
+	uuid = "43A90CE7-f3A5-41Df-AC06-BA98651AE6A3"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+		1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+
+# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
