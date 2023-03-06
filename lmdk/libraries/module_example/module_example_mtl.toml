@@ -1,0 +1,86 @@
+version = [3, 0]
+
+[adsp]
+name = "mtl"
+image_size = "0x2C0000" # (22) bank * 128KB
+alias_mask = "0xE0000000"
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0x1FF80000"
+size = "0x400"
+[[adsp.mem_zone]]
+type = "IMR"
+base = "0xA104A000"
+size = "0x2000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xa00f0000"
+size = "0x100000"
+
+[[adsp.mem_alias]]
+type = "uncached"
+base = "0x40000000"
+[[adsp.mem_alias]]
+type = "cached"
+base = "0xA0000000"
+
+[cse]
+partition_name = "ADSP"
+[[cse.entry]]
+name = "ADSP.man"
+offset = "0x5c"
+length = "0x464"
+[[cse.entry]]
+name = "ADSP.met"
+offset = "0x4c0"
+length = "0x70"
+[[cse.entry]]
+name = "ADSP"
+offset = "0x540"
+length = "0x0"  # calculated by rimage
+
+[css]
+
+[signed_pkg]
+name = "ADSP"
+partition_usage = "0x23"
+[[signed_pkg.module]]
+name = "ADSP.met"
+
+[adsp_file]
+[[adsp_file.comp]]
+base_offset = "0x2000"
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0x40000"
+
+[module]
+count = 1
+
+	[[module.entry]]
+	name = "UPDWMIX"
+	uuid = "42F8060C-832F-4DBF-B247-51E961997B34"
+	affinity_mask = "0x1"
+	instance_count = "15"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "5"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xffff, 0xc, 0x8, 0x05ff,
+			1, 0, 0xffff, 0xc, 0x8, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 216, 706000, 12, 16, 0, 0, 0,
+				1, 0, 0, 0, 216, 1271000, 8, 8, 0, 0, 0,
+				2, 0, 0, 0, 216, 1839000, 89, 118, 0, 0, 0,
+				3, 0, 0, 0, 216, 2435000, 48, 64, 0, 0, 0,
+				4, 0, 0, 0, 216, 3343000, 192, 192, 0, 0, 0,
+				5, 0, 0, 0, 216, 3961000, 177, 177, 0, 0, 0,
+				6, 0, 0, 0, 216, 4238000, 192, 256, 0, 0, 0,
+				7, 0, 0, 0, 216, 6691000, 192, 256, 0, 0, 0]
+
