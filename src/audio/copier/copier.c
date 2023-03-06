@@ -238,6 +238,7 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
+	ipc_host.feature_mask = copier_cfg->copier_feature_mask;
 
 	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd)
@@ -390,6 +391,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	dai.direction = get_gateway_direction(node_id.f.dma_type);
 	dai.is_config_blob = true;
 	dai.sampling_frequency = copier->out_fmt.sampling_frequency;
+	dai.feature_mask = copier->copier_feature_mask;
 
 	switch (node_id.f.dma_type) {
 	case ipc4_hda_link_output_class:

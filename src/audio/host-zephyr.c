@@ -11,6 +11,7 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
+#include <ipc4/copier.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -415,10 +416,15 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	else
 		avail_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
 
+	copy_bytes = MIN(avail_bytes, free_bytes);
+
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
+	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
-	copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
+	if (!(hd->ipc_host.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
+		copy_bytes = MIN(hd->period_bytes, copy_bytes);
+
 	if (!copy_bytes)
 		comp_info(dev, "no bytes to copy, available bytes: %d, free_bytes: %d",
 			  avail_bytes, free_bytes);
