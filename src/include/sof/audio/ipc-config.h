@@ -20,6 +20,9 @@ struct ipc_config_host {
 	uint32_t no_irq;		/**< don't send periodic IRQ to host/DSP */
 	uint32_t dmac_config;		/**< DMA engine specific */
 	uint32_t dma_buffer_size;	/**< Requested DMA buffer size */
+	uint32_t feature_mask;		/**< copier feature mask (set directly from
+					  *  ipc4_copier_module_cfg on init)
+					  */
 };
 
 /* generic DAI component */
@@ -33,6 +36,9 @@ struct ipc_config_dai {
 	uint16_t format;		/**< SOF_DAI_FMT_ */
 	uint16_t group_id;		/**< group ID, 0 means no group (ABI 3.17) */
 	bool is_config_blob;		/**< DAI specific configuration is a blob */
+	uint32_t feature_mask;		/**< copier feature mask (set directly from
+					  *  ipc4_copier_module_cfg on init)
+					  */
 };
 
 /* generic volume component */

@@ -29,6 +29,7 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/copier.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
@@ -1257,8 +1258,10 @@ static int dai_copy(struct comp_dev *dev)
 
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
+	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
-	samples = MIN(samples, dd->period_bytes / sampling);
+	if (!(dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
+		samples = MIN(samples, dd->period_bytes / sampling);
 
 	copy_bytes = samples * sampling;
 
