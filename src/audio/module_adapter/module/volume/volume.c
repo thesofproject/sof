@@ -929,17 +929,72 @@ static int volume_get_config(struct processing_module *mod,
 
 /* CONFIG_IPC_MAJOR_3 */
 #elif CONFIG_IPC_MAJOR_4
+
+static int volume_set_volume(struct processing_module *mod, const uint8_t *data, int data_size)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct ipc4_peak_volume_config cdata;
+	uint32_t i, channels_count;
+
+	if (data_size < sizeof(cdata)) {
+		comp_err(dev, "error: data_size %d should be bigger than %d", data_size,
+			 sizeof(cdata));
+		return -EINVAL;
+	}
+
+	cdata = *(const struct ipc4_peak_volume_config *)data;
+	cdata.target_volume = convert_volume_ipc4_to_ipc3(dev, cdata.target_volume);
+
+	if ((cdata.channel_id != IPC4_ALL_CHANNELS_MASK) &&
+	    (cdata.channel_id >= SOF_IPC_MAX_CHANNELS)) {
+		comp_err(dev, "Invalid channel_id %u", cdata.channel_id);
+		return -EINVAL;
+	}
+
+	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
+	cd->ramp_finished = true;
+
+	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	if (channels_count > SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "Invalid channels count %u", channels_count);
+		return -EINVAL;
+	}
+
+	if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
+		for (i = 0; i < channels_count; i++) {
+			set_volume_ipc4(cd, i, cdata.target_volume,
+					cdata.curve_type,
+					cdata.curve_duration);
+
+			volume_set_chan(mod, i, cd->tvolume[i], true);
+			if (cd->volume[i] != cd->tvolume[i])
+				cd->ramp_finished = false;
+		}
+	} else {
+		set_volume_ipc4(cd, cdata.channel_id, cdata.target_volume,
+				cdata.curve_type,
+				cdata.curve_duration);
+
+		volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
+				true);
+		if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
+			cd->ramp_finished = false;
+	}
+
+	prepare_ramp(dev, cd);
+
+	return 0;
+}
+
 static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size)
 {
-	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct ipc4_peak_volume_config cdata;
 	int ret;
-	uint32_t i, channels_count;
 
 	comp_dbg(dev, "volume_set_config()");
 
@@ -955,50 +1010,9 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	    md->state < MODULE_INITIALIZED)
 		return 0;
 
-	cdata = *(const struct ipc4_peak_volume_config *)fragment;
-	cdata.target_volume = convert_volume_ipc4_to_ipc3(dev, cdata.target_volume);
-
-	if ((cdata.channel_id != IPC4_ALL_CHANNELS_MASK) &&
-	    (cdata.channel_id >= SOF_IPC_MAX_CHANNELS)) {
-		comp_err(dev, "Invalid channel_id %u", config_id);
-		return -EINVAL;
-	}
-
-	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
-	cd->ramp_finished = true;
-
-	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	if (channels_count > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "Invalid channels count %u", channels_count);
-		return -EINVAL;
-	}
-
 	switch (config_id) {
 	case IPC4_VOLUME:
-		if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
-			for (i = 0; i < channels_count; i++) {
-				set_volume_ipc4(cd, i, cdata.target_volume,
-						cdata.curve_type,
-						cdata.curve_duration);
-
-				volume_set_chan(mod, i, cd->tvolume[i], true);
-				if (cd->volume[i] != cd->tvolume[i])
-					cd->ramp_finished = false;
-			}
-		} else {
-			set_volume_ipc4(cd, cdata.channel_id, cdata.target_volume,
-					cdata.curve_type,
-					cdata.curve_duration);
-
-			volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
-					true);
-			if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
-				cd->ramp_finished = false;
-		}
-
-		prepare_ramp(dev, cd);
-		break;
-
+		return volume_set_volume(mod, fragment, fragment_size);
 	default:
 		comp_err(dev, "unsupported param %d", config_id);
 		return -EINVAL;
