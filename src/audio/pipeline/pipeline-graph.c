@@ -514,8 +514,8 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 	while (ipc_sink) {
 		struct comp_buffer *buffer;
 		uint64_t input_data, output_data;
-		struct ipc4_base_module_cfg input_base_cfg;
-		struct ipc4_base_module_cfg output_base_cfg;
+		struct ipc4_base_module_cfg input_base_cfg = {.ibs = 0};
+		struct ipc4_base_module_cfg output_base_cfg = {.obs = 0};
 		int ret;
 
 		/* Calculate pipeline latency */
@@ -530,7 +530,7 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (ret < 0)
 			return NULL;
 
-		if (input_data && output_data)
+		if (input_data && output_data && input_base_cfg.ibs && output_base_cfg.obs)
 			*latency += input_data / input_base_cfg.ibs -
 				output_data / output_base_cfg.obs;
 
