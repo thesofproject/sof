@@ -9,6 +9,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/dcblock/dcblock.h>
 
+#ifdef DCBLOCK_GENERIC
+
 LOG_MODULE_DECLARE(dcblock, CONFIG_SOF_LOG_LEVEL);
 
 /**
@@ -166,3 +168,4 @@ const struct dcblock_func_map dcblock_fnmap[] = {
 };
 
 const size_t dcblock_fncount = ARRAY_SIZE(dcblock_fnmap);
+#endif
