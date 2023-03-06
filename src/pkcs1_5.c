@@ -312,7 +312,7 @@ static int rimage_verify(EVP_PKEY *privkey, enum manver ver,struct hash_context 
 	}
 
 	switch (ver) {
-	case V15	/* fallthrough */
+	case V15:	/* fallthrough */
 	case V18:
 		break;
 
@@ -337,8 +337,6 @@ static int rimage_verify(EVP_PKEY *privkey, enum manver ver,struct hash_context 
 		ERR_error_string(ERR_get_error(), err_buf);
 		fprintf(stderr, "error: verify %s\n", err_buf);
 	}
-
-	break;
 
 out:
 	EVP_PKEY_CTX_free(ctx);

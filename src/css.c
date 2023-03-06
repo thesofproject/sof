@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/time.h>
 #include <rimage/rimage.h>
 #include <rimage/css.h>
