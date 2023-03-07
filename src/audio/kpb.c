@@ -1702,7 +1702,7 @@ static enum task_state kpb_draining_task(void *arg)
 		if (kpb->state == KPB_STATE_RESETTING) {
 			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
 			kpb_reset(draining_data->dev);
-			goto out;
+			break;
 		}
 		/* Are we ready to drain further or host still need some time
 		 * to read the data already provided?
@@ -1717,6 +1717,8 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		size_to_read = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
+
+		comp_cl_info(&comp_kpb, "kpb_draining_task(), %u to read.", size_to_read);
 
 		if (size_to_read > audio_stream_get_free_bytes(&sink->stream)) {
 			if (audio_stream_get_free_bytes(&sink->stream) >= drain_req)
@@ -1735,6 +1737,8 @@ static enum task_state kpb_draining_task(void *arg)
 		kpb_drain_samples(buff->r_ptr, &sink->stream, size_to_copy,
 				  sample_width);
 
+		comp_cl_info(&comp_kpb, "kpb_draining_task(), %u drained.", size_to_copy);
+
 		buff->r_ptr = (char *)buff->r_ptr + (uint32_t)size_to_copy;
 		drain_req -= size_to_copy;
 		drained += size_to_copy;
@@ -1748,6 +1752,8 @@ static enum task_state kpb_draining_task(void *arg)
 			move_buffer = false;
 		}
 
+		comp_info(sink->sink, "kpb_draining_task() call copy.");
+
 		if (size_to_copy) {
 			comp_update_buffer_produce(sink, size_to_copy);
 			comp_copy(sink->sink);
@@ -1758,6 +1764,8 @@ static enum task_state kpb_draining_task(void *arg)
 			 */
 			comp_copy(sink->sink);
 		}
+
+		comp_info(sink->sink, "kpb_draining_task() copy done.");
 
 		if (sync_mode_on && period_bytes >= period_bytes_limit) {
 			current_time = sof_cycle_get_64();
@@ -1789,7 +1797,6 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 	}
 
-out:
 	draining_time_end = sof_cycle_get_64();
 
 	buffer_release(sink);
@@ -1807,6 +1814,9 @@ out:
 	else
 		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
 			     drained, UINT_MAX);
+
+	comp_cl_info(&comp_kpb, "kpb_draining_task() drained for %ums.",
+		     (unsigned int)draining_time_ms);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
