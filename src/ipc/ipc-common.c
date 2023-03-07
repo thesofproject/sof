@@ -125,7 +125,7 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 
 			/* check all connected modules to see if they are on different pipelines */
 			list_for_item(blist, buffer_list) {
-				buffer = buffer_from_list(blist, struct comp_buffer, dir);
+				buffer = buffer_from_list(blist, dir);
 				buff_comp = buffer_get_comp(buffer, dir);
 
 				if (buff_comp && dev_comp_pipe_id(buff_comp) == pipeline_id)
