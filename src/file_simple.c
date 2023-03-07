@@ -10,6 +10,7 @@
 
 #include <rimage/rimage.h>
 #include <rimage/manifest.h>
+#include <rimage/file_utils.h>
 
 static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 {
@@ -68,7 +69,7 @@ static int write_block(struct image *image, struct module *module,
 	/* write header */
 	count = fwrite(&block, sizeof(block), 1, image->out_fd);
 	if (count != 1)
-		return -errno;
+		return file_error("Write header failed", image->out_file);
 
 	/* alloc data data */
 	buffer = calloc(1, section->size);
@@ -77,24 +78,22 @@ static int write_block(struct image *image, struct module *module,
 
 	/* read in section data */
 	ret = fseek(module->fd, section->off, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: cant seek to section %d\n", ret);
+	if (ret) {
+		ret = file_error("seek to section failed", module->elf_file);
 		goto out;
 	}
 	count = fread(buffer, 1, section->size, module->fd);
 	if (count != section->size) {
-		fprintf(stderr, "error: cant read section %d\n", -errno);
-		ret = -errno;
+		ret = file_error("cant read section", module->elf_file);
 		goto out;
 	}
 
 	/* write out section data */
 	count = fwrite(buffer, 1, block.size, image->out_fd);
 	if (count != block.size) {
-		fprintf(stderr, "error: cant write section %d\n", -errno);
+		ret = file_error("cant write section", image->out_file);
 		fprintf(stderr, " foffset %d size 0x%x mem addr 0x%x\n",
 			section->off, section->size, section->vaddr);
-		ret = -errno;
 		goto out;
 	}
 
@@ -128,12 +127,12 @@ static int simple_write_module(struct image *image, struct module *module)
 
 	/* Get the pointer of writing hdr */
 	ptr_hdr = ftell(image->out_fd);
+	if (ptr_hdr < 0)
+		return file_error("cant get file position", image->out_file);
+
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write section header %d\n",
-			-errno);
-		return -errno;
-	}
+	if (count != 1)
+		return file_error("failed to write section header", image->out_file);
 
 	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
 
@@ -172,15 +171,21 @@ static int simple_write_module(struct image *image, struct module *module)
 	hdr.size += padding;
 	/* Record current pointer, will set it back after overwriting hdr */
 	ptr_cur = ftell(image->out_fd);
+	if (ptr_cur < 0)
+		return file_error("cant get file position", image->out_file);
+
 	/* overwrite hdr */
-	fseek(image->out_fd, ptr_hdr, SEEK_SET);
+	err = fseek(image->out_fd, ptr_hdr, SEEK_SET);
+	if (err)
+		return file_error("cant seek to header", image->out_file);
+
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write section header %d\n",
-			-errno);
-		return -errno;
-	}
-	fseek(image->out_fd, ptr_cur, SEEK_SET);
+	if (count != 1) 
+		return file_error("failed to write section header", image->out_file);
+
+	err = fseek(image->out_fd, ptr_cur, SEEK_SET);
+	if (err)
+		return file_error("cant seek", image->out_file);
 
 	fprintf(stdout, "\n");
 	/* return padding size */
@@ -201,7 +206,7 @@ static int write_block_reloc(struct image *image, struct module *module)
 	/* write header */
 	count = fwrite(&block, sizeof(block), 1, image->out_fd);
 	if (count != 1)
-		return -errno;
+		return file_error("cant write header", image->out_file);
 
 	/* alloc data data */
 	buffer = calloc(1, module->file_size);
@@ -210,22 +215,20 @@ static int write_block_reloc(struct image *image, struct module *module)
 
 	/* read in section data */
 	ret = fseek(module->fd, 0, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: can't seek to section %d\n", ret);
+	if (ret) {
+		ret = file_error("can't seek to section", module->elf_file);
 		goto out;
 	}
 	count = fread(buffer, 1, module->file_size, module->fd);
 	if (count != module->file_size) {
-		fprintf(stderr, "error: can't read section %d\n", -errno);
-		ret = -errno;
+		ret = file_error("can't read section", module->elf_file);
 		goto out;
 	}
 
 	/* write out section data */
 	count = fwrite(buffer, 1, module->file_size, image->out_fd);
 	if (count != module->file_size) {
-		fprintf(stderr, "error: can't write section %d\n", -errno);
-		ret = -errno;
+		ret = file_error("can't write section", image->out_file);
 		goto out;
 	}
 
@@ -249,11 +252,8 @@ static int simple_write_module_reloc(struct image *image, struct module *module)
 	hdr.type = SOF_FW_BASE; // module
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write section header %d\n",
-			-errno);
-		return -errno;
-	}
+	if (count != 1)
+		return file_error("failed to write section header", image->out_file);
 
 	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
 
@@ -304,7 +304,7 @@ int simple_write_firmware(struct image *image)
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1)
-		return -errno;
+		return file_error("failed to write header", image->out_file);
 
 	for (i = 0; i < image->num_modules; i++) {
 		module = &image->module[i];
@@ -324,10 +324,14 @@ int simple_write_firmware(struct image *image)
 		hdr.file_size += ret;
 	}
 	/* overwrite hdr */
-	fseek(image->out_fd, 0, SEEK_SET);
+	ret = fseek(image->out_fd, 0, SEEK_SET);
+	if (ret)
+		return file_error("can't seek set", image->out_file);
+
+
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1)
-		return -errno;
+		return file_error("failed to write header", image->out_file);
 
 	fprintf(stdout, "firmware: image size %ld (0x%lx) bytes %d modules\n\n",
 		(long)(hdr.file_size + sizeof(hdr)),

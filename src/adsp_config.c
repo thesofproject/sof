@@ -15,6 +15,7 @@
 #include "rimage/cse.h"
 #include "rimage/css.h"
 #include "rimage/toml_utils.h"
+#include "rimage/file_utils.h"
 #include "toml.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -2348,7 +2349,8 @@ int adsp_parse_config(const char *file, struct image *image)
 
 	fd = fopen(file, "r");
 	if (!fd)
-		return log_err(-EIO, "error: can't open '%s' file\n", file);
+		return file_error("unable to open file for reading", file);
+
 	ret = adsp_parse_config_fd(fd, image);
 	fclose(fd);
 	return ret;

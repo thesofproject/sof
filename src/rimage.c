@@ -14,6 +14,7 @@
 #include <rimage/ext_manifest_gen.h>
 #include <rimage/rimage.h>
 #include <rimage/manifest.h>
+#include <rimage/file_utils.h>
 
 
 static void usage(char *name)
@@ -218,9 +219,7 @@ int main(int argc, char *argv[])
 	unlink(image.out_file);
 	image.out_fd = fopen(image.out_file, "wb");
 	if (!image.out_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image.out_file, errno);
-		ret = -EINVAL;
+		ret = file_error("unable to open file for writing", image.out_file);
 		goto out;
 	}
 

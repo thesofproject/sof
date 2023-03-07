@@ -35,11 +35,8 @@ static int ext_man_open_file(struct image *image)
 
 	/* open extended manifest outfile for writing */
 	image->out_ext_man_fd = fopen(image->out_ext_man_file, "wb");
-	if (!image->out_ext_man_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image->out_ext_man_file, errno);
-		return errno;
-	}
+	if (!image->out_ext_man_fd)
+		return file_error("unable to open file for writing", image->out_ext_man_file);
 
 	return 0;
 }
@@ -169,10 +166,7 @@ int ext_man_write(struct image *image)
 	count = fwrite(ext_man, 1, ext_man->full_size, image->out_ext_man_fd);
 
 	if (count != ext_man->full_size) {
-		fprintf(stderr,
-			"error: can't write extended manifest to file %d\n",
-			-errno);
-		ret = -errno;
+		ret = file_error("can't write extended manifest", image->out_ext_man_file);
 		goto out;
 	}
 
@@ -195,6 +189,7 @@ int ext_man_write_cavs_25(struct image *image)
 	int pin_count;
 	int count, i;
 	int ret;
+	size_t write_ret;
 
 	ret = ext_man_open_file(image);
 	if (ret)
@@ -213,17 +208,38 @@ int ext_man_write_cavs_25(struct image *image)
 	fwrite(&header, 1, sizeof(header), image->out_ext_man_fd);
 
 	for (i = 0; i < count; i++) {
-		fwrite(&mod_ext->ext_mod_config_array[i].header, 1,
-		       sizeof(struct fw_ext_mod_config_header), image->out_ext_man_fd);
+		write_ret = fwrite(&mod_ext->ext_mod_config_array[i].header,
+				   sizeof(struct fw_ext_mod_config_header), 1,
+				   image->out_ext_man_fd);
+		if (write_ret != 1) {
+			ret = file_error("can't write fw_ext_mod_config_header",
+					 image->out_ext_man_file);
+			goto out;
+		}
 
-		if (mod_ext->ext_mod_config_array[i].header.num_scheduling_capabilities)
-			fwrite(&mod_ext->ext_mod_config_array[i].sched_caps, 1,
-			       sizeof(struct mod_scheduling_caps), image->out_ext_man_fd);
+		if (mod_ext->ext_mod_config_array[i].header.num_scheduling_capabilities) {
+			write_ret = fwrite(&mod_ext->ext_mod_config_array[i].sched_caps,
+					   sizeof(struct mod_scheduling_caps), 1,
+					   image->out_ext_man_fd);
+			if (write_ret != 1) {
+				ret = file_error("can't write mod_scheduling_caps",
+						 image->out_ext_man_file);
+				goto out;
+			}
+		}
 
 		pin_count = mod_ext->ext_mod_config_array[i].header.num_pin_entries;
-		if (pin_count)
-			fwrite(mod_ext->ext_mod_config_array[i].pin_desc, pin_count,
-			       sizeof(struct fw_pin_description), image->out_ext_man_fd);
+		if (pin_count) {
+			write_ret = fwrite(mod_ext->ext_mod_config_array[i].pin_desc,
+					   sizeof(struct fw_pin_description), pin_count,
+					   image->out_ext_man_fd);
+
+			if (write_ret != pin_count) {
+				ret = file_error("can't write fw_pin_description",
+						 image->out_ext_man_file);
+				goto out;
+			}
+		}
 	}
 
 out:

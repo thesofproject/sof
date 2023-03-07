@@ -24,6 +24,7 @@
 #include <rimage/css.h>
 #include <rimage/manifest.h>
 #include <rimage/misc_utils.h>
+#include <rimage/file_utils.h>
 #include <rimage/hash.h>
 
 #define DEBUG_PKCS	0
@@ -57,11 +58,9 @@ static int rimage_read_key(EVP_PKEY **privkey, struct image *image)
 
 	fprintf(stdout, " %s: read key '%s'\n", __func__, path);
 	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
+	if (!fp)
+		return file_error("unable to open file for reading", path);
+	
 	PEM_read_PrivateKey(fp, privkey, NULL, NULL);
 	fclose(fp);
 

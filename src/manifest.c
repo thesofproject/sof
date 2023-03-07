@@ -45,11 +45,8 @@ static int man_open_rom_file(struct image *image)
 
 	/* open ROM outfile for writing */
 	image->out_rom_fd = fopen(image->out_rom_file, "wb");
-	if (!image->out_rom_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image->out_rom_file, errno);
-		return -errno;
-	}
+	if (!image->out_rom_fd)
+		return file_error("unable to open file for writing", image->out_rom_file);
 
 	return 0;
 }
@@ -65,11 +62,8 @@ static int man_open_unsigned_file(struct image *image)
 
 	/* open unsigned FW outfile for writing */
 	image->out_unsigned_fd = fopen(image->out_unsigned_file, "wb");
-	if (!image->out_unsigned_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image->out_unsigned_file, errno);
-		return -errno;
-	}
+	if (!image->out_unsigned_fd)
+		return file_error("unable to open file for writing", image->out_unsigned_file);
 
 	return 0;
 }
@@ -85,11 +79,8 @@ static int man_open_manifest_file(struct image *image)
 
 	/* open manifest outfile for writing */
 	image->out_man_fd = fopen(image->out_man_file, "wb");
-	if (!image->out_man_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image->out_man_file, errno);
-		return -errno;
-	}
+	if (!image->out_man_fd)
+		return file_error("unable to open file for writing", image->out_man_file);
 
 	return 0;
 }
@@ -221,10 +212,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 		man_module->segment[seg_type].file_offset = offset;
 
 	count = fread(buffer, 1, section->size, module->fd);
-	if (count != section->size) {
-		fprintf(stderr, "error: cant read section %d\n", -errno);
-		return -errno;
-	}
+	if (count != section->size)
+		return file_error("cant read section", module->elf_file);
 
 	/* get module end offset  ? */
 	if (end > image->image_end)
@@ -245,10 +234,8 @@ static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
 
 	/* seek to ELF section */
 	ret = fseek(module->fd, section->off, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: can't seek to section %d\n", ret);
-		return ret;
-	}
+	if (ret)
+		return file_error("can't seek to section", module->elf_file);
 
 	/* write data to DRAM or ROM image */
 	if (!elf_is_rom(image, section))
@@ -286,10 +273,8 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	}
 
 	count = fread(&sof_mod, 1, sizeof(sof_mod), module->fd);
-	if (count != sizeof(sof_mod)) {
-		fprintf(stderr, "error: can't read section %d\n", -errno);
-		return -errno;
-	}
+	if (count != sizeof(sof_mod))
+		return file_error("can't read section", module->elf_file);
 
 	/* configure man_module with sofmod data */
 	memcpy(man_module->struct_id, "$AME", 4);
@@ -576,16 +561,12 @@ static int man_module_create_reloc(struct image *image, struct module *module,
 
 	/* seek to beginning of file */
 	err = fseek(module->fd, 0, SEEK_SET);
-	if (err < 0) {
-		fprintf(stderr, "error: can't seek to section %d\n", err);
-		return err;
-	}
+	if (err)
+		return file_error("can't seek to section", module->elf_file);
 
 	count = fread(buffer, 1, module->file_size, module->fd);
-	if (count != module->file_size) {
-		fprintf(stderr, "error: can't read section %d\n", -errno);
-		return -errno;
-	}
+	if (count != module->file_size)
+		return file_error("can't read section", module->elf_file);
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%x\t%s\n", 0,
 		0, module->file_size, 0, "DATA");
@@ -618,11 +599,9 @@ static int man_write_unsigned_mod(struct image *image, int meta_start_offset,
 		       image->out_man_fd);
 
 	/* did the metadata/manifest write succeed ? */
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write meta %s %d\n",
-			image->out_man_file, -errno);
-		return -errno;
-	}
+	if (count != 1)
+		return file_error("failed to write meta", image->out_man_file);
+
 	fclose(image->out_man_fd);
 
 	/* now prepare the unsigned rimage */
@@ -631,11 +610,8 @@ static int man_write_unsigned_mod(struct image *image, int meta_start_offset,
 		       1, image->out_unsigned_fd);
 
 	/* did the unsigned FW write succeed ? */
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write firmware %s %d\n",
-			image->out_unsigned_file, -errno);
-		return -errno;
-	}
+	if (count != 1)
+		return file_error("failed to write firmware", image->out_unsigned_file);
 	fclose(image->out_unsigned_fd);
 
 	return 0;
@@ -649,11 +625,8 @@ static int man_write_fw_mod(struct image *image)
 	count = fwrite(image->fw_image, image->image_end, 1, image->out_fd);
 
 	/* did the image write succeed ? */
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write signed firmware %s %d\n",
-			image->out_file, -errno);
-		return -errno;
-	}
+	if (count != 1)
+		return file_error("failed to write signed firmware", image->out_file);
 
 	return 0;
 }
@@ -1567,11 +1540,8 @@ int verify_image(struct image *image)
 
 	/* open image for reading */
 	in_file = fopen(image->verify_file, "rb");
-	if (!in_file) {
-		fprintf(stderr, "error: unable to open %s for reading %d\n",
-			image->verify_file, errno);
-		return -errno;
-	}
+	if (!in_file)
+		return file_error("unable to open file for reading", image->verify_file);
 
 	/* get file size */
 	ret = get_file_size(in_file, image->verify_file, &size);
@@ -1589,9 +1559,7 @@ int verify_image(struct image *image)
 	/* find start of fw image and verify */
 	read = fread(buffer, 1, size, in_file);
 	if (read != size) {
-		fprintf(stderr, "error: unable to read %ld bytes from %s err %d\n",
-					size, image->verify_file, errno);
-		ret = errno;
+		ret = file_error("unable to read whole file", image->verify_file);
 		goto out;
 	}
 	for (i = 0; i < size; i += sizeof(uint32_t)) {
@@ -1622,11 +1590,8 @@ int resign_image(struct image *image)
 
 	/* open image for reading */
 	in_file = fopen(image->in_file, "rb");
-	if (!in_file) {
-		fprintf(stderr, "error: unable to open %s for reading %d\n",
-			image->in_file, errno);
-		return -errno;
-	}
+	if (!in_file)
+		return file_error("unable to open file for reading", image->in_file);
 
 	/* get file size */
 	ret = get_file_size(in_file, image->in_file, &size);
@@ -1644,9 +1609,7 @@ int resign_image(struct image *image)
 	/* read file into buffer */
 	read = fread(buffer, 1, size, in_file);
 	if (read != size) {
-		fprintf(stderr, "error: unable to read %zu bytes from %s err %d\n",
-					size, image->in_file, errno);
-		ret = errno;
+		ret = file_error("unable to read whole file", image->in_file);
 		goto out;
 	}
 
@@ -1703,9 +1666,7 @@ int resign_image(struct image *image)
 	unlink(image->out_file);
 	image->out_fd = fopen(image->out_file, "wb");
 	if (!image->out_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image->out_file, errno);
-		ret = -EINVAL;
+		ret = file_error("unable to open file for writting", image->out_file);
 		goto out;
 	}
 
