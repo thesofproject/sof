@@ -991,7 +991,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	dai_copier = pipeline_get_dai_comp_latency(dev->pipeline->pipeline_id, &latency);
 	if (!dai_copier) {
 		comp_err(dev, "failed to find dai comp or sink pipeline not running.");
-		return ret;
+		return -ENODEV;
 	}
 
 	dai_cd = comp_get_drvdata(dai_copier);
