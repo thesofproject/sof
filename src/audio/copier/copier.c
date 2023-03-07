@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/host_copier.h>
+#include <sof/audio/dai_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -295,6 +296,95 @@ static enum sof_ipc_stream_direction
 	}
 }
 
+static int init_dai_single(struct comp_dev *parent_dev,
+			   const struct comp_driver *drv,
+			   struct comp_ipc_config *config,
+			   const struct ipc4_copier_module_cfg *copier,
+			   struct pipeline *pipeline,
+			   struct ipc_config_dai *dai,
+			   enum ipc4_gateway_type type,
+			   int index)
+{
+	struct comp_dev *dev;
+	struct copier_data *cd;
+	struct dai_data *dd;
+	int ret;
+
+	cd = comp_get_drvdata(parent_dev);
+	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, false, index);
+	if (ret < 0)
+		return ret;
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev) {
+		ret = -ENOMEM;
+		goto e_buf;
+	}
+
+	dev->ipc_config = *config;
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd) {
+		ret = -ENOMEM;
+		goto e_data;
+	}
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_zephyr_new(dd, parent_dev, dai);
+	if (ret < 0)
+		goto e_data;
+
+	dev->state = COMP_STATE_READY;
+
+	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
+		pipeline->sink_comp = dev;
+	else
+		pipeline->source_comp = dev;
+
+	pipeline->sched_id = config->id;
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	ret = comp_dai_config(dev, dai, copier);
+	if (ret < 0)
+		goto e_zephyr;
+
+	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+				    PPL_CONN_DIR_BUFFER_TO_COMP);
+		cd->bsource_buffer = true;
+	} else {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+				    PPL_CONN_DIR_COMP_TO_BUFFER);
+		cd->bsource_buffer = false;
+	}
+
+	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
+			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
+					   IPC4_DIRECTION(dai->direction));
+	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
+		comp_err(parent_dev, "failed to get converter type %d, dir %d",
+			 type, dai->direction);
+		ret = -EINVAL;
+		goto e_zephyr;
+	}
+
+	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->dd[0] = dd;
+
+	return 0;
+
+e_zephyr:
+	dai_zephyr_free(dd, dev);
+e_data:
+	rfree(dev);
+e_buf:
+	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
+	return ret;
+}
+
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
@@ -353,6 +443,7 @@ static int init_dai(struct comp_dev *parent_dev,
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->dd[index] = comp_get_drvdata(dev);
 
 	return 0;
 
@@ -378,7 +469,7 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	int dai_count;
-	int i;
+	int i, ret;
 
 	drv = ipc4_get_drv((uint8_t *)&id);
 	if (!drv)
@@ -465,20 +556,27 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < dai_count; i++) {
-		int ret;
-
-		dai.dai_index = dai_index[i];
-		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i);
+	if (dai_count == 1) {
+		/* optimized single dai removal */
+		dai.dai_index = dai_index[0];
+		ret = init_dai_single(parent_dev, drv, config, copier, pipeline, &dai, type, 0);
 		if (ret) {
-			comp_err(parent_dev, "failed to create dai");
+			comp_err(parent_dev, "failed to create single endpoint dai");
 			return ret;
 		}
-	}
+	} else {
+		/* multi dai creation and handling */
+		for (i = 0; i < dai_count; i++) {
+			dai.dai_index = dai_index[i];
+			ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i);
+			if (ret) {
+				comp_err(parent_dev, "failed to create mutlple endpoint dai");
+				return ret;
+			}
+		}
 
-	/* create multi_endpoint_buffer for ALH multi-gateway case */
-	if (dai_count > 1) {
-		int ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
+		/* create multi_endpoint_buffer for ALH multi-gateway case */
+		ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
 
 		if (ret < 0)
 			return ret;
@@ -712,19 +810,36 @@ static void copier_free(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	int i;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		host_zephyr_free(cd->hd);
-		rfree(cd->hd);
-	}
-
 	if (cd->multi_endpoint_buffer)
 		buffer_free(cd->multi_endpoint_buffer);
 
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-			buffer_free(cd->endpoint_buffer[i]);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			host_zephyr_free(cd->hd);
+			rfree(cd->hd);
+		} else {
+			/* handle gtw case */
+			for (i = 0; i < cd->endpoint_num; i++) {
+				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+				buffer_free(cd->endpoint_buffer[i]);
+			}
 		}
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1) {
+			dai_zephyr_free(cd->dd[i], cd->endpoint[0]);
+			rfree(cd->endpoint[0]);
+			buffer_free(cd->endpoint_buffer[0]);
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+				buffer_free(cd->endpoint_buffer[i]);
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	rfree(cd);
