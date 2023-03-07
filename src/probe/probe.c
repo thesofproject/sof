@@ -121,6 +121,7 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 	return 0;
 }
 
+#if !CONFIG_ZEPHYR_NATIVE_DRIVERS
 /**
  * \brief Request DMA and initialize DMA for probes with correct alignment,
  *	  size and specific channel.
@@ -191,7 +192,67 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 
 	return 0;
 }
+#else
+static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
+{
+	uint32_t addr_align;
+	uint32_t channel;
+	struct dma_config dma_cfg;
+	struct dma_block_config dma_block_cfg;
+	int err = 0;
 
+	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index;
+
+	/* request DMA in the dir LMEM->HMEM with shared access */
+	dma->dc.dmac = dma_get(direction, 0, DMA_DEV_HOST,
+			       DMA_ACCESS_SHARED);
+	if (!dma->dc.dmac) {
+		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
+		return -ENODEV;
+	}
+
+	/* get required address alignment for dma buffer */
+	err = dma_get_attribute(dma->dc.dmac->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&addr_align);
+	if (err < 0)
+		return err;
+
+	channel = dma_request_channel(dma->dc.dmac->z_dev, &channel);
+	if (channel < 0) {
+		tr_err(&pr_tr, "probe_dma_init(): dma_request_channel() failed");
+		return -EINVAL;
+	}
+	dma->dc.chan = &dma->dc.dmac->chan[channel];
+
+	/* initialize dma buffer */
+	err = probe_dma_buffer_init(&dma->dmapb, PROBE_BUFFER_LOCAL_SIZE, addr_align);
+	if (err < 0)
+		return err;
+
+	dma_cfg.block_count = 1;
+	dma_cfg.source_data_size = sizeof(uint32_t);
+	dma_cfg.dest_data_size = sizeof(uint32_t);
+	dma_cfg.head_block = &dma_block_cfg;
+	dma_block_cfg.block_size = (uint32_t)dma->dmapb.size;
+
+	switch (direction) {
+	case DMA_DIR_LMEM_TO_HMEM:
+		dma_cfg.channel_direction = MEMORY_TO_HOST;
+		dma_block_cfg.source_address = (uint32_t)dma->dmapb.addr;
+		break;
+	case DMA_DIR_HMEM_TO_LMEM:
+		dma_cfg.channel_direction = HOST_TO_MEMORY;
+		dma_block_cfg.dest_address = (uint32_t)dma->dmapb.addr;
+		break;
+	}
+
+	err = dma_config(dma->dc.dmac->z_dev, dma->dc.chan->index, &dma_cfg);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+#endif
 /**
  * \brief Stop, deinit and free DMA and buffer used by probes.
  *
@@ -200,14 +261,20 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	err = dma_stop(dma->dc.dmac->z_dev, dma->dc.chan->index);
+#else
 	err = dma_stop_legacy(dma->dc.chan);
+#endif
 	if (err < 0) {
 		tr_err(&pr_tr, "probe_dma_deinit(): dma_stop() failed");
 		return err;
 	}
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	dma_release_channel(dma->dc.dmac->z_dev, dma->dc.chan->index);
+#else
 	dma_channel_put_legacy(dma->dc.chan);
+#endif
 	dma_put(dma->dc.dmac);
 
 	rfree((void *)dma->dmapb.addr);
@@ -249,10 +316,15 @@ static enum task_state probe_task(void *data)
 		avail = _probe->ext_dma.dmapb.end_addr - _probe->ext_dma.dmapb.r_ptr;
 
 	if (avail > 0)
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		err = dma_reload(_probe->ext_dma.dc.dmac->z_dev,
+				 _probe->ext_dma.dc.chan->index, 0, 0, avail);
+#else
 		err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
 					      &_probe->ext_dma.config, 0,
 					      (void *)_probe->ext_dma.dmapb.r_ptr,
 					      avail);
+#endif
 	else
 		return SOF_TASK_STATE_RESCHEDULE;
 
@@ -307,8 +379,11 @@ int probe_init(const struct probe_dma *probe_dma)
 			_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 			return err;
 		}
-
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		err = dma_start(_probe->ext_dma.dc.dmac->z_dev, _probe->ext_dma.dc.chan->index);
+#else
 		err = dma_start_legacy(_probe->ext_dma.dc.chan);
+#endif
 		if (err < 0) {
 			tr_err(&pr_tr, "probe_init(): failed to start extraction dma");
 
@@ -885,9 +960,17 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 		}
 		dma = &_probe->inject_dma[j];
 		/* get avail data info */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+		struct dma_status stat;
+
+		ret = dma_get_status(dma->dc.dmac->z_dev, dma->dc.chan->index, &stat);
+		dma->dmapb.avail = stat.pending_length;
+		free_bytes = stat.free;
+#else
 		ret = dma_get_data_size_legacy(dma->dc.chan,
 					       &dma->dmapb.avail,
 					       &free_bytes);
+#endif
 		if (ret < 0) {
 			tr_err(&pr_tr, "probe_cb_produce(): dma_get_data_size() failed, ret = %u",
 			       ret);
@@ -929,10 +1012,15 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 
 		/* check if copy_bytes is still valid for dma copy */
 		if (copy_bytes > 0) {
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+			ret = dma_reload(dma->dc.dmac->z_dev,
+					 dma->dc.chan->index, 0, 0, copy_bytes);
+#else
 			ret = dma_copy_to_host_nowait(&dma->dc,
 						      &dma->config, 0,
 						      (void *)dma->dmapb.r_ptr,
 						      copy_bytes);
+#endif
 			if (ret < 0)
 				goto err;
 
@@ -1161,7 +1249,12 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 
 				return -EINVAL;
 			}
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+			if (dma_start(_probe->inject_dma[j].dc.dmac->z_dev,
+				      _probe->inject_dma[j].dc.chan->index) < 0) {
+#else
 			if (dma_start_legacy(_probe->inject_dma[j].dc.chan) < 0) {
+#endif
 				tr_err(&pr_tr, "probe_point_add(): failed to start dma");
 
 				return -EBUSY;
