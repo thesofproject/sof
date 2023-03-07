@@ -3,6 +3,8 @@
 // Copyright(c) 2021 Intel Corporation. All rights reserved.
 
 #include <sof/audio/aria/aria.h>
+
+#if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
 
@@ -136,3 +138,4 @@ void aria_algo_get_data(struct comp_dev *dev, int32_t *__restrict  data, size_t 
 	}
 	cd->gain_state = (cd->gain_state + 1) % ARIA_MAX_GAIN_STATES;
 }
+#endif
