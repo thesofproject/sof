@@ -5,6 +5,9 @@
  * Portions Copyright 2009 The Go Authors.  All rights reserved.
  */
 
+#ifndef __ELF_H__
+#define __ELF_H__
+
 /*
  * ELF definitions that are independent of architecture or word size.
  */
@@ -929,3 +932,5 @@ typedef struct {
 #define	ELF32SHDRSIZE	sizeof(Elf32_Shdr)
 #define	ELF32SYMSIZE	sizeof(Elf32_Sym)
 #define	ELF32RELSIZE	8
+
+#endif /* __ELF_H__ */
