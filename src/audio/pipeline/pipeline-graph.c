@@ -536,15 +536,18 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 
 		/* If the component doesn't have a sink buffer, this is a dai. */
 		if (list_is_empty(&ipc_sink->cd->bsink_list))
-			return ipc_sink->cd;
+			return dev_comp_type(ipc_sink->cd) == SOF_COMP_DAI ? ipc_sink->cd : NULL;
 
 		/* Get a component connected to our sink buffer - hop to a next pipeline */
 		buffer = buffer_from_list(comp_buffer_list(ipc_sink->cd, PPL_DIR_DOWNSTREAM)->next,
 					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
 		source = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+		if (!source)
+			comp_err(ipc_sink->cd, "no downstream on output buffer: %p %p!",
+				 ipc_sink->cd, buffer_get_comp(buffer, PPL_DIR_UPSTREAM));
 
 		/* buffer_comp is in another pipeline and it is not complete */
-		if (!source->pipeline)
+		if (!source || !source->pipeline)
 			return NULL;
 
 		/* Get a next sink component */

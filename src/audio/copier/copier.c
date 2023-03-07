@@ -957,6 +957,15 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	dai_cd = comp_get_drvdata(dai_copier);
+	if (!dai_cd) {
+		comp_err(dev, "NULL copier data.");
+		return 0;
+	}
+	if (!dai_cd->endpoint[IPC4_COPIER_GATEWAY_PIN]) {
+		comp_err(dev, "NULL endpoint type %u.", dai_copier->ipc_config.type);
+		return 0;
+	}
+
 	/* dai is in another pipeline and it is not prepared or active */
 	if (dai_copier->state <= COMP_STATE_READY ||
 	    dai_cd->endpoint[IPC4_COPIER_GATEWAY_PIN]->state <= COMP_STATE_READY) {
