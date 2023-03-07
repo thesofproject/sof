@@ -44,7 +44,7 @@ int create_file_name(char *new_name, const size_t name_size, const char *templat
 int get_file_size(FILE *f, const char* filename, size_t *size)
 {
 	int ret;
-
+	long pos;
 	assert(size);
 
 	/* get file size */
@@ -52,13 +52,14 @@ int get_file_size(FILE *f, const char* filename, size_t *size)
 	if (ret)
 		return file_error("unable to seek eof", filename);
 
-	*size = ftell(f);
-	if (*size < 0)
+	pos = ftell(f);
+	if (pos < 0)
 		return file_error("unable to get file size", filename);
 
 	ret = fseek(f, 0, SEEK_SET);
 	if (ret)
 		return file_error("unable to seek set", filename);
 
+	*size = pos;
 	return 0;
 }
