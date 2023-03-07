@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/host_copier.h>
+#include <sof/audio/dai_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -306,6 +307,7 @@ static int init_dai(struct comp_dev *parent_dev,
 {
 	struct comp_dev *dev;
 	struct copier_data *cd;
+	struct dai_data *dd;
 	int ret;
 
 	cd = comp_get_drvdata(parent_dev);
@@ -313,11 +315,27 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (ret < 0)
 		return ret;
 
-	dev = drv->ops.create(drv, config, dai);
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
-		ret = -EINVAL;
+		ret = -ENOMEM;
 		goto e_buf;
 	}
+
+	dev->ipc_config = *config;
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd) {
+		ret = -ENOMEM;
+		goto e_data;
+	}
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_zephyr_new(dd, parent_dev, dai);
+	if (ret < 0)
+		goto e_zephyr;
+
+	dev->state = COMP_STATE_READY;
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
 		pipeline->sink_comp = dev;
@@ -349,13 +367,18 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(parent_dev, "failed to get converter type %d, dir %d",
 			 type, dai->direction);
-		return -EINVAL;
+		goto e_zephyr;
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->dd = dd;
 
 	return 0;
 
+e_zephyr:
+	dai_zephyr_free(dd, dev);
+e_data:
+	rfree(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
@@ -710,21 +733,30 @@ error:
 static void copier_free(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int i;
-
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		host_zephyr_free(cd->hd);
-		rfree(cd->hd);
-	}
 
 	if (cd->multi_endpoint_buffer)
 		buffer_free(cd->multi_endpoint_buffer);
 
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-			buffer_free(cd->endpoint_buffer[i]);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			host_zephyr_free(cd->hd);
+			rfree(cd->hd);
+		} else {
+			/* handle gtw case */
+			cd->endpoint[0]->drv->ops.free(cd->endpoint[0]);
+			buffer_free(cd->endpoint_buffer[0]);
 		}
+		break;
+	case SOF_COMP_DAI:
+		dai_zephyr_free(cd->dd, cd->endpoint[0]);
+		rfree(cd->endpoint[0]);
+		buffer_free(cd->endpoint_buffer[0]);
+		break;
+	default:
+		comp_err(dev, "Unexpected device type to free %d",
+			 dev->ipc_config.type);
+		break;
 	}
 
 	rfree(cd);

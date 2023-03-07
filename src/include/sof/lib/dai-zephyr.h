@@ -283,7 +283,7 @@ void dai_dma_position_update(struct comp_dev *dev);
 /**
  * \brief release llp slot
  */
-void dai_release_llp_slot(struct comp_dev *dev);
+void dai_release_llp_slot(struct dai_data *dd);
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */
