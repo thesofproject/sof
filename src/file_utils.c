@@ -11,14 +11,6 @@
 
 #include <rimage/file_utils.h>
 
-/**
- * Create new file name using output file name as template.
- * @param [out] new_name char[] destination of new file name
- * @param [in] name_size new file name buffer capacity
- * @param [in] template_name File name used as a template for the new name
- * @param [in] new_ext extension of the new file name
- * @param error code, 0 when success
- */
 int create_file_name(char *new_name, const size_t name_size, const char *template_name,
 		   const char *new_ext)
 {
@@ -37,13 +29,6 @@ int create_file_name(char *new_name, const size_t name_size, const char *templat
 	return 0;
 }
 
-/**
- * Get file size
- * @param [in] f file handle
- * @param [in] filename File name used to display the error message
- * @param [out] size output for file size
- * @param error code, 0 when success
- */
 int get_file_size(FILE *f, const char* filename, size_t *size)
 {
 	int ret;
