@@ -8,8 +8,20 @@
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
+#include <string.h>
 
 #include <rimage/file_utils.h>
+
+int file_error(const char *msg, const char *filename)
+{
+	int code = errno;
+	char sys_msg[256];
+
+	strerror_r(code, sys_msg, sizeof(sys_msg));
+
+	fprintf(stderr, "%s:\terror: %s. %s (errno = %d)\n", filename, msg, sys_msg, code);
+	return -code;
+}
 
 int create_file_name(char *new_name, const size_t name_size, const char *template_name,
 		   const char *new_ext)
@@ -37,22 +49,16 @@ int get_file_size(FILE *f, const char* filename, size_t *size)
 
 	/* get file size */
 	ret = fseek(f, 0, SEEK_END);
-	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek eof %s %d\n", filename, errno);
-		return -errno;
-	}
+	if (ret)
+		return file_error("unable to seek eof", filename);
 
 	*size = ftell(f);
-	if (*size < 0) {
-		fprintf(stderr, "error: unable to get file size for %s %d\n", filename, errno);
-		return -errno;
-	}
+	if (*size < 0)
+		return file_error("unable to get file size", filename);
 
 	ret = fseek(f, 0, SEEK_SET);
-	if (ret < 0) {
-		fprintf(stderr, "error: unable to seek set %s %d\n", filename, errno);
-		return -errno;
-	}
+	if (ret)
+		return file_error("unable to seek set", filename);
 
 	return 0;
 }

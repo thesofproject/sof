@@ -9,6 +9,14 @@
 #include <stddef.h>
 
 /**
+ * Print file operation error message
+ * @param [in]msg error message
+ * @param [in]filename File name used to display the error message
+ * @param error code
+ */
+int file_error(const char *msg, const char *filename);
+
+/**
  * Create new file name using output file name as template.
  * @param [out] new_name char[] destination of new file name
  * @param [in] name_size new file name buffer capacity
