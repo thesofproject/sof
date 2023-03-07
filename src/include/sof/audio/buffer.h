@@ -176,10 +176,10 @@ struct buffer_cb_free {
 	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
 	 &buffer->sink_list)
 
-#define buffer_from_list(ptr, type, dir) \
+#define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \
-	 container_of(ptr, type, source_list) : \
-	 container_of(ptr, type, sink_list))
+	 container_of(ptr, struct comp_buffer, source_list) : \
+	 container_of(ptr, struct comp_buffer, sink_list))
 
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\

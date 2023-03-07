@@ -217,7 +217,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		struct comp_buffer *buf;
 		struct comp_dev *source;
 
-		buf = buffer_from_list(blist, struct comp_buffer, PPL_DIR_UPSTREAM);
+		buf = buffer_from_list(blist, PPL_DIR_UPSTREAM);
 		source = buffer_get_comp(buf, PPL_DIR_UPSTREAM);
 
 		if (source->pipeline && source->pipeline->core != dev->pipeline->core)

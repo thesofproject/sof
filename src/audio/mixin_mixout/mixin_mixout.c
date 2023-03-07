@@ -630,7 +630,7 @@ static int mixin_params(struct processing_module *mod)
 		struct comp_buffer __sparse_cache *sink_c;
 		uint16_t sink_id;
 
-		sink = buffer_from_list(blist, struct comp_buffer, PPL_DIR_DOWNSTREAM);
+		sink = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
 		sink_c = buffer_acquire(sink);
 
 		sink_c->stream.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;

@@ -155,7 +155,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		buffer_list = comp_buffer_list(dev, dir);
 
 		list_for_item(clist, buffer_list) {
-			buf = buffer_from_list(clist, struct comp_buffer, dir);
+			buf = buffer_from_list(clist, dir);
 			buf_c = buffer_acquire(buf);
 			comp_update_params(flag, params, buf_c);
 			buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);

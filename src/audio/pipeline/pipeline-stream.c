@@ -239,8 +239,7 @@ static void pipeline_trigger_xrun(struct pipeline *p, struct comp_dev **host)
 			break;
 
 		list_for_item(clist, buffer_list) {
-			struct comp_buffer *buffer = buffer_from_list(clist,
-								      struct comp_buffer, dir);
+			struct comp_buffer *buffer = buffer_from_list(clist, dir);
 			struct comp_dev *buffer_comp = buffer_get_comp(buffer, dir);
 
 			switch (buffer_comp->pipeline->status) {

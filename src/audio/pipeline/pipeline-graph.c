@@ -402,7 +402,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
-		struct comp_buffer *buffer = buffer_from_list(clist, struct comp_buffer, dir);
+		struct comp_buffer *buffer = buffer_from_list(clist, dir);
 		struct comp_buffer __sparse_cache *buffer_c;
 		struct comp_dev *buffer_comp;
 		int err = 0;
@@ -472,7 +472,7 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
 		if (list_is_empty(blist))
 			return crt->cd;
 
-		buffer = buffer_from_list(blist->next, struct comp_buffer, dir);
+		buffer = buffer_from_list(blist->next, dir);
 		comp = buffer_get_comp(buffer, dir);
 
 		/* buffer_comp is in another pipeline and it is not complete */
@@ -540,7 +540,7 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 
 		/* Get a component connected to our sink buffer - hop to a next pipeline */
 		buffer = buffer_from_list(comp_buffer_list(ipc_sink->cd, PPL_DIR_DOWNSTREAM)->next,
-					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
+					  PPL_DIR_DOWNSTREAM);
 		source = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
 
 		/* buffer_comp is in another pipeline and it is not complete */
