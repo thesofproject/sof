@@ -63,7 +63,7 @@ namespace system
 {
 
 /* Structure storing handles to system service operations */
-AdspSystemService SystemAgent::system_service_ = {
+adsp_system_service SystemAgent::system_service_ = {
 	SystemServiceLogMessage,
 	SystemServiceSafeMemcpy,
 	SystemServiceSafeMemmove,

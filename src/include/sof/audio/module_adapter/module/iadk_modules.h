@@ -16,9 +16,10 @@
  * set of interfaces and are linked into separate library. These modules are loaded in runtime
  * through library_manager and then after registration into SOF component infrastructure are
  * interfaced through module adapter API.
- * Since IADK modules uses ProcessingModuleInterface to control/data transfer and AdspSystemService
- * to use base FW services from internal module code, there is a communication shim layer defined
- * in intel directory.
+ *
+ * Since IADK modules uses ProcessingModuleInterface to control/data transfer
+ * and adsp_system_service to use base FW services from internal module code,
+ * there is a communication shim layer defined in intel directory.
  *
  * Since ProcessingModuleInterface consists of virtual functions, there are C++ -> C wrappers
  * defined to access the interface calls from SOF code.
