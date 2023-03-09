@@ -307,6 +307,7 @@ bool is_valid_priv_size(size_t size_read, size_t priv_size,
 			      struct snd_soc_tplg_vendor_array *array)
 {
 	size_t arr_size, elem_size, arr_elems_size;
+	bool valid;
 
 	arr_size = sizeof(struct snd_soc_tplg_vendor_array);
 
@@ -334,5 +335,9 @@ bool is_valid_priv_size(size_t size_read, size_t priv_size,
 	 * check if size of data to be read from widget's private data
 	 * doesn't exceed private data's size.
 	 */
-	return size_read + arr_size + arr_elems_size <= priv_size;
+	valid = size_read + arr_size + arr_elems_size <= priv_size;
+	if (!valid)
+		fprintf(stderr, "error: invalid private data size %zu read %zu array %zu elems %zu\n",
+				priv_size, size_read, arr_size, arr_elems_size);
+	return valid;
 }
