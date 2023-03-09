@@ -39,6 +39,10 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,USE_CHAIN_DMA=
 DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough"
 # CAVS HDA topology with gain and SRC before mixin for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-src-generic\;HDA_CONFIG=src,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
+# HDA topology with WoV enabled
+"sof-hda-generic\;sof-mtl-hda-generic-2ch-kwd\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-hda-generic-2ch-kwd.bin,INCLUDE_WOV=true,\
+DEEPBUFFER_FW_DMA_MS=100"
 )
 add_custom_target(topology2_dev)
 
