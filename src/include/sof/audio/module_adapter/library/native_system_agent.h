@@ -12,7 +12,7 @@
 #include <system_service.h>
 
 struct native_system_agent {
-	AdspSystemService system_service;
+	adsp_system_service system_service;
 	uint32_t log_handle;
 	uint32_t core_id;
 	uint32_t module_id;

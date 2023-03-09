@@ -26,9 +26,9 @@
  * Therefore C++ function, structures and variables definition are here kept with original form from
  * IADK Framework. This provides binary compatibility for already developed 3rd party modules.
  *
- * Since IADK modules uses ProcessingModuleInterface to control/data transfer and AdspSystemService
- * to use base FW services from internal module code, there is a communication shim layer defined
- * in intel directory.
+ * Since IADK modules uses ProcessingModuleInterface to control/data transfer
+ * and adsp_system_service to use base FW services from internal module code,
+ * there is a communication shim layer defined in intel directory.
  *
  * Since ProcessingModuleInterface consists of virtual functions, there are C++ -> C wrappers
  * defined to access the interface calls from SOF code.

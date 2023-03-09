@@ -167,14 +167,14 @@ typedef struct _SystemServiceIface {} SystemServiceIface;
  */
 typedef AdspErrorCode (*SystemServiceGetInterfaceFct) (AdspIfaceId id, SystemServiceIface **iface);
 
-/*! \brief The AdspSystemService is actually a set of C-function pointers gathered in a C-struct
+/*! \brief The adsp_system_service is actually a set of C-function pointers gathered in a C-struct
  * which brings some basic functionalities to module in runtime.
  *
  * The system service can be retrieved with help of either the
  * intel_adsp::ProcessingModuleFactory::GetSystemService() method
  * or the intel_adsp::ProcessingModule::GetSysstemService() method.
  */
-typedef struct AdspSystemService {
+typedef struct adsp_system_service {
 	/*! The SystemService::LogMessage function provides capability to send some log message to
 	 * the host for debugging purposes. This log can be caught by the FDK Tools and displayed
 	 * in the Debug window. The prototype of this function is given by the
@@ -223,14 +223,14 @@ typedef struct AdspSystemService {
 	 */
 	const SystemServiceGetInterfaceFct GetInterface;
 
-} AdspSystemService;
+} adsp_system_service;
 
 #ifdef __cplusplus
 namespace intel_adsp
 {
-/*! \brief Alias type of AdspSystemService which can be used in C++.
+/*! \brief Alias type of adsp_system_service which can be used in C++.
  */
-struct SystemService : public AdspSystemService {};
+struct SystemService : public adsp_system_service {};
 }
 #endif
 

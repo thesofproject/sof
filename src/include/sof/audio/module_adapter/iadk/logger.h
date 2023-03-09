@@ -21,7 +21,7 @@ class Logger
 {
 public:
 	/*! \cond INTERNAL */
-	Logger(AdspSystemService const &system_service, AdspLogHandle const &log_handle)
+	Logger(adsp_system_service const &system_service, AdspLogHandle const &log_handle)
 		:
 			system_service_(system_service),
 			log_handle_(log_handle)
@@ -38,7 +38,7 @@ public:
 
 	/*! \endcond INTERNAL */
 private:
-	AdspSystemService const &system_service_;
+	adsp_system_service const &system_service_;
 	AdspLogHandle const &log_handle_;
 };
 
