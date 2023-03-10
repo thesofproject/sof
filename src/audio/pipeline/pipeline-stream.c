@@ -297,10 +297,15 @@ static int add_pipeline_cps_consumption(struct comp_dev *current,
 	}
 
 	int kcps = cd->cpc * 1000 / ppl_data->p->period;
-	core_kcps_adjust(0, kcps);
-	tr_err(pipe, "Registering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	if (kcps == 0) {
+		tr_warn(pipe, "0 KCPS for module: %#x, core: %d", current->ipc_config.id, ppl_data->p->core);
+	} else {
+		core_kcps_adjust(0, kcps);
+		tr_info(pipe, "Registering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	}
+
 	int summary_cps = core_kcps_get(0);
-	tr_err(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
+	tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
@@ -333,9 +338,9 @@ static int remove_pipeline_cps_consumption(struct comp_dev *current,
 
 	int kcps = cd->cpc * 1000/ppl_data->p->period;
 	core_kcps_adjust(0, -kcps); /* 1000 chunks per second, so cpc value matches kcps? */
-	tr_err(pipe, "Unregistering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	tr_info(pipe, "Unregistering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
 	int summary_cps = core_kcps_get(0);
-	tr_err(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
+	tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
