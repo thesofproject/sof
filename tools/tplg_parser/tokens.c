@@ -49,7 +49,8 @@ int get_token_uint32_t(void *elem, void *object, uint32_t offset,
 		       uint32_t size)
 {
 	struct snd_soc_tplg_vendor_value_elem *velem = elem;
-	uint32_t *val = object + offset;
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
 	*val = velem->value;
 	return 0;
@@ -70,7 +71,8 @@ int get_token_comp_format(void *elem, void *object, uint32_t offset,
 			  uint32_t size)
 {
 	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = object + offset;
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
 	*val = find_format(velem->string);
 	return 0;
@@ -79,7 +81,8 @@ int get_token_comp_format(void *elem, void *object, uint32_t offset,
 int get_token_dai_type(void *elem, void *object, uint32_t offset, uint32_t size)
 {
 	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
 	*val = find_dai(velem->string);
 	return 0;
@@ -89,7 +92,8 @@ int get_token_process_type(void *elem, void *object, uint32_t offset,
 			   uint32_t size)
 {
 	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
 	*val = tplg_get_process_name(velem->string);
 	return 0;
