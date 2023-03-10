@@ -142,7 +142,7 @@ int tplg_register_asrc(struct tplg_context *ctx)
 int tplg_register_buffer(struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_buffer buffer = {0};
+	struct sof_ipc_buffer buffer = {{{0}}};
 	int ret;
 
 	ret = tplg_create_buffer(ctx, &buffer);
@@ -256,7 +256,7 @@ int tplg_register_pga(struct tplg_context *ctx)
 int tplg_register_pipeline(struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_pipe_new pipeline = {0};
+	struct sof_ipc_pipe_new pipeline = {{0}};
 	FILE *file = ctx->file;
 	int ret;
 
@@ -680,7 +680,7 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 	struct sof *sof = ctx->sof;
 	struct testbench_prm *tp = ctx->tp;
 	FILE *file = ctx->file;
-	struct sof_ipc_comp_file fileread = {0};
+	struct sof_ipc_comp_file fileread = {{{0}}};
 	int ret;
 
 	fileread.config.frame_fmt = find_format(tp->bits_in);
@@ -730,7 +730,7 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	struct sof *sof = ctx->sof;
 	struct testbench_prm *tp = ctx->tp;
 	FILE *file = ctx->file;
-	struct sof_ipc_comp_file filewrite = {0};
+	struct sof_ipc_comp_file filewrite = {{{0}}};
 	int ret;
 
 	ret = tplg_load_filewrite(ctx, &filewrite);
