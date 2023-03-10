@@ -774,7 +774,9 @@ int man_write_fw_v1_5(struct image *image)
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
@@ -844,7 +846,10 @@ int man_write_fw_v1_5_sue(struct image *image)
 
 	/* create each module - subtract the boot loader exec header */
 	m->desc.header.num_module_entries = image->num_modules - 1;
-	man_create_modules(image, &m->desc, FILE_TEXT_OFFSET_V1_5_SUE);
+	ret = man_create_modules(image, &m->desc, FILE_TEXT_OFFSET_V1_5_SUE);
+	if (ret)
+		goto err;
+
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
 	/* write preload page count */
@@ -915,7 +920,9 @@ int man_write_fw_v1_8(struct image *image)
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
@@ -1033,7 +1040,9 @@ int man_write_fw_meu_v1_5(struct image *image)
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
@@ -1117,7 +1126,9 @@ int man_write_fw_meu_v1_8(struct image *image)
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
@@ -1201,7 +1212,10 @@ int man_write_fw_meu_v2_5(struct image *image)
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	if (ret)
+		goto err;
+
 	/* platform config defines some modules except bringup & base modules */
 	man_create_modules_in_config(image, desc);
 
@@ -1288,7 +1302,10 @@ int man_write_fw_v2_5(struct image *image)
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	if (ret)
+		goto err;
+
 	/* platform config defines some modules except bringup & base modules */
 	man_create_modules_in_config(image, desc);
 
@@ -1438,7 +1455,10 @@ int man_write_fw_ace_v1_5(struct image *image)
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	ret = man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	if (ret)
+		goto err;
+
 	/* platform config defines some modules except bringup & base modules */
 	man_create_modules_in_config(image, desc);
 
