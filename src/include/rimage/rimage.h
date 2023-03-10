@@ -62,6 +62,9 @@ struct image {
 	uint16_t fw_ver_build;
 
 	uint32_t imr_type;
+
+	/* Output image is a loadable module */
+	bool loadable_module;
 };
 
 struct memory_zone {

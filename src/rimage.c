@@ -30,6 +30,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -f firmware version = major.minor.micro\n");
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
+	fprintf(stdout, "\t -l build loadable modules image (don't treat the first module as a bootloader)\n");
 	fprintf(stdout, "\t -y verify signed file\n");
 	fprintf(stdout, "\t -q resign binary\n");
 	fprintf(stdout, "\t -p set PV bit\n");
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
 
 	image.imr_type = MAN_DEFAULT_IMR_TYPE;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:p")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:p:l")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -96,6 +97,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'p':
 			pv_bit = 1;
+			break;
+		case 'l':
+			image.loadable_module = true;
 			break;
 		default:
 		 /* getopt's default error message is good enough */
@@ -204,9 +208,10 @@ int main(int argc, char *argv[])
 
 	/* getopt reorders argv[] */
 	for (i = first_non_opt; i < argc; i++) {
-		/* When there is more than one module, then first one is bootloader. */
+		/* When there is more than one module, then first one is bootloader.
+		 * Does not apply to building a image of a loadable module. */
 		image.module[i - first_non_opt].is_bootloader = image.num_modules > 1 &&
-			i == first_non_opt;
+			i == first_non_opt && !image.loadable_module;
 
 		fprintf(stdout, "\nModule Reading %s\n", argv[i]);
 		ret = elf_parse_module(&image, i - first_non_opt, argv[i]);
