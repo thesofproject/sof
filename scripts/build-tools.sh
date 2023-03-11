@@ -20,7 +20,6 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T]
        -h Display help
 
        -c Rebuild ctl/
-       -f Rebuild fuzzer/  # deprecated, see fuzzer/README.md
        -l Rebuild logger/
        -p Rebuild probes/
        -T Rebuild topology/ (not topology/development/! Use ALL)
@@ -41,11 +40,6 @@ reconfigure_build()
         ( cd "$BUILD_TOOLS_DIR"
           cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
         )
-
-        mkdir "$BUILD_TOOLS_DIR/fuzzer"
-        ( cd "$BUILD_TOOLS_DIR/fuzzer"
-          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools/fuzzer"
-        )
 }
 
 make_tool()
@@ -60,13 +54,6 @@ make_tool()
         )
 }
 
-make_fuzzer()
-{
-        ( set -x
-        cmake --build "$BUILD_TOOLS_DIR"/fuzzer  --  -j "$NO_PROCESSORS"
-        )
-}
-
 print_build_info()
 {
        cat <<EOFUSAGE
@@ -78,8 +65,6 @@ Build commands for respective tools:
         topologies: ninja -C "$BUILD_TOOLS_DIR" topologies
         test tplgs: ninja -C "$BUILD_TOOLS_DIR" tests
                (or ./tools/test/topology/tplg-build.sh directly)
-
-        fuzzer:     ninja -C "$BUILD_TOOLS_DIR/fuzzer"
 
         list of targets:
                     ninja -C "$BUILD_TOOLS_DIR/" help
@@ -102,7 +87,7 @@ EOF
 
 main()
 {
-        local DO_BUILD_ctl DO_BUILD_fuzzer DO_BUILD_logger DO_BUILD_probes \
+        local DO_BUILD_ctl DO_BUILD_logger DO_BUILD_probes \
                 DO_BUILD_tests DO_BUILD_topologies SCRIPT_DIR SOF_REPO CMAKE_ONLY \
                 BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -116,7 +101,6 @@ main()
         fi
 
         DO_BUILD_ctl=false
-        DO_BUILD_fuzzer=false
         DO_BUILD_logger=false
         DO_BUILD_probes=false
         DO_BUILD_tests=false
@@ -131,7 +115,6 @@ main()
         while getopts "cfhlptTC" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
-                f) DO_BUILD_fuzzer=true ;;
                 l) DO_BUILD_logger=true ;;
                 p) DO_BUILD_probes=true ;;
                 t) DO_BUILD_tests=true ;;
@@ -159,7 +142,6 @@ main()
                 # default CMake targets
                 make_tool # trust set -e
 
-                make_fuzzer # trust set -e
                 warn_if_incremental_build
                 exit 0
         fi
@@ -176,10 +158,6 @@ main()
                         make_tool sof-$tool
                 fi
         done
-
-        if "$DO_BUILD_fuzzer"; then
-                make_fuzzer
-        fi
 
         warn_if_incremental_build
 }
