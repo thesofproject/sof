@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-#  Array of "input-file-name;output-file-name;comma separated pre-processor variables"
+# Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 set(TPLGS
 # CAVS HDMI only topology with passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
