@@ -36,7 +36,7 @@ import warnings
 import fnmatch
 import hashlib
 import gzip
-from dataclasses import dataclass
+import dataclasses
 import concurrent.futures as concurrent
 
 # anytree module is defined in Zephyr build requirements
@@ -70,55 +70,59 @@ else:
 	xtensa_tools_version_postfix = "-unsupportedOS"
 	warnings.warn(f"Your operating system: {py_platform.system()} is not supported")
 
-platform_list = [
-	# Intel platforms
-	{
-		"name": "tgl",
-		"PLAT_CONFIG": "intel_adsp_cavs25",
-		"IPC4_CONFIG_OVERLAY": "ipc4_overlay.conf",
-		"IPC4_RIMAGE_DESC": "tgl-cavs.toml",
-		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"DEFAULT_TOOLCHAIN_VARIANT": "xcc",
-		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	},
-	{
-		"name": "tgl-h",
-		"PLAT_CONFIG": "intel_adsp_cavs25_tgph",
-		"IPC4_CONFIG_OVERLAY": "ipc4_overlay.conf",
-		"IPC4_RIMAGE_DESC": "tgl-h-cavs.toml",
-		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
-		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
-		"DEFAULT_TOOLCHAIN_VARIANT": "xcc",
-		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	},
-	{
-		"name": "mtl",
-		"PLAT_CONFIG": "intel_adsp_ace15_mtpm",
-		"XTENSA_CORE": "ace10_LX7HiFi4_2022_10",
-		"XTENSA_TOOLS_VERSION": f"RI-2022.10{xtensa_tools_version_postfix}",
-		"DEFAULT_TOOLCHAIN_VARIANT": "xt-clang",
-		"RIMAGE_KEY": pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	},
-	# NXP platforms
-	{
-		"name": "imx8",
-		"PLAT_CONFIG": "nxp_adsp_imx8",
-		"RIMAGE_KEY": "" # no key needed for imx8
-	},
-	{
-		"name": "imx8x",
-		"PLAT_CONFIG": "nxp_adsp_imx8x",
-		"RIMAGE_KEY": "ignored for imx8x"
-	},
-	{
-		"name": "imx8m",
-		"PLAT_CONFIG": "nxp_adsp_imx8m",
-		"RIMAGE_KEY": "ignored for imx8m"
-	}
-]
 
-platform_names = [platform["name"] for platform in platform_list]
+@dataclasses.dataclass
+class PlatformConfig:
+	"Product parameters"
+	name: str
+	PLAT_CONFIG: str
+	XTENSA_TOOLS_VERSION: str
+	XTENSA_CORE: str
+	DEFAULT_TOOLCHAIN_VARIANT: str = "xt-clang"
+	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
+	IPC4_RIMAGE_DESC: str = None
+	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
+
+platform_configs = {
+	#  Intel platforms
+	"tgl" : PlatformConfig(
+		"tgl", "intel_adsp_cavs25",
+		f"RG-2017.8{xtensa_tools_version_postfix}",
+		"cavs2x_LX6HiFi3_2017_8",
+		"xcc",
+		IPC4_RIMAGE_DESC = "tgl-cavs.toml",
+	),
+	"tgl-h" : PlatformConfig(
+		"tgl-h", "intel_adsp_cavs25_tgph",
+		f"RG-2017.8{xtensa_tools_version_postfix}",
+		"cavs2x_LX6HiFi3_2017_8",
+		"xcc",
+		IPC4_RIMAGE_DESC = "tgl-h-cavs.toml",
+	),
+	"mtl" : PlatformConfig(
+		"mtl", "intel_adsp_ace15_mtpm",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace10_LX7HiFi4_2022_10",
+	),
+	#  NXP platforms
+	"imx8" : PlatformConfig(
+		"imx8", "nxp_adsp_imx8",
+		None, None,
+		RIMAGE_KEY = "key param ignored by imx8",
+	),
+	"imx8x" : PlatformConfig(
+		"imx8x", "nxp_adsp_imx8x",
+		None, None,
+		RIMAGE_KEY = "key param ignored by imx8x"
+	),
+	"imx8m" : PlatformConfig(
+		"imx8m", "nxp_adsp_imx8m",
+		None, None,
+		RIMAGE_KEY = "key param ignored by imx8m"
+	),
+}
+
+platform_names = list(platform_configs)
 
 class validate_platforms_arguments(argparse.Action):
 	"""Validates positional platform arguments whether provided platform name is supported."""
@@ -541,7 +545,10 @@ def build_platforms():
 		else:
 			sof_platform_output_dir = sof_output_dir
 
-		platform_dict = [x for x in platform_list if x["name"] == platform][0]
+		# For now convert the new dataclass to what it used to be
+		_dict = dataclasses.asdict(platform_configs[platform])
+		platform_dict = { k:v for (k,v) in _dict.items() if _dict[k] is not None }
+
 		xtensa_tools_root_dir = os.getenv("XTENSA_TOOLS_ROOT")
 		# when XTENSA_TOOLS_ROOT environmental variable is set,
 		# use user installed Xtensa tools not Zephyr SDK
@@ -728,7 +735,7 @@ def install_platform(platform, sof_platform_output_dir):
 
 	# sof-info/ directory
 
-	@dataclass
+	@dataclasses.dataclass
 	class InstFile:
 		'How to install one file'
 		name: pathlib.Path
