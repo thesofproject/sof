@@ -541,6 +541,7 @@ def build_platforms():
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
 	sof_output_dir.mkdir(parents=True, exist_ok=True)
 	for platform in args.platforms:
+		platf_build_environ = os.environ.copy()
 		if args.use_platform_subdir:
 			sof_platform_output_dir = pathlib.Path(sof_output_dir, platform)
 			sof_platform_output_dir.mkdir(parents=True, exist_ok=True)
@@ -559,14 +560,14 @@ def build_platforms():
 					"or is not a directory")
 
 			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
-			os.environ["ZEPHYR_TOOLCHAIN_VARIANT"] = os.environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
+			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
 				platform_dict["DEFAULT_TOOLCHAIN_VARIANT"])
 			XTENSA_TOOLCHAIN_PATH = str(pathlib.Path(xtensa_tools_root_dir, "install",
 				"tools").absolute())
-			os.environ["XTENSA_TOOLCHAIN_PATH"] = XTENSA_TOOLCHAIN_PATH
+			platf_build_environ["XTENSA_TOOLCHAIN_PATH"] = XTENSA_TOOLCHAIN_PATH
 			TOOLCHAIN_VER = platform_dict["XTENSA_TOOLS_VERSION"]
 			XTENSA_CORE = platform_dict["XTENSA_CORE"]
-			os.environ["TOOLCHAIN_VER"] = TOOLCHAIN_VER
+			platf_build_environ["TOOLCHAIN_VER"] = TOOLCHAIN_VER
 			print(f"XTENSA_TOOLCHAIN_PATH={XTENSA_TOOLCHAIN_PATH}")
 			print(f"TOOLCHAIN_VER={TOOLCHAIN_VER}")
 
@@ -576,7 +577,7 @@ def build_platforms():
 			XTENSA_BUILDS_DIR=str(pathlib.Path(xtensa_tools_root_dir, "install", "builds",
 				TOOLCHAIN_VER).absolute())
 			XTENSA_SYSTEM = str(pathlib.Path(XTENSA_BUILDS_DIR, XTENSA_CORE, "config").absolute())
-			os.environ["XTENSA_SYSTEM"] = XTENSA_SYSTEM
+			platf_build_environ["XTENSA_SYSTEM"] = XTENSA_SYSTEM
 			print(f"XTENSA_SYSTEM={XTENSA_SYSTEM}")
 
 		platform_build_dir_name = f"build-{platform}"
@@ -626,7 +627,7 @@ def build_platforms():
 
 		# Build
 		try:
-			execute_command(build_cmd, cwd=west_top)
+			execute_command(build_cmd, cwd=west_top, env=platf_build_environ)
 		except subprocess.CalledProcessError as cpe:
 			zephyr_path = pathlib.Path(west_top, "zephyr")
 			if not os.path.exists(zephyr_path):
