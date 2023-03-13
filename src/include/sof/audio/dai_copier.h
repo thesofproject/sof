@@ -25,6 +25,8 @@ int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev);
 int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
 
 void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev);
+
+int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
 #else
 static inline int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 				 const struct ipc_config_dai *dai_cfg)
@@ -45,6 +47,11 @@ static inline int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 }
 
 static inline void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev) {}
+
+static inline int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+{
+	return 0;
+}
 
 #endif
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
