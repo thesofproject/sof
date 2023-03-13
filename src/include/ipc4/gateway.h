@@ -152,7 +152,7 @@ struct ipc4_gateway_config_data {
 	union ipc4_gateway_attributes gtw_attributes;
 
 	/**< Configuration BLOB */
-	uint32_t config_blob[0];
+	uint32_t config_blob[];
 } __attribute__((packed, aligned(4)));
 
 /**< Configuration for the IPC Gateway */

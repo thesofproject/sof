@@ -48,7 +48,7 @@ struct ipc4_ipc_gateway_cmd_data {
 	/* node_id of the target gateway */
 	union ipc4_connector_node_id node_id;
 	/* Payload (actual size is in the header extension.r.data_size) */
-	uint8_t payload[0];
+	uint8_t payload[];
 };
 
 /* Reply to IPC gateway message */
@@ -60,7 +60,7 @@ struct ipc4_ipc_gateway_cmd_data_reply {
 	/* Total reply size is returned in reply header extension.r.data_size.
 	 * This payload size if 4 bytes smaller (size of the union above).
 	 */
-	uint8_t payload[0];
+	uint8_t payload[];
 };
 
 int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,

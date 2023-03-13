@@ -72,6 +72,6 @@ struct ipc4_peak_volume_config {
 
 struct ipc4_peak_volume_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
-	struct ipc4_peak_volume_config config[0];
+	struct ipc4_peak_volume_config config[];
 } __packed __aligned(8);
 #endif

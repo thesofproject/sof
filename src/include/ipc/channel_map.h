@@ -40,7 +40,7 @@ struct sof_ipc_channel_map {
 	uint32_t ext_id;
 	uint32_t ch_mask;
 	uint32_t reserved;
-	int32_t ch_coeffs[0];
+	int32_t ch_coeffs[];
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -56,7 +56,7 @@ struct sof_ipc_stream_map {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t num_ch_map;
 	uint32_t reserved[3];
-	struct sof_ipc_channel_map ch_map[0];
+	struct sof_ipc_channel_map ch_map[];
 } __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_CHANNEL_MAP_H__ */

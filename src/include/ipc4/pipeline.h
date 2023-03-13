@@ -179,7 +179,7 @@ struct ipc4_pipeline_set_state_data {
 	/**< Number of items in ppl_id[] */
 	uint32_t pipelines_count;
 	/**< Pipeline ids */
-	uint32_t ppl_id[0];
+	uint32_t ppl_id[];
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_pipeline_set_state {

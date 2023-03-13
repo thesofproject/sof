@@ -235,7 +235,7 @@ struct sof_ipc_comp_process {
 	/* reserved for future use */
 	uint32_t reserved[7];
 
-	unsigned char data[0];
+	unsigned char data[];
 } __attribute__((packed, aligned(4)));
 
 /* IPC file component used by testbench only */

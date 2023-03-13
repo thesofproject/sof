@@ -47,7 +47,7 @@ typedef struct _ModuleEventNotification {
 	uint32_t event_data_size;    /*!< Size of event_data array in bytes. May be set to 0
 				      * in case there is no data.
 				      */
-	uint32_t event_data[0];      /*< Optional event data (size set to 0 as it is optional
+	uint32_t event_data[];       /*!< Optional event data (size set to 0 as it is optional
 				      * data)
 				      */
 } ModuleEventNotification;
