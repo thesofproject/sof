@@ -866,7 +866,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	return ret;
 }
 
-static int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
 	struct dai_group *group = dd->group;
 	uint32_t irq_flags;
