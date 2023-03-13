@@ -112,7 +112,7 @@ struct ipc4_ssp_configuration_blob {
 	struct ipc4_ssp_driver_config i2s_driver_config;
 
 	/* optional configuration parameters */
-	union ipc4_ssp_dma_control i2s_dma_control[0];
+	union ipc4_ssp_dma_control i2s_dma_control[];
 } __attribute__((packed, aligned(4)));
 
 #endif

@@ -42,7 +42,7 @@ struct sof_abi_hdr {
 				/**< The version is valid in scope of the 'magic', */
 				/**< IPC3 and IPC4 ABI version numbers have no relationship. */
 	uint32_t reserved[4];	/**< reserved for future use */
-	uint32_t data[0];	/**< Component data - opaque to core */
+	uint32_t data[];	/**< Component data - opaque to core */
 } __attribute__((packed));
 
 #endif /* __KERNEL_HEADER_H__ */

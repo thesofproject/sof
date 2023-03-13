@@ -401,7 +401,7 @@ enum ipc4_hw_config_params {
 struct ipc4_tuple {
 	uint32_t type;
 	uint32_t length;
-	char data[0];
+	char data[];
 } __attribute__((packed, aligned(4)));
 
 enum ipc4_memory_type {
