@@ -32,7 +32,9 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#ifdef __ZEPHYR__
 #include <zephyr/device.h>
+#endif
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.
@@ -258,7 +260,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 /**
  * \brief Reset DAI DMA config
  */
-void dai_dma_release(struct comp_dev *dev);
+void dai_dma_release(struct dai_data *dd, struct comp_dev *dev);
 
 /**
  * \brief Configure DAI physical interface.

@@ -970,22 +970,31 @@ static int copier_reset(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
 	int ret = 0;
-	int i;
 
 	comp_dbg(dev, "copier_reset()");
 
 	cd->input_total_data_processed = 0;
 	cd->output_total_data_processed = 0;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-		host_zephyr_reset(cd->hd, dev->state);
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			host_zephyr_reset(cd->hd, dev->state);
+		} else {
+			/* handle gtw case */
+			ret = cd->endpoint[0]->drv->ops.reset(cd->endpoint[0]);
 			if (ret < 0)
-				break;
+				return ret;
 		}
+		break;
+	case SOF_COMP_DAI:
+		dai_zephyr_reset(cd->dd, cd->endpoint[0]);
+		comp_set_state(cd->endpoint[0], COMP_TRIGGER_RESET);
+		break;
+	default:
+		comp_err(dev, "Unexpected copier device type to reset %d",
+			 dev->ipc_config.type);
+		break;
 	}
 
 	if (cd->pipeline_reg_offset) {
