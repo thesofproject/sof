@@ -727,7 +727,7 @@ static int dai_prepare(struct comp_dev *dev)
 	return dai_zephyr_prepare(dd, dev);
 }
 
-static void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev)
+void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct dma_sg_config *config = &dd->config;
 
