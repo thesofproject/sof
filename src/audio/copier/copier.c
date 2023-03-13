@@ -1017,23 +1017,39 @@ static int copier_reset(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
-	int ret = 0;
-	int i;
+	int i, ret = 0;
 
 	comp_dbg(dev, "copier_reset()");
 
 	cd->input_total_data_processed = 0;
 	cd->output_total_data_processed = 0;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-		host_zephyr_reset(cd->hd, dev->state);
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-			if (ret < 0)
-				break;
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			host_zephyr_reset(cd->hd, dev->state);
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+				if (ret < 0)
+					break;
+			}
 		}
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1) {
+			dai_zephyr_reset(cd->dd[0], cd->endpoint[0]);
+			comp_set_state(cd->endpoint[0], COMP_TRIGGER_RESET);
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
+				if (ret < 0)
+					break;
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	if (cd->pipeline_reg_offset) {
