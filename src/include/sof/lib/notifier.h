@@ -34,6 +34,8 @@ enum notify_id {
 	NOTIFIER_ID_LL_POST_RUN,		/* NULL */
 	NOTIFIER_ID_DMA_IRQ,			/* struct dma_chan_data * */
 	NOTIFIER_ID_DAI_TRIGGER,		/* struct dai_group * */
+	NOTIFIER_ID_MODULE_BIND,		/* struct ipc4_module_bind_unbind */
+	NOTIFIER_ID_MODULE_UNBIND,		/* struct ipc4_module_bind_unbind */
 	NOTIFIER_ID_COUNT
 };
 

@@ -16,6 +16,7 @@
 #include <ipc/dai.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/wait.h>
@@ -372,7 +373,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto free;
 	}
 
-
 	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
 	if (ret < 0) {
@@ -387,6 +387,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ret = comp_bind(sink, bu);
 	if (ret < 0)
 		goto e_sink_bind;
+
+	notifier_event(NULL, NOTIFIER_ID_MODULE_BIND,
+		       NOTIFIER_TARGET_CORE_MASK(source->ipc_config.core) |
+		       NOTIFIER_TARGET_CORE_MASK(sink->ipc_config.core), bu, sizeof(*bu));
 
 	/* update direction for sink component if it is not set already */
 	if (!sink->direction_set && source->direction_set) {
@@ -417,6 +421,10 @@ e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
 	irq_local_enable(flags);
+	notifier_event(NULL, NOTIFIER_ID_MODULE_UNBIND,
+		       NOTIFIER_TARGET_CORE_MASK(source->ipc_config.core) |
+		       NOTIFIER_TARGET_CORE_MASK(sink->ipc_config.core), bu, sizeof(*bu));
+
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -471,6 +479,10 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	if (!buffer)
 		return IPC4_INVALID_RESOURCE_ID;
+
+	notifier_event(NULL, NOTIFIER_ID_MODULE_UNBIND,
+		       NOTIFIER_TARGET_CORE_MASK(src->ipc_config.core) |
+		       NOTIFIER_TARGET_CORE_MASK(sink->ipc_config.core), bu, sizeof(*bu));
 
 	/*
 	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
