@@ -8,6 +8,7 @@
 #include <sof/samples/audio/smart_amp_test.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/trace/trace.h>
+#include <sof/lib/notifier.h>
 #include <sof/ipc/msg.h>
 #include <rtos/init.h>
 #include <sof/ut.h>
@@ -44,13 +45,58 @@ struct smart_amp_data {
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
 
-	struct k_mutex lock; /**< protect feedback_buf updated */
-
 	smart_amp_proc process;
 
 	uint32_t in_channels;
 	uint32_t out_channels;
 };
+
+static void smart_amp_notifier_bind(void *arg, enum notify_id type, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *buffer_c;
+	struct ipc4_module_bind_unbind *bu = data;
+	struct comp_buffer *source_buffer;
+	struct list_item *blist;
+
+	/* skip bind msg for other modules */
+	if (bu->extension.r.dst_module_id != IPC4_MOD_ID(dev->ipc_config.id) ||
+		bu->extension.r.dst_instance_id != IPC4_INST_ID(dev->ipc_config.id))
+		return;
+
+	/* searching for feedback source buffers */
+	list_for_item(blist, &dev->bsource_list) {
+		source_buffer = container_of(blist, struct comp_buffer, sink_list);
+		buffer_c = buffer_acquire(source_buffer);
+		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+			sad->feedback_buf = source_buffer;
+
+			buffer_c->stream.channels = sad->config.feedback_channels;
+			buffer_c->stream.rate = sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
+			buffer_release(buffer_c);
+
+			break;
+		}
+
+		buffer_release(buffer_c);
+	}
+}
+
+static void smart_amp_notifier_unbind(void *arg, enum notify_id type, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct ipc4_module_bind_unbind *bu = data;
+
+	/* skip unbind msg for other modules */
+	if (bu->extension.r.dst_module_id != IPC4_MOD_ID(dev->ipc_config.id) ||
+		bu->extension.r.dst_instance_id != IPC4_INST_ID(dev->ipc_config.id))
+		return;
+
+	if (bu->extension.r.dst_queue == SOF_SMART_AMP_FEEDBACK_QUEUE_ID)
+		sad->feedback_buf = NULL;
+}
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      const struct comp_ipc_config *config,
@@ -82,8 +128,6 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	if (!sad->model_handler)
 		goto sad_fail;
 
-	k_mutex_init(&sad->lock);
-
 #if CONFIG_IPC_MAJOR_4
 	if (base_cfg->base_cfg_ext.nb_input_pins != SMART_AMP_NUM_IN_PINS ||
 	    base_cfg->base_cfg_ext.nb_output_pins != SMART_AMP_NUM_OUT_PINS) {
@@ -99,6 +143,12 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	bs = sizeof(sad->ipc4_cfg.input_pins) + sizeof(sad->ipc4_cfg.output_pin);
 	memcpy_s(sad->ipc4_cfg.input_pins, bs,
 		 base_cfg->base_cfg_ext.pin_formats, bs);
+
+	notifier_register(dev, NULL, NOTIFIER_ID_MODULE_BIND,
+			  smart_amp_notifier_bind, 0);
+
+	notifier_register(dev, NULL, NOTIFIER_ID_MODULE_UNBIND,
+			  smart_amp_notifier_unbind, 0);
 #else
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
@@ -258,55 +308,6 @@ static int smart_amp_get_attribute(struct comp_dev *dev, uint32_t type,
 		return -EINVAL;
 	}
 }
-
-static int smart_amp_bind(struct comp_dev *dev, void *data)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buffer_c;
-	struct comp_buffer *source_buffer;
-	struct list_item *blist;
-
-	comp_dbg(dev, "smart_amp_bind()");
-
-	/* searching for feedback source buffers */
-	list_for_item(blist, &dev->bsource_list) {
-		source_buffer = container_of(blist, struct comp_buffer, sink_list);
-
-		k_mutex_lock(&sad->lock, K_FOREVER);
-		buffer_c = buffer_acquire(source_buffer);
-		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			sad->feedback_buf = source_buffer;
-			buffer_c->stream.channels = sad->config.feedback_channels;
-			buffer_c->stream.rate = sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
-
-			buffer_release(buffer_c);
-			k_mutex_unlock(&sad->lock);
-			break;
-		}
-
-		buffer_release(buffer_c);
-		k_mutex_unlock(&sad->lock);
-	}
-
-	return 0;
-}
-
-static int smart_amp_unbind(struct comp_dev *dev, void *data)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu = data;
-
-	comp_dbg(dev, "smart_amp_unbind()");
-
-	if (bu->extension.r.dst_instance_id == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-		k_mutex_lock(&sad->lock, K_FOREVER);
-		sad->feedback_buf = NULL;
-		k_mutex_unlock(&sad->lock);
-	}
-
-	return 0;
-}
-
 #else
 
 static void smart_amp_set_params(struct comp_dev *dev,
@@ -547,13 +548,11 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
-		k_mutex_lock(&sad->lock, K_FOREVER);
 		if (sad->feedback_buf) {
 			struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 			buffer_zero(buf);
 			buffer_release(buf);
 		}
-		k_mutex_unlock(&sad->lock);
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -664,7 +663,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 		audio_stream_avail_frames(&source_buf->stream,
 					  &sink_buf->stream);
 
-	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
@@ -692,7 +690,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 		buffer_release(buf);
 	}
-	k_mutex_unlock(&sad->lock);
 
 	/* bytes calculation */
 	source_bytes = avail_passthrough_frames *
@@ -770,7 +767,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	buffer_c = buffer_acquire(sad->source_buf);
 	sad->in_channels = buffer_c->stream.channels;
 
-	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
@@ -778,7 +774,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		buf->stream.rate = buffer_c->stream.rate;
 		buffer_release(buf);
 	}
-	k_mutex_unlock(&sad->lock);
 
 	sad->process = get_smart_amp_process(dev, buffer_c);
 	if (!sad->process) {
@@ -804,8 +799,6 @@ static const struct comp_driver comp_smart_amp = {
 		.set_large_config	= smart_amp_set_large_config,
 		.get_large_config	= smart_amp_get_large_config,
 		.get_attribute		= smart_amp_get_attribute,
-		.bind			= smart_amp_bind,
-		.unbind			= smart_amp_unbind,
 #else
 		.cmd			= smart_amp_cmd,
 #endif /* CONFIG_IPC_MAJOR_4 */
