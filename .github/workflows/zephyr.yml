@@ -80,6 +80,10 @@ jobs:
       # git fetch --shallow-since='5 months ago' because Zephyr follows
       # a "roughly 4-month release" but for now that saves only 100MB
       # https://docs.zephyrproject.org/latest/project/release_process.html
+      #
+      # TODO: try replacing --narrow and --depth with some
+      # --fetch-opt=--filter=?
+      # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
       - name: west clones
 
         # Get some git tags in Zephyr. keep in sync with build-windows below
@@ -99,8 +103,8 @@ jobs:
       # Caching a 12G image is unfortunately not possible:
       #   https://github.com/ScribeMD/docker-cache/issues/304
       # For faster builds we would have to pay for some persistent runners.
-      - name: docker pull         zephyrproject-rtos/zephyr-build
-        run: docker  pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
+      - name: Download docker image && ls /opt/toolchains/
+        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
 
       # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with
@@ -160,7 +164,9 @@ jobs:
           path: wget-1.11.4-1-bin.zip
           key: ${{ runner.os }}-cache-wget-1-11-4-1
 
-      - name: Cache Zephyr SDK
+      # Keep this SDK version identical to the one in
+      # sof/zephyr/docker-run.sh
+      - name: Cache Zephyr SDK 0.15.2
         id: cache-zephyr-sdk
         uses: actions/cache@v3.0.11
         with:
@@ -180,7 +186,7 @@ jobs:
         run: |
           curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
 
-      - name: Download Zephyr SDK
+      - name: Download Zephyr SDK 0.15.2
         if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
         run: |  # yamllint disable-line rule:line-length
           curl -L -O `
