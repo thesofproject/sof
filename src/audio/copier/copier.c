@@ -1017,7 +1017,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
-	int ret, i;
+	int ret;
 
 	comp_dbg(dev, "copier_comp_trigger()");
 
@@ -1028,18 +1028,21 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		ret = host_zephyr_trigger(cd->hd, dev, cmd);
-		if (ret < 0)
-			return ret;
-	}
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
-			if (ret < 0)
-				break;
-		}
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			ret = host_zephyr_trigger(cd->hd, dev, cmd);
+		else
+			/* handle gtw case */
+			ret = cd->endpoint[0]->drv->ops.trigger(cd->endpoint[0], cmd);
+		break;
+	case SOF_COMP_DAI:
+		ret = dai_zephyr_trigger(cd->dd, cd->endpoint[0], cmd);
+		break;
+	default:
+		comp_err(dev, "Unexpected copier device type to trigger! %d",
+			 dev->ipc_config.type);
+		break;
 	}
 
 	/* For capture cd->pipeline_reg_offset == 0 */

@@ -40,6 +40,11 @@ int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
  * \brief dai zephyr reset
  */
 void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev);
+
+/**
+ * \brief dai zephyr reset
+ */
+int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
 #else
 /**
  * \brief dai new through dai_data
@@ -75,6 +80,14 @@ static inline int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
  * \brief dai zephyr reset
  */
 static inline void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev) {}
+
+/**
+ * \brief dai zephyr reset
+ */
+static inline int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+{
+	return 0;
+}
 
 #endif
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
