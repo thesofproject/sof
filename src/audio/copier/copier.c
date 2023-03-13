@@ -1083,23 +1083,41 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		ret = host_zephyr_trigger(cd->hd, dev, cmd);
-		if (ret < 0)
-			return ret;
-	}
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			ret = host_zephyr_trigger(cd->hd, dev, cmd);
 			if (ret < 0)
-				break;
+				return ret;
+		} else {
+			/* handle gtw case */
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+				if (ret < 0)
+					return ret;
+			}
 		}
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1) {
+			ret = dai_zephyr_trigger(cd->dd[0], cd->endpoint[0], cmd);
+			if (ret < 0)
+				return ret;
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+				if (ret < 0)
+					return ret;
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	/* For capture cd->pipeline_reg_offset == 0 */
-	if (ret < 0 || !cd->endpoint_num || !cd->pipeline_reg_offset)
-		return ret;
+	if (!cd->endpoint_num || !cd->pipeline_reg_offset)
+		return 0;
 
 	dai_copier = pipeline_get_dai_comp_latency(dev->pipeline->pipeline_id, &latency);
 	if (!dai_copier) {

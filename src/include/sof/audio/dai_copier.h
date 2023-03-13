@@ -27,4 +27,6 @@ int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev);
 int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
 
 void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev);
+
+int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
