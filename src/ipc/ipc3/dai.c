@@ -262,10 +262,8 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	return ret;
 }
 
-void dai_dma_release(struct comp_dev *dev)
+void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
@@ -335,7 +333,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 			if (ret < 0)
 				return ret;
 
-			dai_dma_release(dev);
+			dai_dma_release(dd, dev);
 		}
 
 		return 0;

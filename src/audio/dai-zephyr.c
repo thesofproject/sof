@@ -979,19 +979,16 @@ static int dai_prepare(struct comp_dev *dev)
 	return dai_zephyr_prepare(dd, dev);
 }
 
-static int dai_reset(struct comp_dev *dev)
+void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-
-	comp_dbg(dev, "dai_reset()");
 
 	/*
 	 * DMA channel release should be skipped now for DAI's that support the two-step stop
 	 * option. It will be done when the host sends the DAI_CONFIG IPC during hw_free.
 	 */
 	if (!dd->delayed_dma_stop)
-		dai_dma_release(dev);
+		dai_dma_release(dd, dev);
 
 	dma_sg_free(&config->elem_array);
 	if (dd->z_config) {
@@ -1008,6 +1005,16 @@ static int dai_reset(struct comp_dev *dev)
 	dd->wallclock = 0;
 	dd->total_data_processed = 0;
 	dd->xrun = 0;
+}
+
+static int dai_reset(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_reset()");
+
+	dai_zephyr_reset(dd, dev);
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
