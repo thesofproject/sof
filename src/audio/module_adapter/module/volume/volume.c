@@ -1300,7 +1300,13 @@ static int volume_prepare(struct processing_module *mod)
 	 * for entire topology specified time.
 	 */
 	cd->ramp_finished = false;
+
 	cd->channels = sink_c->stream.channels;
+	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
+		ret = -EINVAL;
+		goto err;
+	}
+
 	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX / sink_c->stream.rate);
 
 	buffer_release(sink_c);
