@@ -258,7 +258,7 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	case SOF_IPC4_PIPELINE_STATE_RESET:
 		switch (status) {
 		case COMP_STATE_INIT:
-			ret = ipc_pipeline_complete(ipc, ppl_icd->id);
+			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
@@ -297,7 +297,7 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
 		switch (status) {
 		case COMP_STATE_INIT:
-			ret = ipc_pipeline_complete(ipc, ppl_icd->id);
+			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
