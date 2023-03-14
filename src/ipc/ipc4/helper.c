@@ -402,15 +402,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
-	/* both sink and source components should have their direction set during module binding */
-	if (!sink->direction_set || !source->direction_set)
-		goto err;
-
 	irq_local_enable(flags);
 
 	return IPC4_SUCCESS;
-err:
-	comp_unbind(sink, bu);
+
 e_sink_bind:
 	comp_unbind(source, bu);
 e_src_bind:
@@ -570,6 +565,59 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 	return ret;
 }
 #endif
+
+static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	struct comp_buffer *src_buf;
+
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		if (dev_comp_pipe_id(icd->cd) != ppl_id)
+			continue;
+
+		if (icd->cd->direction_set)
+			continue;
+
+		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, sink_list);
+		if (src_buf && src_buf->source->direction_set) {
+			icd->cd->direction = src_buf->source->direction;
+			icd->cd->direction_set = true;
+			continue;
+		}
+
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
+{
+	struct ipc_comp_dev *ipc_pipe;
+	int ret;
+
+	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+
+	/* Pass IPC to target core */
+	if (!cpu_is_me(ipc_pipe->core))
+		return ipc_process_on_core(ipc_pipe->core, false);
+
+	/* Note: SOF driver cares to bind modules one by one from input to output gateway, so
+	 * direction is always assigned in bind phase. We do not expect this call change anything.
+	 * OED driver does not guarantee this approach, hence some module may be bound inside
+	 * pipeline w/o connection to gateway, so direction is not configured in binding phase.
+	 * Need to update direction for such modules when pipeline is completed.
+	 */
+	ret = ipc4_update_comps_direction(ipc, comp_id);
+	if (ret < 0)
+		return ret;
+
+	return ipc_pipeline_complete(ipc, comp_id);
+}
 
 int ipc4_process_on_core(uint32_t core, bool blocking)
 {
