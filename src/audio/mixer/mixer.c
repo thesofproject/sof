@@ -100,6 +100,11 @@ static int mixer_process(struct processing_module *mod,
 
 		avail_frames = audio_stream_avail_frames_aligned(mod->input_buffers[i].data,
 								 mod->output_buffers[0].data);
+
+		/* if one source is inactive, skip it */
+		if (avail_frames == 0)
+			continue;
+
 		frames = MIN(frames, avail_frames);
 	}
 
