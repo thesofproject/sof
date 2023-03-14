@@ -642,6 +642,11 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 			goto out;
 		}
 
+		if (!max_block_count) {
+			comp_err(dev, "dai_capture_params(): invalid max-block-count of zero");
+			goto out;
+		}
+
 		if (max_block_count < period_count) {
 			comp_dbg(dev, "dai_capture_params(): block count = %d not supported by DMA", period_count);
 			buf_size = period_count * period_bytes;
