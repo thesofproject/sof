@@ -587,6 +587,8 @@ int ams_init(void)
 
 	*ams = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
 		       sizeof(**ams));
+	if (!*ams)
+		return -ENOMEM;
 
 	(*ams)->ams_context = &ctx[cpu_get_id()];
 	memset((*ams)->ams_context, 0, sizeof(*(*ams)->ams_context));
@@ -594,6 +596,8 @@ int ams_init(void)
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID) {
 		sof = sof_get();
 		sof->ams_shared_ctx = coherent_init(struct ams_shared_context, c);
+		if (!sof->ams_shared_ctx)
+			goto err;
 		coherent_shared(sof->ams_shared_ctx, c);
 	}
 
@@ -607,4 +611,9 @@ int ams_init(void)
 #endif /* CONFIG_SMP */
 
 	return ret;
+
+err:
+	rfree(*ams);
+
+	return -ENOMEM;
 }
