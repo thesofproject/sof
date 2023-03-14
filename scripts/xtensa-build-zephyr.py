@@ -674,7 +674,7 @@ def build_platforms():
 		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
-		install_platform(platform, sof_platform_output_dir)
+		install_platform(platform, sof_platform_output_dir, platf_build_environ)
 
 	src_dest_list = []
 
@@ -706,7 +706,7 @@ def build_platforms():
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 
 
-def install_platform(platform, sof_platform_output_dir):
+def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 
 	# Keep in sync with caller
 	platform_build_dir_name = f"build-{platform}"
@@ -797,7 +797,12 @@ def install_platform(platform, sof_platform_output_dir):
 		# Remove it like some gcc test scripts do:
 		# https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=c7046906c3ae
 		if "strip" in str(dstname):
-			execute_command([str(x) for x in [objcopy, "--remove-section", ".comment", src, dst]])
+			execute_command(
+				[str(x) for x in [objcopy, "--remove-section", ".comment", src, dst]],
+				# Some xtensa installs don't have a
+				# XtensaTools/config/default-params symbolic link
+				env=platf_build_environ,
+			)
 		elif f.txt:
 			dos2unix(src, dst)
 		else:
