@@ -637,7 +637,7 @@ def build_platforms():
 
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
-		rimage_config = RIMAGE_SOURCE_DIR / "config"
+		rimage_config = SOF_TOP / "config"
 		sign_cmd = ["west"]
 		sign_cmd += ["-v"] * args.verbose
 		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
@@ -659,7 +659,7 @@ def build_platforms():
 		sign_cmd += ["-b", sof_build_vers]
 
 		if args.ipc == "IPC4":
-			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
+			rimage_desc = pathlib.Path(SOF_TOP, "config", platform_dict["IPC4_RIMAGE_DESC"])
 			sign_cmd += ["-c", str(rimage_desc)]
 
 		execute_command(sign_cmd, cwd=west_top)
