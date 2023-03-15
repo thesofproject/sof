@@ -25,6 +25,16 @@ int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
  * \brief dai free through dai_data
  */
 void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev);
+
+/**
+ * \brief dai config prepare through dai_data
+ */
+int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev);
+
+/**
+ * \brief dai config prepare through dai_data
+ */
+int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
 #else
 /**
  * \brief dai new through dai_data
@@ -39,6 +49,22 @@ static inline int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
  * \brief dai free through dai_data
  */
 static inline void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev) {}
+
+/**
+ * \brief dai config prepare through dai_data
+ */
+static inline int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
+{
+	return 0;
+}
+
+/**
+ * \brief dai config prepare through dai_data
+ */
+static inline int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
+{
+	return 0;
+}
 
 #endif
 #endif /* __SOF_LIB_DAI_COPIER_H__ */

@@ -253,7 +253,7 @@ int dai_get_stream_id(struct dai *dai, int direction);
 /**
  * \brief Configure DMA channel for DAI
  */
-int dai_config_dma_channel(struct comp_dev *dev, const void *config);
+int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *config);
 
 /**
  * \brief Reset DAI DMA config
