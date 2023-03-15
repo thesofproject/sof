@@ -215,11 +215,35 @@ static void aria_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data *cd)
+{
+	struct comp_buffer __sparse_cache *buffer_c;
+
+	buffer_c = buffer_acquire(buffer);
+	buffer_c->stream.channels = cd->chan_cnt;
+	buffer_c->stream.rate = cd->base.audio_fmt.sampling_frequency;
+	buffer_c->buffer_fmt = cd->base.audio_fmt.interleaving_style;
+	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
+				    cd->base.audio_fmt.valid_bit_depth,
+				    &buffer_c->stream.frame_fmt,
+				    &buffer_c->stream.valid_sample_fmt,
+				    cd->base.audio_fmt.s_type);
+	buffer_release(buffer_c);
+}
+
 static int aria_prepare(struct comp_dev *dev)
 {
 	int ret;
+	struct comp_buffer *source, *sink;
+	struct aria_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "aria_prepare()");
+
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	aria_set_stream_params(source, cd);
+
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	aria_set_stream_params(sink, cd);
 
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "aria_prepare(): Component is in active state.");
