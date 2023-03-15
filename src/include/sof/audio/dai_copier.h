@@ -22,4 +22,7 @@ int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 
 void dai_zephyr_free(struct dai_data *dd);
 
+int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev);
+
+int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
