@@ -874,13 +874,13 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		dai_capture_params(dev, period_bytes, period_count);
 }
 
-static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
+int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	int channel;
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config_prepare(): Component is in active state.");
+		comp_info(dev, "dai_zephyr_config_prepare(): Component is in active state.");
 		return 0;
 	}
 
@@ -890,13 +890,13 @@ static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	if (dd->chan) {
-		comp_info(dev, "dai_config_prepare(): dma channel index %d already configured",
+		comp_info(dev, "dai_zephyr_config_prepare(): dma channel index %d already configured",
 			  dd->chan->index);
 		return 0;
 	}
 
 	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
-	comp_dbg(dev, "dai_config_prepare(), channel = %d", channel);
+	comp_dbg(dev, "dai_zephyr_config_prepare(), channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
 	if (channel == DMA_CHAN_INVALID) {
@@ -907,7 +907,7 @@ static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	/* get DMA channel */
 	channel = dma_request_channel(dd->dma->z_dev, &channel);
 	if (channel < 0) {
-		comp_err(dev, "dai_config_prepare(): dma_request_channel() failed");
+		comp_err(dev, "dai_zephyr_config_prepare(): dma_request_channel() failed");
 		dd->chan = NULL;
 		return -EIO;
 	}
@@ -915,13 +915,13 @@ static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	dd->chan = &dd->dma->chan[channel];
 	dd->chan->dev_data = dd;
 
-	comp_dbg(dev, "dai_config_prepare(): new configured dma channel index %d",
+	comp_dbg(dev, "dai_zephyr_config_prepare(): new configured dma channel index %d",
 		 dd->chan->index);
 
 	return 0;
 }
 
-static int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
+int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
@@ -966,7 +966,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_prepare()");
 
-	ret = dai_config_prepare(dd, dev);
+	ret = dai_zephyr_config_prepare(dd, dev);
 	if (ret < 0)
 		return ret;
 
