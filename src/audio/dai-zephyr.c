@@ -875,9 +875,8 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		dai_capture_params(dev, period_bytes, period_count);
 }
 
-static int dai_config_prepare(struct comp_dev *dev)
+int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel;
 
 	/* cannot configure DAI while active */
@@ -897,7 +896,7 @@ static int dai_config_prepare(struct comp_dev *dev)
 		return 0;
 	}
 
-	channel = dai_config_dma_channel(dev, dd->dai_spec_config);
+	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
 	comp_dbg(dev, "dai_config_prepare(), channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
@@ -923,17 +922,10 @@ static int dai_config_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int dai_prepare(struct comp_dev *dev)
+int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
-
-	comp_dbg(dev, "dai_prepare()");
-
-	ret = dai_config_prepare(dev);
-	if (ret < 0)
-		return ret;
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -965,7 +957,7 @@ static int dai_prepare(struct comp_dev *dev)
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
 		dd->xrun = 0;
-		return ret;
+		return -EINVAL;
 	}
 
 	ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
@@ -973,6 +965,20 @@ static int dai_prepare(struct comp_dev *dev)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
+}
+
+static int dai_prepare(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "dai_prepare()");
+
+	ret = dai_config_prepare(dd, dev);
+	if (ret < 0)
+		return ret;
+
+	return dai_zephyr_prepare(dd, dev);
 }
 
 static int dai_reset(struct comp_dev *dev)

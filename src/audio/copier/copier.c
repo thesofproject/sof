@@ -884,7 +884,7 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret, i;
+	int ret;
 
 	comp_dbg(dev, "copier_prepare()");
 
@@ -901,18 +901,29 @@ static int copier_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		ret = host_zephyr_prepare(cd->hd);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			ret = host_zephyr_prepare(cd->hd);
+		else
+			/* handle gtw case */
+			ret = cd->endpoint[0]->drv->ops.prepare(cd->endpoint[0]);
 		if (ret < 0)
 			return ret;
-	}
+		break;
+	case SOF_COMP_DAI:
+		ret = dai_config_prepare(cd->dd, cd->endpoint[0]);
+		if (ret < 0)
+			return ret;
 
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
-			if (ret < 0)
-				return ret;
-		}
+		ret = dai_zephyr_prepare(cd->dd, cd->endpoint[0]);
+		if (ret < 0)
+			return ret;
+		break;
+	default:
+		comp_err(dev, "Unexpected device type to prepare %d",
+			 dev->ipc_config.type);
+		break;
 	}
 
 	if (!cd->endpoint_num) {
