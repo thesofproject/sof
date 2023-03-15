@@ -931,18 +931,47 @@ static int copier_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		ret = host_zephyr_prepare(cd->hd);
-		if (ret < 0)
-			return ret;
-	}
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			ret = host_zephyr_prepare(cd->hd);
 			if (ret < 0)
 				return ret;
+		} else {
+			/* handle gtw case */
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+				if (ret < 0)
+					return ret;
+			}
 		}
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1) {
+			ret = dai_zephyr_config_prepare(cd->dd[0], cd->endpoint[0]);
+			if (ret < 0)
+				return ret;
+
+			ret = comp_set_state(cd->endpoint[0], COMP_TRIGGER_PREPARE);
+			if (ret < 0)
+				return ret;
+
+			if (ret == COMP_STATUS_STATE_ALREADY_SET)
+				return PPL_STATUS_PATH_STOP;
+
+			ret = dai_zephyr_prepare(cd->dd[0], cd->endpoint[0]);
+			if (ret < 0)
+				return ret;
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+				if (ret < 0)
+					return ret;
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	if (!cd->endpoint_num) {
