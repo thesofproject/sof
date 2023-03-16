@@ -18,6 +18,8 @@
 # include <xtensa/config/core-isa.h>
 # if XCHAL_HAVE_HIFI4
 #  define DCBLOCK_HIFI4
+# elif XCHAL_HAVE_HIFI3
+#  define DCBLOCK_HIFI3
 # else
 #  define DCBLOCK_GENERIC
 # endif
