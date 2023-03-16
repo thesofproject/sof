@@ -264,6 +264,7 @@ SECTIONS
     *(.rodata.*)
     *(.gnu.linkonce.r.*)
     *(.rodata1)
+    *(.clib.rodata)
     __XT_EXCEPTION_TABLE__ = ABSOLUTE(.);
     KEEP (*(.xt_except_table))
     KEEP (*(.gcc_except_table))
@@ -338,6 +339,7 @@ SECTIONS
     *(.gnu.linkonce.s.*)
     *(.sdata2)
     *(.sdata2.*)
+    *(.clib.data)
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _trace_ctx_start = ABSOLUTE(.);
