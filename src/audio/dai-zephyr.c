@@ -1066,11 +1066,12 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				return ret;
 
-			/* start the DAI */
-			dai_trigger_op(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
 			if (ret < 0)
 				return ret;
+
+			/* start the DAI */
+			dai_trigger_op(dd->dai, cmd, dev->direction);
 		} else {
 			dd->xrun = 0;
 		}
@@ -1092,7 +1093,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
  * drain the FIFO in order to stop the channel
  * as soon as possible.
  */
-#if CONFIG_DMA_SUSPEND_DRAIN
+#if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
 		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
@@ -1106,14 +1107,23 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
+#if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
 		if (prev_state == COMP_STATE_ACTIVE) {
 			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		} else {
 			comp_warn(dev, "dma was stopped earlier");
 			ret = 0;
 		}
-
 		dai_trigger_op(dd->dai, cmd, dev->direction);
+#else
+		dai_trigger_op(dd->dai, cmd, dev->direction);
+		if (prev_state == COMP_STATE_ACTIVE) {
+			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
+		} else {
+			comp_warn(dev, "dma was stopped earlier");
+			ret = 0;
+		}
+#endif
 		break;
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
