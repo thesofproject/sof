@@ -131,7 +131,7 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	scheduler_dp_unlock(lock_key);
 
 	/* free task stack */
-	rfree(pdata->p_stack);
+	rfree((__sparse_force void *)pdata->p_stack);
 
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
 	return 0;
@@ -276,7 +276,7 @@ int scheduler_dp_task_init(struct task **task,
 			   size_t stack_size,
 			   uint32_t task_priority)
 {
-	void *p_stack = NULL;
+	void __sparse_cache *p_stack = NULL;
 
 	/* memory allocation helper structure */
 	struct {
@@ -301,7 +301,8 @@ int scheduler_dp_task_init(struct task **task,
 
 	/* allocate stack - must be aligned so a separate alloc */
 	stack_size = Z_KERNEL_STACK_SIZE_ADJUST(stack_size);
-	p_stack = rballoc_align(0, SOF_MEM_CAPS_RAM, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
+	p_stack = (__sparse_force void __sparse_cache *)
+		rballoc_align(0, SOF_MEM_CAPS_RAM, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
 	if (!p_stack) {
 		tr_err(&dp_tr, "zephyr_dp_task_init(): stack alloc failed");
 		ret = -ENOMEM;
@@ -309,9 +310,9 @@ int scheduler_dp_task_init(struct task **task,
 	}
 
 	/* create a zephyr thread for the task */
-	thread_id = k_thread_create(&task_memory->thread, p_stack, stack_size, dp_thread_fn,
-				    &task_memory->task, NULL, NULL, task_priority,
-				    K_USER, K_FOREVER);
+	thread_id = k_thread_create(&task_memory->thread, (__sparse_force void *)p_stack,
+				    stack_size, dp_thread_fn, &task_memory->task, NULL, NULL,
+				    task_priority, K_USER, K_FOREVER);
 	if (!thread_id)	{
 		ret = -EFAULT;
 		tr_err(&dp_tr, "zephyr_dp_task_init(): zephyr thread create failed");
@@ -356,7 +357,7 @@ err:
 	/* cleanup - free all allocated resources */
 	if (thread_id)
 		k_thread_abort(thread_id);
-	rfree(p_stack);
+	rfree((__sparse_force void *)p_stack);
 	rfree(task_memory);
 	return ret;
 }
