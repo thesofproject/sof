@@ -236,3 +236,16 @@ void platform_wait_for_interrupt(int level)
 {
 	arch_wait_for_interrupt(level);
 }
+
+#ifdef __XCC__
+/* This is a stub for the Xtensa libc (not their newlib version),
+ * which inexplicably wants to pull in an unlink() implementation when
+ * linked against the C++ standard library.  Obviously nothing in SOF
+ * uses the C library filesystem layer, this is just spurious.
+ */
+int __attribute__((weak)) _unlink_r(struct _reent *ptr, const char *file);
+int __attribute__((weak)) _unlink_r(struct _reent *ptr, const char *file)
+{
+	return -1;
+}
+#endif
