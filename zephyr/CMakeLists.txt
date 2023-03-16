@@ -467,6 +467,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock.c
+	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi3.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
 )
 
