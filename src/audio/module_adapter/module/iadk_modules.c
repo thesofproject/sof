@@ -73,7 +73,7 @@ static int iadk_modules_init(struct processing_module *mod)
 		comp_err(dev, "iadk_modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
 	}
-	mod->priv.module_entry_point = module_entry_point;
+	md->module_entry_point = module_entry_point;
 	comp_info(mod->dev, "iadk_modules_init() start");
 
 	uint32_t module_id = IPC4_MOD_ID(mod->dev->ipc_config.id);
@@ -102,7 +102,7 @@ static int iadk_modules_init(struct processing_module *mod)
 	md->mpd.out_buff_size = src_cfg->obs;
 
 	/* Call module specific init function if exists. */
-	ret = iadk_wrapper_init(mod->priv.module_adapter);
+	ret = iadk_wrapper_init(md->module_adapter);
 	return ret;
 }
 
