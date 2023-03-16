@@ -202,8 +202,6 @@ struct ipc4_ipc_gateway_config_blob {
 	uint32_t threshold_low;
 } __attribute__((packed, aligned(4)));
 
-#define ALH_MULTI_GTW_BASE	0x50
-
 enum ipc4_gateway_type {
 	ipc4_gtw_none	= BIT(0),
 	ipc4_gtw_host	= BIT(1),

@@ -219,8 +219,7 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 	int i;
 
 	/* sdw with multiple gateways uses sndw_reading_slots */
-	if (node->f.dma_type == ipc4_alh_link_output_class &&
-	    node->f.v_index >= ALH_MULTI_GTW_BASE) {
+	if (node->f.dma_type == ipc4_alh_link_output_class && is_multi_gateway(*node)) {
 		offset = SRAM_REG_LLP_SNDW_READING_SLOTS;
 		max_slot = IPC4_MAX_LLP_SNDW_READING_SLOTS - 1;
 	} else {
