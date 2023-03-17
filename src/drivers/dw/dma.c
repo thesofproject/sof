@@ -396,6 +396,7 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 {
 	struct dma *dma = channel->dma;
 	uint32_t flags;
+	int ret;
 
 #if CONFIG_DMA_HW_LLI || CONFIG_DMA_SUSPEND_DRAIN
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
@@ -404,9 +405,6 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 #if CONFIG_DMA_HW_LLI
 	struct dw_lli *lli = dw_chan->lli;
 	int i;
-#endif
-#if CONFIG_DMA_SUSPEND_DRAIN
-	int ret;
 #endif
 
 	tr_info(&dwdma_tr, "dw_dma_stop(): dma %d channel %d stop",
@@ -437,6 +435,15 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 #endif
 
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel->index));
+
+	/* wait for channel to be disabled */
+	ret = poll_for_register_delay(dma_base(dma) + DW_DMA_CHAN_EN,
+				      DW_CHAN(channel->index), 0, DW_DMA_TIMEOUT);
+	if (ret < 0) {
+		tr_err(&dwdma_tr, "dw_dma_stop(): dma %d channel %d disable timeout",
+		       dma->plat_data.id, channel->index);
+		return -ETIMEDOUT;
+	}
 
 #if CONFIG_DMA_HW_LLI
 	for (i = 0; i < channel->desc_count; i++) {
