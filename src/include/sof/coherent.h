@@ -171,7 +171,7 @@ static inline void *__coherent_init(size_t offset, const size_t size)
 	c->core = cpu_get_id();
 	list_init(&c->list);
 	/* inv local data to coherent object */
-	dcache_invalidate_region(uncache_to_cache(c), size);
+	dcache_invalidate_region(uncache_to_cache(object), size);
 
 	return object;
 }
@@ -260,7 +260,7 @@ static inline void *__coherent_init_thread(size_t offset, const size_t size)
 	c->core = cpu_get_id();
 	list_init(&c->list);
 	/* inv local data to coherent object */
-	dcache_invalidate_region(uncache_to_cache(c), size);
+	dcache_invalidate_region(uncache_to_cache(object), size);
 
 	return object;
 }
