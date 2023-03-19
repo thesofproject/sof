@@ -310,7 +310,6 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 				handled = true;
 			}
-
 		}
 
 		k_spin_unlock(&cascade->lock, key);
@@ -355,7 +354,6 @@ static inline void irq_handler(void *data, uint32_t line_index)
 			       (uint32_t)(status >> 32), (uint32_t)status);
 		}
 	}
-
 }
 
 #define DEFINE_IRQ_HANDLER(n) \
@@ -382,7 +380,6 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	irq += irq_base;
 
 	irqstr_mask_int(irq);
-
 }
 
 static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
@@ -394,7 +391,6 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	irq += irq_base;
 
 	irqstr_unmask_int(irq);
-
 }
 
 static const struct irq_cascade_ops irq_ops = {
@@ -479,7 +475,6 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->mask)
 		cascade->ops->mask(&cascade->desc, irq - cascade->irq_base,
 				   cpu);
-
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
@@ -489,5 +484,4 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->unmask)
 		cascade->ops->unmask(&cascade->desc, irq - cascade->irq_base,
 				     cpu);
-
 }
