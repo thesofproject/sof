@@ -1720,11 +1720,21 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
-	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
 
-	if (cd->endpoint_num && cd->bsource_buffer != input) {
+	/*
+	 * total data processed is calculated as: accumulate all input data in bytes
+	 * from host, then store in host_data structure, this function intend to retrieve
+	 * correct processed data number.
+	 * Due to host already integrated as part of copier, so for host specific case,
+	 * as long as direction is correct, return correct processed data.
+	 * Dai still use ops driver to get data, later, dai will also be integrated
+	 * into copier, this part will be changed again for dai specific.
+	 */
+	if (cd->endpoint_num) {
 		if (stream_no < cd->endpoint_num) {
 			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
+				bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
+
 				if (source == input)
 					ret = cd->hd->total_data_processed;
 			} else {
