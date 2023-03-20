@@ -443,6 +443,7 @@ static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
 static void sdma_channel_put(struct dma_chan_data *channel)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+
 	if (channel->status == COMP_STATE_INIT)
 		return; /* Channel was already free */
 	tr_dbg(&sdma_tr, "sdma_channel_put(%d)", channel->index);
