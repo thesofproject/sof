@@ -71,6 +71,8 @@ struct host_data {
 	struct hc_buf host;
 	struct hc_buf local;
 
+	size_t partial_size;	/**< add up DMA updates for deep buffer */
+
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
