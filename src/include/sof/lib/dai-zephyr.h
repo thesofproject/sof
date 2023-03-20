@@ -278,6 +278,12 @@ int dai_assign_group(struct comp_dev *dev, uint32_t group_id);
 int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
 
 /**
+ * \brief dai zephyr position
+ */
+int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+			struct sof_ipc_stream_posn *posn);
+
+/**
  * \brief update dai dma position for host driver.
  */
 void dai_dma_position_update(struct comp_dev *dev);
