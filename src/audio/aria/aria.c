@@ -151,7 +151,7 @@ static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
 
 	ibs = cd->base.ibs;
 	chc = cd->base.audio_fmt.channels_count;
-	sgs = (cd->base.audio_fmt.valid_bit_depth >> 3) * chc;
+	sgs = (cd->base.audio_fmt.depth >> 3) * chc;
 	sgc = ibs / sgs;
 	req_mem = get_required_emory(chc, sgc);
 	att = aria->attenuation;
