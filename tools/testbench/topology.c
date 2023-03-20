@@ -24,63 +24,11 @@
 
 #define MAX_TPLG_OBJECT_SIZE	4096
 
-/*
- * Register component driver
- * Only needed once per component type
- */
-static void tb_register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext)
-{
-	int index;
-
-	/* register file comp driver (no shared library needed) */
-	if (comp_type == SOF_COMP_HOST || comp_type == SOF_COMP_DAI) {
-		if (!lib_table[0].register_drv) {
-			sys_comp_file_init();
-			lib_table[0].register_drv = 1;
-		}
-		return;
-	}
-
-	/* get index of comp in shared library table */
-	index = get_index_by_type(comp_type, lib_table);
-	if (comp_type == SOF_COMP_NONE && comp_ext) {
-		index = get_index_by_uuid(comp_ext, lib_table);
-		if (index < 0) {
-			fprintf(stderr, "cant find type %d UUID starting %x %x %x %x\n",
-				comp_type, comp_ext->uuid[0], comp_ext->uuid[1],
-				comp_ext->uuid[2], comp_ext->uuid[3]);
-			return;
-		}
-	}
-
-	/* register comp driver if not already registered */
-	if (!lib_table[index].register_drv) {
-		printf("registered comp driver for %s\n",
-			lib_table[index].comp_name);
-
-		/* open shared library object */
-		printf("opening shared lib %s\n",
-			lib_table[index].library_name);
-
-		lib_table[index].handle = dlopen(lib_table[index].library_name,
-						 RTLD_LAZY);
-		if (!lib_table[index].handle) {
-			fprintf(stderr, "error: %s\n", dlerror());
-			exit(EXIT_FAILURE);
-		}
-
-		/* comp init is executed on lib load */
-		lib_table[index].register_drv = 1;
-	}
-
-}
-
 /* load asrc dapm widget */
 static int tb_register_asrc(struct testbench_prm *tp, struct tplg_context *ctx)
 {
 	char tplg_object[MAX_TPLG_OBJECT_SIZE] = {0};
 	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)tplg_object;
-	struct sof_ipc_comp_ext *comp_ext;
 	struct sof *sof = ctx->sof;
 	struct sof_ipc_comp_asrc *asrc;
 	int ret = 0;
@@ -90,7 +38,6 @@ static int tb_register_asrc(struct testbench_prm *tp, struct tplg_context *ctx)
 		return ret;
 
 	asrc = (struct sof_ipc_comp_asrc *)comp;
-	comp_ext = (struct sof_ipc_comp_ext *)(asrc + 1);
 
 	/* set testbench input and output sample rate from topology */
 	if (!tp->fs_out)
@@ -104,7 +51,6 @@ static int tb_register_asrc(struct testbench_prm *tp, struct tplg_context *ctx)
 		asrc->source_rate = tp->fs_in;
 
 	/* load asrc component */
-	tb_register_comp(comp->type, comp_ext);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&asrc)) < 0) {
 		fprintf(stderr, "error: new asrc comp\n");
 		return -EINVAL;
@@ -137,17 +83,17 @@ static int tb_register_buffer(struct testbench_prm *tp, struct tplg_context *ctx
 /* load pipeline graph DAPM widget*/
 static int tb_register_graph(struct tplg_context *ctx, struct tplg_comp_info *temp_comp_list,
 			     char *pipeline_string,
-			     int count, int num_comps, int pipeline_id)
+			     int num_comps, int num_connections,
+			     int pipeline_id)
 {
 	struct sof_ipc_pipe_comp_connect connection;
 	struct sof *sof = ctx->sof;
 	int ret = 0;
 	int i;
 
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < num_connections; i++) {
 		ret = tplg_create_graph(ctx, num_comps, pipeline_id, temp_comp_list,
-				      pipeline_string, &connection, i,
-				      count);
+					pipeline_string, &connection, i);
 		if (ret < 0)
 			return ret;
 
@@ -173,8 +119,6 @@ static int tb_register_mixer(struct testbench_prm *tp, struct tplg_context *ctx)
 {
 	char tplg_object[MAX_TPLG_OBJECT_SIZE] = {0};
 	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)tplg_object;
-	struct sof_ipc_comp_ext *comp_ext;
-	struct sof_ipc_comp_mixer *mixer;
 	struct sof *sof = ctx->sof;
 	int ret = 0;
 
@@ -182,11 +126,7 @@ static int tb_register_mixer(struct testbench_prm *tp, struct tplg_context *ctx)
 	if (ret < 0)
 		return ret;
 
-	mixer = (struct sof_ipc_comp_mixer *)comp;
-	comp_ext = (struct sof_ipc_comp_ext *)(mixer + 1);
-
 	/* load mixer component */
-	tb_register_comp(comp->type, comp_ext);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(comp)) < 0) {
 		fprintf(stderr, "error: new mixer comp\n");
 		ret = -EINVAL;
@@ -199,8 +139,6 @@ static int tb_register_pga(struct testbench_prm *tp, struct tplg_context *ctx)
 {
 	char tplg_object[MAX_TPLG_OBJECT_SIZE] = {0};
 	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)tplg_object;
-	struct sof_ipc_comp_ext *comp_ext;
-	struct sof_ipc_comp_volume *volume;
 	struct sof *sof = ctx->sof;
 	int ret;
 
@@ -210,11 +148,7 @@ static int tb_register_pga(struct testbench_prm *tp, struct tplg_context *ctx)
 		return ret;
 	}
 
-	volume = (struct sof_ipc_comp_volume *)comp;
-	comp_ext = (struct sof_ipc_comp_ext *)(volume + 1);
-
 	/* load volume component */
-	tb_register_comp(comp->type, comp_ext);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(comp)) < 0) {
 		fprintf(stderr, "error: new pga comp\n");
 		ret = -EINVAL;
@@ -250,28 +184,15 @@ static int tb_register_process(struct testbench_prm *tp, struct tplg_context *ct
 {
 	struct sof *sof = ctx->sof;
 	struct sof_ipc_comp_process *process;
-	struct sof_ipc_comp_ext *comp_ext;
 	int ret = 0;
-	int i;
 
-	process = malloc(MAX_TPLG_OBJECT_SIZE);
+	process = calloc(1, MAX_TPLG_OBJECT_SIZE);
 	if (!process)
 		return -ENOMEM;
-	comp_ext = (struct sof_ipc_comp_ext *)(process + 1);
-
-	memset(process, 0, MAX_TPLG_OBJECT_SIZE);
 
 	ret = tplg_new_process(ctx, process, MAX_TPLG_OBJECT_SIZE, NULL, 0);
 	if (ret < 0)
 		goto out;
-
-	printf("debug uuid:\n");
-	for (i = 0; i < SOF_UUID_SIZE; i++)
-		printf("%u ", comp_ext->uuid[i]);
-	printf("\n");
-
-	/* load process component */
-	tb_register_comp(process->comp.type, comp_ext);
 
 	/* Instantiate */
 	ret = ipc_comp_new(sof->ipc, ipc_to_comp_new(process));
@@ -291,7 +212,6 @@ static int tb_register_src(struct testbench_prm *tp, struct tplg_context *ctx)
 	char tplg_object[MAX_TPLG_OBJECT_SIZE] = {0};
 	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)tplg_object;
 	struct sof_ipc_comp_src *src;
-	struct sof_ipc_comp_ext *comp_ext;
 	int ret = 0;
 
 	ret = tplg_new_src(ctx, comp, MAX_TPLG_OBJECT_SIZE, NULL, 0);
@@ -299,7 +219,6 @@ static int tb_register_src(struct testbench_prm *tp, struct tplg_context *ctx)
 		return ret;
 
 	src = (struct sof_ipc_comp_src *)comp;
-	comp_ext = (struct sof_ipc_comp_ext *)(src + 1);
 
 	/* set testbench input and output sample rate from topology */
 	if (!tp->fs_out)
@@ -313,7 +232,6 @@ static int tb_register_src(struct testbench_prm *tp, struct tplg_context *ctx)
 		src->source_rate = tp->fs_in;
 
 	/* load src component */
-	tb_register_comp(comp->type, comp_ext);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(comp)) < 0) {
 		fprintf(stderr, "error: new src comp\n");
 		return -EINVAL;
@@ -462,7 +380,6 @@ static int tb_register_fileread(struct testbench_prm *tp,
 		SOF_COMP_HOST : SOF_COMP_DAI;
 
 	/* create fileread component */
-	tb_register_comp(fileread.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&fileread)) < 0) {
 		fprintf(stderr, "error: file read\n");
 		free(fileread.fn);
@@ -507,7 +424,6 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 		SOF_COMP_DAI : SOF_COMP_HOST;
 
 	/* create filewrite component */
-	tb_register_comp(filewrite.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&filewrite)) < 0) {
 		fprintf(stderr, "error: new file write\n");
 		free(filewrite.fn);
@@ -561,8 +477,8 @@ static inline int tb_insert_comp(struct testbench_prm *tb, struct tplg_context *
 	temp_comp_list[comp_index].type = ctx->widget->id;
 	temp_comp_list[comp_index].pipeline_id = ctx->pipeline_id;
 
-	printf("debug: loading comp_id %d: widget %s type %d size %d at offset %ld\n",
-	       comp_id, ctx->widget->name, ctx->widget->id, ctx->widget->size,
+	printf("debug: loading idx %d comp_id %d: widget %s type %d size %d at offset %ld\n",
+	       comp_index, comp_id, ctx->widget->name, ctx->widget->id, ctx->widget->size,
 	       ctx->tplg_offset);
 
 	return 0;
@@ -795,8 +711,8 @@ int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx)
 		case SND_SOC_TPLG_TYPE_DAPM_GRAPH:
 			if (tb_register_graph(ctx, tb->info,
 					      pipeline_string,
+					      tb->info_elems,
 					      hdr->count,
-					      ctx->comp_id,
 					      hdr->index) < 0) {
 				fprintf(stderr, "error: pipeline graph\n");
 				ret = -EINVAL;
@@ -816,3 +732,4 @@ out:
 	free(ctx->tplg_base);
 	return ret;
 }
+
