@@ -346,9 +346,9 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+			struct sof_ipc_stream_posn *posn)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_status status;
 	int ret;
 
@@ -365,6 +365,13 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	posn->comp_posn = status.total_copied;
 
 	return 0;
+}
+
+int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_position(dd, dev, posn);
 }
 
 void dai_dma_position_update(struct comp_dev *dev)
@@ -392,9 +399,9 @@ void dai_dma_position_update(struct comp_dev *dev)
 	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
 }
 #else
-int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+			struct sof_ipc_stream_posn *posn)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_chan_status status;
 
 	/* total processed bytes count */
@@ -407,6 +414,13 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	dma_status_legacy(dd->chan, &status, dev->direction);
 
 	return 0;
+}
+
+int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_position(dd, dev, posn);
 }
 
 void dai_dma_position_update(struct comp_dev *dev)

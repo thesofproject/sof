@@ -1788,6 +1788,7 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
 
 	/*
 	 * total data processed is calculated as: accumulate all input data in bytes
@@ -1800,14 +1801,32 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 	 */
 	if (cd->endpoint_num) {
 		if (stream_no < cd->endpoint_num) {
-			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-				bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
+			switch (dev->ipc_config.type) {
+			case  SOF_COMP_HOST:
+				/* need handle gtw case separately,
+				 *since cd->hd not assigned in this case.
+				 */
+				if (cd->ipc_gtw) {
+					struct comp_dev *host_dev;
 
-				if (source == input)
+					host_dev = cd->endpoint[stream_no];
+					ret = comp_get_total_data_processed(host_dev,
+									    0, input);
+				} else if (source == input) {
 					ret = cd->hd->total_data_processed;
-			} else {
+				}
+				break;
+
+			case  SOF_COMP_DAI:
+				if (source == input)
+					ret = cd->dd->total_data_processed;
+				break;
+
+			default:
 				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
-								    0, input);
+							    0, input);
+				break;
+
 			}
 		}
 	} else {
@@ -1840,17 +1859,29 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
 	/* Exit if no endpoints */
 	if (!cd->endpoint_num)
 		return -EINVAL;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		posn->host_posn = cd->hd->local_pos;
-		ret = posn->host_posn;
-	} else {
-		ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			posn->host_posn = cd->hd->local_pos;
+			ret = posn->host_posn;
+		} else {
+			/* handle gtw case */
+			ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+		}
+		break;
+	case SOF_COMP_DAI:
+		ret = dai_zephyr_position(cd->dd, cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+		break;
+	default:
+		comp_err(dev, "Unexpected copier device type to position! %d",
+			 dev->ipc_config.type);
+		break;
 	}
 	/* Return position from the default gateway pin */
 	return ret;
