@@ -6,7 +6,7 @@ elseif(CONFIG_IPC_MAJOR_4)
 	set(mixer_src mixin_mixout/mixin_mixout.c mixin_mixout/mixin_mixout_generic.c mixin_mixout/mixin_mixout_hifi3.c)
 endif()
 
-if(NOT CONFIG_LIBRARY)
+if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	add_local_sources(sof
 		host-legacy.c
 		component.c

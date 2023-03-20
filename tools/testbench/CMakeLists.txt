@@ -26,12 +26,7 @@ set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 
 set(config_h ${sof_binary_directory}/library_autoconfig.h)
 
-# TODO: testbench should not need RTOS headers: FIX.
-if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
-target_include_directories(testbench PRIVATE
-	"${PROJECT_SOURCE_DIR}/xtos/include"
-)
-endif()
+target_include_directories(testbench PRIVATE "${sof_source_directory}/src/platform/library/include")
 
 # Configuration time, make copy
 configure_file(${default_asoc_h} ${CMAKE_CURRENT_BINARY_DIR}/include/alsa/sound/asoc.h)
@@ -46,9 +41,9 @@ if (supports_implicit_fallthrough)
 endif()
 
 target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
-  ${implicit_fallthrough} -DCONFIG_LIBRARY -imacros${config_h})
+  ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
 
-target_link_libraries(testbench PRIVATE -ldl -lm)
+target_link_libraries(testbench PRIVATE -lm)
 
 install(TARGETS testbench DESTINATION bin)
 
@@ -64,12 +59,13 @@ ExternalProject_Add(sof_ep
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 		-DINIT_CONFIG=library_defconfig
 		-DCONFIG_H_PATH=${config_h}
+		-DCONFIG_LIBRARY_STATIC=ON
 	BUILD_ALWAYS 1
-	BUILD_BYPRODUCTS "${sof_install_directory}/lib/libsof.so"
+	BUILD_BYPRODUCTS "${sof_install_directory}/lib/libsof.a"
 )
 
-add_library(sof_library SHARED IMPORTED)
-set_target_properties(sof_library PROPERTIES IMPORTED_LOCATION "${sof_install_directory}/lib/libsof.so")
+add_library(sof_library STATIC IMPORTED)
+set_target_properties(sof_library PROPERTIES IMPORTED_LOCATION "${sof_install_directory}/lib/libsof.a")
 add_dependencies(sof_library sof_ep)
 
 set(parser_source_directory "${PROJECT_SOURCE_DIR}/../tplg_parser")
@@ -83,18 +79,19 @@ ExternalProject_Add(parser_ep
 	CMAKE_ARGS
 		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
+		-DCONFIG_LIBRARY_STATIC=ON
 	BUILD_ALWAYS 1
-	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.so"
+	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.a"
 )
 
-add_library(sof_parser_lib SHARED IMPORTED)
-set_target_properties(sof_parser_lib PROPERTIES IMPORTED_LOCATION "${parser_install_dir}/lib/libsof_tplg_parser.so")
+add_library(sof_parser_lib STATIC IMPORTED)
+set_target_properties(sof_parser_lib PROPERTIES IMPORTED_LOCATION "${parser_install_dir}/lib/libsof_tplg_parser.a")
 add_dependencies(sof_parser_lib parser_ep)
 
 add_dependencies(testbench sof_parser_lib)
 target_link_libraries(testbench PRIVATE sof_library)
 target_link_libraries(testbench PRIVATE sof_parser_lib)
-target_link_libraries(testbench PRIVATE pthread)
+target_link_libraries(testbench PRIVATE m)
 target_include_directories(testbench PRIVATE ${sof_install_directory}/include)
 target_include_directories(testbench PRIVATE ${parser_install_dir}/include)
 

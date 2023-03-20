@@ -24,6 +24,7 @@
 #include <sof/schedule/schedule.h>
 #include <rtos/wait.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/component_ext.h>
 #include "testbench/common_test.h"
 #include "testbench/trace.h"
 #include <tplg_parser/topology.h>
@@ -38,6 +39,22 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 
 	/* init components */
 	sys_comp_init(sof);
+	sys_comp_file_init();
+	sys_comp_asrc_init();
+	sys_comp_crossover_init();
+	sys_comp_dcblock_init();
+	sys_comp_drc_init();
+	sys_comp_multiband_drc_init();
+	sys_comp_selector_init();
+	sys_comp_src_init();
+	sys_comp_tdfb_init();
+
+	/* Module adapter components */
+	sys_comp_module_demux_interface_init();
+	sys_comp_module_eq_fir_interface_init();
+	sys_comp_module_eq_iir_interface_init();
+	sys_comp_module_mux_interface_init();
+	sys_comp_module_volume_interface_init();
 
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof);
@@ -246,90 +263,6 @@ int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipelin
 		fprintf(stderr, "error: pipeline_params\n");
 
 	return ret;
-}
-
-/* getindex of shared library from table */
-int get_index_by_name(char *comp_type, struct shared_lib_table *lib_table)
-{
-	int i;
-
-	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
-		if (!strcmp(comp_type, lib_table[i].comp_name))
-			return i;
-	}
-
-	return -EINVAL;
-}
-
-/* getindex of shared library from table by widget type*/
-int get_index_by_type(uint32_t comp_type, struct shared_lib_table *lib_table)
-{
-	int i;
-
-	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
-		if (comp_type == lib_table[i].widget_type)
-			return i;
-	}
-
-	return -EINVAL;
-}
-
-/* get index of shared library from table by uuid */
-int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
-		      struct shared_lib_table *lib_table)
-{
-	int i;
-
-	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
-		if (lib_table[i].uid) {
-			if (!memcmp(lib_table[i].uid, comp_ext->uuid, UUID_SIZE))
-				return i;
-		}
-	}
-
-	return -EINVAL;
-}
-
-/* The following definitions are to satisfy libsof linker errors */
-
-struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
-{
-	return NULL;
-}
-
-void dai_put(struct dai *dai)
-{
-}
-
-struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags)
-{
-	return NULL;
-}
-
-void dma_put(struct dma *dma)
-{
-}
-
-int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
-		 enum mem_zone zone,
-		 uint32_t direction,
-		 uint32_t buffer_count, uint32_t buffer_bytes,
-		 uintptr_t dma_buffer_addr, uintptr_t external_addr)
-{
-	return 0;
-}
-
-void dma_sg_free(struct dma_sg_elem_array *elem_array)
-{
-}
-
-void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
-{
-}
-
-int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
-{
-	return 0;
 }
 
 /* print debug messages */

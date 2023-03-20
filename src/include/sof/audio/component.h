@@ -699,8 +699,32 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 #define comp_get_drvdata(c) \
 	(c->priv_data)
 
-#if defined UNIT_TEST || defined __ZEPHYR__
+#if defined UNIT_TEST || defined __ZEPHYR__  || CONFIG_LIBRARY_STATIC
 #define DECLARE_MODULE(init)
+
+/* declared modules */
+void sys_comp_asrc_init(void);
+void sys_comp_crossover_init(void);
+void sys_comp_dai_init(void);
+void sys_comp_dcblock_init(void);
+void sys_comp_drc_init(void);
+void sys_comp_eq_iir_init(void);
+void sys_comp_host_init(void);
+void sys_comp_kpb_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_multiband_drc_init(void);
+void sys_comp_selector_init(void);
+void sys_comp_src_init(void);
+void sys_comp_tdfb_init(void);
+
+void sys_comp_module_demux_interface_init(void);
+void sys_comp_module_eq_fir_interface_init(void);
+void sys_comp_module_eq_iir_interface_init(void);
+void sys_comp_module_mfcc_interface_init(void);
+void sys_comp_module_mixer_interface_init(void);
+void sys_comp_module_mux_interface_init(void);
+void sys_comp_module_volume_interface_init(void);
+
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */
 #define DECLARE_MODULE(init) __attribute__((constructor)) \

@@ -80,17 +80,6 @@ struct testbench_prm {
 	enum sof_ipc_frame frame_fmt;
 };
 
-struct shared_lib_table {
-	char *comp_name;
-	char library_name[MAX_LIB_NAME_LEN];
-	uint32_t widget_type;
-	struct sof_uuid *uid;
-	int register_drv;
-	void *handle;
-};
-
-extern struct shared_lib_table lib_table[];
-
 extern int debug;
 
 int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx);
@@ -115,12 +104,21 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p);
 
 void debug_print(char *message);
 
-int get_index_by_name(char *comp_name,
-		      struct shared_lib_table *lib_table);
+void sys_comp_asrc_init(void);
+void sys_comp_crossover_init(void);
+void sys_comp_dcblock_init(void);
+void sys_comp_drc_init(void);
+void sys_comp_eq_iir_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_multiband_drc_init(void);
+void sys_comp_selector_init(void);
+void sys_comp_src_init(void);
+void sys_comp_tdfb_init(void);
 
-int get_index_by_type(uint32_t comp_type,
-		      struct shared_lib_table *lib_table);
+void sys_comp_module_demux_interface_init(void);
+void sys_comp_module_eq_fir_interface_init(void);
+void sys_comp_module_eq_iir_interface_init(void);
+void sys_comp_module_mux_interface_init(void);
+void sys_comp_module_volume_interface_init(void);
 
-int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
-		      struct shared_lib_table *lib_table);
 #endif
