@@ -439,8 +439,9 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
  */
 static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 {
+	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t copy_bytes;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "host_copy_normal()");
 
@@ -454,9 +455,20 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 	};
 	notifier_event(hd->chan, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
-	ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, copy_bytes);
-	if (ret < 0)
-		comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
+
+	hd->partial_size += copy_bytes;
+	buffer_c = buffer_acquire(hd->dma_buffer);
+
+	/* Reload DMA when half of the buffer has been used */
+	if (hd->partial_size >= buffer_c->stream.size >> 1) {
+		ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, hd->partial_size);
+		if (ret < 0)
+			comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
+
+		hd->partial_size = 0;
+	}
+
+	buffer_release(buffer_c);
 
 	return ret;
 }
@@ -517,6 +529,7 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
+		hd->partial_size = 0;
 		ret = dma_start(hd->chan->dma->z_dev, hd->chan->index);
 		if (ret < 0)
 			comp_err(dev, "host_trigger(): dma_start() failed, ret = %u",
