@@ -43,7 +43,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: e3ae110a05d3427647a03fcbeff4478c195c5a48
+      revision: pull/56002/head
       remote: zephyrproject
       # Import some projects listed in zephyr/west.yml@revision
       #
