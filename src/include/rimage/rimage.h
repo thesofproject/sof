@@ -146,7 +146,6 @@ struct adsp {
 	struct mem_zone mem_zones[SOF_FW_BLK_TYPE_NUM];
 
 	uint32_t image_size;
-	uint32_t dram_offset;
 
 	uint32_t alias_cached;
 	uint32_t alias_uncached;

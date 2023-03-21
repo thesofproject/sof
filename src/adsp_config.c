@@ -66,7 +66,6 @@ static void dump_adsp(const struct adsp *adsp)
 	DUMP("\nadsp");
 	DUMP_KEY("name", "'%s'", adsp->name);
 	DUMP_KEY("image_size", "0x%x", adsp->image_size);
-	DUMP_KEY("dram_offset", "0x%x", adsp->dram_offset);
 	DUMP_KEY("exec_boot_ldr", "%d", adsp->exec_boot_ldr);
 	for (i = 0; i < ARRAY_SIZE(adsp->mem_zones); ++i) {
 		DUMP_KEY("mem_zone.idx", "%d", i);
@@ -112,10 +111,6 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 		return err_key_parse("name", NULL);
 
 	out->image_size = parse_uint32_hex_key(adsp, &ctx, "image_size", 0, &ret);
-	if (ret < 0)
-		return ret;
-
-	out->dram_offset = parse_uint32_hex_key(adsp, &ctx, "dram_offset", 0, &ret);
 	if (ret < 0)
 		return ret;
 
