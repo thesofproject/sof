@@ -34,8 +34,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_host;
-
 LOG_MODULE_REGISTER(host_comp, CONFIG_SOF_LOG_LEVEL);
 
 /* 8b9d100c-6d78-418f-90a3-e0e805d0852b */
@@ -361,25 +359,6 @@ void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
 	}
 }
 
-/* This is called by DMA driver every time when DMA completes its current
- * transfer between host and DSP.
- */
-void host_dma_cb(void *arg, enum notify_id type, void *data)
-{
-	struct dma_cb_data *next = data;
-	struct comp_dev *dev = arg;
-	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t bytes = next->elem.size;
-
-	comp_cl_dbg(&comp_host, "host_dma_cb() %p", &comp_host);
-
-	/* update position */
-	host_update_position(hd, dev, bytes);
-
-	/* callback for one shot copy */
-	if (hd->copy_type == COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(hd, bytes);
-}
 
 /**
  * Calculates bytes to be copied in normal mode.
@@ -543,33 +522,6 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/**
- * \brief Command handler.
- * \param[in,out] dev Device
- * \param[in] cmd Command
- * \return 0 if successful, error code otherwise.
- *
- * Used to pass standard and bespoke commands (with data) to component.
- * This function is common for all dma types, with one exception:
- * dw-dma is run on demand, so no start()/stop() is issued.
- */
-static int host_trigger(struct comp_dev *dev, int cmd)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_dbg(dev, "host_trigger()");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	return host_zephyr_trigger(hd, dev, cmd);
-}
-
 int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 		    const struct ipc_config_host *ipc_host, uint32_t config_id)
 {
@@ -605,59 +557,12 @@ int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
 	return 0;
 }
 
-static struct comp_dev *host_new(const struct comp_driver *drv,
-				 const struct comp_ipc_config *config,
-				 const void *spec)
-{
-	struct comp_dev *dev;
-	struct host_data *hd;
-	const struct ipc_config_host *ipc_host = spec;
-	int ret;
-
-	comp_cl_dbg(&comp_host, "host_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
-	if (!hd)
-		goto e_data;
-
-	comp_set_drvdata(dev, hd);
-
-	ret = host_zephyr_new(hd, dev, ipc_host, dev->ipc_config.id);
-	if (ret)
-		goto e_dev;
-
-	dev->state = COMP_STATE_READY;
-
-	return dev;
-
-e_dev:
-	rfree(hd);
-e_data:
-	rfree(dev);
-	return NULL;
-}
-
 void host_zephyr_free(struct host_data *hd)
 {
 	dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
 	dma_sg_free(&hd->config.elem_array);
-}
-
-static void host_free(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "host_free()");
-	host_zephyr_free(hd);
-	rfree(hd);
-	rfree(dev);
 }
 
 static int host_elements_reset(struct host_data *hd, int direction)
@@ -688,22 +593,6 @@ static int host_elements_reset(struct host_data *hd, int direction)
 			direction == SOF_IPC_STREAM_PLAYBACK ?
 			sink_elem->size : source_elem->size;
 		local_elem->src = source_elem->src;
-	}
-
-	return 0;
-}
-
-static int host_verify_params(struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "host_verify_params()");
-
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "host_verify_params(): comp_verify_params() failed");
-		return ret;
 	}
 
 	return 0;
@@ -935,64 +824,12 @@ out:
 	return err;
 }
 
-/* configure the DMA params and descriptors for host buffer IO */
-static int host_params(struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	int err;
-
-	comp_dbg(dev, "host_params()");
-
-	err = host_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "host_params(): pcm params verification failed.");
-		return err;
-	}
-
-	err = host_zephyr_params(hd, dev, params);
-	if (err >= 0)
-		/* set up callback */
-		notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
-
-	return err;
-}
-
 int host_zephyr_prepare(struct host_data *hd)
 {
 	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
 
 	buffer_zero(buf_c);
 	buffer_release(buf_c);
-
-	return 0;
-}
-
-static int host_prepare(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_dbg(dev, "host_prepare()");
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-
-	return host_zephyr_prepare(hd);
-}
-
-static int host_position(struct comp_dev *dev,
-			 struct sof_ipc_stream_posn *posn)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	/* TODO: improve accuracy by adding current DMA position */
-	posn->host_posn = hd->local_pos;
 
 	return 0;
 }
@@ -1027,119 +864,8 @@ void host_zephyr_reset(struct host_data *hd, uint16_t state)
 	hd->sink = NULL;
 }
 
-static int host_reset(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "host_reset()");
-	/* remove callback first for host reset */
-	if (hd->chan)
-		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
-
-	host_zephyr_reset(hd, dev->state);
-	dev->state = COMP_STATE_READY;
-
-	return 0;
-}
-
 /* copy and process stream data from source to sink buffers */
 int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev)
 {
 	return hd->copy(hd, dev);
 }
-
-/* copy and process stream data from source to sink buffers */
-static int host_copy(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	if (dev->state != COMP_STATE_ACTIVE)
-		return 0;
-
-	return host_zephyr_copy(hd, dev);
-}
-
-static int host_get_attribute(struct comp_dev *dev, uint32_t type,
-			      void *value)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_COPY_TYPE:
-		*(enum comp_copy_type *)value = hd->copy_type;
-		break;
-	case COMP_ATTR_COPY_DIR:
-		*(uint32_t *)value = hd->ipc_host.direction;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int host_set_attribute(struct comp_dev *dev, uint32_t type,
-			      void *value)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_COPY_TYPE:
-		hd->copy_type = *(enum comp_copy_type *)value;
-		break;
-	case COMP_ATTR_HOST_BUFFER:
-		hd->host.elem_array = *(struct dma_sg_elem_array *)value;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	uint64_t ret = 0;
-	bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
-
-	/* Return value only if direction and stream number match.
-	 * The host supports only one stream.
-	 */
-	if (stream_no == 0 && source == input)
-		ret = hd->total_data_processed;
-
-	return ret;
-}
-
-static const struct comp_driver comp_host = {
-	.type	= SOF_COMP_HOST,
-	.uid	= SOF_RT_UUID(host_uuid),
-	.tctx	= &host_tr,
-	.ops	= {
-		.create				= host_new,
-		.free				= host_free,
-		.params				= host_params,
-		.reset				= host_reset,
-		.trigger			= host_trigger,
-		.copy				= host_copy,
-		.prepare			= host_prepare,
-		.position			= host_position,
-		.get_attribute			= host_get_attribute,
-		.set_attribute			= host_set_attribute,
-		.get_total_data_processed	= host_get_processed_data,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_host_info = {
-	.drv = &comp_host,
-};
-
-UT_STATIC void sys_comp_host_init(void)
-{
-	comp_register(platform_shared_get(&comp_host_info,
-					  sizeof(comp_host_info)));
-}
-
-DECLARE_MODULE(sys_comp_host_init);
-SOF_MODULE_INIT(host, sys_comp_host_init);
