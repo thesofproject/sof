@@ -709,6 +709,9 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			goto out;
 		}
 
+		lli_desc->sar = sg_elem->src;
+		lli_desc->dar = sg_elem->dest;
+
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
 			tr_err(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d block size too big %d",
 			       channel->dma->plat_data.id,
