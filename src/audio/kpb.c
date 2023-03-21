@@ -77,8 +77,10 @@ struct comp_data {
 	struct task draining_task;
 	struct draining_data draining_task_data;
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct comp_buffer *sel_sink; /**< real time sink (channel selector)*/
-	struct comp_buffer *host_sink; /**< draining sink (client) */
+	/* Number of sinks depends on number of real time sink (channel selector)
+	 * and draining sinks (clients)
+	 */
+	struct comp_buffer *sinks[KPB_MAX_NO_OF_SINKS];
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
@@ -186,8 +188,10 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 	kpb->ipc4_cfg.base_cfg = ipc_config->base_cfg;
 
 	/* Initialize sinks */
-	kpb->sel_sink = NULL;
-	kpb->host_sink = NULL;
+	int sink_idx;
+
+	for (sink_idx = 0; sink_idx < KPB_MAX_NO_OF_SINKS; sink_idx++)
+		kpb->sinks[sink_idx] = NULL;
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling width not supported");
@@ -285,34 +289,36 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 	bu = (struct ipc4_module_bind_unbind *)data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
-	/* We're assuming here that KPB Real Time sink (kpb->sel_sink) is
+	/* We're assuming here that KPB Real Time sink (kpb->sinks[0]) is
 	 * always connected to input pin of Detector pipeline so during IPC4
 	 * Bind operation both src_queue and dst_queue will have id = 0
 	 * (Detector/MicSel has one input pin). To properly connect KPB sink
 	 * with Detector source we're looking for buffer with id=0.
 	 */
+	if (IPC4_MOD_ID(dev->ipc_config.id) == bu->primary.r.module_id)
+		list_for_item(blist, &dev->bsink_list) {
+			struct comp_buffer *sink = container_of(blist, struct comp_buffer,
+								source_list);
+			struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
+			int sink_buf_id;
 
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
-		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
-		int sink_buf_id;
+			if (!sink_c->sink) {
+				ret = -EINVAL;
+				buffer_release(sink_c);
+				break;
+			}
 
-		if (!sink_c->sink) {
-			ret = -EINVAL;
+			sink_buf_id = sink_c->id;
 			buffer_release(sink_c);
-			break;
-		}
 
-		sink_buf_id = sink_c->id;
-		buffer_release(sink_c);
-
-		if (sink_buf_id == buf_id) {
-			if (sink_buf_id == 0)
-				kpb->sel_sink = sink;
-			else
-				kpb->host_sink = sink;
+			if (sink_buf_id == buf_id) {
+				if (sink_buf_id == 0)
+					kpb->sinks[0] = sink;
+				else
+					if (bu->extension.r.src_queue < KPB_MAX_NO_OF_SINKS)
+						kpb->sinks[bu->extension.r.src_queue] = sink;
+			}
 		}
-	}
 
 	return ret;
 }
@@ -327,18 +333,15 @@ static int kpb_unbind(struct comp_dev *dev, void *data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
-	int buf_id;
 
 	comp_dbg(dev, "kpb_bind()");
 
 	bu = (struct ipc4_module_bind_unbind *)data;
-	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	/* Reset sinks when unbinding */
-	if (buf_id == 0)
-		kpb->sel_sink = NULL;
-	else
-		kpb->host_sink = NULL;
+	if (IPC4_MOD_ID(dev->ipc_config.id) == bu->primary.r.module_id)
+		if (bu->extension.r.src_queue < KPB_MAX_NO_OF_SINKS)
+			kpb->sinks[bu->extension.r.src_queue] = NULL;
 
 	return 0;
 }
@@ -361,8 +364,10 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 	assert(!ret);
 
 	/* Initialize sinks */
-	kpb->sel_sink = NULL;
-	kpb->host_sink = NULL;
+	int sink_idx;
+
+	for (sink_idx = 0; sink_idx < KPB_MAX_NO_OF_SINKS; sink_idx++)
+		kpb->sinks[sink_idx] = NULL;
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling width not supported");
@@ -782,7 +787,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	 * is connected to the KPB sinks as well as host device.
 	 */
 	struct list_item *blist;
-
+	int sink_idx = 1;
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
 		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
@@ -800,18 +805,19 @@ static int kpb_prepare(struct comp_dev *dev)
 		switch (type) {
 		case SOF_COMP_SELECTOR:
 			/* We found proper real time sink */
-			kpb->sel_sink = sink;
+			kpb->sinks[0] = sink;
 			break;
 		case SOF_COMP_HOST:
 			/* We found proper host sink */
-			kpb->host_sink = sink;
+			kpb->sinks[sink_idx] = sink;
+			sink_idx++;
 			break;
 		default:
 			break;
 		}
 	}
 #else
-	/* Update number of sel_sink channels.
+	/* Update number of sinks[0] channels.
 	 * If OBS is not equal to IBS it means that KPB will work in micselector mode.
 	 */
 	if (kpb->ipc4_cfg.base_cfg.ibs != kpb->ipc4_cfg.base_cfg.obs) {
@@ -839,9 +845,9 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-	if (!kpb->sel_sink) {
-		comp_err(dev, "kpb_prepare(): could not find sink: sel_sink %p",
-			 kpb->sel_sink);
+	if (!kpb->sinks[0]) {
+		comp_err(dev, "kpb_prepare(): could not find sink: sinks[0] %p",
+			 kpb->sinks[0]);
 		ret = -EIO;
 	}
 
@@ -895,8 +901,12 @@ static int kpb_reset(struct comp_dev *dev)
 		break;
 	default:
 		kpb->hd.buffered = 0;
-		kpb->sel_sink = NULL;
-		kpb->host_sink = NULL;
+		/* Reset sinks */
+		int sink_idx;
+
+		for (sink_idx = 0; sink_idx < KPB_MAX_NO_OF_SINKS; sink_idx++)
+			kpb->sinks[sink_idx] = NULL;
+
 		kpb->host_buffer_size = 0;
 		kpb->host_period_size = 0;
 
@@ -1101,13 +1111,14 @@ static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
+	struct comp_buffer *source, *sink = NULL;
 	struct comp_buffer __sparse_cache *source_c, *sink_c = NULL;
 	size_t copy_bytes = 0, produced_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
 	struct draining_data *dd = &kpb->draining_task_data;
 	uint32_t avail_bytes;
 	uint32_t channels = kpb->config.channels;
+	int sink_idx;
 
 	comp_dbg(dev, "kpb_copy()");
 
@@ -1132,7 +1143,7 @@ static int kpb_copy(struct comp_dev *dev)
 	switch (kpb->state) {
 	case KPB_STATE_RUN:
 		/* In normal RUN state we simply copy to our sink. */
-		sink = kpb->sel_sink;
+		sink = kpb->sinks[0];
 		ret = PPL_STATUS_PATH_STOP;
 
 		if (!sink) {
@@ -1213,7 +1224,12 @@ static int kpb_copy(struct comp_dev *dev)
 		break;
 	case KPB_STATE_HOST_COPY:
 		/* In host copy state we only copy to host buffer. */
-		sink = kpb->host_sink;
+		for (sink_idx = 1; sink_idx < KPB_MAX_NO_OF_SINKS; sink_idx++) {
+			if (dd->sink->id == kpb->sinks[sink_idx]->id) {
+				sink = kpb->sinks[sink_idx];
+				break;
+			}
+		}
 
 		if (!sink) {
 			comp_err(dev, "kpb_copy(): no sink.");
@@ -1418,6 +1434,48 @@ static int kpb_buffer_data(struct comp_dev *dev,
 }
 
 /**
+ * \brief Unregister clients in the system.
+ *
+ * \param[in] kpb - kpb device component pointer.
+ * \param[in] cli - pointer to KPB client's data.
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	-EINVAL - failure.
+ */
+static int kpb_unregister_client(struct comp_data *kpb, struct kpb_client *cli)
+{
+	int ret = 0;
+
+	comp_cl_info(&comp_kpb, "kpb_unregister_client()");
+
+	if (!cli) {
+		comp_cl_err(&comp_kpb, "kpb_unregister_client(): no client data");
+		return -EINVAL;
+	}
+	if (kpb->kpb_no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
+	    cli->id >= KPB_MAX_NO_OF_CLIENTS) {
+		comp_cl_err(&comp_kpb, "kpb_unregister_client(): no free room for client = %u ",
+			    cli->id);
+		ret = -EINVAL;
+	} else if (kpb->clients[cli->id].state != KPB_CLIENT_UNREGISTERED) {
+		comp_cl_err(&comp_kpb, "kpb_unregister_client(): client = %u already unregistered",
+			    cli->id);
+		ret = -EINVAL;
+	} else {
+		kpb->clients[cli->id].drain_req = 0;
+		kpb->clients[cli->id].sink = NULL;
+		kpb->clients[cli->id].r_ptr = NULL;
+		kpb->clients[cli->id].state = KPB_CLIENT_UNREGISTERED;
+		kpb->kpb_no_of_clients--;
+		ret = 0;
+		if ((cli->id + KPB_NO_OF_SELECTOR_SINK) < KPB_MAX_NO_OF_SINKS)
+			kpb->sinks[cli->id + KPB_NO_OF_SELECTOR_SINK] = NULL;
+	}
+
+	return ret;
+}
+/**
  * \brief Main event dispatcher.
  * \param[in] arg - KPB component internal data.
  * \param[in] type - notification type
@@ -1439,7 +1497,7 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 		kpb_register_client(kpb, cli);
 		break;
 	case KPB_EVENT_UNREGISTER_CLIENT:
-		/*TODO*/
+		kpb_unregister_client(kpb, cli);
 		break;
 	case KPB_EVENT_BEGIN_DRAINING:
 		kpb_init_draining(dev, cli);
@@ -1507,11 +1565,12 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
+	int sink_idx = cli->id + KPB_NO_OF_SELECTOR_SINK;
+	bool is_sink_ready = (kpb->sinks[sink_idx]->sink->state == COMP_STATE_ACTIVE);
 	struct history_buffer *buff = kpb->hd.c_hb;
 	struct history_buffer *first_buff = buff;
 	size_t buffered = 0;
@@ -1626,7 +1685,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		comp_info(dev, "kpb_init_draining(), schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
-		kpb->draining_task_data.sink = kpb->host_sink;
+		kpb->draining_task_data.sink = kpb->sinks[sink_idx];
 		kpb->draining_task_data.hb = buff;
 		kpb->draining_task_data.drain_req = drain_req;
 		kpb->draining_task_data.sample_width = sample_width;
@@ -1636,15 +1695,15 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
 
 		/* save current sink copy type */
-		comp_get_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
+		comp_get_attribute(kpb->sinks[sink_idx]->sink, COMP_ATTR_COPY_TYPE,
 				   &kpb->draining_task_data.copy_type);
 
 		if (kpb->force_copy_type != COMP_COPY_INVALID)
-			comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
+			comp_set_attribute(kpb->sinks[sink_idx]->sink, COMP_ATTR_COPY_TYPE,
 					   &kpb->force_copy_type);
 
 		/* Pause selector copy. */
-		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
+		kpb->sinks[0]->sink->state = COMP_STATE_PAUSED;
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0);
@@ -1684,6 +1743,7 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
 	bool pm_is_active;
+	int sink_idx;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1795,7 +1855,12 @@ out:
 	buffer_release(sink);
 
 	/* Reset host-sink copy mode back to its pre-draining value */
-	sink = buffer_acquire(kpb->host_sink);
+	for (sink_idx = 1; sink_idx < KPB_MAX_NO_OF_SINKS; sink_idx++) {
+		if (draining_data->sink->id == kpb->sinks[sink_idx]->id) {
+			sink = buffer_acquire(kpb->sinks[sink_idx]);
+			break;
+		}
+	}
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE,
 			   &kpb->draining_task_data.copy_type);
 	buffer_release(sink);
