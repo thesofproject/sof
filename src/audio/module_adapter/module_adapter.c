@@ -20,6 +20,7 @@
 #include <sof/ut.h>
 #include <limits.h>
 #include <stdint.h>
+#include <ipc4/module.h>
 
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -644,6 +645,9 @@ module_single_sink_setup(struct comp_dev *dev,
 		 */
 		mod->input_buffers[i].size = c.frames;
 		mod->input_buffers[i].consumed = 0;
+#if CONFIG_IPC_MAJOR_4
+		mod->input_buffers[i].queue_id = IPC4_SINK_QUEUE_ID(source_c[i]->id);
+#endif
 
 		mod->input_buffers[i].data = &source_c[i]->stream;
 		i++;
@@ -653,6 +657,9 @@ module_single_sink_setup(struct comp_dev *dev,
 
 	mod->output_buffers[0].size = 0;
 	mod->output_buffers[0].data = &sinks_c[0]->stream;
+#if CONFIG_IPC_MAJOR_4
+	mod->output_buffers[0].queue_id = IPC4_SRC_QUEUE_ID(sinks_c[0]->id);
+#endif
 
 	return num_input_buffers;
 }
@@ -682,6 +689,9 @@ module_single_source_setup(struct comp_dev *dev,
 
 			mod->output_buffers[i].size = 0;
 			mod->output_buffers[i].data = &sinks_c[i]->stream;
+#if CONFIG_IPC_MAJOR_4
+			mod->output_buffers[i].queue_id = IPC4_SRC_QUEUE_ID(source_c[i]->id);
+#endif
 			i++;
 		}
 	}
@@ -695,6 +705,9 @@ module_single_source_setup(struct comp_dev *dev,
 	mod->input_buffers[0].size = min_frames;
 	mod->input_buffers[0].consumed = 0;
 	mod->input_buffers[0].data = &source_c[0]->stream;
+#if CONFIG_IPC_MAJOR_4
+	mod->input_buffers[0].queue_id = IPC4_SINK_QUEUE_ID(source_c[0]->id);
+#endif
 
 	return num_output_buffers;
 }

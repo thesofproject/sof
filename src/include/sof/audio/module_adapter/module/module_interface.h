@@ -51,6 +51,7 @@ struct input_stream_buffer {
 	void __sparse_cache *data; /* data stream buffer */
 	uint32_t size; /* size of data in the buffer */
 	uint32_t consumed; /* number of bytes consumed by the module */
+	uint32_t queue_id; /* The queue ID for the stream buffer */
 
 	/* Indicates end of stream condition has occurred on the input stream */
 	bool end_of_stream;
@@ -63,6 +64,7 @@ struct input_stream_buffer {
 struct output_stream_buffer {
 	void __sparse_cache *data; /* data stream buffer */
 	uint32_t size; /* size of data in the buffer */
+	uint32_t queue_id; /* The queue ID for the stream buffer */
 };
 
 struct processing_module;
