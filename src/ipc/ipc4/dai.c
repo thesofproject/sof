@@ -61,9 +61,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	return channel;
 }
 
-int ipc_dai_data_config(struct comp_dev *dev)
+int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev, uint32_t *frame_fmt)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
 	struct dai *dai_p = dd->dai;
@@ -110,12 +109,12 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		*frame_fmt = SOF_IPC_FRAME_S32_LE;
 
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 
 		comp_dbg(dev, "dai_data_config() SOF_DAI_INTEL_ALH dev->ipc_config.frame_fmt: %d, stream_id: %d",
-			 dev->ipc_config.frame_fmt, dd->stream_id);
+			 *frame_fmt, dd->stream_id);
 
 		break;
 	default:

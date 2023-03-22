@@ -45,6 +45,28 @@ void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev);
  * \brief dai zephyr reset
  */
 int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
+
+/**
+ * \brief dai playback params
+ */
+int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			uint32_t period_count);
+
+/**
+ * \brief dai capture params
+ */
+int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+		       uint32_t period_count);
+
+/**
+ * \brief dai zephyr params
+ */
+int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params,
+		      uint32_t *period_count,
+		      uint32_t *period_bytes,
+		      struct list_item *bsource_list,
+		      struct list_item *bsink_list);
 #else
 /**
  * \brief dai new through dai_data
@@ -85,6 +107,37 @@ static inline void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev) {
  * \brief dai zephyr reset
  */
 static inline int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+{
+	return 0;
+}
+
+/**
+ * \brief dai playback params
+ */
+static inline int dai_playback_params(struct dai_data *dd, struct comp_dev *dev,
+				      uint32_t period_bytes, uint32_t period_count)
+{
+	return 0;
+}
+
+/**
+ * \brief dai capture params
+ */
+static inline int dai_capture_params(struct dai_data *dd, struct comp_dev *dev,
+				     uint32_t period_bytes, uint32_t period_count)
+{
+	return 0;
+}
+
+/**
+ * \brief dai zephyr params
+ */
+static inline int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params,
+				    uint32_t *period_count,
+				    uint32_t *period_bytes,
+				    struct list_item *bsource_list,
+				    struct list_item *bsink_list)
 {
 	return 0;
 }

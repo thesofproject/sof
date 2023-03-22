@@ -418,46 +418,10 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	return ret;
 }
 
-static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
-{
-	struct sof_ipc_stream_params hw_params;
-	int ret;
-
-	ret = dai_comp_get_hw_params(dev, &hw_params, params->direction);
-	if (ret < 0) {
-		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
-		return ret;
-	}
-
-	/* checks whether pcm parameters match hardware DAI parameter set
-	 * during dai_set_config(). If hardware parameter is equal to 0, it
-	 * means that it can vary, so any value is acceptable. We do not check
-	 * format parameter, because DAI is able to change format using
-	 * pcm_converter functions.
-	 */
-	if (hw_params.rate && hw_params.rate != params->rate) {
-		comp_err(dev, "dai_verify_params(): pcm rate parameter %d does not match hardware rate %d",
-			 params->rate, hw_params.rate);
-		return -EINVAL;
-	}
-
-	if (hw_params.channels && hw_params.channels != params->channels) {
-		comp_err(dev, "dai_verify_params(): pcm channels parameter %d does not match hardware channels %d",
-			 params->channels, hw_params.channels);
-		return -EINVAL;
-	}
-
-	/* set component period frames */
-	component_set_nearest_period_frames(dev, params->rate);
-
-	return 0;
-}
-
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
-			       uint32_t period_count)
+int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			uint32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -592,10 +556,9 @@ out:
 	return err;
 }
 
-static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
-			      uint32_t period_count)
+int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+		       uint32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -747,10 +710,14 @@ out:
 	return err;
 }
 
-static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params,
+		      uint32_t *count,
+		      uint32_t *bytes,
+		      struct list_item *bsource_list,
+		      struct list_item *bsink_list)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -760,32 +727,26 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
-
 	/* configure dai_data first */
-	err = ipc_dai_data_config(dev);
+	err = ipc_dai_data_config(dd, dev, &dev->ipc_config.frame_fmt);
 	if (err < 0)
 		return err;
 
-	err = dai_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "dai_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
+	component_set_nearest_period_frames(dev, params->rate);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
+		dd->local_buffer = list_first_item(bsource_list,
 						   struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
+		dd->local_buffer = list_first_item(bsink_list,
 						   struct comp_buffer,
 						   source_list);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
 		comp_info(dev, "dai_params() component has been already configured.");
-		return 0;
+		return -EINVAL;
 	}
 
 	/* can set params on only init state */
@@ -870,9 +831,28 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		buffer_release(buffer_c);
 	}
 
+	*count = period_count;
+	*bytes = period_bytes;
+	return 0;
+}
+
+static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t period_count = 0;
+	uint32_t period_bytes = 0;
+	int ret;
+
+	comp_dbg(dev, "dai_params()");
+
+	ret = dai_zephyr_params(dd, dev, params, &period_count, &period_bytes,
+				&dev->bsource_list, &dev->bsink_list);
+	if (ret < 0)
+		return ret;
+
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-		dai_playback_params(dev, period_bytes, period_count) :
-		dai_capture_params(dev, period_bytes, period_count);
+		dai_playback_params(dd, dev, period_bytes, period_count) :
+		dai_capture_params(dd, dev, period_bytes, period_count);
 }
 
 int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)

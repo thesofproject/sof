@@ -145,7 +145,8 @@ void ipc_send_buffer_status_notify(void);
  * \brief Configure DAI.
  * @return 0 on success.
  */
-int ipc_dai_data_config(struct comp_dev *dev);
+struct dai_data;
+int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev, uint32_t *frame_fmt);
 
 /**
  * \brief create a IPC boot complete message.
