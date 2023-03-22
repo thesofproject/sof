@@ -1,5 +1,14 @@
 ---
 
+name: IPC fuzzing
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+
 # For the actual fuzzer see tools/oss-fuzz/README.
 # also see
 # https://google.github.io/oss-fuzz/getting-started/continuous-integration/
@@ -16,15 +25,6 @@
 #
 #   OUT=unused_dir  cmake -B oss-fuzz-build/ -S tools/oss-fuzz/
 #   make -j -C oss-fuzz-build sof_ep fuzz_ipc.o
-
-name: IPC fuzzer compile test
-
-# 'workflow_dispatch' allows running this workflow manually from the
-# 'Actions' tab
-
-# yamllint disable-line rule:truthy
-on: [pull_request, workflow_dispatch]
-
 jobs:
   ipc-fuzzer-build:
     runs-on: ubuntu-latest
@@ -40,3 +40,42 @@ jobs:
           oss-fuzz-project-name: 'sound-open-firmware'
           language: c
           fuzz-seconds: 5
+
+
+  # TODO, to add IPC4 support fix compilation of:
+  #
+  #    ./scripts/fuzz.sh -t 1 -- -DCONFIG_IPC_MAJOR_4=y
+  #
+  # ... or of some other _IPC4_ -DOVERLAY_CONFIG=
+  #
+  # Then use a simple IPC3/IPC4 matrix like the one in zephyr.yml
+  simple-IPC3-fuzz_sh:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: add i386 arch
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+
+      - name: apt-get install
+        run: sudo apt-get update && sudo apt-get -y install
+          clang llvm libc6-dev-i386 libstdc++-12-dev:i386
+          ninja-build device-tree-compiler python3-pyelftools
+
+      - uses: actions/checkout@v3
+        with:
+          path: ./workspace/sof
+
+      - name: west update
+        run: |
+          cd workspace/sof
+          pip3 install west
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: build and run fuzzer for a few minutes
+        run: |
+          cd workspace
+          clang --verbose
+          set -x
+          sof/scripts/fuzz.sh -o _.log -t 300
