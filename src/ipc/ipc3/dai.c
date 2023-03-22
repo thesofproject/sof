@@ -94,9 +94,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	return channel;
 }
 
-int ipc_dai_data_config(struct comp_dev *dev)
+int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev, uint32_t *frame_fmt)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct sof_ipc_dai_config *config = ipc_from_dai_config(dd->dai_spec_config);
 	struct comp_buffer __sparse_cache *buffer_c;
@@ -140,10 +139,10 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		*frame_fmt = SOF_IPC_FRAME_S32_LE;
 		if (dd->dma_buffer) {
 			buffer_c = buffer_acquire(dd->dma_buffer);
-			buffer_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
+			buffer_c->stream.frame_fmt = *frame_fmt;
 			buffer_release(buffer_c);
 		}
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
@@ -158,23 +157,23 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;
 	case SOF_DAI_AMD_BT:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		*frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_AMD_SP:
 	case SOF_DAI_AMD_SP_VIRTUAL:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		*frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_AMD_DMIC:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		*frame_fmt = SOF_IPC_FRAME_S32_LE;
 		if (dd->dma_buffer) {
 			buffer_c = buffer_acquire(dd->dma_buffer);
-			buffer_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
+			buffer_c->stream.frame_fmt = *frame_fmt;
 			buffer_release(buffer_c);
 		}
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		*frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		break;
