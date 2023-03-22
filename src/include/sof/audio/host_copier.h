@@ -21,9 +21,11 @@
 #include <ipc/stream.h>
 #include <sof/lib/notifier.h>
 
+typedef void (*copy_callback_t)(struct comp_dev *dev, size_t bytes);
+
 struct host_data;
 /** \brief Host copy function interface. */
-typedef int (*host_copy_func)(struct host_data *hd, struct comp_dev *dev);
+typedef int (*host_copy_func)(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb);
 
 /**
  * \brief Host buffer info.
@@ -51,6 +53,8 @@ struct host_data {
 #ifdef __ZEPHYR__
 	struct dma_config z_config;
 #endif
+	struct comp_dev *cb_dev;
+
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
 
@@ -100,8 +104,8 @@ int host_zephyr_prepare(struct host_data *hd);
 void host_zephyr_reset(struct host_data *hd, uint16_t state);
 int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd);
 int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params);
-int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev);
+		       struct sof_ipc_stream_params *params, notifier_callback_t cb);
+int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb);
 void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes);
 void host_one_shot_cb(struct host_data *hd, uint32_t bytes);
 
