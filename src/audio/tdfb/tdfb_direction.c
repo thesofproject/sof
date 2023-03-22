@@ -42,6 +42,11 @@
 /* Threshold for notifying user space, no more often than every 200 ms */
 #define CONTROL_UPDATE_MIN_TIME	Q_CONVERT_FLOAT(0.2, 16)
 
+/* Another filter, a bit mask for controlling notifications to user space, at least four
+ * periods with level over ambient
+ */
+#define CONTROL_UPDATE_MIN_MASK		0x0f
+
 /* Emphasis filters for sound direction (IIR). These coefficients were
  * created with the script tools/tune/tdfb/example_direction_emphasis.m
  * from output files tdfb_iir_emphasis_48k.h and tdfb_iir_emphasis_16k.h.
@@ -556,7 +561,7 @@ void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int ch_count
 	 * to update user space.
 	 */
 	if (new_az_value != cd->az_value_estimate && time_since > CONTROL_UPDATE_MIN_TIME &&
-	    (cd->direction.trigger & 0x15) == 0x15) {
+	    (cd->direction.trigger & CONTROL_UPDATE_MIN_MASK) == CONTROL_UPDATE_MIN_MASK) {
 		cd->az_value_estimate = new_az_value;
 		cd->direction.frame_count_since_control = 0;
 		cd->direction_change = true;
