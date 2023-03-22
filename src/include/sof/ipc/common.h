@@ -16,9 +16,11 @@
 #include <rtos/spinlock.h>
 #include <rtos/sof.h>
 #include <user/trace.h>
+#include <ipc/header.h>
+#include <ipc/stream.h>
+
 #include <stdbool.h>
 #include <stdint.h>
-#include <ipc/header.h>
 
 struct dma_sg_elem_array;
 struct ipc_msg;
