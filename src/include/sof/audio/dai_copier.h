@@ -29,4 +29,7 @@ int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
 
 int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn);
+
+int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
