@@ -23,14 +23,11 @@ set -e
 # duplicate configurations as needed.  Alternatively you can pass
 # overlay files in kconfig syntax via -DOVERLAY_CONFIG=..., etc...
 
-export SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
-
-export ZEPHYR_BASE=$SOF_TOP/../zephyr
-export ZEPHYR_TOOLCHAIN_VARIANT=llvm
-
 main()
 {
-  west build -p -b native_posix $SOF_TOP/app/ -- \
+  setup
+
+  west build -p -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
     -DCONFIG_ASSERT=y \
     -DCONFIG_SYS_HEAP_BIG_ONLY=y \
     -DCONFIG_ZEPHYR_NATIVE_DRIVERS=y \
@@ -39,7 +36,24 @@ main()
     -DCONFIG_ASAN=y "$@"
 
   mkdir -p ./fuzz_corpus
-  build/zephyr/zephyr.exe ./fuzz_corpus
+  build-fuzz/zephyr/zephyr.exe ./fuzz_corpus
+}
+
+
+setup()
+{
+    SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
+    export SOF_TOP
+
+    export ZEPHYR_TOOLCHAIN_VARIANT=llvm
+
+    # ZEPHYR_BASE. Does not seem required.
+    local WS_TOP
+    WS_TOP=$(cd "$SOF_TOP"; west topdir)
+    # The manifest itself is not a west project
+    ZEP_DIR=$(2>/dev/null west list -f '{path}' zephyr || echo 'zephyr')
+    export ZEPHYR_BASE="$WS_TOP/$ZEP_DIR"
+
 }
 
 main "$@"
