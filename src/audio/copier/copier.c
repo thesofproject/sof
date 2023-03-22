@@ -19,7 +19,6 @@
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/string.h>
@@ -935,12 +934,8 @@ static int copier_reset(struct comp_dev *dev)
 	cd->input_total_data_processed = 0;
 	cd->output_total_data_processed = 0;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		if (cd->hd->chan)
-			notifier_unregister(dev,
-					    cd->hd->chan, NOTIFIER_ID_DMA_COPY);
+	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 		host_zephyr_reset(cd->hd, dev->state);
-	}
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
@@ -1195,9 +1190,12 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 	return 0;
 }
 
+static void copier_dma_cb(struct comp_dev *dev, size_t bytes);
+
 static int do_endpoint_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+
 	if (cd->multi_endpoint_buffer) {
 		int i;
 		int ret = 0;
@@ -1222,7 +1220,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		return ret;
 	} else {
 		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-			return host_zephyr_copy(cd->hd, dev);
+			return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
 
 		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
 	}
@@ -1392,13 +1390,10 @@ static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
-static void copier_dma_cb(void *arg, enum notify_id type, void *data)
+static void copier_dma_cb(struct comp_dev *dev, size_t bytes)
 {
-	struct dma_cb_data *next = data;
-	struct comp_dev *dev = arg;
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *sink;
-	uint32_t bytes = next->elem.size;
 	int ret, frames;
 
 	comp_dbg(dev, "copier_dma_cb() %p", dev);
@@ -1427,6 +1422,14 @@ static void copier_dma_cb(void *arg, enum notify_id type, void *data)
 		buffer_stream_writeback(sink, bytes);
 		buffer_release(sink);
 	}
+}
+
+static void copier_notifier_cb(void *arg, enum notify_id type, void *data)
+{
+	struct dma_cb_data *next = data;
+	uint32_t bytes = next->elem.size;
+
+	copier_dma_cb(arg, bytes);
 }
 
 /* configure the DMA params */
@@ -1512,11 +1515,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 						cd->out_fmt->valid_bit_depth / 8;
 				}
 
-				ret = host_zephyr_params(cd->hd, dev, params);
-				if (ret >= 0)
-					/* set up callback */
-					notifier_register(dev, cd->hd->chan,
-							  NOTIFIER_ID_DMA_COPY, copier_dma_cb, 0);
+				ret = host_zephyr_params(cd->hd, dev, params, copier_notifier_cb);
 
 				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 			} else {
