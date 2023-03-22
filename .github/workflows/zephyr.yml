@@ -37,7 +37,7 @@ jobs:
           pip3 install west
           cd workspace/sof/
           west init -l
-          west update
+          west update --fetch-opt=--filter=tree:0
 
   build-linux:
     runs-on: ubuntu-20.04
