@@ -39,6 +39,25 @@ jobs:
           west init -l
           west update --fetch-opt=--filter=tree:0
 
+      # Temporary check until we change west.yml and stop nesting rimage
+      # and tomlc99 inside sof which will cleanly separate them from
+      # XTOS submodules and... temporarily break every CI, which is why
+      # it hasn't been done yet.
+      - name: git submodules consistency
+        run: |
+
+          cd workspace/sof
+          git submodule update --init --recursive
+
+          west update
+          if git status --porcelain=v2 | grep ^ ; then
+             git status
+             echo 'FAIL: inconsistency between git submodules and west.yml!'
+             echo 'See rimage comment in west.yml.'
+             echo 'Always use "git status"'
+             exit 1
+          fi
+
   build-linux:
     runs-on: ubuntu-20.04
     strategy:
