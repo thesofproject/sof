@@ -480,8 +480,8 @@ out:
 	return err;
 }
 
-static int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
-			     struct sof_ipc_stream_params *params)
+int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	struct comp_buffer __sparse_cache *buffer_c;
