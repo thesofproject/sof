@@ -477,7 +477,7 @@ static int dai_params(struct comp_dev *dev,
 	comp_dbg(dev, "dai_params()");
 
 	/* configure dai_data first */
-	err = ipc_dai_data_config(dev);
+	err = ipc_dai_data_config(dd, dev, &dev->ipc_config.frame_fmt);
 	if (err < 0)
 		return err;
 

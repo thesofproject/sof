@@ -452,10 +452,9 @@ static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params 
 }
 
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
-			       uint32_t period_count)
+static int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			       int32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -590,10 +589,9 @@ out:
 	return err;
 }
 
-static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
+static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
 			      uint32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -745,10 +743,12 @@ out:
 	return err;
 }
 
-static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params,
+		      struct list_item *bsource_list,
+		      struct list_item *bsink_list)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -758,10 +758,8 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
-
 	/* configure dai_data first */
-	err = ipc_dai_data_config(dev);
+	err = ipc_dai_data_config(dd, dev, &dev->ipc_config.frame_fmt);
 	if (err < 0)
 		return err;
 
@@ -772,11 +770,11 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
+		dd->local_buffer = list_first_item(bsource_list,
 						   struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
+		dd->local_buffer = list_first_item(bsink_list,
 						   struct comp_buffer,
 						   source_list);
 
@@ -869,8 +867,17 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	}
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-		dai_playback_params(dev, period_bytes, period_count) :
-		dai_capture_params(dev, period_bytes, period_count);
+		dai_playback_params(dd, dev, period_bytes, period_count) :
+		dai_capture_params(dd, dev, period_bytes, period_count);
+}
+
+static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_params()");
+
+	return dai_zephyr_params(dd, dev, params, &dev->bsource_list, &dev->bsink_list);
 }
 
 int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)

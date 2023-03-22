@@ -1617,8 +1617,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
-	int ret = 0;
-	int i;
+	int i, ret = 0;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -1684,21 +1683,42 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 							       &demuxed_params);
 		} else {
-			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-				component_set_nearest_period_frames(dev, params->rate);
-				if (params->direction == SOF_IPC_STREAM_CAPTURE) {
-					params->buffer.size = cd->config.base.obs;
-					params->sample_container_bytes = cd->out_fmt->depth / 8;
-					params->sample_valid_bytes =
-						cd->out_fmt->valid_bit_depth / 8;
+			switch (dev->ipc_config.type) {
+			case SOF_COMP_HOST:
+				if (!cd->ipc_gtw) {
+					component_set_nearest_period_frames(dev, params->rate);
+					if (params->direction == SOF_IPC_STREAM_CAPTURE) {
+						params->buffer.size = cd->config.base.obs;
+						params->sample_container_bytes =
+							cd->out_fmt->depth / 8;
+						params->sample_valid_bytes =
+							cd->out_fmt->valid_bit_depth / 8;
+					}
+
+					ret = host_zephyr_params(cd->hd, dev, params,
+								 copier_notifier_cb);
+
+					cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
+				} else {
+					/* handle gtw case */
+					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
+									       params);
 				}
-
-				ret = host_zephyr_params(cd->hd, dev, params, copier_notifier_cb);
-
-				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
-			} else {
-				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
-								       params);
+				break;
+			case SOF_COMP_DAI:
+				if (cd->endpoint_num == 1) {
+					ret = dai_zephyr_params(cd->dd[0], cd->endpoint[0], params,
+								&cd->endpoint[0]->bsource_list,
+								&cd->endpoint[0]->bsink_list);
+					if (ret < 0)
+						return ret;
+				} else {
+					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
+									       params);
+				}
+				break;
+			default:
+				break;
 			}
 		}
 		if (ret < 0)
