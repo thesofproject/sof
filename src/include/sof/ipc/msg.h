@@ -21,6 +21,8 @@
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/common.h>
+#include <ipc/trace.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 
