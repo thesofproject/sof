@@ -441,6 +441,11 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t copy_bytes;
+	const unsigned int threshold =
+#if CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE
+		CONFIG_HOST_DMA_RELOAD_THRESHOLD +
+#endif
+		0;
 	int ret = 0;
 
 	comp_dbg(dev, "host_copy_normal()");
@@ -459,8 +464,15 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 	hd->partial_size += copy_bytes;
 	buffer_c = buffer_acquire(hd->dma_buffer);
 
-	/* Reload DMA when half of the buffer has been used */
-	if (hd->partial_size >= buffer_c->stream.size >> 1) {
+	/*
+	 * On large buffers we don't need to reload DMA on every period. When
+	 * CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE is selected on buffers, larger
+	 * than 8 periods, only do that when the threshold is reached, while
+	 * also adding a 2ms safety margin.
+	 */
+	if (!IS_ENABLED(CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE) ||
+	    buffer_c->stream.size < hd->period_bytes << 3 ||
+	    buffer_c->stream.size - hd->partial_size <= (2 + threshold) * hd->period_bytes) {
 		ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, hd->partial_size);
 		if (ret < 0)
 			comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
