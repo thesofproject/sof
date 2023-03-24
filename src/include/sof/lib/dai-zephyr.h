@@ -286,7 +286,7 @@ int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
 /**
  * \brief update dai dma position for host driver.
  */
-void dai_dma_position_update(struct comp_dev *dev);
+void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev);
 
 /**
  * \brief release llp slot
