@@ -45,6 +45,8 @@ boot_module
 tap-driver.sh
 test-driver
 *.trs
+tools/test/audio/reports/*
+tools/test/audio/zeros_in.raw
 
 __pycache__
 .checkpatch-camelcase.git.*
