@@ -161,20 +161,4 @@ const struct dai_driver acp_spdai_driver = {
 	},
 };
 
-const struct dai_driver acp_sp_virtual_dai_driver = {
-	.type = SOF_DAI_AMD_SP_VIRTUAL,
-	.uid = SOF_UUID(spdai_uuid),
-	.tctx = &spdai_tr,
-	.dma_dev = DMA_DEV_SP_VIRTUAL,
-	.dma_caps = DMA_CAP_SP_VIRTUAL,
-	.ops = {
-		.trigger		= spdai_trigger,
-		.set_config		= spdai_set_config,
-		.probe			= spdai_probe,
-		.remove			= spdai_remove,
-		.get_fifo		= spdai_get_fifo,
-		.get_handshake		= spdai_get_handshake,
-		.get_hw_params          = spdai_get_hw_params,
-	},
-};
 

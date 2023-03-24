@@ -421,19 +421,3 @@ const struct dma_ops acp_dai_sp_dma_ops = {
 	.get_attribute		= acp_dai_sp_dma_get_attribute,
 };
 
-const struct dma_ops acp_dai_sp_virtual_dma_ops = {
-	.channel_get		= acp_dai_sp_dma_channel_get,
-	.channel_put		= acp_dai_sp_dma_channel_put,
-	.start			= acp_dai_sp_dma_start,
-	.stop			= acp_dai_sp_dma_stop,
-	.pause			= acp_dai_sp_dma_pause,
-	.release		= acp_dai_sp_dma_release,
-	.copy			= acp_dai_sp_dma_copy,
-	.status			= acp_dai_sp_dma_status,
-	.set_config		= acp_dai_sp_dma_set_config,
-	.interrupt		= acp_dai_sp_dma_interrupt,
-	.probe			= acp_dai_sp_dma_probe,
-	.remove			= acp_dai_sp_dma_remove,
-	.get_data_size		= acp_dai_sp_dma_get_data_size,
-	.get_attribute		= acp_dai_sp_dma_get_attribute,
-};
