@@ -53,9 +53,6 @@ static struct dai hsdai[] = {
 		},
 		.drv = &acp_hsdai_driver,
 	},
-};
-
-static struct dai hs_virtual_dai[] = {
 	{
 		.index = 1,
 		.plat_data = {
@@ -71,7 +68,7 @@ static struct dai hs_virtual_dai[] = {
 			.handshake      = 0,
 			},
 		},
-		.drv = &acp_hs_virtual_dai_driver,
+		.drv = &acp_hsdai_driver,
 	}
 };
 
@@ -149,11 +146,6 @@ const struct dai_type_info dti[] = {
 		.dai_array	= hsdai,
 		.num_dais	= ARRAY_SIZE(hsdai)
 	},
-	{
-		.type		= SOF_DAI_AMD_HS_VIRTUAL,
-		.dai_array	= hs_virtual_dai,
-		.num_dais	= ARRAY_SIZE(hs_virtual_dai)
-	},
 #ifdef ACP_SP_ENABLE
 	{
 		.type		= SOF_DAI_AMD_SP,
@@ -189,8 +181,6 @@ int dai_init(struct sof *sof)
 		k_spinlock_init(&acp_dmic_dai[i].lock);
 	for (i = 0; i < ARRAY_SIZE(hsdai); i++)
 		k_spinlock_init(&hsdai[i].lock);
-	for (i = 0; i < ARRAY_SIZE(hs_virtual_dai); i++)
-		k_spinlock_init(&hs_virtual_dai[i].lock);
 #ifdef ACP_SP_ENABLE
 	for (i = 0; i < ARRAY_SIZE(spdai); i++)
 		k_spinlock_init(&spdai[i].lock);
