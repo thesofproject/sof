@@ -28,7 +28,7 @@ define(PIPE_NAME, pipe-acp-mux)
 VIRTUAL_WIDGET(ACPHS0 OUT, output, 0)
 VIRTUAL_WIDGET(ACPHS0 IN, input, 1)
 VIRTUAL_WIDGET(DMIC0 Capture, input, 2)
-VIRTUAL_WIDGET(ACPHS_VIRTUAL1 OUT, output, 3)
+VIRTUAL_WIDGET(ACPHS1 OUT, output, 3)
 #
 # Define the pipelines
 #
@@ -84,16 +84,16 @@ PIPELINE_PCM_ADD(sof/pipe-host-playback.m4,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 #/**********************************************************************************/
-DAI_ADD(sof/pipe-dai-playback.m4,
-	9, ACPHS_VIRTUAL, 1, acp-amp-codec,
+DAI_ADD(sof/pipe-echo-ref-dai-playback.m4,
+	9, ACPHS, 1, acp-amp-codec,
 	PIPELINE_SOURCE_1, 2, s16le,
 	2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
-DAI_CONFIG(ACPHS_VIRTUAL, 1, 1, acp-amp-codec,
-	   ACPHS_VIRTUAL_CONFIG(DSP_A, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
+DAI_CONFIG(ACPHS, 1, 1, acp-amp-codec,
+	   ACPHS_CONFIG(DSP_A, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
                 ACP_CLOCK(bclk, 3072000, codec_slave),
                 ACP_CLOCK(fsync, 48000, codec_slave),
-                ACP_TDM(8, 32, 3, 3),ACPHS_VIRTUAL_CONFIG_DATA(ACPHS_VIRTUAL, 1, 48000, 8, 1)))
+                ACP_TDM(8, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 1, 48000, 8, 1)))
 #/**********************************************************************************/
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s16le.
 # 10ms deadline with priority 0 on core 0

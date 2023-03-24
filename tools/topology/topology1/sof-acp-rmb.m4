@@ -41,14 +41,14 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
         48000, 48000, 48000)
 
 # playback DAI is ACPSP using 2 periods
-DAI_ADD(sof/pipe-dai-playback.m4, 2, ACPHS_VIRTUAL, 1, acp-amp-codec,
+DAI_ADD(sof/pipe-dai-playback.m4, 2, ACPHS, 1, acp-amp-codec,
 PIPELINE_SOURCE_2, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
-DAI_CONFIG(ACPHS_VIRTUAL, 1, 1, acp-amp-codec,
-	   ACPHS_VIRTUAL_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
+DAI_CONFIG(ACPHS, 1, 1, acp-amp-codec,
+	   ACPHS_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
                 ACP_CLOCK(bclk, 3072000, codec_slave),
                 ACP_CLOCK(fsync, 48000, codec_slave),
-                ACP_TDM(2, 32, 3, 3),ACPHS_VIRTUAL_CONFIG_DATA(ACPHS_VIRTUAL, 1, 48000, 2, 0)))
+                ACP_TDM(2, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 1, 48000, 2, 0)))
 
 
 # Capture pipeline 2 on PCM 0 using max 2 channels of s16le.
