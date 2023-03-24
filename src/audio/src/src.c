@@ -628,8 +628,8 @@ static int src_verify_params(struct comp_dev *dev, struct comp_data *cd,
 }
 
 static int src_get_copy_limits(struct comp_data *cd,
-			       const struct comp_buffer __sparse_cache *source,
-			       const struct comp_buffer __sparse_cache *sink)
+			       const struct audio_stream __sparse_cache *source,
+			       const struct audio_stream __sparse_cache *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
@@ -647,20 +647,20 @@ static int src_get_copy_limits(struct comp_data *cd,
 	 */
 	if (s2->filter_length > 1) {
 		/* Two polyphase filters case */
-		frames_snk = audio_stream_get_free_frames(&sink->stream);
+		frames_snk = audio_stream_get_free_frames(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
-		frames_src = audio_stream_get_avail_frames(&source->stream);
+		frames_src = audio_stream_get_avail_frames(source);
 		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
 	} else {
 		/* Single polyphase filter case */
-		frames_snk = audio_stream_get_free_frames(&sink->stream);
+		frames_snk = audio_stream_get_free_frames(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
-		frames_src = audio_stream_get_avail_frames(&source->stream);
+		frames_src = audio_stream_get_avail_frames(source);
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
 		sp->blk_in = sp->stage1_times * s1->blk_in;
@@ -965,8 +965,8 @@ static int src_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct audio_stream __sparse_cache *source_c, *sink_c;
+
 	int consumed = 0;
 	int produced = 0;
 	int ret;
@@ -974,28 +974,19 @@ static int src_process(struct processing_module *mod,
 	comp_dbg(dev, "src_process()");
 
 	/* src component needs 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
+	source_c = (struct audio_stream *)input_buffers[0].data;
+	sink_c = (struct audio_stream *)output_buffers[0].data;
 
 	ret = src_get_copy_limits(cd, source_c, sink_c);
 	if (ret) {
 		comp_dbg(dev, "No data to process.");
-		goto out;
+		return 0;
 	}
 
-	cd->src_func(dev, cd, &source_c->stream, &sink_c->stream, &consumed, &produced);
+	cd->src_func(dev, cd, source_c, sink_c, &consumed, &produced);
 	src_update_buffer_position(input_buffers, output_buffers, &consumed, &produced);
 
 	comp_dbg(dev, "src_process(), consumed = %u,  produced = %u", consumed, produced);
-
-out:
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	return 0;
 }
@@ -1193,7 +1184,7 @@ static int src_copy(struct comp_dev *dev)
 	 * how many frames can be processed. If sufficient number of samples
 	 * is not available the processing is omitted.
 	 */
-	ret = src_get_copy_limits(cd, source_c, sink_c);
+	ret = src_get_copy_limits(cd, &source_c->stream, &sink_c->stream);
 	if (ret)
 		comp_dbg(dev, "No data to process.");
 	else
