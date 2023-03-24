@@ -132,7 +132,8 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 
 	/* can't send notification when one is in progress */
 	if (ipc->is_notification_pending ||
-	    imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) & IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1)) {
+	    imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) &
+					IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1)) {
 		return -EBUSY;
 	}
 
@@ -223,8 +224,7 @@ int platform_ipc_init(struct ipc *ipc)
 	 * enable GP #0 for Host -> DSP message notification
 	 * enable GP #1 for DSP -> Host message confirmation
 	 */
-	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER,
-			IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
+	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0) |
 			IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
 
 	return 0;
@@ -257,7 +257,6 @@ int ipc_platform_poll_is_cmd_pending(void)
 
 	/* new message from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0)) {
-
 		/* Disable GP interrupt #0 */
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
 
@@ -307,7 +306,8 @@ int ipc_platform_poll_is_host_ready(void)
 int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 {
 	/* can't send notification when one is in progress */
-	if (imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) & IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1))
+	if (imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) &
+		IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1))
 		return 0;
 
 	/* now send the message */
