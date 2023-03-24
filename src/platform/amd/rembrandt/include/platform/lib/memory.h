@@ -21,11 +21,11 @@
 #define IRAM_SIZE	0x60000
 
 #define DRAM0_BASE	0xE0000000
-#define DRAM0_SIZE	0x7000
+#define DRAM0_SIZE	0x10000
 #define SRAM0_BASE	0x9FF00000
 
-#define DRAM1_BASE      0xE0007000
-#define DRAM1_SIZE      0x19000
+#define DRAM1_BASE      0xE0010000
+#define DRAM1_SIZE      0x10000
 #define SRAM1_BASE      0x60006000
 #define SRAM1_SIZE      0x13A000
 
