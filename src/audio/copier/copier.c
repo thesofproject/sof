@@ -1276,6 +1276,8 @@ static int do_endpoint_copy(struct comp_dev *dev)
 	} else {
 		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
 			return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
+		else if (dev->ipc_config.type == SOF_COMP_DAI)
+			return dai_zephyr_copy(cd->dd, dev);
 
 		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
 	}

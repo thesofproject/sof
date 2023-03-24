@@ -67,6 +67,11 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		      uint32_t *period_bytes,
 		      struct list_item *bsource_list,
 		      struct list_item *bsink_list);
+
+/**
+ * \brief dai zephyr copy
+ */
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev);
 #else
 /**
  * \brief dai new through dai_data
@@ -138,6 +143,14 @@ static inline int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 				    uint32_t *period_bytes,
 				    struct list_item *bsource_list,
 				    struct list_item *bsink_list)
+{
+	return 0;
+}
+
+/**
+ * \brief dai zephyr copy
+ */
+static inline int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
 	return 0;
 }
