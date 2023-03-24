@@ -200,20 +200,3 @@ const struct dai_driver acp_hsdai_driver = {
 		.get_hw_params          = hsdai_get_hw_params,
 	},
 };
-
-const struct dai_driver acp_hs_virtual_dai_driver = {
-	.type = SOF_DAI_AMD_HS_VIRTUAL,
-	.uid = SOF_UUID(hsdai_uuid),
-	.tctx = &hsdai_tr,
-	.dma_dev = DMA_DEV_HS_VIRTUAL,
-	.dma_caps = DMA_CAP_HS_VIRTUAL,
-	.ops = {
-		.trigger		= hsdai_trigger,
-		.set_config		= hsdai_set_config,
-		.probe			= hsdai_probe,
-		.remove			= hsdai_remove,
-		.get_fifo		= hsdai_get_fifo,
-		.get_handshake		= hsdai_get_handshake,
-		.get_hw_params          = hsdai_get_hw_params,
-	},
-};
