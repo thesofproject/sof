@@ -257,7 +257,6 @@ int ipc_platform_poll_is_cmd_pending(void)
 
 	/* new message from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0)) {
-
 		/* Disable GP interrupt #0 */
 		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
 
