@@ -44,6 +44,11 @@ if(CONFIG_REMBRANDT)
 	set(platform_folder amd/rembrandt)
 	set(platform_ld_script rembrandt.x)
 endif()
+
+if (CONFIG_VANGOGH)
+	set(platform_folder amd/vangogh)
+	set(platform_ld_script vangogh.x)
+endif()
 # includes
 
 # None of these should be included if Zephyr strict headers are used.
@@ -353,6 +358,23 @@ if(BUILD_CLANG_SCAN)
 	return()
 endif()
 
+if(CONFIG_VANGOGH)
+ add_custom_target(
+	 sof_dump
+	 COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
+	 COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.lmap
+	 COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
+	 COMMAND ${CMAKE_OBJCOPY} -j .ResetVector.text -j .WindowVectors.text -j .Level2InterruptVector.text -j .Level3InterruptVector.text -j .Level4InterruptVector.text -j .Level5InterruptVector.text -j .DebugExceptionVector.text -j .NMIExceptionVector.text -j .KernelExceptionVector.text -j .UserExceptionVector.literal -j .UserExceptionVector.text -j .DoubleExceptionVector.text -j .text -O binary sof-${fw_name} sof_text-${fw_name}.bin
+	 COMMAND ${CMAKE_OBJCOPY}  -j .system_heap -j .system_runtime_heap -j .runtime_heap -j .buffer_heap -j .sof_stack -j .rodata -j .module_init -j .data -j .bss -j .fw_ready -O binary sof-${fw_name} sof_data-${fw_name}.bin
+	 COMMAND ${CMAKE_COMMAND} -E copy sof_text-${fw_name}.bin ${PROJECT_BINARY_DIR}/fwimage_3_0.bin
+	 COMMAND ${CMAKE_COMMAND} -E copy sof_data-${fw_name}.bin ${PROJECT_BINARY_DIR}/fwdata_3_0.bin
+	 COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name} ${PROJECT_BINARY_DIR}/sof_vangogh.out
+	 COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.dis ${PROJECT_BINARY_DIR}/sof_vangogh.dis
+	 DEPENDS sof_post_process
+	 VERBATIM
+	 USES_TERMINAL
+)
+else()
 add_custom_target(
 	sof_dump
 	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
@@ -362,6 +384,7 @@ add_custom_target(
 	VERBATIM
 	USES_TERMINAL
 )
+endif()
 
 include(ExternalProject)
 
@@ -536,7 +559,7 @@ add_custom_target(
 # NXP
 set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
-list(APPEND UNSIGNED_RI rn rmb)
+list(APPEND UNSIGNED_RI rn rmb vangogh)
 # MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 
