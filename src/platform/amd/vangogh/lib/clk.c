@@ -9,7 +9,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
-#include <sof/sof.h>
+#include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <platform/chip_registers.h>
 
@@ -139,7 +139,6 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
-		k_spinlock_init(&sof->clocks[i].lock);
 	}
 	acp_change_clock_notify(600000000);
 }

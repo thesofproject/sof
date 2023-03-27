@@ -5,7 +5,7 @@
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              Bala Kishore <balakishore.pati@amd.com>
 
-#include <sof/debug/panic.h>
+#include <rtos/panic.h>
 #include <xtensa/core-macros.h>
 #include <platform/chip_offset_byte.h>
 #include <platform/chip_registers.h>
@@ -23,7 +23,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>

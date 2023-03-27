@@ -315,7 +315,7 @@ static int acp_dmic_dma_get_data_size(struct dma_chan_data *channel,
 		*free = dmic_rngbuff_size >> 1;
 	} else {
 		tr_err(&acp_dmic_dma_tr, "Channel direction Not defined %d",
-		       channel->direction)
+		       channel->direction);
 	}
 	return 0;
 }
