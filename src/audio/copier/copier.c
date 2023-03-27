@@ -1576,9 +1576,8 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	struct list_item *sink_list;
 	uint32_t attenuation;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
 
 	/* only support attenuation in format of 32bit */
 	if (data_offset > sizeof(uint32_t)) {
@@ -1592,13 +1591,16 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 		return -EINVAL;
 	}
 
-	list_for_item(sink_list, &dev->bsink_list) {
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (sink->stream.frame_fmt < SOF_IPC_FRAME_S24_4LE) {
-			comp_err(dev, "sink %d in format %d isn't supported by attenuation",
-				 sink->id, sink->buffer_fmt);
-			return -EINVAL;
-		}
+	audio_stream_fmt_conversion(cd->config.base.audio_fmt.depth,
+				    cd->config.base.audio_fmt.valid_bit_depth,
+				    &frame_fmt,
+				    &valid_fmt,
+				    cd->config.base.audio_fmt.s_type);
+
+	if (frame_fmt < SOF_IPC_FRAME_S24_4LE) {
+		comp_err(dev, "frame_fmt %d isn't supported by attenuation",
+			 frame_fmt);
+		return -EINVAL;
 	}
 
 	cd->attenuation = attenuation;

@@ -983,9 +983,9 @@ static int volume_set_attenuation(struct processing_module *mod, const uint8_t *
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct list_item *sink_list;
-	struct comp_buffer *sink;
 	uint32_t attenuation;
+	uint32_t __sparse_cache valid_fmt, frame_fmt;
+
 
 	/* only support attenuation in format of 32bit */
 	if (data_size > sizeof(uint32_t)) {
@@ -999,13 +999,15 @@ static int volume_set_attenuation(struct processing_module *mod, const uint8_t *
 		return -EINVAL;
 	}
 
-	list_for_item(sink_list, &dev->bsink_list) {
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (sink->stream.frame_fmt < SOF_IPC_FRAME_S24_4LE) {
-			comp_err(dev, "sink %d in format %d isn't supported by attenuation",
-				 sink->id, sink->stream.frame_fmt);
-			return -EINVAL;
-		}
+	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
+				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+	if (frame_fmt < SOF_IPC_FRAME_S24_4LE) {
+		comp_err(dev, "frame_fmt %d isn't supported by attenuation",
+			 frame_fmt);
+		return -EINVAL;
 	}
 
 	cd->attenuation = attenuation;
