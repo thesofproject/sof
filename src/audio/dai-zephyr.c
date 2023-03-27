@@ -21,6 +21,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -218,19 +219,15 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *arg, enum notify_id type, void *data)
+static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
 {
-	struct dma_cb_data *next = data;
-	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
-	uint32_t bytes = next->elem.size;
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
+	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
 	void *buffer_ptr;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
-
-	next->status = DMA_CB_STATUS_RELOAD;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -238,7 +235,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
-		next->status = DMA_CB_STATUS_END;
+		dma_status = DMA_CB_STATUS_END;
 	}
 
 	dma_buf = buffer_acquire(dd->dma_buffer);
@@ -251,7 +248,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 			buffer_zero(dma_buf);
 		buffer_release(dma_buf);
 
-		return;
+		return dma_status;
 	}
 
 	local_buf = buffer_acquire(dd->local_buffer);
@@ -289,6 +286,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	buffer_release(local_buf);
 	buffer_release(dma_buf);
+
+	return dma_status;
 }
 
 static struct comp_dev *dai_new(const struct comp_driver *drv,
@@ -358,7 +357,6 @@ static void dai_free(struct comp_dev *dev)
 	}
 
 	if (dd->chan) {
-		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_release_channel(dd->dma->z_dev, dd->chan->index);
 		dd->chan->dev_data = NULL;
 	}
@@ -905,10 +903,6 @@ static int dai_config_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "dai_config_prepare(): new configured dma channel index %d",
 		 dd->chan->index);
 
-	/* setup callback */
-	notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
-			  dai_dma_cb, 0);
-
 	return 0;
 }
 
@@ -1307,16 +1301,7 @@ static int dai_copy(struct comp_dev *dev)
 	if (ret < 0)
 		comp_warn(dev, "dai_copy(): dai trigger copy failed");
 
-	struct dma_cb_data next = {
-		.channel = dd->chan,
-		.elem = { .size = copy_bytes },
-		.status = DMA_CB_STATUS_END,
-	};
-
-	notifier_event(dd->chan, NOTIFIER_ID_DMA_COPY,
-		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
-
-	if (next.status == DMA_CB_STATUS_END)
+	if (dai_dma_cb(dev, copy_bytes) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
