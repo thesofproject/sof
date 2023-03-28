@@ -29,6 +29,9 @@
 #include <rtos/alloc.h>
 #include <rtos/spinlock.h>
 #include <ipc/topology.h>
+#if defined(CONFIG_ARCH_XTENSA) && !defined(CONFIG_KERNEL_COHERENCE)
+#include <zephyr/arch/xtensa/cache.h>
+#endif
 
 /*
  * Inter-CPU communication is only used in
@@ -62,7 +65,7 @@ static void idc_handler(struct k_p4wq_work *work)
 	int payload = -1;
 	k_spinlock_key_t key;
 
-	SOC_DCACHE_INVALIDATE(msg, sizeof(*msg));
+	z_xtensa_cache_flush(msg, sizeof(*msg));
 
 	if (msg->size == sizeof(int)) {
 		const int idc_handler_memcpy_err __unused =
@@ -122,13 +125,13 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 					       msg->payload, msg->size);
 		assert(!idc_send_memcpy_err);
 
-		SOC_DCACHE_FLUSH(payload->data, MIN(sizeof(payload->data), msg->size));
+		z_xtensa_cache_flush(payload->data, MIN(sizeof(payload->data), msg->size));
 	}
 
 	/* Temporarily store sender core ID */
 	msg_cp->core = cpu_get_id();
 
-	SOC_DCACHE_FLUSH(msg_cp, sizeof(*msg_cp));
+	z_xtensa_cache_flush(msg_cp, sizeof(*msg_cp));
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
 
 	switch (mode) {
