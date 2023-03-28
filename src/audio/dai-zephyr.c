@@ -585,20 +585,16 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
-/* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
-			       int32_t period_count)
+static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			     uint32_t period_count)
 {
 	struct dma_sg_config *config = &dd->config;
-	struct dma_config *dma_cfg;
-	struct dma_block_config *dma_block_cfg;
-	struct dma_block_config *prev = NULL;
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
 	uint32_t fifo, max_block_count, buf_size;
-	int i, err = 0;
+	int err = 0;
 
 	buffer_release(local_buf);
 
@@ -606,164 +602,20 @@ static int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
 	if (!dd->process) {
-		comp_err(dev, "dai_playback_params(): converter function NULL: local fmt %d dma fmt %d\n",
+		comp_err(dev, "dai_set_sg_config(): converter NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		err = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	/* set up DMA configuration */
-	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = get_sample_bytes(dma_fmt);
-	config->dest_width = config->src_width;
-	config->cyclic = 1;
-	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->dest_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
-	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->period;
-
-	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
-		  config->dest_dev, dd->stream_id,
-		  config->src_width, config->dest_width);
-
-	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->direction,
-				    dd->stream_id);
-
-		comp_dbg(dev, "dai_playback_params() fifo 0x%x", fifo);
-
-		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT,
-					&max_block_count);
-		if (err < 0) {
-			comp_err(dev, "dai_playback_params(): could not get dma attr max block count, err = %d", err);
-			goto out;
-		}
-
-		if (!max_block_count) {
-			comp_err(dev, "dai_playback_params(): invalid max-block-count of zero");
-			goto out;
-		}
-
-		if (max_block_count < period_count) {
-			comp_dbg(dev, "dai_playback_params(): block count = %d not supported by DMA", period_count);
-			buf_size = period_count * period_bytes;
-			do {
-				if (IS_ALIGNED(buf_size, max_block_count)) {
-					period_count = max_block_count;
-					period_bytes = buf_size / period_count;
-					break;
-				} else {
-					comp_warn(dev, "dai_playback_params(): alignment error for buffer = %d, block count = %d", buf_size, max_block_count);
-				}
-			} while (--max_block_count > 0);
-		}
-
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
-				   config->direction,
-				   period_count,
-				   period_bytes,
-				   (uintptr_t)audio_stream_get_addr(&dma_buf->stream),
-				   fifo);
-		if (err < 0) {
-			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
-				 period_count, period_bytes, err);
-			goto out;
-		}
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		config->direction = DMA_DIR_MEM_TO_DEV;
+		config->dest_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
+	} else {
+		config->direction = DMA_DIR_DEV_TO_MEM;
+		config->src_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
 	}
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
-			  SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-			  sizeof(struct dma_config));
-	if (!dma_cfg) {
-		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
-		err = -ENOMEM;
-		goto free;
-	}
-
-	dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
-	dma_cfg->source_data_size = config->src_width;
-	dma_cfg->dest_data_size = config->dest_width;
-
-	if (config->burst_elems)
-		dma_cfg->source_burst_length = config->burst_elems;
-	else
-		dma_cfg->source_burst_length = 8;
-
-	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
-	dma_cfg->cyclic = config->cyclic;
-	dma_cfg->user_data = NULL;
-	dma_cfg->dma_callback = NULL;
-	dma_cfg->block_count = config->elem_array.count;
-	dma_cfg->dma_slot = config->dest_dev;
-
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
-				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-				sizeof(struct dma_block_config) * dma_cfg->block_count);
-	if (!dma_block_cfg) {
-		rfree(dma_cfg);
-		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
-		err = -ENOMEM;
-		goto free;
-	}
-
-	dma_cfg->head_block = dma_block_cfg;
-	for (i = 0; i < dma_cfg->block_count; i++) {
-		dma_block_cfg->dest_scatter_en = config->scatter;
-		dma_block_cfg->block_size = config->elem_array.elems[i].size;
-		dma_block_cfg->source_address = config->elem_array.elems[i].src;
-		dma_block_cfg->dest_address = config->elem_array.elems[i].dest;
-		prev = dma_block_cfg;
-		prev->next_block = ++dma_block_cfg;
-	}
-	if (prev)
-		prev->next_block = dma_cfg->head_block;
-	dd->z_config = dma_cfg;
-
-free:
-	if (err < 0)
-		dma_sg_free(&config->elem_array);
-out:
-	buffer_release(dma_buf);
-
-	return err;
-}
-
-static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
-			      uint32_t period_count)
-{
-	struct dma_sg_config *config = &dd->config;
-	struct dma_config *dma_cfg;
-	struct dma_block_config *dma_block_cfg;
-	struct dma_block_config *prev = NULL;
-	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
-		*local_buf = buffer_acquire(dd->local_buffer);
-	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
-	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
-	uint32_t fifo, max_block_count, buf_size;
-	int i, err = 0;
-
-	buffer_release(local_buf);
-
-	/* set processing function */
-	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
-
-	if (!dd->process) {
-		comp_err(dev, "dai_capture_params(): converter function NULL: local fmt %d dma fmt %d\n",
-			 local_fmt, dma_fmt);
-		err = -EINVAL;
-		goto out;
-	}
-
-	/* set up DMA configuration */
-	config->direction = DMA_DIR_DEV_TO_MEM;
-	config->cyclic = 1;
-	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->src_dev = dai_get_handshake(dd->dai, dev->direction,
-					    dd->stream_id);
-	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->period;
-
-	/* TODO: Make this code platform-specific or move it driver callback */
 	if (dd->dai->type == SOF_DAI_INTEL_DMIC) {
 		/* For DMIC the DMA src and dest widths should always be 4 bytes
 		 * due to 32 bit FIFO packer. Setting width to 2 bytes for
@@ -776,30 +628,34 @@ static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_
 		config->dest_width = config->src_width;
 	}
 
-	comp_info(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
-		  config->src_dev, dd->stream_id,
-		  config->src_width, config->dest_width);
+	config->cyclic = 1;
+	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
+	config->is_scheduling_source = comp_is_scheduling_source(dev);
+	config->period = dev->pipeline->period;
+
+	comp_dbg(dev, "dai_set_sg_config(): dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+		 config->dest_dev, dd->stream_id, config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->direction,
-				    dd->stream_id);
+		fifo = dai_get_fifo(dd->dai, dev->direction, dd->stream_id);
 
-		comp_dbg(dev, "dai_capture_params() fifo 0x%x", fifo);
+		comp_dbg(dev, "dai_set_sg_config(): fifo 0x%x", fifo);
 
-		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT,
-					&max_block_count);
+		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
 		if (err < 0) {
-			comp_err(dev, "dai_capture_params(): could not get dma attr max block count, err = %d", err);
+			comp_err(dev, "dai_set_sg_config(): can't get max block count, err = %d",
+				 err);
 			goto out;
 		}
 
 		if (!max_block_count) {
-			comp_err(dev, "dai_capture_params(): invalid max-block-count of zero");
+			comp_err(dev, "dai_set_sg_config(): invalid max-block-count of zero");
 			goto out;
 		}
 
 		if (max_block_count < period_count) {
-			comp_dbg(dev, "dai_capture_params(): block count = %d not supported by DMA", period_count);
+			comp_dbg(dev, "dai_set_sg_config(): unsupported period count %d",
+				 period_count);
 			buf_size = period_count * period_bytes;
 			do {
 				if (IS_ALIGNED(buf_size, max_block_count)) {
@@ -807,7 +663,8 @@ static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_
 					period_bytes = buf_size / period_count;
 					break;
 				} else {
-					comp_warn(dev, "dai_capture_params(): alignment error for buffer = %d, block count = %d", buf_size, max_block_count);
+					comp_warn(dev, "dai_set_sg_config() alignment error for buf_size = %d, block count = %d",
+						  buf_size, max_block_count);
 				}
 			} while (--max_block_count > 0);
 		}
@@ -819,22 +676,40 @@ static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_
 				   (uintptr_t)audio_stream_get_addr(&dma_buf->stream),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
+			comp_err(dev, "dai_set_sg_config() sg alloc failed period_count %d period_bytes %d err = %d",
 				 period_count, period_bytes, err);
 			goto out;
 		}
 	}
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
-			  SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+out:
+	buffer_release(dma_buf);
+
+	return err;
+}
+
+static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct dma_sg_config *config = &dd->config;
+	struct dma_config *dma_cfg;
+	struct dma_block_config *dma_block_cfg;
+	struct dma_block_config *prev = NULL;
+	int i;
+
+	comp_dbg(dev, "dai_set_dma_config()");
+
+	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
-		comp_err(dev, "dai_playback_params(): dma_cfg allocation failed");
-		err = -ENOMEM;
-		goto free;
+		comp_err(dev, "dai_set_dma_config(): dma_cfg allocation failed");
+		return -ENOMEM;
 	}
 
-	dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
+	else
+		dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
+
 	dma_cfg->source_data_size = config->src_width;
 	dma_cfg->dest_data_size = config->dest_width;
 
@@ -848,16 +723,17 @@ static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_
 	dma_cfg->user_data = NULL;
 	dma_cfg->dma_callback = NULL;
 	dma_cfg->block_count = config->elem_array.count;
-	dma_cfg->dma_slot = config->src_dev;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dma_cfg->dma_slot = config->dest_dev;
+	else
+		dma_cfg->dma_slot = config->src_dev;
 
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
-				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 				sizeof(struct dma_block_config) * dma_cfg->block_count);
 	if (!dma_block_cfg) {
 		rfree(dma_cfg);
-		comp_err(dev, "dai_playback_params(): dma_block_config allocation failed");
-		err = -ENOMEM;
-		goto free;
+		comp_err(dev, "dai_set_dma_config: dma_block_config allocation failed");
+		return -ENOMEM;
 	}
 
 	dma_cfg->head_block = dma_block_cfg;
@@ -873,17 +749,11 @@ static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_
 		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
 
-free:
-	if (err < 0)
-		dma_sg_free(&config->elem_array);
-out:
-	buffer_release(dma_buf);
-
-	return err;
+	return 0;
 }
 
-int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
+static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params, uint32_t *pb, uint32_t *pc)
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	struct comp_buffer __sparse_cache *buffer_c;
@@ -895,57 +765,39 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	/* configure dai_data first */
-	err = ipc_dai_data_config(dd, dev);
-	if (err < 0)
-		return err;
-
-	err = dai_verify_params(dd, dev, params);
-	if (err < 0) {
-		comp_err(dev, "dai_common_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
+	comp_dbg(dev, "dai_set_dma_buffer()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
+		dd->local_buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
-						   struct comp_buffer,
+		dd->local_buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
 						   source_list);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
-		comp_info(dev, "dai_common_params() component has been already configured.");
+		comp_info(dev, "dai_set_dma_buffer() component has been already configured.");
 		return 0;
 	}
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_common_params(): Component is in state %d, expected COMP_STATE_READY.",
+		comp_err(dev, "dai_set_dma_buffer(): comp state %d, expected COMP_STATE_READY.",
 			 dev->state);
 		return -EINVAL;
 	}
 
-	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
 	if (err < 0) {
-		comp_err(dev, "dai_common_params(): could not get dma buffer address alignment, err = %d",
+		comp_err(dev, "dai_set_dma_buffer(): can't get dma buffer addr align, err = %d",
 			 err);
 		return err;
 	}
 
 	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "dai_common_params(): no valid dma buffer alignment, err = %d, align = %u",
+		comp_err(dev, "dai_set_dma_buffer(): no valid dma align, err = %d, align = %u",
 			 err, align);
-		return -EINVAL;
-	}
-
-	period_count = dd->dma->plat_data.period_count;
-	if (!period_count) {
-		comp_err(dev, "dai_common_params(): no valid dma buffer period count");
 		return -EINVAL;
 	}
 
@@ -955,16 +807,23 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		comp_err(dev, "dai_common_params(): invalid period_bytes.");
+		comp_err(dev, "dai_set_dma_buffer(): invalid period_bytes.");
 		return -EINVAL;
 	}
 
 	dd->period_bytes = period_bytes;
+	*pb = period_bytes;
 
 	/* calculate DMA buffer size */
+	period_count = dd->dma->plat_data.period_count;
+	if (!period_count) {
+		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
+		return -EINVAL;
+	}
 	period_count = MAX(period_count,
 			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
+	*pc = period_count;
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
@@ -973,15 +832,13 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		buffer_release(buffer_c);
 
 		if (err < 0) {
-			comp_err(dev, "dai_common_params(): buffer_set_size() failed, buffer_size = %u",
-				 buffer_size);
+			comp_err(dev, "dai_set_dma_buffer(): buffer_size = %u failed", buffer_size);
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
-					      addr_align);
+		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0, addr_align);
 		if (!dd->dma_buffer) {
-			comp_err(dev, "dai_common_params(): failed to alloc dma buffer");
+			comp_err(dev, "dai_set_dma_buffer(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 
@@ -993,14 +850,66 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		 */
 		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
 		buffer_c = buffer_acquire(dd->dma_buffer);
-		buffer_set_params(buffer_c, &hw_params,
-				  BUFFER_UPDATE_FORCE);
+		buffer_set_params(buffer_c, &hw_params, BUFFER_UPDATE_FORCE);
 		buffer_release(buffer_c);
 	}
 
-	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-		dai_playback_params(dd, dev, period_bytes, period_count) :
-		dai_capture_params(dd, dev, period_bytes, period_count);
+	return 0;
+}
+
+int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
+{
+	struct dma_sg_config *config = &dd->config;
+	uint32_t period_bytes = 0;
+	uint32_t period_count = 0;
+	int err = 0;
+
+	comp_dbg(dev, "dai_zephyr_params()");
+
+	/* configure dai_data first */
+	err = ipc_dai_data_config(dd, dev);
+	if (err < 0) {
+		comp_err(dev, "dai_zephyr_params(): ipc dai data config failed.");
+		return err;
+	}
+
+	err = dai_verify_params(dd, dev, params);
+	if (err < 0) {
+		comp_err(dev, "dai_zephyr_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
+
+	err = dai_set_dma_buffer(dd, dev, params, &period_bytes, &period_count);
+	if (err < 0) {
+		comp_err(dev, "dai_zephyr_params(): alloc dma buffer failed.");
+		goto out;
+	}
+
+	err = dai_set_sg_config(dd, dev, period_bytes, period_count);
+	if (err < 0) {
+		comp_err(dev, "dai_zephyr_params(): set sg config failed.");
+		goto out;
+	}
+
+	err = dai_set_dma_config(dd, dev);
+	if (err < 0) {
+		comp_err(dev, "dai_zephyr_params(): set dma config failed.");
+		goto out;
+	}
+
+out:
+	/*
+	 * Make sure to free all allocated items, all functions
+	 * can be called with null pointer.
+	 */
+	if (err < 0) {
+		buffer_free(dd->dma_buffer);
+		dma_sg_free(&config->elem_array);
+		rfree(dd->z_config);
+	}
+
+	return err;
 }
 
 static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
