@@ -211,7 +211,7 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 {
 	struct ipc_comp_dev *host = NULL;
 	struct ipc *ipc = ipc_get();
-	int status;
+	int status, host_id;
 	int ret;
 
 	tr_dbg(&ipc_tr, "ipc4 set pipeline %d state %x:", ppl_icd->id, cmd);
@@ -219,8 +219,6 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	status = ppl_icd->pipeline->status;
 	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
 	if (status != COMP_STATE_INIT) {
-		int host_id;
-
 		if (ppl_icd->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
 			host_id = ppl_icd->pipeline->source_comp->ipc_config.id;
 		else
@@ -240,6 +238,9 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 		case COMP_STATE_ACTIVE:
 			/* nothing to do if the pipeline is already running */
 			return 0;
+		case COMP_STATE_PREPARE:
+			cmd = COMP_TRIGGER_PRE_START;
+			break;
 		case COMP_STATE_READY:
 			cmd = COMP_TRIGGER_PRE_START;
 
@@ -298,6 +299,23 @@ static int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 		switch (status) {
 		case COMP_STATE_INIT:
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
+			if (ret < 0) {
+				ret = IPC4_INVALID_REQUEST;
+				return ret;
+			}
+
+			if (ppl_icd->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+				host_id = ppl_icd->pipeline->source_comp->ipc_config.id;
+			else
+				host_id = ppl_icd->pipeline->sink_comp->ipc_config.id;
+
+			host = ipc_get_comp_by_id(ipc, host_id);
+			if (!host) {
+				tr_err(&ipc_tr, "ipc: comp host with ID %d not found", host_id);
+				return IPC4_INVALID_RESOURCE_ID;
+			}
+
+			ret = ipc4_pcm_params(host);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
