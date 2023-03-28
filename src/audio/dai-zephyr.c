@@ -386,35 +386,6 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int dai_comp_get_hw_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params,
-				  int dir)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_config cfg;
-	int ret;
-
-	comp_dbg(dev, "dai_hw_params()");
-
-	ret = dai_config_get(dd->dai->dev, &cfg, dir);
-	if (ret)
-		return ret;
-
-	params->rate = cfg.rate;
-	params->buffer_fmt = 0;
-	params->channels = cfg.channels;
-
-	/* dai_comp_get_hw_params() function fetches hardware dai parameters,
-	 * which then are propagating back through the pipeline, so that any
-	 * component can convert specific stream parameter. Here, we overwrite
-	 * frame_fmt hardware parameter as DAI component is able to convert
-	 * stream with different frame_fmt's (using pcm converter)
-	 */
-	params->frame_fmt = dev->ipc_config.frame_fmt;
-
-	return ret;
-}
-
 /* set component audio SSP and DMA configuration */
 int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
 			uint32_t period_count)
@@ -1447,7 +1418,6 @@ static const struct comp_driver comp_dai = {
 		.create				= dai_new,
 		.free				= dai_free,
 		.params				= dai_params,
-		.dai_get_hw_params		= dai_comp_get_hw_params,
 		.trigger			= dai_comp_trigger,
 		.copy				= dai_copy,
 		.prepare			= dai_prepare,
