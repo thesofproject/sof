@@ -1293,91 +1293,6 @@ static int dai_copy(struct comp_dev *dev)
 	return dai_zephyr_copy(dd, dev);
 }
 
-/**
- * \brief Get DAI parameters and configure timestamping
- * \param[in, out] dev DAI device.
- * \return Error code.
- *
- * This function retrieves various DAI parameters such as type, direction, index, and DMA
- * controller information those are needed when configuring HW timestamping. Note that
- * DAI must be prepared before this function is used (for DMA information). If not, an error
- * is returned.
- */
-static int dai_ts_config_op(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct dai_ts_cfg cfg;
-
-	comp_dbg(dev, "dai_ts_config()");
-	if (!dd->chan) {
-		comp_err(dev, "dai_ts_config(), No DMA channel information");
-		return -EINVAL;
-	}
-
-	switch (dai->type) {
-	case SOF_DAI_INTEL_SSP:
-		cfg.type = DAI_INTEL_SSP;
-		break;
-	case SOF_DAI_INTEL_ALH:
-		cfg.type = DAI_INTEL_ALH;
-		break;
-	case SOF_DAI_INTEL_DMIC:
-		cfg.type = DAI_INTEL_DMIC;
-		break;
-	default:
-		comp_err(dev, "dai_ts_config(), not supported dai type");
-		return -EINVAL;
-	}
-
-	cfg.direction = dai->direction;
-	cfg.index = dd->dai->index;
-	cfg.dma_id = dd->dma->plat_data.id;
-	cfg.dma_chan_index = dd->chan->index;
-	cfg.dma_chan_count = dd->dma->plat_data.channels;
-
-	return dai_ts_config(dd->dai->dev, &cfg);
-}
-
-static int dai_ts_start_op(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_cfg cfg;
-
-	comp_dbg(dev, "dai_ts_start()");
-
-	return dai_ts_start(dd->dai->dev, &cfg);
-}
-
-static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_data tsdata;
-	struct dai_ts_cfg cfg;
-	int ret;
-
-	comp_dbg(dev, "dai_ts_get()");
-
-	ret = dai_ts_get(dd->dai->dev, &cfg, &tsdata);
-
-	if (ret < 0)
-		return ret;
-
-	/* todo convert to timestamp_data */
-
-	return ret;
-}
-
-static int dai_ts_stop_op(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_cfg cfg;
-
-	comp_dbg(dev, "dai_ts_stop()");
-
-	return dai_ts_stop(dd->dai->dev, &cfg);
-}
-
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	const struct dai_properties *props;
@@ -1424,10 +1339,6 @@ static const struct comp_driver comp_dai = {
 		.reset				= dai_reset,
 		.position			= dai_position,
 		.dai_config			= dai_config,
-		.dai_ts_config			= dai_ts_config_op,
-		.dai_ts_start			= dai_ts_start_op,
-		.dai_ts_stop			= dai_ts_stop_op,
-		.dai_ts_get			= dai_ts_get_op,
 		.get_total_data_processed	= dai_get_processed_data,
 },
 };
