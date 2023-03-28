@@ -33,6 +33,10 @@
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base-config.h>
 #include <ipc4/asrc.h>
+#include <ipc4/copier.h>
+#include <ipc/dai.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
 #endif
 
 /* Simple count value to prevent first delta timestamp
@@ -78,6 +82,7 @@ struct comp_data {
 #endif
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
+	struct copier_data *cd;		/* Associated copier component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
 	uint64_t ts;
 	uint32_t sink_rate;	/* Sample rate in Hz */
@@ -587,6 +592,175 @@ static int asrc_params(struct comp_dev *dev,
 	return 0;
 }
 
+#ifdef CONFIG_IPC_MAJOR_4
+
+/**
+ * \brief Get DAI parameters and configure timestamping
+ * \param[in, out] dev DAI device.
+ * \return Error code.
+ *
+ * This function retrieves various DAI parameters such as type, direction, index, and DMA
+ * controller information those are needed when configuring HW timestamping. Note that
+ * DAI must be prepared before this function is used (for DMA information). If not, an error
+ * is returned.
+ */
+static int dai_ts_config_op(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->cd->dd;
+	struct ipc_config_dai *dai = &dd->ipc_config;
+	struct dai_ts_cfg cfg;
+
+	comp_dbg(dev, "dai_ts_config()");
+	if (!dd->chan) {
+		comp_err(dev, "dai_ts_config(), No DMA channel information");
+		return -EINVAL;
+	}
+
+	switch (dai->type) {
+	case SOF_DAI_INTEL_SSP:
+		cfg.type = DAI_INTEL_SSP;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		cfg.type = DAI_INTEL_ALH;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		cfg.type = DAI_INTEL_DMIC;
+		break;
+	default:
+		comp_err(dev, "dai_ts_config(), not supported dai type");
+		return -EINVAL;
+	}
+
+	cfg.direction = dai->direction;
+	cfg.index = dd->dai->index;
+	cfg.dma_id = dd->dma->plat_data.id;
+	cfg.dma_chan_index = dd->chan->index;
+	cfg.dma_chan_count = dd->dma->plat_data.channels;
+
+	return dai_ts_config(dd->dai->dev, &cfg);
+}
+
+static int dai_ts_start_op(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->cd->dd;
+	struct dai_ts_cfg cfg;
+
+	comp_dbg(dev, "dai_ts_start()");
+
+	return dai_ts_start(dd->dai->dev, &cfg);
+}
+
+static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->cd->dd;
+	struct dai_ts_data tsdata;
+	struct dai_ts_cfg cfg;
+	int ret;
+
+	comp_dbg(dev, "dai_ts_get()");
+
+	ret = dai_ts_get(dd->dai->dev, &cfg, &tsdata);
+
+	if (ret < 0)
+		return ret;
+
+	/* todo convert to timestamp_data */
+
+	return ret;
+}
+
+static int dai_ts_stop_op(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->cd->dd;
+	struct dai_ts_cfg cfg;
+
+	comp_dbg(dev, "dai_ts_stop()");
+
+	return dai_ts_stop(dd->dai->dev, &cfg);
+}
+
+static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
+{
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	int pid;
+
+	/* Get current pipeline ID and walk to find the DAI */
+	pid = dev_comp_pipe_id(dev);
+	cd->cd = NULL;
+	if (cd->mode == ASRC_OM_PUSH) {
+		/* In push mode check if sink component is DAI */
+		do {
+			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+			sink_c = buffer_acquire(sinkb);
+			dev = sink_c->sink;
+			buffer_release(sink_c);
+
+			if (!dev) {
+				comp_cl_err(&comp_asrc, "At end, no DAI found.");
+				return -EINVAL;
+			}
+
+			if (dev_comp_pipe_id(dev) != pid) {
+				comp_cl_err(&comp_asrc, "No DAI sink in pipeline.");
+				return -EINVAL;
+			}
+
+		} while (dev_comp_type(dev) != SOF_COMP_DAI);
+	} else {
+		/* In pull mode check if source component is DAI */
+		do {
+			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+						  sink_list);
+
+			source_c = buffer_acquire(sourceb);
+			dev = source_c->source;
+			buffer_release(source_c);
+
+			if (!dev) {
+				comp_cl_err(&comp_asrc, "At beginning, no DAI found.");
+				return -EINVAL;
+			}
+
+			if (dev_comp_pipe_id(dev) != pid) {
+				comp_cl_err(&comp_asrc, "No DAI source in pipeline.");
+				return -EINVAL;
+			}
+		} while (dev_comp_type(dev) != SOF_COMP_DAI);
+	}
+
+	/* Point cd to copier data, dev here is copier dev */
+	cd->cd = comp_get_drvdata(dev);
+
+	return 0;
+}
+
+static int asrc_dai_configure_timestamp(struct comp_dev *dev)
+{
+	return dai_ts_config_op(dev);
+}
+
+static int asrc_dai_start_timestamp(struct comp_dev *dev)
+{
+	return dai_ts_start_op(dev);
+}
+
+static int asrc_dai_stop_timestamp(struct comp_dev *dev)
+{
+	return dai_ts_stop_op(dev);
+}
+
+static int asrc_dai_get_timestamp(struct comp_dev *dev,
+				  struct timestamp_data *tsd)
+{
+	return dai_ts_get_op(dev, tsd);
+}
+#else
 static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct comp_buffer *sourceb, *sinkb;
@@ -643,8 +817,9 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-static int asrc_dai_configure_timestamp(struct comp_data *cd)
+static int asrc_dai_configure_timestamp(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	if (cd->dai_dev)
@@ -655,8 +830,9 @@ static int asrc_dai_configure_timestamp(struct comp_data *cd)
 	return ret;
 }
 
-static int asrc_dai_start_timestamp(struct comp_data *cd)
+static int asrc_dai_start_timestamp(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	if (cd->dai_dev)
@@ -667,8 +843,9 @@ static int asrc_dai_start_timestamp(struct comp_data *cd)
 	return ret;
 }
 
-static int asrc_dai_stop_timestamp(struct comp_data *cd)
+static int asrc_dai_stop_timestamp(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	if (cd->dai_dev)
@@ -679,14 +856,17 @@ static int asrc_dai_stop_timestamp(struct comp_data *cd)
 	return ret;
 }
 
-static int asrc_dai_get_timestamp(struct comp_data *cd,
+static int asrc_dai_get_timestamp(struct comp_dev *dev,
 				  struct timestamp_data *tsd)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	if (!cd->dai_dev)
 		return -EINVAL;
 
 	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
 }
+#endif
 
 static int asrc_trigger(struct comp_dev *dev, int cmd)
 {
@@ -705,7 +885,7 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		cd->ts_count = 0;
-		ret = asrc_dai_configure_timestamp(cd);
+		ret = asrc_dai_configure_timestamp(dev);
 		if (ret) {
 			comp_err(dev, "No timestamp capability in DAI");
 			cd->track_drift = false;
@@ -918,12 +1098,12 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 
 	if (!cd->ts_count) {
 		cd->ts_count++;
-		asrc_dai_start_timestamp(cd);
+		asrc_dai_start_timestamp(dev);
 		return 0;
 	}
 
-	ts_ret = asrc_dai_get_timestamp(cd, &tsd);
-	asrc_dai_start_timestamp(cd);
+	ts_ret = asrc_dai_get_timestamp(dev, &tsd);
+	asrc_dai_start_timestamp(dev);
 	if (ts_ret)
 		return ts_ret;
 
@@ -1064,7 +1244,7 @@ static int asrc_reset(struct comp_dev *dev)
 
 	/* If any resources feasible to stop */
 	if (cd->track_drift)
-		asrc_dai_stop_timestamp(cd);
+		asrc_dai_stop_timestamp(dev);
 
 	/* Free the allocations those were done in prepare() */
 	asrc_release_buffers(cd->asrc_obj);
