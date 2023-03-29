@@ -366,7 +366,8 @@ static int init_dai(struct comp_dev *parent_dev,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	ret = comp_dai_config(dev, dai, copier);
+	cd->dd[index] = comp_get_drvdata(dev);
+	ret = comp_dai_config(cd->dd[index], dev, dai, copier);
 	if (ret < 0)
 		goto free_dev;
 
@@ -391,7 +392,6 @@ static int init_dai(struct comp_dev *parent_dev,
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
-	cd->dd[index] = comp_get_drvdata(dev);
 
 	return 0;
 free_dev:
