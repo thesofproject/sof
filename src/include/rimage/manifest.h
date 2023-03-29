@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <rimage/sof/user/manifest.h>
 #include <rimage/css.h>
 #include <rimage/cse.h>
@@ -53,6 +54,8 @@ struct manifest_module {
 
 	/* Following fields are used in manifest creation process */
 	int fw_size;
+
+	bool is_bootloader;
 
 	/* Size of the module in the output image.
 	 * Includes text and data sections size + image headers*/

@@ -77,7 +77,7 @@ static int elf_read_sections(struct image *image, struct manifest_module *module
 		return -errno;
 	}
 
-	if (image->num_modules > 1 && module_index == 0) {
+	if (module->is_bootloader) {
 		/* In case of multiple modules first one should be bootloader,
 		 * that should not have these sections.
 		 */

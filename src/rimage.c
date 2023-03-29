@@ -204,6 +204,10 @@ int main(int argc, char *argv[])
 
 	/* getopt reorders argv[] */
 	for (i = first_non_opt; i < argc; i++) {
+		/* When there is more than one module, then first one is bootloader. */
+		image.module[i - first_non_opt].is_bootloader = image.num_modules > 1 &&
+			i == first_non_opt;
+
 		fprintf(stdout, "\nModule Reading %s\n", argv[i]);
 		ret = elf_parse_module(&image, i - first_non_opt, argv[i]);
 		if (ret < 0)

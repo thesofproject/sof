@@ -46,9 +46,12 @@ static const struct manifest_module *ext_man_find_module(const struct image *ima
 	const struct manifest_module *module;
 	int i;
 
-	/* when there is more than one module, then first one is bootloader */
-	for (i = image->num_modules == 1 ? 0 : 1; i < image->num_modules; i++) {
+	for (i = 0; i < image->num_modules; i++) {
 		module = &image->module[i];
+
+		if (module->is_bootloader)
+			continue;
+
 		if (elf_find_section(module, EXT_MAN_DATA_SECTION) >= 0)
 			return module;
 	}
