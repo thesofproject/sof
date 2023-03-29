@@ -12,9 +12,8 @@
 #include <rimage/manifest.h>
 #include <rimage/file_utils.h>
 
-static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
+static int get_mem_zone_type(const struct memory_config *memory, Elf32_Shdr *section)
 {
-	const struct adsp *adsp = image->adsp;
 	uint32_t start, end, base, size;
 	int i;
 
@@ -22,8 +21,8 @@ static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 	end = section->vaddr + section->size;
 
 	for (i = SOF_FW_BLK_TYPE_START; i < SOF_FW_BLK_TYPE_NUM; i++) {
-		base =  adsp->mem_zones[i].base;
-		size =  adsp->mem_zones[i].size;
+		base =  memory->zones[i].base;
+		size =  memory->zones[i].size;
 
 		if (start < base)
 			continue;
@@ -55,11 +54,11 @@ static int write_block(struct image *image, struct module *module,
 		block.size += padding;
 	}
 
-	ret = get_mem_zone_type(image, section);
+	ret = get_mem_zone_type(&image->adsp->mem, section);
 	if (ret != SOF_FW_BLK_TYPE_INVALID) {
 		block.type = ret;
-		block.offset = section->vaddr - adsp->mem_zones[ret].base
-			+ adsp->mem_zones[ret].host_offset;
+		block.offset = section->vaddr - adsp->mem.zones[ret].base
+			+ adsp->mem.zones[ret].host_offset;
 	} else {
 		fprintf(stderr, "error: invalid block address/size 0x%x/0x%x\n",
 			section->vaddr, section->size);

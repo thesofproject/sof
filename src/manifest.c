@@ -36,7 +36,7 @@ static int man_open_rom_file(struct image *image)
 	if (ret)
 		return ret;
 
-	size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
+	size = image->adsp->mem.zones[SOF_FW_BLK_TYPE_ROM].size;
 
 	/* allocate ROM image  */
 	image->rom_image = calloc(size, 1);

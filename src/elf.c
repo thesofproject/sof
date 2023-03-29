@@ -28,8 +28,8 @@ static int elf_read_sections(struct image *image, struct module *module,
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
-	unsigned long rom_base = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].base;
-	size_t rom_size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
+	unsigned long rom_base = image->adsp->mem.zones[SOF_FW_BLK_TYPE_ROM].base;
+	size_t rom_size = image->adsp->mem.zones[SOF_FW_BLK_TYPE_ROM].size;
 
 	/* read in section header */
 	ret = fseek(module->fd, hdr->shoff, SEEK_SET);
@@ -256,8 +256,8 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 	start = section->vaddr;
 	end = section->vaddr + section->size;
 
-	base = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].base;
-	size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
+	base = image->adsp->mem.zones[SOF_FW_BLK_TYPE_ROM].base;
+	size = image->adsp->mem.zones[SOF_FW_BLK_TYPE_ROM].size;
 
 	if (start < base || start > base + size)
 		return 0;

@@ -110,10 +110,14 @@ struct image {
 	uint32_t imr_type;
 };
 
-struct mem_zone {
+struct memory_zone {
 	uint32_t base;
 	uint32_t size;
 	uint32_t host_offset;
+};
+
+struct memory_config {
+	struct memory_zone zones[SOF_FW_BLK_TYPE_NUM];
 };
 
 struct fw_image_ext_mod_config {
@@ -143,7 +147,7 @@ struct fw_image_manifest_module {
  */
 struct adsp {
 	const char *name;
-	struct mem_zone mem_zones[SOF_FW_BLK_TYPE_NUM];
+	struct memory_config mem;
 
 	uint32_t image_size;
 

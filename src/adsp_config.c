@@ -67,11 +67,11 @@ static void dump_adsp(const struct adsp *adsp)
 	DUMP_KEY("name", "'%s'", adsp->name);
 	DUMP_KEY("image_size", "0x%x", adsp->image_size);
 	DUMP_KEY("exec_boot_ldr", "%d", adsp->exec_boot_ldr);
-	for (i = 0; i < ARRAY_SIZE(adsp->mem_zones); ++i) {
+	for (i = 0; i < ARRAY_SIZE(adsp->mem.zones); ++i) {
 		DUMP_KEY("mem_zone.idx", "%d", i);
-		DUMP_KEY("mem_zone.size", "0x%x", adsp->mem_zones[i].size);
-		DUMP_KEY("mem_zone.base", "0x%x", adsp->mem_zones[i].base);
-		DUMP_KEY("mem_zone.host_offset", "0x%x", adsp->mem_zones[i].host_offset);
+		DUMP_KEY("mem_zone.size", "0x%x", adsp->mem.zones[i].size);
+		DUMP_KEY("mem_zone.base", "0x%x", adsp->mem.zones[i].base);
+		DUMP_KEY("mem_zone.host_offset", "0x%x", adsp->mem.zones[i].host_offset);
 	}
 }
 
@@ -79,7 +79,7 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 		      bool verbose)
 {
 	toml_array_t *mem_zone_array, *alias_array;
-	struct mem_zone *zone;
+	struct memory_zone *zone;
 	struct parse_ctx ctx;
 	toml_table_t *adsp;
 	toml_raw_t raw;
@@ -164,7 +164,7 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 	}
 
 	/* look for entry array */
-	memset(out->mem_zones, 0, sizeof(out->mem_zones));
+	memset(&out->mem, 0, sizeof(out->mem));
 	mem_zone_array = toml_array_in(adsp, "mem_zone");
 	if (!mem_zone_array)
 		return err_key_not_found("mem_zone");
@@ -196,7 +196,7 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 		if (zone_idx < 0)
 			return err_key_parse("mem_zone.name", "unknown zone '%s'", zone_name);
 
-		zone = &out->mem_zones[zone_idx];
+		zone = &out->mem.zones[zone_idx];
 		zone->base = parse_uint32_hex_key(mem_zone, &ctx, "base", -1, &ret);
 		if (ret < 0)
 			return err_key_parse("mem_zone", NULL);
