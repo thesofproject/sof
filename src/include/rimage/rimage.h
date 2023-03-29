@@ -116,8 +116,15 @@ struct memory_zone {
 	uint32_t host_offset;
 };
 
+struct memory_alias {
+	uint32_t mask;
+	uint32_t cached;
+	uint32_t uncached;
+};
+
 struct memory_config {
 	struct memory_zone zones[SOF_FW_BLK_TYPE_NUM];
+	struct memory_alias alias;
 };
 
 struct fw_image_ext_mod_config {
@@ -150,10 +157,6 @@ struct adsp {
 	struct memory_config mem;
 
 	uint32_t image_size;
-
-	uint32_t alias_cached;
-	uint32_t alias_uncached;
-	uint32_t alias_mask;
 
 	int (*write_firmware_ext_man)(struct image *image);
 	int (*write_firmware)(struct image *image);

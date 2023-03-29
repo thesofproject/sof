@@ -118,7 +118,8 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 	if (ret < 0)
 		return ret;
 
-	out->alias_mask = parse_uint32_hex_key(adsp, &ctx, "alias_mask", -ENODATA, &ret);
+	memset(&out->mem, 0, sizeof(out->mem));
+	out->mem.alias.mask = parse_uint32_hex_key(adsp, &ctx, "alias_mask", -ENODATA, &ret);
 	alias_found = !ret;
 
 	/* check everything parsed, 1 or 2 tables should be present */
@@ -153,18 +154,18 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 			base = parse_uint32_hex_key(alias, &ctx, "base", -1, &ret);
 
 			if (!strncmp("cached", alias_name, sizeof("cached")))
-				out->alias_cached = base & out->alias_mask;
+				out->mem.alias.cached = base & out->mem.alias.mask;
 			else if (!strncmp("uncached", alias_name, sizeof("uncached")))
-				out->alias_uncached = base & out->alias_mask;
+				out->mem.alias.uncached = base & out->mem.alias.mask;
 		}
 	} else {
 		/* Make uncache_to_cache() an identity transform */
-		out->alias_cached = 0;
-		out->alias_mask = 0;
+		out->mem.alias.uncached = 0;
+		out->mem.alias.cached = 0;
+		out->mem.alias.mask = 0;
 	}
 
 	/* look for entry array */
-	memset(&out->mem, 0, sizeof(out->mem));
 	mem_zone_array = toml_array_in(adsp, "mem_zone");
 	if (!mem_zone_array)
 		return err_key_not_found("mem_zone");

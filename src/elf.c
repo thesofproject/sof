@@ -17,7 +17,7 @@
 
 static unsigned long uncache_to_cache(const struct image *image, unsigned long address)
 {
-	return (address & ~image->adsp->alias_mask) | image->adsp->alias_cached;
+	return (address & ~image->adsp->mem.alias.mask) | image->adsp->mem.alias.cached;
 }
 
 static int elf_read_sections(struct image *image, struct module *module,
