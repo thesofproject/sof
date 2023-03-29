@@ -10,6 +10,9 @@ ifdef(`DMIC_48k_PCM_NAME',`',
 ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
+ifdef(`DMIC_48k_PRIORITY', `',
+`define(DMIC_48k_PRIORITY, 0)')
+
 # variable that need to be defined in upper m4
 ifdef(`DMICPROC',`',`fatal_error(note: Need to define dmic processing for intel-generic-dmic
 )')
@@ -127,7 +130,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-	DMIC_48k_PERIOD_US, 0, DMIC_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
+	DMIC_48k_PERIOD_US, DMIC_48k_PRIORITY, DMIC_48k_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
