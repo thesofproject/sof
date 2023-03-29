@@ -248,9 +248,8 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 	return offset;
 }
 
-static int dai_init_llp_info(struct comp_dev *dev)
+static int dai_init_llp_info(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc4_copier_module_cfg *copier_cfg;
 	union ipc4_connector_node_id node;
 	int ret;
@@ -278,11 +277,10 @@ static int dai_init_llp_info(struct comp_dev *dev)
 	return 0;
 }
 
-int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
+int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       const void *spec_config)
 {
 	const struct ipc4_copier_module_cfg *copier_cfg = spec_config;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int size;
 	int ret;
 
@@ -308,7 +306,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 #if CONFIG_COMP_DAI_GROUP
 	if (common_config->group_id) {
-		ret = dai_assign_group(dev, common_config->group_id);
+		ret = dai_assign_group(dd, dev, common_config->group_id);
 
 		if (ret)
 			return ret;
@@ -317,7 +315,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	/* do nothing for asking for channel free, for compatibility. */
 	if (dai_config_dma_channel(dd, dev, spec_config) == DMA_CHAN_INVALID)
 		return 0;
-
+	/* only period was used, so copier and dai are same */
 	dd->dai_dev = dev;
 
 	/* allocated dai_config if not yet */
@@ -337,7 +335,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		}
 	}
 
-	ret = dai_init_llp_info(dev);
+	ret = dai_init_llp_info(dd, dev);
 	if (ret < 0)
 		return ret;
 

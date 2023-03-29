@@ -347,7 +347,7 @@ static int init_dai(struct comp_dev *parent_dev,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	ret = comp_dai_config(dev, dai, copier);
+	ret = comp_dai_config(dd, parent_dev, dai, copier);
 	if (ret < 0)
 		goto e_buf;
 
@@ -376,6 +376,8 @@ static int init_dai(struct comp_dev *parent_dev,
 	return 0;
 
 e_zephyr:
+	if (dd->group)
+		notifier_unregister(parent_dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 	dai_zephyr_free(dd, dev);
 e_data:
 	rfree(dev);
@@ -749,6 +751,8 @@ static void copier_free(struct comp_dev *dev)
 		}
 		break;
 	case SOF_COMP_DAI:
+		if (cd->dd->group)
+			notifier_unregister(dev, cd->dd->group, NOTIFIER_ID_DAI_TRIGGER);
 		dai_zephyr_free(cd->dd, cd->endpoint[0]);
 		rfree(cd->endpoint[0]);
 		buffer_free(cd->endpoint_buffer[0]);

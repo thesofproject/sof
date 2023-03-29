@@ -64,10 +64,8 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 }
 
 /* Assign DAI to a group */
-int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
+int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_id)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-
 	if (dd->group) {
 		if (dd->group->group_id != group_id) {
 			comp_err(dev, "dai_assign_group(), DAI already in group %d, requested %d",
@@ -361,7 +359,6 @@ e_data:
 void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev)
 {
 	if (dd->group) {
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 		dai_group_put(dd->group);
 	}
 	if (dd->chan) {
@@ -382,6 +379,9 @@ void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev)
 static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (dd->group)
+		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 
 	dai_zephyr_free(dd, dev);
 
@@ -1340,7 +1340,6 @@ static const struct comp_driver comp_dai = {
 		.prepare			= dai_prepare,
 		.reset				= dai_reset,
 		.position			= dai_position,
-		.dai_config			= dai_config,
 		.get_total_data_processed	= dai_get_processed_data,
 },
 };

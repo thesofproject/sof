@@ -252,16 +252,27 @@ static inline int comp_reset(struct comp_dev *dev)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /** See comp_ops::dai_config */
 static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
 				  const void *spec_config)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
+
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, config, spec_config);
+		return dev->drv->ops.dai_config(dd, dev, config, spec_config);
 
 	return 0;
 }
-
+#elif CONFIG_IPC_MAJOR_4
+static inline int comp_dai_config(struct dai_data *dd, struct comp_dev *dev,
+				  struct ipc_config_dai *config, const void *spec_config)
+{
+	return dai_config(dd, dev, config, spec_config);
+}
+#else
+#error Unknown IPC major version
+#endif
 /** See comp_ops::position */
 static inline int comp_position(struct comp_dev *dev,
 				struct sof_ipc_stream_posn *posn)
