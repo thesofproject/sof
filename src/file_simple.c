@@ -37,7 +37,7 @@ static int get_mem_zone_type(const struct memory_config *memory, Elf32_Shdr *sec
 
 static int block_idx;
 
-static int write_block(struct image *image, struct module *module,
+static int write_block(struct image *image, struct manifest_module *module,
 		       Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
@@ -109,7 +109,7 @@ out:
 	return ret;
 }
 
-static int simple_write_module(struct image *image, struct module *module)
+static int simple_write_module(struct image *image, struct manifest_module *module)
 {
 	struct snd_sof_mod_hdr hdr;
 	Elf32_Shdr *section;
@@ -191,7 +191,7 @@ static int simple_write_module(struct image *image, struct module *module)
 	return padding;
 }
 
-static int write_block_reloc(struct image *image, struct module *module)
+static int write_block_reloc(struct image *image, struct manifest_module *module)
 {
 	struct snd_sof_blk_hdr block;
 	size_t count;
@@ -240,7 +240,7 @@ out:
 	return ret;
 }
 
-static int simple_write_module_reloc(struct image *image, struct module *module)
+static int simple_write_module_reloc(struct image *image, struct manifest_module *module)
 {
 	struct snd_sof_mod_hdr hdr;
 	size_t count;
@@ -282,7 +282,7 @@ static int simple_write_module_reloc(struct image *image, struct module *module)
 int simple_write_firmware(struct image *image)
 {
 	struct snd_sof_fw_header hdr;
-	struct module *module;
+	struct manifest_module *module;
 	size_t count;
 	int i, ret;
 

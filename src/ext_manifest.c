@@ -41,9 +41,9 @@ static int ext_man_open_file(struct image *image)
 	return 0;
 }
 
-static const struct module *ext_man_find_module(const struct image *image)
+static const struct manifest_module *ext_man_find_module(const struct image *image)
 {
-	const struct module *module;
+	const struct manifest_module *module;
 	int i;
 
 	/* when there is more than one module, then first one is bootloader */
@@ -86,7 +86,7 @@ static int ext_man_validate(uint32_t section_size, const void *section_data)
 	}
 }
 
-static int ext_man_build(const struct module *module,
+static int ext_man_build(const struct manifest_module *module,
 			 struct ext_man_header **dst_buff)
 {
 	struct ext_man_header ext_man;
@@ -135,7 +135,7 @@ out:
 
 int ext_man_write(struct image *image)
 {
-	const struct module *module;
+	const struct manifest_module *module;
 	struct ext_man_header *ext_man = NULL;
 	int count;
 	int ret;

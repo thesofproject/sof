@@ -7,10 +7,61 @@
 #define __MANIFEST_H__
 
 #include <stdint.h>
+#include <stdio.h>
 #include <rimage/sof/user/manifest.h>
 #include <rimage/css.h>
 #include <rimage/cse.h>
 #include <rimage/plat_auth.h>
+#include <rimage/elf.h>
+
+/*
+ * Manifest module data
+ */
+struct manifest_module {
+	/* This fields will be moved to module structure */
+	const char *elf_file;
+	FILE *fd;
+
+	Elf32_Ehdr hdr;
+	Elf32_Shdr *section;
+	Elf32_Phdr *prg;
+	char *strings;
+
+	uint32_t text_start;
+	uint32_t text_end;
+	uint32_t data_start;
+	uint32_t data_end;
+	uint32_t bss_start;
+	uint32_t bss_end;
+
+	int num_sections;
+	int num_bss;
+	int bss_index;
+
+	/* sizes do not include any gaps */
+	int bss_size;
+	int text_size;
+	int data_size;
+
+	/* sizes do include gaps to nearest page */
+	int bss_file_size;
+	int text_file_size;
+	int data_file_size;
+
+	/* total file size */
+	size_t file_size;
+
+	/* Following fields are used in manifest creation process */
+	int fw_size;
+
+	/* executable header module */
+	int exec_header;
+
+	/* module offset in image file */
+	size_t foffset;
+
+	size_t text_fixup_size;
+};
 
 #define MAN_PAGE_SIZE		4096
 #define MAN_MAX_SIZE_V1_8       (38 * 1024)

@@ -20,7 +20,7 @@ static unsigned long uncache_to_cache(const struct image *image, unsigned long a
 	return (address & ~image->adsp->mem.alias.mask) | image->adsp->mem.alias.cached;
 }
 
-static int elf_read_sections(struct image *image, struct module *module,
+static int elf_read_sections(struct image *image, struct manifest_module *module,
 			     int module_index)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
@@ -151,7 +151,7 @@ static int elf_read_sections(struct image *image, struct module *module,
 	return 0;
 }
 
-static int elf_read_programs(struct image *image, struct module *module)
+static int elf_read_programs(struct image *image, struct manifest_module *module)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
 	Elf32_Phdr *prg = module->prg;
@@ -207,7 +207,7 @@ static int elf_read_programs(struct image *image, struct module *module)
 	return 0;
 }
 
-static int elf_read_hdr(struct image *image, struct module *module)
+static int elf_read_hdr(struct image *image, struct manifest_module *module)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
 	size_t count;
@@ -266,7 +266,7 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 	return 1;
 }
 
-static void elf_module_size(struct image *image, struct module *module,
+static void elf_module_size(struct image *image, struct manifest_module *module,
 			    Elf32_Shdr *section, uint32_t lma, int index)
 {
 	switch (section->type) {
@@ -310,7 +310,7 @@ static void elf_module_size(struct image *image, struct module *module,
 	}
 }
 
-static void elf_module_size_reloc(struct image *image, struct module *module,
+static void elf_module_size_reloc(struct image *image, struct manifest_module *module,
 				  Elf32_Shdr *section, int index)
 {
 	switch (section->type) {
@@ -346,7 +346,7 @@ static void elf_module_size_reloc(struct image *image, struct module *module,
 	}
 }
 
-static void elf_module_limits(struct image *image, struct module *module)
+static void elf_module_limits(struct image *image, struct manifest_module *module)
 {
 	Elf32_Shdr *section;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
@@ -408,10 +408,10 @@ static void elf_module_limits(struct image *image, struct module *module)
 }
 
 /* make sure no section overlap from any modules */
-int elf_validate_section(struct image *image, struct module *module,
+int elf_validate_section(struct image *image, struct manifest_module *module,
 			 Elf32_Shdr *section, int index)
 {
-	struct module *m;
+	struct manifest_module *m;
 	Elf32_Shdr *s;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	int i, j;
@@ -464,7 +464,7 @@ err:
 /* make sure no section overlaps from any modules */
 int elf_validate_modules(struct image *image)
 {
-	struct module *module;
+	struct manifest_module *module;
 	Elf32_Shdr *section;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	int i, j, ret;
@@ -498,7 +498,7 @@ int elf_validate_modules(struct image *image)
 	return 0;
 }
 
-int elf_find_section(const struct module *module, const char *name)
+int elf_find_section(const struct manifest_module *module, const char *name)
 {
 	const Elf32_Ehdr *hdr = &module->hdr;
 	const Elf32_Shdr *section, *s;
@@ -546,7 +546,7 @@ out:
 	return ret;
 }
 
-int elf_read_section(const struct module *module, const char *section_name,
+int elf_read_section(const struct manifest_module *module, const char *section_name,
 		     const Elf32_Shdr **dst_section, void **dst_buff)
 {
 	const Elf32_Shdr *section;
@@ -585,7 +585,7 @@ int elf_read_section(const struct module *module, const char *section_name,
 
 int elf_parse_module(struct image *image, int module_index, const char *name)
 {
-	struct module *module;
+	struct manifest_module *module;
 	uint32_t rem;
 	int ret = 0;
 
@@ -676,7 +676,7 @@ hdr_err:
 
 void elf_free_module(struct image *image, int module_index)
 {
-	struct module *module = &image->module[module_index];
+	struct manifest_module *module = &image->module[module_index];
 
 	free(module->prg);
 	free(module->section);

@@ -6,11 +6,10 @@
 #ifndef __RIMAGE_H__
 #define __RIMAGE_H__
 
-#include "elf.h"
-
 #include <stdint.h>
 #include <stdio.h>
 
+#include <rimage/manifest.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/kernel/fw.h>
 
@@ -18,51 +17,6 @@
 #define MAX_MODULES		32
 
 struct adsp;
-struct manifest;
-struct man_module;
-
-/*
- * ELF module data
- */
-struct module {
-	const char *elf_file;
-	FILE *fd;
-
-	Elf32_Ehdr hdr;
-	Elf32_Shdr *section;
-	Elf32_Phdr *prg;
-	char *strings;
-
-	uint32_t text_start;
-	uint32_t text_end;
-	uint32_t data_start;
-	uint32_t data_end;
-	uint32_t bss_start;
-	uint32_t bss_end;
-	uint32_t foffset;
-
-	int num_sections;
-	int num_bss;
-	int fw_size;
-	int bss_index;
-
-	/* sizes do not include any gaps */
-	int bss_size;
-	int text_size;
-	int data_size;
-
-	/* sizes do include gaps to nearest page */
-	int bss_file_size;
-	int text_file_size;
-	int text_fixup_size;
-	int data_file_size;
-
-	/* total file size */
-	size_t file_size;
-
-	/* executable header module */
-	int exec_header;
-};
 
 /*
  * Firmware image context.
@@ -79,7 +33,7 @@ struct image {
 	int verbose;
 	int reloc;	/* ELF data is relocatable */
 	int num_modules;
-	struct module module[MAX_MODULES];
+	struct manifest_module module[MAX_MODULES];
 	uint32_t image_end;/* module end, equal to output image size */
 	int meu_offset;
 	const char *verify_file;
@@ -219,10 +173,10 @@ int elf_parse_module(struct image *image, int module_index, const char *name);
 void elf_free_module(struct image *image, int module_index);
 int elf_is_rom(struct image *image, Elf32_Shdr *section);
 int elf_validate_modules(struct image *image);
-int elf_find_section(const struct module *module, const char *name);
-int elf_read_section(const struct module *module, const char *name,
+int elf_find_section(const struct manifest_module *module, const char *name);
+int elf_read_section(const struct manifest_module *module, const char *name,
 		     const Elf32_Shdr **dst_section, void **dst_buff);
-int elf_validate_section(struct image *image, struct module *module,
+int elf_validate_section(struct image *image, struct manifest_module *manifest_module,
 			 Elf32_Shdr *section, int index);
 
 #endif

@@ -141,7 +141,7 @@ static int man_init_image_v2_5(struct image *image)
 
 /* we should call this after all segments size set up via iterate */
 static uint32_t elf_to_file_offset(struct image *image,
-				   struct module *module,
+				   struct manifest_module *module,
 				   struct sof_man_module *man_module,
 				   Elf32_Shdr *section)
 {
@@ -174,7 +174,7 @@ static uint32_t elf_to_file_offset(struct image *image,
 
 /* write SRAM sections */
 static int man_copy_sram(struct image *image, Elf32_Shdr *section,
-			 struct module *module,
+			 struct manifest_module *module,
 			 struct sof_man_module *man_module,
 			 int section_idx)
 {
@@ -227,7 +227,7 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 }
 
 static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
-				struct module *module,
+				struct manifest_module *module,
 				struct sof_man_module *man_module, int idx)
 {
 	int ret;
@@ -244,7 +244,7 @@ static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
 	return 0;
 }
 
-static int man_get_module_manifest(struct image *image, struct module *module,
+static int man_get_module_manifest(struct image *image, struct manifest_module *module,
 				   struct sof_man_module *man_module)
 {
 	Elf32_Shdr *section;
@@ -371,7 +371,7 @@ err:
 	return -EINVAL;
 }
 
-static int man_module_create(struct image *image, struct module *module,
+static int man_module_create(struct image *image, struct manifest_module *module,
 			     struct sof_man_module *man_module)
 {
 	/* create module and segments */
@@ -502,7 +502,7 @@ out:
 	return 0;
 }
 
-static int man_module_create_reloc(struct image *image, struct module *module,
+static int man_module_create_reloc(struct image *image, struct manifest_module *module,
 				   struct sof_man_module *man_module)
 {
 	/* create module and segments */
@@ -634,7 +634,7 @@ static int man_write_fw_mod(struct image *image)
 static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 			      int file_text_offset)
 {
-	struct module *module;
+	struct manifest_module *module;
 	struct sof_man_module *man_module;
 	int err;
 	int i = 0, offset = 0;
