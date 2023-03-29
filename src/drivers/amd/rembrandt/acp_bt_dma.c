@@ -102,8 +102,8 @@ static int acp_dai_bt_dma_start(struct dma_chan_data *channel)
 
 	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en && !acp_pdm_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
-		/* Request SMU to set aclk to 600 Mhz */
-		acp_change_clock_notify(600000000);
+		/* Request SMU to set aclk to 200 Mhz */
+		acp_change_clock_notify(200000000);
 	}
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
