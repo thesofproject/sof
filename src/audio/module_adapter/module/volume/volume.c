@@ -252,6 +252,9 @@ static inline int32_t volume_windows_fade_ramp(struct vol_data *cd, int32_t ramp
 	int32_t pow_value; /* Q2.30 */
 	int32_t volume_delta = cd->tvolume[channel] - cd->rvolume[channel]; /* Q16.16 */
 
+	if (!cd->initial_ramp)
+		return cd->tvolume[channel];
+
 	time_ratio = (((int64_t)ramp_time) << 30) / (cd->initial_ramp << 3);
 	pow_value = volume_pow_175(time_ratio);
 	return cd->rvolume[channel] + Q_MULTSR_32X32((int64_t)volume_delta, pow_value, 16, 30, 16);
