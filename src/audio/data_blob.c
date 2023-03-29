@@ -164,12 +164,25 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 
 int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-		       const uint8_t *fragment, size_t fragment_size)
+		       const uint8_t *fragment_in, size_t fragment_size)
 {
+#if CONFIG_IPC_MAJOR_3
+	struct sof_ipc_ctrl_data *cdata	= (struct sof_ipc_ctrl_data *)fragment_in;
+	const uint8_t *fragment = (const uint8_t *)cdata->data[0].data;
+#elif CONFIG_IPC_MAJOR_4
+	const uint8_t *fragment = fragment_in;
+#endif
 	int ret;
 
 	if (!blob_handler)
 		return -EINVAL;
+
+#if CONFIG_IPC_MAJOR_3
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), illegal control command");
+		return -EINVAL;
+	}
+#endif
 
 	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() pos = %d, fragment size = %d",
 		 pos, fragment_size);
@@ -555,6 +568,11 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 	int ret = 0;
 
 	assert(blob_handler);
+
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), illegal control command");
+		return -EINVAL;
+	}
 
 	comp_dbg(blob_handler->dev, "comp_data_blob_get_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
