@@ -341,7 +341,7 @@ static int init_dai_single(struct comp_dev *parent_dev,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	ret = comp_dai_config(dev, dai, copier);
+	ret = comp_dai_config(dd, parent_dev, dai, copier);
 	if (ret < 0)
 		goto e_buf;
 
@@ -370,6 +370,8 @@ static int init_dai_single(struct comp_dev *parent_dev,
 	return 0;
 
 e_zephyr:
+	if (dd->group)
+		notifier_unregister(parent_dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 	dai_zephyr_free(dd, dev);
 e_data:
 	rfree(dev);
@@ -412,7 +414,8 @@ static int init_dai(struct comp_dev *parent_dev,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	ret = comp_dai_config(dev, dai, copier);
+	cd->dd[index] = comp_get_drvdata(dev);
+	ret = comp_dai_config(cd->dd[index], dev, dai, copier);
 	if (ret < 0)
 		goto e_buf;
 
@@ -436,7 +439,6 @@ static int init_dai(struct comp_dev *parent_dev,
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
-	cd->dd[index] = comp_get_drvdata(dev);
 
 	return 0;
 
@@ -821,10 +823,23 @@ static void copier_free(struct comp_dev *dev)
 		}
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++) {
-			dai_zephyr_free(cd->dd[i], cd->endpoint[i]);
-			rfree(cd->endpoint[i]);
-			buffer_free(cd->endpoint_buffer[i]);
+		if (cd->endpoint_num == 1) {
+			if (cd->dd[0]->group)
+				notifier_unregister(dev, cd->dd[0]->group,
+						    NOTIFIER_ID_DAI_TRIGGER);
+			dai_zephyr_free(cd->dd[0], cd->endpoint[0]);
+			rfree(cd->endpoint[0]);
+			buffer_free(cd->endpoint_buffer[0]);
+		} else {
+			/* handle multiendpoint case */
+			for (i = 0; i < cd->endpoint_num; i++) {
+				if (cd->dd[i]->group)
+					notifier_unregister(dev, cd->dd[i]->group,
+							    NOTIFIER_ID_DAI_TRIGGER);
+				dai_zephyr_free(cd->dd[i], cd->endpoint[i]);
+				rfree(cd->endpoint[i]);
+				buffer_free(cd->endpoint_buffer[i]);
+			}
 		}
 		break;
 	default:

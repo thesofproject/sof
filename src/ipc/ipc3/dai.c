@@ -283,11 +283,10 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 	}
 }
 
-int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
+int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       const void *spec_config)
 {
 	const struct sof_ipc_dai_config *config = spec_config;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
 	/* ignore if message not for this DAI id/type */
@@ -349,7 +348,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	}
 #if CONFIG_COMP_DAI_GROUP
 	if (config->group_id) {
-		ret = dai_assign_group(dev, config->group_id);
+		ret = dai_assign_group(dd, dev, config->group_id);
 
 		if (ret)
 			return ret;
