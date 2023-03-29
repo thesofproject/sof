@@ -294,11 +294,11 @@ int simple_write_firmware(struct image *image)
 
 	for (i = 0; i < image->num_modules; i++) {
 		module = &image->module[i];
-		module->fw_size += sizeof(struct snd_sof_blk_hdr) *
+		module->output_size += sizeof(struct snd_sof_blk_hdr) *
 				(module->num_sections - module->num_bss);
-		module->fw_size += sizeof(struct snd_sof_mod_hdr) *
+		module->output_size += sizeof(struct snd_sof_mod_hdr) *
 				hdr.num_modules;
-		hdr.file_size += module->fw_size;
+		hdr.file_size += module->output_size;
 	}
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);

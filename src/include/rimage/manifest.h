@@ -54,6 +54,10 @@ struct manifest_module {
 	/* Following fields are used in manifest creation process */
 	int fw_size;
 
+	/* Size of the module in the output image.
+	 * Includes text and data sections size + image headers*/
+	size_t output_size;
+
 	/* executable header module */
 	int exec_header;
 

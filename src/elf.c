@@ -109,7 +109,7 @@ static int elf_read_sections(struct image *image, struct manifest_module *module
 			/* fall through */
 		case SHT_PROGBITS:
 			/* text or data */
-			module->fw_size += section[i].size;
+			module->output_size += section[i].size;
 
 			if (section[i].flags & SHF_EXECINSTR)
 				module->text_size += section[i].size;
@@ -637,8 +637,8 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 
 	elf_find_section(module, "");
 
-	fprintf(stdout, " module: input size %d (0x%x) bytes %d sections\n",
-		module->fw_size, module->fw_size, module->num_sections);
+	fprintf(stdout, " module: input size %zu (0x%zx) bytes %d sections\n",
+		module->output_size, module->output_size, module->num_sections);
 	fprintf(stdout, " module: text %d (0x%x) bytes\n"
 			"    data %d (0x%x) bytes\n"
 			"    bss  %d (0x%x) bytes\n\n",
