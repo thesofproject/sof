@@ -553,13 +553,13 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev);
 /**
  * \brief Configure DAI physical interface.
  */
-int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_config,
+int dai_config(struct dai_data *dd, struct comp_dev *dev,  struct ipc_config_dai *common_config,
 	       const void *spec_config);
 
 /**
  * \brief Assign DAI to a group for simultaneous triggering.
  */
-int dai_assign_group(struct comp_dev *dev, uint32_t group_id);
+int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_id);
 
 /**
  * \brief dai position for host driver.
