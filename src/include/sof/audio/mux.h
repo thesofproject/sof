@@ -172,8 +172,7 @@ struct comp_data {
 
 	struct mux_look_up lookup[MUX_MAX_STREAMS];
 	struct mux_look_up active_lookup;
-	struct comp_data_blob_handler *model_handler;
-	struct sof_mux_config config; /* Keep last due to flexible array member in end */
+	struct sof_mux_config config;
 };
 
 struct comp_func_map {
@@ -184,13 +183,14 @@ struct comp_func_map {
 
 extern const struct comp_func_map mux_func_map[];
 
-void mux_prepare_look_up_table(struct processing_module *mod);
-void demux_prepare_look_up_table(struct processing_module *mod);
+void mux_prepare_look_up_table(struct comp_dev *dev);
+void demux_prepare_look_up_table(struct comp_dev *dev);
 
-mux_func mux_get_processing_function(struct processing_module *mod);
-demux_func demux_get_processing_function(struct processing_module *mod);
+mux_func mux_get_processing_function(struct comp_dev *dev);
+demux_func demux_get_processing_function(struct comp_dev *dev);
 
 #ifdef UNIT_TEST
+void sys_comp_mux_init(void);
 
 #if CONFIG_FORMAT_S16LE
 int32_t calc_sample_s16le(const struct audio_stream *source,
@@ -204,10 +204,6 @@ int32_t calc_sample_s24le(const struct audio_stream *source,
 int64_t calc_sample_s32le(const struct audio_stream *source,
 			  uint32_t offset, uint8_t mask);
 #endif /* CONFIG_FORMAT_S32LE */
-
-void sys_comp_module_mux_interface_init(void);
-void sys_comp_module_demux_interface_init(void);
-
 #endif /* UNIT_TEST */
 
 #endif /* CONFIG_COMP_MUX */

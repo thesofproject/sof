@@ -6,7 +6,6 @@
 
 #if CONFIG_COMP_MUX
 
-#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
@@ -53,7 +52,8 @@ static void demux_check_for_wrap(struct audio_stream __sparse_cache *sink,
 
 #if CONFIG_FORMAT_S16LE
 
-static uint32_t demux_calc_frames_without_wrap_s16(struct audio_stream __sparse_cache *sink,
+static uint32_t demux_calc_frames_without_wrap_s16(struct comp_dev *dev,
+						   struct audio_stream __sparse_cache *sink,
 						   const struct audio_stream
 						   __sparse_cache *source,
 						   struct mux_look_up *lookup)
@@ -79,7 +79,8 @@ static uint32_t demux_calc_frames_without_wrap_s16(struct audio_stream __sparse_
 	return min_frames;
 }
 
-static uint32_t mux_calc_frames_without_wrap_s16(struct audio_stream __sparse_cache *sink,
+static uint32_t mux_calc_frames_without_wrap_s16(struct comp_dev *dev,
+						 struct audio_stream __sparse_cache *sink,
 						 const struct audio_stream
 						 __sparse_cache **sources,
 						 struct mux_look_up *lookup)
@@ -111,7 +112,8 @@ static uint32_t mux_calc_frames_without_wrap_s16(struct audio_stream __sparse_ca
 	return min_frames;
 }
 
-static void mux_init_look_up_pointers_s16(struct audio_stream __sparse_cache *sink,
+static void mux_init_look_up_pointers_s16(struct comp_dev *dev,
+					  struct audio_stream __sparse_cache *sink,
 					  const struct audio_stream __sparse_cache **sources,
 					  struct mux_look_up *lookup)
 {
@@ -132,7 +134,8 @@ static void mux_init_look_up_pointers_s16(struct audio_stream __sparse_cache *si
 	}
 }
 
-static void demux_init_look_up_pointers_s16(struct audio_stream __sparse_cache *sink,
+static void demux_init_look_up_pointers_s16(struct comp_dev *dev,
+					    struct audio_stream __sparse_cache *sink,
 					    const struct audio_stream __sparse_cache *source,
 					    struct mux_look_up *lookup)
 {
@@ -177,11 +180,12 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream __sparse_cache
 	if (!lookup || !lookup->num_elems)
 		return;
 
-	demux_init_look_up_pointers_s16(sink, source, lookup);
+	demux_init_look_up_pointers_s16(dev, sink, source, lookup);
 
 	while (frames) {
 		frames_without_wrap =
-			demux_calc_frames_without_wrap_s16(sink, source, lookup);
+			demux_calc_frames_without_wrap_s16(dev, sink, source,
+							   lookup);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
@@ -230,11 +234,12 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	if (!lookup || !lookup->num_elems)
 		return;
 
-	mux_init_look_up_pointers_s16(sink, sources, lookup);
+	mux_init_look_up_pointers_s16(dev, sink, sources, lookup);
 
 	while (frames) {
 		frames_without_wrap =
-			mux_calc_frames_without_wrap_s16(sink, sources, lookup);
+			mux_calc_frames_without_wrap_s16(dev, sink, sources,
+							 lookup);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
@@ -259,7 +264,8 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream __sparse_cache *
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 
-static uint32_t mux_calc_frames_without_wrap_s32(struct audio_stream __sparse_cache *sink,
+static uint32_t mux_calc_frames_without_wrap_s32(struct comp_dev *dev,
+						 struct audio_stream __sparse_cache *sink,
 						 const struct audio_stream
 						 __sparse_cache **sources,
 						 struct mux_look_up *lookup)
@@ -274,13 +280,15 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct audio_stream __sparse_ca
 	 * sink buffer (mux has one sink buffer), so dest min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].dest -
+		lookup->copy_elem[0].out_ch;
 	min_frames = audio_stream_frames_without_wrap(sink, ptr);
 
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		source = sources[lookup->copy_elem[elem].stream_id];
 
-		ptr = (int32_t *)lookup->copy_elem[elem].src - lookup->copy_elem[elem].in_ch;
+		ptr = (int32_t *)lookup->copy_elem[elem].src -
+			lookup->copy_elem[elem].in_ch;
 		frames = audio_stream_frames_without_wrap(source, ptr);
 
 		min_frames = (frames < min_frames) ? frames : min_frames;
@@ -289,7 +297,8 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct audio_stream __sparse_ca
 	return min_frames;
 }
 
-static uint32_t demux_calc_frames_without_wrap_s32(struct audio_stream __sparse_cache *sink,
+static uint32_t demux_calc_frames_without_wrap_s32(struct comp_dev *dev,
+						   struct audio_stream __sparse_cache *sink,
 						   const struct audio_stream
 						   __sparse_cache *source,
 						   struct mux_look_up *lookup)
@@ -302,10 +311,12 @@ static uint32_t demux_calc_frames_without_wrap_s32(struct audio_stream __sparse_
 	 * each copy_elem refers to the same sink/source buffer, so min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].dest -
+		lookup->copy_elem[0].out_ch;
 	min_frames = audio_stream_frames_without_wrap(sink, ptr);
 
-	ptr = (int32_t *)lookup->copy_elem[0].src - lookup->copy_elem[0].in_ch;
+	ptr = (int32_t *)lookup->copy_elem[0].src -
+		lookup->copy_elem[0].in_ch;
 	frames = audio_stream_frames_without_wrap(source, ptr);
 
 	min_frames = (frames < min_frames) ? frames : min_frames;
@@ -313,7 +324,8 @@ static uint32_t demux_calc_frames_without_wrap_s32(struct audio_stream __sparse_
 	return min_frames;
 }
 
-static void mux_init_look_up_pointers_s32(struct audio_stream __sparse_cache *sink,
+static void mux_init_look_up_pointers_s32(struct comp_dev *dev,
+					  struct audio_stream __sparse_cache *sink,
 					  const struct audio_stream __sparse_cache **sources,
 					  struct mux_look_up *lookup)
 {
@@ -334,7 +346,8 @@ static void mux_init_look_up_pointers_s32(struct audio_stream __sparse_cache *si
 	}
 }
 
-static void demux_init_look_up_pointers_s32(struct audio_stream __sparse_cache *sink,
+static void demux_init_look_up_pointers_s32(struct comp_dev *dev,
+					    struct audio_stream __sparse_cache *sink,
 					    const struct audio_stream __sparse_cache *source,
 					    struct mux_look_up *lookup)
 {
@@ -379,11 +392,12 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream __sparse_cache
 	if (!lookup || !lookup->num_elems)
 		return;
 
-	demux_init_look_up_pointers_s32(sink, source, lookup);
+	demux_init_look_up_pointers_s32(dev, sink, source, lookup);
 
 	while (frames) {
 		frames_without_wrap =
-			demux_calc_frames_without_wrap_s32(sink, source, lookup);
+			demux_calc_frames_without_wrap_s32(dev, sink, source,
+							   lookup);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
@@ -432,11 +446,12 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	if (!lookup || !lookup->num_elems)
 		return;
 
-	mux_init_look_up_pointers_s32(sink, sources, lookup);
+	mux_init_look_up_pointers_s32(dev, sink, sources, lookup);
 
 	while (frames) {
 		frames_without_wrap =
-			mux_calc_frames_without_wrap_s32(sink, sources, lookup);
+			mux_calc_frames_without_wrap_s32(dev, sink, sources,
+							 lookup);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
@@ -472,9 +487,9 @@ const struct comp_func_map mux_func_map[] = {
 #endif
 };
 
-void mux_prepare_look_up_table(struct processing_module *mod)
+void mux_prepare_look_up_table(struct comp_dev *dev)
 {
-	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
@@ -488,7 +503,8 @@ void mux_prepare_look_up_table(struct processing_module *mod)
 					/* MUX component has only one sink */
 					cd->lookup[0].copy_elem[idx].in_ch = j;
 					cd->lookup[0].copy_elem[idx].out_ch = k;
-					cd->lookup[0].copy_elem[idx].stream_id = i;
+					cd->lookup[0].copy_elem[idx].stream_id =
+						i;
 					cd->lookup[0].num_elems = ++idx;
 				}
 			}
@@ -496,9 +512,9 @@ void mux_prepare_look_up_table(struct processing_module *mod)
 	}
 }
 
-void demux_prepare_look_up_table(struct processing_module *mod)
+void demux_prepare_look_up_table(struct comp_dev *dev)
 {
-	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
@@ -513,7 +529,8 @@ void demux_prepare_look_up_table(struct processing_module *mod)
 					/* DEMUX component has only one source */
 					cd->lookup[i].copy_elem[idx].in_ch = k;
 					cd->lookup[i].copy_elem[idx].out_ch = j;
-					cd->lookup[i].copy_elem[idx].stream_id = i;
+					cd->lookup[i].copy_elem[idx].stream_id =
+						i;
 					cd->lookup[i].num_elems = ++idx;
 				}
 			}
@@ -521,9 +538,8 @@ void demux_prepare_look_up_table(struct processing_module *mod)
 	}
 }
 
-mux_func mux_get_processing_function(struct processing_module *mod)
+mux_func mux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	uint32_t i;
 
@@ -537,6 +553,7 @@ mux_func mux_get_processing_function(struct processing_module *mod)
 		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sinkb);
 		enum sof_ipc_frame fmt = sink_c->stream.frame_fmt;
 
+		buffer_release(sink_c);
 
 		if (fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].mux_proc_func;
@@ -545,9 +562,8 @@ mux_func mux_get_processing_function(struct processing_module *mod)
 	return NULL;
 }
 
-demux_func demux_get_processing_function(struct processing_module *mod)
+demux_func demux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb;
 	uint32_t i;
 
