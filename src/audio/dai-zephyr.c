@@ -88,10 +88,6 @@ int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
 	comp_dbg(dev, "dai_assign_group(), group %d num %d",
 		 group_id, dd->group->num_dais);
 
-	/* Register for the atomic trigger event */
-	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER,
-			  dai_atomic_trigger, 0);
-
 	return 0;
 }
 #endif
@@ -353,7 +349,6 @@ static void dai_free(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dd->group) {
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 		dai_group_put(dd->group);
 	}
 
@@ -1183,8 +1178,8 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			 */
 
 			irq_local_disable(irq_flags);
-			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
-				       BIT(cpu_get_id()), NULL, 0);
+
+			dai_atomic_trigger((void *)dev, NOTIFIER_ID_DAI_TRIGGER, NULL);
 			irq_local_enable(irq_flags);
 
 			/* return error of last trigger */
