@@ -165,6 +165,9 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_
 # Google RTC Audio processing processes 10ms at a time. It needs to have time to process it.
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`DMIC_48k_PERIOD', 10000)', `')
 
+# When Google RTC Audio (AEC) is applied, put DMIC pipe task after Speaker in schedule order.
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`DMIC_48k_PRIORITY', 1)', `')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
