@@ -1,0 +1,38 @@
+
+PHDRS {
+    rodata_phdr PT_LOAD;
+}
+
+SECTIONS {
+    .common.rodata : ALIGN(4096) {
+        _rodata_start = ABSOLUTE(.);
+        *(.rodata)
+        *(.rodata.*)
+        *(.rodata1)
+        __XT_EXCEPTION_TABLE__ = ABSOLUTE(.);
+        KEEP (*(.xt_except_table))
+        KEEP (*(.gcc_except_table))
+        *(.gnu.linkonce.e.*)
+        *(.gnu.version_r)
+        KEEP (*(.eh_frame))
+        /*  C++ constructor and destructor tables properly ordered:  */
+        KEEP (*crtbegin.o(.ctors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
+        KEEP (*(SORT(.ctors.*)))
+        KEEP (*(.ctors))
+        KEEP (*crtbegin.o(.dtors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
+        KEEP (*(SORT(.dtors.*)))
+        KEEP (*(.dtors))
+        /*  C++ exception handlers table:  */
+        __XT_EXCEPTION_DESCS__ = ABSOLUTE(.);
+        *(.xt_except_desc)
+        *(.gnu.linkonce.h.*)
+        __XT_EXCEPTION_DESCS_END__ = ABSOLUTE(.);
+        *(.xt_except_desc_end)
+        *(.dynamic)
+        *(.gnu.version_d)
+        . = ALIGN(4);       /* this table MUST be 4-byte aligned */
+        _rodata_end = ABSOLUTE(.);
+    } >HPSRAM_seg : rodata_phdr
+}
