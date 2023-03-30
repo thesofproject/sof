@@ -1,0 +1,20 @@
+
+PHDRS {
+    bss_phdr PT_LOAD;
+}
+
+SECTIONS {
+    max_instances = 1;
+    max_instances-1 = max_instances - 1;
+
+    .bss (NOLOAD) : ALIGN(4096) {
+        _first_start = ABSOLUTE(.);
+        *(.first)
+        _first_end = ABSOLUTE(.);
+        _next_start = ABSOLUTE(.);
+        . += (_first_end - _first_start) * max_instances-1;
+        _next_end = ABSOLUTE(.);
+        *(.bss)
+        *(.bss.*)
+    } >HPSRAM_seg : bss_phdr
+}
