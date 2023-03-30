@@ -79,7 +79,13 @@ int cpu_enable_core(int id)
 		return 0;
 
 #if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	z_init_cpu(id);
+	/* During kernel initialization, the next pm state is set to ACTIVE. By checking this
+	 * value, we determine if this is the first core boot, if not, we need to skip idle thread
+	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
+	 * and the idle thread stack.
+	 */
+	if (pm_state_next_get(id)->state == PM_STATE_ACTIVE)
+		z_init_cpu(id);
 #endif
 
 	atomic_clear(&start_flag);
