@@ -84,7 +84,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-playback.m4,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 #/**********************************************************************************/
-DAI_ADD(sof/pipe-echo-ref-dai-playback.m4,
+DAI_ADD(sof/pipe-dai-playback.m4,
 	9, ACPHS, 1, acp-amp-codec,
 	PIPELINE_SOURCE_1, 2, s16le,
 	2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
