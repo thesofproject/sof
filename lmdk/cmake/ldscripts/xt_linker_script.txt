@@ -1,0 +1,55 @@
+
+SECTIONS {
+        .debug  0 :           { *(.debug) }
+        .line  0 :            { *(.line) }
+        .xtensa.info  0 :     { *(.xtensa.info) }
+        .comment  0 :         { *(.comment) }
+        .debug_ranges  0 :    { *(.debug_ranges) }
+        .debug_srcinfo  0 :   { *(.debug_srcinfo) }
+        .debug_sfnames  0 :   { *(.debug_sfnames) }
+        .debug_aranges  0 :   { *(.debug_aranges) }
+        .debug_pubnames  0 :  { *(.debug_pubnames) }
+        .debug_info  0 :      { *(.debug_info) }
+        .debug_abbrev  0 :    { *(.debug_abbrev) }
+        .debug_line  0 :      { *(.debug_line) }
+        .debug_frame  0 :     { *(.debug_frame) }
+        .debug_str  0 :       { *(.debug_str) }
+        .debug_loc  0 :       { *(.debug_loc) }
+        .debug_macinfo  0 :   { *(.debug_macinfo) }
+        .debug_weaknames  0 : { *(.debug_weaknames) }
+        .debug_funcnames  0 : { *(.debug_funcnames) }
+        .debug_typenames  0 : { *(.debug_typenames) }
+        .debug_varnames  0 :  { *(.debug_varnames) }
+        .xt.insn 0 :
+        {
+          KEEP (*(.xt.insn))
+          KEEP (*(.gnu.linkonce.x.*))
+        }
+        .xt.prop 0 :
+        {
+          KEEP (*(.xt.prop))
+          KEEP (*(.xt.prop.*))
+          KEEP (*(.gnu.linkonce.prop.*))
+        }
+        .xt.lit 0 :
+        {
+          KEEP (*(.xt.lit))
+          KEEP (*(.xt.lit.*))
+          KEEP (*(.gnu.linkonce.p.*))
+        }
+        .xt.profile_range 0 :
+        {
+          KEEP (*(.xt.profile_range))
+          KEEP (*(.gnu.linkonce.profile_range.*))
+        }
+        .xt.profile_ranges 0 :
+        {
+          KEEP (*(.xt.profile_ranges))
+          KEEP (*(.gnu.linkonce.xt.profile_ranges.*))
+        }
+        .xt.profile_files 0 :
+        {
+          KEEP (*(.xt.profile_files))
+          KEEP (*(.gnu.linkonce.xt.profile_files.*))
+        }
+}

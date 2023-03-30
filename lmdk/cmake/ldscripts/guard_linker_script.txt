@@ -1,0 +1,12 @@
+
+PHDRS {
+    guard_phdr PT_LOAD;
+}
+
+SECTIONS {
+    .guard : ALIGN(4096) {
+        _guard_section_start = ABSOLUTE(.);
+        *(.*)
+        _guard_section_end = ABSOLUTE(.);
+    } >HPSRAM_seg : guard_phdr
+}

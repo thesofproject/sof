@@ -1,0 +1,24 @@
+
+PHDRS {
+    text_phdr PT_LOAD;
+}
+
+SECTIONS {
+    .common.text : ALIGN(4096){
+        _common_text_start = ABSOLUTE(.);
+        *(.entry.text)
+        *(.init.literal)
+        KEEP(*(.init))
+        *(.literal .text)
+        *(.literal.* .text.*)
+        *(.stub)
+        *(.gnu.warning)
+        *(.gnu.linkonce.literal*)
+        *(.gnu.linkonce.t.*.literal*)
+        *(.gnu.linkonce.t*)
+        *(.fini.literal)
+        KEEP(*(.fini))
+        *(.gnu.version)
+        _common_text_end = ABSOLUTE(.);
+    } >HPSRAM_seg : text_phdr
+}

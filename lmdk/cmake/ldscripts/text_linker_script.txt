@@ -1,0 +1,31 @@
+
+/* EXTERN(${PACKAGE_ENTRY_POINT}) */
+
+PHDRS {
+    text_phdr PT_LOAD;
+    cmi_text_phdr PT_LOAD;
+}
+
+/* .buildinfo should be put at the beginning of .text segment! API version is defined there. */
+
+SECTIONS {
+    .text : ALIGN(4096) {
+        _text_start = ABSOLUTE(.);
+        *(.buildinfo)
+        *(.gnu.linkonce.literal.*)
+        *(.gnu.linkonce.lit4)
+        *(.literal)
+        *(.literal.*)
+        *(.gnu.linkonce.t*)
+        *(.text)
+        *(.text.*)
+        *(.cmi.literal)
+        _text_end = ABSOLUTE(.);
+    } >HPSRAM_seg : text_phdr
+
+    .cmi.text : ALIGN(4096) {
+        _cmi_text_start = ABSOLUTE(.);
+        *(.cmi.text)
+        _cmi_text_end = ABSOLUTE(.);
+    } >HPSRAM_seg : cmi_text_phdr
+}
