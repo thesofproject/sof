@@ -12,17 +12,18 @@
 #include <rimage/manifest.h>
 #include <rimage/file_utils.h>
 
-static int get_mem_zone_type(const struct memory_config *memory, Elf32_Shdr *section)
+static int get_mem_zone_type(const struct memory_config *memory,
+			     const struct module_section *section)
 {
 	uint32_t start, end, base, size;
 	int i;
 
-	start = section->vaddr;
-	end = section->vaddr + section->size;
+	start = section->load_address;
+	end = start + section->size;
 
 	for (i = SOF_FW_BLK_TYPE_START; i < SOF_FW_BLK_TYPE_NUM; i++) {
-		base =  memory->zones[i].base;
-		size =  memory->zones[i].size;
+		base = memory->zones[i].base;
+		size = memory->zones[i].size;
 
 		if (start < base)
 			continue;
@@ -38,13 +39,12 @@ static int get_mem_zone_type(const struct memory_config *memory, Elf32_Shdr *sec
 static int block_idx;
 
 static int write_block(struct image *image, struct manifest_module *module,
-		       Elf32_Shdr *section)
+		       const struct module_section *section)
 {
 	const struct adsp *adsp = image->adsp;
 	struct snd_sof_blk_hdr block;
 	uint32_t padding = 0;
 	size_t count;
-	void *buffer;
 	int ret;
 
 	block.size = section->size;
@@ -54,14 +54,14 @@ static int write_block(struct image *image, struct manifest_module *module,
 		block.size += padding;
 	}
 
-	ret = get_mem_zone_type(&image->adsp->mem, section);
+	ret = get_mem_zone_type(&adsp->mem, section);
 	if (ret != SOF_FW_BLK_TYPE_INVALID) {
 		block.type = ret;
-		block.offset = section->vaddr - adsp->mem.zones[ret].base
+		block.offset = section->load_address - adsp->mem.zones[ret].base
 			+ adsp->mem.zones[ret].host_offset;
 	} else {
-		fprintf(stderr, "error: invalid block address/size 0x%x/0x%x\n",
-			section->vaddr, section->size);
+		fprintf(stderr, "error: invalid block address/size 0x%x/0x%zx\n",
+			section->load_address, section->size);
 		return -EINVAL;
 	}
 
@@ -70,38 +70,19 @@ static int write_block(struct image *image, struct manifest_module *module,
 	if (count != 1)
 		return file_error("Write header failed", image->out_file);
 
-	/* alloc data data */
-	buffer = calloc(1, block.size);
-	if (!buffer)
-		return -ENOMEM;
-
-	/* read in section data */
-	ret = fseek(module->fd, section->off, SEEK_SET);
-	if (ret) {
-		ret = file_error("seek to section failed", module->elf_file);
-		goto out;
-	}
-	count = fread(buffer, 1, section->size, module->fd);
-	if (count != section->size) {
-		ret = file_error("cant read section", module->elf_file);
-		goto out;
-	}
-
 	/* write out section data */
-	count = fwrite(buffer, 1, block.size, image->out_fd);
-	if (count != block.size) {
-		ret = file_error("cant write section", image->out_file);
-		fprintf(stderr, " foffset %d size 0x%x mem addr 0x%x\n",
-			section->off, section->size, section->vaddr);
-		goto out;
+	ret = module_write_section(&module->file, section, padding, image->out_fd, image->out_file);
+	if (ret) {
+		fprintf(stderr, "error: cant write section data. foffset %d size 0x%zx mem addr 0x%x\n",
+			section->header->data.off, section->size, section->load_address);
+		return ret;
 	}
 
-	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
-		section->vaddr, section->size, ftell(image->out_fd),
-		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA");
+	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%8.8lx\t%s\t%s\n", block_idx++,
+		section->load_address, section->size, ftell(image->out_fd),
+		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA",
+		section->header->name);
 
-out:
-	free(buffer);
 	/* return padding size */
 	if (ret >= 0)
 		return padding;
@@ -109,18 +90,44 @@ out:
 	return ret;
 }
 
+/**
+ * Write all linked sections
+ * 
+ * @param image program global structure
+ * @param module modules manifest description
+ * @param section module section descriptor
+ * @return size of used padding, error code on error
+ */
+static int write_blocks(struct image *image, struct manifest_module *module,
+			const struct module_section *section)
+{
+	int ret, padding = 0;
+
+	while (section) {
+		ret = write_block(image, module, section);
+		if (ret < 0) {
+			fprintf(stderr, "error: failed to write section %s\n",
+				section->header->name);
+			return ret;
+		}
+
+		padding += ret;
+		section = section->next_section;
+	}
+
+	return padding;
+}
+
 static int simple_write_module(struct image *image, struct manifest_module *module)
 {
 	struct snd_sof_mod_hdr hdr;
-	Elf32_Shdr *section;
 	size_t count;
-	int i, err;
-	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	int err;
 	int ptr_hdr, ptr_cur;
-	uint32_t padding = 0;
+	uint32_t padding;
 
-	hdr.num_blocks = module->num_sections - module->num_bss;
-	hdr.size = module->text_size + module->data_size +
+	hdr.num_blocks = module->file.text.count + module->file.data.count;
+	hdr.size = module->file.text.size + module->file.data.size +
 		sizeof(struct snd_sof_blk_hdr) * hdr.num_blocks;
 	hdr.type = SOF_FW_BASE;
 
@@ -133,40 +140,22 @@ static int simple_write_module(struct image *image, struct manifest_module *modu
 	if (count != 1)
 		return file_error("failed to write section header", image->out_file);
 
-	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
+	module_print_zones(&module->file);
 
-	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->text_start, module->text_end,
-		module->text_end - module->text_start);
-	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->data_start, module->data_end,
-		module->data_end - module->data_start);
-	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
-		module->bss_start, module->bss_end,
-		module->bss_end - module->bss_start);
+	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\tName\n");
 
-	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
+	/* Write text sections */
+	err = write_blocks(image, module, module->file.text.first_section);
+	if (err < 0)
+		return err;
+	padding = err;
 
-	for (i = 0; i < module->hdr.shnum; i++) {
-		section = &module->section[i];
-
-		/* only write valid sections */
-		if (!(module->section[i].flags & valid))
-			continue;
-
-		/* dont write bss */
-		if (section->type == SHT_NOBITS)
-			continue;
-
-		err = write_block(image, module, section);
-		if (err < 0) {
-			fprintf(stderr, "error: failed to write section #%d\n",
-				i);
+	/* Write data sections */
+	err = write_blocks(image, module, module->file.data.first_section);
+	if (err < 0)
 			return err;
-		}
-		/* write_block will return padding size */
 		padding += err;
-	}
+
 	hdr.size += padding;
 	/* Record current pointer, will set it back after overwriting hdr */
 	ptr_cur = ftell(image->out_fd);
@@ -195,10 +184,9 @@ static int write_block_reloc(struct image *image, struct manifest_module *module
 {
 	struct snd_sof_blk_hdr block;
 	size_t count;
-	void *buffer;
 	int ret;
 
-	block.size = module->file_size;
+	block.size = module->file.elf.file_size;
 	block.type = SOF_FW_BLK_TYPE_DRAM;
 	block.offset = 0;
 
@@ -207,36 +195,14 @@ static int write_block_reloc(struct image *image, struct manifest_module *module
 	if (count != 1)
 		return file_error("cant write header", image->out_file);
 
-	/* alloc data data */
-	buffer = calloc(1, module->file_size);
-	if (!buffer)
-		return -ENOMEM;
-
-	/* read in section data */
-	ret = fseek(module->fd, 0, SEEK_SET);
-	if (ret) {
-		ret = file_error("can't seek to section", module->elf_file);
-		goto out;
-	}
-	count = fread(buffer, 1, module->file_size, module->fd);
-	if (count != module->file_size) {
-		ret = file_error("can't read section", module->elf_file);
-		goto out;
-	}
-
-	/* write out section data */
-	count = fwrite(buffer, 1, module->file_size, image->out_fd);
-	if (count != module->file_size) {
-		ret = file_error("can't write section", image->out_file);
-		goto out;
-	}
+	ret = module_write_whole_elf(&module->file, image->out_fd, image->out_file);
+	if (ret)
+		return ret;
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%8.8lx\t%s\n", block_idx++,
-		0, module->file_size, ftell(image->out_fd),
+		0, module->file.elf.file_size, ftell(image->out_fd),
 		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA");
 
-out:
-	free(buffer);
 	return ret;
 }
 
@@ -247,24 +213,14 @@ static int simple_write_module_reloc(struct image *image, struct manifest_module
 	int err;
 
 	hdr.num_blocks = 1;
-	hdr.size = module->text_size + module->data_size;
+	hdr.size = module->file.text.size + module->file.data.size;
 	hdr.type = SOF_FW_BASE; // module
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1)
 		return file_error("failed to write section header", image->out_file);
 
-	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
-
-	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->text_start, module->text_end,
-		module->text_end - module->text_start);
-	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->data_start, module->data_end,
-		module->data_end - module->data_start);
-	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
-		module->bss_start, module->bss_end,
-		module->bss_end - module->bss_start);
+	module_print_zones(&module->file);
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
 
@@ -294,8 +250,9 @@ int simple_write_firmware(struct image *image)
 
 	for (i = 0; i < image->num_modules; i++) {
 		module = &image->module[i];
+		module->output_size = module->file.data.size + module->file.text.size;
 		module->output_size += sizeof(struct snd_sof_blk_hdr) *
-				(module->num_sections - module->num_bss);
+				(module->file.data.count + module->file.text.count);
 		module->output_size += sizeof(struct snd_sof_mod_hdr) *
 				hdr.num_modules;
 		hdr.file_size += module->output_size;
@@ -308,7 +265,7 @@ int simple_write_firmware(struct image *image)
 	for (i = 0; i < image->num_modules; i++) {
 		module = &image->module[i];
 
-		fprintf(stdout, "writing module %d %s\n", i, module->elf_file);
+		fprintf(stdout, "writing module %d %s\n", i, module->file.elf.filename);
 
 		if (image->reloc)
 			ret = simple_write_module_reloc(image, module);

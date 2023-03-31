@@ -18,13 +18,13 @@ add_executable(rimage
 	src/pkcs1_5.c
 	src/manifest.c
 	src/ext_manifest.c
-	src/elf.c
 	src/rimage.c
 	src/toml_utils.c
 	src/adsp_config.c
 	src/misc_utils.c
 	src/file_utils.c
 	src/elf_file.c
+	src/module.c
 	tomlc99/toml.c
 )
 

@@ -7,54 +7,20 @@
 #define __MANIFEST_H__
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <rimage/sof/user/manifest.h>
 #include <rimage/css.h>
 #include <rimage/cse.h>
 #include <rimage/plat_auth.h>
-#include <rimage/elf.h>
+#include <rimage/module.h>
 
 /*
  * Manifest module data
  */
 struct manifest_module {
-	/* This fields will be moved to module structure */
-	const char *elf_file;
-	FILE *fd;
-
-	Elf32_Ehdr hdr;
-	Elf32_Shdr *section;
-	Elf32_Phdr *prg;
-	char *strings;
-
-	uint32_t text_start;
-	uint32_t text_end;
-	uint32_t data_start;
-	uint32_t data_end;
-	uint32_t bss_start;
-	uint32_t bss_end;
-
-	int num_sections;
-	int num_bss;
-	int bss_index;
-
-	/* sizes do not include any gaps */
-	int bss_size;
-	int text_size;
-	int data_size;
-
-	/* sizes do include gaps to nearest page */
-	int bss_file_size;
-	int text_file_size;
-	int data_file_size;
-
-	/* total file size */
-	size_t file_size;
+	struct module file;
 
 	/* Following fields are used in manifest creation process */
-	int fw_size;
-
 	bool is_bootloader;
 
 	/* Size of the module in the output image.

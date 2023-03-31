@@ -214,20 +214,23 @@ int main(int argc, char *argv[])
 	}
 
 	/* getopt reorders argv[] */
-	for (i = first_non_opt; i < argc; i++) {
-		/* When there is more than one module, then first one is bootloader.
-		 * Does not apply to building a image of a loadable module. */
-		image.module[i - first_non_opt].is_bootloader = image.num_modules > 1 &&
-			i == first_non_opt && !image.loadable_module;
-
-		fprintf(stdout, "\nModule Reading %s\n", argv[i]);
-		ret = elf_parse_module(&image, i - first_non_opt, argv[i]);
+	for (opt = first_non_opt; opt < argc; opt++) {
+		i = opt - first_non_opt;
+		fprintf(stdout, "\nModule Reading %s\n", argv[opt]);
+		ret = module_open(&image.module[i].file, argv[opt], image.verbose);
 		if (ret < 0)
 			goto out;
+
+		module_parse_sections(&image.module[i].file, &image.adsp->mem, image.verbose);
+
+		/* When there is more than one module, then first one is bootloader.
+		 * Does not apply to building a image of a loadable module. */
+		image.module[i].is_bootloader = image.num_modules > 1 && i == 0 &&
+			!image.loadable_module;
 	}
 
 	/* validate all modules */
-	ret = elf_validate_modules(&image);
+	ret = modules_validate(&image);
 	if (ret < 0)
 		goto out;
 
@@ -271,6 +274,11 @@ out:
 	/* close files */
 	if (image.out_fd)
 		fclose(image.out_fd);
+
+	/* Free loaded modules */
+	for (i = 0; i < image.num_modules; i++) {
+		module_close(&image.module[i].file);
+	}
 
 	return ret;
 }

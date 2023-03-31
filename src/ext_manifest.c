@@ -41,7 +41,8 @@ static int ext_man_open_file(struct image *image)
 	return 0;
 }
 
-static const struct manifest_module *ext_man_find_module(const struct image *image)
+static const struct elf_file *ext_man_find_module(const struct image *image,
+					     const struct elf_section_header **section)
 {
 	const struct manifest_module *module;
 	int i;
@@ -52,8 +53,9 @@ static const struct manifest_module *ext_man_find_module(const struct image *ima
 		if (module->is_bootloader)
 			continue;
 
-		if (elf_find_section(module, EXT_MAN_DATA_SECTION) >= 0)
-			return module;
+		if (!elf_section_header_get_by_name(&module->file.elf, EXT_MAN_DATA_SECTION,
+						    section))
+			return &module->file.elf;
 	}
 
 	return NULL;
@@ -89,57 +91,45 @@ static int ext_man_validate(uint32_t section_size, const void *section_data)
 	}
 }
 
-static int ext_man_build(const struct manifest_module *module,
+static int ext_man_build(const struct elf_file *file, const struct elf_section_header *section,
 			 struct ext_man_header **dst_buff)
 {
-	struct ext_man_header ext_man;
-	const Elf32_Shdr *section;
-	uint8_t *sec_buffer = NULL;
-	size_t offset;
+	struct ext_man_header *ext_man;
+	size_t size;
 	int ret;
 
-	ret = elf_read_section(module, EXT_MAN_DATA_SECTION, &section,
-			       (void **)&sec_buffer);
-	if (ret < 0) {
-		fprintf(stderr,
-			"error: failed to read %s section content, code %d\n",
-			EXT_MAN_DATA_SECTION, ret);
-		goto out;
+	size = ext_man_template.header_size + section->data.size;
+	if (size % 4) {
+		fprintf(stderr, "error: extended manifest size must be aligned to 4\n");
+		return -EINVAL;
 	}
-	ret = 0;
+
+	ext_man = calloc(1, size);
+	if (!ext_man)
+		return -ENOMEM;
 
 	/* fill ext_man struct, size aligned to 4 to avoid unaligned accesses */
-	memcpy(&ext_man, &ext_man_template, sizeof(struct ext_man_header));
-	ext_man.full_size = ext_man.header_size;
-	ext_man.full_size += section->size;
-	if (ext_man.full_size % 4) {
-		fprintf(stderr,
-			"error: extended manifest size must be aligned to 4\n");
-		ret = -EINVAL;
-		goto out;
+	memcpy(ext_man, &ext_man_template, ext_man_template.header_size);
+	ext_man->full_size = size;
+
+	ret = elf_section_read_content(file, section, ext_man + 1,
+				       size - ext_man_template.header_size);
+	if (ret < 0) {
+		fprintf(stderr, "error: failed to read %s section content, code %d\n",
+			EXT_MAN_DATA_SECTION, ret);
+		free(ext_man);
+		return ret;
 	}
 
-	*dst_buff = calloc(1, ext_man.full_size);
-	if (!*dst_buff) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	/* fill buffer with ext_man and section content */
-	memcpy(*dst_buff, &ext_man, ext_man.header_size);
-	offset = ext_man.header_size;
-
-	memcpy(((char *)*dst_buff) + offset, sec_buffer, section->size);
-
-out:
-	free(sec_buffer);
-	return ret;
+	*dst_buff = ext_man;
+	return 0;
 }
 
 int ext_man_write(struct image *image)
 {
-	const struct manifest_module *module;
+	const struct elf_file *file;
 	struct ext_man_header *ext_man = NULL;
+	const struct elf_section_header *section;
 	int count;
 	int ret;
 
@@ -147,13 +137,13 @@ int ext_man_write(struct image *image)
 	if (ret)
 		goto out;
 
-	module = ext_man_find_module(image);
-	if (!module) {
+	file = ext_man_find_module(image, &section);
+	if (!file) {
 		ret = -ECANCELED;
 		goto out;
 	}
 
-	ret = ext_man_build(module, &ext_man);
+	ret = ext_man_build(file, section, &ext_man);
 	if (ret)
 		goto out;
 

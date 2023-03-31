@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
+
 /**
  * Reverses the order of bytes in the array
  * @param ptr pointer to a array

@@ -139,107 +139,58 @@ static int man_init_image_v2_5(struct image *image)
 	return 0;
 }
 
-/* we should call this after all segments size set up via iterate */
-static uint32_t elf_to_file_offset(struct image *image,
-				   struct manifest_module *module,
-				   struct sof_man_module *man_module,
-				   Elf32_Shdr *section)
-{
-	uint32_t elf_addr = section->vaddr, file_offset = 0, i;
-
-	if (section->type == SHT_PROGBITS || section->type == SHT_INIT_ARRAY) {
-		/* check programs for lma/vma change */
-		for (i = 0; i < module->hdr.phnum; i++) {
-			if (section->vaddr == module->prg[i].vaddr) {
-				elf_addr = module->prg[i].paddr;
-				break;
-			}
-		}
-		if (section->flags & SHF_EXECINSTR) {
-			/* text segment */
-			file_offset = elf_addr - module->text_start +
-				module->foffset;
-		} else {
-			/* rodata segment, append to text segment */
-			file_offset = elf_addr - module->data_start +
-				module->foffset + module->text_fixup_size;
-		}
-	} else if (section->type == SHT_NOBITS) {
-		/* bss segment */
-		file_offset = 0;
-	}
-
-	return file_offset;
-}
-
 /* write SRAM sections */
-static int man_copy_sram(struct image *image, Elf32_Shdr *section,
-			 struct manifest_module *module,
-			 struct sof_man_module *man_module,
-			 int section_idx)
+static int man_copy_sram(struct image *image, const struct manifest_module *module,
+			 const struct sof_man_segment_desc *segment,
+			 const struct module_section *section)
 {
-	uint32_t offset = elf_to_file_offset(image, module,
-		man_module, section);
-	uint32_t end = offset + section->size;
-	int seg_type = -1;
-	void *buffer = image->fw_image + offset;
-	size_t count;
+	uint32_t offset, end;
+	int ret;
 
+	assert(section->load_address >= segment->v_base_addr);
+	offset = segment->file_offset + section->load_address - segment->v_base_addr;
+	end = offset + section->size;
 	assert((uint64_t)offset + section->size <= image->adsp->image_size);
 
-	switch (section->type) {
-	case SHT_INIT_ARRAY:
-		/* fall through */
-	case SHT_PROGBITS:
-		/* text or data */
-		if (section->flags & SHF_EXECINSTR)
-			seg_type = SOF_MAN_SEGMENT_TEXT;
-		else
-			seg_type = SOF_MAN_SEGMENT_RODATA;
-		break;
-	case SHT_NOBITS:
-		seg_type = SOF_MAN_SEGMENT_BSS;
-		/* FALLTHRU */
-	default:
-		return 0;
-	}
-
-	/* file_offset for segment should not be 0s, we set it to
-	 * the smallest offset of its modules ATM.
-	 */
-	if (man_module->segment[seg_type].file_offset > offset ||
-	    man_module->segment[seg_type].file_offset == 0)
-		man_module->segment[seg_type].file_offset = offset;
-
-	count = fread(buffer, 1, section->size, module->fd);
-	if (count != section->size)
-		return file_error("cant read section", module->elf_file);
+	ret = module_read_section(&module->file, section, image->fw_image + offset,
+				  image->adsp->image_size - offset);
+	if (ret)
+		return ret;
 
 	/* get module end offset  ? */
 	if (end > image->image_end)
 		image->image_end = end;
 
-	fprintf(stdout, "\t%d\t0x%x\t0x%x\t\t0x%x\t%s\n", section_idx,
-		section->vaddr, section->size, offset,
-		seg_type == SOF_MAN_SEGMENT_TEXT ? "TEXT" : "DATA");
+	fprintf(stdout, "\t0x%x\t0x%zx\t\t0x%x\t%s\t%s\n", section->load_address, section->size,
+		offset, section->type == MST_TEXT ? "TEXT" : "DATA", section->header->name);
 
 	return 0;
 }
 
-static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
-				struct manifest_module *module,
-				struct sof_man_module *man_module, int idx)
+/**
+ * Write all linked sections
+ * 
+ * @param image program global structure
+ * @param module modules manifest description
+ * @param section module section descriptor
+ * @return error code on error, 0 on success
+ */
+static int man_copy_elf_sections(struct image *image, struct manifest_module *module,
+				 const struct sof_man_segment_desc *segment,
+				 const struct module_section *section)
 {
 	int ret;
 
-	/* seek to ELF section */
-	ret = fseek(module->fd, section->off, SEEK_SET);
-	if (ret)
-		return file_error("can't seek to section", module->elf_file);
+	while (section) {
+		ret = man_copy_sram(image, module, segment, section);
+		if (ret < 0) {
+			fprintf(stderr, "error: failed to write section %s\n",
+				section->header->name);
+			return ret;
+		}
 
-	/* write data to DRAM or ROM image */
-	if (!elf_is_rom(image, section))
-		return man_copy_sram(image, section, module, man_module, idx);
+		section = section->next_section;
+	}
 
 	return 0;
 }
@@ -247,48 +198,40 @@ static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
 static int man_get_module_manifest(struct image *image, struct manifest_module *module,
 				   struct sof_man_module *man_module)
 {
-	Elf32_Shdr *section;
+	struct elf_section section;
 	struct sof_man_segment_desc *segment;
-	struct sof_man_module_manifest sof_mod;
-	size_t count;
-	int ret, man_section_idx;
+	const struct sof_man_module_manifest *sof_mod;
+	int ret;
 
-	fprintf(stdout, "Module Write: %s\n", module->elf_file);
+	fprintf(stdout, "Module Write: %s\n", module->file.elf.filename);
 
-	/* find manifest module data */
-	man_section_idx = elf_find_section(module, ".module");
-	if (man_section_idx < 0)
-		return -EINVAL;
-
-	fprintf(stdout, " Manifest module metadata section at index %d\n",
-		man_section_idx);
-	section = &module->section[man_section_idx];
-
-	/* load in manifest data */
-	ret = fseek(module->fd, section->off, SEEK_SET);
-
-	if (ret < 0) {
-		fprintf(stderr, "error: can't seek to section %d\n", ret);
+	/* load in module manifest data */
+	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
+	if (ret) {
+		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
 		return ret;
 	}
 
-	count = fread(&sof_mod, 1, sizeof(sof_mod), module->fd);
-	if (count != sizeof(sof_mod))
-		return file_error("can't read section", module->elf_file);
+	if (sizeof(*sof_mod) > section.header.data.size) {
+		fprintf(stderr, "error: Invalid module manifest in '.module' section.\n");
+		ret = -ENODATA;
+		goto error;
+	}
+	sof_mod = section.data;
 
 	/* configure man_module with sofmod data */
 	memcpy(man_module->struct_id, "$AME", 4);
-	man_module->entry_point = sof_mod.module.entry_point;
-	memcpy(man_module->name, sof_mod.module.name, SOF_MAN_MOD_NAME_LEN);
-	memcpy(man_module->uuid, sof_mod.module.uuid, 16);
-	man_module->affinity_mask = sof_mod.module.affinity_mask;
-	man_module->type.auto_start = sof_mod.module.type.auto_start;
-	man_module->type.domain_dp = sof_mod.module.type.domain_dp;
-	man_module->type.domain_ll = sof_mod.module.type.domain_ll;
-	man_module->type.load_type = sof_mod.module.type.load_type;
+	man_module->entry_point = sof_mod->module.entry_point;
+	memcpy(man_module->name, sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
+	memcpy(man_module->uuid, sof_mod->module.uuid, 16);
+	man_module->affinity_mask = sof_mod->module.affinity_mask;
+	man_module->type.auto_start = sof_mod->module.type.auto_start;
+	man_module->type.domain_dp = sof_mod->module.type.domain_dp;
+	man_module->type.domain_ll = sof_mod->module.type.domain_ll;
+	man_module->type.load_type = sof_mod->module.type.load_type;
 
 	/* read out text_fixup_size from memory mapping */
-	module->text_fixup_size = sof_mod.text_size;
+	module->text_fixup_size = sof_mod->text_size;
 
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
@@ -314,7 +257,9 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 
 	fprintf(stdout, " Entry point 0x%8.8x\n", man_module->entry_point);
 
-	return 0;
+error:
+	elf_section_free(&section);
+	return ret;
 }
 
 static inline const char *segment_name(int i)
@@ -375,10 +320,9 @@ static int man_module_create(struct image *image, struct manifest_module *module
 			     struct sof_man_module *man_module)
 {
 	/* create module and segments */
-	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
-	Elf32_Shdr *section;
-	int i, err;
+	int err;
 	unsigned int pages;
+	const struct elf_section_header *bss;
 
 	image->image_end = 0;
 
@@ -392,93 +336,92 @@ static int man_module_create(struct image *image, struct manifest_module *module
 	/* max number of instances of this module ?? */
 	man_module->instance_max_count = 1;
 
-	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
-
-	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->text_start, module->text_end,
-		module->text_end - module->text_start);
-	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->data_start, module->data_end,
-		module->data_end - module->data_start);
-	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
-		module->bss_start, module->bss_end,
-		module->bss_end - module->bss_start);
+	module_print_zones(&module->file);
 
 	/* main module */
+	fprintf(stdout, "\tAddress\t\tSize\t\tFile\tType\tName\n");
+
 	/* text section is first */
-	man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset =
-		module->foffset;
-	man_module->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr =
-		module->text_start;
+	man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset = module->foffset;
+	man_module->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = module->file.text.start;
 
 	/* calculates those padding 0s by the start of next segment */
-	pages = module->text_file_size / MAN_PAGE_SIZE;
-	if (module->text_file_size % MAN_PAGE_SIZE)
-		pages += 1;
+	/* file_size is already aligned to MAN_PAGE_SIZE */
+	pages = module->file.text.file_size / MAN_PAGE_SIZE;
 
 	if (module->text_fixup_size == 0)
-		module->text_fixup_size = module->text_file_size;
+		module->text_fixup_size = module->file.text.file_size;
 
 	/* check if text_file_size is bigger then text_fixup_size */
-	if (module->text_file_size > module->text_fixup_size) {
+	if (module->file.text.file_size > module->text_fixup_size) {
 		fprintf(stderr, "error: too small text size assigned!\n");
 		return -EINVAL;
 	}
 
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length = pages;
 
+	/* Copy text sections content */
+	err = man_copy_elf_sections(image, module, &man_module->segment[SOF_MAN_SEGMENT_TEXT],
+				    module->file.text.first_section);
+	if (err)
+		return err;
+
+
 	/* data section */
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
-		module->data_start;
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
-			module->foffset + module->text_fixup_size;
-	pages = module->data_file_size / MAN_PAGE_SIZE;
-	if (module->data_file_size % MAN_PAGE_SIZE)
-		pages += 1;
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = module->file.data.start;
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset = module->foffset +
+								  module->text_fixup_size;
+
+	/* file_size is already aligned to MAN_PAGE_SIZE */
+	pages = module->file.data.file_size / MAN_PAGE_SIZE;
 
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length = pages;
 
+	/* Copy data sections content */
+	err = man_copy_elf_sections(image, module, &man_module->segment[SOF_MAN_SEGMENT_RODATA],
+				    module->file.data.first_section);
+	if (err)
+		return err;
+
 	/* bss is last */
+
+	/* I do not understand why only the section named .bss was taken into account. Other
+	 * sections of the same type were ignored (type = SHT_NOBITS, flags = SHF_ALLOC). I added
+	 * the reading of the .bss section here, to not change the behavior of the program.
+	 */
+	bss = NULL;
+
+	if (module->is_bootloader) {
+		/* Bootloader should not have .bss section. */
+		fprintf(stdout, "info: ignore .bss section for bootloader module\n");
+	} else {
+		err = elf_section_header_get_by_name(&module->file.elf, ".bss", &bss);
+		if (err)
+			fprintf(stderr, "warning: can't find '.bss' section in module %s.\n",
+				module->file.elf.filename);
+
+	}
+
 	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
-	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr =
-			module->bss_start;
-	pages = (module->bss_end - module->bss_start) / MAN_PAGE_SIZE;
-	if ((module->bss_end - module->bss_start) % MAN_PAGE_SIZE)
-		pages += 1;
+	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = 0;
+	pages = 0;
+
+	if (bss) {
+		man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr =
+			uncache_to_cache(&image->adsp->mem.alias, bss->data.vaddr);
+
+		pages = DIV_ROUND_UP(bss->data.size, MAN_PAGE_SIZE);
+	}
+
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = pages;
 	if (pages == 0) {
 		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.ul = 0;
-		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.type =
-				SOF_MAN_SEGMENT_EMPTY;
+		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.type = SOF_MAN_SEGMENT_EMPTY;
 	}
-
-	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
 	if (man_module_validate(man_module) < 0)
 		return -EINVAL;
 
-	/* find all sections and copy to corresponding segments */
-	for (i = 0; i < module->hdr.shnum; i++) {
-		section = &module->section[i];
-
-		/* only check valid sections */
-		if (!(section->flags & valid))
-			continue;
-
-		if (section->size == 0)
-			continue;
-
-		/* text or data section */
-		if (!elf_is_rom(image, section))
-			err = man_copy_elf_section(image, section, module,
-						   man_module, i);
-
-		if (err < 0) {
-			fprintf(stderr, "error: failed to write section #%d\n",
-				i);
-			return err;
-		}
-	}
 	fprintf(stdout, "\n");
 
 	/* no need to update end for exec headers */
@@ -507,9 +450,6 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 {
 	/* create module and segments */
 	int err;
-	unsigned int pages;
-	void *buffer = image->fw_image + module->foffset;
-	size_t count;
 
 	image->image_end = 0;
 
@@ -523,17 +463,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	/* max number of instances of this module ?? */
 	man_module->instance_max_count = 1;
 
-	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
-
-	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->text_start, module->text_end,
-		module->text_end - module->text_start);
-	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->data_start, module->data_end,
-		module->data_end - module->data_start);
-	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
-		module->bss_start, module->bss_end,
-		module->bss_end - module->bss_start);
+	module_print_zones(&module->file);
 
 	/* main module */
 	/* text section is first */
@@ -544,13 +474,9 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	/* data section */
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = 0;
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
-			module->foffset;
-	pages = module->data_file_size / MAN_PAGE_SIZE;
-	if (module->data_file_size % MAN_PAGE_SIZE)
-		pages += 1;
-
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length = pages;
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset = module->foffset;
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length = module->file.data.file_size /
+								     MAN_PAGE_SIZE;
 
 	/* bss is last */
 	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
@@ -559,20 +485,17 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
-	/* seek to beginning of file */
-	err = fseek(module->fd, 0, SEEK_SET);
+	assert((module->file.elf.file_size + module->foffset) <= image->adsp->image_size);
+	err = module_read_whole_elf(&module->file, image->fw_image + module->foffset,
+				    image->image_end - module->foffset);
 	if (err)
-		return file_error("can't seek to section", module->elf_file);
-
-	count = fread(buffer, 1, module->file_size, module->fd);
-	if (count != module->file_size)
-		return file_error("can't read section", module->elf_file);
+		return err;
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8zx\t0x%x\t%s\n", 0,
-		0, module->file_size, 0, "DATA");
+		0, module->file.elf.file_size, 0, "DATA");
 
 	fprintf(stdout, "\n");
-	image->image_end = module->foffset + module->file_size;
+	image->image_end = module->foffset + module->file.elf.file_size;
 
 	/* round module end up to nearest page */
 	if (image->image_end % MAN_PAGE_SIZE) {
@@ -645,7 +568,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 		module = &image->module[0];
 
 		fprintf(stdout, "Module: %s used as executable header\n",
-			module->elf_file);
+			module->file.elf.filename);
 		module->exec_header = 1;
 
 		/* set module file offset */
