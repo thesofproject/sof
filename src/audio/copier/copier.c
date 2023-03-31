@@ -299,61 +299,48 @@ static int init_dai_single(struct comp_dev *parent_dev,
 			   enum ipc4_gateway_type type,
 			   int index)
 {
-	struct comp_dev *dev;
+	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
 	struct copier_data *cd;
 	struct dai_data *dd;
 	int ret;
 
 	cd = comp_get_drvdata(parent_dev);
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, false, index);
-	if (ret < 0)
-		return ret;
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
+	audio_stream_fmt_conversion(copier->base.audio_fmt.depth,
+				    copier->base.audio_fmt.valid_bit_depth,
+				    &in_frame_fmt,
+				    &in_valid_fmt,
+				    copier->base.audio_fmt.s_type);
 
-	dev->ipc_config = *config;
+	audio_stream_fmt_conversion(copier->out_fmt.depth,
+				    copier->out_fmt.valid_bit_depth,
+				    &out_frame_fmt,
+				    &out_valid_fmt,
+				    copier->out_fmt.s_type);
+
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+		config->frame_fmt = out_frame_fmt;
+	else
+		config->frame_fmt = in_frame_fmt;
+
+	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
 		ret = -ENOMEM;
-		goto e_data;
+		goto e_buf;
 	}
-
-	comp_set_drvdata(dev, dd);
 
 	ret = dai_zephyr_new(dd, parent_dev, dai);
 	if (ret < 0)
 		goto e_zephyr;
 
-	dev->state = COMP_STATE_READY;
-
-	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
-		pipeline->sink_comp = dev;
-	else
-		pipeline->source_comp = dev;
-
 	pipeline->sched_id = config->id;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	ret = comp_dai_config(dd, parent_dev, dai, copier);
 	if (ret < 0)
 		goto e_buf;
-
-	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
-		cd->bsource_buffer = true;
-	} else {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
-		cd->bsource_buffer = false;
-	}
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
 			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
@@ -364,7 +351,7 @@ static int init_dai_single(struct comp_dev *parent_dev,
 		goto e_zephyr;
 	}
 
-	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->endpoint_num++;
 	cd->dd[0] = dd;
 
 	return 0;
@@ -372,11 +359,9 @@ static int init_dai_single(struct comp_dev *parent_dev,
 e_zephyr:
 	if (dd->group)
 		notifier_unregister(parent_dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
-	dai_zephyr_free(dd, dev);
-e_data:
-	rfree(dev);
+	dai_zephyr_free(dd);
 e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
+
 	return ret;
 }
 
@@ -827,17 +812,11 @@ static void copier_free(struct comp_dev *dev)
 			if (cd->dd[0]->group)
 				notifier_unregister(dev, cd->dd[0]->group,
 						    NOTIFIER_ID_DAI_TRIGGER);
-			dai_zephyr_free(cd->dd[0], cd->endpoint[0]);
-			rfree(cd->endpoint[0]);
-			buffer_free(cd->endpoint_buffer[0]);
+			dai_zephyr_free(cd->dd[0]);
 		} else {
 			/* handle multiendpoint case */
 			for (i = 0; i < cd->endpoint_num; i++) {
-				if (cd->dd[i]->group)
-					notifier_unregister(dev, cd->dd[i]->group,
-							    NOTIFIER_ID_DAI_TRIGGER);
-				dai_zephyr_free(cd->dd[i], cd->endpoint[i]);
-				rfree(cd->endpoint[i]);
+				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
 				buffer_free(cd->endpoint_buffer[i]);
 			}
 		}
@@ -845,7 +824,6 @@ static void copier_free(struct comp_dev *dev)
 	default:
 		break;
 	}
-
 	rfree(cd);
 	rfree(dev);
 }
@@ -1006,11 +984,11 @@ static int copier_prepare(struct comp_dev *dev)
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1) {
 			/* single dai case */
-			ret = dai_config_prepare(cd->dd[0], cd->endpoint[0]);
+			ret = dai_config_prepare(cd->dd[0], dev);
 			if (ret < 0)
 				return ret;
 
-			ret = dai_zephyr_prepare(cd->dd[0], cd->endpoint[0]);
+			ret = dai_zephyr_prepare(cd->dd[0], dev);
 			if (ret < 0)
 				return ret;
 		} else {
@@ -1094,8 +1072,7 @@ static int copier_reset(struct comp_dev *dev)
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1) {
-			dai_zephyr_reset(cd->dd[0], cd->endpoint[0]);
-			comp_set_state(cd->endpoint[0], COMP_TRIGGER_RESET);
+			dai_zephyr_reset(cd->dd[0], dev);
 		} else {
 			/* multi endpoint case */
 			for (i = 0; i < cd->endpoint_num; i++) {
@@ -1127,7 +1104,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_stream_posn posn;
 	struct comp_dev *dai_copier;
-	struct copier_data *dai_cd;
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
@@ -1159,7 +1135,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1) {
-			ret = dai_zephyr_trigger(cd->dd[0], cd->endpoint[0], cmd);
+			ret = dai_zephyr_trigger(cd->dd[0], dev, cmd);
 			if (ret < 0)
 				return ret;
 		} else {
@@ -1189,10 +1165,8 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		return 0;
 	}
 
-	dai_cd = comp_get_drvdata(dai_copier);
 	/* dai is in another pipeline and it is not prepared or active */
-	if (dai_copier->state <= COMP_STATE_READY ||
-	    dai_cd->endpoint[IPC4_COPIER_GATEWAY_PIN]->state <= COMP_STATE_READY) {
+	if (dai_copier->state <= COMP_STATE_READY) {
 		struct ipc4_pipeline_registers pipe_reg;
 
 		comp_warn(dev, "dai is not ready");
@@ -1466,8 +1440,16 @@ static int copier_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "copier_copy()");
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-		return do_endpoint_copy(dev);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			return do_endpoint_copy(dev);
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1)
+			return do_endpoint_copy(dev);
+	default:
+		break;
+	}
 
 	processed_data.source_bytes = 0;
 
@@ -1669,7 +1651,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	}
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		update_internal_comp(dev, cd->endpoint[i]);
+		if (cd->endpoint[i])
+			update_internal_comp(dev, cd->endpoint[i]);
 
 		/* For ALH multi-gateway case, params->channels is a total multiplexed
 		 * number of channels. Demultiplexed number of channels for each individual
@@ -1718,9 +1701,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			case SOF_COMP_DAI:
 				if (cd->endpoint_num == 1) {
 					ret = dai_zephyr_params(cd->dd[i], dev, params,
-								&period_count, &period_bytes,
-								&cd->endpoint[i]->bsource_list,
-								&cd->endpoint[i]->bsink_list);
+								&period_count, &period_bytes);
 					if (ret < 0)
 						break;
 
@@ -1729,6 +1710,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 								    period_bytes, period_count) :
 						dai_capture_params(cd->dd[i], dev,
 								   period_bytes, period_count);
+						cd->dd[i]->process = cd->converter[i];
 				} else {
 					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 									       params);
@@ -1870,11 +1852,17 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading_extended llp_ext;
 	struct ipc4_llp_reading llp;
+	struct comp_dev *temp_dev;
+
+	if (cd->ipc_gtw)
+		temp_dev = cd->endpoint[IPC4_COPIER_GATEWAY_PIN];
+	else
+		temp_dev = dev;
 
 	switch (param_id) {
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING:
 		if (!cd->endpoint_num ||
-		    comp_get_endpoint_type(cd->endpoint[IPC4_COPIER_GATEWAY_PIN]) !=
+		    comp_get_endpoint_type(temp_dev) !=
 		    COMP_ENDPOINT_DAI) {
 			comp_err(dev, "Invalid component type");
 			return -EINVAL;
@@ -1888,13 +1876,13 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 		*data_offset = sizeof(struct ipc4_llp_reading);
 		memset(&llp, 0, sizeof(llp));
 
-		if (cd->endpoint[IPC4_COPIER_GATEWAY_PIN]->state != COMP_STATE_ACTIVE) {
+		if (temp_dev->state != COMP_STATE_ACTIVE) {
 			memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
 			return 0;
 		}
 
 		/* get llp from dai */
-		comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], &posn);
+		comp_position(temp_dev, &posn);
 
 		convert_u64_to_u32s(posn.comp_posn, &llp.llp_l, &llp.llp_u);
 		convert_u64_to_u32s(posn.wallclock, &llp.wclk_l, &llp.wclk_u);
@@ -1904,7 +1892,7 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED:
 		if (!cd->endpoint_num ||
-		    comp_get_endpoint_type(cd->endpoint[IPC4_COPIER_GATEWAY_PIN]) !=
+		    comp_get_endpoint_type(temp_dev) !=
 		    COMP_ENDPOINT_DAI) {
 			comp_err(dev, "Invalid component type");
 			return -EINVAL;
@@ -1918,13 +1906,13 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 		*data_offset = sizeof(struct ipc4_llp_reading_extended);
 		memset(&llp_ext, 0, sizeof(llp_ext));
 
-		if (cd->endpoint[IPC4_COPIER_GATEWAY_PIN]->state != COMP_STATE_ACTIVE) {
+		if (temp_dev->state != COMP_STATE_ACTIVE) {
 			memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
 			return 0;
 		}
 
 		/* get llp from dai */
-		comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], &posn);
+		comp_position(temp_dev, &posn);
 
 		convert_u64_to_u32s(posn.comp_posn, &llp_ext.llp_reading.llp_l,
 				    &llp_ext.llp_reading.llp_u);
@@ -2036,7 +2024,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 		}
 		break;
 	case SOF_COMP_DAI:
-		ret = dai_zephyr_position(cd->dd[0], cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+		ret = dai_zephyr_position(cd->dd[0], dev, posn);
 		break;
 	default:
 		comp_err(dev, "Unexpected copier device type to position! %d",
