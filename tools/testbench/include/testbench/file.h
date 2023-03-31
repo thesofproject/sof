@@ -11,6 +11,8 @@
 #ifndef _FILE_H
 #define _FILE_H
 
+#include <stdint.h>
+
 /**< Convert with right shift a bytes count to samples count */
 #define FILE_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
 #define FILE_BYTES_TO_S32_SAMPLES(s)	((s) >> 2)
@@ -29,14 +31,15 @@ enum file_format {
 
 /* file component state */
 struct file_state {
-	char *fn;
+	uint64_t cycles_count;
 	FILE *rfh, *wfh; /* read/write file handle */
-	bool reached_eof;
-	bool write_failed;
+	char *fn;
+	int copy_count;
 	int n;
 	enum file_mode mode;
 	enum file_format f_format;
-	int copy_count;
+	bool reached_eof;
+	bool write_failed;
 };
 
 /* file comp data */

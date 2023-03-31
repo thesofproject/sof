@@ -36,6 +36,7 @@ struct tplg_context;
  * into per pipeline data and per topology data structures.
  */
 struct testbench_prm {
+	long long total_cycles;
 	char *tplg_file; /* topology file to use */
 	char *input_file[MAX_INPUT_FILE_NUM]; /* input file names */
 	char *output_file[MAX_OUTPUT_FILE_NUM]; /* output file names */
@@ -103,6 +104,9 @@ int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p);
 int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p);
 
 void debug_print(char *message);
+
+void tb_gettime(struct timespec *td);
+void tb_getcycles(uint64_t *cycles);
 
 void sys_comp_asrc_init(void);
 void sys_comp_crossover_init(void);
