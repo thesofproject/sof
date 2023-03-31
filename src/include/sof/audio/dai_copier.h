@@ -24,7 +24,7 @@ int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 /**
  * \brief dai free through dai_data
  */
-void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev);
+void dai_zephyr_free(struct dai_data *dd);
 
 /**
  * \brief dai config prepare through dai_data
@@ -64,9 +64,7 @@ int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t perio
 int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params,
 		      uint32_t *period_count,
-		      uint32_t *period_bytes,
-		      struct list_item *bsource_list,
-		      struct list_item *bsink_list);
+		      uint32_t *period_bytes);
 
 /**
  * \brief dai zephyr copy
@@ -85,7 +83,7 @@ static inline int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 /**
  * \brief dai free through dai_data
  */
-static inline void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev) {}
+static inline void dai_zephyr_free(struct dai_data *dd) {}
 
 /**
  * \brief dai config prepare through dai_data
@@ -140,9 +138,7 @@ static inline int dai_capture_params(struct dai_data *dd, struct comp_dev *dev,
 static inline int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params,
 				    uint32_t *period_count,
-				    uint32_t *period_bytes,
-				    struct list_item *bsource_list,
-				    struct list_item *bsink_list)
+				    uint32_t *period_bytes)
 {
 	return 0;
 }

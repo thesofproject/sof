@@ -56,7 +56,8 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 {
 	struct comp_dev *dev = arg;
-	struct dai_data *dd = comp_get_drvdata(dev);
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd;
 	struct dai_group *group = dd->group;
 
 	/* Atomic context set by the last DAI to receive trigger command */
@@ -356,7 +357,7 @@ e_data:
 /*
  * dev need replace with copier dev, trigger and copy need register to copier dev
  */
-void dai_zephyr_free(struct dai_data *dd, struct comp_dev *dev)
+void dai_zephyr_free(struct dai_data *dd)
 {
 	if (dd->group) {
 		dai_group_put(dd->group);
@@ -383,7 +384,7 @@ static void dai_free(struct comp_dev *dev)
 	if (dd->group)
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 
-	dai_zephyr_free(dd, dev);
+	dai_zephyr_free(dd);
 
 	rfree(dev);
 }
@@ -683,9 +684,7 @@ out:
 int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params,
 		      uint32_t *count,
-		      uint32_t *bytes,
-		      struct list_item *bsource_list,
-		      struct list_item *bsink_list)
+		      uint32_t *bytes)
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	struct comp_buffer __sparse_cache *buffer_c;
@@ -705,11 +704,11 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 	component_set_nearest_period_frames(dev, params->rate);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(bsource_list,
+		dd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(bsink_list,
+		dd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
 						   source_list);
 
@@ -747,13 +746,8 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	buffer_c = buffer_acquire(dd->local_buffer);
-
 	/* calculate frame size */
-	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     audio_stream_get_channels(&buffer_c->stream));
-
-	buffer_release(buffer_c);
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt, params->channels);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -815,8 +809,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 
 	comp_dbg(dev, "dai_params()");
 
-	ret = dai_zephyr_params(dd, dev, params, &period_count, &period_bytes,
-				&dev->bsource_list, &dev->bsink_list);
+	ret = dai_zephyr_params(dd, dev, params, &period_count, &period_bytes);
 	if (ret < 0)
 		return ret;
 
@@ -876,13 +869,6 @@ int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	dd->total_data_processed = 0;
 
@@ -980,13 +966,6 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
 
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		comp_dbg(dev, "dai_comp_trigger_internal(), START");
@@ -1074,7 +1053,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 #if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
-		if (prev_state == COMP_STATE_ACTIVE) {
+		if (prev_state == COMP_STATE_ACTIVE || prev_state == COMP_STATE_PAUSED) {
 			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		} else {
 			comp_warn(dev, "dma was stopped earlier");
@@ -1083,7 +1062,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		if (prev_state == COMP_STATE_ACTIVE) {
+		if (prev_state == COMP_STATE_ACTIVE || prev_state == COMP_STATE_PAUSED) {
 			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		} else {
 			comp_warn(dev, "dma was stopped earlier");

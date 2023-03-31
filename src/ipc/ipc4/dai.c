@@ -170,14 +170,9 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		if (dev->state != COMP_STATE_PAUSED)
 			dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
-		/* remove callback */
-		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
 #else
 		dma_stop_legacy(dd->chan);
-
-		/* remove callback */
-		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put_legacy(dd->chan);
 #endif
 		dd->chan->dev_data = NULL;
