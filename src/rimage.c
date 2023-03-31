@@ -206,6 +206,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (image.num_modules > image.adsp->modules->mod_man_count) {
+		fprintf(stderr, "error: Each ELF input module requires entry in toml file.\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* getopt reorders argv[] */
 	for (i = first_non_opt; i < argc; i++) {
 		/* When there is more than one module, then first one is bootloader.

@@ -662,6 +662,10 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 
 	for (; i < image->num_modules; i++) {
 		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i - offset);
+		/* Use manifest created using toml files as template */
+		assert(i < image->adsp->modules->mod_man_count);
+		memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
+
 		module = &image->module[i];
 
 		if (i == 0)
@@ -693,12 +697,14 @@ static void man_create_modules_in_config(struct image *image, struct sof_man_fw_
 	if (!modules)
 		return;
 
-	/*skip bringup and base module */
-	for (i = 2; i < modules->mod_man_count; i++) {
+	/* skip modules passed as parameters. Their manifests have already been copied by the
+	 * man_create_modules function. */
+	for (i = image->num_modules; i < modules->mod_man_count; i++) {
 		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
 		memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
 	}
 
+	/* We need to copy the configurations for all modules. */
 	cfg_start = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
 	memcpy(cfg_start, modules->mod_cfg, modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
 
