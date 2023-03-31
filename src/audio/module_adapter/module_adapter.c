@@ -167,21 +167,16 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_adapter_prepare() start");
 
-	/*
-	 * check if the component is already active. This could happen in the case of mixer when
-	 * one of the sources is already active
-	 */
-	if (dev->state == COMP_STATE_ACTIVE)
-		return 0;
+	/* Prepare module */
+	ret = module_prepare(mod);
+	if (ret) {
+		if (ret == PPL_STATUS_PATH_STOP)
+			return ret;
 
-	/* Are we already prepared? */
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
+		comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
+			 ret);
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
-		return PPL_STATUS_PATH_STOP;
+		return -EIO;
 	}
 
 	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
@@ -195,16 +190,21 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	buffer_release(sink_c);
 
-	/* Prepare module */
-	ret = module_prepare(mod);
-	if (ret) {
-		if (ret == PPL_STATUS_PATH_STOP)
-			return ret;
+	/*
+	 * check if the component is already active. This could happen in the case of mixer when
+	 * one of the sources is already active
+	 */
+	if (dev->state == COMP_STATE_ACTIVE)
+		return PPL_STATUS_PATH_STOP;
 
-		comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
-			 ret);
+	/* Are we already prepared? */
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
 
-		return -EIO;
+	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
+		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	mod->deep_buff_bytes = 0;
