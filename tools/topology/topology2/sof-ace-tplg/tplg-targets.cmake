@@ -10,10 +10,10 @@ set(TPLGS
 # topologies below.
 "sof-hda-generic\;sof-hda-generic-4ch\;PLATFORM=mtl,\
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,DEEPBUFFER_FW_DMA_MS=100"
+NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 "sof-hda-generic\;sof-hda-generic-2ch\;PLATFORM=mtl,\
 HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,\
-DEEPBUFFER_FW_DMA_MS=100"
+USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 
 # SDW + DMIC topology with passthrough pipelines
 # We will change NUM_HDMIS to 3 once HDMI is enabled on MTL RVP
