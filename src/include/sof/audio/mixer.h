@@ -32,8 +32,6 @@ void sys_comp_module_mixer_interface_init(void);
 
 /* mixer component private data */
 struct mixer_data {
-	bool sources_inactive;
-
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			 const struct audio_stream __sparse_cache **sources, uint32_t count,
 			 uint32_t frames);
