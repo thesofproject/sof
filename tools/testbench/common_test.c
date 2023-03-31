@@ -29,6 +29,10 @@
 #include "testbench/trace.h"
 #include <tplg_parser/topology.h>
 
+#if defined __XCC__
+#include <xtensa/tie/xt_timer.h>
+#endif
+
 /* testbench helper functions for pipeline setup and trigger */
 
 int tb_setup(struct sof *sof, struct testbench_prm *tp)
@@ -280,4 +284,23 @@ void tb_enable_trace(bool enable)
 		debug_print("trace print enabled\n");
 	else
 		debug_print("trace print disabled\n");
+}
+
+void tb_gettime(struct timespec *td)
+{
+#if !defined __XCC__
+	clock_gettime(CLOCK_MONOTONIC, td);
+#else
+	td->tv_nsec = 0;
+	td->tv_sec = 0;
+#endif
+}
+
+void tb_getcycles(uint64_t *cycles)
+{
+#if defined __XCC__
+	*cycles = XT_RSR_CCOUNT();
+#else
+	*cycles = 0;
+#endif
 }

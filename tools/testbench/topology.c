@@ -7,7 +7,6 @@
 
 /* Topology loader to set up components and pipeline */
 
-#include <dlfcn.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
@@ -161,7 +160,7 @@ static int tb_register_pga(struct testbench_prm *tp, struct tplg_context *ctx)
 static int tb_register_pipeline(struct testbench_prm *tp, struct tplg_context *ctx)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_pipe_new pipeline = {0};
+	struct sof_ipc_pipe_new pipeline = {{0}};
 	int ret;
 
 	ret = tplg_new_pipeline(ctx, &pipeline, sizeof(pipeline), NULL);
