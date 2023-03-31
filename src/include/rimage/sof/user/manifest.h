@@ -30,6 +30,9 @@
 #define SOF_MAN_MOD_INIT_CONFIG_BASE_CFG               0 /* Base config only */
 #define SOF_MAN_MOD_INIT_CONFIG_BASE_CFG_WITH_EXT      1 /* Base config with extension */
 
+#define MAN_MAX_SIZE_V1_8		(38 * 1024)
+
+
 struct sof_man_module_type {
 	uint32_t load_type:4;	/* SOF_MAN_MOD_TYPE_ */
 	uint32_t auto_start:1;
