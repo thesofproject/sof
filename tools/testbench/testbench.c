@@ -254,7 +254,7 @@ static void test_pipeline_get_file_stats(int pipeline_id)
 				time = cd->pipeline->pipe_task->start;
 				if (fcd->fs.copy_count == 0)
 					fcd->fs.copy_count = 1;
-				printf("file %s: id %d: type %d: samples %d copies %d total time %zu uS avg time %zu uS\n",
+				printf("file %s: id %d: type %d: samples %d copies %d total time %lu uS avg time %lu uS\n",
 				       fcd->fs.fn, cd->ipc_config.id, cd->drv->type, fcd->fs.n,
 				       fcd->fs.copy_count, time, time / fcd->fs.copy_count);
 				break;
@@ -356,7 +356,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		default:
 			fprintf(stderr, "unknown option %c\n", option);
 			ret = -EINVAL;
-			__attribute__ ((fallthrough));
+			/* fallthrough */
 		case 'h':
 			print_usage(argv[0]);
 			exit(EXIT_SUCCESS);
@@ -487,9 +487,15 @@ static int test_pipeline_start(struct testbench_prm *tp)
 static bool test_pipeline_check_state(struct testbench_prm *tp, int state)
 {
 	struct pipeline *p;
+	uint64_t cycles0, cycles1;
 	int i;
 
+	tb_getcycles(&cycles0);
+
 	schedule_ll_run_tasks();
+
+	tb_getcycles(&cycles1);
+	tp->total_cycles += cycles1 - cycles0;
 
 	/* Run pipeline until EOF from fileread */
 	for (i = 0; i < tp->pipeline_num; i++) {
@@ -522,7 +528,7 @@ static int test_pipeline_load(struct testbench_prm *tp, struct tplg_context *ctx
 }
 
 static void test_pipeline_stats(struct testbench_prm *tp,
-				struct tplg_context *ctx, uint64_t delta)
+				struct tplg_context *ctx, long long delta_t)
 {
 	int count = 1;
 	struct ipc_comp_dev *icd;
@@ -530,7 +536,9 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 	struct dai_data *dd;
 	struct pipeline *p;
 	struct file_comp_data *frcd, *fwcd;
-	int n_in, n_out;
+	long long file_cycles, pipeline_cycles;
+	float pipeline_mcps;
+	int n_in, n_out, frames_out;
 	int i;
 
 	/* Get pointer to filewrite */
@@ -566,6 +574,7 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
+	file_cycles = frcd->fs.cycles_count + fwcd->fs.cycles_count;
 
 	/* print test summary */
 	printf("==========================================================\n");
@@ -586,10 +595,25 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 		printf("Output[%d] written to file: \"%s\"\n",
 		       i, tp->output_file[i]);
 	}
+	frames_out = n_out / tp->channels_out;
 	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / tp->channels_in);
-	printf("Output sample (frame) count: %d (%d)\n", n_out, n_out / tp->channels_out);
-	printf("Total execution time: %zu us, %.2f x realtime\n\n",
-	       delta, (double)((double)n_out / tp->channels_out / tp->fs_out) * 1000000 / delta);
+	printf("Output sample (frame) count: %d (%d)\n", n_out, frames_out);
+	if (tp->total_cycles) {
+		pipeline_cycles = tp->total_cycles - file_cycles;
+		pipeline_mcps = (float)pipeline_cycles * tp->fs_out / frames_out / 1e6;
+		printf("Total execution cycles: %lld\n", tp->total_cycles);
+		printf("File component cycles: %lld\n", file_cycles);
+		printf("Pipeline cycles: %lld\n", pipeline_cycles);
+		printf("Pipeline MCPS: %6.2f\n", pipeline_mcps);
+		if (!tp->quiet)
+			printf("Warning: Use -q to avoid printing to increase MCPS.\n");
+	}
+
+	if (delta_t)
+		printf("Total execution time: %lld us, %.2f x realtime\n",
+		       delta_t, (float)frames_out / tp->fs_out * 1000000 / delta_t);
+
+	printf("\n");
 }
 
 /*
@@ -602,10 +626,10 @@ static int pipline_test(struct testbench_prm *tp)
 	struct tplg_context ctx;
 	struct timespec ts;
 	struct timespec td0, td1;
+	long long delta_t;
 	int err;
 	int nsleep_time;
 	int nsleep_limit;
-	uint64_t delta;
 
 	/* build, run and teardown pipelines */
 	while (dp_count < tp->dynamic_pipeline_iterations) {
@@ -637,7 +661,8 @@ static int pipline_test(struct testbench_prm *tp)
 				dp_count, err);
 			break;
 		}
-		clock_gettime(CLOCK_MONOTONIC, &td0);
+
+		tb_gettime(&td0);
 
 		/* sleep to let the pipeline work - we exit at timeout OR
 		 * if copy iterations OR max_samples is reached (whatever first)
@@ -652,8 +677,12 @@ static int pipline_test(struct testbench_prm *tp)
 				       tp->pipeline_duration_ms;
 
 		while (nsleep_time < nsleep_limit) {
+#if defined __XCC__
+			err = 0;
+#else
 			/* wait for next tick */
 			err = nanosleep(&ts, &ts);
+#endif
 			if (err == 0) {
 				nsleep_time += tp->tick_period_us; /* sleep fully completed */
 				if (test_pipeline_check_state(tp, SOF_TASK_STATE_CANCEL)) {
@@ -670,7 +699,8 @@ static int pipline_test(struct testbench_prm *tp)
 			}
 		}
 
-		clock_gettime(CLOCK_MONOTONIC, &td1);
+		tb_gettime(&td1);
+
 		err = test_pipeline_stop(tp);
 		if (err < 0) {
 			fprintf(stderr, "error: pipeline stop %d failed %d\n",
@@ -678,9 +708,9 @@ static int pipline_test(struct testbench_prm *tp)
 			break;
 		}
 
-		delta = (td1.tv_sec - td0.tv_sec) * 1000000;
-		delta += (td1.tv_nsec - td0.tv_nsec) / 1000;
-		test_pipeline_stats(tp, &ctx, delta);
+		delta_t = (td1.tv_sec - td0.tv_sec) * 1000000;
+		delta_t += (td1.tv_nsec - td0.tv_nsec) / 1000;
+		test_pipeline_stats(tp, &ctx, delta_t);
 
 		err = test_pipeline_reset(tp);
 		if (err < 0) {
@@ -705,6 +735,7 @@ int main(int argc, char **argv)
 
 	/* initialize input and output sample rates, files, etc. */
 	debug = 0;
+	tp.total_cycles = 0;
 	tp.fs_in = 0;
 	tp.fs_out = 0;
 	tp.bits_in = 0;
