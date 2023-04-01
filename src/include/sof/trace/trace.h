@@ -235,6 +235,9 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 
 #include <sys/time.h>
 
+/* trace level used on host configurations */
+extern int host_trace_level;
+
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(ignored_log_func, atomic, level, comp_class, ctx, id_1, id_2, format, ...)	\
 do {								\
@@ -243,11 +246,13 @@ do {								\
 	(void)id_2;						\
 	struct timeval tv;					\
 	char *msg = "(%s:%d) " format;				\
-	gettimeofday(&tv, NULL);				\
-	fprintf(stderr, "%ld.%6.6ld:", tv.tv_sec, tv.tv_usec);	\
-	fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,	\
-		__LINE__, ##__VA_ARGS__);			\
-	fprintf(stderr, "\n");					\
+	if (level >= host_trace_level) {			\
+		gettimeofday(&tv, NULL);				\
+		fprintf(stderr, "%ld.%6.6ld:", tv.tv_sec, tv.tv_usec);	\
+		fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,	\
+			__LINE__, ##__VA_ARGS__);			\
+		fprintf(stderr, "\n");					\
+	}							\
 } while (0)
 
 #define trace_point(x)  do {} while (0)

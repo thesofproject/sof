@@ -268,14 +268,14 @@ int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipelin
 /* print debug messages */
 void debug_print(char *message)
 {
-	if (debug)
+	if (host_trace_level >= LOG_LEVEL_DEBUG)
 		printf("debug: %s", message);
 }
 
 /* enable trace in testbench */
 void tb_enable_trace(bool enable)
 {
-	test_bench_trace = enable;
+	host_trace_level = enable;
 	if (enable)
 		debug_print("trace print enabled\n");
 	else
