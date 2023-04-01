@@ -22,9 +22,9 @@ int dai_init(struct sof *sof)
 	return 0;
 }
 
-void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
-{
-}
+//void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+//{
+//}
 
 struct ipc4_ipcgtw_cmd;
 
