@@ -319,7 +319,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 			/* enable debug prints */
 		case 'd':
-			debug = 1;
+			host_trace_level = atoi(optarg);
 			break;
 
 		/* number of pipeline copy() iterations */
@@ -734,7 +734,6 @@ int main(int argc, char **argv)
 	int i, err;
 
 	/* initialize input and output sample rates, files, etc. */
-	debug = 0;
 	tp.total_cycles = 0;
 	tp.fs_in = 0;
 	tp.fs_out = 0;

@@ -12,8 +12,7 @@
 #include <sof/trace/dma-trace.h>
 
 /* enable trace by default in testbench */
-int test_bench_trace = 1;
-int debug;
+int host_trace_level = 1;
 
 /* look up subsystem class name from table */
 char *get_trace_class(uint32_t trace_class)
