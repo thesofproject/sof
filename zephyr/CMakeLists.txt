@@ -276,12 +276,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
-	# Zephyr DMA domain should only be used with zephyr_ll
-	if (NOT(CONFIG_DMA_DOMAIN))
-		zephyr_library_sources(${SOF_SRC_PATH}/schedule/ll_schedule.c)
-	else()
-		zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-	endif()
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
 
 	set(PLATFORM "imx8")
 endif()
@@ -309,12 +304,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
-	# Zephyr DMA domain should only be used with zephyr_ll
-	if (NOT(CONFIG_DMA_DOMAIN))
-		zephyr_library_sources(${SOF_SRC_PATH}/schedule/ll_schedule.c)
-	else()
-		zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-	endif()
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
 
 	set(PLATFORM "imx8m")
 endif()
