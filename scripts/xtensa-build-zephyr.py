@@ -270,7 +270,15 @@ def execute_command(*run_args, **run_kwargs):
 		cwd = run_kwargs.get('cwd')
 		print_cwd = f"In dir: {cwd}" if cwd else f"in current dir: {os.getcwd()}"
 		print_args = shlex.join(command_args)
-		print(f"{print_cwd}; running command: {print_args}", flush=True)
+		output = f"{print_cwd}; running command:\n    {print_args}"
+		env_arg = run_kwargs.get('env')
+		env_change = set(env_arg.items()) - set(os.environ.items()) if env_arg else None
+		if env_change:
+			output += "\n... with extra/modified environment:"
+			for k_v in env_change:
+				output += f"\n{k_v[0]}={k_v[1]}"
+		print(output, flush=True)
+
 
 	if run_kwargs.get('check') is None:
 		run_kwargs['check'] = True
@@ -568,8 +576,6 @@ def build_platforms():
 			TOOLCHAIN_VER = platform_dict["XTENSA_TOOLS_VERSION"]
 			XTENSA_CORE = platform_dict["XTENSA_CORE"]
 			platf_build_environ["TOOLCHAIN_VER"] = TOOLCHAIN_VER
-			print(f"XTENSA_TOOLCHAIN_PATH={XTENSA_TOOLCHAIN_PATH}")
-			print(f"TOOLCHAIN_VER={TOOLCHAIN_VER}")
 
 			# Set variables expected by xcc toolchain. CMake cannot set (evil) build-time
 			# environment variables at configure time:
@@ -578,7 +584,6 @@ def build_platforms():
 				TOOLCHAIN_VER).absolute())
 			XTENSA_SYSTEM = str(pathlib.Path(XTENSA_BUILDS_DIR, XTENSA_CORE, "config").absolute())
 			platf_build_environ["XTENSA_SYSTEM"] = XTENSA_SYSTEM
-			print(f"XTENSA_SYSTEM={XTENSA_SYSTEM}")
 
 		platform_build_dir_name = f"build-{platform}"
 
