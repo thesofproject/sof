@@ -40,8 +40,9 @@ DMIC1_ID=3,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\
 HDMI3_ID=6,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-rt711-4ch.bin"
 
 # BT offload
-"cavs-nocodec-bt\;sof-nocodec-bt\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt.bin"
+"cavs-nocodec-bt\;sof-nocodec-bt\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt.bin,\
+PLATFORM=tgl"
 # BT offload loopback test topology (lbm)
-"cavs-nocodec-bt\;sof-nocodec-bt-lbm\;BT_LOOPBACK_MODE=true,\
+"cavs-nocodec-bt\;sof-nocodec-bt-lbm\;BT_LOOPBACK_MODE=true,PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-lbm.bin"
 )
