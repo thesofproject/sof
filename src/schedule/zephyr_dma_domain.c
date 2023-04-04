@@ -34,7 +34,34 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 #define SEM_LIMIT 1
 #define ZEPHYR_PDOMAIN_STACK_SIZE 8192
-#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (CONFIG_NUM_PREEMPT_PRIORITIES - 1)
+
+#if CONFIG_LOG_PROCESS_THREAD_CUSTOM_PRIORITY
+#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (CONFIG_LOG_PROCESS_THREAD_PRIORITY - 1)
+#else
+#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (K_LOWEST_APPLICATION_THREAD_PRIO - 1)
+#endif /* CONFIG_LOG_PROCESS_THREAD_CUSTOM_PRIORITY */
+
+/* sanity check regarding the DMA domain's priority.
+ *
+ * VERY IMPORTANT: the Zephyr DMA domain's thread priority needs to be
+ * higher than the logging thread's. If this criteria is not met then
+ * issues such as buzzing noise when PAUSING/RESUMING a stream due to
+ * the SAI being underrun may appear. We also want to keep Zephyr DMA
+ * domain's thread priority in the preemptible range so as to not
+ * disturb the other Zephyr threads used by SOF (preferably the Zephyr
+ * DMA domain's thread priority should be lower than the lowest priority
+ * of the threads used by SOF which is 1 (EDF_SCHEDULER)).
+ *
+ * The Zephyr DMA domain's thread priority is unimportant as long as it
+ * meets the above criteria but we'll make it one less than the logging
+ * thread's for cases where the user might want to change the logging
+ * thread's priority.
+ *
+ * TODO: this message and the BUILD_ASSERT message need to be updated if
+ * the lowest priority used by the SOF threads is changed.
+ */
+BUILD_ASSERT(ZEPHYR_DMA_DOMAIN_THREAD_PRIO >= 0,
+	     "Invalid DMA domain thread priority. Please make sure that logging threads priority is >= 1 or, preferably, >= 3");
 
 K_KERNEL_STACK_ARRAY_DEFINE(zephyr_dma_domain_stack,
 			    CONFIG_CORE_COUNT,
