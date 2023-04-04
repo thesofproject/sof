@@ -618,10 +618,16 @@ def build_platforms():
 		# https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
 		# https://github.com/zephyrproject-rtos/zephyr/pull/40431#issuecomment-975992951
 		abs_build_dir = pathlib.Path(west_top, platform_build_dir_name)
-		if (pathlib.Path(abs_build_dir, "build.ninja").is_file()
-		    or pathlib.Path(abs_build_dir, "Makefile").is_file()):
-			if args.cmake_args and not args.pristine:
-				print(args.cmake_args)
+		if not args.pristine and (
+			pathlib.Path(abs_build_dir, "build.ninja").is_file()
+			or pathlib.Path(abs_build_dir, "Makefile").is_file()
+		):
+			# Catch issues like https://github.com/zephyrproject-rtos/zephyr/issues/56501
+			if args.cmake_args or overlays:
+				print(f"ERROR: {args.cmake_args or overlays}")
+				print(
+		"Check https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments"
+				)
 				raise RuntimeError("Some CMake arguments are ignored in incremental builds, "
 						   + f"you must delete {abs_build_dir} first")
 
