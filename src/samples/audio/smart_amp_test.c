@@ -259,54 +259,6 @@ static int smart_amp_get_attribute(struct comp_dev *dev, uint32_t type,
 	}
 }
 
-static int smart_amp_bind(struct comp_dev *dev, void *data)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buffer_c;
-	struct comp_buffer *source_buffer;
-	struct list_item *blist;
-
-	comp_dbg(dev, "smart_amp_bind()");
-
-	/* searching for feedback source buffers */
-	list_for_item(blist, &dev->bsource_list) {
-		source_buffer = container_of(blist, struct comp_buffer, sink_list);
-
-		k_mutex_lock(&sad->lock, K_FOREVER);
-		buffer_c = buffer_acquire(source_buffer);
-		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			sad->feedback_buf = source_buffer;
-			buffer_c->stream.channels = sad->config.feedback_channels;
-			buffer_c->stream.rate = sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
-
-			buffer_release(buffer_c);
-			k_mutex_unlock(&sad->lock);
-			break;
-		}
-
-		buffer_release(buffer_c);
-		k_mutex_unlock(&sad->lock);
-	}
-
-	return 0;
-}
-
-static int smart_amp_unbind(struct comp_dev *dev, void *data)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu = data;
-
-	comp_dbg(dev, "smart_amp_unbind()");
-
-	if (bu->extension.r.dst_instance_id == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-		k_mutex_lock(&sad->lock, K_FOREVER);
-		sad->feedback_buf = NULL;
-		k_mutex_unlock(&sad->lock);
-	}
-
-	return 0;
-}
-
 #else
 
 static void smart_amp_set_params(struct comp_dev *dev,
@@ -651,11 +603,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
 	struct comp_buffer __sparse_cache *sink_buf = buffer_acquire(sad->sink_buf);
 	uint32_t avail_passthrough_frames;
-	uint32_t avail_feedback_frames;
-	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
-	uint32_t feedback_bytes;
 
 	comp_dbg(dev, "smart_amp_copy()");
 
@@ -665,33 +614,57 @@ static int smart_amp_copy(struct comp_dev *dev)
 					  &sink_buf->stream);
 
 	k_mutex_lock(&sad->lock, K_FOREVER);
+#if CONFIG_IPC_MAJOR_4
+	struct list_item *blist;
+	/*
+	 * check for feedback buffer in every copy as the feedback pipeline could have started
+	 * after the playback stream and it could have been stopped before the playback stream.
+	 */
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer __sparse_cache *buffer_c;
+		struct comp_buffer *source_buffer;
+
+		source_buffer = container_of(blist, struct comp_buffer, sink_list);
+		buffer_c = buffer_acquire(source_buffer);
+		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+			sad->feedback_buf = source_buffer;
+			buffer_c->stream.channels = sad->config.feedback_channels;
+			buffer_c->stream.rate =
+				sad->ipc4_cfg.base.audio_fmt.sampling_frequency;
+
+			buffer_release(buffer_c);
+			break;
+		}
+
+		buffer_release(buffer_c);
+	}
+#endif
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
+		uint32_t feedback_frames, feedback_bytes;
 
 		if (buf->source && comp_get_state(dev, buf->source) == dev->state) {
-			/* feedback */
-			avail_feedback_frames =
-				audio_stream_get_avail_frames(&buf->stream);
+			feedback_frames = MIN(avail_passthrough_frames,
+					      audio_stream_get_avail_frames(&buf->stream));
 
-			avail_frames = MIN(avail_passthrough_frames,
-					   avail_feedback_frames);
-
-			feedback_bytes = avail_frames *
-				audio_stream_frame_bytes(&buf->stream);
+			feedback_bytes = feedback_frames * audio_stream_frame_bytes(&buf->stream);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
-				 avail_frames, avail_passthrough_frames);
+				 feedback_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
 			buffer_stream_invalidate(buf, feedback_bytes);
 			sad->process(dev, &buf->stream, &sink_buf->stream,
-				     avail_frames, sad->config.feedback_ch_map);
+				     feedback_frames, sad->config.feedback_ch_map);
 
 			comp_update_buffer_consume(buf, feedback_bytes);
 		}
 
 		buffer_release(buf);
 	}
+#if CONFIG_IPC_MAJOR_4
+	sad->feedback_buf = NULL;
+#endif
 	k_mutex_unlock(&sad->lock);
 
 	/* bytes calculation */
@@ -719,7 +692,13 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 static int smart_amp_reset(struct comp_dev *dev)
 {
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	comp_info(dev, "smart_amp_reset()");
+
+	k_mutex_lock(&sad->lock, K_FOREVER);
+	sad->feedback_buf = NULL;
+	sad->source_buf = NULL;
+	k_mutex_unlock(&sad->lock);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -754,8 +733,11 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		if (buffer_c->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
-#endif
 			sad->source_buf = source_buffer;
+#else
+		if (IPC4_SINK_QUEUE_ID(buffer_c->id) != SOF_SMART_AMP_FEEDBACK_QUEUE_ID)
+			sad->source_buf = source_buffer;
+#endif
 
 		buffer_release(buffer_c);
 	}
@@ -804,8 +786,6 @@ static const struct comp_driver comp_smart_amp = {
 		.set_large_config	= smart_amp_set_large_config,
 		.get_large_config	= smart_amp_get_large_config,
 		.get_attribute		= smart_amp_get_attribute,
-		.bind			= smart_amp_bind,
-		.unbind			= smart_amp_unbind,
 #else
 		.cmd			= smart_amp_cmd,
 #endif /* CONFIG_IPC_MAJOR_4 */
