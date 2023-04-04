@@ -652,7 +652,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *sink_buf = buffer_acquire(sad->sink_buf);
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
-	uint32_t avail_frames;
+	uint32_t avail_frames = 0;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
@@ -694,17 +694,19 @@ static int smart_amp_copy(struct comp_dev *dev)
 	}
 	k_mutex_unlock(&sad->lock);
 
+	if (!avail_frames)
+		avail_frames = avail_passthrough_frames;
 	/* bytes calculation */
-	source_bytes = avail_passthrough_frames *
+	source_bytes = avail_frames *
 		audio_stream_frame_bytes(&source_buf->stream);
 
-	sink_bytes = avail_passthrough_frames *
+	sink_bytes = avail_frames *
 		audio_stream_frame_bytes(&sink_buf->stream);
 
 	/* process data */
 	buffer_stream_invalidate(source_buf, source_bytes);
 	sad->process(dev, &source_buf->stream, &sink_buf->stream,
-		     avail_passthrough_frames, sad->config.source_ch_map);
+		     avail_frames, sad->config.source_ch_map);
 	buffer_stream_writeback(sink_buf, sink_bytes);
 
 	/* source/sink buffer pointers update */
