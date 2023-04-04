@@ -34,6 +34,7 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 #define SEM_LIMIT 1
 #define ZEPHYR_PDOMAIN_STACK_SIZE 8192
+#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (CONFIG_NUM_PREEMPT_PRIORITIES - 1)
 
 K_KERNEL_STACK_ARRAY_DEFINE(zephyr_dma_domain_stack,
 			    CONFIG_CORE_COUNT,
@@ -305,7 +306,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 				 dt,
 				 NULL,
 				 NULL,
-				 CONFIG_NUM_PREEMPT_PRIORITIES - 1,
+				 ZEPHYR_DMA_DOMAIN_THREAD_PRIO,
 				 0,
 				 K_FOREVER);
 
