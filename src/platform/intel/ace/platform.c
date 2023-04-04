@@ -12,6 +12,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/agent.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/watchdog.h>
 #include <sof/schedule/edf_schedule.h>
@@ -80,7 +81,13 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
+
+	/* Set DSP clock to MAX using KCPS API. Value should be lowered when KCPS API
+	 * for modules is implemented
+	 */
+	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
+	if (ret < 0)
+		return ret;
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
