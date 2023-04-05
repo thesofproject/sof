@@ -135,6 +135,7 @@ int platform_init(struct sof *sof)
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &timer;
 	/* to view system memory */
+	interrupt_init(sof);
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();

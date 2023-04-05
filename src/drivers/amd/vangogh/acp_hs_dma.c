@@ -145,6 +145,8 @@ static int acp_dai_hs_dma_stop(struct dma_chan_data *channel)
 {
 	acp_hstdm_irer_t hs_irer;
 	acp_hstdm_iter_t hs_iter;
+	acp_i2stdm_irer_t sp_irer;
+	acp_i2stdm_iter_t sp_iter;
 	uint32_t                acp_pdm_en;
 
 	switch (channel->status) {
@@ -173,8 +175,11 @@ static int acp_dai_hs_dma_stop(struct dma_chan_data *channel)
 	}
 	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
-	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en) {
+	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !sp_iter.bits.i2stdm_txen &&
+	    !sp_irer.bits.i2stdm_rx_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IER), HS_IER_DISABLE);
 		/* Request SMU to scale down aclk to minimum clk */
 		if (!acp_pdm_en) {
@@ -216,7 +221,7 @@ static int acp_dai_hs_dma_set_config(struct dma_chan_data *channel,
 	hs_buff_size = config->elem_array.elems[0].size * config->elem_array.count;
 	if (config->direction ==  DMA_DIR_MEM_TO_DEV) {
 		/* HS Transmit FIFO Address and FIFO Size*/
-		hs_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_fifo_buffer);
+		hs_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_hs_fifo_buffer);
 		hs_fifo_addr = (hs_fifo_addr & ACP_DRAM_ADDRESS_MASK);
 		hs_fifo_addr = (hs_fifo_addr - ACP_DRAM_PHY_TRNS);
 		io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_FIFOADDR), hs_fifo_addr);

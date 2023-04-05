@@ -107,8 +107,9 @@ typedef struct  acp_scratch_memory_config {
 
 	/* Fifo buffers are not part of scratch memory on Vangogh */
 	/* Added fifo members to align with Driver structure */
-	/* ACP transmit fifo buffer */
+	/* ACP transmit fifo buffers */
 	uint8_t			acp_transmit_fifo_buffer[768] __attribute__((aligned(64)));
+	uint8_t			acp_transmit_hs_fifo_buffer[768] __attribute__((aligned(64)));
 
 	/* ACP receive fifo buffer */
 	uint8_t			acp_receive_fifo_buffer[768] __attribute__((aligned(64)));
