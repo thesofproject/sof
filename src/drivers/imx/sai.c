@@ -89,10 +89,6 @@ static void sai_start(struct dai *dai, int direction)
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
-#ifdef CONFIG_IMX8M
-	dai_update_bits(dai, REG_SAI_MCTL, REG_SAI_MCTL_MCLK_EN,
-			REG_SAI_MCTL_MCLK_EN);
-#endif
 
 	chan_idx = BIT(0);
 	/* RX3 supports capture on imx8ulp */
@@ -363,6 +359,23 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	/* turn on (set to zero) stereo slot */
 	dai_update_bits(dai, REG_SAI_XMR(REG_RX_DIR), REG_SAI_XMR_MASK,
 			twm);
+#ifdef CONFIG_IMX8M
+	/* MCLK needs to be enabled here instead of sai_start() for the
+	 * following 2 reasons:
+	 *
+	 * 1) As long as it's never disabled there's no point in
+	 * continuously enabling it during each sai_start() operation.
+	 *
+	 * 2) Failing to enable it in time will lead to the following
+	 * WM8962 error: "DC Servo timeout". This seems to be because
+	 * the MCLK signal comes after I2C's SCLK with an intolerable
+	 * delay which makes the WM8962 codec go into a bad state.
+	 *
+	 * This issue was seen on i.MX93 and i.MX8MP with WM8962.
+	 */
+	dai_update_bits(dai, REG_SAI_MCTL, REG_SAI_MCTL_MCLK_EN,
+			REG_SAI_MCTL_MCLK_EN);
+#endif
 
 	return 0;
 }
