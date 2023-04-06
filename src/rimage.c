@@ -206,7 +206,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (image.num_modules > image.adsp->modules->mod_man_count) {
+	/* Some platforms dont have modules configuration in toml file */
+	if (image.adsp->modules && image.num_modules > image.adsp->modules->mod_man_count) {
 		fprintf(stderr, "error: Each ELF input module requires entry in toml file.\n");
 		ret = -EINVAL;
 		goto out;

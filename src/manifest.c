@@ -662,9 +662,13 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 
 	for (; i < image->num_modules; i++) {
 		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i - offset);
-		/* Use manifest created using toml files as template */
-		assert(i < image->adsp->modules->mod_man_count);
-		memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
+
+		/* Some platforms dont have modules configuration in toml file */
+		if (image->adsp->modules) {
+			/* Use manifest created using toml files as template */
+			assert(i < image->adsp->modules->mod_man_count);
+			memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
+		}
 
 		module = &image->module[i];
 
