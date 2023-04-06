@@ -338,12 +338,8 @@ int sof_main(int argc, char *argv[])
 	return start_complete();
 }
 
-struct device;
-
-static int sof_init(const struct device *dev)
+static int sof_init(void)
 {
-	ARG_UNUSED(dev);
-
 	return primary_core_init(0, NULL, &sof);
 }
 
