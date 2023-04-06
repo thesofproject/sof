@@ -272,30 +272,38 @@ set(TPLGS
 	#sof-adl-es8336-ssp1-hdmi-ssp02 supports es8336 codec along with 2xHDMI_over_SSP Capture's.
 	"sof-glk-es8336\;sof-adl-es8336-ssp1-hdmi-ssp02\;-DPLATFORM=adl\;-DSSP_NUM=1\;-DCHANNELS=0\;-DHDMI_1_SSP_NUM=0\;-DHDMI_2_SSP_NUM=2"
 
+	## i.MX8 (i.MX8QM and i.MX8QXP) topologies
 	"sof-imx8-nocodec\;sof-imx8-nocodec"
 	"sof-imx8-wm8960-cs42888\;sof-imx8-wm8960-cs42888"
 	"sof-imx8-cs42888\;sof-imx8-cs42888"
 	"sof-imx8-nocodec-sai\;sof-imx8-nocodec-sai"
+	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
+	"sof-imx8-compr-wm8960-mixer\;sof-imx8-compr-wm8960-mixer"
+	"sof-imx8-wm8960-kwd\;sof-imx8-wm8960-kwd"
+	"sof-imx8-cs42888-mixer\;sof-imx8-cs42888-mixer"
 	"sof-imx8-wm8960\;sof-imx8-wm8960\;-DPPROC=volume"
 	"sof-imx8-wm8960\;sof-imx8-eq-iir-wm8960\;-DPPROC=eq-iir-volume"
 	"sof-imx8-wm8960\;sof-imx8-eq-fir-wm8960\;-DPPROC=eq-fir-volume"
 	"sof-imx8-wm8960\;sof-imx8-drc-wm8960\;-DPPROC=drc"
-	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
-	"sof-imx8-compr-wm8960-mixer\;sof-imx8-compr-wm8960-mixer"
+	## end i.MX8 (i.MX8QM and i.MX8QXP) topologies
+
+	## i.MX8MP topologies
 	"sof-imx8mp-compr-wm8960-mixer\;sof-imx8mp-compr-wm8960-mixer"
-	"sof-imx8-wm8960-kwd\;sof-imx8-wm8960-kwd"
-	"sof-imx8-cs42888-mixer\;sof-imx8-cs42888-mixer"
 	"sof-imx8mp-wm8960-mixer\;sof-imx8mp-wm8960-mixer"
 	"sof-imx8mp-wm8960-kwd\;sof-imx8mp-wm8960-kwd"
-	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco\;-DRATE=8000"
-	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco-16k\;-DRATE=16000"
-	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco\;-DRATE=8000"
-	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco-16k\;-DRATE=16000"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960\;-DPPROC=volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-iir-wm8960\;-DPPROC=eq-iir-volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DPPROC=eq-fir-volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-drc-wm8960\;-DPPROC=drc"
 	"sof-imx8mp-wm8904\;sof-imx8mp-wm8904\;-DPPROC=volume"
+	## end i.MX8MP topologies
+
+	## i.MX8ULP topologies
+	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco\;-DRATE=8000"
+	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco-16k\;-DRATE=16000"
+	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco\;-DRATE=8000"
+	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco-16k\;-DRATE=16000"
+	## end i.MX8ULP topologies
 
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682-dts\;-DDTS=`DTS'"
