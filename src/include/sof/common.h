@@ -43,7 +43,7 @@
 	(compile_check(is_power_of_2(alignment)) ?				\
 	 ALIGN_UP_INTERNAL(size, alignment) : 0xBADCAFE)
 
-#ifdef __XCC__
+#if defined(__XCC__) || defined(__clang__)
 
 /*
  * xcc doesn't support __builtin_constant_p() so we can only do run-time
@@ -62,7 +62,7 @@
 	(size) & ~((alignment) - 1);						\
 })
 
-#else /* not __XCC__ */
+#else /* not __XCC__ or __clang__ */
 
 /* If we can't tell at compile time, assume it's OK and defer to run-time */
 #define COMPILE_TIME_ALIGNED(align) (!__builtin_constant_p(align) ||		\
@@ -82,7 +82,7 @@
 	(size) & ~((alignment) - 1);						\
 })
 
-#endif /* not __XCC__ */
+#endif /* not __XCC__ or __clang__ */
 
 #else /* not VERIFY_ALIGN */
 
