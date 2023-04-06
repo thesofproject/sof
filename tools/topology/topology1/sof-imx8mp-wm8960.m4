@@ -1,7 +1,7 @@
 #
 # Topology for i.MX8MP board with `CODEC' codec
 #
-# CODEC: wm8960, wm8904
+# CODEC: wm8960, wm8904, wm8962
 #
 
 # Include topology builder
@@ -54,6 +54,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 define(`STREAM_NAME',
 	`ifelse(CODEC, `wm8960', `wm8960-hifi',
 			CODEC, `wm8904', `wm8904-hifi',
+			CODEC, `wm8962', `wm8962',
 			`fatal_error(`Codec not supported.')')')
 
 # define DAI BE dai_link name
@@ -96,6 +97,12 @@ ifelse(
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 11565177, codec_mclk_in),
 		SAI_CLOCK(bclk, 1411200, codec_provider),
 		SAI_CLOCK(fsync, `RATE', codec_provider),
+		SAI_TDM(2, 32, 3, 3),
+		SAI_CONFIG_DATA(SAI, 3, 0)))',
+	CODEC, `wm8962', `
+	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
+		SAI_CLOCK(bclk, 3072000, codec_master),
+		SAI_CLOCK(fsync, `RATE', codec_master),
 		SAI_TDM(2, 32, 3, 3),
 		SAI_CONFIG_DATA(SAI, 3, 0)))',
 	)
