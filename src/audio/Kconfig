@@ -288,18 +288,20 @@ config COMP_DCBLOCK
 	  Select for DC Blocking Filter component. This component filters out
 	  the DC offset which often originates from a microphone's output.
 
-config MAXIM_DSM
-	depends on CAVS
-	bool "Maxim DSM component"
+config COMP_SMART_AMP
+	bool "Smart Amplifier component"
 	select COMP_BLOB
 	default n
 	help
-	  Select for Maxim DSM(Dynamic Speaker Management) component.
-	  This component protect the speaker from overheating and
-	  excursion violation. This consists of two parts which are
-	  feedforward processing block running on playback thread and
-	  feedback processing block running on capture thread with
-	  amp current and voltage feedback.
+	  Select for Smart Amp component. This component protect the speaker
+	  from overheating and excursion violation. This consists of two parts
+	  which are feedforward processing block running on playback thread
+	  and feedback processing block running on capture thread with amp
+	  current and voltage feedback. The internal design of this component
+	  depends on the applied Amplifier HW solution, which should be provided
+	  by the solution supplier respectively.
+
+rsource "smart_amp/Kconfig"
 
 config COMP_ASRC
 	bool "ASRC component"
