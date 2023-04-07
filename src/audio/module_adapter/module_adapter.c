@@ -170,13 +170,10 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* Prepare module */
 	ret = module_prepare(mod);
 	if (ret) {
-		if (ret == PPL_STATUS_PATH_STOP)
-			return ret;
-
-		comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
-			 ret);
-
-		return -EIO;
+		if (ret != PPL_STATUS_PATH_STOP)
+			comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
+				 ret);
+		return ret;
 	}
 
 	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
