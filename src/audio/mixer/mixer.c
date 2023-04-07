@@ -82,6 +82,7 @@ static int mixer_process(struct processing_module *mod,
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
+	int sources_indices[PLATFORM_MAX_STREAMS];
 	int32_t i = 0, j = 0;
 	uint32_t frames = INT32_MAX;
 	/* Redundant, but helps the compiler */
@@ -143,6 +144,7 @@ static int mixer_process(struct processing_module *mod,
 		if (avail_frames == 0)
 			continue;
 
+		sources_indices[j] = i;
 		sources_stream[j++] = mod->input_buffers[i].data;
 	}
 
@@ -152,7 +154,7 @@ static int mixer_process(struct processing_module *mod,
 
 	/* update source buffer consumed bytes */
 	for (i = 0; i < j; i++)
-		mod->input_buffers[i].consumed = source_bytes;
+		mod->input_buffers[sources_indices[i]].consumed = source_bytes;
 
 	return 0;
 }
