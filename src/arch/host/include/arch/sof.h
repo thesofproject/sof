@@ -5,7 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifdef __XTOS_RTOS_SOF_H__
+#ifdef __SOF_H__
 
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__

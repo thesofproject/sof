@@ -20,6 +20,12 @@
 
 struct sof;
 
+#define EBB_BANKS_IN_SEGMENT		32
+
+#define PLATFORM_LPSRAM_EBB_COUNT	1
+#define PLATFORM_HPSRAM_EBB_COUNT	1
+
+
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
 #define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)

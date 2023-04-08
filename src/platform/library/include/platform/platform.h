@@ -56,6 +56,8 @@ struct timer;
  */
 #define DMA_TRACE_RESCHEDULE_TIME       100
 
+#define HW_CFG_VERSION		0
+
 static inline void platform_panic(uint32_t p) {}
 
 /**

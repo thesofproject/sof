@@ -96,7 +96,7 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_RTNR)
 		add_subdirectory(rtnr)
 	endif()
-	if(CONFIG_COMP_BASEFW_IPC4)
+	if(CONFIG_COMP_BASEFW_IPC4 AND NOT CONFIG_LIBRARY)
                 add_local_sources(sof
                         base_fw.c
                 )
