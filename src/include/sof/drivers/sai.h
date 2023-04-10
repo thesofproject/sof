@@ -16,7 +16,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
-#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX8ULP)
+#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
 #define SAI_OFS		8
 #else
 #define SAI_OFS		0
@@ -129,7 +129,7 @@
 #define REG_SAI_CSR_FRDE	BIT(0)
 
 /* SAI Transmit and Receive Configuration 1 Register */
-#ifdef CONFIG_IMX8M
+#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX93_A55)
 #define REG_SAI_CR1_RFW_MASK	0x7f
 #else
 #define REG_SAI_CR1_RFW_MASK	0x3f
@@ -237,7 +237,7 @@
 
 #define SAI_FLAG_PMQOS   BIT(0)
 
-#ifdef CONFIG_IMX8M
+#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX93_A55)
 #define SAI_FIFO_WORD_SIZE	128
 #elif defined CONFIG_IMX8ULP
 #define SAI_FIFO_WORD_SIZE	16
