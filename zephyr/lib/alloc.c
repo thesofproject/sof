@@ -81,6 +81,18 @@ __section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[H
 #define HEAPMEM_SIZE (256 * 1024)
 char __aligned(8) heapmem[HEAPMEM_SIZE];
 
+#elif defined(CONFIG_ARM64)
+/* for ARM64 the heap is placed inside the .bss section.
+ *
+ * This is because we want to avoid introducing new sections in
+ * the arm64 linker script. Also, is there really a need to place
+ * it inside a special section?
+ *
+ * i.MX93 is the only ARM64-based platform so defining the heap this way
+ * for all ARM64-based platforms should be safe.
+ */
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+
 #else
 
 extern char _end[], _heap_sentry[];
