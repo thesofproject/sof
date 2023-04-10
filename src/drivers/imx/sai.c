@@ -359,7 +359,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	dai_update_bits(dai, REG_SAI_XMR(REG_RX_DIR), REG_SAI_XMR_MASK,
 			twm);
 
-#ifdef CONFIG_IMX8M
+#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX93_A55)
 	/*
 	 * For i.MX8MP, MCLK is bound with TX enable bit.
 	 * Therefore, enable transmitter to output MCLK
