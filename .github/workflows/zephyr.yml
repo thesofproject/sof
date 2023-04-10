@@ -80,6 +80,14 @@ jobs:
           # Temporary testbed for Zephyr development.
           -i IPC4 tgl tgl-h,
         ]
+        build_opts: [""]
+        # Sparse matrices are complicated, you must read this page slowly:
+        # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+        include:
+          # specify one extra -d combination without affecting the main matrix
+          - build_opts: -d
+            zephyr_revision: mnfst
+            IPC_platforms: mtl
 
     steps:
       - uses: actions/checkout@v3
@@ -123,13 +131,14 @@ jobs:
         run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
-             --cmake-args=--warn-uninitialized ${{ matrix.IPC_platforms }}
+             --cmake-args=--warn-uninitialized
+             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         if: ${{ matrix.zephyr_revision == 'mnfst' }}
         with:
-          name: linux-build ${{ matrix.IPC_platforms }}
+          name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
@@ -138,7 +147,6 @@ jobs:
     runs-on: windows-latest
     strategy:
       fail-fast: false
-      # FIXME: Create common matrix for build-linux and build-windows
       matrix:
         # Using groups to avoid spamming the small results box with too
         # many lines. Pay attention to COMMAS.
@@ -151,6 +159,13 @@ jobs:
           # Very few IPC3 platforms support IPC4 too.
           -i IPC4 tgl tgl-h,
         ]
+        build_opts: [""]
+        # Sparse matrices are complicated, see comments on Linux matrix above.
+        include:
+          - build_opts: -d
+            zephyr_revsion: mnfst
+            platforms: mtl
+
 
     steps:
       - uses: actions/checkout@v3
@@ -267,12 +282,12 @@ jobs:
           --no-interactive
           --cmake-args=-DEXTRA_CFLAGS=-Werror
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
-          --cmake-args=--warn-uninitialized ${{ matrix.platforms }}
+          --cmake-args=--warn-uninitialized ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: windows-build ${{ matrix.platforms}}
+          name: windows-build ${{ matrix.build_opts }} ${{ matrix.platforms }}
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
@@ -313,7 +328,18 @@ jobs:
 
       - name: Compare Linux vs Windows builds
         run: |
-          diffs=0
+          diffs=0; ls -l
+
+          # Check not too much is missing (it happened!)
+          # http://mywiki.wooledge.org/ParsingLs
+          for regdir in 'linux-build *mtl' \
+                        'windows-build *mtl' \
+                        'windows-build *-i IPC4 tgl tgl-h'; do
+            find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
+              { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
+          done
+
+          set -x
           for windir in windows-build*; do
             lindir=linux-"${windir#windows-}"
             diff -qr "$lindir" "$windir" || : $((diffs++))
