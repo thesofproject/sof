@@ -161,7 +161,7 @@ def parse_args():
 	parser.add_argument("platforms", nargs="*", action=validate_platforms_arguments,
 						help="List of platforms to build")
 	parser.add_argument("-d", "--debug", required=False, action="store_true",
-						help="Enable debug build")
+						help="Shortcut for: -o sof/app/debug_overlay.conf")
 	parser.add_argument("-i", "--ipc", required=False, choices=["IPC4"],
 			    help="""Applies --overlay <platform>/ipc4_overlay.conf
 and a different rimage config. Valid only for IPC3 platforms supporting IPC4 too.""")
