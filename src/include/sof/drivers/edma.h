@@ -98,6 +98,33 @@
 #define EDMA0_SAI_CHAN_RX_IRQ	349
 #define EDMA0_SAI_CHAN_TX_IRQ	349
 
+#ifdef CONFIG_IMX93_A55
+/* encase all of these macros in an
+ * ifdef block to avoid possible future
+ * naming clashes and pointlessly adding
+ * macros for all other platforms.
+ */
+#define EDMA2_SAI3_CHAN_RX 1
+#define EDMA2_SAI3_CHAN_TX 0
+/* EDMA2 (aka EDMA4 in the TRM) supports
+ * up to 64 channels.
+ */
+#define EDMA2_CHAN_MAX 64
+
+/* need to add SPI_BASE to the INTID as
+ * the values from the TRM are all SPIs.
+ */
+#define EDMA2_SAI3_CHAN_RX_IRQ (128 + 32)
+#define EDMA2_SAI3_CHAN_TX_IRQ (128 + 32)
+
+/* SAI3 is connected to EDMA2 through
+ * lines 60 (TX) and 61 (RX).
+ */
+#define EDMA2_SAI3_TX_MUX 60
+#define EDMA2_SAI3_RX_MUX 61
+
+#endif /* CONFIG_IMX93_A55 */
+
 /* EDMA doesn't bound channels to IPs, we make use of the first two channels for now */
 #define IMX8ULP_EDMA2_CHAN0	0
 #define IMX8ULP_EDMA2_CHAN1	1
