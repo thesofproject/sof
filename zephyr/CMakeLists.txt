@@ -309,6 +309,30 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 	set(PLATFORM "imx8m")
 endif()
 
+if (CONFIG_SOC_SERIES_MIMX9_A55)
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/imx93_a55/platform.c
+		${SOF_PLATFORM_PATH}/imx93_a55/lib/clk.c
+		${SOF_PLATFORM_PATH}/imx93_a55/lib/dma.c
+		${SOF_PLATFORM_PATH}/imx93_a55/lib/dai.c
+	)
+
+	# Drivers
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+		${SOF_DRIVERS_PATH}/imx/ipc.c
+		${SOF_DRIVERS_PATH}/imx/edma.c
+		${SOF_DRIVERS_PATH}/imx/sai.c
+	)
+
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+
+	set(PLATFORM "imx93_a55")
+endif()
+
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/zephyr_ll.c
