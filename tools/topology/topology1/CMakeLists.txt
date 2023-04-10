@@ -182,6 +182,10 @@ set(TPLGS
 	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco-16k\;-DRATE=16000"
 	## end i.MX8ULP topologies
 
+	## i.MX93 topologies
+	"sof-imx93-wm8962\;sof-imx93-wm8962\;-DPPROC=volume"
+	## end i.MX93 topologies
+
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682-dts\;-DDTS=`DTS'"
         "sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-max98390-rt5682"
