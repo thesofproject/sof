@@ -285,7 +285,7 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			  int dest_width, uint32_t burst_elems)
 {
 	int rc;
-#ifdef CONFIG_IMX8ULP
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
 	struct dai_data *dd = channel->dev_data;
 	int direction, handshake, dmamux_cfg;
 #endif
@@ -335,7 +335,7 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	if (rc < 0)
 		return rc;
 
-#ifdef CONFIG_IMX8ULP
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
 	/* Do not write EDMA_CH_MUX register when it has value,
 	 * otherwise the register will be cleared.
 	 */
