@@ -46,7 +46,8 @@ endfunction()
 zephyr_interface_library_named(SOF)
 
 # SOF source paths.
-set(SOF_SRC_PATH "../src")
+cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(SOF_SRC_PATH "${sof_top_dir}/src")
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
 set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
@@ -86,18 +87,18 @@ ExternalProject_Add(sof_logger_ep
 )
 
 # default SOF includes
-target_include_directories(SOF INTERFACE ../rimage/src/include)
+target_include_directories(SOF INTERFACE ${sof_top_dir}/rimage/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
-target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../third_party/include)
+target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 
 # TODO: Zephyr should not need xtos headers: FIX.
 if (CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
-	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../zephyr/include)
+	target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
 else()
 	# include Zephyr before xtos to flag up any errors in SOF
-	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../zephyr/include)
-	target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/../xtos/include)
+	target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
+	target_include_directories(SOF INTERFACE ${sof_top_dir}/xtos/include)
 endif()
 
 # SOF module init
@@ -705,7 +706,7 @@ zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
 # Setup SOF directories
-set(SOF_ROOT_SOURCE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # This generated/ directory is shared with Zephyr.
