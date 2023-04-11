@@ -347,9 +347,15 @@ int module_free(struct processing_module *mod)
 int module_set_configuration(struct processing_module *mod,
 			     uint32_t config_id,
 			     enum module_cfg_fragment_position pos, size_t data_offset_size,
-			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     const uint8_t *fragment_in, size_t fragment_size, uint8_t *response,
 			     size_t response_size)
 {
+#if CONFIG_IPC_MAJOR_3
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment_in;
+	const uint8_t *fragment = (const uint8_t *)cdata->data[0].data;
+#elif CONFIG_IPC_MAJOR_4
+	const uint8_t *fragment = fragment_in;
+#endif
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	size_t offset = 0;
