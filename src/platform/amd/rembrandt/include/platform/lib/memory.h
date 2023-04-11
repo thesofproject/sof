@@ -98,9 +98,9 @@
 #define HEAP_RT_COUNT2048	12
 
 /* Heap section sizes for system runtime heap */
-#define HEAP_SYS_RT_COUNT64	64
-#define HEAP_SYS_RT_COUNT512	20 /*rembrandt-arch*/
-#define HEAP_SYS_RT_COUNT1024	6
+#define HEAP_SYS_RT_COUNT64	72
+#define HEAP_SYS_RT_COUNT512	24 /*rembrandt-arch*/
+#define HEAP_SYS_RT_COUNT1024	8
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE	SRAM1_BASE
