@@ -14,6 +14,6 @@
 
 #else
 
-#error "This file shouldn't be included from outside of XTOS's rtos/sof.h"
+//#error "This file shouldn't be included from outside of XTOS's rtos/sof.h"
 
 #endif /* __XTOS_RTOS_SOF_H__ */
