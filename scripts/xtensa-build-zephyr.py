@@ -273,14 +273,15 @@ def execute_command(*run_args, **run_kwargs):
 		output = f"{print_cwd}; running command:\n    {print_args}"
 		env_arg = run_kwargs.get('env')
 		env_change = set(env_arg.items()) - set(os.environ.items()) if env_arg else None
-		if env_change:
+		if env_change and (run_kwargs.get('sof_log_env') or args.verbose >= 1):
 			output += "\n... with extra/modified environment:"
 			for k_v in env_change:
 				output += f"\n{k_v[0]}={k_v[1]}"
 		print(output, flush=True)
 
+	run_kwargs = {k: run_kwargs[k] for k in run_kwargs if not k.startswith("sof_")}
 
-	if run_kwargs.get('check') is None:
+	if not 'check' in run_kwargs:
 		run_kwargs['check'] = True
 	#pylint:disable=subprocess-run-check
 
@@ -632,7 +633,7 @@ def build_platforms():
 
 		# Build
 		try:
-			execute_command(build_cmd, cwd=west_top, env=platf_build_environ)
+			execute_command(build_cmd, cwd=west_top, env=platf_build_environ, sof_log_env=True)
 		except subprocess.CalledProcessError as cpe:
 			zephyr_path = pathlib.Path(west_top, "zephyr")
 			if not os.path.exists(zephyr_path):
