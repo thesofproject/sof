@@ -373,7 +373,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	s1.y_size = sbuf_size;
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
-	s1.x_rptr = source->r_ptr;
+	s1.x_rptr = audio_stream_get_rptr(source);
 	s1.y_wptr = cd->sbuf_w_ptr;
 	s1.nch = nch;
 	s1.shift = cd->data_shift;
@@ -442,7 +442,7 @@ static void src_1s(struct comp_dev *dev, struct comp_data *cd,
 	struct src_stage_prm s1;
 
 	s1.times = cd->param.stage1_times;
-	s1.x_rptr = source->r_ptr;
+	s1.x_rptr = audio_stream_get_rptr(source);
 	s1.x_end_addr = source->end_addr;
 	s1.x_size = source->size;
 	s1.y_wptr = sink->w_ptr;

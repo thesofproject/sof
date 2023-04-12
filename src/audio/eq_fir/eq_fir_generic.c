@@ -28,7 +28,7 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 	struct fir_state_32x16 *filter;
 	int32_t z;
 	int16_t *x0, *y0;
-	int16_t *x = source->r_ptr;
+	int16_t *x = audio_stream_get_rptr(source);
 	int16_t *y = sink->w_ptr;
 	int nmax, n, i, j;
 	int nch = source->channels;
@@ -66,7 +66,7 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 	struct fir_state_32x16 *filter;
 	int32_t z;
 	int32_t *x0, *y0;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int nmax, n, i, j;
 	int nch = source->channels;
@@ -103,7 +103,7 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 	struct audio_stream __sparse_cache *sink = bsink->data;
 	struct fir_state_32x16 *filter;
 	int32_t *x0, *y0;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int nmax, n, i, j;
 	int nch = source->channels;

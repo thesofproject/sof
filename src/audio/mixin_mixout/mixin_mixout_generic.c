@@ -27,7 +27,7 @@ static void normal_mix_channel_s16(struct audio_stream __sparse_cache *sink, int
 
 	/* audio_stream_wrap() is required and is done below in a loop */
 	int16_t *dst = (int16_t *)sink->w_ptr + start_frame;
-	int16_t *src = (int16_t *)source->r_ptr;
+	int16_t *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;
@@ -72,7 +72,7 @@ static void remap_mix_channel_s16(struct audio_stream __sparse_cache *sink,
 
 	/* audio_stream_wrap() is required and is done below in a loop */
 	dst = (int16_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int16_t *)source->r_ptr + source_channel_index;
+	src = (int16_t *)audio_stream_get_rptr(source) + source_channel_index;
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;
@@ -164,7 +164,7 @@ static void normal_mix_channel_s24(struct audio_stream __sparse_cache *sink, int
 	int32_t n, nmax, i;
 	/* audio_stream_wrap() is required and is done below in a loop */
 	int32_t *dst = (int32_t *)sink->w_ptr + start_frame;
-	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;
@@ -209,7 +209,7 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 
 	/* audio_stream_wrap() is required and is done below in a loop */
 	dst = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int32_t *)source->r_ptr + source_channel_index;
+	src = (int32_t *)audio_stream_get_rptr(source) + source_channel_index;
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;
@@ -273,7 +273,7 @@ static void normal_mix_channel_s32(struct audio_stream __sparse_cache *sink, int
 	int32_t frames_to_mix, frames_to_copy, left_frames;
 	int32_t n, nmax, i;
 	int32_t *dst = (int32_t *)sink->w_ptr + start_frame;
-	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;
@@ -318,7 +318,7 @@ static void remap_mix_channel_s32(struct audio_stream __sparse_cache *sink,
 
 	/* audio_stream_wrap() is required and is done below in a loop */
 	dst = (int32_t *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
-	src = (int32_t *)source->r_ptr + source_channel_index;
+	src = (int32_t *)audio_stream_get_rptr(source) + source_channel_index;
 
 	assert(mixed_frames >= start_frame);
 	frames_to_mix = mixed_frames - start_frame;

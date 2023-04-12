@@ -26,7 +26,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	ae_int16x4 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int16 *x = (ae_int16 *)source->r_ptr;
+	ae_int16 *x = audio_stream_get_rptr(source);
 	ae_int16 *y = (ae_int16 *)sink->w_ptr;
 	int shift;
 	int is2;
@@ -101,7 +101,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	ae_int32x2 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int32 *x = (ae_int32 *)source->r_ptr;
+	ae_int32 *x = audio_stream_get_rptr(source);
 	ae_int32 *y = (ae_int32 *)sink->w_ptr;
 	int shift;
 	int is2;
@@ -175,7 +175,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	ae_int32x2 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int32 *x = (ae_int32 *)source->r_ptr;
+	ae_int32 *x = audio_stream_get_rptr(source);
 	ae_int32 *y = (ae_int32 *)sink->w_ptr;
 	int shift;
 	int is2;

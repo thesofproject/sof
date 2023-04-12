@@ -77,6 +77,11 @@ struct audio_stream {
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
 };
 
+static inline void *audio_stream_get_rptr(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->r_ptr;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

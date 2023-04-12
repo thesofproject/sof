@@ -458,18 +458,20 @@ ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
 			      void __sparse_cache *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
-	const int without_wrap = audio_stream_bytes_without_wrap(source, source->r_ptr);
+	const int without_wrap = audio_stream_bytes_without_wrap(source,
+								 audio_stream_get_rptr(source));
 	uint32_t head_size = MIN(bytes, without_wrap);
 	/* tail_size - residual data to be copied starting from the beginning of the buffer */
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy head_size to module buffer */
-	memcpy((__sparse_force void *)buff, source->r_ptr, MIN(buff_size, head_size));
+	memcpy((__sparse_force void *)buff, audio_stream_get_rptr(source),
+	       MIN(buff_size, head_size));
 
 	/* copy residual samples after wrap */
 	if (tail_size)
 		memcpy((__sparse_force char *)buff + head_size,
-		       audio_stream_wrap(source, (char *)source->r_ptr + head_size),
+		       audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + head_size),
 					 MIN(buff_size, tail_size));
 }
 

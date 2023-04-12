@@ -81,7 +81,7 @@ static void eq_iir_s16_default(struct processing_module *mod, struct input_strea
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = source->r_ptr;
+	x = audio_stream_get_rptr(source);
 	y = sink->w_ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
@@ -129,7 +129,7 @@ static void eq_iir_s24_default(struct processing_module *mod, struct input_strea
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = source->r_ptr;
+	x = audio_stream_get_rptr(source);
 	y = sink->w_ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
@@ -177,7 +177,7 @@ static void eq_iir_s32_default(struct processing_module *mod, struct input_strea
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = source->r_ptr;
+	x = audio_stream_get_rptr(source);
 	y = sink->w_ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
@@ -226,7 +226,7 @@ static void eq_iir_s32_16_default(struct processing_module *mod,
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = source->r_ptr;
+	x = audio_stream_get_rptr(source);
 	y = sink->w_ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
@@ -274,7 +274,7 @@ static void eq_iir_s32_24_default(struct processing_module *mod,
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = source->r_ptr;
+	x = audio_stream_get_rptr(source);
 	y = sink->w_ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
@@ -316,7 +316,7 @@ static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stre
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int16_t *y = sink->w_ptr;
 	int nmax;
 	int n;
@@ -346,7 +346,7 @@ static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stre
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int nmax;
 	int n;
