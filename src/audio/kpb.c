@@ -954,7 +954,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 	for (ch = 0; ch < micsel_channels; ch++) {
 		const ae_int16 *input_data = (const ae_int16 *)(in_ptr) + offsets[ch];
 
-		out_ptr = (ae_int16 *)ostream->w_ptr;
+		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
 		for (i = 0; i < samples_per_chan; i++) {
 			AE_L16_XP(d16, input_data, in_offset);
@@ -988,7 +988,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 	for (ch = 0; ch < micsel_channels; ch++) {
 		const ae_int32 *input_data = (const ae_int32 *)(in_ptr) + offsets[ch];
 
-		out_ptr = (ae_int32 *)ostream->w_ptr;
+		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
 		for (i = 0; i < samples_per_chan; i++) {
 			AE_L32_XP(d32, input_data, in_offset);
@@ -1016,7 +1016,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
 		in_data = audio_stream_get_rptr(istream);
-		out_data = (int16_t *)ostream->w_ptr;
+		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
 			if (&out_data[out_samples + ch]
@@ -1047,7 +1047,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
 		in_data = audio_stream_get_rptr(istream);
-		out_data = (int32_t *)ostream->w_ptr;
+		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
 			if (&out_data[out_samples + ch]
@@ -1149,7 +1149,7 @@ static int kpb_copy(struct comp_dev *dev)
 		sink_c = buffer_acquire(sink);
 
 		/* Validate sink */
-		if (!sink_c->stream.w_ptr) {
+		if (!audio_stream_get_wptr(&sink_c->stream)) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
 			ret = -EINVAL;
 			break;
@@ -1229,7 +1229,7 @@ static int kpb_copy(struct comp_dev *dev)
 		sink_c = buffer_acquire(sink);
 
 		/* Validate sink */
-		if (!sink_c->stream.w_ptr) {
+		if (!audio_stream_get_wptr(&sink_c->stream)) {
 			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
 			ret = -EINVAL;
 			break;
@@ -1823,7 +1823,8 @@ static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 {
 	int ssize = audio_stream_sample_bytes(sink);
 	uint8_t *in = (uint8_t *)linear_source + ioffset * ssize;
-	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)audio_stream_get_wptr(sink) +
+					 ooffset * ssize);
 	ae_int32x2 *buf_end;
 	ae_int32x2 *buf;
 
@@ -1870,7 +1871,8 @@ static void kpb_convert_24b_to_32b(const void *source, int ioffset,
 {
 	int ssize = audio_stream_sample_bytes(sink);
 	uint8_t *src = (uint8_t *)source + ioffset * 3;
-	int32_t *dst = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	int32_t *dst = audio_stream_wrap(sink, (uint8_t *)audio_stream_get_wptr(sink) +
+					 ooffset * ssize);
 	int processed;
 	int nmax, i, n;
 
@@ -2090,7 +2092,8 @@ static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
 	uint8_t *in = audio_stream_wrap(source, (uint8_t *)audio_stream_get_rptr(source) +
 					ioffset * ssize);
-	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)audio_stream_get_wptr(sink) +
+					 ooffset * ssize);
 
 	const ae_int32x2 *sin = (const ae_int32x2 *)in;
 	ae_int32x2 *sout = (ae_int32x2 *)out;
@@ -2121,7 +2124,7 @@ static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source
 				uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 

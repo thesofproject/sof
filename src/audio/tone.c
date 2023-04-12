@@ -117,7 +117,7 @@ static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_
 			     uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *dest = (int32_t *)sink->w_ptr;
+	int32_t *dest = audio_stream_get_wptr(sink);
 	int i;
 	int n;
 	int n_wrap_dest;

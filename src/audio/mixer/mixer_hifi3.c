@@ -18,7 +18,7 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 		      uint32_t frames)
 {
 	ae_int16x4 * in[PLATFORM_MAX_CHANNELS];
-	ae_int16x4 *out = sink->w_ptr;
+	ae_int16x4 *out = audio_stream_get_wptr(sink);
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int16x4 res = AE_ZERO16();
 	ae_int32x2 val1;
@@ -74,7 +74,7 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 		      uint32_t frames)
 {
 	ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
-	ae_int32x2 *out = sink->w_ptr;
+	ae_int32x2 *out = audio_stream_get_wptr(sink);
 	ae_int32x2 val;
 	ae_int32x2 sample = AE_ZERO32();
 	unsigned int n, m, nmax, i, j, left_samples;
@@ -119,7 +119,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *
 		      uint32_t frames)
 {
 	ae_q32s * in[PLATFORM_MAX_CHANNELS];
-	ae_int32 *out = sink->w_ptr;
+	ae_int32 *out = audio_stream_get_wptr(sink);
 	ae_int64 sample;
 	ae_int64 val;
 	ae_int32x2 res;

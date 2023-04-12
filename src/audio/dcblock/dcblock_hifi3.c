@@ -44,7 +44,7 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int16 *src = audio_stream_get_rptr(source);
-	ae_int16 *dst = (ae_int16 *)sink->w_ptr;
+	ae_int16 *dst = audio_stream_get_wptr(sink);
 	ae_int16 *in;
 	ae_int16 *out;
 	ae_int32x2 R, state_x, state_y, sample;
@@ -92,7 +92,7 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *dst = (ae_int32 *)sink->w_ptr;
+	ae_int32 *dst = audio_stream_get_wptr(sink);
 	ae_int32 *in;
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
@@ -140,7 +140,7 @@ static void dcblock_s32_default(const struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *dst = (ae_int32 *)sink->w_ptr;
+	ae_int32 *dst = audio_stream_get_wptr(sink);
 	ae_int32 *in;
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;

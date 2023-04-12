@@ -31,7 +31,7 @@ static void normal_mix_channel_s16(struct audio_stream __sparse_cache *sink, int
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
 	/* audio_stream_wrap() is required and is done below in a loop */
-	ae_int16 *dst = (ae_int16 *)sink->w_ptr + start_frame;
+	ae_int16 *dst = (ae_int16 *)audio_stream_get_wptr(sink) + start_frame;
 	ae_int16 *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
@@ -122,7 +122,8 @@ static void remap_mix_channel_s16(struct audio_stream __sparse_cache *sink,
 	ae_int16x4 gain_v;
 	ae_int32x2 temp, out1;
 
-	dst = (ae_int16 *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	dst = (ae_int16 *)audio_stream_get_wptr(sink) + start_frame * sink_channel_count +
+		sink_channel_index;
 	src = (ae_int16 *)audio_stream_get_rptr(source) + source_channel_index;
 	src = audio_stream_wrap(source, src);
 
@@ -200,7 +201,8 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 	AE_SETCEND0(stream->end_addr);
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int16 *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
+	ptr = (ae_int16 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+		channel_index;
 	ptr = audio_stream_wrap(stream, ptr);
 
 	for (left_frames = frame_count ; left_frames; left_frames--)
@@ -230,7 +232,7 @@ static void normal_mix_channel_s24(struct audio_stream __sparse_cache *sink, int
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
 	/* audio_stream_wrap() is required and is done below in a loop */
-	int32_t *dst = (int32_t *)sink->w_ptr + start_frame;
+	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_frame;
 	int32_t *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
@@ -314,7 +316,8 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 	ae_int16x4 gain_v;
 	ae_int32 *dst, *src;
 
-	dst = (ae_int32 *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	dst = (ae_int32 *)audio_stream_get_wptr(sink) + start_frame * sink_channel_count +
+		sink_channel_index;
 	src = (ae_int32 *)audio_stream_get_rptr(source) + source_channel_index;
 	src = audio_stream_wrap(source, src);
 	assert(mixed_frames >= start_frame);
@@ -400,7 +403,7 @@ static void normal_mix_channel_s32(struct audio_stream __sparse_cache *sink, int
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
 	/* audio_stream_wrap() is required and is done below in a loop */
-	int32_t *dst = (int32_t *)sink->w_ptr + start_frame;
+	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_frame;
 	int32_t *src = audio_stream_get_rptr(source);
 
 	assert(mixed_frames >= start_frame);
@@ -486,7 +489,8 @@ static void remap_mix_channel_s32(struct audio_stream __sparse_cache *sink,
 	ae_int32 *dst, *src;
 
 	/* audio_stream_wrap() is required and is done below in a loop */
-	dst = (ae_int32 *)sink->w_ptr + start_frame * sink_channel_count + sink_channel_index;
+	dst = (ae_int32 *)audio_stream_get_wptr(sink) + start_frame * sink_channel_count +
+		sink_channel_index;
 	src = (ae_int32 *)audio_stream_get_rptr(source) + source_channel_index;
 
 	assert(mixed_frames >= start_frame);
@@ -563,7 +567,8 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 	AE_SETCEND0(stream->end_addr);
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int32 *)stream->w_ptr + mixed_frames * stream->channels + channel_index;
+	ptr = (ae_int32 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+		channel_index;
 	ptr = audio_stream_wrap(stream, ptr);
 
 	for (left_frames = frame_count ; left_frames > 0; left_frames--)

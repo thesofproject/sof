@@ -59,7 +59,7 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 	dcblock_set_circular(source, sink);
 	for (ch = 0; ch < nch; ch++) {
 		in = (ae_int16 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int16 *)sink->w_ptr + ch;
+		out = (ae_int16 *)audio_stream_get_wptr(sink) + ch;
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;
 		R = cd->R_coeffs[ch];
@@ -97,7 +97,7 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 	dcblock_set_circular(source, sink);
 	for (ch = 0; ch < nch; ch++) {
 		in = (ae_int32 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int32 *)sink->w_ptr + ch;
+		out = (ae_int32 *)audio_stream_get_wptr(sink) + ch;
 
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;
@@ -136,7 +136,7 @@ static void dcblock_s32_default(const struct comp_dev *dev,
 	dcblock_set_circular(source, sink);
 	for (ch = 0; ch < nch; ch++) {
 		in = (ae_int32 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int32 *)sink->w_ptr + ch;
+		out = (ae_int32 *)audio_stream_get_wptr(sink) + ch;
 
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;

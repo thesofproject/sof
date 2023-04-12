@@ -252,7 +252,8 @@ static void silence(struct audio_stream __sparse_cache *stream, uint32_t start_f
 		return;
 
 	size = audio_stream_period_bytes(stream, frame_count - skip_mixed_frames);
-	ptr = (uint8_t *)stream->w_ptr + audio_stream_period_bytes(stream, mixed_frames);
+	ptr = (uint8_t *)audio_stream_get_wptr(stream) +
+		audio_stream_period_bytes(stream, mixed_frames);
 
 	while (size) {
 		ptr = audio_stream_wrap(stream, ptr);

@@ -82,6 +82,11 @@ static inline void *audio_stream_get_rptr(const struct audio_stream __sparse_cac
 	return buf->r_ptr;
 }
 
+static inline void *audio_stream_get_wptr(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->w_ptr;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

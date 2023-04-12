@@ -462,7 +462,7 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &cd->state.buf;
 	uint32_t magic = MFCC_MAGIC;
-	int16_t *w_ptr = sink->w_ptr;
+	int16_t *w_ptr = audio_stream_get_wptr(sink);
 	int num_magic = sizeof(magic) / sizeof(int16_t);
 	int num_ceps;
 	int zero_samples;

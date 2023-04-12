@@ -33,7 +33,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
 	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
+	ae_int32 *snk = audio_stream_get_wptr(sink);
 	ae_int32 *x;
 	ae_int32 *y0;
 	ae_int32 *y1;
@@ -98,7 +98,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	ae_int32 z0;
 	ae_int32 z1;
 	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
+	ae_int32 *snk = audio_stream_get_wptr(sink);
 	ae_int32 *x;
 	ae_int32 *y;
 	int ch;
@@ -174,7 +174,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	ae_int32 x0;
 	ae_int32 x1;
 	ae_int16 *src = audio_stream_get_rptr(source);
-	ae_int16 *snk = (ae_int16 *)sink->w_ptr;
+	ae_int16 *snk = audio_stream_get_wptr(sink);
 	ae_int16 *x;
 	ae_int16 *y;
 	int ch;

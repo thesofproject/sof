@@ -639,8 +639,8 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 
 	input.buf16 = (int16_t *)buf;
 	input.buf32 = (int32_t *)buf;
-	output.buf16 = (int16_t *)stream->w_ptr;
-	output.buf32 = (int32_t *)stream->w_ptr;
+	output.buf16 = audio_stream_get_wptr(stream);
+	output.buf32 = audio_stream_get_wptr(stream);
 
 	switch (stream->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:

@@ -72,7 +72,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_valign outu = AE_ZALIGN64();
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
@@ -164,7 +165,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	int samples = channels_count * frames;
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
 
 	/** to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
@@ -254,7 +256,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
-	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
 	const int channels_count = sink->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;

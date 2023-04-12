@@ -386,7 +386,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	s2.state = &cd->src.state2;
 	s2.stage = cd->src.stage2;
 	s2.x_rptr = cd->sbuf_r_ptr;
-	s2.y_wptr = sink->w_ptr;
+	s2.y_wptr = audio_stream_get_wptr(sink);
 	s2.nch = nch;
 	s2.shift = cd->data_shift;
 
@@ -445,7 +445,7 @@ static void src_1s(struct comp_dev *dev, struct comp_data *cd,
 	s1.x_rptr = audio_stream_get_rptr(source);
 	s1.x_end_addr = source->end_addr;
 	s1.x_size = source->size;
-	s1.y_wptr = sink->w_ptr;
+	s1.y_wptr = audio_stream_get_wptr(sink);
 	s1.y_end_addr = sink->end_addr;
 	s1.y_size = sink->size;
 	s1.state = &cd->src.state1;
