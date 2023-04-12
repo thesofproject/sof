@@ -772,7 +772,7 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 				    int src_channel, int frame_count)
 {
 	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
-	int16_t *w_ptr = (int16_t *)dst->w_ptr + dst_channel;
+	int16_t *w_ptr = (int16_t *)audio_stream_get_wptr(dst) + dst_channel;
 
 	/* We have to iterate over frames here. However, tracking frames requires using
 	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
@@ -811,7 +811,7 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 				    int src_channel, int frame_count)
 {
 	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
-	int32_t *w_ptr = (int32_t *)dst->w_ptr + dst_channel;
+	int32_t *w_ptr = (int32_t *)audio_stream_get_wptr(dst) + dst_channel;
 
 	/* We have to iterate over frames here. However, tracking frames requires using
 	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).

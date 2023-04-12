@@ -71,7 +71,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 
 	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
 	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
@@ -122,7 +122,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
 	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {
@@ -176,7 +176,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)sink->w_ptr + bsink->size);
+	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
 	bsink->size += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
 	while (remaining_samples) {

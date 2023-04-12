@@ -212,7 +212,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
-		.transaction_begin_address = buffer->stream.w_ptr,
+		.transaction_begin_address = audio_stream_get_wptr(&buffer->stream),
 	};
 
 	/* return if no bytes */
@@ -237,7 +237,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 		(buffer->id << 16) | buffer->stream.size);
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		((char *)audio_stream_get_rptr(&buffer->stream) - (char *)buffer->stream.addr) << 16 |
-		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
+		((char *)audio_stream_get_wptr(&buffer->stream) - (char *)buffer->stream.addr));
 }
 
 void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
@@ -268,7 +268,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 		 audio_stream_get_free_bytes(&buffer->stream),
 		(buffer->id << 16) | buffer->stream.size,
 		((char *)audio_stream_get_rptr(&buffer->stream) - (char *)buffer->stream.addr) << 16 |
-		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
+		((char *)audio_stream_get_wptr(&buffer->stream) - (char *)buffer->stream.addr));
 }
 
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)

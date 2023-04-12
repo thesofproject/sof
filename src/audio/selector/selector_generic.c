@@ -37,7 +37,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *dest = sink->w_ptr;
+	int16_t *dest = audio_stream_get_wptr(sink);
 	int16_t *src_ch;
 	int nmax;
 	int i;
@@ -76,7 +76,7 @@ static void sel_s16le_nch(struct comp_dev *dev, struct audio_stream __sparse_cac
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	int8_t *src = audio_stream_get_rptr(source);
-	int8_t *dst = (int8_t *)sink->w_ptr;
+	int8_t *dst = audio_stream_get_wptr(sink);
 	int bmax;
 	int b;
 	int bytes_copied = 0;
@@ -109,7 +109,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = sink->w_ptr;
+	int32_t *dest = audio_stream_get_wptr(sink);
 	int32_t *src_ch;
 	int nmax;
 	int i;
@@ -148,7 +148,7 @@ static void sel_s32le_nch(struct comp_dev *dev, struct audio_stream __sparse_cac
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	int8_t *src = audio_stream_get_rptr(source);
-	int8_t *dst = (int8_t *)sink->w_ptr;
+	int8_t *dst = audio_stream_get_wptr(sink);
 	int bmax;
 	int b;
 	int bytes_copied = 0;
@@ -209,7 +209,7 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
 	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *dest = sink->w_ptr;
+	int16_t *dest = audio_stream_get_wptr(sink);
 	int nmax;
 	int i;
 	int n;
@@ -280,7 +280,7 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = sink->w_ptr;
+	int32_t *dest = audio_stream_get_wptr(sink);
 	int nmax;
 	int i;
 	int n;

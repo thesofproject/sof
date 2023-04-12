@@ -24,7 +24,7 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nch = sink->channels;
 	int samples = frames * nch;
 
-	dest = sink->w_ptr;
+	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
 		src[j] = audio_stream_get_rptr(sources[j]);
 
@@ -71,7 +71,7 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nch = sink->channels;
 	int samples = frames * nch;
 
-	dest = sink->w_ptr;
+	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
 		src[j] = audio_stream_get_rptr(sources[j]);
 
@@ -118,7 +118,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nch = sink->channels;
 	int samples = frames * nch;
 
-	dest = sink->w_ptr;
+	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
 		src[j] = audio_stream_get_rptr(sources[j]);
 

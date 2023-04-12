@@ -486,7 +486,7 @@ ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
 			    void __sparse_cache *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
-	const int without_wrap = audio_stream_bytes_without_wrap(sink, sink->w_ptr);
+	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
 	uint32_t head_size = MIN(bytes, without_wrap);
 	/* tail_size - rest of the bytes that needs to be written
 	 * starting from the beginning of the buffer
@@ -494,11 +494,11 @@ ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy "head_size" samples to sink buffer */
-	memcpy(sink->w_ptr, (__sparse_force void *)buff, MIN(sink->size, head_size));
+	memcpy(audio_stream_get_wptr(sink), (__sparse_force void *)buff, MIN(sink->size, head_size));
 
 	/* copy rest of the samples after buffer wrap */
 	if (tail_size)
-		memcpy(audio_stream_wrap(sink, (char *)sink->w_ptr + head_size),
+		memcpy(audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + head_size),
 		       (__sparse_force char *)buff + head_size, MIN(sink->size, tail_size));
 }
 
@@ -515,7 +515,7 @@ static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t by
 	void *ptr;
 
 	while (copy_bytes) {
-		ptr = audio_stream_wrap(&sink->stream, sink->stream.w_ptr);
+		ptr = audio_stream_wrap(&sink->stream, audio_stream_get_wptr(&sink->stream));
 		tmp = audio_stream_bytes_without_wrap(&sink->stream, ptr);
 		tmp = MIN(tmp, copy_bytes);
 		ptr = (char *)ptr + tmp;

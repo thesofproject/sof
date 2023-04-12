@@ -36,7 +36,7 @@ static int pcm_convert_s16_to_s24(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int16_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -65,7 +65,7 @@ static int pcm_convert_s24_to_s16(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int16_t *dst = sink->w_ptr;
+	int16_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -98,7 +98,7 @@ static int pcm_convert_s16_to_s32(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int16_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -127,7 +127,7 @@ static int pcm_convert_s32_to_s16(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int16_t *dst = sink->w_ptr;
+	int16_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -160,7 +160,7 @@ static int pcm_convert_s24_to_s32(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -189,7 +189,7 @@ static int pcm_convert_s32_to_s24(const struct audio_stream __sparse_cache *sour
 				  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -218,7 +218,7 @@ static int pcm_convert_s32_to_s24_be(const struct audio_stream __sparse_cache *s
 				     uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -533,7 +533,7 @@ static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int16_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -562,7 +562,7 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int16_t *dst = sink->w_ptr;
+	int16_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -592,7 +592,7 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -621,7 +621,7 @@ static int pcm_convert_s32_c32_to_s16_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -651,7 +651,7 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -680,7 +680,7 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -711,7 +711,7 @@ static int pcm_convert_s24_c24_to_s24_c32(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	uint8_t *src = audio_stream_get_rptr(source);
-	int32_t *dst = sink->w_ptr;
+	int32_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -741,7 +741,7 @@ static int pcm_convert_s24_c32_to_s24_c24(const struct audio_stream __sparse_cac
 					  uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	uint8_t *dst = sink->w_ptr;
+	uint8_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i, n;
 
@@ -775,7 +775,7 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream __s
 						   uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
-	uint16_t *dst = sink->w_ptr;
+	uint16_t *dst = audio_stream_get_wptr(sink);
 	int processed;
 	int nmax, i = 0, n = 0;
 

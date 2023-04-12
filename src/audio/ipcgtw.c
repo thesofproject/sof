@@ -115,7 +115,7 @@ static inline void audio_stream_copy_bytes_from_linear(const void *linear_source
 						       unsigned int bytes)
 {
 	const uint8_t *src = (const uint8_t *)linear_source;
-	uint8_t *snk = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr);
+	uint8_t *snk = audio_stream_wrap(sink, audio_stream_get_wptr(sink));
 	size_t bytes_snk, bytes_copied;
 
 	while (bytes) {

@@ -25,7 +25,7 @@ int pcm_convert_as_linear(const struct audio_stream __sparse_cache *source, uint
 	const int log2_s_size_out = ffs(s_size_out) - 1;
 	char *r_ptr = audio_stream_get_frag(source, audio_stream_get_rptr(source), ioffset,
 					    s_size_in);
-	char *w_ptr = audio_stream_get_frag(sink, sink->w_ptr, ooffset,
+	char *w_ptr = audio_stream_get_frag(sink, audio_stream_get_wptr(sink), ooffset,
 					    s_size_out);
 	int i = 0;
 	int chunk;

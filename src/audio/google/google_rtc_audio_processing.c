@@ -660,7 +660,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	output_buf = buffer_acquire(cd->output);
 
 	src = audio_stream_get_rptr(&mic_buf->stream);
-	dst = output_buf->stream.w_ptr;
+	dst = audio_stream_get_wptr(&output_buf->stream);
 
 	comp_get_copy_limits(mic_buf, output_buf, &cl);
 	buffer_stream_invalidate(mic_buf, cl.source_bytes);

@@ -126,7 +126,7 @@ static void mux_init_look_up_pointers_s16(struct audio_stream __sparse_cache *si
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
-		lookup->copy_elem[elem].dest = (int16_t *)sink->w_ptr +
+		lookup->copy_elem[elem].dest = (int16_t *)audio_stream_get_wptr(sink) +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
 	}
@@ -144,7 +144,7 @@ static void demux_init_look_up_pointers_s16(struct audio_stream __sparse_cache *
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
-		lookup->copy_elem[elem].dest = (int16_t *)sink->w_ptr +
+		lookup->copy_elem[elem].dest = (int16_t *)audio_stream_get_wptr(sink) +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
 	}
@@ -328,7 +328,7 @@ static void mux_init_look_up_pointers_s32(struct audio_stream __sparse_cache *si
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
-		lookup->copy_elem[elem].dest = (int32_t *)sink->w_ptr +
+		lookup->copy_elem[elem].dest = (int32_t *)audio_stream_get_wptr(sink) +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
 	}
@@ -346,7 +346,7 @@ static void demux_init_look_up_pointers_s32(struct audio_stream __sparse_cache *
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
-		lookup->copy_elem[elem].dest = (int32_t *)sink->w_ptr +
+		lookup->copy_elem[elem].dest = (int32_t *)audio_stream_get_wptr(sink) +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
 	}

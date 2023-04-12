@@ -532,7 +532,7 @@ static void drc_s16_default(const struct comp_dev *dev,
 			    uint32_t frames)
 {
 	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *y = sink->w_ptr;
+	int16_t *y = audio_stream_get_wptr(sink);
 	int nch = source->channels;
 	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
@@ -678,7 +678,7 @@ static void drc_s24_default(const struct comp_dev *dev,
 			    uint32_t frames)
 {
 	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = sink->w_ptr;
+	int32_t *y = audio_stream_get_wptr(sink);
 	int nch = source->channels;
 	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
@@ -726,7 +726,7 @@ static void drc_s32_default(const struct comp_dev *dev,
 			    uint32_t frames)
 {
 	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = sink->w_ptr;
+	int32_t *y = audio_stream_get_wptr(sink);
 	int nch = source->channels;
 	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);

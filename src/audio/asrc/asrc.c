@@ -129,7 +129,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *buf;
 	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *snk = (int32_t *)sink->w_ptr;
+	int32_t *snk = audio_stream_get_wptr(sink);
 	int n_wrap_src;
 	int n_wrap_snk;
 	int n_copy;
@@ -198,7 +198,7 @@ static void src_copy_s16(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *snk = (int16_t *)sink->w_ptr;
+	int16_t *snk = audio_stream_get_wptr(sink);
 	int16_t *buf;
 	int n_wrap_src;
 	int n_wrap_snk;
