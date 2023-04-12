@@ -624,7 +624,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 
 	buffer_c = buffer_acquire(cd->aec_reference);
 
-	ref = buffer_c->stream.r_ptr;
+	ref = audio_stream_get_rptr(&buffer_c->stream);
 
 	num_aec_reference_frames = audio_stream_get_avail_frames(&buffer_c->stream);
 	num_aec_reference_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
@@ -659,7 +659,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	mic_buf = buffer_acquire(cd->raw_microphone);
 	output_buf = buffer_acquire(cd->output);
 
-	src = mic_buf->stream.r_ptr;
+	src = audio_stream_get_rptr(&mic_buf->stream);
 	dst = output_buf->stream.w_ptr;
 
 	comp_get_copy_limits(mic_buf, output_buf, &cl);

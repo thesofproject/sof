@@ -215,7 +215,7 @@ static void multiband_drc_s16_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int16_t *x = source->r_ptr;
+	int16_t *x = audio_stream_get_rptr(source);
 	int16_t *y = sink->w_ptr;
 	int band;
 	int nbuf;
@@ -282,7 +282,7 @@ static void multiband_drc_s24_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int band;
 	int nbuf;
@@ -349,7 +349,7 @@ static void multiband_drc_s32_default(const struct comp_dev *dev,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int band;
 	int nbuf;

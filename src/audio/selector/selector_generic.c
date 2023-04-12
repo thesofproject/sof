@@ -36,7 +36,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = source->r_ptr;
+	int16_t *src = audio_stream_get_rptr(source);
 	int16_t *dest = sink->w_ptr;
 	int16_t *src_ch;
 	int nmax;
@@ -75,7 +75,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 static void sel_s16le_nch(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
-	int8_t *src = (int8_t *)source->r_ptr;
+	int8_t *src = audio_stream_get_rptr(source);
 	int8_t *dst = (int8_t *)sink->w_ptr;
 	int bmax;
 	int b;
@@ -108,7 +108,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = source->r_ptr;
+	int32_t *src = audio_stream_get_rptr(source);
 	int32_t *dest = sink->w_ptr;
 	int32_t *src_ch;
 	int nmax;
@@ -147,7 +147,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream __sparse_cac
 static void sel_s32le_nch(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
 			  const struct audio_stream __sparse_cache *source, uint32_t frames)
 {
-	int8_t *src = (int8_t *)source->r_ptr;
+	int8_t *src = audio_stream_get_rptr(source);
 	int8_t *dst = (int8_t *)sink->w_ptr;
 	int bmax;
 	int b;
@@ -208,7 +208,7 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 	struct comp_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int16_t *src = source->r_ptr;
+	int16_t *src = audio_stream_get_rptr(source);
 	int16_t *dest = sink->w_ptr;
 	int nmax;
 	int i;
@@ -279,7 +279,7 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 	struct comp_data *cd = module_get_private_data(mod);
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int32_t *src = source->r_ptr;
+	int32_t *src = audio_stream_get_rptr(source);
 	int32_t *dest = sink->w_ptr;
 	int nmax;
 	int i;

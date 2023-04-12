@@ -28,9 +28,9 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	unsigned int n, m, nmax, i, j, left_samples;
 	unsigned int samples = frames * sink->channels;
 
-	for (j = 0; j < num_sources; j++) {
-		in[j] = sources[j]->r_ptr;
-	}
+	for (j = 0; j < num_sources; j++)
+		in[j] = audio_stream_get_rptr(sources[j]);
+
 	for (left_samples = samples; left_samples; left_samples -= n) {
 		out = audio_stream_wrap(sink,  out);
 		nmax = audio_stream_samples_without_wrap_s16(sink, out);
@@ -80,9 +80,9 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	unsigned int n, m, nmax, i, j, left_samples;
 	unsigned int samples = frames * sink->channels;
 
-	for (j = 0; j < num_sources; j++) {
-		in[j] = sources[j]->r_ptr;
-	}
+	for (j = 0; j < num_sources; j++)
+		in[j] = audio_stream_get_rptr(sources[j]);
+
 	for (left_samples = samples; left_samples; left_samples -= n) {
 		out = audio_stream_wrap(sink,  out);
 		nmax = audio_stream_samples_without_wrap_s32(sink, out);
@@ -128,7 +128,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	unsigned int samples = frames * sink->channels;
 
 	for (j = 0; j < num_sources; j++)
-		in[j] = sources[j]->r_ptr;
+		in[j] = audio_stream_get_rptr(sources[j]);
 
 	for (left_samples = samples; left_samples; left_samples -= n) {
 		out = audio_stream_wrap(sink,  out);

@@ -60,7 +60,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int16_t *x = source->r_ptr;
+	int16_t *x = audio_stream_get_rptr(source);
 	int16_t *y = sink->w_ptr;
 	int fmax;
 	int i;
@@ -106,7 +106,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int fmax;
 	int i;
@@ -152,7 +152,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 {
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = sink->w_ptr;
 	int fmax;
 	int i;

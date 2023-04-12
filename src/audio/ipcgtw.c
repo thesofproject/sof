@@ -132,7 +132,7 @@ static inline
 void audio_stream_copy_bytes_to_linear(const struct audio_stream __sparse_cache *source,
 				       void *linear_sink, unsigned int bytes)
 {
-	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr);
+	uint8_t *src = audio_stream_wrap(source, audio_stream_get_rptr(source));
 	uint8_t *snk = (uint8_t *)linear_sink;
 	size_t bytes_src, bytes_copied;
 

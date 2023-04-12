@@ -80,7 +80,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
 {
 	uint32_t curr_frames = frames;
 	int32_t sum;
-	int16_t *x = source->r_ptr;
+	int16_t *x = audio_stream_get_rptr(source);
 	int bytes;
 	int nmax;
 	int i, j, n;
@@ -128,7 +128,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
 {
 	int64_t sum;
 	uint32_t curr_frames = frames;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int bytes;
 	int nmax;
 	int i, j, n;
@@ -176,7 +176,7 @@ static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
 {
 	int64_t sum;
 	uint32_t curr_frames = frames;
-	int32_t *x = source->r_ptr;
+	int32_t *x = audio_stream_get_rptr(source);
 	int bytes;
 	int nmax;
 	int i, j, n;

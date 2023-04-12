@@ -93,7 +93,7 @@ static void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfc
 	struct audio_stream __sparse_cache *source = bsource->data;
 	int32_t s;
 	int16_t *x0;
-	int16_t *x = source->r_ptr;
+	int16_t *x = audio_stream_get_rptr(source);
 	int16_t *w = buf->w_ptr;
 	int copied;
 	int nmax;

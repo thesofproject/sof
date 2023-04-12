@@ -587,8 +587,8 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 	union smart_amp_buf input, output;
 	int index;
 
-	input.buf16 = (int16_t *)stream->r_ptr;
-	input.buf32 = (int32_t *)stream->r_ptr;
+	input.buf16 = audio_stream_get_rptr(stream);
+	input.buf32 = audio_stream_get_rptr(stream);
 	output.buf16 = (int16_t *)buf;
 	output.buf32 = (int32_t *)buf;
 

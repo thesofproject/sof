@@ -944,7 +944,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 	AE_SETCEND0(ostream->end_addr);
 
 	buffer_stream_invalidate(source, size);
-	const ae_int16 *in_ptr = (const ae_int16 *)istream->r_ptr;
+	const ae_int16 *in_ptr = audio_stream_get_rptr(istream);
 	ae_int16x4 d16 = AE_ZERO16();
 	const size_t in_offset = in_channels * sizeof(ae_int16);
 	const size_t out_offset = micsel_channels * sizeof(ae_int16);
@@ -978,7 +978,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 
 	buffer_stream_invalidate(source, size);
 
-	const ae_int32 *in_ptr = (const ae_int32 *)istream->r_ptr;
+	const ae_int32 *in_ptr = audio_stream_get_rptr(istream);
 	ae_int32x2 d32 = AE_ZERO32();
 	const size_t in_offset = in_channels * sizeof(ae_int32);
 	const size_t out_offset = micsel_channels * sizeof(ae_int32);
@@ -1015,7 +1015,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
-		in_data = (int16_t *)istream->r_ptr;
+		in_data = audio_stream_get_rptr(istream);
 		out_data = (int16_t *)ostream->w_ptr;
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
@@ -1046,7 +1046,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
-		in_data = (int32_t *)istream->r_ptr;
+		in_data = audio_stream_get_rptr(istream);
 		out_data = (int32_t *)ostream->w_ptr;
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
@@ -1128,7 +1128,7 @@ static int kpb_copy(struct comp_dev *dev)
 	source_c = buffer_acquire(source);
 
 	/* Validate source */
-	if (!source_c->stream.r_ptr) {
+	if (!audio_stream_get_rptr(&source_c->stream)) {
 		comp_err(dev, "kpb_copy(): invalid source pointers.");
 		ret = -EINVAL;
 		goto out;
@@ -1929,7 +1929,8 @@ static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *sou
 				   void *linear_sink, int ooffset, unsigned int n_samples)
 {
 	int ssize = audio_stream_sample_bytes(source);
-	uint8_t *in = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *in = audio_stream_wrap(source, (uint8_t *)audio_stream_get_rptr(source) +
+					ioffset * ssize);
 	uint8_t *out = (uint8_t *)linear_sink + ooffset * ssize;
 
 	const ae_f24x2 *sin = (const ae_f24x2 *)in;
@@ -1966,7 +1967,8 @@ static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *sou
 				   void *sink, int ooffset, unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(source);
-	int32_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	int32_t *src = audio_stream_wrap(source, (uint8_t *)audio_stream_get_rptr(source) +
+					 ioffset * ssize);
 	uint8_t *dst = (uint8_t *)sink + ooffset * 3;
 	int processed;
 	int nmax, i, n;
@@ -2086,7 +2088,8 @@ static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source
 				uint32_t n_samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
-	uint8_t *in = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *in = audio_stream_wrap(source, (uint8_t *)audio_stream_get_rptr(source) +
+					ioffset * ssize);
 	uint8_t *out = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
 
 	const ae_int32x2 *sin = (const ae_int32x2 *)in;
@@ -2117,7 +2120,7 @@ static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source
 				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
 				uint32_t ooffset, uint32_t samples)
 {
-	int32_t *src = source->r_ptr;
+	int32_t *src = audio_stream_get_rptr(source);
 	int32_t *dst = sink->w_ptr;
 	int processed;
 	int nmax, i, n;
