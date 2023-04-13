@@ -138,7 +138,8 @@ static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_
 				dest++;
 			}
 		}
-		tone_circ_inc_wrap(&dest, audio_stream_get_end_addr(sink), sink->size);
+		tone_circ_inc_wrap(&dest, audio_stream_get_end_addr(sink),
+				   audio_stream_get_size(sink));
 	}
 }
 

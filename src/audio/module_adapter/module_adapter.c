@@ -494,12 +494,14 @@ ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy "head_size" samples to sink buffer */
-	memcpy(audio_stream_get_wptr(sink), (__sparse_force void *)buff, MIN(sink->size, head_size));
+	memcpy(audio_stream_get_wptr(sink), (__sparse_force void *)buff,
+	       MIN(audio_stream_get_size(sink), head_size));
 
 	/* copy rest of the samples after buffer wrap */
 	if (tail_size)
 		memcpy(audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + head_size),
-		       (__sparse_force char *)buff + head_size, MIN(sink->size, tail_size));
+		       (__sparse_force char *)buff + head_size,
+		       MIN(audio_stream_get_size(sink), tail_size));
 }
 
 /**

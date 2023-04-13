@@ -585,9 +585,9 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      dev->frames);
 
-	if (sink_c->stream.size < sink_period_bytes) {
+	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
 		comp_err(dev, "multiband_drc_prepare(), sink buffer size %d is insufficient",
-			 sink_c->stream.size);
+			 audio_stream_get_size(&sink_c->stream));
 		ret = -ENOMEM;
 	}
 

@@ -154,7 +154,8 @@ static void src_copy_s32(struct comp_dev *dev,
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&src, audio_stream_get_end_addr(source), source->size);
+		src_inc_wrap(&src, audio_stream_get_end_addr(source),
+			     audio_stream_get_size(source));
 	}
 
 	/* Run ASRC */
@@ -184,7 +185,8 @@ static void src_copy_s32(struct comp_dev *dev,
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&snk, audio_stream_get_end_addr(sink), sink->size);
+		src_inc_wrap(&snk, audio_stream_get_end_addr(sink),
+			     audio_stream_get_size(sink));
 	}
 
 	*n_read = in_frames;
@@ -226,7 +228,8 @@ static void src_copy_s16(struct comp_dev *dev,
 		n -= n_copy;
 		src += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&src, audio_stream_get_end_addr(source), source->size);
+		src_inc_wrap_s16(&src, audio_stream_get_end_addr(source),
+				 audio_stream_get_size(source));
 	}
 
 	/* Run ASRC */
@@ -260,7 +263,8 @@ static void src_copy_s16(struct comp_dev *dev,
 		n -= n_copy;
 		snk += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&snk, audio_stream_get_end_addr(sink), sink->size);
+		src_inc_wrap_s16(&snk, audio_stream_get_end_addr(sink),
+				 audio_stream_get_size(sink));
 	}
 
 	*n_read = in_frames;
@@ -759,9 +763,11 @@ static int asrc_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      cd->sink_frames);
 
-	if (sink_c->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
+	if (audio_stream_get_size(&sink_c->stream) <
+	    dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "asrc_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sink_c->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
+			 audio_stream_get_size(&sink_c->stream), dev->ipc_config.periods_sink,
+			 sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -979,7 +985,7 @@ static void asrc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache
 	int produced = 0;
 
 	/* consumed bytes are not known at this point */
-	buffer_stream_invalidate(source, source->stream.size);
+	buffer_stream_invalidate(source, audio_stream_get_size(&source->stream));
 	cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
 		      &produced);
 	buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(&sink->stream));

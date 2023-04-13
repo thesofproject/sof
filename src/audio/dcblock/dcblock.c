@@ -365,9 +365,9 @@ static int dcblock_prepare(struct comp_dev *dev)
 	cd->sink_format = sink_c->stream.frame_fmt;
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 
-	if (sink_c->stream.size < sink_period_bytes) {
+	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
 		comp_err(dev, "dcblock_prepare(): sink buffer size %d is insufficient < %d",
-			 sink_c->stream.size, sink_period_bytes);
+			 audio_stream_get_size(&sink_c->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto out;
 	}

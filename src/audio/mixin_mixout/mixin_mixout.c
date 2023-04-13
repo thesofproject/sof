@@ -774,7 +774,7 @@ static int mixout_params(struct processing_module *mod)
 				    &dummy, &sink_c->stream.valid_sample_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-	sink_stream_size = sink_c->stream.size;
+	sink_stream_size = audio_stream_get_size(&sink_c->stream);
 
 	/* calculate period size based on config */
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
