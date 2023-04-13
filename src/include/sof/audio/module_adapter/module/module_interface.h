@@ -51,7 +51,8 @@ struct input_stream_buffer {
 	void __sparse_cache *data; /* data stream buffer */
 	uint32_t size; /* size of data in the buffer */
 	uint32_t consumed; /* number of bytes consumed by the module */
-
+	/* comp_buffer id, add to identify buffer of smart_amp*/
+	uint32_t comp_buf_id;
 	/* Indicates end of stream condition has occurred on the input stream */
 	bool end_of_stream;
 };

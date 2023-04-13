@@ -641,7 +641,7 @@ module_single_sink_setup(struct comp_dev *dev,
 		 */
 		mod->input_buffers[i].size = c.frames;
 		mod->input_buffers[i].consumed = 0;
-
+		mod->input_buffers[i].comp_buf_id = source_c[i]->id;
 		mod->input_buffers[i].data = &source_c[i]->stream;
 		i++;
 	}

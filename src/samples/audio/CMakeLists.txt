@@ -2,7 +2,8 @@
 
 if(CONFIG_SAMPLE_SMART_AMP)
 	add_local_sources(sof
-		smart_amp_test.c
+		smart_amp_test_ipc4.c
+		smart_amp_test_ipc3.c
 	)
 endif()
 

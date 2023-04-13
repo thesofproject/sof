@@ -16,6 +16,7 @@
 #include <ipc4/base-config.h>
 
 #define SOF_SMART_AMP_FEEDBACK_QUEUE_ID        1
+
 #endif
 
 #define SMART_AMP_MAX_STREAM_CHAN   8
@@ -30,11 +31,6 @@ struct smart_amp_model_data {
 	uint32_t crc;
 	uint32_t data_pos;
 };
-
-typedef int(*smart_amp_proc)(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
-			     int8_t *chan_map);
 
 /* Each channel map specifies which channel from input (buffer between host
  * and smart amp - source_chan_map[] or feedback buffer between smart amp and
@@ -99,7 +95,6 @@ struct sof_smart_amp_config {
 #define SMART_AMP_NUM_OUT_PINS		1
 
 struct sof_smart_amp_ipc4_config {
-	struct ipc4_base_module_cfg base;
 	struct ipc4_input_pin_format input_pins[SMART_AMP_NUM_IN_PINS];
 	struct ipc4_output_pin_format output_pin;
 };

@@ -635,7 +635,8 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 )
 
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
+	${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
+	${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
