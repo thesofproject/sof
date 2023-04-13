@@ -102,6 +102,11 @@ static inline uint32_t audio_stream_get_size(const struct audio_stream __sparse_
 	return buf->size;
 }
 
+static inline uint32_t audio_stream_get_avail(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->avail;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

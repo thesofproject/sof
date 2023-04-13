@@ -402,7 +402,7 @@ static int selector_copy(struct comp_dev *dev)
 
 	source_c = buffer_acquire(source);
 
-	if (!source_c->stream.avail) {
+	if (!audio_stream_get_avail(&source_c->stream)) {
 		buffer_release(source_c);
 		return PPL_STATUS_PATH_STOP;
 	}

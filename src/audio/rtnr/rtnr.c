@@ -730,7 +730,7 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 {
 
 	dst->size = audio_stream_get_size(src);
-	dst->avail = src->avail;
+	dst->avail = audio_stream_get_avail(src);
 	dst->free = src->free;
 	dst->w_ptr = audio_stream_get_wptr(src);
 	dst->r_ptr = audio_stream_get_rptr(src);
@@ -742,7 +742,7 @@ static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
 				    struct audio_stream_rtnr *src)
 {
 	dst->size = audio_stream_get_size(src);
-	dst->avail = src->avail;
+	dst->avail = audio_stream_get_avail(src);
 	dst->free = src->free;
 	dst->w_ptr = audio_stream_get_wptr(src);
 	dst->r_ptr = audio_stream_get_rptr(src);
