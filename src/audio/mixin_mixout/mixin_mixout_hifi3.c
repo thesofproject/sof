@@ -136,7 +136,7 @@ static void remap_mix_channel_s16(struct audio_stream __sparse_cache *sink,
 
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
 	AE_SETCBEGIN0(source->addr);
-	AE_SETCEND0(source->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(source));
 
 	for (left_frames = frames_to_mix; left_frames > 0; left_frames -= frames) {
 		/* audio_stream_wrap() is required and is done below in a loop */
@@ -198,7 +198,7 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 	frame_count -= skip_mixed_frames;
 
 	AE_SETCBEGIN0(stream->addr);
-	AE_SETCEND0(stream->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
 	ptr = (ae_int16 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
@@ -328,7 +328,7 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 	AE_L16_IP(gain_v, pgain, 0);
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
 	AE_SETCBEGIN0(source->addr);
-	AE_SETCEND0(source->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(source));
 
 	for (left_frames = frames_to_mix; left_frames > 0; left_frames -= frames) {
 		dst = audio_stream_wrap(sink, dst);
@@ -500,7 +500,7 @@ static void remap_mix_channel_s32(struct audio_stream __sparse_cache *sink,
 	AE_L16_IP(gain_v, pgain, 0);
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
 	AE_SETCBEGIN0(source->addr);
-	AE_SETCEND0(source->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(source));
 	src = audio_stream_wrap(source, src);
 
 	for (left_frames = frames_to_mix; left_frames > 0; left_frames -= frames) {
@@ -564,7 +564,7 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 	frame_count -= skip_mixed_frames;
 
 	AE_SETCBEGIN0(stream->addr);
-	AE_SETCEND0(stream->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
 	ptr = (ae_int32 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +

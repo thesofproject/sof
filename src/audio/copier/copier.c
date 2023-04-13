@@ -791,7 +791,7 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 
 		src_samples_without_wrap = audio_stream_samples_without_wrap_s16(src, r_ptr);
 		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int16_t *)src->end_addr;
+			r_ptr + src_stream_sample_count : (int16_t *)audio_stream_get_end_addr(src);
 
 		r_ptr_before_loop = r_ptr;
 
@@ -799,7 +799,7 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 			*w_ptr = *r_ptr;
 			r_ptr += src->channels;
 			w_ptr += dst->channels;
-		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)dst->end_addr);
+		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)audio_stream_get_end_addr(dst));
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
 	}
@@ -830,7 +830,7 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 
 		src_samples_without_wrap = audio_stream_samples_without_wrap_s32(src, r_ptr);
 		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int32_t *)src->end_addr;
+			r_ptr + src_stream_sample_count : (int32_t *)audio_stream_get_end_addr(src);
 
 		r_ptr_before_loop = r_ptr;
 
@@ -838,7 +838,7 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 			*w_ptr = *r_ptr;
 			r_ptr += src->channels;
 			w_ptr += dst->channels;
-		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)dst->end_addr);
+		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)audio_stream_get_end_addr(dst));
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
 	}

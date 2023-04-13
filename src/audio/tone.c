@@ -126,7 +126,7 @@ static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_
 
 	n = frames * nch;
 	while (n > 0) {
-		n_wrap_dest = (int32_t *)sink->end_addr - dest;
+		n_wrap_dest = (int32_t *)audio_stream_get_end_addr(sink) - dest;
 		n_min = (n < n_wrap_dest) ? n : n_wrap_dest;
 		/* Process until wrap or completed n */
 		while (n_min > 0) {
@@ -138,7 +138,7 @@ static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_
 				dest++;
 			}
 		}
-		tone_circ_inc_wrap(&dest, sink->end_addr, sink->size);
+		tone_circ_inc_wrap(&dest, audio_stream_get_end_addr(sink), sink->size);
 	}
 }
 
