@@ -347,10 +347,8 @@ void rfree(void *ptr)
 	heap_free(&sof_heap, ptr);
 }
 
-static int heap_init(const struct device *unused)
+static int heap_init(void)
 {
-	ARG_UNUSED(unused);
-
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
 
 #if CONFIG_L3_HEAP
