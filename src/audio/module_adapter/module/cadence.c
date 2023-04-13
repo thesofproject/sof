@@ -583,10 +583,11 @@ cadence_codec_process(struct processing_module *mod,
 		      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_buffer *local_buff;
+	struct comp_buffer __sparse_cache *buffer_c;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;
-	int output_bytes = cadence_codec_get_samples(mod) *
+	int free_bytes, output_bytes = cadence_codec_get_samples(mod) *
 				mod->stream_params->sample_container_bytes *
 				mod->stream_params->channels;
 	uint32_t remaining = input_buffers[0].size;
@@ -613,7 +614,10 @@ cadence_codec_process(struct processing_module *mod,
 
 	/* do not proceed with processing if not enough free space left in the local buffer */
 	local_buff = list_first_item(&mod->sink_buffer_list, struct comp_buffer, sink_list);
-	if (local_buff->stream.free < output_bytes)
+	buffer_c = buffer_acquire(local_buff);
+	free_bytes = audio_stream_get_free(&buffer_c->stream);
+	buffer_release(buffer_c);
+	if (free_bytes < output_bytes)
 		return -ENOSPC;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
