@@ -1033,7 +1033,6 @@ static int dai_reset(struct comp_dev *dev)
 /* used to pass standard and bespoke command (with data) to component */
 static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
-	int prev_state = dev->state;
 	int ret;
 
 	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
@@ -1079,11 +1078,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			if (dev->state == COMP_STATE_ACTIVE) {
-				ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-				if (ret < 0)
-					return ret;
-			}
+			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+			if (ret < 0)
+				return ret;
 
 			/* dma_config needed after stop */
 			ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
@@ -1132,21 +1129,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 #if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
-		if (prev_state == COMP_STATE_ACTIVE) {
-			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
-		} else {
-			comp_warn(dev, "dma was stopped earlier");
-			ret = 0;
-		}
+		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		if (prev_state == COMP_STATE_ACTIVE) {
-			ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
-		} else {
-			comp_warn(dev, "dma was stopped earlier");
-			ret = 0;
-		}
+		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 #endif
 		break;
 	case COMP_TRIGGER_PRE_START:
