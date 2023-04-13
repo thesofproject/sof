@@ -168,8 +168,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		 */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		/* if reset is after pause dma has already been stopped */
-		if (dev->state != COMP_STATE_PAUSED)
-			dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
 #else

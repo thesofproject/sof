@@ -557,13 +557,10 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		if (dev->state == COMP_STATE_ACTIVE) {
-			ret = dma_stop(hd->chan->dma->z_dev, hd->chan->index);
-			if (ret < 0)
-				comp_err(dev, "host_trigger(): dma stop failed: %d",
-					 ret);
-		}
-
+		ret = dma_stop(hd->chan->dma->z_dev, hd->chan->index);
+		if (ret < 0)
+			comp_err(dev, "host_trigger(): dma stop failed: %d",
+				 ret);
 		break;
 	default:
 		break;
@@ -1015,8 +1012,7 @@ static int host_position(struct comp_dev *dev,
 void host_zephyr_reset(struct host_data *hd, uint16_t state)
 {
 	if (hd->chan) {
-		if (state == COMP_STATE_ACTIVE)
-			dma_stop(hd->chan->dma->z_dev, hd->chan->index);
+		dma_stop(hd->chan->dma->z_dev, hd->chan->index);
 		dma_release_channel(hd->dma->z_dev, hd->chan->index);
 		hd->chan = NULL;
 	}
