@@ -86,11 +86,11 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 
-	bzero(audio_stream_get_addr(&buffer->stream), buffer->stream.size);
+	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
 		dcache_writeback_region((__sparse_force void __sparse_cache *)
 					audio_stream_get_addr(&buffer->stream),
-					buffer->stream.size);
+					audio_stream_get_size(&buffer->stream));
 }
 
 int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
@@ -103,16 +103,16 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
 		return -EINVAL;
 	}
 
-	if (size == buffer->stream.size)
+	if (size == audio_stream_get_size(&buffer->stream))
 		return 0;
 
 	new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
-			    buffer->caps, size, buffer->stream.size);
+			    buffer->caps, size, audio_stream_get_size(&buffer->stream));
 
 	/* we couldn't allocate bigger chunk */
-	if (!new_ptr && size > buffer->stream.size) {
+	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
 		buf_err(buffer, "resize can't alloc %u bytes type %u",
-			buffer->stream.size, buffer->caps);
+			audio_stream_get_size(&buffer->stream), buffer->caps);
 		return -ENOMEM;
 	}
 
@@ -235,7 +235,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
 		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
 		 audio_stream_get_free_bytes(&buffer->stream),
-		(buffer->id << 16) | buffer->stream.size);
+		(buffer->id << 16) | audio_stream_get_size(&buffer->stream));
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		((char *)audio_stream_get_rptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)) << 16 |
@@ -269,7 +269,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 	buf_dbg(buffer, "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
 		 audio_stream_get_free_bytes(&buffer->stream),
-		(buffer->id << 16) | buffer->stream.size,
+		(buffer->id << 16) | audio_stream_get_size(&buffer->stream),
 		((char *)audio_stream_get_rptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)) << 16 |
 		((char *)audio_stream_get_wptr(&buffer->stream) -

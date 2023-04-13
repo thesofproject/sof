@@ -731,10 +731,10 @@ static int crossover_prepare(struct comp_dev *dev)
 		} else {
 			sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 								      dev->frames);
-			if (sink_c->stream.size < sink_period_bytes) {
+			if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
 				comp_err(dev,
 					 "crossover_prepare(), sink %d buffer size %d is insufficient",
-					 sink_c->pipeline_id, sink_c->stream.size);
+					 sink_c->pipeline_id, audio_stream_get_size(&sink_c->stream));
 				ret = -ENOMEM;
 			}
 		}

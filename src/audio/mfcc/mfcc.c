@@ -219,9 +219,9 @@ static int mfcc_prepare(struct processing_module *mod)
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 	comp_info(dev, "mfcc_prepare(), source_format = %d, sink_format = %d",
 		  source_format, sink_format);
-	if (sink_c->stream.size < sink_period_bytes) {
+	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
 		comp_err(dev, "mfcc_prepare(): sink buffer size %d is insufficient < %d",
-			 sink_c->stream.size, sink_period_bytes);
+			 audio_stream_get_size(&sink_c->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

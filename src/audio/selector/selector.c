@@ -479,7 +479,7 @@ static int selector_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "selector_prepare(): sinkb->channels = %u",
 		 sink_c->stream.channels);
 
-	sink_size = sink_c->stream.size;
+	sink_size = audio_stream_get_size(&sink_c->stream);
 
 	buffer_release(sink_c);
 	buffer_release(source_c);
@@ -928,7 +928,7 @@ static int selector_prepare(struct processing_module *mod)
 	comp_info(dev, "selector_prepare(): source sink channel = %u %u",
 		  source_c->stream.channels, sink_c->stream.channels);
 
-	sink_size = sink_c->stream.size;
+	sink_size = audio_stream_get_size(&sink_c->stream);
 
 	md->mpd.in_buff_size = cd->source_period_bytes;
 	md->mpd.out_buff_size = cd->sink_period_bytes;

@@ -484,8 +484,9 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 	 * also adding a 2ms safety margin.
 	 */
 	if (!IS_ENABLED(CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE) ||
-	    buffer_c->stream.size < hd->period_bytes << 3 ||
-	    buffer_c->stream.size - hd->partial_size <= (2 + threshold) * hd->period_bytes) {
+	    audio_stream_get_size(&buffer_c->stream) < hd->period_bytes << 3 ||
+	    audio_stream_get_size(&buffer_c->stream) - hd->partial_size <=
+	    (2 + threshold) * hd->period_bytes) {
 		ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, hd->partial_size);
 		if (ret < 0)
 			comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);

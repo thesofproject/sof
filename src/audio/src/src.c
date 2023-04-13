@@ -367,7 +367,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	*n_read = 0;
 	*n_written = 0;
 	s1.x_end_addr = audio_stream_get_end_addr(source);
-	s1.x_size = source->size;
+	s1.x_size = audio_stream_get_size(source);
 	s1.y_addr = sbuf_addr;
 	s1.y_end_addr = sbuf_end_addr;
 	s1.y_size = sbuf_size;
@@ -382,7 +382,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	s2.x_size = sbuf_size;
 	s2.y_addr = audio_stream_get_addr(sink);
 	s2.y_end_addr = audio_stream_get_end_addr(sink);
-	s2.y_size = sink->size;
+	s2.y_size = audio_stream_get_size(sink);
 	s2.state = &cd->src.state2;
 	s2.stage = cd->src.stage2;
 	s2.x_rptr = cd->sbuf_r_ptr;
@@ -444,10 +444,10 @@ static void src_1s(struct comp_dev *dev, struct comp_data *cd,
 	s1.times = cd->param.stage1_times;
 	s1.x_rptr = audio_stream_get_rptr(source);
 	s1.x_end_addr = audio_stream_get_end_addr(source);
-	s1.x_size = source->size;
+	s1.x_size = audio_stream_get_size(source);
 	s1.y_wptr = audio_stream_get_wptr(sink);
 	s1.y_end_addr = audio_stream_get_end_addr(sink);
-	s1.y_size = sink->size;
+	s1.y_size = audio_stream_get_size(sink);
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
 	s1.nch = source->channels;
@@ -701,15 +701,15 @@ static int src_check_buffer_sizes(struct comp_dev *dev, struct comp_data *cd,
 	}
 
 	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
-	if (source_stream->size < n) {
+	if (audio_stream_get_size(source_stream) < n) {
 		comp_warn(dev, "Source size %d is less than required %d",
-			  source_stream->size, n);
+			  audio_stream_get_size(source_stream), n);
 	}
 
 	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
-	if (sink_stream->size < n) {
+	if (audio_stream_get_size(sink_stream) < n) {
 		comp_warn(dev, "Sink size %d is less than required %d",
-			  sink_stream->size, n);
+			  audio_stream_get_size(sink_stream), n);
 	}
 
 	return 0;
@@ -1145,7 +1145,7 @@ static void src_process(struct comp_dev *dev, struct comp_buffer __sparse_cache 
 	int produced = 0;
 
 	/* consumed bytes are not known at this point */
-	buffer_stream_invalidate(source, source->stream.size);
+	buffer_stream_invalidate(source, audio_stream_get_size(&source->stream));
 	cd->src_func(dev, cd, &source->stream, &sink->stream, &consumed, &produced);
 	buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(&sink->stream));
 
