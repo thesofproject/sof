@@ -32,7 +32,7 @@ static inline ae_int32x2  dcblock_cal(ae_int32x2 R, ae_int32x2 state_x, ae_int32
 static inline void dcblock_set_circular(const struct audio_stream __sparse_cache *source)
 {
 	/* Set source as circular buffer 0 */
-	AE_SETCBEGIN0(source->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(source));
 	AE_SETCEND0(audio_stream_get_end_addr(source));
 }
 
