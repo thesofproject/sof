@@ -1050,12 +1050,10 @@ static int host_position(struct comp_dev *dev,
 void host_zephyr_reset(struct host_data *hd, uint16_t state)
 {
 	if (hd->chan) {
-		if (state == COMP_STATE_ACTIVE) {
-			dma_stop(hd->chan->dma->z_dev, hd->chan->index);
-			/* Unregister L1 exit */
-			notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
-								NOTIFIER_ID_LL_POST_RUN);
-		}
+		dma_stop(hd->chan->dma->z_dev, hd->chan->index);
+		/* Unregister L1 exit */
+		notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+							NOTIFIER_ID_LL_POST_RUN);
 
 		dma_release_channel(hd->dma->z_dev, hd->chan->index);
 		hd->chan = NULL;
