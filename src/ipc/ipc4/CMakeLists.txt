@@ -6,6 +6,7 @@ add_local_sources(sof
 	helper.c
 	logging.c
 	notification.c
+	ams_helpers.c
 )
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/rimage/src/include)
