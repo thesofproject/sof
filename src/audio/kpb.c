@@ -27,7 +27,6 @@
 #include <rtos/clk.h>
 #include <rtos/init.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -47,6 +46,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#if CONFIG_AMS
+#include <sof/lib/ams.h>
+#include <sof/lib/ams_msg.h>
+#include <ipc4/ams_helpers.h>
+#else
+#include <sof/lib/notifier.h>
+#endif
 
 static const struct comp_driver comp_kpb;
 
@@ -100,11 +106,17 @@ struct comp_data {
 	uint32_t num_of_in_channels;
 	uint32_t offsets[KPB_MAX_MICSEL_CHANNELS];
 	struct kpb_micselector_config mic_sel;
+
+#if CONFIG_AMS
+	uint32_t kpd_uuid_id;
+#endif
 };
 
 /*! KPB private functions */
+#ifndef CONFIG_AMS
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
+#endif
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
 static int kpb_buffer_data(struct comp_dev *dev,
@@ -134,6 +146,25 @@ static uint64_t kpb_task_deadline(void *data)
 {
 	return SOF_TASK_DEADLINE_ALMOST_IDLE;
 }
+
+#if CONFIG_AMS
+
+/* Key-phrase detected message*/
+static const ams_uuid_t ams_kpd_msg_uuid = AMS_KPD_MSG_UUID;
+
+/* Key-phrase detected notification handler*/
+static void kpb_ams_kpd_notification(const struct ams_message_payload *const ams_message_payload,
+				     void *ctx)
+{
+	struct kpb_client *cli_data = (struct kpb_client *)ams_message_payload->message;
+	struct comp_dev *dev = ctx;
+
+	comp_dbg(dev, "kpb_ams_kpd_notification()");
+
+	kpb_init_draining(dev, cli_data);
+}
+
+#endif /* CONFIG_AMS */
 
 #ifdef __ZEPHYR__
 
@@ -620,8 +651,18 @@ static void kpb_free(struct comp_dev *dev)
 
 	comp_info(dev, "kpb_free()");
 
+#if CONFIG_AMS
+	/* Unregister KPB as AMS consumer */
+	int ret;
+
+	ret = ams_helper_unregister_consumer(dev, kpb->kpd_uuid_id,
+					     kpb_ams_kpd_notification);
+	if (ret)
+		comp_err(dev, "kpb_free(): AMS unregister error %d", ret);
+#else
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+#endif/* CONFIG_AMS */
 
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->hd.c_hb);
@@ -696,6 +737,10 @@ static int kpb_params(struct comp_dev *dev,
 	kpb->host_buffer_size = params->buffer.size;
 	kpb->host_period_size = params->host_period_bytes;
 	kpb->config.sampling_width = params->sample_container_bytes * 8;
+
+#if CONFIG_AMS
+	kpb->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
+#endif
 
 	return 0;
 }
@@ -772,9 +817,17 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
+#if CONFIG_AMS
+	/* AMS Register KPB for notification */
+	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
+					   ams_kpd_msg_uuid,
+					   kpb_ams_kpd_notification);
+#else
 	/* Register KPB for notification */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
 				kpb_event_handler, 0);
+#endif /* CONFIG_AMS */
+
 	if (ret < 0) {
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
@@ -917,8 +970,10 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
+#ifndef CONFIG_AMS
 		/* Unregister KPB from notifications */
 		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+#endif
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
@@ -1422,6 +1477,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	return ret;
 }
 
+#ifndef CONFIG_AMS
 /**
  * \brief Main event dispatcher.
  * \param[in] arg - KPB component internal data.
@@ -1501,6 +1557,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 
 	return ret;
 }
+#endif /* CONFIG_AMS */
 
 /**
  * \brief Prepare history buffer for draining.
