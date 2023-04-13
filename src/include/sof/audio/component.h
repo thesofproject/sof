@@ -712,7 +712,6 @@ void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_multiband_drc_init(void);
 void sys_comp_selector_init(void);
-void sys_comp_src_init(void);
 
 void sys_comp_module_demux_interface_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
@@ -720,6 +719,7 @@ void sys_comp_module_eq_iir_interface_init(void);
 void sys_comp_module_mfcc_interface_init(void);
 void sys_comp_module_mixer_interface_init(void);
 void sys_comp_module_mux_interface_init(void);
+void sys_comp_module_src_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
 void sys_comp_module_volume_interface_init(void);
 

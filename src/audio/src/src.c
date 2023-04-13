@@ -69,8 +69,6 @@ struct ipc4_config_src {
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xe61bb28d, 0x149a, 0x4c1f,
 		    0xb7, 0x09, 0x46, 0x82, 0x3e, 0xf5, 0xf5, 0xae);
 #elif CONFIG_IPC_MAJOR_3
-static const struct comp_driver comp_src;
-
 /* c1c5326d-8390-46b4-aa47-95c3beca6550 */
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
 		    0xaa, 0x47, 0x95, 0xc3, 0xbe, 0xca, 0x65, 0x50);
@@ -98,6 +96,7 @@ struct comp_data {
 	int source_frames;
 	int sink_frames;
 	int sample_container_bytes;
+	int channels_count;
 	void (*src_func)(struct comp_dev *dev,
 			 struct comp_data *cd,
 			 const struct audio_stream __sparse_cache *source,
@@ -487,7 +486,7 @@ static int src_rate_check(const void *spec)
 {
 	const struct ipc4_config_src *ipc_src = spec;
 
-	if (ipc_src->base.audio_fmt.sampling_frequency == 0 && ipc_src->sink_rate == 0)
+	if (ipc_src->base.audio_fmt.sampling_frequency == 0 || ipc_src->sink_rate == 0)
 		return -EINVAL;
 
 	return 0;
@@ -496,8 +495,14 @@ static int src_rate_check(const void *spec)
 static int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
 					    struct sof_ipc_stream_params *params)
 {
-	if (cfg.base.audio_fmt.sampling_frequency &&
-	    params->rate != cfg.base.audio_fmt.sampling_frequency)
+	/* Nothing to check */
+	return 0;
+}
+
+static int src_stream_pcm_sink_rate_check(struct ipc4_config_src cfg,
+					  struct sof_ipc_stream_params *params)
+{
+	if (cfg.sink_rate && params->rate != cfg.sink_rate)
 		return -EINVAL;
 
 	return 0;
@@ -507,26 +512,39 @@ static int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int src_set_params(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params src_params;
+	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
+	enum sof_ipc_frame frame_fmt, valid_fmt;
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	struct comp_buffer __sparse_cache *sink_c;
+	int ret;
 
-	memset(params, 0, sizeof(*params));
-	params->channels = cd->ipc_config.base.audio_fmt.channels_count;
-	params->rate = cd->ipc_config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->ipc_config.base.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->ipc_config.base.audio_fmt.valid_bit_depth / 8;
-	params->frame_fmt = dev->ipc_config.frame_fmt;
-	params->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
-	params->buffer.size = cd->ipc_config.base.ibs;
+	src_params = *params;
+	src_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	src_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
+	src_params.rate = cd->ipc_config.sink_rate;
+
+	/* Get frame_fmt and valid_fmt */
+	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
+				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+	src_params.frame_fmt = frame_fmt;
+	component_set_nearest_period_frames(dev, src_params.rate);
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink_c = buffer_acquire(sinkb);
-	sink_c->stream.rate = cd->ipc_config.sink_rate;
+	ret = buffer_set_params(sink_c, &src_params, true);
 	buffer_release(sink_c);
+
+	/* Update module stream_params */
+	params->rate = cd->ipc_config.sink_rate;
+	return ret;
 }
 
 static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb)
@@ -547,6 +565,47 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 
 	sinkb->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
 }
+
+#elif CONFIG_IPC_MAJOR_3
+static int src_rate_check(const void *spec)
+{
+	const struct ipc_config_src *ipc_src = spec;
+
+	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int src_stream_pcm_sink_rate_check(struct ipc_config_src cfg,
+					  struct sof_ipc_stream_params *params)
+{
+	/* In playback, module adapter mod->stream_params from prepare() is for sink side */
+	if (cfg.sink_rate && params->rate != cfg.sink_rate)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
+					    struct sof_ipc_stream_params *params)
+{
+	/* In capture, module adapter mod->stream_params from prepare() is for source side */
+	if (cfg.source_rate && params->rate != cfg.source_rate)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int src_set_params(struct processing_module *mod)
+{
+	return 0;
+}
+
+static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb) {}
+#else
+#error "No or invalid IPC MAJOR version selected."
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 static inline void src_update_buffer_position(struct input_stream_buffer *input_buffers,
 					      struct output_stream_buffer *output_buffers,
@@ -569,36 +628,11 @@ static void src_set_alignment(struct audio_stream __sparse_cache *source,
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
 }
 
-#elif CONFIG_IPC_MAJOR_3
-static int src_rate_check(const void *spec)
+static int src_verify_params(struct processing_module *mod)
 {
-	const struct ipc_config_src *ipc_src = spec;
-
-	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0)
-		return -EINVAL;
-
-	return 0;
-}
-
-static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
-					    struct sof_ipc_stream_params *params)
-{
-	if (cfg.source_rate && params->rate != cfg.source_rate)
-		return -EINVAL;
-
-	return 0;
-}
-
-static void src_set_params(struct comp_dev *dev, struct sof_ipc_stream_params *params) {}
-
-static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb) {}
-#else
-#error "No or invalid IPC MAJOR version selected."
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-static int src_verify_params(struct comp_dev *dev, struct comp_data *cd,
-			     struct sof_ipc_stream_params *params)
-{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	comp_dbg(dev, "src_verify_params()");
@@ -609,16 +643,16 @@ static int src_verify_params(struct comp_dev *dev, struct comp_data *cd,
 	 * src->source/sink_rate = 0 means that source/sink rate can vary.
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = src_stream_pcm_source_rate_check(cd->ipc_config, params);
+		ret = src_stream_pcm_sink_rate_check(cd->ipc_config, params);
 		if (ret < 0) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+			comp_err(dev, "src_verify_params(): sink stream rate does not match rate fetched from ipc.");
 			return ret;
 		}
 	} else {
-		if (cd->ipc_config.sink_rate && params->rate != cd->ipc_config.sink_rate) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, cd->ipc_config.sink_rate);
-			return -EINVAL;
+		ret = src_stream_pcm_source_rate_check(cd->ipc_config, params);
+		if (ret < 0) {
+			comp_err(dev, "src_verify_params(): source stream rate does not match rate fetched from ipc.");
+			return ret;
 		}
 	}
 
@@ -719,9 +753,10 @@ static int src_check_buffer_sizes(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
-static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
-			      struct sof_ipc_stream_params *params)
+static int src_params_general(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	size_t delay_lines_size;
@@ -731,32 +766,38 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 
 	comp_info(dev, "src_params()");
 
-	src_set_params(dev, params);
-	err = src_verify_params(dev, cd, params);
+	err = src_set_params(mod);
 	if (err < 0) {
-		comp_err(dev, "src_params(): pcm params verification failed.");
-		return -EINVAL;
+		comp_err(dev, "src_params(): set params failed.");
+		return err;
 	}
 
-	cd->sample_container_bytes = params->sample_container_bytes;
+	err = src_verify_params(mod);
+	if (err < 0) {
+		comp_err(dev, "src_params(): pcm params verification failed.");
+		return err;
+	}
 
 	/* src components will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
-
 	src_set_sink_params(dev, sink_c);
 
+#if CONFIG_IPC_MAJOR_3
 	/* Set source/sink_rate/frames */
+	cd->channels_count = audio_stream_get_channels(&source_c->stream);
 	cd->source_rate = audio_stream_get_rate(&source_c->stream);
 	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
+	cd->sample_container_bytes = mod->stream_params->sample_container_bytes;
+#endif
+	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
+		  cd->source_rate, cd->sink_rate);
+	comp_dbg(dev, "src_params(), sample_container_bytes = %d, channels = %u, dev->frames = %u",
+		 cd->sample_container_bytes, cd->channels_count, dev->frames);
 	if (!cd->sink_rate) {
 		comp_err(dev, "src_params(), zero sink rate");
-
 		err = -EINVAL;
 		goto out;
 	}
@@ -765,13 +806,7 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */
-	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u, format = %d",
-		  cd->source_rate, cd->sink_rate, audio_stream_get_frm_fmt(&source_c->stream));
-	comp_info(dev,
-		  "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
-		  audio_stream_get_channels(&source_c->stream), sink_c->stream.channels,
-		  dev->frames);
-	err = src_buffer_lengths(dev, cd, audio_stream_get_channels(&source_c->stream));
+	err = src_buffer_lengths(dev, cd, cd->channels_count);
 	if (err < 0) {
 		comp_err(dev, "src_params(): src_buffer_lengths() failed");
 		goto out;
@@ -840,13 +875,17 @@ out:
 	return err;
 }
 
-static int src_prepare_general(struct comp_dev *dev, struct comp_data *cd)
+static int src_prepare_general(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	int ret;
+#if CONFIG_IPC_MAJOR_3
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	int ret;
+#endif
 
 	/* SRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,
@@ -857,18 +896,43 @@ static int src_prepare_general(struct comp_dev *dev, struct comp_data *cd)
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 
-#if CONFIG_IPC_MAJOR_4
 	/* set align requirements */
 	src_set_alignment(&source_c->stream, &sink_c->stream);
-#endif
-
-	/* get source/sink data format */
-	source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 
 	ret = src_check_buffer_sizes(dev, cd, &source_c->stream, &sink_c->stream);
 	if (ret < 0)
 		goto out;
+
+#if CONFIG_IPC_MAJOR_4
+	switch (cd->ipc_config.base.audio_fmt.depth) {
+#if CONFIG_FORMAT_S16LE
+	case IPC4_DEPTH_16BIT:
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir_s16;
+		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	case IPC4_DEPTH_24BIT:
+		cd->data_shift = 8;
+		cd->polyphase_func = src_polyphase_stage_cir;
+		break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	case IPC4_DEPTH_32BIT:
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir;
+		break;
+#endif /* CONFIG_FORMAT_S32LE */
+	default:
+		comp_err(dev, "src_prepare(): Invalid depth %d",
+			 cd->ipc_config.base.audio_fmt.depth);
+		ret = -EINVAL;
+		goto out;
+	}
+#elif CONFIG_IPC_MAJOR_3
+	/* get source/sink data format */
+	source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (source_format != sink_format) {
@@ -902,6 +966,7 @@ static int src_prepare_general(struct comp_dev *dev, struct comp_data *cd)
 		ret = -EINVAL;
 		goto out;
 	}
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 out:
 	if (ret < 0)
@@ -913,7 +978,6 @@ out:
 	return ret;
 }
 
-#if CONFIG_IPC_MAJOR_4
 static int src_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
@@ -930,11 +994,10 @@ static int src_init(struct processing_module *mod)
 	}
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
+	if (!cd)
 		return -ENOMEM;
-	}
 
+	md->private = cd;
 	memcpy_s(&cd->ipc_config, sizeof(cd->ipc_config), cfg->init_data, sizeof(cd->ipc_config));
 
 	cd->delay_lines = NULL;
@@ -942,7 +1005,32 @@ static int src_init(struct processing_module *mod)
 	cd->polyphase_func = NULL;
 	src_polyphase_reset(&cd->src);
 
-	md->private = cd;
+#if CONFIG_IPC_MAJOR_4
+	comp_dbg(dev, "src_init(), channels_count = %d, depth = %d",
+		 cd->ipc_config.base.audio_fmt.channels_count,
+		 cd->ipc_config.base.audio_fmt.depth);
+	comp_dbg(dev, "src_init(), sampling frequency = %d, sink rate = %d",
+		 cd->ipc_config.base.audio_fmt.sampling_frequency, cd->ipc_config.sink_rate);
+	cd->source_rate = cd->ipc_config.base.audio_fmt.sampling_frequency;
+	cd->sink_rate = cd->ipc_config.sink_rate;
+	cd->channels_count = cd->ipc_config.base.audio_fmt.channels_count;
+	switch (cd->ipc_config.base.audio_fmt.depth) {
+	case IPC4_DEPTH_16BIT:
+		cd->sample_container_bytes = sizeof(int16_t);
+		break;
+	case IPC4_DEPTH_24BIT:
+	case IPC4_DEPTH_32BIT:
+		cd->sample_container_bytes = sizeof(int32_t);
+		break;
+	default:
+		comp_err(dev, "src_init(): Illegal sample depth %d",
+			 cd->ipc_config.base.audio_fmt.depth);
+		rfree(cd);
+		return -EINVAL;
+	}
+#elif CONFIG_IPC_MAJOR_3
+	mod->verify_params_flags = BUFF_PARAMS_RATE;
+#endif
 
 	mod->simple_copy = true;
 
@@ -951,18 +1039,15 @@ static int src_init(struct processing_module *mod)
 
 static int src_prepare(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_info(dev, "src_prepare()");
+	comp_info(mod->dev, "src_prepare()");
 
-	ret = src_params_general(dev, cd, params);
+	ret = src_params_general(mod);
 	if (ret < 0)
 		return ret;
 
-	return src_prepare_general(dev, cd);
+	return src_prepare_general(mod);
 }
 
 static int src_process(struct processing_module *mod,
@@ -1045,218 +1130,3 @@ static struct module_interface src_interface = {
 
 DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
 SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
-
-#elif CONFIG_IPC_MAJOR_3
-static struct comp_dev *src_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
-{
-	struct comp_dev *dev;
-	struct comp_data *cd;
-
-	comp_cl_info(&comp_src, "src_new()");
-
-	/* validate init data - either SRC sink or source rate must be set */
-	if (src_rate_check(spec) < 0) {
-		comp_cl_err(&comp_src, "src_new(): SRC sink and source rate are not set");
-		return NULL;
-	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, cd);
-	memcpy_s(&cd->ipc_config, sizeof(cd->ipc_config), spec, sizeof(cd->ipc_config));
-
-	cd->delay_lines = NULL;
-	cd->src_func = src_fallback;
-	cd->polyphase_func = NULL;
-	src_polyphase_reset(&cd->src);
-
-	dev->state = COMP_STATE_READY;
-	return dev;
-}
-
-static void src_free(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_info(dev, "src_free()");
-
-	/* Free dynamically reserved buffers for SRC algorithm */
-	rfree(cd->delay_lines);
-
-	rfree(cd);
-	rfree(dev);
-}
-
-/* set component audio stream parameters */
-static int src_params(struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	return src_params_general(dev, cd, params);
-}
-
-static int src_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
-{
-	comp_err(dev, "src_ctrl_cmd()");
-	return -EINVAL;
-}
-
-/* used to pass standard and bespoke commands (with data) to component */
-static int src_cmd(struct comp_dev *dev, int cmd, void *data,
-		   int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
-
-	comp_info(dev, "src_cmd()");
-
-	if (cmd == COMP_CMD_SET_VALUE)
-		ret = src_ctrl_cmd(dev, cdata);
-
-	return ret;
-}
-
-static int src_trigger(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_info(dev, "src_trigger()");
-
-	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
-		if (!cd->polyphase_func) {
-			comp_err(dev, "polyphase_func is not set");
-			return -EINVAL;
-		}
-	}
-	return comp_set_state(dev, cmd);
-}
-
-static void src_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			struct comp_buffer __sparse_cache *sink)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int consumed = 0;
-	int produced = 0;
-
-	/* consumed bytes are not known at this point */
-	buffer_stream_invalidate(source, audio_stream_get_size(&source->stream));
-	cd->src_func(dev, cd, &source->stream, &sink->stream, &consumed, &produced);
-	buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(&sink->stream));
-
-	comp_dbg(dev, "src_copy(), consumed = %u,  produced = %u",
-		 consumed, produced);
-
-	comp_update_buffer_consume(source, consumed *
-				   audio_stream_frame_bytes(&source->stream));
-	comp_update_buffer_produce(sink, produced *
-				   audio_stream_frame_bytes(&sink->stream));
-}
-
-/* copy and process stream data from source to sink buffers */
-static int src_copy(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	int ret;
-
-	comp_dbg(dev, "src_copy()");
-
-	/* src component needs 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
-
-	/* Get from buffers and SRC conversion specific block constraints
-	 * how many frames can be processed. If sufficient number of samples
-	 * is not available the processing is omitted.
-	 */
-	ret = src_get_copy_limits(cd, &source_c->stream, &sink_c->stream);
-	if (ret)
-		comp_dbg(dev, "No data to process.");
-	else
-		src_process(dev, source_c, sink_c);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
-	return 0;
-}
-
-static int src_prepare(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_info(dev, "src_prepare()");
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	return src_prepare_general(dev, cd);
-}
-
-static int src_reset(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_info(dev, "src_reset()");
-
-	cd->src_func = src_fallback;
-	src_polyphase_reset(&cd->src);
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-	return 0;
-}
-
-static const struct comp_driver comp_src = {
-	.type = SOF_COMP_SRC,
-	.uid = SOF_RT_UUID(src_uuid),
-	.tctx = &src_tr,
-	.ops = {
-		.create = src_new,
-		.free = src_free,
-		.params = src_params,
-		.cmd = src_cmd,
-		.trigger = src_trigger,
-		.copy = src_copy,
-		.prepare = src_prepare,
-		.reset = src_reset,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_src_info = {
-	.drv = &comp_src,
-};
-
-UT_STATIC void sys_comp_src_init(void)
-{
-	comp_register(platform_shared_get(&comp_src_info,
-					  sizeof(comp_src_info)));
-}
-
-DECLARE_MODULE(sys_comp_src_init);
-SOF_MODULE_INIT(src, sys_comp_src_init);
-#else
-#error "No or invalid IPC MAJOR version selected."
-#endif
