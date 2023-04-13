@@ -837,7 +837,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 	source_c = buffer_acquire(source);
 
-	if (!source_c->stream.avail) {
+	if (!audio_stream_get_avail(&source_c->stream)) {
 		buffer_release(source_c);
 		return PPL_STATUS_PATH_STOP;
 	}
