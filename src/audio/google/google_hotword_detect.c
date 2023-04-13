@@ -408,12 +408,13 @@ static int ghd_copy(struct comp_dev *dev)
 	comp_dbg(dev, "buffer begin/r_ptr/end [0x%x 0x%x 0x%x]",
 		 (uint32_t)stream->addr,
 		 (uint32_t)audio_stream_get_rptr(stream),
-		 (uint32_t)stream->end_addr);
+		 (uint32_t)audio_stream_get_end_addr(stream));
 
 	/* copy and perform detection */
 	buffer_stream_invalidate(source_c, bytes);
 
-	tail_bytes = (char *)stream->end_addr - (char *)audio_stream_get_rptr(stream);
+	tail_bytes = (char *)audio_stream_get_end_addr(stream) -
+		(char *)audio_stream_get_rptr(stream);
 	if (bytes <= tail_bytes)
 		tail_bytes = bytes;
 	else

@@ -735,7 +735,7 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 	dst->w_ptr = audio_stream_get_wptr(src);
 	dst->r_ptr = audio_stream_get_rptr(src);
 	dst->addr = src->addr;
-	dst->end_addr = src->end_addr;
+	dst->end_addr = audio_stream_get_end_addr(src);
 }
 
 static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
@@ -747,7 +747,7 @@ static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
 	dst->w_ptr = audio_stream_get_wptr(src);
 	dst->r_ptr = audio_stream_get_rptr(src);
 	dst->addr = src->addr;
-	dst->end_addr = src->end_addr;
+	dst->end_addr = audio_stream_get_end_addr(src);
 }
 
 /* copy and process stream data from source to sink buffers */

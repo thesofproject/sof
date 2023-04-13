@@ -33,7 +33,7 @@ static inline void dcblock_set_circular(const struct audio_stream __sparse_cache
 {
 	/* Set source as circular buffer 0 */
 	AE_SETCBEGIN0(source->addr);
-	AE_SETCEND0(source->end_addr);
+	AE_SETCEND0(audio_stream_get_end_addr(source));
 }
 
 #if CONFIG_FORMAT_S16LE

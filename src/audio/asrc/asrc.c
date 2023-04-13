@@ -147,14 +147,14 @@ static void src_copy_s32(struct comp_dev *dev,
 	buf = (int32_t *)cd->ibuf[0];
 	n = cd->source_frames * source->channels;
 	while (n > 0) {
-		n_wrap_src = (int32_t *)source->end_addr - src;
+		n_wrap_src = (int32_t *)audio_stream_get_end_addr(source) - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
 		for (i = 0; i < n_copy; i++)
 			*buf++ = (*src++) << cd->data_shift;
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&src, source->end_addr, source->size);
+		src_inc_wrap(&src, audio_stream_get_end_addr(source), source->size);
 	}
 
 	/* Run ASRC */
@@ -177,14 +177,14 @@ static void src_copy_s32(struct comp_dev *dev,
 	buf = (int32_t *)cd->obuf[0];
 	n = out_frames * sink->channels;
 	while (n > 0) {
-		n_wrap_snk = (int32_t *)sink->end_addr - snk;
+		n_wrap_snk = (int32_t *)audio_stream_get_end_addr(sink) - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
 		for (i = 0; i < n_copy; i++)
 			*snk++ = (*buf++) >> cd->data_shift;
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&snk, sink->end_addr, sink->size);
+		src_inc_wrap(&snk, audio_stream_get_end_addr(sink), sink->size);
 	}
 
 	*n_read = in_frames;
@@ -216,7 +216,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	buf = (int16_t *)cd->ibuf[0];
 	n = cd->source_frames * source->channels;
 	while (n > 0) {
-		n_wrap_src = (int16_t *)source->end_addr - src;
+		n_wrap_src = (int16_t *)audio_stream_get_end_addr(source) - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
 		s_copy = n_copy * sizeof(int16_t);
 		ret = memcpy_s(buf, s_copy, src, s_copy);
@@ -226,7 +226,7 @@ static void src_copy_s16(struct comp_dev *dev,
 		n -= n_copy;
 		src += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&src, source->end_addr, source->size);
+		src_inc_wrap_s16(&src, audio_stream_get_end_addr(source), source->size);
 	}
 
 	/* Run ASRC */
@@ -250,7 +250,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	buf = (int16_t *)cd->obuf[0];
 	n = out_frames * sink->channels;
 	while (n > 0) {
-		n_wrap_snk = (int16_t *)sink->end_addr - snk;
+		n_wrap_snk = (int16_t *)audio_stream_get_end_addr(sink) - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
 		s_copy = n_copy * sizeof(int16_t);
 		ret = memcpy_s(snk, s_copy, buf, s_copy);
@@ -260,7 +260,7 @@ static void src_copy_s16(struct comp_dev *dev,
 		n -= n_copy;
 		snk += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&snk, sink->end_addr, sink->size);
+		src_inc_wrap_s16(&snk, audio_stream_get_end_addr(sink), sink->size);
 	}
 
 	*n_read = in_frames;

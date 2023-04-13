@@ -366,7 +366,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 
 	*n_read = 0;
 	*n_written = 0;
-	s1.x_end_addr = source->end_addr;
+	s1.x_end_addr = audio_stream_get_end_addr(source);
 	s1.x_size = source->size;
 	s1.y_addr = sbuf_addr;
 	s1.y_end_addr = sbuf_end_addr;
@@ -381,7 +381,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	s2.x_end_addr = sbuf_end_addr;
 	s2.x_size = sbuf_size;
 	s2.y_addr = sink->addr;
-	s2.y_end_addr = sink->end_addr;
+	s2.y_end_addr = audio_stream_get_end_addr(sink);
 	s2.y_size = sink->size;
 	s2.state = &cd->src.state2;
 	s2.stage = cd->src.stage2;
@@ -443,10 +443,10 @@ static void src_1s(struct comp_dev *dev, struct comp_data *cd,
 
 	s1.times = cd->param.stage1_times;
 	s1.x_rptr = audio_stream_get_rptr(source);
-	s1.x_end_addr = source->end_addr;
+	s1.x_end_addr = audio_stream_get_end_addr(source);
 	s1.x_size = source->size;
 	s1.y_wptr = audio_stream_get_wptr(sink);
-	s1.y_end_addr = sink->end_addr;
+	s1.y_end_addr = audio_stream_get_end_addr(sink);
 	s1.y_size = sink->size;
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;

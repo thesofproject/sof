@@ -840,9 +840,9 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 
 		/* check if transaction amount exceeds component buffer end addr */
 		/* if yes: divide copying into two stages, head and tail */
-		if ((char *)cb_data->transaction_begin_address +
-		    cb_data->transaction_amount > (char *)buffer->stream.end_addr) {
-			head = (uintptr_t)buffer->stream.end_addr -
+		if ((char *)cb_data->transaction_begin_address + cb_data->transaction_amount >
+		    (char *)audio_stream_get_end_addr(&buffer->stream)) {
+			head = (uintptr_t)audio_stream_get_end_addr(&buffer->stream) -
 			       (uintptr_t)cb_data->transaction_begin_address;
 			tail = (uintptr_t)cb_data->transaction_amount - head;
 			ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
@@ -896,9 +896,9 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 
 		/* check if transaction amount exceeds component buffer end addr */
 		/* if yes: divide copying into two stages, head and tail */
-		if ((char *)cb_data->transaction_begin_address +
-			cb_data->transaction_amount > (char *)buffer->stream.end_addr) {
-			head = (char *)buffer->stream.end_addr -
+		if ((char *)cb_data->transaction_begin_address + cb_data->transaction_amount >
+		    (char *)audio_stream_get_end_addr(&buffer->stream)) {
+			head = (char *)audio_stream_get_end_addr(&buffer->stream) -
 				(char *)cb_data->transaction_begin_address;
 			tail = cb_data->transaction_amount - head;
 
