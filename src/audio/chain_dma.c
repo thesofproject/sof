@@ -600,7 +600,7 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	/* clear dma buffer */
 	buffer_c = buffer_acquire(cd->dma_buffer);
 	buffer_zero(buffer_c);
-	buff_addr = buffer_c->stream.addr;
+	buff_addr = audio_stream_get_addr(&buffer_c->stream);
 	buff_size = buffer_c->stream.size;
 	buffer_release(buffer_c);
 

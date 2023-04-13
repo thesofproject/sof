@@ -503,7 +503,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dma_buf->stream.addr),
+				   (uintptr_t)audio_stream_get_addr(&dma_buf->stream),
 				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
@@ -658,7 +658,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dma_buf->stream.addr),
+				   (uintptr_t)audio_stream_get_addr(&dma_buf->stream),
 				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",

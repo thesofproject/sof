@@ -527,7 +527,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 	dma_buf_c = buffer_acquire(hd->dma_buffer);
 	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
 			   buffer_bytes,
-			   (uintptr_t)(dma_buf_c->stream.addr), 0);
+			   (uintptr_t)audio_stream_get_addr(&dma_buf_c->stream), 0);
 	buffer_release(dma_buf_c);
 	if (err < 0) {
 		comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");

@@ -86,9 +86,10 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 
-	bzero(buffer->stream.addr, buffer->stream.size);
+	bzero(audio_stream_get_addr(&buffer->stream), buffer->stream.size);
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
-		dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->stream.addr,
+		dcache_writeback_region((__sparse_force void __sparse_cache *)
+					audio_stream_get_addr(&buffer->stream),
 					buffer->stream.size);
 }
 
@@ -105,7 +106,7 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
 	if (size == buffer->stream.size)
 		return 0;
 
-	new_ptr = rbrealloc(buffer->stream.addr, SOF_MEM_FLAG_NO_COPY,
+	new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
 			    buffer->caps, size, buffer->stream.size);
 
 	/* we couldn't allocate bigger chunk */
@@ -236,8 +237,10 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 		 audio_stream_get_free_bytes(&buffer->stream),
 		(buffer->id << 16) | buffer->stream.size);
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		((char *)audio_stream_get_rptr(&buffer->stream) - (char *)buffer->stream.addr) << 16 |
-		((char *)audio_stream_get_wptr(&buffer->stream) - (char *)buffer->stream.addr));
+		((char *)audio_stream_get_rptr(&buffer->stream) -
+		 (char *)audio_stream_get_addr(&buffer->stream)) << 16 |
+		((char *)audio_stream_get_wptr(&buffer->stream) -
+		 (char *)audio_stream_get_addr(&buffer->stream)));
 }
 
 void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
@@ -267,8 +270,10 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
 		 audio_stream_get_free_bytes(&buffer->stream),
 		(buffer->id << 16) | buffer->stream.size,
-		((char *)audio_stream_get_rptr(&buffer->stream) - (char *)buffer->stream.addr) << 16 |
-		((char *)audio_stream_get_wptr(&buffer->stream) - (char *)buffer->stream.addr));
+		((char *)audio_stream_get_rptr(&buffer->stream) -
+		 (char *)audio_stream_get_addr(&buffer->stream)) << 16 |
+		((char *)audio_stream_get_wptr(&buffer->stream) -
+		 (char *)audio_stream_get_addr(&buffer->stream)));
 }
 
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)

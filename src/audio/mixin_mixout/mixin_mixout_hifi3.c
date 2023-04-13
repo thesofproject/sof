@@ -135,7 +135,7 @@ static void remap_mix_channel_s16(struct audio_stream __sparse_cache *sink,
 	AE_L16_IP(gain_v, pgain, 0);
 
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
-	AE_SETCBEGIN0(source->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(source));
 	AE_SETCEND0(audio_stream_get_end_addr(source));
 
 	for (left_frames = frames_to_mix; left_frames > 0; left_frames -= frames) {
@@ -197,7 +197,7 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 		return;
 	frame_count -= skip_mixed_frames;
 
-	AE_SETCBEGIN0(stream->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(stream));
 	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
@@ -327,7 +327,7 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 	/* store gain to a AE_DR register gain_v*/
 	AE_L16_IP(gain_v, pgain, 0);
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
-	AE_SETCBEGIN0(source->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(source));
 	AE_SETCEND0(audio_stream_get_end_addr(source));
 
 	for (left_frames = frames_to_mix; left_frames > 0; left_frames -= frames) {
@@ -499,7 +499,7 @@ static void remap_mix_channel_s32(struct audio_stream __sparse_cache *sink,
 	/* store gain to a AE_DR register gain_v*/
 	AE_L16_IP(gain_v, pgain, 0);
 	/* set source as circular buffer, hifi3 only have 1 circular buffer*/
-	AE_SETCBEGIN0(source->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(source));
 	AE_SETCEND0(audio_stream_get_end_addr(source));
 	src = audio_stream_wrap(source, src);
 
@@ -563,7 +563,7 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 		return;
 	frame_count -= skip_mixed_frames;
 
-	AE_SETCBEGIN0(stream->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(stream));
 	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */

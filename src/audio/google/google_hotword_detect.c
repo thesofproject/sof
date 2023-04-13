@@ -406,7 +406,7 @@ static int ghd_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "ghd_copy() avail_bytes %u", bytes);
 	comp_dbg(dev, "buffer begin/r_ptr/end [0x%x 0x%x 0x%x]",
-		 (uint32_t)stream->addr,
+		 (uint32_t)audio_stream_get_addr(stream),
 		 (uint32_t)audio_stream_get_rptr(stream),
 		 (uint32_t)audio_stream_get_end_addr(stream));
 
@@ -423,7 +423,7 @@ static int ghd_copy(struct comp_dev *dev)
 	if (tail_bytes)
 		ghd_detect(dev, stream, audio_stream_get_rptr(stream), tail_bytes);
 	if (head_bytes)
-		ghd_detect(dev, stream, stream->addr, head_bytes);
+		ghd_detect(dev, stream, audio_stream_get_addr(stream), head_bytes);
 
 	/* calc new available */
 	comp_update_buffer_consume(source_c, bytes);

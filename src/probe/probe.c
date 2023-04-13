@@ -852,7 +852,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 				goto err;
 
 			ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
-					      buffer->stream.addr, tail);
+					      audio_stream_get_addr(&buffer->stream), tail);
 			if (ret < 0)
 				goto err;
 		} else {
@@ -908,7 +908,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 				goto err;
 
 			ret = copy_from_pbuffer(&dma->dmapb,
-						buffer->stream.addr, tail);
+						audio_stream_get_addr(&buffer->stream), tail);
 			if (ret < 0)
 				goto err;
 		} else {

@@ -940,7 +940,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 	uint16_t ch;
 	size_t i;
 
-	AE_SETCBEGIN0(ostream->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
 
 	buffer_stream_invalidate(source, size);
@@ -973,7 +973,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 	uint16_t ch;
 	size_t i;
 
-	AE_SETCBEGIN0(ostream->addr);
+	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
 
 	buffer_stream_invalidate(source, size);
@@ -1021,7 +1021,7 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
 			if (&out_data[out_samples + ch]
 					>= (int16_t *)audio_stream_get_end_addr(ostream)) {
-				out_data = (int16_t *)ostream->addr;
+				out_data = (int16_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
 			out_data[out_samples + ch] = in_data[i + offsets[ch]];
@@ -1052,7 +1052,7 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
 			if (&out_data[out_samples + ch]
 					>= (int32_t *)audio_stream_get_end_addr(ostream)) {
-				out_data = (int32_t *)ostream->addr;
+				out_data = (int32_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
 			out_data[out_samples + ch] = in_data[i + offsets[ch]];
@@ -1828,7 +1828,7 @@ static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 	ae_int32x2 *buf_end;
 	ae_int32x2 *buf;
 
-	buf = (ae_int32x2 *)(sink->addr);
+	buf = (ae_int32x2 *)(audio_stream_get_addr(sink));
 	buf_end = audio_stream_get_end_addr(sink);
 	ae_int32x2 *out_ptr = (ae_int32x2 *)buf;
 

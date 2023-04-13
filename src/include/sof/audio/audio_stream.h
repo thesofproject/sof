@@ -92,6 +92,11 @@ static inline void *audio_stream_get_end_addr(const struct audio_stream __sparse
 	return buf->end_addr;
 }
 
+static inline void *audio_stream_get_addr(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->addr;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

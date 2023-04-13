@@ -380,7 +380,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 
 	s2.x_end_addr = sbuf_end_addr;
 	s2.x_size = sbuf_size;
-	s2.y_addr = sink->addr;
+	s2.y_addr = audio_stream_get_addr(sink);
 	s2.y_end_addr = audio_stream_get_end_addr(sink);
 	s2.y_size = sink->size;
 	s2.state = &cd->src.state2;
