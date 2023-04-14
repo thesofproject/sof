@@ -63,6 +63,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # These keys are kept short because Github's left column is not resizable.
+        # Search "zephyr_revision" and see below what they expand to.
+        zephyr_revision: [
+          mnfst,  # special value: don't override sof/west.yml
+          zmain,  # Zephyr's main branch
+        ]
         # Using groups to avoid spamming the small results box with too
         # many lines. Pay attention to COMMAS.
         IPC_platforms: [
@@ -73,10 +79,6 @@ jobs:
           mtl,
           # Temporary testbed for Zephyr development.
           -i IPC4 tgl tgl-h,
-        ]
-        zephyr_revision: [
-          manifest_revision,
-          "https://github.com/zephyrproject-rtos/zephyr  main",
         ]
 
     steps:
@@ -111,12 +113,17 @@ jobs:
                git -C ../zephyr fetch --shallow-exclude=v3.2.0-rc3
 
       - name: select zephyr revision
-        run: cd workspace/zephyr/ &&
-             if [ 'manifest_revision' != '${{ matrix.zephyr_revision }}' ]; then
-                 git fetch ${{ matrix.zephyr_revision }} &&
-                 git checkout FETCH_HEAD;
-             fi &&
-             git log --oneline -n 5 --decorate --graph --no-abbrev-commit
+        run: |
+          cd workspace/zephyr/
+          if [ 'mnfst' != '${{ matrix.zephyr_revision }}' ]; then
+             case '${{ matrix.zephyr_revision }}' in
+               'zmain') rem_rev='https://github.com/zephyrproject-rtos/zephyr  main' ;;
+               *)       echo 'Unknown matrix.zephyr_revision'; exit 1 ;;
+             esac
+             git fetch    $rem_rev
+             git checkout FETCH_HEAD
+          fi
+          git log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
       # Not strictly necessary but saves a lot of scrolling in the next step
       # Caching a 12G image is unfortunately not possible:
@@ -135,7 +142,7 @@ jobs:
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
-        if: ${{ matrix.zephyr_revision == 'manifest_revision' }}
+        if: ${{ matrix.zephyr_revision == 'mnfst' }}
         with:
           name: linux-build ${{ matrix.IPC_platforms }}
           path: |
