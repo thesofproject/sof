@@ -365,7 +365,7 @@ void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
-void host_dma_cb(void *arg, enum notify_id type, void *data)
+static void host_dma_cb(void *arg, enum notify_id type, void *data)
 {
 	struct dma_cb_data *next = data;
 	struct comp_dev *dev = arg;
@@ -530,6 +530,16 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 	return 0;
 }
 
+/**
+ * \brief Command handler.
+ * \param[in,out] dev Device
+ * \param[in] cmd Command
+ * \return 0 if successful, error code otherwise.
+ *
+ * Used to pass standard and bespoke commands (with data) to component.
+ * This function is common for all dma types, with one exception:
+ * dw-dma is run on demand, so no start()/stop() is issued.
+ */
 int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 {
 	int ret = 0;
@@ -570,16 +580,6 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/**
- * \brief Command handler.
- * \param[in,out] dev Device
- * \param[in] cmd Command
- * \return 0 if successful, error code otherwise.
- *
- * Used to pass standard and bespoke commands (with data) to component.
- * This function is common for all dma types, with one exception:
- * dw-dma is run on demand, so no start()/stop() is issued.
- */
 static int host_trigger(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -736,6 +736,7 @@ static int host_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
+/* configure the DMA params and descriptors for host buffer IO */
 int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
@@ -962,7 +963,6 @@ out:
 	return err;
 }
 
-/* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
@@ -1008,7 +1008,6 @@ static int host_prepare(struct comp_dev *dev)
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
-
 
 	return host_zephyr_prepare(hd);
 }
@@ -1075,7 +1074,6 @@ int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev)
 	return hd->copy(hd, dev);
 }
 
-/* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
