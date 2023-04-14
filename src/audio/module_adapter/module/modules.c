@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2020 Intel Corporation. All rights reserved.
-//
-// Author: Jaroslaw Stelter <jaroslaw.stelter@linux.intel.com>
+/*
+ * Copyright(c) 2020 Intel Corporation. All rights reserved.
+ *
+ * Author: Jaroslaw Stelter <jaroslaw.stelter@linux.intel.com>
+ */
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/module_adapter/module/iadk_modules.h>
+#include <sof/audio/module_adapter/module/modules.h>
 #include <utilities/array.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
@@ -30,7 +31,7 @@
  * to use base FW services from internal module code, there is a communication shim layer defined
  * in intel directory.
  *
- * Since ProcessingModuleInterface consists of virtual functions, there are C++ -> C wrappers
+ * Since ProcessingModuleInterface consists of virtual functions, there are C++ -> C iadk_wrappers
  * defined to access the interface calls from SOF code.
  *
  * There are three entities in intel module adapter package:
@@ -41,20 +42,20 @@
  *  - Processing Module Adapter - SOF base FW side of ProcessingModuleInterface API
  */
 
-LOG_MODULE_REGISTER(iadk_modules, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(modules, CONFIG_SOF_LOG_LEVEL);
 /* ee2585f2-e7d8-43dc-90ab-4224e00c3e84 */
-DECLARE_SOF_RT_UUID("iadk_modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
+DECLARE_SOF_RT_UUID("modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
 		    0x90, 0xab, 0x42, 0x24, 0xe0, 0x0c, 0x3e, 0x84);
 DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
 
 /**
- * \brief iadk_modules_init.
+ * \brief modules_init.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
  *          error code on failure
  */
-static int iadk_modules_init(struct processing_module *mod)
+static int modules_init(struct processing_module *mod)
 {
 	uint32_t module_entry_point;
 	struct module_data *md = &mod->priv;
@@ -73,11 +74,11 @@ static int iadk_modules_init(struct processing_module *mod)
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg);
 	if (module_entry_point == 0) {
-		comp_err(dev, "iadk_modules_init(), lib_manager_allocate_module() failed!");
+		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
 	}
 	md->module_entry_point = module_entry_point;
-	comp_info(mod->dev, "iadk_modules_init() start");
+	comp_info(mod->dev, "modules_init() start");
 
 	uint32_t module_id = IPC4_MOD_ID(mod->dev->ipc_config.id);
 	uint32_t instance_id = IPC4_INST_ID(mod->dev->ipc_config.id);
@@ -88,7 +89,7 @@ static int iadk_modules_init(struct processing_module *mod)
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	if (!desc) {
-		comp_err(dev, "iadk_modules_init(): Failed to load manifest");
+		comp_err(dev, "modules_init(): Failed to load manifest");
 		return -ENOMEM;
 	}
 	struct sof_man_module *module_entry =
@@ -117,14 +118,14 @@ static int iadk_modules_init(struct processing_module *mod)
 	/* Allocate module buffers */
 	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
 	if (!md->mpd.in_buff) {
-		comp_err(dev, "iadk_modules_init(): Failed to alloc in_buff");
+		comp_err(dev, "modules_init(): Failed to alloc in_buff");
 		return -ENOMEM;
 	}
 	md->mpd.in_buff_size = src_cfg->ibs;
 
 	md->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->obs);
 	if (!md->mpd.out_buff) {
-		comp_err(dev, "iadk_modules_init(): Failed to alloc out_buff");
+		comp_err(dev, "modules_init(): Failed to alloc out_buff");
 		rfree(md->mpd.in_buff);
 		return -ENOMEM;
 	}
@@ -143,7 +144,7 @@ static int iadk_modules_init(struct processing_module *mod)
 }
 
 /**
- * \brief iadk_modules_prepare.
+ * \brief modules_prepare.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
@@ -153,14 +154,14 @@ static int iadk_modules_init(struct processing_module *mod)
  *          configuration. Its internal structure is proprietary to the module implementation.
  *          There is one assumption - all IADK modules utilize IPC4 protocol.
  */
-static int iadk_modules_prepare(struct processing_module *mod,
-				struct sof_source __sparse_cache **sources, int num_of_sources,
-				struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+static int modules_prepare(struct processing_module *mod,
+			   struct sof_source __sparse_cache **sources, int num_of_sources,
+			   struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
-	comp_info(dev, "iadk_modules_prepare()");
+	comp_info(dev, "modules_prepare()");
 
 	/* Call module specific prepare function if exists. */
 	if (mod->is_native_sof) {
@@ -174,12 +175,12 @@ static int iadk_modules_prepare(struct processing_module *mod,
 	return ret;
 }
 
-static int iadk_modules_init_process(struct processing_module *mod)
+static int modules_init_process(struct processing_module *mod)
 {
 	struct module_data *codec = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "iadk_modules_init_process()");
+	comp_dbg(dev, "modules_init_process()");
 
 	codec->mpd.produced = 0;
 	codec->mpd.consumed = 0;
@@ -189,17 +190,17 @@ static int iadk_modules_init_process(struct processing_module *mod)
 }
 
 /*
- * \brief iadk_modules_process.
+ * \brief modules_process.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
  *          error code on failure
  */
-static int iadk_modules_process(struct processing_module *mod,
-				struct input_stream_buffer *input_buffers,
-				int num_input_buffers,
-				struct output_stream_buffer *output_buffers,
-				int num_output_buffers)
+static int modules_process(struct processing_module *mod,
+			   struct input_stream_buffer *input_buffers,
+			   int num_input_buffers,
+			   struct output_stream_buffer *output_buffers,
+			   int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
@@ -208,7 +209,7 @@ static int iadk_modules_process(struct processing_module *mod,
 	int i = 0;
 
 	if (!md->mpd.init_done)
-		iadk_modules_init_process(mod);
+		modules_init_process(mod);
 
 	/* IADK modules require output buffer size to set to its real size. */
 	list_for_item(blist, &dev->bsource_list) {
@@ -231,20 +232,20 @@ static int iadk_modules_process(struct processing_module *mod,
 }
 
 /**
- * \brief iadk_modules_free.
+ * \brief modules_free.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
  *          error code on failure
  */
-static int iadk_modules_free(struct processing_module *mod)
+static int modules_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct comp_ipc_config *config = &(mod->dev->ipc_config);
 	int ret = 0;
 
-	comp_info(dev, "iadk_modules_free()");
+	comp_info(dev, "modules_free()");
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
 					(struct module_interface *)mod->priv.module_adapter;
@@ -259,13 +260,13 @@ static int iadk_modules_free(struct processing_module *mod)
 	/* Free module resources allocated in L2 memory. */
 	ret = lib_manager_free_module(dev->drv, config);
 	if (ret < 0)
-		comp_err(dev, "iadk_modules_free(), lib_manager_free_module() failed!");
+		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
 
 	return ret;
 }
 
 /*
- * \brief iadk_modules_set_configuration - Common method to assemble large configuration message
+ * \brief modules_set_configuration - Common method to assemble large configuration message
  * \param[in] mod - struct processing_module pointer
  * \param[in] config_id - Configuration ID
  * \param[in] pos - position of the fragment in the large message
@@ -279,11 +280,11 @@ static int iadk_modules_free(struct processing_module *mod)
  *
  * \return: 0 upon success or error upon failure
  */
-static int iadk_modules_set_configuration(struct processing_module *mod, uint32_t config_id,
-					  enum module_cfg_fragment_position pos,
-					  uint32_t data_offset_size, const uint8_t *fragment,
-					  size_t fragment_size, uint8_t *response,
-					  size_t response_size)
+static int modules_set_configuration(struct processing_module *mod, uint32_t config_id,
+				     enum module_cfg_fragment_position pos,
+				     uint32_t data_offset_size, const uint8_t *fragment,
+				     size_t fragment_size, uint8_t *response,
+				     size_t response_size)
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
@@ -298,7 +299,7 @@ static int iadk_modules_set_configuration(struct processing_module *mod, uint32_
 }
 
 /*
- * \brief iadk_modules_get_configuration - Common method to retrieve module configuration
+ * \brief modules_get_configuration - Common method to retrieve module configuration
  * \param[in] mod - struct processing_module pointer
  * \param[in] config_id - Configuration ID
  * \param[in] pos - position of the fragment in the large message
@@ -309,9 +310,9 @@ static int iadk_modules_set_configuration(struct processing_module *mod, uint32_
  *
  * \return: 0 upon success or error upon failure
  */
-static int iadk_modules_get_configuration(struct processing_module *mod, uint32_t config_id,
-					  uint32_t *data_offset_size, uint8_t *fragment,
-					  size_t fragment_size)
+static int modules_get_configuration(struct processing_module *mod, uint32_t config_id,
+				     uint32_t *data_offset_size, uint8_t *fragment,
+				     size_t fragment_size)
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
@@ -332,8 +333,8 @@ static int iadk_modules_get_configuration(struct processing_module *mod, uint32_
  *
  * \return: 0 upon success or error upon failure
  */
-static int iadk_modules_set_processing_mode(struct processing_module *mod,
-					    enum module_processing_mode mode)
+static int modules_set_processing_mode(struct processing_module *mod,
+				       enum module_processing_mode mode)
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
@@ -350,7 +351,7 @@ static int iadk_modules_set_processing_mode(struct processing_module *mod,
  *
  * \return: enum - module processing mode value
  */
-static enum module_processing_mode iadk_modules_get_processing_mode(struct processing_module *mod)
+static enum module_processing_mode modules_get_processing_mode(struct processing_module *mod)
 {
 	return iadk_wrapper_get_processing_mode(mod->priv.module_adapter);
 }
@@ -362,7 +363,7 @@ static enum module_processing_mode iadk_modules_get_processing_mode(struct proce
  *
  * \return: 0 upon success or error upon failure
  */
-static int iadk_modules_reset(struct processing_module *mod)
+static int modules_reset(struct processing_module *mod)
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
@@ -374,16 +375,16 @@ static int iadk_modules_reset(struct processing_module *mod)
 }
 
 /* Processing Module Adapter API*/
-static struct module_interface iadk_interface = {
-	.init  = iadk_modules_init,
-	.prepare = iadk_modules_prepare,
-	.process_raw_data = iadk_modules_process,
-	.set_processing_mode = iadk_modules_set_processing_mode,
-	.get_processing_mode = iadk_modules_get_processing_mode,
-	.set_configuration = iadk_modules_set_configuration,
-	.get_configuration = iadk_modules_get_configuration,
-	.reset = iadk_modules_reset,
-	.free = iadk_modules_free,
+static struct module_interface interface = {
+	.init  = modules_init,
+	.prepare = modules_prepare,
+	.process_raw_data = modules_process,
+	.set_processing_mode = modules_set_processing_mode,
+	.get_processing_mode = modules_get_processing_mode,
+	.set_configuration = modules_set_configuration,
+	.get_configuration = modules_get_configuration,
+	.reset = modules_reset,
+	.free = modules_free,
 };
 
 /**
@@ -399,9 +400,9 @@ static struct module_interface iadk_interface = {
  *        New module details are discovered during its loading, therefore comp_driver initialisation
  *        happens at this point.
  */
-struct comp_dev *iadk_modules_shim_new(const struct comp_driver *drv,
-				       const struct comp_ipc_config *config,
-				       const void *spec)
+struct comp_dev *modules_shim_new(const struct comp_driver *drv,
+				  const struct comp_ipc_config *config,
+				  const void *spec)
 {
-	return module_adapter_new(drv, config, &iadk_interface, spec);
+	return module_adapter_new(drv, config, &interface, spec);
 }

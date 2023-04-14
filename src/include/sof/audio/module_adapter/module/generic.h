@@ -18,7 +18,7 @@
 #include "module_interface.h"
 
 #if CONFIG_INTEL_MODULES
-#include "iadk_modules.h"
+#include "modules.h"
 #endif
 
 #define module_get_private_data(mod) (mod->priv.private)

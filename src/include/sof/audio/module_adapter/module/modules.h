@@ -5,8 +5,8 @@
  * Author: Jaroslaw Stelter <jaroslaw.stelter@intel.com>
  */
 
-#ifndef __SOF_AUDIO_IADK_MODULES__
-#define __SOF_AUDIO_IADK_MODULES__
+#ifndef __SOF_AUDIO_MODULES__
+#define __SOF_AUDIO_MODULES__
 
 #include <iadk_module_adapter.h>
 
@@ -40,16 +40,16 @@
  */
 
 
-struct comp_dev *iadk_modules_shim_new(const struct comp_driver *drv,
-				       const struct comp_ipc_config *config,
-				       const void *spec);
+struct comp_dev *modules_shim_new(const struct comp_driver *drv,
+				  const struct comp_ipc_config *config,
+				  const void *spec);
 
 #define DECLARE_DYNAMIC_MODULE_ADAPTER(comp_dynamic_module, mtype, uuid, tr) \
 do { \
 	(comp_dynamic_module)->type = mtype; \
 	(comp_dynamic_module)->uid = SOF_RT_UUID(uuid); \
 	(comp_dynamic_module)->tctx = &(tr); \
-	(comp_dynamic_module)->ops.create = iadk_modules_shim_new; \
+	(comp_dynamic_module)->ops.create = modules_shim_new; \
 	(comp_dynamic_module)->ops.prepare = module_adapter_prepare; \
 	(comp_dynamic_module)->ops.params = module_adapter_params; \
 	(comp_dynamic_module)->ops.copy = module_adapter_copy; \
@@ -62,4 +62,4 @@ do { \
 	(comp_dynamic_module)->ops.get_attribute = module_adapter_get_attribute; \
 } while (0)
 
-#endif /* __SOF_AUDIO_IADK_MODULES__ */
+#endif /* __SOF_AUDIO_MODULES__ */
