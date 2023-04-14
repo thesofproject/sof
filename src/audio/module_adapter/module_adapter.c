@@ -616,6 +616,8 @@ static void module_adapter_process_output(struct comp_dev *dev)
 		}
 		i++;
 	}
+
+	mod->total_data_produced += mod->output_buffers[0].size;
 }
 
 static uint32_t
@@ -751,8 +753,14 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		src_c = attr_container_of(mod->input_buffers[i].data,
 					  struct comp_buffer __sparse_cache,
 					  stream, __sparse_cache);
+
 		comp_update_buffer_consume(src_c, mod->input_buffers[i].consumed);
 	}
+
+	/* compute data consumed based on pin 0 since it is processed with base config
+	 * which is set for pin 0
+	 */
+	mod->total_data_consumed += mod->input_buffers[0].consumed;
 
 	/* release all source buffers */
 	i = 0;
@@ -775,6 +783,8 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
 		comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
 	}
+
+	mod->total_data_produced += mod->output_buffers[0].size;
 
 	/* release all sink buffers */
 	i = 0;
@@ -856,7 +866,6 @@ int module_adapter_copy(struct comp_dev *dev)
 		ca_copy_from_source_to_module(&src_c->stream, mod->input_buffers[i].data,
 					      md->mpd.in_buff_size, bytes_to_process);
 		buffer_release(src_c);
-
 		i++;
 	}
 
@@ -886,8 +895,12 @@ int module_adapter_copy(struct comp_dev *dev)
 		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
+
 		i++;
 	}
+
+	mod->total_data_consumed += mod->input_buffers[0].consumed;
+
 	module_adapter_process_output(dev);
 
 	return 0;
@@ -1125,6 +1138,9 @@ int module_adapter_reset(struct comp_dev *dev)
 	mod->num_input_buffers = 0;
 	mod->num_output_buffers = 0;
 
+	mod->total_data_consumed = 0;
+	mod->total_data_produced = 0;
+
 	list_for_item(blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
@@ -1329,6 +1345,17 @@ int module_adapter_unbind(struct comp_dev *dev, void *data)
 
 	return 0;
 }
+
+uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
+						 uint32_t stream_no, bool input)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	if (input)
+		return mod->total_data_produced;
+	else
+		return mod->total_data_consumed;
+}
 #else
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
@@ -1352,6 +1379,12 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 }
 
 int module_adapter_unbind(struct comp_dev *dev, void *data)
+{
+	return 0;
+}
+
+uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
+						 uint32_t stream_no, bool input)
 {
 	return 0;
 }
