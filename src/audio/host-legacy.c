@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <sof/audio/host_copier.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pcm_converter.h>
@@ -43,72 +44,6 @@ DECLARE_SOF_RT_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
 
 DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
 
-/** \brief Host copy function interface. */
-typedef int (*host_copy_func)(struct comp_dev *dev);
-
-/**
- * \brief Host buffer info.
- */
-struct hc_buf {
-	struct dma_sg_elem_array elem_array; /**< array of SG elements */
-	uint32_t current;		/**< index of current element */
-	uint32_t current_end;
-};
-
-/**
- * \brief Host component data.
- *
- * Host reports local position in the host buffer every params.host_period_bytes
- * if the latter is != 0. report_pos is used to track progress since the last
- * multiple of host_period_bytes.
- *
- * host_size is the host buffer size (in bytes) specified in the IPC parameters.
- */
-struct host_data {
-	/* local DMA config */
-	struct dma *dma;
-	struct dma_chan_data *chan;
-	struct dma_sg_config config;
-	struct comp_buffer *dma_buffer;
-	struct comp_buffer *local_buffer;
-
-	/* host position reporting related */
-	uint32_t host_size;	/**< Host buffer size (in bytes) */
-	uint32_t report_pos;	/**< Position in current report period */
-	uint32_t local_pos;	/**< Local position in host buffer */
-	uint32_t host_period_bytes;
-	uint16_t stream_tag;
-	uint16_t no_stream_position; /**< 1 means don't send stream position */
-	uint64_t total_data_processed;
-	uint8_t cont_update_posn; /**< 1 means continuous update stream position */
-
-	/* host component attributes */
-	enum comp_copy_type copy_type;	/**< Current host copy type */
-
-	/* local and host DMA buffer info */
-	struct hc_buf host;
-	struct hc_buf local;
-
-	/* pointers set during params to host or local above */
-	struct hc_buf *source;
-	struct hc_buf *sink;
-
-	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
-				   *  copied by dma connected to host
-				   */
-	uint32_t period_bytes;	/**< number of bytes per one period */
-
-	host_copy_func copy;	/**< host copy function */
-	pcm_converter_func process;	/**< processing function */
-
-	/* IPC host init info */
-	struct ipc_config_host ipc_host;
-
-	/* stream info */
-	struct sof_ipc_stream_posn posn; /* TODO: update this */
-	struct ipc_msg *msg;	/**< host notification */
-};
-
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
 	if (!hc->elem_array.elems || !hc->elem_array.count)
@@ -138,9 +73,8 @@ static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 
 #if CONFIG_FORCE_DMA_COPY_WHOLE_BLOCK
 
-static int host_dma_set_config_and_copy(struct comp_dev *dev, uint32_t bytes)
+static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	int ret = 0;
 
@@ -169,9 +103,8 @@ static int host_dma_set_config_and_copy(struct comp_dev *dev, uint32_t bytes)
  * @param dev Host component device.
  * @return Bytes to be copied.
  */
-static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
+static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(hd->local_buffer);
 	uint32_t copy_bytes;
 
@@ -195,16 +128,15 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
  * @param dev Host component device.
  * @return 0 if succeeded, error code otherwise.
  */
-static int host_copy_one_shot(struct comp_dev *dev)
+static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t copy_bytes = 0;
 	uint32_t split_value = 0;
 	int ret = 0;
 
 	comp_dbg(dev, "host_copy_one_shot()");
 
-	copy_bytes = host_get_copy_bytes_one_shot(dev);
+	copy_bytes = host_get_copy_bytes_one_shot(hd, dev);
 	if (!copy_bytes) {
 		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
 		return ret;
@@ -215,7 +147,7 @@ static int host_copy_one_shot(struct comp_dev *dev)
 		split_value = host_dma_get_split(hd, copy_bytes);
 		copy_bytes -= split_value;
 
-		ret = host_dma_set_config_and_copy(dev, copy_bytes);
+		ret = host_dma_set_config_and_copy(hd, dev, copy_bytes);
 		if (ret < 0)
 			return ret;
 
@@ -233,9 +165,8 @@ static int host_copy_one_shot(struct comp_dev *dev)
  * @param dev Host component device.
  * @return Bytes to be copied.
  */
-static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
+static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(hd->local_buffer);
 	uint32_t copy_bytes;
@@ -269,15 +200,14 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
  * @param dev Host component device.
  * @return 0 if succeeded, error code otherwise.
  */
-static int host_copy_one_shot(struct comp_dev *dev)
+static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t copy_bytes = 0;
 	int ret = 0;
 
 	comp_dbg(dev, "host_copy_one_shot()");
 
-	copy_bytes = host_get_copy_bytes_one_shot(dev);
+	copy_bytes = host_get_copy_bytes_one_shot(hd, dev);
 	if (!copy_bytes) {
 		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
 		return ret;
@@ -300,9 +230,8 @@ static int host_copy_one_shot(struct comp_dev *dev)
 }
 #endif
 
-static void host_update_position(struct comp_dev *dev, uint32_t bytes)
+void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *source;
 	struct comp_buffer __sparse_cache *sink;
 	int ret;
@@ -385,9 +314,8 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
  * This means we must check we do not overflow host period/buffer/page
  * boundaries on each transfer and split the DMA transfer if we do overflow.
  */
-static void host_one_shot_cb(struct comp_dev *dev, uint32_t bytes)
+void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
@@ -430,11 +358,11 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	comp_cl_dbg(&comp_host, "host_dma_cb() %p", &comp_host);
 
 	/* update position */
-	host_update_position(dev, bytes);
+	host_update_position(hd, dev, bytes);
 
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(dev, bytes);
+		host_one_shot_cb(hd, bytes);
 }
 
 /**
@@ -442,9 +370,8 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
  * @param dev Host component device.
  * @return Bytes to be copied.
  */
-static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
+static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -494,9 +421,8 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
  * @param dev Host component device.
  * @return 0 if succeeded, error code otherwise.
  */
-static int host_copy_normal(struct comp_dev *dev)
+static int host_copy_normal(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t copy_bytes = 0;
 	uint32_t flags = 0;
 	int ret;
@@ -506,7 +432,7 @@ static int host_copy_normal(struct comp_dev *dev)
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
 
-	copy_bytes = host_get_copy_bytes_normal(dev);
+	copy_bytes = host_get_copy_bytes_normal(hd, dev);
 	if (!copy_bytes)
 		return 0;
 
@@ -517,10 +443,9 @@ static int host_copy_normal(struct comp_dev *dev)
 	return ret;
 }
 
-static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
+static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
 			      uint32_t buffer_bytes)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
@@ -567,27 +492,15 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
  * This function is common for all dma types, with one exception:
  * dw-dma is run on demand, so no start()/stop() is issued.
  */
-static int host_trigger(struct comp_dev *dev, int cmd)
+int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-	int ret = 0;
-
-	comp_dbg(dev, "host_trigger()");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-		ret = PPL_STATUS_PATH_STOP;
-		return ret;
-	}
+	int ret;
 
 	/* we should ignore any trigger commands besides start
 	 * when doing one shot, because transfers will stop automatically
 	 */
 	if (cmd != COMP_TRIGGER_START && hd->copy_type == COMP_COPY_ONE_SHOT)
-		return ret;
+		return 0;
 
 	if (!hd->chan) {
 		comp_err(dev, "host_trigger(): no dma channel configured");
@@ -609,10 +522,63 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 				 ret);
 		break;
 	default:
+		ret = 0;
 		break;
 	}
 
 	return ret;
+}
+
+static int host_trigger(struct comp_dev *dev, int cmd)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "host_trigger()");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return host_zephyr_trigger(hd, dev, cmd);
+}
+
+int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+		    const struct ipc_config_host *ipc_host, uint32_t config_id)
+{
+	uint32_t dir;
+
+	hd->ipc_host = *ipc_host;
+	/* request HDA DMA with shared access privilege */
+	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
+		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+
+	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
+	if (!hd->dma) {
+		comp_err(dev, "host_new(): dma_get() returned NULL");
+		return -ENODEV;
+	}
+
+	/* init buffer elems */
+	dma_sg_init(&hd->config.elem_array);
+	dma_sg_init(&hd->host.elem_array);
+	dma_sg_init(&hd->local.elem_array);
+
+	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
+
+	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, hd->posn.rhdr.hdr.size);
+	if (!hd->msg) {
+		comp_err(dev, "host_new(): ipc_msg_init failed");
+		dma_put(hd->dma);
+		return -ENOMEM;
+	}
+	hd->chan = NULL;
+	hd->copy_type = COMP_COPY_NORMAL;
+
+	return 0;
 }
 
 static struct comp_dev *host_new(const struct comp_driver *drv,
@@ -622,7 +588,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
-	uint32_t dir;
+	int ret;
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
@@ -632,68 +598,48 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
-	if (!hd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!hd)
+		goto e_data;
 
 	comp_set_drvdata(dev, hd);
-	hd->ipc_host = *ipc_host;
 
-	/* request HDA DMA with shared access privilege */
-	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+	ret = host_zephyr_new(hd, dev, ipc_host, dev->ipc_config.id);
+	if (ret)
+		goto e_dev;
 
-	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
-	if (!hd->dma) {
-		comp_err(dev, "host_new(): dma_get() returned NULL");
-		rfree(hd);
-		rfree(dev);
-		return NULL;
-	}
-
-	/* init buffer elems */
-	dma_sg_init(&hd->config.elem_array);
-	dma_sg_init(&hd->host.elem_array);
-	dma_sg_init(&hd->local.elem_array);
-
-	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, dev->ipc_config.id);
-
-	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, hd->posn.rhdr.hdr.size);
-	if (!hd->msg) {
-		comp_err(dev, "host_new(): ipc_msg_init failed");
-		dma_put(hd->dma);
-		rfree(hd);
-		rfree(dev);
-		return NULL;
-	}
-
-	hd->chan = NULL;
-	hd->copy_type = COMP_COPY_NORMAL;
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+
+e_dev:
+	rfree(hd);
+e_data:
+	rfree(dev);
+	return NULL;
+}
+
+void host_zephyr_free(struct host_data *hd)
+{
+	dma_put(hd->dma);
+
+	ipc_msg_free(hd->msg);
+	dma_sg_free(&hd->config.elem_array);
 }
 
 static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	comp_info(dev, "host_free()");
-
-	dma_put(hd->dma);
-
-	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
+	comp_dbg(dev, "host_free()");
+	host_zephyr_free(hd);
 	rfree(hd);
 	rfree(dev);
 }
 
-static int host_elements_reset(struct comp_dev *dev)
+static int host_elements_reset(struct host_data *hd, struct comp_dev *dev)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *source_elem = NULL;
-	struct dma_sg_elem *sink_elem = NULL;
+	struct dma_sg_elem *source_elem;
+	struct dma_sg_elem *sink_elem;
 	struct dma_sg_elem *local_elem;
 
 	/* setup elem to point to first source elem */
@@ -740,10 +686,9 @@ static int host_verify_params(struct comp_dev *dev,
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
-static int host_params(struct comp_dev *dev,
+int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &hd->config;
 	struct comp_buffer __sparse_cache *host_buf_c;
 	struct comp_buffer __sparse_cache *dma_buf_c;
@@ -753,14 +698,6 @@ static int host_params(struct comp_dev *dev,
 	uint32_t addr_align;
 	uint32_t align;
 	int err;
-
-	comp_dbg(dev, "host_params()");
-
-	err = host_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "host_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -864,7 +801,7 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* create SG DMA elems for local DMA buffer */
-	err = create_local_elems(dev, period_count, buffer_size / period_count);
+	err = create_local_elems(hd, dev, period_count, buffer_size / period_count);
 	if (err < 0)
 		goto out;
 
@@ -876,7 +813,7 @@ static int host_params(struct comp_dev *dev,
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->period;
 
-	host_elements_reset(dev);
+	host_elements_reset(hd, dev);
 
 	hd->stream_tag -= 1;
 	/* get DMA channel from DMAC
@@ -909,9 +846,6 @@ static int host_params(struct comp_dev *dev,
 	/* minimal copied data shouldn't be less than alignment */
 	hd->period_bytes = ALIGN_UP(period_bytes, hd->dma_copy_align);
 
-	/* set up callback */
-	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
-
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
@@ -925,10 +859,41 @@ out:
 	return err;
 }
 
+static int host_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int err;
+
+	comp_dbg(dev, "host_params()");
+
+	err = host_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "host_params(): pcm params verification failed.");
+		return err;
+	}
+
+	err = host_zephyr_params(hd, dev, params);
+	if (err >= 0)
+		/* set up callback */
+		notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
+
+	return err;
+}
+
+int host_zephyr_prepare(struct host_data *hd)
+{
+	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
+
+	buffer_zero(buf_c);
+	buffer_release(buf_c);
+
+	return 0;
+}
+
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c;
 	int ret;
 
 	comp_dbg(dev, "host_prepare()");
@@ -940,23 +905,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	buf_c = buffer_acquire(hd->dma_buffer);
-	buffer_zero(buf_c);
-	buffer_release(buf_c);
-
-	return 0;
-}
-
-static int host_pointer_reset(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	/* reset buffer pointers */
-	hd->local_pos = 0;
-	hd->report_pos = 0;
-	hd->total_data_processed = 0;
-
-	return 0;
+	return host_zephyr_prepare(hd);
 }
 
 static int host_position(struct comp_dev *dev,
@@ -970,17 +919,11 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-static int host_reset(struct comp_dev *dev)
+void host_zephyr_reset(struct host_data *hd, uint16_t state)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "host_reset()");
-
 	if (hd->chan) {
 		dma_stop_delayed_legacy(hd->chan);
 
-		/* remove callback */
-		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put_legacy(hd->chan);
 		hd->chan = NULL;
 	}
@@ -999,16 +942,38 @@ static int host_reset(struct comp_dev *dev)
 		hd->dma_buffer = NULL;
 	}
 
-	host_pointer_reset(dev);
+	/* reset buffer pointers */
+	hd->local_pos = 0;
+	hd->report_pos = 0;
+	hd->total_data_processed = 0;
+
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
 	hd->sink = NULL;
+}
+
+static int host_reset(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "host_reset()");
+
+	/* remove callback */
+	if (hd->chan)
+		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
+
+	host_zephyr_reset(hd, dev->state);
 	dev->state = COMP_STATE_READY;
 
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
+int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev)
+{
+	return hd->copy(hd, dev);
+}
+
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -1016,7 +981,7 @@ static int host_copy(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	return hd->copy(dev);
+	return host_zephyr_copy(hd, dev);
 }
 
 static int host_get_attribute(struct comp_dev *dev, uint32_t type,
