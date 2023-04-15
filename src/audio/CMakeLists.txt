@@ -6,13 +6,14 @@ elseif(CONFIG_IPC_MAJOR_4)
 	set(mixer_src mixin_mixout/mixin_mixout.c mixin_mixout/mixin_mixout_generic.c mixin_mixout/mixin_mixout_hifi3.c)
 endif()
 
-if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
+if(NOT CONFIG_COMP_MODULES_SO)
 	add_local_sources(sof
 		host-legacy.c
 		component.c
 		buffer.c
 		channel_map.c
 	)
+
 	if(CONFIG_COMP_BLOB)
 		add_local_sources(sof data_blob.c)
 	endif()
@@ -68,7 +69,7 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 			dai-legacy.c
 		)
 	endif()
-	if(CONFIG_COMP_KPB)
+	if(CONFIG_COMP_KPB AND NOT CONFIG_LIBRARY_STATIC)
 		add_local_sources(sof
 			kpb.c
 		)

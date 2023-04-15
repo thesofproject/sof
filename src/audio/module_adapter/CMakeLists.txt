@@ -5,7 +5,7 @@ if (CONFIG_IPC_MAJOR_4 OR CONFIG_CADENCE_CODEC OR (NOT CONFIG_COMP_LEGACY_INTERF
 	add_local_sources(sof module_adapter.c module/generic.c)
 endif()
 
-if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
+if(NOT CONFIG_COMP_MODULES_SO)
 	if(CONFIG_COMP_VOLUME)
 	add_local_sources(sof
 		module/volume/volume_generic.c

@@ -647,4 +647,11 @@ config WRAP_ACTUAL_POSITION
 	  It is not necessary that on wrap, the buffer position would be zero.At wrap,
 	  in some cases based on the period size, the frame may not exactly be at the
 	  end of the buffer and roll over for some bytes from the beginning of the buffer.
+
+config COMP_MODULES_SO
+	bool "Build modules as shared objects"
+	default n
+	help
+	  Select here if you want to build modules as shared objects.
+
 endmenu

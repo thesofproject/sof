@@ -700,7 +700,6 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 	(c->priv_data)
 
 #if defined UNIT_TEST || defined __ZEPHYR__  || CONFIG_LIBRARY_STATIC
-#define DECLARE_MODULE(init)
 
 /* declared modules */
 void sys_comp_asrc_init(void);
@@ -725,10 +724,14 @@ void sys_comp_module_mux_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
 void sys_comp_module_volume_interface_init(void);
 
-#elif CONFIG_LIBRARY
+#if CONFIG_COMP_MODULES_SO
 /* In case of shared libs components are initialised in dlopen */
 #define DECLARE_MODULE(init) __attribute__((constructor)) \
 	static void _module_##init(void) { init(); }
+#else
+#define DECLARE_MODULE(init)
+#endif
+
 #else
 /** \brief Usage at the end of an independent module file:
  *	DECLARE_MODULE(sys_*_init);
