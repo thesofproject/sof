@@ -351,7 +351,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	default:
 		break;
 	}
-#if CONFIG_COMP_DAI_GROUP
+#if 0 && CONFIG_COMP_DAI_GROUP
 	if (config->group_id) {
 		ret = dai_assign_group(dev, config->group_id);
 
