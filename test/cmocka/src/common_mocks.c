@@ -42,40 +42,6 @@ WEAK struct tr_ctx comp_tr;
 WEAK struct tr_ctx ipc_tr;
 int host_trace_level;
 
-void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
-			 uint32_t alignment)
-{
-	(void)flags;
-	(void)caps;
-
-	return calloc(bytes, 1);
-}
-
-void WEAK *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
-		   size_t bytes)
-{
-	(void)zone;
-	(void)flags;
-	(void)caps;
-
-	return calloc(bytes, 1);
-}
-
-void WEAK *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps,
-			   size_t bytes, size_t old_bytes, uint32_t alignment)
-{
-	(void)flags;
-	(void)caps;
-	(void)old_bytes;
-
-	return realloc(ptr, bytes);
-}
-
-void WEAK rfree(void *ptr)
-{
-	free(ptr);
-}
-
 int WEAK memcpy_s(void *dest, size_t dest_size,
 		  const void *src, size_t count)
 {
@@ -188,11 +154,6 @@ void WEAK arch_dump_regs_a(void *dump_buf);
 void WEAK arch_dump_regs_a(void *dump_buf)
 {
 	(void)dump_buf;
-}
-
-void WEAK heap_trace_all(int force)
-{
-	(void)force;
 }
 
 void WEAK ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)

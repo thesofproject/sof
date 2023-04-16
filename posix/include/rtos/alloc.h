@@ -19,10 +19,12 @@
 #include <rtos/bit.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
+#include <sof/math/numbers.h>
 #include <user/trace.h>
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /** \addtogroup alloc_api Memory Allocation API
  *  @{
@@ -83,7 +85,10 @@ enum mem_zone {
  * @note Do not use for buffers (SOF_MEM_ZONE_BUFFER zone).
  *       Use rballoc(), rballoc_align() to allocate memory for buffers.
  */
-void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+static inline void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+{
+	return malloc(bytes);
+}
 
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
@@ -91,7 +96,10 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
  * @note Do not use  for buffers (SOF_MEM_ZONE_BUFFER zone).
  *       rballoc(), rballoc_align() to allocate memory for buffers.
  */
-void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+static inline void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+{
+	return calloc(1, bytes);
+}
 
 /**
  * Allocates memory block from SOF_MEM_ZONE_BUFFER.
@@ -101,8 +109,11 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
  * @param alignment Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  */
-void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
-		    uint32_t alignment);
+static inline void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+				  uint32_t alignment)
+{
+	return aligned_alloc(alignment, bytes);
+}
 
 /**
  * Similar to rballoc_align(), returns buffer aligned to PLATFORM_DCACHE_ALIGN.
@@ -122,8 +133,20 @@ static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
  * @param alignment Alignment in bytes.
  * @return Pointer to the resized memory of NULL if failed.
  */
-void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		      size_t old_bytes, uint32_t alignment);
+static inline void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		      size_t old_bytes, uint32_t alignment)
+{
+	void *nptr;
+
+	nptr =  aligned_alloc(alignment, bytes);
+	if (!nptr)
+		return nptr;
+
+	memcpy(nptr, ptr, MIN(bytes, old_bytes));
+	free(ptr);
+
+	return nptr;
+}
 
 /**
  * Similar to rballoc_align(), returns resized buffer aligned to
@@ -143,7 +166,10 @@ static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
  * @note Blocks from SOF_MEM_ZONE_SYS cannot be freed, such a call causes
  *       panic.
  */
-void rfree(void *ptr);
+static inline void rfree(void *ptr)
+{
+	free(ptr);
+}
 
 /**
  * Allocates memory block from the system heap reserved for the specified core.

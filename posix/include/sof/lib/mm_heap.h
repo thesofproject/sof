@@ -90,9 +90,17 @@ void init_heap(struct sof *sof);
 /* frees entire heap (supported for secondary core system heap atm) */
 void free_heap(enum mem_zone zone);
 
-/* status */
-void heap_trace_all(int force);
-void heap_trace(struct mm_heap *heap, int size);
+static inline void heap_trace(struct mm_heap *heap, int size)
+{
+#if MALLOC_DEBUG
+	malloc_info(0, stdout);
+#endif
+}
+
+static inline void heap_trace_all(int force)
+{
+	heap_trace(NULL, 0);
+}
 
 #if CONFIG_DEBUG_MEMORY_USAGE_SCAN
 /** Fetch runtime information about heap, like used and free memory space
