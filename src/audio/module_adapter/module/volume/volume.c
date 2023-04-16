@@ -454,8 +454,8 @@ static int volume_init(struct processing_module *mod)
 		break;
 	default:
 		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
-		rfree(cd);
 		rfree(cd->vol);
+		rfree(cd);
 		return -EINVAL;
 	}
 
