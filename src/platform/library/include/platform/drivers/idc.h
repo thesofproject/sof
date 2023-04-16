@@ -5,7 +5,7 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#if defined(__XTOS_RTOS_IDC_H__) || defined(__ZEPHYR_RTOS_IDC_H__)
+#ifdef __POSIX_RTOS_IDC_H__
 
 #ifndef __PLATFORM_DRIVERS_IDC_H__
 #define __PLATFORM_DRIVERS_IDC_H__

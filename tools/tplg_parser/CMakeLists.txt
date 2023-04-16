@@ -45,9 +45,7 @@ target_include_directories(sof_tplg_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/i
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
-
-# TODO: The topology parser should NOT need to include RTOS header. FIX.
-target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/xtos/include)
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/posix/include)
 
 # Configuration time, make copy
 configure_file(${default_asoc_h} ${CMAKE_CURRENT_BINARY_DIR}/include/alsa/sound/asoc.h)
