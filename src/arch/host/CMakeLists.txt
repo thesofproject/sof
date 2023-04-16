@@ -5,10 +5,9 @@ target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/sr
 target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/library/include)
 include(CheckCCompilerFlag)
 
-# TODO: library should not need RTOS headers: FIX.
 if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
 target_include_directories(sof_public_headers INTERFACE
-	${PROJECT_SOURCE_DIR}/xtos/include
+	${PROJECT_SOURCE_DIR}/posix/include
 )
 endif()
 

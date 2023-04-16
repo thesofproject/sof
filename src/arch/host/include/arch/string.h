@@ -5,7 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifdef __XTOS_RTOS_STRING_H__
+#ifdef __POSIX_RTOS_STRING_H__
 
 #ifndef __ARCH_STRING_H__
 #define __ARCH_STRING_H__
