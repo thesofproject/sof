@@ -493,19 +493,19 @@ static int demux_process(struct processing_module *mod,
 		return 0;
 
 	frames = input_buffers[0].size;
-	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
-	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	source_bytes = frames * audio_stream_frame_bytes(input_buffers[0].data);
+	sink_bytes = frames * audio_stream_frame_bytes(output_buffers[0].data);
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < num_output_buffers; i++) {
 		demux_prepare_active_look_up(cd, sinks_stream[i],
 					     input_buffers[0].data, look_ups[i]);
 		cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
-		mod->output_buffers[i].size = sink_bytes;
+		output_buffers[i].size = sink_bytes;
 	}
 
 	/* Update consumed */
-	mod->input_buffers[0].consumed = source_bytes;
+	input_buffers[0].consumed = source_bytes;
 	return 0;
 }
 
@@ -549,16 +549,16 @@ static int mux_process(struct processing_module *mod,
 		return 0;
 
 	frames = input_buffers[0].size;
-	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
-	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	source_bytes = frames * audio_stream_frame_bytes(input_buffers[0].data);
+	sink_bytes = frames * audio_stream_frame_bytes(output_buffers[0].data);
 	mux_prepare_active_look_up(cd, output_buffers[0].data, &sources_stream[0]);
 
 	/* produce output */
 	cd->mux(dev, output_buffers[0].data, &sources_stream[0], frames, &cd->active_lookup);
 
 	/* Update consumed and produced */
-	mod->input_buffers[0].consumed = source_bytes;
-	mod->output_buffers[0].size = sink_bytes;
+	input_buffers[0].consumed = source_bytes;
+	output_buffers[0].size = sink_bytes;
 	return 0;
 }
 
