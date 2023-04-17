@@ -14,6 +14,7 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 		source_api_helper.c
 		sink_api_helper.c
 		sink_source_utils.c
+		audio_stream.c
 		channel_map.c
 	)
 	if(CONFIG_COMP_BLOB)
