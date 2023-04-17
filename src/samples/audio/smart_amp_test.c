@@ -298,7 +298,7 @@ static int smart_amp_unbind(struct comp_dev *dev, void *data)
 
 	comp_dbg(dev, "smart_amp_unbind()");
 
-	if (bu->extension.r.dst_instance_id == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+	if (bu->extension.r.dst_queue == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 		k_mutex_lock(&sad->lock, K_FOREVER);
 		sad->feedback_buf = NULL;
 		k_mutex_unlock(&sad->lock);
