@@ -15,6 +15,10 @@
 #define __SOF_AUDIO_AUDIO_STREAM_H__
 
 #include <sof/audio/format.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/sink_api_implementation.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/source_api_implementation.h>
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/math/numbers.h>
@@ -73,8 +77,13 @@ struct sof_audio_stream_params {
  * consumption/production and update the buffer state by calling
  * audio_stream_consume()/audio_stream_produce() (just a single call following
  * series of reads/writes).
+ *
+ * Audio stream implements pipeline2.0 sink and source API
  */
 struct audio_stream {
+	struct sof_source source_api;	/**< source API, don't modify, use helper functions only */
+	struct sof_sink sink_api;	/**< sink API, don't modify, use helper functions only  */
+
 	/* runtime data */
 	uint32_t size;	/**< Runtime buffer size in bytes (period multiple) */
 	uint32_t avail;	/**< Available bytes for reading */
@@ -714,24 +723,12 @@ static inline void audio_stream_reset(struct audio_stream __sparse_cache *buffer
 
 /**
  * Initializes the buffer with specified memory block and size.
- * @param buffer Buffer to initialize.
+ * @param audio_stream the audio_stream a to initialize.
  * @param buff_addr Address of the memory block to assign.
  * @param size Size of the memory block in bytes.
  */
-static inline void audio_stream_init(struct audio_stream __sparse_cache *buffer,
-				     void *buff_addr, uint32_t size)
-{
-	buffer->size = size;
-	buffer->addr = buff_addr;
-	buffer->end_addr = (char *)buffer->addr + size;
-
-	/* set the default alignment info.
-	 * set byte_align as 1 means no alignment limit on byte.
-	 * set frame_align as 1 means no alignment limit on frame.
-	 */
-	audio_stream_init_alignment_constants(1, 1, buffer);
-	audio_stream_reset(buffer);
-}
+void audio_stream_init(struct audio_stream __sparse_cache *audio_stream,
+		       void *buff_addr, uint32_t size);
 
 /**
  * Invalidates (in DSP d-cache) the buffer in range [r_ptr, r_ptr+bytes],
@@ -969,6 +966,22 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 		*valid_fmt = SOF_IPC_FRAME_FLOAT;
 	}
 }
+
+/** get a handler to source API
+ * NOTE! to use the handlers the buffer must be acquired by buffer_acquire
+ */
+static inline struct sof_source __sparse_cache *
+audio_stream_get_source(struct audio_stream __sparse_cache *audio_stream)
+{
+	return &audio_stream->source_api;
+}
+
+static inline struct sof_sink __sparse_cache *
+audio_stream_get_sink(struct audio_stream __sparse_cache *audio_stream)
+{
+	return &audio_stream->sink_api;
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */

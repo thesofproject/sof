@@ -13,6 +13,7 @@ cmocka_test(comp_set_state
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c

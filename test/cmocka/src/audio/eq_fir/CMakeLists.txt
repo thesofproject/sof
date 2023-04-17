@@ -26,6 +26,7 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
