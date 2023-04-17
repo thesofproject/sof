@@ -25,6 +25,7 @@ cmocka_test(pipeline_new
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
@@ -43,6 +44,7 @@ cmocka_test(pipeline_connect_upstream
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
@@ -61,6 +63,7 @@ cmocka_test(pipeline_free
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c

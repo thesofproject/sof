@@ -4,6 +4,8 @@ cmocka_test(buffer_copy
 	buffer_copy.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -21,6 +23,7 @@ cmocka_test(buffer_new
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -38,6 +41,7 @@ cmocka_test(buffer_wrap
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
@@ -55,6 +59,7 @@ cmocka_test(buffer_write
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
