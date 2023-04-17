@@ -12,6 +12,7 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 		component.c
 		buffer.c
 		source_api_helper.c
+		sink_api_helper.c
 		channel_map.c
 	)
 	if(CONFIG_COMP_BLOB)
