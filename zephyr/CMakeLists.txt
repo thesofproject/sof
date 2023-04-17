@@ -396,6 +396,7 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/source_api_helper.c
 	${SOF_AUDIO_PATH}/sink_api_helper.c
+	${SOF_AUDIO_PATH}/sink_source_utils.c
 	${SOF_AUDIO_PATH}/component.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
