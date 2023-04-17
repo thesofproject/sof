@@ -13,6 +13,7 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 		buffer.c
 		source_api_helper.c
 		sink_api_helper.c
+		sink_source_utils.c
 		channel_map.c
 	)
 	if(CONFIG_COMP_BLOB)
