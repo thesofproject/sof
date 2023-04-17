@@ -167,7 +167,7 @@ static int iadk_modules_process(struct processing_module *mod,
 
 	/* IADK modules require output buffer size to set to its real size. */
 	list_for_item(blist, &dev->bsource_list) {
-		mod->output_buffers[i].size = md->mpd.out_buff_size;
+		output_buffers[i].size = md->mpd.out_buff_size;
 		i++;
 	}
 	/* Call module specific process function. */

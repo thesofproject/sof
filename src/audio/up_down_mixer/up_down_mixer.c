@@ -430,26 +430,26 @@ up_down_mixer_process(struct processing_module *mod,
 
 	comp_dbg(dev, "up_down_mixer_process()");
 
-	mix_frames = audio_stream_avail_frames(mod->input_buffers[0].data,
-					       mod->output_buffers[0].data);
+	mix_frames = audio_stream_avail_frames(input_buffers[0].data,
+					       output_buffers[0].data);
 
-	source_bytes = mix_frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
-	sink_bytes = mix_frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	source_bytes = mix_frames * audio_stream_frame_bytes(input_buffers[0].data);
+	sink_bytes = mix_frames * audio_stream_frame_bytes(output_buffers[0].data);
 
 	if (source_bytes) {
 		uint32_t sink_sample_bytes;
 
-		audio_stream_copy_to_linear(mod->input_buffers[0].data, 0, cd->buf_in, 0,
+		audio_stream_copy_to_linear(input_buffers[0].data, 0, cd->buf_in, 0,
 					    source_bytes /
-					    audio_stream_sample_bytes(mod->input_buffers[0].data));
+					    audio_stream_sample_bytes(input_buffers[0].data));
 
 		cd->mix_routine(cd, (uint8_t *)cd->buf_in, source_bytes, (uint8_t *)cd->buf_out);
 
-		sink_sample_bytes = audio_stream_sample_bytes(mod->output_buffers[0].data);
-		audio_stream_copy_from_linear(cd->buf_out, 0, mod->output_buffers[0].data, 0,
+		sink_sample_bytes = audio_stream_sample_bytes(output_buffers[0].data);
+		audio_stream_copy_from_linear(cd->buf_out, 0, output_buffers[0].data, 0,
 					      sink_bytes / sink_sample_bytes);
-		mod->output_buffers[0].size = sink_bytes;
-		mod->input_buffers[0].consumed = source_bytes;
+		output_buffers[0].size = sink_bytes;
+		input_buffers[0].consumed = source_bytes;
 	}
 
 	return 0;
