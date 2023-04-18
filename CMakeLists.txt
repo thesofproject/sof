@@ -64,5 +64,3 @@ target_include_directories(rimage PRIVATE
 	src/include/
 	tomlc99/
 )
-
-install(TARGETS rimage DESTINATION bin)
