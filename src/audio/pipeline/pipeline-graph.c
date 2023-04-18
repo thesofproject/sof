@@ -359,6 +359,17 @@ static int pipeline_comp_reset(struct comp_dev *current,
 		}
 	}
 
+	/* two cases for a component still being active here:
+	 * 1. trigger function failed to handle stop event
+	 * 2. trigger functon skipped due to error of other component's trigger function
+	 */
+	if (current->state == COMP_STATE_ACTIVE) {
+		pipe_warn(current->pipeline, "pipeline_comp_reset(): component is in active state, try to stop it");
+		err = comp_trigger(current, COMP_TRIGGER_STOP);
+		if (err)
+			pipe_err(current->pipeline, "pipeline_comp_reset(): failed to recover");
+	}
+
 	err = comp_reset(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
