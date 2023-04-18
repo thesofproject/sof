@@ -239,7 +239,6 @@ static int mux_init(struct processing_module *mod)
 	}
 
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
-	mod->simple_copy = true;
 	mod->no_pause = true;
 	return 0;
 
@@ -700,7 +699,7 @@ static struct module_interface mux_interface = {
 	.set_configuration = mux_set_config,
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,
-	.process = mux_process,
+	.process_audio_stream = mux_process,
 	.reset = mux_reset,
 	.free = mux_free,
 };
@@ -713,7 +712,7 @@ static struct module_interface demux_interface = {
 	.set_configuration = mux_set_config,
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,
-	.process = demux_process,
+	.process_audio_stream = demux_process,
 	.reset = mux_reset,
 	.free = mux_free,
 };

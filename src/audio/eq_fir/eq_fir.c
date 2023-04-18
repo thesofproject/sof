@@ -456,8 +456,6 @@ static int eq_fir_init(struct processing_module *mod)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	mod->simple_copy = true;
-
 	return 0;
 
 err_init:
@@ -641,7 +639,7 @@ static struct module_interface eq_fir_interface = {
 		.free = eq_fir_free,
 		.set_configuration = eq_fir_set_config,
 		.get_configuration = eq_fir_get_config,
-		.process = eq_fir_process,
+		.process_audio_stream = eq_fir_process,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,
 };

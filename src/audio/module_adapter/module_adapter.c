@@ -24,6 +24,19 @@
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
 /*
+ * helpers to determine processing type
+ * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
+ */
+#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) \
+		(!!((struct module_data *)&(mod)->priv)->ops->process_audio_stream)
+
+#define IS_PROCESSING_MODE_RAW_DATA(mod) \
+		(!!((struct module_data *)&(mod)->priv)->ops->process_raw_data)
+
+#define IS_PROCESSING_MODE_SINK_SOURCE(mod) \
+		(!!((struct module_data *)&(mod)->priv)->ops->process)
+
+/*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
@@ -240,7 +253,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (mod->simple_copy && mod->num_input_buffers > 1 && mod->num_output_buffers > 1) {
+	/* check processing mode */
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) &&
+	    mod->num_input_buffers > 1 && mod->num_output_buffers > 1) {
 		comp_err(dev, "module_adapter_prepare(): Invalid use of simple_copy");
 		return -EINVAL;
 	}
@@ -276,7 +291,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * no need to allocate intermediate sink buffers if the module produces only period bytes
 	 * every period and has only 1 input and 1 output buffer
 	 */
-	if (mod->simple_copy)
+	if (!IS_PROCESSING_MODE_RAW_DATA(mod))
 		return 0;
 
 	/* Module is prepared, now we need to configure processing settings.
@@ -710,7 +725,7 @@ module_single_source_setup(struct comp_dev *dev,
 	return num_output_buffers;
 }
 
-static int module_adapter_simple_copy(struct comp_dev *dev)
+static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *source_c[PLATFORM_MAX_STREAMS];
 	struct comp_buffer __sparse_cache *sinks_c[PLATFORM_MAX_STREAMS];
@@ -746,8 +761,8 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 			num_input_buffers = 1;
 	}
 
-	ret = module_process(mod, mod->input_buffers, num_input_buffers,
-			     mod->output_buffers, num_output_buffers);
+	ret = module_process_stream_buffer(mod, mod->input_buffers, num_input_buffers,
+					   mod->output_buffers, num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
 			comp_err(dev, "module_adapter_simple_copy() process failed with error: %x",
@@ -825,7 +840,64 @@ out:
 	return ret;
 }
 
-int module_adapter_copy(struct comp_dev *dev)
+static int module_adapter_sink_source_copy(struct comp_dev *dev)
+{
+	struct comp_buffer __sparse_cache *source_buffers_c[PLATFORM_MAX_STREAMS];
+	struct comp_buffer __sparse_cache *sinks_buffers_c[PLATFORM_MAX_STREAMS];
+	struct sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
+	struct source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist;
+	uint32_t num_of_sources = 0;
+	uint32_t num_of_sinks = 0;
+	int ret;
+
+	/* acquire all sink and source buffers, get handlers to sink/source API */
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink_buffer;
+
+		sink_buffer = container_of(blist, struct comp_buffer, source_list);
+		sinks_buffers_c[num_of_sinks] = buffer_acquire(sink_buffer);
+		audio_sink[num_of_sinks] =
+				audio_stream_get_sink(&sinks_buffers_c[num_of_sinks]->stream);
+		sink_reset_num_of_processed_bytes(audio_sink[num_of_sinks]);
+		num_of_sinks++;
+	}
+
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source_buffer;
+
+		source_buffer = container_of(blist, struct comp_buffer, sink_list);
+		source_buffers_c[num_of_sources] = buffer_acquire(source_buffer);
+		audio_src[num_of_sources] =
+				audio_stream_get_source(&source_buffers_c[num_of_sources]->stream);
+		source_reset_num_of_processed_bytes(audio_src[num_of_sources]);
+		num_of_sources++;
+	}
+
+	ret = module_process_sink_src(mod, audio_src, num_of_sources, audio_sink, num_of_sinks);
+
+	if (ret != -ENOSPC && ret != -ENODATA && ret) {
+		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %x",
+			 ret);
+	}
+
+	/* release all source buffers in reverse order */
+	for (int i = num_of_sources - 1; i >= 0; i--) {
+		mod->total_data_consumed += source_get_num_of_processed_bytes(audio_src[i]);
+		buffer_release(source_buffers_c[i]);
+	}
+
+	/* release all sink buffers in reverse order */
+	for  (int i = num_of_sinks - 1; i >= 0 ; i--) {
+		mod->total_data_produced += sink_get_num_of_processed_bytes(audio_sink[i]);
+		buffer_release(sinks_buffers_c[i]);
+	}
+
+	return ret;
+}
+
+static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
@@ -837,9 +909,6 @@ int module_adapter_copy(struct comp_dev *dev)
 	int ret, i = 0;
 
 	comp_dbg(dev, "module_adapter_copy(): start");
-
-	if (mod->simple_copy)
-		return module_adapter_simple_copy(dev);
 
 	list_for_item(blist, &mod->sink_buffer_list) {
 		sink = container_of(blist, struct comp_buffer, sink_list);
@@ -881,8 +950,8 @@ int module_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
-	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
-			     mod->output_buffers, mod->num_output_buffers);
+	ret = module_process_stream_buffer(mod, mod->input_buffers, mod->num_input_buffers,
+					   mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
 			comp_err(dev, "module_adapter_copy() error %x: module processing failed",
@@ -928,6 +997,25 @@ out:
 	}
 
 	return ret;
+}
+
+int module_adapter_copy(struct comp_dev *dev)
+{
+	comp_dbg(dev, "module_adapter_copy(): start");
+
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
+		return module_adapter_audio_stream_type_copy(dev);
+
+	if (IS_PROCESSING_MODE_RAW_DATA(mod))
+		return module_adapter_raw_data_type_copy(dev);
+
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
+		return module_adapter_sink_source_copy(dev);
+
+	comp_err(dev, "module_adapter_copy(): unknown processing_data_type");
+	return -EINVAL;
 }
 
 static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
@@ -1135,16 +1223,13 @@ int module_adapter_reset(struct comp_dev *dev)
 		return ret;
 	}
 
-	if (!mod->simple_copy)
+	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_output_buffers; i++)
 			rfree((__sparse_force void *)mod->output_buffers[i].data);
-
-	rfree(mod->output_buffers);
-
-	if (!mod->simple_copy)
 		for (i = 0; i < mod->num_input_buffers; i++)
 			rfree((__sparse_force void *)mod->input_buffers[i].data);
-
+	}
+	rfree(mod->output_buffers);
 	rfree(mod->input_buffers);
 
 	mod->num_input_buffers = 0;

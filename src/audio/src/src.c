@@ -1032,8 +1032,6 @@ static int src_init(struct processing_module *mod)
 	mod->verify_params_flags = BUFF_PARAMS_RATE;
 #endif
 
-	mod->simple_copy = true;
-
 	return 0;
 }
 
@@ -1121,7 +1119,7 @@ static int src_free(struct processing_module *mod)
 static struct module_interface src_interface = {
 	.init  = src_init,
 	.prepare = src_prepare,
-	.process = src_process,
+	.process_audio_stream = src_process,
 	.set_configuration = src_set_config,
 	.get_configuration = src_get_config,
 	.reset = src_reset,

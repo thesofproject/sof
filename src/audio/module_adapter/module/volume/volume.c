@@ -1326,12 +1326,6 @@ static int volume_prepare(struct processing_module *mod)
 	md->mpd.in_buff_size = sink_period_bytes;
 	md->mpd.out_buff_size = sink_period_bytes;
 
-	/*
-	 * also set the simple_copy flag as the volume component always produces period_bytes
-	 * every period and has only 1 input/output buffer
-	 */
-	mod->simple_copy = true;
-
 	return 0;
 
 err:
@@ -1597,7 +1591,7 @@ SOF_MODULE_INIT(volume, sys_comp_volume_init);
 static struct module_interface volume_interface = {
 	.init  = volume_init,
 	.prepare = volume_prepare,
-	.process = volume_process,
+	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
 	.reset = volume_reset,
@@ -1611,7 +1605,7 @@ SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
 static struct module_interface gain_interface = {
 	.init  = volume_init,
 	.prepare = volume_prepare,
-	.process = volume_process,
+	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
 	.reset = volume_reset,

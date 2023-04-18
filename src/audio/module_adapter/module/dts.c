@@ -452,7 +452,7 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 static struct module_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
-	.process = dts_codec_process,
+	.process_raw_data = dts_codec_process,
 	.set_configuration = dts_codec_set_configuration,
 	.reset = dts_codec_reset,
 	.free = dts_codec_free

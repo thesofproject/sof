@@ -55,7 +55,6 @@ static int mixer_init(struct processing_module *mod)
 
 	mod_data->private = md;
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
-	mod->simple_copy = true;
 	mod->no_pause = true;
 	return 0;
 }
@@ -266,7 +265,7 @@ static int mixer_prepare(struct processing_module *mod)
 static struct module_interface mixer_interface = {
 	.init  = mixer_init,
 	.prepare = mixer_prepare,
-	.process = mixer_process,
+	.process_audio_stream = mixer_process,
 	.reset = mixer_reset,
 	.free = mixer_free,
 };

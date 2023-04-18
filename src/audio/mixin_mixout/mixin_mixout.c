@@ -121,7 +121,6 @@ static int mixin_init(struct processing_module *mod)
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	dev->ipc_config.frame_fmt = frame_fmt;
-	mod->simple_copy = true;
 	mod->skip_src_buffer_invalidate = true;
 
 	return 0;
@@ -150,7 +149,6 @@ static int mixout_init(struct processing_module *mod)
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	dev->ipc_config.frame_fmt = frame_fmt;
-	mod->simple_copy = true;
 	mod->skip_sink_buffer_writeback = true;
 
 	return 0;
@@ -928,7 +926,7 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 static struct module_interface mixin_interface = {
 	.init  = mixin_init,
 	.prepare = mixin_prepare,
-	.process = mixin_process,
+	.process_audio_stream = mixin_process,
 	.set_configuration = mixin_set_config,
 	.reset = mixin_reset,
 	.free = mixin_free
@@ -940,7 +938,7 @@ SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 static struct module_interface mixout_interface = {
 	.init  = mixout_init,
 	.prepare = mixout_prepare,
-	.process = mixout_process,
+	.process_audio_stream = mixout_process,
 	.reset = mixout_reset,
 	.free = mixout_free
 };

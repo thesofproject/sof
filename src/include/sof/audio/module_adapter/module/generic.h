@@ -184,11 +184,6 @@ struct processing_module {
 	struct output_stream_buffer *output_buffers;
 	uint32_t num_input_buffers; /**< number of input buffers */
 	uint32_t num_output_buffers; /**< number of output buffers */
-	/*
-	 * flag set by a module that produces period_bytes every copy. It can be used by modules
-	 * that support 1:1, 1:N, N:1 sources:sinks configuration.
-	 */
-	bool simple_copy;
 
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
@@ -225,9 +220,13 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod);
-int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		   int num_input_buffers, struct output_stream_buffer *output_buffers,
-		   int num_output_buffers);
+int module_process_sink_src(struct processing_module *mod,
+			    struct source __sparse_cache **sources, int num_of_sources,
+			    struct sink __sparse_cache **sinks, int num_of_sinks);
+int module_process_stream_buffer(struct processing_module *mod,
+				 struct input_stream_buffer *input_buffers, int num_input_buffers,
+				 struct output_stream_buffer *output_buffers,
+				 int num_output_buffers);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
 int module_set_configuration(struct processing_module *mod,

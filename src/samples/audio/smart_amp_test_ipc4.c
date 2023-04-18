@@ -76,8 +76,6 @@ static int smart_amp_init(struct processing_module *mod)
 	memcpy_s(&sad->ipc4_cfg.output_pin, out_size,
 		 &base_cfg->base_cfg_ext.pin_formats[in_size], out_size);
 
-	mod->simple_copy = true;
-
 	return 0;
 
 sad_fail:
@@ -412,7 +410,7 @@ static int smart_amp_prepare(struct processing_module *mod)
 static struct module_interface smart_amp_interface = {
 	.init  = smart_amp_init,
 	.prepare = smart_amp_prepare,
-	.process = smart_amp_process,
+	.process_audio_stream = smart_amp_process,
 	.set_configuration = smart_amp_set_config,
 	.get_configuration = smart_amp_get_config,
 	.reset = smart_amp_reset,

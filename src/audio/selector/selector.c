@@ -940,11 +940,6 @@ static int selector_prepare(struct processing_module *mod)
 	md->mpd.in_buff_size = cd->source_period_bytes;
 	md->mpd.out_buff_size = cd->sink_period_bytes;
 
-	/* Selector module has 1 input buffer and 1 output buffer and produces period_bytes
-	 * every copy. Use 'simple copy' processing scheme.
-	 */
-	mod->simple_copy = true;
-
 	buffer_release(sink_c);
 	buffer_release(source_c);
 
@@ -1000,7 +995,7 @@ static int selector_reset(struct processing_module *mod)
 static struct module_interface selector_interface = {
 	.init			= selector_init,
 	.prepare		= selector_prepare,
-	.process		= selector_process,
+	.process_audio_stream	= selector_process,
 	.set_configuration	= selector_set_config,
 	.get_configuration	= selector_get_config,
 	.reset			= selector_reset,
