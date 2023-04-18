@@ -98,10 +98,18 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config.core = module_init->extension.r.core_id;
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (module_init->extension.r.proc_domain)
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
 	else
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
+	if (module_init->extension.r.proc_domain) {
+		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp %d", comp_id);
+		return NULL;
+	}
+	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
