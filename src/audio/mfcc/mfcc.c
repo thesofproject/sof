@@ -110,7 +110,6 @@ static int mfcc_init(struct processing_module *mod)
 		goto err_init;
 	}
 
-	mod->simple_copy = true;
 	return 0;
 
 err_init:
@@ -272,7 +271,7 @@ static struct module_interface mfcc_interface = {
 		.free = mfcc_free,
 		.set_configuration = mfcc_set_config,
 		.get_configuration = mfcc_get_config,
-		.process = mfcc_process,
+		.process_audio_stream = mfcc_process,
 		.prepare = mfcc_prepare,
 		.reset = mfcc_reset,
 };

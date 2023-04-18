@@ -14,6 +14,8 @@
 #define __SOF_MODULE_INTERFACE__
 
 #include <sof/compiler_attributes.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 
 /**
  * \enum module_cfg_fragment_position
@@ -81,15 +83,57 @@ struct module_interface {
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct processing_module *mod);
+
 	/**
-	 * Module specific processing procedure, called as part of module_adapter
-	 * component copy in .copy(). This procedure is responsible to consume
+	 * Module specific processing procedure
+	 * This procedure is responsible to consume
 	 * samples provided by the module_adapter and produce/output the processed
 	 * ones back to module_adapter.
+	 *
+	 * there are 3 versions of the procedure, the difference is the format of
+	 * input/output data
+	 *
+	 * the module MUST implement one and ONLY one of them
+	 *
+	 * process_audio_stream and process_raw_data are depreciated and will be removed
+	 * once pipeline learns to use module API directly (without module adapter)
+	 * modules that need such processing should use proper wrappers
+	 *
+	 * process
+	 *	- sources are handlers to source API struct source*[]
+	 *	- sinks are handlers to sink API struct sink*[]
 	 */
-	int (*process)(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		       int num_input_buffers, struct output_stream_buffer *output_buffers,
-		       int num_output_buffers);
+	int (*process)(struct processing_module *mod,
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+
+	/**
+	 * process_audio_stream (depreciated)
+	 *	- sources are input_stream_buffer[]
+	 *	    - sources[].data is a pointer to audio_stream structure
+	 *	- sinks are output_stream_buffer[]
+	 *	    - sinks[].data is a pointer to audio_stream structure
+	 *
+	 * It can be used by modules that support 1:1, 1:N, N:1 sources:sinks configuration.
+	 */
+	int (*process_audio_stream)(struct processing_module *mod,
+				    struct input_stream_buffer *input_buffers,
+				    int num_input_buffers,
+				    struct output_stream_buffer *output_buffers,
+				    int num_output_buffers);
+
+	/**
+	 * process_raw_data (depreciated)
+	 *	- sources are input_stream_buffer[]
+	 *	    - sources[].data is a pointer to raw audio data
+	 *	- sinks are output_stream_buffer[]
+	 *	    - sinks[].data is a pointer to raw audio data
+	 */
+	int (*process_raw_data)(struct processing_module *mod,
+				struct input_stream_buffer *input_buffers,
+				int num_input_buffers,
+				struct output_stream_buffer *output_buffers,
+				int num_output_buffers);
 
 	/**
 	 * Set module configuration for the given configuration ID

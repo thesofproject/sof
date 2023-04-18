@@ -670,12 +670,6 @@ static int eq_iir_init(struct processing_module *mod)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
-	/*
-	 * set the simple_copy flag as the eq_iir component always produces period_bytes
-	 * every period and has only 1 input/output buffer
-	 */
-	mod->simple_copy = true;
-
 	return 0;
 err:
 	rfree(cd);
@@ -967,7 +961,7 @@ static int eq_iir_reset(struct processing_module *mod)
 static struct module_interface eq_iir_interface = {
 	.init  = eq_iir_init,
 	.prepare = eq_iir_prepare,
-	.process = eq_iir_process,
+	.process_audio_stream = eq_iir_process,
 	.set_configuration = eq_iir_set_config,
 	.get_configuration = eq_iir_get_config,
 	.reset = eq_iir_reset,

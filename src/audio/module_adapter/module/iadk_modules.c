@@ -292,7 +292,7 @@ static int iadk_modules_reset(struct processing_module *mod)
 static struct module_interface iadk_interface = {
 	.init  = iadk_modules_init,
 	.prepare = iadk_modules_prepare,
-	.process = iadk_modules_process,
+	.process_raw_data = iadk_modules_process,
 	.set_processing_mode = iadk_modules_set_processing_mode,
 	.get_processing_mode = iadk_modules_get_processing_mode,
 	.set_configuration = iadk_modules_set_configuration,

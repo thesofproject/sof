@@ -94,8 +94,11 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 		return -EIO;
 	}
 
-	if (!interface->init || !interface->prepare || !interface->process ||
-	    !interface->reset || !interface->free) {
+	/*check interface, there must be one and only one of processing procedure */
+	if (!interface->init || !interface->prepare ||
+	    !interface->reset || !interface->free ||
+	    (!!interface->process + !!interface->process_audio_stream +
+	     !!interface->process_raw_data != 1)) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
@@ -225,16 +228,17 @@ int module_prepare(struct processing_module *mod)
 	return ret;
 }
 
-int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		   int num_input_buffers, struct output_stream_buffer *output_buffers,
-		   int num_output_buffers)
+int module_process_legacy(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers, int num_input_buffers,
+			  struct output_stream_buffer *output_buffers,
+			  int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "module_process() start");
+	comp_dbg(dev, "module_process_legacy() start");
 
 	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
@@ -245,15 +249,59 @@ int module_process(struct processing_module *mod, struct input_stream_buffer *in
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 
-	ret = md->ops->process(mod, input_buffers, num_input_buffers, output_buffers,
-			       num_output_buffers);
+	if (md->ops->process_audio_stream)
+		ret = md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
+						    output_buffers, num_output_buffers);
+	else if (md->ops->process_raw_data)
+		ret = md->ops->process_raw_data(mod, input_buffers, num_input_buffers,
+						output_buffers, num_output_buffers);
+	else
+		ret = -EOPNOTSUPP;
+
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
 		comp_err(dev, "module_process() error %d: for comp %d",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
-	comp_dbg(dev, "module_process() done");
+	comp_dbg(dev, "module_process_legacy() done");
+
+	/* reset state to idle */
+	md->state = MODULE_IDLE;
+	return 0;
+}
+
+int module_process_sink_src(struct processing_module *mod,
+			    struct sof_source __sparse_cache **sources, int num_of_sources,
+			    struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+
+{
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	struct module_data *md = &mod->priv;
+
+	comp_dbg(dev, "module_process sink src() start");
+
+	if (md->state != MODULE_IDLE) {
+		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
+			 dev_comp_id(dev), md->state);
+		return -EPERM;
+	}
+
+	/* set state to processing */
+	md->state = MODULE_PROCESSING;
+
+	assert(md->ops->process);
+	ret = md->ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
+
+	if (ret && ret != -ENOSPC && ret != -ENODATA) {
+		comp_err(dev, "module_process() error %d: for comp %d",
+			 ret, dev_comp_id(dev));
+		return ret;
+	}
+
+	comp_dbg(dev, "module_process sink src() done");
 
 	/* reset state to idle */
 	md->state = MODULE_IDLE;

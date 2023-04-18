@@ -749,7 +749,7 @@ cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_i
 static struct module_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
-	.process = cadence_codec_process,
+	.process_raw_data = cadence_codec_process,
 	.set_configuration = cadence_codec_set_configuration,
 	.reset = cadence_codec_reset,
 	.free = cadence_codec_free
