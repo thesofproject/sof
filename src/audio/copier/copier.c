@@ -715,6 +715,9 @@ static void copier_free(struct comp_dev *dev)
 		rfree(cd->hd);
 	}
 
+	if (cd->multi_endpoint_buffer)
+		buffer_free(cd->multi_endpoint_buffer);
+
 	for (i = 0; i < cd->endpoint_num; i++) {
 		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
 			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
