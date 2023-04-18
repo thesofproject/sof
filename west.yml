@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: abonislawski
+      url-base: https://github.com/abonislawski
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -36,7 +38,8 @@ manifest:
     - name: rimage
       repo-path: rimage
       path: sof/rimage
-      revision: 4ce79b152e23c7b3937a09ef57cdd69d125a9214
+      revision: c4d18c19389b580d63abe479ac2f04d89e5bc814
+      remote: abonislawski
 
     - name: tomlc99
       repo-path: tomlc99
