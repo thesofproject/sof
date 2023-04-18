@@ -40,6 +40,7 @@ config ZEPHYR_DP_SCHEDULER
 	default n
 	depends on IPC_MAJOR_4
 	depends on ZEPHYR_SOF_MODULE
+	depends on ACE
 	help
 	  Enable Data Processing preemptive scheduler based on
 	  Zephyr preemptive threads.
