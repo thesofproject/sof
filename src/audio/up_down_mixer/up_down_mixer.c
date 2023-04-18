@@ -351,7 +351,6 @@ static int up_down_mixer_init(struct processing_module *mod)
 	}
 
 	mod_data->private = cd;
-	mod->simple_copy = true;
 
 	cd->buf_in = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.ibs);
 	cd->buf_out = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.obs);
@@ -458,7 +457,7 @@ up_down_mixer_process(struct processing_module *mod,
 static struct module_interface up_down_mixer_interface = {
 	.init  = up_down_mixer_init,
 	.prepare = up_down_mixer_prepare,
-	.process = up_down_mixer_process,
+	.process_audio_stream = up_down_mixer_process,
 	.reset = up_down_mixer_reset,
 	.free = up_down_mixer_free
 };

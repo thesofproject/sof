@@ -117,7 +117,7 @@ static int passthrough_codec_free(struct processing_module *mod)
 static struct module_interface passthrough_interface = {
 	.init  = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
-	.process = passthrough_codec_process,
+	.process_raw_data = passthrough_codec_process,
 	.reset = passthrough_codec_reset,
 	.free = passthrough_codec_free
 };

@@ -473,7 +473,6 @@ static int tdfb_init(struct processing_module *mod)
 	  * aspects TDFB is simple component type.
 	  */
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
-	mod->simple_copy = true;
 	return 0;
 
 err:
@@ -823,7 +822,7 @@ static struct module_interface tdfb_interface = {
 	.free = tdfb_free,
 	.set_configuration = tdfb_set_config,
 	.get_configuration = tdfb_get_config,
-	.process = tdfb_process,
+	.process_audio_stream = tdfb_process,
 	.prepare = tdfb_prepare,
 	.reset = tdfb_reset,
 };

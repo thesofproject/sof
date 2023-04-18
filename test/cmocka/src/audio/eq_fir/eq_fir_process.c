@@ -439,7 +439,8 @@ static void test_audio_eq_fir(void **state)
 		mod->input_buffers[0].consumed = 0;
 		mod->output_buffers[0].size = 0;
 
-		ret = module_process(mod, mod->input_buffers, 1, mod->output_buffers, 1);
+		ret = module_process_legacy(mod, mod->input_buffers, 1,
+					    mod->output_buffers, 1);
 		assert_int_equal(ret, 0);
 
 		comp_update_buffer_consume(source, mod->input_buffers[0].consumed);
