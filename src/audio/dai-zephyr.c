@@ -224,7 +224,6 @@ static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
-	void *buffer_ptr;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -253,17 +252,12 @@ static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
 
 	local_buf = buffer_acquire(dd->local_buffer);
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		ret = dma_buffer_copy_to(local_buf, dma_buf,
 					 dd->process, bytes);
-
-		buffer_ptr = local_buf->stream.r_ptr;
-	} else {
+	else
 		ret = dma_buffer_copy_from(dma_buf, local_buf,
 					   dd->process, bytes);
-
-		buffer_ptr = local_buf->stream.w_ptr;
-	}
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
