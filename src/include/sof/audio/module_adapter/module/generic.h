@@ -179,13 +179,19 @@ struct processing_module {
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
-	uint32_t num_input_buffers; /**< number of input buffers */
-	uint32_t num_output_buffers; /**< number of output buffers */
+		/**< pointers local input buffers in case of raw data mode */
+	void __sparse_cache *local_input_buffer[PLATFORM_MAX_STREAMS];
+		/**< pointers local output buffer in case of raw data mode */
+	void __sparse_cache *local_output_buffer[PLATFORM_MAX_STREAMS];
 	/*
 	 * flag set by a module that produces period_bytes every copy. It can be used by modules
 	 * that support 1:1, 1:N, N:1 sources:sinks configuration.
+	 *
+	 * in module_process: input_buffers->data and output_buffers->data point to
+	 *   audio_stream structures
+	 *
+	 * in case simple_copy==0 (a.k.a "raw data mode") double buffering will occur
+	 *    input_buffers->data and output_buffers->data point to raw linear data buffers
 	 */
 	bool simple_copy;
 
