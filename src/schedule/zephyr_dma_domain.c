@@ -32,6 +32,10 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 #define interrupt_disable mux_interrupt_disable
 #endif
 
+#ifdef CONFIG_ARM64
+#define interrupt_clear_mask(irq, bit)
+#endif /* CONFIG_ARM64 */
+
 #define SEM_LIMIT 1
 #define ZEPHYR_PDOMAIN_STACK_SIZE 8192
 
