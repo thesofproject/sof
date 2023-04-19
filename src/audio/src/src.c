@@ -974,8 +974,8 @@ static int src_process(struct processing_module *mod,
 	comp_dbg(dev, "src_process()");
 
 	/* src component needs 1 source and 1 sink buffer */
-	source_c = (struct audio_stream *)input_buffers[0].data;
-	sink_c = (struct audio_stream *)output_buffers[0].data;
+	source_c = (struct audio_stream __sparse_cache *)input_buffers[0].data;
+	sink_c = (struct audio_stream __sparse_cache *)output_buffers[0].data;
 
 	ret = src_get_copy_limits(cd, source_c, sink_c);
 	if (ret) {
