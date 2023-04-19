@@ -20,6 +20,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/cache.h>
 
 #include <zephyr/sys/p4wq.h>
 #include <rtos/idc.h>
@@ -62,7 +63,7 @@ static void idc_handler(struct k_p4wq_work *work)
 	int payload = -1;
 	k_spinlock_key_t key;
 
-	SOC_DCACHE_INVALIDATE(msg, sizeof(*msg));
+	sys_cache_data_flush_range(msg, sizeof(*msg));
 
 	if (msg->size == sizeof(int)) {
 		const int idc_handler_memcpy_err __unused =
@@ -122,13 +123,13 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 					       msg->payload, msg->size);
 		assert(!idc_send_memcpy_err);
 
-		SOC_DCACHE_FLUSH(payload->data, MIN(sizeof(payload->data), msg->size));
+		sys_cache_data_flush_range(payload->data, MIN(sizeof(payload->data), msg->size));
 	}
 
 	/* Temporarily store sender core ID */
 	msg_cp->core = cpu_get_id();
 
-	SOC_DCACHE_FLUSH(msg_cp, sizeof(*msg_cp));
+	sys_cache_data_flush_range(msg_cp, sizeof(*msg_cp));
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
 
 	switch (mode) {
