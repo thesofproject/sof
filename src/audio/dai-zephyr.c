@@ -217,12 +217,70 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 	return fifo_address;
 }
 
+static int dma_buffer_copy_from_multi(struct comp_buffer __sparse_cache *source,
+				      struct comp_buffer __sparse_cache *sink,
+				      dma_process_func process, uint32_t source_bytes)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	uint32_t samples = source_bytes /
+			   audio_stream_sample_bytes(istream);
+	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
+			      samples;
+	int ret;
+
+	/* source buffer contains data copied by DMA */
+	audio_stream_invalidate(istream, source_bytes);
+
+	/* process data */
+	ret = process(istream, 0, &sink->stream, 0, samples);
+
+	buffer_stream_writeback(sink, sink_bytes);
+
+	/*
+	 * consume istream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	comp_update_buffer_produce(sink, sink_bytes);
+
+	return ret;
+}
+
+static int dma_buffer_copy_to_multi(struct comp_buffer __sparse_cache *source,
+				    struct comp_buffer __sparse_cache *sink,
+				    dma_process_func process, uint32_t sink_bytes,
+				    uint32_t *source_bytes)
+{
+	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	uint32_t samples = sink_bytes /
+			   audio_stream_sample_bytes(ostream);
+	int ret;
+
+	*source_bytes = audio_stream_sample_bytes(&source->stream) *
+			      samples;
+
+	buffer_stream_invalidate(source, *source_bytes);
+
+	/* process data */
+	ret = process(&source->stream, 0, ostream, 0, samples);
+
+	/* sink buffer contains data meant to copied to DMA */
+	audio_stream_writeback(ostream, sink_bytes);
+
+	/*
+	 * produce ostream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_produce(ostream, sink_bytes);
+
+	return ret;
+}
+
 /* this is called by DMA driver every time descriptor has completed */
 static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "dai_dma_cb()");
 
@@ -250,13 +308,44 @@ static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, 
 
 	local_buf = buffer_acquire(dd->local_buffer);
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		ret = dma_buffer_copy_to(local_buf, dma_buf,
-					 dd->process, bytes);
-	else
-		ret = dma_buffer_copy_from(dma_buf, local_buf,
-					   dd->process, bytes);
+	if (list_is_empty(&dev->bsink_list)) {
+		/* endpoint case, directly copy/consume and produce */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			ret = dma_buffer_copy_to(local_buf, dma_buf,
+						 dd->process, bytes);
+		else
+			ret = dma_buffer_copy_from(dma_buf, local_buf,
+						   dd->process, bytes);
+	} else {
+		/* copier in middle case, have one or more output */
+		struct comp_buffer *sink;
+		struct comp_buffer __sparse_cache *sink_c;
+		struct list_item *sink_list;
+		uint32_t source_bytes = 0;
 
+		list_for_item(sink_list, &dev->bsink_list) {
+			sink = container_of(sink_list, struct comp_buffer, source_list);
+			sink_c = buffer_acquire(sink);
+
+			if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+				ret = dma_buffer_copy_to_multi(local_buf, sink_c,
+							       dd->process,
+							       bytes, &source_bytes);
+			} else {
+				ret = dma_buffer_copy_from_multi(dma_buf, sink_c,
+								 dd->process, bytes);
+			}
+			buffer_release(sink_c);
+
+			if (ret < 0)
+				break;
+		}
+		/* consume source buffer based on playback/capture once all sink buffer copied */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			comp_update_buffer_consume(local_buf, source_bytes);
+		else
+			audio_stream_consume(&dma_buf->stream, bytes);
+	}
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
 		struct comp_buffer __sparse_cache *source_c, *sink_c;
