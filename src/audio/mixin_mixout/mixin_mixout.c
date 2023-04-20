@@ -100,7 +100,7 @@ static int mixin_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct mixin_data *md;
 	int i;
-	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	comp_dbg(dev, "mixin_init()");
 
@@ -132,7 +132,7 @@ static int mixout_init(struct processing_module *mod)
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *mo_data;
-	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	comp_dbg(dev, "mixout_new()");
 
@@ -629,6 +629,7 @@ static int mixin_params(struct processing_module *mod)
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
 		struct comp_buffer __sparse_cache *sink_c;
+		enum sof_ipc_frame frame_fmt, valid_fmt;
 		uint16_t sink_id;
 
 		sink = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
@@ -654,9 +655,11 @@ static int mixin_params(struct processing_module *mod)
 		 */
 		audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
 					    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-					    &sink_c->stream.frame_fmt,
-					    &sink_c->stream.valid_sample_fmt,
+					    &frame_fmt, &valid_fmt,
 					    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+		sink_c->stream.frame_fmt = frame_fmt;
+		sink_c->stream.valid_sample_fmt = valid_fmt;
 
 		buffer_release(sink_c);
 	}
@@ -724,7 +727,7 @@ static int mixin_prepare(struct processing_module *mod)
 static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					     struct sof_ipc_stream_params *params)
 {
-	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int i;
 
 	memset(params, 0, sizeof(struct sof_ipc_stream_params));
@@ -751,7 +754,7 @@ static int mixout_params(struct processing_module *mod)
 	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
 	struct comp_dev *dev = mod->dev;
-	enum sof_ipc_frame __sparse_cache dummy;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	uint32_t sink_period_bytes, sink_stream_size;
 	int ret;
 
@@ -771,8 +774,10 @@ static int mixout_params(struct processing_module *mod)
 	/* comp_verify_params() does not modify valid_sample_fmt (a BUG?), let's do this here */
 	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
 				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &dummy, &sink_c->stream.valid_sample_fmt,
+				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+
+	sink_c->stream.valid_sample_fmt = valid_fmt;
 
 	sink_stream_size = audio_stream_get_size(&sink_c->stream);
 

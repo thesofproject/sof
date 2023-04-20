@@ -146,6 +146,7 @@ static void smart_amp_set_params(struct comp_dev *dev,
 	if (!list_is_empty(&dev->bsink_list)) {
 		struct ipc4_output_pin_format *sink_fmt = &sad->ipc4_cfg.output_pin;
 		struct ipc4_audio_format out_fmt = sink_fmt->audio_fmt;
+		enum sof_ipc_frame frame_fmt, valid_fmt;
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
@@ -154,9 +155,11 @@ static void smart_amp_set_params(struct comp_dev *dev,
 
 		audio_stream_fmt_conversion(out_fmt.depth,
 					    out_fmt.valid_bit_depth,
-					    &sink_c->stream.frame_fmt,
-					    &sink_c->stream.valid_sample_fmt,
+					    &frame_fmt, &valid_fmt,
 					    out_fmt.s_type);
+
+		sink_c->stream.frame_fmt = frame_fmt;
+		sink_c->stream.valid_sample_fmt = valid_fmt;
 
 		sink_c->buffer_fmt = out_fmt.interleaving_style;
 		params->frame_fmt = sink_c->stream.frame_fmt;

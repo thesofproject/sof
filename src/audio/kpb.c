@@ -222,7 +222,7 @@ static void kpb_set_params(struct comp_dev *dev,
 			   struct sof_ipc_stream_params *params)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	comp_dbg(dev, "kpb_set_params()");
 

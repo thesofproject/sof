@@ -985,10 +985,9 @@ static int volume_set_attenuation(struct processing_module *mod, const uint8_t *
 				  int data_size)
 {
 	struct vol_data *cd = module_get_private_data(mod);
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct comp_dev *dev = mod->dev;
 	uint32_t attenuation;
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
-
 
 	/* only support attenuation in format of 32bit */
 	if (data_size > sizeof(uint32_t)) {
@@ -1088,10 +1087,10 @@ static int volume_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct sof_ipc_stream_params vol_params;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	struct comp_buffer __sparse_cache *sink_c;
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
 	int i, ret;
 
 	comp_dbg(dev, "volume_params()");

@@ -263,6 +263,7 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct list_item *source_list;
 	int i, j, valid_bit_depth;
 	const uint32_t byte_align = 1;
@@ -298,9 +299,11 @@ static void set_mux_params(struct processing_module *mod)
 			sink_c->stream.rate = out_fmt.sampling_frequency;
 			audio_stream_fmt_conversion(out_fmt.depth,
 						    out_fmt.valid_bit_depth,
-						    &sink_c->stream.frame_fmt,
-						    &sink_c->stream.valid_sample_fmt,
+						    &frame_fmt, &valid_fmt,
 						    out_fmt.s_type);
+
+			sink_c->stream.frame_fmt = frame_fmt;
+			sink_c->stream.valid_sample_fmt = valid_fmt;
 
 			sink_c->buffer_fmt = out_fmt.interleaving_style;
 			params->frame_fmt = sink_c->stream.frame_fmt;
@@ -331,8 +334,7 @@ static void set_mux_params(struct processing_module *mod)
 						cd->md.base_cfg.audio_fmt.sampling_frequency;
 				audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
 							    valid_bit_depth,
-							    &source_c->stream.frame_fmt,
-							    &source_c->stream.valid_sample_fmt,
+							    &frame_fmt, &valid_fmt,
 							    cd->md.base_cfg.audio_fmt.s_type);
 
 				source_c->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
@@ -347,15 +349,19 @@ static void set_mux_params(struct processing_module *mod)
 				source_c->stream.rate = cd->md.reference_format.sampling_frequency;
 				audio_stream_fmt_conversion(cd->md.reference_format.depth,
 							    cd->md.reference_format.valid_bit_depth,
-							    &source_c->stream.frame_fmt,
-							    &source_c->stream.valid_sample_fmt,
+							    &frame_fmt, &valid_fmt,
 							    cd->md.reference_format.s_type);
+
 				source_c->buffer_fmt = cd->md.reference_format.interleaving_style;
 
 				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 					source_c->chmap[i] =
 						(cd->md.reference_format.ch_map >> i * 4) & 0xf;
 			}
+
+			source_c->stream.frame_fmt = frame_fmt;
+			source_c->stream.valid_sample_fmt = valid_fmt;
+
 			source_c->hw_params_configured = true;
 			buffer_release(source_c);
 		}

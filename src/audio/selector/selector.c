@@ -576,7 +576,7 @@ SOF_MODULE_INIT(selector, sys_comp_selector_init);
 #else
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
-	enum sof_ipc_frame __sparse_cache frame_fmt, valid_fmt;
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
 	const struct ipc4_audio_format *out_fmt;
 	int i;
@@ -697,14 +697,17 @@ static void set_selector_params(struct processing_module *mod,
 		struct comp_buffer *sink_buf =
 			container_of(sink_list, struct comp_buffer, source_list);
 		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_buf);
+		enum sof_ipc_frame frame_fmt, valid_fmt;
 
 		sink->stream.channels = params->channels;
 		sink->stream.rate = params->rate;
 		audio_stream_fmt_conversion(out_fmt->depth,
 					    out_fmt->valid_bit_depth,
-					    &sink->stream.frame_fmt,
-					    &sink->stream.valid_sample_fmt,
+					    &frame_fmt, &valid_fmt,
 					    out_fmt->s_type);
+
+		sink->stream.frame_fmt = frame_fmt;
+		sink->stream.valid_sample_fmt = valid_fmt;
 
 		sink->buffer_fmt = out_fmt->interleaving_style;
 
@@ -725,15 +728,18 @@ static void set_selector_params(struct processing_module *mod,
 	source = buffer_acquire(src_buf);
 	if (!source->hw_params_configured) {
 		struct ipc4_audio_format *in_fmt;
+		enum sof_ipc_frame frame_fmt, valid_fmt;
 
 		in_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 		source->stream.channels = in_fmt->channels_count;
 		source->stream.rate = in_fmt->sampling_frequency;
 		audio_stream_fmt_conversion(in_fmt->depth,
 					    in_fmt->valid_bit_depth,
-					    &source->stream.frame_fmt,
-					    &source->stream.valid_sample_fmt,
+					    &frame_fmt, &valid_fmt,
 					    in_fmt->s_type);
+
+		source->stream.frame_fmt = frame_fmt;
+		source->stream.valid_sample_fmt = valid_fmt;
 
 		source->buffer_fmt = in_fmt->interleaving_style;
 
