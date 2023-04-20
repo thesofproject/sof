@@ -962,6 +962,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct comp_dev *dai_copier;
 	struct copier_data *dai_cd;
 	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
 	int ret, i;
 
@@ -1054,7 +1055,9 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
-		pipe_reg.stream_start_offset = posn.dai_posn + latency * buffer->stream.size;
+		buffer_c = buffer_acquire(buffer);
+		pipe_reg.stream_start_offset = posn.dai_posn + latency * buffer_c->stream.size;
+		buffer_release(buffer_c);
 		pipe_reg.stream_end_offset = 0;
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	} else if (cmd == COMP_TRIGGER_PAUSE) {
@@ -1077,7 +1080,9 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
-		pipe_reg.stream_start_offset += latency * buffer->stream.size;
+		buffer_c = buffer_acquire(buffer);
+		pipe_reg.stream_start_offset += latency * buffer_c->stream.size;
+		buffer_release(buffer_c);
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
 				      sizeof(pipe_reg.stream_start_offset));
 	}
