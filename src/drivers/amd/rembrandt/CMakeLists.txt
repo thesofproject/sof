@@ -6,11 +6,13 @@ add_local_sources(sof
 	acp_sp_dai.c
 	acp_dmic_dai.c
 	acp_hs_dai.c
+	acp_sw0_audio_dai.c
 	interrupt.c
 	ipc.c
 	timer.c
 	acp_bt_dma.c
 	acp_sp_dma.c
 	acp_hs_dma.c
+	acp_sw0_audio_dma.c
 	acp_dmic_dma.c
 )

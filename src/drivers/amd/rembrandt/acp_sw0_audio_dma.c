@@ -1,0 +1,1137 @@
+// SPDX-License-Identifier: BSD-3-Clause//
+//Copyright(c) 2022 AMD. All rights reserved.
+//
+//Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+//              Bala Kishore <balakishore.pati@amd.com>
+
+#include <rtos/atomic.h>
+#include <sof/audio/component.h>
+#include <rtos/bit.h>
+#include <sof/drivers/acp_dai_dma.h>
+#include <rtos/interrupt.h>
+#include <rtos/timer.h>
+#include <rtos/alloc.h>
+#include <rtos/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/pm_runtime.h>
+#include <sof/lib/notifier.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <rtos/spinlock.h>
+#include <sof/math/numbers.h>
+#include <sof/trace/trace.h>
+#include <ipc/topology.h>
+#include <user/trace.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <platform/fw_scratch_mem.h>
+#include <platform/chip_registers.h>
+
+/*b414df09-9e31-4c59-8657-7afc8deba70c*/
+DECLARE_SOF_UUID("acp-sw0-audio", acp_sw0_audio_uuid, 0xb414df09, 0x9e31, 0x4c59,
+		0x86, 0x57, 0x7a, 0xfc, 0x8d, 0xeb, 0xa7, 0x0c);
+DECLARE_TR_CTX(acp_sw0_audio_tr, SOF_UUID(acp_sw0_audio_uuid), LOG_LEVEL_INFO);
+
+#define SW0_AUDIO_FIFO_SIZE			128 //384 //256 //512
+#define SW0_AUDIO_TX_FIFO_ADDR		0
+#define SW0_AUDIO_RX_FIFO_ADDR		(SW0_AUDIO_TX_FIFO_ADDR+SW0_AUDIO_FIFO_SIZE)
+
+#define SW0_BT_FIFO_SIZE		128
+#define SW0_BT_TX_FIFO_ADDR		(SW0_AUDIO_RX_FIFO_ADDR + SW0_AUDIO_FIFO_SIZE)
+#define SW0_BT_RX_FIFO_ADDR		(SW0_BT_TX_FIFO_ADDR + SW0_BT_FIFO_SIZE)
+
+#define SW0_HS_FIFO_SIZE		128
+#define SW0_HS_TX_FIFO_ADDR		(SW0_BT_RX_FIFO_ADDR + SW0_BT_FIFO_SIZE)
+#define SW0_HS_RX_FIFO_ADDR		(SW0_HS_TX_FIFO_ADDR + SW0_HS_FIFO_SIZE)
+
+#define SW1_FIFO_SIZE			128
+#define SW1_TX_FIFO_ADDR		(SW0_HS_RX_FIFO_ADDR +SW1_FIFO_SIZE)
+#define SW1_RX_FIFO_ADDR		(SW1_TX_FIFO_ADDR+SW1_FIFO_SIZE)
+
+
+
+static uint32_t sw0_audio_buff_size_playback;
+static uint32_t sw0_audio_buff_size_capture;
+
+static uint32_t sw1_buff_size_playback;
+static uint32_t sw1_buff_size_capture;
+
+/* allocate next free DMA channel */
+static struct dma_chan_data *acp_dai_sw0_audio_dma_channel_get(struct dma *dma,
+						   unsigned int req_chan)
+{
+	k_spinlock_key_t key;
+	struct dma_chan_data *channel;
+
+	key = k_spin_lock(&dma->lock);
+	if (req_chan >= dma->plat_data.channels) {
+		k_spin_unlock(&dma->lock, key);
+		tr_err(&acp_sw0_audio_tr, "Channel %d not in range", req_chan);
+		return NULL;
+	}
+	channel = &dma->chan[req_chan];
+	if (channel->status != COMP_STATE_INIT) {
+		k_spin_unlock(&dma->lock, key);
+		tr_err(&acp_sw0_audio_tr, "channel already in use %d", req_chan);
+		return NULL;
+	}
+	atomic_add(&dma->num_channels_busy, 1);
+	channel->status = COMP_STATE_READY;
+	k_spin_unlock(&dma->lock, key);
+	return channel;
+}
+
+/* channel must not be running when this is called */
+static void acp_dai_sw0_audio_dma_channel_put(struct dma_chan_data *channel)
+{
+	k_spinlock_key_t key;
+
+	notifier_unregister_all(NULL, channel);
+	key = k_spin_lock(&channel->dma->lock);
+	channel->status = COMP_STATE_INIT;
+	atomic_sub(&channel->dma->num_channels_busy, 1);
+	k_spin_unlock(&channel->dma->lock, key);
+
+}
+
+static int acp_dai_sw0_audio_dma_start(struct dma_chan_data *channel)
+{
+	uint32_t		sw0_audio_tx_en;
+	uint32_t		sw0_audio_rx_en;
+	uint32_t		sw0_audio_tx_en1 = 0;
+	uint32_t		sw0_audio_rx_en1 = 0;
+	uint32_t		sw0_audio_tx_en2 = 0;
+	uint32_t		sw0_audio_rx_en2 = 0;
+	uint32_t		sw0_audio_tx_en3 = 0;
+	uint32_t		sw0_audio_rx_en3 = 0;
+	uint32_t		sw0_audio_tx_en4 = 0;
+	uint32_t		sw0_audio_rx_en4 = 0;
+	uint32_t		acp_pdm_en;
+	volatile int    tx_en_status;
+	volatile int    rx_en_status;
+	uint32_t delay_cnt = 10000;
+	volatile int    tx_en_status_1;
+
+	tr_info(&acp_sw0_audio_tr, "dai acp acp_dai_sw0_audio_dma_start()");
+
+	sw0_audio_tx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN));
+	sw0_audio_rx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN));
+	sw0_audio_tx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_TX_EN));
+	sw0_audio_rx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_RX_EN));
+	sw0_audio_tx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_TX_EN));
+	sw0_audio_rx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_RX_EN));
+	sw0_audio_tx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN));
+	sw0_audio_rx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN));
+
+	sw0_audio_tx_en = (sw0_audio_tx_en1 || sw0_audio_tx_en2||sw0_audio_tx_en3 || sw0_audio_tx_en4);
+	sw0_audio_rx_en = (sw0_audio_rx_en1 || sw0_audio_rx_en2||sw0_audio_rx_en3 || sw0_audio_rx_en4);
+
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+
+	if (!sw0_audio_tx_en && !sw0_audio_rx_en && !acp_pdm_en) { //KEEP THIS DSP CLK CHANGES
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
+		/* Request SMU to set aclk to 600 Mhz */
+		acp_change_clock_notify(600000000);
+	}
+	//io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_EN), 0x1);//??CHECK??// REMOVE
+	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+		channel->status = COMP_STATE_ACTIVE;
+
+		if(channel->index==5)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN), 1);
+			//ADD TX EN STATUS with delay loop2
+		
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN_STATUS);
+			//while (0==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN_STATUS);
+				if((tx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN_STATUS);
+		}
+		else if(channel->index==7)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_BT_TX_EN), 1);
+			//ADD TX EN STATUS with delay loop2
+		
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN_STATUS);
+			//while (0==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN_STATUS);
+				if((tx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN_STATUS);
+		}
+		else if(channel->index==1)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_HS_TX_EN), 1);
+			//ADD TX EN STATUS with delay loop2
+		
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN_STATUS);
+			//while (0==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN_STATUS);
+				if((tx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN_STATUS);
+		}
+		else if(channel->index==3)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN), 1);
+			//ADD TX EN STATUS with delay loop2
+		
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN_STATUS);
+			//while (0==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN_STATUS);
+				if((tx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN_STATUS);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Start dma channel index not defined %d", channel->index);
+			return -EINVAL;
+		}
+
+
+
+	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+		channel->status = COMP_STATE_ACTIVE;
+
+		if(channel->index==4)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN), 1);
+			//ADD RX EN STATUS with delay loop2
+
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_RX_EN_STATUS);
+			//while (0==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_RX_EN_STATUS);
+				if((rx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_RX_EN_STATUS);
+		}
+		else if(channel->index==6)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_BT_RX_EN), 1);
+			//ADD RX EN STATUS with delay loop2
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_RX_EN_STATUS);
+			//while (0==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_RX_EN_STATUS);
+				if((rx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_RX_EN_STATUS);
+		}
+		else if(channel->index==0)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_HS_RX_EN), 1);
+			//ADD RX EN STATUS with delay loop2
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_RX_EN_STATUS);
+			//while (0==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_RX_EN_STATUS);
+				if((rx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_RX_EN_STATUS);
+		}
+		else if(channel->index==2)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN), 1);
+			//ADD RX EN STATUS with delay loop2
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN_STATUS);
+			//while (0==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN_STATUS);
+				if((rx_en_status&0x1)==1)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN_STATUS);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+	} else {
+		tr_err(&acp_sw0_audio_tr, "Start direction not defined %d", channel->direction);
+		return -EINVAL;
+	}
+	
+	//while(1);
+	//tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN);
+	tr_info(&acp_sw0_audio_tr, "DMA Start Enable:%d EnableStatus:%d", tx_en_status_1,tx_en_status);
+	return 0;
+}
+
+
+static int acp_dai_sw0_audio_dma_release(struct dma_chan_data *channel)
+{
+	/* nothing to do on rembrandt */
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_pause(struct dma_chan_data *channel)
+{
+	/* nothing to do on rembrandt */
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_stop(struct dma_chan_data *channel)
+{
+	uint32_t		sw0_audio_tx_en;
+	uint32_t		sw0_audio_rx_en;
+	uint32_t		sw0_audio_tx_en1;
+	uint32_t		sw0_audio_rx_en1;
+	uint32_t		sw0_audio_tx_en2;
+	uint32_t		sw0_audio_rx_en2;
+	uint32_t		sw0_audio_tx_en3;
+	uint32_t		sw0_audio_rx_en3;
+	uint32_t		sw0_audio_tx_en4;
+	uint32_t		sw0_audio_rx_en4;
+	uint32_t		acp_pdm_en;
+	volatile int    tx_en_status;
+	volatile int    rx_en_status;
+	uint32_t delay_cnt = 10000;
+	volatile int    tx_en_status_1;
+
+	switch (channel->status) {
+	case COMP_STATE_READY:
+	case COMP_STATE_PREPARE:
+		return 0;
+	case COMP_STATE_PAUSED:
+	case COMP_STATE_ACTIVE:
+		break;
+	default:
+		return -EINVAL;
+	}
+	channel->status = COMP_STATE_READY;
+
+	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+
+		if(channel->index==5)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN), 0);
+			//POLL FOR TX STATUS
+		
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN_STATUS);
+			//while (1==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN_STATUS);
+				if((tx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_TX_EN);
+		}
+		else if(channel->index==7)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_BT_TX_EN), 0);
+			//POLL FOR TX STATUS
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN_STATUS);
+			//while (1==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN_STATUS);
+				if((tx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_TX_EN);
+		}
+		else if(channel->index==1)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_HS_TX_EN), 0);
+			//POLL FOR TX STATUS
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN_STATUS);
+			//while (1==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN_STATUS);
+				if((tx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_TX_EN);
+		}
+		else if(channel->index==3)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN), 0);
+			//POLL FOR TX STATUS
+			tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN_STATUS);
+			//while (1==tx_en_status)
+			while (delay_cnt>0)
+			{
+				tx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN_STATUS);
+				if((tx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+			tx_en_status_1 = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+		
+		
+		tr_info(&acp_sw0_audio_tr, "DMA Stop :%d EnableStatus:%d", tx_en_status_1,tx_en_status);
+
+	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+
+		if(channel->index==4)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN), 0);
+			//POLL FOR RX STATUS
+		
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_RX_EN_STATUS);
+			//while (1==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_Audio_RX_EN_STATUS);
+				if((rx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+		}
+		else if(channel->index==6)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_BT_RX_EN), 0);
+			//POLL FOR RX STATUS
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_RX_EN_STATUS);
+			//while (1==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_BT_RX_EN_STATUS);
+				if((rx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+		}
+		else if(channel->index==0)
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_SW_HS_RX_EN), 0);
+			//POLL FOR RX STATUS
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_RX_EN_STATUS);
+			//while (1==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_SW_HS_RX_EN_STATUS);
+				if((rx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+		}
+		else if(channel->index==2)//??TBD??//
+		{
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN), 0);
+			//POLL FOR RX STATUS
+			rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN_STATUS);
+			//while (1==rx_en_status)
+			while (delay_cnt>0)
+			{
+				rx_en_status = io_reg_read(PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN_STATUS);
+				if((rx_en_status&0x1)==0)
+				{
+					break;
+				}
+				delay_cnt--;
+			}
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+	} else {
+		tr_err(&acp_sw0_audio_tr, "Stop direction not defined %d", channel->direction);
+		return -EINVAL;
+	}
+
+	sw0_audio_tx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN));
+	sw0_audio_rx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN));
+	sw0_audio_tx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_TX_EN));
+	sw0_audio_rx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_RX_EN));
+	sw0_audio_tx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_TX_EN));
+	sw0_audio_rx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_RX_EN));
+	sw0_audio_tx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN));
+	sw0_audio_rx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN));
+
+	sw0_audio_tx_en = (sw0_audio_tx_en1 || sw0_audio_tx_en2||sw0_audio_tx_en3 || sw0_audio_tx_en4);
+	sw0_audio_rx_en = (sw0_audio_rx_en1 || sw0_audio_rx_en2||sw0_audio_rx_en3 || sw0_audio_rx_en4);
+
+	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+
+	if (!sw0_audio_tx_en && !sw0_audio_rx_en) {
+		//io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_EN), 0);//??CHECK?? //REMOVE
+		/* Request SMU to scale down aclk to minimum clk */
+		if (!acp_pdm_en) {
+			acp_change_clock_notify(0);
+			io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
+		}
+	}
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_status(struct dma_chan_data *channel,
+			    struct dma_chan_status *status,
+			    uint8_t direction)
+{
+	/* nothing to do on rembrandt */
+	return 0;
+}
+
+/* set the DMA channel configuration, source/target address, buffer sizes */
+static int acp_dai_sw0_audio_dma_set_config(struct dma_chan_data *channel,
+				struct dma_sg_config *config)
+{
+	uint32_t sw0_audio_ringbuff_addr;
+	uint32_t sw0_audio_fifo_addr;
+
+	uint32_t sw1_ringbuff_addr;
+	uint32_t sw1_fifo_addr;
+
+	tr_info(&acp_sw0_audio_tr, "dai acp acp_dai_sw0_audio_dma_set_config()");
+
+	if (!config->cyclic) {
+		tr_err(&acp_sw0_audio_tr, "cyclic configurations only supported!");
+		return -EINVAL;
+	}
+	if (config->scatter) {
+		tr_err(&acp_sw0_audio_tr, "scatter enabled, that is not supported for now!");
+		return -EINVAL;
+	}
+
+	channel->is_scheduling_source = true;
+	channel->direction = config->direction;
+
+	if (config->direction ==  DMA_DIR_MEM_TO_DEV) {
+
+		if(channel->index==5)
+		{
+			sw0_audio_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Transmit FIFO Address and FIFO Size*/
+			sw0_audio_fifo_addr = SW0_AUDIO_TX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_FIFOADDR), sw0_audio_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_FIFOSIZE), (uint32_t)(SW0_AUDIO_FIFO_SIZE));
+
+			/* Transmit RINGBUFFER Address and size*/
+			config->elem_array.elems[0].src = (config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
+			sw0_audio_ringbuff_addr = (config->elem_array.elems[0].src | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_RINGBUFADDR), sw0_audio_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_RINGBUFSIZE), sw0_audio_buff_size_playback);
+
+			/* Transmit DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for HS transmit FIFO - Half of HS buffer size */
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_TX_INTR_WATERMARK_SIZE),
+				     (sw0_audio_buff_size_playback >> 1));
+		}
+		else if(channel->index==7)//??TBD??//
+		{
+			sw1_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Transmit FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW0_BT_TX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_FIFOSIZE), (uint32_t)(SW0_BT_FIFO_SIZE));
+
+			/* Transmit RINGBUFFER Address and size*/
+			config->elem_array.elems[0].src = (config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].src | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_RINGBUFSIZE), sw1_buff_size_playback);
+
+			/* Transmit DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for HS transmit FIFO - Half of HS buffer size */
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_playback >> 1));
+		}
+		else if(channel->index==1)
+		{
+			sw1_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Transmit FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW0_HS_TX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_FIFOSIZE), (uint32_t)(SW0_HS_FIFO_SIZE));
+
+			/* Transmit RINGBUFFER Address and size*/
+			config->elem_array.elems[0].src = (config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].src | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_RINGBUFSIZE), sw1_buff_size_playback);
+
+			/* Transmit DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for HS transmit FIFO - Half of HS buffer size */
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_TX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_playback >> 1));
+		}
+		else if(channel->index==3)//??TBD??//
+		{
+			sw1_buff_size_playback = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Transmit FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW1_TX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_FIFOSIZE), (uint32_t)(SW1_FIFO_SIZE));
+
+			/* Transmit RINGBUFFER Address and size*/
+			config->elem_array.elems[0].src = (config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].src | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_RINGBUFSIZE), sw1_buff_size_playback);
+
+			/* Transmit DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for HS transmit FIFO - Half of HS buffer size */
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_TX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_playback >> 1));
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+	} else if (config->direction == DMA_DIR_DEV_TO_MEM) {
+
+		if(channel->index==4)
+		{
+			sw0_audio_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Receive FIFO Address and FIFO Size*/
+			sw0_audio_fifo_addr = SW0_AUDIO_RX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_FIFOADDR), sw0_audio_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_FIFOSIZE), (uint32_t)(SW0_AUDIO_FIFO_SIZE));
+
+			/* Receive RINGBUFFER Address and size*/
+			config->elem_array.elems[0].dest =
+				(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
+			sw0_audio_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_RINGBUFADDR), sw0_audio_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_RINGBUFSIZE), sw0_audio_buff_size_capture);
+
+			/* Receive DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for  receive fifo - Half of HS buffer size*/
+			io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_RX_INTR_WATERMARK_SIZE),
+				     (sw0_audio_buff_size_capture >> 1));
+		}
+		else if(channel->index==6)//??TBD??//
+		{
+			sw1_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Receive FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW0_BT_RX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_FIFOSIZE), (uint32_t)(SW0_BT_FIFO_SIZE));
+
+			/* Receive RINGBUFFER Address and size*/
+			config->elem_array.elems[0].dest =
+				(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_RINGBUFSIZE), sw1_buff_size_capture);
+
+			/* Receive DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_DMA_SIZE),
+				     (uint32_t)(64 /*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for  receive fifo - Half of HS buffer size*/
+			io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_capture >> 1));
+		}
+		else if(channel->index==0)
+		{
+			sw1_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Receive FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW0_HS_RX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_FIFOSIZE), (uint32_t)(SW0_HS_FIFO_SIZE));
+
+			/* Receive RINGBUFFER Address and size*/
+			config->elem_array.elems[0].dest =
+				(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_RINGBUFSIZE), sw1_buff_size_capture);
+
+			/* Receive DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for  receive fifo - Half of HS buffer size*/
+			io_reg_write((PU_REGISTER_BASE + ACP_HS_RX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_capture >> 1));
+		}
+		else if(channel->index==2)//??TBD??//
+		{
+			sw1_buff_size_capture = config->elem_array.elems[0].size * config->elem_array.count;
+			/* HS Receive FIFO Address and FIFO Size*/
+			sw1_fifo_addr = SW1_RX_FIFO_ADDR;
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOADDR), sw1_fifo_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_FIFOSIZE), (uint32_t)(SW1_FIFO_SIZE));
+
+			/* Receive RINGBUFFER Address and size*/
+			config->elem_array.elems[0].dest =
+				(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
+			sw1_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFADDR), sw1_ringbuff_addr);
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_RINGBUFSIZE), sw1_buff_size_capture);
+
+			/* Receive DMA transfer size in bytes */
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_DMA_SIZE),
+				     (uint32_t)(64/*ACP_DMA_TRANS_SIZE_128*/));
+
+			/* Watermark size for  receive fifo - Half of HS buffer size*/
+			io_reg_write((PU_REGISTER_BASE + ACP_P1_BT_RX_INTR_WATERMARK_SIZE),
+				     (sw1_buff_size_capture >> 1));
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+	} else {
+		tr_err(&acp_sw0_audio_tr, "Config channel direction undefined %d", channel->direction);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_copy(struct dma_chan_data *channel, int bytes,
+			  uint32_t flags)
+{
+	struct dma_cb_data next = {
+		.channel = channel,
+		.elem.size = bytes,
+	};
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+			NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_probe(struct dma *dma)
+{
+	int channel;
+
+	if (dma->chan) {
+		tr_err(&acp_sw0_audio_tr, "Repeated probe");
+		return -EEXIST;
+	}
+	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
+			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
+			    sizeof(struct dma_chan_data));
+	if (!dma->chan) {
+		tr_err(&acp_sw0_audio_tr, "Probe failure,unable to allocate channel descriptors");
+		return -ENOMEM;
+	}
+	for (channel = 0; channel < dma->plat_data.channels; channel++) {
+		dma->chan[channel].dma = dma;
+		dma->chan[channel].index = channel;
+		dma->chan[channel].status = COMP_STATE_INIT;
+	}
+	atomic_init(&dma->num_channels_busy, 0);
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_remove(struct dma *dma)
+{
+	if (!dma->chan) {
+		tr_err(&acp_sw0_audio_tr, "remove called without probe,it's a no-op");
+		return 0;
+	}
+
+	rfree(dma->chan);
+	dma->chan = NULL;
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_get_data_size(struct dma_chan_data *channel,
+				   uint32_t *avail, uint32_t *free)
+{
+	uint64_t tx_low, curr_tx_pos, tx_high;
+	uint64_t rx_low, curr_rx_pos, rx_high;
+
+	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+		if(channel->index==5)
+		{
+			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_AUDIO_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_AUDIO_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			*free = (sw0_audio_buff_size_playback >> 1);
+			*avail = (sw0_audio_buff_size_playback >> 1);
+		}
+		else if(channel->index==7)//??TBD??//
+		{
+			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			*free = (sw1_buff_size_playback >> 1);
+			*avail = (sw1_buff_size_playback >> 1);
+		}
+		else if(channel->index==1)
+		{
+			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_HS_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_HS_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			*free = (sw1_buff_size_playback >> 1);
+			*avail = (sw1_buff_size_playback >> 1);
+		}
+		else if(channel->index==3)//??TBD??//
+		{
+			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			*free = (sw1_buff_size_playback >> 1);
+			*avail = (sw1_buff_size_playback >> 1);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+		if(channel->index==4)
+		{
+			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_AUDIO_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_AUDIO_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			*free = (sw0_audio_buff_size_capture >> 1);
+			*avail = (sw0_audio_buff_size_capture >> 1);
+		}
+		else if(channel->index==6)//??TBD??//
+		{
+			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			*free = (sw1_buff_size_capture >> 1);
+			*avail = (sw1_buff_size_capture >> 1);
+		}
+		else if(channel->index==0)
+		{
+			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_HS_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_HS_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			*free = (sw1_buff_size_capture >> 1);
+			*avail = (sw1_buff_size_capture >> 1);
+		}
+		else if(channel->index==2)//??TBD??//
+		{
+			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+					ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			*free = (sw1_buff_size_capture >> 1);
+			*avail = (sw1_buff_size_capture >> 1);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+	} else {
+		tr_err(&acp_sw0_audio_tr, "Channel direction not defined %d", channel->direction);
+		return -EINVAL;
+	}
+	//tr_info(&acp_sw0_audio_tr, "acp_dai_sw0_audio_dma_get_data_size() avail:%d free:%d",sw0_audio_buff_size_playback,sw0_audio_buff_size_playback);
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
+{
+	switch (type) {
+	case DMA_ATTR_BUFFER_ALIGNMENT:
+	case DMA_ATTR_COPY_ALIGNMENT:
+		*value = ACP_DMA_BUFFER_ALIGN_128;
+		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = PLATFORM_DCACHE_ALIGN;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = ACP_DAI_DMA_BUFFER_PERIOD_COUNT;
+		break;
+	default:
+		return -ENOENT;
+	}
+	return 0;
+}
+
+static int acp_dai_sw0_audio_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
+{
+	uint32_t status;
+	acp_dsp0_intr_stat_t acp_intr_stat;
+	acp_dsp0_intr_cntl_t acp_intr_cntl;
+
+	acp_dsp0_intr_stat1_t acp_intr_stat1;
+	acp_dsp0_intr_cntl1_t acp_intr_cntl1;
+
+	if (channel->status == COMP_STATE_INIT)
+		return 0;
+	switch (cmd) {
+	case DMA_IRQ_STATUS_GET:
+		if((channel->index==5) ||
+			(channel->index==4) ||
+			(channel->index==7) || //??TBD??//
+			(channel->index==6)  || //??TBD??//
+			(channel->index==1) ||
+			(channel->index==0)) 
+		{
+			acp_intr_stat =  (acp_dsp0_intr_stat_t)dma_reg_read(channel->dma, ACP_DSP0_INTR_STAT);
+			//acp_intr_stat = (acp_dsp0_intr_stat_t)io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_STAT));
+			status = acp_intr_stat.bits.audio_buffer_int_stat;
+		}
+		else if((channel->index==3) || //??TBD??//
+			(channel->index==2))       //??TBD??//
+		{
+			acp_intr_stat1 =  (acp_dsp0_intr_stat1_t)dma_reg_read(channel->dma, ACP_DSP0_INTR_STAT1);
+			status = acp_intr_stat1.bits.audio_buffer_int_stat;
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+		//tr_info(&acp_sw0_audio_tr, "acp_dai_sw0_audio_dma_interrupt DMA_IRQ_STATUS_GET status:0x%x",acp_intr_stat);
+		return (status & (1<<channel->index));
+	case DMA_IRQ_CLEAR:
+		if((channel->index==5) ||
+			(channel->index==4) ||
+			(channel->index==7) || //??TBD??//
+			(channel->index==6) || //??TBD??//
+			(channel->index==1) ||
+			(channel->index==0))
+		{
+			acp_intr_stat.u32all = 0;
+			if((channel->index==7) || //??TBD??//
+			(channel->index==6) )
+			{
+				acp_intr_stat.bits.audio_buffer_int_stat =
+							(1 << (channel->index-4));
+			}
+			else
+			{
+				acp_intr_stat.bits.audio_buffer_int_stat =
+							(1 << channel->index);
+			}
+			//acp_intr_stat.bits.audio_buffer_int_stat =
+			//			(1 << channel->index);
+			status  = acp_intr_stat.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_STAT, status);
+			//io_reg_write((PU_REGISTER_BASE + ACP_DSP0_INTR_STAT), status);
+		}
+		else if((channel->index==3) || //??TBD??//
+			(channel->index==2)) //??TBD??//
+		{
+			acp_intr_stat1.u32all = 0;
+			acp_intr_stat1.bits.audio_buffer_int_stat =
+						(1 << channel->index);
+			status  = acp_intr_stat1.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_STAT1, status);
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+		//tr_info(&acp_sw0_audio_tr, "acp_dai_sw0_audio_dma_interrupt IDMA_IRQ_CLEAR");
+		return 0;
+	case DMA_IRQ_MASK:
+		if((channel->index==5) ||
+			(channel->index==4) ||
+			(channel->index==7) || //??TBD??//
+			(channel->index==6) || //??TBD??//
+			(channel->index==1) ||
+			(channel->index==0) )
+		{
+			//acp_intr_cntl =  (acp_dsp0_intr_cntl_t)dma_reg_read(channel->dma, ACP_DSP0_INTR_CNTL);
+			acp_intr_cntl =  (acp_dsp0_intr_cntl_t)io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL));
+		
+			if((channel->index==7) || //??TBD??//
+			(channel->index==6) )
+			{
+				acp_intr_cntl.bits.audio_buffer_int_mask &= (~(1 << (channel->index-4)));
+			}
+			else
+			{
+				acp_intr_cntl.bits.audio_buffer_int_mask &= (~(1 << channel->index));
+			}
+
+			//acp_intr_cntl.bits.audio_buffer_int_mask &= (~(1 << channel->index));
+			status  = acp_intr_cntl.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_CNTL, status);
+			//io_reg_write((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL), status);
+		
+			status = 0;
+			status = io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL));
+		}
+		else if((channel->index==3) || //??TBD??//
+			(channel->index==2)) 
+		{
+			acp_intr_cntl1 =  (acp_dsp0_intr_cntl1_t)
+					dma_reg_read(channel->dma, ACP_DSP0_INTR_CNTL1);
+			acp_intr_cntl1.bits.audio_buffer_int_mask &= (~(1 << channel->index));
+			status  = acp_intr_cntl1.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_CNTL1, status);
+
+			status = 0;
+			status = io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL1));
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+		tr_info(&acp_sw0_audio_tr, "acp_dai_sw0_audio_dma_interrupt DMA_IRQ_MASK cntl:0x%x",status);
+		return 0;
+	case DMA_IRQ_UNMASK:
+		if((channel->index==5) ||
+			(channel->index==4) ||
+			(channel->index==7) || //??TBD??//
+			(channel->index==6) || //??TBD??//
+			(channel->index==1) ||
+			(channel->index==0))
+		{
+			acp_intr_cntl =  (acp_dsp0_intr_cntl_t)
+					dma_reg_read(channel->dma, ACP_DSP0_INTR_CNTL);
+			if((channel->index==7) || //??TBD??//
+			(channel->index==6) )
+			{
+				acp_intr_cntl.bits.audio_buffer_int_mask  |=  (1 << (channel->index-4));
+			}
+			else
+			{
+				acp_intr_cntl.bits.audio_buffer_int_mask  |=  (1 << channel->index);
+			}
+			//acp_intr_cntl.bits.audio_buffer_int_mask  |=  (1 << channel->index);
+			status = acp_intr_cntl.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_CNTL, status);
+			//io_reg_write((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL), status);
+
+			status = 0;
+			status = io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL));
+		}
+		else if((channel->index==3) || //??TBD??//
+			(channel->index==2)) //??TBD??//
+		{
+			acp_intr_cntl1 =  (acp_dsp0_intr_cntl1_t)
+					dma_reg_read(channel->dma, ACP_DSP0_INTR_CNTL1);
+			acp_intr_cntl1.bits.audio_buffer_int_mask  |=  (1 << channel->index);
+			status = acp_intr_cntl1.u32all;
+			dma_reg_write(channel->dma, ACP_DSP0_INTR_CNTL1, status);
+
+			status = 0;
+			status = io_reg_read((PU_REGISTER_BASE + ACP_DSP0_INTR_CNTL1));
+		}
+		else
+		{
+			tr_err(&acp_sw0_audio_tr, "Dma channel index:%d not defined", channel->index);
+		}
+
+		tr_info(&acp_sw0_audio_tr, "acp_dai_sw0_audio_dma_interrupt DMA_IRQ_UNMASK cntl:0x%x",status);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+const struct dma_ops acp_dai_sw0_audio_dma_ops = {
+	.channel_get		= acp_dai_sw0_audio_dma_channel_get,
+	.channel_put		= acp_dai_sw0_audio_dma_channel_put,
+	.start			= acp_dai_sw0_audio_dma_start,
+	.stop			= acp_dai_sw0_audio_dma_stop,
+	.pause			= acp_dai_sw0_audio_dma_pause,
+	.release		= acp_dai_sw0_audio_dma_release,
+	.copy			= acp_dai_sw0_audio_dma_copy,
+	.status			= acp_dai_sw0_audio_dma_status,
+	.set_config		= acp_dai_sw0_audio_dma_set_config,
+	.interrupt		= acp_dai_sw0_audio_dma_interrupt,
+	.probe			= acp_dai_sw0_audio_dma_probe,
+	.remove			= acp_dai_sw0_audio_dma_remove,
+	.get_data_size		= acp_dai_sw0_audio_dma_get_data_size,
+	.get_attribute		= acp_dai_sw0_audio_dma_get_attribute,
+};
+
+

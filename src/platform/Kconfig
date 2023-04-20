@@ -132,6 +132,7 @@ config RENOIR
 	select XT_INTERRUPT_LEVEL_1
 	select XT_INTERRUPT_LEVEL_4
 	select XT_WAITI_DELAY
+	select AMD
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is renoir-compatible
@@ -144,9 +145,23 @@ config REMBRANDT
 	select XT_INTERRUPT_LEVEL_4
 	select XT_WAITI_DELAY
 	select XTENSA_EXCLUSIVE
+	select AMD
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is rembrandt-compatible
+
+config PHOENIX
+	bool "Build for Phoenix"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select AMD
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is phoenix-compatible
 
 config MT8186
 	bool "Build for MTK MT8186"
@@ -243,6 +258,13 @@ config  MEDIATEK
 	help
 	  This has to be selected for every MediaTek platform.
 	  It enables MediaTek platforms-specific features.
+
+config AMD
+	bool
+	default n
+	help
+	  This has to be selected for every AMD platform.
+          It enables AMD platforms-specific features.
 
 config CAVS
 	bool
@@ -379,6 +401,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8m" if IMX8M
 	default "imx8ulp" if IMX8ULP
 	default "rn" if RENOIR
+	default "phx" if PHOENIX
 	default "mt8186" if MT8186
 	default "mt8188" if MT8188
 	default "mt8195" if MT8195

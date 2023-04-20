@@ -35,6 +35,8 @@
 #define DSP_INTERRUPT_ROUTING_CTRL_0	0x1241814
 #define DSP_INTERRUPT_ROUTING_CTRL_1	0x1241818
 #define ACP_FUTURE_REG_ACLK_0		0x1241854
+#define ACP_FUTURE_REG_ACLK_1		0x1241858
+#define ACP_FUTURE_REG_ACLK_2		0x124185C
 #define ACP_AXI2DAGB_SEM_0		0x1241874
 #define ACP_DSP0_INTR_CNTL1		0x1241920
 #define ACP_DSP0_INTR_STAT1		0x1241924
@@ -68,6 +70,40 @@
 #define ACP_AUDIO_TX_LINEARPOSITIONCNTR_HIGH          0x124203C
 #define ACP_AUDIO_TX_LINEARPOSITIONCNTR_LOW           0x1242040
 #define ACP_AUDIO_TX_INTR_WATERMARK_SIZE              0x1242044
+
+#define ACP_BT_RX_RINGBUFADDR                         0x1242048
+#define ACP_BT_RX_RINGBUFSIZE                         0x124204C
+#define ACP_BT_RX_FIFOADDR                            0x1242054
+#define ACP_BT_RX_FIFOSIZE                            0x1242058
+#define ACP_BT_RX_DMA_SIZE                            0x124205C
+#define ACP_BT_RX_LINEARPOSITIONCNTR_HIGH             0x1242060
+#define ACP_BT_RX_LINEARPOSITIONCNTR_LOW              0x1242064
+#define ACP_BT_RX_INTR_WATERMARK_SIZE                 0x1242068
+#define ACP_BT_TX_RINGBUFADDR                         0x124206C
+#define ACP_BT_TX_RINGBUFSIZE                         0x1242070
+#define ACP_BT_TX_FIFOADDR                            0x1242078
+#define ACP_BT_TX_FIFOSIZE                            0x124207C
+#define ACP_BT_TX_DMA_SIZE                            0x1242080
+#define ACP_BT_TX_LINEARPOSITIONCNTR_HIGH             0x1242084
+#define ACP_BT_TX_LINEARPOSITIONCNTR_LOW              0x1242088
+#define ACP_BT_TX_INTR_WATERMARK_SIZE                 0x124208C
+
+#define ACP_HS_RX_RINGBUFADDR                         0x1242090
+#define ACP_HS_RX_RINGBUFSIZE                         0x1242094
+#define ACP_HS_RX_FIFOADDR                            0x124209C
+#define ACP_HS_RX_FIFOSIZE                            0x12420A0
+#define ACP_HS_RX_DMA_SIZE                            0x12420A4
+#define ACP_HS_RX_LINEARPOSITIONCNTR_HIGH             0x12420A8
+#define ACP_HS_RX_LINEARPOSITIONCNTR_LOW              0x12420AC
+#define ACP_HS_RX_INTR_WATERMARK_SIZE                 0x12420B0
+#define ACP_HS_TX_RINGBUFADDR                         0x12420B4
+#define ACP_HS_TX_RINGBUFSIZE                         0x12420B8
+#define ACP_HS_TX_FIFOADDR                            0x12420C0
+#define ACP_HS_TX_FIFOSIZE                            0x12420C4
+#define ACP_HS_TX_DMA_SIZE                            0x12420C8
+#define ACP_HS_TX_LINEARPOSITIONCNTR_HIGH             0x12420CC
+#define ACP_HS_TX_LINEARPOSITIONCNTR_LOW              0x12420D0
+#define ACP_HS_TX_INTR_WATERMARK_SIZE                 0x12420D4
 
 /* Registers from ACP_I2S_TDM block */
 #define ACP_I2STDM_IER			0x1242400
@@ -118,8 +154,16 @@
 #define ACP_SW_EN_STATUS                              0x1243004
 #define ACP_SW_Audio_TX_EN                            0x1243010
 #define ACP_SW_Audio_TX_EN_STATUS                     0x1243014
+#define ACP_SW_BT_TX_EN                               0x1243050
+#define ACP_SW_BT_TX_EN_STATUS                        0x1243054
+#define ACP_SW_HS_TX_EN                          0x124306C
+#define ACP_SW_HS_TX_EN_STATUS                   0x1243070
 #define ACP_SW_Audio_RX_EN                            0x1243088
 #define ACP_SW_Audio_RX_EN_STATUS                     0x124308C
+#define ACP_SW_BT_RX_EN                               0x1243128
+#define ACP_SW_BT_RX_EN_STATUS                        0x124312C
+#define ACP_SW_HS_RX_EN                          0x1243144
+#define ACP_SW_HS_RX_EN_STATUS                   0x1243148
 
 /* Registers from ACP_P1_AUDIO_BUFFERS block */
 #define ACP_P1_I2S_RX_RINGBUFADDR		0x1243A00
@@ -187,6 +231,35 @@
 #define MP1_SMN_C2PMSG_69	0x58A14
 #define MP1_SMN_C2PMSG_85	0x58A54
 #define MP1_SMN_C2PMSG_93	0x58A74
+
+
+#define CLK5_ROOTREFCLKMUX_1                          0x6c0c8
+#define CLK5_CLK_PLL_REFCLK_RATE_Startup              0x6C0D0
+#define CLK5_CLK_PLL_REQ                              0x6C0DC
+#define CLK5_CLK1_DFS_CNTL                            0x6C1B0
+#define CLK5_CLK1_CURRENT_CNT                         0x6C348
+#define CLK5_CLK0_DFS_CNTL                            0x6C1A4
+#define CLK5_CLK0_CURRENT_CNT                         0x6C344
+#define CLK5_CLK0_BYPASS_CNTL                         0x6C200
+#define CLK5_CLK1_BYPASS_CNTL                         0x6C224
+#define CLK5_CLK0_DFS_STATUS                          0x6C1AC
+#define CLK5_CLK1_DFS_STATUS                          0x6C1B8
+#define CLK5_SPLL_FIELD_2                             0x6C114
+#define CLK5_CLK_PLL_PWR_REQ                          0x6C2C0
+#define CLK5_CLK_DFSBYPASS_CONTROL                    0x6C2C8
+#define CLK5_CLK_FSM_STATUS                           0x6C2D4
+#define CLK5_SPLL_FUSE_1                              0x6C0F8
+#define CLK5_SPLL_FUSE_2                              0x6C0FC
+#define CLK5_SPLL_FIELD_7                             0x6C128
+#define CLK5_SPLL_FIELD_9                             0x6C130
+//#define CLK5_SPLL_FIELD_10                            0x6C134
+#define CLK5_SPLL_FIELD_6nm                           0x6C138
+#define CLK5_SPLL_FIELD_4                             0x6C11C
+#define CLK5_SPLL_FIELD_5nm_BUS_CTRL                  0x6c140
+#define CLK5_SPLL_FIELD_5nm_BUS_WDATA                 0x6c144
+#define CLK5_SPLL_FIELD_5nm_BUS_STATUS                0x6c148
+#define CLK5_CLK_Pll_RESET_STOP_TIMER                 0x6C180
+
 
 #define MP0_C2PMSG_73		0x3810A24
 #define MP0_C2PMSG_114		0x3810AC8

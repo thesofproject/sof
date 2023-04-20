@@ -83,16 +83,39 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 	acp_wov_pdm_dma_enable_t  pdm_dma_enable;
 	acp_hstdm_iter_t	hs_iter;
 	acp_hstdm_irer_t	hs_irer;
+	uint32_t		sw0_audio_tx_en;
+	uint32_t		sw0_audio_rx_en;
+	uint32_t		sw0_audio_tx_en1 = 0;
+	uint32_t		sw0_audio_rx_en1 = 0;
+	uint32_t		sw0_audio_tx_en2 = 0;
+	uint32_t		sw0_audio_rx_en2 = 0;
+	uint32_t		sw0_audio_tx_en3 = 0;
+	uint32_t		sw0_audio_rx_en3 = 0;
+	uint32_t		sw0_audio_tx_en4 = 0;
+	uint32_t		sw0_audio_rx_en4 = 0;
 	uint32_t		acp_pdm_en;
+
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
+
+	sw0_audio_tx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN));
+	sw0_audio_rx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN));
+	sw0_audio_tx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_TX_EN));
+	sw0_audio_rx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_RX_EN));
+	sw0_audio_tx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_TX_EN));
+	sw0_audio_rx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_RX_EN));
+	sw0_audio_tx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN));
+	sw0_audio_rx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN));
+
+	sw0_audio_tx_en = (sw0_audio_tx_en1 || sw0_audio_tx_en2||sw0_audio_tx_en3 || sw0_audio_tx_en4);
+	sw0_audio_rx_en = (sw0_audio_rx_en1 || sw0_audio_rx_en2||sw0_audio_rx_en3 || sw0_audio_rx_en4);
 
 	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
+	if (!sw0_audio_tx_en && !sw0_audio_rx_en && !hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
 		/* Request SMU to set aclk to 600 Mhz */
 		acp_change_clock_notify(600000000);
@@ -150,7 +173,18 @@ static int acp_dmic_dma_stop(struct dma_chan_data *channel)
 	acp_wov_pdm_dma_enable_t  pdm_dma_enable;
 	acp_hstdm_iter_t	hs_iter;
 	acp_hstdm_irer_t	hs_irer;
+	uint32_t		sw0_audio_tx_en;
+	uint32_t		sw0_audio_rx_en;
+	uint32_t		sw0_audio_tx_en1 = 0;
+	uint32_t		sw0_audio_rx_en1 = 0;
+	uint32_t		sw0_audio_tx_en2 = 0;
+	uint32_t		sw0_audio_rx_en2 = 0;
+	uint32_t		sw0_audio_tx_en3 = 0;
+	uint32_t		sw0_audio_rx_en3 = 0;
+	uint32_t		sw0_audio_tx_en4 = 0;
+	uint32_t		sw0_audio_rx_en4 = 0;
 	uint32_t acp_pdm_en;
+
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
@@ -186,11 +220,22 @@ static int acp_dmic_dma_stop(struct dma_chan_data *channel)
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE, 0);
 	/* Clear PDM FIFO */
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_FIFO_FLUSH, 1);
+	sw0_audio_tx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_TX_EN));
+	sw0_audio_rx_en1 = io_reg_read((PU_REGISTER_BASE + ACP_SW_Audio_RX_EN));
+	sw0_audio_tx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_TX_EN));
+	sw0_audio_rx_en3 = io_reg_read((PU_REGISTER_BASE + ACP_SW_BT_RX_EN));
+	sw0_audio_tx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_TX_EN));
+	sw0_audio_rx_en4 = io_reg_read((PU_REGISTER_BASE + ACP_SW_HS_RX_EN));
+	sw0_audio_tx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_TX_EN));
+	sw0_audio_rx_en2 = io_reg_read((PU_REGISTER_BASE + ACP_P1_SW_BT_RX_EN));
+
+	sw0_audio_tx_en = (sw0_audio_tx_en1 || sw0_audio_tx_en2||sw0_audio_tx_en3 || sw0_audio_tx_en4);
+	sw0_audio_rx_en = (sw0_audio_rx_en1 || sw0_audio_rx_en2||sw0_audio_rx_en3 || sw0_audio_rx_en4);
 	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
-	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
+	if (!sw0_audio_tx_en && !sw0_audio_rx_en && !hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
 		/* Request SMU to set aclk to minimum aclk */
 		acp_change_clock_notify(0);
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);

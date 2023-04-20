@@ -76,6 +76,7 @@ int dai_config_dma_channel(struct comp_dev *dev, const void *spec_config)
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_AMD_SW0_AUDIO:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
 		break;
@@ -175,6 +176,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_AMD_SW0_AUDIO:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
