@@ -58,6 +58,9 @@ struct notify_data {
 
 struct notify **arch_notify_get(void);
 
+typedef void (*notifier_callback_t)(void *receiver_data, enum notify_id event_type,
+				    void *caller_data);
+
 /** Register a callback to be run when event 'type' happens.
  *
  * The identifier for un-registration is the tuple (receiver_data,
@@ -74,9 +77,7 @@ struct notify **arch_notify_get(void);
  * @param flags see NOTIFIER_FLAG_* above
  */
 int notifier_register(void *receiver_data, void *caller_id_filter, enum notify_id event_type,
-		      void (*callback)(void *receiver_data, enum notify_id event_type,
-				       void *caller_data),
-		      uint32_t flags);
+		      notifier_callback_t callback, uint32_t flags);
 
 /** Unregister all callbacks matching that arguments tuple. NULL acts
  * as a wildcard.
