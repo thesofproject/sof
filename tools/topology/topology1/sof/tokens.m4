@@ -148,3 +148,8 @@ SectionVendorTokens."sof_acpdmic_tokens" {
         SOF_TKN_AMD_ACPDMIC_CH                    "1801"
 }
 
+SectionVendorTokens."sof_acp_sdw_tokens" {
+	SOF_TKN_AMD_ACP_SDW_RATE		"2000"
+	SOF_TKN_AMD_ACP_SDW_CH			"2001"
+}
+
