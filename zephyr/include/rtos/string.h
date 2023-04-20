@@ -34,24 +34,10 @@ static inline int rstrcmp(const char *s1, const char *s2)
 }
 
 /* C library does not have the "_s" versions used by Windows */
-static inline int memcpy_s(void *dest, size_t dest_size,
-			   const void *src, size_t count)
-{
-	if (!dest || !src)
-		return -EINVAL;
+int memcpy_s(void *dest, size_t dest_size,
+	     const void *src, size_t count);
 
-	if ((dest >= src && (char *)dest < ((char *)src + count)) ||
-	    (src >= dest && (char *)src < ((char *)dest + dest_size)))
-		return -EINVAL;
-
-	if (count > dest_size)
-		return -EINVAL;
-
-	memcpy(dest, src, count);
-
-	return 0;
-}
-
+// TODO
 static inline int memset_s(void *dest, size_t dest_size, int data, size_t count)
 {
 	if (!dest)
