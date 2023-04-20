@@ -391,50 +391,57 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 {
 	struct comp_buffer *buffer = hd->local_buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
-	struct dma_status stat;
-	uint32_t avail_bytes;
-	uint32_t free_bytes;
-	uint32_t copy_bytes;
+	struct comp_buffer __sparse_cache *dma_buf_c;
+	struct dma_status dma_stat;
+	uint32_t avail_samples;
+	uint32_t free_samples;
+	uint32_t dma_sample_bytes;
+	uint32_t dma_copy_bytes;
 	int ret;
 
 	/* get data sizes from DMA */
-	ret = dma_get_status(hd->chan->dma->z_dev, hd->chan->index, &stat);
+	ret = dma_get_status(hd->chan->dma->z_dev, hd->chan->index, &dma_stat);
 	if (ret < 0) {
 		comp_err(dev, "host_get_copy_bytes_normal(): dma_get_status() failed, ret = %u",
 			 ret);
 		/* return 0 copy_bytes in case of error to skip DMA copy */
 		return 0;
 	}
-	avail_bytes = stat.pending_length;
-	free_bytes = stat.free;
+
+	dma_buf_c = buffer_acquire(hd->dma_buffer);
+	dma_sample_bytes = get_sample_bytes(dma_buf_c->stream.frame_fmt);
+	buffer_release(dma_buf_c);
 
 	buffer_c = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		free_bytes = audio_stream_get_free_bytes(&buffer_c->stream);
-	else
-		avail_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		avail_samples = dma_stat.pending_length / dma_sample_bytes;
+		free_samples = audio_stream_get_free_samples(&buffer_c->stream);
+	} else {
+		avail_samples = audio_stream_get_avail_samples(&buffer_c->stream);
+		free_samples = dma_stat.free / dma_sample_bytes;
+	}
 
-	copy_bytes = MIN(avail_bytes, free_bytes);
+	dma_copy_bytes = MIN(avail_samples, free_samples) * dma_sample_bytes;
 
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
 	if (!(hd->ipc_host.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
-		copy_bytes = MIN(hd->period_bytes, copy_bytes);
+		dma_copy_bytes = MIN(hd->period_bytes, dma_copy_bytes);
 
-	if (!copy_bytes)
-		comp_info(dev, "no bytes to copy, available bytes: %d, free_bytes: %d",
-			  avail_bytes, free_bytes);
+	if (!dma_copy_bytes)
+		comp_info(dev, "no bytes to copy, available samples: %d, free_samples: %d",
+			  avail_samples, free_samples);
 
 	buffer_release(buffer_c);
 
-	/* copy_bytes should be aligned to minimum possible chunk of
+	/* dma_copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
 	 */
-	return ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+	return ALIGN_DOWN(dma_copy_bytes, hd->dma_copy_align);
 }
 
 /**
