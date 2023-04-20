@@ -10,7 +10,7 @@ set -e
 DEFAULT_PLATFORMS=(
     tgl tgl-h
     imx8 imx8x imx8m imx8ulp
-    rn rmb
+    rn rmb phx
     mt8186 mt8195
 )
 
@@ -254,6 +254,13 @@ do
 			XTENSA_CORE="LX7_HiFi5_PROD"
 			HOST="xtensa-rmb-elf"
 			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			;;
+		phx)
+			PLATFORM="phoenix"
+			ARCH="xtensa"
+			XTENSA_CORE="ACP_6_3_HiFi5_PROD_Linux"
+			HOST="xtensa-phx-elf"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 		mt8186)
 			PLATFORM="mt8186"
