@@ -819,8 +819,8 @@ static inline int audio_stream_set_zero(struct audio_stream __sparse_cache *buff
 
 static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 					       enum ipc4_bit_depth valid,
-					       enum sof_ipc_frame __sparse_cache *frame_fmt,
-					       enum sof_ipc_frame __sparse_cache *valid_fmt,
+					       enum sof_ipc_frame *frame_fmt,
+					       enum sof_ipc_frame *valid_fmt,
 					       enum ipc4_sample_type type)
 {
 	/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)

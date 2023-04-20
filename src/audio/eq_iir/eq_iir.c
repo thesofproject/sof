@@ -844,7 +844,7 @@ static int eq_iir_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	struct comp_buffer __sparse_cache *sink_c;
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
 	comp_dbg(dev, "eq_iir_params()");

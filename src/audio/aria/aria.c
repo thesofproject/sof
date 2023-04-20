@@ -218,6 +218,7 @@ static void aria_free(struct comp_dev *dev)
 static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data *cd)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 
 	buffer_c = buffer_acquire(buffer);
 	buffer_c->stream.channels = cd->chan_cnt;
@@ -225,9 +226,12 @@ static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data 
 	buffer_c->buffer_fmt = cd->base.audio_fmt.interleaving_style;
 	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
 				    cd->base.audio_fmt.valid_bit_depth,
-				    &buffer_c->stream.frame_fmt,
-				    &buffer_c->stream.valid_sample_fmt,
+				    &frame_fmt, &valid_fmt,
 				    cd->base.audio_fmt.s_type);
+
+	buffer_c->stream.frame_fmt = frame_fmt;
+	buffer_c->stream.valid_sample_fmt = valid_fmt;
+
 	buffer_release(buffer_c);
 }
 

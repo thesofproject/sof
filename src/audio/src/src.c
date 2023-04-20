@@ -533,13 +533,17 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_data *cd = module_get_private_data(mod);
+	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	/* convert IPC4 config to format used by the module */
 	audio_stream_fmt_conversion(cd->ipc_config.base.audio_fmt.depth,
 				    cd->ipc_config.base.audio_fmt.valid_bit_depth,
-				    &sinkb->stream.frame_fmt,
-				    &sinkb->stream.valid_sample_fmt,
+				    &frame_fmt, &valid_fmt,
 				    cd->ipc_config.base.audio_fmt.s_type);
+
+	sinkb->stream.frame_fmt = frame_fmt;
+	sinkb->stream.valid_sample_fmt = valid_fmt;
+
 	sinkb->stream.channels = cd->ipc_config.base.audio_fmt.channels_count;
 	sinkb->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
 }

@@ -284,7 +284,7 @@ static void test_keyword_set_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 
 	comp_info(dev, "test_keyword_set_params()");
 

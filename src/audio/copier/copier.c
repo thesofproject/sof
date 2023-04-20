@@ -80,8 +80,8 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 				  bool create_multi_endpoint_buffer,
 				  int index)
 {
-	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
-	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
+	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
@@ -91,14 +91,12 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
-				    &in_frame_fmt,
-				    &in_valid_fmt,
+				    &in_frame_fmt, &in_valid_fmt,
 				    copier_cfg->base.audio_fmt.s_type);
 
 	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
 				    copier_cfg->out_fmt.valid_bit_depth,
-				    &out_frame_fmt,
-				    &out_valid_fmt,
+				    &out_frame_fmt, &out_valid_fmt,
 				    copier_cfg->out_fmt.s_type);
 
 	/* playback case:
@@ -211,21 +209,19 @@ static int create_host(struct comp_dev *parent_dev, struct copier_data *cd,
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
 	int ret;
-	enum sof_ipc_frame __sparse_cache in_frame_fmt, out_frame_fmt;
-	enum sof_ipc_frame __sparse_cache in_valid_fmt, out_valid_fmt;
+	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
 
 	config->type = SOF_COMP_HOST;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
-				    &in_frame_fmt,
-				    &in_valid_fmt,
+				    &in_frame_fmt, &in_valid_fmt,
 				    copier_cfg->base.audio_fmt.s_type);
 
 	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
 				    copier_cfg->out_fmt.valid_bit_depth,
-				    &out_frame_fmt,
-				    &out_valid_fmt,
+				    &out_frame_fmt, &out_valid_fmt,
 				    copier_cfg->out_fmt.s_type);
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
@@ -752,7 +748,7 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 					     enum ipc4_gateway_type type,
 					     enum ipc4_direction_type dir)
 {
-	enum sof_ipc_frame __sparse_cache in, in_valid, out, out_valid;
+	enum sof_ipc_frame in, in_valid, out, out_valid;
 
 	audio_stream_fmt_conversion(in_fmt->depth, in_fmt->valid_bit_depth, &in, &in_valid,
 				    in_fmt->s_type);
@@ -1362,15 +1358,18 @@ static void update_internal_comp(struct comp_dev *parent, struct comp_dev *child
 static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 				 const struct ipc4_audio_format *fmt)
 {
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i;
 
 	buf_c->stream.channels = fmt->channels_count;
 	buf_c->stream.rate = fmt->sampling_frequency;
 	audio_stream_fmt_conversion(fmt->depth,
 				    fmt->valid_bit_depth,
-				    &buf_c->stream.frame_fmt,
-				    &buf_c->stream.valid_sample_fmt,
+				    &frame_fmt, &valid_fmt,
 				    fmt->s_type);
+
+	buf_c->stream.frame_fmt = frame_fmt;
+	buf_c->stream.valid_sample_fmt = valid_fmt;
 
 	buf_c->buffer_fmt = fmt->interleaving_style;
 
@@ -1583,7 +1582,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint32_t attenuation;
-	uint32_t __sparse_cache valid_fmt, frame_fmt;
+	enum sof_ipc_frame valid_fmt, frame_fmt;
 
 	/* only support attenuation in format of 32bit */
 	if (data_offset > sizeof(uint32_t)) {
@@ -1599,8 +1598,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 
 	audio_stream_fmt_conversion(cd->config.base.audio_fmt.depth,
 				    cd->config.base.audio_fmt.valid_bit_depth,
-				    &frame_fmt,
-				    &valid_fmt,
+				    &frame_fmt, &valid_fmt,
 				    cd->config.base.audio_fmt.s_type);
 
 	if (frame_fmt < SOF_IPC_FRAME_S24_4LE) {
