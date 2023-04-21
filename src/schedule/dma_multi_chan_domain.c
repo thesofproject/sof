@@ -268,6 +268,9 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
  * \param[in,out] task Task to be checked.
  * \return True is task should be executed, false otherwise.
  */
+volatile uint32_t host_pipe_intr_status = 0;
+#define HS_DOMAIN_DMA_NUM 2
+#define HS_DOMAIN_DMA_CH_NUM 1
 static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 					     struct task *task, struct comp_dev **comp)
 {
@@ -281,17 +284,18 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
-			if (!*comp) {
+			//if (!*comp) 
+			{
 				status = dma_interrupt_legacy(&dmas[i].chan[j],
 							      DMA_IRQ_STATUS_GET);
 				if (!status)
 					continue;
 
 				*comp = dma_domain->data[i][j].task->sched_comp;
-			} else if (!dma_domain->data[i][j].task ||
+			} /*else if (!dma_domain->data[i][j].task ||
 				   dma_domain->data[i][j].task->sched_comp != *comp) {
 				continue;
-			}
+			}*/
 
 			/* not the same scheduling component */
 			if (dma_domain->data[i][j].task->sched_comp !=
@@ -329,13 +333,35 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 			/* clear interrupt */
 			if (pipe_task->registrable) {
-				dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
-				interrupt_clear_mask(dma_domain->data[i][j].irq,
-						     BIT(j));
+				if( (i==HS_DOMAIN_DMA_NUM) &&
+					(j==HS_DOMAIN_DMA_CH_NUM) &&
+					(host_pipe_intr_status!=1))
+				{
+					return false;
+				}
+				else
+				{
+					dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+					interrupt_clear_mask(dma_domain->data[i][j].irq,
+							     BIT(j));
+					host_pipe_intr_status = 0;
+				}
 			}
 
+			if((i==HS_DOMAIN_DMA_NUM) &&
+				(j==HS_DOMAIN_DMA_CH_NUM) &&
+				(!(pipe_task->registrable)))
+			{
+				host_pipe_intr_status=1;
+			}
 			return true;
 		}
+	}
+	if((i==HS_DOMAIN_DMA_NUM) &&
+		(j==HS_DOMAIN_DMA_CH_NUM) &&
+		(!(pipe_task->registrable)))
+	{
+		host_pipe_intr_status=0;
 	}
 
 	return false;
