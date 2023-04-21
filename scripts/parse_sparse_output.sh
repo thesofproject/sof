@@ -27,7 +27,11 @@ main()
 
     sparse_errors+=(-e '[[:space:]]error:[[:space:]]')
 
+    sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*too many warnings')
+
     sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*different address space')
+
+    sparse_errors+=(-e '[[:space:]]warning:[[:space:]].*cast removes address space')
 
     ! grep -v 'alsatplg.*topology2.*skip' | grep -i  "${sparse_errors[@]}"
 
