@@ -251,9 +251,9 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* different frame format not supported */
-	if (src_fmt->frame_fmt != snk_fmt->frame_fmt) {
+	if (src_fmt->frame_fmt != audio_stream_get_frm_fmt(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d sample format mismatch",
-			 src_fmt->frame_fmt, snk_fmt->frame_fmt);
+			 audio_stream_get_frm_fmt(src_fmt), audio_stream_get_frm_fmt(snk_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -265,7 +265,7 @@ static int waves_effect_check(struct comp_dev *dev)
 		goto out;
 	}
 
-	if (!format_is_supported(src_fmt->frame_fmt)) {
+	if (!format_is_supported(audio_stream_get_frm_fmt(src_fmt))) {
 		comp_err(dev, "waves_effect_check() float samples not supported");
 		ret = -EINVAL;
 		goto out;
@@ -318,10 +318,10 @@ static int waves_effect_init(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_effect_init() start");
 
-	sample_format = format_convert_sof_to_me(src_fmt->frame_fmt);
+	sample_format = format_convert_sof_to_me(audio_stream_get_frm_fmt(src_fmt));
 	if (sample_format < 0) {
 		comp_err(dev, "waves_effect_init() sof sample format %d not supported",
-			 src_fmt->frame_fmt);
+			 audio_stream_get_frm_fmt(src_fmt));
 		ret = -EINVAL;
 		goto out;
 	}

@@ -87,7 +87,7 @@ static void comp_update_params(uint32_t flag,
 			       struct comp_buffer __sparse_cache *buffer)
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
-		params->frame_fmt = buffer->stream.frame_fmt;
+		params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
 
 	if (flag & BUFF_PARAMS_BUFFER_FMT)
 		params->buffer_fmt = buffer->buffer_fmt;

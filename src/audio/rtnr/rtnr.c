@@ -873,8 +873,8 @@ static int rtnr_prepare(struct comp_dev *dev)
 	/* Get sink data format */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink_c = buffer_acquire(sinkb);
-	cd->sink_format = sink_c->stream.frame_fmt;
-	cd->sink_stream.frame_fmt = sink_c->stream.frame_fmt;
+	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
+	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 	buffer_release(sink_c);
 
 	/* Check source and sink PCM format and get processing function */

@@ -181,7 +181,7 @@ static int ghd_params(struct comp_dev *dev,
 	if (source_c->stream.channels != 1) {
 		comp_err(dev, "ghd_params(): Only single-channel supported");
 		ret = -EINVAL;
-	} else if (source_c->stream.frame_fmt != SOF_IPC_FRAME_S16_LE) {
+	} else if (audio_stream_get_frm_fmt(&source_c->stream) != SOF_IPC_FRAME_S16_LE) {
 		comp_err(dev, "ghd_params(): Only S16_LE supported");
 		ret = -EINVAL;
 	} else if (source_c->stream.rate != KPB_SAMPLNG_FREQUENCY) {

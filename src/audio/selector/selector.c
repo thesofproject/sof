@@ -463,11 +463,11 @@ static int selector_prepare(struct comp_dev *dev)
 	sink_c = buffer_acquire(sinkb);
 
 	/* get source data format and period bytes */
-	cd->source_format = source_c->stream.frame_fmt;
+	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
 	cd->source_period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sink_c->stream.frame_fmt;
+	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 	cd->sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 
 	/* There is an assumption that sink component will report out
@@ -920,11 +920,11 @@ static int selector_prepare(struct processing_module *mod)
 	audio_stream_init_alignment_constants(4, 1, &sink_c->stream);
 
 	/* get source data format and period bytes */
-	cd->source_format = source_c->stream.frame_fmt;
+	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
 	cd->source_period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sink_c->stream.frame_fmt;
+	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 	cd->sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 
 	/* There is an assumption that sink component will report out

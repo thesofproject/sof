@@ -162,7 +162,7 @@ static void smart_amp_set_params(struct comp_dev *dev,
 		sink_c->stream.valid_sample_fmt = valid_fmt;
 
 		sink_c->buffer_fmt = out_fmt.interleaving_style;
-		params->frame_fmt = sink_c->stream.frame_fmt;
+		params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 
 		sink_c->hw_params_configured = true;
 
@@ -636,7 +636,7 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev,
 					    struct comp_buffer __sparse_cache *buf)
 {
-	switch (buf->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&buf->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		return smart_amp_process_s16;
 	case SOF_IPC_FRAME_S24_4LE:

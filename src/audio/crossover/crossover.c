@@ -716,16 +716,16 @@ static int crossover_prepare(struct comp_dev *dev)
 	source_c = buffer_acquire(source);
 
 	/* Get source data format */
-	cd->source_format = source_c->stream.frame_fmt;
+	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
 
-		if (cd->source_format != sink_c->stream.frame_fmt) {
+		if (cd->source_format != audio_stream_get_frm_fmt(&sink_c->stream)) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different for sink %d.",
-				 cd->source_format, sink_c->stream.frame_fmt,
+				 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream),
 				 sink_c->pipeline_id);
 			ret = -EINVAL;
 		} else {

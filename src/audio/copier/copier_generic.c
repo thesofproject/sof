@@ -30,7 +30,7 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	int32_t *dst = audio_stream_get_rptr(&sink->stream);
 
 	/* only support attenuation in format of 32bit */
-	switch (sink->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&sink->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		comp_err(dev, "16bit sample isn't supported by attenuation");
 		return -EINVAL;
@@ -49,7 +49,8 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 
 		return 0;
 	default:
-		comp_err(dev, "unsupported format %d for attenuation", sink->stream.frame_fmt);
+		comp_err(dev, "unsupported format %d for attenuation",
+			 audio_stream_get_frm_fmt(&sink->stream));
 		return -EINVAL;
 	}
 }

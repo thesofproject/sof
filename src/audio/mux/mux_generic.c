@@ -535,7 +535,7 @@ mux_func mux_get_processing_function(struct processing_module *mod)
 
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
 		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sinkb);
-		enum sof_ipc_frame fmt = sink_c->stream.frame_fmt;
+		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 
 
 		if (fmt == mux_func_map[i].frame_format)
@@ -559,7 +559,7 @@ demux_func demux_get_processing_function(struct processing_module *mod)
 
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
 		struct comp_buffer __sparse_cache *source_c = buffer_acquire(sourceb);
-		enum sof_ipc_frame fmt = source_c->stream.frame_fmt;
+		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&source_c->stream);
 
 		buffer_release(source_c);
 

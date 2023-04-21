@@ -860,11 +860,13 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 
 		/* set processing function */
 		if (params->direction == SOF_IPC_STREAM_CAPTURE)
-			hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
-								  dma_buf_c->stream.frame_fmt);
+			hd->process = pcm_get_conversion_function(
+				audio_stream_get_frm_fmt(&host_buf_c->stream),
+				audio_stream_get_frm_fmt(&dma_buf_c->stream));
 		else
-			hd->process = pcm_get_conversion_function(dma_buf_c->stream.frame_fmt,
-								  host_buf_c->stream.frame_fmt);
+			hd->process = pcm_get_conversion_function(
+				audio_stream_get_frm_fmt(&dma_buf_c->stream),
+				audio_stream_get_frm_fmt(&host_buf_c->stream));
 
 		config->src_width = audio_stream_sample_bytes(&dma_buf_c->stream);
 		config->dest_width = config->src_width;

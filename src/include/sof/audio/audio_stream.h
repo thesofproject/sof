@@ -112,6 +112,12 @@ static inline uint32_t audio_stream_get_free(const struct audio_stream __sparse_
 	return buf->free;
 }
 
+static inline enum sof_ipc_frame audio_stream_get_frm_fmt(
+	const struct audio_stream __sparse_cache *buf)
+{
+	return buf->frame_fmt;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

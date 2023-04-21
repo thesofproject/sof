@@ -306,7 +306,7 @@ static void set_mux_params(struct processing_module *mod)
 			sink_c->stream.valid_sample_fmt = valid_fmt;
 
 			sink_c->buffer_fmt = out_fmt.interleaving_style;
-			params->frame_fmt = sink_c->stream.frame_fmt;
+			params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 
 			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 				sink_c->chmap[i] = (out_fmt.ch_map >> i * 4) & 0xf;

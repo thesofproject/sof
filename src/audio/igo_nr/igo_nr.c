@@ -249,7 +249,7 @@ static inline int32_t set_capture_func(struct comp_dev *dev)
 				  sink_list);
 
 	/* The igo_nr supports S16_LE data. Format converter is needed. */
-	switch (sourceb->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&sourceb->stream)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		comp_info(dev, "set_capture_func(), SOF_IPC_FRAME_S16_LE");

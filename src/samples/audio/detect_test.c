@@ -767,7 +767,7 @@ static int test_keyword_params(struct comp_dev *dev,
 				  sink_list);
 	source_c = buffer_acquire(sourceb);
 	channels = source_c->stream.channels;
-	frame_fmt = source_c->stream.frame_fmt;
+	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
 	rate = source_c->stream.rate;
 	buffer_release(source_c);
 

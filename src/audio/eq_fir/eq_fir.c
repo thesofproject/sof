@@ -529,7 +529,7 @@ static int eq_fir_process(struct processing_module *mod,
 			return ret;
 		} else if (cd->fir_delay_size) {
 			comp_dbg(mod->dev, "eq_fir_process(), active");
-			ret = set_fir_func(mod, source->frame_fmt);
+			ret = set_fir_func(mod, audio_stream_get_frm_fmt(source));
 			if (ret < 0)
 				return ret;
 		} else {
@@ -593,7 +593,7 @@ static int eq_fir_prepare(struct processing_module *mod)
 	sink_c = buffer_acquire(sinkb);
 	eq_fir_set_alignment(&source_c->stream, &sink_c->stream);
 	channels = sink_c->stream.channels;
-	frame_fmt = source_c->stream.frame_fmt;
+	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
 	buffer_release(sink_c);
 	buffer_release(source_c);
 

@@ -555,7 +555,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	}
 
 	output_c = buffer_acquire(cd->output);
-	frame_fmt = output_c->stream.frame_fmt;
+	frame_fmt = audio_stream_get_frm_fmt(&output_c->stream);
 	rate = output_c->stream.rate;
 	buffer_release(output_c);
 
