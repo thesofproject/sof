@@ -399,8 +399,8 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	sink_c = buffer_acquire(sinkb);
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = source_c->stream.rate;
-	cd->sink_rate = sink_c->stream.rate;
+	cd->source_rate = audio_stream_get_rate(&source_c->stream);
+	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 
 	if (source_c->stream.channels != sink_c->stream.channels) {
 		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");

@@ -752,8 +752,8 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 	src_set_sink_params(dev, sink_c);
 
 	/* Set source/sink_rate/frames */
-	cd->source_rate = source_c->stream.rate;
-	cd->sink_rate = sink_c->stream.rate;
+	cd->source_rate = audio_stream_get_rate(&source_c->stream);
+	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 	if (!cd->sink_rate) {
 		comp_err(dev, "src_params(), zero sink rate");
 

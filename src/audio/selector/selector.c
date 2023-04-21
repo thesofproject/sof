@@ -126,7 +126,7 @@ static int selector_verify_params(struct comp_dev *dev,
 
 	/* set component period frames */
 	sink_c = buffer_acquire(sinkb);
-	component_set_nearest_period_frames(dev, sink_c->stream.rate);
+	component_set_nearest_period_frames(dev, audio_stream_get_rate(&sink_c->stream));
 	buffer_release(sink_c);
 
 	/* verify input channels */
@@ -791,7 +791,7 @@ static int selector_verify_params(struct processing_module *mod,
 	/* set component period frames */
 	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	buffer_c = buffer_acquire(buffer);
-	component_set_nearest_period_frames(dev, buffer_c->stream.rate);
+	component_set_nearest_period_frames(dev, audio_stream_get_rate(&buffer_c->stream));
 	buffer_release(buffer_c);
 
 	return 0;

@@ -345,10 +345,10 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	sink_c = buffer_acquire(sinkb);
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = source_c->stream.rate;
-	cd->sink_rate = sink_c->stream.rate;
-	cd->sources_stream[0].rate = source_c->stream.rate;
-	cd->sink_stream.rate = sink_c->stream.rate;
+	cd->source_rate = audio_stream_get_rate(&source_c->stream);
+	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
+	cd->sources_stream[0].rate = audio_stream_get_rate(&source_c->stream);
+	cd->sink_stream.rate = audio_stream_get_rate(&sink_c->stream);
 	channels_valid = source_c->stream.channels == sink_c->stream.channels;
 
 	if (!cd->sink_rate) {

@@ -96,7 +96,7 @@ static void comp_update_params(uint32_t flag,
 		params->channels = buffer->stream.channels;
 
 	if (flag & BUFF_PARAMS_RATE)
-		params->rate = buffer->stream.rate;
+		params->rate = audio_stream_get_rate(&buffer->stream);
 }
 
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
@@ -145,7 +145,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
 
 		/* set component period frames */
-		component_set_nearest_period_frames(dev, buf_c->stream.rate);
+		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf_c->stream));
 
 		buffer_release(buf_c);
 	} else {
@@ -167,7 +167,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					source_list);
 
 		buf_c = buffer_acquire(sinkb);
-		component_set_nearest_period_frames(dev, buf_c->stream.rate);
+		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf_c->stream));
 		buffer_release(buf_c);
 	}
 

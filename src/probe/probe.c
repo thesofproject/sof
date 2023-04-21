@@ -830,7 +830,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 
 	if (_probe->probe_points[i].purpose == PROBE_PURPOSE_EXTRACTION) {
 		format = probe_gen_format(audio_stream_get_frm_fmt(&buffer->stream),
-					  buffer->stream.rate,
+					  audio_stream_get_rate(&buffer->stream),
 					  buffer->stream.channels);
 		ret = probe_gen_header(buffer_id,
 				       cb_data->transaction_amount,

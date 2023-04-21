@@ -558,8 +558,8 @@ static int asrc_params(struct comp_dev *dev,
 		sink_c->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = source_c->stream.rate;
-	cd->sink_rate = sink_c->stream.rate;
+	cd->source_rate = audio_stream_get_rate(&source_c->stream);
+	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 
 	buffer_release(sink_c);
 	buffer_release(source_c);

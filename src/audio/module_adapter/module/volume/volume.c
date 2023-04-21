@@ -1311,7 +1311,8 @@ static int volume_prepare(struct processing_module *mod)
 		goto err;
 	}
 
-	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX / sink_c->stream.rate);
+	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX /
+					audio_stream_get_rate(&sink_c->stream));
 
 	buffer_release(sink_c);
 

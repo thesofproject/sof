@@ -748,7 +748,7 @@ static int tdfb_prepare(struct processing_module *mod)
 	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
 	source_channels = source_c->stream.channels;
 	sink_channels = sink_c->stream.channels;
-	rate = source_c->stream.rate;
+	rate = audio_stream_get_rate(&source_c->stream);
 	buffer_release(sink_c);
 	buffer_release(source_c);
 

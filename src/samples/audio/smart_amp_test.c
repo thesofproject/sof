@@ -780,7 +780,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
 		buf->stream.channels = sad->config.feedback_channels;
-		buf->stream.rate = buffer_c->stream.rate;
+		buf->stream.rate = audio_stream_get_rate(&buffer_c->stream);
 		buffer_release(buf);
 	}
 	k_mutex_unlock(&sad->lock);
