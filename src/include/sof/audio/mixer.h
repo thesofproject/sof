@@ -68,7 +68,7 @@ static inline mixer_func mixer_get_processing_function(struct comp_dev *dev,
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < mixer_func_count; i++) {
-		if (sinkb->stream.frame_fmt != mixer_func_map[i].frame_fmt)
+		if (audio_stream_get_frm_fmt(&sinkb->stream) != mixer_func_map[i].frame_fmt)
 			continue;
 
 		return mixer_func_map[i].func;

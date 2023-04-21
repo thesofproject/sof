@@ -754,12 +754,12 @@ static int asrc_prepare(struct comp_dev *dev)
 	sink_c = buffer_acquire(sinkb);
 
 	/* get source data format and period bytes */
-	cd->source_format = source_c->stream.frame_fmt;
+	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
 	source_period_bytes = audio_stream_period_bytes(&source_c->stream,
 							cd->source_frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sink_c->stream.frame_fmt;
+	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
 						      cd->sink_frames);
 
@@ -785,7 +785,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/* ASRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (source_c->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&source_c->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->asrc_func = src_copy_s16;
 		break;

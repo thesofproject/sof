@@ -534,7 +534,7 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 	source_c = buffer_acquire(sourceb);
 
 	/* get source data format */
-	cd->source_format = source_c->stream.frame_fmt;
+	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
 
 	/* Initialize DRC */
 	comp_dbg(dev, "multiband_drc_prepare(), source_format=%d, sink_format=%d",
@@ -574,10 +574,10 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 	sink_c = buffer_acquire(sinkb);
 
 	/* validate sink data format and period bytes */
-	if (cd->source_format != sink_c->stream.frame_fmt) {
+	if (cd->source_format != audio_stream_get_frm_fmt(&sink_c->stream)) {
 		comp_err(dev,
 			 "multiband_drc_prepare(): Source fmt %d and sink fmt %d are different.",
-			 cd->source_format, sink_c->stream.frame_fmt);
+			 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream));
 		ret = -EINVAL;
 		goto out_sink;
 	}

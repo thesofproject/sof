@@ -720,8 +720,8 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	 * pcm frame_fmt and will not make any conversion (sink and source
 	 * frame_fmt will be equal).
 	 */
-	buffer_flag = eq_iir_find_func(source_c->stream.frame_fmt,
-				       sink_c->stream.frame_fmt, fm_configured,
+	buffer_flag = eq_iir_find_func(audio_stream_get_frm_fmt(&source_c->stream),
+				       audio_stream_get_frm_fmt(&sink_c->stream), fm_configured,
 				       ARRAY_SIZE(fm_configured)) ?
 				       BUFF_PARAMS_FRAME_FMT : 0;
 
@@ -808,8 +808,8 @@ static int eq_iir_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_iir_new_blob(mod, cd, source->frame_fmt,
-				      sink->frame_fmt, source->channels);
+		ret = eq_iir_new_blob(mod, cd, audio_stream_get_frm_fmt(source),
+				      audio_stream_get_frm_fmt(sink), source->channels);
 		if (ret)
 			return ret;
 	}
@@ -919,8 +919,8 @@ static int eq_iir_prepare(struct processing_module *mod)
 
 	/* get source and sink data format */
 	channels = sink_c->stream.channels;
-	source_format = source_c->stream.frame_fmt;
-	sink_format = sink_c->stream.frame_fmt;
+	source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 	buffer_release(sink_c);
 	buffer_release(source_c);
 

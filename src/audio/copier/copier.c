@@ -1407,7 +1407,7 @@ static void copier_dma_cb(void *arg, enum notify_id type, void *data)
 		else
 			sink = buffer_acquire(cd->hd->dma_buffer);
 
-		frames = bytes / get_sample_bytes(sink->stream.frame_fmt);
+		frames = bytes / get_sample_bytes(audio_stream_get_frm_fmt(&sink->stream));
 		frames = frames / sink->stream.channels;
 
 		ret = apply_attenuation(dev, cd, sink, frames);

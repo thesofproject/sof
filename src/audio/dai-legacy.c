@@ -332,8 +332,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_sg_config *config = &dd->config;
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
-	uint32_t local_fmt = local_buf->stream.frame_fmt;
-	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
+	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
 	uint32_t fifo;
 	int err = 0;
 
@@ -394,8 +394,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dma_sg_config *config = &dd->config;
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
-	uint32_t local_fmt = local_buf->stream.frame_fmt;
-	uint32_t dma_fmt = dma_buf->stream.frame_fmt;
+	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
 	uint32_t fifo;
 	int err = 0;
 
@@ -941,7 +941,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	buf_c = buffer_acquire(dd->dma_buffer);
 
-	dma_fmt = buf_c->stream.frame_fmt;
+	dma_fmt = audio_stream_get_frm_fmt(&buf_c->stream);
 	sampling = get_sample_bytes(dma_fmt);
 
 	buffer_release(buf_c);

@@ -558,8 +558,12 @@ static int smart_amp_process(struct comp_dev *dev,
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
+	enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&source_buf->stream);
 
-	switch (sad->source_buf->stream.frame_fmt) {
+	buffer_release(source_buf);
+
+	switch (fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
@@ -710,7 +714,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		}
 	}
 
-	switch (source_c->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&source_c->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		bitwidth = 16;
 		break;
@@ -722,7 +726,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		break;
 	default:
 		comp_err(dev, "[DSM] smart_amp_process() error: not supported frame format %d",
-			 source_c->stream.frame_fmt);
+			 audio_stream_get_frm_fmt(&source_c->stream));
 		goto error;
 	}
 

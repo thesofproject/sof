@@ -190,7 +190,7 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < volume_func_count; i++) {
-		if (sinkb->stream.frame_fmt != volume_func_map[i].frame_fmt)
+		if (audio_stream_get_frm_fmt(&sinkb->stream) != volume_func_map[i].frame_fmt)
 			continue;
 
 		return volume_func_map[i].func;

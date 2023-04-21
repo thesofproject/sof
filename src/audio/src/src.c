@@ -467,7 +467,7 @@ static void src_copy_sxx(struct comp_dev *dev, struct comp_data *cd,
 {
 	int frames = cd->param.blk_in;
 
-	switch (sink->frame_fmt) {
+	switch (audio_stream_get_frm_fmt(sink)) {
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
@@ -766,7 +766,7 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 
 	/* Allocate needed memory for delay lines */
 	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u, format = %d",
-		  cd->source_rate, cd->sink_rate, source_c->stream.frame_fmt);
+		  cd->source_rate, cd->sink_rate, audio_stream_get_frm_fmt(&source_c->stream));
 	comp_info(dev, "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
 		  source_c->stream.channels, sink_c->stream.channels, dev->frames);
 	err = src_buffer_lengths(dev, cd, source_c->stream.channels);
@@ -861,8 +861,8 @@ static int src_prepare_general(struct comp_dev *dev, struct comp_data *cd)
 #endif
 
 	/* get source/sink data format */
-	source_format = source_c->stream.frame_fmt;
-	sink_format = sink_c->stream.frame_fmt;
+	source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 
 	ret = src_check_buffer_sizes(dev, cd, &source_c->stream, &sink_c->stream);
 	if (ret < 0)

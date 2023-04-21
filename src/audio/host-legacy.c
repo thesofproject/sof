@@ -851,8 +851,8 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 		host_copy_normal;
 
 	/* set processing function */
-	hd->process = pcm_get_conversion_function(host_buf_c->stream.frame_fmt,
-						  host_buf_c->stream.frame_fmt);
+	hd->process = pcm_get_conversion_function(audio_stream_get_frm_fmt(&host_buf_c->stream),
+						  audio_stream_get_frm_fmt(&host_buf_c->stream));
 
 out:
 	buffer_release(host_buf_c);

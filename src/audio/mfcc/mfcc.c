@@ -209,13 +209,13 @@ static int mfcc_prepare(struct processing_module *mod)
 	sink_c = buffer_acquire(sinkb);
 
 	/* get source data format */
-	source_format = source_c->stream.frame_fmt;
+	source_format = audio_stream_get_frm_fmt(&source_c->stream);
 
 	/* set align requirements */
 	mfcc_set_alignment(&source_c->stream, &sink_c->stream);
 
 	/* get sink data format and period bytes */
-	sink_format = sink_c->stream.frame_fmt;
+	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
 	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 	comp_info(dev, "mfcc_prepare(), source_format = %d, sink_format = %d",
 		  source_format, sink_format);
