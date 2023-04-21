@@ -1190,7 +1190,7 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
 
 	/* map the zc function to frame format */
 	for (i = 0; i < ARRAY_SIZE(zc_func_map); i++) {
-		if (sinkb->stream.valid_sample_fmt == zc_func_map[i].frame_fmt)
+		if (audio_stream_get_valid_fmt(&sinkb->stream) == zc_func_map[i].frame_fmt)
 			return zc_func_map[i].func;
 	}
 
