@@ -124,6 +124,11 @@ static inline enum sof_ipc_frame audio_stream_get_valid_fmt(
 	return buf->valid_sample_fmt;
 }
 
+static inline uint32_t audio_stream_get_rate(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->rate;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

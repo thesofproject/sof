@@ -701,14 +701,14 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		buf_c = buffer_acquire(sad->feedback_buf);
 
 		buf_c->stream.channels = sad->config.feedback_channels;
-		buf_c->stream.rate = source_c->stream.rate;
+		buf_c->stream.rate = audio_stream_get_rate(&source_c->stream);
 		buffer_release(buf_c);
 
-		ret = smart_amp_check_audio_fmt(source_c->stream.rate,
+		ret = smart_amp_check_audio_fmt(audio_stream_get_rate(&source_c->stream),
 						source_c->stream.channels);
 		if (ret) {
 			comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
-				 source_c->stream.rate,
+				 audio_stream_get_rate(&source_c->stream),
 				 source_c->stream.channels);
 			goto error;
 		}

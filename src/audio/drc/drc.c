@@ -344,7 +344,8 @@ static int drc_copy(struct comp_dev *dev)
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = drc_setup(cd, source_c->stream.channels, source_c->stream.rate);
+		ret = drc_setup(cd, source_c->stream.channels,
+				audio_stream_get_rate(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "drc_copy(), failed DRC setup");
 			goto out;
@@ -398,7 +399,8 @@ static int drc_prepare(struct comp_dev *dev)
 		  cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
-		ret = drc_setup(cd, source_c->stream.channels, source_c->stream.rate);
+		ret = drc_setup(cd, source_c->stream.channels,
+				audio_stream_get_rate(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "drc_prepare() error: drc_setup failed.");
 			goto out_source;

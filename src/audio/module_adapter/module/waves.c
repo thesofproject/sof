@@ -235,9 +235,9 @@ static int waves_effect_check(struct comp_dev *dev)
 	/* todo use fallback to comp_verify_params when ready */
 
 	/* resampling not supported */
-	if (src_fmt->rate != snk_fmt->rate) {
+	if (src_fmt->rate != audio_stream_get_rate(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d rate mismatch",
-			 src_fmt->rate, snk_fmt->rate);
+			 audio_stream_get_rate(src_fmt), audio_stream_get_rate(snk_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -277,8 +277,9 @@ static int waves_effect_check(struct comp_dev *dev)
 		goto out;
 	}
 
-	if (!rate_is_supported(src_fmt->rate)) {
-		comp_err(dev, "waves_effect_check() rate %d not supported", src_fmt->rate);
+	if (!rate_is_supported(audio_stream_get_rate(src_fmt))) {
+		comp_err(dev, "waves_effect_check() rate %d not supported",
+			 audio_stream_get_rate(src_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -346,7 +347,7 @@ static int waves_effect_init(struct processing_module *mod)
 	waves_codec->i_buffer = 0;
 	waves_codec->o_buffer = 0;
 
-	waves_codec->i_format.sampleRate = src_fmt->rate;
+	waves_codec->i_format.sampleRate = audio_stream_get_rate(src_fmt);
 	waves_codec->i_format.numChannels = src_fmt->channels;
 	waves_codec->i_format.samplesFormat = sample_format;
 	waves_codec->i_format.samplesLayout = buffer_format;
@@ -356,7 +357,8 @@ static int waves_effect_init(struct processing_module *mod)
 	/* Prepare a buffer for 1 period worth of data
 	 * dev->pipeline->period stands for the scheduling period in us
 	 */
-	waves_codec->buffer_samples = src_fmt->rate * dev->pipeline->period / 1000000;
+	waves_codec->buffer_samples = audio_stream_get_rate(src_fmt) * dev->pipeline->period /
+		1000000;
 	waves_codec->buffer_bytes = waves_codec->buffer_samples * src_fmt->channels *
 		waves_codec->sample_size_in_bytes;
 
