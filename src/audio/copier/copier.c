@@ -1502,8 +1502,6 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 					/* set up callback */
 					notifier_register(dev, cd->hd->chan,
 							  NOTIFIER_ID_DMA_COPY, copier_dma_cb, 0);
-
-				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 			} else {
 				ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
 								       params);
