@@ -699,7 +699,7 @@ static int mixin_prepare(struct processing_module *mod)
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink_c = buffer_acquire(sink);
-	fmt = sink_c->stream.valid_sample_fmt;
+	fmt = audio_stream_get_valid_fmt(&sink_c->stream);
 	buffer_release(sink_c);
 
 	/* currently inactive so setup mixer */
