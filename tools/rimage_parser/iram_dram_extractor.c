@@ -213,8 +213,8 @@ static int sof_ipc3_parse_module_memcpy(/*struct snd_sof_dev *sdev,*/
 	remaining = module->size;
 
 	//outfile opening logic
-	FILE *out_image_fptr = fopen("fwimage_3_0.bin", "wb+");
-	FILE *out_data_fptr = fopen("fwdata_3_0.bin", "wb+");
+	FILE *out_image_fptr = fopen("sof-vangogh-code.bin", "wb+");
+	FILE *out_data_fptr = fopen("sof-vangogh-data.bin", "wb+");
 	__u32 prev_size = 0;
 	u32 prev_offset = 0;
 	enum sof_fw_blk_type prev_type;
