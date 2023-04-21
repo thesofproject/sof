@@ -25,7 +25,6 @@
 #include <zephyr/pm/policy.h>
 #include <version.h>
 #include <zephyr/sys/__assert.h>
-#include <soc.h>
 
 #if defined(CONFIG_ARCH_XTENSA) && !defined(CONFIG_KERNEL_COHERENCE)
 #include <zephyr/arch/xtensa/cache.h>

@@ -15,7 +15,6 @@
 #include <sof/lib/pm_runtime.h>
 
 /* Zephyr includes */
-#include <soc.h>
 #include <version.h>
 #include <zephyr/kernel.h>
 
