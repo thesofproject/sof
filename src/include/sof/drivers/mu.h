@@ -19,7 +19,7 @@ enum imx_mu_type {
 	IMX_MU_V2,
 };
 
-#ifdef CONFIG_IMX8ULP
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
 #define IMX_MU_VERSION IMX_MU_V2
 #else
 #define IMX_MU_VERSION IMX_MU_V1
@@ -39,7 +39,7 @@ enum imx_mu_xsr {
 	IMX_MU_RSR = 0x12c,
 };
 
-#ifdef CONFIG_IMX8ULP
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
 /* Transmit Register */
 #define IMX_MU_xTRn(x)         (0x200 + 4 * (x))
 /* Receive Register */
