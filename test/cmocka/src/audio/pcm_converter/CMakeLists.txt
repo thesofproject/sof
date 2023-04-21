@@ -3,6 +3,7 @@
 if(CONFIG_FORMAT_FLOAT)
 	cmocka_test(pcm_float_generic
 		pcm_float.c
+		${PROJECT_SOURCE_DIR}/src/math/numbers.c
 		${PROJECT_SOURCE_DIR}/src/audio/pcm_converter/pcm_converter.c
 		${PROJECT_SOURCE_DIR}/src/audio/pcm_converter/pcm_converter_generic.c
 		${PROJECT_SOURCE_DIR}/src/audio/buffer.c

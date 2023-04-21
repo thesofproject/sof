@@ -30,6 +30,7 @@ add_library(audio_for_volume STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
 sof_append_relative_path_definitions(audio_for_volume)
 
