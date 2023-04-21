@@ -19,19 +19,19 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-sdw.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1316 Amplifier + rt714 DMIC
-"cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMPS=2,SDW_DMIC=1,\
+"cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt711-rt1316-rt714.bin"
 
-"cavs-sdw\;sof-adl-rt711-l0-rt1316-l12-rt714-l3\;NUM_SDW_AMPS=2,SDW_DMIC=1"
+"cavs-sdw\;sof-adl-rt711-l0-rt1316-l12-rt714-l3\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1"
 
 # IPC4 topology for TGL rt711 Headset + rt1308 Amplifier + rt715 DMIC
-"cavs-sdw\;sof-tgl-rt715-rt711-rt1308-mono\;NUM_SDW_AMPS=1,SDW_DMIC=1,\
+"cavs-sdw\;sof-tgl-rt715-rt711-rt1308-mono\;NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
 SDW_JACK_OUT_STREAM=SDW1-Playback,SDW_JACK_IN_STREAM=SDW1-Capture,\
 SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture,SDW_AMP_FEEDBACK=false,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt715-rt711-rt1308-mono.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1308 Amplifier + PCH DMIC
-"cavs-sdw\;sof-tgl-rt711-rt1308-4ch\;NUM_SDW_AMPS=1,NUM_DMICS=4,DMIC0_ID=3,\
+"cavs-sdw\;sof-tgl-rt711-rt1308-4ch\;NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,DMIC0_ID=3,\
 DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,SDW_AMP_FEEDBACK=false,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt711-rt1308-4ch.bin"
 
