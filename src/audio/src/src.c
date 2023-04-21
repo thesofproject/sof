@@ -965,17 +965,14 @@ static int src_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source_c, *sink_c;
-
+	/* src component needs 1 source and 1 sink buffer */
+	struct audio_stream __sparse_cache *source_c = input_buffers[0].data;
+	struct audio_stream __sparse_cache *sink_c = output_buffers[0].data;
 	int consumed = 0;
 	int produced = 0;
 	int ret;
 
 	comp_dbg(dev, "src_process()");
-
-	/* src component needs 1 source and 1 sink buffer */
-	source_c = (struct audio_stream *)input_buffers[0].data;
-	sink_c = (struct audio_stream *)output_buffers[0].data;
 
 	ret = src_get_copy_limits(cd, source_c, sink_c);
 	if (ret) {
