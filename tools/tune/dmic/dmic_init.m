@@ -1,4 +1,4 @@
-% success = dmic_init(prm)
+% prm = dmic_init(prm)
 %
 % Create PDM microphones interface configuration
 
@@ -8,7 +8,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function success = dmic_init(prm)
+function prm = dmic_init(prm)
 
 hw.controllers = 4;
 hw.bits_cic = 26;
@@ -18,7 +18,6 @@ hw.bits_fir_input = 22;
 hw.bits_fir_output = 24;
 hw.bits_fir_internal = 26;
 hw.bits_gain_output = 22;
-hw.fir_length_max = 250;
 hw.cic_shift_right_range = [-8 4];
 hw.fir_shift_right_range  = [0 8];
 hw.fir_max_length = 250;
@@ -31,7 +30,6 @@ spec.rp = 0.1;
 spec.cp = 0.4375;
 spec.cs = 0.5100;
 spec.rs = 95;
-success = 0;
 
 if (prm.fifo_a_fs == 0) && (prm.fifo_b_fs == 0)
         fprintf(1,'Error: At least one FIFO needs non-zero Fs!\n');
@@ -54,60 +52,31 @@ cfg = get_cfg(prm, hw);
 %% Done, print 1st modes combination
 fprintf('Selected fifo_a_fs=%d, fifo_b_fs=%d: ', prm.fifo_a_fs, prm.fifo_b_fs);
 cfg = select_mode(common_mcic_list, a_mfir_list, b_mfir_list, common_clkdiv_list, cfg);
-cfg = get_cic_config(prm, cfg, hw);
-cfg = get_fir_config(prm, cfg, hw, spec);
+cfg = get_cic_config(cfg, hw);
+prm = get_fir_config(prm, cfg, hw, spec);
 
 end
 
 %% Functions
 
 %% Get FIR filters
-function cfg = get_fir_config(prm, cfg, hw, spec)
+function prm = get_fir_config(prm, cfg, hw, spec)
 
 if prm.fifo_a_fs > 0
-        [coef, shift] = get_fir(cfg.mfir_a, prm, cfg, hw, spec);
-
-        [cfg.fir_coef_a, cfg.fir_shift_a, cfg.fir_length_a] = ...
-                scale_fir_coef(coef, shift, spec.scale, cfg.remain_gain_to_fir, hw.bits_fir_coef);
-        cfg.fir_gain_a = 1;
-else
-        cfg.fir_gain_a = 0;
-        cfg.fir_coef_a = 0;
-        cfg.fir_shift_a = 0;
-        cfg.fir_length_a = 1;
+        fir = get_fir(cfg.mfir_a, cfg, hw, spec);
+	dmic_fir_export(fir, 'include');
+	prm.vfn = dmic_fir_export_alsa(fir, 'include_alsa_utils', prm.vfn);
 end
 
 if prm.fifo_b_fs > 0
-        [coef, shift] = get_fir(cfg.mfir_b, prm, cfg, hw, spec);
-
-        [cfg.fir_coef_b, cfg.fir_shift_b, cfg.fir_length_b] = ...
-		scale_fir_coef(coef, shift, spec.scale, cfg.remain_gain_to_fir, hw.bits_fir_coef);
-        cfg.fir_gain_b = 1;
-else
-        cfg.fir_gain_b = 0;
-        cfg.fir_coef_b = 0;
-        cfg.fir_shift_b = 0;
-        cfg.fir_length_b = 1;
+        fir = get_fir(cfg.mfir_b, cfg, hw, spec);
+	dmic_fir_export(fir, 'include');
+	prm.vfn = dmic_fir_export_alsa(fir, 'include_alsa_utils', prm.vfn);
 end
 
 end
 
-function [coefq, shiftq, len] = scale_fir_coef(coef32, shift32, hw_sens, add_gain, bits)
-
-out_scale = 2^(bits-1);
-q31_scale = 2^31;
-coef = coef32/q31_scale * 2^(-shift32) * hw_sens * add_gain;
-max_abs_coef = max(abs(coef));
-scale = 0.9999/max_abs_coef;
-shiftq = floor(log(scale)/log(2));
-c = 2^shiftq;
-coefq = round(out_scale * coef * c);
-len = length(coefq);
-
-end
-
-% This function becomes table lookup in C
-function [coef32, shift] = get_fir(mfir, prm, cfg, hw, spec)
+function fir = get_fir(mfir, cfg, hw, spec)
 
 fs_fir = cfg.mic_clk/cfg.mcic;
 fs = fs_fir/mfir;
@@ -136,7 +105,6 @@ fir.cs = cs;
 fir.rp = spec.rp;
 fir.rs = rs;
 fir.m = mfir;
-dmic_fir_export(fir, 'include');
 
 end
 
@@ -156,7 +124,7 @@ mpref = [2 4 6 8 3 5 7 9 10 11 12 13 14 15];
 % Find common mode with lowest FIR decimation ratio. If there are many
 % select one with lowest mic clock rate. Lowest rates or highest dividers
 % are in the end of list.
-if length(common_mcic_list) > 0
+if ~isempty(common_mcic_list)
 	for mtry = mpref
 		idx = find(a_mfir_list == mtry);
 		if ~isempty(idx)
@@ -179,7 +147,7 @@ end
 end
 
 %% Compute CIC filter settings
-function cfg = get_cic_config(prm, cfg, hw)
+function cfg = get_cic_config(cfg, hw)
 
 cfg.mic_clk = hw.ioclk/cfg.clk_div;
 g_cic = cfg.mcic^5;
@@ -190,12 +158,12 @@ if hw.bits_cic < bitsneeded
         fprintf(1,'Error: Needed CIC word length is exceeded %d\n', bitsneeded);
 end
 
-if cfg.cic_shift < hw.cic_shift_right_range(1);
+if cfg.cic_shift < hw.cic_shift_right_range(1)
         fprintf(1,'Warning: Limited CIC shift right from %d', cfg.cic_shift);
         cfg.cic_shift = hw.cic_shift_right_range(1);
 end
 
-if cfg.cic_shift > hw.cic_shift_right_range(2);
+if cfg.cic_shift > hw.cic_shift_right_range(2)
         fprintf(1,'Error: Limited CIC shift right from %d', cfg.cic_shift);
         cfg.cic_shift = hw.cic_shift_right_range(2);
 end
