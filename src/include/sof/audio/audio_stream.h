@@ -561,6 +561,12 @@ static inline void audio_stream_init(struct audio_stream __sparse_cache *buffer,
 	buffer->size = size;
 	buffer->addr = buff_addr;
 	buffer->end_addr = (char *)buffer->addr + size;
+
+	/* set the default alignment info.
+	 * set byte_align as 1 means no alignment limit on byte.
+	 * set frame_align as 1 means no alignment limit on frame.
+	 */
+	audio_stream_init_alignment_constants(1, 1, buffer);
 	audio_stream_reset(buffer);
 }
 
