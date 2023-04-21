@@ -28,7 +28,6 @@
 #include <zephyr/pm/policy.h>
 #include <version.h>
 #include <zephyr/sys/__assert.h>
-#include <soc.h>
 
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
 
