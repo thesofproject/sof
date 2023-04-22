@@ -268,7 +268,7 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
  * \param[in,out] task Task to be checked.
  * \return True is task should be executed, false otherwise.
  */
-volatile uint32_t host_pipe_intr_status = 0;
+volatile uint32_t regable_mux_pipe_intr_status = 0;
 #define HS_DOMAIN_DMA_NUM 2
 #define HS_DOMAIN_DMA_CH_NUM 1
 static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
@@ -333,35 +333,35 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 			/* clear interrupt */
 			if (pipe_task->registrable) {
-				if( (i==HS_DOMAIN_DMA_NUM) &&
-					(j==HS_DOMAIN_DMA_CH_NUM) &&
-					(host_pipe_intr_status!=1))
-				{
-					return false;
-				}
-				else
-				{
+				if ((i == HS_DOMAIN_DMA_NUM) &&
+				(j == HS_DOMAIN_DMA_CH_NUM)) {
+					if (regable_mux_pipe_intr_status == 0) {
+						regable_mux_pipe_intr_status = 1;
+						return false;
+					} else {
+						dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+						interrupt_clear_mask(dma_domain->data[i][j].irq,
+								     BIT(j));
+						regable_mux_pipe_intr_status = 0;
+						return true;
+					}
+				} else {
 					dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 					interrupt_clear_mask(dma_domain->data[i][j].irq,
 							     BIT(j));
-					host_pipe_intr_status = 0;
 				}
 			}
+			if ((i == HS_DOMAIN_DMA_NUM) &&
+				(j == HS_DOMAIN_DMA_CH_NUM) &&
+				(!(pipe_task->registrable))) {
+				if (regable_mux_pipe_intr_status == 1)
+					return true;
+				else
+					return false;
 
-			if((i==HS_DOMAIN_DMA_NUM) &&
-				(j==HS_DOMAIN_DMA_CH_NUM) &&
-				(!(pipe_task->registrable)))
-			{
-				host_pipe_intr_status=1;
 			}
 			return true;
 		}
-	}
-	if((i==HS_DOMAIN_DMA_NUM) &&
-		(j==HS_DOMAIN_DMA_CH_NUM) &&
-		(!(pipe_task->registrable)))
-	{
-		host_pipe_intr_status=0;
 	}
 
 	return false;
