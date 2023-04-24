@@ -66,8 +66,8 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	int i;
 	int j;
 	int f;
-	const int in_nch = source->channels;
-	const int out_nch = sink->channels;
+	const int in_nch = audio_stream_get_channels(source);
+	const int out_nch = audio_stream_get_channels(sink);
 	int remaining_frames = frames;
 	int emp_ch = 0;
 
@@ -112,8 +112,8 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	int i;
 	int j;
 	int f;
-	const int in_nch = source->channels;
-	const int out_nch = sink->channels;
+	const int in_nch = audio_stream_get_channels(source);
+	const int out_nch = audio_stream_get_channels(sink);
 	int remaining_frames = frames;
 	int emp_ch = 0;
 
@@ -158,8 +158,8 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 	int i;
 	int j;
 	int f;
-	const int in_nch = source->channels;
-	const int out_nch = sink->channels;
+	const int in_nch = audio_stream_get_channels(source);
+	const int out_nch = audio_stream_get_channels(sink);
 	int remaining_frames = frames;
 	int emp_ch = 0;
 

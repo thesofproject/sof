@@ -53,7 +53,7 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 	ae_int32x2 R, state_x, state_y, sample;
 	ae_int16x4 in_sample, out_sample;
 	int ch, i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	const int inc = nch * sizeof(ae_int16);
 
 	dcblock_set_circular(source, sink);
@@ -91,7 +91,7 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample, out_sample;
 	int ch, i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	const int inc = nch * sizeof(ae_int32);
 
 	dcblock_set_circular(source, sink);
@@ -130,7 +130,7 @@ static void dcblock_s32_default(const struct comp_dev *dev,
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample;
 	int ch, i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	const int inc = nch * sizeof(ae_int32);
 
 	dcblock_set_circular(source, sink);

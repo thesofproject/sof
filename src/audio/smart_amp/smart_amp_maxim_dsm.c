@@ -604,7 +604,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 								   index);
 				output.buf16[num_ch * idx + ch] = *input.buf16;
 			}
-			in_frag += stream->channels;
+			in_frag += audio_stream_get_channels(stream);
 		}
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
@@ -619,7 +619,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 								   index);
 				output.buf32[num_ch * idx + ch] = *input.buf32;
 			}
-			in_frag += stream->channels;
+			in_frag += audio_stream_get_channels(stream);
 		}
 		break;
 	default:

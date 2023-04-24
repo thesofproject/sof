@@ -42,7 +42,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int inc_nch_s = nch * sizeof(int32_t);
 	int inc_2nch_s = 2 * inc_nch_s;
 
@@ -106,7 +106,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int inc_nch_s = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
@@ -182,7 +182,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int inc_nch_s = nch * sizeof(int16_t);
 
 	for (ch = 0; ch < nch; ch++) {

@@ -487,7 +487,7 @@ static int multiband_drc_copy(struct comp_dev *dev)
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = multiband_drc_setup(cd, (int16_t)source_c->stream.channels,
+		ret = multiband_drc_setup(cd, (int16_t)audio_stream_get_channels(&source_c->stream),
 					  audio_stream_get_rate(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_copy(), failed DRC setup");
@@ -541,7 +541,7 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 		 cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config && cd->process_enabled) {
-		ret = multiband_drc_setup(cd, source_c->stream.channels,
+		ret = multiband_drc_setup(cd, audio_stream_get_channels(&source_c->stream),
 					  audio_stream_get_rate(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_prepare() error: multiband_drc_setup failed.");

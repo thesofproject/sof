@@ -11,9 +11,9 @@
 #ifdef MIXIN_MIXOUT_GENERIC
 
 #if CONFIG_FORMAT_S16LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -130,9 +130,10 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 	if (frame_count <= skip_mixed_frames)
 		return;
 	frame_count -= skip_mixed_frames;
-	channel_count = stream->channels;
+	channel_count = audio_stream_get_channels(stream);
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (int16_t *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+	ptr = (int16_t *)audio_stream_get_wptr(stream) +
+		mixed_frames * audio_stream_get_channels(stream) +
 		channel_index;
 
 	for (left_frames = frame_count; left_frames; left_frames -= frames) {
@@ -151,9 +152,9 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -262,9 +263,9 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -382,9 +383,10 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 	if (frame_count <= skip_mixed_frames)
 		return;
 	frame_count -= skip_mixed_frames;
-	channel_count = stream->channels;
+	channel_count = audio_stream_get_channels(stream);
 
-	ptr = (int32_t *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+	ptr = (int32_t *)audio_stream_get_wptr(stream) +
+		mixed_frames * audio_stream_get_channels(stream) +
 		channel_index;
 
 	for (left_frames = frame_count; left_frames > 0; left_frames -= frames) {

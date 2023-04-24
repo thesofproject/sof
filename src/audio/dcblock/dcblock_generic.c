@@ -49,7 +49,7 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i, n, nmax;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int samples = nch * frames;
 
 	while (samples) {
@@ -90,7 +90,7 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i, n, nmax;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int samples = nch * frames;
 
 	while (samples) {
@@ -130,7 +130,7 @@ static void dcblock_s32_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i, n, nmax;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int samples = nch * frames;
 
 	while (samples) {

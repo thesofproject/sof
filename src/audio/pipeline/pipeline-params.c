@@ -140,7 +140,7 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache 
 	params->buffer_fmt = buffer->buffer_fmt;
 	params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
 	params->rate = audio_stream_get_rate(&buffer->stream);
-	params->channels = buffer->stream.channels;
+	params->channels = audio_stream_get_channels(&buffer->stream);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = buffer->chmap[i];
 }

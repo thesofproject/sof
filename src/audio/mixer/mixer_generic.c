@@ -21,7 +21,7 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nmax;
 	int i, j, n, ns;
 	int processed = 0;
-	int nch = sink->channels;
+	int nch = audio_stream_get_channels(sink);
 	int samples = frames * nch;
 
 	dest = audio_stream_get_wptr(sink);
@@ -68,7 +68,7 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nmax;
 	int i, j, n, ns;
 	int processed = 0;
-	int nch = sink->channels;
+	int nch = audio_stream_get_channels(sink);
 	int samples = frames * nch;
 
 	dest = audio_stream_get_wptr(sink);
@@ -115,7 +115,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *
 	int nmax;
 	int i, j, n, ns;
 	int processed = 0;
-	int nch = sink->channels;
+	int nch = audio_stream_get_channels(sink);
 	int samples = frames * nch;
 
 	dest = audio_stream_get_wptr(sink);

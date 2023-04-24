@@ -349,7 +349,7 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 	cd->sources_stream[0].rate = audio_stream_get_rate(&source_c->stream);
 	cd->sink_stream.rate = audio_stream_get_rate(&sink_c->stream);
-	channels_valid = source_c->stream.channels == sink_c->stream.channels;
+	channels_valid = source_c->stream.channels == audio_stream_get_channels(&sink_c->stream);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
@@ -379,8 +379,8 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	}
 
 	/* set source/sink stream channels */
-	cd->sources_stream[0].channels = source_c->stream.channels;
-	cd->sink_stream.channels = sink_c->stream.channels;
+	cd->sources_stream[0].channels = audio_stream_get_channels(&source_c->stream);
+	cd->sink_stream.channels = audio_stream_get_channels(&sink_c->stream);
 
 	/* set source/sink stream overrun/underrun permitted */
 	cd->sources_stream[0].overrun_permitted = source_c->stream.overrun_permitted;
@@ -779,7 +779,8 @@ static int rtnr_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
 	/* put empty data into output queue*/
-	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, source->stream.channels);
+	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate,
+			     audio_stream_get_channels(&source->stream));
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
@@ -835,7 +836,7 @@ static int rtnr_copy(struct comp_dev *dev)
 		buffer_stream_invalidate(source, cl.source_bytes);
 
 		audio_stream_copy(&source->stream, 0, &sink->stream, 0,
-				source->stream.channels * cl.frames);
+				audio_stream_get_channels(&source->stream) * cl.frames);
 
 		buffer_stream_writeback(sink, cl.sink_bytes);
 		comp_update_buffer_consume(source, cl.source_bytes);

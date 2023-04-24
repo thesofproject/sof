@@ -543,7 +543,7 @@ static int dai_params(struct comp_dev *dev,
 
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     buffer_c->stream.channels);
+				     audio_stream_get_channels(&buffer_c->stream));
 
 	buffer_release(buffer_c);
 
@@ -968,7 +968,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
-		 samples / buf_c->stream.channels);
+		 samples / audio_stream_get_channels(&buf_c->stream));
 
 	buffer_release(buf_c);
 

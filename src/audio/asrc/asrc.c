@@ -145,7 +145,7 @@ static void src_copy_s32(struct comp_dev *dev,
 
 	/* Copy input data from source */
 	buf = (int32_t *)cd->ibuf[0];
-	n = cd->source_frames * source->channels;
+	n = cd->source_frames * audio_stream_get_channels(source);
 	while (n > 0) {
 		n_wrap_src = (int32_t *)audio_stream_get_end_addr(source) - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
@@ -176,7 +176,7 @@ static void src_copy_s32(struct comp_dev *dev,
 		comp_err(dev, "src_copy_s32(), error %d", ret);
 
 	buf = (int32_t *)cd->obuf[0];
-	n = out_frames * sink->channels;
+	n = out_frames * audio_stream_get_channels(sink);
 	while (n > 0) {
 		n_wrap_snk = (int32_t *)audio_stream_get_end_addr(sink) - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
@@ -216,7 +216,7 @@ static void src_copy_s16(struct comp_dev *dev,
 
 	/* Copy input data from source */
 	buf = (int16_t *)cd->ibuf[0];
-	n = cd->source_frames * source->channels;
+	n = cd->source_frames * audio_stream_get_channels(source);
 	while (n > 0) {
 		n_wrap_src = (int16_t *)audio_stream_get_end_addr(source) - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
@@ -251,7 +251,7 @@ static void src_copy_s16(struct comp_dev *dev,
 		comp_err(dev, "src_copy_s16(), error %d", ret);
 
 	buf = (int16_t *)cd->obuf[0];
-	n = out_frames * sink->channels;
+	n = out_frames * audio_stream_get_channels(sink);
 	while (n > 0) {
 		n_wrap_snk = (int16_t *)audio_stream_get_end_addr(sink) - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
@@ -817,8 +817,8 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	sample_bytes = frame_bytes / source_c->stream.channels;
-	for (i = 0; i < sourceb->stream.channels; i++) {
+	sample_bytes = frame_bytes / audio_stream_get_channels(&source_c->stream);
+	for (i = 0; i < audio_stream_get_channels(&source_c->stream); i++) {
 		cd->ibuf[i] = cd->buf + i * sample_bytes;
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
 	}
@@ -826,7 +826,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/* Get required size and allocate memory for ASRC */
 	sample_bits = sample_bytes * 8;
 	ret = asrc_get_required_size(dev, &cd->asrc_size,
-				     source_c->stream.channels,
+				     audio_stream_get_channels(&source_c->stream),
 				     sample_bits);
 	if (ret) {
 		comp_err(dev, "asrc_prepare(), get_required_size_bytes failed");
@@ -852,7 +852,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		fs_sec = cd->source_rate;
 	}
 
-	ret = asrc_initialise(dev, cd->asrc_obj, source_c->stream.channels,
+	ret = asrc_initialise(dev, cd->asrc_obj, audio_stream_get_channels(&source_c->stream),
 			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,

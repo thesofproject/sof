@@ -95,7 +95,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	stream = &source_c->stream;
 	frame_fmt = audio_stream_get_frm_fmt(stream);
 	rate = audio_stream_get_rate(stream);
-	channels = stream->channels;
+	channels = audio_stream_get_channels(stream);
 
 	buffer_release(source_c);
 

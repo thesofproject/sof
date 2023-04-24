@@ -595,7 +595,7 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 			}
 			out_frag++;
 		}
-		in_frag += source->channels;
+		in_frag += audio_stream_get_channels(source);
 	}
 	return 0;
 }
@@ -627,7 +627,7 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 			}
 			out_frag++;
 		}
-		in_frag += source->channels;
+		in_frag += audio_stream_get_channels(source);
 	}
 
 	return 0;
@@ -769,11 +769,11 @@ static int smart_amp_prepare(struct comp_dev *dev)
 					source_list);
 
 	buffer_c = buffer_acquire(sad->sink_buf);
-	sad->out_channels = buffer_c->stream.channels;
+	sad->out_channels = audio_stream_get_channels(&buffer_c->stream);
 	buffer_release(buffer_c);
 
 	buffer_c = buffer_acquire(sad->source_buf);
-	sad->in_channels = buffer_c->stream.channels;
+	sad->in_channels = audio_stream_get_channels(&buffer_c->stream);
 
 	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {

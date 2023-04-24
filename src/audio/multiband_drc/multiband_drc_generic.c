@@ -15,7 +15,7 @@ static void multiband_drc_default_pass(const struct comp_dev *dev,
 				       struct audio_stream __sparse_cache *sink,
 				       uint32_t frames)
 {
-	audio_stream_copy(source, 0, sink, 0, source->channels * frames);
+	audio_stream_copy(source, 0, sink, 0, audio_stream_get_channels(source) * frames);
 }
 
 static void multiband_drc_process_emp_crossover(struct multiband_drc_state *state,
@@ -222,7 +222,7 @@ static void multiband_drc_s16_default(const struct comp_dev *dev,
 	int npcm;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
@@ -289,7 +289,7 @@ static void multiband_drc_s24_default(const struct comp_dev *dev,
 	int npcm;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
@@ -356,7 +356,7 @@ static void multiband_drc_s32_default(const struct comp_dev *dev,
 	int npcm;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
