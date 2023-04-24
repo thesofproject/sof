@@ -58,14 +58,15 @@ static struct uuid_idx __sparse_cache *ams_find_uuid_entry_by_uuid(struct ams_sh
 
 	/* try to find existing entry */
 	for (index = 0; index < AMS_SERVICE_UUID_TABLE_SIZE; index++) {
-		if (memcmp((void *)uuid_table[index].message_uuid, uuid, UUID_SIZE) == 0)
+		if (memcmp((__sparse_force void *)uuid_table[index].message_uuid,
+			   uuid, UUID_SIZE) == 0)
 			return &uuid_table[index];
 	}
 
 	/* and add new one if needed */
 	for (index = 0; index < AMS_SERVICE_UUID_TABLE_SIZE; index++) {
 		if (uuid_table[index].message_type_id == AMS_INVALID_MSG_TYPE) {
-			int ec = memcpy_s((void *)uuid_table[index].message_uuid,
+			int ec = memcpy_s((__sparse_force void *)uuid_table[index].message_uuid,
 					  sizeof(uuid_table[index].message_uuid),
 					  uuid, UUID_SIZE);
 			if (ec != 0) {
@@ -285,7 +286,7 @@ static uint32_t ams_push_slot(struct ams_shared_context __sparse_cache *ctx_shar
 
 	for (uint32_t i = 0; i < ARRAY_SIZE(ctx_shared->slots); ++i) {
 		if (ctx_shared->slot_uses[i] == 0) {
-			err = memcpy_s((void *)ctx_shared->slots[i].u.msg_raw,
+			err = memcpy_s((__sparse_force void *)ctx_shared->slots[i].u.msg_raw,
 				       sizeof(ctx_shared->slots[i].u.msg_raw),
 				       msg, AMS_MESSAGE_SIZE(msg));
 
