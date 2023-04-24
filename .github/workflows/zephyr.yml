@@ -90,27 +90,11 @@ jobs:
           fetch-depth: 0
           path: ./workspace/sof
 
-      # As of December 2022 `--shallow-exclude=v3.2.0-rc3` fixes `git
-      # describe`, Zephyr's version.h and build reproducibility while
-      # downloading about 200MB less compared to a full clone.
-      #
-      # Ideally, the --shallow-exclude= argument should be regularly
-      # bumped whenever SOF upgrades Zephyr to keep this as fast as
-      # possible.
-      # In a bigger Zephyr future maybe we could move to a more permanent
-      # git fetch --shallow-since='5 months ago' because Zephyr follows
-      # a "roughly 4-month release" but for now that saves only 100MB
-      # https://docs.zephyrproject.org/latest/project/release_process.html
-      #
-      # TODO: try replacing --narrow and --depth with some
-      # --fetch-opt=--filter=?
-      # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
       - name: west clones
 
         # Get some git tags in Zephyr. keep in sync with build-windows below
         run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--depth=5 &&
-               git -C ../zephyr fetch --shallow-exclude=v3.2.0-rc3
+               west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
         run: |
@@ -252,8 +236,7 @@ jobs:
         working-directory: ${{ github.workspace }}/workspace
         # Keep in sync with build-linux above
         run: west init -l sof &&
-             west update --narrow --fetch-opt=--depth=5 &&
-             git -C zephyr fetch --shallow-exclude=v3.2.0-rc3
+             west update --narrow --fetch-opt=--filter=tree:0
 
       # Call Setup Python again to save the PIP packages in cache
       - name: Setup Python
@@ -330,7 +313,6 @@ jobs:
 
       - name: Compare Linux vs Windows builds
         run: |
-          # FIXME: for windows the Z_SDK version is hardcoded above, for Linux it's not.
           diffs=0
           for windir in windows-build*; do
             lindir=linux-"${windir#windows-}"
