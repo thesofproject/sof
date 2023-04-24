@@ -688,7 +688,7 @@ static int tone_prepare(struct comp_dev *dev)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	cd->channels = sourceb->stream.channels;
+	cd->channels = audio_stream_get_channels(&sourceb->stream);
 	comp_info(dev, "tone_prepare(), cd->channels = %u, cd->rate = %u",
 		  cd->channels, cd->rate);
 

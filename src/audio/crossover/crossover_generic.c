@@ -96,7 +96,7 @@ static void crossover_s16_default_pass(const struct comp_dev *dev,
 	int16_t *x;
 	int32_t *y;
 	int i, j;
-	int n = source_stream->channels * frames;
+	int n = audio_stream_get_channels(source_stream) * frames;
 
 	for (i = 0; i < n; i++) {
 		x = audio_stream_read_frag_s16(source_stream, i);
@@ -120,7 +120,7 @@ static void crossover_s32_default_pass(const struct comp_dev *dev,
 	const struct audio_stream __sparse_cache *source_stream = &source->stream;
 	int32_t *x, *y;
 	int i, j;
-	int n = source_stream->channels * frames;
+	int n = audio_stream_get_channels(source_stream) * frames;
 
 	for (i = 0; i < n; i++) {
 		x = audio_stream_read_frag_s32(source_stream, i);
@@ -148,7 +148,7 @@ static void crossover_s16_default(const struct comp_dev *dev,
 	int16_t *x, *y;
 	int ch, i, j;
 	int idx;
-	int nch = source_stream->channels;
+	int nch = audio_stream_get_channels(source_stream);
 	int32_t out[num_sinks];
 
 	for (ch = 0; ch < nch; ch++) {
@@ -187,7 +187,7 @@ static void crossover_s24_default(const struct comp_dev *dev,
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
-	int nch = source_stream->channels;
+	int nch = audio_stream_get_channels(source_stream);
 	int32_t out[num_sinks];
 
 	for (ch = 0; ch < nch; ch++) {
@@ -226,7 +226,7 @@ static void crossover_s32_default(const struct comp_dev *dev,
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
-	int nch = source_stream->channels;
+	int nch = audio_stream_get_channels(source_stream);
 	int32_t out[num_sinks];
 
 	for (ch = 0; ch < nch; ch++) {

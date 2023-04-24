@@ -35,7 +35,7 @@ static void smart_amp_s16_ff_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
@@ -63,7 +63,7 @@ static void smart_amp_s24_ff_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
@@ -90,7 +90,7 @@ static void smart_amp_s32_ff_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
@@ -115,7 +115,7 @@ static void smart_amp_s16_fb_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
@@ -139,7 +139,7 @@ static void smart_amp_s24_fb_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
@@ -163,7 +163,7 @@ static void smart_amp_s32_fb_default(const struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;

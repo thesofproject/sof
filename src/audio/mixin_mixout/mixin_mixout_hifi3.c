@@ -10,9 +10,9 @@
 #ifdef MIXIN_MIXOUT_HIFI3
 
 #if CONFIG_FORMAT_S16LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -186,7 +186,7 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
 {
 	int skip_mixed_frames, left_frames;
-	int off = stream->channels * sizeof(ae_int16);
+	int off = audio_stream_get_channels(stream) * sizeof(ae_int16);
 	ae_int16 *ptr;
 	ae_int16x4 zero = AE_ZERO16();
 
@@ -201,7 +201,8 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int16 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+	ptr = (ae_int16 *)audio_stream_get_wptr(stream) +
+		mixed_frames * audio_stream_get_channels(stream) +
 		channel_index;
 	ptr = audio_stream_wrap(stream, ptr);
 
@@ -211,9 +212,9 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -382,9 +383,9 @@ static void remap_mix_channel_s24(struct audio_stream __sparse_cache *sink,
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-/* Instead of using sink->channels and source->channels, sink_channel_count and
- * source_channel_count are supplied as parameters. This is done to reuse the function
- * to also mix an entire stream. In this case the function is called with fake stream
+/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
+ * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
+ * the function to also mix an entire stream. In this case the function is called with fake stream
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
@@ -553,7 +554,7 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 {
 	int skip_mixed_frames, left_frames;
 	ae_int32 *ptr;
-	int off = stream->channels * sizeof(ae_int32);
+	int off = audio_stream_get_channels(stream) * sizeof(ae_int32);
 	ae_int32x2 zero = AE_ZERO32();
 
 	assert(mixed_frames >= start_frame);
@@ -567,7 +568,8 @@ static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t
 	AE_SETCEND0(audio_stream_get_end_addr(stream));
 
 	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int32 *)audio_stream_get_wptr(stream) + mixed_frames * stream->channels +
+	ptr = (ae_int32 *)audio_stream_get_wptr(stream) +
+		mixed_frames * audio_stream_get_channels(stream) +
 		channel_index;
 	ptr = audio_stream_wrap(stream, ptr);
 

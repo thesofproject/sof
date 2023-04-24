@@ -63,7 +63,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	int32_t *x, *x0;
 	int32_t *y, *y0;
 	int nmax, n, i, j;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 
@@ -122,7 +122,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 	int32_t *x, *x0;
 	int32_t *y, *y0;
 	int nmax, n, i, j;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 
@@ -185,7 +185,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int16_t *x, *x0;
 	int16_t *y, *y0;
 	int nmax, n, i, j;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 

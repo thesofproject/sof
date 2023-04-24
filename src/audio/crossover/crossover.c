@@ -610,7 +610,7 @@ static int crossover_copy(struct comp_dev *dev)
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = crossover_setup(cd, source_c->stream.channels);
+		ret = crossover_setup(cd, audio_stream_get_channels(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "crossover_copy(), failed Crossover setup");
 			goto out;
@@ -747,7 +747,7 @@ static int crossover_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
 		  cd->source_format, cd->source_format,
-		  source_c->stream.channels);
+		  audio_stream_get_channels(&source_c->stream));
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
@@ -759,7 +759,7 @@ static int crossover_prepare(struct comp_dev *dev)
 	}
 
 	if (cd->config) {
-		ret = crossover_setup(cd, source_c->stream.channels);
+		ret = crossover_setup(cd, audio_stream_get_channels(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "crossover_prepare(), setup failed");
 			goto out;

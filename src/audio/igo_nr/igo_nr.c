@@ -70,7 +70,7 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
-	int32_t nch = source->channels;
+	int32_t nch = audio_stream_get_channels(source);
 	int32_t i;
 	int32_t j;
 	int32_t idx_in = 0;
@@ -129,7 +129,7 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
-	int32_t nch = source->channels;
+	int32_t nch = audio_stream_get_channels(source);
 	int32_t i;
 	int32_t j;
 	int32_t idx_in = 0;
@@ -188,7 +188,7 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 			       struct audio_stream __sparse_cache *sink,
 			       int32_t frames)
 {
-	int32_t nch = source->channels;
+	int32_t nch = audio_stream_get_channels(source);
 	int32_t i;
 	int32_t j;
 	int32_t idx_in = 0;
@@ -402,7 +402,7 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	cd->source_rate = audio_stream_get_rate(&source_c->stream);
 	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 
-	if (source_c->stream.channels != sink_c->stream.channels) {
+	if (source_c->stream.channels != audio_stream_get_channels(&sink_c->stream)) {
 		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");
 		cd->invalid_param = true;
 	}

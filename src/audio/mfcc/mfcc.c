@@ -231,7 +231,7 @@ static int mfcc_prepare(struct processing_module *mod)
 	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
 	if (cd->config) {
 		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&source_c->stream),
-				 source_c->stream.channels);
+				 audio_stream_get_channels(&source_c->stream));
 		if (ret < 0) {
 			comp_err(dev, "mfcc_prepare(), setup failed.");
 			goto err;

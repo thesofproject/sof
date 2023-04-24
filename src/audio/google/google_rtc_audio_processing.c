@@ -535,7 +535,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 		if (source_c->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
 #endif
 			cd->aec_reference = source;
-			aec_channels = source_c->stream.channels;
+			aec_channels = audio_stream_get_channels(&source_c->stream);
 		} else {
 			cd->raw_microphone = source;
 		}
@@ -560,15 +560,15 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	buffer_release(output_c);
 
 
-	if (cd->num_capture_channels > cd->raw_microphone->stream.channels) {
+	if (cd->num_capture_channels > audio_stream_get_channels(&cd->raw_microphone->stream)) {
 		comp_err(dev, "unsupported number of microphone channels: %d",
-			 cd->raw_microphone->stream.channels);
+			 audio_stream_get_channels(&cd->raw_microphone->stream));
 		return -EINVAL;
 	}
 
-	if (cd->num_capture_channels > cd->output->stream.channels) {
+	if (cd->num_capture_channels > audio_stream_get_channels(&cd->output->stream)) {
 		comp_err(dev, "unsupported number of output channels: %d",
-			 cd->output->stream.channels);
+			 audio_stream_get_channels(&cd->output->stream));
 		return -EINVAL;
 	}
 
@@ -634,7 +634,8 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 
 	buffer_stream_invalidate(buffer_c, num_aec_reference_bytes);
 
-	num_samples_remaining = num_aec_reference_frames * buffer_c->stream.channels;
+	num_samples_remaining = num_aec_reference_frames *
+		audio_stream_get_channels(&buffer_c->stream);
 	while (num_samples_remaining) {
 		nmax = audio_stream_samples_without_wrap_s16(&buffer_c->stream, ref);
 		n = MIN(num_samples_remaining, nmax);
@@ -643,7 +644,7 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 			for (channel = 0; channel < cd->num_aec_reference_channels; ++channel)
 				cd->aec_reference_buffer[j++] = ref[channel];
 
-			ref += buffer_c->stream.channels;
+			ref += audio_stream_get_channels(&buffer_c->stream);
 			++cd->aec_reference_frame_index;
 
 			if (cd->aec_reference_frame_index == cd->num_frames) {
@@ -698,8 +699,8 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 				cd->raw_mic_buffer_frame_index = 0;
 			}
 
-			src += mic_buf->stream.channels;
-			dst += output_buf->stream.channels;
+			src += audio_stream_get_channels(&mic_buf->stream);
+			dst += audio_stream_get_channels(&output_buf->stream);
 		}
 		num_frames_remaining -= n;
 		src = audio_stream_wrap(&mic_buf->stream, src);

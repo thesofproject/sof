@@ -551,7 +551,7 @@ static int smart_amp_process(struct comp_dev *dev,
 		ret = smart_amp_fb_copy(dev, frames,
 					source, sink,
 					chan_map, sad->mod_handle,
-					source->channels);
+					audio_stream_get_channels(source));
 	return ret;
 }
 
@@ -682,7 +682,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 			sad->feedback_buf = source_buffer;
 		} else {
 			sad->source_buf = source_buffer;
-			sad->in_channels = source_c->stream.channels;
+			sad->in_channels = audio_stream_get_channels(&source_c->stream);
 		}
 
 		buffer_release(source_c);
@@ -692,7 +692,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 					source_list);
 
 	buf_c = buffer_acquire(sad->sink_buf);
-	sad->out_channels = buf_c->stream.channels;
+	sad->out_channels = audio_stream_get_channels(&buf_c->stream);
 	buffer_release(buf_c);
 
 	source_c = buffer_acquire(sad->source_buf);
@@ -705,11 +705,11 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		buffer_release(buf_c);
 
 		ret = smart_amp_check_audio_fmt(audio_stream_get_rate(&source_c->stream),
-						source_c->stream.channels);
+						audio_stream_get_channels(&source_c->stream));
 		if (ret) {
 			comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
 				 audio_stream_get_rate(&source_c->stream),
-				 source_c->stream.channels);
+				 audio_stream_get_channels(&source_c->stream));
 			goto error;
 		}
 	}

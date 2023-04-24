@@ -202,13 +202,15 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 		 * channel count is passed as 1, channel index is 0, frame indices (start_frame
 		 * and mixed_frame) and frame count are multiplied by real stream channel count.
 		 */
-		mixin_data->normal_mix_channel(sink, start_frame * sink->channels,
-					mixed_frames * sink->channels, source,
-					frame_count * sink->channels, sink_config->gain);
+		mixin_data->normal_mix_channel(sink, start_frame * audio_stream_get_channels(sink),
+					       mixed_frames * audio_stream_get_channels(sink),
+					       source,
+					       frame_count * audio_stream_get_channels(sink),
+					       sink_config->gain);
 	} else if (sink_config->mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE) {
 		int i;
 
-		for (i = 0; i < sink->channels; i++) {
+		for (i = 0; i < audio_stream_get_channels(sink); i++) {
 			uint8_t source_channel =
 				(sink_config->output_channel_map >> (i * 4)) & 0xf;
 
@@ -216,16 +218,18 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 				mixin_data->mute_channel(sink, i, start_frame, mixed_frames,
 							 frame_count);
 			} else {
-				if (source_channel >= source->channels) {
+				if (source_channel >= audio_stream_get_channels(source)) {
 					comp_err(dev, "Out of range chmap: 0x%x, src channels: %u",
 						 sink_config->output_channel_map,
-						 source->channels);
+						 audio_stream_get_channels(source));
 					return -EINVAL;
 				}
-				mixin_data->remap_mix_channel(sink, i, sink->channels, start_frame,
-							mixed_frames, source, source_channel,
-							source->channels, frame_count,
-							sink_config->gain);
+				mixin_data->remap_mix_channel(sink, i,
+							      audio_stream_get_channels(sink),
+							      start_frame, mixed_frames,
+							      source, source_channel,
+							      audio_stream_get_channels(source),
+							      frame_count, sink_config->gain);
 			}
 		}
 	} else {

@@ -84,7 +84,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
@@ -132,7 +132,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
@@ -180,7 +180,7 @@ static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = source->channels;
+	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 
 	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
@@ -1305,7 +1305,7 @@ static int volume_prepare(struct processing_module *mod)
 	 */
 	cd->ramp_finished = false;
 
-	cd->channels = sink_c->stream.channels;
+	cd->channels = audio_stream_get_channels(&sink_c->stream);
 	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
 		ret = -EINVAL;
 		goto err;

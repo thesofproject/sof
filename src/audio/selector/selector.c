@@ -94,7 +94,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		 * pipeline_comp_hw_params()
 		 */
 		out_channels = cd->config.out_channels_count ?
-			cd->config.out_channels_count : buffer_c->stream.channels;
+			cd->config.out_channels_count : audio_stream_get_channels(&buffer_c->stream);
 		params->channels = out_channels;
 	} else {
 		/* fetch source buffer for capture */
@@ -115,7 +115,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		 * pipeline_comp_hw_params()
 		 */
 		in_channels = cd->config.in_channels_count ?
-			cd->config.in_channels_count : buffer_c->stream.channels;
+			cd->config.in_channels_count : audio_stream_get_channels(&buffer_c->stream);
 		params->channels = in_channels;
 	}
 
@@ -475,9 +475,9 @@ static int selector_prepare(struct comp_dev *dev)
 	 * reduce channel count between source and sink
 	 */
 	comp_dbg(dev, "selector_prepare(): sourceb->schannels = %u",
-		 source_c->stream.channels);
+		 audio_stream_get_channels(&source_c->stream));
 	comp_dbg(dev, "selector_prepare(): sinkb->channels = %u",
-		 sink_c->stream.channels);
+		 audio_stream_get_channels(&sink_c->stream));
 
 	sink_size = audio_stream_get_size(&sink_c->stream);
 
@@ -932,7 +932,7 @@ static int selector_prepare(struct processing_module *mod)
 	 * reduce channel count between source and sink
 	 */
 	comp_info(dev, "selector_prepare(): source sink channel = %u %u",
-		  source_c->stream.channels, sink_c->stream.channels);
+		  audio_stream_get_channels(&source_c->stream), sink_c->stream.channels);
 
 	sink_size = audio_stream_get_size(&sink_c->stream);
 

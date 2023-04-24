@@ -93,7 +93,7 @@ static void comp_update_params(uint32_t flag,
 		params->buffer_fmt = buffer->buffer_fmt;
 
 	if (flag & BUFF_PARAMS_CHANNELS)
-		params->channels = buffer->stream.channels;
+		params->channels = audio_stream_get_channels(&buffer->stream);
 
 	if (flag & BUFF_PARAMS_RATE)
 		params->rate = audio_stream_get_rate(&buffer->stream);

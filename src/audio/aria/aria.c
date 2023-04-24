@@ -330,7 +330,7 @@ static int aria_copy(struct comp_dev *dev)
 	buffer_stream_invalidate(source_c, source_bytes);
 
 	for (i = 0; i < c.frames; i++) {
-		for (channel = 0; channel < sink_c->stream.channels; channel++) {
+		for (channel = 0; channel < audio_stream_get_channels(&sink_c->stream); channel++) {
 			cd->buf_in[frag] = *(int32_t *)audio_stream_read_frag_s32(&source_c->stream,
 										  frag);
 
@@ -338,16 +338,18 @@ static int aria_copy(struct comp_dev *dev)
 		}
 	}
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in,
-				c.frames * sink_c->stream.channels * sizeof(int32_t));
+				c.frames * audio_stream_get_channels(&sink_c->stream) *
+				sizeof(int32_t));
 
 	aria_process_data(dev, cd->buf_out, sink_bytes / sizeof(uint32_t),
 			  cd->buf_in, source_bytes / sizeof(uint32_t));
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out,
-				c.frames * sink_c->stream.channels * sizeof(int32_t));
+				c.frames * audio_stream_get_channels(&sink_c->stream) *
+				sizeof(int32_t));
 	frag = 0;
 	for (i = 0; i < c.frames; i++) {
-		for (channel = 0; channel < sink_c->stream.channels; channel++) {
+		for (channel = 0; channel < audio_stream_get_channels(&sink_c->stream); channel++) {
 			destp = audio_stream_write_frag_s32(&sink_c->stream, frag);
 			*destp = cd->buf_out[frag];
 

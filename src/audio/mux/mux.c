@@ -424,8 +424,8 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 		if (!source)
 			continue;
 
-		if (cd->lookup[0].copy_elem[elem].in_ch >= source->channels ||
-		    cd->lookup[0].copy_elem[elem].out_ch >= sink->channels)
+		if (cd->lookup[0].copy_elem[elem].in_ch >= audio_stream_get_channels(source) ||
+		    cd->lookup[0].copy_elem[elem].out_ch >= audio_stream_get_channels(sink))
 			continue;
 
 		cd->active_lookup.copy_elem[active_elem] = cd->lookup[0].copy_elem[elem];
@@ -445,8 +445,8 @@ static void demux_prepare_active_look_up(struct comp_data *cd,
 
 	/* init pointers */
 	for (elem = 0; elem < look_up->num_elems; elem++) {
-		if (look_up->copy_elem[elem].in_ch >= source->channels ||
-		    look_up->copy_elem[elem].out_ch >= sink->channels)
+		if (look_up->copy_elem[elem].in_ch >= audio_stream_get_channels(source) ||
+		    look_up->copy_elem[elem].out_ch >= audio_stream_get_channels(sink))
 			continue;
 
 		cd->active_lookup.copy_elem[active_elem] = look_up->copy_elem[elem];

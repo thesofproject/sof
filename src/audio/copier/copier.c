@@ -776,7 +776,7 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 	 * is NOT number of samples we need to copy but total samples for all channels. We just
 	 * track them to know when to stop.
 	 */
-	int src_stream_sample_count = frame_count * src->channels;
+	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
 
 	while (src_stream_sample_count) {
 		int src_samples_without_wrap;
@@ -793,8 +793,8 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 
 		do {
 			*w_ptr = *r_ptr;
-			r_ptr += src->channels;
-			w_ptr += dst->channels;
+			r_ptr += audio_stream_get_channels(src);
+			w_ptr += audio_stream_get_channels(dst);
 		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)audio_stream_get_end_addr(dst));
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
@@ -815,7 +815,7 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 	 * is NOT number of samples we need to copy but total samples for all channels. We just
 	 * track them to know when to stop.
 	 */
-	int src_stream_sample_count = frame_count * src->channels;
+	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
 
 	while (src_stream_sample_count) {
 		int src_samples_without_wrap;
@@ -832,8 +832,8 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 
 		do {
 			*w_ptr = *r_ptr;
-			r_ptr += src->channels;
-			w_ptr += dst->channels;
+			r_ptr += audio_stream_get_channels(src);
+			w_ptr += audio_stream_get_channels(dst);
 		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)audio_stream_get_end_addr(dst));
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
@@ -1117,8 +1117,8 @@ static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
 
 		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
 
-		for (endp_channel = 0; endp_channel < endp_buf_c->stream.channels;
-				endp_channel++) {
+		for (endp_channel = 0; endp_channel <
+		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
 			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
 
 			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
@@ -1163,8 +1163,8 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 		endp_buf_byte_count = frame_count * audio_stream_frame_bytes(&endp_buf_c->stream);
 		buffer_stream_invalidate(endp_buf_c, endp_buf_byte_count);
 
-		for (endp_channel = 0; endp_channel < endp_buf_c->stream.channels;
-				endp_channel++) {
+		for (endp_channel = 0; endp_channel <
+		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
 			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
 
 			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
@@ -1239,7 +1239,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
-			 processed_data->frames * sink->stream.channels);
+			 processed_data->frames * audio_stream_get_channels(&sink->stream));
 
 	if (cd->attenuation) {
 		ret = apply_attenuation(dev, cd, sink, processed_data->frames);
@@ -1408,7 +1408,7 @@ static void copier_dma_cb(void *arg, enum notify_id type, void *data)
 			sink = buffer_acquire(cd->hd->dma_buffer);
 
 		frames = bytes / get_sample_bytes(audio_stream_get_frm_fmt(&sink->stream));
-		frames = frames / sink->stream.channels;
+		frames = frames / audio_stream_get_channels(&sink->stream);
 
 		ret = apply_attenuation(dev, cd, sink, frames);
 		if (ret < 0)
@@ -1487,7 +1487,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			struct sof_ipc_stream_params demuxed_params = *params;
 
 			buf_c = buffer_acquire(cd->endpoint_buffer[i]);
-			demuxed_params.channels = buf_c->stream.channels;
+			demuxed_params.channels = audio_stream_get_channels(&buf_c->stream);
 			buffer_release(buf_c);
 
 			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],

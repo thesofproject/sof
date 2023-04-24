@@ -243,9 +243,9 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* upmix/downmix not supported */
-	if (src_fmt->channels != snk_fmt->channels) {
+	if (src_fmt->channels != audio_stream_get_channels(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d channels mismatch",
-			 src_fmt->channels, snk_fmt->channels);
+			 audio_stream_get_channels(src_fmt), audio_stream_get_channels(snk_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -285,7 +285,8 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	if (src_fmt->channels != 2) {
-		comp_err(dev, "waves_effect_check() channels %d not supported", src_fmt->channels);
+		comp_err(dev, "waves_effect_check() channels %d not supported",
+			 audio_stream_get_channels(src_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -348,7 +349,7 @@ static int waves_effect_init(struct processing_module *mod)
 	waves_codec->o_buffer = 0;
 
 	waves_codec->i_format.sampleRate = audio_stream_get_rate(src_fmt);
-	waves_codec->i_format.numChannels = src_fmt->channels;
+	waves_codec->i_format.numChannels = audio_stream_get_channels(src_fmt);
 	waves_codec->i_format.samplesFormat = sample_format;
 	waves_codec->i_format.samplesLayout = buffer_format;
 	waves_codec->o_format = waves_codec->i_format;
@@ -359,8 +360,8 @@ static int waves_effect_init(struct processing_module *mod)
 	 */
 	waves_codec->buffer_samples = audio_stream_get_rate(src_fmt) * dev->pipeline->period /
 		1000000;
-	waves_codec->buffer_bytes = waves_codec->buffer_samples * src_fmt->channels *
-		waves_codec->sample_size_in_bytes;
+	waves_codec->buffer_bytes = waves_codec->buffer_samples *
+		audio_stream_get_channels(src_fmt) * waves_codec->sample_size_in_bytes;
 
 	// trace allows printing only up-to 4 words at a time
 	// logging all the information in two calls

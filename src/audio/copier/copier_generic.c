@@ -26,7 +26,7 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	int i;
 	int n;
 	int nmax;
-	int remaining_samples = frame * sink->stream.channels;
+	int remaining_samples = frame * audio_stream_get_channels(&sink->stream);
 	int32_t *dst = audio_stream_get_rptr(&sink->stream);
 
 	/* only support attenuation in format of 32bit */

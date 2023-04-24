@@ -216,7 +216,7 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 	struct audio_stream __sparse_cache *source = bsource->data;
 	struct audio_stream __sparse_cache *sink = bsink->data;
 
-	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
+	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
 
 static void eq_fir_free_delaylines(struct comp_data *cd)
@@ -523,7 +523,7 @@ static int eq_fir_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_fir_setup(mod->dev, cd, source->channels);
+		ret = eq_fir_setup(mod->dev, cd, audio_stream_get_channels(source));
 		if (ret < 0) {
 			comp_err(mod->dev, "eq_fir_process(), failed FIR setup");
 			return ret;
@@ -592,7 +592,7 @@ static int eq_fir_prepare(struct processing_module *mod)
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 	eq_fir_set_alignment(&source_c->stream, &sink_c->stream);
-	channels = sink_c->stream.channels;
+	channels = audio_stream_get_channels(&sink_c->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
 	buffer_release(sink_c);
 	buffer_release(source_c);

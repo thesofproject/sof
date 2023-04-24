@@ -358,7 +358,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	void *sbuf_addr = cd->delay_lines;
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
-	int nch = source->channels;
+	int nch = audio_stream_get_channels(source);
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
 	int avail_b = audio_stream_get_avail_bytes(source);
 	int free_b = audio_stream_get_free_bytes(sink);
@@ -450,7 +450,7 @@ static void src_1s(struct comp_dev *dev, struct comp_data *cd,
 	s1.y_size = audio_stream_get_size(sink);
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
-	s1.nch = source->channels;
+	s1.nch = audio_stream_get_channels(source);
 	s1.shift = cd->data_shift;
 
 	cd->polyphase_func(&s1);
@@ -472,7 +472,7 @@ static void src_copy_sxx(struct comp_dev *dev, struct comp_data *cd,
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		audio_stream_copy(source, 0, sink, 0,
-				  frames * source->channels);
+				  frames * audio_stream_get_channels(source));
 		*n_read = frames;
 		*n_written = frames;
 		break;
@@ -767,9 +767,11 @@ static int src_params_general(struct comp_dev *dev, struct comp_data *cd,
 	/* Allocate needed memory for delay lines */
 	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u, format = %d",
 		  cd->source_rate, cd->sink_rate, audio_stream_get_frm_fmt(&source_c->stream));
-	comp_info(dev, "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
-		  source_c->stream.channels, sink_c->stream.channels, dev->frames);
-	err = src_buffer_lengths(dev, cd, source_c->stream.channels);
+	comp_info(dev,
+		  "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
+		  audio_stream_get_channels(&source_c->stream), sink_c->stream.channels,
+		  dev->frames);
+	err = src_buffer_lengths(dev, cd, audio_stream_get_channels(&source_c->stream));
 	if (err < 0) {
 		comp_err(dev, "src_params(): src_buffer_lengths() failed");
 		goto out;

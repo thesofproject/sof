@@ -1912,7 +1912,7 @@ static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
-		samples = size / ((sample_width >> 3) * sink->channels);
+		samples = size / ((sample_width >> 3) * audio_stream_get_channels(sink));
 		kpb_convert_24b_to_32b(source, 0, sink, 0, samples);
 		break;
 	case 32:
@@ -2016,8 +2016,8 @@ static void kpb_buffer_samples(const struct audio_stream __sparse_cache *source,
 #endif
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
-		samples_count =  size / ((sample_width >> 3) * source->channels);
-		samples_offset = offset / ((sample_width >> 3) * source->channels);
+		samples_count =  size / ((sample_width >> 3) * audio_stream_get_channels(source));
+		samples_offset = offset / ((sample_width >> 3) * audio_stream_get_channels(source));
 		kpb_convert_32b_to_24b(source, samples_offset,
 				       sink, 0, samples_count);
 		break;
