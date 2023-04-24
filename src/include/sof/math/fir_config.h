@@ -44,7 +44,7 @@
 #if XCHAL_HAVE_HIFI2EP == 1
 #define FIR_HIFIEP	1
 #define FIR_HIFI3	0
-#elif XCHAL_HAVE_HIFI3 == 1
+#elif XCHAL_HAVE_HIFI3 == 1 || XCHAL_HAVE_HIFI4 == 1
 #define FIR_HIFI3	1
 #define FIR_HIFIEP	0
 #else
