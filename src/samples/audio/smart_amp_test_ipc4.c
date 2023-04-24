@@ -3,7 +3,6 @@
 // Copyright(c) 2020 Intel Corporation. All rights reserved.
 //
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
-
 #include <sof/compiler_attributes.h>
 #include <sof/samples/audio/smart_amp_test.h>
 #include <sof/audio/ipc-config.h>
@@ -15,10 +14,7 @@
 #ifndef __ZEPHYR__
 #include <rtos/mutex.h>
 #endif
-
-#if CONFIG_IPC_MAJOR_4
 #include <ipc4/module.h>
-#endif
 
 static const struct comp_driver comp_smart_amp;
 
@@ -31,10 +27,12 @@ DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_comp_uuid, 0x167a961e, 0x8ae4,
 DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 	       LOG_LEVEL_INFO);
 
+typedef int(*smart_amp_proc)(struct comp_dev *dev,
+			     const struct audio_stream __sparse_cache *source,
+			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
+			     int8_t *chan_map);
 struct smart_amp_data {
-#if CONFIG_IPC_MAJOR_4
 	struct sof_smart_amp_ipc4_config ipc4_cfg;
-#endif
 	struct sof_smart_amp_config config;
 	struct comp_data_blob_handler *model_handler;
 	void *data_blob;
@@ -48,6 +46,7 @@ struct smart_amp_data {
 
 	smart_amp_proc process;
 
+
 	uint32_t in_channels;
 	uint32_t out_channels;
 };
@@ -56,12 +55,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      const struct comp_ipc_config *config,
 				      const void *spec)
 {
-#if CONFIG_IPC_MAJOR_3
-	const struct ipc_config_process *ipc_sa = spec;
-	const struct sof_smart_amp_config *cfg;
-#else
 	const struct ipc4_base_module_extended_cfg *base_cfg = spec;
-#endif
 	struct smart_amp_data *sad;
 	struct comp_dev *dev;
 	size_t bs;
@@ -84,7 +78,6 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	k_mutex_init(&sad->lock);
 
-#if CONFIG_IPC_MAJOR_4
 	if (base_cfg->base_cfg_ext.nb_input_pins != SMART_AMP_NUM_IN_PINS ||
 	    base_cfg->base_cfg_ext.nb_output_pins != SMART_AMP_NUM_OUT_PINS) {
 		comp_err(dev, "smart_amp_new(): Invalid pin configuration");
@@ -99,17 +92,6 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	bs = sizeof(sad->ipc4_cfg.input_pins) + sizeof(sad->ipc4_cfg.output_pin);
 	memcpy_s(sad->ipc4_cfg.input_pins, bs,
 		 base_cfg->base_cfg_ext.pin_formats, bs);
-#else
-	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
-	bs = ipc_sa->size;
-
-	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
-		comp_err(dev, "smart_amp_new(): failed to apply config");
-		goto sad_fail;
-	}
-
-	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
-#endif
 
 	dev->state = COMP_STATE_READY;
 
@@ -123,7 +105,6 @@ fail:
 	return NULL;
 }
 
-#if CONFIG_IPC_MAJOR_4
 static void smart_amp_set_params(struct comp_dev *dev,
 				 struct sof_ipc_stream_params *params)
 {
@@ -306,185 +287,6 @@ static int smart_amp_unbind(struct comp_dev *dev, void *data)
 
 	return 0;
 }
-
-#else
-
-static void smart_amp_set_params(struct comp_dev *dev,
-				 struct sof_ipc_stream_params *params)
-{
-	//nothing to do
-}
-
-static int smart_amp_set_config(struct comp_dev *dev,
-				struct sof_ipc_ctrl_data *cdata)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct sof_smart_amp_config *cfg;
-	size_t bs;
-
-	/* Copy new config, find size from header */
-	cfg = (struct sof_smart_amp_config *)
-	       ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
-	bs = cfg->size;
-
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
-		 bs, sizeof(struct sof_smart_amp_config));
-
-	if (bs != sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "smart_amp_set_config(): invalid blob size, actual blob size = %u, expected blob size = %u",
-			 bs, sizeof(struct sof_smart_amp_config));
-		return -EINVAL;
-	}
-
-	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg,
-		 sizeof(struct sof_smart_amp_config));
-
-	return 0;
-}
-
-static int smart_amp_get_config(struct comp_dev *dev,
-				struct sof_ipc_ctrl_data *cdata, int size)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	size_t bs;
-	int ret = 0;
-
-	// Copy back to user space
-	bs = sad->config.size;
-
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
-		 bs, sizeof(struct sof_smart_amp_config));
-
-	if (bs == 0 || bs > size)
-		return -EINVAL;
-
-	ret = memcpy_s(cdata->data->data, size, &sad->config, bs);
-	assert(!ret);
-
-	cdata->data->abi = SOF_ABI_VERSION;
-	cdata->data->size = bs;
-
-	return ret;
-}
-
-static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
-				       struct sof_ipc_ctrl_data *cdata,
-				       int size)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	int ret = 0;
-
-	assert(sad);
-
-	switch (cdata->data->type) {
-	case SOF_SMART_AMP_CONFIG:
-		ret = smart_amp_get_config(dev, cdata, size);
-		break;
-	case SOF_SMART_AMP_MODEL:
-		ret = comp_data_blob_get_cmd(sad->model_handler, cdata, size);
-		break;
-	default:
-		comp_err(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
-		break;
-	}
-
-	return ret;
-}
-
-static int smart_amp_ctrl_get_data(struct comp_dev *dev,
-				   struct sof_ipc_ctrl_data *cdata, int size)
-{
-	int ret = 0;
-
-	comp_info(dev, "smart_amp_ctrl_get_data() size: %d", size);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		ret = smart_amp_ctrl_get_bin_data(dev, cdata, size);
-		break;
-	default:
-		comp_err(dev, "smart_amp_ctrl_get_data(): invalid cdata->cmd");
-		return -EINVAL;
-	}
-
-	return ret;
-}
-
-static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
-				       struct sof_ipc_ctrl_data *cdata)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	int ret = 0;
-
-	assert(sad);
-
-	if (dev->state < COMP_STATE_READY) {
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): driver in init!");
-		return -EBUSY;
-	}
-
-	switch (cdata->data->type) {
-	case SOF_SMART_AMP_CONFIG:
-		ret = smart_amp_set_config(dev, cdata);
-		break;
-	case SOF_SMART_AMP_MODEL:
-		ret = comp_data_blob_set_cmd(sad->model_handler, cdata);
-		break;
-	default:
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
-		break;
-	}
-
-	return ret;
-}
-
-static int smart_amp_ctrl_set_data(struct comp_dev *dev,
-				   struct sof_ipc_ctrl_data *cdata)
-{
-	int ret = 0;
-
-	/* Check version from ABI header */
-	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid version");
-		return -EINVAL;
-	}
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		comp_info(dev, "smart_amp_ctrl_set_data(), SOF_CTRL_CMD_ENUM");
-		break;
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "smart_amp_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = smart_amp_ctrl_set_bin_data(dev, cdata);
-		break;
-	default:
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-/* used to pass standard and bespoke commands (with data) to component */
-static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
-			 int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-
-	comp_info(dev, "smart_amp_cmd(): cmd: %d", cmd);
-
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		return smart_amp_ctrl_set_data(dev, cdata);
-	case COMP_CMD_GET_DATA:
-		return smart_amp_ctrl_get_data(dev, cdata, max_data_size);
-	default:
-		return -EINVAL;
-	}
-}
-
-#endif /* CONFIG_IPC_MAJOR_4 */
 
 static void smart_amp_free(struct comp_dev *dev)
 {
@@ -751,13 +553,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 					     sink_list);
 		buffer_c = buffer_acquire(source_buffer);
 
-#if CONFIG_IPC_MAJOR_3
-		/* FIXME: how often can this loop be run? */
-		if (buffer_c->source->ipc_config.type == SOF_COMP_DEMUX)
-			sad->feedback_buf = source_buffer;
-		else
-#endif
-			sad->source_buf = source_buffer;
+		sad->source_buf = source_buffer;
 
 		buffer_release(buffer_c);
 	}
@@ -802,15 +598,11 @@ static const struct comp_driver comp_smart_amp = {
 		.free			= smart_amp_free,
 		.params			= smart_amp_params,
 		.prepare		= smart_amp_prepare,
-#if CONFIG_IPC_MAJOR_4
 		.set_large_config	= smart_amp_set_large_config,
 		.get_large_config	= smart_amp_get_large_config,
 		.get_attribute		= smart_amp_get_attribute,
 		.bind			= smart_amp_bind,
 		.unbind			= smart_amp_unbind,
-#else
-		.cmd			= smart_amp_cmd,
-#endif /* CONFIG_IPC_MAJOR_4 */
 		.trigger		= smart_amp_trigger,
 		.copy			= smart_amp_copy,
 		.reset			= smart_amp_reset,
