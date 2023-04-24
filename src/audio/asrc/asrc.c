@@ -882,6 +882,9 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err_free_asrc;
 	}
 
+	buffer_release(sink_c);
+	buffer_release(source_c);
+
 	return 0;
 
 err_free_asrc:
