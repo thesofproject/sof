@@ -8,7 +8,6 @@ set -e
 # Platforms built and tested by default in CI using the `-a` option.
 # They must have a toolchain available in the latest Docker image.
 DEFAULT_PLATFORMS=(
-    tgl tgl-h
     imx8 imx8x imx8m imx8ulp
     rn rmb
     mt8186 mt8195
@@ -16,7 +15,7 @@ DEFAULT_PLATFORMS=(
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
-SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
+SUPPORTED_PLATFORMS=( tgl tgl-h "${DEFAULT_PLATFORMS[@]}" )
 
 # Waiting for container work in progress
 SUPPORTED_PLATFORMS+=( mt8188 )
