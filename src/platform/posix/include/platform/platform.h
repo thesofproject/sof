@@ -24,6 +24,8 @@
 
 #define PLATFORM_DEFAULT_DELAY 12
 
+#define HW_CFG_VERSION 0x010000
+
 struct sof;
 
 void posix_dma_init(struct sof *sof);
