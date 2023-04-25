@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <ipc/header.h>
+#include <sof/compiler_attributes.h>
 
 /* ipc4 notification msg */
 enum sof_ipc4_notification_type {
