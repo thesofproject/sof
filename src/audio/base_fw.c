@@ -11,6 +11,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
 #include <rtos/init.h>
+#include <platform/lib/clk.h>
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
