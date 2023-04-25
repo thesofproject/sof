@@ -184,3 +184,20 @@ int platform_ipc_init(struct ipc *ipc)
 
 	return 0;
 }
+
+/* Quirky handling of 8 byte messages due to the Intel IPC mechanism
+ * that has two out-of-band words on the controller hardware that
+ * avoid the need for shared memory.
+ */
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
+{
+	uint32_t *chdr = (uint32_t *)hdr;
+
+	if (words != 2)
+		return 0;
+
+	chdr[0] = ((uint32_t *)posix_hostbox)[0];
+	chdr[1] = ((uint32_t *)posix_hostbox)[1];
+
+	return 2; /* number of words read */
+}
