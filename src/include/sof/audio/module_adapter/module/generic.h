@@ -170,14 +170,14 @@ struct module_source_info {
 struct processing_module {
 	struct module_data priv; /**< module private data */
 	struct sof_ipc_stream_params *stream_params;
-	struct list_item sink_buffer_list; /* list of sink buffers to save produced output */
+	struct list_item sink_buffer_list; /**< list of sink buffers to save produced output */
 
 	/*
 	 * This is a temporary change in order to support the trace messages in the modules. This
 	 * will be removed once the trace API is updated.
 	 */
 	struct comp_dev *dev;
-	uint32_t period_bytes; /** pipeline period bytes */
+	uint32_t period_bytes; /**< pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
 	void __sparse_cache *local_input_buffer[PLATFORM_MAX_STREAMS]; /**< local input buffers in
