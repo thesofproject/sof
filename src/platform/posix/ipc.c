@@ -69,6 +69,7 @@ static void fuzz_isr(const void *arg)
 	memmove(&fuzz_in[0], &fuzz_in[n + 1], rem);
 	fuzz_in_sz = rem;
 
+#ifdef CONFIG_IPC_MAJOR_3
 	// One special case: a first byte of 0xff (which is in the
 	// otherwise-ignored size value at the front of the command --
 	// we rewrite those) is interpreted as a "component new"
@@ -129,30 +130,46 @@ static void fuzz_isr(const void *arg)
 		struct comp_driver_info *di = drvs[comp_idx % ndrvs];
 		memcpy(cmd->ext.uuid, di->drv->uid, sizeof(cmd->ext.uuid));
 	}
+#endif
 
 	posix_ipc_isr(NULL);
 }
 
-// This API is a little confounded by its history.  The job of this
-// function is to get a newly-received IPC message header (!) into the
-// comp_data buffer on the IPC object, the rest of the message
-// (including the header!) into the mailbox region (obviously on Intel
-// that's a shared memory region where data was already written by the
-// host kernel) and then call ipc_cmd() with the same pointer.  With
-// IPC3, this copy is done inside mailbox_validate().
+// This API is... confounded by its history.  With IPC3, the job of
+// this function is to get a newly-received IPC message header (!)
+// into the comp_data buffer on the IPC object, the rest of the
+// message (including the header!) into the mailbox region (obviously
+// on Intel that's a shared memory region where data was already
+// written by the host kernel) and then call ipc_cmd() with the same
+// pointer.  With IPC3, this copy is done inside mailbox_validate().
 //
-// On IPC4 all of this is a noop and the platform is responsible for
-// what memory to use and what pointer to pass to ipc_cmd().  We do
-// this compatibly by starting with the message in comp_data and
-// copying it into the hostbox unconditionally.
+// On IPC4, the header is copied out by calling
+// ipc_compact_read_msg(), which then calls back into our code via
+// ipc_platform_compact_read_msg(), writing 8 bytes unconditionally on
+// the header object it receives, which is then returned here, and
+// then passed to ipc_cmd().
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_cmd_hdr *hdr;
 
+#ifdef CONFIG_IPC_MAJOR_4
+	hdr = ipc_compact_read_msg();
+#else
 	memcpy(posix_hostbox, global_ipc->comp_data, SOF_IPC_MSG_MAX_SIZE);
 	hdr = mailbox_validate();
+#endif
+
 	ipc_cmd(hdr);
 	return SOF_TASK_STATE_COMPLETED;
+}
+
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
+{
+	if (words != 2)
+		return 0;
+
+	memcpy(hdr, global_ipc->comp_data, 8);
+	return 2;
 }
 
 // Re-raise the interrupt if there's still fuzz data to process
@@ -168,6 +185,12 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
+	// IPC4 will send zero-length messages with a null buffer
+	// pointer, which otherwise gets detected as an error by
+	// memcpy_s underneath mailbox_dspbox_write()
+	if (IS_ENABLED(CONFIG_IPC_MAJOR_4) && msg->tx_size == 0)
+		return 0;
+
 	// There is no host, just write to the mailbox to validate the buffer
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	return 0;
@@ -183,21 +206,4 @@ int platform_ipc_init(struct ipc *ipc)
 			       &ipc_task_ops, ipc, 0, 0);
 
 	return 0;
-}
-
-/* Quirky handling of 8 byte messages due to the Intel IPC mechanism
- * that has two out-of-band words on the controller hardware that
- * avoid the need for shared memory.
- */
-int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
-{
-	uint32_t *chdr = (uint32_t *)hdr;
-
-	if (words != 2)
-		return 0;
-
-	chdr[0] = ((uint32_t *)posix_hostbox)[0];
-	chdr[1] = ((uint32_t *)posix_hostbox)[1];
-
-	return 2; /* number of words read */
 }
