@@ -20,8 +20,14 @@
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/wait.h>
-#ifdef __ZEPHYR__
-#include <adsp_memory.h> /* for IMR_BOOT_LDR_MANIFEST_BASE */
+
+/* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
+#define RIMAGE_MANIFEST 1
+#endif
+
+#ifdef RIMAGE_MANIFEST
+#include <adsp_memory.h>
 #endif
 
 #include <rtos/sof.h>
@@ -685,10 +691,19 @@ out:
 
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
-	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+	struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
 	struct sof_man_module *mod;
 	int entry_index;
+
+#ifdef RIMAGE_MANIFEST
+	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+#else
+	/* Non-rimage platforms have no component facility yet.  This
+	 * needs to move to the platform layer.
+	 */
+	return NULL;
+#endif
 
 	uint32_t lib_idx = LIB_MANAGER_GET_LIB_ID(module_id);
 
