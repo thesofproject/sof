@@ -336,6 +336,7 @@ static void platform_init_hw(void)
 	io_reg_write(DSP_INIT_IOPO,
 		IOPO_DMIC_FLAG | IOPO_I2S_FLAG);
 
+#ifndef __ZEPHYR__
 	io_reg_write(DSP_INIT_ALHO,
 		ALHO_ASO_FLAG | ALHO_CSO_FLAG);
 
@@ -343,6 +344,7 @@ static void platform_init_hw(void)
 		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
 	io_reg_write(DSP_INIT_LPGPDMA(1),
 		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
+#endif
 }
 
 /* Runs on the primary core only */
