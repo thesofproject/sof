@@ -107,7 +107,8 @@ platform_configs = {
 	#  NXP platforms
 	"imx8" : PlatformConfig(
 		"imx8", "nxp_adsp_imx8",
-		None, None,
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8",
 	),
 	"imx8x" : PlatformConfig(
