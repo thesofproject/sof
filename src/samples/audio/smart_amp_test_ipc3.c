@@ -42,8 +42,6 @@ struct smart_amp_data {
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
 
-	struct k_mutex lock; /**< protect feedback_buf updated */
-
 	smart_amp_proc process;
 
 	uint32_t in_channels;
@@ -76,18 +74,14 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	if (!sad->model_handler)
 		goto sad_fail;
 
-	k_mutex_init(&sad->lock);
 
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
-
 	if (bs > 0 && bs < sizeof(struct sof_smart_amp_config)) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
 		goto sad_fail;
 	}
-
 	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
-
 	dev->state = COMP_STATE_READY;
 
 	return dev;
@@ -321,14 +315,11 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
-		k_mutex_lock(&sad->lock, K_FOREVER);
 		if (sad->feedback_buf) {
 			struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
-
 			buffer_zero(buf);
 			buffer_release(buf);
 		}
-		k_mutex_unlock(&sad->lock);
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -439,7 +430,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 		audio_stream_avail_frames(&source_buf->stream,
 					  &sink_buf->stream);
 
-	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
@@ -467,7 +457,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 		buffer_release(buf);
 	}
-	k_mutex_unlock(&sad->lock);
 
 	if (!avail_frames)
 		avail_frames = avail_passthrough_frames;
@@ -545,7 +534,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	buffer_c = buffer_acquire(sad->source_buf);
 	sad->in_channels = audio_stream_get_channels(&buffer_c->stream);
 
-	k_mutex_lock(&sad->lock, K_FOREVER);
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
@@ -553,7 +541,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		buf->stream.rate = audio_stream_get_rate(&buffer_c->stream);
 		buffer_release(buf);
 	}
-	k_mutex_unlock(&sad->lock);
 
 	sad->process = get_smart_amp_process(dev, buffer_c);
 	if (!sad->process) {
