@@ -736,16 +736,13 @@ def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 		# Regular name
 		output_fwname = "".join(["sof-", platform, ".ri"])
 
-	shutil.copy2(abs_build_dir / "zephyr.ri", abs_build_dir / output_fwname)
-	fw_file_to_copy = abs_build_dir / output_fwname
-
 	install_key_dir = sof_platform_output_dir
 	if args.key_type_subdir != "none":
 		install_key_dir = install_key_dir / args.key_type_subdir
 
 	os.makedirs(install_key_dir, exist_ok=True)
 	# looses file owner and group - file is commonly accessible
-	shutil.copy2(fw_file_to_copy, install_key_dir)
+	shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
 
 
 	# sof-info/ directory
