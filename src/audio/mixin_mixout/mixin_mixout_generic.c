@@ -56,6 +56,8 @@ static void normal_mix_channel_s16(struct audio_stream __sparse_cache *sink, int
 		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int16_t), src, n * sizeof(int16_t));
+		dst += n;
+		src += n;
 	}
 }
 
@@ -196,6 +198,8 @@ static void normal_mix_channel_s24(struct audio_stream __sparse_cache *sink, int
 		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
+		dst += n;
+		src += n;
 	}
 }
 
@@ -306,6 +310,8 @@ static void normal_mix_channel_s32(struct audio_stream __sparse_cache *sink, int
 		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
+		dst += n;
+		src += n;
 	}
 }
 
