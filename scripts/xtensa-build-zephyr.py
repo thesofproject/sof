@@ -119,7 +119,8 @@ platform_configs = {
 	),
 	"imx8m" : PlatformConfig(
 		"imx8m", "nxp_adsp_imx8m",
-		None, None,
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
 }
