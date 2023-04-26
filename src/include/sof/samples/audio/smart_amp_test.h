@@ -94,7 +94,6 @@ struct sof_smart_amp_config {
 #define SMART_AMP_NUM_OUT_PINS		1
 
 struct sof_smart_amp_ipc4_config {
-	struct ipc4_base_module_cfg base;
 	struct ipc4_input_pin_format input_pins[SMART_AMP_NUM_IN_PINS];
 	struct ipc4_output_pin_format output_pin;
 };
