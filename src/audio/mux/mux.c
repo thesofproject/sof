@@ -710,6 +710,7 @@ static int mux_copy(struct comp_dev *dev)
 	struct list_item *clist;
 	uint32_t num_sources = 0;
 	uint32_t frames = -1;
+	uint32_t max_frames = 0;
 	uint32_t sources_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t sink_bytes;
 	int i;
@@ -766,6 +767,7 @@ static int mux_copy(struct comp_dev *dev)
 		avail_frames = audio_stream_avail_frames(sources_stream[i],
 							 &sink_c->stream);
 		frames = MIN(frames, avail_frames);
+		max_frames = MAX(max_frames,avail_frames);
 	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
@@ -777,6 +779,15 @@ static int mux_copy(struct comp_dev *dev)
 	}
 	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
 
+	if(0==sink_bytes)
+	{
+		if((max_frames!=0) &&
+		(num_sources>1))
+		{
+			sink_bytes = max_frames * audio_stream_frame_bytes(&sink_c->stream);
+		}
+		comp_warn(dev, "WARN MUX SINK BYTES:%d frames:%d num_src:%d max:%d",sink_bytes,frames,num_sources,max_frames);
+	}
 	mux_prepare_active_look_up(dev, &sink_c->stream, &sources_stream[0]);
 
 	/* produce output */
