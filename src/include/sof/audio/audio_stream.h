@@ -134,6 +134,41 @@ static inline uint32_t audio_stream_get_channels(const struct audio_stream __spa
 	return buf->channels;
 }
 
+static inline void audio_stream_set_rptr(struct audio_stream __sparse_cache *buf, void *val)
+{
+	buf->r_ptr = val;
+}
+
+static inline void audio_stream_set_wptr(struct audio_stream __sparse_cache *buf, void *val)
+{
+	buf->w_ptr = val;
+}
+
+static inline void audio_stream_set_end_addr(struct audio_stream __sparse_cache *buf, void *val)
+{
+	buf->end_addr = val;
+}
+
+static inline void audio_stream_set_addr(struct audio_stream __sparse_cache *buf, void *val)
+{
+	buf->addr = val;
+}
+
+static inline void audio_stream_set_size(struct audio_stream __sparse_cache *buf, uint32_t val)
+{
+	buf->size = val;
+}
+
+static inline void audio_stream_set_avail(struct audio_stream __sparse_cache *buf, uint32_t val)
+{
+	buf->avail = val;
+}
+
+static inline void audio_stream_set_free(struct audio_stream __sparse_cache *buf, uint32_t val)
+{
+	buf->free = val;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

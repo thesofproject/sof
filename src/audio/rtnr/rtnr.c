@@ -741,13 +741,13 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
 				    struct audio_stream_rtnr *src)
 {
-	dst->size = src->size;
-	dst->avail = src->avail;
-	dst->free = src->free;
-	dst->w_ptr = src->w_ptr;
-	dst->r_ptr = src->r_ptr;
-	dst->addr = src->addr;
-	dst->end_addr = src->end_addr;
+	audio_stream_set_size(dst, src->size);
+	audio_stream_set_avail(dst, src->avail);
+	audio_stream_set_free(dst, src->free);
+	audio_stream_set_wptr(dst, src->w_ptr);
+	audio_stream_set_rptr(dst, src->r_ptr);
+	audio_stream_set_addr(dst, src->addr);
+	audio_stream_set_end_addr(dst, src->end_addr);
 }
 
 /* copy and process stream data from source to sink buffers */
