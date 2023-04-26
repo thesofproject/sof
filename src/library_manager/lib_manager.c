@@ -411,7 +411,7 @@ static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint3
 	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr, size);
 
 	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %#lx, %#lx",
-	       buffer->addr, audio_stream_get_end_addr(buffer));
+	       buffer->addr, buffer->end_addr);
 
 	return 0;
 }
