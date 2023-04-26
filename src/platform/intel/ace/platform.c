@@ -147,8 +147,10 @@ static void notify_pm_state_entry(enum pm_state state)
  */
 static void notify_pm_state_exit(enum pm_state state)
 {
-	if (!cpu_is_primary(arch_proc_id()))
+	if (!cpu_is_primary(arch_proc_id())) {
+		cpu_notify_state_exit(state);
 		return;
+	}
 
 	if (state == PM_STATE_SOFT_OFF)	{
 #ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
