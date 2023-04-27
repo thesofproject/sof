@@ -348,7 +348,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->sink_buffer_list)) {
 		for (i = 0; i < mod->num_output_buffers; i++) {
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
-								  PLATFORM_DCACHE_ALIGN);
+								  0, PLATFORM_DCACHE_ALIGN);
 			if (!buffer) {
 				comp_err(dev, "module_adapter_prepare(): failed to allocate local buffer");
 				ret = -ENOMEM;

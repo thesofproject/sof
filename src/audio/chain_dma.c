@@ -589,7 +589,7 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
 
-	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_CAPS_DMA, addr_align);
+	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_CAPS_DMA, 0, addr_align);
 
 	if (!cd->dma_buffer) {
 		comp_err(dev, "chain_task_init(): failed to alloc dma buffer");

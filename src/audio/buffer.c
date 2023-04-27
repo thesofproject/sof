@@ -27,7 +27,7 @@ DECLARE_SOF_RT_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
 		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
-struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align)
 {
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
@@ -58,6 +58,9 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		       size, caps);
 		return NULL;
 	}
+
+	buffer->stream.underrun_permitted = !!(flags & SOF_BUF_UNDERRUN_PERMITTED);
+	buffer->stream.overrun_permitted = !!(flags & SOF_BUF_OVERRUN_PERMITTED);
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
