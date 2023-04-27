@@ -144,7 +144,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		if (dd->dma_buffer) {
 			buffer_c = buffer_acquire(dd->dma_buffer);
-			buffer_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
+			audio_stream_set_frm_fmt(&buffer_c->stream, dev->ipc_config.frame_fmt);
 			buffer_release(buffer_c);
 		}
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
@@ -169,7 +169,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		if (dd->dma_buffer) {
 			buffer_c = buffer_acquire(dd->dma_buffer);
-			buffer_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
+			audio_stream_set_frm_fmt(&buffer_c->stream, dev->ipc_config.frame_fmt);
 			buffer_release(buffer_c);
 		}
 		break;

@@ -447,8 +447,8 @@ static int tone_params(struct comp_dev *dev,
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 
-	source_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
-	sink_c->stream.frame_fmt = dev->ipc_config.frame_fmt;
+	audio_stream_set_frm_fmt(&source_c->stream, dev->ipc_config.frame_fmt);
+	audio_stream_set_frm_fmt(&sink_c->stream, dev->ipc_config.frame_fmt);
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames *

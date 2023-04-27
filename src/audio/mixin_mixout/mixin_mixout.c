@@ -639,7 +639,8 @@ static int mixin_params(struct processing_module *mod)
 		sink = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
 		sink_c = buffer_acquire(sink);
 
-		sink_c->stream.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+		audio_stream_set_channels(&sink_c->stream,
+					  mod->priv.cfg.base_cfg.audio_fmt.channels_count);
 
 		/* Applying channel remapping may produce sink stream with channel count
 		 * different from source channel count.
@@ -652,7 +653,8 @@ static int mixin_params(struct processing_module *mod)
 			return -EINVAL;
 		}
 		if (md->sink_config[sink_id].mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE)
-			sink_c->stream.channels = md->sink_config[sink_id].output_channel_count;
+			audio_stream_set_channels(&sink_c->stream,
+						  md->sink_config[sink_id].output_channel_count);
 
 		/* comp_verify_params() does not modify valid_sample_fmt (a BUG?),
 		 * let's do this here
@@ -662,8 +664,8 @@ static int mixin_params(struct processing_module *mod)
 					    &frame_fmt, &valid_fmt,
 					    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-		sink_c->stream.frame_fmt = frame_fmt;
-		sink_c->stream.valid_sample_fmt = valid_fmt;
+		audio_stream_set_frm_fmt(&sink_c->stream, frame_fmt);
+		audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
 
 		buffer_release(sink_c);
 	}
@@ -781,7 +783,7 @@ static int mixout_params(struct processing_module *mod)
 				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-	sink_c->stream.valid_sample_fmt = valid_fmt;
+	audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
 
 	sink_stream_size = audio_stream_get_size(&sink_c->stream);
 

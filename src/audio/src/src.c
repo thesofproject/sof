@@ -541,10 +541,10 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 				    &frame_fmt, &valid_fmt,
 				    cd->ipc_config.base.audio_fmt.s_type);
 
-	sinkb->stream.frame_fmt = frame_fmt;
-	sinkb->stream.valid_sample_fmt = valid_fmt;
+	audio_stream_set_frm_fmt(&sinkb->stream, frame_fmt);
+	audio_stream_set_valid_fmt(&sinkb->stream, valid_fmt);
+	audio_stream_set_channels(&sinkb->stream, cd->ipc_config.base.audio_fmt.channels_count);
 
-	sinkb->stream.channels = cd->ipc_config.base.audio_fmt.channels_count;
 	sinkb->buffer_fmt = cd->ipc_config.base.audio_fmt.interleaving_style;
 }
 
