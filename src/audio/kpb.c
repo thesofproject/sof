@@ -835,9 +835,9 @@ static int kpb_prepare(struct comp_dev *dev)
 			sink_id = sink_c->id;
 
 			if (sink_id == 0)
-				sink_c->stream.channels = kpb->num_of_sel_mic;
+				audio_stream_set_channels(&sink_c->stream, kpb->num_of_sel_mic);
 			else
-				sink_c->stream.channels = kpb->config.channels;
+				audio_stream_set_channels(&sink_c->stream, kpb->config.channels);
 
 			buffer_release(sink_c);
 		}

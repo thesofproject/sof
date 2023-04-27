@@ -169,6 +169,28 @@ static inline void audio_stream_set_free(struct audio_stream __sparse_cache *buf
 	buf->free = val;
 }
 
+static inline void audio_stream_set_frm_fmt(struct audio_stream __sparse_cache *buf,
+					    enum sof_ipc_frame val)
+{
+	buf->frame_fmt = val;
+}
+
+static inline void audio_stream_set_valid_fmt(struct audio_stream __sparse_cache *buf,
+					      enum sof_ipc_frame val)
+{
+	buf->valid_sample_fmt = val;
+}
+
+static inline void audio_stream_set_rate(struct audio_stream __sparse_cache *buf, uint32_t val)
+{
+	buf->rate = val;
+}
+
+static inline void audio_stream_set_channels(struct audio_stream __sparse_cache *buf, uint16_t val)
+{
+	buf->channels = val;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

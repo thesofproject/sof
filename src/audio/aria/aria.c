@@ -221,16 +221,16 @@ static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data 
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 
 	buffer_c = buffer_acquire(buffer);
-	buffer_c->stream.channels = cd->chan_cnt;
-	buffer_c->stream.rate = cd->base.audio_fmt.sampling_frequency;
 	buffer_c->buffer_fmt = cd->base.audio_fmt.interleaving_style;
 	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
 				    cd->base.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    cd->base.audio_fmt.s_type);
 
-	buffer_c->stream.frame_fmt = frame_fmt;
-	buffer_c->stream.valid_sample_fmt = valid_fmt;
+	audio_stream_set_frm_fmt(&buffer_c->stream, frame_fmt);
+	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
+	audio_stream_set_channels(&buffer_c->stream, cd->chan_cnt);
+	audio_stream_set_rate(&buffer_c->stream, cd->base.audio_fmt.sampling_frequency);
 
 	buffer_release(buffer_c);
 }

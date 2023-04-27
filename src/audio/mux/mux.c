@@ -295,15 +295,15 @@ static void set_mux_params(struct processing_module *mod)
 			struct ipc4_audio_format out_fmt;
 
 			out_fmt = cd->md.output_format;
-			sink_c->stream.channels = out_fmt.channels_count;
-			sink_c->stream.rate = out_fmt.sampling_frequency;
 			audio_stream_fmt_conversion(out_fmt.depth,
 						    out_fmt.valid_bit_depth,
 						    &frame_fmt, &valid_fmt,
 						    out_fmt.s_type);
 
-			sink_c->stream.frame_fmt = frame_fmt;
-			sink_c->stream.valid_sample_fmt = valid_fmt;
+			audio_stream_set_frm_fmt(&sink_c->stream, frame_fmt);
+			audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
+			audio_stream_set_channels(&sink_c->stream, out_fmt.channels_count);
+			audio_stream_set_rate(&sink_c->stream, out_fmt.sampling_frequency);
 
 			sink_c->buffer_fmt = out_fmt.interleaving_style;
 			params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
@@ -328,10 +328,10 @@ static void set_mux_params(struct processing_module *mod)
 			cd->config.streams[j].pipeline_id = source_c->pipeline_id;
 			valid_bit_depth = cd->md.base_cfg.audio_fmt.valid_bit_depth;
 			if (j == BASE_CFG_QUEUED_ID) {
-				source_c->stream.channels =
-						cd->md.base_cfg.audio_fmt.channels_count;
-				source_c->stream.rate =
-						cd->md.base_cfg.audio_fmt.sampling_frequency;
+				audio_stream_set_channels(&source_c->stream,
+							  cd->md.base_cfg.audio_fmt.channels_count);
+				audio_stream_set_rate(&source_c->stream,
+						      cd->md.base_cfg.audio_fmt.sampling_frequency);
 				audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
 							    valid_bit_depth,
 							    &frame_fmt, &valid_fmt,
@@ -344,9 +344,10 @@ static void set_mux_params(struct processing_module *mod)
 						(cd->md.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
 			} else {
 				/* set parameters for reference input channels */
-				source_c->stream.channels =
-						cd->md.reference_format.channels_count;
-				source_c->stream.rate = cd->md.reference_format.sampling_frequency;
+				audio_stream_set_channels(&source_c->stream,
+							  cd->md.reference_format.channels_count);
+				audio_stream_set_rate(&source_c->stream,
+						      cd->md.reference_format.sampling_frequency);
 				audio_stream_fmt_conversion(cd->md.reference_format.depth,
 							    cd->md.reference_format.valid_bit_depth,
 							    &frame_fmt, &valid_fmt,
@@ -359,8 +360,8 @@ static void set_mux_params(struct processing_module *mod)
 						(cd->md.reference_format.ch_map >> i * 4) & 0xf;
 			}
 
-			source_c->stream.frame_fmt = frame_fmt;
-			source_c->stream.valid_sample_fmt = valid_fmt;
+			audio_stream_set_frm_fmt(&source_c->stream, frame_fmt);
+			audio_stream_set_valid_fmt(&source_c->stream, valid_fmt);
 
 			source_c->hw_params_configured = true;
 			buffer_release(source_c);

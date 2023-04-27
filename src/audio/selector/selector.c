@@ -699,15 +699,15 @@ static void set_selector_params(struct processing_module *mod,
 		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_buf);
 		enum sof_ipc_frame frame_fmt, valid_fmt;
 
-		sink->stream.channels = params->channels;
-		sink->stream.rate = params->rate;
 		audio_stream_fmt_conversion(out_fmt->depth,
 					    out_fmt->valid_bit_depth,
 					    &frame_fmt, &valid_fmt,
 					    out_fmt->s_type);
 
-		sink->stream.frame_fmt = frame_fmt;
-		sink->stream.valid_sample_fmt = valid_fmt;
+		audio_stream_set_frm_fmt(&sink->stream, frame_fmt);
+		audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
+		audio_stream_set_channels(&sink->stream, params->channels);
+		audio_stream_set_rate(&sink->stream, params->rate);
 
 		sink->buffer_fmt = out_fmt->interleaving_style;
 
@@ -731,15 +731,15 @@ static void set_selector_params(struct processing_module *mod,
 		enum sof_ipc_frame frame_fmt, valid_fmt;
 
 		in_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
-		source->stream.channels = in_fmt->channels_count;
-		source->stream.rate = in_fmt->sampling_frequency;
 		audio_stream_fmt_conversion(in_fmt->depth,
 					    in_fmt->valid_bit_depth,
 					    &frame_fmt, &valid_fmt,
 					    in_fmt->s_type);
 
-		source->stream.frame_fmt = frame_fmt;
-		source->stream.valid_sample_fmt = valid_fmt;
+		audio_stream_set_frm_fmt(&source->stream, frame_fmt);
+		audio_stream_set_valid_fmt(&source->stream, valid_fmt);
+		audio_stream_set_channels(&source->stream, in_fmt->channels_count);
+		audio_stream_set_rate(&source->stream, in_fmt->sampling_frequency);
 
 		source->buffer_fmt = in_fmt->interleaving_style;
 

@@ -700,8 +700,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	if (sad->feedback_buf) {
 		buf_c = buffer_acquire(sad->feedback_buf);
 
-		buf_c->stream.channels = sad->config.feedback_channels;
-		buf_c->stream.rate = audio_stream_get_rate(&source_c->stream);
+		audio_stream_set_channels(&buf_c->stream, sad->config.feedback_channels);
+		audio_stream_set_rate(&buf_c->stream, audio_stream_get_rate(&source_c->stream));
 		buffer_release(buf_c);
 
 		ret = smart_amp_check_audio_fmt(audio_stream_get_rate(&source_c->stream),

@@ -85,9 +85,10 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t buf_size;
 	uint32_t chan_map;
-	int i;
+	int i, ret = 0;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -153,11 +154,12 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	if (!buffer)
 		return -ENOMEM;
 
-	buffer->stream.channels = copier_cfg->base.audio_fmt.channels_count;
-	buffer->stream.rate = copier_cfg->base.audio_fmt.sampling_frequency;
-	buffer->stream.frame_fmt = config->frame_fmt;
-	buffer->stream.valid_sample_fmt = valid_fmt;
-	buffer->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
+	buffer_c = buffer_acquire(buffer);
+	audio_stream_set_channels(&buffer_c->stream, copier_cfg->base.audio_fmt.channels_count);
+	audio_stream_set_rate(&buffer_c->stream, copier_cfg->base.audio_fmt.sampling_frequency);
+	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
+	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
+	buffer_c->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
 
 	/* For ALH multi-gateway case, configuration blob contains struct ipc4_alh_multi_gtw_cfg
 	 * with channel map and channels number for each individual gateway.
@@ -174,27 +176,32 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 			channels = popcount(chan_bitmask);
 			if (channels < 1 || channels > SOF_IPC_MAX_CHANNELS) {
 				comp_err(parent_dev, "Invalid channels mask: 0x%x", chan_bitmask);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
-			buffer->stream.channels = channels;
+			audio_stream_set_channels(&buffer_c->stream, channels);
 			chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
 		} else {
 			comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 	}
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
+		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;
 
-	buffer->hw_params_configured = true;
+	buffer_c->hw_params_configured = true;
 
 	if (create_multi_endpoint_buffer)
 		cd->multi_endpoint_buffer = buffer;
 	else
 		cd->endpoint_buffer[cd->endpoint_num] = buffer;
 
-	return 0;
+out:
+	buffer_release(buffer_c);
+
+	return ret;
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
