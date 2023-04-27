@@ -44,16 +44,11 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
 
 	/* allocate buffer */
-	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
+	buffer = buffer_alloc(desc->size, desc->caps, desc->flags, PLATFORM_DCACHE_ALIGN);
 	if (buffer) {
 		buffer->id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
-
-		buffer->stream.underrun_permitted = desc->flags &
-						    SOF_BUF_UNDERRUN_PERMITTED;
-		buffer->stream.overrun_permitted = desc->flags &
-						   SOF_BUF_OVERRUN_PERMITTED;
 
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
