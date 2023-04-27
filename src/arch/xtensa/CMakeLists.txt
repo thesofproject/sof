@@ -20,10 +20,6 @@ elseif(CONFIG_MT8195)
 	set(platform_folder mt8195)
 endif()
 
-if(CONFIG_CAVS)
-	set(family_path intel/cavs)
-endif()
-
 set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})
 
 if(CONFIG_XT_BOOT_LOADER)

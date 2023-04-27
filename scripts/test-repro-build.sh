@@ -39,7 +39,7 @@ SOF2="$SOF_PARENT"/sof-bind-mount-DO-NOT-DELETE
 # considerably, replace "sof" with something of the same length:
 # SOF2="$SOF_PARENT"/sog
 
-PLATFS=(tgl)
+PLATFS=(imx8)
 
 # diffoscope is great but it has hundreds of dependencies, too long to
 # install for CI so we don't use it here. This is just an alias

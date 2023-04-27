@@ -14,14 +14,11 @@
 # List of /lib/firmware/sof/ images and symbolic links currently
 # released by Intel.
 
-# See rimage/config/*.toml
-SIGNED_list  ?= tgl tgl-h
-
 # To find aliases, try in a Linux kernel git clone:
 #
 #   git grep 'sof-.*\.ri' -- sound/soc/
 
-ALIAS_OTHER_KEY_list += adl adl-s rpl rpl-s
+# ALIAS_OTHER_KEY_list += adl adl-s rpl rpl-s
 
 # Not supported in the main branch anymore, go to stable-v2.3
 # UNSIGNED_list += bdw byt cht
@@ -39,11 +36,7 @@ $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
 $(info ALIAS_list    = ${ALIAS_list}    )
 
-target_of_ehl := tgl
-target_of_adl   := tgl
-target_of_adl-s := tgl-h
-target_of_rpl   := tgl
-target_of_rpl-s := tgl-h
+target_of_imx := imx8
 
 ifeq (,${TOOLCHAIN})
   ifeq (,${XTENSA_TOOLS_ROOT})
