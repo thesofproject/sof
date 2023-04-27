@@ -349,7 +349,8 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
 	cd->sources_stream[0].rate = audio_stream_get_rate(&source_c->stream);
 	cd->sink_stream.rate = audio_stream_get_rate(&sink_c->stream);
-	channels_valid = source_c->stream.channels == audio_stream_get_channels(&sink_c->stream);
+	channels_valid = audio_stream_get_channels(&source_c->stream) ==
+		audio_stream_get_channels(&sink_c->stream);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
