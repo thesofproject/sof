@@ -384,10 +384,10 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	cd->sink_stream.channels = audio_stream_get_channels(&sink_c->stream);
 
 	/* set source/sink stream overrun/underrun permitted */
-	cd->sources_stream[0].overrun_permitted = source_c->stream.overrun_permitted;
-	cd->sink_stream.overrun_permitted = sink_c->stream.overrun_permitted;
-	cd->sources_stream[0].underrun_permitted = source_c->stream.underrun_permitted;
-	cd->sink_stream.underrun_permitted = sink_c->stream.underrun_permitted;
+	cd->sources_stream[0].overrun_permitted = audio_stream_get_overrun(&source_c->stream);
+	cd->sink_stream.overrun_permitted = audio_stream_get_overrun(&sink_c->stream);
+	cd->sources_stream[0].underrun_permitted = audio_stream_get_underrun(&source_c->stream);
+	cd->sink_stream.underrun_permitted = audio_stream_get_underrun(&sink_c->stream);
 
 out:
 	buffer_release(sink_c);

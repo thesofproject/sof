@@ -134,6 +134,16 @@ static inline uint32_t audio_stream_get_channels(const struct audio_stream __spa
 	return buf->channels;
 }
 
+static inline bool audio_stream_get_underrun(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->underrun_permitted;
+}
+
+static inline bool audio_stream_get_overrun(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->overrun_permitted;
+}
+
 static inline void audio_stream_set_rptr(struct audio_stream __sparse_cache *buf, void *val)
 {
 	buf->r_ptr = val;
