@@ -9,7 +9,6 @@ choice
 
 config TIGERLAKE
 	bool "Build for Tigerlake"
-	select XT_BOOT_LOADER
 	select XT_IRQ_MAP
 	select DMA_GW
 	select DW

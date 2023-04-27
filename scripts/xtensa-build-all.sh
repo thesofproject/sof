@@ -8,7 +8,6 @@ set -e
 # Platforms built and tested by default in CI using the `-a` option.
 # They must have a toolchain available in the latest Docker image.
 DEFAULT_PLATFORMS=(
-    tgl tgl-h
     imx8 imx8x imx8m imx8ulp
     rn rmb
     mt8186 mt8195
@@ -199,25 +198,6 @@ do
 	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
-		tgl)
-			PLATFORM="tgplp"
-			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			IPC4_CONFIG_OVERLAY="tigerlake_ipc4"
-			# default key for TGL
-			PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			;;
-		tgl-h)
-			PLATFORM="tgph"
-			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			# default key for TGL
-			PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			;;
 		imx8)
 			PLATFORM="imx8"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_2017"

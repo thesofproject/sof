@@ -11,10 +11,6 @@ config HOST_PTABLE
 	bool
 	default n
 
-config XT_BOOT_LOADER
-	bool
-	default n
-
 config XT_HAVE_RESET_VECTOR_ROM
 	bool
 	default n

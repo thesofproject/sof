@@ -127,7 +127,6 @@ jobs:
         # to COMMAS. Don't use a single big group so a single failure
         # does not block all other builds.
         platform: [imx8ulp,
-                   tgl,
                    rn rmb,
                    mt8186 mt8195,
         ]
