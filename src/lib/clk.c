@@ -28,8 +28,6 @@ DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
 SHARED_DATA struct k_spinlock clk_lock;
 
-struct clock_notify_data clk_notify_data;
-
 static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 						  uint32_t size, uint32_t hz)
 {
@@ -59,38 +57,20 @@ void clock_set_freq(int clock, uint32_t hz)
 	uint32_t idx;
 	k_spinlock_key_t key;
 
-	clk_notify_data.old_freq =
-		clk_info->freqs[clk_info->current_freq_idx].freq;
-	clk_notify_data.old_ticks_per_msec =
-		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
-
 	/* atomic context for changing clocks */
 	key = clock_lock();
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
 					 hz);
-	clk_notify_data.freq = clk_info->freqs[idx].freq;
 
 	tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d",
 		clock, hz, idx);
-
-	/* tell anyone interested we are about to change freq */
-	clk_notify_data.message = CLOCK_NOTIFY_PRE;
-	notifier_event(clk_info, clk_info->notification_id,
-		       clk_info->notification_mask, &clk_notify_data,
-		       sizeof(clk_notify_data));
 
 	if (!clk_info->set_freq ||
 	    clk_info->set_freq(clock, idx) == 0)
 		/* update clock frequency */
 		clk_info->current_freq_idx = idx;
-
-	/* tell anyone interested we have now changed freq */
-	clk_notify_data.message = CLOCK_NOTIFY_POST;
-	notifier_event(clk_info, clk_info->notification_id,
-		       clk_info->notification_mask, &clk_notify_data,
-		       sizeof(clk_notify_data));
 
 	clock_unlock(key);
 }
