@@ -48,6 +48,9 @@ void idc_init_thread(void)
 K_P4WQ_ARRAY_DEFINE(q_zephyr_idc, CONFIG_CORE_COUNT, SOF_STACK_SIZE,
 		    K_P4WQ_USER_CPU_MASK);
 
+#define WQ_PER_C 30
+static int w_idx = 0;
+
 struct zephyr_idc_msg {
 	struct k_p4wq_work work;
 	struct idc_msg msg;
@@ -96,14 +99,14 @@ static void idc_handler(struct k_p4wq_work *work)
  * Used for *target* CPUs, since the initiator (usually core 0) can launch
  * several IDC messages at once
  */
-static struct zephyr_idc_msg idc_work[CONFIG_CORE_COUNT];
+static struct zephyr_idc_msg idc_work[CONFIG_CORE_COUNT * WQ_PER_C];
 
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	unsigned int target_cpu = msg->core;
-	struct zephyr_idc_msg *zmsg = idc_work + target_cpu;
+	struct zephyr_idc_msg *zmsg = idc_work + target_cpu * WQ_PER_C + w_idx;
 	struct idc_msg *msg_cp = &zmsg->msg;
 	struct k_p4wq_work *work = &zmsg->work;
 	int ret;
@@ -140,6 +143,9 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	default:
 		ret = 0;
 	}
+
+	if (++w_idx >= WQ_PER_C)
+		w_idx = 0;
 
 	return ret;
 }
