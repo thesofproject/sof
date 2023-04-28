@@ -198,6 +198,20 @@ int task_main_start(struct sof *sof)
 	return 0;
 }
 
+static int boot_complete(void)
+{
+#ifdef CONFIG_IMX93_A55
+	/* in the case of i.MX93, SOF_IPC_FW_READY
+	 * sequence will be initiated by the host
+	 * so we shouldn't do anything here.
+	 */
+	return 0;
+#else
+	/* let host know DSP boot is complete */
+	return platform_boot_complete(0);
+#endif /* CONFIG_IMX93_A55 */
+}
+
 int start_complete(void)
 {
 #if defined(CONFIG_IMX)
@@ -215,9 +229,7 @@ int start_complete(void)
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 #endif
-
-	/* let host know DSP boot is complete */
-	return platform_boot_complete(0);
+	return boot_complete();
 }
 
 /*
