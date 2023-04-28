@@ -118,7 +118,7 @@ jobs:
 
 
   gcc-build-only:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -154,7 +154,7 @@ jobs:
   # duplication.
 
   qemu-boot-test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
