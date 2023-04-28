@@ -271,8 +271,10 @@ int module_reset(struct processing_module *mod)
 
 	ret = md->ops->reset(mod);
 	if (ret) {
-		comp_err(mod->dev, "module_reset() error %d: module specific reset() failed for comp %d",
-			 ret, dev_comp_id(mod->dev));
+		if (ret != PPL_STATUS_PATH_STOP)
+			comp_err(mod->dev,
+				 "module_reset() error %d: module specific reset() failed for comp %d",
+				 ret, dev_comp_id(mod->dev));
 		return ret;
 	}
 
