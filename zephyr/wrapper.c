@@ -108,6 +108,7 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
 	/* TODO: how do we unmask on other cores with Zephyr APIs */
 }
+#endif
 
 void platform_interrupt_set(uint32_t irq)
 {
@@ -118,7 +119,6 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	/* handled by zephyr - needed for linkage */
 }
-#endif
 
 /*
  * Asynchronous Messaging Service
