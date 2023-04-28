@@ -451,6 +451,7 @@ void platform_interrupt_init(void)
 		interrupt_cascade_register(dsp_irq + i);
 }
 
+#ifndef __ZEPHYR__
 void platform_interrupt_set(uint32_t irq)
 {
 	if (interrupt_is_dsp_direct(irq))
@@ -462,6 +463,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 	if (interrupt_is_dsp_direct(irq))
 		arch_interrupt_clear(irq);
 }
+#endif /* __ZEPHYR */
 
 uint32_t platform_interrupt_get_enabled(void)
 {
