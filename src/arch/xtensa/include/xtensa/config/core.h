@@ -36,6 +36,24 @@
 #ifndef XTENSA_CONFIG_CORE_H
 #define XTENSA_CONFIG_CORE_H
 
+/*
+ * This define is used by the new 2023 xt-clang toolchain and, while there are a few definitions
+ * (identical to this one) in various implementations such as newlib, none of them is in use when
+ * building SOF with Zephyr and XtensaTools.
+ */
+
+#if defined(__ZEPHYR__)
+
+#ifndef __UINT32_C
+#define __UINT32_C(x) x ## U
+#endif
+
+#ifndef UINT32_C
+#define UINT32_C(x) __UINT32_C(x)
+#endif
+
+#endif
+
 /*  CONFIGURATION INDEPENDENT DEFINITIONS:  */
 #ifdef __XTENSA__
 #include <xtensa/hal.h>
