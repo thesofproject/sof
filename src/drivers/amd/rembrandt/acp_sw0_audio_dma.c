@@ -818,47 +818,47 @@ static int acp_dai_sw0_audio_dma_remove(struct dma *dma)
 static int acp_dai_sw0_audio_dma_get_data_size(struct dma_chan_data *channel,
 				   uint32_t *avail, uint32_t *free)
 {
-	uint64_t tx_low, curr_tx_pos, tx_high;
-	uint64_t rx_low, curr_rx_pos, rx_high;
+	//uint64_t tx_low, curr_tx_pos, tx_high;
+	//uint64_t rx_low, curr_rx_pos, rx_high;
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
 		if(channel->index==5)
 		{
-			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_AUDIO_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_AUDIO_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			//tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_AUDIO_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_AUDIO_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 			*free = (sw0_audio_buff_size_playback >> 1);
 			*avail = (sw0_audio_buff_size_playback >> 1);
 		}
 		else if(channel->index==7)//??TBD??//
 		{
-			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			//tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 			*free = (sw1_buff_size_playback >> 1);
 			*avail = (sw1_buff_size_playback >> 1);
 		}
 		else if(channel->index==1)
 		{
-			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_HS_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_HS_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			//tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_HS_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_HS_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 			*free = (sw1_buff_size_playback >> 1);
 			*avail = (sw1_buff_size_playback >> 1);
 		}
 		else if(channel->index==3)//??TBD??//
 		{
-			tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+			//tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_TX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_TX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
 			*free = (sw1_buff_size_playback >> 1);
 			*avail = (sw1_buff_size_playback >> 1);
 		}
@@ -869,41 +869,41 @@ static int acp_dai_sw0_audio_dma_get_data_size(struct dma_chan_data *channel,
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		if(channel->index==4)
 		{
-			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_AUDIO_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_AUDIO_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			//rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_AUDIO_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_AUDIO_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 			*free = (sw0_audio_buff_size_capture >> 1);
 			*avail = (sw0_audio_buff_size_capture >> 1);
 		}
 		else if(channel->index==6)//??TBD??//
 		{
-			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			//rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 			*free = (sw1_buff_size_capture >> 1);
 			*avail = (sw1_buff_size_capture >> 1);
 		}
 		else if(channel->index==0)
 		{
-			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_HS_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_HS_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			//rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_HS_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_HS_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 			*free = (sw1_buff_size_capture >> 1);
 			*avail = (sw1_buff_size_capture >> 1);
 		}
 		else if(channel->index==2)//??TBD??//
 		{
-			rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
-			rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
-					ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
-			curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+			//rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);//??CHECK??//
+			//rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
+			//		ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);//??CHECK??//
+			//curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
 			*free = (sw1_buff_size_capture >> 1);
 			*avail = (sw1_buff_size_capture >> 1);
 		}
@@ -941,7 +941,7 @@ static int acp_dai_sw0_audio_dma_get_attribute(struct dma *dma, uint32_t type, u
 
 static int acp_dai_sw0_audio_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 {
-	uint32_t status;
+	uint32_t status = 0;
 	acp_dsp0_intr_stat_t acp_intr_stat;
 	acp_dsp0_intr_cntl_t acp_intr_cntl;
 

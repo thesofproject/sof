@@ -173,13 +173,14 @@ static void  get_response_from_smu(void)
 
 void delay1(void )
 {
-    // Delay
-    int testCount = 0;
-    int val = 0;
-    for(testCount = 0; testCount < 255; testCount++){
-        // This reg read is purely for simulating delay.
-        val = acp_reg_read_via_smn(CLK5_CLK_FSM_STATUS, sizeof(int));
-    }
+	// Delay
+	int testCount = 0;
+	int val = 0;
+	for(testCount = 0; testCount < 255; testCount++){
+		// This reg read is purely for simulating delay.
+		val = acp_reg_read_via_smn(CLK5_CLK_FSM_STATUS, sizeof(int));
+		val = val * 0;
+	}
 }
 
 
