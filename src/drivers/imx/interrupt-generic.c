@@ -36,6 +36,7 @@ int irqstr_get_sof_int(int irqstr_int)
 
 void platform_interrupt_init(void) {}
 
+#ifndef __ZEPHYR__
 void platform_interrupt_set(uint32_t irq)
 {
 	arch_interrupt_set(irq);
@@ -45,6 +46,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	arch_interrupt_clear(irq);
 }
+#endif /* __ZEPHYR__ */
 
 uint32_t platform_interrupt_get_enabled(void)
 {
