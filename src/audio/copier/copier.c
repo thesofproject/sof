@@ -1344,9 +1344,18 @@ static int do_endpoint_copy(struct comp_dev *dev)
 
 		return ret;
 	} else {
-		if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw)
-			return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
-
+		switch (dev->ipc_config.type) {
+		case SOF_COMP_HOST:
+			if (!cd->ipc_gtw)
+				return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
+			break;
+		case SOF_COMP_DAI:
+			if (cd->endpoint_num == 1)
+				return dai_zephyr_copy(cd->dd[0], cd->endpoint[0]);
+			break;
+		default:
+			break;
+		}
 		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
 	}
 }
