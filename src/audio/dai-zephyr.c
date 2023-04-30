@@ -1236,7 +1236,7 @@ static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 }
 
 /* copy and process stream data from source to sink buffers */
-static int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
