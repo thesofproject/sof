@@ -373,9 +373,8 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return dai_zephyr_position(dd, dev, posn);
 }
 
-void dai_dma_position_update(struct comp_dev *dev)
+void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc4_llp_reading_slot slot;
 	struct dma_status status;
 	int ret;
@@ -422,9 +421,8 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return dai_zephyr_position(dd, dev, posn);
 }
 
-void dai_dma_position_update(struct comp_dev *dev)
+void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc4_llp_reading_slot slot;
 	struct dma_chan_status status;
 	uint32_t llp_data[2];

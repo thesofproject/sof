@@ -219,9 +219,8 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
+static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
 	int ret;
@@ -1222,9 +1221,8 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 }
 
 /* report xrun occurrence */
-static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
+static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(dd->local_buffer);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -1238,10 +1236,8 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 	buffer_release(buf_c);
 }
 
-/* copy and process stream data from source to sink buffers */
-static int dai_copy(struct comp_dev *dev)
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t dma_fmt;
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
@@ -1253,8 +1249,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t sink_samples;
 	uint32_t samples;
 	int ret;
-
-	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
@@ -1333,18 +1327,26 @@ static int dai_copy(struct comp_dev *dev)
 	if (ret < 0)
 		comp_warn(dev, "dai_copy(): dai trigger copy failed");
 
-	if (dai_dma_cb(dev, copy_bytes) == DMA_CB_STATUS_END)
+	if (dai_dma_cb(dd, dev, copy_bytes) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
 	if (ret < 0) {
-		dai_report_xrun(dev, copy_bytes);
+		dai_report_xrun(dd, dev, copy_bytes);
 		return ret;
 	}
 
-	dai_dma_position_update(dev);
+	dai_dma_position_update(dd, dev);
 
 	return ret;
+}
+
+/* copy and process stream data from source to sink buffers */
+static int dai_copy(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_copy(dd, dev);
 }
 
 /**

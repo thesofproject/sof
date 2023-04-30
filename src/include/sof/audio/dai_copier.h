@@ -32,6 +32,8 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params,
 		      struct list_item *bsource_list,
 		      struct list_item *bsink_list);
+
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev);
 #else
 static inline int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 				 const struct ipc_config_dai *dai_cfg)
@@ -62,6 +64,11 @@ static inline int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params,
 				    struct list_item *bsource_list,
 				    struct list_item *bsink_list)
+{
+	return 0;
+}
+
+static inline int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
 	return 0;
 }

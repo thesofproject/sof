@@ -392,6 +392,6 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return 0;
 }
 
-void dai_dma_position_update(struct comp_dev *dev) { }
+void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev) { }
 
 void dai_release_llp_slot(struct dai_data *dd) { }
