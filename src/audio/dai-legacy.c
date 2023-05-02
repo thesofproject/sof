@@ -322,7 +322,7 @@ static int dai_verify_params(struct comp_dev *dev,
 {
 	struct sof_ipc_stream_params hw_params;
 
-	dai_comp_get_hw_params(dev, &hw_params, params->direction);
+	comp_dai_get_hw_params(dev, &hw_params, params->direction);
 
 	/* checks whether pcm parameters match hardware DAI parameter set
 	 * during dai_set_config(). If hardware parameter is equal to 0, it

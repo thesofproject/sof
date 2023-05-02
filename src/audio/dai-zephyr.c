@@ -426,7 +426,7 @@ static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params 
 	struct sof_ipc_stream_params hw_params;
 	int ret;
 
-	ret = dai_comp_get_hw_params(dev, &hw_params, params->direction);
+	ret = comp_dai_get_hw_params(dev, &hw_params, params->direction);
 	if (ret < 0) {
 		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
 		return ret;
