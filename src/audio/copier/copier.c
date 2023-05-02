@@ -38,6 +38,10 @@
 #include <sof/audio/host_copier.h>
 #include <sof/audio/dai_copier.h>
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+#include <zephyr/drivers/dai.h>
+#endif
+
 static const struct comp_driver comp_copier;
 
 LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
@@ -1973,6 +1977,44 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 	return ret;
 }
 
+static int copier_dai_ts_config_op(struct comp_dev *dev)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd[0];
+
+	return dai_zephyr_ts_config_op(dd, dev);
+}
+
+static int copier_dai_ts_start_op(struct comp_dev *dev)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd[0];
+
+	comp_dbg(dev, "dai_ts_start()");
+
+	return dai_zephyr_ts_start(dd, dev);
+}
+
+static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd[0];
+
+	comp_dbg(dev, "dai_ts_get()");
+
+	return dai_zephyr_ts_get(dd, dev, tsd);
+}
+
+static int copier_dai_ts_stop_op(struct comp_dev *dev)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd[0];
+
+	comp_dbg(dev, "dai_ts_stop()");
+
+	return dai_zephyr_ts_stop(dd, dev);
+}
+
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
@@ -1989,6 +2031,10 @@ static const struct comp_driver comp_copier = {
 		.get_total_data_processed	= copier_get_processed_data,
 		.get_attribute			= copier_get_attribute,
 		.position			= copier_position,
+		.dai_ts_config			= copier_dai_ts_config_op,
+		.dai_ts_start			= copier_dai_ts_start_op,
+		.dai_ts_stop			= copier_dai_ts_stop_op,
+		.dai_ts_get			= copier_dai_ts_get_op,
 	},
 };
 

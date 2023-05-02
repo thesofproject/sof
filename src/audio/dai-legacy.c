@@ -1054,9 +1054,8 @@ static int dai_copy(struct comp_dev *dev)
  * DAI must be prepared before this function is used (for DMA information). If not, an error
  * is returned.
  */
-static int dai_ts_config(struct comp_dev *dev)
+int dai_zephyr_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct timestamp_cfg *cfg = &dd->ts_config;
 	struct ipc_config_dai *dai = &dd->ipc_config;
 
@@ -1078,15 +1077,36 @@ static int dai_ts_config(struct comp_dev *dev)
 	return dd->dai->drv->ts_ops.ts_config(dd->dai, cfg);
 }
 
+static int dai_ts_config(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_ts_config_op(dd, dev);
+}
+
+int dai_zephyr_ts_start(struct dai_data *dd, struct comp_dev *dev)
+{
+	if (!dd->dai->drv->ts_ops.ts_start)
+		return -ENXIO;
+
+	return dd->dai->drv->ts_ops.ts_start(dd->dai, &dd->ts_config);
+}
+
 static int dai_ts_start(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "dai_ts_start()");
-	if (!dd->dai->drv->ts_ops.ts_start)
+
+	return dai_zephyr_ts_start(dd, dev);
+}
+
+int dai_zephyr_ts_stop(struct dai_data *dd, struct comp_dev *dev)
+{
+	if (!dd->dai->drv->ts_ops.ts_stop)
 		return -ENXIO;
 
-	return dd->dai->drv->ts_ops.ts_start(dd->dai, &dd->ts_config);
+	return dd->dai->drv->ts_ops.ts_stop(dd->dai, &dd->ts_config);
 }
 
 static int dai_ts_stop(struct comp_dev *dev)
@@ -1094,10 +1114,16 @@ static int dai_ts_stop(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "dai_ts_stop()");
-	if (!dd->dai->drv->ts_ops.ts_stop)
+
+	return dai_zephyr_ts_stop(dd, dev);
+}
+
+int dai_zephyr_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	if (!dd->dai->drv->ts_ops.ts_get)
 		return -ENXIO;
 
-	return dd->dai->drv->ts_ops.ts_stop(dd->dai, &dd->ts_config);
+	return dd->dai->drv->ts_ops.ts_get(dd->dai, &dd->ts_config, tsd);
 }
 
 static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
@@ -1105,10 +1131,8 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "dai_ts_get()");
-	if (!dd->dai->drv->ts_ops.ts_get)
-		return -ENXIO;
 
-	return dd->dai->drv->ts_ops.ts_get(dd->dai, &dd->ts_config, tsd);
+	return dai_zephyr_ts_get(dd, dev, tsd);
 }
 
 static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)

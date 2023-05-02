@@ -1357,9 +1357,8 @@ static int dai_copy(struct comp_dev *dev)
  * DAI must be prepared before this function is used (for DMA information). If not, an error
  * is returned.
  */
-static int dai_ts_config_op(struct comp_dev *dev)
+int dai_zephyr_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct dai_ts_cfg cfg;
 
@@ -1393,43 +1392,60 @@ static int dai_ts_config_op(struct comp_dev *dev)
 	return dai_ts_config(dd->dai->dev, &cfg);
 }
 
+static int dai_ts_config_op(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_ts_config_op(dd, dev);
+}
+
+int dai_zephyr_ts_start(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct dai_ts_cfg cfg;
+
+	return dai_ts_start(dd->dai->dev, &cfg);
+}
+
 static int dai_ts_start_op(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_cfg cfg;
 
 	comp_dbg(dev, "dai_ts_start()");
+	return dai_zephyr_ts_start(dd, dev);
+}
 
-	return dai_ts_start(dd->dai->dev, &cfg);
+int dai_zephyr_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	struct dai_ts_data tsdata;
+	struct dai_ts_cfg cfg;
+
+	/* TODO: convert to timestamp_data */
+	return dai_ts_get(dd->dai->dev, &cfg, &tsdata);
 }
 
 static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_data tsdata;
-	struct dai_ts_cfg cfg;
-	int ret;
 
 	comp_dbg(dev, "dai_ts_get()");
 
-	ret = dai_ts_get(dd->dai->dev, &cfg, &tsdata);
+	return dai_zephyr_ts_get(dd, dev, tsd);
+}
 
-	if (ret < 0)
-		return ret;
+int dai_zephyr_ts_stop(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct dai_ts_cfg cfg;
 
-	/* todo convert to timestamp_data */
-
-	return ret;
+	return dai_ts_stop(dd->dai->dev, &cfg);
 }
 
 static int dai_ts_stop_op(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_ts_cfg cfg;
 
 	comp_dbg(dev, "dai_ts_stop()");
 
-	return dai_ts_stop(dd->dai->dev, &cfg);
+	return dai_zephyr_ts_stop(dd, dev);
 }
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
