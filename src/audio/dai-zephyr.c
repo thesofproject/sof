@@ -52,7 +52,7 @@ DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_comp_uuid), LOG_LEVEL_INFO);
 
 #if CONFIG_COMP_DAI_GROUP
 
-static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd);
+static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd);
 
 static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 {
@@ -61,7 +61,7 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 	struct dai_group *group = dd->group;
 
 	/* Atomic context set by the last DAI to receive trigger command */
-	group->trigger_ret = dai_comp_trigger_internal(dev, group->trigger_cmd);
+	group->trigger_ret = dai_comp_trigger_internal(dd, dev, group->trigger_cmd);
 }
 
 /* Assign DAI to a group */
@@ -1021,18 +1021,9 @@ static int dai_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void dai_update_start_position(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	/* update starting wallclock */
-	platform_dai_wallclock(dev, &dd->wallclock);
-}
-
 /* used to pass standard and bespoke command (with data) to component */
-static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
+static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int prev_state = dev->state;
 	int ret;
 
@@ -1061,7 +1052,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			dd->xrun = 0;
 		}
 
-		dai_update_start_position(dev);
+		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		/* before release, we clear the buffer data to 0s,
@@ -1100,7 +1091,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			dd->xrun = 0;
 		}
 
-		dai_update_start_position(dev);
+		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
 		comp_info(dev, "dai_comp_trigger_internal(), XRUN");
@@ -1162,17 +1153,16 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static int dai_comp_trigger(struct comp_dev *dev, int cmd)
+static int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dai_group *group = dd->group;
 	uint32_t irq_flags;
 	int ret = 0;
 
 	/* DAI not in a group, use normal trigger */
 	if (!group) {
-		comp_dbg(dev, "dai_comp_trigger(), non-atomic trigger");
-		return dai_comp_trigger_internal(dev, cmd);
+		comp_dbg(dev, "dai_zephyr_trigger(), non-atomic trigger");
+		return dai_comp_trigger_internal(dd, dev, cmd);
 	}
 
 	/* DAI is grouped, so only trigger when the entire group is ready */
@@ -1181,13 +1171,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		/* First DAI to receive the trigger command,
 		 * prepare for atomic trigger
 		 */
-		comp_dbg(dev, "dai_comp_trigger(), begin atomic trigger for group %d",
+		comp_dbg(dev, "dai_zephyr_trigger(), begin atomic trigger for group %d",
 			 group->group_id);
 		group->trigger_cmd = cmd;
 		group->trigger_counter = group->num_dais - 1;
 	} else if (group->trigger_cmd != cmd) {
 		/* Already processing a different trigger command */
-		comp_err(dev, "dai_comp_trigger(), already processing atomic trigger");
+		comp_err(dev, "dai_zephyr_trigger(), already processing atomic trigger");
 		ret = -EAGAIN;
 	} else {
 		/* Count down the number of remaining DAIs required
@@ -1195,7 +1185,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		 * takes place
 		 */
 		group->trigger_counter--;
-		comp_dbg(dev, "dai_comp_trigger(), trigger counter %d, group %d",
+		comp_dbg(dev, "dai_zephyr_trigger(), trigger counter %d, group %d",
 			 group->trigger_counter, group->group_id);
 
 		if (!group->trigger_counter) {
@@ -1216,6 +1206,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	return ret;
+}
+
+static int dai_comp_trigger(struct comp_dev *dev, int cmd)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_trigger(dd, dev, cmd);
 }
 
 /* report xrun occurrence */
