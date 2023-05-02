@@ -874,9 +874,8 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		dai_capture_params(dev, period_bytes, period_count);
 }
 
-static int dai_config_prepare(struct comp_dev *dev)
+static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel;
 
 	/* cannot configure DAI while active */
@@ -922,35 +921,21 @@ static int dai_config_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int dai_prepare(struct comp_dev *dev)
+static int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
-
-	comp_dbg(dev, "dai_prepare()");
-
-	ret = dai_config_prepare(dev);
-	if (ret < 0)
-		return ret;
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	dd->total_data_processed = 0;
 
 	if (!dd->chan) {
-		comp_err(dev, "dai_prepare(): Missing dd->chan.");
+		comp_err(dev, "dai_zephyr_prepare(): Missing dd->chan.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_prepare(): Missing dd->config.elem_array.elems.");
+		comp_err(dev, "dai_zephyr_prepare(): Missing dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -964,7 +949,7 @@ static int dai_prepare(struct comp_dev *dev)
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
 		dd->xrun = 0;
-		return ret;
+		return 0;
 	}
 
 	ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
@@ -972,6 +957,27 @@ static int dai_prepare(struct comp_dev *dev)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
+}
+
+static int dai_prepare(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "dai_prepare()");
+
+	ret = dai_config_prepare(dd, dev);
+	if (ret < 0)
+		return ret;
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return dai_zephyr_prepare(dd, dev);
 }
 
 static int dai_reset(struct comp_dev *dev)
