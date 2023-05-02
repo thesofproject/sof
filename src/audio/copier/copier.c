@@ -1858,6 +1858,7 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	uint64_t ret = 0;
+	bool source;
 
 	/*
 	 * total data processed is calculated as: accumulate all input data in bytes
@@ -1870,14 +1871,28 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 	 */
 	if (cd->endpoint_num) {
 		if (stream_no < cd->endpoint_num) {
-			if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-				bool source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
+			switch (dev->ipc_config.type) {
+			case  SOF_COMP_HOST:
+				source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
+				if (cd->ipc_gtw) {
+					struct comp_dev *host_dev;
 
-				if (source == input)
+					host_dev = cd->endpoint[stream_no];
+					ret = comp_get_total_data_processed(host_dev,
+									    0, input);
+				} else if (source == input) {
 					ret = cd->hd->total_data_processed;
-			} else {
+				}
+				break;
+			case  SOF_COMP_DAI:
+				source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+				if (source == input)
+					ret = cd->dd[0]->total_data_processed;
+				break;
+			default:
 				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
 								    0, input);
+				break;
 			}
 		}
 	} else {
