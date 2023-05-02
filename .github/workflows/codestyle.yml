@@ -27,7 +27,7 @@ jobs:
       # depth 2 so:
       # ^1. we can show the Subject of the current target branch tip
       # ^2. we reconnect/graft to the later fetch pull/1234/head,
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with: {fetch-depth: 2}
 
       - name: install codespell
@@ -50,7 +50,7 @@ jobs:
   yamllint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: run yamllint
         # Quoting to please all parsers is hard. This indirection helps.
