@@ -12,7 +12,7 @@ jobs:
   top-level_default_CMake_target_ALL:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # The ALSA version in Ubuntu 20.04 is buggy
       # (https://github.com/thesofproject/sof/issues/2543) and likely
