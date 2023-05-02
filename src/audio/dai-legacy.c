@@ -264,12 +264,10 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int dai_comp_get_hw_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params,
-				  int dir)
+int dai_zephyr_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params, int dir)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	int ret = 0;
+	int ret;
 
 	comp_dbg(dev, "dai_hw_params()");
 
@@ -290,6 +288,14 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 
 	return 0;
+}
+
+static int dai_comp_get_hw_params(struct comp_dev *dev,
+				  struct sof_ipc_stream_params *params, int dir)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_get_hw_params(dd, dev, params, dir);
 }
 
 static int dai_comp_hw_params(struct comp_dev *dev,
