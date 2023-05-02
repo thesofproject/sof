@@ -220,9 +220,8 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
+static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
 	int ret;
@@ -1221,9 +1220,8 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 }
 
 /* report xrun occurrence */
-static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
+static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(dd->local_buffer);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -1238,9 +1236,8 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int dai_copy(struct comp_dev *dev)
+static int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t dma_fmt;
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
@@ -1253,8 +1250,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret;
 
-	comp_dbg(dev, "dai_copy()");
-
 	/* get data sizes from DMA */
 	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
 	switch (ret) {
@@ -1263,11 +1258,11 @@ static int dai_copy(struct comp_dev *dev)
 	case -EPIPE:
 		/* DMA status can return -EPIPE and current status content if xrun occurs */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			comp_dbg(dev, "dai_copy(): dma_get_status() underrun occurred, ret = %u",
-				  ret);
+			comp_dbg(dev, "dai_zephyr_copy(): dma_get_status() underrun occurred, ret = %u",
+				 ret);
 		else
-			comp_dbg(dev, "dai_copy(): dma_get_status() overrun occurred, ret = %u",
-				  ret);
+			comp_dbg(dev, "dai_zephyr_copy(): dma_get_status() overrun occurred, ret = %u",
+				 ret);
 		break;
 	default:
 		return ret;
@@ -1305,7 +1300,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+	comp_dbg(dev, "dai_zephyr_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / audio_stream_get_channels(&buf_c->stream));
 
@@ -1314,36 +1309,43 @@ static int dai_copy(struct comp_dev *dev)
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, avail_bytes, dd->period_bytes);
 	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
 		 copy_bytes + free_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
-		comp_warn(dev, "dai_copy(): nothing to copy");
+		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
 		return 0;
 	}
 
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
 	if (ret < 0)
-		comp_warn(dev, "dai_copy(): dai trigger copy failed");
+		comp_warn(dev, "dai_zephyr_copy(): dai trigger copy failed");
 
-	if (dai_dma_cb(dev, copy_bytes) == DMA_CB_STATUS_END)
+	if (dai_dma_cb(dd, dev, copy_bytes) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
 	if (ret < 0) {
-		dai_report_xrun(dev, copy_bytes);
+		dai_report_xrun(dd, dev, copy_bytes);
 		return ret;
 	}
 
 	dai_dma_position_update(dd, dev);
 
 	return ret;
+}
+
+static int dai_copy(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_zephyr_copy(dd, dev);
 }
 
 /**
