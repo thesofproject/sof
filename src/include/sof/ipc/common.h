@@ -141,11 +141,12 @@ int ipc_dma_trace_send_position(void);
  */
 void ipc_send_buffer_status_notify(void);
 
+struct dai_data;
 /**
  * \brief Configure DAI.
  * @return 0 on success.
  */
-int ipc_dai_data_config(struct comp_dev *dev);
+int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
 
 /**
  * \brief create a IPC boot complete message.
