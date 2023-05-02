@@ -618,9 +618,8 @@ static int dai_params(struct comp_dev *dev,
 		dai_capture_params(dev, period_bytes, period_count);
 }
 
-static int dai_config_prepare(struct comp_dev *dev)
+static int dai_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 
 	/* cannot configure DAI while active */
@@ -669,24 +668,10 @@ static int dai_config_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int dai_prepare(struct comp_dev *dev)
+static int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
-	int ret = 0;
-
-	comp_info(dev, "dai_prepare()");
-
-	ret = dai_config_prepare(dev);
-	if (ret < 0)
-		return ret;
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	int ret;
 
 	dd->total_data_processed = 0;
 
@@ -711,7 +696,7 @@ static int dai_prepare(struct comp_dev *dev)
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
 		dd->xrun = 0;
-		return ret;
+		return 0;
 	}
 
 	ret = dma_set_config_legacy(dd->chan, &dd->config);
@@ -719,6 +704,27 @@ static int dai_prepare(struct comp_dev *dev)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
+}
+
+static int dai_prepare(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_info(dev, "dai_prepare()");
+
+	ret = dai_config_prepare(dd, dev);
+	if (ret < 0)
+		return ret;
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return dai_zephyr_prepare(dd, dev);
 }
 
 static int dai_reset(struct comp_dev *dev)
