@@ -480,11 +480,10 @@ out:
 	return err;
 }
 
-static int dai_params(struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
+static int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -616,6 +615,15 @@ static int dai_params(struct comp_dev *dev,
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 		dai_playback_params(dev, period_bytes, period_count) :
 		dai_capture_params(dev, period_bytes, period_count);
+}
+
+static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_params()");
+
+	return dai_zephyr_params(dd, dev, params);
 }
 
 int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
