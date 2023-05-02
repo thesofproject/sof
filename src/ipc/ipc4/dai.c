@@ -189,9 +189,8 @@ void dai_dma_release(struct comp_dev *dev)
 	}
 }
 
-void dai_release_llp_slot(struct comp_dev *dev)
+void dai_release_llp_slot(struct dai_data *dd)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc4_llp_reading_slot slot;
 	k_spinlock_key_t key;
 
