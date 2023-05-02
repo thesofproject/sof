@@ -355,14 +355,10 @@ e_data:
 	return NULL;
 }
 
-static void dai_free(struct comp_dev *dev)
+static void dai_zephyr_free(struct dai_data *dd)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	if (dd->group) {
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+	if (dd->group)
 		dai_group_put(dd->group);
-	}
 
 	if (dd->chan) {
 		dma_release_channel(dd->dma->z_dev, dd->chan->index);
@@ -376,6 +372,17 @@ static void dai_free(struct comp_dev *dev)
 	dai_put(dd->dai);
 
 	rfree(dd->dai_spec_config);
+}
+
+static void dai_free(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (dd->group)
+		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+
+	dai_zephyr_free(dd);
+
 	rfree(dd);
 	rfree(dev);
 }
