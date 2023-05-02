@@ -453,10 +453,9 @@ static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params 
 }
 
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
-			       uint32_t period_count)
+static int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			       int32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -591,10 +590,9 @@ out:
 	return err;
 }
 
-static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
+static int dai_capture_params(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
 			      uint32_t period_count)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
@@ -746,10 +744,10 @@ out:
 	return err;
 }
 
-static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -759,8 +757,6 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
-
 	/* configure dai_data first */
 	err = ipc_dai_data_config(dd, dev);
 	if (err < 0)
@@ -768,7 +764,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "dai_params(): pcm params verification failed.");
+		comp_err(dev, "dai_zephyr_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
 
@@ -783,13 +779,13 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
-		comp_info(dev, "dai_params() component has been already configured.");
+		comp_info(dev, "dai_zephyr_params() component has been already configured.");
 		return 0;
 	}
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_params(): Component is in state %d, expected COMP_STATE_READY.",
+		comp_err(dev, "dai_zephyr_params(): Component is in state %d, expected COMP_STATE_READY.",
 			 dev->state);
 		return -EINVAL;
 	}
@@ -797,21 +793,21 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
 	if (err < 0) {
-		comp_err(dev, "dai_params(): could not get dma buffer address alignment, err = %d",
+		comp_err(dev, "dai_zephyr_params(): could not get dma buffer address alignment, err = %d",
 			 err);
 		return err;
 	}
 
 	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "dai_params(): no valid dma buffer alignment, err = %d, align = %u",
+		comp_err(dev, "dai_zephyr_params(): no valid dma buffer alignment, err = %d, align = %u",
 			 err, align);
 		return -EINVAL;
 	}
 
 	period_count = dd->dma->plat_data.period_count;
 	if (!period_count) {
-		comp_err(dev, "dai_params(): no valid dma buffer period count");
+		comp_err(dev, "dai_zephyr_params(): no valid dma buffer period count");
 		return -EINVAL;
 	}
 
@@ -826,7 +822,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		comp_err(dev, "dai_params(): invalid period_bytes.");
+		comp_err(dev, "dai_zephyr_params(): invalid period_bytes.");
 		return -EINVAL;
 	}
 
@@ -844,7 +840,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		buffer_release(buffer_c);
 
 		if (err < 0) {
-			comp_err(dev, "dai_params(): buffer_set_size() failed, buffer_size = %u",
+			comp_err(dev, "dai_zephyr_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
 			return err;
 		}
@@ -852,7 +848,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA,
 					      addr_align);
 		if (!dd->dma_buffer) {
-			comp_err(dev, "dai_params(): failed to alloc dma buffer");
+			comp_err(dev, "dai_zephyr_params(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 
@@ -870,8 +866,17 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 	}
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-		dai_playback_params(dev, period_bytes, period_count) :
-		dai_capture_params(dev, period_bytes, period_count);
+		dai_playback_params(dd, dev, period_bytes, period_count) :
+		dai_capture_params(dd, dev, period_bytes, period_count);
+}
+
+static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_params()");
+
+	return dai_zephyr_params(dd, dev, params);
 }
 
 int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
