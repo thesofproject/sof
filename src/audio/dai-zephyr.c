@@ -284,34 +284,15 @@ static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
 	return dma_status;
 }
 
-static struct comp_dev *dai_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
+static int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
+			  const struct ipc_config_dai *dai_cfg)
 {
-	struct comp_dev *dev;
-	const struct ipc_config_dai *dai_cfg = spec;
-	struct dai_data *dd;
 	uint32_t dir;
-
-	comp_cl_dbg(&comp_dai, "dai_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
-	if (!dd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, dd);
 
 	dd->dai = dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
-		goto error;
+		comp_err(dev, "dai_new(): dai_get() failed to create DAI.");
+		return -ENODEV;
 	}
 
 	dd->ipc_config = *dai_cfg;
@@ -322,8 +303,9 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
-		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
-		goto error;
+		dai_put(dd->dai);
+		comp_err(dev, "dai_new(): dma_get() failed to get shared access to DMA.");
+		return -ENODEV;
 	}
 
 	k_spinlock_init(&dd->dai->lock);
@@ -332,11 +314,43 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	dd->xrun = 0;
 	dd->chan = NULL;
 
+	return 0;
+}
+
+static struct comp_dev *dai_new(const struct comp_driver *drv,
+				const struct comp_ipc_config *config,
+				const void *spec)
+{
+	struct comp_dev *dev;
+	const struct ipc_config_dai *dai_cfg = spec;
+	struct dai_data *dd;
+	int ret;
+
+	comp_cl_dbg(&comp_dai, "dai_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+
+	dev->ipc_config = *config;
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd)
+		goto e_data;
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_zephyr_new(dd, dev, dai_cfg);
+	if (ret < 0)
+		goto error;
+
 	dev->state = COMP_STATE_READY;
+
 	return dev;
 
 error:
 	rfree(dd);
+e_data:
 	rfree(dev);
 	return NULL;
 }

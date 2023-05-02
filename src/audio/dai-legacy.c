@@ -160,6 +160,39 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	buffer_release(dma_buf);
 }
 
+static int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
+			  const struct ipc_config_dai *dai)
+{
+	uint32_t dir, caps, dma_dev;
+
+	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
+	if (!dd->dai) {
+		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
+		return -ENODEV;
+	}
+	dd->dai->dd = dd;
+	dd->ipc_config = *dai;
+
+	/* request GP LP DMA with shared access privilege */
+	dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
+			DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
+
+	caps = dai_get_info(dd->dai, DAI_INFO_DMA_CAPS);
+	dma_dev = dai_get_info(dd->dai, DAI_INFO_DMA_DEV);
+
+	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
+	if (!dd->dma) {
+		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
+		return -ENODEV;
+	}
+
+	dma_sg_init(&dd->config.elem_array);
+	dd->xrun = 0;
+	dd->chan = NULL;
+
+	return 0;
+}
+
 static struct comp_dev *dai_new(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec)
@@ -167,7 +200,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	const struct ipc_config_dai *dai = spec;
 	struct dai_data *dd;
-	uint32_t dir, caps, dma_dev;
+	int ret;
 
 	comp_cl_dbg(&comp_dai, "dai_new()");
 
@@ -184,30 +217,9 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, dd);
 
-	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
-	if (!dd->dai) {
-		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
+	ret = dai_zephyr_new(dd, dev, dai);
+	if (ret < 0)
 		goto error;
-	}
-	dd->dai->dd = dd;
-	dd->ipc_config = *dai;
-
-	/* request GP LP DMA with shared access privilege */
-	dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
-			DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
-
-	caps = dai_get_info(dd->dai, DAI_INFO_DMA_CAPS);
-	dma_dev = dai_get_info(dd->dai, DAI_INFO_DMA_DEV);
-
-	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
-	if (!dd->dma) {
-		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
-		goto error;
-	}
-
-	dma_sg_init(&dd->config.elem_array);
-	dd->xrun = 0;
-	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
