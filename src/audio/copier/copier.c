@@ -1919,17 +1919,27 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
 	/* Exit if no endpoints */
 	if (!cd->endpoint_num)
 		return -EINVAL;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		posn->host_posn = cd->hd->local_pos;
-		ret = posn->host_posn;
-	} else {
-		ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			posn->host_posn = cd->hd->local_pos;
+			ret = posn->host_posn;
+		} else {
+			/* handle gtw case */
+			ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+		}
+		break;
+	case SOF_COMP_DAI:
+		ret = dai_zephyr_position(cd->dd[0], cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
+		break;
+	default:
+		break;
 	}
 	/* Return position from the default gateway pin */
 	return ret;
