@@ -992,7 +992,7 @@ static int dai_reset(struct comp_dev *dev)
 	 * option. It will be done when the host sends the DAI_CONFIG IPC during hw_free.
 	 */
 	if (!dd->delayed_dma_stop)
-		dai_dma_release(dev);
+		dai_dma_release(dd, dev);
 
 	dma_sg_free(&config->elem_array);
 	if (dd->z_config) {
