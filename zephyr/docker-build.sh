@@ -52,7 +52,7 @@ exec_as_sof_uid()
     # Double sudo to work around some funny restriction in
     # zephyr-build:/etc/sudoers: 'user' can do anything but... only as
     # root.
-    sudo sudo -u "$sof_user" "$0" "$@"
+    sudo sudo -u "$sof_user" http_proxy="$http_proxy"  https_proxy="$https_proxy" "$0" "$@"
     exit "$?"
 }
 
