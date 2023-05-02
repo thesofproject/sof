@@ -1341,7 +1341,7 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	dai_dma_position_update(dev);
+	dai_dma_position_update(dd, dev);
 
 	return ret;
 }
