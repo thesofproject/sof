@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/dai_copier.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/drivers/alh.h>
@@ -346,8 +347,8 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-static int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
-			       struct sof_ipc_stream_posn *posn)
+int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+			struct sof_ipc_stream_posn *posn)
 {
 	struct dma_status status;
 	int ret;
@@ -399,8 +400,8 @@ void dai_dma_position_update(struct comp_dev *dev)
 	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
 }
 #else
-static int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
-			       struct sof_ipc_stream_posn *posn)
+int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+			struct sof_ipc_stream_posn *posn)
 {
 	struct dma_chan_status status;
 
