@@ -230,17 +230,12 @@ error:
 	return NULL;
 }
 
-static void dai_free(struct comp_dev *dev)
+static void dai_zephyr_free(struct dai_data *dd)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	if (dd->group) {
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+	if (dd->group)
 		dai_group_put(dd->group);
-	}
 
 	if (dd->chan) {
-		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dd->chan->dev_data = NULL;
 		dma_channel_put_legacy(dd->chan);
 	}
@@ -253,6 +248,19 @@ static void dai_free(struct comp_dev *dev)
 
 	if (dd->dai_spec_config)
 		rfree(dd->dai_spec_config);
+}
+
+static void dai_free(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (dd->group)
+		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+
+	if (dd->chan)
+		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
+
+	dai_zephyr_free(dd);
 
 	rfree(dd);
 	rfree(dev);
