@@ -954,9 +954,8 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int dai_copy(struct comp_dev *dev)
+static int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t dma_fmt;
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
@@ -967,8 +966,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t sink_samples;
 	uint32_t samples;
 	int ret;
-
-	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size_legacy(dd->chan, &avail_bytes, &free_bytes);
@@ -1004,7 +1001,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+	comp_dbg(dev, "dai_zephyr_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / buf_c->stream.channels);
 
@@ -1013,16 +1010,16 @@ static int dai_copy(struct comp_dev *dev)
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, avail_bytes, dd->period_bytes);
 	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
 		 copy_bytes + free_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
-		comp_warn(dev, "dai_copy(): nothing to copy");
+		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
 		return 0;
 	}
 
@@ -1038,6 +1035,15 @@ static int dai_copy(struct comp_dev *dev)
 	dai_dma_position_update(dd, dev);
 
 	return ret;
+}
+
+static int dai_copy(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_copy()");
+
+	return dai_zephyr_copy(dd, dev);
 }
 
 /**
