@@ -15,6 +15,7 @@
 #include <rtos/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <rtos/kernel.h>
 
@@ -325,16 +326,17 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 			 * Initialization delay is only used with SSP, where we
 			 * don't use more than one DAI per copier
 			 */
-			struct comp_dev *dai = comp_get_dai(current, 0);
+			struct dai_data *dd;
+#if CONFIG_IPC_MAJOR_3
+			dd = comp_get_drvdata(current);
+#elif CONFIG_IPC_MAJOR_4
+			struct copier_data *cd = comp_get_drvdata(current);
 
-			if (dai) {
-				struct dai_data *dd = comp_get_drvdata(dai);
-
-				ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
-			} else {
-				/* Chain DMA case */
-				ppl_data->delay_ms = 0;
-			}
+			dd = cd->dd[0];
+#else
+#error Unknown IPC major version
+#endif
+			ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
 		}
 		break;
 	default:
