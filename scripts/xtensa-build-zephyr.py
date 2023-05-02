@@ -60,7 +60,6 @@ west_top = pathlib.Path(SOF_TOP, "..").resolve()
 default_rimage_key = pathlib.Path(SOF_TOP, "keys", "otc_private_key.pem")
 
 sof_fw_version = None
-sof_build_version = None
 
 if py_platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
@@ -444,17 +443,16 @@ def west_update():
 	execute_command(["west", "update"], check=True, timeout=3000, cwd=west_top)
 
 
-def get_build_and_sof_version(abs_build_dir):
-	"""[summary] Get version string major.minor.micro and build of SOF
+def get_sof_version(abs_build_dir):
+	"""[summary] Get version string major.minor.micro of SOF
 	firmware file. When building multiple platforms from the same SOF
 	commit, all platforms share the same version. So for the 1st platform,
 	generate the version string from sof_version.h and later platforms will
 	reuse it.
 	"""
 	global sof_fw_version
-	global sof_build_version
-	if sof_fw_version and sof_build_version:
-		return sof_fw_version, sof_build_version
+	if sof_fw_version:
+		return sof_fw_version
 
 	versions = {}
 	with open(pathlib.Path(abs_build_dir,
@@ -465,9 +463,8 @@ def get_build_and_sof_version(abs_build_dir):
 				versions[words[1]] = words[2]
 	sof_fw_version = versions['SOF_MAJOR'] + '.' + versions['SOF_MINOR'] + '.' + \
 		      versions['SOF_MICRO']
-	sof_build_version = versions['SOF_BUILD']
 
-	return sof_fw_version, sof_build_version
+	return sof_fw_version
 
 def rmtree_if_exists(directory):
 	"This is different from ignore_errors=False because it deletes everything or nothing"
@@ -674,11 +671,17 @@ def build_platforms():
 
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
 
-		sof_fw_vers, sof_build_vers = get_build_and_sof_version(abs_build_dir)
+		sof_fw_vers = get_sof_version(abs_build_dir)
 
 		sign_cmd += ["-f", sof_fw_vers]
 
-		sign_cmd += ["-b", sof_build_vers]
+		# Default value is 0 in rimage but for Zephyr the "build counter" has always
+		# been hardcoded to 1 in CMake and there is even a (broken) test that fails
+		# when it's not hardcoded to 1.
+		# FIXME: drop this line once the following test is fixed
+		# tests/avs/fw_00_basic/test_01_load_fw_extended.py::TestLoadFwExtended::()::
+		#                       test_00_01_load_fw_and_check_version
+		sign_cmd += ["-b", "1"]
 
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
