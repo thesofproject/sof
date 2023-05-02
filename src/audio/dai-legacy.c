@@ -497,7 +497,7 @@ static int dai_params(struct comp_dev *dev,
 	comp_dbg(dev, "dai_params()");
 
 	/* configure dai_data first */
-	err = ipc_dai_data_config(dev);
+	err = ipc_dai_data_config(dd, dev);
 	if (err < 0)
 		return err;
 
