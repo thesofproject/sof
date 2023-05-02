@@ -178,10 +178,9 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	struct ipc *ipc = ipc_get();
 
 	/* check whether pipeline id is already taken or in use */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
-					  pipe_desc->primary.r.instance_id);
+	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->primary.r.instance_id);
 	if (ipc_pipe) {
-		tr_err(&ipc_tr, "ipc: pipeline id is already taken, pipe_desc->instance_id = %u",
+		tr_err(&ipc_tr, "ipc: comp id is already taken, pipe_desc->instance_id = %u",
 		       (uint32_t)pipe_desc->primary.r.instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
@@ -747,6 +746,13 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
+
+	/* check id for duplicates */
+	icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);
+	if (icd) {
+		tr_err(&ipc_tr, "ipc: duplicate component ID");
+		return IPC4_INVALID_RESOURCE_ID;
+	}
 
 	/* allocate the IPC component container */
 	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
