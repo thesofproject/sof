@@ -1387,7 +1387,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 			break;
 		case SOF_COMP_DAI:
 			if (cd->endpoint_num == 1)
-				return dai_zephyr_copy(cd->dd[0], dev);
+				return dai_zephyr_copy(cd->dd[0], dev, cd->converter);
 			break;
 		default:
 			break;
