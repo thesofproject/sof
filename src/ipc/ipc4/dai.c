@@ -30,10 +30,9 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-int dai_config_dma_channel(struct comp_dev *dev, const void *spec_config)
+int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)
 {
 	const struct ipc4_copier_module_cfg *copier_cfg = spec_config;
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	int channel;
 
@@ -319,7 +318,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	}
 #endif
 	/* do nothing for asking for channel free, for compatibility. */
-	if (dai_config_dma_channel(dev, spec_config) == DMA_CHAN_INVALID)
+	if (dai_config_dma_channel(dd, dev, spec_config) == DMA_CHAN_INVALID)
 		return 0;
 
 	dd->dai_dev = dev;
