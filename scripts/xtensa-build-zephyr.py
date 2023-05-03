@@ -35,6 +35,7 @@ import os
 import warnings
 import fnmatch
 import hashlib
+import json
 import gzip
 import dataclasses
 import concurrent.futures as concurrent
@@ -443,11 +444,11 @@ def west_update():
 	execute_command(["west", "update"], check=True, timeout=3000, cwd=west_top)
 
 
-def get_sof_version(abs_build_dir):
+def get_sof_version():
 	"""[summary] Get version string major.minor.micro of SOF
 	firmware file. When building multiple platforms from the same SOF
 	commit, all platforms share the same version. So for the 1st platform,
-	generate the version string from sof_version.h and later platforms will
+	extract the version information from sof/versions.json and later platforms will
 	reuse it.
 	"""
 	global sof_fw_version
@@ -455,15 +456,13 @@ def get_sof_version(abs_build_dir):
 		return sof_fw_version
 
 	versions = {}
-	with open(pathlib.Path(abs_build_dir,
-		  "zephyr/include/generated/sof_versions.h"), encoding="utf8") as hfile:
-		for hline in hfile:
-			words = hline.split()
-			if words[0] == '#define':
-				versions[words[1]] = words[2]
-	sof_fw_version = versions['SOF_MAJOR'] + '.' + versions['SOF_MINOR'] + '.' + \
-		      versions['SOF_MICRO']
-
+	with open(SOF_TOP / "versions.json") as versions_file:
+		versions = json.load(versions_file)
+		# Keep this default value the same as the default SOF_MICRO in version.cmake
+		sof_micro = versions['SOF'].get('MICRO', "0")
+		sof_fw_version = (
+			f"{versions['SOF']['MAJOR']}.{versions['SOF']['MINOR']}.{sof_micro}"
+		)
 	return sof_fw_version
 
 def rmtree_if_exists(directory):
@@ -671,7 +670,7 @@ def build_platforms():
 
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
 
-		sof_fw_vers = get_sof_version(abs_build_dir)
+		sof_fw_vers = get_sof_version()
 
 		sign_cmd += ["-f", sof_fw_vers]
 

@@ -87,6 +87,7 @@ string(JSON SOF_MICRO ERROR_VARIABLE micro_error
 if(NOT "${micro_error}" STREQUAL "NOTFOUND")
 	message(STATUS "versions.json: ${micro_error}, defaulting to 0")
 	# TODO: default this to .99 on the main, never released branch like zephyr does
+	# Keep this default SOF_MICRO the same as the one in xtensa-build-zephyr.py
 	set(SOF_MICRO 0)
 endif()
 
