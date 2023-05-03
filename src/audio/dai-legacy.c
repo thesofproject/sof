@@ -640,7 +640,7 @@ static int dai_config_prepare(struct comp_dev *dev)
 		return 0;
 	}
 
-	channel = dai_config_dma_channel(dev, dd->dai_spec_config);
+	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
 	comp_info(dev, "dai_config_prepare(), channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
