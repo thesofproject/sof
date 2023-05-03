@@ -156,23 +156,23 @@ set(TPLGS
 	"sof-imx8-compr-wm8960-mixer\;sof-imx8-compr-wm8960-mixer"
 	"sof-imx8-wm8960-kwd\;sof-imx8-wm8960-kwd"
 	"sof-imx8-cs42888-mixer\;sof-imx8-cs42888-mixer"
-	"sof-imx8-wm8960\;sof-imx8-wm8960\;-DCODEC=wm8960\;-DPPROC=volume"
-	"sof-imx8-wm8960\;sof-imx8-wm8962\;-DCODEC=wm8962\;-DPPROC=volume"
-	"sof-imx8-wm8960\;sof-imx8-eq-iir-wm8960\;-DCODEC=wm8960\;-DPPROC=eq-iir-volume"
-	"sof-imx8-wm8960\;sof-imx8-eq-fir-wm8960\;-DCODEC=wm8960\;-DPPROC=eq-fir-volume"
-	"sof-imx8-wm8960\;sof-imx8-drc-wm8960\;-DCODEC=wm8960\;-DPPROC=drc"
+	"sof-imx8-wm8960\;sof-imx8-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=volume\;-DSAI_INDEX=1"
+	"sof-imx8-wm8960\;sof-imx8-wm8962\;-DCODEC=wm8962\;-DRATE=48000\;-DPPROC=volume\;-DSAI_INDEX=1"
+	"sof-imx8-wm8960\;sof-imx8-eq-iir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-iir-volume\;-DSAI_INDEX=1"
+	"sof-imx8-wm8960\;sof-imx8-eq-fir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-fir-volume\;-DSAI_INDEX=1"
+	"sof-imx8-wm8960\;sof-imx8-drc-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=drc\;-DSAI_INDEX=1"
 	## end i.MX8 (i.MX8QM and i.MX8QXP) topologies
 
 	## i.MX8MP topologies
 	"sof-imx8mp-compr-wm8960-mixer\;sof-imx8mp-compr-wm8960-mixer"
 	"sof-imx8mp-wm8960-mixer\;sof-imx8mp-wm8960-mixer"
 	"sof-imx8mp-wm8960-kwd\;sof-imx8mp-wm8960-kwd"
-	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=volume"
-	"sof-imx8mp-wm8960\;sof-imx8mp-wm8904\;-DCODEC=wm8904\;-DRATE=44100\;-DPPROC=volume"
-	"sof-imx8mp-wm8960\;sof-imx8mp-wm8962\;-DCODEC=wm8962\;-DRATE=48000\;-DPPROC=volume"
-	"sof-imx8mp-wm8960\;sof-imx8mp-eq-iir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-iir-volume"
-	"sof-imx8mp-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-fir-volume"
-	"sof-imx8mp-wm8960\;sof-imx8mp-drc-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=drc"
+	"sof-imx8-wm8960\;sof-imx8mp-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=volume\;-DSAI_INDEX=3"
+	"sof-imx8-wm8960\;sof-imx8mp-wm8904\;-DCODEC=wm8904\;-DRATE=44100\;-DPPROC=volume\;-DSAI_INDEX=3"
+	"sof-imx8-wm8960\;sof-imx8mp-wm8962\;-DCODEC=wm8962\;-DRATE=48000\;-DPPROC=volume\;-DSAI_INDEX=3"
+	"sof-imx8-wm8960\;sof-imx8mp-eq-iir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-iir-volume\;-DSAI_INDEX=3"
+	"sof-imx8-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-fir-volume\;-DSAI_INDEX=3"
+	"sof-imx8-wm8960\;sof-imx8mp-drc-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=drc\;-DSAI_INDEX=3"
 	## end i.MX8MP topologies
 
 	## i.MX8ULP topologies
