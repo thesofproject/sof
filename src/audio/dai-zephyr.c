@@ -218,7 +218,9 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
+static enum dma_cb_status
+dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
+	   pcm_converter_func *converter)
 {
 	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
@@ -250,13 +252,69 @@ static enum dma_cb_status dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, 
 
 	local_buf = buffer_acquire(dd->local_buffer);
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = dma_buffer_copy_to(local_buf, dma_buf,
 					 dd->process, bytes);
-	else
-		ret = dma_buffer_copy_from(dma_buf, local_buf,
-					   dd->process, bytes);
+		buffer_release(local_buf);
+	} else {
+		struct list_item *sink_list;
 
+		audio_stream_invalidate(&dma_buf->stream, bytes);
+		/*
+		 * The PCM converter functions used during DMA buffer copy can never fail,
+		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
+		 */
+		ret = dma_buffer_copy_from_no_consume(dma_buf, local_buf, dd->process, bytes);
+		buffer_release(local_buf);
+#if CONFIG_IPC_MAJOR_4
+		/* Skip in case of endpoint DAI devices created by the copier */
+		if (converter) {
+			/*
+			 * copy from DMA buffer to all sink buffers using the right PCM converter
+			 * function
+			 */
+			list_for_item(sink_list, &dev->bsink_list) {
+				struct comp_buffer __sparse_cache *sink_c;
+				struct comp_dev *sink_dev;
+				struct comp_buffer *sink;
+				int j;
+
+				sink = container_of(sink_list, struct comp_buffer, source_list);
+
+				/* this has been handled above already */
+				if (sink == dd->local_buffer)
+					continue;
+
+				sink_c = buffer_acquire(sink);
+				sink_dev = sink_c->sink;
+
+				j = IPC4_SINK_QUEUE_ID(sink_c->id);
+
+				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
+						 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
+					ret = -EINVAL;
+					goto err;
+				}
+
+				if (!converter[j]) {
+					comp_err(dev, "No PCM converter for sink queue %d\n", j);
+					ret = -EINVAL;
+					goto err;
+				}
+
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE)
+					ret = dma_buffer_copy_from_no_consume(dma_buf, sink_c,
+									      converter[j], bytes);
+err:
+				buffer_release(sink_c);
+			}
+		}
+#endif
+		audio_stream_consume(&dma_buf->stream, bytes);
+	}
+
+	local_buf = buffer_acquire(dd->local_buffer);
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
 		struct comp_buffer __sparse_cache *source_c, *sink_c;
@@ -1241,7 +1299,7 @@ static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 }
 
 /* copy and process stream data from source to sink buffers */
-int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
@@ -1252,7 +1310,7 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 	uint32_t copy_bytes = 0;
 	uint32_t src_samples;
 	uint32_t sink_samples;
-	uint32_t samples;
+	uint32_t samples = UINT32_MAX;
 	int ret;
 
 	/* get data sizes from DMA */
@@ -1283,17 +1341,52 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 
 	buffer_release(buf_c);
 
-	buf_c = buffer_acquire(dd->local_buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		buf_c = buffer_acquire(dd->local_buffer);
 		src_samples = audio_stream_get_avail_samples(&buf_c->stream);
 		sink_samples = free_bytes / sampling;
 		samples = MIN(src_samples, sink_samples);
+		buffer_release(buf_c);
 	} else {
+		struct list_item *sink_list;
+
 		src_samples = avail_bytes / sampling;
-		sink_samples = audio_stream_get_free_samples(&buf_c->stream);
-		samples = MIN(src_samples, sink_samples);
+
+		/*
+		 * there's only one sink buffer in the case of endpoint DAI devices created by
+		 * a DAI copier and it is chosen as the dd->local buffer
+		 */
+		if (!converter) {
+			buf_c = buffer_acquire(dd->local_buffer);
+			sink_samples = audio_stream_get_free_samples(&buf_c->stream);
+			samples = MIN(samples, sink_samples);
+			buffer_release(buf_c);
+		} else {
+			/*
+			 * In the case of capture DAI's with multiple sink buffers, compute the
+			 * minimum number of samples based on the DMA avail_bytes and the free
+			 * samples in all active sink buffers.
+			 */
+			list_for_item(sink_list, &dev->bsink_list) {
+				struct comp_dev *sink_dev;
+				struct comp_buffer *sink;
+
+				sink = container_of(sink_list, struct comp_buffer, source_list);
+				buf_c = buffer_acquire(sink);
+				sink_dev = buf_c->sink;
+
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE) {
+					sink_samples =
+						audio_stream_get_free_samples(&buf_c->stream);
+					samples = MIN(samples, sink_samples);
+				}
+				buffer_release(buf_c);
+			}
+		}
+
+		samples = MIN(samples, src_samples);
 	}
 
 	/* limit bytes per copy to one period for the whole pipeline
@@ -1305,11 +1398,8 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	comp_dbg(dev, "dai_zephyr_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
-		 dev->direction, copy_bytes,
-		 samples / buf_c->stream.channels);
-
-	buffer_release(buf_c);
+	comp_dbg(dev, "dai_zephyr_copy(), dir: %d copy_bytes= 0x%x",
+		 dev->direction, copy_bytes);
 
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
@@ -1333,7 +1423,7 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
 	if (ret < 0)
 		comp_warn(dev, "dai_zephyr_copy(): dai trigger copy failed");
 
-	if (dai_dma_cb(dd, dev, copy_bytes) == DMA_CB_STATUS_END)
+	if (dai_dma_cb(dd, dev, copy_bytes, converter) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
@@ -1351,7 +1441,11 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_copy(dd, dev);
+	/*
+	 * DAI devices will only ever have 1 sink, so no need to pass an array of PCM converter
+	 * functions. The default one to use is set in dd->process.
+	 */
+	return dai_zephyr_copy(dd, dev, NULL);
 }
 
 /**
