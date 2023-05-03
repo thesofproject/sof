@@ -1,18 +1,24 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 set(TPLGS
-	"sof-hda-asrc\;sof-hda-asrc-2ch\;-DCHANNELS=2"
-	"sof-tgl-nocodec-ci\;sof-tgl-nocodec-ci"
-	"sof-tgl-nocodec-ci\;sof-adl-nocodec-ci"
-	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
+	## i.MX8 (i.MX8QM and i.MX8QXP) topologies
 	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
 	"sof-imx8-src-cs42888\;sof-imx8-src-cs42888"
 	"sof-imx8-compr-wm8960\;sof-imx8-compr-wm8960"
 	"sof-imx8-compr-pcm-wm8960\;sof-imx8-compr-pcm-wm8960"
 	"sof-imx8-compr-pcm-cap-wm8960\;sof-imx8-compr-pcm-cap-wm8960"
+	## end i.MX8 (i.MX8QM and i.MX8QXP) topologies
+
+	## i.MX8MP topologies
+	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
 	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8960"
 	"sof-imx8mp-compr-pcm-wm8960\;sof-imx8mp-compr-pcm-wm8960"
 	"sof-imx8mp-compr-pcm-cap-wm8960\;sof-imx8mp-compr-pcm-cap-wm8960"
+	## end i.MX8MP topologies
+
+	"sof-hda-asrc\;sof-hda-asrc-2ch\;-DCHANNELS=2"
+	"sof-tgl-nocodec-ci\;sof-tgl-nocodec-ci"
+	"sof-tgl-nocodec-ci\;sof-adl-nocodec-ci"
 	"sof-hda-generic-kwd\;sof-hda-generic-2ch-kwd\;-DCHANNELS=2\;-DDYNAMIC=1"
 	"sof-hda-generic-kwd\;sof-hda-generic-4ch-kwd\;-DCHANNELS=4\;-DDYNAMIC=1"
 )
