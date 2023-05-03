@@ -2,7 +2,7 @@
 
 set(TPLGS
 	## i.MX8 (i.MX8QM and i.MX8QXP) topologies
-	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
+	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=src\;-DSAI_INDEX=1"
 	"sof-imx8-src-cs42888\;sof-imx8-src-cs42888"
 	"sof-imx8-compr-pcm-wm8960\;sof-imx8-compr-pcm-wm8960"
 	"sof-imx8-compr-pcm-cap-wm8960\;sof-imx8-compr-pcm-cap-wm8960"
@@ -11,7 +11,7 @@ set(TPLGS
 	## end i.MX8 (i.MX8QM and i.MX8QXP) topologies
 
 	## i.MX8MP topologies
-	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
+	"sof-imx8-src-wm8960\;sof-imx8mp-src-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=src\;-DSAI_INDEX=3"
 	"sof-imx8mp-compr-pcm-wm8960\;sof-imx8mp-compr-pcm-wm8960"
 	"sof-imx8mp-compr-pcm-cap-wm8960\;sof-imx8mp-compr-pcm-cap-wm8960"
 	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8960\;-DCODEC=wm8960\;-DRATE=48000"
