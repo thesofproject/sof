@@ -520,6 +520,43 @@ def build_rimage():
 	execute_command(rimage_build_cmd, cwd=west_top)
 
 
+def rimage_configuration(platform_dict):
+
+	sign_cmd = []
+
+	rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
+	rimage_config = RIMAGE_SOURCE_DIR / "config"
+
+	sign_cmd += ["--tool-path", rimage_executable]
+	signing_key = ""
+	if args.key:
+		signing_key = args.key
+	elif "RIMAGE_KEY" in platform_dict:
+		signing_key = platform_dict["RIMAGE_KEY"]
+	else:
+		signing_key = default_rimage_key
+
+	sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
+
+	sof_fw_vers = get_sof_version()
+
+	sign_cmd += ["-f", sof_fw_vers]
+
+	# Default value is 0 in rimage but for Zephyr the "build counter" has always
+	# been hardcoded to 1 in CMake and there is even a (broken) test that fails
+	# when it's not hardcoded to 1.
+	# FIXME: drop this line once the following test is fixed
+	# tests/avs/fw_00_basic/test_01_load_fw_extended.py::TestLoadFwExtended::()::
+	#                         test_00_01_load_fw_and_check_version
+	sign_cmd += ["-b", "1"]
+
+	if args.ipc == "IPC4":
+		rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
+		sign_cmd += ["-c", str(rimage_desc)]
+
+	return sign_cmd
+
+
 STAGING_DIR = None
 def build_platforms():
 	global west_top, SOF_TOP
@@ -654,37 +691,10 @@ def build_platforms():
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
 		# Sign firmware
-		rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
-		rimage_config = RIMAGE_SOURCE_DIR / "config"
 		sign_cmd = ["west"]
 		sign_cmd += ["-v"] * args.verbose
 		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
-		sign_cmd += ["--tool-path", rimage_executable]
-		signing_key = ""
-		if args.key:
-			signing_key = args.key
-		elif "RIMAGE_KEY" in platform_dict:
-			signing_key = platform_dict["RIMAGE_KEY"]
-		else:
-			signing_key = default_rimage_key
-
-		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
-
-		sof_fw_vers = get_sof_version()
-
-		sign_cmd += ["-f", sof_fw_vers]
-
-		# Default value is 0 in rimage but for Zephyr the "build counter" has always
-		# been hardcoded to 1 in CMake and there is even a (broken) test that fails
-		# when it's not hardcoded to 1.
-		# FIXME: drop this line once the following test is fixed
-		# tests/avs/fw_00_basic/test_01_load_fw_extended.py::TestLoadFwExtended::()::
-		#                       test_00_01_load_fw_and_check_version
-		sign_cmd += ["-b", "1"]
-
-		if args.ipc == "IPC4":
-			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
-			sign_cmd += ["-c", str(rimage_desc)]
+		sign_cmd += rimage_configuration(platform_dict)
 
 		execute_command(sign_cmd, cwd=west_top)
 
