@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/dai_copier.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -284,8 +285,8 @@ static enum dma_cb_status dai_dma_cb(struct comp_dev *dev, uint32_t bytes)
 	return dma_status;
 }
 
-static int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
-			  const struct ipc_config_dai *dai_cfg)
+int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
+		   const struct ipc_config_dai *dai_cfg)
 {
 	uint32_t dir;
 
@@ -355,7 +356,7 @@ e_data:
 	return NULL;
 }
 
-static void dai_zephyr_free(struct dai_data *dd)
+void dai_zephyr_free(struct dai_data *dd)
 {
 	if (dd->group)
 		dai_group_put(dd->group);

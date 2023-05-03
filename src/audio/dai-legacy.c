@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/dai_copier.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -160,8 +161,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	buffer_release(dma_buf);
 }
 
-static int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
-			  const struct ipc_config_dai *dai)
+int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_config_dai *dai)
 {
 	uint32_t dir, caps, dma_dev;
 
@@ -230,7 +230,7 @@ error:
 	return NULL;
 }
 
-static void dai_zephyr_free(struct dai_data *dd)
+void dai_zephyr_free(struct dai_data *dd)
 {
 	if (dd->group)
 		dai_group_put(dd->group);
