@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/host_copier.h>
+#include <sof/audio/dai_copier.h>
 
 static const struct comp_driver comp_copier;
 
@@ -295,6 +296,41 @@ static enum sof_ipc_stream_direction
 	}
 }
 
+static struct comp_dev *init_dai_single(struct comp_dev *parent_dev,
+					const struct comp_driver *drv,
+					struct comp_ipc_config *config,
+					struct ipc_config_dai *dai)
+{
+	struct comp_dev *dev;
+	struct dai_data *dd;
+	int ret;
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+
+	dev->ipc_config = *config;
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd)
+		goto free_dev;
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_zephyr_new(dd, parent_dev, dai);
+	if (ret < 0)
+		goto free_dd;
+
+	dev->state = COMP_STATE_READY;
+
+	return dev;
+free_dd:
+	rfree(dd);
+free_dev:
+	rfree(dev);
+	return NULL;
+}
+
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
@@ -302,7 +338,7 @@ static int init_dai(struct comp_dev *parent_dev,
 		    struct pipeline *pipeline,
 		    struct ipc_config_dai *dai,
 		    enum ipc4_gateway_type type,
-		    int index)
+		    int index, int dai_count)
 {
 	struct comp_dev *dev;
 	struct copier_data *cd;
@@ -313,9 +349,13 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (ret < 0)
 		return ret;
 
-	dev = drv->ops.create(drv, config, dai);
+	if (dai_count == 1)
+		dev = init_dai_single(parent_dev, drv, config, dai);
+	else
+		dev = drv->ops.create(drv, config, dai);
+
 	if (!dev) {
-		ret = -EINVAL;
+		ret = -ENOMEM;
 		goto e_buf;
 	}
 
@@ -331,7 +371,7 @@ static int init_dai(struct comp_dev *parent_dev,
 
 	ret = comp_dai_config(dev, dai, copier);
 	if (ret < 0)
-		goto e_buf;
+		goto free_dev;
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
@@ -349,13 +389,16 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(parent_dev, "failed to get converter type %d, dir %d",
 			 type, dai->direction);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto free_dev;
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->dd[index] = comp_get_drvdata(dev);
 
 	return 0;
-
+free_dev:
+	drv->ops.free(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
@@ -469,7 +512,8 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 		int ret;
 
 		dai.dai_index = dai_index[i];
-		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i);
+		ret = init_dai(parent_dev, drv, config, copier, pipeline, &dai, type, i,
+			       dai_count);
 		if (ret) {
 			comp_err(parent_dev, "failed to create dai");
 			return ret;
@@ -712,20 +756,38 @@ static void copier_free(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	int i;
 
-	if (dev->ipc_config.type == SOF_COMP_HOST && !cd->ipc_gtw) {
-		host_zephyr_free(cd->hd);
-		rfree(cd->hd);
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw) {
+			host_zephyr_free(cd->hd);
+			rfree(cd->hd);
+		} else {
+			/* handle gtw case */
+			for (i = 0; i < cd->endpoint_num; i++) {
+				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+				buffer_free(cd->endpoint_buffer[i]);
+			}
+		}
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1) {
+			dai_zephyr_free(cd->dd[0]);
+			rfree(cd->dd[0]);
+			rfree(cd->endpoint[0]);
+			buffer_free(cd->endpoint_buffer[0]);
+		} else {
+			for (i = 0; i < cd->endpoint_num; i++) {
+				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+				buffer_free(cd->endpoint_buffer[i]);
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	if (cd->multi_endpoint_buffer)
 		buffer_free(cd->multi_endpoint_buffer);
-
-	for (i = 0; i < cd->endpoint_num; i++) {
-		if (dev->ipc_config.type != SOF_COMP_HOST || cd->ipc_gtw) {
-			cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-			buffer_free(cd->endpoint_buffer[i]);
-		}
-	}
 
 	rfree(cd);
 	rfree(dev);
