@@ -11,9 +11,10 @@ set(TPLGS
 
 	## i.MX8MP topologies
 	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
-	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8960"
 	"sof-imx8mp-compr-pcm-wm8960\;sof-imx8mp-compr-pcm-wm8960"
 	"sof-imx8mp-compr-pcm-cap-wm8960\;sof-imx8mp-compr-pcm-cap-wm8960"
+	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8960\;-DCODEC=wm8960\;-DRATE=48000"
+	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8962\;-DCODEC=wm8962\;-DRATE=48000"
 	## end i.MX8MP topologies
 
 	"sof-hda-asrc\;sof-hda-asrc-2ch\;-DCHANNELS=2"
