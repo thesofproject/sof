@@ -15,11 +15,19 @@ jobs:
         # From time to time this will catch a git tag and change SOF_VERSION
         with: {fetch-depth: 10, submodules: recursive}
 
+      # v0.23.4 is the last image with Zephyr SDK 0.14.
+      # SDK 0.15 fails with the following Werror:
+      #   /workdir/zephyrproject/zephyr/include/zephyr/kernel/thread_stack.h:190:16:
+      #   error: ignoring attribute 'section (".cached.\"WEST_TOPDIR/zephyr/kernel/init.c\".3")'
+      #   because it conflicts with previous 'section
+      #   (".cached.\"WEST_TOPDIR/zephyr/arch/xtensa/include/kernel_arch_func.h\"'
+      #   [-Werror=attributes]
+
       # https://github.com/zephyrproject-rtos/docker-image
       # Note: env variables can be passed to the container with
       # -e https_proxy=...
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             ghcr.io/zephyrproject-rtos/zephyr-build:latest
+             ghcr.io/zephyrproject-rtos/zephyr-build:v0.23.4
              ./zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
              --cmake-args=--warn-uninitialized   -a
