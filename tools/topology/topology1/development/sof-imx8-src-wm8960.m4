@@ -1,5 +1,5 @@
 #
-# Topology for i.MX8QXP and i.MX8QM boards with wm8960 codec
+# Topology for i.MX8QXP/i.MX8QM/i.MX8MP boards with `CODEC' codec
 #
 
 # Include topology builder
@@ -22,7 +22,7 @@ include(`platform/imx/imx8.m4')
 #
 # Define the pipelines
 #
-# PCM0 <----> SRC <----> volume <-----> SAI1 (wm8960)
+# PCM0 <----> SRC <----> volume <-----> `SAI_INDEX' (`CODEC')
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -33,37 +33,45 @@ dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-`PPROC'-volume-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
-	8000, 96000, 48000)
+	8000, 96000, `RATE')
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-src-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-`PPROC'-volume-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
-	8000, 96000, 48000)
+	8000, 96000, `RATE')
 #
 # DAIs configuration
 #
+
+# define STREAM_NAME, based on CODEC name
+define(`STREAM_NAME',
+	`ifelse(CODEC, `wm8960', `-wm8960-hifi',
+			`fatal_error(`Codec not supported.')')')
+
+# define DAI BE dai_link name
+define(`DAI_BE_NAME', concat(concat(`sai', SAI_INDEX), STREAM_NAME))
 
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     period, priority, core, time_domain)
 
-# playback DAI is SAI1 using 2 periods
+# playback DAI is SAI_SAI_INDEX using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SAI, 1, sai1-wm8960-hifi,
+	1, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SOURCE_1, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
-# capture DAI is SAI1 using 2 periods
+# capture DAI is SAI_SAI_INDEX using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SAI, 1, sai1-wm8960-hifi,
+	2, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SINK_2, 2, s32le,
 	1000, 0, 0)
 
@@ -74,9 +82,12 @@ dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
-DAI_CONFIG(SAI, 1, 0, sai1-wm8960-hifi,
+DAI_CONFIG(SAI, SAI_INDEX, 0, DAI_BE_NAME,
+ifelse(
+	CODEC, `wm8960', `
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_master),
-		SAI_CLOCK(fsync, 48000, codec_master),
+		SAI_CLOCK(fsync, RATE, codec_master),
 		SAI_TDM(2, 32, 3, 3),
-		SAI_CONFIG_DATA(SAI, 1, 0)))
+		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
+	)
