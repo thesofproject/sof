@@ -14,6 +14,8 @@
 #ifndef __SOF_LIB_DAI_COPIER_H__
 #define __SOF_LIB_DAI_COPIER_H__
 
+#include <ipc4/copier.h>
+
 int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 		   const struct ipc_config_dai *dai_cfg);
 
@@ -33,7 +35,8 @@ int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
 int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
 
-int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev);
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev,
+		    pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT]);
 
 int dai_zephyr_ts_config_op(struct dai_data *dd, struct comp_dev *dev);
 

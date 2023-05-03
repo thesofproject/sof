@@ -378,3 +378,28 @@ int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
 
 	return ret;
 }
+
+/*
+ * Used when copying DMA buffer bytes into multiple sink buffers, one at a time. The DMA buffer
+ * consume should be performed after the data has been copied to all sinks
+ */
+int dma_buffer_copy_from_no_consume(struct comp_buffer __sparse_cache *source,
+				    struct comp_buffer __sparse_cache *sink,
+				    dma_process_func process, uint32_t source_bytes)
+{
+	struct audio_stream __sparse_cache *istream = &source->stream;
+	uint32_t samples = source_bytes /
+			   audio_stream_sample_bytes(istream);
+	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
+			      samples;
+	int ret;
+
+	/* process data */
+	ret = process(istream, 0, &sink->stream, 0, samples);
+
+	buffer_stream_writeback(sink, sink_bytes);
+
+	comp_update_buffer_produce(sink, sink_bytes);
+
+	return ret;
+}

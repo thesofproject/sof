@@ -958,7 +958,8 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 }
 
 /* copy and process stream data from source to sink buffers */
-int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev)
+int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev,
+		    pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT])
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
@@ -1047,7 +1048,11 @@ static int dai_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_copy()");
 
-	return dai_zephyr_copy(dd, dev);
+	/*
+	 * DAI devices will only ever have 1 sink, so no need to pass an array of PCM converter
+	 * functions. The default one to use is set in dd->process.
+	 */
+	return dai_zephyr_copy(dd, dev, NULL);
 }
 
 /**
