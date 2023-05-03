@@ -1,6 +1,8 @@
 #
 # Topology with codec_adapter processing component for i.MX8MP
 # supporting following codecs: MP3, AAC.
+#
+# This uses Cadence Codec libraries for playing MP3/AAC files.
 
 # Include topology builder
 include(`utils.m4')
@@ -22,11 +24,11 @@ include(`platform/imx/imx8.m4')
 
 # Post process setup config
 
- #codec Post Process setup config
+# codec Post Process setup config
 #
 # Define the pipelines
 #
-# PCM0 <----> volume <-----> SAI3 (wm8960)
+# PCM0 ----> Codec_Adapter -----> SAI3 (wm8960)
 #
 
 
@@ -85,7 +87,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 
-dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+dnl COMPR_PLAYBACK_ADD(name, pcm_id, playback)
 COMPR_PLAYBACK_ADD(Port0, 0, PIPELINE_PCM_1)
 
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)

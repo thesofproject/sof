@@ -1,6 +1,7 @@
 #
 # Topology with codec_adapter processing component for i.MX8MP
 #
+# This is just a passthrough for playback.
 
 # Include topology builder
 include(`utils.m4')
@@ -26,7 +27,7 @@ include(`platform/imx/imx8.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SAI3 (wm8960)
+# PCM0 ----> Codec_Adapter -----> SAI3 (wm8960)
 #
 
 DECLARE_SOF_RT_UUID("passthrough_codec", passthrough_uuid, 0x376b5e44, 0x9c82, 0x4ec2,
