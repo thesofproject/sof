@@ -543,7 +543,7 @@ static inline const struct dai_info *dai_info_get(void)
 /**
  * \brief Configure DMA channel for DAI
  */
-int dai_config_dma_channel(struct comp_dev *dev, const void *config);
+int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *config);
 
 /**
  * \brief Reset DAI DMA config
