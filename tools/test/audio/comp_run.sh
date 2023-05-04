@@ -50,61 +50,61 @@ parse_args ()
     XTRUN=
 
     while getopts ":he:t:" opt; do
-	case "${opt}" in
-	    e)
-		FN_TRACE="${OPTARG}"
-		;;
-	    h)
-		usage
-		exit
-		;;
-	    t)
-		# shellcheck disable=SC1090
-		source "${OPTARG}"
-		SOURCED_CONFIG=true
-		;;
-	    *)
-		usage
-		exit 1
-		;;
-	esac
+        case "${opt}" in
+            e)
+                FN_TRACE="${OPTARG}"
+                ;;
+            h)
+                usage
+                exit
+                ;;
+            t)
+                # shellcheck disable=SC1090
+                source "${OPTARG}"
+                SOURCED_CONFIG=true
+                ;;
+            *)
+                usage
+                exit 1
+                ;;
+        esac
     done
 
     shift $((OPTIND -1))
 
     if ! "$SOURCED_CONFIG"; then
-	[ $# -eq 8 ] || {
-	    usage "$0"
-	    exit 1
-	}
+        [ $# -eq 8 ] || {
+            usage "$0"
+            exit 1
+        }
 
-	COMP="$1"
-	DIRECTION="$2"
-	BITS_IN="$3"
-	BITS_OUT="$4"
-	FS_IN="$5"
-	FS_OUT="$6"
-	FN_IN="$7"
-	FN_OUT="$8"
+        COMP="$1"
+        DIRECTION="$2"
+        BITS_IN="$3"
+        BITS_OUT="$4"
+        FS_IN="$5"
+        FS_OUT="$6"
+        FN_IN="$7"
+        FN_OUT="$8"
     fi
 
     if [[ -z $BITS_OUT ]]; then
-	BITS_OUT=$BITS_IN
+        BITS_OUT=$BITS_IN
     fi
 
     if [[ -z $FS_OUT ]]; then
-	FS_OUT=$FS_IN
+        FS_OUT=$FS_IN
     fi
 
     if [[ -z $CHANNELS_OUT ]]; then
-	CHANNELS_OUT=$CHANNELS_IN
+        CHANNELS_OUT=$CHANNELS_IN
     fi
 }
 
 delete_file_check ()
 {
     if [ -f "$1" ]; then
-	rm -f "$1"
+        rm -f "$1"
     fi
 }
 
@@ -113,11 +113,11 @@ run_testbench ()
     delete_file_check "$FN_OUT"
     delete_file_check "$FN_TRACE"
     if [ -z "$FN_TRACE" ]; then
-	# shellcheck disable=SC2086
-	$VALGRIND_CMD $CMD
+        # shellcheck disable=SC2086
+        $VALGRIND_CMD $CMD
     else
-	# shellcheck disable=SC2086
-	$VALGRIND_CMD $CMD 2> "$FN_TRACE"
+        # shellcheck disable=SC2086
+        $VALGRIND_CMD $CMD 2> "$FN_TRACE"
     fi
 }
 
@@ -135,8 +135,8 @@ else
     source "$BUILD_DIR"/xtrun_env.sh
     XTRUN_CMD=$XTENSA_PATH/$XTRUN
     if $VALGRIND; then
-	>&2 printf "WARNING: Ignoring VALGRIND with xt-run\n"
-	VALGRIND=false
+        >&2 printf "WARNING: Ignoring VALGRIND with xt-run\n"
+        VALGRIND=false
     fi
 fi
 
