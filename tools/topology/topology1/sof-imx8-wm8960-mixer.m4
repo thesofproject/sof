@@ -1,7 +1,8 @@
 #
 # Topology for i.MX8QM/i.MX8QXP/i.MX8MP  boards with `CODEC' codec demonstrating mixer component
 #
-# CODEC: wm8960
+# CODEC: wm8960, wm8962
+#
 
 # Include topology builder
 include(`utils.m4')
@@ -43,6 +44,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 # define STREAM_NAME, based on CODEC name
 define(`STREAM_NAME',
 	`ifelse(CODEC, `wm8960', `-wm8960-hifi',
+			CODEC, `wm8962', `-wm8962',
 			`fatal_error(`Codec not supported.')')')
 
 # define DAI BE dai_link name
@@ -110,6 +112,12 @@ PCM_PLAYBACK_ADD(PCM Deep Buffer, 1, PIPELINE_PCM_4)
 DAI_CONFIG(SAI, SAI_INDEX, 0, DAI_BE_NAME,
 ifelse(
 	CODEC, `wm8960', `
+	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
+		SAI_CLOCK(bclk, 3072000, codec_master),
+		SAI_CLOCK(fsync, RATE, codec_master),
+		SAI_TDM(2, 16, 3, 3),
+		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
+	CODEC, `wm8962', `
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_master),
 		SAI_CLOCK(fsync, RATE, codec_master),
