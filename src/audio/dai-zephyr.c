@@ -257,54 +257,9 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 					 dd->process, bytes);
 		buffer_release(local_buf);
 	} else {
-		struct list_item *sink_list;
-
 		audio_stream_invalidate(&dma_buf->stream, bytes);
 		ret = dma_buffer_copy_from_no_consume(dma_buf, local_buf, dd->process, bytes);
 		buffer_release(local_buf);
-#if CONFIG_IPC_MAJOR_4
-		if (!converter)
-			goto consume;
-		list_for_item(sink_list, &dev->bsink_list) {
-			struct comp_buffer __sparse_cache *sink_c;
-			struct comp_dev *sink_dev;
-			struct comp_buffer *sink;
-			int j;
-
-			sink = container_of(sink_list, struct comp_buffer, source_list);
-
-			/* this has been handled above already */
-			if (sink == dd->local_buffer)
-				continue;
-
-			sink_c = buffer_acquire(sink);
-			sink_dev = sink_c->sink;
-
-			j = IPC4_SINK_QUEUE_ID(sink_c->id);
-
-			if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
-				comp_warn(dev, "Invalid sink queue ID: %d\n", j);
-				continue;
-			}
-
-			if (!converter[j]) {
-				buffer_release(sink_c);
-				buffer_release(dma_buf);
-				comp_warn(dev, "No PCM converter set up for sink queue %d\n", j);
-				continue;
-			}
-
-			if (sink_dev->state == COMP_STATE_ACTIVE)
-				ret = dma_buffer_copy_from_no_consume(dma_buf, sink_c,
-								      converter[j], bytes);
-			buffer_release(sink_c);
-			if (ret < 0) {
-				buffer_release(dma_buf);
-				return ret;
-			}
-		}
-consume:
-#endif
 		audio_stream_consume(&dma_buf->stream, bytes);
 	}
 
