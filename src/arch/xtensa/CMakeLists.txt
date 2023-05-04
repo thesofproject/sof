@@ -22,14 +22,8 @@ endif()
 
 set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})
 
-if(CONFIG_XT_BOOT_LOADER)
-	set(build_bootloader y)
-	set(build_module y)
-endif()
-
 set(platform_ld_script ${platform_folder}.x)
 set(platform_rom_ld_script rom.x)
-set(platform_bootldr_ld_script boot_ldr.x)
 
 if(CONFIG_RENOIR)
 	set(platform_folder amd/renoir)
@@ -225,11 +219,7 @@ if(CONFIG_XT_INTERRUPT_LEVEL_5)
 target_link_libraries(sof_static_libraries INTERFACE xlevel5)
 endif()
 
-if(build_bootloader)
-	add_local_sources(sof main-entry.S)
-else()
-	target_link_libraries(sof_static_libraries INTERFACE reset)
-endif()
+target_link_libraries(sof_static_libraries INTERFACE reset)
 
 target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
@@ -251,66 +241,11 @@ add_custom_target(sof_post_process
 # contains extra output that should be generated for bin target
 add_custom_target(bin_extras)
 
-# bootloader binary
-
-if(build_bootloader)
-	add_executable(bootloader "")
-
-	add_dependencies(bootloader rimage_ep)
-	# This line should be next to the boot_module
-	# (resp. base_module) definitions but there are too many of
-	# them; one per platform. So do it only once here instead.
-	add_dependencies(boot_module rimage_ep)
-	add_dependencies(base_module rimage_ep)
-
-	target_include_directories(bootloader   PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
-	target_include_directories(boot_module  PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
-	target_include_directories(base_module  PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
-
-
-	target_link_libraries(bootloader PRIVATE sof_options)
-	add_local_sources(bootloader xtos/_vectors.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_entry.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_loader.c)
-	target_link_libraries(bootloader PRIVATE reset)
-	target_link_libraries(bootloader PRIVATE hal)
-	target_link_libraries(bootloader PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_bootldr_ld_script}")
-	sof_add_ld_script(bootloader ${platform_bootldr_ld_script})
-	sof_append_relative_path_definitions(bootloader)
-
-	add_custom_target(
-		bootloader_dump
-		COMMAND ${CMAKE_COMMAND} -E copy bootloader bootloader-${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary -j .data ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
-		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader-${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader-${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader-${fw_name}.lmap
-		COMMAND ${CMAKE_OBJDUMP} -S bootloader > bootloader-${fw_name}.lst
-		COMMAND ${CMAKE_OBJDUMP} -D bootloader > bootloader-${fw_name}.dis
-		DEPENDS bootloader boot_module
-		VERBATIM
-		USES_TERMINAL
-	)
-
-	set(bootloader_binary_path bootloader-${fw_name})
-
-	# Add 'base_module' section to sof ELF
-	add_custom_target(
-		process_base_module
-		COMMAND ${CMAKE_OBJCOPY} -O binary -j .data ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
-		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-pre sof-${fw_name}
-		DEPENDS prepare_sof_post_process base_module bootloader_dump
-		VERBATIM
-		USES_TERMINAL
-	)
-
-else()
-	set(bootloader_binary_path)
-
-	# Do nothing / pass-through
-	add_custom_target(process_base_module
-		COMMAND ${CMAKE_COMMAND} -E copy sof-pre sof-${fw_name}
-		DEPENDS prepare_sof_post_process
-	)
-endif()
+# Do nothing / pass-through
+add_custom_target(process_base_module
+	COMMAND ${CMAKE_COMMAND} -E copy sof-pre sof-${fw_name}
+	DEPENDS prepare_sof_post_process
+)
 
 if(CONFIG_BUILD_VM_ROM)
 	add_executable(rom "")
@@ -451,7 +386,6 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 			-f ${SOF_MAJOR}.${SOF_MINOR}.${SOF_MICRO}
 			-b ${SOF_BUILD}
 			-e
-			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_post_process rimage_ep
 		VERBATIM
@@ -492,7 +426,6 @@ else() # sign with rimage
 			-f ${SOF_MAJOR}.${SOF_MINOR}.${SOF_MICRO}
 			-b ${SOF_BUILD}
 			-e
-			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_post_process rimage_ep
 		VERBATIM
