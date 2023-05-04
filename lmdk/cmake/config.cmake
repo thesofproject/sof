@@ -1,11 +1,4 @@
 
-if(NOT DEFINED RIMAGE_COMMAND)
-	message(FATAL_ERROR
-		" Please define RIMAGE_COMMAND: path to rimage executable.\n"
-		" E.g. using cmake -DRIMAGE_COMMAND=/path/rimage command line parameter."
-	)
-endif()
-
 if(NOT DEFINED SIGNING_KEY)
 	message(FATAL_ERROR
 		" Please define SIGNING_KEY: path to signing key for rimage.\n"
