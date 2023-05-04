@@ -1254,7 +1254,6 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t dma_fmt;
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
-	struct list_item *sink_list;
 	struct dma_status stat;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -1292,36 +1291,19 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev,
 
 	buffer_release(buf_c);
 
-
+	buf_c = buffer_acquire(dd->local_buffer);
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		buf_c = buffer_acquire(dd->local_buffer);
 		src_samples = audio_stream_get_avail_samples(&buf_c->stream);
 		sink_samples = free_bytes / sampling;
 		samples = MIN(src_samples, sink_samples);
-		buffer_release(buf_c);
-		goto copy;
+	} else {
+		src_samples = avail_bytes / sampling;
+		sink_samples = audio_stream_get_free_samples(&buf_c->stream);
+		samples = MIN(src_samples, sink_samples);
 	}
+	buffer_release(buf_c);
 
-	src_samples = avail_bytes / sampling;
-	list_for_item(sink_list, &dev->bsink_list) {
-		struct comp_dev *sink_dev;
-		struct comp_buffer *sink;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		buf_c = buffer_acquire(sink);
-		sink_dev = buf_c->sink;
-
-		if (sink_dev->state == COMP_STATE_ACTIVE) {
-			sink_samples = audio_stream_get_free_samples(&buf_c->stream);
-			samples = MIN(samples, sink_samples);
-		}
-		buffer_release(buf_c);
-	}
-
-	samples = MIN(samples, src_samples);
-
-copy:
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
