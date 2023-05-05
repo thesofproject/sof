@@ -973,6 +973,11 @@ static void ssp_early_start(struct dai *dai, int direction)
 
 	key = k_spin_lock(&dai->lock);
 
+	if (direction == DAI_DIR_CAPTURE) {
+		/* RX fifo must be cleared before start */
+		ssp_empty_rx_fifo(dai);
+	}
+
 	/* request mclk/bclk */
 	ssp_pre_start(dai);
 
