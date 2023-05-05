@@ -71,8 +71,17 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
 						       ssp->params.fsync_rate);
 	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
+	bool direct_reads = ssp->state[DAI_DIR_CAPTURE] <= COMP_STATE_PREPARE;
 	uint32_t entries;
 	uint32_t i;
+
+#if CONFIG_DMA_SUSPEND_DRAIN
+	/*
+	 * In drain mode, DMA is stopped before DAI, so flush must be
+	 * always done with direct register read.
+	 */
+	direct_reads = true;
+#endif
 
 	/*
 	 * To make sure all the RX FIFO entries are read out for the flushing,
@@ -84,9 +93,12 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 	while ((ssp_read(dai, SSSR) & SSSR_RNE) && retry--) {
 		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
 		dai_dbg(dai, "ssp_empty_rx_fifo(), before flushing, entries %d", entries);
-		for (i = 0; i < entries + 1; i++)
-			/* read to try empty fifo */
-			ssp_read(dai, SSDR);
+
+		/* let DMA consume data or read RX FIFO directly */
+		if (direct_reads) {
+			for (i = 0; i < entries + 1; i++)
+				ssp_read(dai, SSDR);
+		}
 
 		/* wait to get valid fifo status and re-check */
 		wait_delay(sample_ticks);
