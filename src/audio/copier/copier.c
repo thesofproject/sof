@@ -77,6 +77,41 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 	return nibble_map;
 }
 
+static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
+						const struct ipc4_copier_module_cfg *copier_cfg,
+						struct comp_buffer *buffer,
+						int index, uint32_t *chan_map)
+{
+	const struct sof_alh_configuration_blob *alh_blob;
+	struct comp_buffer __sparse_cache *buffer_c;
+	uint8_t chan_bitmask;
+	int channels;
+
+	if (!copier_cfg->gtw_cfg.config_length) {
+		comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
+		return -EINVAL;
+	}
+
+	/* For ALH multi-gateway case, configuration blob contains struct ipc4_alh_multi_gtw_cfg
+	 * with channel map and channels number for each individual gateway.
+	 */
+	alh_blob = (const struct sof_alh_configuration_blob *)copier_cfg->gtw_cfg.config_data;
+	chan_bitmask = alh_blob->alh_cfg.mapping[index].channel_mask;
+
+	channels = popcount(chan_bitmask);
+	if (channels < 1 || channels > SOF_IPC_MAX_CHANNELS) {
+		comp_err(parent_dev, "Invalid channels mask: 0x%x", chan_bitmask);
+		return -EINVAL;
+	}
+
+	buffer_c = buffer_acquire(buffer);
+	audio_stream_set_channels(&buffer_c->stream, channels);
+	buffer_release(buffer_c);
+	*chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
+
+	return 0;
+}
+
 static int create_endpoint_buffer(struct comp_dev *parent_dev,
 				  struct copier_data *cd,
 				  struct comp_ipc_config *config,
@@ -93,7 +128,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t buf_size;
 	uint32_t chan_map;
-	int i, ret = 0;
+	int i, ret;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -165,48 +200,30 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
 	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
 	buffer_c->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
+	buffer_release(buffer_c);
 
-	/* For ALH multi-gateway case, configuration blob contains struct ipc4_alh_multi_gtw_cfg
-	 * with channel map and channels number for each individual gateway.
-	 */
-	if (type == ipc4_gtw_alh && is_multi_gateway(copier_cfg->gtw_cfg.node_id) &&
-	    !create_multi_endpoint_buffer) {
-		if (copier_cfg->gtw_cfg.config_length) {
-			int channels;
-			const struct sof_alh_configuration_blob *alh_blob =
-				(const struct sof_alh_configuration_blob *)
-					copier_cfg->gtw_cfg.config_data;
-			uint8_t chan_bitmask = alh_blob->alh_cfg.mapping[index].channel_mask;
-
-			channels = popcount(chan_bitmask);
-			if (channels < 1 || channels > SOF_IPC_MAX_CHANNELS) {
-				comp_err(parent_dev, "Invalid channels mask: 0x%x", chan_bitmask);
-				ret = -EINVAL;
-				goto out;
-			}
-			audio_stream_set_channels(&buffer_c->stream, channels);
-			chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
-		} else {
-			comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
-			ret = -EINVAL;
-			goto out;
-		}
+	/* set channel map for multi-gateway ALH DAI's */
+	if (!create_multi_endpoint_buffer &&
+	    (type == ipc4_gtw_alh && is_multi_gateway(copier_cfg->gtw_cfg.node_id))) {
+		ret = copier_set_alh_multi_gtw_channel_map(parent_dev, copier_cfg, buffer,
+							   index, &chan_map);
+		if (ret < 0)
+			return ret;
 	}
 
+	buffer_c = buffer_acquire(buffer);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;
 
 	buffer_c->hw_params_configured = true;
+	buffer_release(buffer_c);
 
 	if (create_multi_endpoint_buffer)
 		cd->multi_endpoint_buffer = buffer;
 	else
 		cd->endpoint_buffer[cd->endpoint_num] = buffer;
 
-out:
-	buffer_release(buffer_c);
-
-	return ret;
+	return 0;
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
