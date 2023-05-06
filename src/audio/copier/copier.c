@@ -385,6 +385,7 @@ static int init_dai(struct comp_dev *parent_dev,
 {
 	struct comp_dev *dev;
 	struct copier_data *cd;
+	struct dai_data *dd;
 	int ret;
 
 	if (dai_count == 1)
@@ -395,11 +396,25 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (ret < 0)
 		return ret;
 
-	dev = drv->ops.create(drv, config, dai);
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
 		ret = -ENOMEM;
 		goto e_buf;
 	}
+
+	dev->ipc_config = *config;
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd)
+		goto free_dev;
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_zephyr_new(dd, parent_dev, dai);
+	if (ret < 0)
+		goto free_dd;
+
+	dev->state = COMP_STATE_READY;
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
 		pipeline->sink_comp = dev;
@@ -411,10 +426,10 @@ static int init_dai(struct comp_dev *parent_dev,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	cd->dd[index] = comp_get_drvdata(dev);
+	cd->dd[index] = dd;
 	ret = comp_dai_config(cd->dd[index], dev, dai, copier);
 	if (ret < 0)
-		goto free_dev;
+		goto e_zephyr_free;
 
 	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
@@ -433,14 +448,18 @@ static int init_dai(struct comp_dev *parent_dev,
 		comp_err(parent_dev, "failed to get converter type %d, dir %d",
 			 type, dai->direction);
 		ret = -EINVAL;
-		goto free_dev;
+		goto e_zephyr_free;
 	}
 
 	cd->endpoint[cd->endpoint_num++] = dev;
 
 	return 0;
+e_zephyr_free:
+	dai_zephyr_free(dd);
+free_dd:
+	rfree(dd);
 free_dev:
-	drv->ops.free(dev);
+	rfree(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
