@@ -819,7 +819,9 @@ static void copier_free(struct comp_dev *dev)
 			rfree(cd->dd[0]);
 		} else {
 			for (i = 0; i < cd->endpoint_num; i++) {
-				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
+				dai_zephyr_free(cd->dd[i]);
+				rfree(cd->dd[i]);
+				rfree(cd->endpoint[i]);
 				buffer_free(cd->endpoint_buffer[i]);
 			}
 		}
