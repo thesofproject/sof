@@ -1727,7 +1727,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			demuxed_params.channels = audio_stream_get_channels(&buf_c->stream);
 			buffer_release(buf_c);
 
-			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], &demuxed_params);
+			ret = dai_zephyr_params(cd->dd[i], cd->endpoint[i], &demuxed_params);
 			break;
 		}
 		default:
