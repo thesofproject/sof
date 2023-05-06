@@ -992,7 +992,18 @@ static int copier_prepare(struct comp_dev *dev)
 				return ret;
 		} else {
 			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
+				ret = comp_set_state(cd->endpoint[i], COMP_TRIGGER_PREPARE);
+				if (ret < 0)
+					return ret;
+
+				if (ret == COMP_STATUS_STATE_ALREADY_SET)
+					return PPL_STATUS_PATH_STOP;
+
+				ret = dai_zephyr_config_prepare(cd->dd[i], cd->endpoint[i]);
+				if (ret < 0)
+					return ret;
+
+				ret = dai_zephyr_prepare(cd->dd[i], cd->endpoint[i]);
 				if (ret < 0)
 					return ret;
 			}
