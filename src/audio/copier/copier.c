@@ -966,12 +966,6 @@ static int copier_prepare(struct comp_dev *dev)
 		return 0;
 	}
 
-	if (dev->ipc_config.type == SOF_COMP_DAI && cd->endpoint_num == 1) {
-		ret = dai_zephyr_config_prepare(cd->dd[0], dev);
-		if (ret < 0)
-			return ret;
-	}
-
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
@@ -989,6 +983,10 @@ static int copier_prepare(struct comp_dev *dev)
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1) {
+			ret = dai_zephyr_config_prepare(cd->dd[0], dev);
+			if (ret < 0)
+				return ret;
+
 			ret = dai_zephyr_prepare(cd->dd[0], dev);
 			if (ret < 0)
 				return ret;
