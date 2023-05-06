@@ -1676,68 +1676,64 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		if (cd->endpoint[i])
 			update_internal_comp(dev, cd->endpoint[i]);
 
-		/* For ALH multi-gateway case, params->channels is a total multiplexed
-		 * number of channels. Demultiplexed number of channels for each individual
-		 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
-		 */
-		if (cd->multi_endpoint_buffer) {
+		switch (dev->ipc_config.type) {
+		case SOF_COMP_HOST:
+			if (!cd->ipc_gtw) {
+				component_set_nearest_period_frames(dev, params->rate);
+				ret = host_zephyr_params(cd->hd, dev, params,
+							 copier_notifier_cb);
+
+				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
+			} else {
+				/* handle gtw case */
+				ret = ipcgtw_zephyr_params(cd->ipcgtw_data, dev, params);
+			}
+			break;
+		case SOF_COMP_DAI:
+		{
 			struct comp_buffer __sparse_cache *buf_c;
 			struct sof_ipc_stream_params demuxed_params = *params;
 
+			if (cd->endpoint_num == 1) {
+				ret = dai_zephyr_params(cd->dd[0], dev, params);
+
+				/*
+				 * dai_zephyr_params assigns the conversion function
+				 * based on the input/output formats but does not take
+				 * the valid bits into account. So change the conversion
+				 * function if the valid bits are different from the
+				 * container size.
+				 */
+				audio_stream_fmt_conversion(in_fmt->depth,
+							    in_fmt->valid_bit_depth,
+							    &in_bits, &in_valid_bits,
+							    in_fmt->s_type);
+				audio_stream_fmt_conversion(out_fmt->depth,
+							    out_fmt->valid_bit_depth,
+							    &out_bits, &out_valid_bits,
+							    out_fmt->s_type);
+
+				if (in_bits != in_valid_bits || out_bits != out_valid_bits)
+					cd->dd[0]->process =
+						cd->converter[IPC4_COPIER_GATEWAY_PIN];
+				break;
+			}
+
+			/* For ALH multi-gateway case, params->channels is a total multiplexed
+			 * number of channels. Demultiplexed number of channels for each individual
+			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
+			 */
 			buf_c = buffer_acquire(cd->endpoint_buffer[i]);
 			demuxed_params.channels = audio_stream_get_channels(&buf_c->stream);
 			buffer_release(buf_c);
 
-			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
-							       &demuxed_params);
-		} else {
-			switch (dev->ipc_config.type) {
-			case SOF_COMP_HOST:
-				if (!cd->ipc_gtw) {
-					component_set_nearest_period_frames(dev, params->rate);
-					ret = host_zephyr_params(cd->hd, dev, params,
-								 copier_notifier_cb);
-
-					cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
-				} else {
-					/* handle gtw case */
-					ret = ipcgtw_zephyr_params(cd->ipcgtw_data,
-								   dev,
-								   params);
-				}
-				break;
-			case SOF_COMP_DAI:
-				if (cd->endpoint_num == 1) {
-					ret = dai_zephyr_params(cd->dd[0], dev, params);
-
-					/*
-					 * dai_zephyr_params assigns the conversion function
-					 * based on the input/output formats but does not take
-					 * the valid bits into account. So change the conversion
-					 * function if the valid bits are different from the
-					 * container size.
-					 */
-					audio_stream_fmt_conversion(in_fmt->depth,
-								    in_fmt->valid_bit_depth,
-								    &in_bits, &in_valid_bits,
-								    in_fmt->s_type);
-					audio_stream_fmt_conversion(out_fmt->depth,
-								    out_fmt->valid_bit_depth,
-								    &out_bits, &out_valid_bits,
-								    out_fmt->s_type);
-
-					if (in_bits != in_valid_bits || out_bits != out_valid_bits)
-						cd->dd[0]->process =
-							cd->converter[IPC4_COPIER_GATEWAY_PIN];
-				} else {
-					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
-									       params);
-				}
-				break;
-			default:
-				break;
-			}
+			ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i], &demuxed_params);
+			break;
 		}
+		default:
+			break;
+		}
+
 		if (ret < 0)
 			break;
 	}
