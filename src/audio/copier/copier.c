@@ -1077,9 +1077,8 @@ static int copier_reset(struct comp_dev *dev)
 			dai_zephyr_reset(cd->dd[0], dev);
 		} else {
 			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-				if (ret < 0)
-					break;
+				dai_zephyr_reset(cd->dd[i], cd->endpoint[i]);
+				comp_set_state(cd->endpoint[i], COMP_TRIGGER_RESET);
 			}
 		}
 		break;
