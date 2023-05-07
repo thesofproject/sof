@@ -666,7 +666,6 @@ void host_zephyr_free(struct host_data *hd)
 	dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
 }
 
 static void host_free(struct comp_dev *dev)
