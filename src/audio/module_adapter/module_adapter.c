@@ -89,6 +89,14 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		data = spec;
 		break;
 	}
+	case SOF_COMP_SRC:
+	{
+		const struct ipc_config_src *ipc_src = spec;
+
+		size = sizeof(*ipc_src);
+		data = spec;
+		break;
+	}
 	default:
 	{
 		const struct ipc_config_process *ipc_module_adapter = spec;
