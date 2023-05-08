@@ -1009,12 +1009,13 @@ static int copier_prepare(struct comp_dev *dev)
 			if (ret < 0)
 				return ret;
 		} else {
-			/* handle gtw case */
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.prepare(cd->endpoint[i]);
-				if (ret < 0)
-					return ret;
-			}
+			/* nothing to do for ipcgtw case, except for set state */
+			ret = comp_set_state(cd->endpoint[0], COMP_TRIGGER_PREPARE);
+			if (ret < 0)
+				return ret;
+
+			if (ret == COMP_STATUS_STATE_ALREADY_SET)
+				return PPL_STATUS_PATH_STOP;
 		}
 		break;
 	case SOF_COMP_DAI:
@@ -1154,12 +1155,13 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				return ret;
 		} else {
-			/* handle gtw case */
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
-				if (ret < 0)
-					return ret;
-			}
+			/* nothing to do for ipcgtw case, except for set state */
+			ret = comp_set_state(cd->endpoint[0], cmd);
+			if (ret < 0)
+				return ret;
+
+			if (ret == COMP_STATUS_STATE_ALREADY_SET)
+				return PPL_STATUS_PATH_STOP;
 		}
 		break;
 	case SOF_COMP_DAI:
