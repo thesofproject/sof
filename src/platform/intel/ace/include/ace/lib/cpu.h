@@ -16,6 +16,9 @@
 /** \brief Id of primary DSP core */
 #define PLATFORM_PRIMARY_CORE_ID	0
 
+/** \brief Maximum CPC used y this platform with IPC4 module */
+#define PLATFORM_IPC4_MAX_CPC	400000	/* based on max 400M clk and 1ms period */
+
 #endif /* __ACE_LIB_CPU_H__ */
 
 #else
