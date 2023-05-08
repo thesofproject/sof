@@ -114,7 +114,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 #if COMP_VOLUME_Q8_16
 			out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7), AE_SLAI32(in_sample, 8));
 #elif COMP_VOLUME_Q1_23
-			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32S(in_sample, 8));
+			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
 #else
 #error "Need CONFIG_COMP_VOLUME_Qx_y"
 #endif
