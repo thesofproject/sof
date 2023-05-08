@@ -48,4 +48,8 @@ int dai_zephyr_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestam
 
 int dai_zephyr_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params, int dir);
+
+int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
+				   struct comp_buffer *multi_endpoint_buffer,
+				   int num_endpoints);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
