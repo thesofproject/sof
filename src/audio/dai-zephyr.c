@@ -340,6 +340,72 @@ err:
 	return dma_status;
 }
 
+/* this is called by DMA driver every time descriptor has completed */
+static enum dma_cb_status
+dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t frames,
+			  struct comp_buffer *multi_endpoint_buffer)
+{
+	struct comp_buffer __sparse_cache *multi_buf_c, *dma_buf;
+	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
+	uint32_t i, bytes;
+
+	comp_dbg(dev, "dai_dma_multi_endpoint_cb()");
+
+	/* stop dma copy for pause/stop/xrun */
+	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
+		/* stop the DAI */
+		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+
+		/* tell DMA not to reload */
+		dma_status = DMA_CB_STATUS_END;
+	}
+
+	dma_buf = buffer_acquire(dd->dma_buffer);
+
+	/* is our pipeline handling an XRUN ? */
+	if (dd->xrun) {
+		/* make sure we only playback silence during an XRUN */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			/* fill buffer with silence */
+			buffer_zero(dma_buf);
+		buffer_release(dma_buf);
+
+		return dma_status;
+	}
+
+	multi_buf_c = buffer_acquire(multi_endpoint_buffer);
+
+	bytes = frames * audio_stream_frame_bytes(&dma_buf->stream);
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		audio_stream_invalidate(&dma_buf->stream, bytes);
+
+	/* copy all channels one by one */
+	for (i = 0; i < audio_stream_get_channels(&dma_buf->stream); i++) {
+		uint32_t multi_buf_channel = dma_buf->chmap[i];
+
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			dd->process(&multi_buf_c->stream, multi_buf_channel,
+				    &dma_buf->stream, i, frames);
+		else
+			dd->process(&dma_buf->stream, i, &multi_buf_c->stream,
+				    multi_buf_channel, frames);
+	}
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		audio_stream_writeback(&dma_buf->stream, bytes);
+		audio_stream_produce(&dma_buf->stream, bytes);
+	} else {
+		audio_stream_consume(&dma_buf->stream, bytes);
+	}
+
+	/* update host position (in bytes offset) for drivers */
+	dd->total_data_processed += bytes;
+	buffer_release(multi_buf_c);
+	buffer_release(dma_buf);
+
+	return dma_status;
+}
+
 int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
 		   const struct ipc_config_dai *dai_cfg)
 {
@@ -1278,6 +1344,128 @@ static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	}
 
 	buffer_release(buf_c);
+}
+
+/* process and copy stream data from multiple DMA source buffers to sink buffer */
+int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
+				   struct comp_buffer *multi_endpoint_buffer,
+				   int num_endpoints)
+{
+	struct comp_buffer __sparse_cache *buf_c;
+	uint32_t avail_bytes = UINT32_MAX;
+	uint32_t free_bytes = UINT32_MAX;
+	uint32_t frames;
+	uint32_t src_frames, sink_frames;
+	uint32_t frame_bytes;
+	int ret, i;
+	int direction;
+
+	if (!num_endpoints || !dd || !multi_endpoint_buffer)
+		return 0;
+
+	buf_c = buffer_acquire(dd[0]->dma_buffer);
+	frame_bytes = audio_stream_frame_bytes(&buf_c->stream);
+	buffer_release(buf_c);
+
+	direction = dev->direction;
+
+	/* calculate min available/free from all endpoint DMA buffers */
+	for (i = 0; i < num_endpoints; i++) {
+		struct dma_status stat;
+
+		/* get data sizes from DMA */
+		ret = dma_get_status(dd[i]->chan->dma->z_dev, dd[i]->chan->index, &stat);
+		switch (ret) {
+		case 0:
+			break;
+		case -EPIPE:
+			/* DMA status can return -EPIPE and current status content if xrun occurs */
+			if (direction == SOF_IPC_STREAM_PLAYBACK)
+				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() underrun occurred, endpoint: %d ret = %u",
+					 i, ret);
+			else
+				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() overrun occurred, enpdoint: %d ret = %u",
+					 i, ret);
+			break;
+		default:
+			return ret;
+		}
+
+		avail_bytes = MIN(avail_bytes, stat.pending_length);
+		free_bytes = MIN(free_bytes, stat.free);
+	}
+
+	buf_c = buffer_acquire(multi_endpoint_buffer);
+	/* calculate minimum size to copy */
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		src_frames = audio_stream_get_avail_frames(&buf_c->stream);
+		sink_frames = free_bytes / frame_bytes;
+	} else {
+		src_frames = avail_bytes / frame_bytes;
+		sink_frames = audio_stream_get_free_frames(&buf_c->stream);
+	}
+	buffer_release(buf_c);
+
+	frames = MIN(src_frames, sink_frames);
+
+	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
+	 * spike if FAST_MODE is enabled, then one period limitation is omitted. All dd's have the
+	 * same period_bytes, so use the period_bytes from dd[0]
+	 */
+	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
+		frames = MIN(frames, dd[0]->period_bytes / frame_bytes);
+	comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(), dir: %d copy frames= 0x%x",
+		 dev->direction, frames);
+
+	/* return if nothing to copy */
+	if (!frames) {
+		comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): nothing to copy");
+		return 0;
+	}
+
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		buf_c = buffer_acquire(multi_endpoint_buffer);
+		frame_bytes = audio_stream_frame_bytes(&buf_c->stream);
+		buffer_stream_invalidate(buf_c, frames * frame_bytes);
+		buffer_release(buf_c);
+	}
+
+	for (i = 0; i < num_endpoints; i++) {
+		enum dma_cb_status status;
+		uint32_t copy_bytes;
+
+		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
+		ret = dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
+		if (ret < 0)
+			comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): dai trigger copy failed");
+
+		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
+		if (status == DMA_CB_STATUS_END)
+			dma_stop(dd[i]->chan->dma->z_dev, dd[i]->chan->index);
+
+		buf_c = buffer_acquire(dd[i]->dma_buffer);
+		copy_bytes = frames * audio_stream_frame_bytes(&buf_c->stream);
+		buffer_release(buf_c);
+		ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, copy_bytes);
+		if (ret < 0) {
+			dai_report_xrun(dd[i], dev, copy_bytes);
+			return ret;
+		}
+
+		dai_dma_position_update(dd[i], dev);
+	}
+
+	buf_c = buffer_acquire(multi_endpoint_buffer);
+	frame_bytes = audio_stream_frame_bytes(&buf_c->stream);
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_update_buffer_consume(buf_c, frames * frame_bytes);
+	} else {
+		buffer_stream_writeback(buf_c, frames * frame_bytes);
+		comp_update_buffer_produce(buf_c, frames * frame_bytes);
+	}
+	buffer_release(buf_c);
+
+	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
