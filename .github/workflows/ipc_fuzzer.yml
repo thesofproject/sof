@@ -42,16 +42,15 @@ jobs:
           language: c
           fuzz-seconds: 5
 
-
-  # TODO, to add IPC4 support fix compilation of:
-  #
-  #    ./scripts/fuzz.sh -t 1 -- -DCONFIG_IPC_MAJOR_4=y
-  #
-  # ... or of some other _IPC4_ -DOVERLAY_CONFIG=
-  #
-  # Then use a simple IPC3/IPC4 matrix like the one in zephyr.yml
-  simple-IPC3-fuzz_sh:
+  # Newer fuzzer
+  simple-IPC-fuzz_sh:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep these names short due to questionable Github UI choices
+        IPC: [IPC3, IPC4]
+
     steps:
       - name: add i386 arch
         run: |
@@ -79,4 +78,8 @@ jobs:
           cd workspace
           clang --verbose
           set -x
-          sof/scripts/fuzz.sh -o _.log -t 300
+          case '${{ matrix.IPC }}' in
+            IPC3) cmake_arg='-DCONFIG_IPC_MAJOR_3=y' ;;
+            IPC4) cmake_arg='-DCONFIG_IPC_MAJOR_4=y' ;;
+          esac
+          sof/scripts/fuzz.sh -o _.log -t 300 -- "$cmake_arg"
