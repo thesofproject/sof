@@ -34,6 +34,15 @@ config DMA_DOMAIN
 	help
 	  This enables the usage of the DMA domain in scheduling.
 
+config DMA_DOMAIN_SEM_LIMIT
+	int "Number of resources the Zephyr's DMA domain can accumulate"
+	depends on DMA_DOMAIN
+	default 10
+	help
+	  Set this value according to the load of the system. Please make sure
+	  that SEM_LIMIT covers the maximum number of tasks your system will be
+	  executing at some point (worst case).
+
 config ZEPHYR_DP_SCHEDULER
 	bool "use Zephyr thread based DP scheduler"
 	default y if ACE
