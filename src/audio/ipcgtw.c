@@ -94,13 +94,17 @@ static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 	return dev;
 }
 
+static void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data)
+{
+	list_item_del(&ipcgtw_data->item);
+	rfree(ipcgtw_data);
+}
+
 static void ipcgtw_free(struct comp_dev *dev)
 {
 	struct ipcgtw_data *ipcgtw_data = comp_get_drvdata(dev);
 
-	list_item_del(&ipcgtw_data->item);
-
-	rfree(ipcgtw_data);
+	ipcgtw_zephyr_free(ipcgtw_data);
 	rfree(dev);
 }
 
