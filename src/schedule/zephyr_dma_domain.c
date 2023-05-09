@@ -36,7 +36,6 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 #define interrupt_clear_mask(irq, bit)
 #endif /* CONFIG_ARM64 */
 
-#define SEM_LIMIT 1
 #define ZEPHYR_PDOMAIN_STACK_SIZE 8192
 
 #if CONFIG_LOG_PROCESS_THREAD_CUSTOM_PRIORITY
@@ -66,6 +65,11 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
  */
 BUILD_ASSERT(ZEPHYR_DMA_DOMAIN_THREAD_PRIO >= 0,
 	     "Invalid DMA domain thread priority. Please make sure that logging threads priority is >= 1 or, preferably, >= 3");
+
+/* sanity check - make sure CONFIG_DMA_DOMAIN_SEM_LIMIT is not some
+ * garbage value.
+ */
+BUILD_ASSERT(CONFIG_DMA_DOMAIN_SEM_LIMIT > 0, "Invalid DMA domain SEM_LIMIT");
 
 K_KERNEL_STACK_ARRAY_DEFINE(zephyr_dma_domain_stack,
 			    CONFIG_CORE_COUNT,
@@ -103,7 +107,7 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 					struct task *task,
 					uint32_t num_tasks);
 static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
-					  uint32_t num_tasks);
+					  struct task *task);
 
 static const struct ll_schedule_domain_ops zephyr_dma_domain_ops = {
 	.domain_register	= zephyr_dma_domain_register,
@@ -335,7 +339,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	dt->arg = arg;
 
 	/* prepare work semaphore */
-	k_sem_init(&dt->sem, 0, SEM_LIMIT);
+	k_sem_init(&dt->sem, 0, CONFIG_DMA_DOMAIN_SEM_LIMIT);
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
@@ -482,20 +486,29 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 }
 
 static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
-					  uint32_t num_tasks)
+					  struct task *task)
 {
 	struct zephyr_dma_domain *zephyr_dma_domain;
 	struct zephyr_dma_domain_thread *dt;
+	struct pipeline_task *pipe_task;
 	int core;
 
 	zephyr_dma_domain = ll_sch_get_pdata(domain);
 	core = cpu_get_id();
 	dt = zephyr_dma_domain->domain_thread + core;
+	pipe_task = pipeline_task_get(task);
 
-	if (!num_tasks) {
-		/* DMA IRQs got cut off, we need to let the Zephyr
-		 * thread execute the handler one more time so as to be
-		 * able to remove the task from the task queue
+	if (pipe_task->sched_comp->state != COMP_STATE_ACTIVE) {
+		/* If the state of the scheduling component
+		 * corresponding to a pipeline task is !=
+		 * COMP_STATE_ACTIVE then that means the DMA IRQs are
+		 * disabled. Because of this, when a task is cancelled
+		 * we need to give resources to the semaphore to make
+		 * sure that zephyr_ll_run() is still executed and the
+		 * tasks can be safely cancelled.
+		 *
+		 * This works because the state of the scheduling
+		 * component is updated before the trigger operation.
 		 */
 		k_sem_give(&dt->sem);
 	}
