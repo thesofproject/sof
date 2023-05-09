@@ -136,6 +136,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 
 		dst->init_data = ipc_module_adapter->data;
 		dst->size = ipc_module_adapter->size;
+		dst->avail = true;
 
 		memcpy(&dst->base_cfg, ipc_module_adapter->data, sizeof(dst->base_cfg));
 	} else {

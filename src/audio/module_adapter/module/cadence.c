@@ -113,6 +113,49 @@ static int cadence_code_get_api_id(uint32_t compress_id)
 	}
 }
 
+#if CONFIG_IPC_MAJOR_4
+static int cadence_codec_resolve_api(struct processing_module *mod)
+{
+	int ret;
+	struct snd_codec codec_params;
+	struct comp_dev *dev = mod->dev;
+	struct cadence_codec_data *cd = module_get_private_data(mod);
+	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
+	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
+	struct module_data *codec = &mod->priv;
+	struct module_param *param;
+	int i;
+	xa_codec_func_t *api = NULL;
+
+	/* For ipc4 protocol codec parameters has to be retrieved from configuration */
+	if (!codec->cfg.data) {
+		comp_err(dev, "cadence_codec_resolve_api(): could not find cadence config");
+		return -EINVAL;
+	}
+	param = codec->cfg.data;
+	api_id = param->id >> 16;
+
+	/* Find and assign API function */
+	for (i = 0; i < n_apis; i++) {
+		if (cadence_api_table[i].id == api_id) {
+			api = cadence_api_table[i].api;
+			break;
+		}
+	}
+
+	/* Verify API assignment */
+	if (!api) {
+		comp_err(dev, "cadence_codec_resolve_api(): could not find API function for id %x",
+			 api_id);
+		return -EINVAL;
+	}
+	cd->api = api;
+	cd->api_id = api_id;
+
+	return 0;
+}
+
+#elif CONFIG_IPC_MAJOR_3
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
 	int ret;
@@ -122,6 +165,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t n_apis = ARRAY_SIZE(cadence_api_table);
 	int i;
+	xa_codec_func_t *api = NULL;
 
 	if (mod->stream_params->ext_data_length) {
 		ret = memcpy_s(&codec_params, mod->stream_params->ext_data_length,
@@ -140,22 +184,25 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 	/* Find and assign API function */
 	for (i = 0; i < n_apis; i++) {
 		if (cadence_api_table[i].id == api_id) {
-			cd->api = cadence_api_table[i].api;
+			api = cadence_api_table[i].api;
 			break;
 		}
 	}
 
 	/* Verify API assignment */
-	if (!cd->api) {
+	if (!api) {
 		comp_err(dev, "cadence_codec_resolve_api(): could not find API function for id %x",
 			 api_id);
 		return -EINVAL;
 	}
-
+	cd->api = api;
 	cd->api_id = api_id;
 
 	return 0;
 }
+#else
+#error Unknown IPC major version
+#endif
 
 static int cadence_codec_post_init(struct processing_module *mod)
 {
@@ -207,16 +254,19 @@ static int cadence_codec_post_init(struct processing_module *mod)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_4
 static int cadence_codec_init(struct processing_module *mod)
 {
-	int ret;
-	struct comp_dev *dev = mod->dev;
+	const struct ipc4_cadence_module_cfg *cfg;
 	struct module_data *codec = &mod->priv;
-	struct cadence_codec_data *cd = NULL;
+	struct cadence_codec_data *cd;
+	struct module_config *setup_cfg;
+	struct comp_dev *dev = mod->dev;
+	int ret;
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
@@ -224,17 +274,91 @@ static int cadence_codec_init(struct processing_module *mod)
 
 	codec->private = cd;
 	codec->mpd.init_done = 0;
-	cd->self = NULL;
-	cd->mem_tabs = NULL;
-	cd->api = NULL;
-	cd->setup_cfg.avail = false;
 
 	/* copy the setup config only for the first init */
 	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
-		struct module_config *setup_cfg = &cd->setup_cfg;
+		setup_cfg = &cd->setup_cfg;
+
+		cfg = (const struct ipc4_cadence_module_cfg *)codec->cfg.init_data;
 
 		/* allocate memory for set up config */
-		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
+		setup_cfg->data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+					  cfg->param_size);
+		if (!setup_cfg->data) {
+			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			ret = -ENOMEM;
+			goto free;
+		}
+
+		/* allocate memory for runtime set up config */
+		codec->cfg.data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+					  cfg->param_size);
+		if (!codec->cfg.data) {
+			comp_err(dev, "cadence_codec_init(): failed to alloc runtime setup config");
+			ret = -ENOMEM;
+			goto free_cfg;
+		}
+
+		codec->cfg.size = cfg->param_size;
+		ret = memcpy_s(codec->cfg.data, codec->cfg.size,
+			       cfg->param, cfg->param_size);
+		if (ret) {
+			comp_err(dev, "cadence_codec_init(): failed to init runtime config %d",
+				 ret);
+			goto free_cfg2;
+		}
+		codec->cfg.avail = true;
+
+		setup_cfg->size = cfg->param_size;
+		ret = memcpy_s(setup_cfg->data, setup_cfg->size,
+			       cfg->param, cfg->param_size);
+		if (ret) {
+			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			goto free_cfg2;
+		}
+		setup_cfg->avail = true;
+	}
+
+	comp_dbg(dev, "cadence_codec_init() done");
+
+	return 0;
+
+free_cfg2:
+	rfree(codec->cfg.data);
+free_cfg:
+	rfree(setup_cfg->data);
+free:
+	rfree(cd);
+	return ret;
+}
+
+#elif CONFIG_IPC_MAJOR_3
+static int cadence_codec_init(struct processing_module *mod)
+{
+	struct module_data *codec = &mod->priv;
+	struct cadence_codec_data *cd;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *setup_cfg;
+	int ret;
+
+	comp_dbg(dev, "cadence_codec_init() start");
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
+	if (!cd) {
+		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
+		return -ENOMEM;
+	}
+
+	codec->private = cd;
+	codec->mpd.init_done = 0;
+
+	/* copy the setup config only for the first init */
+	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
+		setup_cfg = &cd->setup_cfg;
+
+		/* allocate memory for set up config */
+		setup_cfg->data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+					  codec->cfg.size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
 			ret = -ENOMEM;
@@ -247,7 +371,7 @@ static int cadence_codec_init(struct processing_module *mod)
 			       codec->cfg.init_data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
-			goto free;
+			goto free_cfg;
 		}
 		setup_cfg->avail = true;
 	}
@@ -255,10 +379,17 @@ static int cadence_codec_init(struct processing_module *mod)
 	comp_dbg(dev, "cadence_codec_init() done");
 
 	return 0;
+
+free_cfg:
+	rfree(setup_cfg->data);
 free:
 	rfree(cd);
 	return ret;
 }
+
+#else
+#error Unknown IPC major version
+#endif
 
 static int cadence_codec_apply_config(struct processing_module *mod)
 {
