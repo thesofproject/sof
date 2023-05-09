@@ -297,6 +297,16 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 
 	tr_info(&ll_tr, "zephyr_dma_domain_register()");
 
+	/* don't even bother trying to register DMA IRQ for
+	 * non-registrable tasks.
+	 *
+	 * this is needed because zephyr_dma_domain_register() will
+	 * return -EINVAL for non-registrable tasks because of
+	 * register_dma_irq() which is not right.
+	 */
+	if (!pipe_task->registrable)
+		return 0;
+
 	/* the DMA IRQ has to be registered before the Zephyr thread is
 	 * started.
 	 *
