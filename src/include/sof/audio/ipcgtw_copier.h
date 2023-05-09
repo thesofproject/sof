@@ -41,4 +41,9 @@ void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
 
 void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data);
 
+int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params);
+
+void ipcgtw_zephyr_reset(struct comp_dev *dev);
+
 #endif /* __SOF_IPCGTW_COPIER_H__ */

@@ -260,8 +260,8 @@ static int ipcgtw_copy(struct comp_dev *dev)
 	return 0;
 }
 
-static int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
-				struct sof_ipc_stream_params *params)
+int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
 	struct comp_buffer __sparse_cache *buf_c;
@@ -328,7 +328,7 @@ static int ipcgtw_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static void ipcgtw_zephyr_reset(struct comp_dev *dev)
+void ipcgtw_zephyr_reset(struct comp_dev *dev)
 {
 	struct comp_buffer *buf = get_buffer(dev);
 
