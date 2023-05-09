@@ -48,4 +48,12 @@ struct cadence_codec_data {
 	struct module_config setup_cfg;
 };
 
+#if CONFIG_IPC_MAJOR_4
+struct ipc4_cadence_module_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	uint32_t param_size;
+	struct module_param param[];
+} __packed __aligned(4);
+#endif
+
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */
