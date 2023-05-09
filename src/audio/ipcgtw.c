@@ -180,8 +180,9 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 
 	dev = find_ipcgtw_by_node_id(in->node_id);
 	if (!dev) {
+		uint32_t nodeid_connector_val = in->node_id.dw;
 		comp_cl_err(&comp_ipcgtw, "ipcgtw_process_cmd(): node_id not found: %x",
-			    in->node_id.dw);
+			    nodeid_connector_val);
 		return -EINVAL;
 	}
 
