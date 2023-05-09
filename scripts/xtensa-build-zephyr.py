@@ -670,6 +670,11 @@ def build_platforms():
 	see https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
 	Try "west config build.cmake-args -- ..." instead.""")
 
+		sign_cmd = ["west"]
+		sign_cmd += ["-v"] * args.verbose
+		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
+		sign_cmd += rimage_configuration(platform_dict)
+
 		# Make sure the build logs don't leave anything hidden
 		execute_command(['west', 'config', '-l'], cwd=west_top)
 
@@ -691,11 +696,6 @@ def build_platforms():
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
 		# Sign firmware
-		sign_cmd = ["west"]
-		sign_cmd += ["-v"] * args.verbose
-		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
-		sign_cmd += rimage_configuration(platform_dict)
-
 		execute_command(sign_cmd, cwd=west_top)
 
 		if platform not in RI_INFO_UNSUPPORTED:
