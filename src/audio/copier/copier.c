@@ -578,19 +578,11 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 			 struct comp_ipc_config *config,
 			 const struct ipc4_copier_module_cfg *copier)
 {
-	const struct comp_driver *drv;
-	const struct sof_uuid uuid = {0xa814a1ca, 0x0b83, 0x466c, {0x95, 0x87, 0x2f,
-				      0x35, 0xff, 0x8d, 0x12, 0xe8}};
-	int ret;
-	struct comp_dev *dev;
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg;
+	int ret;
 
 	cd->ipc_gtw = true;
-
-	drv = ipc4_get_drv((uint8_t *)&uuid);
-	if (!drv)
-		return -EINVAL;
 
 	/* create_endpoint_buffer() uses this value to choose between input and
 	 * output formats in copier config to setup buffer. For this purpose
@@ -609,34 +601,22 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 		goto e_buf;
 	}
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
-	dev->ipc_config = *config;
-
 	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
 	if (!ipcgtw_data) {
 		ret = -ENOMEM;
-		goto e_dev;
+		goto e_buf;
 	}
 
-	comp_set_drvdata(dev, ipcgtw_data);
-
-	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, dev);
-
-	dev->state = COMP_STATE_READY;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
+	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, parent_dev);
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+		comp_buffer_connect(parent_dev, config->core,
+				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
 	} else {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
+		comp_buffer_connect(parent_dev, config->core,
+				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_BUFFER_TO_COMP);
 		cd->bsource_buffer = true;
 	}
@@ -653,14 +633,12 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 	}
 
 	cd->ipcgtw_data = ipcgtw_data;
-	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->endpoint_num++;
 
 	return 0;
 
 e_ipcgtw:
 	ipcgtw_zephyr_free(ipcgtw_data);
-e_dev:
-	rfree(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
@@ -832,7 +810,6 @@ static void copier_free(struct comp_dev *dev)
 		} else {
 			/* handle gtw case */
 			ipcgtw_zephyr_free(cd->ipcgtw_data);
-			rfree(cd->endpoint[0]);
 			buffer_free(cd->endpoint_buffer[0]);
 		}
 		break;
@@ -1008,14 +985,6 @@ static int copier_prepare(struct comp_dev *dev)
 			ret = host_zephyr_prepare(cd->hd);
 			if (ret < 0)
 				return ret;
-		} else {
-			/* nothing to do for ipcgtw case, except for set state */
-			ret = comp_set_state(cd->endpoint[0], COMP_TRIGGER_PREPARE);
-			if (ret < 0)
-				return ret;
-
-			if (ret == COMP_STATUS_STATE_ALREADY_SET)
-				return PPL_STATUS_PATH_STOP;
 		}
 		break;
 	case SOF_COMP_DAI:
@@ -1087,12 +1056,10 @@ static int copier_reset(struct comp_dev *dev)
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw) {
+		if (!cd->ipc_gtw)
 			host_zephyr_reset(cd->hd, dev->state);
-		} else {
-			ipcgtw_zephyr_reset(cd->endpoint[0]);
-			comp_set_state(cd->endpoint[0], COMP_TRIGGER_RESET);
-		}
+		else
+			ipcgtw_zephyr_reset(dev);
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1) {
@@ -1151,14 +1118,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			ret = host_zephyr_trigger(cd->hd, dev, cmd);
 			if (ret < 0)
 				return ret;
-		} else {
-			/* nothing to do for ipcgtw case, except for set state */
-			ret = comp_set_state(cd->endpoint[0], cmd);
-			if (ret < 0)
-				return ret;
-
-			if (ret == COMP_STATUS_STATE_ALREADY_SET)
-				return PPL_STATUS_PATH_STOP;
 		}
 		break;
 	case SOF_COMP_DAI:
@@ -1743,7 +1702,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				} else {
 					/* handle gtw case */
 					ret = ipcgtw_zephyr_params(cd->ipcgtw_data,
-								   cd->endpoint[i],
+								   dev,
 								   params);
 				}
 				break;
