@@ -1417,7 +1417,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		default:
 			break;
 		}
-		return cd->endpoint[0]->drv->ops.copy(cd->endpoint[0]);
+		return 0;
 	}
 }
 
