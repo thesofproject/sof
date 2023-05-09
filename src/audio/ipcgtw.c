@@ -260,12 +260,12 @@ static int ipcgtw_copy(struct comp_dev *dev)
 	return 0;
 }
 
-static int ipcgtw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
 	struct comp_buffer __sparse_cache *buf_c;
 	int err;
-	struct ipcgtw_data *ipcgtw_data = comp_get_drvdata(dev);
 
 	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_params()");
 
@@ -287,6 +287,13 @@ static int ipcgtw_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	}
 
 	return 0;
+}
+
+static int ipcgtw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct ipcgtw_data *ipcgtw_data = comp_get_drvdata(dev);
+
+	return ipcgtw_zephyr_params(ipcgtw_data, dev, params);
 }
 
 static int ipcgtw_trigger(struct comp_dev *dev, int cmd)
