@@ -39,6 +39,27 @@ struct ipcgtw_data {
 /* List of existing IPC gateways */
 static struct list_item ipcgtw_list_head = LIST_INIT(ipcgtw_list_head);
 
+static void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
+			      const struct ipc4_copier_gateway_cfg *gtw_cfg,
+			      struct comp_dev *dev)
+{
+	const struct ipc4_ipc_gateway_config_blob *blob;
+
+	ipcgtw_data->node_id = gtw_cfg->node_id;
+	ipcgtw_data->dev = dev;
+
+	blob = (const struct ipc4_ipc_gateway_config_blob *)
+		((const struct ipc4_gateway_config_data *)gtw_cfg->config_data)->config_blob;
+
+	/* Endpoint buffer is created in copier with size specified in copier config. That buffer
+	 * will be resized to size specified in IPC gateway blob later in ipcgtw_params().
+	 */
+	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new(): buffer_size: %u", blob->buffer_size);
+	ipcgtw_data->buf_size = blob->buffer_size;
+
+	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
+}
+
 static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 				   const struct comp_ipc_config *config,
 				   const void *spec)
@@ -46,7 +67,6 @@ static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg = spec;
-	const struct ipc4_ipc_gateway_config_blob *blob;
 
 	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new()");
 
@@ -68,19 +88,7 @@ static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, ipcgtw_data);
 
-	ipcgtw_data->node_id = gtw_cfg->node_id;
-	ipcgtw_data->dev = dev;
-
-	blob = (const struct ipc4_ipc_gateway_config_blob *)
-		((const struct ipc4_gateway_config_data *)gtw_cfg->config_data)->config_blob;
-
-	/* Endpoint buffer is created in copier with size specified in copier config. That buffer
-	 * will be resized to size specified in IPC gateway blob later in ipcgtw_params().
-	 */
-	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new(): buffer_size: %u", blob->buffer_size);
-	ipcgtw_data->buf_size = blob->buffer_size;
-
-	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
+	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, dev);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
