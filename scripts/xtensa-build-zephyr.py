@@ -525,7 +525,6 @@ def rimage_configuration(platform_dict):
 	sign_cmd = []
 
 	rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
-	rimage_config = RIMAGE_SOURCE_DIR / "config"
 
 	sign_cmd += ["--tool-path", rimage_executable]
 	signing_key = ""
@@ -536,7 +535,7 @@ def rimage_configuration(platform_dict):
 	else:
 		signing_key = default_rimage_key
 
-	sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
+	sign_cmd += ["--", "-k", str(signing_key)]
 
 	sof_fw_vers = get_sof_version()
 
@@ -551,8 +550,11 @@ def rimage_configuration(platform_dict):
 	sign_cmd += ["-b", "1"]
 
 	if args.ipc == "IPC4":
-		rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
-		sign_cmd += ["-c", str(rimage_desc)]
+		rimage_desc = platform_dict["IPC4_RIMAGE_DESC"]
+	else:
+		rimage_desc = platform_dict["name"] + ".toml"
+
+	sign_cmd += ["-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)]
 
 	return sign_cmd
 
