@@ -1090,11 +1090,8 @@ static int copier_reset(struct comp_dev *dev)
 		if (!cd->ipc_gtw) {
 			host_zephyr_reset(cd->hd, dev->state);
 		} else {
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.reset(cd->endpoint[i]);
-				if (ret < 0)
-					break;
-			}
+			ipcgtw_zephyr_reset(cd->endpoint[0]);
+			comp_set_state(cd->endpoint[0], COMP_TRIGGER_RESET);
 		}
 		break;
 	case SOF_COMP_DAI:
@@ -1745,8 +1742,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 					cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 				} else {
 					/* handle gtw case */
-					ret = cd->endpoint[i]->drv->ops.params(cd->endpoint[i],
-									       params);
+					ret = ipcgtw_zephyr_params(cd->ipcgtw_data,
+								   cd->endpoint[i],
+								   params);
 				}
 				break;
 			case SOF_COMP_DAI:
