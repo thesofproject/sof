@@ -321,7 +321,7 @@ static int ipcgtw_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int ipcgtw_reset(struct comp_dev *dev)
+static void ipcgtw_zephyr_reset(struct comp_dev *dev)
 {
 	struct comp_buffer *buf = get_buffer(dev);
 
@@ -333,6 +333,11 @@ static int ipcgtw_reset(struct comp_dev *dev)
 	} else {
 		comp_cl_warn(&comp_ipcgtw, "ipcgtw_reset(): no buffer found");
 	}
+}
+
+static int ipcgtw_reset(struct comp_dev *dev)
+{
+	ipcgtw_zephyr_reset(dev);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
