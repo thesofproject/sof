@@ -10,6 +10,7 @@
 #include <rtos/init.h>
 #include <ipc4/ipcgtw.h>
 #include <ipc4/copier.h>
+#include <sof/audio/ipcgtw_copier.h>
 
 static const struct comp_driver comp_ipcgtw;
 
@@ -21,27 +22,12 @@ DECLARE_SOF_RT_UUID("ipcgw", ipcgtw_comp_uuid, 0xa814a1ca, 0x0b83, 0x466c,
 
 DECLARE_TR_CTX(ipcgtw_comp_tr, SOF_UUID(ipcgtw_comp_uuid), LOG_LEVEL_INFO);
 
-/* Host communicates with IPC gateways via global IPC messages. To address a particular
- * IPC gateway, its node_id is sent in message payload. Hence we need to keep a list of existing
- * IPC gateways and their node_ids to search for a gateway host wants to address.
- */
-struct ipcgtw_data {
-	union ipc4_connector_node_id node_id;
-	struct comp_dev *dev;
-	struct list_item item;
-
-	/* IPC gateway buffer size comes in blob at creation time, we keep size here
-	 * to resize buffer later at ipcgtw_params().
-	 */
-	uint32_t buf_size;
-};
-
 /* List of existing IPC gateways */
 static struct list_item ipcgtw_list_head = LIST_INIT(ipcgtw_list_head);
 
-static void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
-			      const struct ipc4_copier_gateway_cfg *gtw_cfg,
-			      struct comp_dev *dev)
+void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
+		       const struct ipc4_copier_gateway_cfg *gtw_cfg,
+		       struct comp_dev *dev)
 {
 	const struct ipc4_ipc_gateway_config_blob *blob;
 
@@ -94,7 +80,7 @@ static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
 	return dev;
 }
 
-static void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data)
+void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data)
 {
 	list_item_del(&ipcgtw_data->item);
 	rfree(ipcgtw_data);

@@ -37,6 +37,7 @@
 #include <stdint.h>
 #include <sof/audio/host_copier.h>
 #include <sof/audio/dai_copier.h>
+#include <sof/audio/ipcgtw_copier.h>
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -582,6 +583,8 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 				      0x35, 0xff, 0x8d, 0x12, 0xe8}};
 	int ret;
 	struct comp_dev *dev;
+	struct ipcgtw_data *ipcgtw_data;
+	const struct ipc4_copier_gateway_cfg *gtw_cfg;
 
 	cd->ipc_gtw = true;
 
@@ -599,11 +602,31 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 	if (ret < 0)
 		return ret;
 
-	dev = drv->ops.create(drv, config, &copier->gtw_cfg);
-	if (!dev) {
+	gtw_cfg = &copier->gtw_cfg;
+	if (!gtw_cfg->config_length) {
+		comp_cl_err(&comp_copier, "ipcgtw_new(): empty ipc4_gateway_config_data");
 		ret = -EINVAL;
 		goto e_buf;
 	}
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev) {
+		ret = -ENOMEM;
+		goto e_buf;
+	}
+	dev->ipc_config = *config;
+
+	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
+	if (!ipcgtw_data) {
+		ret = -ENOMEM;
+		goto e_dev;
+	}
+
+	comp_set_drvdata(dev, ipcgtw_data);
+
+	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, dev);
+
+	dev->state = COMP_STATE_READY;
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -626,14 +649,18 @@ static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
 		comp_err(parent_dev, "failed to get converter for IPC gateway, dir %d",
 			 cd->direction);
 		ret = -EINVAL;
-		drv->ops.free(dev);
-		goto e_buf;
+		goto e_ipcgtw;
 	}
 
+	cd->ipcgtw_data = ipcgtw_data;
 	cd->endpoint[cd->endpoint_num++] = dev;
 
 	return 0;
 
+e_ipcgtw:
+	ipcgtw_zephyr_free(ipcgtw_data);
+e_dev:
+	rfree(dev);
 e_buf:
 	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
@@ -804,10 +831,9 @@ static void copier_free(struct comp_dev *dev)
 			rfree(cd->hd);
 		} else {
 			/* handle gtw case */
-			for (i = 0; i < cd->endpoint_num; i++) {
-				cd->endpoint[i]->drv->ops.free(cd->endpoint[i]);
-				buffer_free(cd->endpoint_buffer[i]);
-			}
+			ipcgtw_zephyr_free(cd->ipcgtw_data);
+			rfree(cd->endpoint[0]);
+			buffer_free(cd->endpoint_buffer[0]);
 		}
 		break;
 	case SOF_COMP_DAI:
