@@ -265,6 +265,7 @@ struct copier_data {
 	struct host_data *hd;
 	bool ipc_gtw;
 	struct dai_data *dd[IPC4_ALH_MAX_NUMBER_OF_GTW];
+	struct ipcgtw_data *ipcgtw_data;
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
