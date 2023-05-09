@@ -296,13 +296,17 @@ static int add_pipeline_cps_consumption(struct comp_dev *current,
 		cd = &md->cfg.base_cfg;
 	}
 
-	int kcps = cd->cpc * 1000 / ppl_data->p->period;
-	if (kcps == 0) {
-		tr_warn(pipe, "0 KCPS for module: %#x, core: %d", current->ipc_config.id, ppl_data->p->core);
-	} else {
-		core_kcps_adjust(ppl_data->p->core, kcps);
-		tr_info(pipe, "Registering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	if (cd->cpc == 0) {
+		/* Use maximum clock budget, assume 1ms chunk size */
+		cd->cpc = CLK_MAX_CPU_HZ / 1000;
+		tr_warn(pipe,
+			"0 CPS requested for module: %#x, core: %d using safe max CPC: %u",
+			current->ipc_config.id, ppl_data->p->core, cd->cpc);
 	}
+
+	int kcps = cd->cpc * 1000 / ppl_data->p->period;
+	tr_info(pipe, "Registering KCPS consumption: %d, core: %d", kcps, ppl_data->p->core);
+	core_kcps_adjust(ppl_data->p->core, kcps);
 
 	int summary_cps = core_kcps_get(ppl_data->p->core);
 	tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", summary_cps, ppl_data->p->core);
