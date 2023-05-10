@@ -606,6 +606,10 @@ static int volume_init(struct processing_module *mod)
 
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
 
+	comp_info(dev, "volume_init: channel_id = %d, target_volume_q31 = %d",
+		  vol->config[0].channel_id, vol->config[0].target_volume);
+	comp_info(dev, "volume_init: target_volume_q23 = %d", target_volume[0]);
+
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
 
@@ -688,6 +692,9 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 	int32_t delta;
 	int32_t delta_abs;
 	int32_t coef;
+
+	comp_info(mod->dev, "volume_set_chan(): chan = %d, vol = %d", chan, vol);
+	comp_info(mod->dev, "volume_set_chan(): min = %d, max = %d", cd->vol_min, cd->vol_max);
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
 	 * MAX is needed for now for the generic C gain arithmetic to prevent
