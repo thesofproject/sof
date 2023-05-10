@@ -722,7 +722,7 @@ static int file_params(struct comp_dev *dev,
 	samples = periods * dev->frames * stream->channels;
 	switch (stream->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int16_t));
+		ret = buffer_set_size(buffer, samples * sizeof(int16_t), 0);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
@@ -732,7 +732,7 @@ static int file_params(struct comp_dev *dev,
 		cd->file_func = file_s16;
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int32_t));
+		ret = buffer_set_size(buffer, samples * sizeof(int32_t), 0);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
@@ -742,7 +742,7 @@ static int file_params(struct comp_dev *dev,
 		cd->file_func = file_s24;
 		break;
 	case SOF_IPC_FRAME_S32_LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int32_t));
+		ret = buffer_set_size(buffer, samples * sizeof(int32_t), 0);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;

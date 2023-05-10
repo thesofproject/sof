@@ -376,7 +376,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 								  sink_list);
 
 			buffer_c = buffer_acquire(buffer);
-			ret = buffer_set_size(buffer_c, buff_size);
+			ret = buffer_set_size(buffer_c, buff_size, 0);
 			if (ret < 0) {
 				buffer_release(buffer_c);
 				comp_err(dev, "module_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
