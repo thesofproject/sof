@@ -96,7 +96,7 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 					audio_stream_get_size(&buffer->stream));
 }
 
-int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
+int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment)
 {
 	void *new_ptr = NULL;
 
@@ -109,9 +109,13 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size)
 	if (size == audio_stream_get_size(&buffer->stream))
 		return 0;
 
-	new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
-			    buffer->caps, size, audio_stream_get_size(&buffer->stream));
-
+	if (!alignment)
+		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
+				    buffer->caps, size, audio_stream_get_size(&buffer->stream));
+	else
+		new_ptr = rbrealloc_align(audio_stream_get_addr(&buffer->stream),
+					  SOF_MEM_FLAG_NO_COPY, buffer->caps, size,
+					  audio_stream_get_size(&buffer->stream), alignment);
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
 		buf_err(buffer, "resize can't alloc %u bytes type %u",

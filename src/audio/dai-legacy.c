@@ -587,7 +587,7 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
 		buffer_c = buffer_acquire(dd->dma_buffer);
-		err = buffer_set_size(buffer_c, buffer_size);
+		err = buffer_set_size(buffer_c, buffer_size, addr_align);
 		buffer_release(buffer_c);
 
 		if (err < 0) {

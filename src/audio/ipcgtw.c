@@ -279,7 +279,7 @@ static int ipcgtw_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 
 	/* resize buffer to size specified in IPC gateway config blob */
 	buf_c = buffer_acquire(buf);
-	err = buffer_set_size(buf_c, ipcgtw_data->buf_size);
+	err = buffer_set_size(buf_c, ipcgtw_data->buf_size, 0);
 	buffer_release(buf_c);
 
 	if (err < 0) {

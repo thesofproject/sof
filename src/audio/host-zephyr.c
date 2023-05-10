@@ -823,7 +823,7 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 	 */
 	if (hd->dma_buffer) {
 		dma_buf_c = buffer_acquire(hd->dma_buffer);
-		err = buffer_set_size(dma_buf_c, buffer_size);
+		err = buffer_set_size(dma_buf_c, buffer_size, addr_align);
 		buffer_release(dma_buf_c);
 		if (err < 0) {
 			comp_err(dev, "host_params(): buffer_set_size() failed, buffer_size = %u",
