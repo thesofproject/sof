@@ -106,16 +106,28 @@ jobs:
 
       - name: select zephyr revision
         run: |
-          cd workspace/zephyr/
+          cd workspace
           if [ 'mnfst' != '${{ matrix.zephyr_revision }}' ]; then
              case '${{ matrix.zephyr_revision }}' in
-               'zmain') rem_rev='https://github.com/zephyrproject-rtos/zephyr  main' ;;
+               'zmain') rem_rev='main' ;;
                *)       echo 'Unknown matrix.zephyr_revision'; exit 1 ;;
              esac
-             git fetch    $rem_rev
-             git checkout FETCH_HEAD
+             ( cd sof/submanifests/
+               sed -e "s#=sof_zephyr_revision_override=#${rem_rev}#" \
+                 sof-ci-jenkins/zephyr-override-template.yml > test-zephyr-main.yml
+             )
+             west update --narrow  --fetch-opt=--filter=tree:0
+             # For some unknown reason `west` fetches using the literal remote URL
+             # which breaks --decorate. Maybe zephyrproject-rtos/west/pull/346 has
+             # some relevant background?  For now `west` uses the remote name
+             # `zephyrproject`, use that knowledge to fix --decorate but ignore any
+             # failure in case the name changes or some other issue.
+             git -C zephyr/ fetch '--filter=tree:0' zephyrproject "${rem_rev}" || true
           fi
-          git log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          set -x
+          west list
+          west status
+          git -C zephyr/ log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
       # Not strictly necessary but saves a lot of scrolling in the next step
       # Caching a 12G image is unfortunately not possible:
