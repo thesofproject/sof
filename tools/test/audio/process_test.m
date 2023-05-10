@@ -70,7 +70,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	%  there.
 	t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
 	t.plot_visible = 'off';    % Use off for batch tests and on for interactive
-	t.files_delete = 1;        % Set to 0 to inspect the audio data files
+	t.files_delete = 0;        % Set to 0 to inspect the audio data files
 
 	%% Prepare
 	addpath('std_utils');
@@ -78,7 +78,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	addpath('../../tune/eq');
 	mkdir_check(plots);
 	mkdir_check(reports);
-	n_meas = 5;
+	n_meas = 6;
 	n_bits_in = length(bits_in_list);
 	n_bits_out = length(bits_out_list);
 	r.bits_in_list = bits_in_list;
@@ -102,10 +102,11 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 
 			v(1) = chirp_test(t);
 			if v(1) ~= -1 && t.full_test
-				[v(2), g] = g_test(t);
-				[v(3), dr] = dr_test(t);
-				[v(4), thdnf] = thdnf_test(t);
-				v(5) = fr_test(t);
+				v(6) = fullscale_test(t);
+				%[v(2), g] = g_test(t);
+				%[v(3), dr] = dr_test(t);
+				%[v(4), thdnf] = thdnf_test(t);
+				%v(5) = fr_test(t);
 
 				% TODO: Collect results for all channels, now get worst-case
 				r.g(a, b) = g(1);
@@ -195,6 +196,26 @@ function fail = chirp_test(t)
 	fail = test.fail;
 end
 
+function fail = fullscale_test(t)
+	fprintf('Fullscale test %d Hz ...\n', t.fs);
+
+	% Create input file
+	test = test_defaults(t);
+	test = fullscale_test_input(test);
+
+	% Run test
+	test = test_run_process(test);
+
+	% Analyze
+	test = fullscale_test_measure(test);
+	%test_result_print(t, 'Fullscale sine SNR', 'fullscale', test);
+
+	% Delete files unless e.g. debugging and need data to run
+	delete_check(t.files_delete, test.fn_in);
+	delete_check(t.files_delete, test.fn_out);
+
+	fail = test.fail;
+end
 
 %% Reference: AES17 6.2.2 Gain
 function [fail, g_db] = g_test(t)
@@ -357,6 +378,7 @@ function test = test_defaults(t)
 	% Misc
 	test.quick = 0;
 	test.att_rec_db = 0;
+	test.dither = true;
 
 	% Plotting
 	test.plot_channels_combine = 1;

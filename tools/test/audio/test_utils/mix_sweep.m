@@ -31,13 +31,13 @@ x = zeros(test.nf*test.na*test.nt +mark_start.n +mark_end.n +2*n_idle, ...
 idx1 = n_idle+1;
 idx2 = length(x)-n_idle-mark_end.n;
 for ch=test.ch
-        x(idx1:idx1+mark_start.n-1, ch) = dither_and_quantize(h1, test.bits_in);
-        x(idx2:idx2+mark_end.n-1, ch) = dither_and_quantize(h2, test.bits_in);
+        x(idx1:idx1+mark_start.n-1, ch) = dither_and_quantize(h1, test.bits_in, test.dither);
+        x(idx2:idx2+mark_end.n-1, ch) = dither_and_quantize(h2, test.bits_in, test.dither);
 end
 
 %% Dither also idle parts
-x(1:n_idle) = dither_and_quantize(zeros(n_idle,1), test.bits_in);
-x(end-n_idle+1:end) = dither_and_quantize(zeros(n_idle,1), test.bits_in);
+x(1:n_idle) = dither_and_quantize(zeros(n_idle,1), test.bits_in, test.dither);
+x(end-n_idle+1:end) = dither_and_quantize(zeros(n_idle,1), test.bits_in, test.dither);
 
 %% Add discrete frequencies sweep
 n_r = round(test.fs*test.tr);
@@ -66,7 +66,7 @@ for m=1:test.na
 		end
                 s = multitone(test.fs, f, a, test.tl);
                 for ch=test.ch
-                        x(i1:i2, ch) = dither_and_quantize(s.*win, test.bits_in);
+                        x(i1:i2, ch) = dither_and_quantize(s.*win, test.bits_in, test.dither);
                 end
         end
 end

@@ -1,8 +1,9 @@
-%% xq = dither_and_quantize(x, bits)
+%% xq = dither_and_quantize(x, bits, dither)
 %
 % Input
 % x - input signal
 % bits - number of bits
+% dither - true or false, true if omitted
 %
 % Output
 % (int32) xq - scaled, dithered and quantized signal
@@ -38,7 +39,11 @@
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
-function xq = dither_and_quantize(x, bits)
+function xq = dither_and_quantize(x, bits, dither)
+
+if nargin < 3
+	dither = true;
+end
 
 if (bits > 32) || (bits < 1)
         error('This function supports max 32 bits quantization!');
@@ -51,7 +56,11 @@ sx = size(x);
 nx = sx(1);
 nch = sx(2);
 
-xq = int32(round(scale * x + rand(nx,nch) + rand(nx, nch) - 1)); % TPDF dither
+if dither
+	xq = int32(round(scale * x + rand(nx,nch) + rand(nx, nch) - 1)); % TPDF dither
+else
+	xq = int32(round(scale * x));
+end
 idx = find(xq > smax);
 xq(idx) = smax;
 idx = find(xq < smin);

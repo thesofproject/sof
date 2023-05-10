@@ -447,6 +447,7 @@ test.fs2 = t.fs2;
 test.coef_bits = 24; % No need to use actual word length in test
 test.att_rec_db = 0; % Not used in simulation test
 test.quick = 0;      % Test speed is no issue in simulation
+test.dither = true;
 test.plot_visible = t.plot_visible;
 test.plot_channels_combine = 0;
 test.plot_passband_zoom = 1;
