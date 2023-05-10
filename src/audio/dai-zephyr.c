@@ -1577,6 +1577,7 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	/* return if nothing to copy */
 	if (!copy_bytes) {
 		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
+		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
 		return 0;
 	}
 
