@@ -488,3 +488,10 @@ config LL_WATCHDOG
 	  handled, the watchdog counter is reseted.
 
 endmenu
+
+config DEBUG_CACHE_ADDR_CONVERSION
+	bool "Debug cache_to_uncache() and uncache_to_cache() address conversions"
+	default n
+	help
+	  Select to enable run-time alignment verification of addresses passed to
+	  cache_to_uncache() and uncache_to_cache() functions.

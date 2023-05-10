@@ -132,6 +132,9 @@ static inline void *platform_cache_to_uncache(void __sparse_cache *address)
  */
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
+#if CONFIG_DEBUG_CACHE_ADDR_CONVERSION && !CONFIG_XT_BOOT_LOADER
+	assert(IS_ALIGNED((uintptr_t)ptr, PLATFORM_DCACHE_ALIGN));
+#endif
 #if CONFIG_CORE_COUNT > 1 && !defined __ZEPHYR__
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)ptr, bytes);
 	return platform_cache_to_uncache(ptr);
