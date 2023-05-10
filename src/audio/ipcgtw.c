@@ -12,8 +12,6 @@
 #include <ipc4/copier.h>
 #include <sof/audio/ipcgtw_copier.h>
 
-static const struct comp_driver comp_ipcgtw;
-
 LOG_MODULE_REGISTER(ipcgtw, CONFIG_SOF_LOG_LEVEL);
 
 /* a814a1ca-0b83-466c-9587-2f35ff8d12e8 */
@@ -40,58 +38,16 @@ void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
 	/* Endpoint buffer is created in copier with size specified in copier config. That buffer
 	 * will be resized to size specified in IPC gateway blob later in ipcgtw_params().
 	 */
-	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new(): buffer_size: %u", blob->buffer_size);
+	comp_dbg(dev, "ipcgtw_new(): buffer_size: %u", blob->buffer_size);
 	ipcgtw_data->buf_size = blob->buffer_size;
 
 	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
-}
-
-static struct comp_dev *ipcgtw_new(const struct comp_driver *drv,
-				   const struct comp_ipc_config *config,
-				   const void *spec)
-{
-	struct comp_dev *dev;
-	struct ipcgtw_data *ipcgtw_data;
-	const struct ipc4_copier_gateway_cfg *gtw_cfg = spec;
-
-	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_new()");
-
-	if (!gtw_cfg->config_length) {
-		comp_cl_err(&comp_ipcgtw, "ipcgtw_new(): empty ipc4_gateway_config_data");
-		return NULL;
-	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
-	if (!ipcgtw_data) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, ipcgtw_data);
-
-	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, dev);
-
-	dev->state = COMP_STATE_READY;
-	return dev;
 }
 
 void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data)
 {
 	list_item_del(&ipcgtw_data->item);
 	rfree(ipcgtw_data);
-}
-
-static void ipcgtw_free(struct comp_dev *dev)
-{
-	struct ipcgtw_data *ipcgtw_data = comp_get_drvdata(dev);
-
-	ipcgtw_zephyr_free(ipcgtw_data);
-	rfree(dev);
 }
 
 static struct comp_dev *find_ipcgtw_by_node_id(union ipc4_connector_node_id node_id)
@@ -169,19 +125,16 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 	uint32_t data_size;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
 
-	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_process_cmd(): %x %x",
-		    cmd->primary.dat, cmd->extension.dat);
-
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 sizeof(struct ipc4_ipc_gateway_cmd_data));
 	in = (const struct ipc4_ipc_gateway_cmd_data *)MAILBOX_HOSTBOX_BASE;
 
 	dev = find_ipcgtw_by_node_id(in->node_id);
-	if (!dev) {
-		comp_cl_err(&comp_ipcgtw, "ipcgtw_process_cmd(): node_id not found: %x",
-			    in->node_id.dw);
-		return -EINVAL;
-	}
+	if (!dev)
+		return -ENODEV;
+
+	comp_dbg(dev, "ipcgtw_process_cmd(): %x %x",
+		 cmd->primary.dat, cmd->extension.dat);
 
 	buf = get_buffer(dev);
 
@@ -194,7 +147,7 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 		 * 0 bytes free for SET_DATA.
 		 */
 		buf_c = NULL;
-		comp_cl_warn(&comp_ipcgtw, "ipcgtw_process_cmd(): no buffer found");
+		comp_warn(dev, "ipcgtw_process_cmd(): no buffer found");
 	}
 
 	out = (struct ipc4_ipc_gateway_cmd_data_reply *)reply_payload;
@@ -243,8 +196,8 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 		break;
 
 	default:
-		comp_cl_err(&comp_ipcgtw, "ipcgtw_process_cmd(): unexpected cmd: %u",
-			    (unsigned int)cmd->primary.r.cmd);
+		comp_err(dev, "ipcgtw_process_cmd(): unexpected cmd: %u",
+			 (unsigned int)cmd->primary.r.cmd);
 		if (buf_c)
 			buffer_release(buf_c);
 		return -EINVAL;
@@ -255,11 +208,6 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 	return 0;
 }
 
-static int ipcgtw_copy(struct comp_dev *dev)
-{
-	return 0;
-}
-
 int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
@@ -267,11 +215,11 @@ int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 	struct comp_buffer __sparse_cache *buf_c;
 	int err;
 
-	comp_cl_dbg(&comp_ipcgtw, "ipcgtw_params()");
+	comp_dbg(dev, "ipcgtw_params()");
 
 	buf = get_buffer(dev);
 	if (!buf) {
-		comp_cl_err(&comp_ipcgtw, "ipcgtw_params(): no buffer found");
+		comp_err(dev, "ipcgtw_params(): no buffer found");
 		return -EINVAL;
 	}
 
@@ -281,49 +229,10 @@ int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 	buffer_release(buf_c);
 
 	if (err < 0) {
-		comp_cl_err(&comp_ipcgtw, "ipcgtw_params(): failed to resize buffer to %u bytes",
-			    ipcgtw_data->buf_size);
+		comp_err(dev, "ipcgtw_params(): failed to resize buffer to %u bytes",
+			 ipcgtw_data->buf_size);
 		return err;
 	}
-
-	return 0;
-}
-
-static int ipcgtw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
-{
-	struct ipcgtw_data *ipcgtw_data = comp_get_drvdata(dev);
-
-	return ipcgtw_zephyr_params(ipcgtw_data, dev, params);
-}
-
-static int ipcgtw_trigger(struct comp_dev *dev, int cmd)
-{
-	/* copier calls gateway ops.trigger() without checking if it is NULL or not,
-	 * so this handler is needed mostly to prevent crash.
-	 */
-	int ret = comp_set_state(dev, cmd);
-
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	return 0;
-}
-
-static int ipcgtw_prepare(struct comp_dev *dev)
-{
-	/* copier calls gateway ops.prepare() without checking if it is NULL or not,
-	 * so this handler is needed mostly to prevent crash.
-	 */
-	int ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	return 0;
 }
@@ -338,41 +247,6 @@ void ipcgtw_zephyr_reset(struct comp_dev *dev)
 		audio_stream_reset(&buf_c->stream);
 		buffer_release(buf_c);
 	} else {
-		comp_cl_warn(&comp_ipcgtw, "ipcgtw_reset(): no buffer found");
+		comp_warn(dev, "ipcgtw_reset(): no buffer found");
 	}
 }
-
-static int ipcgtw_reset(struct comp_dev *dev)
-{
-	ipcgtw_zephyr_reset(dev);
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	return 0;
-}
-
-static const struct comp_driver comp_ipcgtw = {
-	.uid  = SOF_RT_UUID(ipcgtw_comp_uuid),
-	.tctx = &ipcgtw_comp_tr,
-	.ops  = {
-		.create  = ipcgtw_new,
-		.free    = ipcgtw_free,
-		.params  = ipcgtw_params,
-		.trigger = ipcgtw_trigger,	/* only to prevent copier crash */
-		.prepare = ipcgtw_prepare,	/* only to prevent copier crash */
-		.reset   = ipcgtw_reset,
-		.copy    = ipcgtw_copy,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_ipcgtw_info = {
-	.drv = &comp_ipcgtw,
-};
-
-UT_STATIC void sys_comp_ipcgtw_init(void)
-{
-	comp_register(platform_shared_get(&comp_ipcgtw_info, sizeof(comp_ipcgtw_info)));
-}
-
-DECLARE_MODULE(sys_comp_ipcgtw_init);
-SOF_MODULE_INIT(ipcgtw, sys_comp_ipcgtw_init);
