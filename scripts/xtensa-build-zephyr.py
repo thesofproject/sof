@@ -526,7 +526,16 @@ def rimage_configuration(platform_dict):
 
 	rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
 
-	sign_cmd += ["--tool-path", rimage_executable]
+	sign_cmd += ["--tool-path", rimage_executable, "--"]
+
+	sign_cmd += rimage_options(platform_dict)
+	return sign_cmd
+
+
+def rimage_options(platform_dict):
+
+	sign_cmd = []
+
 	signing_key = ""
 	if args.key:
 		signing_key = args.key
@@ -535,7 +544,7 @@ def rimage_configuration(platform_dict):
 	else:
 		signing_key = default_rimage_key
 
-	sign_cmd += ["--", "-k", str(signing_key)]
+	sign_cmd += ["-k", str(signing_key)]
 
 	sof_fw_vers = get_sof_version()
 
