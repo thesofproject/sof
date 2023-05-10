@@ -601,6 +601,8 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	int ret;
 
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+	if(!ipc_pipe)
+		return -EINVAL;
 
 	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
