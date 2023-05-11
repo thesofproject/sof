@@ -44,7 +44,8 @@ static int smart_amp_init(struct processing_module *mod)
 	struct smart_amp_data *sad;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
-	int bs;
+	const size_t in_size = sizeof(struct ipc4_input_pin_format) * SMART_AMP_NUM_IN_PINS;
+	const size_t out_size = sizeof(struct ipc4_output_pin_format) * SMART_AMP_NUM_OUT_PINS;
 	int ret;
 	const struct ipc4_base_module_extended_cfg *base_cfg = mod_data->cfg.init_data;
 
@@ -70,9 +71,10 @@ static int smart_amp_init(struct processing_module *mod)
 	}
 
 	/* Copy the pin formats */
-	bs = sizeof(sad->ipc4_cfg.input_pins) + sizeof(sad->ipc4_cfg.output_pin);
-	memcpy_s(sad->ipc4_cfg.input_pins, bs,
-		 base_cfg->base_cfg_ext.pin_formats, bs);
+	memcpy_s(sad->ipc4_cfg.input_pins, in_size,
+		 base_cfg->base_cfg_ext.pin_formats, in_size);
+	memcpy_s(&sad->ipc4_cfg.output_pin, out_size,
+		 &base_cfg->base_cfg_ext.pin_formats[in_size], out_size);
 
 	mod->simple_copy = true;
 
