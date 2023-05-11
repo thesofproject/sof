@@ -59,6 +59,9 @@ setup_xtensa_tools_build()
     test -n "${XTENSA_TOOLS_ROOT}" || die "XTENSA_TOOLS_ROOT need to be set.\n"
 
     # Get compiler version for platform
+
+    # 'shellcheck -x ...' works only from the top directory
+    # shellcheck source=scripts/set_xtensa_params.sh
     source "$SCRIPT_DIR/set_xtensa_params.sh" "$BUILD_PLATFORM"
 
     test -n "${XTENSA_TOOLS_VERSION}" ||
