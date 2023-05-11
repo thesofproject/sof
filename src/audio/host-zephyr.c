@@ -915,6 +915,12 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 			buffer_addr = addr;
 	}
 
+	/* check if buffer address is 128 byte aligned */
+	if (buffer_addr % 128) {
+		comp_err(dev, "DMA buffer address %p not 128 byte aligned", dma_buf_c->stream.addr);
+		goto out;
+	}
+
 	dma_block_cfg.block_size = buffer_bytes;
 
 	switch (config->direction) {
