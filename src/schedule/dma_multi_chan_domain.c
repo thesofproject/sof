@@ -280,7 +280,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 	int j;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
-		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
+		for (j = 0; (j < dmas[i].plat_data.channels) && (&(dmas[i].chan[j]) != NULL); ++j) {
 			if (!*comp) {
 				status = dma_interrupt_legacy(&dmas[i].chan[j],
 							      DMA_IRQ_STATUS_GET);
