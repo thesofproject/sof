@@ -1870,12 +1870,22 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading_extended llp_ext;
 	struct ipc4_llp_reading llp;
-	struct comp_dev *temp_dev;
+	struct comp_dev *temp_dev = dev;
 
-	if (dev->ipc_config.type == SOF_COMP_DAI && cd->endpoint_num == 1)
-		temp_dev = dev;
-	else
-		temp_dev = cd->endpoint[IPC4_COPIER_GATEWAY_PIN];
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		/* no support for gtw case */
+		if (cd->ipc_gtw)
+			return 0;
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num > 1)
+			/* for multiendpoint case, use endpoint0 as dev */
+			temp_dev = cd->endpoint[IPC4_COPIER_GATEWAY_PIN];
+		break;
+	default:
+		break;
+	}
 
 	switch (param_id) {
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING:
@@ -1970,15 +1980,9 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 			switch (dev->ipc_config.type) {
 			case  SOF_COMP_HOST:
 				source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
-				if (cd->ipc_gtw) {
-					struct comp_dev *host_dev;
-
-					host_dev = cd->endpoint[stream_no];
-					ret = comp_get_total_data_processed(host_dev,
-									    0, input);
-				} else if (source == input) {
+				/* only support host, not support ipcgtw case */
+				if (!cd->ipc_gtw && source == input)
 					ret = cd->hd->total_data_processed;
-				}
 				break;
 			case  SOF_COMP_DAI:
 				source = dev->direction == SOF_IPC_STREAM_CAPTURE;
@@ -2029,12 +2033,10 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
+		/* only support host not support gtw case */
 		if (!cd->ipc_gtw) {
 			posn->host_posn = cd->hd->local_pos;
 			ret = posn->host_posn;
-		} else {
-			/* handle gtw case */
-			ret = comp_position(cd->endpoint[IPC4_COPIER_GATEWAY_PIN], posn);
 		}
 		break;
 	case SOF_COMP_DAI:
