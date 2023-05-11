@@ -14,6 +14,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <rtos/clk.h>
@@ -301,6 +302,14 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 
 	data.start = source;
 	data.p = p;
+
+	/* If a component has been added to the pipeline that cannot run on longer periods
+	 * we need to set pipe period to one ms.
+	 */
+	if (!p->deep_buffering) {
+		p->period = LL_TIMER_PERIOD_US;
+		pipe_info(p, "setting pipe period to %llu us", LL_TIMER_PERIOD_US);
+	}
 
 	/* now walk downstream from source component and
 	 * complete component task and pipeline initialization

@@ -591,6 +591,9 @@ struct comp_dev {
 	bool is_shared;		/**< indicates whether component is shared
 				  *  across cores
 				  */
+	bool deep_buffering;	/**< indicates whether component is able to work
+				  *  deep buffering
+				  */
 	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
 	struct tr_ctx tctx;	/**< trace settings */
 

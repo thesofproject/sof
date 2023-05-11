@@ -94,6 +94,8 @@ struct pipeline {
 		bool aborted;		/* STOP or PAUSE failed, stay active */
 		bool pending;		/* trigger scheduled but not executed yet */
 	} trigger;
+	/* pipe can use long periods for scheduling in case of a deep buffering */
+	bool deep_buffering;
 };
 
 struct pipeline_walk_context {

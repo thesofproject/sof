@@ -18,7 +18,6 @@
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/wait.h>
 
 /* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
@@ -206,7 +205,8 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	}
 
 	pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
-	pipe->period = LL_TIMER_PERIOD_US;
+	pipe->period = 0;
+	pipe->deep_buffering = true;
 
 	/* sched_id is set in FW so initialize it to a invalid value */
 	pipe->sched_id = 0xFFFFFFFF;
@@ -868,6 +868,23 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp %x", icd->id);
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
+
+	/* If new component added to the pipeline is not fitted for deep buffering we need to
+	 * inform pipeline it cannot work on long periods.
+	 */
+	if (!dev->deep_buffering) {
+		if (!dev->pipeline) {
+			const uint32_t pipe_id = dev->ipc_config.pipeline_id;
+			struct ipc_comp_dev *ipc_comp =
+				ipc_get_comp_by_ppl_id(ipc,
+						       COMP_TYPE_PIPELINE,
+						       pipe_id);
+
+			dev->pipeline = ipc_comp->pipeline;
+		}
+
+		dev->pipeline->deep_buffering = false;
+	}
 
 	return IPC4_SUCCESS;
 };

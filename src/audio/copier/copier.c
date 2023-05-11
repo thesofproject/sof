@@ -40,6 +40,7 @@
 #include <sof/audio/dai_copier.h>
 #include <sof/audio/ipcgtw_copier.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/schedule/ll_schedule_domain.h>
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -92,6 +93,41 @@ static int copier_init(struct processing_module *mod)
 	}
 
 	dev->pipeline = ipc_pipe->pipeline;
+	/* Calculation of the period in which the component should be scheduled based on
+	 * the input buffer size.
+	 */
+	if (copier->gtw_cfg.dma_buffer_size > 0 && dev->pipeline->deep_buffering) {
+		/* Size of the single frame in bytes. */
+		uint32_t frame_size = copier->base.audio_fmt.channels_count *
+				       (copier->base.audio_fmt.depth >> 3);
+		/* Size of the one second of audio data in bytes. */
+		uint32_t one_s = frame_size * copier->base.audio_fmt.sampling_frequency;
+		/* Size of the ten millisecond of audio data in bytes. */
+		uint32_t ten_ms = DIV_ROUND_UP(one_s, 100);
+		/* The number of ten milliseconds chunks of data that will fit into the buffer. */
+		uint32_t chunk_count = copier->gtw_cfg.dma_buffer_size / ten_ms;
+
+		/* If buffer can fit at more than ten milliseconds of data we can try to schedule
+		 * pipe on periods bigger than one millisecond.
+		 */
+		if (chunk_count) {
+			dev->deep_buffering = true;
+			if (chunk_count == 1)
+				dev->period = (5 * LL_TIMER_PERIOD_US);
+			else
+				dev->period = (10 * LL_TIMER_PERIOD_US);
+
+			/* If a component that may run on bigger periods has already been added to
+			 * the pipeline, the pipe must run at the lowest possible value.
+			 */
+			if (!dev->pipeline->period || dev->pipeline->period < dev->period) {
+				dev->pipeline->period = dev->period;
+				comp_cl_warn(&comp_copier,
+					     "changing the period for the pipe (new value %u)",
+					     dev->pipeline->period);
+			}
+		}
+	}
 
 	node_id = copier->gtw_cfg.node_id;
 	/* copier is linked to gateway */
