@@ -17,6 +17,8 @@ usage: $0 [-f] [-p <platform>]
        -p Build testbench binary for xt-run for selected platform, e.g. -p tgl
        -f Build testbench with compiler provided by fuzzer
           (default path: $HOME/sof/work/AFL/afl-gcc)
+       -j number of parallel make/ninja jobs. Defaults to /usr/bin/nproc.
+          You MUST re-run with -j1 when something is failing!
 EOFUSAGE
 }
 
@@ -40,7 +42,7 @@ rebuild_testbench()
 
     cmake -DCMAKE_INSTALL_PREFIX=install  ..
 
-    cmake --build .  --  -j"$(nproc)" $BUILD_TARGET
+    cmake --build .  --  -j"${jobs}" $BUILD_TARGET
 }
 
 export_CC_with_afl()
@@ -122,13 +124,15 @@ main()
     BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
     : "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
 
-    while getopts "fhp:" OPTION; do
+    jobs=$(nproc)
+    while getopts "fhj:p:" OPTION; do
         case "$OPTION" in
             p)
                 BUILD_PLATFORM="$OPTARG"
                 setup_xtensa_tools_build
                 ;;
             f) export_CC_with_afl;;
+            j) jobs=$(printf '%d' "$OPTARG") ;;
             h) print_usage; exit 1;;
             *) print_usage; exit 1;;
         esac
