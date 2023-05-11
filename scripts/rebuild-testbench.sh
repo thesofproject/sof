@@ -107,6 +107,8 @@ source $export_script
 \$XTENSA_PATH/xt-run $xtbench -h
 
 EOFUSAGE
+            ;;
+        *) >&2 printf 'testbench_usage: unknown/missing BUILD_TYPE=%s\n' "$BUILD_TYPE" ;;
     esac
 }
 
