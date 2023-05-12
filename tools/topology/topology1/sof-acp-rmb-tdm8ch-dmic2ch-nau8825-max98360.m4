@@ -32,13 +32,17 @@ VIRTUAL_WIDGET(ACPHS1 OUT, output, 3)
 #
 # Define the pipelines
 #
-# PCM0 ----> buffer ------+
-#                         |----> muxdemux ----> buffer ---->  ACPSP_play
-# PCM1 ----> buffer ----->
 #
-# PCM0 <---- muxdemux <---- buffer <---- ACPSP_Capture
+#              |-------------->virtual_playback_passthrough --->ACPHS1
+#              |
+# PCM3 ----> buffer ------+
+#                         |
+#                         |----> muxdemux ----> buffer ---->  ACPHS
+# PCM4 ----> buffer ----->
 #
-# PCM6 <---- buffer <---- ACPDMIC
+# PCM2 <---- muxdemux <---- buffer <---- ACPHS_Capture
+#
+# PCM5 <---- buffer <---- ACPDMIC
 
 #/**********************************************************************************/
 define(matrix1, `ROUTE_MATRIX(3,
@@ -84,7 +88,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-playback.m4,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 #/**********************************************************************************/
-DAI_ADD(sof/pipe-echo-ref-dai-playback.m4,
+DAI_ADD(sof/pipe-virtual-playback-passthrough.m4,
 	9, ACPHS, 1, acp-amp-codec,
 	PIPELINE_SOURCE_1, 2, s16le,
 	2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
@@ -98,7 +102,7 @@ DAI_CONFIG(ACPHS, 1, 1, acp-amp-codec,
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s16le.
 # 10ms deadline with priority 0 on core 0
 # this is connected to pipeline DAI 1
-PIPELINE_PCM_ADD(sof/pipe-host-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-virtual-passthrough-playback-sched.m4,
 	4, 1, 2, s16le,
 	2000, 0, 0,
 	48000, 48000, 48000,
@@ -117,6 +121,17 @@ SectionGraph."PIPE_NAME" {
 }
 
 PCM_PLAYBACK_ADD(Media Playback MUX 1, 1, PIPELINE_PCM_4)
+
+
+# Connect playback to virtual dai
+SectionGraph."PIPE_PLAYBACK_VIRT" {
+	index "1"
+
+	lines [
+		#playback to virtual dai
+		dapm(ACPHS1.OUT, VIRTUAL PLAYBACK PASSTHROUGH 4)
+	]
+}
 
 #/**********************************************************************************/
 

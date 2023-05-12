@@ -1,6 +1,6 @@
 #
-# The pipeline for echo reference feature, it is used
-# for the capture DAI to dock.
+# The pipeline for virtual playback passthrough feature, it is used
+# for the playback DAI to dock.
 #
 # No connections in this pipeline.
 #
