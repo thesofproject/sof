@@ -18,6 +18,7 @@
 #define SNDRV_CTL_ELEM_ID_NAME_MAXLEN	44
 #endif
 
+#include <linux/types.h>
 #include <alsa/sound/asoc.h>
 
 struct sof_topology_token {
