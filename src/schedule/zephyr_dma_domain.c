@@ -38,34 +38,6 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 #define ZEPHYR_PDOMAIN_STACK_SIZE 8192
 
-#if CONFIG_LOG_PROCESS_THREAD_CUSTOM_PRIORITY
-#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (CONFIG_LOG_PROCESS_THREAD_PRIORITY - 1)
-#else
-#define ZEPHYR_DMA_DOMAIN_THREAD_PRIO (K_LOWEST_APPLICATION_THREAD_PRIO - 1)
-#endif /* CONFIG_LOG_PROCESS_THREAD_CUSTOM_PRIORITY */
-
-/* sanity check regarding the DMA domain's priority.
- *
- * VERY IMPORTANT: the Zephyr DMA domain's thread priority needs to be
- * higher than the logging thread's. If this criteria is not met then
- * issues such as buzzing noise when PAUSING/RESUMING a stream due to
- * the SAI being underrun may appear. We also want to keep Zephyr DMA
- * domain's thread priority in the preemptible range so as to not
- * disturb the other Zephyr threads used by SOF (preferably the Zephyr
- * DMA domain's thread priority should be lower than the lowest priority
- * of the threads used by SOF which is 1 (EDF_SCHEDULER)).
- *
- * The Zephyr DMA domain's thread priority is unimportant as long as it
- * meets the above criteria but we'll make it one less than the logging
- * thread's for cases where the user might want to change the logging
- * thread's priority.
- *
- * TODO: this message and the BUILD_ASSERT message need to be updated if
- * the lowest priority used by the SOF threads is changed.
- */
-BUILD_ASSERT(ZEPHYR_DMA_DOMAIN_THREAD_PRIO >= 0,
-	     "Invalid DMA domain thread priority. Please make sure that logging threads priority is >= 1 or, preferably, >= 3");
-
 /* sanity check - make sure CONFIG_DMA_DOMAIN_SEM_LIMIT is not some
  * garbage value.
  */
@@ -344,6 +316,23 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
 	/* create Zephyr thread */
+	/* VERY IMPORTANT: DMA domain's priority needs to be
+	 * in the cooperative range to avoid scenarios such
+	 * as the following:
+	 *
+	 *	1) pipeline_copy() is in the middle of a pipeline
+	 *	graph traversal marking buffer->walking as true.
+	 *	2) IPC TRIGGER STOP comes and since edf thread
+	 *	has a higher priority it will preempt the DMA domain
+	 *	thread.
+	 *	3) When TRIGGER STOP handler does a pipeline graph
+	 *	traversal it will find some buffers with walking = true
+	 *	and not go through all the components in the pipeline.
+	 *	4) TRIGGER RESET comes and the components are not
+	 *	stopped so the handler will try to stop them which
+	 *	results in DMA IRQs being stopped and the pipeline tasks
+	 *	being stuck in the scheduling queue.
+	 */
 	thread = k_thread_create(&dt->ll_thread,
 				 zephyr_dma_domain_stack[core],
 				 ZEPHYR_PDOMAIN_STACK_SIZE,
@@ -351,7 +340,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 				 dt,
 				 NULL,
 				 NULL,
-				 ZEPHYR_DMA_DOMAIN_THREAD_PRIO,
+				 -CONFIG_NUM_COOP_PRIORITIES,
 				 0,
 				 K_FOREVER);
 
