@@ -277,9 +277,9 @@ def execute_command(*run_args, **run_kwargs):
 		env_arg = run_kwargs.get('env')
 		env_change = set(env_arg.items()) - set(os.environ.items()) if env_arg else None
 		if env_change and (run_kwargs.get('sof_log_env') or args.verbose >= 1):
-			output += "\n... with extra/modified environment:"
+			output += "\n... with extra/modified environment:\n"
 			for k_v in env_change:
-				output += f"\n{k_v[0]}={k_v[1]}"
+				output += f"{k_v[0]}={k_v[1]}\n"
 		print(output, flush=True)
 
 	run_kwargs = {k: run_kwargs[k] for k in run_kwargs if not k.startswith("sof_")}
