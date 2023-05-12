@@ -317,12 +317,15 @@ static int dai_comp_hw_params(struct comp_dev *dev,
 	return 0;
 }
 
-static int dai_verify_params(struct comp_dev *dev,
+static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params;
+	int ret;
 
-	comp_dai_get_hw_params(dev, &hw_params, params->direction);
+	ret = dai_zephyr_get_hw_params(dd, dev, &hw_params, params->direction);
+	if (ret < 0)
+		return ret;
 
 	/* checks whether pcm parameters match hardware DAI parameter set
 	 * during dai_set_config(). If hardware parameter is equal to 0, it
@@ -504,7 +507,7 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 	if (err < 0)
 		return err;
 
-	err = dai_verify_params(dev, params);
+	err = dai_verify_params(dd, dev, params);
 	if (err < 0) {
 		comp_err(dev, "dai_params(): pcm params verification failed.");
 		return -EINVAL;

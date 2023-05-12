@@ -549,12 +549,13 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	return dai_zephyr_get_hw_params(dd, dev, params, dir);
 }
 
-static int dai_verify_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params;
 	int ret;
 
-	ret = comp_dai_get_hw_params(dev, &hw_params, params->direction);
+	ret = dai_zephyr_get_hw_params(dd, dev, &hw_params, params->direction);
 	if (ret < 0) {
 		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
 		return ret;
@@ -894,7 +895,7 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 	if (err < 0)
 		return err;
 
-	err = dai_verify_params(dev, params);
+	err = dai_verify_params(dd, dev, params);
 	if (err < 0) {
 		comp_err(dev, "dai_zephyr_params(): pcm params verification failed.");
 		return -EINVAL;
