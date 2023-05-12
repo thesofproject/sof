@@ -572,27 +572,15 @@ def build_rimage():
 	execute_command(rimage_build_cmd, cwd=west_top)
 
 
-def rimage_configuration(platform_dict):
-
-	sign_cmd = []
-
-	rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
-
-	sign_cmd += ["--tool-path", rimage_executable, "--"]
-
-	# Flatten the list of [ ( "-o", "value" ), ...] tuples
-	for t in rimage_options(platform_dict):
-		sign_cmd += t
-
-	return sign_cmd
-
-
 def rimage_options(platform_dict):
 	"""Return a list of default rimage options as a list of tuples,
 	example: [ (-f, 2.5.0), (-b, 1), (-k, key.pem),... ]
 
 	"""
 	opts = []
+
+	if args.verbose > 0:
+		opts.append(("-v",) * args.verbose)
 
 	signing_key = ""
 	if args.key:
@@ -739,13 +727,15 @@ def build_platforms():
 	see https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
 	Try "west config build.cmake-args -- ..." instead.""")
 
-		sign_cmd = ["west"]
-		sign_cmd += ["-v"] * args.verbose
-		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
-		sign_cmd += rimage_configuration(platform_dict)
+		platf_build_environ['WEST_CONFIG_LOCAL'] = str(rimage_west_configuration(
+			platform_dict,
+			STAGING_DIR / "sof-info" / platform
+		))
 
 		# Make sure the build logs don't leave anything hidden
-		execute_command(['west', 'config', '-l'], cwd=west_top)
+		execute_command(['west', 'config', '-l'], cwd=west_top,
+				env=platf_build_environ, sof_log_env=True)
+		print()
 
 		# Build
 		try:
@@ -763,9 +753,6 @@ def build_platforms():
 		input_elf_file = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.elf")
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
-
-		# Sign firmware
-		execute_command(sign_cmd, cwd=west_top)
 
 		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
