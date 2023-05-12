@@ -40,6 +40,8 @@ import gzip
 import dataclasses
 import concurrent.futures as concurrent
 
+from west import configuration as west_config
+
 # anytree module is defined in Zephyr build requirements
 from anytree import AnyNode, RenderTree, render
 from packaging import version
@@ -383,6 +385,8 @@ def west_reinitialize(west_root_dir: pathlib.Path, west_manifest_path: pathlib.P
 	shutil.rmtree(dot_west_directory)
 	execute_command(["west", "init", "-l", f"{SOF_TOP}"], cwd=west_top)
 
+
+# TODO: use west APIs directly instead of all these indirect subprocess.run("west", ...) processes
 def west_init_if_needed():
 	"""[summary] Validates whether west workspace had been initialized and points to SOF manifest.
 	Peforms west initialization if needed.
@@ -500,6 +504,53 @@ RIMAGE_BUILD_DIR  = west_top / "build-rimage"
 # backwards-compatibility with XTOS platforms and git submodules, see more
 # detailed comments in west.yml
 RIMAGE_SOURCE_DIR = west_top / "sof" / "rimage"
+
+
+def rimage_west_configuration(platform_dict, dest_dir):
+	"""Configure rimage in a new file `dest_dir/westconfig.ini`, starting
+	from the workspace .west/config.
+	Returns the pathlib.Path to the new file.
+	"""
+
+	saved_local_var = os.environ.get('WEST_CONFIG_LOCAL')
+	workspace_west_config_path = os.environ.get('WEST_CONFIG_LOCAL',
+						   str(west_top / ".west" / "config"))
+	platform_west_config_path = dest_dir / "westconfig.ini"
+	dest_dir.mkdir(parents=True, exist_ok=True)
+	shutil.copyfile(workspace_west_config_path, platform_west_config_path)
+
+	# Create `platform_wconfig` object pointing at our copy
+	os.environ['WEST_CONFIG_LOCAL'] = str(platform_west_config_path)
+	platform_wconfig = west_config.Configuration()
+	if saved_local_var is None:
+		del os.environ['WEST_CONFIG_LOCAL']
+	else:
+		os.environ['WEST_CONFIG_LOCAL'] = saved_local_var
+
+	# By default, run rimage directly from the rimage build directory
+	if platform_wconfig.get("rimage.path") is None:
+		rimage_executable = shutil.which("rimage", path=RIMAGE_BUILD_DIR)
+		assert pathlib.Path(str(rimage_executable)).exists()
+		platform_wconfig.set("rimage.path", shlex.quote(rimage_executable),
+				     west_config.ConfigFile.LOCAL)
+
+	_ws_args = platform_wconfig.get("rimage.extra-args")
+	workspace_extra_args = [] if _ws_args is None else shlex.split(_ws_args)
+
+	# Flatten default rimage options while giving precedence to the workspace =
+	# the user input. We could just append and leave duplicates but that would be
+	# at best confusing and at worst relying on undocumented rimage precedence.
+	extra_args = []
+	for default_opt in rimage_options(platform_dict):
+		if not default_opt[0] in workspace_extra_args:
+			extra_args += default_opt
+
+	extra_args += workspace_extra_args
+
+	platform_wconfig.set("rimage.extra-args", shlex.join(extra_args))
+
+	return platform_west_config_path
+
 
 def build_rimage():
 
