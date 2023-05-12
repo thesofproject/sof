@@ -19,7 +19,7 @@ fix_dir()
         die 'No %s/build-sof-staging directory\n' "$bd"
 
     # config files have absolute paths
-    find "$bd" -name 'config.gz' -exec rm '{}' \;
+    find "$bd" \( -name 'config.gz' -o -name 'westconfig.ini' \) -exec rm '{}' \;
 
     # In case of a compression timestamp. Also gives better messages.
     find "$bd" -name '*.gz' -print0 | xargs -r -0 gunzip
