@@ -528,13 +528,19 @@ def rimage_configuration(platform_dict):
 
 	sign_cmd += ["--tool-path", rimage_executable, "--"]
 
-	sign_cmd += rimage_options(platform_dict)
+	# Flatten the list of [ ( "-o", "value" ), ...] tuples
+	for t in rimage_options(platform_dict):
+		sign_cmd += t
+
 	return sign_cmd
 
 
 def rimage_options(platform_dict):
+	"""Return a list of default rimage options as a list of tuples,
+	example: [ (-f, 2.5.0), (-b, 1), (-k, key.pem),... ]
 
-	sign_cmd = []
+	"""
+	opts = []
 
 	signing_key = ""
 	if args.key:
@@ -544,11 +550,11 @@ def rimage_options(platform_dict):
 	else:
 		signing_key = default_rimage_key
 
-	sign_cmd += ["-k", str(signing_key)]
+	opts.append(("-k", str(signing_key)))
 
 	sof_fw_vers = get_sof_version()
 
-	sign_cmd += ["-f", sof_fw_vers]
+	opts.append(("-f", sof_fw_vers))
 
 	# Default value is 0 in rimage but for Zephyr the "build counter" has always
 	# been hardcoded to 1 in CMake and there is even a (broken) test that fails
@@ -556,16 +562,16 @@ def rimage_options(platform_dict):
 	# FIXME: drop this line once the following test is fixed
 	# tests/avs/fw_00_basic/test_01_load_fw_extended.py::TestLoadFwExtended::()::
 	#                         test_00_01_load_fw_and_check_version
-	sign_cmd += ["-b", "1"]
+	opts.append(("-b", "1"))
 
 	if args.ipc == "IPC4":
 		rimage_desc = platform_dict["IPC4_RIMAGE_DESC"]
 	else:
 		rimage_desc = platform_dict["name"] + ".toml"
 
-	sign_cmd += ["-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)]
+	opts.append(("-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)))
 
-	return sign_cmd
+	return opts
 
 
 STAGING_DIR = None
