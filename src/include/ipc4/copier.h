@@ -228,10 +228,10 @@ struct ipc4_data_segment_enabled {
 } __attribute__((packed, aligned(4)));
 
 /* One of copy_single_channel_cXX() to mux/demux channels into/from copier multi_endpoint_buffer */
-typedef void (* channel_copy_func)(struct audio_stream __sparse_cache *dst,
-				   int dst_channel,
-				   const struct audio_stream __sparse_cache *src,
-				   int src_channel, int frame_count);
+typedef int (*channel_copy_func)(struct audio_stream __sparse_cache *src,
+				   int src_channel,
+				   const struct audio_stream __sparse_cache *dst,
+				   int dst_channel, int frame_count);
 
 struct copier_data {
 	/*
