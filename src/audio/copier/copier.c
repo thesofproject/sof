@@ -913,10 +913,10 @@ static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_
 		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type, dir);
 }
 
-static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
-				    int dst_channel,
-				    const struct audio_stream __sparse_cache *src,
-				    int src_channel, int frame_count)
+static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
+				   unsigned int src_channel,
+				   struct audio_stream __sparse_cache *dst,
+				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
 	int16_t *w_ptr = (int16_t *)audio_stream_get_wptr(dst) + dst_channel;
@@ -950,12 +950,14 @@ static void copy_single_channel_c16(struct audio_stream __sparse_cache *dst,
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
 	}
+
+	return 0;
 }
 
-static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
-				    int dst_channel,
-				    const struct audio_stream __sparse_cache *src,
-				    int src_channel, int frame_count)
+static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
+				   unsigned int src_channel,
+				   struct audio_stream __sparse_cache *dst,
+				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
 	int32_t *w_ptr = (int32_t *)audio_stream_get_wptr(dst) + dst_channel;
@@ -989,6 +991,8 @@ static void copy_single_channel_c32(struct audio_stream __sparse_cache *dst,
 
 		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
 	}
+
+	return 0;
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -1317,8 +1321,8 @@ static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
 		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
 			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
 
-			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
-						&multi_buf_c->stream, multi_buf_channel,
+			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
+						&endp_buf_c->stream, endp_channel,
 						frame_count);
 		}
 
@@ -1363,8 +1367,8 @@ static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
 		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
 			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
 
-			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
-						&endp_buf_c->stream, endp_channel,
+			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
+						&multi_buf_c->stream, multi_buf_channel,
 						frame_count);
 		}
 
