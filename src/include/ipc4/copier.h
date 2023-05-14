@@ -227,12 +227,6 @@ struct ipc4_data_segment_enabled {
 	uint32_t data_seg_size;
 } __attribute__((packed, aligned(4)));
 
-/* One of copy_single_channel_cXX() to mux/demux channels into/from copier multi_endpoint_buffer */
-typedef int (*channel_copy_func)(struct audio_stream __sparse_cache *src,
-				   int src_channel,
-				   const struct audio_stream __sparse_cache *dst,
-				   int dst_channel, int frame_count);
-
 struct copier_data {
 	/*
 	 * struct ipc4_copier_module_cfg actually has variable size, but we
@@ -246,7 +240,6 @@ struct copier_data {
 
 	/* buffer to mux/demux data from/to multiple endpoint buffers for ALH multi-gateway case */
 	struct comp_buffer *multi_endpoint_buffer;
-	channel_copy_func copy_single_channel;
 
 	bool bsource_buffer;
 
@@ -265,6 +258,8 @@ struct copier_data {
 	struct host_data *hd;
 	bool ipc_gtw;
 	struct dai_data *dd[IPC4_ALH_MAX_NUMBER_OF_GTW];
+	uint32_t channels[IPC4_ALH_MAX_NUMBER_OF_GTW];
+	uint32_t chan_map[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	struct ipcgtw_data *ipcgtw_data;
 };
 
