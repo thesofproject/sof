@@ -82,6 +82,7 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 						struct comp_buffer *buffer,
 						int index, uint32_t *chan_map)
 {
+	struct copier_data *cd = comp_get_drvdata(parent_dev);
 	const struct sof_alh_configuration_blob *alh_blob;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint8_t chan_bitmask;
@@ -104,10 +105,12 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 		return -EINVAL;
 	}
 
+	cd->channels[index] = channels;
 	buffer_c = buffer_acquire(buffer);
 	audio_stream_set_channels(&buffer_c->stream, channels);
 	buffer_release(buffer_c);
 	*chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
+	cd->chan_map[index] = *chan_map;
 
 	return 0;
 }
@@ -1069,28 +1072,6 @@ static int copier_prepare(struct comp_dev *dev)
 		}
 	}
 
-	/* select channel copy func now to avoid unnecessary "switch" logic at processing stage */
-	if (cd->multi_endpoint_buffer) {
-		struct comp_buffer __sparse_cache *buf_c;
-		int container_size;
-
-		buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-		container_size = audio_stream_sample_bytes(&buf_c->stream);
-		buffer_release(buf_c);
-
-		switch (container_size) {
-		case 2:
-			cd->copy_single_channel = copy_single_channel_c16;
-			break;
-		case 4:
-			cd->copy_single_channel = copy_single_channel_c32;
-			break;
-		default:
-			comp_err(dev, "Unexpected container size: %d", container_size);
-			return -EINVAL;
-		}
-	}
-
 	return 0;
 }
 
@@ -1293,141 +1274,27 @@ static inline struct comp_buffer *get_endpoint_buffer(struct copier_data *cd)
 		cd->endpoint_buffer[IPC4_COPIER_GATEWAY_PIN];
 }
 
-static int demux_from_multi_endpoint_buffer(struct copier_data *cd)
-{
-	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
-	int endp_idx, endp_channel;
-	uint32_t frame_count, byte_count;
-
-	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-
-	frame_count = audio_stream_get_avail_frames(&multi_buf_c->stream);
-
-	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
-		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
-		frame_count = MIN(frame_count, audio_stream_get_free_frames(&endp_buf_c->stream));
-		buffer_release(endp_buf_c);
-	}
-
-	byte_count = frame_count * audio_stream_frame_bytes(&multi_buf_c->stream);
-	buffer_stream_invalidate(multi_buf_c, byte_count);
-
-	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
-		uint32_t bytes_produced;
-
-		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
-
-		for (endp_channel = 0; endp_channel <
-		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
-			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
-
-			cd->copy_single_channel(&multi_buf_c->stream, multi_buf_channel,
-						&endp_buf_c->stream, endp_channel,
-						frame_count);
-		}
-
-		bytes_produced = frame_count * audio_stream_frame_bytes(&endp_buf_c->stream);
-		buffer_stream_writeback(endp_buf_c, bytes_produced);
-		comp_update_buffer_produce(endp_buf_c, bytes_produced);
-		buffer_release(endp_buf_c);
-	}
-
-	comp_update_buffer_consume(multi_buf_c, byte_count);
-	buffer_release(multi_buf_c);
-
-	return 0;
-}
-
-static int mux_into_multi_endpoint_buffer(struct copier_data *cd)
-{
-	struct comp_buffer __sparse_cache *multi_buf_c, *endp_buf_c;
-	int endp_idx, endp_channel;
-	uint32_t frame_count = UINT32_MAX;
-	uint32_t bytes_produced;
-
-	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
-		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
-		frame_count = MIN(frame_count, audio_stream_get_avail_frames(&endp_buf_c->stream));
-		buffer_release(endp_buf_c);
-	}
-
-	multi_buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-
-	frame_count = MIN(frame_count, audio_stream_get_free_frames(&multi_buf_c->stream));
-
-	for (endp_idx = 0; endp_idx < cd->endpoint_num; endp_idx++) {
-		uint32_t endp_buf_byte_count;
-
-		endp_buf_c = buffer_acquire(cd->endpoint_buffer[endp_idx]);
-
-		endp_buf_byte_count = frame_count * audio_stream_frame_bytes(&endp_buf_c->stream);
-		buffer_stream_invalidate(endp_buf_c, endp_buf_byte_count);
-
-		for (endp_channel = 0; endp_channel <
-		     audio_stream_get_channels(&endp_buf_c->stream); endp_channel++) {
-			int multi_buf_channel = endp_buf_c->chmap[endp_channel];
-
-			cd->copy_single_channel(&endp_buf_c->stream, endp_channel,
-						&multi_buf_c->stream, multi_buf_channel,
-						frame_count);
-		}
-
-		comp_update_buffer_consume(endp_buf_c, endp_buf_byte_count);
-		buffer_release(endp_buf_c);
-	}
-
-	bytes_produced = frame_count * audio_stream_frame_bytes(&multi_buf_c->stream);
-	buffer_stream_writeback(multi_buf_c, bytes_produced);
-	comp_update_buffer_produce(multi_buf_c, bytes_produced);
-
-	buffer_release(multi_buf_c);
-
-	return 0;
-}
-
 static void copier_dma_cb(struct comp_dev *dev, size_t bytes);
 
 static int do_endpoint_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 
-	if (cd->multi_endpoint_buffer) {
-		int i;
-		int ret = 0;
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1)
+			return dai_zephyr_copy(cd->dd[0], dev, cd->converter);
 
-		/* multiple gateways on output */
-		if (cd->bsource_buffer) {
-			ret = demux_from_multi_endpoint_buffer(cd);
-			if (ret < 0)
-				return ret;
-		}
-
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = cd->endpoint[i]->drv->ops.copy(cd->endpoint[i]);
-			if (ret < 0)
-				return ret;
-		}
-
-		/* multiple gateways on input */
-		if (!cd->bsource_buffer)
-			ret = mux_into_multi_endpoint_buffer(cd);
-
-		return ret;
-	} else {
-		switch (dev->ipc_config.type) {
-		case SOF_COMP_HOST:
-			if (!cd->ipc_gtw)
-				return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
-			break;
-		case SOF_COMP_DAI:
-			if (cd->endpoint_num == 1)
-				return dai_zephyr_copy(cd->dd[0], dev, cd->converter);
-			break;
-		default:
-			break;
-		}
-		return 0;
+		return dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
+						      cd->endpoint_num);
+	default:
+		break;
 	}
+	return 0;
 }
 
 static int do_conversion_copy(struct comp_dev *dev,
@@ -1743,6 +1610,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		{
 			struct comp_buffer __sparse_cache *buf_c;
 			struct sof_ipc_stream_params demuxed_params = *params;
+			int container_size;
+			int j;
 
 			if (cd->endpoint_num == 1) {
 				ret = dai_zephyr_params(cd->dd[0], dev, params);
@@ -1773,11 +1642,33 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			 * number of channels. Demultiplexed number of channels for each individual
 			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
 			 */
-			buf_c = buffer_acquire(cd->endpoint_buffer[i]);
-			demuxed_params.channels = audio_stream_get_channels(&buf_c->stream);
-			buffer_release(buf_c);
+			demuxed_params.channels = cd->channels[i];
 
 			ret = dai_zephyr_params(cd->dd[i], cd->endpoint[i], &demuxed_params);
+			if (ret < 0)
+				return ret;
+
+			buf_c = buffer_acquire(cd->dd[i]->dma_buffer);
+			for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
+				buf_c->chmap[j] = (cd->chan_map[i] >> j * 4) & 0xf;
+			buffer_release(buf_c);
+
+			/* set channel copy func */
+			buf_c = buffer_acquire(cd->multi_endpoint_buffer);
+			container_size = audio_stream_sample_bytes(&buf_c->stream);
+			buffer_release(buf_c);
+
+			switch (container_size) {
+			case 2:
+				cd->dd[i]->process = copy_single_channel_c16;
+				break;
+			case 4:
+				cd->dd[i]->process = copy_single_channel_c32;
+				break;
+			default:
+				comp_err(dev, "Unexpected container size: %d", container_size);
+				return -EINVAL;
+			}
 			break;
 		}
 		default:
