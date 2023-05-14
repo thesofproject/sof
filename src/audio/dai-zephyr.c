@@ -873,13 +873,8 @@ int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	buffer_c = buffer_acquire(dd->local_buffer);
-
 	/* calculate frame size */
-	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     audio_stream_get_channels(&buffer_c->stream));
-
-	buffer_release(buffer_c);
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt, params->channels);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
