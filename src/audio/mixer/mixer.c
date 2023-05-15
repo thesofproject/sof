@@ -200,7 +200,7 @@ static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache 
 	/* Xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
 	 * requires 16-byte aligned.
 	 */
-	const uint32_t byte_align = source->channels == 6 ? 16 : 8;
+	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ? 16 : 8;
 
 	/*There is no limit for frame number, so set it as 1*/
 	const uint32_t frame_align_req = 1;

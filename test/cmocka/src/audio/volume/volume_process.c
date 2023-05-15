@@ -116,7 +116,7 @@ static void verify_s16_to_s16(struct processing_module *mod, struct comp_buffer 
 	const int16_t *src = (int16_t *)source->stream.r_ptr;
 	const int16_t *dst = (int16_t *)sink->stream.w_ptr;
 	double processed;
-	int channels = sink->stream.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
@@ -168,7 +168,7 @@ static void verify_s24_to_s24_s32(struct processing_module *mod,
 	double processed;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = sink->stream.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
@@ -225,7 +225,7 @@ static void verify_s32_to_s24_s32(struct processing_module *mod,
 	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = sink->stream.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
@@ -262,7 +262,7 @@ static void test_audio_vol(void **state)
 	struct processing_module *mod = vol_state->mod;
 	struct vol_data *cd = module_get_private_data(mod);
 
-	switch (vol_state->sinks[0]->stream.frame_fmt) {
+	switch (audio_stream_get_frm_fmt(&vol_state->sinks[0]->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(vol_state);
 		break;

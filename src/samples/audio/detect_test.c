@@ -225,7 +225,7 @@ static void default_detect_test(struct comp_dev *dev,
 	if (cd->config.load_mips) {
 		/* assuming count is a processing frame size in samples */
 		cycles_per_frame = (cd->config.load_mips * 1000000 * count)
-				   / source->rate;
+				   / audio_stream_get_rate(source);
 		idelay(cycles_per_frame);
 	}
 

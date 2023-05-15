@@ -537,8 +537,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	if (sad->feedback_buf) {
 		struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
 
-		buf->stream.channels = sad->config.feedback_channels;
-		buf->stream.rate = audio_stream_get_rate(&buffer_c->stream);
+		audio_stream_set_channels(&buf->stream, sad->config.feedback_channels);
+		audio_stream_set_rate(&buf->stream, audio_stream_get_rate(&buffer_c->stream));
 		buffer_release(buf);
 	}
 

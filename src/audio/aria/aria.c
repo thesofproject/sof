@@ -327,7 +327,7 @@ static int aria_copy(struct comp_dev *dev)
 	buffer_stream_invalidate(source_c, source_bytes);
 
 	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0,
-				    c.frames * source_c->stream.channels);
+				    c.frames * audio_stream_get_channels(&source_c->stream));
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in, source_bytes);
 
 	aria_process_data(dev, cd->buf_out, sink_bytes / sizeof(uint32_t),
@@ -335,7 +335,7 @@ static int aria_copy(struct comp_dev *dev)
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out, sink_bytes);
 	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0,
-				      c.frames * sink_c->stream.channels);
+				      c.frames * audio_stream_get_channels(&sink_c->stream));
 
 	buffer_stream_writeback(sink_c, sink_bytes);
 

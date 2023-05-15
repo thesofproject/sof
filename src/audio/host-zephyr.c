@@ -398,7 +398,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	}
 
 	dma_buf_c = buffer_acquire(hd->dma_buffer);
-	dma_sample_bytes = get_sample_bytes(dma_buf_c->stream.frame_fmt);
+	dma_sample_bytes = get_sample_bytes(audio_stream_get_frm_fmt(&dma_buf_c->stream));
 	buffer_release(dma_buf_c);
 
 	buffer_c = buffer_acquire(buffer);

@@ -59,14 +59,15 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 		return NULL;
 	}
 
-	buffer->stream.underrun_permitted = !!(flags & SOF_BUF_UNDERRUN_PERMITTED);
-	buffer->stream.overrun_permitted = !!(flags & SOF_BUF_OVERRUN_PERMITTED);
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
 
 	/* From here no more uncached access to the buffer object, except its list headers */
+
 	buffer_c = buffer_acquire(buffer);
+	audio_stream_set_underrun(&buffer_c->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
+	audio_stream_set_overrun(&buffer_c->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
 	buffer_init(buffer_c, size, caps);
 	buffer_release(buffer_c);
 
@@ -167,15 +168,15 @@ bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
 	assert(params);
 
 	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
-	    buffer->stream.frame_fmt != params->frame_fmt)
+	     audio_stream_get_frm_fmt(&buffer->stream) != params->frame_fmt)
 		return false;
 
 	if ((flag & BUFF_PARAMS_RATE) &&
-	    buffer->stream.rate != params->rate)
+	     audio_stream_get_rate(&buffer->stream) != params->rate)
 		return false;
 
 	if ((flag & BUFF_PARAMS_CHANNELS) &&
-	    buffer->stream.channels != params->channels)
+	     audio_stream_get_channels(&buffer->stream) != params->channels)
 		return false;
 
 	return true;
