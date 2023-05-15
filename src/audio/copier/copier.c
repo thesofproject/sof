@@ -522,12 +522,8 @@ static int init_pipeline_reg(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
 	uint32_t gateway_id;
-	int ret;
 
-	ret = comp_get_attribute(dev, COMP_ATTR_VDMA_INDEX, &gateway_id);
-	if (ret)
-		return ret;
-
+	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
 	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
 		comp_cl_err(&comp_copier, "gateway_id %u out of array bounds.", gateway_id);
 		return -EINVAL;
@@ -1721,9 +1717,6 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 	struct copier_data *cd = comp_get_drvdata(dev);
 
 	switch (type) {
-	case COMP_ATTR_VDMA_INDEX:
-		*(uint32_t *)value = cd->config.gtw_cfg.node_id.f.v_index;
-		break;
 	case COMP_ATTR_BASE_CONFIG:
 		*(struct ipc4_base_module_cfg *)value = cd->config.base;
 		break;
