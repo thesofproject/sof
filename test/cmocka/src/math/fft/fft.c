@@ -52,7 +52,7 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 	struct fft_plan *plan;
 	int i;
 
-	if (src->stream.channels != 1)
+	if (audio_stream_get_channels(&src->stream) != 1)
 		return;
 
 	if (src->stream.size < size * sizeof(int32_t) ||
@@ -106,7 +106,7 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 	struct fft_plan *plan;
 	int i;
 
-	if (src->stream.channels != 1)
+	if (audio_stream_get_channels(&src->stream) != 1)
 		return;
 
 	if (src->stream.size < size * sizeof(struct icomplex32) ||
@@ -163,7 +163,7 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 	struct fft_plan *plan;
 	int i;
 
-	if (src->stream.channels != 2)
+	if (audio_stream_get_channels(&src->stream) != 2)
 		return;
 
 	if (src->stream.size < size * sizeof(int32_t) * 2 ||
@@ -280,7 +280,7 @@ static void test_math_fft_256(void **state)
 
 	/* create sine wave */
 	get_sine_32(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real(source, sink, fft_size);
@@ -322,7 +322,7 @@ static void test_math_fft_512(void **state)
 
 	/* create sine wave */
 	get_sine_32(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real(source, sink, fft_size);
@@ -364,7 +364,7 @@ static void test_math_fft_1024(void **state)
 
 	/* create sine wave */
 	get_sine_32(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real(source, sink, fft_size);
@@ -405,12 +405,12 @@ static void test_math_fft_1024_ifft(void **state)
 	(void)state;
 
 	get_sine_32(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real(source, intm, fft_size);
 
-	intm->stream.channels = 1;
+	audio_stream_set_channels(&intm->stream, 1);
 	/* do ifft transform */
 	ifft_complex(intm, sink, fft_size);
 
@@ -448,7 +448,7 @@ static void test_math_fft_512_2ch(void **state)
 		*((int32_t *)source->stream.addr + 2 * i + 1) = input_samples[fft_size + i];
 	}
 
-	source->stream.channels = 2;
+	audio_stream_set_channels(&source->stream, 2);
 	/* do fft transform */
 	fft_real_2(source, sink1, sink2, fft_size);
 
@@ -482,7 +482,7 @@ static void fft_real_16(struct comp_buffer *src, struct comp_buffer *dst, uint32
 	struct fft_plan *plan;
 	int i;
 
-	if (src->stream.channels != 1)
+	if (audio_stream_get_channels(&src->stream) != 1)
 		return;
 
 	if (src->stream.size < size * sizeof(int16_t) ||
@@ -536,7 +536,7 @@ static void ifft_complex_16(struct comp_buffer *src, struct comp_buffer *dst, ui
 	struct fft_plan *plan;
 	int i;
 
-	if (src->stream.channels != 1)
+	if (audio_stream_get_channels(&src->stream) != 1)
 		return;
 
 	if (src->stream.size < size * sizeof(struct icomplex16) ||
@@ -640,7 +640,7 @@ static void test_math_fft_256_16(void **state)
 
 	/* create sine wave */
 	get_sine_16(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real_16(source, sink, fft_size);
@@ -682,7 +682,7 @@ static void test_math_fft_512_16(void **state)
 
 	/* create sine wave */
 	get_sine_16(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real_16(source, sink, fft_size);
@@ -724,7 +724,7 @@ static void test_math_fft_1024_16(void **state)
 
 	/* create sine wave */
 	get_sine_16(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real_16(source, sink, fft_size);
@@ -765,12 +765,12 @@ static void test_math_fft_1024_ifft_16(void **state)
 	(void)state;
 
 	get_sine_16(in, SINE_FREQ, SINE_FS, fft_size);
-	source->stream.channels = 1;
+	audio_stream_set_channels(&source->stream, 1);
 
 	/* do fft transform */
 	fft_real_16(source, intm, fft_size);
 
-	intm->stream.channels = 1;
+	audio_stream_set_channels(&intm->stream, 1);
 	/* do ifft transform */
 	ifft_complex_16(intm, sink, fft_size);
 

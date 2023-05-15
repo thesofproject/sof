@@ -227,7 +227,7 @@ static int smart_amp_process_s16(struct processing_module *mod,
 	int i;
 	int j;
 
-	bsource->consumed += frames * source->channels * sizeof(int16_t);
+	bsource->consumed += frames * audio_stream_get_channels(source) * sizeof(int16_t);
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
@@ -260,7 +260,7 @@ static int smart_amp_process_s32(struct processing_module *mod,
 	int i;
 	int j;
 
-	bsource->consumed += frames * source->channels * sizeof(int32_t);
+	bsource->consumed += frames * audio_stream_get_channels(source) * sizeof(int32_t);
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
@@ -388,8 +388,9 @@ static int smart_amp_prepare(struct processing_module *mod)
 		buffer_c = buffer_acquire(source_buffer);
 		audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
 		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			buffer_c->stream.channels = sad->config.feedback_channels;
-			buffer_c->stream.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+			audio_stream_set_channels(&buffer_c->stream, sad->config.feedback_channels);
+			audio_stream_set_rate(&buffer_c->stream,
+					      mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency);
 		}
 		buffer_release(buffer_c);
 	}

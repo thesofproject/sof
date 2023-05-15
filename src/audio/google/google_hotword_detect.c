@@ -178,7 +178,7 @@ static int ghd_params(struct comp_dev *dev,
 				  sink_list);
 	source_c = buffer_acquire(sourceb);
 
-	if (source_c->stream.channels != 1) {
+	if (audio_stream_get_channels(source_c->stream) != 1) {
 		comp_err(dev, "ghd_params(): Only single-channel supported");
 		ret = -EINVAL;
 	} else if (audio_stream_get_frm_fmt(&source_c->stream) != SOF_IPC_FRAME_S16_LE) {

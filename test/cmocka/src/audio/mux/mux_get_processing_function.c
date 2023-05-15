@@ -111,7 +111,7 @@ static void test_mux_get_processing_function_invalid_float(void **state)
 	mux_func func = NULL;
 
 	/* set frame format value to unsupported value */
-	td->sink->stream.frame_fmt = SOF_IPC_FRAME_FLOAT;
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_FLOAT);
 
 	func = mux_get_processing_function(td->mod);
 
@@ -125,7 +125,7 @@ static void test_mux_get_processing_function_valid_s16le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S16_LE;
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_S16_LE);
 
 	func = mux_get_processing_function(td->mod);
 
@@ -139,7 +139,7 @@ static void test_mux_get_processing_function_valid_s24_4le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S24_4LE;
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_S24_4LE);
 
 	func = mux_get_processing_function(td->mod);
 
@@ -153,7 +153,7 @@ static void test_mux_get_processing_function_valid_s32le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_S32_LE);
 
 	func = mux_get_processing_function(td->mod);
 
