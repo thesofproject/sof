@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: nxp-zephyr
+      url-base: https://github.com/nxp-zephyr
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -43,8 +45,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: e3ae110a05d3427647a03fcbeff4478c195c5a48
-      remote: zephyrproject
+      revision: fd707c7c0bb36431d3d1f27503b82df4f4c35d5a
+      remote: nxp-zephyr
       # Import some projects listed in zephyr/west.yml@revision
       #
       # Warning: changes to zephyr/west.yml or to any other _imported_
