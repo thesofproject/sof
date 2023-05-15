@@ -1130,18 +1130,12 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 	comp_dbg(dev, "copier_comp_trigger()");
 
-	/*
-	 * do not modify the comp state in case of single endpoint DAI, it will be done in
-	 * dai_zephyr_trigger()
-	 */
-	if (!(dev->ipc_config.type == SOF_COMP_DAI && cd->endpoint_num == 1)) {
-		ret = comp_set_state(dev, cmd);
-		if (ret < 0)
-			return ret;
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
-		if (ret == COMP_STATUS_STATE_ALREADY_SET)
-			return PPL_STATUS_PATH_STOP;
-	}
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -1158,7 +1152,13 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 				return ret;
 		} else {
 			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = cd->endpoint[i]->drv->ops.trigger(cd->endpoint[i], cmd);
+				ret = comp_set_state(cd->endpoint[i], cmd);
+				if (ret < 0)
+					return ret;
+
+				if (ret == COMP_STATUS_STATE_ALREADY_SET)
+					return PPL_STATUS_PATH_STOP;
+				ret = dai_zephyr_trigger(cd->dd[i], cd->endpoint[i], cmd);
 				if (ret < 0)
 					return ret;
 			}

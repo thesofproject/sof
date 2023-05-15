@@ -1152,16 +1152,9 @@ static int dai_reset(struct comp_dev *dev)
 /* used to pass standard and bespoke command (with data) to component */
 static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
