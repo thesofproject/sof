@@ -555,7 +555,7 @@ static int asrc_params(struct comp_dev *dev,
 
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
-		sink_c->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
+		audio_stream_set_rate(&sink_c->stream, asrc_get_sink_rate(&cd->ipc_config));
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = audio_stream_get_rate(&source_c->stream);

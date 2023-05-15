@@ -275,7 +275,7 @@ static void verify_s16le_2ch_to_2ch(struct processing_module *mod,
 {
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
-	uint32_t channels = source->channels;
+	uint32_t channels = audio_stream_get_channels(source);
 	uint32_t channel;
 	uint32_t i;
 	double processed;
@@ -300,7 +300,7 @@ static void verify_s16le_4ch_to_4ch(struct processing_module *mod,
 {
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
-	uint32_t channels = source->channels;
+	uint32_t channels = audio_stream_get_channels(source);
 	uint32_t channel;
 	uint32_t i;
 	double processed;
@@ -376,7 +376,7 @@ static void verify_s32le_2ch_to_2ch(struct processing_module *mod,
 {
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
-	uint32_t channels = source->channels;
+	uint32_t channels = audio_stream_get_channels(source);
 	uint32_t channel;
 	uint32_t i;
 	uint32_t processed;
@@ -401,7 +401,7 @@ static void verify_s32le_4ch_to_4ch(struct processing_module *mod,
 {
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
-	uint32_t channels = source->channels;
+	uint32_t channels = audio_stream_get_channels(source);
 	uint32_t channel;
 	uint32_t i;
 	uint32_t processed;

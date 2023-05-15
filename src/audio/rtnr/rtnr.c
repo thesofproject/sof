@@ -381,7 +381,7 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 
 	/* set source/sink stream channels */
 	cd->sources_stream[0].channels = audio_stream_get_channels(&source_c->stream);
-	cd->sink_stream.channels = audio_stream_get_channels(&sink_c->stream);
+	audio_stream_set_channels(&cd->sink_stream, audio_stream_get_channels(&sink_c->stream));
 
 	/* set source/sink stream overrun/underrun permitted */
 	cd->sources_stream[0].overrun_permitted = audio_stream_get_overrun(&source_c->stream);

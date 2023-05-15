@@ -201,6 +201,18 @@ static inline void audio_stream_set_channels(struct audio_stream __sparse_cache 
 	buf->channels = val;
 }
 
+static inline void audio_stream_set_underrun(struct audio_stream __sparse_cache *buf,
+					     bool underrun_permitted)
+{
+	buf->underrun_permitted = underrun_permitted;
+}
+
+static inline void audio_stream_set_overrun(struct audio_stream __sparse_cache *buf,
+					    bool overrun_permitted)
+{
+	buf->overrun_permitted = overrun_permitted;
+}
+
 /**
  * Retrieves readable address of a sample at specified index (see versions of
  * this macro specialized for various sample types).

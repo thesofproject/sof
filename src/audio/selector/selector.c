@@ -932,7 +932,8 @@ static int selector_prepare(struct processing_module *mod)
 	 * reduce channel count between source and sink
 	 */
 	comp_info(dev, "selector_prepare(): source sink channel = %u %u",
-		  audio_stream_get_channels(&source_c->stream), sink_c->stream.channels);
+		  audio_stream_get_channels(&source_c->stream),
+		  audio_stream_get_channels(&sink_c->stream));
 
 	sink_size = audio_stream_get_size(&sink_c->stream);
 
