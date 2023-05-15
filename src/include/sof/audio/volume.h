@@ -65,8 +65,10 @@ struct sof_ipc_ctrl_value_chan;
 //** \brief Volume gain Qx.y */
 #define COMP_VOLUME_Q1_23 1
 
-//** \brief Volume gain Qx.y integer x number of bits including sign bit. */
-#define VOL_QXY_X 1
+/** \brief Volume gain Qx.y integer x number of bits including sign bit.
+ * With Q8.23 format the gain range is -138.47 to +42.14 dB.
+ */
+#define VOL_QXY_X 8
 
 //** \brief Volume gain Qx.y fractional y number of bits. */
 #define VOL_QXY_Y 23
