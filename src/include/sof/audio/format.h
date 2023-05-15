@@ -28,6 +28,7 @@
 
 #include <ipc/stream.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Maximum and minimum values for 24 bit */
 #define INT24_MAXVALUE  8388607
@@ -114,6 +115,29 @@
 #if __AUDIO_FORMAT_HIFI3__
 #include "format_hifi3.h"
 #endif
+
+struct sof_audio_stream_params {
+	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
+	enum sof_ipc_frame valid_sample_fmt;
+
+	uint32_t rate;		/**< Number of data frames per second [Hz] */
+	uint16_t channels;	/**< Number of samples in each frame */
+
+	/** alignment limit of stream copy, this value indicates how many
+	 * integer frames which can meet both byte align and frame align
+	 * requirement. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align;
+
+	/**
+	 * alignment limit of stream copy, alignment is the frame_align_shift-th
+	 * power of 2 bytes. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align_shift;
+
+	bool overrun_permitted; /**< indicates whether overrun is permitted */
+	bool underrun_permitted; /**< indicates whether underrun is permitted */
+};
 
 static inline int64_t q_mults_32x32(int32_t x, int32_t y, const int shift_bits)
 {
