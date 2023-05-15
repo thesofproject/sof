@@ -429,12 +429,12 @@ static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	default:
@@ -463,12 +463,12 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s16(cd, sink, frames * nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s16(cd, source, frames * nch);
 		break;
 	default:
@@ -497,12 +497,12 @@ static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	default:
@@ -719,8 +719,8 @@ static int file_params(struct comp_dev *dev,
 
 	/* set downstream buffer size */
 	stream = &buffer->stream;
-	samples = periods * dev->frames * stream->channels;
-	switch (stream->frame_fmt) {
+	samples = periods * dev->frames * audio_stream_get_channels(stream);
+	switch (audio_stream_get_frm_fmt(stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		ret = buffer_set_size(buffer, samples * sizeof(int16_t), 0);
 		if (ret < 0) {
@@ -757,7 +757,7 @@ static int file_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	cd->sample_container_bytes = get_sample_bytes(stream->frame_fmt);
+	cd->sample_container_bytes = audio_stream_sample_bytes(stream);
 	buffer_reset_pos(buffer, NULL);
 
 	return 0;

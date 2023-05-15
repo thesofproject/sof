@@ -63,15 +63,15 @@ void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i;
 
-	buf_c->stream.channels = fmt->channels_count;
-	buf_c->stream.rate = fmt->sampling_frequency;
+	audio_stream_set_channels(&buf_c->stream, fmt->channels_count);
+	audio_stream_set_rate(&buf_c->stream, fmt->sampling_frequency);
 	audio_stream_fmt_conversion(fmt->depth,
 				    fmt->valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    fmt->s_type);
 
-	buf_c->stream.frame_fmt = frame_fmt;
-	buf_c->stream.valid_sample_fmt = valid_fmt;
+	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
+	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
 
 	buf_c->buffer_fmt = fmt->interleaving_style;
 
