@@ -447,7 +447,7 @@ static int init_dai(struct comp_dev *parent_dev,
 	list_init(&dev->bsink_list);
 
 	cd->dd[index] = dd;
-	ret = comp_dai_config(cd->dd[index], dev, dai, copier);
+	ret = comp_dai_config(cd->dd[index], parent_dev, dai, copier);
 	if (ret < 0)
 		goto e_zephyr_free;
 
@@ -1037,18 +1037,11 @@ static int copier_prepare(struct comp_dev *dev)
 				return ret;
 		} else {
 			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = comp_set_state(cd->endpoint[i], COMP_TRIGGER_PREPARE);
+				ret = dai_zephyr_config_prepare(cd->dd[i], dev);
 				if (ret < 0)
 					return ret;
 
-				if (ret == COMP_STATUS_STATE_ALREADY_SET)
-					return PPL_STATUS_PATH_STOP;
-
-				ret = dai_zephyr_config_prepare(cd->dd[i], cd->endpoint[i]);
-				if (ret < 0)
-					return ret;
-
-				ret = dai_zephyr_prepare(cd->dd[i], cd->endpoint[i]);
+				ret = dai_zephyr_prepare(cd->dd[i], dev);
 				if (ret < 0)
 					return ret;
 			}
@@ -1094,14 +1087,8 @@ static int copier_reset(struct comp_dev *dev)
 			ipcgtw_zephyr_reset(dev);
 		break;
 	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1) {
-			dai_zephyr_reset(cd->dd[0], dev);
-		} else {
-			for (i = 0; i < cd->endpoint_num; i++) {
-				dai_zephyr_reset(cd->dd[i], cd->endpoint[i]);
-				comp_set_state(cd->endpoint[i], COMP_TRIGGER_RESET);
-			}
-		}
+		for (i = 0; i < cd->endpoint_num; i++)
+			dai_zephyr_reset(cd->dd[i], dev);
 		break;
 	default:
 		break;
@@ -1146,22 +1133,10 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 		break;
 	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1) {
-			ret = dai_zephyr_trigger(cd->dd[0], dev, cmd);
+		for (i = 0; i < cd->endpoint_num; i++) {
+			ret = dai_zephyr_trigger(cd->dd[i], dev, cmd);
 			if (ret < 0)
 				return ret;
-		} else {
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = comp_set_state(cd->endpoint[i], cmd);
-				if (ret < 0)
-					return ret;
-
-				if (ret == COMP_STATUS_STATE_ALREADY_SET)
-					return PPL_STATUS_PATH_STOP;
-				ret = dai_zephyr_trigger(cd->dd[i], cd->endpoint[i], cmd);
-				if (ret < 0)
-					return ret;
-			}
 		}
 		break;
 	default:
@@ -1436,14 +1411,6 @@ static int copier_copy(struct comp_dev *dev)
 	return ret;
 }
 
-static void update_internal_comp(struct comp_dev *parent, struct comp_dev *child)
-{
-	child->period = parent->period;
-	child->pipeline = parent->pipeline;
-	child->priority = parent->priority;
-	child->direction = parent->direction;
-}
-
 static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 				 const struct ipc4_audio_format *fmt)
 {
@@ -1590,9 +1557,6 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	}
 
 	for (i = 0; i < cd->endpoint_num; i++) {
-		if (cd->endpoint[i])
-			update_internal_comp(dev, cd->endpoint[i]);
-
 		switch (dev->ipc_config.type) {
 		case SOF_COMP_HOST:
 			if (!cd->ipc_gtw) {
@@ -1644,7 +1608,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			 */
 			demuxed_params.channels = cd->channels[i];
 
-			ret = dai_zephyr_params(cd->dd[i], cd->endpoint[i], &demuxed_params);
+			ret = dai_zephyr_params(cd->dd[i], dev, &demuxed_params);
 			if (ret < 0)
 				return ret;
 
@@ -1807,27 +1771,14 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading_extended llp_ext;
 	struct ipc4_llp_reading llp;
-	struct comp_dev *temp_dev = dev;
 
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		/* no support for gtw case */
-		if (cd->ipc_gtw)
-			return 0;
-		break;
-	case SOF_COMP_DAI:
-		if (cd->endpoint_num > 1)
-			/* for multiendpoint case, use endpoint0 as dev */
-			temp_dev = cd->endpoint[IPC4_COPIER_GATEWAY_PIN];
-		break;
-	default:
-		break;
-	}
+	if (cd->ipc_gtw)
+		return 0;
 
 	switch (param_id) {
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING:
 		if (!cd->endpoint_num ||
-		    comp_get_endpoint_type(temp_dev) !=
+		    comp_get_endpoint_type(dev) !=
 		    COMP_ENDPOINT_DAI) {
 			comp_err(dev, "Invalid component type");
 			return -EINVAL;
@@ -1841,13 +1792,13 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 		*data_offset = sizeof(struct ipc4_llp_reading);
 		memset(&llp, 0, sizeof(llp));
 
-		if (temp_dev->state != COMP_STATE_ACTIVE) {
+		if (dev->state != COMP_STATE_ACTIVE) {
 			memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
 			return 0;
 		}
 
 		/* get llp from dai */
-		comp_position(temp_dev, &posn);
+		comp_position(dev, &posn);
 
 		convert_u64_to_u32s(posn.comp_posn, &llp.llp_l, &llp.llp_u);
 		convert_u64_to_u32s(posn.wallclock, &llp.wclk_l, &llp.wclk_u);
@@ -1857,7 +1808,7 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED:
 		if (!cd->endpoint_num ||
-		    comp_get_endpoint_type(temp_dev) !=
+		    comp_get_endpoint_type(dev) !=
 		    COMP_ENDPOINT_DAI) {
 			comp_err(dev, "Invalid component type");
 			return -EINVAL;
@@ -1871,13 +1822,13 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 		*data_offset = sizeof(struct ipc4_llp_reading_extended);
 		memset(&llp_ext, 0, sizeof(llp_ext));
 
-		if (temp_dev->state != COMP_STATE_ACTIVE) {
+		if (dev->state != COMP_STATE_ACTIVE) {
 			memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
 			return 0;
 		}
 
 		/* get llp from dai */
-		comp_position(temp_dev, &posn);
+		comp_position(dev, &posn);
 
 		convert_u64_to_u32s(posn.comp_posn, &llp_ext.llp_reading.llp_l,
 				    &llp_ext.llp_reading.llp_u);
@@ -1977,11 +1928,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 		}
 		break;
 	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1)
-			ret = dai_zephyr_position(cd->dd[0], dev, posn);
-		else
-			ret = dai_zephyr_position(cd->dd[0], cd->endpoint[IPC4_COPIER_GATEWAY_PIN],
-						  posn);
+		ret = dai_zephyr_position(cd->dd[0], dev, posn);
 		break;
 	default:
 		break;
