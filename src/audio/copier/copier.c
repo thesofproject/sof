@@ -79,12 +79,10 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 
 static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 						const struct ipc4_copier_module_cfg *copier_cfg,
-						struct comp_buffer *buffer,
-						int index, uint32_t *chan_map)
+						int index)
 {
 	struct copier_data *cd = comp_get_drvdata(parent_dev);
 	const struct sof_alh_configuration_blob *alh_blob;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint8_t chan_bitmask;
 	int channels;
 
@@ -106,11 +104,7 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 	}
 
 	cd->channels[index] = channels;
-	buffer_c = buffer_acquire(buffer);
-	audio_stream_set_channels(&buffer_c->stream, channels);
-	buffer_release(buffer_c);
-	*chan_map = bitmask_to_nibble_channel_map(chan_bitmask);
-	cd->chan_map[index] = *chan_map;
+	cd->chan_map[index] = bitmask_to_nibble_channel_map(chan_bitmask);
 
 	return 0;
 }
@@ -131,7 +125,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t buf_size;
 	uint32_t chan_map;
-	int i, ret;
+	int i;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -203,18 +197,7 @@ static int create_endpoint_buffer(struct comp_dev *parent_dev,
 	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
 	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
 	buffer_c->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
-	buffer_release(buffer_c);
 
-	/* set channel map for multi-gateway ALH DAI's */
-	if (!create_multi_endpoint_buffer &&
-	    (type == ipc4_gtw_alh && is_multi_gateway(copier_cfg->gtw_cfg.node_id))) {
-		ret = copier_set_alh_multi_gtw_channel_map(parent_dev, copier_cfg, buffer,
-							   index, &chan_map);
-		if (ret < 0)
-			return ret;
-	}
-
-	buffer_c = buffer_acquire(buffer);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;
 
@@ -412,6 +395,14 @@ static int init_dai(struct comp_dev *parent_dev,
 		return init_dai_single(parent_dev, drv, config, copier, pipeline, dai, type);
 
 	cd = comp_get_drvdata(parent_dev);
+
+	/* save the channel map and count for ALH multi-gateway */
+	if (type == ipc4_gtw_alh && is_multi_gateway(copier->gtw_cfg.node_id)) {
+		ret = copier_set_alh_multi_gtw_channel_map(parent_dev, copier, index);
+		if (ret < 0)
+			return ret;
+	}
+
 	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, false, index);
 	if (ret < 0)
 		return ret;
