@@ -31,6 +31,34 @@
  */
 
 /**
+ * set of parameters describing audio stream
+ * this structure is shared between audio_stream.h and sink/source interface
+ * TODO: compressed formats
+ */
+struct sof_audio_stream_params {
+	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
+	enum sof_ipc_frame valid_sample_fmt;
+
+	uint32_t rate;		/**< Number of data frames per second [Hz] */
+	uint16_t channels;	/**< Number of samples in each frame */
+
+	/** alignment limit of stream copy, this value indicates how many
+	 * integer frames which can meet both byte align and frame align
+	 * requirement. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align;
+
+	/**
+	 * alignment limit of stream copy, alignment is the frame_align_shift-th
+	 * power of 2 bytes. it should be set in component prepare or param functions
+	 */
+	uint16_t frame_align_shift;
+
+	bool overrun_permitted; /**< indicates whether overrun is permitted */
+	bool underrun_permitted; /**< indicates whether underrun is permitted */
+};
+
+/**
  * Audio stream is a circular buffer aware of audio format of the data
  * in the buffer so provides API for reading and writing not only bytes,
  * but also samples and frames.
@@ -55,26 +83,7 @@ struct audio_stream {
 	void *end_addr;	/**< Buffer end address */
 
 	/* runtime stream params */
-	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
-	enum sof_ipc_frame valid_sample_fmt;
-
-	uint32_t rate;		/**< Number of data frames per second [Hz] */
-	uint16_t channels;	/**< Number of samples in each frame */
-
-	/** alignment limit of stream copy, this value indicates how many
-	 * integer frames which can meet both byte align and frame align
-	 * requirement. it should be set in component prepare or param functions
-	 */
-	uint16_t frame_align;
-
-	/**
-	 * alignment limit of stream copy, alignment is the frame_align_shift-th
-	 * power of 2 bytes. it should be set in component prepare or param functions
-	 */
-	uint16_t frame_align_shift;
-
-	bool overrun_permitted; /**< indicates whether overrun is permitted */
-	bool underrun_permitted; /**< indicates whether underrun is permitted */
+	struct sof_audio_stream_params runtime_stream_params;
 };
 
 static inline void *audio_stream_get_rptr(const struct audio_stream __sparse_cache *buf)
@@ -115,33 +124,33 @@ static inline uint32_t audio_stream_get_free(const struct audio_stream __sparse_
 static inline enum sof_ipc_frame audio_stream_get_frm_fmt(
 	const struct audio_stream __sparse_cache *buf)
 {
-	return buf->frame_fmt;
+	return buf->runtime_stream_params.frame_fmt;
 }
 
 static inline enum sof_ipc_frame audio_stream_get_valid_fmt(
 	const struct audio_stream __sparse_cache *buf)
 {
-	return buf->valid_sample_fmt;
+	return buf->runtime_stream_params.valid_sample_fmt;
 }
 
 static inline uint32_t audio_stream_get_rate(const struct audio_stream __sparse_cache *buf)
 {
-	return buf->rate;
+	return buf->runtime_stream_params.rate;
 }
 
 static inline uint32_t audio_stream_get_channels(const struct audio_stream __sparse_cache *buf)
 {
-	return buf->channels;
+	return buf->runtime_stream_params.channels;
 }
 
 static inline bool audio_stream_get_underrun(const struct audio_stream __sparse_cache *buf)
 {
-	return buf->underrun_permitted;
+	return buf->runtime_stream_params.underrun_permitted;
 }
 
 static inline bool audio_stream_get_overrun(const struct audio_stream __sparse_cache *buf)
 {
-	return buf->overrun_permitted;
+	return buf->runtime_stream_params.overrun_permitted;
 }
 
 static inline void audio_stream_set_rptr(struct audio_stream __sparse_cache *buf, void *val)
@@ -182,35 +191,35 @@ static inline void audio_stream_set_free(struct audio_stream __sparse_cache *buf
 static inline void audio_stream_set_frm_fmt(struct audio_stream __sparse_cache *buf,
 					    enum sof_ipc_frame val)
 {
-	buf->frame_fmt = val;
+	buf->runtime_stream_params.frame_fmt = val;
 }
 
 static inline void audio_stream_set_valid_fmt(struct audio_stream __sparse_cache *buf,
 					      enum sof_ipc_frame val)
 {
-	buf->valid_sample_fmt = val;
+	buf->runtime_stream_params.valid_sample_fmt = val;
 }
 
 static inline void audio_stream_set_rate(struct audio_stream __sparse_cache *buf, uint32_t val)
 {
-	buf->rate = val;
+	buf->runtime_stream_params.rate = val;
 }
 
 static inline void audio_stream_set_channels(struct audio_stream __sparse_cache *buf, uint16_t val)
 {
-	buf->channels = val;
+	buf->runtime_stream_params.channels = val;
 }
 
 static inline void audio_stream_set_underrun(struct audio_stream __sparse_cache *buf,
 					     bool underrun_permitted)
 {
-	buf->underrun_permitted = underrun_permitted;
+	buf->runtime_stream_params.underrun_permitted = underrun_permitted;
 }
 
 static inline void audio_stream_set_overrun(struct audio_stream __sparse_cache *buf,
 					    bool overrun_permitted)
 {
-	buf->overrun_permitted = overrun_permitted;
+	buf->runtime_stream_params.overrun_permitted = overrun_permitted;
 }
 
 /**
@@ -324,9 +333,9 @@ static inline int audio_stream_set_params(struct audio_stream __sparse_cache *bu
 	if (!params)
 		return -EINVAL;
 
-	buffer->frame_fmt = params->frame_fmt;
-	buffer->rate = params->rate;
-	buffer->channels = params->channels;
+	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
+	buffer->runtime_stream_params.rate = params->rate;
+	buffer->runtime_stream_params.channels = params->channels;
 
 	return 0;
 }
@@ -338,7 +347,8 @@ static inline int audio_stream_set_params(struct audio_stream __sparse_cache *bu
  */
 static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __sparse_cache *buf)
 {
-	return get_frame_bytes(buf->frame_fmt, buf->channels);
+	return get_frame_bytes(buf->runtime_stream_params.frame_fmt,
+			       buf->runtime_stream_params.channels);
 }
 
 /**
@@ -348,7 +358,7 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __spar
  */
 static inline uint32_t audio_stream_sample_bytes(const struct audio_stream __sparse_cache *buf)
 {
-	return get_sample_bytes(buf->frame_fmt);
+	return get_sample_bytes(buf->runtime_stream_params.frame_fmt);
 }
 
 /**
@@ -389,9 +399,11 @@ static inline void audio_stream_init_alignment_constants(const uint32_t byte_ali
 	uint32_t process_size;
 	uint32_t frame_size = audio_stream_frame_bytes(stream);
 
-	stream->frame_align = audio_stream_frame_align_get(byte_align, frame_align_req, frame_size);
-	process_size = stream->frame_align * frame_size;
-	stream->frame_align_shift = (is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
+	stream->runtime_stream_params.frame_align =
+			audio_stream_frame_align_get(byte_align, frame_align_req, frame_size);
+	process_size = stream->runtime_stream_params.frame_align * frame_size;
+	stream->runtime_stream_params.frame_align_shift	=
+			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
 }
 
 /**
@@ -457,7 +469,7 @@ audio_stream_get_avail_bytes(const struct audio_stream __sparse_cache *stream)
 	 * regular pace, but buffer will never be seen as completely empty by
 	 * clients, and in turn will not cause underrun/XRUN.
 	 */
-	if (stream->underrun_permitted)
+	if (stream->runtime_stream_params.underrun_permitted)
 		return stream->avail != 0 ? stream->avail : stream->size;
 
 	return stream->avail;
@@ -501,7 +513,7 @@ audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 	 * processed at regular pace, but buffer will never be seen as
 	 * completely full by clients, and in turn will not cause overrun/XRUN.
 	 */
-	if (stream->overrun_permitted)
+	if (stream->runtime_stream_params.overrun_permitted)
 		return stream->free != 0 ? stream->free : stream->size;
 
 	return stream->free;
@@ -608,10 +620,12 @@ static inline uint32_t
 audio_stream_avail_frames_aligned(const struct audio_stream __sparse_cache *source,
 				  const struct audio_stream __sparse_cache *sink)
 {
-	uint32_t src_frames = (audio_stream_get_avail_bytes(source) >> source->frame_align_shift)
-		 * source->frame_align;
-	uint32_t sink_frames = (audio_stream_get_free_bytes(sink) >> sink->frame_align_shift)
-		 * sink->frame_align;
+	uint32_t src_frames = (audio_stream_get_avail_bytes(source) >>
+			source->runtime_stream_params.frame_align_shift) *
+					source->runtime_stream_params.frame_align;
+	uint32_t sink_frames = (audio_stream_get_free_bytes(sink) >>
+			sink->runtime_stream_params.frame_align_shift) *
+					sink->runtime_stream_params.frame_align;
 
 	return MIN(src_frames, sink_frames);
 }
