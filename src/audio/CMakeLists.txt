@@ -58,11 +58,6 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 			switch.c
 		)
 	endif()
-	if(CONFIG_IPC4_GATEWAY)
-		add_local_sources(sof
-			ipcgtw.c
-		)
-	endif()
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
 			dai-legacy.c
