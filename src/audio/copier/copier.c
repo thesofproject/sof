@@ -304,79 +304,6 @@ static enum sof_ipc_stream_direction
 	}
 }
 
-static int init_dai_single(struct comp_dev *parent_dev,
-			   const struct comp_driver *drv,
-			   struct comp_ipc_config *config,
-			   const struct ipc4_copier_module_cfg *copier,
-			   struct pipeline *pipeline,
-			   struct ipc_config_dai *dai,
-			   enum ipc4_gateway_type type)
-{
-	struct copier_data *cd;
-	struct dai_data *dd;
-	int ret;
-
-	cd = comp_get_drvdata(parent_dev);
-
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		enum sof_ipc_frame out_frame_fmt, out_valid_fmt;
-
-		audio_stream_fmt_conversion(copier->out_fmt.depth,
-					    copier->out_fmt.valid_bit_depth,
-					    &out_frame_fmt,
-					    &out_valid_fmt,
-					    copier->out_fmt.s_type);
-		config->frame_fmt = out_frame_fmt;
-		pipeline->sink_comp = parent_dev;
-	} else {
-		enum sof_ipc_frame in_frame_fmt, in_valid_fmt;
-
-		audio_stream_fmt_conversion(copier->base.audio_fmt.depth,
-					    copier->base.audio_fmt.valid_bit_depth,
-					    &in_frame_fmt, &in_valid_fmt,
-					    copier->base.audio_fmt.s_type);
-		config->frame_fmt = in_frame_fmt;
-		pipeline->source_comp = parent_dev;
-	}
-
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
-
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
-	if (!dd)
-		return -ENOMEM;
-
-	ret = dai_zephyr_new(dd, parent_dev, dai);
-	if (ret < 0)
-		goto e_dd;
-
-	pipeline->sched_id = config->id;
-
-	ret = comp_dai_config(dd, parent_dev, dai, copier);
-	if (ret < 0)
-		goto e_zephyr;
-
-	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
-			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
-					   IPC4_DIRECTION(dai->direction));
-	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter type %d, dir %d",
-			 type, dai->direction);
-		ret = -EINVAL;
-		goto e_zephyr;
-	}
-
-	cd->endpoint_num++;
-	cd->dd[0] = dd;
-
-	return 0;
-
-e_zephyr:
-	dai_zephyr_free(dd);
-e_dd:
-	rfree(dd);
-	return ret;
-}
-
 static int init_dai(struct comp_dev *parent_dev,
 		    const struct comp_driver *drv,
 		    struct comp_ipc_config *config,
@@ -389,9 +316,6 @@ static int init_dai(struct comp_dev *parent_dev,
 	struct copier_data *cd = comp_get_drvdata(parent_dev);
 	struct dai_data *dd;
 	int ret;
-
-	if (dai_count == 1)
-		return init_dai_single(parent_dev, drv, config, copier, pipeline, dai, type);
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		enum sof_ipc_frame out_frame_fmt, out_valid_fmt;
