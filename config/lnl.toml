@@ -443,7 +443,7 @@ count = 20
 	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
 
-	# eq iir module config
+	# eq fir module config
 	[[module.entry]]
 	name = "EQFIR"
 	uuid = "43A90CE7-f3A5-41Df-AC06-BA98651AE6A3"
