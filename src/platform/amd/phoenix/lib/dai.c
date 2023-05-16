@@ -67,12 +67,12 @@ static struct dai sw0audiodai[] = {
 			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset         = DAI_BASE_REM + SW0_AUDIO_TX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 5,
+			.handshake      = SDW0_ACP_SW_Audio_TX_EN_CH,
 			},
 			.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset         = DAI_BASE_REM + SW0_AUDIO_RX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 4,
+			.handshake      = SDW0_ACP_SW_Audio_RX_EN_CH,
 			},
 		},
 		.drv = &acp_sw0audiodai_driver,
@@ -85,12 +85,12 @@ static struct dai sw0audiodai[] = {
 			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset         = DAI_BASE_REM + BT0_TX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 7, //??TBD??//
+			.handshake      = SDW0_ACP_SW_BT_TX_EN_CH,
 			},
 			.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset         = DAI_BASE_REM + BT0_RX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 6,//??TBD??//
+			.handshake      = SDW0_ACP_SW_BT_RX_EN_CH,
 			},
 		},
 		.drv = &acp_sw0audiodai_driver,
@@ -103,12 +103,12 @@ static struct dai sw0audiodai[] = {
 			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset         = DAI_BASE_REM + HS0_TX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 1, //??TBD??//
+			.handshake      = SDW0_ACP_SW_HS_TX_EN_CH,
 			},
 			.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset         = DAI_BASE_REM + HS0_RX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 0, //??TBD??//
+			.handshake      = SDW0_ACP_SW_HS_RX_EN_CH,
 			},
 		},
 		.drv = &acp_sw0audiodai_driver,
@@ -121,12 +121,12 @@ static struct dai sw0audiodai[] = {
 			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset         = DAI_BASE_REM + BT_TX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 3, //??TBD??//
+			.handshake      = SDW1_ACP_P1_SW_BT_TX_EN_CH,
 			},
 			.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset         = DAI_BASE_REM + BT_RX_FIFO_OFFST,
 			.depth          = 8,
-			.handshake      = 2, //??TBD??//
+			.handshake      = SDW1_ACP_P1_SW_BT_RX_EN_CH,
 			},
 		},
 		.drv = &acp_sw0audiodai_driver,
