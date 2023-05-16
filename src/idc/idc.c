@@ -265,6 +265,33 @@ static int idc_reset(uint32_t comp_id)
 	return ret;
 }
 
+/**
+ * \brief Executes IDC pipeline set state message.
+ * \param[in] ppl_id Pipeline id to be triggered.
+ * \return Error code.
+ */
+static int idc_ppl_state(uint32_t ppl_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_dev;
+	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
+	struct ipc_comp_dev *ppl_icd;
+	uint32_t cmd = *(uint32_t *)payload;
+	bool delayed = false;
+	int ret;
+
+	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id);
+	if (!ppl_icd) {
+		tr_err(&idc_tr, "idc: comp %d not found", ppl_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	ret = set_pipeline_state(ppl_icd, cmd, &delayed);
+
+	return ret;
+}
+
 static void idc_prepare_d0ix(void)
 {
 	/* set prepare_d0ix flag, which indicates that in the next
@@ -338,6 +365,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_RESET):
 		ret = idc_reset(msg->extension);
+		break;
+	case iTS(IDC_MSG_PPL_STATE):
+		ret = idc_ppl_state(msg->extension);
 		break;
 	case iTS(IDC_MSG_PREPARE_D0ix):
 		idc_prepare_d0ix();
