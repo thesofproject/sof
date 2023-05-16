@@ -106,6 +106,10 @@
 #define IDC_MSG_UNBIND IDC_TYPE(0xE)
 #define IDC_MSG_GET_ATTRIBUTE IDC_TYPE(0xF)
 
+/** \brief IDC pipeline set state message. */
+#define IDC_MSG_PPL_STATE		IDC_TYPE(0xC)
+#define IDC_MSG_PPL_STATE_EXT(x)	IDC_EXTENSION(x)
+
 /** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
 #define IDC_SCC_CORE_SHIFT		0
 #define IDC_SCC_CORE_MASK		0xff
