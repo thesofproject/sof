@@ -54,11 +54,6 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
-					     const struct ipc4_audio_format *out_fmt,
-					     enum ipc4_gateway_type type,
-					     enum ipc4_direction_type);
-
 static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 {
 	int i;
@@ -109,13 +104,13 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 	return 0;
 }
 
-static int create_endpoint_buffer(struct comp_dev *parent_dev,
-				  struct copier_data *cd,
-				  struct comp_ipc_config *config,
-				  const struct ipc4_copier_module_cfg *copier_cfg,
-				  enum ipc4_gateway_type type,
-				  bool create_multi_endpoint_buffer,
-				  int index)
+int create_endpoint_buffer(struct comp_dev *parent_dev,
+			   struct copier_data *cd,
+			   struct comp_ipc_config *config,
+			   const struct ipc4_copier_module_cfg *copier_cfg,
+			   enum ipc4_gateway_type type,
+			   bool create_multi_endpoint_buffer,
+			   int index)
 {
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
@@ -284,7 +279,7 @@ e_data:
 	return ret;
 }
 
-static enum sof_ipc_stream_direction
+enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type)
 {
 	/* WARNING: simple "% 2" formula that was used before does not work for all
@@ -787,10 +782,10 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 	return false;
 }
 
-static pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
-					     const struct ipc4_audio_format *out_fmt,
-					     enum ipc4_gateway_type type,
-					     enum ipc4_direction_type dir)
+pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
+				      const struct ipc4_audio_format *out_fmt,
+				      enum ipc4_gateway_type type,
+				      enum ipc4_direction_type dir)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
