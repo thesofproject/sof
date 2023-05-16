@@ -504,78 +504,6 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 	return 0;
 }
 
-#if CONFIG_IPC4_GATEWAY
-static int create_ipcgtw(struct comp_dev *parent_dev, struct copier_data *cd,
-			 struct comp_ipc_config *config,
-			 const struct ipc4_copier_module_cfg *copier)
-{
-	struct ipcgtw_data *ipcgtw_data;
-	const struct ipc4_copier_gateway_cfg *gtw_cfg;
-	int ret;
-
-	cd->ipc_gtw = true;
-
-	/* create_endpoint_buffer() uses this value to choose between input and
-	 * output formats in copier config to setup buffer. For this purpose
-	 * IPC gateway should be handled similarly as host gateway.
-	 */
-	config->type = SOF_COMP_HOST;
-
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, ipc4_gtw_none, false, 0);
-	if (ret < 0)
-		return ret;
-
-	gtw_cfg = &copier->gtw_cfg;
-	if (!gtw_cfg->config_length) {
-		comp_cl_err(&comp_copier, "ipcgtw_new(): empty ipc4_gateway_config_data");
-		ret = -EINVAL;
-		goto e_buf;
-	}
-
-	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
-	if (!ipcgtw_data) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
-
-	ipcgtw_zephyr_new(ipcgtw_data, gtw_cfg, parent_dev);
-
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(parent_dev, config->core,
-				    cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
-		cd->bsource_buffer = false;
-	} else {
-		comp_buffer_connect(parent_dev, config->core,
-				    cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
-		cd->bsource_buffer = true;
-	}
-
-	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
-		get_converter_func(&copier->base.audio_fmt,
-				   &copier->out_fmt,
-				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction));
-	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter for IPC gateway, dir %d",
-			 cd->direction);
-		ret = -EINVAL;
-		goto e_ipcgtw;
-	}
-
-	cd->ipcgtw_data = ipcgtw_data;
-	cd->endpoint_num++;
-
-	return 0;
-
-e_ipcgtw:
-	ipcgtw_zephyr_free(ipcgtw_data);
-e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
-	return ret;
-}
-#endif
-
 /* Playback only */
 static int init_pipeline_reg(struct comp_dev *dev)
 {
@@ -696,7 +624,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			if (create_ipcgtw(dev, cd, &dev->ipc_config, copier)) {
+			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config, copier)) {
 				comp_cl_err(&comp_copier, "unable to create IPC gateway");
 				goto error_cd;
 			}
@@ -740,8 +668,7 @@ static void copier_free(struct comp_dev *dev)
 			rfree(cd->hd);
 		} else {
 			/* handle gtw case */
-			ipcgtw_zephyr_free(cd->ipcgtw_data);
-			buffer_free(cd->endpoint_buffer[0]);
+			copier_ipcgtw_free(cd);
 		}
 		break;
 	case SOF_COMP_DAI:

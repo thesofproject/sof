@@ -34,16 +34,14 @@ struct ipcgtw_data {
 	uint32_t buf_size;
 };
 
-struct ipc4_copier_gateway_cfg;
-void ipcgtw_zephyr_new(struct ipcgtw_data *ipcgtw_data,
-		       const struct ipc4_copier_gateway_cfg *gtw_cfg,
-		       struct comp_dev *dev);
-
-void ipcgtw_zephyr_free(struct ipcgtw_data *ipcgtw_data);
-
 int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params);
 
 void ipcgtw_zephyr_reset(struct comp_dev *dev);
 
+int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
+			 struct comp_ipc_config *config,
+			 const struct ipc4_copier_module_cfg *copier);
+
+void copier_ipcgtw_free(struct copier_data *cd);
 #endif /* __SOF_IPCGTW_COPIER_H__ */
