@@ -363,16 +363,6 @@ static int init_dai(struct comp_dev *parent_dev,
 	if (ret < 0)
 		goto e_zephyr_free;
 
-	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
-			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
-					   IPC4_DIRECTION(dai->direction));
-	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter type %d, dir %d",
-			 type, dai->direction);
-		ret = -EINVAL;
-		goto e_zephyr_free;
-	}
-
 	cd->endpoint_num++;
 
 	return 0;
@@ -497,6 +487,15 @@ static int create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
 			comp_err(parent_dev, "failed to create dai");
 			return ret;
 		}
+	}
+
+	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
+			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
+					   IPC4_DIRECTION(dai.direction));
+	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
+		comp_err(parent_dev, "failed to get converter type %d, dir %d",
+			 type, dai.direction);
+		return -EINVAL;
 	}
 
 	/* create multi_endpoint_buffer for ALH multi-gateway case */
