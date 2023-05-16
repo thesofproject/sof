@@ -182,18 +182,6 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 	struct zephyr_dma_domain_data *crt_data;
 	int i, j, irq, ret;
 
-	/* register the DMA IRQ only for PPL tasks marked as "registrable"
-	 *
-	 * this is done because, in case of mixer topologies there's
-	 * multiple PPLs having the same scheduling component so there's
-	 * no need to go through this function for all of those PPL
-	 * tasks - only the PPL task containing the scheduling component
-	 * will do the registering
-	 *
-	 */
-	if (!pipe_task->registrable)
-		return 0;
-
 	/* iterate through all available channels in order to find a
 	 * suitable channel for which the DMA IRQs will be enabled.
 	 */
