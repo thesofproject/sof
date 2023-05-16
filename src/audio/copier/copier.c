@@ -386,15 +386,36 @@ static int init_dai(struct comp_dev *parent_dev,
 		    enum ipc4_gateway_type type,
 		    int index, int dai_count)
 {
-	struct comp_dev *dev;
-	struct copier_data *cd;
+	struct copier_data *cd = comp_get_drvdata(parent_dev);
 	struct dai_data *dd;
 	int ret;
 
 	if (dai_count == 1)
 		return init_dai_single(parent_dev, drv, config, copier, pipeline, dai, type);
 
-	cd = comp_get_drvdata(parent_dev);
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		enum sof_ipc_frame out_frame_fmt, out_valid_fmt;
+
+		audio_stream_fmt_conversion(copier->out_fmt.depth,
+					    copier->out_fmt.valid_bit_depth,
+					    &out_frame_fmt,
+					    &out_valid_fmt,
+					    copier->out_fmt.s_type);
+		config->frame_fmt = out_frame_fmt;
+		pipeline->sink_comp = parent_dev;
+		cd->bsource_buffer = true;
+	} else {
+		enum sof_ipc_frame in_frame_fmt, in_valid_fmt;
+
+		audio_stream_fmt_conversion(copier->base.audio_fmt.depth,
+					    copier->base.audio_fmt.valid_bit_depth,
+					    &in_frame_fmt, &in_valid_fmt,
+					    copier->base.audio_fmt.s_type);
+		config->frame_fmt = in_frame_fmt;
+		pipeline->source_comp = parent_dev;
+	}
+
+	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	/* save the channel map and count for ALH multi-gateway */
 	if (type == ipc4_gtw_alh && is_multi_gateway(copier->gtw_cfg.node_id)) {
@@ -403,54 +424,20 @@ static int init_dai(struct comp_dev *parent_dev,
 			return ret;
 	}
 
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, false, index);
-	if (ret < 0)
-		return ret;
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
-
-	dev->ipc_config = *config;
-
 	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd)
-		goto free_dev;
-
-	comp_set_drvdata(dev, dd);
+		return -ENOMEM;
 
 	ret = dai_zephyr_new(dd, parent_dev, dai);
 	if (ret < 0)
 		goto free_dd;
 
-	dev->state = COMP_STATE_READY;
-
-	if (dai->direction == SOF_IPC_STREAM_PLAYBACK)
-		pipeline->sink_comp = dev;
-	else
-		pipeline->source_comp = dev;
-
 	pipeline->sched_id = config->id;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	cd->dd[index] = dd;
 	ret = comp_dai_config(cd->dd[index], parent_dev, dai, copier);
 	if (ret < 0)
 		goto e_zephyr_free;
-
-	if (dai->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
-		cd->bsource_buffer = true;
-	} else {
-		comp_buffer_connect(dev, config->core, cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
-		cd->bsource_buffer = false;
-	}
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
 			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
@@ -462,17 +449,13 @@ static int init_dai(struct comp_dev *parent_dev,
 		goto e_zephyr_free;
 	}
 
-	cd->endpoint[cd->endpoint_num++] = dev;
+	cd->endpoint_num++;
 
 	return 0;
 e_zephyr_free:
 	dai_zephyr_free(dd);
 free_dd:
 	rfree(dd);
-free_dev:
-	rfree(dev);
-e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
 }
 
@@ -844,16 +827,9 @@ static void copier_free(struct comp_dev *dev)
 		}
 		break;
 	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1) {
-			dai_zephyr_free(cd->dd[0]);
-			rfree(cd->dd[0]);
-		} else {
-			for (i = 0; i < cd->endpoint_num; i++) {
-				dai_zephyr_free(cd->dd[i]);
-				rfree(cd->dd[i]);
-				rfree(cd->endpoint[i]);
-				buffer_free(cd->endpoint_buffer[i]);
-			}
+		for (i = 0; i < cd->endpoint_num; i++) {
+			dai_zephyr_free(cd->dd[i]);
+			rfree(cd->dd[i]);
 		}
 		break;
 	default:
