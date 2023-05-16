@@ -536,7 +536,7 @@ else()
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
-	${SOF_AUDIO_PATH}/ipcgtw.c
+	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
