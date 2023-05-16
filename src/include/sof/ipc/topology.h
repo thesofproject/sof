@@ -46,6 +46,7 @@ typedef uint32_t ipc_comp;
 #define ipc_from_pipe_new(x) ((struct ipc4_pipeline_create *)x)
 #define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
 
+struct ipc_comp_dev;
 const struct comp_driver *ipc4_get_comp_drv(int module_id);
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);
 int ipc4_add_comp_dev(struct comp_dev *dev);
@@ -57,6 +58,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma, bool *d
 int ipc4_process_on_core(uint32_t core, bool blocking);
 int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size);
+int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed);
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
