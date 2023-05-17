@@ -696,8 +696,9 @@ zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
 	${SOF_MATH_PATH}/sqrt_int16.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_EXP_FIXED
+zephyr_library_sources_ifdef(CONFIG_MATH_EXP
 	${SOF_MATH_PATH}/exp_fcn.c
+	${SOF_MATH_PATH}/exp_fcn_hifi4.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER

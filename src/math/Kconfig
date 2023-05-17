@@ -38,13 +38,13 @@ config SQRT_FIXED
 	  to  calculate square root.square function having positive number
 	  y as input and return the positive number x multiplied by itself (squared)
 
-config EXP_FIXED
+config MATH_EXP
 	bool "Exponential functions"
 	default n
 	help
 	  By selecting this, the 32-bit sofm_exp_int32() function can be used to calculate
 	  exponential values. With a maximum ulp of 5, an exponential function with
-	  an input range of -5 to +5 y gives positive numbers between 0.00673794699908547 and
+	  an input range of -5 to +5 gives positive numbers between 0.00673794699908547 and
 	  148.413159102577. The precision of this function is 1e-4.
 
 config NATURAL_LOGARITHM_FIXED

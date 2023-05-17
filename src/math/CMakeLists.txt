@@ -14,8 +14,8 @@ if(CONFIG_SQRT_FIXED)
         add_local_sources(sof sqrt_int16.c)
 endif()
 
-if(CONFIG_EXP_FIXED)
-        add_local_sources(sof exp_fcn.c)
+if(CONFIG_MATH_EXP)
+        add_local_sources(sof exp_fcn.c exp_fcn_hifi4.c)
 endif()
 
 if(CONFIG_MATH_DECIBELS)
