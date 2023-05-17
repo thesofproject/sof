@@ -513,13 +513,13 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-int dai_zephyr_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params, int dir)
 {
 	struct dai_config cfg;
 	int ret;
 
-	comp_dbg(dev, "dai_zephyr_get_hw_params()");
+	comp_dbg(dev, "dai_common_get_hw_params()");
 
 	ret = dai_config_get(dd->dai->dev, &cfg, dir);
 	if (ret)
@@ -546,7 +546,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_get_hw_params(dd, dev, params, dir);
+	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
 static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
@@ -555,7 +555,7 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	struct sof_ipc_stream_params hw_params;
 	int ret;
 
-	ret = dai_zephyr_get_hw_params(dd, dev, &hw_params, params->direction);
+	ret = dai_common_get_hw_params(dd, dev, &hw_params, params->direction);
 	if (ret < 0) {
 		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
 		return ret;
