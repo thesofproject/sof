@@ -78,12 +78,14 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	addpath('../../tune/eq');
 	mkdir_check(plots);
 	mkdir_check(reports);
-	n_meas = 5;
+	n_meas = 6;
 	n_bits_in = length(bits_in_list);
 	n_bits_out = length(bits_out_list);
 	r.bits_in_list = bits_in_list;
 	r.bits_out_list = bits_out_list;
 	r.g = NaN(n_bits_in, n_bits_out);
+	r.g_min = NaN(n_bits_in, n_bits_out);
+	r.g_max = NaN(n_bits_in, n_bits_out);
 	r.dr = NaN(n_bits_in, n_bits_out);
 	r.thdnf = NaN(n_bits_in, n_bits_out);
 	r.pf = -ones(n_bits_in, n_bits_out, n_meas);
@@ -106,11 +108,14 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 				[v(3), dr] = dr_test(t);
 				[v(4), thdnf] = thdnf_test(t);
 				v(5) = fr_test(t);
+				[v(6), g_min, g_max] = ldlg_test(t);
 
 				% TODO: Collect results for all channels, now get worst-case
 				r.g(a, b) = g(1);
 				r.dr(a, b) = min(dr);
 				r.thdnf(a, b) = max(thdnf);
+				r.g_min(a, b) = g_min;
+				r.g_max(a, b) = g_max;
 				r.pf(a, b, :) = v;
 			end
 
@@ -143,10 +148,14 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	fn = sprintf('%s/thdnf_%s_%d.txt', reports, t.comp, t.bits_in);
 	print_val(t.comp, 'Worst-case THD+N vs. frequency', fn, bits_in_list, bits_out_list, r.thdnf, r.pf);
 
+	%% Print table with test summary: Level-dependent logarithmic gain
+	fn = sprintf('%s/ldlg_%s_%d.txt', reports, t.comp, t.bits_in);
+	print_val(t.comp, 'Level-dependent logarithmic gain min (dB)', fn, bits_in_list, bits_out_list, r.g_min, r.pf);
+	print_val(t.comp, 'Level-dependent logarithmic gain max (dB)', fn, bits_in_list, bits_out_list, r.g_max, r.pf);
 
 	%% Print table with test summary: pass/fail
 	fn = sprintf('%s/pf_%s_%d.txt', reports, t.comp, t.bits_in);
-	print_pf(t.comp', fn, bits_in_list, bits_out_list, r.pf, 'Fails chirp/gain/DR/THD+N/FR');
+	print_pf(t.comp', fn, bits_in_list, bits_out_list, r.pf, 'Fails chirp/gain/DR/THD+N/FR/LDLG');
 
 	fprintf('\n');
 	fprintf('============================================================\n');
@@ -281,6 +290,29 @@ function fail = fr_test(t)
 	% Print
 	test_result_print(t, 'Frequency response', 'FR', test);
 end
+
+%% Reference: AES17 8.1 Level-dependent logarithmic gain
+function [fail, g_min, g_max] = ldlg_test(t)
+	test = test_defaults(t);
+
+	% Create input file
+	test = ldlg_test_input(test);
+
+	% Run test
+	test = test_run_process(test);
+
+	% Measure
+	test = ldlg_test_measure(test);
+	test_result_print(t, 'Level-dependent gain', 'ldlg', test);
+
+	% Get output parameters
+	fail = test.fail;
+	g_min = min(min(test.gain_db));
+	g_max = max(max(test.gain_db));
+	delete_check(t.files_delete, test.fn_in);
+	delete_check(t.files_delete, test.fn_out);
+end
+
 
 %% ------------------------------------------------------------
 %% Helper functions
