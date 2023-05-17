@@ -1801,7 +1801,7 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	if (dev->ipc_config.type != SOF_COMP_DAI)
 		return -EINVAL;
 
-	return dai_zephyr_get_hw_params(dd, dev, params, dir);
+	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
 static int copier_unbind(struct comp_dev *dev, void *data)
