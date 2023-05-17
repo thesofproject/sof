@@ -626,6 +626,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
 	${SOF_AUDIO_PATH}/copier/copier_hifi.c
 	${SOF_AUDIO_PATH}/copier/copier.c
 	${SOF_AUDIO_PATH}/copier/copier_host.c
+	${SOF_AUDIO_PATH}/copier/copier_dai.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
