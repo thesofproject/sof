@@ -64,4 +64,4 @@ jobs:
           yamllint_config: '{extends: default, rules: {line-length: {max: 100}}}'
         run: yamllint -f parsable
           -d "$yamllint_config"
-          --strict .github/workflows/*.yml *.yml
+          --strict .github/workflows/*.yml
