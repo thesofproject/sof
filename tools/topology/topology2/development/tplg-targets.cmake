@@ -46,6 +46,10 @@ SSP1_CORE_ID=1,SSP2_CORE_ID=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-noco
 "cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-ssp0-ssp2\;PLATFORM=mtl,SSP1_ENABLED=false,\
 SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin"
 
+"cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-4ch\;PLATFORM=mtl,SSP1_ENABLED=false,\
+SSP0_CORE_ID=0,DMIC_CORE_ID=1,SSP2_CORE_ID=2,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PASSTHROUGH=true,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin"
+
 # SSP topology for LNL FPGA with lower DMIC IO clock of 19.2MHz, 2ch PDM1 enabled
 "cavs-nocodec\;sof-lnl-nocodec-fpga-2ch-pdm1\;PLATFORM=lnl,NUM_DMICS=2,PDM1_MIC_A_ENABLE=1,\
 PDM1_MIC_B_ENABLE=1,PDM0_MIC_A_ENABLE=0,PDM0_MIC_B_ENABLE=0,PREPROCESS_PLUGINS=nhlt,\
