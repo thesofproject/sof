@@ -70,7 +70,7 @@ src/ipc/*				@bardliao @marcinszkudlinski @pblaszko @aborisovich
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@abonislawski
-src/schedule				@pblaszko @marcinszkudlinski
+src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
 # samples
 samples/audio/detect_test.c		@iganakov
