@@ -477,7 +477,7 @@ static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int ret, i;
+	int ret;
 
 	comp_dbg(dev, "copier_prepare()");
 
@@ -503,25 +503,9 @@ static int copier_prepare(struct comp_dev *dev)
 		}
 		break;
 	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1) {
-			ret = dai_zephyr_config_prepare(cd->dd[0], dev);
-			if (ret < 0)
-				return ret;
-
-			ret = dai_zephyr_prepare(cd->dd[0], dev);
-			if (ret < 0)
-				return ret;
-		} else {
-			for (i = 0; i < cd->endpoint_num; i++) {
-				ret = dai_zephyr_config_prepare(cd->dd[i], dev);
-				if (ret < 0)
-					return ret;
-
-				ret = dai_zephyr_prepare(cd->dd[i], dev);
-				if (ret < 0)
-					return ret;
-			}
-		}
+		ret = copier_dai_prepare(dev, cd);
+		if (ret < 0)
+			return ret;
 		break;
 	default:
 		break;

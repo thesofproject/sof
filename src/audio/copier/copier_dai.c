@@ -286,3 +286,20 @@ void copier_dai_free(struct copier_data *cd)
 		rfree(cd->dd[i]);
 	}
 }
+
+int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
+{
+	int ret;
+
+	for (int i = 0; i < cd->endpoint_num; i++) {
+		ret = dai_zephyr_config_prepare(cd->dd[i], dev);
+		if (ret < 0)
+			return ret;
+
+		ret = dai_zephyr_prepare(cd->dd[i], dev);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
