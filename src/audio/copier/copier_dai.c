@@ -278,3 +278,11 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	return 0;
 }
+
+void copier_dai_free(struct copier_data *cd)
+{
+	for (int i = 0; i < cd->endpoint_num; i++) {
+		dai_zephyr_free(cd->dd[i]);
+		rfree(cd->dd[i]);
+	}
+}

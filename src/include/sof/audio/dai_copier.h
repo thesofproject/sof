@@ -61,4 +61,6 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		      struct comp_ipc_config *config,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline);
+
+void copier_dai_free(struct copier_data *cd);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
