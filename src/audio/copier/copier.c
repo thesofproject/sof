@@ -896,7 +896,7 @@ static int copier_reset(struct comp_dev *dev)
 		if (!cd->ipc_gtw)
 			host_zephyr_reset(cd->hd, dev->state);
 		else
-			ipcgtw_zephyr_reset(dev);
+			copier_ipcgtw_reset(dev);
 		break;
 	case SOF_COMP_DAI:
 		for (i = 0; i < cd->endpoint_num; i++)
@@ -1379,7 +1379,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 			} else {
 				/* handle gtw case */
-				ret = ipcgtw_zephyr_params(cd->ipcgtw_data, dev, params);
+				ret = copier_ipcgtw_params(cd->ipcgtw_data, dev, params);
 			}
 			break;
 		case SOF_COMP_DAI:

@@ -181,7 +181,7 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 	return 0;
 }
 
-int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
+int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
@@ -210,7 +210,7 @@ int ipcgtw_zephyr_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 	return 0;
 }
 
-void ipcgtw_zephyr_reset(struct comp_dev *dev)
+void copier_ipcgtw_reset(struct comp_dev *dev)
 {
 	struct comp_buffer *buf = get_buffer(dev);
 
