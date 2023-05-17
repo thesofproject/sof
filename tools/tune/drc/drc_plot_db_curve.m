@@ -1,8 +1,8 @@
-function drc_plot_db_curve(coefs);
+function drc_plot_db_curve(coefs)
 
 if exist('OCTAVE_VERSION', 'builtin')
 	pkg load control;
-endif
+end
 
 db_thres = coefs.db_threshold;
 db_knee_thres = db_thres + coefs.db_knee;
@@ -33,7 +33,7 @@ hold off
 
 end
 
-function db_ys = db_curve(coefs, db_xs);
+function db_ys = db_curve(coefs, db_xs)
 
 db_thres = coefs.db_threshold;
 db_knee_thres = db_thres + coefs.db_knee;
@@ -50,7 +50,7 @@ for i = 1:100
 	else
 		% Among knee curve
 		db_ys(i) = db_knee_curve(coefs, db_x);
-	endif
+	end
 end
 
 end
