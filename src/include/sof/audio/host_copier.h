@@ -20,6 +20,7 @@
 #include <sof/audio/ipc-config.h>
 #include <ipc/stream.h>
 #include <sof/lib/notifier.h>
+#include <ipc4/copier.h>
 
 typedef void (*copy_callback_t)(struct comp_dev *dev, size_t bytes);
 
@@ -108,5 +109,10 @@ int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
 int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb);
 void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes);
 void host_one_shot_cb(struct host_data *hd, uint32_t bytes);
+int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
+		       struct comp_ipc_config *config,
+		       const struct ipc4_copier_module_cfg *copier_cfg,
+		       int dir);
+void copier_host_free(struct copier_data *cd);
 
 #endif /* __SOF_HOST_COPIER_H__ */
