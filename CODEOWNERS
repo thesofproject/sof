@@ -65,7 +65,7 @@ src/math/*				@singalsu
 src/ipc/*				@bardliao @marcinszkudlinski @pblaszko @aborisovich
 src/lib/*				@libinyang
 src/debug/gdb/*				@abonislawski
-src/schedule				@pblaszko @marcinszkudlinski
+src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
 # samples
 samples/audio/detect_test.c		@iganakov
