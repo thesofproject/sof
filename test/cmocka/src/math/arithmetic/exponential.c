@@ -23,6 +23,7 @@
 
 #define ULP_TOLERANCE 5.60032793
 #define ULP_SCALE 0.0000999999999749
+#define NUMTESTSAMPLES 256
 
 static void gen_exp_testvector(double a, double b, double *r, int32_t *b_i);
 
@@ -65,9 +66,10 @@ static void test_math_arithmetic_exponential_fixed(void **state)
 	int32_t b_i;
 
 	srand((unsigned int)time(NULL));
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i < NUMTESTSAMPLES; i++) {
 		gen_exp_testvector(a_tmp, b_tmp, &r, &b_i);
 		a_i = (double)b_i / (1 << 28);
+
 		accum = sofm_exp_int32(b_i);
 		max_ulp = fabs(exp(a_i) - (double)accum / (1 << 23)) / ULP_SCALE;
 

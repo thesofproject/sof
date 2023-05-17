@@ -6,6 +6,7 @@
  *
  */
 
+#include <sof/math/exp_fcn.h>
 #include <sof/common.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -161,13 +162,13 @@ static ae_int64 onebyfact_Q63[19] = {
 
 /* f(x) = a^x, x is variable and a is base
  *
- * Arguments   : int32_t x(Q4.28)
- * input range : -5 to 5
+ * Arguments	: int32_t x(Q4.28)
+ * input range -5 to 5
  *
- * Return Type : int32_t ts(Q9.23)
+ * Return Type	: int32_t ts(Q9.23)
  * output range 0.0067465305 to 148.4131488800
  *+------------------+-----------------+--------+--------+
- *| x                | ts (returntype) |   x	|  ts	 |
+ *| x		     | ts (returntype) |   x	|  ts	 |
  *+----+-----+-------+----+----+-------+--------+--------+
  *|WLen| FLen|Signbit|WLen|FLen|Signbit| Qformat| Qformat|
  *+----+-----+-------+----+----+-------+--------+--------+
