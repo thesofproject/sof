@@ -329,7 +329,6 @@ error:
 static void copier_free(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	int i;
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -340,10 +339,7 @@ static void copier_free(struct comp_dev *dev)
 			copier_ipcgtw_free(cd);
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++) {
-			dai_zephyr_free(cd->dd[i]);
-			rfree(cd->dd[i]);
-		}
+		copier_dai_free(cd);
 		break;
 	default:
 		break;
