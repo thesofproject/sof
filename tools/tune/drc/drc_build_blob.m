@@ -2,7 +2,7 @@ function blob8 = drc_build_blob(blob_struct, endian, ipc_ver)
 
 if nargin < 2
         endian = 'little'
-endif
+end
 
 if nargin < 3
         ipc_ver = 3;
@@ -62,7 +62,7 @@ blob8(j:j+3) = word2byte(blob_struct.kC, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.kD, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.kE, sh); j=j+4;
 
-endfunction
+end
 
 function bytes = word2byte(word, sh)
 bytes = uint8(zeros(1,4));
