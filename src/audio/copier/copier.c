@@ -759,7 +759,7 @@ static int copier_prepare(struct comp_dev *dev)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw) {
-			ret = host_zephyr_prepare(cd->hd);
+			ret = host_common_prepare(cd->hd);
 			if (ret < 0)
 				return ret;
 		}
@@ -820,7 +820,7 @@ static int copier_reset(struct comp_dev *dev)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			host_zephyr_reset(cd->hd, dev->state);
+			host_common_reset(cd->hd, dev->state);
 		else
 			copier_ipcgtw_reset(dev);
 		break;
@@ -865,7 +865,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw) {
-			ret = host_zephyr_trigger(cd->hd, dev, cmd);
+			ret = host_common_trigger(cd->hd, dev, cmd);
 			if (ret < 0)
 				return ret;
 		}
@@ -994,7 +994,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			return host_zephyr_copy(cd->hd, dev, copier_dma_cb);
+			return host_common_copy(cd->hd, dev, copier_host_dma_cb);
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1)
