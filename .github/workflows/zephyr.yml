@@ -204,12 +204,12 @@ jobs:
 
       # Keep this SDK version identical to the one in
       # sof/zephyr/docker-run.sh
-      - name: Cache Zephyr SDK 0.15.2
+      - name: Cache Zephyr SDK 0.16.1
         id: cache-zephyr-sdk
         uses: actions/cache@v3.0.11
         with:
-          path: zephyr-sdk-0.15.2_windows-x86_64.zip
-          key: ${{ runner.os }}-cache-zephyr-sdk-0-15-2
+          path: zephyr-sdk-0.16.1_windows-x86_64.7z
+          key: ${{ runner.os }}-cache-zephyr-sdk-0-16-1
 
       # Unzip is needed by Zephyr SDK setup.cmd installation script
       - name: Download unzip
@@ -224,15 +224,17 @@ jobs:
         run: |
           curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
 
-      - name: Download Zephyr SDK 0.15.2
+      - name: Download Zephyr SDK 0.16.1
         if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
         run: |  # yamllint disable-line rule:line-length
           curl -L -O `
-          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.15.2/zephyr-sdk-0.15.2_windows-x86_64.zip
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.1/zephyr-sdk-0.16.1_windows-x86_64.7z
 
       # Unzips every .zip package to directory matching its name without extension
       - name: Unzip downloaded packages
-        run: 7z x *.zip -o*
+        run: |
+          7z x *.zip -o*
+          7z x *.7z -o*
 
       - name: Add unzip to system PATH
         run: |
@@ -249,7 +251,7 @@ jobs:
       # setup.cmd may not be called in from msys shell as it does not parse
       # forward slash script input arguments correctly.
       - name: Install Zephyr SDK
-        run: zephyr-sdk-0.15.2_windows-x86_64/zephyr-sdk-0.15.2/setup.cmd /t all /h /c
+        run: zephyr-sdk-0.16.1_windows-x86_64/zephyr-sdk-0.16.1/setup.cmd /t all /h /c
 
       - name: Setup Python
         uses: actions/setup-python@v4
