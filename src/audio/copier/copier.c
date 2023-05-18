@@ -999,8 +999,6 @@ static inline struct comp_buffer *get_endpoint_buffer(struct copier_data *cd)
 		cd->endpoint_buffer[IPC4_COPIER_GATEWAY_PIN];
 }
 
-static void copier_dma_cb(struct comp_dev *dev, size_t bytes);
-
 static int do_endpoint_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -1185,51 +1183,6 @@ static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 	buf_c->hw_params_configured = true;
 }
 
-/* This is called by DMA driver every time when DMA completes its current
- * transfer between host and DSP.
- */
-static void copier_dma_cb(struct comp_dev *dev, size_t bytes)
-{
-	struct copier_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *sink;
-	int ret, frames;
-
-	comp_dbg(dev, "copier_dma_cb() %p", dev);
-
-	/* update position */
-	host_update_position(cd->hd, dev, bytes);
-
-	/* callback for one shot copy */
-	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(cd->hd, bytes);
-
-	/* apply attenuation since copier copy missed this with host device remove */
-	if (cd->attenuation) {
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			sink = buffer_acquire(cd->hd->local_buffer);
-		else
-			sink = buffer_acquire(cd->hd->dma_buffer);
-
-		frames = bytes / get_sample_bytes(audio_stream_get_frm_fmt(&sink->stream));
-		frames = frames / audio_stream_get_channels(&sink->stream);
-
-		ret = apply_attenuation(dev, cd, sink, frames);
-		if (ret < 0)
-			comp_dbg(dev, "copier_dma_cb() apply attenuation failed! %d", ret);
-
-		buffer_stream_writeback(sink, bytes);
-		buffer_release(sink);
-	}
-}
-
-static void copier_notifier_cb(void *arg, enum notify_id type, void *data)
-{
-	struct dma_cb_data *next = data;
-	uint32_t bytes = next->elem.size;
-
-	copier_dma_cb(arg, bytes);
-}
-
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
@@ -1309,16 +1262,11 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	for (i = 0; i < cd->endpoint_num; i++) {
 		switch (dev->ipc_config.type) {
 		case SOF_COMP_HOST:
-			if (!cd->ipc_gtw) {
-				component_set_nearest_period_frames(dev, params->rate);
-				ret = host_zephyr_params(cd->hd, dev, params,
-							 copier_notifier_cb);
-
-				cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
-			} else {
+			if (!cd->ipc_gtw)
+				ret = copier_host_params(cd, dev, params);
+			else
 				/* handle gtw case */
 				ret = copier_ipcgtw_params(cd->ipcgtw_data, dev, params);
-			}
 			break;
 		case SOF_COMP_DAI:
 		{
