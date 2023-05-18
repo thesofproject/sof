@@ -230,7 +230,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 }
 #endif
 
-void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
+void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
 	struct comp_buffer __sparse_cache *source;
 	struct comp_buffer __sparse_cache *sink;
@@ -250,7 +250,7 @@ void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t b
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0)
-		comp_err(dev, "host_update_position() dma buffer copy failed, dir %d bytes %d avail %d free %d",
+		comp_err(dev, "host_common_update() dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source->stream) *
 				audio_stream_frame_bytes(&source->stream),
@@ -314,7 +314,7 @@ void host_update_position(struct host_data *hd, struct comp_dev *dev, uint32_t b
  * This means we must check we do not overflow host period/buffer/page
  * boundaries on each transfer and split the DMA transfer if we do overflow.
  */
-void host_one_shot_cb(struct host_data *hd, uint32_t bytes)
+void host_common_one_shot(struct host_data *hd, uint32_t bytes)
 {
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct dma_sg_elem *source_elem;
@@ -358,11 +358,11 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	comp_dbg(dev, "host_dma_cb() %p", &comp_host);
 
 	/* update position */
-	host_update_position(hd, dev, bytes);
+	host_common_update(hd, dev, bytes);
 
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(hd, bytes);
+		host_common_one_shot(hd, bytes);
 }
 
 /**
@@ -492,7 +492,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
  * This function is common for all dma types, with one exception:
  * dw-dma is run on demand, so no start()/stop() is issued.
  */
-int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
+int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 {
 	int ret;
 
@@ -543,10 +543,10 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	return host_zephyr_trigger(hd, dev, cmd);
+	return host_common_trigger(hd, dev, cmd);
 }
 
-int host_zephyr_new(struct host_data *hd, struct comp_dev *dev,
+int host_common_new(struct host_data *hd, struct comp_dev *dev,
 		    const struct ipc_config_host *ipc_host, uint32_t config_id)
 {
 	uint32_t dir;
@@ -603,7 +603,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, hd);
 
-	ret = host_zephyr_new(hd, dev, ipc_host, dev->ipc_config.id);
+	ret = host_common_new(hd, dev, ipc_host, dev->ipc_config.id);
 	if (ret)
 		goto e_dev;
 
@@ -618,7 +618,7 @@ e_data:
 	return NULL;
 }
 
-void host_zephyr_free(struct host_data *hd)
+void host_common_free(struct host_data *hd)
 {
 	dma_put(hd->dma);
 
@@ -631,7 +631,7 @@ static void host_free(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "host_free()");
-	host_zephyr_free(hd);
+	host_common_free(hd);
 	rfree(hd);
 	rfree(dev);
 }
@@ -686,7 +686,7 @@ static int host_verify_params(struct comp_dev *dev,
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
-int host_zephyr_params(struct host_data *hd, struct comp_dev *dev,
+int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params, notifier_callback_t cb)
 {
 	struct dma_sg_config *config = &hd->config;
@@ -881,10 +881,10 @@ static int host_params(struct comp_dev *dev,
 		return err;
 	}
 
-	return host_zephyr_params(hd, dev, params, NULL);
+	return host_common_params(hd, dev, params, NULL);
 }
 
-int host_zephyr_prepare(struct host_data *hd)
+int host_common_prepare(struct host_data *hd)
 {
 	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
 
@@ -908,7 +908,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	return host_zephyr_prepare(hd);
+	return host_common_prepare(hd);
 }
 
 static int host_position(struct comp_dev *dev,
@@ -922,7 +922,7 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-void host_zephyr_reset(struct host_data *hd, uint16_t state)
+void host_common_reset(struct host_data *hd, uint16_t state)
 {
 	if (hd->chan) {
 		dma_stop_delayed_legacy(hd->chan);
@@ -964,14 +964,14 @@ static int host_reset(struct comp_dev *dev)
 
 	comp_dbg(dev, "host_reset()");
 
-	host_zephyr_reset(hd, dev->state);
+	host_common_reset(hd, dev->state);
 	dev->state = COMP_STATE_READY;
 
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-int host_zephyr_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
+int host_common_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
 {
 	return hd->copy(hd, dev, cb);
 }
@@ -983,7 +983,7 @@ static int host_copy(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	return host_zephyr_copy(hd, dev, NULL);
+	return host_common_copy(hd, dev, NULL);
 }
 
 static int host_get_attribute(struct comp_dev *dev, uint32_t type,

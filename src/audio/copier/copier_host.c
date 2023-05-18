@@ -54,7 +54,7 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	if (!hd)
 		return -ENOMEM;
 
-	ret = host_zephyr_new(hd, parent_dev, &ipc_host, config->id);
+	ret = host_common_new(hd, parent_dev, &ipc_host, config->id);
 	if (ret < 0) {
 		comp_err(parent_dev, "copier: host new failed with exit");
 		goto e_data;
@@ -76,7 +76,7 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	return 0;
 
 e_conv:
-	host_zephyr_free(hd);
+	host_common_free(hd);
 e_data:
 	rfree(hd);
 
@@ -85,27 +85,27 @@ e_data:
 
 void copier_host_free(struct copier_data *cd)
 {
-	host_zephyr_free(cd->hd);
+	host_common_free(cd->hd);
 	rfree(cd->hd);
 }
 
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
-void copier_dma_cb(struct comp_dev *dev, size_t bytes)
+void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *sink;
 	int ret, frames;
 
-	comp_dbg(dev, "copier_dma_cb() %p", dev);
+	comp_dbg(dev, "copier_host_dma_cb() %p", dev);
 
 	/* update position */
-	host_update_position(cd->hd, dev, bytes);
+	host_common_update(cd->hd, dev, bytes);
 
 	/* callback for one shot copy */
 	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(cd->hd, bytes);
+		host_common_one_shot(cd->hd, bytes);
 
 	/* apply attenuation since copier copy missed this with host device remove */
 	if (cd->attenuation) {
@@ -119,7 +119,7 @@ void copier_dma_cb(struct comp_dev *dev, size_t bytes)
 
 		ret = apply_attenuation(dev, cd, sink, frames);
 		if (ret < 0)
-			comp_dbg(dev, "copier_dma_cb() apply attenuation failed! %d", ret);
+			comp_dbg(dev, "copier_host_dma_cb() apply attenuation failed! %d", ret);
 
 		buffer_stream_writeback(sink, bytes);
 		buffer_release(sink);
@@ -131,7 +131,7 @@ static void copier_notifier_cb(void *arg, enum notify_id type, void *data)
 	struct dma_cb_data *next = data;
 	uint32_t bytes = next->elem.size;
 
-	copier_dma_cb(arg, bytes);
+	copier_host_dma_cb(arg, bytes);
 }
 
 int copier_host_params(struct copier_data *cd, struct comp_dev *dev,
@@ -140,7 +140,7 @@ int copier_host_params(struct copier_data *cd, struct comp_dev *dev,
 	int ret;
 
 	component_set_nearest_period_frames(dev, params->rate);
-	ret = host_zephyr_params(cd->hd, dev, params,
+	ret = host_common_params(cd->hd, dev, params,
 				 copier_notifier_cb);
 
 	cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
