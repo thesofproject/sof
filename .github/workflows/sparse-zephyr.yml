@@ -15,9 +15,9 @@ jobs:
   # sof/scripts/parse_sparse_output.sh
   warnings-subset:
 
-    # We're sharing binaries with the zephyr-build container so keep
+    # We're sharing the sparse binary with the zephyr-build container so keep
     # this in sync with it.
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
