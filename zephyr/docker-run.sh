@@ -18,10 +18,10 @@
 # use this script with a image other than the one officially tagged
 # "latest", simply overwrite the official tag. Example:
 #
-#   docker tag ghcr.io/zephyrproject-rtos/zephyr-build:v0.24.1
+#   docker tag ghcr.io/zephyrproject-rtos/zephyr-build:v0.26.4
 #              ghcr.io/zephyrproject-rtos/zephyr-build:latest
 #
-# "latest" is just a regular tag like "v0.24.1", it may or many not name
+# "latest" is just a regular tag like "v0.26.4", it may or many not name
 # the most recent image.
 #
 # To automatically restore the official "latest" tag, just delete it:
@@ -54,7 +54,7 @@ main()
 
 run_command()
 {
-    # zephyr-build:v0.24.13 has /opt/toolchains/zephyr-sdk-0.15.2
+    # zephyr-build:v0.26.4 has /opt/toolchains/zephyr-sdk-0.16.1
     # https://hub.docker.com/r/zephyrprojectrtos/zephyr-build/tags
     #
     # Keep this SDK version identical to the one in
@@ -63,7 +63,7 @@ run_command()
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
            --env REAL_CC --env http_proxy --env https_proxy \
-           ghcr.io/zephyrproject-rtos/zephyr-build:v0.24.13 \
+           ghcr.io/zephyrproject-rtos/zephyr-build:v0.26.4 \
            ./sof/scripts/sudo-cwd.sh "$@"
 }
 
