@@ -211,13 +211,6 @@ jobs:
           path: zephyr-sdk-0.16.1_windows-x86_64.7z
           key: ${{ runner.os }}-cache-zephyr-sdk-0-16-1
 
-      # Unzip is needed by Zephyr SDK setup.cmd installation script
-      - name: Download unzip
-        if: ${{ steps.cache-unzip.outputs.cache-hit != 'true' }}
-        run: |
-          curl -L -o unzip-5.51-1-bin.zip `
-          https://gnuwin32.sourceforge.net/downlinks/unzip-bin-zip.php
-
       # Wget is needed by Zephyr SDK setup.cmd installation script
       - name: Download wget
         if: ${{ steps.cache-wget.outputs.cache-hit != 'true' }}
