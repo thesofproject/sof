@@ -12,6 +12,8 @@
 #include <rtos/bit.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include <errno.h>
 
 #if defined(EXPONENTIAL_GENERIC)
 

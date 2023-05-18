@@ -13,8 +13,12 @@
 #if defined(__XCC__)
 /* HiFi */
 #include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI4 == 1
+#if XCHAL_HAVE_HIFI5 == 1
+#define SOFM_EXPONENTIAL_HIFI5 1
+#elif XCHAL_HAVE_HIFI4 == 1
 #define SOFM_EXPONENTIAL_HIFI4 1
+#elif XCHAL_HAVE_HIFI3 == 1
+#define SOFM_EXPONENTIAL_HIFI3 1
 #endif
 #else
 /* !XCC */

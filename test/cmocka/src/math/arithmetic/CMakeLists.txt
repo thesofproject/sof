@@ -13,7 +13,7 @@ cmocka_test(base2_logarithm
 cmocka_test(exponential
 	exponential.c
 	${PROJECT_SOURCE_DIR}/src/math/exp_fcn.c
-	${PROJECT_SOURCE_DIR}/src/math/exp_fcn_hifi4.c
+	${PROJECT_SOURCE_DIR}/src/math/exp_fcn_hifi.c
 )
 cmocka_test(square_root
 	square_root.c
