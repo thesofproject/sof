@@ -9,19 +9,29 @@
 #include <sof/math/exp_fcn.h>
 #include <sof/common.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <errno.h>
 
-#if defined(SOFM_EXPONENTIAL_HIFI4)
+#if defined(SOFM_EXPONENTIAL_HIFI3) || defined(SOFM_EXPONENTIAL_HIFI4) || \
+	    defined(SOFM_EXPONENTIAL_HIFI5)
+
+#if XCHAL_HAVE_HIFI5
+#include <xtensa/tie/xt_hifi5.h>
+#elif XCHAL_HAVE_HIFI4
 #include <xtensa/tie/xt_hifi4.h>
+#else
+#include <xtensa/tie/xt_hifi3.h>
+#endif
 
+#define SOFM_CONVERG_ERROR 28823037624320LL /* error smaller than 1e-4,1/2 ^ -44.7122876209085 */
 #define SOFM_BIT_MASK_LOW_Q27P5 0x0000000008000000
-#define SOFM_BIT_MASK_Q62P2 0x4000000000000000
-#define SOFM_CONVERG_ERROR 0x1A36E2EB4000LL /* error smaller than 1e-4,1/2 ^ -44.7122876209085 */
-#define SOFM_QUOTIENT_SCALE 0x400000000
+#define SOFM_BIT_MASK_Q62P2 0x4000000000000000LL
+#define SOFM_QUOTIENT_SCALE BIT(30)
 #define SOFM_TERMS_Q23P9 0x800000
-#define SOFM_LSHIFT_BITS BIT(13)
-
+#define SOFM_LSHIFT_BITS 0x2000
 /*
  * Arguments	: int64_t in_0
  *		  int64_t in_1
@@ -75,10 +85,13 @@
  * not result in an overflow.
  *
  */
-static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *ptroutbitshi, ae_int64 *ptroutbitslo)
+static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *__restrict__ ptroutbitshi,
+		    ae_int64 *__restrict__ ptroutbitslo)
 {
 	ae_int64 producthihi, producthilo, productlolo;
-	ae_int64 producthi, carry, product_hl_lh_h, product_hl_lh_l;
+	ae_int64 producthi, productlo, product_hl_lh_h, product_hl_lh_l, carry;
+
+#if (SOFM_EXPONENTIAL_HIFI4 == 1 || SOFM_EXPONENTIAL_HIFI5 == 1)
 
 	ae_int32x2 in0_32 = AE_MOVINT32X2_FROMINT64(in_0);
 	ae_int32x2 in1_32 = AE_MOVINT32X2_FROMINT64(in_1);
@@ -111,8 +124,52 @@ static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *ptroutbitshi, ae_int
 	producthi = AE_ADD64(producthihi, carry);
 
 	producthi = AE_ADD64(producthi, product_hl_lh_h);
-
 	*ptroutbitslo = productlolo;
+#elif SOFM_EXPONENTIAL_HIFI3 == 1
+
+	ae_int64 producthi_1c;
+	ae_int64 producthi_2c;
+	ae_int64 productlo_2c;
+
+	ae_int64 s0 = AE_SRLI64(in_0, 63);
+	ae_int64 s1 = AE_SRLI64(in_1, 63);
+	bool x_or = (bool)((int)(int64_t)s0 ^ (int)(int64_t)s1);
+
+	ae_int32x2 in0_32 = AE_MOVINT32X2_FROMINT64(AE_ABS64(in_0));
+	ae_int32x2 in1_32 = AE_MOVINT32X2_FROMINT64(AE_ABS64(in_1));
+
+	producthihi = AE_MUL32_HH(in0_32, in1_32);
+	producthilo = AE_MUL32U_LL(in1_32, AE_MOVINT32X2_FROMINT64
+				  ((AE_MOVINT64_FROMINT32X2(in0_32) >> 32)));
+	producthilo += AE_MUL32U_LL(AE_MOVINT32X2_FROMINT64
+				  ((AE_MOVINT64_FROMINT32X2(in1_32) >> 32)), in0_32);
+	productlolo = AE_MUL32U_LL(in0_32, in1_32);
+
+	product_hl_lh_h = AE_SRAI64(producthilo, 32);
+	product_hl_lh_l = AE_SLAI64(producthilo, 32);
+
+	productlo = AE_ADD64(productlolo, product_hl_lh_l);
+	producthi = AE_ADD64(producthihi, product_hl_lh_h);
+
+	carry = AE_ADD64(AE_SRLI64(productlolo, 1), AE_SRLI64(product_hl_lh_l, 1));
+	carry = AE_SRLI64(carry, 63);
+	producthi = AE_ADD64(producthi, carry);
+
+	producthi_1c = AE_NOT64(producthi);
+	producthi_2c = AE_NEG64(producthi);
+	productlo_2c = AE_NEG64(productlo);
+
+	if (x_or) {
+		if (productlo == (ae_int64)0) {
+			producthi = producthi_2c;
+		} else {
+			producthi = producthi_1c;
+			productlo = productlo_2c;
+		}
+	}
+	*ptroutbitslo = productlo;
+#endif //(XCHAL_HAVE_HIFI4 || XCHAL_HAVE_HIFI5)
+
 	*ptroutbitshi = producthi;
 }
 
@@ -121,16 +178,15 @@ static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *ptroutbitshi, ae_int
  *		  int64_t b
  * Return Type	: int64_t
  */
-static int64_t mul_s64_sr_sat_near(int64_t a, int64_t b)
+static int64_t lomul_s64_sr_sat_near(int64_t a, int64_t b)
 {
-	ae_int64 result;
 	ae_int64 u64_chi;
 	ae_int64 u64_clo;
 	ae_int64 temp;
 
 	mul_s64(a, b, &u64_chi, &u64_clo);
 
-	ae_int64 roundup = AE_AND64(u64_clo, SOFM_SOFM_BIT_MASK_LOW_Q27P5);
+	ae_int64 roundup = AE_AND64(u64_clo, SOFM_BIT_MASK_LOW_Q27P5);
 
 	roundup = AE_SRLI64(roundup, 27);
 	temp = AE_OR64(AE_SLAI64(u64_chi, 36), AE_SRLI64(u64_clo, 28));
@@ -187,8 +243,6 @@ int32_t sofm_exp_int32(int32_t x)
 	ae_int64 ts = SOFM_TERMS_Q23P9;
 	ae_int64 mp = (x + SOFM_LSHIFT_BITS) >> 14; /* x in Q50.14 */;
 	xtbool flag;
-
-	int64_t qt_temp;
 	int64_t b_n;
 
 	mul_s64(mp, SOFM_BIT_MASK_Q62P2, &outhi, &outlo);
@@ -198,7 +252,7 @@ int32_t sofm_exp_int32(int32_t x)
 
 	ts = AE_ADD64(ts, temp);
 
-	mp = mul_s64_sr_sat_near(mp, (int64_t)x);
+	mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
 
 	for (b_n = 0; b_n < 64;) {
 		AE_L64_IP(onebyfact, ponebyfact_Q63, 8);
@@ -209,7 +263,7 @@ int32_t sofm_exp_int32(int32_t x)
 		temp = AE_SRAI64(AE_ADD64(qt, SOFM_QUOTIENT_SCALE), 35);
 		ts = AE_ADD64(ts, temp);
 
-		mp = mul_s64_sr_sat_near(mp, (int64_t)x);
+		mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
 
 		const ae_int64 sign = AE_NEG64(qt);
 
