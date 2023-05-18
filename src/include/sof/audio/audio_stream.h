@@ -176,6 +176,9 @@ struct audio_stream {
 #define audio_stream_get_frag(buffer, ptr, idx, sample_size) \
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
+static inline void audio_stream_init_alignment_constants(const uint32_t byte_align,
+							 const uint32_t frame_align_req,
+							 struct audio_stream __sparse_cache *stream);
 /**
  * Applies parameters to the buffer.
  * @param buffer Buffer.
@@ -191,6 +194,10 @@ static inline int audio_stream_set_params(struct audio_stream __sparse_cache *bu
 	buffer->frame_fmt = params->frame_fmt;
 	buffer->rate = params->rate;
 	buffer->channels = params->channels;
+
+	/* FIXME: WORKAROUND!!! */
+	if (buffer->frame_align_shift == 0)
+		audio_stream_init_alignment_constants(1, 1, buffer);
 
 	return 0;
 }
