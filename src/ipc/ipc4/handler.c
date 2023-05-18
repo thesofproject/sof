@@ -28,7 +28,7 @@
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/notification.h>
-#include <ipc4/ipcgtw.h>
+#include <sof/audio/ipcgtw_copier.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 
@@ -537,8 +537,8 @@ static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 	 * quite weird: seems one extra copying can be eliminated.
 	 */
 
-	err = ipcgtw_process_cmd((const struct ipc4_ipcgtw_cmd *)ipc4, ipc->comp_data,
-				 &reply_size);
+	err = copier_ipcgtw_process((const struct ipc4_ipcgtw_cmd *)ipc4, ipc->comp_data,
+				    &reply_size);
 	/* reply size is returned in header extension dword */
 	msg_reply.extension = reply_size;
 

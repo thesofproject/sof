@@ -8,7 +8,6 @@
 #include <sof/lib/memory.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
-#include <ipc4/ipcgtw.h>
 #include <ipc4/copier.h>
 #include <sof/audio/ipcgtw_copier.h>
 
@@ -88,8 +87,8 @@ static inline struct comp_buffer *get_buffer(struct comp_dev *dev)
 	return list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 }
 
-int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
-		       void *reply_payload, uint32_t *reply_payload_size)
+int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
+			  void *reply_payload, uint32_t *reply_payload_size)
 {
 	const struct ipc4_ipc_gateway_cmd_data *in;
 	struct comp_dev *dev;
@@ -106,7 +105,7 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 	if (!dev)
 		return -ENODEV;
 
-	comp_dbg(dev, "ipcgtw_process_cmd(): %x %x",
+	comp_dbg(dev, "copier_ipcgtw_process(): %x %x",
 		 cmd->primary.dat, cmd->extension.dat);
 
 	buf = get_buffer(dev);
@@ -120,7 +119,7 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 		 * 0 bytes free for SET_DATA.
 		 */
 		buf_c = NULL;
-		comp_warn(dev, "ipcgtw_process_cmd(): no buffer found");
+		comp_warn(dev, "copier_ipcgtw_process(): no buffer found");
 	}
 
 	out = (struct ipc4_ipc_gateway_cmd_data_reply *)reply_payload;
@@ -169,7 +168,7 @@ int ipcgtw_process_cmd(const struct ipc4_ipcgtw_cmd *cmd,
 		break;
 
 	default:
-		comp_err(dev, "ipcgtw_process_cmd(): unexpected cmd: %u",
+		comp_err(dev, "copier_ipcgtw_process(): unexpected cmd: %u",
 			 (unsigned int)cmd->primary.r.cmd);
 		if (buf_c)
 			buffer_release(buf_c);
