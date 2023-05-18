@@ -114,5 +114,8 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       int dir);
 void copier_host_free(struct copier_data *cd);
+int copier_host_params(struct copier_data *cd, struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params);
+void copier_dma_cb(struct comp_dev *dev, size_t bytes);
 
 #endif /* __SOF_HOST_COPIER_H__ */
