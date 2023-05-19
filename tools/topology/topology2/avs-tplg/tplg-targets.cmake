@@ -14,9 +14,6 @@ DEEPBUFFER_FW_DMA_MS=100"
 "sof-hda-generic\;sof-hda-generic-4ch\;\
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
-# CAVS SDW topology with passthrough pipelines
-"cavs-sdw\;cavs-sdw\;DEEPBUFFER_FW_DMA_MS=100,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-sdw.bin"
 
 # IPC4 topology for TGL rt711 Headset + rt1316 Amplifier + rt714 DMIC
 "cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
