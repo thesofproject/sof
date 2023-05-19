@@ -453,7 +453,7 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 
 				ret = idc_send_msg(&msg, IDC_BLOCKING);
 			} else {
-				ret = ipc4_process_on_core(ppl_icd->core, false);
+				return ipc4_process_on_core(ppl_icd->core, false);
 			}
 		} else {
 			ipc_compound_pre_start(state.primary.r.type);
