@@ -462,7 +462,8 @@ static int memif_get_data_size(struct dma_chan_data *channel, uint32_t *avail, u
 		*avail = *avail / memif->period_size * memif->period_size;
 
 	*free = memif->dma_size - *avail;
-	tr_dbg(&memif_tr, "r:0x%x, w:0x%x, avail:%u, free:%u ", memif->wptr, *avail, *free);
+	tr_dbg(&memif_tr, "r:0x%x, w:0x%x, avail:%u, free:%u ",
+	       memif->rptr, memif->wptr, *avail, *free);
 
 	return 0;
 }
