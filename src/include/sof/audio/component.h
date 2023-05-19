@@ -21,6 +21,7 @@
 #include <sof/audio/pipeline.h>
 #include <rtos/panic.h>
 #include <rtos/idc.h>
+#include <sof/common.h>
 #include <sof/list.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
@@ -41,6 +42,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 
 struct comp_dev;
 struct sof_ipc_stream_posn;
@@ -779,6 +781,8 @@ int comp_set_state(struct comp_dev *dev, int cmd);
 static inline void component_set_nearest_period_frames(struct comp_dev *current,
 						       uint32_t rate)
 {
+	uint64_t frames;
+
 	/* Sample rate is in Hz and period in microseconds.
 	 * As we don't have floats use scale divider 1000000.
 	 * Also integer round up the result.
@@ -786,20 +790,25 @@ static inline void component_set_nearest_period_frames(struct comp_dev *current,
 	 * compatible with current 45K adjustment. 48K is a suitable
 	 * adjustment.
 	 */
+
 	switch (rate) {
 	case 44100:
-		current->frames = 48000 * current->period / 1000000;
+		rate = 48000;
 		break;
 	case 88200:
-		current->frames = 96000 * current->period / 1000000;
+		rate = 96000;
 		break;
 	case 176400:
-		current->frames = 192000 * current->period / 1000000;
+		rate = 192000;
 		break;
 	default:
-		current->frames = ceil_divide(rate * current->period, 1000000);
 		break;
 	}
+
+	frames = SOF_DIV_ROUND_UP((uint64_t)rate * current->period, 1000000);
+
+	assert(frames <= UINT_MAX);
+	current->frames = (uint32_t)frames;
 }
 
 /** \name XRUN handling.
