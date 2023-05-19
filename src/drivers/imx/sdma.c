@@ -888,6 +888,8 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 		return -EINVAL;
 	}
 
+	dcache_invalidate_region(pdata->desc, sizeof(pdata->desc[0]) * SDMA_MAX_BDS);
+
 	for (i = 0; i < pdata->desc_count && i < SDMA_MAX_BDS; i++) {
 		if (pdata->desc[i].config & SDMA_BD_DONE)
 			continue; /* These belong to SDMA controller */
