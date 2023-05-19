@@ -294,6 +294,20 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 	ret = afe_dai_get_config(memif->afe, dai_id, &memif->channel, &memif->rate, &memif->format);
 	if (ret < 0)
 		return ret;
+
+	/* memif format should follow DAI component, not dai hw configuration */
+	switch (config->src_width) {
+	case 2:
+		memif->format = SOF_IPC_FRAME_S16_LE;
+		break;
+	case 4:
+		memif->format = SOF_IPC_FRAME_S32_LE;
+		break;
+	default:
+		tr_err(&memif_tr, "afe-memif: not support bitwidth %u!", config->src_width);
+		return -ENOTSUP;
+	}
+
 	/* set the afe memif parameters */
 	ret = afe_memif_set_params(memif->afe, memif->memif_id, memif->channel, memif->rate,
 				   memif->format);
