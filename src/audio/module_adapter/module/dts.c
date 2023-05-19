@@ -316,10 +316,10 @@ static int dts_codec_apply_config(struct processing_module *mod)
 	config_header_size = sizeof(config->size) + sizeof(config->avail);
 	if (config->size < config_header_size) {
 		comp_err(dev, "dts_codec_apply_config() config->data is invalid");
-		return -EINVAL;
+		return 0;
 	} else if (config->size == config_header_size) {
 		comp_err(dev, "dts_codec_apply_config() size of config->data is 0");
-		return -EINVAL;
+		return 0;
 	}
 
 	/* Calculate size of config->data */
@@ -434,10 +434,6 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	/* return if more fragments are expected or if the module is not prepared */
 	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
 	    md->state < MODULE_INITIALIZED)
-		return 0;
-
-	/* return if configuration size is 0 */
-	if (!md->new_cfg_size)
 		return 0;
 
 	/* whole configuration received, apply it now */
