@@ -267,6 +267,31 @@ static int drc_process(struct processing_module *mod,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_4
+static void drc_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
+
+	comp_dbg(dev, "drc_params()");
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(sink_c);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(source_c);
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 static int drc_prepare(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
 		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
@@ -280,6 +305,10 @@ static int drc_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "drc_prepare()");
+
+#if CONFIG_IPC_MAJOR_4
+	drc_params(mod);
+#endif
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
