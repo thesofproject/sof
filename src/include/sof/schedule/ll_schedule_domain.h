@@ -195,13 +195,10 @@ static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 				     struct task *task, struct comp_dev **comp)
 {
-	bool ret;
-
-	assert(domain->ops->domain_is_pending);
-
-	ret = domain->ops->domain_is_pending(domain, task, comp);
-
-	return ret;
+	if (domain->ops->domain_is_pending)
+		return domain->ops->domain_is_pending(domain, task, comp);
+	else
+		return true;
 }
 
 
