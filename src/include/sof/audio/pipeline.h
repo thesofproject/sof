@@ -129,6 +129,10 @@ struct pipeline_task {
 	struct task task;		/**< parent structure */
 	bool registrable;		/**< should task be registered on irq */
 	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
+	/* private data used by Zephyr DMA domain for internal
+	 * housekeeping - don't touch.
+	 */
+	void *priv;
 };
 
 #define pipeline_task_get(t) container_of(t, struct pipeline_task, task)
