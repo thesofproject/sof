@@ -195,6 +195,10 @@ static void zephyr_ll_run(void *data)
 		list_item_del(list);
 		list_item_append(list, &task_head);
 
+		/* check if the task can be scheduled */
+		if (!domain_is_pending(sch->ll_domain, task, NULL))
+			continue;
+
 		zephyr_ll_unlock(sch, &flags);
 
 		/*

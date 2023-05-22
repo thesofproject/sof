@@ -52,6 +52,10 @@ struct zephyr_dma_domain_data {
 	struct dma_chan_data *channel; /* channel data */
 	bool enabled_irq; /* true if DMA IRQ was already enabled */
 	struct zephyr_dma_domain_thread *dt;
+	/* set to true by the DMA IRQ handler when an IRQ for
+	 * associated channel was triggered.
+	 */
+	bool triggered;
 };
 
 struct zephyr_dma_domain_thread {
@@ -80,11 +84,14 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 					uint32_t num_tasks);
 static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
 					  struct task *task);
+static bool zephyr_dma_domain_is_pending(struct ll_schedule_domain *domain,
+					 struct task *task, struct comp_dev **comp);
 
 static const struct ll_schedule_domain_ops zephyr_dma_domain_ops = {
 	.domain_register	= zephyr_dma_domain_register,
 	.domain_unregister	= zephyr_dma_domain_unregister,
-	.domain_task_cancel	= zephyr_dma_domain_task_cancel
+	.domain_task_cancel	= zephyr_dma_domain_task_cancel,
+	.domain_is_pending	= zephyr_dma_domain_is_pending,
 };
 
 struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
@@ -145,6 +152,11 @@ static void dma_irq_handler(void *data)
 
 	/* was the IRQ triggered by this channel? */
 	if (dma_interrupt_legacy(channel, DMA_IRQ_STATUS_GET)) {
+		/* IRQ is for this channel. Make sure that the scheduler
+		 * can schedule the associated pipeline task.
+		 */
+		zephyr_dma_domain_data->triggered = true;
+
 		/* clear IRQ */
 		dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
 		interrupt_clear_mask(irq, BIT(channel_index));
@@ -218,6 +230,15 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			crt_data->irq = irq;
 			crt_data->channel = crt_chan;
 			crt_data->dt = dt;
+
+			/* attach crt_data to pipeline task.
+			 *
+			 * this will be used in
+			 * zephyr_dma_domain_is_pending to decide
+			 * whether there was a DMA IRQ for the channel
+			 * associated with this task.
+			 */
+			pipe_task->priv = crt_data;
 
 			if (dt->started) {
 				/* if the Zephyr thread was started, we
@@ -493,4 +514,29 @@ static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
 		 */
 		k_sem_give(&dt->sem);
 	}
+}
+
+static bool zephyr_dma_domain_is_pending(struct ll_schedule_domain *domain,
+					 struct task *task, struct comp_dev **comp)
+{
+	struct zephyr_dma_domain_data *data;
+	struct pipeline_task *pipe_task;
+
+	pipe_task = pipeline_task_get(task);
+	data = pipe_task->priv;
+
+	/* note: there's no need to disable IRQs here as they already
+	 * are inside zephyr_ll_run when this function is called.
+	 *
+	 * VERY IMPORTANT: if this function needs to be moved outside
+	 * of the atomic area PLEASE make sure to disable IRQs before
+	 * calling it or disable IRQs here.
+	 */
+
+	if (data->triggered) {
+		data->triggered = false;
+		return true;
+	}
+
+	return false;
 }
