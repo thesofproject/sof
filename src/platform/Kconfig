@@ -415,6 +415,7 @@ config HAVE_AGENT
 config AMS
 	bool "Enable Async Messaging Service"
 	default n
+	depends on IPC_MAJOR_4
 	help
 	  Enables Async Messaging Service.
 	  Async messages are used to send messages between modules.
