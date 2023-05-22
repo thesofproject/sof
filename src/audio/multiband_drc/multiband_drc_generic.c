@@ -10,7 +10,7 @@
 #include <sof/audio/multiband_drc/multiband_drc.h>
 #include <sof/math/iir_df2t.h>
 
-static void multiband_drc_default_pass(const struct comp_dev *dev,
+static void multiband_drc_default_pass(const struct processing_module *mod,
 				       const struct audio_stream __sparse_cache *source,
 				       struct audio_stream __sparse_cache *sink,
 				       uint32_t frames)
@@ -202,12 +202,12 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
   *                                          :buf_drc_src[nch*nband]        :buf_sink[nch]
   */
 #if CONFIG_FORMAT_S16LE
-static void multiband_drc_s16_default(const struct comp_dev *dev,
+static void multiband_drc_s16_default(const struct processing_module *mod,
 				      const struct audio_stream __sparse_cache *source,
 				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
-	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
+	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
 	int32_t buf_src[PLATFORM_MAX_CHANNELS];
 	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
@@ -269,12 +269,12 @@ static void multiband_drc_s16_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void multiband_drc_s24_default(const struct comp_dev *dev,
+static void multiband_drc_s24_default(const struct processing_module *mod,
 				      const struct audio_stream __sparse_cache *source,
 				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
-	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
+	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
 	int32_t buf_src[PLATFORM_MAX_CHANNELS];
 	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
@@ -336,12 +336,12 @@ static void multiband_drc_s24_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void multiband_drc_s32_default(const struct comp_dev *dev,
+static void multiband_drc_s32_default(const struct processing_module *mod,
 				      const struct audio_stream __sparse_cache *source,
 				      struct audio_stream __sparse_cache *sink,
 				      uint32_t frames)
 {
-	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
+	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
 	int32_t buf_src[PLATFORM_MAX_CHANNELS];
 	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
