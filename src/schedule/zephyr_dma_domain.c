@@ -143,13 +143,16 @@ static void dma_irq_handler(void *data)
 	irq = zephyr_dma_domain_data->irq;
 	dt = zephyr_dma_domain_data->dt;
 
-	/* clear IRQ */
-	dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
-	interrupt_clear_mask(irq, BIT(channel_index));
+	/* was the IRQ triggered by this channel? */
+	if (dma_interrupt_legacy(channel, DMA_IRQ_STATUS_GET)) {
+		/* clear IRQ */
+		dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
+		interrupt_clear_mask(irq, BIT(channel_index));
 
-	/* give resources to thread semaphore */
-	if (dt->handler)
-		k_sem_give(sem);
+		/* give resources to thread semaphore */
+		if (dt->handler)
+			k_sem_give(sem);
+	}
 }
 
 static int enable_dma_irq(struct zephyr_dma_domain_data *data)
