@@ -1799,6 +1799,17 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_zephyr_get_hw_params(dd, dev, params, dir);
 }
 
+static int copier_unbind(struct comp_dev *dev, void *data)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct dai_data *dd = cd->dd[0];
+
+	if (dev->ipc_config.type == SOF_COMP_DAI)
+		return dai_zephyr_unbind(dd, dev, data);
+
+	return 0;
+}
+
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
@@ -1820,6 +1831,7 @@ static const struct comp_driver comp_copier = {
 		.dai_ts_stop			= copier_dai_ts_stop_op,
 		.dai_ts_get			= copier_dai_ts_get_op,
 		.dai_get_hw_params		= copier_get_hw_params,
+		.unbind			= copier_unbind,
 	},
 };
 

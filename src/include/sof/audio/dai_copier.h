@@ -52,4 +52,7 @@ int dai_zephyr_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 				   struct comp_buffer *multi_endpoint_buffer,
 				   int num_endpoints);
+
+int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data);
+
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
