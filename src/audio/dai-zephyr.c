@@ -1508,6 +1508,10 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	buffer_release(buf_c);
 
+	if (!dd->local_buffer) {
+		comp_warn(dev, "dai_zephyr_copy(): local buffer unbound, cannot copy");
+		return 0;
+	}
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -1746,6 +1750,29 @@ static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no,
 
 	return ret;
 }
+
+#ifdef CONFIG_IPC_MAJOR_4
+int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
+{
+	struct comp_buffer __sparse_cache *local_buf_c;
+	struct ipc4_module_bind_unbind *bu;
+	int buf_id;
+
+	bu = (struct ipc4_module_bind_unbind *)data;
+	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
+
+	if (dd && dd->local_buffer) {
+		local_buf_c = buffer_acquire(dd->local_buffer);
+		if (local_buf_c->id == buf_id) {
+			comp_dbg(dev, "dai_zephyr_unbind: local_buffer %x unbound", buf_id);
+			dd->local_buffer = NULL;
+		}
+		buffer_release(local_buf_c);
+	}
+
+	return 0;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
