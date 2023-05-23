@@ -1,6 +1,7 @@
 ---
 
 # For the actual fuzzer see tools/oss-fuzz/README.
+# TEST ME now
 # also see
 # https://google.github.io/oss-fuzz/getting-started/continuous-integration/
 #
