@@ -705,36 +705,20 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 	uint32_t num_input_buffers = 0;
 	uint32_t num_output_buffers = 0;
 	int ret, i = 0;
-	bool all_bufs_configured = true;
 
 	/* acquire all sink and source buffers */
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
 
 		sink = container_of(blist, struct comp_buffer, source_list);
-		sinks_c[i] = buffer_acquire(sink);
-		if (!sinks_c[i]->hw_params_configured)
-			all_bufs_configured = false;
-		i++;
+		sinks_c[i++] = buffer_acquire(sink);
 	}
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
 
 		source = container_of(blist, struct comp_buffer, sink_list);
-		source_c[i] = buffer_acquire(source);
-		if (!source_c[i]->hw_params_configured)
-                        all_bufs_configured = false;
-		i++;
-	}
-
-	if (!all_bufs_configured) {
-		comp_warn(dev, "Skipping .copy() as not all buffers yet configured");
-		/* Do not abort processing -- wait for buffer(s) to be configured by
-		 * other pipeline (possibly on another core).
-		 */
-		ret = 0;
-		goto out;
+		source_c[i++] = buffer_acquire(source);
 	}
 
 	/* setup active input/output buffers for processing */
