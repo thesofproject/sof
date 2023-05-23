@@ -56,6 +56,27 @@ struct zephyr_dma_domain_data {
 	 * associated channel was triggered.
 	 */
 	bool triggered;
+	/* used to keep track of how many pipeline tasks point
+	 * to the same data structure.
+	 */
+	int usage_count;
+	/* used to keep track of how many times data->triggered
+	 * can be left set to true before resetting it to false.
+	 *
+	 * this is needed for mixer topologies because the
+	 * non-registrable pipeline tasks need to be executed
+	 * when an IRQ comes for the registrable pipeline task.
+	 */
+	int pending_count;
+	/* used when linking a data structure to a non-registrable
+	 * pipeline task.
+	 *
+	 * in the case of mixer, the non-registrable pipeline tasks
+	 * have the same scheduling component as the registrable
+	 * pipeline task so this can be used as a criteria to attach
+	 * the data structure to the non-registrable pipeline task.
+	 */
+	struct comp_dev *sched_comp;
 };
 
 struct zephyr_dma_domain_thread {
@@ -219,6 +240,24 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			if (core != crt_chan->core)
 				continue;
 
+			if ((crt_data->sched_comp == pipe_task->sched_comp ||
+			     !crt_data->sched_comp) && !pipe_task->registrable) {
+				/* attach crt_data to current pipeline
+				 * task only if there's a match between
+				 * the scheduling components or i
+				 * crt_data's sched_comp field wasn't
+				 * set yet.
+				 */
+				pipe_task->priv = crt_data;
+
+				crt_data->usage_count++;
+				crt_data->pending_count++;
+
+				return 0;
+			} else if (!pipe_task->registrable) {
+				return 0;
+			}
+
 			/* skip if IRQ was already registered */
 			if (crt_data->enabled_irq)
 				continue;
@@ -230,14 +269,10 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			crt_data->irq = irq;
 			crt_data->channel = crt_chan;
 			crt_data->dt = dt;
+			crt_data->sched_comp = pipe_task->sched_comp;
+			crt_data->usage_count++;
+			crt_data->pending_count++;
 
-			/* attach crt_data to pipeline task.
-			 *
-			 * this will be used in
-			 * zephyr_dma_domain_is_pending to decide
-			 * whether there was a DMA IRQ for the channel
-			 * associated with this task.
-			 */
 			pipe_task->priv = crt_data;
 
 			if (dt->started) {
@@ -285,16 +320,6 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 
 	tr_info(&ll_tr, "zephyr_dma_domain_register()");
 
-	/* don't even bother trying to register DMA IRQ for
-	 * non-registrable tasks.
-	 *
-	 * this is needed because zephyr_dma_domain_register() will
-	 * return -EINVAL for non-registrable tasks because of
-	 * register_dma_irq() which is not right.
-	 */
-	if (!pipe_task->registrable)
-		return 0;
-
 	/* the DMA IRQ has to be registered before the Zephyr thread is
 	 * started.
 	 *
@@ -309,11 +334,15 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 
 	if (ret < 0) {
 		tr_err(&ll_tr,
-		       "failed to register DMA IRQ for pipe task %p on core %d",
-		       pipe_task, core);
+		       "failed to register DMA IRQ for pipe task %p on core %d reg: %d",
+		       pipe_task, core, pipe_task->registrable);
 
 		return ret;
 	}
+
+	/* don't let non-registrable tasks go further */
+	if (!pipe_task->registrable)
+		return 0;
 
 	/* skip if Zephyr thread was already started on this core */
 	if (dt->handler)
@@ -453,14 +482,19 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	struct zephyr_dma_domain *zephyr_dma_domain;
 	struct zephyr_dma_domain_thread *dt;
 	struct pipeline_task *pipe_task;
+	struct zephyr_dma_domain_data *data;
 	int ret, core;
 
 	zephyr_dma_domain = ll_sch_get_pdata(domain);
 	pipe_task = pipeline_task_get(task);
 	core = cpu_get_id();
 	dt = zephyr_dma_domain->domain_thread + core;
+	data = pipe_task->priv;
 
 	tr_info(&ll_tr, "zephyr_dma_domain_unregister()");
+
+	data->pending_count--;
+	data->usage_count--;
 
 	/* unregister the DMA IRQ only for PPL tasks marked as "registrable"
 	 *
@@ -532,9 +566,14 @@ static bool zephyr_dma_domain_is_pending(struct ll_schedule_domain *domain,
 	 * of the atomic area PLEASE make sure to disable IRQs before
 	 * calling it or disable IRQs here.
 	 */
-
 	if (data->triggered) {
-		data->triggered = false;
+		data->pending_count--;
+
+		if (!data->pending_count) {
+			data->triggered = false;
+			data->pending_count = data->usage_count;
+		}
+
 		return true;
 	}
 
