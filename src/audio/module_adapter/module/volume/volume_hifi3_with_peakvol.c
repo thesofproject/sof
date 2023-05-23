@@ -133,7 +133,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
-						  cd->peak_vol[i + channels_count]) << attenuation;
+						  cd->peak_vol[i + channels_count])
+						  << (attenuation + PEAK_24S_32C_ADJUST);
 	/* update peak vol */
 	peak_vol_update(cd);
 }
@@ -440,7 +441,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 				/* Store the output sample */
 				AE_S32_L_XP(out_sample, out, inc);
 			}
-			peak_vol = AE_SLAA32S(peak_vol, attenuation);
+			peak_vol = AE_SLAA32S(peak_vol, attenuation + PEAK_24S_32C_ADJUST);
 			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
 		}
 		samples -= n;

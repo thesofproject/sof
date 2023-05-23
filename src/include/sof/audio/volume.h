@@ -90,6 +90,12 @@ struct sof_ipc_ctrl_value_chan;
 #define VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS	32
 
 /**
+ * \brief left shift 8 bits to put the valid 24 bits into
+ * higher part of 32 bits container.
+ */
+#define PEAK_24S_32C_ADJUST 8
+
+/**
  * \brief Volume maximum value.
  * TODO: This should be 1 << (VOL_QX_BITS + VOL_QY_BITS - 1) - 1 but
  * the current volume code cannot handle the full Q1.16 range correctly.

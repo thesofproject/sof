@@ -87,7 +87,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 				y0[i] = vol_mult_s24_to_s24(x0[i], vol);
 				tmp = MAX(abs(x0[i]), tmp);
 			}
-			tmp = tmp << attenuation;
+			tmp = tmp << (attenuation + PEAK_24S_32C_ADJUST);
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
