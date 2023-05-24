@@ -55,4 +55,10 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data);
 
+struct ipc4_copier_module_cfg;
+struct copier_data;
+int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
+		      struct comp_ipc_config *config,
+		      const struct ipc4_copier_module_cfg *copier,
+		      struct pipeline *pipeline);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */
