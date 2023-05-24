@@ -37,7 +37,6 @@ void dai_set_link_hda_config(uint16_t *link_config,
 {
 #if defined(CONFIG_ACE_VERSION_2_0)
 	const struct ipc4_audio_format *out_fmt = common_config->out_fmt;
-	const struct sof_ipc_dai_config *sof_cfg = spec_config;
 	union hdalink_cfg link_cfg;
 
 	switch (common_config->type) {
