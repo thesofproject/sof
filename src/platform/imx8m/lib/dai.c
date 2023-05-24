@@ -34,6 +34,28 @@ static SHARED_DATA struct dai sai[] = {
 	},
 	.drv = &sai_driver,
 },
+
+{
+	.index = 2,
+	.plat_data = {
+		.base = SAI_2_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = SAI_2_BASE + REG_SAI_TDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			/* Handshake is SDMA hardware event */
+			.handshake = 3,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = SAI_2_BASE + REG_SAI_RDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			.handshake = 2,
+		},
+	},
+	.drv = &sai_driver,
+},
+
 {
 	.index = 3,
 	.plat_data = {
@@ -54,6 +76,70 @@ static SHARED_DATA struct dai sai[] = {
 	},
 	.drv = &sai_driver,
 },
+
+{
+	.index = 5,
+	.plat_data = {
+		.base = SAI_5_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = SAI_5_BASE + REG_SAI_TDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			/* Handshake is SDMA hardware event */
+			.handshake = 9,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = SAI_5_BASE + REG_SAI_RDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			.handshake = 8,
+		},
+	},
+	.drv = &sai_driver,
+},
+
+{
+	.index = 6,
+	.plat_data = {
+		.base = SAI_6_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = SAI_6_BASE + REG_SAI_TDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			/* Handshake is SDMA hardware event */
+			.handshake = 11,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = SAI_6_BASE + REG_SAI_RDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			.handshake = 10,
+		},
+	},
+	.drv = &sai_driver,
+},
+
+{
+	.index = 7,
+	.plat_data = {
+		.base = SAI_7_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = SAI_7_BASE + REG_SAI_TDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			/* Handshake is SDMA hardware event */
+			.handshake = 13,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = SAI_7_BASE + REG_SAI_RDR0,
+			.depth = 128, /* in 4 bytes words */
+			.watermark = 64, /* half the depth */
+			.handshake = 12,
+		},
+	},
+	.drv = &sai_driver,
+},
+
 };
 
 const struct dai_type_info dti[] = {
