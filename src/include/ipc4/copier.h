@@ -283,4 +283,9 @@ int create_endpoint_buffer(struct comp_dev *parent_dev,
 enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type);
 
+void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
+			  const struct ipc4_audio_format *fmt);
+
+void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
+			  struct sof_ipc_stream_params *params);
 #endif

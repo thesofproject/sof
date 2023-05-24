@@ -65,4 +65,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 void copier_dai_free(struct copier_data *cd);
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd);
+
+int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params, int dai_index);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */

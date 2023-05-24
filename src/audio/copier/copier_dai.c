@@ -303,3 +303,156 @@ int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
 
 	return 0;
 }
+
+static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
+				   unsigned int src_channel,
+				   struct audio_stream __sparse_cache *dst,
+				   unsigned int dst_channel, unsigned int frame_count)
+{
+	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
+	int16_t *w_ptr = (int16_t *)audio_stream_get_wptr(dst) + dst_channel;
+
+	/* We have to iterate over frames here. However, tracking frames requires using
+	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
+	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
+	 * is NOT number of samples we need to copy but total samples for all channels. We just
+	 * track them to know when to stop.
+	 */
+	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
+
+	while (src_stream_sample_count) {
+		int src_samples_without_wrap;
+		int16_t *r_end_ptr, *r_ptr_before_loop;
+
+		r_ptr = audio_stream_wrap(src, r_ptr);
+		w_ptr = audio_stream_wrap(dst, w_ptr);
+
+		src_samples_without_wrap = audio_stream_samples_without_wrap_s16(src, r_ptr);
+		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
+			r_ptr + src_stream_sample_count : (int16_t *)audio_stream_get_end_addr(src);
+
+		r_ptr_before_loop = r_ptr;
+
+		do {
+			*w_ptr = *r_ptr;
+			r_ptr += audio_stream_get_channels(src);
+			w_ptr += audio_stream_get_channels(dst);
+		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)audio_stream_get_end_addr(dst));
+
+		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
+	}
+
+	return 0;
+}
+
+static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
+				   unsigned int src_channel,
+				   struct audio_stream __sparse_cache *dst,
+				   unsigned int dst_channel, unsigned int frame_count)
+{
+	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
+	int32_t *w_ptr = (int32_t *)audio_stream_get_wptr(dst) + dst_channel;
+
+	/* We have to iterate over frames here. However, tracking frames requires using
+	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
+	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
+	 * is NOT number of samples we need to copy but total samples for all channels. We just
+	 * track them to know when to stop.
+	 */
+	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
+
+	while (src_stream_sample_count) {
+		int src_samples_without_wrap;
+		int32_t *r_end_ptr, *r_ptr_before_loop;
+
+		r_ptr = audio_stream_wrap(src, r_ptr);
+		w_ptr = audio_stream_wrap(dst, w_ptr);
+
+		src_samples_without_wrap = audio_stream_samples_without_wrap_s32(src, r_ptr);
+		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
+			r_ptr + src_stream_sample_count : (int32_t *)audio_stream_get_end_addr(src);
+
+		r_ptr_before_loop = r_ptr;
+
+		do {
+			*w_ptr = *r_ptr;
+			r_ptr += audio_stream_get_channels(src);
+			w_ptr += audio_stream_get_channels(dst);
+		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)audio_stream_get_end_addr(dst));
+
+		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
+	}
+
+	return 0;
+}
+
+int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params, int dai_index)
+{
+	struct comp_buffer __sparse_cache *buf_c;
+	struct sof_ipc_stream_params demuxed_params = *params;
+	const struct ipc4_audio_format *in_fmt = &cd->config.base.audio_fmt;
+	const struct ipc4_audio_format *out_fmt = &cd->config.out_fmt;
+	enum sof_ipc_frame in_bits, in_valid_bits, out_bits, out_valid_bits;
+	int container_size;
+	int j, ret;
+
+	if (cd->endpoint_num == 1) {
+		ret = dai_zephyr_params(cd->dd[0], dev, params);
+
+		/*
+		 * dai_zephyr_params assigns the conversion function
+		 * based on the input/output formats but does not take
+		 * the valid bits into account. So change the conversion
+		 * function if the valid bits are different from the
+		 * container size.
+		 */
+		audio_stream_fmt_conversion(in_fmt->depth,
+					    in_fmt->valid_bit_depth,
+					    &in_bits, &in_valid_bits,
+					    in_fmt->s_type);
+		audio_stream_fmt_conversion(out_fmt->depth,
+					    out_fmt->valid_bit_depth,
+					    &out_bits, &out_valid_bits,
+					    out_fmt->s_type);
+
+		if (in_bits != in_valid_bits || out_bits != out_valid_bits)
+			cd->dd[0]->process =
+				cd->converter[IPC4_COPIER_GATEWAY_PIN];
+		return ret;
+	}
+
+	/* For ALH multi-gateway case, params->channels is a total multiplexed
+	 * number of channels. Demultiplexed number of channels for each individual
+	 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
+	 */
+	demuxed_params.channels = cd->channels[dai_index];
+
+	ret = dai_zephyr_params(cd->dd[dai_index], dev, &demuxed_params);
+	if (ret < 0)
+		return ret;
+
+	buf_c = buffer_acquire(cd->dd[dai_index]->dma_buffer);
+	for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
+		buf_c->chmap[j] = (cd->chan_map[dai_index] >> j * 4) & 0xf;
+	buffer_release(buf_c);
+
+	/* set channel copy func */
+	buf_c = buffer_acquire(cd->multi_endpoint_buffer);
+	container_size = audio_stream_sample_bytes(&buf_c->stream);
+	buffer_release(buf_c);
+
+	switch (container_size) {
+	case 2:
+		cd->dd[dai_index]->process = copy_single_channel_c16;
+		break;
+	case 4:
+		cd->dd[dai_index]->process = copy_single_channel_c32;
+		break;
+	default:
+		comp_err(dev, "Unexpected container size: %d", container_size);
+		return -EINVAL;
+	}
+
+	return ret;
+}

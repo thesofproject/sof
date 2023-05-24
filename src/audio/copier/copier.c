@@ -392,88 +392,6 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type, dir);
 }
 
-static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
-				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
-				   unsigned int dst_channel, unsigned int frame_count)
-{
-	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
-	int16_t *w_ptr = (int16_t *)audio_stream_get_wptr(dst) + dst_channel;
-
-	/* We have to iterate over frames here. However, tracking frames requires using
-	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
-	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
-	 * is NOT number of samples we need to copy but total samples for all channels. We just
-	 * track them to know when to stop.
-	 */
-	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
-
-	while (src_stream_sample_count) {
-		int src_samples_without_wrap;
-		int16_t *r_end_ptr, *r_ptr_before_loop;
-
-		r_ptr = audio_stream_wrap(src, r_ptr);
-		w_ptr = audio_stream_wrap(dst, w_ptr);
-
-		src_samples_without_wrap = audio_stream_samples_without_wrap_s16(src, r_ptr);
-		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int16_t *)audio_stream_get_end_addr(src);
-
-		r_ptr_before_loop = r_ptr;
-
-		do {
-			*w_ptr = *r_ptr;
-			r_ptr += audio_stream_get_channels(src);
-			w_ptr += audio_stream_get_channels(dst);
-		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)audio_stream_get_end_addr(dst));
-
-		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
-	}
-
-	return 0;
-}
-
-static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
-				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
-				   unsigned int dst_channel, unsigned int frame_count)
-{
-	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
-	int32_t *w_ptr = (int32_t *)audio_stream_get_wptr(dst) + dst_channel;
-
-	/* We have to iterate over frames here. However, tracking frames requires using
-	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
-	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
-	 * is NOT number of samples we need to copy but total samples for all channels. We just
-	 * track them to know when to stop.
-	 */
-	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
-
-	while (src_stream_sample_count) {
-		int src_samples_without_wrap;
-		int32_t *r_end_ptr, *r_ptr_before_loop;
-
-		r_ptr = audio_stream_wrap(src, r_ptr);
-		w_ptr = audio_stream_wrap(dst, w_ptr);
-
-		src_samples_without_wrap = audio_stream_samples_without_wrap_s32(src, r_ptr);
-		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int32_t *)audio_stream_get_end_addr(src);
-
-		r_ptr_before_loop = r_ptr;
-
-		do {
-			*w_ptr = *r_ptr;
-			r_ptr += audio_stream_get_channels(src);
-			w_ptr += audio_stream_get_channels(dst);
-		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)audio_stream_get_end_addr(dst));
-
-		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
-	}
-
-	return 0;
-}
-
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
@@ -869,105 +787,15 @@ static int copier_copy(struct comp_dev *dev)
 	return ret;
 }
 
-static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
-				 const struct ipc4_audio_format *fmt)
-{
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i;
-
-	buf_c->stream.channels = fmt->channels_count;
-	buf_c->stream.rate = fmt->sampling_frequency;
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
-
-	buf_c->stream.frame_fmt = frame_fmt;
-	buf_c->stream.valid_sample_fmt = valid_fmt;
-
-	buf_c->buffer_fmt = fmt->interleaving_style;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
-
-	buf_c->hw_params_configured = true;
-}
-
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	const struct ipc4_audio_format *in_fmt = &cd->config.base.audio_fmt;
-	const struct ipc4_audio_format *out_fmt = &cd->config.out_fmt;
-	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
-	struct list_item *sink_list;
-	enum sof_ipc_frame in_bits, in_valid_bits, out_bits, out_valid_bits;
 	int i, ret = 0;
 
 	comp_dbg(dev, "copier_params()");
 
-	memset(params, 0, sizeof(*params));
-	params->direction = cd->direction;
-	params->channels = cd->config.base.audio_fmt.channels_count;
-	params->rate = cd->config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->config.base.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth / 8;
-
-	params->stream_tag = cd->config.gtw_cfg.node_id.f.v_index + 1;
-	params->frame_fmt = dev->ipc_config.frame_fmt;
-	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
-	params->buffer.size = cd->config.base.ibs;
-
-	/* disable ipc3 stream position */
-	params->no_stream_position = 1;
-
-	/* update each sink format */
-	list_for_item(sink_list, &dev->bsink_list) {
-		int j;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-
-		j = IPC4_SINK_QUEUE_ID(sink_c->id);
-
-		update_buffer_format(sink_c, &cd->out_fmt[j]);
-
-		buffer_release(sink_c);
-	}
-
-	/*
-	 * force update the source buffer format to cover cases where the source module
-	 * fails to set the sink buffer params
-	 */
-	if (!list_is_empty(&dev->bsource_list)) {
-		struct ipc4_audio_format *in_fmt;
-		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-
-		in_fmt = &cd->config.base.audio_fmt;
-		update_buffer_format(source_c, in_fmt);
-
-		buffer_release(source_c);
-	}
-
-	/* update params for the DMA buffer */
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		if (cd->ipc_gtw || params->direction == SOF_IPC_STREAM_PLAYBACK)
-			break;
-		COMPILER_FALLTHROUGH;
-	case SOF_COMP_DAI:
-		if (dev->ipc_config.type == SOF_COMP_DAI &&
-		    (cd->endpoint_num > 1 || params->direction == SOF_IPC_STREAM_CAPTURE))
-			break;
-		params->buffer.size = cd->config.base.obs;
-		params->sample_container_bytes = cd->out_fmt->depth / 8;
-		params->sample_valid_bytes = cd->out_fmt->valid_bit_depth / 8;
-		break;
-	default:
-		break;
-	}
+	copier_update_params(cd, dev, params);
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		switch (dev->ipc_config.type) {
@@ -979,70 +807,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				ret = copier_ipcgtw_params(cd->ipcgtw_data, dev, params);
 			break;
 		case SOF_COMP_DAI:
-		{
-			struct comp_buffer __sparse_cache *buf_c;
-			struct sof_ipc_stream_params demuxed_params = *params;
-			int container_size;
-			int j;
-
-			if (cd->endpoint_num == 1) {
-				ret = dai_zephyr_params(cd->dd[0], dev, params);
-
-				/*
-				 * dai_zephyr_params assigns the conversion function
-				 * based on the input/output formats but does not take
-				 * the valid bits into account. So change the conversion
-				 * function if the valid bits are different from the
-				 * container size.
-				 */
-				audio_stream_fmt_conversion(in_fmt->depth,
-							    in_fmt->valid_bit_depth,
-							    &in_bits, &in_valid_bits,
-							    in_fmt->s_type);
-				audio_stream_fmt_conversion(out_fmt->depth,
-							    out_fmt->valid_bit_depth,
-							    &out_bits, &out_valid_bits,
-							    out_fmt->s_type);
-
-				if (in_bits != in_valid_bits || out_bits != out_valid_bits)
-					cd->dd[0]->process =
-						cd->converter[IPC4_COPIER_GATEWAY_PIN];
-				break;
-			}
-
-			/* For ALH multi-gateway case, params->channels is a total multiplexed
-			 * number of channels. Demultiplexed number of channels for each individual
-			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
-			 */
-			demuxed_params.channels = cd->channels[i];
-
-			ret = dai_zephyr_params(cd->dd[i], dev, &demuxed_params);
-			if (ret < 0)
-				return ret;
-
-			buf_c = buffer_acquire(cd->dd[i]->dma_buffer);
-			for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
-				buf_c->chmap[j] = (cd->chan_map[i] >> j * 4) & 0xf;
-			buffer_release(buf_c);
-
-			/* set channel copy func */
-			buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-			container_size = audio_stream_sample_bytes(&buf_c->stream);
-			buffer_release(buf_c);
-
-			switch (container_size) {
-			case 2:
-				cd->dd[i]->process = copy_single_channel_c16;
-				break;
-			case 4:
-				cd->dd[i]->process = copy_single_channel_c32;
-				break;
-			default:
-				comp_err(dev, "Unexpected container size: %d", container_size);
-				return -EINVAL;
-			}
+			ret = copier_dai_params(cd, dev, params, i);
 			break;
-		}
 		default:
 			break;
 		}
