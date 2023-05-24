@@ -7,16 +7,22 @@ to generate binary image files.
 
 ## Building
 
-Most users don't build `rimage` directly but as an ExternalProject
-defined by CMake in SOF. This being said, `rimage` can be built with the
-usual CMake commands:
+Most SOF users never build `rimage` directly but as an ExternalProject
+defined by CMake in SOF. This makes sure they always use an up-to-date
+version of rimage and configuration files that have been fully tested.
+
+If needed, `rimage` can be built manually with the usual CMake commands:
 
 ```shell
 $ cmake -B build/
 $ make  -C build/ help # lists all targets
 $ make  -C build/
-$ sudo make -C build/ install # optional
 ```
+
+The `build/rimage` executable can then be copied to a directory in the
+PATH. Zephyr users can run `west config rimage.path
+/path/to/rimage/build/rimage`; Zephyr documentation and `west sign -h`
+have more details.
 
 ## Testing rimage changes with SOF Continuous Integration
 
