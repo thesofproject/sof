@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [tgl, mtl]
+        platform: [tgl, mtl, lnl]
 
     steps:
       - name: git clone sparse analyzer
