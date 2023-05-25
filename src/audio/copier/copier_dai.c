@@ -464,3 +464,21 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 
 	return ret;
 }
+
+void copier_dai_reset(struct copier_data *cd, struct comp_dev *dev)
+{
+	for (int i = 0; i < cd->endpoint_num; i++)
+		dai_zephyr_reset(cd->dd[i], dev);
+}
+
+int copier_dai_trigger(struct copier_data *cd, struct comp_dev *dev, int cmd)
+{
+	int ret;
+
+	for (int i = 0; i < cd->endpoint_num; i++) {
+		ret = dai_zephyr_trigger(cd->dd[i], dev, cmd);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}

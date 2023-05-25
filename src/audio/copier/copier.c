@@ -240,7 +240,6 @@ static int copier_reset(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
-	int i, ret = 0;
 
 	comp_dbg(dev, "copier_reset()");
 
@@ -255,8 +254,7 @@ static int copier_reset(struct comp_dev *dev)
 			copier_ipcgtw_reset(dev);
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++)
-			dai_zephyr_reset(cd->dd[i], dev);
+		copier_dai_reset(cd, dev);
 		break;
 	default:
 		break;
@@ -270,7 +268,7 @@ static int copier_reset(struct comp_dev *dev)
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
-	return ret;
+	return 0;
 }
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
@@ -281,7 +279,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
-	int ret, i;
+	int ret;
 
 	comp_dbg(dev, "copier_comp_trigger()");
 
@@ -301,11 +299,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = dai_zephyr_trigger(cd->dd[i], dev, cmd);
-			if (ret < 0)
-				return ret;
-		}
+		ret = copier_dai_trigger(cd, dev, cmd);
 		break;
 	default:
 		break;
