@@ -147,6 +147,7 @@
 #define REG_SAI_CR2_BCP		BIT(25)
 #define REG_SAI_CR2_BCD_MSTR	BIT(24)
 #define REG_SAI_CR2_BYP		BIT(23) /* BCLK bypass */
+#define REG_SAI_CR2_BYP_MASK	BIT(23)
 #define REG_SAI_CR2_DIV_MASK	0xff
 
 /* SAI Transmit and Receive Configuration 3 Register */
@@ -163,6 +164,7 @@
 #define REG_SAI_CR4_FCOMB_MASK	MASK(27, 26)
 #define REG_SAI_CR4_FPACK_8     (0x2 << 24)
 #define REG_SAI_CR4_FPACK_16    (0x3 << 24)
+#define REG_SAI_CR4_FPACK_MASK  MASK(25, 24)
 #define REG_SAI_CR4_FRSZ(x)	(((x) - 1) << 16)
 #define REG_SAI_CR4_FRSZ_MASK	MASK(20, 16)
 #define REG_SAI_CR4_SYWD(x)	(((x) - 1) << 8)
@@ -243,22 +245,6 @@
 #define SAI_FIFO_WORD_SIZE	16
 #else
 #define SAI_FIFO_WORD_SIZE	64
-#endif
-
-/* Divides down the audio main clock to generate the bit clock when
- * configured for an internal bit clock.
- * The division value is (DIV + 1) * 2.
- */
-#ifdef CONFIG_IMX8ULP
-/* frame clk is decided by sai config on 8ulp
- * 8K --- 0x17, 16K --- 0xB
- */
-#define SAI_CLOCK_DIV		0x17
-#define SAI_CLOCK_DIV_16K	0xB
-#define SAI_TDM_SLOTS		2
-#else
-#define SAI_CLOCK_DIV		0x7
-#define SAI_TDM_SLOTS		2
 #endif
 
 extern const struct dai_driver sai_driver;
