@@ -33,8 +33,11 @@ static void sai_start(struct dai *dai, int direction)
 {
 	dai_info(dai, "SAI: sai_start");
 
+	struct sai_pdata *sai = dai_get_drvdata(dai);
 	int chan_idx = 0;
 	uint32_t xcsr = 0U;
+	int i;
+	int n;
 #ifdef CONFIG_IMX8ULP
 	int fifo_offset = 0;
 #endif
@@ -80,11 +83,36 @@ static void sai_start(struct dai *dai, int direction)
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_WSF, 1);
 
-	/* add one word to FIFO before TRCE is enabled */
-	if (direction == DAI_DIR_PLAYBACK)
-		dai_write(dai, REG_SAI_TDR0, 0x0);
-	else
-		dai_write(dai, REG_SAI_RDR0, 0x0);
+	/*
+	 * Add one frame of data to FIFO before TRCE is enabled.
+	 * In FIFO words this equates to tdm_slots/(slots_per_32b_fifo_word). Minimum: one word.
+	 * Not performing this 'priming' can lead to negative effects like shifted
+	 * and / or missing slots.
+	 * TODO: check if that works in all situations
+	 */
+
+	switch (sai->params.tdm_slot_width) {
+	case 8:
+		n = sai->params.tdm_slots / 4;
+		break;
+	case 16:
+		n = sai->params.tdm_slots / 2;
+		break;
+	default:
+		n = sai->params.tdm_slots;
+		break;
+	}
+
+	if (!n)
+		n = 1;
+
+	if (direction == DAI_DIR_PLAYBACK) {
+		for (i = 0; i < n; i++)
+			dai_write(dai, REG_SAI_TDR0, 0x0);
+	} else {
+		for (i = 0; i < n; i++)
+			dai_write(dai, REG_SAI_RDR0, 0x0);
+	}
 
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
@@ -200,22 +228,28 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	const struct sof_ipc_dai_config *config = spec_config;
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
+	uint32_t clk_div;
 	struct sai_pdata *sai = dai_get_drvdata(dai);
-	/* TODO: this value will be provided by config */
-#ifndef CONFIG_IMX8ULP
-	uint32_t sywd = 32;
-	uint32_t twm = ~(BIT(0) | BIT(1));
-	uint32_t clk_div = SAI_CLOCK_DIV;
-#else
-	uint32_t sywd = 16;
-	uint32_t twm = ~BIT(0);
-	uint32_t clk_div = config->sai.fsync_rate == 8000 ? SAI_CLOCK_DIV : SAI_CLOCK_DIV_16K;
-#endif
 
 	sai->config = *config;
 	sai->params = config->sai;
 
-	val_cr4 |= REG_SAI_CR4_MF;
+	/* bit width of a single slot; FIFO word always 32b */
+	uint32_t sywd = sai->params.tdm_slot_width;
+
+	/*
+	 * Divide the audio main clock to generate the bit clock when
+	 * configured for an internal bit clock.
+	 * The division value is (DIV + 1) * 2.
+	 * If mclk == bclk set the divider bypass bit, REG_SAI_CR2_BYP.
+	 */
+
+	if (config->sai.mclk_rate == config->sai.bclk_rate) {
+		val_cr2 |= REG_SAI_CR2_BYP;
+		clk_div = 0;
+	} else {
+		clk_div = (config->sai.mclk_rate / config->sai.bclk_rate / 2) - 1;
+	}
 
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
@@ -299,7 +333,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		dai_info(dai, "SAI: codec is consumer");
 		val_cr2 |= REG_SAI_CR2_MSEL_MCLK1;
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
-		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div;
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
 		break;
 	case SOF_DAI_FMT_CBP_CFP:
@@ -311,30 +345,42 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		break;
 	case SOF_DAI_FMT_CBC_CFP:
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
-		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div;
 		break;
 	case SOF_DAI_FMT_CBP_CFC:
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
-		val_cr2 |= clk_div; /* TODO: determine dynamically.*/
+		val_cr2 |= clk_div;
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	/* TODO: set number of slots from config */
-	val_cr4 |= REG_SAI_CR4_FRSZ(SAI_TDM_SLOTS);
+	switch (sai->params.tdm_slot_width) {
+	case 8:
+		val_cr4 |= REG_SAI_CR4_FPACK_8;
+		break;
+	case 16:
+		val_cr4 |= REG_SAI_CR4_FPACK_16;
+		break;
+	default:
+		break;
+	}
+
+	val_cr4 |= REG_SAI_CR4_FRSZ(sai->params.tdm_slots);
 	val_cr4 |= REG_SAI_CR4_CHMOD;
+	val_cr4 |= REG_SAI_CR4_MF;
 
 	val_cr5 |= REG_SAI_CR5_WNW(sywd) | REG_SAI_CR5_W0W(sywd) |
 			REG_SAI_CR5_FBT(sywd);
 
 	mask_cr2  = REG_SAI_CR2_BCP | REG_SAI_CR2_BCD_MSTR |
+			REG_SAI_CR2_BYP_MASK |
 			REG_SAI_CR2_MSEL_MASK | REG_SAI_CR2_DIV_MASK;
 
 	mask_cr4  = REG_SAI_CR4_MF | REG_SAI_CR4_FSE |
 			REG_SAI_CR4_FSP | REG_SAI_CR4_FSD_MSTR |
 			REG_SAI_CR4_FRSZ_MASK | REG_SAI_CR4_SYWD_MASK |
-			REG_SAI_CR4_CHMOD_MASK;
+			REG_SAI_CR4_CHMOD_MASK | REG_SAI_CR4_FPACK_MASK;
 
 	mask_cr5  = REG_SAI_CR5_WNW_MASK | REG_SAI_CR5_W0W_MASK |
 			REG_SAI_CR5_FBT_MASK;
@@ -344,8 +390,9 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	dai_update_bits(dai, REG_SAI_XCR2(REG_TX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_TX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_TX_DIR), mask_cr5, val_cr5);
-	/* turn on (set to zero) stereo slot */
-	dai_update_bits(dai, REG_SAI_XMR(REG_TX_DIR), REG_SAI_XMR_MASK, twm);
+	/* turn on (set to zero) slots */
+	dai_update_bits(dai, REG_SAI_XMR(REG_TX_DIR), REG_SAI_XMR_MASK,
+			~(sai->params.tx_slots));
 
 	val_cr2 |= REG_SAI_CR2_SYNC;
 	mask_cr2 |= REG_SAI_CR2_SYNC_MASK;
@@ -355,9 +402,9 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	dai_update_bits(dai, REG_SAI_XCR2(REG_RX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_RX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_RX_DIR), mask_cr5, val_cr5);
-	/* turn on (set to zero) stereo slot */
+	/* turn on (set to zero) slots */
 	dai_update_bits(dai, REG_SAI_XMR(REG_RX_DIR), REG_SAI_XMR_MASK,
-			twm);
+			~(sai->params.rx_slots));
 
 #if defined(CONFIG_IMX8M) || defined(CONFIG_IMX93_A55)
 	/*
@@ -484,14 +531,10 @@ static int sai_get_hw_params(struct dai *dai,
 {
 	struct sai_pdata *sai = dai_get_drvdata(dai);
 
-	/* SAI only currently supports these parameters */
 	params->rate = sai->params.fsync_rate;
-#ifdef CONFIG_IMX8ULP
-	params->channels = 1;
-#else
-	params->channels = 2;
-#endif
-	params->buffer_fmt = 0;
+	params->channels = sai->params.tdm_slots;
+	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+	/* frame_fmt always S32_LE because that is the native width of the fifo registers */
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 
 	return 0;
