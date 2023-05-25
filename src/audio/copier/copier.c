@@ -178,9 +178,6 @@ static void copier_free(struct comp_dev *dev)
 		break;
 	}
 
-	if (cd->multi_endpoint_buffer)
-		buffer_free(cd->multi_endpoint_buffer);
-
 	rfree(cd);
 	rfree(dev);
 }
