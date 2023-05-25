@@ -24,12 +24,6 @@
 
 #endif /* defined(CONFIG_XTENSA) && defined(CONFIG_INTEL) */
 
-/* writeback and invalidate data */
-#define CACHE_WRITEBACK_INV	0
-
-/* invalidate data */
-#define CACHE_INVALIDATE	1
-
 /* sanity check - make sure CONFIG_DCACHE_LINE_SIZE is valid */
 #if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0)
 #define DCACHE_LINE_SIZE CONFIG_DCACHE_LINE_SIZE
