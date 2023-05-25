@@ -66,4 +66,12 @@ jobs:
             IPC3) cmake_arg='-DCONFIG_IPC_MAJOR_3=y' ;;
             IPC4) cmake_arg='-DCONFIG_IPC_MAJOR_4=y' ;;
           esac
-          sof/scripts/fuzz.sh -o _.log -t 300 -- "$cmake_arg"
+          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t 300 -- "$cmake_arg"
+
+      - name: Upload stdout
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ matrix.IPC }} logs
+          path: |
+            workspace/fuzz-stdout.txt
