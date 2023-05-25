@@ -422,7 +422,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1)
-			return dai_zephyr_copy(cd->dd[0], dev, cd->converter);
+			return dai_common_copy(cd->dd[0], dev, cd->converter);
 
 		return dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
 						      cd->endpoint_num);
@@ -883,7 +883,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 		}
 		break;
 	case SOF_COMP_DAI:
-		ret = dai_zephyr_position(cd->dd[0], dev, posn);
+		ret = dai_common_position(cd->dd[0], dev, posn);
 		break;
 	default:
 		break;
@@ -897,7 +897,7 @@ static int copier_dai_ts_config_op(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct dai_data *dd = cd->dd[0];
 
-	return dai_zephyr_ts_config_op(dd, dev);
+	return dai_common_ts_config_op(dd, dev);
 }
 
 static int copier_dai_ts_start_op(struct comp_dev *dev)
@@ -907,7 +907,7 @@ static int copier_dai_ts_start_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_start()");
 
-	return dai_zephyr_ts_start(dd, dev);
+	return dai_common_ts_start(dd, dev);
 }
 
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
@@ -917,7 +917,7 @@ static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd
 
 	comp_dbg(dev, "dai_ts_get()");
 
-	return dai_zephyr_ts_get(dd, dev, tsd);
+	return dai_common_ts_get(dd, dev, tsd);
 }
 
 static int copier_dai_ts_stop_op(struct comp_dev *dev)
@@ -927,7 +927,7 @@ static int copier_dai_ts_stop_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_stop()");
 
-	return dai_zephyr_ts_stop(dd, dev);
+	return dai_common_ts_stop(dd, dev);
 }
 
 static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,

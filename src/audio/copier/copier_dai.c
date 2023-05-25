@@ -110,7 +110,7 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 	if (!dd)
 		return -ENOMEM;
 
-	ret = dai_zephyr_new(dd, parent_dev, dai);
+	ret = dai_common_new(dd, parent_dev, dai);
 	if (ret < 0)
 		goto free_dd;
 
@@ -125,7 +125,7 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 
 	return 0;
 e_zephyr_free:
-	dai_zephyr_free(dd);
+	dai_common_free(dd);
 free_dd:
 	rfree(dd);
 	return ret;
@@ -287,7 +287,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 void copier_dai_free(struct copier_data *cd)
 {
 	for (int i = 0; i < cd->endpoint_num; i++) {
-		dai_zephyr_free(cd->dd[i]);
+		dai_common_free(cd->dd[i]);
 		rfree(cd->dd[i]);
 	}
 	/* only dai have multi endpoint case */
@@ -300,11 +300,11 @@ int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
 	int ret;
 
 	for (int i = 0; i < cd->endpoint_num; i++) {
-		ret = dai_zephyr_config_prepare(cd->dd[i], dev);
+		ret = dai_common_config_prepare(cd->dd[i], dev);
 		if (ret < 0)
 			return ret;
 
-		ret = dai_zephyr_prepare(cd->dd[i], dev);
+		ret = dai_common_prepare(cd->dd[i], dev);
 		if (ret < 0)
 			return ret;
 	}
@@ -406,7 +406,7 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 	int j, ret;
 
 	if (cd->endpoint_num == 1) {
-		ret = dai_zephyr_params(cd->dd[0], dev, params);
+		ret = dai_common_params(cd->dd[0], dev, params);
 
 		/*
 		 * dai_zephyr_params assigns the conversion function
@@ -436,7 +436,7 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 	 */
 	demuxed_params.channels = cd->channels[dai_index];
 
-	ret = dai_zephyr_params(cd->dd[dai_index], dev, &demuxed_params);
+	ret = dai_common_params(cd->dd[dai_index], dev, &demuxed_params);
 	if (ret < 0)
 		return ret;
 
@@ -468,7 +468,7 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 void copier_dai_reset(struct copier_data *cd, struct comp_dev *dev)
 {
 	for (int i = 0; i < cd->endpoint_num; i++)
-		dai_zephyr_reset(cd->dd[i], dev);
+		dai_common_reset(cd->dd[i], dev);
 }
 
 int copier_dai_trigger(struct copier_data *cd, struct comp_dev *dev, int cmd)
@@ -476,7 +476,7 @@ int copier_dai_trigger(struct copier_data *cd, struct comp_dev *dev, int cmd)
 	int ret;
 
 	for (int i = 0; i < cd->endpoint_num; i++) {
-		ret = dai_zephyr_trigger(cd->dd[i], dev, cmd);
+		ret = dai_common_trigger(cd->dd[i], dev, cmd);
 		if (ret < 0)
 			return ret;
 	}

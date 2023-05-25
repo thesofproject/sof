@@ -159,7 +159,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	buffer_release(dma_buf);
 }
 
-int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_config_dai *dai)
+int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_config_dai *dai)
 {
 	uint32_t dir, caps, dma_dev;
 
@@ -215,7 +215,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, dd);
 
-	ret = dai_zephyr_new(dd, dev, dai);
+	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)
 		goto error;
 
@@ -228,7 +228,7 @@ error:
 	return NULL;
 }
 
-void dai_zephyr_free(struct dai_data *dd)
+void dai_common_free(struct dai_data *dd)
 {
 	if (dd->group)
 		dai_group_put(dd->group);
@@ -258,7 +258,7 @@ static void dai_free(struct comp_dev *dev)
 	if (dd->chan)
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 
-	dai_zephyr_free(dd);
+	dai_common_free(dd);
 
 	rfree(dd);
 	rfree(dev);
@@ -487,7 +487,7 @@ out:
 	return err;
 }
 
-int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
@@ -630,16 +630,16 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 
 	comp_dbg(dev, "dai_params()");
 
-	return dai_zephyr_params(dd, dev, params);
+	return dai_common_params(dd, dev, params);
 }
 
-int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
+int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	int channel = 0;
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_zephyr_config_prepare(): Component is in active state.");
+		comp_info(dev, "dai_common_config_prepare(): Component is in active state.");
 		return 0;
 	}
 
@@ -649,13 +649,13 @@ int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	if (dd->chan) {
-		comp_info(dev, "dai_zephyr_config_prepare(): dma channel index %d already configured",
+		comp_info(dev, "dai_common_config_prepare(): dma channel index %d already configured",
 			  dd->chan->index);
 		return 0;
 	}
 
 	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
-	comp_info(dev, "dai_zephyr_config_prepare(), channel = %d", channel);
+	comp_info(dev, "dai_common_config_prepare(), channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
 	if (channel == DMA_CHAN_INVALID) {
@@ -666,14 +666,14 @@ int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	/* allocate DMA channel */
 	dd->chan = dma_channel_get_legacy(dd->dma, channel);
 	if (!dd->chan) {
-		comp_err(dev, "dai_zephyr_config_prepare(): dma_channel_get() failed");
+		comp_err(dev, "dai_common_config_prepare(): dma_channel_get() failed");
 		dd->chan = NULL;
 		return -EIO;
 	}
 
 	dd->chan->dev_data = dd;
 
-	comp_info(dev, "dai_zephyr_config_prepare(): new configured dma channel index %d",
+	comp_info(dev, "dai_common_config_prepare(): new configured dma channel index %d",
 		  dd->chan->index);
 
 	/* setup callback */
@@ -683,7 +683,7 @@ int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	return 0;
 }
 
-int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev)
+int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
@@ -728,7 +728,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "dai_prepare()");
 
-	ret = dai_zephyr_config_prepare(dd, dev);
+	ret = dai_common_config_prepare(dd, dev);
 	if (ret < 0)
 		return ret;
 
@@ -739,10 +739,10 @@ static int dai_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	return dai_zephyr_prepare(dd, dev);
+	return dai_common_prepare(dd, dev);
 }
 
-void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev)
+void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct dma_sg_config *config = &dd->config;
 
@@ -771,7 +771,7 @@ static int dai_reset(struct comp_dev *dev)
 
 	comp_info(dev, "dai_reset()");
 
-	dai_zephyr_reset(dd, dev);
+	dai_common_reset(dd, dev);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -881,7 +881,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	return ret;
 }
 
-int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
 	struct dai_group *group = dd->group;
 	uint32_t irq_flags;
@@ -889,7 +889,7 @@ int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 
 	/* DAI not in a group, use normal trigger */
 	if (!group) {
-		comp_dbg(dev, "dai_zephyr_trigger(), non-atomic trigger");
+		comp_dbg(dev, "dai_common_trigger(), non-atomic trigger");
 		return dai_comp_trigger_internal(dd, dev, cmd);
 	}
 
@@ -899,13 +899,13 @@ int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		/* First DAI to receive the trigger command,
 		 * prepare for atomic trigger
 		 */
-		comp_dbg(dev, "dai_zephyr_trigger(), begin atomic trigger for group %d",
+		comp_dbg(dev, "dai_common_trigger(), begin atomic trigger for group %d",
 			 group->group_id);
 		group->trigger_cmd = cmd;
 		group->trigger_counter = group->num_dais - 1;
 	} else if (group->trigger_cmd != cmd) {
 		/* Already processing a different trigger command */
-		comp_err(dev, "dai_zephyr_trigger(), already processing atomic trigger");
+		comp_err(dev, "dai_common_trigger(), already processing atomic trigger");
 		ret = -EAGAIN;
 	} else {
 		/* Count down the number of remaining DAIs required
@@ -913,7 +913,7 @@ int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		 * takes place
 		 */
 		group->trigger_counter--;
-		comp_dbg(dev, "dai_zephyr_trigger(), trigger counter %d, group %d",
+		comp_dbg(dev, "dai_common_trigger(), trigger counter %d, group %d",
 			 group->trigger_counter, group->group_id);
 
 		if (!group->trigger_counter) {
@@ -940,7 +940,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_trigger(dd, dev, cmd);
+	return dai_common_trigger(dd, dev, cmd);
 }
 
 /* report xrun occurrence */
@@ -961,7 +961,7 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 }
 
 /* copy and process stream data from source to sink buffers */
-int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
+int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
@@ -1008,7 +1008,7 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	copy_bytes = samples * sampling;
 
-	comp_dbg(dev, "dai_zephyr_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / audio_stream_get_channels(&buf_c->stream));
 
@@ -1017,16 +1017,16 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, avail_bytes, dd->period_bytes);
 	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
 		 copy_bytes + free_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
-		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
+		comp_warn(dev, "dai_common_copy(): nothing to copy");
 		return 0;
 	}
 
@@ -1054,7 +1054,7 @@ static int dai_copy(struct comp_dev *dev)
 	 * DAI devices will only ever have 1 sink, so no need to pass an array of PCM converter
 	 * functions. The default one to use is set in dd->process.
 	 */
-	return dai_zephyr_copy(dd, dev, NULL);
+	return dai_common_copy(dd, dev, NULL);
 }
 
 /**
@@ -1067,7 +1067,7 @@ static int dai_copy(struct comp_dev *dev)
  * DAI must be prepared before this function is used (for DMA information). If not, an error
  * is returned.
  */
-int dai_zephyr_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
+int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct timestamp_cfg *cfg = &dd->ts_config;
 	struct ipc_config_dai *dai = &dd->ipc_config;
@@ -1094,10 +1094,10 @@ static int dai_ts_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_ts_config_op(dd, dev);
+	return dai_common_ts_config_op(dd, dev);
 }
 
-int dai_zephyr_ts_start(struct dai_data *dd, struct comp_dev *dev)
+int dai_common_ts_start(struct dai_data *dd, struct comp_dev *dev)
 {
 	if (!dd->dai->drv->ts_ops.ts_start)
 		return -ENXIO;
@@ -1111,10 +1111,10 @@ static int dai_ts_start(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_start()");
 
-	return dai_zephyr_ts_start(dd, dev);
+	return dai_common_ts_start(dd, dev);
 }
 
-int dai_zephyr_ts_stop(struct dai_data *dd, struct comp_dev *dev)
+int dai_common_ts_stop(struct dai_data *dd, struct comp_dev *dev)
 {
 	if (!dd->dai->drv->ts_ops.ts_stop)
 		return -ENXIO;
@@ -1128,10 +1128,10 @@ static int dai_ts_stop(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_stop()");
 
-	return dai_zephyr_ts_stop(dd, dev);
+	return dai_common_ts_stop(dd, dev);
 }
 
-int dai_zephyr_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
+int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
 {
 	if (!dd->dai->drv->ts_ops.ts_get)
 		return -ENXIO;
@@ -1145,7 +1145,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 
 	comp_dbg(dev, "dai_ts_get()");
 
-	return dai_zephyr_ts_get(dd, dev, tsd);
+	return dai_common_ts_get(dd, dev, tsd);
 }
 
 static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)

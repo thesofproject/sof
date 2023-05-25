@@ -377,7 +377,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
-int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn)
 {
 	struct dma_status status;
@@ -402,7 +402,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_position(dd, dev, posn);
+	return dai_common_position(dd, dev, posn);
 }
 
 void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
@@ -429,7 +429,7 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
 }
 #else
-int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn)
 {
 	struct dma_chan_status status;
@@ -450,7 +450,7 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_zephyr_position(dd, dev, posn);
+	return dai_common_position(dd, dev, posn);
 }
 
 void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
