@@ -784,6 +784,7 @@ static int mixout_params(struct processing_module *mod)
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
+	audio_stream_set_channels(&sink_c->stream, params->channels);
 
 	sink_stream_size = audio_stream_get_size(&sink_c->stream);
 
