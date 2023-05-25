@@ -102,7 +102,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev);
 
 int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 			 struct comp_ipc_config *config,
-			 const struct ipc4_copier_module_cfg *copier);
+			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline);
 
 void copier_ipcgtw_free(struct copier_data *cd);
 #endif /* __SOF_IPCGTW_COPIER_H__ */
