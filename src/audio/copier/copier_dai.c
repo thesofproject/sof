@@ -276,6 +276,11 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 			return ret;
 	}
 
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+		pipeline->sink_comp = parent_dev;
+	else
+		pipeline->source_comp = parent_dev;
+
 	return 0;
 }
 

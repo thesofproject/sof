@@ -54,32 +54,6 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-/* Playback only */
-static int init_pipeline_reg(struct comp_dev *dev)
-{
-	struct copier_data *cd = comp_get_drvdata(dev);
-	struct ipc4_pipeline_registers pipe_reg;
-	uint32_t gateway_id;
-
-	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
-	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
-		comp_err(dev, "gateway_id %u out of array bounds.", gateway_id);
-		return -EINVAL;
-	}
-
-	/* pipeline position is stored in memory windows 0 at the following offset
-	 * please check struct ipc4_fw_registers definition. The number of
-	 * pipeline reg depends on the host dma count for playback
-	 */
-	cd->pipeline_reg_offset = offsetof(struct ipc4_fw_registers, pipeline_regs);
-	cd->pipeline_reg_offset += gateway_id * sizeof(struct ipc4_pipeline_registers);
-
-	pipe_reg.stream_start_offset = (uint64_t)-1;
-	pipe_reg.stream_end_offset = (uint64_t)-1;
-	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
-	return 0;
-}
-
 static struct comp_dev *copier_new(const struct comp_driver *drv,
 				   const struct comp_ipc_config *config,
 				   const void *spec)
@@ -135,19 +109,11 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			if (copier_host_create(dev, cd, &dev->ipc_config, copier, cd->direction)) {
+			if (copier_host_create(dev, cd, &dev->ipc_config,
+					       copier, cd->direction, ipc_pipe->pipeline)) {
 				comp_cl_err(&comp_copier, "unable to create host");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-				ipc_pipe->pipeline->source_comp = dev;
-				if (init_pipeline_reg(dev))
-					goto error_cd;
-			} else {
-				ipc_pipe->pipeline->sink_comp = dev;
-			}
-
 			break;
 		case ipc4_hda_link_output_class:
 		case ipc4_hda_link_input_class:
@@ -161,25 +127,15 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				comp_cl_err(&comp_copier, "unable to create dai");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-				ipc_pipe->pipeline->sink_comp = dev;
-			else
-				ipc_pipe->pipeline->source_comp = dev;
-
 			break;
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config, copier)) {
+			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config,
+						 copier, ipc_pipe->pipeline)) {
 				comp_cl_err(&comp_copier, "unable to create IPC gateway");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-				ipc_pipe->pipeline->source_comp = dev;
-			else
-				ipc_pipe->pipeline->sink_comp = dev;
 
 			break;
 #endif

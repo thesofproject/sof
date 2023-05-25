@@ -225,7 +225,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 
 int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 			 struct comp_ipc_config *config,
-			 const struct ipc4_copier_module_cfg *copier)
+			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline)
 {
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg;
@@ -284,11 +284,13 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
+		pipeline->source_comp = parent_dev;
 	} else {
 		comp_buffer_connect(parent_dev, config->core,
 				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_BUFFER_TO_COMP);
 		cd->bsource_buffer = true;
+		pipeline->sink_comp = parent_dev;
 	}
 
 	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
