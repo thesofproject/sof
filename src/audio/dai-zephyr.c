@@ -1469,32 +1469,33 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer);
-	struct comp_buffer __sparse_cache *local_buf;
+	struct comp_buffer __sparse_cache *local_buf_c;
+	struct comp_buffer *local_buf;
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
 	uint32_t local_fmt;
 
 	buffer_release(dma_buf);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
-						   sink_list);
+		local_buf = list_first_item(&dev->bsource_list,
+					    struct comp_buffer,
+					    sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
-						   struct comp_buffer,
-						   source_list);
+		local_buf = list_first_item(&dev->bsink_list,
+					    struct comp_buffer,
+					    source_list);
 
-	local_buf = buffer_acquire(dd->local_buffer);
-	local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
-	buffer_release(local_buf);
+	local_buf_c = buffer_acquire(local_buf);
+	local_fmt = audio_stream_get_frm_fmt(&local_buf_c->stream);
+	buffer_release(local_buf_c);
 
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
-	if (!dd->process) {
+	if (dd->process)
+		dd->local_buffer = local_buf;
+	else
 		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		dd->local_buffer = NULL;
-	}
 }
 
 /* copy and process stream data from source to sink buffers */
