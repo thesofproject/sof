@@ -30,12 +30,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build Fuzzers
-        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        # Try some random, 2 months old branch
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@links
         with:
           oss-fuzz-project-name: 'sound-open-firmware'
 
       - name: Run Fuzzers
-        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@links
         with:
           oss-fuzz-project-name: 'sound-open-firmware'
           language: c
