@@ -467,40 +467,13 @@ static int do_conversion_copy(struct comp_dev *dev,
 	return 0;
 }
 
-/* Copier has one input and one or more outputs. Maximum of one gateway can be connected
- * to copier or no gateway connected at all. Gateway can only be connected to either input
- * pin 0 (the only input) or output pin 0. With or without connected gateway it is also
- * possible to have component(s) connected on input and/or output pins.
- *
- * A special exception is a multichannel ALH gateway case. These are multiple gateways
- * but should be treated like a single gateway to satisfy rules above. Data from such
- * gateways has to be multiplexed into single stream (for input gateways) or demultiplexed
- * from single stream (for output gateways) so such gateways work kind of like a single
- * gateway, i.e., produce/consume single stream.
- */
-static int copier_copy(struct comp_dev *dev)
+static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *src, *sink;
 	struct comp_buffer __sparse_cache *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
 	struct list_item *sink_list;
-	int ret = 0;
-
-	comp_dbg(dev, "copier_copy()");
-
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw)
-			return do_endpoint_copy(dev);
-		break;
-	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1)
-			return do_endpoint_copy(dev);
-		break;
-	default:
-		break;
-	}
+	int ret  = 0;
 
 	processed_data.source_bytes = 0;
 
@@ -540,7 +513,7 @@ static int copier_copy(struct comp_dev *dev)
 		}
 	}
 
-	/* zero or more components on outputs */
+	/* zero or more components on outputs, module copy case */
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_dev *sink_dev;
 
@@ -569,6 +542,39 @@ static int copier_copy(struct comp_dev *dev)
 	buffer_release(src_c);
 
 	return ret;
+}
+
+/* Copier has one input and one or more outputs. Maximum of one gateway can be connected
+ * to copier or no gateway connected at all. Gateway can only be connected to either input
+ * pin 0 (the only input) or output pin 0. With or without connected gateway it is also
+ * possible to have component(s) connected on input and/or output pins.
+ *
+ * A special exception is a multichannel ALH gateway case. These are multiple gateways
+ * but should be treated like a single gateway to satisfy rules above. Data from such
+ * gateways has to be multiplexed into single stream (for input gateways) or demultiplexed
+ * from single stream (for output gateways) so such gateways work kind of like a single
+ * gateway, i.e., produce/consume single stream.
+ */
+static int copier_copy(struct comp_dev *dev)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "copier_copy()");
+
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			return do_endpoint_copy(dev);
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1)
+			return dai_common_copy(cd->dd[0], dev, cd->converter);
+		break;
+	default:
+		break;
+	}
+	/* handle multi-endpoint and module copy */
+	return do_multi_endpoint_module_copy(cd, dev);
 }
 
 /* configure the DMA params */
