@@ -71,7 +71,7 @@ static int write_block(struct image *image, struct manifest_module *module,
 		return file_error("Write header failed", image->out_file);
 
 	/* alloc data data */
-	buffer = calloc(1, section->size);
+	buffer = calloc(1, block.size);
 	if (!buffer)
 		return -ENOMEM;
 
