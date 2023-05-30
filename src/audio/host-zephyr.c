@@ -417,11 +417,11 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		avail_samples = dma_stat.pending_length / dma_sample_bytes;
+		avail_samples = (dma_stat.pending_length - hd->partial_size) / dma_sample_bytes;
 		free_samples = audio_stream_get_free_samples(&buffer_c->stream);
 	} else {
 		avail_samples = audio_stream_get_avail_samples(&buffer_c->stream);
-		free_samples = dma_stat.free / dma_sample_bytes;
+		free_samples = (dma_stat.free - hd->partial_size) / dma_sample_bytes;
 	}
 
 	dma_copy_bytes = MIN(avail_samples, free_samples) * dma_sample_bytes;
