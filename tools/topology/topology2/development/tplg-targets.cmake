@@ -51,6 +51,8 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-2ch-pdm0.bin,PASSTHROUGH=true,DMIC_IO_CLK=192
 PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
 
+"cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
+
 # CAVS HDA topology with mixer-based efx eq pipelines for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough"
