@@ -484,7 +484,14 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	comp_id = IPC4_COMP_ID(cdma.primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
 	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
 
-	if (!cdma_comp && cdma.primary.r.allocate && cdma.primary.r.enable) {
+	if (!cdma_comp) {
+		/*
+		 * Nothing to do when the chainDMA is not allocated and asked to
+		 * be freed
+		 */
+		if (!cdma.primary.r.allocate && !cdma.primary.r.enable)
+			return IPC4_SUCCESS;
+
 		ret = ipc4_chain_manager_create(&cdma);
 		if (ret < 0)
 			return IPC4_FAILURE;
