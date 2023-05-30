@@ -185,9 +185,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 	else()
 	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
+		lib/platform.c
 		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
@@ -217,7 +216,7 @@ if (CONFIG_SOC_SERIES_INTEL_ACE)
 
 	# Platform sources
 	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/intel/ace/platform.c
+		lib/platform.c
 		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
