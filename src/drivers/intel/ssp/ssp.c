@@ -67,6 +67,34 @@ static void ssp_empty_tx_fifo(struct dai *dai)
 		ssp_write(dai, SSSR, sssr);
 }
 
+/*
+ * Empty SSP receive FIFO before DMA startup and
+ * ensure the DMA request is not already raised when
+ * DMA is started. If TX is not active, this is a no-op.
+ */
+static void ssp_empty_rx_fifo_for_start(struct dai *dai)
+{
+	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
+	uint32_t entries;
+	uint32_t i;
+
+	while ((ssp_read(dai, SSSR) & SSSR_RNE) && retry--) {
+		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+
+		/* let DMA consume data or read RX FIFO directly */
+		for (i = 0; i < entries + 1; i++)
+			ssp_read(dai, SSDR);
+
+		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+	}
+
+	/* clear interrupt */
+	ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
+
+	if (ssp_read(dai, SSSR) & SSSR_RFS)
+		dai_warn(dai, "ssp_empty_rx_fifo_for_startup(), RFS=1 after flush!");
+}
+
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
@@ -74,16 +102,9 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
 						       ssp->params.fsync_rate);
 	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
-	bool direct_reads = ssp->state[DAI_DIR_CAPTURE] <= COMP_STATE_PREPARE;
 	uint32_t entries;
-	uint32_t i;
-
 #if CONFIG_DMA_SUSPEND_DRAIN
-	/*
-	 * In drain mode, DMA is stopped before DAI, so flush must be
-	 * always done with direct register read.
-	 */
-	direct_reads = true;
+	uint32_t i;
 #endif
 
 	/*
@@ -98,10 +119,10 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 		dai_dbg(dai, "ssp_empty_rx_fifo(), before flushing, entries %d", entries);
 
 		/* let DMA consume data or read RX FIFO directly */
-		if (direct_reads) {
-			for (i = 0; i < entries + 1; i++)
-				ssp_read(dai, SSDR);
-		}
+#if CONFIG_DMA_SUSPEND_DRAIN
+		for (i = 0; i < entries + 1; i++)
+			ssp_read(dai, SSDR);
+#endif
 
 		/* wait to get valid fifo status and re-check */
 		wait_delay(sample_ticks);
@@ -964,7 +985,7 @@ static void ssp_early_start(struct dai *dai, int direction)
 
 	/* RX fifo must be cleared before start */
 	if (direction == DAI_DIR_CAPTURE)
-		ssp_empty_rx_fifo(dai);
+		ssp_empty_rx_fifo_for_start(dai);
 
 	/* request mclk/bclk */
 	ssp_pre_start(dai);
