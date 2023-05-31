@@ -475,6 +475,7 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	cd->peak_regs.target_volume[channel] = target_volume;
 	/* update peak meter in peak_regs */
 	cd->peak_regs.peak_meter[channel] = 0;
+	cd->peak_cnt = 0;
 
 	/* init target volume */
 	cd->tvolume[channel] = target_volume;
@@ -1169,6 +1170,14 @@ static int volume_process(struct processing_module *mod,
 
 		avail_frames -= frames;
 	}
+#if CONFIG_COMP_PEAK_VOL
+	cd->peak_cnt++;
+	if (cd->peak_cnt == cd->peak_report_cnt) {
+		cd->peak_cnt = 0;
+		peak_vol_update(cd);
+		memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
+	}
+#endif
 
 	return 0;
 }
@@ -1247,6 +1256,11 @@ static int volume_prepare(struct processing_module *mod)
 	comp_dbg(dev, "volume_prepare()");
 
 #if CONFIG_IPC_MAJOR_4
+	cd->peak_cnt = 0;
+	cd->peak_report_cnt = CONFIG_PEAK_METER_UPDATE_PERIOD * 1000 / mod->dev->period;
+	if (cd->peak_report_cnt == 0)
+		cd->peak_report_cnt = 1;
+
 	ret = volume_params(mod);
 	if (ret < 0)
 		return ret;

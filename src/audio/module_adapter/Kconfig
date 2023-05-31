@@ -184,6 +184,42 @@ config COMP_PEAK_VOL
          This option enables reporting to host peak vol regs.
          See: struct ipc4_peak_volume_regs
 
+choice "PEAK_METER_UPDATE_PERIOD_CHOICE"
+	prompt "The periods(ms) of updating peak meter value"
+	default PEAK_METER_UPDATE_10MS
+	depends on COMP_PEAK_VOL
+
+	config PEAK_METER_UPDATE_1MS
+		bool "1ms"
+		help
+		  Update the peak meter value every 1ms
+
+	config PEAK_METER_UPDATE_10MS
+		bool "10ms"
+		help
+		  Update the peak meter value every 10ms
+
+	config PEAK_METER_UPDATE_100MS
+		bool "100ms"
+		help
+		  Update the peak meter value every 100ms
+
+	config PEAK_METER_UPDATE_1000MS
+		bool "1000ms"
+		help
+		  Update the peak meter value every 1000ms
+	endchoice
+
+config PEAK_METER_UPDATE_PERIOD
+	int
+	depends on COMP_PEAK_VOL
+	default 1 if PEAK_METER_UPDATE_1MS
+	default 10 if PEAK_METER_UPDATE_10MS
+	default 100 if PEAK_METER_UPDATE_100MS
+	default 1000 if PEAK_METER_UPDATE_1000MS
+	help
+	  Decide which period of update the peak volume meter value
+
 config COMP_GAIN
 	bool "GAIN component"
 	default y

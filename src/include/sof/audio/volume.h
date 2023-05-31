@@ -141,6 +141,8 @@ struct vol_data {
 	struct ipc4_peak_volume_regs peak_regs;
 	/**< store temp peak volume 4 times for scale_vol function */
 	int32_t *peak_vol;
+	uint32_t peak_cnt;		/**< accumulated period of volume processing*/
+	uint32_t peak_report_cnt;		/**< the period number to update peak meter*/
 #endif
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
