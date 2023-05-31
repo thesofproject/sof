@@ -1552,6 +1552,11 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 	struct comp_dev *source_dev;
 	int source_index;
 	int src_id;
+	int ret;
+
+	ret = module_bind(mod, data);
+	if (ret < 0)
+		return ret;
 
 	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -1603,6 +1608,11 @@ int module_adapter_unbind(struct comp_dev *dev, void *data)
 	struct comp_dev *source_dev;
 	int source_index;
 	int src_id;
+	int ret;
+
+	ret = module_unbind(mod, data);
+	if (ret < 0)
+		return ret;
 
 	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
