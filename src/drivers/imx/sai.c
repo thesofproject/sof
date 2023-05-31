@@ -284,7 +284,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 */
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_FSE;
-		val_cr4 |= REG_SAI_CR4_SYWD(0U);
+		val_cr4 |= REG_SAI_CR4_SYWD(1U);
 		break;
 	case SOF_DAI_FMT_DSP_B:
 		/*
@@ -292,7 +292,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 * frame sync asserts with the first bit of the frame.
 		 */
 		val_cr2 |= REG_SAI_CR2_BCP;
-		val_cr4 |= REG_SAI_CR4_SYWD(0U);
+		val_cr4 |= REG_SAI_CR4_SYWD(1U);
 		break;
 	case SOF_DAI_FMT_PDM:
 		val_cr2 |= REG_SAI_CR2_BCP;
