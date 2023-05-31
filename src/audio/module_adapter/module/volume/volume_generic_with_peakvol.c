@@ -67,7 +67,6 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 
-	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 
@@ -94,8 +93,6 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -126,7 +123,6 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 
-	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
@@ -156,9 +152,6 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -189,7 +182,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 	int32_t tmp;
 
-	memset(cd->peak_regs.peak_meter, 0, sizeof(uint32_t) * cd->channels);
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 
@@ -216,9 +208,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif
 
