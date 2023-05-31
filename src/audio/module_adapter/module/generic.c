@@ -486,3 +486,21 @@ int module_set_configuration(struct processing_module *mod,
 
 	return ret;
 }
+
+int module_bind(struct processing_module *mod, void *data)
+{
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->bind)
+		return md->ops->bind(mod, data);
+	return 0;
+}
+
+int module_unbind(struct processing_module *mod, void *data)
+{
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->unbind)
+		return md->ops->unbind(mod, data);
+	return 0;
+}

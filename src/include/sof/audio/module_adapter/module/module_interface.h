@@ -189,6 +189,14 @@ struct module_interface {
 	 * free in .free(). This should free all memory allocated during module initialization.
 	 */
 	int (*free)(struct processing_module *mod);
+	/**
+	 * Module specific bind procedure, called when modules are bound with each other
+	 */
+	int (*bind)(struct processing_module *mod, void *data);
+	/**
+	 * Module specific unbind procedure, called when modules are disconnected from one another
+	 */
+	int (*unbind)(struct processing_module *mod, void *data);
 };
 
 /* Convert first_block/last_block indicator to fragment position */
