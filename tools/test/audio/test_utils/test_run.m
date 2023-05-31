@@ -92,14 +92,16 @@ else
 	fprintf(fh, 'XTRUN=\n');
 end
 
-% Override defaults in comp_run.sh
-fprintf(fh, 'VALGRIND=false\n');
 fclose(fh);
 
 arg = sprintf('-t %s', fn_config);
 rcmd = sprintf('%s %s', ex, arg);
 fprintf('Running ''%s''...\n', rcmd);
-system(rcmd);
+ret = system(rcmd);
+if ret
+	error('''%s'' returned status %d\n', rcmd, ret);
+end
+
 delete(fn_config);
 
 end
