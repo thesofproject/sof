@@ -409,6 +409,9 @@ function test = test_defaults(t)
 	test.thdnf_max = [];            % Set per component
 	test.dr_db_min = 80;            % Min. DR
 	test.fr_rp_max_db = 0.5;        % Allow 0.5 dB frequency response ripple
+
+	% No need to collect trace
+	test.trace = '';
 end
 
 function test = test_run_process(test)
