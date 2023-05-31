@@ -44,8 +44,11 @@ DECLARE_TR_CTX(ssp_tr, SOF_UUID(ssp_uuid), LOG_LEVEL_INFO);
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
 {
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
+						       ssp->params.fsync_rate);
+	uint32_t sssr, samples;
 	int ret;
-	uint32_t sssr;
 
 	/*
 	 * SSSR_TNF is cleared when TX FIFO is empty or full,
@@ -53,9 +56,13 @@ static void ssp_empty_tx_fifo(struct dai *dai)
 	 */
 	ret = poll_for_register_delay(dai_base(dai) + SSSR, SSSR_TNF, SSSR_TNF,
 				      SSP_MAX_SEND_TIME_PER_SAMPLE);
+
+	/* Calculate the time needed for the FIFO to be drained */
+	samples = (SSCR3_TFL_VAL(ssp_read(dai, SSCR3)) + 1) / ssp->params.tx_slots;
+	samples++;
+
 	ret |= poll_for_register_delay(dai_base(dai) + SSCR3, SSCR3_TFL_MASK, 0,
-				       SSP_MAX_SEND_TIME_PER_SAMPLE *
-				       (SSP_FIFO_DEPTH - 1) / 2);
+				       sample_ticks * samples);
 
 	if (ret)
 		dai_warn(dai, "ssp_empty_tx_fifo() warning: timeout");
