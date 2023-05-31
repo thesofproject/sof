@@ -589,7 +589,9 @@ def rimage_options(platform_dict):
 
 	signing_key = ""
 	if args.key:
-		signing_key = args.key
+		key_path = pathlib.Path(args.key)
+		assert key_path.exists(), f"{key_path} not found"
+		signing_key = key_path.resolve()
 	elif "RIMAGE_KEY" in platform_dict:
 		signing_key = platform_dict["RIMAGE_KEY"]
 	else:
