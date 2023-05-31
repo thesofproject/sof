@@ -83,7 +83,7 @@ MEMORY
         len =  IRAM_BASE + (XCHAL_DOUBLEEXC_VECTOR_PADDR + SOF_MEM_VECT_TEXT_SIZE)
   sof_sdram0 :
         org = DRAM0_BASE,
-        len = DRAM0_SIZE
+        len = DRAM0_SIZE + DRAM1_SIZE - SOF_STACK_SIZE
   system_heap :
         org = HEAP_SYSTEM_BASE,
         len = HEAP_SYSTEM_SIZE
