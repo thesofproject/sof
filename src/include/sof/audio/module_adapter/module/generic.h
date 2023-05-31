@@ -249,6 +249,8 @@ int module_set_configuration(struct processing_module *mod,
 			     enum module_cfg_fragment_position pos, size_t data_offset_size,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size);
+int module_bind(struct processing_module *mod, void *data);
+int module_unbind(struct processing_module *mod, void *data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config,
