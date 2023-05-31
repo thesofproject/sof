@@ -64,49 +64,74 @@ static void ssp_empty_tx_fifo(struct dai *dai)
 		ssp_write(dai, SSSR, sssr);
 }
 
-/* empty SSP receive FIFO */
-static void ssp_empty_rx_fifo(struct dai *dai)
+static void ssp_empty_rx_fifo_on_start(struct dai *dai)
+{
+	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
+	uint32_t i, sssr;
+
+	sssr = ssp_read(dai, SSSR);
+
+	if (sssr & SSSR_ROR) {
+		/* The RX FIFO is in overflow condition, empty it */
+		for (i = 0; i < SSP_FIFO_DEPTH; i++)
+			ssp_read(dai, SSDR);
+
+		/* Clear the overflow status */
+		ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
+		/* Re-read the SSSR register */
+		sssr = ssp_read(dai, SSSR);
+	}
+
+	while ((sssr & SSSR_RNE) && retry--) {
+		uint32_t entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+
+		/* Empty the RX FIFO (the DMA is not running at this point) */
+		for (i = 0; i < entries + 1; i++)
+			ssp_read(dai, SSDR);
+
+		sssr = ssp_read(dai, SSSR);
+	}
+}
+
+static void ssp_empty_rx_fifo_on_stop(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
 						       ssp->params.fsync_rate);
 	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
-	bool direct_reads = ssp->state[DAI_DIR_CAPTURE] <= COMP_STATE_PREPARE;
-	uint32_t entries;
-	uint32_t i;
+	uint32_t entries[2];
+	uint32_t i, sssr;
 
-#if CONFIG_DMA_SUSPEND_DRAIN
-	/*
-	 * In drain mode, DMA is stopped before DAI, so flush must be
-	 * always done with direct register read.
-	 */
-	direct_reads = true;
-#endif
+	sssr = ssp_read(dai, SSSR);
+	entries[0] = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
 
-	/*
-	 * To make sure all the RX FIFO entries are read out for the flushing,
-	 * we need to wait a minimal SSP port delay after entries are all read,
-	 * and then re-check to see if there is any subsequent entries written
-	 * to the FIFO. This will help to make sure there is no sample mismatched
-	 * issue for the next run with the SSP RX.
-	 */
-	while ((ssp_read(dai, SSSR) & SSSR_RNE) && retry--) {
-		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
-		dai_dbg(dai, "ssp_empty_rx_fifo(), before flushing, entries %d", entries);
+	while ((sssr & SSSR_RNE) && retry--) {
+		/* Wait one sample time */
+		wait_delay(sample_ticks);
 
-		/* let DMA consume data or read RX FIFO directly */
-		if (direct_reads) {
-			for (i = 0; i < entries + 1; i++)
+		entries[1] = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+		sssr = ssp_read(dai, SSSR);
+
+		if (entries[0] > entries[1]) {
+			/*
+			 * The DMA is reading the FIFO, check the status in the
+			 * next loop
+			 */
+			entries[0] = entries[1];
+		} else if (!(sssr & SSSR_RFS)) {
+			/*
+			 * The DMA request is not asserted, read the FIFO
+			 * directly, otherwise let the next loop iteration to
+			 * check the status
+			 */
+			for (i = 0; i < entries[1] + 1; i++)
 				ssp_read(dai, SSDR);
 		}
 
-		/* wait to get valid fifo status and re-check */
-		wait_delay(sample_ticks);
-		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
-		dai_dbg(dai, "ssp_empty_rx_fifo(), after flushing, entries %d", entries);
+		sssr = ssp_read(dai, SSSR);
 	}
 
-	/* clear interrupt */
+	/* Just in case clear the overflow status */
 	ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
 }
 
@@ -915,7 +940,7 @@ static void ssp_start(struct dai *dai, int direction)
 
 	/* RX fifo must be cleared before start */
 	if (direction == DAI_DIR_CAPTURE)
-		ssp_empty_rx_fifo(dai);
+		ssp_empty_rx_fifo_on_start(dai);
 
 	/* request mclk/bclk */
 	ssp_pre_start(dai);
@@ -968,7 +993,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
-		ssp_empty_rx_fifo(dai);
+		ssp_empty_rx_fifo_on_stop(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), RX stop");
 	}
@@ -1077,8 +1102,6 @@ static int ssp_probe(struct dai *dai)
 
 	/* Disable dynamic clock gating before touching any register */
 	pm_runtime_get_sync(SSP_CLK, dai->index);
-
-	ssp_empty_rx_fifo(dai);
 
 	return 0;
 }
