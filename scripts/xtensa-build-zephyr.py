@@ -60,7 +60,6 @@ VERSION = version.Version("2.0.0")
 # Constant value resolves SOF_TOP directory as: "this script directory/.."
 SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
 west_top = pathlib.Path(SOF_TOP, "..").resolve()
-default_rimage_key = pathlib.Path(SOF_TOP, "keys", "otc_private_key.pem")
 
 sof_fw_version = None
 
@@ -587,17 +586,16 @@ def rimage_options(platform_dict):
 	if args.verbose > 0:
 		opts.append(("-v",) * args.verbose)
 
-	signing_key = ""
+	signing_key = None
 	if args.key:
 		key_path = pathlib.Path(args.key)
 		assert key_path.exists(), f"{key_path} not found"
 		signing_key = key_path.resolve()
 	elif "RIMAGE_KEY" in platform_dict:
 		signing_key = platform_dict["RIMAGE_KEY"]
-	else:
-		signing_key = default_rimage_key
 
-	opts.append(("-k", str(signing_key)))
+	if signing_key is not None:
+		opts.append(("-k", str(signing_key)))
 
 	sof_fw_vers = get_sof_version()
 
