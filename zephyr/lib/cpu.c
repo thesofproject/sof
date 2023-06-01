@@ -46,6 +46,7 @@ extern struct tr_ctx zephyr_tr;
 extern void *global_imr_ram_storage;
 #endif
 
+#if CONFIG_PM
 void cpu_notify_state_entry(enum pm_state state)
 {
 	if (!cpu_is_primary(arch_proc_id()))
@@ -82,6 +83,7 @@ void cpu_notify_state_entry(enum pm_state state)
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 	}
 }
+#endif /* CONFIG_PM */
 
 /* notifier called after every power state transition */
 void cpu_notify_state_exit(enum pm_state state)
@@ -120,6 +122,7 @@ int cpu_enable_core(int id)
 	if (arch_cpu_active(id))
 		return 0;
 
+#if CONFIG_PM
 	/* During kernel initialization, the next pm state is set to ACTIVE. By checking this
 	 * value, we determine if this is the first core boot, if not, we need to skip idle thread
 	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
@@ -131,6 +134,7 @@ int cpu_enable_core(int id)
 	}
 
 	k_smp_cpu_resume(id, secondary_init, NULL, true, false);
+#endif /* CONFIG_PM */
 
 	return 0;
 }
