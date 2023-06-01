@@ -336,4 +336,5 @@ void k_sys_fatal_error_handler(unsigned int reason,
 	ipc_send_panic_notification();
 
 	LOG_ERR("Halting system");
+	k_fatal_halt(reason);
 }
