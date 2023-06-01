@@ -76,10 +76,12 @@ int platform_boot_complete(uint32_t boot_message)
 	return ipc_platform_send_msg(&msg);
 }
 
+#ifdef CONFIG_PM
 static struct pm_notifier pm_state_notifier = {
 	.state_entry = cpu_notify_state_entry,
 	.state_exit = cpu_notify_state_exit,
 };
+#endif
 
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
@@ -123,8 +125,10 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
+#ifdef CONFIG_PM
 	/* register power states entry / exit notifiers */
 	pm_notifier_register(&pm_state_notifier);
+#endif
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
