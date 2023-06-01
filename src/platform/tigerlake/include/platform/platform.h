@@ -81,7 +81,7 @@ struct timer;
 #define PLATFORM_FORCE_L1_EXIT_TIME	985
 
 /* the SSP port fifo depth */
-#define SSP_FIFO_DEPTH		16
+#define SSP_FIFO_DEPTH		32
 
 /* the watermark for the SSP fifo depth setting */
 #define SSP_FIFO_WATERMARK	8
