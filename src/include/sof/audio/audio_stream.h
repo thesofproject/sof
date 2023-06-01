@@ -459,8 +459,14 @@ audio_stream_get_avail_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	switch (audio_stream_sample_bytes(stream)) {
+	case 2:
+		return audio_stream_get_avail_bytes(stream) >> 1;
+	case 4:
+		return audio_stream_get_avail_bytes(stream) >> 2;
+	default:
+		return 0;
+	}
 }
 
 /**
@@ -471,8 +477,18 @@ audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	uint32_t frame_bytes = audio_stream_frame_bytes(stream);
+
+	switch (frame_bytes) {
+	case 2:
+		return audio_stream_get_avail_bytes(stream) >> 1;
+	case 4:
+		return audio_stream_get_avail_bytes(stream) >> 2;
+	case 8:
+		return audio_stream_get_avail_bytes(stream) >> 3;
+	default:
+		return audio_stream_get_avail_bytes(stream) / frame_bytes;
+	}
 }
 
 /**
@@ -503,8 +519,14 @@ audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	switch (audio_stream_sample_bytes(stream)) {
+	case 2:
+		return audio_stream_get_free_bytes(stream) >> 1;
+	case 4:
+		return audio_stream_get_free_bytes(stream) >> 2;
+	default:
+		return 0;
+	}
 }
 
 /**
@@ -515,8 +537,18 @@ audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	uint32_t frame_bytes = audio_stream_frame_bytes(stream);
+
+	switch (frame_bytes) {
+	case 2:
+		return audio_stream_get_free_bytes(stream) >> 1;
+	case 4:
+		return audio_stream_get_free_bytes(stream) >> 2;
+	case 8:
+		return audio_stream_get_free_bytes(stream) >> 3;
+	default:
+		return audio_stream_get_free_bytes(stream) / frame_bytes;
+	}
 }
 
 /**
