@@ -21,6 +21,15 @@
 #include <limits.h>
 #include <stdint.h>
 
+/* Define to get trace of cycles counts from module adapter simple copy */
+#define MODULE_ADAPTER_TRACE_OVERHEAD	0
+
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+#if defined __XCC__
+#include <xtensa/tie/xt_timer.h>
+#endif
+#endif
+
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
 /*
@@ -720,6 +729,13 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 	uint32_t num_output_buffers = 0;
 	int ret, i = 0;
 
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	int64_t count0, count1;
+	uint32_t ov1, ov2, ov3, ov4, ov5, ov6, ov7, ov8;
+
+	count0 = XT_RSR_CCOUNT();
+#endif
+
 	/* acquire all sink and source buffers */
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
@@ -727,6 +743,12 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		sink = container_of(blist, struct comp_buffer, source_list);
 		sinks_c[i++] = buffer_acquire(sink);
 	}
+
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count1 = XT_RSR_CCOUNT();
+	ov1 = count1 - count0;
+#endif
+
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
@@ -734,6 +756,11 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c[i++] = buffer_acquire(source);
 	}
+
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count0 = XT_RSR_CCOUNT();
+	ov2 = count0 - count1;
+#endif
 
 	/* setup active input/output buffers for processing */
 	if (mod->num_output_buffers == 1) {
@@ -746,8 +773,19 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 			num_input_buffers = 1;
 	}
 
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count1 = XT_RSR_CCOUNT();
+	ov3 = count1 - count0;
+#endif
+
 	ret = module_process(mod, mod->input_buffers, num_input_buffers,
 			     mod->output_buffers, num_output_buffers);
+
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count0 = XT_RSR_CCOUNT();
+	ov4 = count0 - count1;
+#endif
+
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
 			comp_err(dev, "module_adapter_simple_copy() process failed with error: %x",
@@ -774,6 +812,11 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 	 */
 	mod->total_data_consumed += mod->input_buffers[0].consumed;
 
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count1 = XT_RSR_CCOUNT();
+	ov5 = count1 - count0;
+#endif
+
 	/* release all source buffers */
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
@@ -782,6 +825,11 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		mod->input_buffers[i].consumed = 0;
 		i++;
 	}
+
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count0 = XT_RSR_CCOUNT();
+	ov6 = count0 - count1;
+#endif
 
 	/* produce data into all active output buffers */
 	for (i = 0; i < num_output_buffers; i++) {
@@ -798,6 +846,11 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 
 	mod->total_data_produced += mod->output_buffers[0].size;
 
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count1 = XT_RSR_CCOUNT();
+	ov7 = count1 - count0;
+#endif
+
 	/* release all sink buffers */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
@@ -805,6 +858,12 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		mod->output_buffers[i++].size = 0;
 	}
 
+#if MODULE_ADAPTER_TRACE_OVERHEAD
+	count0 = XT_RSR_CCOUNT();
+	ov8 = count0 - count1;
+	comp_info(dev, "overhead1 %u %u %u %u", ov1, ov2, ov3, ov4);
+	comp_info(dev, "overhead2 %u %u %u %u", ov5, ov6, ov7, ov8);
+#endif
 	return 0;
 out:
 	i = 0;
