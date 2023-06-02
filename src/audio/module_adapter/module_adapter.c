@@ -771,8 +771,8 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 		src_c = attr_container_of(mod->input_buffers[i].data,
 					  struct comp_buffer __sparse_cache,
 					  stream, __sparse_cache);
-
-		comp_update_buffer_consume(src_c, mod->input_buffers[i].consumed);
+		if (mod->input_buffers[i].consumed)
+			audio_stream_consume(&src_c->stream, mod->input_buffers[i].consumed);
 	}
 
 	/* compute data consumed based on pin 0 since it is processed with base config
@@ -799,7 +799,8 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 
 		if (!mod->skip_sink_buffer_writeback)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
-		comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
+		if (mod->output_buffers[i].size)
+			audio_stream_produce(&sink_c->stream, mod->output_buffers[i].size);
 	}
 
 	mod->total_data_produced += mod->output_buffers[0].size;
