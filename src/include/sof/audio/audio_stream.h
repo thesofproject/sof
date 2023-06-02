@@ -73,6 +73,9 @@ struct audio_stream {
 	 */
 	uint16_t frame_align_shift;
 
+	signed char fmt_shift;	/**< Use to calculate samples */
+	signed char frm_shift;	/**< Use to calculate frames */
+
 	bool overrun_permitted; /**< indicates whether overrun is permitted */
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
 };
@@ -116,6 +119,16 @@ static inline enum sof_ipc_frame audio_stream_get_frm_fmt(
 	const struct audio_stream __sparse_cache *buf)
 {
 	return buf->frame_fmt;
+}
+
+static inline signed char audio_stream_get_fmt_shift(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->fmt_shift;
+}
+
+static inline signed char audio_stream_get_frm_shift(const struct audio_stream __sparse_cache *buf)
+{
+	return buf->frm_shift;
 }
 
 static inline enum sof_ipc_frame audio_stream_get_valid_fmt(
@@ -183,6 +196,17 @@ static inline void audio_stream_set_frm_fmt(struct audio_stream __sparse_cache *
 					    enum sof_ipc_frame val)
 {
 	buf->frame_fmt = val;
+
+	switch (buf->frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		buf->fmt_shift = 1;
+		break;
+	case SOF_IPC_FRAME_S24_3LE:
+		buf->fmt_shift = -1;	/* have to divide */
+		break;
+	default:
+		buf->fmt_shift = 2;
+	}
 }
 
 static inline void audio_stream_set_valid_fmt(struct audio_stream __sparse_cache *buf,
@@ -198,6 +222,8 @@ static inline void audio_stream_set_rate(struct audio_stream __sparse_cache *buf
 
 static inline void audio_stream_set_channels(struct audio_stream __sparse_cache *buf, uint16_t val)
 {
+	/* Have to divide if not a power of 2, e.g. 3, 5, or 7 channels */
+	buf->frm_shift = is_power_of_2(val) ? ffs(val) - 1 : -1;
 	buf->channels = val;
 }
 
@@ -324,9 +350,9 @@ static inline int audio_stream_set_params(struct audio_stream __sparse_cache *bu
 	if (!params)
 		return -EINVAL;
 
-	buffer->frame_fmt = params->frame_fmt;
+	audio_stream_set_frm_fmt(buffer, params->frame_fmt);
+	audio_stream_set_channels(buffer, params->channels);
 	buffer->rate = params->rate;
-	buffer->channels = params->channels;
 
 	return 0;
 }
@@ -341,6 +367,18 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __spar
 	return get_frame_bytes(buf->frame_fmt, buf->channels);
 }
 
+static inline unsigned int audio_stream_bytes_to_frames(
+	const struct audio_stream __sparse_cache *buf, size_t bytes)
+{
+	signed char fmt_shift = audio_stream_get_fmt_shift(buf);
+	signed char frm_shift = audio_stream_get_frm_shift(buf);
+
+	if (fmt_shift >= 0 && frm_shift >= 0)
+		return bytes >> (fmt_shift + frm_shift);
+
+	return bytes / audio_stream_frame_bytes(buf);
+}
+
 /**
  * Calculates sample size in bytes based on component stream's parameters.
  * @param buf Component buffer.
@@ -349,6 +387,17 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream __spar
 static inline uint32_t audio_stream_sample_bytes(const struct audio_stream __sparse_cache *buf)
 {
 	return get_sample_bytes(buf->frame_fmt);
+}
+
+static inline unsigned int audio_stream_bytes_to_samples(
+	const struct audio_stream __sparse_cache *buf, size_t bytes)
+{
+	signed char shift = audio_stream_get_fmt_shift(buf);
+
+	if (shift >= 0)
+		return bytes >> shift;
+
+	return bytes / audio_stream_sample_bytes(buf);
 }
 
 /**
@@ -490,8 +539,7 @@ audio_stream_get_avail_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	return audio_stream_bytes_to_samples(stream, audio_stream_get_avail_bytes(stream));
 }
 
 /**
@@ -502,8 +550,7 @@ audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	return audio_stream_bytes_to_frames(stream, audio_stream_get_avail_bytes(stream));
 }
 
 /**
@@ -534,8 +581,7 @@ audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	return audio_stream_bytes_to_samples(stream, audio_stream_get_free_bytes(stream));
 }
 
 /**
@@ -546,8 +592,7 @@ audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	return audio_stream_bytes_to_frames(stream, audio_stream_get_free_bytes(stream));
 }
 
 /**
@@ -591,10 +636,7 @@ audio_stream_get_copy_bytes(const struct audio_stream __sparse_cache *source,
 	uint32_t avail = audio_stream_get_avail_bytes(source);
 	uint32_t free = audio_stream_get_free_bytes(sink);
 
-	if (avail > free)
-		return free;
-	else
-		return avail;
+	return MIN(avail, free);
 }
 
 /**

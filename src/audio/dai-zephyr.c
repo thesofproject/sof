@@ -1500,7 +1500,6 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
-	uint32_t dma_fmt;
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
 	struct dma_status stat;
@@ -1509,6 +1508,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	uint32_t copy_bytes;
 	uint32_t src_samples;
 	uint32_t sink_samples;
+	uint32_t period_samples;
 	uint32_t samples = UINT32_MAX;
 	int ret;
 
@@ -1535,16 +1535,15 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	buf_c = buffer_acquire(dd->dma_buffer);
 
-	dma_fmt = audio_stream_get_frm_fmt(&buf_c->stream);
-	sampling = get_sample_bytes(dma_fmt);
-
-	buffer_release(buf_c);
+	sampling = audio_stream_sample_bytes(&buf_c->stream);
+	period_samples = audio_stream_bytes_to_samples(&buf_c->stream, dd->period_bytes);
 
 	/* handle module runtime unbind */
 	if (!dd->local_buffer) {
 		set_new_local_buffer(dd, dev);
 
 		if (!dd->local_buffer) {
+			buffer_release(buf_c);
 			comp_warn(dev, "dai_zephyr_copy(): local buffer unbound, cannot copy");
 			return 0;
 		}
@@ -1552,25 +1551,28 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		buf_c = buffer_acquire(dd->local_buffer);
-		src_samples = audio_stream_get_avail_samples(&buf_c->stream);
-		sink_samples = free_bytes / sampling;
+		struct comp_buffer __sparse_cache *local_c = buffer_acquire(dd->local_buffer);
+
+		src_samples = audio_stream_get_avail_samples(&local_c->stream);
+		sink_samples = audio_stream_bytes_to_samples(&buf_c->stream, free_bytes);
 		samples = MIN(src_samples, sink_samples);
-		buffer_release(buf_c);
+		buffer_release(local_c);
 	} else {
 		struct list_item *sink_list;
 
-		src_samples = avail_bytes / sampling;
+		src_samples = audio_stream_bytes_to_samples(&buf_c->stream, avail_bytes);
 
 		/*
 		 * there's only one sink buffer in the case of endpoint DAI devices created by
 		 * a DAI copier and it is chosen as the dd->local buffer
 		 */
 		if (!converter) {
-			buf_c = buffer_acquire(dd->local_buffer);
-			sink_samples = audio_stream_get_free_samples(&buf_c->stream);
+			struct comp_buffer __sparse_cache *local_c =
+				buffer_acquire(dd->local_buffer);
+
+			sink_samples = audio_stream_get_free_samples(&local_c->stream);
 			samples = MIN(samples, sink_samples);
-			buffer_release(buf_c);
+			buffer_release(local_c);
 		} else {
 			/*
 			 * In the case of capture DAI's with multiple sink buffers, compute the
@@ -1579,30 +1581,33 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			 */
 			list_for_item(sink_list, &dev->bsink_list) {
 				struct comp_dev *sink_dev;
-				struct comp_buffer *sink;
+				struct comp_buffer *sink = container_of(sink_list,
+								struct comp_buffer, source_list);
+				struct comp_buffer __sparse_cache *local_c =
+					buffer_acquire(sink);
 
-				sink = container_of(sink_list, struct comp_buffer, source_list);
-				buf_c = buffer_acquire(sink);
-				sink_dev = buf_c->sink;
+				sink_dev = local_c->sink;
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE) {
 					sink_samples =
-						audio_stream_get_free_samples(&buf_c->stream);
+						audio_stream_get_free_samples(&local_c->stream);
 					samples = MIN(samples, sink_samples);
 				}
-				buffer_release(buf_c);
+				buffer_release(local_c);
 			}
 		}
 
 		samples = MIN(samples, src_samples);
 	}
 
+	buffer_release(buf_c);
+
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
 	if (!(dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
-		samples = MIN(samples, dd->period_bytes / sampling);
+		samples = MIN(samples, period_samples);
 
 	copy_bytes = samples * sampling;
 

@@ -399,17 +399,18 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 
 	dma_buf_c = buffer_acquire(hd->dma_buffer);
 	dma_sample_bytes = get_sample_bytes(audio_stream_get_frm_fmt(&dma_buf_c->stream));
-	buffer_release(dma_buf_c);
 
 	buffer_c = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		avail_samples = (dma_stat.pending_length - hd->partial_size) / dma_sample_bytes;
+		avail_samples = audio_stream_bytes_to_samples(&dma_buf_c->stream,
+							dma_stat.pending_length - hd->partial_size);
 		free_samples = audio_stream_get_free_samples(&buffer_c->stream);
 	} else {
 		avail_samples = audio_stream_get_avail_samples(&buffer_c->stream);
-		free_samples = (dma_stat.free - hd->partial_size) / dma_sample_bytes;
+		free_samples = audio_stream_bytes_to_samples(&dma_buf_c->stream,
+							dma_stat.free - hd->partial_size);
 	}
 
 	dma_copy_bytes = MIN(avail_samples, free_samples) * dma_sample_bytes;
@@ -426,6 +427,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 			  avail_samples, free_samples);
 
 	buffer_release(buffer_c);
+	buffer_release(dma_buf_c);
 
 	/* dma_copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.

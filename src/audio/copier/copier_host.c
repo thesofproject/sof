@@ -145,7 +145,7 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 	if (cd->attenuation && dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		source = buffer_acquire(cd->hd->dma_buffer);
 		sink = buffer_acquire(cd->hd->local_buffer);
-		frames = bytes / audio_stream_frame_bytes(&source->stream);
+		frames = audio_stream_bytes_to_frames(&sink->stream, bytes);
 
 		ret = apply_attenuation(dev, cd, sink, frames);
 		if (ret < 0)
