@@ -706,22 +706,27 @@ module_single_sink_setup(struct comp_dev *dev,
 			 struct comp_buffer __sparse_cache **sinks_c)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct comp_copy_limits c;
 	struct list_item *blist;
 	uint32_t num_input_buffers;
+	uint32_t frames;
 	int i = 0;
 
 	list_for_item(blist, &dev->bsource_list) {
-		comp_get_copy_limits_frame_aligned(source_c[i], sinks_c[0], &c);
+		frames = audio_stream_avail_frames_aligned(&source_c[i]->stream,
+							   &sinks_c[0]->stream);
 
-		if (!mod->skip_src_buffer_invalidate)
-			buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
+		if (!mod->skip_src_buffer_invalidate) {
+			uint32_t source_frame_bytes;
+
+			source_frame_bytes = audio_stream_frame_bytes(&source_c[i]->stream);
+			buffer_stream_invalidate(source_c[i], frames * source_frame_bytes);
+		}
 
 		/*
 		 * note that the size is in number of frames not the number of
 		 * bytes
 		 */
-		mod->input_buffers[i].size = c.frames;
+		mod->input_buffers[i].size = frames;
 		mod->input_buffers[i].consumed = 0;
 
 		mod->input_buffers[i].data = &source_c[i]->stream;
@@ -742,22 +747,23 @@ module_single_source_setup(struct comp_dev *dev,
 			   struct comp_buffer __sparse_cache **sinks_c)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct comp_copy_limits c;
 	struct list_item *blist;
 	uint32_t min_frames = UINT32_MAX;
 	uint32_t num_output_buffers;
 	uint32_t source_frame_bytes = 0;
 	int i = 0;
 
+	source_frame_bytes = audio_stream_frame_bytes(&source_c[0]->stream);
 	if (list_is_empty(&dev->bsink_list)) {
 		min_frames = audio_stream_get_avail_frames(&source_c[0]->stream);
-		source_frame_bytes = audio_stream_frame_bytes(&source_c[0]->stream);
 	} else {
-		list_for_item(blist, &dev->bsink_list) {
-			comp_get_copy_limits_frame_aligned(source_c[0], sinks_c[i], &c);
+		uint32_t frames;
 
-			min_frames = MIN(min_frames, c.frames);
-			source_frame_bytes = c.source_frame_bytes;
+		list_for_item(blist, &dev->bsink_list) {
+			frames = audio_stream_avail_frames_aligned(&source_c[0]->stream,
+								   &sinks_c[i]->stream);
+
+			min_frames = MIN(min_frames, frames);
 
 			mod->output_buffers[i].size = 0;
 			mod->output_buffers[i].data = &sinks_c[i]->stream;
