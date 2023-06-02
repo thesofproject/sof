@@ -168,28 +168,83 @@ static int pipe_comp_free(struct sof_pipe *sp, struct sof_ipc_cmd_hdr *hdr)
 	return 0;
 }
 
-#if 0
-static int pipe_ready_endpoints(struct sof_pipe *sp)
+
+static int pipe_ready_endpoints(struct sof_pipe *sp, struct sof_ipc_pipe_ready *p,
+				struct ipc_comp_dev *ipc_pipe)
 {
-	struct ipc *ipc = ipc_get();
-	struct ipc_comp_dev *ipc_ppl_source;
-	struct ipc_comp_dev *ipc_ppl_sink;
+	struct comp_dev *ipc_ppl_source;
+	struct comp_dev *ipc_ppl_sink;
+	struct pipeline *pipe = ipc_pipe->pipeline, *connected_pipe;
+	struct list_item *blist;
+	struct comp_buffer *buffer;
+	struct comp_dev *comp;
 
 	/* get pipeline source component */
-	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, p->pipeline_id);
-	if (!ipc_ppl_source) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline source failed");
-		return -EINVAL;
+	ipc_ppl_source = pipeline_get_endpoint(pipe->pipeline_id, PPL_DIR_UPSTREAM, 1);
+	if (ipc_ppl_source) {
+		tr_dbg(&ipc_tr, "ipc: ipc_pipeline_complete: pipeline %d source ID found %d",
+		       pipe->pipeline_id, ipc_ppl_source->ipc_config.id);
+
+		switch (ipc_ppl_source->drv->type) {
+		case SOF_COMP_HOST:
+		case SOF_COMP_DAI:
+		case SOF_COMP_FILEREAD:
+		case SOF_COMP_FILEWRITE:
+			/* do nothing */
+			break;
+		default:
+			/* connected pipeline */
+			blist = comp_buffer_list(ipc_ppl_source, PPL_DIR_UPSTREAM);
+
+			/* if buffer list is empty then we have found a endpoint */
+			if (list_is_empty(blist)) {
+				return -EINVAL;
+			}
+
+			buffer = buffer_from_list(blist->next, PPL_DIR_UPSTREAM);
+			comp = buffer_get_comp(buffer, PPL_DIR_UPSTREAM);
+
+			connected_pipe = comp->pipeline;
+			tr_dbg(&ipc_tr, "ipc: ipc_pipeline_complete: pipeline %d source pipeline %d found",
+			       pipe->pipeline_id, connected_pipe->pipeline_id);
+		}
 	}
 
 	/* get pipeline sink component */
-	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, p->pipeline_id);
-	if (!ipc_ppl_sink) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline sink failed");
-		return -EINVAL;
+	ipc_ppl_sink = pipeline_get_endpoint(pipe->pipeline_id, PPL_DIR_DOWNSTREAM, 1);
+	if (ipc_ppl_sink) {
+		tr_dbg(&ipc_tr, "ipc: ipc_pipeline_complete: pipeline %d sink ID found %d",
+		       pipe->pipeline_id, ipc_ppl_sink->ipc_config.id);
+
+		switch (ipc_ppl_sink->drv->type) {
+		case SOF_COMP_HOST:
+		case SOF_COMP_DAI:
+		case SOF_COMP_FILEREAD:
+		case SOF_COMP_FILEWRITE:
+			/* do nothing */
+			break;
+		default:
+			/* connected pipeline */
+			blist = comp_buffer_list(ipc_ppl_sink, PPL_DIR_DOWNSTREAM);
+
+			/* if buffer list is empty then we have found a endpoint */
+			if (list_is_empty(blist)) {
+				return -EINVAL;
+			}
+
+			buffer = buffer_from_list(blist->next, PPL_DIR_DOWNSTREAM);
+			comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+
+			connected_pipe = comp->pipeline;
+			tr_dbg(&ipc_tr, "ipc: ipc_pipeline_complete: pipeline %d sink pipeline %d found",
+			       pipe->pipeline_id, connected_pipe->pipeline_id);
+		}
 	}
+
+	tr_dbg(&ipc_tr, "ipc: ipc_pipeline_complete: pipeline %d", pipe->pipeline_id);
+
+	return 0;
 }
-#endif
 
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
 
@@ -240,20 +295,23 @@ static int ipc_tplg_message_after(struct sof_pipe *sp, void *mailbox,
 {
 	struct sof_ipc_cmd_hdr *hdr = mailbox;
 	struct sof_ipc_pipe_new *pipe = (struct sof_ipc_pipe_new *)hdr;
+	struct sof_ipc_pipe_ready *pipe_complete = (struct sof_ipc_pipe_ready *)hdr;
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
 	uint32_t cmd = iCS(hdr->cmd);
 	int err;
 
+	ipc_pipe = ipc_get_comp_by_id(ipc, pipe->comp_id);
+	if (!ipc_pipe) {
+		printf("error: no component with ID %d\n",
+				pipe->comp_id);
+		return -ENODEV;
+	}
+
 	/* pipeline has to perform some work prior to core */
 	switch (cmd) {
 	case SOF_IPC_TPLG_PIPE_NEW:
-		ipc_pipe = ipc_get_comp_by_id(ipc, pipe->comp_id);
-		if (!ipc_pipe) {
-			printf("error: no component with ID %d\n",
-					pipe->comp_id);
-			return -ENODEV;
-		}
+
 		if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
 			printf("error: no pipeline with ID %d got type %d\n",
 				pipe->comp_id, ipc_pipe->id);
@@ -269,6 +327,20 @@ static int ipc_tplg_message_after(struct sof_pipe *sp, void *mailbox,
 			return err;
 		}
 
+		return 0;
+	case SOF_IPC_TPLG_PIPE_COMPLETE:
+		if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
+			printf("error: no pipeline with ID %d got type %d\n",
+				pipe->comp_id, ipc_pipe->id);
+			return -EINVAL;
+		}
+
+		err = pipe_ready_endpoints(sp, pipe_complete, ipc_pipe);
+		if (err < 0) {
+			printf("error: can't connect pipeline %d\n",
+				ipc_pipe->pipeline->pipeline_id);
+				return err;
+		}
 		return 0;
 	default:
 		/* handled directly by SOF core */
@@ -303,6 +375,8 @@ static int ipc_tplg_stream_before(struct sof_pipe *sp, void *mailbox,
 			return err;
 		}
 
+		/* TODO: stop connected pipelines */
+
 		return 0;
 	default:
 		/* handled directly by SOF core */
@@ -336,6 +410,8 @@ static int ipc_tplg_stream_after(struct sof_pipe *sp, void *mailbox,
 				ipc_pipe->pipeline->comp_id);
 			return err;
 		}
+
+		/* TODO: start connected pipelines */
 
 		return 0;
 	default:
@@ -532,7 +608,7 @@ int pipe_ipc_process(struct sof_pipe *sp, struct plug_mq_desc *mq)
 	fprintf(sp->log, "***sof-pipe: IPC %s thread finished !!\n", mq->queue_name);
 	return 0;
 }
-
+#if 0
 int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, size_t rlen)
 {
 	struct timespec ts;
@@ -589,3 +665,4 @@ int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, si
 
 	return 0;
 }
+#endif

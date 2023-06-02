@@ -695,6 +695,7 @@ static int src_get_copy_limits(struct comp_data *cd,
 		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
 		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
+		printf("%s %d src %d sink %d blk %d\n", __func__, __LINE__, frames_src, frames_snk, s2->blk_out);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
@@ -704,6 +705,7 @@ static int src_get_copy_limits(struct comp_data *cd,
 		sp->stage1_times = frames_snk / s1->blk_out;
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
+		printf("%s %d src %d sink %d blk %d\n", __func__, __LINE__, frames_src, frames_snk, s1->blk_in);
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage1_times * s1->blk_out;
 	}
@@ -757,8 +759,8 @@ static int src_params_general(struct processing_module *mod,
 		return  -EINVAL;
 	}
 
-	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
-	cd->sink_frames = dev->frames;
+	cd->source_frames = cd->source_rate;
+	cd->sink_frames = cd->sink_rate;
 
 	/* Allocate needed memory for delay lines */
 	err = src_buffer_lengths(dev, cd, cd->channels_count);

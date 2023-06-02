@@ -215,7 +215,8 @@ int pipeline_for_each_comp(struct comp_dev *current,
  * \param[in] dir is the direction of the traversal.
  * \return dai component.
  */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir);
+struct comp_dev *pipeline_get_endpoint(uint32_t pipeline_id, int dir,
+				       int local_pipeline_only);
 
 #if CONFIG_IPC_MAJOR_4
 /**

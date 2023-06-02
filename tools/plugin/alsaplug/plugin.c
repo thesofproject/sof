@@ -88,8 +88,8 @@ int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, si
 
 	ipc_size = mq_timedreceive(ipc->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
 	if (ipc_size == -1) {
-		fprintf(stderr, "warn: timeout can't read IPC message queue %s : %s retrying\n",
-			ipc->queue_name, strerror(errno));
+		//fprintf(stderr, "dbg: timeout can't read IPC message queue %s : %s retrying\n",
+		//	ipc->queue_name, strerror(errno));
 
 		/* ok, its a long IPC or valgrind, wait longer */
 		plug_timespec_add_ms(&ts, 800);
@@ -341,7 +341,7 @@ static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline)
 			break;
 
 		/* tuple needs all three, any missing ? */
-		if (!pipe|| !card || ! dev || !config) {
+		if (!pipe|| !card || !dev || !config) {
 			SNDERR("invalid cmdline, expected pipe(%s):card(%s):dev(%s):config(%s) from %s",
 				pipe, card, dev, config, tplg);
 			return -EINVAL;
@@ -362,7 +362,7 @@ static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline)
 			break;
 		}
 
-		fprintf(stdout, " cmd %d: for pipe %d uses %s with PCM %s %s\n",
+		fprintf(stdout, " cmd %d: for pipe %d uses %s with PCM %s:%s\n",
 			plug->num_cmdline, cmd_item->pipe, cmd_item->config_name,
 			cmd_item->card_name, cmd_item->dev_name);
 

@@ -98,9 +98,8 @@ static int plug_pcm_stop(snd_pcm_ioplug_t * io)
 	struct plug_shm_endpoint *ctx = pcm->shm_pcm.addr;
 	struct sof_ipc_stream stream = {0};
 	int err;
-
+printf("%s %d state %ld \n", __func__, __LINE__, ctx->state);
 	switch (ctx->state) {
-	case SOF_PLUGIN_STATE_READY:
 	case SOF_PLUGIN_STATE_STREAM_ERROR:
 	case SOF_PLUGIN_STATE_STREAM_RUNNING:
 		stream.hdr.size = sizeof(stream);
@@ -112,6 +111,9 @@ static int plug_pcm_stop(snd_pcm_ioplug_t * io)
 			SNDERR("error: can't trigger STOP the PCM\n");
 			return err;
 		}
+		break;
+	case SOF_PLUGIN_STATE_READY:
+		/* already stopped */
 		break;
 	case SOF_PLUGIN_STATE_INIT:
 	case SOF_PLUGIN_STATE_DEAD:
@@ -140,7 +142,6 @@ static snd_pcm_sframes_t plug_pcm_pointer(snd_pcm_ioplug_t *io)
 		return 0;
 
 	switch (ctx->state) {
-	case SOF_PLUGIN_STATE_READY:
 	case SOF_PLUGIN_STATE_STREAM_RUNNING:
 	case SOF_PLUGIN_STATE_STREAM_ERROR:
 		if (pcm->capture)
@@ -148,6 +149,9 @@ static snd_pcm_sframes_t plug_pcm_pointer(snd_pcm_ioplug_t *io)
 		else
 			ptr =  ctx->wtotal / pcm->frame_size;
 		break;
+	case SOF_PLUGIN_STATE_READY:
+		/* not running */
+		return 0;
 	case SOF_PLUGIN_STATE_INIT:
 	case SOF_PLUGIN_STATE_DEAD:
 	default:
@@ -239,7 +243,7 @@ static snd_pcm_sframes_t plug_pcm_write(snd_pcm_ioplug_t *io,
 	if (err == -1) {
 		SNDERR("write: waited %d ms for %ld frames, fatal timeout: %s",
 			delay, frames, strerror(errno));
-		return -EPIPE;
+		return -errno;
 	}
 
 	return frames;
@@ -289,7 +293,7 @@ static snd_pcm_sframes_t plug_pcm_read(snd_pcm_ioplug_t *io,
 	if (err == -1) {
 		SNDERR("read: waited %d ms for %ld frames fatal timeout: %s",
 			delay, frames, strerror(errno));
-		return -EPIPE;
+		return -errno;
 	}
 
 	/* write audio data to pipe */
@@ -313,7 +317,11 @@ static int plug_pcm_prepare(snd_pcm_ioplug_t * io)
 	ctx->wpos = 0;
 	ctx->wwrap = 0;
 
-	/* start the pipeline thread */
+	/* start the pipeline threads
+	 *
+	 * We do this during prepare so that pipelines can consume/produce
+	 * any start threshold worth of data with the pipeline in a running
+	 * state */
 	/* check the ctx->state here - run the pipeline if its not active */
 	switch (ctx->state) {
 	case SOF_PLUGIN_STATE_INIT:

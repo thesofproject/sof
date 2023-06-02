@@ -37,11 +37,13 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
+#include <stdatomic.h>
 
 #include "common.h"
 #include "pipe.h"
 
 #define MAX_PIPELINES	256
+#define MAX_PIPE_USERS	8
 
 struct pipethread_data {
 	pthread_t pcm_thread;
@@ -52,6 +54,7 @@ struct pipethread_data {
 	/* PCM flow control */
 	struct plug_sem_desc ready;
 	struct plug_sem_desc done;
+	atomic_int pipe_users;
 };
 
 static struct ll_schedule_domain domain = {0};
@@ -108,12 +111,13 @@ static inline int pipe_copy_ready(struct pipethread_data *pd)
 	}
 
 	// TODO get from rate
-	plug_timespec_add_ms(&delay, 200);
+	plug_timespec_add_ms(&delay, 2000);
 
 	/* wait for data from source */
 	err = sem_timedwait(pd->ready.sem, &delay);
 	if (err == -1) {
-		fprintf(_sp->log, "pipe: fatal timeout: %s on %s\n",
+		fprintf(_sp->log, "%s %d: fatal timeout: %s on %s\n",
+				__FILE__, __LINE__,
 				strerror(errno), pd->ready.name);
 		return -errno;
 	}
@@ -142,11 +146,17 @@ static void *pipe_process_thread(void *arg)
 			break;
 		}
 
+		if (pd->pipe_users <= 0) {
+			fprintf(_sp->log, "pipe no users.\n");
+			break;
+		}
+
 		/* wait for pipe to be ready */
 		err = pipe_copy_ready(pd);
 		if (err < 0) {
-			fprintf(_sp->log, "pipe ready timeout %d\n",
-					pd->pcm_pipeline->pipeline_id);
+			fprintf(_sp->log, "pipe ready timeout on pipeline %d state %d users %d\n",
+				pd->pcm_pipeline->pipeline_id, pd->pcm_pipeline->status,
+				pd->pipe_users);
 			break;
 		}
 
@@ -175,6 +185,20 @@ static void *pipe_ipc_process_thread(void *arg)
 	struct pipethread_data *pd = arg;
 	int err;
 
+	/* initialise semaphores to default starting value */
+	err = sem_init(pd->done.sem, 1, 0);
+	if (err < 0) {
+		fprintf(_sp->log, "failed to reset DONE: %s\n",
+			strerror(errno));
+		return NULL;
+	}
+	err = sem_init(pd->ready.sem, 1, 0);
+	if (err < 0) {
+		fprintf(_sp->log, "failed to reset READY: %s\n",
+			strerror(errno));
+		return NULL;
+	}
+
 	err = pipe_ipc_process(pd->sp, &pd->ipc_mq);
 	if (err < 0) {
 		fprintf(_sp->log, "pipe IPC thread error for pipeline %d\n",
@@ -188,7 +212,7 @@ int pipe_thread_start(struct sof_pipe *sp, struct comp_dev *cd)
 {
 	struct pipethread_data *pd;
 	int pipeline_id;
-	int ret;
+	int ret, pipe_users;
 
 	if (!cd) {
 		fprintf(_sp->log, "error: invalid pipeline\n");
@@ -208,7 +232,18 @@ int pipe_thread_start(struct sof_pipe *sp, struct comp_dev *cd)
 	}
 	pd = &pipeline_ctx[pipeline_id];
 
-	/* start PCM pipeline thread */
+	/* only create thread if not active */
+	pipe_users = atomic_fetch_add(&pd->pipe_users, 1);
+	if (pipe_users > 0) {
+		fprintf(_sp->log, "pipeline ID %d thread already running %d users\n",
+			pipeline_id, pipe_users);
+		return 0;
+	} else {
+		fprintf(_sp->log, "pipeline ID %d thread not running so starting...\n",
+			pipeline_id);
+	}
+
+	/* first user so start the PCM pipeline thread */
 	ret = pthread_create(&pd->pcm_thread, NULL, pipe_process_thread, pd);
 	if (ret < 0) {
 		fprintf(_sp->log, "failed to create PCM thread: %s\n",
@@ -223,7 +258,7 @@ int pipe_thread_stop(struct sof_pipe *sp, struct comp_dev *cd)
 {
 	struct pipethread_data *pd;
 	int pipeline_id;
-	int ret;
+	int ret, pipe_users;
 
 	if (!cd) {
 		fprintf(_sp->log, "error: invalid pipeline\n");
@@ -241,7 +276,18 @@ int pipe_thread_stop(struct sof_pipe *sp, struct comp_dev *cd)
 		fprintf(_sp->log, "error: pipeline ID %d not in use\n", pipeline_id);
 		return -EINVAL;
 	}
-	pd = &pipeline_ctx[cd->ipc_config.id];
+	pd = &pipeline_ctx[cd->ipc_config.pipeline_id];
+
+	/* only join thread if not active */
+	pipe_users = atomic_fetch_sub(&pd->pipe_users, 1);
+	if (pipe_users != 1) {
+		fprintf(_sp->log, "pipeline ID %d thread has multiple %d users\n",
+			pipeline_id, pipe_users);
+		return 0;
+	} else {
+		fprintf(_sp->log, "pipeline ID %d thread can be stopped...\n",
+			pipeline_id);
+	}
 
 	ret = pthread_join(pd->pcm_thread, NULL);
 	if (ret < 0) {
@@ -286,12 +332,12 @@ int pipe_thread_new(struct sof_pipe *sp, struct pipeline *p,
 
 	/* init names of shared resources */
 	ret = plug_lock_init(&pd->ready, _sp->topology_name, "ready",
-			pipeline_id);
+			     pipeline_id);
 	if (ret < 0)
 		return ret;
 
 	ret = plug_lock_init(&pd->done, _sp->topology_name, "done",
-			pipeline_id);
+			     pipeline_id);
 	if (ret)
 		return ret;
 

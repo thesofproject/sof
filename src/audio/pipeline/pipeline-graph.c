@@ -468,18 +468,21 @@ int pipeline_for_each_comp(struct comp_dev *current,
 }
 
 /* visit connected pipeline to find the dai comp */
-struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
+struct comp_dev *pipeline_get_endpoint(uint32_t pipeline_id, int dir,
+				       int local_pipeline_only)
 {
 	struct ipc_comp_dev *crt;
 	struct ipc *ipc = ipc_get();
+	struct comp_dev *comp_prev;
 
 	crt = ipc_get_ppl_comp(ipc, pipeline_id, dir);
+	comp_prev = crt->cd;
 	while (crt) {
 		struct comp_buffer *buffer;
 		struct comp_dev *comp;
 		struct list_item *blist = comp_buffer_list(crt->cd, dir);
 
-		/* if buffer list is empty then we have found a DAI */
+		/* if buffer list is empty then we have found a endpoint */
 		if (list_is_empty(blist))
 			return crt->cd;
 
@@ -487,9 +490,11 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
 		comp = buffer_get_comp(buffer, dir);
 
 		/* buffer_comp is in another pipeline and it is not complete */
-		if (!comp->pipeline)
-			return NULL;
+		if (local_pipeline_only && comp->pipeline &&
+		    comp->pipeline->pipeline_id != pipeline_id)
+			return comp_prev;
 
+		comp_prev = comp;
 		crt = ipc_get_ppl_comp(ipc, comp->pipeline->pipeline_id, dir);
 	}
 

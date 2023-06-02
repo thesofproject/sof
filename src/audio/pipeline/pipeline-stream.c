@@ -491,9 +491,9 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	platform_host_timestamp(host, posn);
 
 	if (host->direction == SOF_IPC_STREAM_PLAYBACK)
-		dai = pipeline_get_dai_comp(host->pipeline->pipeline_id, PPL_DIR_DOWNSTREAM);
+		dai = pipeline_get_endpoint(host->pipeline->pipeline_id, PPL_DIR_DOWNSTREAM, 0);
 	else
-		dai = pipeline_get_dai_comp(host->pipeline->pipeline_id, PPL_DIR_UPSTREAM);
+		dai = pipeline_get_endpoint(host->pipeline->pipeline_id, PPL_DIR_UPSTREAM, 0);
 
 	if (!dai) {
 		pipe_dbg(p, "pipeline_get_timestamp(): DAI position update failed");

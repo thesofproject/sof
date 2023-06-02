@@ -47,7 +47,6 @@ static const struct comp_driver comp_aplay;
 struct alsa_comp_data {
 	snd_pcm_t *handle;
 	snd_pcm_info_t *info;
-	int open;
 	int pipeline_id;
 	snd_pcm_hw_params_t *hw_params;
 	snd_pcm_sw_params_t *sw_params;
@@ -79,14 +78,10 @@ static struct endpoint_hw_config *alsa_get_hw_config(struct comp_dev *dev)
 	return NULL;
 }
 
-static int alsa_open(struct comp_dev *dev)
+static int alsa_alloc(struct comp_dev *dev)
 {
 	struct alsa_comp_data *cd = comp_get_drvdata(dev);
 	int err;
-
-	/* already open ? */
-	if (cd->open)
-		return 0;
 
 	/* get ALSA ready */
 	err = snd_pcm_info_malloc(&cd->info);
@@ -101,20 +96,6 @@ static int alsa_open(struct comp_dev *dev)
 	if (err < 0)
 		goto error;
 
-
-	err = snd_pcm_open(&cd->handle, cd->pcm_name, cd->params.direction, 0);
-	if (err < 0) {
-		comp_err(dev, "error: cant open PCM %s: %s\n",
-			cd->pcm_name, snd_strerror(err));
-		goto error;
-	}
-
-	if ((err = snd_pcm_info(cd->handle, cd->info)) < 0) {
-		comp_err(dev, "error: cant get PCM info: %s\n", snd_strerror(err));
-		goto error;
-	}
-
-	cd->open = 1;
 	comp_dbg(dev, "open done");
 	return 0;
 
@@ -125,8 +106,9 @@ error:
 static int alsa_close(struct comp_dev *dev)
 {
 	struct alsa_comp_data *cd = comp_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
+	comp_dbg(dev, "close");
 	if (cd->handle) {
 		ret = snd_pcm_hw_free(cd->handle);
 		if (ret < 0) {
@@ -140,13 +122,7 @@ static int alsa_close(struct comp_dev *dev)
 		}
 	}
 
-	snd_pcm_sw_params_free(cd->sw_params);
-	snd_pcm_hw_params_free(cd->hw_params);
-	snd_pcm_info_free(cd->info);
-	cd->open = 0;
-
-	comp_dbg(dev, "close done");
-	return 0;
+	return ret;
 }
 
 static void alsa_free(struct comp_dev *dev)
@@ -155,7 +131,9 @@ static void alsa_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "alsa_free()");
 
-	alsa_close(dev);
+	snd_pcm_sw_params_free(cd->sw_params);
+	snd_pcm_hw_params_free(cd->hw_params);
+	snd_pcm_info_free(cd->info);
 	plug_shm_free(&cd->pcm);
 	free(cd);
 	free(dev);
@@ -216,6 +194,11 @@ static struct comp_dev *alsa_new(const struct comp_driver *drv,
 		goto error;
 	cd->glb_ctx = cd->glb.addr;
 
+	/* alloc alsa context */
+	err = alsa_alloc(dev);
+	if (err < 0)
+		goto error;
+
 	return dev;
 
 error:
@@ -270,7 +253,18 @@ static int set_params(struct comp_dev *dev)
 	struct sof_ipc_stream_params *params = &cd->params;
 	int frame_fmt;
 	int err;
-	//int dir = 0; /* refinement preference direction */
+
+	err = snd_pcm_open(&cd->handle, cd->pcm_name, cd->params.direction, 0);
+	if (err < 0) {
+		comp_err(dev, "error: cant open PCM %s: %s\n",
+			cd->pcm_name, snd_strerror(err));
+		return err;
+	}
+
+	if ((err = snd_pcm_info(cd->handle, cd->info)) < 0) {
+		comp_err(dev, "error: cant get PCM info: %s\n", snd_strerror(err));
+		return err;
+	}
 
 	/* is sound card HW configuration valid ? */
 	err = snd_pcm_hw_params_any(cd->handle, cd->hw_params);
@@ -344,6 +338,14 @@ static int set_params(struct comp_dev *dev)
 		return err;
 	}
 
+	/* set buffer size: TODO: get from topology */
+	err = snd_pcm_hw_params_set_buffer_size_near(cd->handle, cd->hw_params, &cd->buffer_frames);
+	if (err < 0) {
+		comp_err(dev, "error: PCM can't set buffer size %ld frames: %s\n",
+			cd->buffer_frames, snd_strerror(err));
+		return err;
+	}
+
 	/* commit the hw params */
 	err = snd_pcm_hw_params(cd->handle, cd->hw_params);
 	if (err < 0) {
@@ -352,15 +354,6 @@ static int set_params(struct comp_dev *dev)
 		return err;
 	}
 
-	// FIX: TODO: seems to return 0 for period frames
-#if 0
-	/* get period and buffer size - TODO: back propagate through pipeline */
-	snd_pcm_hw_params_get_period_size(cd->hw_params, &cd->period_frames,
-			&dir);
-	snd_pcm_hw_params_get_buffer_size(cd->hw_params, &cd->buffer_frames);
-	comp_dbg(dev, "%s got period size %ld dir %d buffer size %ld", __func__,
-		cd->period_frames, dir, cd->buffer_frames);
-#endif
 	/* get the initial SW params */
 	err = snd_pcm_sw_params_current(cd->handle, cd->sw_params);
 	if (err < 0) {
@@ -435,13 +428,11 @@ static int arecord_params(struct comp_dev *dev,
 				 source_list);
 	buffer_reset_pos(buffer, NULL);
 
-	ret = alsa_open(dev);
-	if (ret == 0)
-		ret = set_params(dev);
 	comp_dbg(dev, "prepare done ret = %d", ret);
 
 	return 0;
 }
+// changing glb state before stop ???
 
 static int aplay_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
@@ -470,17 +461,37 @@ static int aplay_params(struct comp_dev *dev,
 				 sink_list);
 	buffer_reset_pos(buffer, NULL);
 
-	ret = alsa_open(dev);
-	if (ret == 0)
-		ret = set_params(dev);
 	comp_dbg(dev, "prepare done ret = %d", ret);
 	return 0;
 }
 
 static int alsa_trigger(struct comp_dev *dev, int cmd)
 {
+	int err;
+
 	/* trigger is handled automatically by ALSA start threshold */
 	comp_dbg(dev, "trigger cmd %d", cmd);
+
+	switch (cmd) {
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
+		err = alsa_close(dev);
+		if (err < 0) {
+			comp_err(dev, "error: cant stop pipeline");
+			return err;
+		}
+		break;
+	case COMP_TRIGGER_RELEASE:
+	case COMP_TRIGGER_START:
+		err = set_params(dev);
+		if (err < 0) {
+			comp_err(dev, "error: cant stop pipeline");
+			return err;
+		}
+		break;
+	default:
+		break;
+	}
 
 	return comp_set_state(dev, cmd);
 }
