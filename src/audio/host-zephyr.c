@@ -422,8 +422,8 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 		dma_copy_bytes = MIN(hd->period_bytes, dma_copy_bytes);
 
 	if (!dma_copy_bytes)
-		comp_info(dev, "no bytes to copy, available samples: %d, free_samples: %d",
-			  avail_samples, free_samples);
+		comp_info(dev, "no bytes to copy, hd->total_data_processed %llu available samples: %d, free_samples: %d",
+			  hd->total_data_processed, avail_samples, free_samples);
 
 	buffer_release(buffer_c);
 
