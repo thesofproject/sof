@@ -1597,6 +1597,13 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		samples = MIN(samples, src_samples);
 	}
 
+	/* return if nothing to copy */
+	if (!samples) {
+		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
+		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
+		return 0;
+	}
+
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
@@ -1618,13 +1625,6 @@ int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		 copy_bytes + free_bytes < dd->period_bytes)
 		comp_warn(dev, "dai_zephyr_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
-
-	/* return if nothing to copy */
-	if (!copy_bytes) {
-		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
-		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
-		return 0;
-	}
 
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
