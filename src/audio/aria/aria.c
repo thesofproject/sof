@@ -28,6 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define ARIA_SET_ATTUNUATION 1
+
 static const struct comp_driver comp_aria;
 
 LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
@@ -48,11 +50,19 @@ static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
 	return ALIGN_UP(num_of_ms * chan_cnt * smpl_group_cnt, 2) * sizeof(int32_t);
 }
 
+static void aria_set_gains(struct comp_dev *dev)
+{
+	struct aria_data *cd = comp_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < ARIA_MAX_GAIN_STATES; ++i)
+		cd->gains[i] = (1ULL << (32 - cd->att - 1)) - 1;
+}
+
 static int aria_algo_init(struct comp_dev *dev, void *buffer_desc, void *buf_in,
 			  void *buf_out, size_t att, size_t chan_cnt, size_t smpl_group_cnt)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
-	size_t idx;
 
 	cd->chan_cnt = chan_cnt;
 	cd->smpl_group_cnt = smpl_group_cnt;
@@ -65,8 +75,7 @@ static int aria_algo_init(struct comp_dev *dev, void *buffer_desc, void *buf_in,
 	cd->buf_out = buf_out;
 	cd->buff_pos = 0;
 
-	for (idx = 0; idx < ARIA_MAX_GAIN_STATES; ++idx)
-		cd->gains[idx] = (1ULL << (32 - cd->att - 1)) - 1;
+	aria_set_gains(dev);
 
 	memset((void *)cd->data, 0, sizeof(int32_t) * cd->buff_size);
 	memset((void *)cd->buf_in, 0, sizeof(int32_t) * cd->buff_size);
@@ -364,6 +373,19 @@ static int aria_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 	return 0;
 }
 
+int aria_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+			  bool last_block, uint32_t data_offset_size, const char *data)
+{
+	struct aria_data *cd = comp_get_drvdata(dev);
+
+	if (param_id == ARIA_SET_ATTUNUATION) {
+		memcpy_s(&cd->att, sizeof(uint32_t), data, sizeof(uint32_t));
+		aria_set_gains(dev);
+	}
+
+	return 0;
+}
+
 static const struct comp_driver comp_aria = {
 	.uid	= SOF_RT_UUID(aria_comp_uuid),
 	.tctx	= &aria_comp_tr,
@@ -375,6 +397,7 @@ static const struct comp_driver comp_aria = {
 		.prepare		= aria_prepare,
 		.reset			= aria_reset,
 		.get_attribute		= aria_get_attribute,
+		.set_large_config	= aria_set_large_config,
 	},
 };
 
