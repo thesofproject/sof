@@ -136,14 +136,13 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 static inline void coherent_release(struct coherent __sparse_cache *c,
 				    const size_t size)
 {
-	struct coherent *uc = cache_to_uncache(c);
-
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 	CHECK_ATOMIC(c);
 
 	/* access the local copy of object */
 	if (c->shared) {
+		struct coherent *uc = cache_to_uncache(c);
 		CHECK_COHERENT_CORE(c);
 
 		/* wtb and inv local data to coherent object */
@@ -230,8 +229,6 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 					   const size_t size)
 {
-	struct coherent *uc = cache_to_uncache(c);
-
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 	CHECK_SLEEP(c);
@@ -239,6 +236,7 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 
 	/* access the local copy of object */
 	if (c->shared) {
+		struct coherent *uc = cache_to_uncache(c);
 		CHECK_COHERENT_CORE(c);
 
 		/* wtb and inv local data to coherent object */
