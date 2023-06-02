@@ -41,32 +41,6 @@ DECLARE_SOF_UUID("ssp-dai", ssp_uuid, 0x31458125, 0x95c4, 0x4085,
 
 DECLARE_TR_CTX(ssp_tr, SOF_UUID(ssp_uuid), LOG_LEVEL_INFO);
 
-/* empty SSP transmit FIFO */
-static void ssp_empty_tx_fifo(struct dai *dai)
-{
-	int ret;
-	uint32_t sssr;
-
-	/*
-	 * SSSR_TNF is cleared when TX FIFO is empty or full,
-	 * so wait for set TNF then for TFL zero - order matter.
-	 */
-	ret = poll_for_register_delay(dai_base(dai) + SSSR, SSSR_TNF, SSSR_TNF,
-				      SSP_MAX_SEND_TIME_PER_SAMPLE);
-	ret |= poll_for_register_delay(dai_base(dai) + SSCR3, SSCR3_TFL_MASK, 0,
-				       SSP_MAX_SEND_TIME_PER_SAMPLE *
-				       (SSP_FIFO_DEPTH - 1) / 2);
-
-	if (ret)
-		dai_warn(dai, "ssp_empty_tx_fifo() warning: timeout");
-
-	sssr = ssp_read(dai, SSSR);
-
-	/* clear interrupt */
-	if (sssr & SSSR_TUR)
-		ssp_write(dai, SSSR, sssr);
-}
-
 static void ssp_empty_rx_fifo_on_start(struct dai *dai)
 {
 	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
@@ -1002,6 +976,7 @@ static void ssp_start(struct dai *dai, int direction)
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
+		ssp_update_bits(dai, SSSR, SSSR_TUR, SSSR_TUR);
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
 	} else {
@@ -1064,7 +1039,6 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-		ssp_empty_tx_fifo(dai);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
