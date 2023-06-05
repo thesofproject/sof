@@ -23,7 +23,7 @@ LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
 #include <sof/audio/volume.h>
 
-#ifdef CONFIG_GENERIC
+#ifdef VOLUME_GENERIC
 
 #if CONFIG_COMP_PEAK_VOL
 
