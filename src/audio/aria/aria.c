@@ -302,8 +302,7 @@ static int aria_copy(struct comp_dev *dev)
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct aria_data *cd;
-	uint32_t source_bytes;
-	uint32_t sink_bytes;
+	uint32_t copy_bytes, copy_samples;
 
 	cd = comp_get_drvdata(dev);
 
@@ -318,29 +317,28 @@ static int aria_copy(struct comp_dev *dev)
 	sink_c = buffer_acquire(sink);
 
 	comp_get_copy_limits(source_c, sink_c, &c);
-	source_bytes = c.frames * c.source_frame_bytes;
-	sink_bytes = c.frames * c.sink_frame_bytes;
+	copy_bytes = MIN(c.frames * c.source_frame_bytes, cd->base.ibs);
 
-	if (source_bytes == 0)
+	/* Aria algo supports only 4-bytes containers */
+	copy_samples = copy_bytes >> 2;
+
+	if (copy_bytes == 0)
 		goto out;
 
-	buffer_stream_invalidate(source_c, source_bytes);
+	buffer_stream_invalidate(source_c, copy_bytes);
 
-	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0,
-				    c.frames * source_c->stream.channels);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in, source_bytes);
+	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0, copy_samples);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in, copy_bytes);
 
-	aria_process_data(dev, cd->buf_out, sink_bytes / sizeof(uint32_t),
-			  cd->buf_in, source_bytes / sizeof(uint32_t));
+	aria_process_data(dev, cd->buf_out, copy_samples, cd->buf_in, copy_samples);
 
-	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out, sink_bytes);
-	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0,
-				      c.frames * sink_c->stream.channels);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out, copy_bytes);
+	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0, copy_samples);
 
-	buffer_stream_writeback(sink_c, sink_bytes);
+	buffer_stream_writeback(sink_c, copy_bytes);
 
-	comp_update_buffer_produce(sink_c, sink_bytes);
-	comp_update_buffer_consume(source_c, source_bytes);
+	comp_update_buffer_produce(sink_c, copy_bytes);
+	comp_update_buffer_consume(source_c, copy_bytes);
 
 out:
 	buffer_release(sink_c);
