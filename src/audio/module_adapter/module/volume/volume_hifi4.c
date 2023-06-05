@@ -17,15 +17,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(volume_hifi4, CONFIG_SOF_LOG_LEVEL);
 
 #include <sof/audio/volume.h>
 
-#ifdef VOLUME_HIFI3
+#ifdef VOLUME_HIFI4
 
 #if (!CONFIG_COMP_PEAK_VOL)
 
-#include <xtensa/tie/xt_hifi3.h>
+#include <xtensa/tie/xt_hifi4.h>
 
 /**
  * \brief store volume gain 4 times for xtensa multi-way intrinsic operations.
@@ -49,7 +49,7 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 
 #if CONFIG_FORMAT_S24LE
 /**
- * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
+ * \brief HiFi4 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
@@ -137,7 +137,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 
 #if CONFIG_FORMAT_S32LE
 /**
- * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
+ * \brief HiFi4 enabled volume processing from 32 bit to 24/32 or 32 bit.
  * \param[in,out] mod Pointer to struct processing_module
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.
@@ -230,7 +230,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 
 #if CONFIG_FORMAT_S16LE
 /**
- * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
+ * \brief HiFi4 enabled volume processing from 16 bit to 16 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Input buffer.

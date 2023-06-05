@@ -34,15 +34,17 @@
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
 
-#define CONFIG_GENERIC
-
 #if defined(__XCC__)
-#include <xtensa/config/core-isa.h>
-
-#if XCHAL_HAVE_HIFI3
-#undef CONFIG_GENERIC
-#endif
-
+# include <xtensa/config/core-isa.h>
+# if XCHAL_HAVE_HIFI4
+#  define VOLUME_HIFI4
+# elif XCHAL_HAVE_HIFI3
+#  define VOLUME_HIFI3
+# else
+#  define VOLUME_GENERIC
+# endif
+#else
+# define VOLUME_GENERIC
 #endif
 
 /**
