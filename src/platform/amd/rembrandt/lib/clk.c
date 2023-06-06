@@ -13,7 +13,7 @@
 #include <platform/chip_registers.h>
 
 const struct freq_table platform_cpu_freq[] = {
-	{300000000, 300000 },
+	{500000000, 500000 },
 };
 
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
