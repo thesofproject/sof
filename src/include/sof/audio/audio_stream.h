@@ -459,8 +459,8 @@ audio_stream_get_avail_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	return audio_stream_get_avail_bytes(stream) >>
+		(audio_stream_sample_bytes(stream) >> 1);
 }
 
 /**
