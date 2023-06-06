@@ -201,6 +201,12 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
+	if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): component %d not pipeline (type %d)",
+		       ipc_pipe->id, ipc_pipe->type);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core, false);
