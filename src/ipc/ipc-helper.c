@@ -291,6 +291,21 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
+	if (!icd->cd->bsource_list.next || !icd->cd->bsource_list.next) {
+		/* Unfortunate: the buffer list node gets initialized
+		 * at the component level and thus can contain NULLs
+		 * (which is an invalid list!) if the component's
+		 * lifecycle hasn't reached that point.  There's no
+		 * single place to ensure a valid/empty list, so we
+		 * have to do it here and eat the resulting memory
+		 * leak on error.  Bug-free host drivers won't do
+		 * this, this was found via fuzzing.
+		 */
+		tr_err(&ipc_tr, "ipc_comp_free(): uninitialized buffer lists on comp %d\n",
+		       icd->id);
+		return -EINVAL;
+	}
+
 	irq_local_disable(flags);
 	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
 		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
