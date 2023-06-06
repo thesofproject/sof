@@ -503,8 +503,8 @@ audio_stream_get_free_bytes(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_sample_bytes(stream);
+	return audio_stream_get_free_bytes(stream) >>
+		(audio_stream_sample_bytes(stream) >> 1);
 }
 
 /**
