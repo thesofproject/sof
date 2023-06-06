@@ -94,8 +94,6 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -156,9 +154,6 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -216,9 +211,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
-
-	/* update peak vol */
-	peak_vol_update(cd);
 }
 #endif
 
