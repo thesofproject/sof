@@ -167,12 +167,14 @@ struct vol_data {
 	vol_zc_func zc_get;			/**< function getting nearest zero crossing frame */
 	bool copy_gain;				/**< control copy gain or not */
 	uint32_t attenuation;			/**< peakmeter adjustment in range [0 - 31] */
+	bool is_bypass;				/**< is bypass or do gain multiply */
 };
 
 /** \brief Volume processing functions map. */
 struct comp_func_map {
 	uint16_t frame_fmt;	/**< frame format */
 	vol_scale_func func;	/**< volume processing function */
+	vol_scale_func bypass_func;	/**< volume bypass function */
 };
 
 /** \brief Map of formats with dedicated processing functions. */
@@ -192,9 +194,11 @@ struct comp_zc_func_map {
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
  * \param[in] sinkb Sink buffer to match against
+ * \param[in] cd Volume data structure.
  */
 static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
-							 struct comp_buffer __sparse_cache *sinkb)
+							 struct comp_buffer __sparse_cache *sinkb,
+							 struct vol_data *cd)
 {
 	int i;
 
@@ -203,33 +207,52 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 		if (audio_stream_get_frm_fmt(&sinkb->stream) != volume_func_map[i].frame_fmt)
 			continue;
 
-		return volume_func_map[i].func;
+		if (cd->is_bypass)
+			return volume_func_map[i].bypass_func;
+		else
+			return volume_func_map[i].func;
 	}
 
 	return NULL;
 }
+
 #else
 /**
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
- * \param[in] sinkb Sink buffer to match against
+ * \param[in] cd Volume data structure
  */
 static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
-							 struct comp_buffer __sparse_cache *sinkb)
+							 struct vol_data *cd)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 
-	switch (mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth) {
-	case IPC4_DEPTH_16BIT:
-		return volume_func_map[0].func;
-	case IPC4_DEPTH_24BIT:
-		return volume_func_map[1].func;
-	case IPC4_DEPTH_32BIT:
-		return volume_func_map[2].func;
-	default:
-		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
-			 mod->priv.cfg.base_cfg.audio_fmt.depth);
-		return NULL;
+	if (cd->is_bypass) {
+		switch (mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth) {
+		case IPC4_DEPTH_16BIT:
+			return volume_func_map[0].bypass_func;
+		case IPC4_DEPTH_24BIT:
+			return volume_func_map[1].bypass_func;
+		case IPC4_DEPTH_32BIT:
+			return volume_func_map[2].bypass_func;
+		default:
+			comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+				 mod->priv.cfg.base_cfg.audio_fmt.depth);
+			return NULL;
+		}
+	} else {
+		switch (mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth) {
+		case IPC4_DEPTH_16BIT:
+			return volume_func_map[0].func;
+		case IPC4_DEPTH_24BIT:
+			return volume_func_map[1].func;
+		case IPC4_DEPTH_32BIT:
+			return volume_func_map[2].func;
+		default:
+			comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+				 mod->priv.cfg.base_cfg.audio_fmt.depth);
+			return NULL;
+		}
 	}
 }
 #endif

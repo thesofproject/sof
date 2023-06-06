@@ -47,6 +47,18 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 	cd->copy_gain = false;
 }
 
+void vol_set_circular_buf(struct audio_stream  *source,
+			  struct audio_stream  *sink)
+{
+	/* Set source as circular buffer 0 */
+	AE_SETCBEGIN0(source->addr);
+	AE_SETCEND0(source->end_addr);
+
+	/* Set sink as circular buffer 1 */
+	AE_SETCBEGIN1(sink->addr);
+	AE_SETCEND1(sink->end_addr);
+}
+
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief HiFi4 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
@@ -133,6 +145,46 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 		out = audio_stream_wrap(sink, out);
 	}
 }
+
+/**
+ * \brief HiFi4 enabled volume bypass from 24/32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_bypass_s24_to_s24_s32(struct processing_module *mod,
+				      struct input_stream_buffer *bsource,
+				      struct output_stream_buffer *bsink, uint32_t frames,
+				      uint32_t attenuation)
+{
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
+	ae_f32x2 in_sample = AE_ZERO32();
+	int i, n, m;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
+						     + bsource->consumed);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
+	int samples = audio_stream_get_channels(sink) * frames;
+
+	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
+	vol_set_circular_buf(source, sink);
+
+	inu = AE_LA64_PP(in);
+	for (i = 0; i < samples; i += 2) {
+		/* Load the input sample */
+		AE_LA32X2_IC(in_sample, inu, in);
+		/* Store the sample */
+		AE_SA32X2_IC1(in_sample, outu, out);
+	}
+	AE_SA64POS_FP(outu, out);
+}
+
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
@@ -225,6 +277,47 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
 	}
+}
+
+/**
+ * \brief HiFi4 enabled volume bypass from 32 bit to 24/32 or 32 bit.
+ * \param[in,out] mod Pointer to struct processing_module
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_bypass_s32_to_s24_s32(struct processing_module *mod,
+				      struct input_stream_buffer *bsource,
+				      struct output_stream_buffer *bsink, uint32_t frames,
+				      uint32_t attenuation)
+{
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
+	ae_f32x2 in_sample = AE_ZERO32();
+	int i, n, m;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	const int channels_count = audio_stream_get_channels(sink);
+	const int inc = sizeof(ae_f32x2);
+	int samples = channels_count * frames;
+	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
+						     + bsource->consumed);
+	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
+
+	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
+	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
+	vol_set_circular_buf(source, sink);
+
+	inu = AE_LA64_PP(in);
+	for (i = 0; i < samples; i += 2) {
+		/* Load the input sample */
+		AE_LA32X2_IC(in_sample, inu, in);
+		/* Store the sample */
+		AE_SA32X2_IC1(in_sample, outu, out);
+	}
+	AE_SA64POS_FP(outu, out);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -325,19 +418,58 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		out = audio_stream_wrap(sink, out);
 	}
 }
+
+/**
+ * \brief HiFi4 enabled volume bypass from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_bypass_s16_to_s16(struct processing_module *mod,
+				  struct input_stream_buffer *bsource,
+				  struct output_stream_buffer *bsink, uint32_t frames,
+				  uint32_t attenuation)
+{
+	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream __sparse_cache *sink = bsink->data;
+	ae_f16x4 in_sample = AE_ZERO16();
+	int i, n, m;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
+						     + bsource->consumed);
+	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
+						      + bsink->size);
+	const int channels_count = audio_stream_get_channels(sink);
+	const int inc = sizeof(ae_f32x2);
+	int samples = channels_count * frames;
+
+	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(samples);
+	bsink->size += VOL_S16_SAMPLES_TO_BYTES(samples);
+	vol_set_circular_buf(source, sink);
+	inu = AE_LA64_PP(in);
+	for (i = 0; i < samples; i += 4) {
+		/* Load the input sample */
+		AE_LA16X4_IC(in_sample, inu, in);
+		/* store the output */
+		AE_SA16X4_IC1(in_sample, outu, out);
+	}
+	AE_SA64POS_FP(outu, out);
+}
 #endif /* CONFIG_FORMAT_S16LE */
 const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16 },
+	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16, vol_bypass_s16_to_s16},
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32 },
+	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32, vol_bypass_s24_to_s24_s32},
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32 },
+	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32, vol_bypass_s32_to_s24_s32},
 #endif
 };
-
 const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
 #endif
 #endif
