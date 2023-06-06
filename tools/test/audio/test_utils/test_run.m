@@ -55,7 +55,7 @@ if isfield(test, 'nch_in') == 0
 	test.nch_in = test.nch;
 end
 
-fprintf(fh, '#!/bin/sh\n', test.comp);
+fprintf(fh, '#!/bin/sh\n');
 fprintf(fh, 'COMP=\"%s\"\n', test.comp);
 fprintf(fh, 'DIRECTION=playback\n');
 fprintf(fh, 'BITS_IN=%d\n', test.bits_in);
