@@ -266,6 +266,20 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	/* Check if simple copy client has only one source and one sink buffer to use a
+	 * simplified copy function. The multi_source_or_sink is set later to true
+	 * if module_adapter_bind() indicates multiple sources.
+	 */
+	if (mod->simple_copy && mod->num_input_buffers == 1 && mod->num_output_buffers == 1) {
+		mod->source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		mod->sink = sink;
+		mod->multi_source_or_sink = false;
+	} else {
+		mod->source = NULL;
+		mod->sink = NULL;
+		mod->multi_source_or_sink = true;
+	}
+
 	/* allocate memory for input buffers */
 	if (mod->num_input_buffers) {
 		mod->input_buffers =
@@ -903,6 +917,56 @@ out:
 	return ret;
 }
 
+static int module_adapter_simple_copy_1to1(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer __sparse_cache *sink_c;
+	uint32_t frames;
+	int ret;
+
+	source_c = buffer_acquire(mod->source);
+	sink_c = buffer_acquire(mod->sink);
+	frames = audio_stream_avail_frames_aligned(&source_c->stream, &sink_c->stream);
+	mod->input_buffers[0].size = frames;
+	mod->input_buffers[0].consumed = 0;
+	mod->input_buffers[0].data = &source_c->stream;
+	mod->output_buffers[0].size = 0;
+	mod->output_buffers[0].data = &sink_c->stream;
+	if (mod->is_multi_core && !mod->skip_src_buffer_invalidate)
+		buffer_stream_invalidate(source_c,
+					 frames * audio_stream_frame_bytes(&source_c->stream));
+
+	ret = module_process(mod, mod->input_buffers, 1, mod->output_buffers, 1);
+	if (ret) {
+		if (ret != -ENOSPC && ret != -ENODATA) {
+			comp_err(dev, "module_adapter_simple_copy_1to1(), process failed: %d", ret);
+			goto out;
+		}
+
+		ret = 0;
+	}
+
+	/* consume from input buffer */
+	mod->total_data_consumed += mod->input_buffers[0].consumed;
+	if (mod->input_buffers[0].consumed)
+		audio_stream_consume(&source_c->stream, mod->input_buffers[0].consumed);
+
+	/* produce data into all active output buffers */
+	mod->total_data_produced += mod->output_buffers[0].size;
+	if (mod->is_multi_core && !mod->skip_sink_buffer_writeback)
+		buffer_stream_writeback(sink_c, mod->output_buffers[0].size);
+
+	if (mod->output_buffers[0].size)
+		audio_stream_produce(&sink_c->stream, mod->output_buffers[0].size);
+
+out:
+	/* release all buffers */
+	buffer_release(sink_c);
+	buffer_release(source_c);
+	return ret;
+}
+
 int module_adapter_copy(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -915,6 +979,9 @@ int module_adapter_copy(struct comp_dev *dev)
 	int ret, i = 0;
 
 	comp_dbg(dev, "module_adapter_copy(): start");
+
+	if (!mod->multi_source_or_sink)
+		return module_adapter_simple_copy_1to1(dev);
 
 	if (mod->simple_copy)
 		return module_adapter_simple_copy(dev);
@@ -1353,6 +1420,34 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return 0;
 }
 
+static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist;
+	int num_sources = 0;
+	int num_sinks = 0;
+
+	list_for_item(blist, &dev->bsource_list)
+		num_sources++;
+
+	list_for_item(blist, &dev->bsink_list)
+		num_sinks++;
+
+	comp_dbg(dev, "num_sources=%d num_sinks=%d", num_sources, num_sinks);
+
+	/* Always return true if not simple copy to avoid use simple copy processing function
+	 * for non-simple copy client.
+	 */
+	if (!mod->simple_copy || num_sources > 1 || num_sinks > 1)
+		return true;
+
+	/* re-assign the source/sink modules */
+	mod->sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	mod->source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+
+	return false;
+}
+
 int module_adapter_bind(struct comp_dev *dev, void *data)
 {
 	struct module_source_info __sparse_cache *mod_source_info;
@@ -1411,6 +1506,8 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 
 	module_source_info_release(mod_source_info);
 
+	mod->multi_source_or_sink = module_adapter_multi_sink_source_check(dev);
+
 	return 0;
 }
 
@@ -1444,6 +1541,8 @@ int module_adapter_unbind(struct comp_dev *dev, void *data)
 		mod_source_info->sources[source_index] = NULL;
 
 	module_source_info_release(mod_source_info);
+
+	mod->multi_source_or_sink = module_adapter_multi_sink_source_check(dev);
 
 	return 0;
 }

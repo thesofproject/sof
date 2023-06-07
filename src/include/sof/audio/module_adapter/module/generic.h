@@ -184,6 +184,10 @@ struct processing_module {
 	struct output_stream_buffer *output_buffers;
 	uint32_t num_input_buffers; /**< number of input buffers */
 	uint32_t num_output_buffers; /**< number of output buffers */
+
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+
 	/*
 	 * flag set by a module that produces period_bytes every copy. It can be used by modules
 	 * that support 1:1, 1:N, N:1 sources:sinks configuration.
@@ -212,6 +216,11 @@ struct processing_module {
 	 * on a core that's different from the module's core
 	 */
 	bool is_multi_core;
+
+	/* False for module with one sink and one source to simplify copy operations. True if
+	 * multiple source or sink buffers.
+	 */
+	bool multi_source_or_sink;
 
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
