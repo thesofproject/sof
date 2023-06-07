@@ -208,6 +208,11 @@ struct processing_module {
 	 */
 	bool skip_src_buffer_invalidate;
 
+	/* flag to indicate if the module is connected to modules that are scheduled to run
+	 * on a core that's different from the module's core
+	 */
+	bool is_multi_core;
+
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
 
