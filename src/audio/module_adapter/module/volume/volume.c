@@ -267,8 +267,10 @@ static inline int32_t volume_windows_fade_ramp(struct vol_data *cd, int32_t ramp
  */
 
 /* Note: Using inline saves 0.4 MCPS */
-static inline void volume_ramp(struct vol_data *cd)
+static inline void volume_ramp(struct processing_module *mod)
 {
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int32_t new_vol;
 	int32_t tvolume;
 	int32_t volume;
@@ -276,6 +278,7 @@ static inline void volume_ramp(struct vol_data *cd)
 
 	cd->ramp_finished = true;
 	cd->copy_gain = true;
+	cd->is_bypass = true;
 
 	/* Current ramp time in Q29.3 milliseconds. Note that max. ramp length
 	 * can be 1.3s at 192 kHz rate and 5.5s at 48 kHz rate without
@@ -326,6 +329,31 @@ static inline void volume_ramp(struct vol_data *cd)
 		}
 		cd->volume[i] = new_vol;
 	}
+
+	if (!cd->ramp_finished) {
+		cd->is_bypass = false;
+	} else {
+		for (i = 0; i < cd->channels; i++) {
+			if (cd->volume[i] != VOL_ZERO_DB) {
+				cd->is_bypass = false;
+				break;
+			}
+		}
+	}
+#if CONFIG_IPC_MAJOR_4
+	cd->scale_vol = vol_get_processing_function(dev, cd);
+#else
+	struct comp_buffer *sourceb;
+	struct comp_buffer __sparse_cache *source_c;
+
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+
+	cd->scale_vol = vol_get_processing_function(dev, source_c, cd);
+
+	buffer_release(source_c);
+#endif
 }
 
 /**
@@ -368,6 +396,7 @@ static void reset_state(struct vol_data *cd)
 	cd->vol_ramp_elapsed_frames = 0;
 	cd->sample_rate_inv = 0;
 	cd->copy_gain = true;
+	cd->is_bypass = false;
 }
 
 #if CONFIG_IPC_MAJOR_3
@@ -397,6 +426,7 @@ static int volume_init(struct processing_module *mod)
 	}
 
 	md->private = cd;
+	cd->is_bypass = false;
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
 	 * not-zero, use them. Otherwise set to internal limits and notify
@@ -605,6 +635,7 @@ static int volume_init(struct processing_module *mod)
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
 
 	cd->attenuation = 0;
+	cd->is_bypass = false;
 
 	reset_state(cd);
 
@@ -971,6 +1002,20 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 			cd->ramp_finished = false;
 	}
 
+	cd->is_bypass = true;
+	if (!cd->ramp_finished) {
+		cd->is_bypass = false;
+	} else {
+		for (i = 0; i < channels_count; i++) {
+			if (cd->volume[i] != VOL_ZERO_DB) {
+				cd->is_bypass = false;
+				break;
+			}
+		}
+	}
+
+	cd->scale_vol = vol_get_processing_function(dev, cd);
+
 	prepare_ramp(dev, cd);
 
 	return 0;
@@ -1161,7 +1206,7 @@ static int volume_process(struct processing_module *mod,
 		}
 
 		if (!cd->ramp_finished) {
-			volume_ramp(cd);
+			volume_ramp(mod);
 			cd->vol_ramp_elapsed_frames += frames;
 		}
 
@@ -1289,8 +1334,12 @@ static int volume_prepare(struct processing_module *mod)
 		ret = -ENOMEM;
 		goto err;
 	}
+#if CONFIG_IPC_MAJOR_4
+	cd->scale_vol = vol_get_processing_function(dev, cd);
+#else
+	cd->scale_vol = vol_get_processing_function(dev, sink_c, cd);
+#endif
 
-	cd->scale_vol = vol_get_processing_function(dev, sink_c);
 	if (!cd->scale_vol) {
 		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
 
