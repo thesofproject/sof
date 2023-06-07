@@ -388,7 +388,9 @@ static int mixin_process(struct processing_module *mod,
 			source_c = attr_container_of(input_buffers[0].data,
 						     struct comp_buffer __sparse_cache,
 						     stream, __sparse_cache);
-			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
+			if (mod->is_multi_core)
+				buffer_stream_invalidate(source_c,
+							 bytes_to_consume_from_source_buf);
 		}
 	} else {
 		/* if source does not produce any data -- do NOT block mixing but generate
@@ -459,7 +461,7 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		writeback_size = audio_stream_period_bytes(&sink_c->stream,
 							   frames_to_copy + start_frame);
-		if (writeback_size > 0)
+		if (writeback_size > 0 && mod->is_multi_core)
 			buffer_stream_writeback(sink_c, writeback_size);
 		buffer_release(sink_c);
 
