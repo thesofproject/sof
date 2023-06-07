@@ -234,15 +234,27 @@ int module_adapter_prepare(struct comp_dev *dev)
 		buf = buffer_from_list(blist, PPL_DIR_UPSTREAM);
 		source = buffer_get_comp(buf, PPL_DIR_UPSTREAM);
 
-		if (source->pipeline && source->pipeline->core != dev->pipeline->core)
+		if (source->pipeline && source->pipeline->core != dev->pipeline->core) {
 			coherent_shared_thread(mod->source_info, c);
+			mod->is_multi_core = true;
+		}
 
 		mod->num_input_buffers++;
 	}
 
 	/* compute number of output buffers */
-	list_for_item(blist, &dev->bsink_list)
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *buf;
+		struct comp_dev *sink;
+
+		buf = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
+		sink = buffer_get_comp(buf, PPL_DIR_DOWNSTREAM);
+
+		if (sink->pipeline && sink->pipeline->core != dev->pipeline->core)
+			mod->is_multi_core = true;
+
 		mod->num_output_buffers++;
+	}
 
 	if (!mod->num_input_buffers && !mod->num_output_buffers) {
 		comp_err(dev, "module_adapter_prepare(): no source and sink buffers connected!");
@@ -656,7 +668,7 @@ module_single_sink_setup(struct comp_dev *dev,
 		frames = audio_stream_avail_frames_aligned(&source_c[i]->stream,
 							   &sinks_c[0]->stream);
 
-		if (!mod->skip_src_buffer_invalidate) {
+		if (!mod->skip_src_buffer_invalidate && mod->is_multi_core) {
 			uint32_t source_frame_bytes;
 
 			source_frame_bytes = audio_stream_frame_bytes(&source_c[i]->stream);
@@ -714,7 +726,7 @@ module_single_source_setup(struct comp_dev *dev,
 
 	num_output_buffers = i;
 
-	if (!mod->skip_src_buffer_invalidate)
+	if (!mod->skip_src_buffer_invalidate && mod->is_multi_core)
 		buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
 
 	/* note that the size is in number of frames not the number of bytes */
@@ -845,7 +857,7 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 					   struct comp_buffer __sparse_cache,
 					   stream, __sparse_cache);
 
-		if (!mod->skip_sink_buffer_writeback)
+		if (!mod->skip_sink_buffer_writeback && mod->is_multi_core)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
 		if (mod->output_buffers[i].size)
 			audio_stream_produce(&sink_c->stream, mod->output_buffers[i].size);
@@ -1346,22 +1358,34 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
-	struct comp_dev *source_dev;
+	struct comp_dev *source_dev, *sink_dev;
 	int source_index;
-	int src_id;
+	int src_id, sink_id;
 
 	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
 
-	/* nothing to do if this module is the source during bind */
-	if (dev->ipc_config.id == src_id)
+	if (dev->ipc_config.id == src_id) {
+		sink_dev = ipc4_get_comp_dev(sink_id);
+
+		/* check if the newly connected sink module is on a different core */
+		if (sink_dev && sink_dev->ipc_config.core != dev->ipc_config.core)
+			mod->is_multi_core = true;
+
+		/* nothing to do if this module is the source during bind */
 		return 0;
+	}
 
 	source_dev = ipc4_get_comp_dev(src_id);
 	if (!source_dev) {
 		comp_err(dev, "module_adapter_bind: no source with ID %d found", src_id);
 		return -EINVAL;
 	}
+
+	/* check if the newly connected source module is on a different core */
+	if (source_dev->ipc_config.core != dev->ipc_config.core)
+		mod->is_multi_core = true;
 
 	mod_source_info = module_source_info_acquire(mod->source_info);
 
