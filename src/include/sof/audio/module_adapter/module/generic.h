@@ -184,6 +184,8 @@ struct processing_module {
 	struct output_stream_buffer *output_buffers;
 	uint32_t num_input_buffers; /**< number of input buffers */
 	uint32_t num_output_buffers; /**< number of output buffers */
+	struct comp_buffer *source_comp_buffer; /**< single source component buffer */
+	struct comp_buffer *sink_comp_buffer; /**< single sink compoonent buffer */
 
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
@@ -202,6 +204,13 @@ struct processing_module {
 	 * in the module's process callback
 	 */
 	bool skip_src_buffer_invalidate;
+
+	/*
+	 * True for module with one source component buffer and one sink component buffer
+	 * to enable reduction of module processing overhead. False if component uses
+	 * multiple buffers.
+	 */
+	bool stream_copy_single_to_single;
 
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
