@@ -62,6 +62,7 @@ static int setup(void **state)
 	cd = test_malloc(sizeof(*cd));
 	md = &vol_state->mod->priv;
 	md->private = cd;
+	cd->is_bypass = false;
 
 	/* malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
@@ -71,7 +72,11 @@ static int setup(void **state)
 	cd->vol = test_malloc(vol_size);
 
 	/* set processing function and volume */
-	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, vol_state->sinks[0]);
+#if CONFIG_IPC_MAJOR_4
+	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, cd);
+#else
+	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, vol_state->sinks[0], cd);
+#endif
 	set_volume(cd->volume, vol_parameters->volume, vol_state->parameters.channels);
 
 	/* assign test state */
