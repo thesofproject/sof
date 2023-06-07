@@ -126,7 +126,7 @@ void copier_host_free(struct copier_data *cd)
 void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *sink;
+	struct comp_buffer __sparse_cache *sink, *source;
 	int ret, frames;
 
 	comp_dbg(dev, "copier_host_dma_cb() %p", dev);
@@ -138,21 +138,22 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_common_one_shot(cd->hd, bytes);
 
-	/* apply attenuation since copier copy missed this with host device remove */
-	if (cd->attenuation) {
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			sink = buffer_acquire(cd->hd->local_buffer);
-		else
-			sink = buffer_acquire(cd->hd->dma_buffer);
-
-		frames = bytes / get_sample_bytes(audio_stream_get_frm_fmt(&sink->stream));
-		frames = frames / audio_stream_get_channels(&sink->stream);
+	/* Apply attenuation since copier copy missed this with host device
+	 * remove. Attenuation has to be applied in HOST Copier only with
+	 * playback scenario.
+	 */
+	if (cd->attenuation && dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		source = buffer_acquire(cd->hd->dma_buffer);
+		sink = buffer_acquire(cd->hd->local_buffer);
+		frames = bytes / audio_stream_frame_bytes(&source->stream);
 
 		ret = apply_attenuation(dev, cd, sink, frames);
 		if (ret < 0)
 			comp_dbg(dev, "copier_host_dma_cb() apply attenuation failed! %d", ret);
 
 		buffer_stream_writeback(sink, bytes);
+
+		buffer_release(source);
 		buffer_release(sink);
 	}
 }
