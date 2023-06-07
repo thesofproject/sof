@@ -82,10 +82,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	dst = &mod->priv.cfg;
 	mod->dev = dev;
 
-	/* by default we are single core unless otherwise stated */
-	mod->skip_sink_buffer_writeback = true;
-	mod->skip_src_buffer_invalidate = true;
-
 	comp_set_drvdata(dev, mod);
 	list_init(&mod->sink_buffer_list);
 
