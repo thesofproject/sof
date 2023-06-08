@@ -56,6 +56,7 @@ manifest:
       import:
         name-whitelist:
           - hal_xtensa
+          - hal_nxp
           - mbedtls
           - mipi-sys-t
           - lz4
