@@ -75,7 +75,6 @@ struct mixin_sink_config {
 /* mixin component private data */
 struct mixin_data {
 	normal_mix_func normal_mix_channel;
-	remap_mix_func remap_mix_channel;
 	mute_func mute_channel;
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
 };
@@ -532,7 +531,6 @@ static int mixin_reset(struct processing_module *mod)
 	comp_dbg(dev, "mixin_reset()");
 
 	mixin_data->normal_mix_channel = NULL;
-	mixin_data->remap_mix_channel = NULL;
 	mixin_data->mute_channel = NULL;
 
 	return 0;
@@ -670,7 +668,6 @@ static int mixin_prepare(struct processing_module *mod,
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		md->normal_mix_channel = normal_mix_get_processing_function(fmt);
-		md->remap_mix_channel = remap_mix_get_processing_function(fmt);
 		md->mute_channel = mute_mix_get_processing_function(fmt);
 		break;
 	default:
@@ -678,7 +675,7 @@ static int mixin_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	if (!md->normal_mix_channel || !md->remap_mix_channel || !md->mute_channel) {
+	if (!md->normal_mix_channel || !md->mute_channel) {
 		comp_err(dev, "have not found the suitable processing function");
 		return -EINVAL;
 	}
