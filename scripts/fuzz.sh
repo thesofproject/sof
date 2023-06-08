@@ -69,6 +69,7 @@ main()
 
   # Move this to a new fuzz.conf overlay file if it grows bigger
   local fuzz_configs=(
+    -DCONFIG_ZEPHYR_POSIX=y
     -DCONFIG_ASSERT=y
     -DCONFIG_SYS_HEAP_BIG_ONLY=y
     -DCONFIG_ZEPHYR_NATIVE_DRIVERS=y
