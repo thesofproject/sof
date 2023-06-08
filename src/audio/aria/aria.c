@@ -241,6 +241,12 @@ static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data 
 	audio_stream_set_channels(&buffer_c->stream, cd->chan_cnt);
 	audio_stream_set_rate(&buffer_c->stream, cd->base.audio_fmt.sampling_frequency);
 
+#ifdef ARIA_GENERIC
+	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
+#else
+	audio_stream_init_alignment_constants(8, 1, &buffer_c->stream);
+#endif
+
 	buffer_release(buffer_c);
 }
 
@@ -307,12 +313,12 @@ static int aria_trigger(struct comp_dev *dev, int cmd)
 
 static int aria_copy(struct comp_dev *dev)
 {
-	struct comp_copy_limits c;
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct aria_data *cd;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
+	uint32_t frames;
 
 	cd = comp_get_drvdata(dev);
 
@@ -326,9 +332,10 @@ static int aria_copy(struct comp_dev *dev)
 	source_c = buffer_acquire(source);
 	sink_c = buffer_acquire(sink);
 
-	comp_get_copy_limits(source_c, sink_c, &c);
-	source_bytes = c.frames * c.source_frame_bytes;
-	sink_bytes = c.frames * c.sink_frame_bytes;
+	frames = audio_stream_avail_frames_aligned(&source_c->stream,
+						   &sink_c->stream);
+	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
+	sink_bytes = frames *  audio_stream_frame_bytes(&sink_c->stream);
 
 	if (source_bytes == 0)
 		goto out;
@@ -336,7 +343,7 @@ static int aria_copy(struct comp_dev *dev)
 	buffer_stream_invalidate(source_c, source_bytes);
 
 	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0,
-				    c.frames * source_c->stream.channels);
+				    frames * source_c->stream.channels);
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in, source_bytes);
 
 	aria_process_data(dev, cd->buf_out, sink_bytes / sizeof(uint32_t),
@@ -344,7 +351,7 @@ static int aria_copy(struct comp_dev *dev)
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out, sink_bytes);
 	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0,
-				      c.frames * sink_c->stream.channels);
+				      frames * sink_c->stream.channels);
 
 	buffer_stream_writeback(sink_c, sink_bytes);
 
