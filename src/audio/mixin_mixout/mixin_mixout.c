@@ -180,36 +180,6 @@ static int mixout_free(struct processing_module *mod)
 	return 0;
 }
 
-static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
-			 uint16_t sink_index, struct audio_stream __sparse_cache *sink,
-			 uint32_t start_frame, uint32_t mixed_frames,
-			 const struct audio_stream __sparse_cache *source, uint32_t frame_count)
-{
-	const struct mixin_sink_config *sink_config;
-
-	if (sink_index >= MIXIN_MAX_SINKS) {
-		comp_err(dev, "Sink index out of range: %u, max sinks count: %u",
-			 (uint32_t)sink_index, MIXIN_MAX_SINKS);
-		return -EINVAL;
-	}
-
-	sink_config = &mixin_data->sink_config[sink_index];
-
-	/* Mix streams. mix_channel() is reused here to mix streams, not individual
-	 * channels. To do so, (multichannel) stream is treated as single channel:
-	 * channel count is passed as 1, channel index is 0, frame indices (start_frame
-	 * and mixed_frame) and frame count are multiplied by real stream channel count.
-	 */
-	mixin_data->normal_mix_channel(sink, start_frame * audio_stream_get_channels(sink),
-				       mixed_frames * audio_stream_get_channels(sink),
-				       source,
-				       frame_count * audio_stream_get_channels(sink),
-				       sink_config->gain);
-
-
-	return 0;
-}
-
 /* mix silence into stream, i.e. set not yet mixed data in stream to zero */
 static void silence(struct audio_stream __sparse_cache *stream, uint32_t start_frame,
 		    uint32_t mixed_frames, uint32_t frame_count)
@@ -307,6 +277,12 @@ static int mixin_process(struct processing_module *mod,
 
 		active_mixouts[i] = mixout;
 		sinks_ids[i] = sink_id;
+
+		if (sink_id >= MIXIN_MAX_SINKS) {
+			comp_err(dev, "Sink index out of range: %u, max sinks count: %u",
+				 (uint32_t)sink_id, MIXIN_MAX_SINKS);
+			return -EINVAL;
+		}
 
 		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
 
@@ -413,14 +389,22 @@ static int mixin_process(struct processing_module *mod,
 			 * sink buffer has some data (written by another mixin) mix that data
 			 * with source data.
 			 */
-			ret = mix_and_remap(dev, mixin_data, sinks_ids[i], &sink_c->stream,
-					    start_frame, mixout_data->mixed_frames,
-					    input_buffers[0].data, frames_to_copy);
-			if (ret < 0) {
-				buffer_release(sink_c);
-				module_source_info_release(mod_source_info);
-				return ret;
-			}
+			const struct mixin_sink_config *sink_config;
+			uint32_t channels = audio_stream_get_channels(&sink_c->stream);
+
+			sink_config = &mixin_data->sink_config[sinks_ids[i]];
+
+			/* Mix streams. mix_channel() is reused here to mix streams,
+			 * not individual channels. To do so, (multichannel) stream is treated
+			 * as single channel: channel count is passed as 1, channel index is 0,
+			 * frame indices (start_frame and mixed_frame) and frame count are
+			 * multiplied by real stream channel count.
+			 */
+			mixin_data->normal_mix_channel(&sink_c->stream, start_frame * channels,
+						       mixout_data->mixed_frames * channels,
+						       input_buffers[0].data,
+						       frames_to_copy * channels,
+						       sink_config->gain);
 		}
 
 		/* it would be better to writeback memory region starting from start_frame and
