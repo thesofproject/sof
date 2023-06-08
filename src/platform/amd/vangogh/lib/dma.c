@@ -14,6 +14,8 @@
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 
+#define ACP_ADDR_MASK	0x9DEB0000
+
 extern struct dma_ops acp_dma_ops;
 #ifdef ACP_BT_ENABLE
 extern struct dma_ops acp_dai_bt_dma_ops;
@@ -88,6 +90,14 @@ const struct dma_info lib_dma = {
 int acp_dma_init(struct sof *sof)
 {
 	int i;
+	uint32_t descr_base;
+	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
+		(volatile acp_scratch_mem_config_t *)(PU_SCRATCH_REG_BASE + SCRATCH_REG_OFFSET);
+	descr_base = (uint32_t)(&pscratch_mem_cfg->acp_cfg_dma_descriptor);
+	descr_base = (descr_base - ACP_ADDR_MASK);
+	/* configure dma descriptor base addr */
+	io_reg_write((PU_REGISTER_BASE + ACP_DMA_DESC_BASE_ADDR), descr_base);
+	io_reg_write((PU_REGISTER_BASE + ACP_DMA_DESC_MAX_NUM_DSCR), 0x1);
 	
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
