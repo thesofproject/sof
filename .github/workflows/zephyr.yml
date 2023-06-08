@@ -58,6 +58,39 @@ jobs:
              exit 1
           fi
 
+
+  # Temporary hacks to compile the very first LP64 configuration early
+  # before it becomes supported by the regular
+  # sof/scripts/xtensa-build-zephyr.py configuration script. Then this
+  # job will be disappear, folded back in the regular build-* jobs below.
+  LP64-WIP:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: ./workspace/sof
+
+      - name: west clones
+        run: pip3 install west && cd workspace/sof/ && west init -l &&
+               west update --narrow --fetch-opt=--filter=tree:0
+
+      # Not strictly necessary but saves a lot of scrolling in the next step
+      # Caching a 12G image is unfortunately not possible:
+      #   https://github.com/ScribeMD/docker-cache/issues/304
+      # For faster builds we would have to pay for some persistent runners.
+      - name: Download docker image && ls /opt/toolchains/
+        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+
+      - name: build with many warnings, work in progress
+        run: |
+          # One of the main problems: the old sof-logger is hardcoded to
+          # four 32bits parameters.
+          cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
+             'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
+              west build --board mimx93_evk_a55_sof sof/app'
+
+
   build-linux:
     runs-on: ubuntu-22.04
     strategy:
