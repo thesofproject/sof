@@ -471,8 +471,19 @@ audio_stream_get_avail_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_avail_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_avail_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	uint32_t avail_bytes = audio_stream_get_avail_bytes(stream);
+	uint32_t frame_bytes = audio_stream_frame_bytes(stream);
+
+	switch (frame_bytes) {
+	case 2:
+		return avail_bytes >> 1;
+	case 4:
+		return avail_bytes >> 2;
+	case 8:
+		return avail_bytes >> 3;
+	default:
+		return avail_bytes / frame_bytes;
+	}
 }
 
 /**
@@ -515,8 +526,19 @@ audio_stream_get_free_samples(const struct audio_stream __sparse_cache *stream)
 static inline uint32_t
 audio_stream_get_free_frames(const struct audio_stream __sparse_cache *stream)
 {
-	return audio_stream_get_free_bytes(stream) /
-		audio_stream_frame_bytes(stream);
+	uint32_t free_bytes = audio_stream_get_free_bytes(stream);
+	uint32_t frame_bytes = audio_stream_frame_bytes(stream);
+
+	switch (frame_bytes) {
+	case 2:
+		return free_bytes >> 1;
+	case 4:
+		return free_bytes >> 2;
+	case 8:
+		return free_bytes >> 3;
+	default:
+		return free_bytes / frame_bytes;
+	}
 }
 
 /**
