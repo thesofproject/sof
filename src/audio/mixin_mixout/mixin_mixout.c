@@ -232,11 +232,14 @@ static int mixin_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	uint32_t source_avail_frames, sinks_free_frames;
 	struct comp_dev *active_mixouts[MIXIN_MAX_SINKS];
+	struct mixout_data *active_mixout_data[MIXIN_MAX_SINKS];
+	struct comp_buffer __sparse_cache *active_sink_c[MIXIN_MAX_SINKS];
+	int active_index[MIXIN_MAX_SINKS];
 	uint16_t sinks_ids[MIXIN_MAX_SINKS];
 	uint32_t bytes_to_consume_from_source_buf;
 	uint32_t frames_to_copy;
 	int source_index;
-	int i, ret;
+	int i;
 
 	comp_dbg(dev, "mixin_process()");
 
@@ -295,8 +298,10 @@ static int mixin_process(struct processing_module *mod,
 			module_source_info_release(mod_source_info);
 			return -EINVAL;
 		}
-
+		active_mixout_data[i] = mixout_data;
+		active_index[i] = source_index;
 		sink_c = buffer_acquire(sink);
+		active_sink_c[i] = sink_c;
 
 		/* Normally this should never happen as we checked above
 		 * that mixout is in active state and so its sink buffer
@@ -304,7 +309,11 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		if (!sink_c->hw_params_configured) {
 			comp_err(dev, "Uninitialized mixout sink buffer!");
-			buffer_release(sink_c);
+			if (i > 0)
+				for (int j = 0; j <= i; j++)
+					buffer_release(active_sink_c[j]);
+			else
+				buffer_release(sink_c);
 			module_source_info_release(mod_source_info);
 			return -EINVAL;
 		}
@@ -319,7 +328,6 @@ static int mixin_process(struct processing_module *mod,
 		assert(free_frames >= pending_frames);
 		sinks_free_frames = MIN(sinks_free_frames, free_frames - pending_frames);
 
-		buffer_release(sink_c);
 		module_source_info_release(mod_source_info);
 	}
 
@@ -348,26 +356,15 @@ static int mixin_process(struct processing_module *mod,
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
 	for (i = 0; i < num_output_buffers; i++) {
 		struct comp_dev *mixout;
-		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
-		struct module_source_info __sparse_cache *mod_source_info;
-		struct processing_module *mixout_mod;
 		uint32_t start_frame;
 		struct comp_buffer __sparse_cache *sink_c;
 		uint32_t writeback_size;
 
 		mixout = active_mixouts[i];
-		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
 
-		mixout_mod = comp_get_drvdata(mixout);
-		mod_source_info = module_source_info_acquire(mixout_mod->source_info);
-		mixout_data = mod_source_info->private;
-		source_index = find_module_source_index(mod_source_info, dev);
-		if (source_index < 0) {
-			comp_err(dev, "No source info");
-			module_source_info_release(mod_source_info);
-			return -EINVAL;
-		}
+		mixout_data = active_mixout_data[i];
+		source_index = active_index[i];
 
 		/* Skip data from previous run(s) not yet produced in mixout_process().
 		 * Normally start_frame would be 0 unless mixout pipeline has serious
@@ -375,7 +372,7 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		start_frame = mixout_data->pending_frames[source_index];
 
-		sink_c = buffer_acquire(sink);
+		sink_c = active_sink_c[i];
 
 		/* if source does not produce any data but mixin is in active state -- generate
 		 * silence instead of that source data
@@ -421,8 +418,6 @@ static int mixin_process(struct processing_module *mod,
 
 		if (frames_to_copy + start_frame > mixout_data->mixed_frames)
 			mixout_data->mixed_frames = frames_to_copy + start_frame;
-
-		module_source_info_release(mod_source_info);
 	}
 
 	return 0;
