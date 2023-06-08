@@ -67,13 +67,17 @@ main()
   : "${TEST_DURATION:=3}"
   : "${FUZZER_STDOUT:=/dev/stdout}" # bashism
 
-  west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
-    -DCONFIG_ASSERT=y \
-    -DCONFIG_SYS_HEAP_BIG_ONLY=y \
-    -DCONFIG_ZEPHYR_NATIVE_DRIVERS=y \
-    -DCONFIG_ARCH_POSIX_LIBFUZZER=y \
-    -DCONFIG_ARCH_POSIX_FUZZ_TICKS=100 \
-    -DCONFIG_ASAN=y "$@"
+  # Move this to a new fuzz.conf overlay file if it grows bigger
+  local fuzz_configs=(
+    -DCONFIG_ASSERT=y
+    -DCONFIG_SYS_HEAP_BIG_ONLY=y
+    -DCONFIG_ZEPHYR_NATIVE_DRIVERS=y
+    -DCONFIG_ARCH_POSIX_LIBFUZZER=y
+    -DCONFIG_ARCH_POSIX_FUZZ_TICKS=100
+    -DCONFIG_ASAN=y
+  )
+
+  west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- "${fuzz_configs[@]}" "$@"
 
   mkdir -p ./fuzz_corpus
 
