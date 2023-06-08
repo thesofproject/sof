@@ -22,6 +22,8 @@ elseif(CONFIG_MT8188)
         set(platform_folder mt8188)
 elseif(CONFIG_MT8195)
 	set(platform_folder mt8195)
+else()
+	message(FATAL_ERROR "Platform not defined, check your Kconfiguration?")
 endif()
 
 set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})

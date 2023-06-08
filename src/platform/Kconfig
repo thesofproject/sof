@@ -5,7 +5,9 @@ menu "Platform"
 choice
 	prompt "Platform"
 	default ZEPHYR_POSIX if ARCH_POSIX
-	default TIGERLAKE
+	# It's not really 'optional' but no value is much less confusing
+	# than falling back on a totally random value.
+	optional
 
 config TIGERLAKE
 	bool "Build for Tigerlake"
