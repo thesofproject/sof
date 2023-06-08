@@ -12,6 +12,10 @@ elseif(CONFIG_IMX8M)
 	set(platform_folder imx8m)
 elseif(CONFIG_IMX8ULP)
 	set(platform_folder imx8ulp)
+elseif(CONFIG_RENOIR)
+	set(platform_folder amd/renoir)
+elseif(CONFIG_REMBRANDT)
+	set(platform_folder amd/rembrandt)
 elseif(CONFIG_MT8186)
         set(platform_folder mt8186)
 elseif(CONFIG_MT8188)
@@ -22,18 +26,11 @@ endif()
 
 set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})
 
-set(platform_ld_script ${platform_folder}.x)
+# File name without directory
+get_filename_component(_plf_ld_script ${platform_folder} NAME)
+set(platform_ld_script ${_plf_ld_script}.x)
 set(platform_rom_ld_script rom.x)
 
-if(CONFIG_RENOIR)
-	set(platform_folder amd/renoir)
-	set(platform_ld_script renoir.x)
-endif()
-
-if(CONFIG_REMBRANDT)
-	set(platform_folder amd/rembrandt)
-	set(platform_ld_script rembrandt.x)
-endif()
 # includes
 
 # None of these should be included if Zephyr strict headers are used.
