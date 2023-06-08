@@ -363,6 +363,9 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY
 	${SOF_DRIVERS_PATH}/host/ipc.c
 )
 
+if(NOT DEFINED PLATFORM)
+	message(FATAL_ERROR "PLATFORM is not defined, check your Kconfiguration?")
+endif()
 zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 
 # Mandatory Files used on all platforms.
