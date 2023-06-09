@@ -435,6 +435,7 @@ static int mixout_process(struct processing_module *mod,
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *md;
+	int active_index[MIXOUT_MAX_SOURCES];
 	uint32_t frames_to_produce = INT32_MAX;
 	uint32_t pending_frames;
 	uint32_t sink_bytes;
@@ -463,10 +464,10 @@ static int mixout_process(struct processing_module *mod,
 		source = unused_in_between_buf->source;
 
 		source_index = find_module_source_index(mod_source_info, source);
+		active_index[i] = source_index;
 		/* this shouldn't happen but skip even if it does and move to the next source */
 		if (source_index < 0)
 			continue;
-
 		pending_frames = md->pending_frames[source_index];
 
 		if (source->state == COMP_STATE_ACTIVE || pending_frames)
@@ -476,19 +477,11 @@ static int mixout_process(struct processing_module *mod,
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_input_buffers; i++) {
 			const struct audio_stream __sparse_cache *source_stream;
-			struct comp_buffer __sparse_cache *unused_in_between_buf;
-			struct comp_dev *source;
 			int source_index;
 			uint32_t pending_frames;
 
 			source_stream = input_buffers[i].data;
-			unused_in_between_buf = attr_container_of(source_stream,
-								  struct comp_buffer __sparse_cache,
-								  stream, __sparse_cache);
-
-			source = unused_in_between_buf->source;
-
-			source_index = find_module_source_index(mod_source_info, source);
+			source_index = active_index[i];
 			if (source_index < 0)
 				continue;
 
