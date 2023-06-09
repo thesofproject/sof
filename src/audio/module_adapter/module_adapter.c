@@ -646,8 +646,7 @@ module_single_sink_setup(struct comp_dev *dev,
 	list_for_item(blist, &dev->bsource_list) {
 		comp_get_copy_limits_frame_aligned(source_c[i], sinks_c[0], &c);
 
-		if (!mod->skip_src_buffer_invalidate)
-			buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
+		buffer_stream_invalidate(source_c[i], c.frames * c.source_frame_bytes);
 
 		/*
 		 * note that the size is in number of frames not the number of
@@ -699,8 +698,7 @@ module_single_source_setup(struct comp_dev *dev,
 
 	num_output_buffers = i;
 
-	if (!mod->skip_src_buffer_invalidate)
-		buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
+	buffer_stream_invalidate(source_c[0], min_frames * source_frame_bytes);
 
 	/* note that the size is in number of frames not the number of bytes */
 	mod->input_buffers[0].size = min_frames;
@@ -791,8 +789,7 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 					   struct comp_buffer __sparse_cache,
 					   stream, __sparse_cache);
 
-		if (!mod->skip_sink_buffer_writeback)
-			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
+		buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
 		comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
 	}
 

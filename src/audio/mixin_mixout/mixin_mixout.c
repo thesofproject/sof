@@ -122,7 +122,6 @@ static int mixin_init(struct processing_module *mod)
 
 	dev->ipc_config.frame_fmt = frame_fmt;
 	mod->simple_copy = true;
-	mod->skip_src_buffer_invalidate = true;
 
 	return 0;
 }
@@ -151,7 +150,6 @@ static int mixout_init(struct processing_module *mod)
 
 	dev->ipc_config.frame_fmt = frame_fmt;
 	mod->simple_copy = true;
-	mod->skip_sink_buffer_writeback = true;
 
 	return 0;
 }
@@ -378,18 +376,11 @@ static int mixin_process(struct processing_module *mod,
 	}
 
 	if (source_avail_frames > 0) {
-		struct comp_buffer __sparse_cache *source_c;
-
 		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
 		bytes_to_consume_from_source_buf =
 			audio_stream_period_bytes(input_buffers[0].data, frames_to_copy);
-		if (bytes_to_consume_from_source_buf > 0) {
+		if (bytes_to_consume_from_source_buf > 0)
 			input_buffers[0].consumed = bytes_to_consume_from_source_buf;
-			source_c = attr_container_of(input_buffers[0].data,
-						     struct comp_buffer __sparse_cache,
-						     stream, __sparse_cache);
-			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
-		}
 	} else {
 		/* if source does not produce any data -- do NOT block mixing but generate
 		 * silence as that source output.
