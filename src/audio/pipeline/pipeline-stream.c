@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
@@ -330,7 +331,8 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 #if CONFIG_IPC_MAJOR_3
 			dd = comp_get_drvdata(current);
 #elif CONFIG_IPC_MAJOR_4
-			struct copier_data *cd = comp_get_drvdata(current);
+			struct processing_module *mod = comp_get_drvdata(current);
+			struct copier_data *cd = module_get_private_data(mod);
 
 			dd = cd->dd[0];
 #else
