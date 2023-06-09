@@ -709,7 +709,7 @@ static void set_selector_params(struct processing_module *mod,
 		audio_stream_set_channels(&sink->stream, params->channels);
 		audio_stream_set_rate(&sink->stream, params->rate);
 
-		sink->buffer_fmt = out_fmt->interleaving_style;
+		audio_stream_set_buffer_fmt(&sink->stream, out_fmt->interleaving_style);
 
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 			sink->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
@@ -741,7 +741,7 @@ static void set_selector_params(struct processing_module *mod,
 		audio_stream_set_channels(&source->stream, in_fmt->channels_count);
 		audio_stream_set_rate(&source->stream, in_fmt->sampling_frequency);
 
-		source->buffer_fmt = in_fmt->interleaving_style;
+		audio_stream_set_buffer_fmt(&source->stream, in_fmt->interleaving_style);
 
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 			source->chmap[i] = (in_fmt->ch_map >> i * 4) & 0xf;

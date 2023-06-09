@@ -125,7 +125,7 @@ static void smart_amp_set_params(struct processing_module *mod)
 		audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
 		audio_stream_set_channels(&sink_c->stream, out_fmt.channels_count);
 		audio_stream_set_rate(&sink_c->stream, out_fmt.sampling_frequency);
-		sink_c->buffer_fmt = out_fmt.interleaving_style;
+		audio_stream_set_buffer_fmt(&sink_c->stream, out_fmt.interleaving_style);
 		params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 		sink_c->hw_params_configured = true;
 		buffer_release(sink_c);

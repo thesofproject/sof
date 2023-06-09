@@ -71,8 +71,7 @@ void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
 
 	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
 	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
-
-	buf_c->buffer_fmt = fmt->interleaving_style;
+	audio_stream_set_buffer_fmt(&buf_c->stream, fmt->interleaving_style);
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
@@ -238,7 +237,8 @@ int create_endpoint_buffer(struct comp_dev *parent_dev,
 	audio_stream_set_rate(&buffer_c->stream, copier_cfg->base.audio_fmt.sampling_frequency);
 	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
 	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
-	buffer_c->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
+	audio_stream_set_buffer_fmt(&buffer_c->stream,
+				    copier_cfg->base.audio_fmt.interleaving_style);
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;

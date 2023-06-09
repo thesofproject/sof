@@ -155,7 +155,7 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 		return -EINVAL;
 	}
 
-	buffer->buffer_fmt = params->buffer_fmt;
+	audio_stream_set_buffer_fmt(&buffer->stream, params->buffer_fmt);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer->chmap[i] = params->chmap[i];
 

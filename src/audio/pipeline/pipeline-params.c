@@ -137,7 +137,7 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache 
 	struct sof_ipc_stream_params *params = data;
 	int i;
 
-	params->buffer_fmt = buffer->buffer_fmt;
+	params->buffer_fmt = audio_stream_get_buffer_fmt(&buffer->stream);
 	params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
 	params->rate = audio_stream_get_rate(&buffer->stream);
 	params->channels = audio_stream_get_channels(&buffer->stream);
