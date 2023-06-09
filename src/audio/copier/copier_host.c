@@ -8,13 +8,15 @@
 #include <sof/audio/host_copier.h>
 #include <sof/trace/trace.h>
 #include <ipc4/copier.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
 /* Playback only */
 static int init_pipeline_reg(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
 	uint32_t gateway_id;
 
@@ -125,7 +127,8 @@ void copier_host_free(struct copier_data *cd)
  */
 void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_buffer __sparse_cache *sink, *source;
 	int ret, frames;
 

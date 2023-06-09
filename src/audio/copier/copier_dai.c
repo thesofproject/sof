@@ -9,6 +9,7 @@
 #include <ipc4/copier.h>
 #include <sof/audio/dai_copier.h>
 #include <ipc/dai.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -34,7 +35,8 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 						const struct ipc4_copier_module_cfg *copier_cfg,
 						int index)
 {
-	struct copier_data *cd = comp_get_drvdata(parent_dev);
+	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	const struct sof_alh_configuration_blob *alh_blob;
 	uint8_t chan_bitmask;
 	int channels;
@@ -70,7 +72,8 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 			   enum ipc4_gateway_type type,
 			   int index, int dai_count)
 {
-	struct copier_data *cd = comp_get_drvdata(parent_dev);
+	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd;
 	int ret;
 

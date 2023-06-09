@@ -38,6 +38,7 @@
 #include <sof/audio/host_copier.h>
 #include <sof/audio/dai_copier.h>
 #include <sof/audio/ipcgtw_copier.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -54,49 +55,44 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-static struct comp_dev *copier_new(const struct comp_driver *drv,
-				   const struct comp_ipc_config *config,
-				   const void *spec)
+static int copier_init(struct processing_module *mod)
 {
-	const struct ipc4_copier_module_cfg *copier = spec;
 	union ipc4_connector_node_id node_id;
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
 	struct copier_data *cd;
-	struct comp_dev *dev;
-	int i;
-
-	comp_cl_dbg(&comp_copier, "copier_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	dev->ipc_config = *config;
+	struct comp_dev *dev = mod->dev;
+	struct module_data *md = &mod->priv;
+	struct ipc4_copier_module_cfg *copier = (struct ipc4_copier_module_cfg *)md->cfg.init_data;
+	struct comp_ipc_config *config = &dev->ipc_config;
+	int i, ret = 0;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto error;
+		return -ENOMEM;
 
+	md->private = cd;
 	/*
 	 * Don't copy the config_data[] variable size array, we don't need to
 	 * store it, it's only used during IPC processing, besides we haven't
 	 * allocated space for it, so don't "fix" this!
 	 */
-	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0)
-		goto error_cd;
+	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
-	comp_set_drvdata(dev, cd);
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
 	if (!ipc_pipe) {
-		comp_cl_err(&comp_copier, "pipeline %d is not existed", config->pipeline_id);
-		goto error_cd;
+		comp_err(dev, "pipeline %d is not existed", config->pipeline_id);
+		ret = -EPIPE;
+		goto error;
 	}
 
 	dev->pipeline = ipc_pipe->pipeline;
@@ -109,10 +105,11 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			if (copier_host_create(dev, cd, &dev->ipc_config,
-					       copier, cd->direction, ipc_pipe->pipeline)) {
-				comp_cl_err(&comp_copier, "unable to create host");
-				goto error_cd;
+			ret = copier_host_create(dev, cd, &dev->ipc_config,
+						 copier, cd->direction, ipc_pipe->pipeline);
+			if (ret < 0) {
+				comp_err(dev, "unable to create host");
+				goto error;
 			}
 			break;
 		case ipc4_hda_link_output_class:
@@ -122,27 +119,28 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-			if (copier_dai_create(dev, cd, &dev->ipc_config,
-					      copier, ipc_pipe->pipeline)) {
-				comp_cl_err(&comp_copier, "unable to create dai");
-				goto error_cd;
+			ret = copier_dai_create(dev, cd, &dev->ipc_config,
+						copier, ipc_pipe->pipeline);
+			if (ret < 0) {
+				comp_err(dev, "unable to create dai");
+				goto error;
 			}
 			break;
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config,
-						 copier, ipc_pipe->pipeline)) {
-				comp_cl_err(&comp_copier, "unable to create IPC gateway");
-				goto error_cd;
+			ret = copier_ipcgtw_create(dev, cd, &dev->ipc_config,
+						   copier, ipc_pipe->pipeline);
+			if (ret < 0) {
+				comp_err(dev, "unable to create IPC gateway");
+				goto error;
 			}
-
 			break;
 #endif
 		default:
-			comp_cl_err(&comp_copier, "unsupported dma type %x",
-				    (uint32_t)node_id.f.dma_type);
-			goto error_cd;
+			comp_err(dev, "unsupported dma type %x", (uint32_t)node_id.f.dma_type);
+			ret = -EINVAL;
+			goto error;
 		};
 
 		dev->direction_set = true;
@@ -150,18 +148,52 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	dev->direction = cd->direction;
 	dev->state = COMP_STATE_READY;
-	return dev;
-
-error_cd:
-	rfree(cd);
+	return 0;
 error:
+	rfree(cd);
+	return ret;
+}
+
+static struct comp_dev *copier_new(const struct comp_driver *drv,
+				   const struct comp_ipc_config *config,
+				   const void *spec)
+{
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct module_data *md;
+	int ret;
+
+	comp_cl_dbg(&comp_copier, "copier_new()");
+
+	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
+	if (!mod)
+		return NULL;
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		goto error_dev;
+
+	dev->ipc_config = *config;
+
+	comp_set_drvdata(dev, mod);
+	md = &mod->priv;
+	mod->dev = dev;
+	md->cfg.init_data = spec;
+
+	ret = copier_init(mod);
+	if (!ret)
+		return dev;
+
 	rfree(dev);
+error_dev:
+	rfree(mod);
 	return NULL;
 }
 
 static void copier_free(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -180,11 +212,13 @@ static void copier_free(struct comp_dev *dev)
 
 	rfree(cd);
 	rfree(dev);
+	rfree(mod);
 }
 
 static int copier_prepare(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	int ret;
 
 	comp_dbg(dev, "copier_prepare()");
@@ -238,7 +272,8 @@ static int copier_prepare(struct comp_dev *dev)
 
 static int copier_reset(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
 
 	comp_dbg(dev, "copier_reset()");
@@ -273,7 +308,8 @@ static int copier_reset(struct comp_dev *dev)
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct sof_ipc_stream_posn posn;
 	struct comp_dev *dai_copier;
 	struct comp_buffer *buffer;
@@ -413,7 +449,8 @@ static inline struct comp_buffer *get_endpoint_buffer(struct copier_data *cd)
 
 static int do_endpoint_copy(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -550,7 +587,8 @@ static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev
  */
 static int copier_copy(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 
 	comp_dbg(dev, "copier_copy()");
 
@@ -573,7 +611,8 @@ static int copier_copy(struct comp_dev *dev)
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	int i, ret = 0;
 
 	comp_dbg(dev, "copier_params()");
@@ -607,7 +646,8 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 			       int max_data_size)
 {
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
@@ -662,7 +702,8 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 
 static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	uint32_t attenuation;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 
@@ -724,7 +765,8 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 				   uint32_t *data_offset,
 				   char *data)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading_extended llp_ext;
 	struct ipc4_llp_reading llp;
@@ -807,7 +849,8 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 
 static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	uint64_t ret = 0;
 	bool source;
 
@@ -851,7 +894,8 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 
 static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
@@ -866,7 +910,8 @@ static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value
 
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	int ret = 0;
 
 	/* Exit if no endpoints */
@@ -893,7 +938,8 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 
 static int copier_dai_ts_config_op(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	return dai_common_ts_config_op(dd, dev);
@@ -901,7 +947,8 @@ static int copier_dai_ts_config_op(struct comp_dev *dev)
 
 static int copier_dai_ts_start_op(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	comp_dbg(dev, "dai_ts_start()");
@@ -911,7 +958,8 @@ static int copier_dai_ts_start_op(struct comp_dev *dev)
 
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	comp_dbg(dev, "dai_ts_get()");
@@ -921,7 +969,8 @@ static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd
 
 static int copier_dai_ts_stop_op(struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	comp_dbg(dev, "dai_ts_stop()");
@@ -932,7 +981,8 @@ static int copier_dai_ts_stop_op(struct comp_dev *dev)
 static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
 				int dir)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	if (dev->ipc_config.type != SOF_COMP_DAI)
@@ -943,7 +993,8 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 
 static int copier_unbind(struct comp_dev *dev, void *data)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
 	if (dev->ipc_config.type == SOF_COMP_DAI)
