@@ -305,7 +305,7 @@ static void set_mux_params(struct processing_module *mod)
 			audio_stream_set_channels(&sink_c->stream, out_fmt.channels_count);
 			audio_stream_set_rate(&sink_c->stream, out_fmt.sampling_frequency);
 
-			sink_c->buffer_fmt = out_fmt.interleaving_style;
+			audio_stream_set_buffer_fmt(&sink_c->stream, out_fmt.interleaving_style);
 			params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
 
 			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
@@ -337,7 +337,9 @@ static void set_mux_params(struct processing_module *mod)
 							    &frame_fmt, &valid_fmt,
 							    cd->md.base_cfg.audio_fmt.s_type);
 
-				source_c->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
+				audio_stream_set_buffer_fmt
+					(&source_c->stream,
+					 cd->md.base_cfg.audio_fmt.interleaving_style);
 
 				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 					source_c->chmap[i] =
@@ -353,7 +355,9 @@ static void set_mux_params(struct processing_module *mod)
 							    &frame_fmt, &valid_fmt,
 							    cd->md.reference_format.s_type);
 
-				source_c->buffer_fmt = cd->md.reference_format.interleaving_style;
+				audio_stream_set_buffer_fmt
+					(&source_c->stream,
+					 cd->md.reference_format.interleaving_style);
 
 				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 					source_c->chmap[i] =

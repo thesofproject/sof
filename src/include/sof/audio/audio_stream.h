@@ -56,6 +56,8 @@ struct sof_audio_stream_params {
 
 	bool overrun_permitted; /**< indicates whether overrun is permitted */
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
+
+	uint32_t buffer_fmt; /**< enum sof_ipc_buffer_format */
 };
 
 /**
@@ -148,6 +150,11 @@ static inline bool audio_stream_get_underrun(const struct audio_stream __sparse_
 	return buf->runtime_stream_params.underrun_permitted;
 }
 
+static inline uint32_t audio_stream_get_buffer_fmt(struct audio_stream __sparse_cache *buf)
+{
+	return buf->runtime_stream_params.buffer_fmt;
+}
+
 static inline bool audio_stream_get_overrun(const struct audio_stream __sparse_cache *buf)
 {
 	return buf->runtime_stream_params.overrun_permitted;
@@ -220,6 +227,12 @@ static inline void audio_stream_set_overrun(struct audio_stream __sparse_cache *
 					    bool overrun_permitted)
 {
 	buf->runtime_stream_params.overrun_permitted = overrun_permitted;
+}
+
+static inline void audio_stream_set_buffer_fmt(struct audio_stream __sparse_cache *buf,
+					       uint32_t buffer_fmt)
+{
+	buf->runtime_stream_params.buffer_fmt = buffer_fmt;
 }
 
 /**
