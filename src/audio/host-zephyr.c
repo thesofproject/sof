@@ -891,6 +891,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	hd->chan->period = config->period;
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
+	memset(&dma_block_cfg, 0, sizeof(dma_block_cfg));
 
 	dma_cfg->block_count = 1;
 	dma_cfg->source_data_size = config->src_width;
