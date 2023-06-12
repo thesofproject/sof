@@ -170,7 +170,7 @@ static int setup(void **state)
 	mod->stream_params->channels = params->channels;
 	mod->period_bytes = get_frame_bytes(params->source_format, params->channels) * 48000 / 1000;
 
-	ret = module_prepare(mod);
+	ret = module_prepare(mod, NULL, 0, NULL, 0);
 	if (ret)
 		return ret;
 

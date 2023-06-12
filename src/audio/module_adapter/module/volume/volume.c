@@ -1242,7 +1242,9 @@ static void volume_set_alignment(struct audio_stream __sparse_cache *source,
  * Volume component is usually first and last in pipelines so it makes sense
  * to also do some type of conversion here.
  */
-static int volume_prepare(struct processing_module *mod)
+static int volume_prepare(struct processing_module *mod,
+			  struct sof_source __sparse_cache **sources, int num_of_sources,
+			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
