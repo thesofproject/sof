@@ -27,17 +27,6 @@
 #include <sof/compiler_attributes.h>
 #include "base-config.h"
 
-#define ARIA_GENERIC
-
-#if defined(__XCC__)
-#include <xtensa/config/core-isa.h>
-
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-#undef ARIA_GENERIC
-#endif
-
-#endif
-
 struct ipc4_aria_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 	uint32_t attenuation;
