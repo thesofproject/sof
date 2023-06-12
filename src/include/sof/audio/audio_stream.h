@@ -415,6 +415,25 @@ static inline void *audio_stream_wrap(const struct audio_stream __sparse_cache *
 
 /**
  * Verifies the pointer and performs rollover when reached the end of
+ * the circular buffer.
+ * @param ptr Pointer
+ * @param buf_addr Start address of the circular buffer.
+ * @param buf_end End address of the circular buffer.
+ * @return Pointer, adjusted if necessary.
+ */
+static inline void *cir_buf_wrap(void *ptr, void *buf_addr, void *buf_end)
+{
+	if (ptr >= buf_end)
+		ptr = (char *)buf_addr +
+			((char *)ptr - (char *)buf_end);
+
+	assert((intptr_t)ptr <= (intptr_t)buf_end);
+
+	return ptr;
+}
+
+/**
+ * Verifies the pointer and performs rollover when reached the end of
  * the buffer.
  * @param buffer Buffer accessed by the pointer.
  * @param ptr Pointer
@@ -825,6 +844,36 @@ audio_stream_samples_without_wrap_s32(const struct audio_stream __sparse_cache *
 }
 
 /**
+ * @brief Calculates numbers of bytes to buffer wrap when reading stream
+ *	  backwards from current sample pointed by ptr towards begin.
+ * @param ptr Read or write pointer og circular buffer.
+ * @param buf_end End address of circular buffer.
+ * @return Number of bytes to buffer wrap. For number of samples calculate
+ *	   need to add size of sample to returned bytes count.
+ */
+static inline int cir_buf_bytes_without_wrap(void *ptr, void *buf_end)
+{
+	assert((intptr_t)buf_end >= (intptr_t)ptr);
+	return (intptr_t)buf_end - (intptr_t)ptr;
+}
+
+/**
+ * @brief Calculates numbers of s32 samples to buffer wrap when reading stream
+ *	  backwards from current sample pointed by ptr towards begin.
+ * @param ptr Read or write pointer og circular buffer.
+ * @param buf_end End address of circular buffer.
+ * @return Number of bytes to buffer wrap. For number of samples calculate
+ *	   need to add size of sample to returned bytes count.
+ */
+static inline int cir_buf_samples_without_wrap_s32(void *ptr, void *buf_end)
+{
+	int to_end = (int32_t *)buf_end - (int32_t *)ptr;
+
+	assert((intptr_t)buf_end >= (intptr_t)ptr);
+	return to_end;
+}
+
+/**
  * @brief Calculates numbers of frames to buffer wrap and return
  *	  minimum of calculated value.
  * @param source Stream to get information from.
@@ -852,6 +901,19 @@ audio_stream_frames_without_wrap(const struct audio_stream __sparse_cache *sourc
  */
 int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
 		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples);
+
+/**
+ * Copies data from one circular buffer to another circular buffer.
+ * @param src Source pointer of source circular buffer.
+ * @param src_addr Start address of source circular buffer.
+ * @param src_end End address of source circular buffer.
+ * @param dst Sink pointer of source circular buffer.
+ * @param dst_addr Start address of sink circular buffer
+ * @param dst_end End address of sink circular buffer.
+ * @param byte_size Number of bytes to copy.
+ */
+void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+		  void *dst_addr, void *dst_end, size_t byte_size);
 
 /**
  * Copies data from linear source buffer to circular sink buffer.
