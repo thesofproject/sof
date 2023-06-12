@@ -36,18 +36,16 @@
  * \brief Aria gain processing function
  */
 void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
-			 int32_t *__restrict data, const size_t src_size);
+			 struct audio_stream __sparse_cache *source, int frames);
 
 /**
  * \brief Aria data processing function
  */
-void aria_algo_get_data(struct comp_dev *dev, int32_t *__restrict  data,
-			size_t size);
+void aria_algo_get_data(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+			int frames);
 
 int aria_algo_buffer_data(struct comp_dev *dev, int32_t *__restrict data,
 			  size_t size);
-int aria_process_data(struct comp_dev *dev, int32_t *__restrict dst,
-		      size_t dst_size, int32_t *__restrict src, size_t src_size);
 
 /**
  * \brief Aria component private data.
@@ -69,14 +67,17 @@ struct aria_data {
 	size_t att;
 	/* Gain states */
 	int32_t gains[ARIA_MAX_GAIN_STATES];
-	/* cyclic buffer for data */
-	int32_t *data;
-	/* buffer for data in */
-	int32_t *buf_in;
-	/* buffer for data out */
-	int32_t *buf_out;
+	/* cyclic buffer pointer data */
+	int32_t *data_ptr;
+	/* cyclic buffer end address of data */
+	int32_t *data_end;
+	/* cyclic buffer start address of data */
+	int32_t *data_addr;
+
 	/* internal buffer offset helps to keep algorithmic delay constant */
 	size_t offset;
 };
+
+extern const uint8_t INDEX_TAB[];
 
 #endif /* __SOF_AUDIO_ARIA_H__ */
