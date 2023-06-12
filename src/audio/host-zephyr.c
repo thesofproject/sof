@@ -836,6 +836,8 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 			goto out;
 		}
 
+		assert(hd->dma_buffer->stream.addr != 0);
+
 		dma_buf_c = buffer_acquire(hd->dma_buffer);
 		buffer_set_params(dma_buf_c, params, BUFFER_UPDATE_FORCE);
 
