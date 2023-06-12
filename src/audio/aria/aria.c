@@ -91,7 +91,7 @@ int aria_algo_buffer_data(struct comp_dev *dev, int32_t *__restrict data, size_t
 	size_t min_buff = MIN(cd->buff_size - cd->buff_pos - cd->offset, size);
 	int ret;
 
-	ret = memcpy_s(&cd->data[cd->buff_pos], cd->buff_size * sizeof(int32_t),
+	ret = memcpy_s(&cd->data[cd->buff_pos], (cd->buff_size - cd->buff_pos) * sizeof(int32_t),
 		       data, min_buff * sizeof(int32_t));
 	if (ret < 0)
 		return ret;

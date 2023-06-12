@@ -201,6 +201,12 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
+	if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): component %d not pipeline (type %d)",
+		       ipc_pipe->id, ipc_pipe->type);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core, false);
@@ -282,6 +288,21 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (icd->cd->state != COMP_STATE_READY) {
 		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d state is %d cannot be freed",
 		       comp_id, icd->cd->state);
+		return -EINVAL;
+	}
+
+	if (!icd->cd->bsource_list.next || !icd->cd->bsource_list.next) {
+		/* Unfortunate: the buffer list node gets initialized
+		 * at the component level and thus can contain NULLs
+		 * (which is an invalid list!) if the component's
+		 * lifecycle hasn't reached that point.  There's no
+		 * single place to ensure a valid/empty list, so we
+		 * have to do it here and eat the resulting memory
+		 * leak on error.  Bug-free host drivers won't do
+		 * this, this was found via fuzzing.
+		 */
+		tr_err(&ipc_tr, "ipc_comp_free(): uninitialized buffer lists on comp %d\n",
+		       icd->id);
 		return -EINVAL;
 	}
 

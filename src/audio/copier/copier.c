@@ -54,155 +54,6 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-int create_endpoint_buffer(struct comp_dev *parent_dev,
-			   struct copier_data *cd,
-			   struct comp_ipc_config *config,
-			   const struct ipc4_copier_module_cfg *copier_cfg,
-			   enum ipc4_gateway_type type,
-			   bool create_multi_endpoint_buffer,
-			   int index)
-{
-	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
-	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
-	enum sof_ipc_frame valid_fmt;
-	struct sof_ipc_buffer ipc_buf;
-	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
-	uint32_t buf_size;
-	uint32_t chan_map;
-	int i;
-
-	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
-				    copier_cfg->base.audio_fmt.valid_bit_depth,
-				    &in_frame_fmt, &in_valid_fmt,
-				    copier_cfg->base.audio_fmt.s_type);
-
-	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
-				    copier_cfg->out_fmt.valid_bit_depth,
-				    &out_frame_fmt, &out_valid_fmt,
-				    copier_cfg->out_fmt.s_type);
-
-	/* playback case:
-	 *
-	 * --> copier0 -----> buf1 ----> ....  bufn --------> copier1
-	 *        |             /|\               |conversion    |
-	 *       \|/             |conversion     \|/            \|/
-	 *       host-> endpoint buffer0   endpoint buffer1 ->  dai -->
-	 *
-	 *  capture case:
-	 *
-	 *     copier1 <------ bufn <---- ....  buf1 <------- copier0 <--
-	 *      |               |conversion     /|\            |
-	 *     \|/             \|/               |conversion  \|/
-	 * <-- host <- endpoint buffer1   endpoint buffer0 <- dai
-	 *
-	 * According to above graph, the format of endpoint buffer
-	 * depends on stream direction and component type.
-	 */
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (config->type == SOF_COMP_HOST) {
-			config->frame_fmt = in_frame_fmt;
-			valid_fmt = in_valid_fmt;
-			buf_size = copier_cfg->base.ibs * 2;
-		} else {
-			config->frame_fmt = out_frame_fmt;
-			valid_fmt = out_valid_fmt;
-			buf_size = copier_cfg->base.obs * 2;
-		}
-
-		chan_map = copier_cfg->out_fmt.ch_map;
-	} else {
-		if (config->type == SOF_COMP_HOST) {
-			config->frame_fmt = out_frame_fmt;
-			valid_fmt = out_valid_fmt;
-			buf_size = copier_cfg->base.obs * 2;
-		} else {
-			config->frame_fmt = in_frame_fmt;
-			valid_fmt = in_valid_fmt;
-			buf_size = copier_cfg->base.ibs * 2;
-		}
-
-		chan_map = copier_cfg->base.audio_fmt.ch_map;
-	}
-
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
-
-	memset(&ipc_buf, 0, sizeof(ipc_buf));
-	ipc_buf.size = buf_size;
-	ipc_buf.comp.pipeline_id = config->pipeline_id;
-	ipc_buf.comp.core = config->core;
-
-	buffer = buffer_new(&ipc_buf);
-	if (!buffer)
-		return -ENOMEM;
-
-	buffer_c = buffer_acquire(buffer);
-	audio_stream_set_channels(&buffer_c->stream, copier_cfg->base.audio_fmt.channels_count);
-	audio_stream_set_rate(&buffer_c->stream, copier_cfg->base.audio_fmt.sampling_frequency);
-	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
-	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
-	buffer_c->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;
-
-	buffer_c->hw_params_configured = true;
-	buffer_release(buffer_c);
-
-	if (create_multi_endpoint_buffer)
-		cd->multi_endpoint_buffer = buffer;
-	else
-		cd->endpoint_buffer[cd->endpoint_num] = buffer;
-
-	return 0;
-}
-
-enum sof_ipc_stream_direction
-	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type)
-{
-	/* WARNING: simple "% 2" formula that was used before does not work for all
-	 * interfaces: at least it does not work for IPC gateway. But it may also
-	 * does not work for other not yet supported interfaces. And so additional
-	 * cases might be required here in future.
-	 */
-	switch (node_id_type) {
-	/* from DSP to host */
-	case ipc4_ipc_output_class:
-		return SOF_IPC_STREAM_CAPTURE;
-	/* from host to DSP */
-	case ipc4_ipc_input_class:
-		return SOF_IPC_STREAM_PLAYBACK;
-	default:
-		return node_id_type % 2;
-	}
-}
-
-/* Playback only */
-static int init_pipeline_reg(struct comp_dev *dev)
-{
-	struct copier_data *cd = comp_get_drvdata(dev);
-	struct ipc4_pipeline_registers pipe_reg;
-	uint32_t gateway_id;
-
-	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
-	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
-		comp_cl_err(&comp_copier, "gateway_id %u out of array bounds.", gateway_id);
-		return -EINVAL;
-	}
-
-	/* pipeline position is stored in memory windows 0 at the following offset
-	 * please check struct ipc4_fw_registers definition. The number of
-	 * pipeline reg depends on the host dma count for playback
-	 */
-	cd->pipeline_reg_offset = offsetof(struct ipc4_fw_registers, pipeline_regs);
-	cd->pipeline_reg_offset += gateway_id * sizeof(struct ipc4_pipeline_registers);
-
-	pipe_reg.stream_start_offset = (uint64_t)-1;
-	pipe_reg.stream_end_offset = (uint64_t)-1;
-	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
-	return 0;
-}
-
 static struct comp_dev *copier_new(const struct comp_driver *drv,
 				   const struct comp_ipc_config *config,
 				   const void *spec)
@@ -258,19 +109,11 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			if (copier_host_create(dev, cd, &dev->ipc_config, copier, cd->direction)) {
+			if (copier_host_create(dev, cd, &dev->ipc_config,
+					       copier, cd->direction, ipc_pipe->pipeline)) {
 				comp_cl_err(&comp_copier, "unable to create host");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-				ipc_pipe->pipeline->source_comp = dev;
-				if (init_pipeline_reg(dev))
-					goto error_cd;
-			} else {
-				ipc_pipe->pipeline->sink_comp = dev;
-			}
-
 			break;
 		case ipc4_hda_link_output_class:
 		case ipc4_hda_link_input_class:
@@ -284,25 +127,15 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				comp_cl_err(&comp_copier, "unable to create dai");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-				ipc_pipe->pipeline->sink_comp = dev;
-			else
-				ipc_pipe->pipeline->source_comp = dev;
-
 			break;
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config, copier)) {
+			if (copier_ipcgtw_create(dev, cd, &dev->ipc_config,
+						 copier, ipc_pipe->pipeline)) {
 				comp_cl_err(&comp_copier, "unable to create IPC gateway");
 				goto error_cd;
 			}
-
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-				ipc_pipe->pipeline->source_comp = dev;
-			else
-				ipc_pipe->pipeline->sink_comp = dev;
 
 			break;
 #endif
@@ -345,133 +178,8 @@ static void copier_free(struct comp_dev *dev)
 		break;
 	}
 
-	if (cd->multi_endpoint_buffer)
-		buffer_free(cd->multi_endpoint_buffer);
-
 	rfree(cd);
 	rfree(dev);
-}
-
-/* In sof normal format conversion path, sample size should be equal
- * to container size except format of S24_LE. In ipc4 case, sample
- * size can be different with container size. This function is used to
- * check conversion mode.
- */
-static bool use_no_container_convert_function(enum sof_ipc_frame in,
-					      enum sof_ipc_frame valid_in_bits,
-					      enum sof_ipc_frame out,
-					      enum sof_ipc_frame valid_out_bits)
-{
-	/* valid sample size is equal to container size, go normal path */
-	if (in == valid_in_bits && out == valid_out_bits) {
-		if (in == SOF_IPC_FRAME_S24_3LE || out == SOF_IPC_FRAME_S24_3LE)
-			return false;
-
-		return true;
-	}
-
-	return false;
-}
-
-pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
-				      const struct ipc4_audio_format *out_fmt,
-				      enum ipc4_gateway_type type,
-				      enum ipc4_direction_type dir)
-{
-	enum sof_ipc_frame in, in_valid, out, out_valid;
-
-	audio_stream_fmt_conversion(in_fmt->depth, in_fmt->valid_bit_depth, &in, &in_valid,
-				    in_fmt->s_type);
-	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth, &out, &out_valid,
-				    out_fmt->s_type);
-
-	/* check container & sample size */
-	if (use_no_container_convert_function(in, in_valid, out, out_valid))
-		return pcm_get_conversion_function(in, out);
-	else
-		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type, dir);
-}
-
-static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
-				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
-				   unsigned int dst_channel, unsigned int frame_count)
-{
-	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
-	int16_t *w_ptr = (int16_t *)audio_stream_get_wptr(dst) + dst_channel;
-
-	/* We have to iterate over frames here. However, tracking frames requires using
-	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
-	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
-	 * is NOT number of samples we need to copy but total samples for all channels. We just
-	 * track them to know when to stop.
-	 */
-	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
-
-	while (src_stream_sample_count) {
-		int src_samples_without_wrap;
-		int16_t *r_end_ptr, *r_ptr_before_loop;
-
-		r_ptr = audio_stream_wrap(src, r_ptr);
-		w_ptr = audio_stream_wrap(dst, w_ptr);
-
-		src_samples_without_wrap = audio_stream_samples_without_wrap_s16(src, r_ptr);
-		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int16_t *)audio_stream_get_end_addr(src);
-
-		r_ptr_before_loop = r_ptr;
-
-		do {
-			*w_ptr = *r_ptr;
-			r_ptr += audio_stream_get_channels(src);
-			w_ptr += audio_stream_get_channels(dst);
-		} while (r_ptr < r_end_ptr && w_ptr < (int16_t *)audio_stream_get_end_addr(dst));
-
-		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
-	}
-
-	return 0;
-}
-
-static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
-				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
-				   unsigned int dst_channel, unsigned int frame_count)
-{
-	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
-	int32_t *w_ptr = (int32_t *)audio_stream_get_wptr(dst) + dst_channel;
-
-	/* We have to iterate over frames here. However, tracking frames requires using
-	 * of expensive division operations (e.g., inside audio_stream_frames_without_wrap()).
-	 * So let's track samples instead. Since we only copy one channel, src_stream_sample_count
-	 * is NOT number of samples we need to copy but total samples for all channels. We just
-	 * track them to know when to stop.
-	 */
-	int src_stream_sample_count = frame_count * audio_stream_get_channels(src);
-
-	while (src_stream_sample_count) {
-		int src_samples_without_wrap;
-		int32_t *r_end_ptr, *r_ptr_before_loop;
-
-		r_ptr = audio_stream_wrap(src, r_ptr);
-		w_ptr = audio_stream_wrap(dst, w_ptr);
-
-		src_samples_without_wrap = audio_stream_samples_without_wrap_s32(src, r_ptr);
-		r_end_ptr = src_stream_sample_count < src_samples_without_wrap ?
-			r_ptr + src_stream_sample_count : (int32_t *)audio_stream_get_end_addr(src);
-
-		r_ptr_before_loop = r_ptr;
-
-		do {
-			*w_ptr = *r_ptr;
-			r_ptr += audio_stream_get_channels(src);
-			w_ptr += audio_stream_get_channels(dst);
-		} while (r_ptr < r_end_ptr && w_ptr < (int32_t *)audio_stream_get_end_addr(dst));
-
-		src_stream_sample_count -= r_ptr - r_ptr_before_loop;
-	}
-
-	return 0;
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -532,7 +240,6 @@ static int copier_reset(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct ipc4_pipeline_registers pipe_reg;
-	int i, ret = 0;
 
 	comp_dbg(dev, "copier_reset()");
 
@@ -547,8 +254,7 @@ static int copier_reset(struct comp_dev *dev)
 			copier_ipcgtw_reset(dev);
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++)
-			dai_zephyr_reset(cd->dd[i], dev);
+		copier_dai_reset(cd, dev);
 		break;
 	default:
 		break;
@@ -562,7 +268,7 @@ static int copier_reset(struct comp_dev *dev)
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
-	return ret;
+	return 0;
 }
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
@@ -573,7 +279,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
-	int ret, i;
+	int ret;
 
 	comp_dbg(dev, "copier_comp_trigger()");
 
@@ -593,11 +299,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 		break;
 	case SOF_COMP_DAI:
-		for (i = 0; i < cd->endpoint_num; i++) {
-			ret = dai_zephyr_trigger(cd->dd[i], dev, cmd);
-			if (ret < 0)
-				return ret;
-		}
+		ret = copier_dai_trigger(cd, dev, cmd);
 		break;
 	default:
 		break;
@@ -720,7 +422,7 @@ static int do_endpoint_copy(struct comp_dev *dev)
 		break;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1)
-			return dai_zephyr_copy(cd->dd[0], dev, cd->converter);
+			return dai_common_copy(cd->dd[0], dev, cd->converter);
 
 		return dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
 						      cd->endpoint_num);
@@ -765,40 +467,13 @@ static int do_conversion_copy(struct comp_dev *dev,
 	return 0;
 }
 
-/* Copier has one input and one or more outputs. Maximum of one gateway can be connected
- * to copier or no gateway connected at all. Gateway can only be connected to either input
- * pin 0 (the only input) or output pin 0. With or without connected gateway it is also
- * possible to have component(s) connected on input and/or output pins.
- *
- * A special exception is a multichannel ALH gateway case. These are multiple gateways
- * but should be treated like a single gateway to satisfy rules above. Data from such
- * gateways has to be multiplexed into single stream (for input gateways) or demultiplexed
- * from single stream (for output gateways) so such gateways work kind of like a single
- * gateway, i.e., produce/consume single stream.
- */
-static int copier_copy(struct comp_dev *dev)
+static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev *dev)
 {
-	struct copier_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *src, *sink;
 	struct comp_buffer __sparse_cache *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
 	struct list_item *sink_list;
-	int ret = 0;
-
-	comp_dbg(dev, "copier_copy()");
-
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw)
-			return do_endpoint_copy(dev);
-		break;
-	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1)
-			return do_endpoint_copy(dev);
-		break;
-	default:
-		break;
-	}
+	int ret  = 0;
 
 	processed_data.source_bytes = 0;
 
@@ -838,7 +513,7 @@ static int copier_copy(struct comp_dev *dev)
 		}
 	}
 
-	/* zero or more components on outputs */
+	/* zero or more components on outputs, module copy case */
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_dev *sink_dev;
 
@@ -869,105 +544,48 @@ static int copier_copy(struct comp_dev *dev)
 	return ret;
 }
 
-static void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
-				 const struct ipc4_audio_format *fmt)
+/* Copier has one input and one or more outputs. Maximum of one gateway can be connected
+ * to copier or no gateway connected at all. Gateway can only be connected to either input
+ * pin 0 (the only input) or output pin 0. With or without connected gateway it is also
+ * possible to have component(s) connected on input and/or output pins.
+ *
+ * A special exception is a multichannel ALH gateway case. These are multiple gateways
+ * but should be treated like a single gateway to satisfy rules above. Data from such
+ * gateways has to be multiplexed into single stream (for input gateways) or demultiplexed
+ * from single stream (for output gateways) so such gateways work kind of like a single
+ * gateway, i.e., produce/consume single stream.
+ */
+static int copier_copy(struct comp_dev *dev)
 {
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i;
+	struct copier_data *cd = comp_get_drvdata(dev);
 
-	buf_c->stream.channels = fmt->channels_count;
-	buf_c->stream.rate = fmt->sampling_frequency;
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	comp_dbg(dev, "copier_copy()");
 
-	buf_c->stream.frame_fmt = frame_fmt;
-	buf_c->stream.valid_sample_fmt = valid_fmt;
-
-	buf_c->buffer_fmt = fmt->interleaving_style;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
-
-	buf_c->hw_params_configured = true;
+	switch (dev->ipc_config.type) {
+	case SOF_COMP_HOST:
+		if (!cd->ipc_gtw)
+			return do_endpoint_copy(dev);
+		break;
+	case SOF_COMP_DAI:
+		if (cd->endpoint_num == 1)
+			return dai_common_copy(cd->dd[0], dev, cd->converter);
+		break;
+	default:
+		break;
+	}
+	/* handle multi-endpoint and module copy */
+	return do_multi_endpoint_module_copy(cd, dev);
 }
 
 /* configure the DMA params */
 static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	const struct ipc4_audio_format *in_fmt = &cd->config.base.audio_fmt;
-	const struct ipc4_audio_format *out_fmt = &cd->config.out_fmt;
-	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
-	struct list_item *sink_list;
-	enum sof_ipc_frame in_bits, in_valid_bits, out_bits, out_valid_bits;
 	int i, ret = 0;
 
 	comp_dbg(dev, "copier_params()");
 
-	memset(params, 0, sizeof(*params));
-	params->direction = cd->direction;
-	params->channels = cd->config.base.audio_fmt.channels_count;
-	params->rate = cd->config.base.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->config.base.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth / 8;
-
-	params->stream_tag = cd->config.gtw_cfg.node_id.f.v_index + 1;
-	params->frame_fmt = dev->ipc_config.frame_fmt;
-	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
-	params->buffer.size = cd->config.base.ibs;
-
-	/* disable ipc3 stream position */
-	params->no_stream_position = 1;
-
-	/* update each sink format */
-	list_for_item(sink_list, &dev->bsink_list) {
-		int j;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-
-		j = IPC4_SINK_QUEUE_ID(sink_c->id);
-
-		update_buffer_format(sink_c, &cd->out_fmt[j]);
-
-		buffer_release(sink_c);
-	}
-
-	/*
-	 * force update the source buffer format to cover cases where the source module
-	 * fails to set the sink buffer params
-	 */
-	if (!list_is_empty(&dev->bsource_list)) {
-		struct ipc4_audio_format *in_fmt;
-		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-
-		in_fmt = &cd->config.base.audio_fmt;
-		update_buffer_format(source_c, in_fmt);
-
-		buffer_release(source_c);
-	}
-
-	/* update params for the DMA buffer */
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		if (cd->ipc_gtw || params->direction == SOF_IPC_STREAM_PLAYBACK)
-			break;
-		COMPILER_FALLTHROUGH;
-	case SOF_COMP_DAI:
-		if (dev->ipc_config.type == SOF_COMP_DAI &&
-		    (cd->endpoint_num > 1 || params->direction == SOF_IPC_STREAM_CAPTURE))
-			break;
-		params->buffer.size = cd->config.base.obs;
-		params->sample_container_bytes = cd->out_fmt->depth / 8;
-		params->sample_valid_bytes = cd->out_fmt->valid_bit_depth / 8;
-		break;
-	default:
-		break;
-	}
+	copier_update_params(cd, dev, params);
 
 	for (i = 0; i < cd->endpoint_num; i++) {
 		switch (dev->ipc_config.type) {
@@ -979,70 +597,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 				ret = copier_ipcgtw_params(cd->ipcgtw_data, dev, params);
 			break;
 		case SOF_COMP_DAI:
-		{
-			struct comp_buffer __sparse_cache *buf_c;
-			struct sof_ipc_stream_params demuxed_params = *params;
-			int container_size;
-			int j;
-
-			if (cd->endpoint_num == 1) {
-				ret = dai_zephyr_params(cd->dd[0], dev, params);
-
-				/*
-				 * dai_zephyr_params assigns the conversion function
-				 * based on the input/output formats but does not take
-				 * the valid bits into account. So change the conversion
-				 * function if the valid bits are different from the
-				 * container size.
-				 */
-				audio_stream_fmt_conversion(in_fmt->depth,
-							    in_fmt->valid_bit_depth,
-							    &in_bits, &in_valid_bits,
-							    in_fmt->s_type);
-				audio_stream_fmt_conversion(out_fmt->depth,
-							    out_fmt->valid_bit_depth,
-							    &out_bits, &out_valid_bits,
-							    out_fmt->s_type);
-
-				if (in_bits != in_valid_bits || out_bits != out_valid_bits)
-					cd->dd[0]->process =
-						cd->converter[IPC4_COPIER_GATEWAY_PIN];
-				break;
-			}
-
-			/* For ALH multi-gateway case, params->channels is a total multiplexed
-			 * number of channels. Demultiplexed number of channels for each individual
-			 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.
-			 */
-			demuxed_params.channels = cd->channels[i];
-
-			ret = dai_zephyr_params(cd->dd[i], dev, &demuxed_params);
-			if (ret < 0)
-				return ret;
-
-			buf_c = buffer_acquire(cd->dd[i]->dma_buffer);
-			for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
-				buf_c->chmap[j] = (cd->chan_map[i] >> j * 4) & 0xf;
-			buffer_release(buf_c);
-
-			/* set channel copy func */
-			buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-			container_size = audio_stream_sample_bytes(&buf_c->stream);
-			buffer_release(buf_c);
-
-			switch (container_size) {
-			case 2:
-				cd->dd[i]->process = copy_single_channel_c16;
-				break;
-			case 4:
-				cd->dd[i]->process = copy_single_channel_c32;
-				break;
-			default:
-				comp_err(dev, "Unexpected container size: %d", container_size);
-				return -EINVAL;
-			}
+			ret = copier_dai_params(cd, dev, params, i);
 			break;
-		}
 		default:
 			break;
 		}
@@ -1333,7 +889,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 		}
 		break;
 	case SOF_COMP_DAI:
-		ret = dai_zephyr_position(cd->dd[0], dev, posn);
+		ret = dai_common_position(cd->dd[0], dev, posn);
 		break;
 	default:
 		break;
@@ -1347,7 +903,7 @@ static int copier_dai_ts_config_op(struct comp_dev *dev)
 	struct copier_data *cd = comp_get_drvdata(dev);
 	struct dai_data *dd = cd->dd[0];
 
-	return dai_zephyr_ts_config_op(dd, dev);
+	return dai_common_ts_config_op(dd, dev);
 }
 
 static int copier_dai_ts_start_op(struct comp_dev *dev)
@@ -1357,7 +913,7 @@ static int copier_dai_ts_start_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_start()");
 
-	return dai_zephyr_ts_start(dd, dev);
+	return dai_common_ts_start(dd, dev);
 }
 
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
@@ -1367,7 +923,7 @@ static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd
 
 	comp_dbg(dev, "dai_ts_get()");
 
-	return dai_zephyr_ts_get(dd, dev, tsd);
+	return dai_common_ts_get(dd, dev, tsd);
 }
 
 static int copier_dai_ts_stop_op(struct comp_dev *dev)
@@ -1377,7 +933,7 @@ static int copier_dai_ts_stop_op(struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_stop()");
 
-	return dai_zephyr_ts_stop(dd, dev);
+	return dai_common_ts_stop(dd, dev);
 }
 
 static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,

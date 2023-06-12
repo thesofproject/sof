@@ -55,7 +55,7 @@ if isfield(test, 'nch_in') == 0
 	test.nch_in = test.nch;
 end
 
-fprintf(fh, '#!/bin/sh\n', test.comp);
+fprintf(fh, '#!/bin/sh\n');
 fprintf(fh, 'COMP=\"%s\"\n', test.comp);
 fprintf(fh, 'DIRECTION=playback\n');
 fprintf(fh, 'BITS_IN=%d\n', test.bits_in);
@@ -92,14 +92,16 @@ else
 	fprintf(fh, 'XTRUN=\n');
 end
 
-% Override defaults in comp_run.sh
-fprintf(fh, 'VALGRIND=false\n');
 fclose(fh);
 
 arg = sprintf('-t %s', fn_config);
 rcmd = sprintf('%s %s', ex, arg);
 fprintf('Running ''%s''...\n', rcmd);
-system(rcmd);
+ret = system(rcmd);
+if ret
+	error('''%s'' returned status %d\n', rcmd, ret);
+end
+
 delete(fn_config);
 
 end

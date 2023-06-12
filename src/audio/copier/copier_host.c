@@ -11,6 +11,32 @@
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
+/* Playback only */
+static int init_pipeline_reg(struct comp_dev *dev)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct ipc4_pipeline_registers pipe_reg;
+	uint32_t gateway_id;
+
+	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
+	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
+		comp_err(dev, "gateway_id %u out of array bounds.", gateway_id);
+		return -EINVAL;
+	}
+
+	/* pipeline position is stored in memory windows 0 at the following offset
+	 * please check struct ipc4_fw_registers definition. The number of
+	 * pipeline reg depends on the host dma count for playback
+	 */
+	cd->pipeline_reg_offset = offsetof(struct ipc4_fw_registers, pipeline_regs);
+	cd->pipeline_reg_offset += gateway_id * sizeof(struct ipc4_pipeline_registers);
+
+	pipe_reg.stream_start_offset = (uint64_t)-1;
+	pipe_reg.stream_end_offset = (uint64_t)-1;
+	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+	return 0;
+}
+
 /* if copier is linked to host gateway, it will manage host dma.
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
@@ -18,7 +44,7 @@ LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		       struct comp_ipc_config *config,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
-		       int dir)
+		       int dir, struct pipeline *pipeline)
 {
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
@@ -37,13 +63,6 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 				    copier_cfg->out_fmt.valid_bit_depth,
 				    &out_frame_fmt, &out_valid_fmt,
 				    copier_cfg->out_fmt.s_type);
-
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
-		config->frame_fmt = in_frame_fmt;
-	else
-		config->frame_fmt = out_frame_fmt;
-
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
@@ -72,6 +91,18 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	cd->endpoint_num++;
 	cd->hd = hd;
+
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		config->frame_fmt = in_frame_fmt;
+		pipeline->source_comp = parent_dev;
+		ret = init_pipeline_reg(parent_dev);
+		if (ret)
+			goto e_conv;
+	} else {
+		config->frame_fmt = out_frame_fmt;
+		pipeline->sink_comp = parent_dev;
+	}
+	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	return 0;
 

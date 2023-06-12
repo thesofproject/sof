@@ -1,6 +1,7 @@
 {
   "SOF": {
     "MAJOR": "2",
-    "MINOR": "5"
+    "MINOR": "6",
+    "MICRO": "99"
   }
 }

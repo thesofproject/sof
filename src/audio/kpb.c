@@ -394,7 +394,12 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 
 	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_config->data,
 		       ipc_config->size);
-	assert(!ret);
+
+	if (ret) {
+		comp_err(dev, "kpb_new(): cannot memcpy_s %d bytes into sof_kpb_config (%d)\n",
+			 ipc_config->size, sizeof(kpb->config));
+		return -EINVAL;
+	}
 
 	/* Initialize sinks */
 	kpb->sel_sink = NULL;

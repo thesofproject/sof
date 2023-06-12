@@ -222,6 +222,12 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		return -ENODEV;
 	}
 
+	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
+		tr_err(&ipc_tr, "ipc_stream_pcm_params(): pcm_dev id %d not component (type %d)",
+		       pcm_dev->id, pcm_dev->type);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);

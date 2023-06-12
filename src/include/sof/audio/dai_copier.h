@@ -17,34 +17,34 @@
 struct ipc_config_dai;
 struct comp_dev;
 struct dai_data;
-int dai_zephyr_new(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		   const struct ipc_config_dai *dai_cfg);
 
-void dai_zephyr_free(struct dai_data *dd);
+void dai_common_free(struct dai_data *dd);
 
-int dai_zephyr_config_prepare(struct dai_data *dd, struct comp_dev *dev);
+int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev);
 
-int dai_zephyr_prepare(struct dai_data *dd, struct comp_dev *dev);
+int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev);
 
-void dai_zephyr_reset(struct dai_data *dd, struct comp_dev *dev);
+void dai_common_reset(struct dai_data *dd, struct comp_dev *dev);
 
-int dai_zephyr_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
+int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd);
 
-int dai_zephyr_position(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn);
 
-int dai_zephyr_params(struct dai_data *dd, struct comp_dev *dev,
+int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
 
-int dai_zephyr_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter);
+int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter);
 
-int dai_zephyr_ts_config_op(struct dai_data *dd, struct comp_dev *dev);
+int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev);
 
-int dai_zephyr_ts_start(struct dai_data *dd, struct comp_dev *dev);
+int dai_common_ts_start(struct dai_data *dd, struct comp_dev *dev);
 
-int dai_zephyr_ts_stop(struct dai_data *dd, struct comp_dev *dev);
+int dai_common_ts_stop(struct dai_data *dd, struct comp_dev *dev);
 
-int dai_zephyr_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd);
+int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd);
 
 int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params, int dir);
@@ -65,4 +65,11 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 void copier_dai_free(struct copier_data *cd);
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd);
+
+int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params, int dai_index);
+
+void copier_dai_reset(struct copier_data *cd, struct comp_dev *dev);
+
+int copier_dai_trigger(struct copier_data *cd, struct comp_dev *dev, int cmd);
 #endif /* __SOF_LIB_DAI_COPIER_H__ */

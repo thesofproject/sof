@@ -185,7 +185,7 @@ config COMP_PEAK_VOL
          See: struct ipc4_peak_volume_regs
 
 choice "PEAK_METER_UPDATE_PERIOD_CHOICE"
-	prompt "The periods(ms) of updating peak peter value"
+	prompt "The periods(ms) of updating peak meter value"
 	default PEAK_METER_UPDATE_10MS
 	depends on COMP_PEAK_VOL
 
