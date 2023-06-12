@@ -1504,9 +1504,9 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	uint32_t sampling;
 	struct comp_buffer __sparse_cache *buf_c;
 	struct dma_status stat;
-	uint32_t avail_bytes = 0;
-	uint32_t free_bytes = 0;
-	uint32_t copy_bytes = 0;
+	uint32_t avail_bytes;
+	uint32_t free_bytes;
+	uint32_t copy_bytes;
 	uint32_t src_samples;
 	uint32_t sink_samples;
 	uint32_t samples = UINT32_MAX;
