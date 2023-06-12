@@ -256,6 +256,28 @@ int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t
 
 #endif
 
+void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+		  void *dst_addr, void *dst_end, size_t byte_size)
+{
+	size_t bytes = byte_size;
+	size_t bytes_src;
+	size_t bytes_dst;
+	size_t bytes_copied;
+	uint8_t *in = (uint8_t *)src;
+	uint8_t *out = (uint8_t *)dst;
+
+	while (bytes) {
+		bytes_src = cir_buf_bytes_without_wrap(in, src_end);
+		bytes_dst = cir_buf_bytes_without_wrap(out, dst_end);
+		bytes_copied = MIN(bytes_src, bytes_dst);
+		bytes_copied = MIN(bytes, bytes_copied);
+		memcpy_s(out, bytes_copied, in, bytes_copied);
+		bytes -= bytes_copied;
+		in = cir_buf_wrap(in + bytes_copied, src_addr, src_end);
+		out = cir_buf_wrap(out + bytes_copied, dst_addr, dst_end);
+	}
+}
+
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 				   struct audio_stream __sparse_cache *sink, int ooffset,
 				   unsigned int samples)

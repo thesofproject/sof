@@ -48,8 +48,8 @@ static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
 	return ALIGN_UP(num_of_ms * chan_cnt * smpl_group_cnt, 2) * sizeof(int32_t);
 }
 
-static int aria_algo_init(struct comp_dev *dev, void *buffer_desc, void *buf_in,
-			  void *buf_out, size_t att, size_t chan_cnt, size_t smpl_group_cnt)
+static int aria_algo_init(struct comp_dev *dev, void *buffer_desc,
+			  size_t att, size_t chan_cnt, size_t smpl_group_cnt)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
 	size_t idx;
@@ -58,69 +58,45 @@ static int aria_algo_init(struct comp_dev *dev, void *buffer_desc, void *buf_in,
 	cd->smpl_group_cnt = smpl_group_cnt;
 	/* ensures buffer size is aligned to 8 bytes */
 	cd->buff_size = ALIGN_UP(cd->chan_cnt * cd->smpl_group_cnt, 2);
-	cd->offset = (cd->chan_cnt * cd->smpl_group_cnt) % 2;
+	cd->offset = (cd->chan_cnt * cd->smpl_group_cnt) & 1;
 	cd->att = att;
-	cd->data = buffer_desc;
-	cd->buf_in = buf_in;
-	cd->buf_out = buf_out;
+	cd->data_addr = buffer_desc;
+	cd->data_ptr = cd->data_addr + cd->offset;
+	cd->data_end = cd->data_addr + cd->buff_size;
 	cd->buff_pos = 0;
 
 	for (idx = 0; idx < ARIA_MAX_GAIN_STATES; ++idx)
 		cd->gains[idx] = (1ULL << (32 - cd->att - 1)) - 1;
 
-	memset((void *)cd->data, 0, sizeof(int32_t) * cd->buff_size);
-	memset((void *)cd->buf_in, 0, sizeof(int32_t) * cd->buff_size);
-	memset((void *)cd->buf_out, 0, sizeof(int32_t) * cd->buff_size);
+	memset((void *)cd->data_addr, 0, sizeof(int32_t) * cd->buff_size);
 	cd->gain_state = 0;
 
 	return 0;
 }
 
-int aria_algo_buffer_data(struct comp_dev *dev, int32_t *__restrict data, size_t size)
+void aria_process_data(struct comp_dev *dev,
+		       struct audio_stream __sparse_cache *source,
+		       struct audio_stream __sparse_cache *sink,
+		       size_t frames)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
-	size_t min_buff = MIN(cd->buff_size - cd->buff_pos - cd->offset, size);
-	int ret;
-
-	ret = memcpy_s(&cd->data[cd->buff_pos], (cd->buff_size - cd->buff_pos) * sizeof(int32_t),
-		       data, min_buff * sizeof(int32_t));
-	if (ret < 0)
-		return ret;
-	ret = memcpy_s(cd->data, cd->buff_size * sizeof(int32_t),
-		       &data[min_buff], (size - min_buff) * sizeof(int32_t));
-	if (ret < 0)
-		return ret;
-	cd->buff_pos = (cd->buff_pos + size) % cd->buff_size;
-
-	return 0;
-}
-
-int aria_process_data(struct comp_dev *dev,
-		      int32_t *__restrict dst, size_t dst_size,
-		      int32_t *__restrict src, size_t src_size)
-{
-	struct aria_data *cd = comp_get_drvdata(dev);
-	size_t min_buff;
-	int ret;
+	size_t data_size = audio_stream_frame_bytes(source) * frames;
+	size_t sample_size = audio_stream_get_channels(source) * frames;
 
 	if (cd->att) {
-		aria_algo_calc_gain(dev, (cd->gain_state + 1) % ARIA_MAX_GAIN_STATES,
-				    src, src_size);
-		aria_algo_get_data(dev, dst, dst_size);
+		aria_algo_calc_gain(dev, INDEX_TAB[cd->gain_state + 1], source, frames);
+		cd->aria_get_data(dev, sink, frames);
 	} else {
 		/* bypass processing gets unprocessed data from buffer */
-		min_buff = MIN(cd->buff_size - cd->buff_pos - cd->offset, dst_size);
-		ret = memcpy_s(dst, cd->buff_size * sizeof(int32_t),
-			       &cd->data[cd->buff_pos + cd->offset],
-			       min_buff * sizeof(int32_t));
-		if (ret < 0)
-			return ret;
-		ret = memcpy_s(&dst[min_buff], cd->buff_size * sizeof(int32_t),
-			       cd->data, (dst_size - min_buff) * sizeof(int32_t));
-		if (ret < 0)
-			return ret;
+		cir_buf_copy(cd->data_ptr, cd->data_addr, cd->data_end,
+			     sink->w_ptr, sink->addr, sink->end_addr,
+			     data_size);
 	}
-	return aria_algo_buffer_data(dev, src, src_size);
+
+	cir_buf_copy(source->r_ptr, source->addr, source->end_addr,
+		     cd->data_ptr, cd->data_addr, cd->data_end,
+		     data_size);
+	cd->data_ptr = cir_buf_wrap(cd->data_ptr + sample_size, cd->data_addr, cd->data_end);
 }
 
 static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
@@ -129,7 +105,7 @@ static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
 	const struct ipc4_aria_module_cfg *aria = spec;
 	struct aria_data *cd;
 	size_t ibs, chc, sgs, sgc, req_mem, att;
-	void *buf, *buf_in, *buf_out;
+	void *buf;
 	int ret;
 
 	dev->ipc_config = *config;
@@ -165,20 +141,16 @@ static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
 	comp_set_drvdata(dev, cd);
 
 	buf = rballoc(0, SOF_MEM_CAPS_RAM, req_mem);
-	buf_in = rballoc(0, SOF_MEM_CAPS_RAM, req_mem);
-	buf_out = rballoc(0, SOF_MEM_CAPS_RAM, req_mem);
 
-	if (!buf || !buf_in || !buf_out) {
+	if (!buf) {
 		rfree(buf);
-		rfree(buf_in);
-		rfree(buf_out);
 		rfree(cd);
 		comp_free(dev);
 		comp_err(dev, "init_aria(): allocation failed for size %d", req_mem);
 		return -ENOMEM;
 	}
 
-	return aria_algo_init(dev, buf, buf_in, buf_out, att, chc, sgc);
+	return aria_algo_init(dev, buf, att, chc, sgc);
 }
 
 static struct comp_dev *aria_new(const struct comp_driver *drv,
@@ -208,9 +180,7 @@ static void aria_free(struct comp_dev *dev)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
 
-	rfree(cd->data);
-	rfree(cd->buf_in);
-	rfree(cd->buf_out);
+	rfree(cd->data_addr);
 	rfree(cd);
 	rfree(dev);
 }
@@ -267,6 +237,8 @@ static int aria_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
+	cd->aria_get_data = aria_algo_get_data_func(dev);
+
 	return 0;
 }
 
@@ -285,9 +257,7 @@ static int aria_reset(struct comp_dev *dev)
 	for (idx = 0; idx < ARIA_MAX_GAIN_STATES; ++idx)
 		cd->gains[idx] = (1ULL << (32 - cd->att - 1)) - 1;
 
-	memset(cd->data, 0, sizeof(int32_t) * cd->buff_size);
-	memset(cd->buf_in, 0, sizeof(int32_t) * cd->buff_size);
-	memset(cd->buf_out, 0, sizeof(int32_t) * cd->buff_size);
+	memset(cd->data_addr, 0, sizeof(int32_t) * cd->buff_size);
 	cd->gain_state = 0;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -304,11 +274,12 @@ static int aria_trigger(struct comp_dev *dev, int cmd)
 
 static int aria_copy(struct comp_dev *dev)
 {
+	/* Aria algo supports only 4-bytes containers */
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct aria_data *cd;
-	uint32_t copy_bytes, copy_samples;
-	uint32_t bytes, frames;
+	uint32_t copy_bytes;
+	uint32_t frames;
 
 	cd = comp_get_drvdata(dev);
 
@@ -324,22 +295,18 @@ static int aria_copy(struct comp_dev *dev)
 
 	frames = audio_stream_avail_frames_aligned(&source_c->stream,
 						   &sink_c->stream);
-	bytes = frames * audio_stream_frame_bytes(&source_c->stream);
 
-	copy_bytes = MIN(bytes, cd->base.ibs);
+	frames = MIN(frames, cd->smpl_group_cnt);
 
+	/* Aria won't change the stream format and channels, so sink and source
+	 * has the same bytes to produce and consume.
+	 */
+	copy_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
 	if (copy_bytes == 0)
 		goto out;
 
-	/* Aria algo supports only 4-bytes containers */
-	copy_samples = copy_bytes >> 2;
-
 	buffer_stream_invalidate(source_c, copy_bytes);
-	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0, copy_samples);
-
-	aria_process_data(dev, cd->buf_out, copy_samples, cd->buf_in, copy_samples);
-
-	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0, copy_samples);
+	aria_process_data(dev, &source_c->stream, &sink_c->stream, frames);
 	buffer_stream_writeback(sink_c, copy_bytes);
 
 	comp_update_buffer_produce(sink_c, copy_bytes);

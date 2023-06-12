@@ -4,138 +4,184 @@
 
 #include <sof/audio/aria/aria.h>
 
-#if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
+#ifdef ARIA_HIFI3
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
 
+/**
+ * \brief Aria gain index mapping table
+ */
+const uint8_t INDEX_TAB[] = {
+		0,    1,    2,    3,
+		4,    5,    6,    7,
+		8,    9,    0,    1,
+		2,    3,    4,    5,
+		6,    7,    8,    9,
+		0,    1,    2,    3
+};
+
 inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
-				int32_t *__restrict data, const size_t src_size)
+				struct audio_stream __sparse_cache *source, int frames)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
 	/* detecting maximum value in data chunk */
-	size_t pairs_size = src_size;
-	size_t i;
-	ae_f32x2 d1;
-	ae_int32x2 *ptr_in = (ae_int32x2 *)data;
-	ae_f32x2 d0 = AE_ZERO32();
+	ae_int32x2 in_sample;
+	ae_int32x2 max_data = AE_ZERO32();
+	int32_t att = cd->att;
+	ae_valign inu = AE_ZALIGN64();
+	uint64_t gain = (1ULL << (att + 32)) - 1;
+	int32_t *max_ptr = (int32_t *)&max_data;
+	int32_t max;
+	int samples = frames * audio_stream_get_channels(source);
+	ae_int32x2 *in = audio_stream_get_rptr(source);
+	int i, n, m;
 
-	__aligned(8) uint32_t max_data[2];
-
-	ae_int32x2 *ptr_out = (ae_int32x2 *)&max_data[0];
-	/* below condition maintains buffer alignment to 8 bytes */
-	if (!IS_ALIGNED((uintptr_t)ptr_in, 8)) {
-		AE_L32_XC(d1, (ae_int32 *)ptr_in, 4);
-		d0 = AE_MAXABS32S(d0, d1);
-		pairs_size--;
+	while (samples) {
+		n = audio_stream_samples_without_wrap_s32(source, in);
+		n = MIN(samples, n);
+		m = n >> 1;
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < m; i++) {
+			AE_LA32X2_IP(in_sample, inu, in);
+			max_data = AE_MAXABS32S(max_data, in_sample);
+		}
+		if (n & 1) {
+			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
+			max_data = AE_MAXABS32S(max_data, in_sample);
+		}
+		max = MAX(max_ptr[0], max_ptr[1]);
+		in = audio_stream_wrap(source, in);
+		samples -= n;
 	}
-	for (i = 0; i < src_size >> 1; ++i) {
-		AE_L32X2_XP(d1, ptr_in, 8);
-		d0 = AE_MAXABS32S(d0, d1);
-	}
-	/* maintains odd sample if any left */
-	if (pairs_size % 2) {
-		AE_L32_XC(d1, (ae_int32 *)ptr_in, 0);
-		d0 = AE_MAXABS32S(d0, d1);
-	}
-	AE_S32X2_XP(d0, ptr_out, 0);
-	max_data[0] = MAX(max_data[0], max_data[1]);
-
-	uint64_t gain = (1ULL << (cd->att + 32)) - 1;
-	/* currently att_ value is checked on initialization and is in range <0;3>
-	 * so eventual zero check for max_data[0] is not needed (prevention from division by 0)
-	 */
-	if (max_data[0] > (0x7fffffffUL >> cd->att))
-		gain = (0x7fffffffULL << 32) / max_data[0];
+	/*zero check for maxis not needed since att is in range <0;3>*/
+	if (max > (0x7fffffff >> att))
+		gain = (0x7fffffffULL << 32) / max;
 
 	/* normalization by attenuation factor to obtain fractional range <1 / (2 pow att), 1> */
-	cd->gains[gain_idx] = (int32_t)(gain >> (cd->att + 1));
+	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data(struct comp_dev *dev, int32_t *__restrict  data, size_t size)
+void aria_algo_get_data_odd_channel(struct comp_dev *dev,
+				    struct audio_stream __sparse_cache *sink,
+				    int frames)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
+	size_t i, m, n, ch;
+	ae_int32x2 step;
+	int32_t gain_state_add_2 = cd->gain_state + 2;
+	int32_t gain_state_add_3 = cd->gain_state + 3;
+	int32_t gain_begin = cd->gains[INDEX_TAB[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
-	int32_t gain_begin = cd->gains[(cd->gain_state + 2) % ARIA_MAX_GAIN_STATES];
-	int32_t gain_end = cd->gains[(cd->gain_state + 3) % ARIA_MAX_GAIN_STATES];
-	size_t idx, ch;
+	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
+	size_t samples = frames * audio_stream_get_channels(sink);
+	ae_int32x2 *out = audio_stream_get_wptr(sink);
+	int32_t att = cd->att;
+	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	ae_int32x2 in_sample, out_sample;
+	const int inc = sizeof(ae_int32);
+	ae_int32x2 gain;
+	const int ch_n = cd->chan_cnt;
 
-	for (idx = 1; idx < ARIA_MAX_GAIN_STATES - 1; ++idx) {
-		gain_begin = MIN(gain_begin, cd->gains[(cd->gain_state + idx + 2) %
-						ARIA_MAX_GAIN_STATES]);
-		gain_end = MIN(gain_end, cd->gains[(cd->gain_state + idx + 3) %
-						ARIA_MAX_GAIN_STATES]);
+	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
+		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[INDEX_TAB[gain_state_add_2 + i]];
+		if (cd->gains[INDEX_TAB[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[INDEX_TAB[gain_state_add_3 + i]];
 	}
 
-	ae_f32x2 d1, d2, d3;
-	const size_t smpl_groups = size / cd->chan_cnt;
-	const int32_t step = (gain_end - gain_begin) / (int32_t)smpl_groups;
-	/* ensure index is always positive */
-	ae_int32x2 *ptr_in = (ae_int32x2 *)&cd->data[(cd->buff_pos + cd->offset) % cd->buff_size];
-	ae_int32x2 *ptr_out = (ae_int32x2 *)data;
+	step = (gain_end - gain_begin) / frames;
+	gain = gain_begin;
+	while (samples) {
+		m = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(cd->data_ptr, cd->data_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < n; i += ch_n) {
+			/*process data one by one if ch_n is odd*/
+			for (ch = 0; ch < ch_n; ch++) {
+				AE_L32_XP(in_sample, (ae_int32 *)in, inc);
+				out_sample = AE_MULFP32X2RS(in_sample, gain);
 
-	d1 = (ae_f32x2)gain_begin;
-
-	int32_t next_gain;
-	int32_t prev_gain = gain_begin;
-
-	AE_SETCBEGIN0(cd->data);
-	AE_SETCEND0(cd->data + cd->buff_size);
-	ae_valign align_out = AE_ZALIGN64();
-	/* variable for odd sample detection, detection when exceeded */
-	size_t odd_detect = ALIGN_DOWN(size, 2);
-	/* variable accumulates samples being processed, helps to identify odd sample */
-	size_t acc = 0;
-
-	/* below condition maintains buffer alignment to 8 bytes */
-	if (!IS_ALIGNED((uintptr_t)ptr_in, 8)) {
-		AE_L32_XC(d2, (ae_int32 *)(ptr_in), 4);
-		d3 = AE_MULFP32X2RS(d1, d2);
-		d3 = AE_SLAA32S(d3, cd->att);
-		AE_S32_L_XP(d3, (ae_int32 *)(ptr_out), 4);
-		/* acc overflow expected and used as a condition later in loop */
-		acc = (size_t)(-cd->chan_cnt);
-		odd_detect = ALIGN_DOWN(size - 1, 2);
-	}
-	const size_t chan_pairs = cd->chan_cnt >> 1;
-
-	for (idx = 0; idx < smpl_groups; ++idx) {
-		/* below condition process channel pairs from current sample group
-		 * to be amplified with the same gain
-		 */
-		for (ch = 0; ch < chan_pairs; ++ch) {
-			AE_L32X2_XC(d2, ptr_in, 8);
-			/* d1 - Normalized gain of signal in range <1 / (2 pow att), 1>*/
-			d3 = AE_MULFP32X2RS(d1, d2);
-			/* denormalization */
-			d3 = AE_SLAA32S(d3, cd->att);
-			AE_SA32X2_IP(d3, align_out, ptr_out);
+				out_sample = AE_SLAA32S(out_sample, att);
+				AE_S32_L_XP(out_sample, (ae_int32 *)out, inc);
+			}
+			gain = AE_ADD32S(gain, step);
 		}
-		acc += cd->chan_cnt;
-		next_gain = (gain_begin + (idx + 1) * step);
-		/* below condition process odd channel from current sample group and next
-		 * sample group when channels count is odd, it process current
-		 * and next sample group corresponding to (idx) and (idx+1)
-		 */
-		if ((acc % 2) && !(acc > odd_detect)) {
-			d1 = AE_MOVDA32X2(prev_gain, next_gain);
-			AE_L32X2_XC(d2, ptr_in, 8);
-			/* d1 - Normalized gain of signal in range <1 / (2 pow att), 1>*/
-			d3 = AE_MULFP32X2RS(d1, d2);
-			/* denormalization */
-			d3 = AE_SLAA32S(d3, cd->att);
-			AE_SA32X2_IP(d3, align_out, ptr_out);
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, cd->data_addr, cd->data_end);
+		out = audio_stream_wrap(sink, out);
+	}
+	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
+}
+
+void aria_algo_get_data_even_channel(struct comp_dev *dev,
+				     struct audio_stream __sparse_cache *sink,
+				     int frames)
+{
+	struct aria_data *cd = comp_get_drvdata(dev);
+	size_t i, m, n, ch;
+	ae_int32x2 step;
+	int32_t gain_state_add_2 = cd->gain_state + 2;
+	int32_t gain_state_add_3 = cd->gain_state + 3;
+	int32_t gain_begin = cd->gains[INDEX_TAB[gain_state_add_2]];
+	/* do linear approximation between points gain_begin and gain_end */
+	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
+	size_t samples = frames * audio_stream_get_channels(sink);
+	ae_int32x2 *out = audio_stream_get_wptr(sink);
+	int32_t att = cd->att;
+	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	ae_int32x2 in_sample, out_sample;
+	const int inc = sizeof(ae_int32);
+	ae_int32x2 gain;
+	const int ch_n = cd->chan_cnt;
+
+	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
+		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[INDEX_TAB[gain_state_add_2 + i]];
+		if (cd->gains[INDEX_TAB[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[INDEX_TAB[gain_state_add_3 + i]];
+	}
+
+	step = (gain_end - gain_begin) / frames;
+	gain = gain_begin;
+	while (samples) {
+		m = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(cd->data_ptr, cd->data_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < n; i += ch_n) {
+			/*process 2 samples per time if ch_n is even*/
+			for (ch = 0; ch < ch_n; ch += 2) {
+				AE_LA32X2_IP(in_sample, inu, in);
+				out_sample = AE_MULFP32X2RS(in_sample, gain);
+
+				out_sample = AE_SLAA32S(out_sample, att);
+				AE_SA32X2_IP(out_sample, outu, out);
+			}
+			gain = AE_ADD32S(gain, step);
 		}
-		d1 = (ae_f32x2)next_gain;
-		prev_gain = next_gain;
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, cd->data_addr, cd->data_end);
+		out = audio_stream_wrap(sink, out);
 	}
-	AE_SA64POS_FP(align_out, ptr_out);
-	/* maintains odd sample if any left */
-	if (acc > odd_detect) {
-		AE_L32_XC(d2, (ae_int32 *)(ptr_in), 0);
-		d3 = AE_MULFP32X2RS(d1, d2);
-		d3 = AE_SLAA32S(d3, cd->att);
-		AE_S32_L_XP(d3, (ae_int32 *)(ptr_out), 0);
-	}
-	cd->gain_state = (cd->gain_state + 1) % ARIA_MAX_GAIN_STATES;
+	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
+}
+
+aria_get_data_func aria_algo_get_data_func(struct comp_dev *dev)
+{
+	struct aria_data *cd = comp_get_drvdata(dev);
+
+	if (cd->chan_cnt & 1)
+		return aria_algo_get_data_odd_channel;
+	else
+		return aria_algo_get_data_even_channel;
 }
 #endif

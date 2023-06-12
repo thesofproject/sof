@@ -7,50 +7,97 @@
 
 #ifdef ARIA_GENERIC
 
+/**
+ * \brief Aria gain index mapping table
+ */
+const uint8_t INDEX_TAB[] = {
+		0,    1,    2,    3,
+		4,    5,    6,    7,
+		8,    9,    0,    1,
+		2,    3,    4,    5,
+		6,    7,    8,    9,
+		0,    1,    2,    3
+};
+
 inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
-				int32_t *__restrict data, const size_t src_size)
+				struct audio_stream __sparse_cache *source, int frames)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
 	int32_t max_data = 0;
-	int64_t gain;
+	int32_t sample_abs;
+	uint32_t att = cd->att;
+	int64_t gain = (1ULL << (att + 32)) - 1;
+	int samples = frames * audio_stream_get_channels(source);
+	int32_t *src = audio_stream_get_rptr(source);
+	int i, n;
 
-	for (size_t i = 0; i < src_size; ++i)
-		max_data = MAX(max_data, ABS(data[i]));
+	while (samples) {
+		n = audio_stream_samples_without_wrap_s32(source, src);
+		n = MIN(samples, n);
+		for (i = 0; i < n; i++) {
+			sample_abs = ABS(src[i]);
+			max_data = MAX(max_data, sample_abs);
+		}
 
-	gain = 1ULL << (cd->att + 32);
-	if (max_data > (0x7fffffff >> cd->att) && max_data != 0)
+		src = audio_stream_wrap(source, src + n);
+		samples -= n;
+	}
+
+	/*zero check for maxis not needed since att is in range <0;3>*/
+	if (max_data > (0x7fffffff >> att))
 		gain = (0x7fffffffULL << 32) / max_data;
 
-	cd->gains[gain_idx] = gain;
+	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data(struct comp_dev *dev, int32_t *__restrict  data, size_t size)
+void aria_algo_get_data(struct comp_dev *dev, struct audio_stream __sparse_cache *sink, int frames)
 {
 	struct aria_data *cd = comp_get_drvdata(dev);
-	size_t smpl_groups, ii;
-	int64_t step, sample;
-	// do linear approximation between points gain_begin and gain_end
-	int64_t gain_begin = cd->gains[(cd->gain_state + 2) % ARIA_MAX_GAIN_STATES];
-	int64_t gain_end = cd->gains[(cd->gain_state + 3) % ARIA_MAX_GAIN_STATES];
+	int32_t step, in_sample;
+	int32_t gain_state_add_2 = cd->gain_state + 2;
+	int32_t gain_state_add_3 = cd->gain_state + 3;
+	int32_t gain_begin = cd->gains[INDEX_TAB[gain_state_add_2]];
+	/* do linear approximation between points gain_begin and gain_end */
+	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
+	int32_t m, n, i, ch;
+	int32_t samples = frames * audio_stream_get_channels(sink);
+	int32_t *out = audio_stream_get_wptr(sink);
+	int32_t *in = cd->data_ptr;
+	int32_t gain;
+	const int ch_n = cd->chan_cnt;
+	const int shift = 31 - cd->att;
 
-	for (size_t i = 1; i < ARIA_MAX_GAIN_STATES - 1; ++i) {
-		if (cd->gains[(cd->gain_state + i + 2) % ARIA_MAX_GAIN_STATES] < gain_begin)
-			gain_begin = cd->gains[(cd->gain_state + i + 2) % ARIA_MAX_GAIN_STATES];
-		if (cd->gains[(cd->gain_state + i + 3) % ARIA_MAX_GAIN_STATES] < gain_end)
-			gain_end = cd->gains[(cd->gain_state + i + 3) % ARIA_MAX_GAIN_STATES];
+	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
+		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[INDEX_TAB[gain_state_add_2 + i]];
+		if (cd->gains[INDEX_TAB[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[INDEX_TAB[gain_state_add_3 + i]];
 	}
-	smpl_groups = size / cd->chan_cnt;
-	step = (gain_end - gain_begin) / smpl_groups;
+	step = (gain_end - gain_begin) / frames;
+	gain = gain_begin;
 
-	for (size_t idx = 0, gain = gain_begin, offset = 0;
-	     idx < smpl_groups;
-	     ++idx, gain += step, offset += cd->chan_cnt) {
-		ii = (cd->buff_pos + offset) % cd->buff_size;
-		for (size_t ch = 0; ch < cd->chan_cnt; ++ch) {
-			sample = cd->data[ii + ch];
-			data[offset + ch] = (sample * gain) >> 32;
+	while (samples) {
+		m = audio_stream_samples_without_wrap_s32(sink, out);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(cd->data_ptr, cd->data_end);
+		n = MIN(m, n);
+		for (i = 0; i < n; i += ch_n) {
+			for (ch = 0; ch < ch_n; ch++) {
+				in_sample = *in++;
+				out[ch] = q_multsr_sat_32x32(in_sample, gain, shift);
+			}
+			gain += step;
+			out += ch_n;
 		}
+		samples -= n;
+		in = cir_buf_wrap(in, cd->data_addr, cd->data_end);
+		out = audio_stream_wrap(sink, out);
 	}
-	cd->gain_state = (cd->gain_state + 1) % ARIA_MAX_GAIN_STATES;
+	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
+}
+
+aria_get_data_func aria_algo_get_data_func(struct comp_dev *dev)
+{
+	return aria_algo_get_data;
 }
 #endif
