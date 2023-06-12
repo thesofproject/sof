@@ -31,6 +31,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 {
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
+	void *stream_addr;
 
 	tr_dbg(&buffer_tr, "buffer_alloc()");
 
@@ -51,23 +52,22 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 		return NULL;
 	}
 
-	buffer->stream.addr = rballoc_align(0, caps, size, align);
-	if (!buffer->stream.addr) {
+	stream_addr = rballoc_align(0, caps, size, align);
+	if (!stream_addr) {
 		rfree(buffer);
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
 		       size, caps);
 		return NULL;
 	}
 
-	buffer->stream.underrun_permitted = !!(flags & SOF_BUF_UNDERRUN_PERMITTED);
-	buffer->stream.overrun_permitted = !!(flags & SOF_BUF_OVERRUN_PERMITTED);
-
-	list_init(&buffer->source_list);
-	list_init(&buffer->sink_list);
-
 	/* From here no more uncached access to the buffer object, except its list headers */
 	buffer_c = buffer_acquire(buffer);
+	buffer_c->stream.addr = stream_addr;
 	buffer_init(buffer_c, size, caps);
+
+	buffer_c->stream.underrun_permitted = !!(flags & SOF_BUF_UNDERRUN_PERMITTED);
+	buffer_c->stream.overrun_permitted = !!(flags & SOF_BUF_OVERRUN_PERMITTED);
+
 	buffer_release(buffer_c);
 
 	/*
@@ -81,6 +81,9 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	 * re-loaded again.
 	 */
 	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
+
+	list_init(&buffer->source_list);
+	list_init(&buffer->sink_list);
 
 	return buffer;
 }
