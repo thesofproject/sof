@@ -193,10 +193,10 @@ error_dev:
 	return NULL;
 }
 
-static void copier_free(struct comp_dev *dev)
+static void copier_mod_free(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -214,8 +214,16 @@ static void copier_free(struct comp_dev *dev)
 	}
 
 	rfree(cd);
-	rfree(dev);
+}
+
+static void copier_free(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	copier_mod_free(mod);
+
 	rfree(mod);
+	rfree(dev);
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -273,11 +281,11 @@ static int copier_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int copier_reset(struct comp_dev *dev)
+static int copier_mod_reset(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "copier_reset()");
 
@@ -304,9 +312,19 @@ static int copier_reset(struct comp_dev *dev)
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	}
 
+	return 0;
+}
+
+static int copier_reset(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
+
+	ret = copier_mod_reset(mod);
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
-	return 0;
+	return ret;
 }
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
