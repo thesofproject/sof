@@ -165,6 +165,55 @@ err:
 	return NULL;
 }
 
+static int module_adapter_sink_src_prepare(struct comp_dev *dev)
+{
+	struct comp_buffer __sparse_cache *source_buffers_c[PLATFORM_MAX_STREAMS];
+	struct comp_buffer __sparse_cache *sinks_buffers_c[PLATFORM_MAX_STREAMS];
+	struct sof_sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
+	struct sof_source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist;
+	uint32_t num_of_sources = 0;
+	uint32_t num_of_sinks = 0;
+	int ret;
+
+	/* acquire all sink and source buffers, get handlers to sink/source API */
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink_buffer_uc;
+
+		sink_buffer_uc = container_of(blist, struct comp_buffer, source_list);
+		sinks_buffers_c[num_of_sinks] = buffer_acquire(sink_buffer_uc);
+		audio_sink[num_of_sinks] =
+				audio_stream_get_sink(&sinks_buffers_c[num_of_sinks]->stream);
+		sink_reset_num_of_processed_bytes(audio_sink[num_of_sinks]);
+		num_of_sinks++;
+	}
+
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source_buffer_uc;
+
+		source_buffer_uc = container_of(blist, struct comp_buffer, sink_list);
+		source_buffers_c[num_of_sources] = buffer_acquire(source_buffer_uc);
+		audio_src[num_of_sources] =
+				audio_stream_get_source(&source_buffers_c[num_of_sources]->stream);
+		source_reset_num_of_processed_bytes(audio_src[num_of_sources]);
+		num_of_sources++;
+	}
+
+	/* Prepare module */
+	ret = module_prepare(mod, audio_src, num_of_sources, audio_sink, num_of_sinks);
+
+	/* release all source buffers in reverse order */
+	for (int i = num_of_sources - 1; i >= 0; i--)
+		buffer_release(source_buffers_c[i]);
+
+	/* release all sink buffers in reverse order */
+	for  (int i = num_of_sinks - 1; i >= 0 ; i--)
+		buffer_release(sinks_buffers_c[i]);
+
+	return ret;
+}
+
 /*
  * \brief Prepare the module
  * \param[in] dev - component device pointer.
@@ -189,7 +238,11 @@ int module_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_prepare() start");
 
 	/* Prepare module */
-	ret = module_prepare(mod);
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
+		ret = module_adapter_sink_src_prepare(dev);
+	else
+		ret = module_prepare(mod, NULL, 0, NULL, 0);
+
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
 			comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",

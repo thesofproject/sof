@@ -192,7 +192,9 @@ static int validate_config(struct module_config *cfg)
 	return 0;
 }
 
-int module_prepare(struct processing_module *mod)
+int module_prepare(struct processing_module *mod,
+		   struct sof_source __sparse_cache **sources, int num_of_sources,
+		   struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	int ret;
 	struct module_data *md = &mod->priv;
@@ -205,7 +207,7 @@ int module_prepare(struct processing_module *mod)
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 
-	ret = md->ops->prepare(mod);
+	ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	if (ret) {
 		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
 			 ret, dev_comp_id(dev));

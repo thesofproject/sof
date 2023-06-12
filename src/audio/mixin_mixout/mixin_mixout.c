@@ -686,7 +686,9 @@ static int mixin_params(struct processing_module *mod)
  * We should also make sure that we propagate the prepare call to downstream
  * if downstream is not currently active.
  */
-static int mixin_prepare(struct processing_module *mod)
+static int mixin_prepare(struct processing_module *mod,
+			 struct sof_source __sparse_cache **sources, int num_of_sources,
+			 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct mixin_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -805,7 +807,9 @@ static int mixout_params(struct processing_module *mod)
 	return 0;
 }
 
-static int mixout_prepare(struct processing_module *mod)
+static int mixout_prepare(struct processing_module *mod,
+			  struct sof_source __sparse_cache **sources, int num_of_sources,
+			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct comp_dev *dev = mod->dev;

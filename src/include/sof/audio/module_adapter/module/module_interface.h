@@ -82,7 +82,9 @@ struct module_interface {
 	 * Module specific prepare procedure, called as part of module_adapter
 	 * component preparation in .prepare()
 	 */
-	int (*prepare)(struct processing_module *mod);
+	int (*prepare)(struct processing_module *mod,
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
 
 	/**
 	 * Module specific processing procedure
