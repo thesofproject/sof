@@ -15,6 +15,9 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/src/src.h>
 #include <sof/audio/src/src_config.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/sink_source_utils.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -35,6 +38,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 
 #if SRC_SHORT || CONFIG_COMP_SRC_TINY
 #include <sof/audio/coefficients/src/src_tiny_int16_define.h>
@@ -97,12 +101,8 @@ struct comp_data {
 	int sink_frames;
 	int sample_container_bytes;
 	int channels_count;
-	void (*src_func)(struct comp_dev *dev,
-			 struct comp_data *cd,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
-			 int *consumed,
-			 int *produced);
+	int (*src_func)(struct comp_data *cd, struct sof_source __sparse_cache *source,
+			struct sof_sink __sparse_cache *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
 };
 
@@ -335,18 +335,15 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 }
 
 /* Fallback function */
-static void src_fallback(struct comp_dev *dev, struct comp_data *cd,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
+static int src_fallback(struct comp_data *cd, struct sof_source __sparse_cache *source,
+			struct sof_sink __sparse_cache *sink)
 {
-	*n_read = 0;
-	*n_written = 0;
+	return 0;
 }
 
 /* Normal 2 stage SRC */
-static void src_2s(struct comp_dev *dev, struct comp_data *cd,
-		   const struct audio_stream __sparse_cache *source,
-		   struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
+static int src_2s(struct comp_data *cd,
+		  struct sof_source __sparse_cache *source, struct sof_sink __sparse_cache *sink)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -354,38 +351,47 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	int s1_blk_out;
 	int s2_blk_in;
 	int s2_blk_out;
-	void *sbuf_addr = cd->delay_lines;
+	uint32_t n_read = 0, n_written = 0;
+	int ret;
+	uint8_t *buffer_start;
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
-	int nch = audio_stream_get_channels(source);
+	/* chan sink == chan src therefore we only need to use one*/
+	int nch = source_get_channels(source);
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int avail_b = audio_stream_get_avail_bytes(source);
-	int free_b = audio_stream_get_free_bytes(sink);
+	int avail_b = source_get_data_available(source);
+	int free_b = sink_get_free_size(sink);
 	int sz = cd->sample_container_bytes;
+	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
-	*n_read = 0;
-	*n_written = 0;
-	s1.x_end_addr = audio_stream_get_end_addr(source);
-	s1.x_size = audio_stream_get_size(source);
-	s1.y_addr = sbuf_addr;
+	ret = source_get_data(source, source_frag_size,
+			      &s1.x_rptr, (void **)&buffer_start, &s1.x_size);
+	if (ret)
+		return ret;
+	s1.x_end_addr = buffer_start + s1.x_size;
+
+	ret = sink_get_buffer(sink, sink_frag_size,
+			      &s2.y_wptr, (void **)&buffer_start, &s2.y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	s2.y_end_addr = buffer_start + s2.y_size;
+
 	s1.y_end_addr = sbuf_end_addr;
 	s1.y_size = sbuf_size;
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
-	s1.x_rptr = audio_stream_get_rptr(source);
 	s1.y_wptr = cd->sbuf_w_ptr;
 	s1.nch = nch;
 	s1.shift = cd->data_shift;
 
 	s2.x_end_addr = sbuf_end_addr;
 	s2.x_size = sbuf_size;
-	s2.y_addr = audio_stream_get_addr(sink);
-	s2.y_end_addr = audio_stream_get_end_addr(sink);
-	s2.y_size = audio_stream_get_size(sink);
 	s2.state = &cd->src.state2;
 	s2.stage = cd->src.stage2;
 	s2.x_rptr = cd->sbuf_r_ptr;
-	s2.y_wptr = audio_stream_get_wptr(sink);
 	s2.nch = nch;
 	s2.shift = cd->data_shift;
 
@@ -402,7 +408,6 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	if (s1_blk_out > sbuf_free) {
 		s1.times = sbuf_free / (cd->src.stage1->blk_out * nch);
 		s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
-		comp_dbg(dev, "s1.times = %d", s1.times);
 	}
 
 	s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
@@ -411,7 +416,7 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 
 		cd->sbuf_w_ptr = s1.y_wptr;
 		cd->sbuf_avail += s1_blk_out;
-		*n_read += s1.times * cd->src.stage1->blk_in;
+		n_read += s1.times * cd->src.stage1->blk_in;
 	}
 
 	s2.times = cd->param.stage2_times;
@@ -419,7 +424,6 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 	if (s2_blk_in > cd->sbuf_avail) {
 		s2.times = cd->sbuf_avail / (cd->src.stage2->blk_in * nch);
 		s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
-		comp_dbg(dev, "s2.times = %d", s2.times);
 	}
 
 	/* Test if second stage can be run with default block length. */
@@ -429,56 +433,71 @@ static void src_2s(struct comp_dev *dev, struct comp_data *cd,
 
 		cd->sbuf_r_ptr = s2.x_rptr;
 		cd->sbuf_avail -= s2_blk_in;
-		*n_written += s2.times * cd->src.stage2->blk_out;
+		n_written += s2.times * cd->src.stage2->blk_out;
 	}
+
+	/* commit the processed data */
+	source_release_data(source, n_read * source_get_frame_bytes(source));
+	sink_commit_buffer(sink, n_written * sink_get_frame_bytes(sink));
+	return 0;
 }
 
 /* 1 stage SRC for simple conversions */
-static void src_1s(struct comp_dev *dev, struct comp_data *cd,
-		   const struct audio_stream __sparse_cache *source,
-		   struct audio_stream __sparse_cache *sink, int *n_read, int *n_written)
+static int src_1s(struct comp_data *cd, struct sof_source __sparse_cache *source,
+		  struct sof_sink __sparse_cache *sink)
 {
 	struct src_stage_prm s1;
+	int ret;
+	uint8_t *buffer_start;
+	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
+
+	ret = source_get_data(source, source_frag_size,
+			      &s1.x_rptr, (void **)&buffer_start, &s1.x_size);
+	if (ret)
+		return ret;
+	s1.x_end_addr = buffer_start + s1.x_size;
+
+	ret = sink_get_buffer(sink, sink_frag_size,
+			      &s1.y_wptr, (void **)&buffer_start, &s1.y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	s1.y_end_addr = buffer_start + s1.y_size;
 
 	s1.times = cd->param.stage1_times;
-	s1.x_rptr = audio_stream_get_rptr(source);
-	s1.x_end_addr = audio_stream_get_end_addr(source);
-	s1.x_size = audio_stream_get_size(source);
-	s1.y_wptr = audio_stream_get_wptr(sink);
-	s1.y_end_addr = audio_stream_get_end_addr(sink);
-	s1.y_size = audio_stream_get_size(sink);
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
-	s1.nch = audio_stream_get_channels(source);
+	s1.nch = source_get_channels(source);	/* src channels must == sink channels */
 	s1.shift = cd->data_shift;
 
 	cd->polyphase_func(&s1);
 
-	*n_read = cd->param.blk_in;
-	*n_written = cd->param.blk_out;
+	/* commit the processed data */
+	source_release_data(source, UINT_MAX);
+	sink_commit_buffer(sink, UINT_MAX);
+
+	return 0;
 }
 
 /* A fast copy function for same in and out rate */
-static void src_copy_sxx(struct comp_dev *dev, struct comp_data *cd,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
-			 int *n_read, int *n_written)
+static int src_copy_sxx(struct comp_data *cd, struct sof_source __sparse_cache *source,
+			struct sof_sink __sparse_cache *sink)
 {
 	int frames = cd->param.blk_in;
 
-	switch (audio_stream_get_frm_fmt(sink)) {
+	switch (source_get_frm_fmt(source)) {
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		audio_stream_copy(source, 0, sink, 0,
-				  frames * audio_stream_get_channels(source));
-		*n_read = frames;
-		*n_written = frames;
-		break;
+		return source_to_sink_copy(source, sink, true,
+					   frames * source_get_frame_bytes(source));
 	default:
-		*n_read = 0;
-		*n_written = 0;
+		break;
 	}
+
+	return -ENOTSUP;
 }
 
 #if CONFIG_IPC_MAJOR_4
@@ -512,15 +531,13 @@ static int src_stream_pcm_sink_rate_check(struct ipc4_config_src cfg,
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static int src_set_params(struct processing_module *mod)
+static int src_set_params(struct processing_module *mod, struct sof_sink __sparse_cache *sink)
 {
 	struct sof_ipc_stream_params src_params;
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
 	int ret;
 
 	src_params = *params;
@@ -537,17 +554,14 @@ static int src_set_params(struct processing_module *mod)
 	src_params.frame_fmt = frame_fmt;
 	component_set_nearest_period_frames(dev, src_params.rate);
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ret = buffer_set_params(sink_c, &src_params, true);
-	buffer_release(sink_c);
+	ret = sink_set_params(sink, &src_params, true);
 
 	/* Update module stream_params */
 	params->rate = cd->ipc_config.sink_rate;
 	return ret;
 }
 
-static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb)
+static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_cache  *sink)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_data *cd = module_get_private_data(mod);
@@ -558,13 +572,10 @@ static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __spars
 				    cd->ipc_config.base.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    cd->ipc_config.base.audio_fmt.s_type);
-
-	audio_stream_set_frm_fmt(&sinkb->stream, frame_fmt);
-	audio_stream_set_valid_fmt(&sinkb->stream, valid_fmt);
-	audio_stream_set_channels(&sinkb->stream, cd->ipc_config.base.audio_fmt.channels_count);
-
-	audio_stream_set_buffer_fmt(&sinkb->stream,
-				    cd->ipc_config.base.audio_fmt.interleaving_style);
+	sink_set_frm_fmt(sink, frame_fmt);
+	sink_set_valid_fmt(sink, valid_fmt);
+	sink_set_channels(sink, cd->ipc_config.base.audio_fmt.channels_count);
+	sink_set_buffer_fmt(sink, cd->ipc_config.base.audio_fmt.interleaving_style);
 }
 
 #elif CONFIG_IPC_MAJOR_3
@@ -598,35 +609,28 @@ static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 	return 0;
 }
 
-static int src_set_params(struct processing_module *mod)
+static int src_set_params(struct processing_module *mod, struct sof_sink __sparse_cache *sink)
 {
 	return 0;
 }
 
-static void src_set_sink_params(struct comp_dev *dev, struct comp_buffer __sparse_cache *sinkb) {}
+static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_cache *sink)
+{
+	/* empty */
+}
+
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-static inline void src_update_buffer_position(struct input_stream_buffer *input_buffers,
-					      struct output_stream_buffer *output_buffers,
-					      int *n_read, int *n_written)
-{
-	struct audio_stream __sparse_cache *source = input_buffers->data;
-	struct audio_stream __sparse_cache *sink = output_buffers->data;
-
-	input_buffers->consumed += audio_stream_frame_bytes(source) * (*n_read);
-	output_buffers->size += audio_stream_frame_bytes(sink) * (*n_written);
-}
-
-static void src_set_alignment(struct audio_stream __sparse_cache *source,
-			      struct audio_stream __sparse_cache *sink)
+static void src_set_alignment(struct sof_source __sparse_cache *source,
+			      struct sof_sink __sparse_cache *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
 
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+	source_set_alignment_constants(source, byte_align, frame_align_req);
+	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
 static int src_verify_params(struct processing_module *mod)
@@ -667,8 +671,8 @@ static int src_verify_params(struct processing_module *mod)
 }
 
 static int src_get_copy_limits(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       const struct audio_stream __sparse_cache *sink)
+			       struct sof_source __sparse_cache *source,
+			       struct sof_sink __sparse_cache *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
@@ -684,22 +688,20 @@ static int src_get_copy_limits(struct comp_data *cd,
 	/* Calculate how many blocks can be processed with
 	 * available source and free sink frames amount.
 	 */
+	frames_snk = sink_get_free_frames(sink);
+	frames_src = source_get_data_frames_available(source);
 	if (s2->filter_length > 1) {
 		/* Two polyphase filters case */
-		frames_snk = audio_stream_get_free_frames(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
-		frames_src = audio_stream_get_avail_frames(source);
 		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
 	} else {
 		/* Single polyphase filter case */
-		frames_snk = audio_stream_get_free_frames(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
-		frames_src = audio_stream_get_avail_frames(source);
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
 		sp->blk_in = sp->stage1_times * s1->blk_in;
@@ -712,54 +714,12 @@ static int src_get_copy_limits(struct comp_data *cd,
 	return 0;
 }
 
-static int src_check_buffer_sizes(struct comp_dev *dev, struct comp_data *cd,
-				  struct audio_stream __sparse_cache *source_stream,
-				  struct audio_stream __sparse_cache *sink_stream)
-{
-	struct src_stage *s1 = cd->src.stage1;
-	struct src_stage *s2 = cd->src.stage2;
-	int stage1_times;
-	int stage2_times;
-	int blk_in;
-	int blk_out;
-	int n;
-
-	if (s2->filter_length > 1) {
-		/* Two polyphase filters case */
-		stage2_times = ceil_divide(cd->sink_frames, s2->blk_out);
-		stage1_times = ceil_divide(cd->source_frames, s1->blk_in);
-		blk_in = stage1_times * s1->blk_in;
-		blk_out = stage2_times * s2->blk_out;
-	} else {
-		/* Single polyphase filter case */
-		stage1_times = ceil_divide(cd->sink_frames, s1->blk_out);
-		n = ceil_divide(cd->source_frames, s1->blk_in);
-		stage1_times = MAX(stage1_times, n);
-		blk_in = stage1_times * s1->blk_in;
-		blk_out = stage1_times * s1->blk_out;
-	}
-
-	n = audio_stream_frame_bytes(source_stream) * (blk_in + cd->source_frames);
-	if (audio_stream_get_size(source_stream) < n) {
-		comp_warn(dev, "Source size %d is less than required %d",
-			  audio_stream_get_size(source_stream), n);
-	}
-
-	n = audio_stream_frame_bytes(sink_stream) * (blk_out + cd->sink_frames);
-	if (audio_stream_get_size(sink_stream) < n) {
-		comp_warn(dev, "Sink size %d is less than required %d",
-			  audio_stream_get_size(sink_stream), n);
-	}
-
-	return 0;
-}
-
-static int src_params_general(struct processing_module *mod)
+static int src_params_general(struct processing_module *mod,
+			      struct sof_source __sparse_cache *source,
+			      struct sof_sink __sparse_cache *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	size_t delay_lines_size;
 	int32_t *buffer_start;
 	int n;
@@ -767,7 +727,7 @@ static int src_params_general(struct processing_module *mod)
 
 	comp_info(dev, "src_params()");
 
-	err = src_set_params(mod);
+	err = src_set_params(mod, sink);
 	if (err < 0) {
 		comp_err(dev, "src_params(): set params failed.");
 		return err;
@@ -779,18 +739,13 @@ static int src_params_general(struct processing_module *mod)
 		return err;
 	}
 
-	/* src components will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-	src_set_sink_params(dev, sink_c);
+	src_set_sink_params(dev, sink);
 
 #if CONFIG_IPC_MAJOR_3
 	/* Set source/sink_rate/frames */
-	cd->channels_count = audio_stream_get_channels(&source_c->stream);
-	cd->source_rate = audio_stream_get_rate(&source_c->stream);
-	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
+	cd->channels_count = source_get_channels(source);
+	cd->source_rate = source_get_rate(source);
+	cd->sink_rate = sink_get_rate(sink);
 	cd->sample_container_bytes = mod->stream_params->sample_container_bytes;
 #endif
 	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
@@ -799,8 +754,7 @@ static int src_params_general(struct processing_module *mod)
 		 cd->sample_container_bytes, cd->channels_count, dev->frames);
 	if (!cd->sink_rate) {
 		comp_err(dev, "src_params(), zero sink rate");
-		err = -EINVAL;
-		goto out;
+		return  -EINVAL;
 	}
 
 	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
@@ -810,7 +764,7 @@ static int src_params_general(struct processing_module *mod)
 	err = src_buffer_lengths(dev, cd, cd->channels_count);
 	if (err < 0) {
 		comp_err(dev, "src_params(): src_buffer_lengths() failed");
-		goto out;
+		return err;
 	}
 
 	/*
@@ -822,8 +776,7 @@ static int src_params_general(struct processing_module *mod)
 	if (delay_lines_size == 0) {
 		comp_err(dev, "src_params(): delay_lines_size = 0");
 
-		err = -EINVAL;
-		goto out;
+		return  -EINVAL;
 	}
 
 	/* free any existing delay lines. TODO reuse if same size */
@@ -833,8 +786,7 @@ static int src_params_general(struct processing_module *mod)
 	if (!cd->delay_lines) {
 		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %u",
 			 delay_lines_size);
-		err = -EINVAL;
-		goto out;
+		return  -EINVAL;
 	}
 
 	/* Clear all delay lines here */
@@ -866,43 +818,27 @@ static int src_params_general(struct processing_module *mod)
 		 */
 		comp_info(dev, "src_params(), missing coefficients for requested rates combination");
 		cd->src_func = src_fallback;
-		err = -EINVAL;
+		return  -EINVAL;
 	}
 
-out:
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
-	return err;
+	return 0;
 }
 
-static int src_prepare_general(struct processing_module *mod)
+static int src_prepare_general(struct processing_module *mod,
+			       struct sof_source __sparse_cache *source,
+			       struct sof_sink __sparse_cache *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	int ret;
+	int ret = 0;
 #if CONFIG_IPC_MAJOR_3
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 #endif
 
-	/* SRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
 
 	/* set align requirements */
-	src_set_alignment(&source_c->stream, &sink_c->stream);
-
-	ret = src_check_buffer_sizes(dev, cd, &source_c->stream, &sink_c->stream);
-	if (ret < 0)
-		goto out;
+	src_set_alignment(source, sink);
 
 #if CONFIG_IPC_MAJOR_4
 	switch (cd->ipc_config.base.audio_fmt.depth) {
@@ -932,8 +868,8 @@ static int src_prepare_general(struct processing_module *mod)
 	}
 #elif CONFIG_IPC_MAJOR_3
 	/* get source/sink data format */
-	source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
+	source_format = source_get_frm_fmt(source);
+	sink_format = sink_get_frm_fmt(sink);
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (source_format != sink_format) {
@@ -972,9 +908,6 @@ static int src_prepare_general(struct processing_module *mod)
 out:
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	return ret;
 }
@@ -1036,46 +969,44 @@ static int src_init(struct processing_module *mod)
 	return 0;
 }
 
-static int src_prepare(struct processing_module *mod)
+static int src_prepare(struct processing_module *mod,
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	int ret;
 
 	comp_info(mod->dev, "src_prepare()");
 
-	ret = src_params_general(mod);
+	if (num_of_sources != 1 || num_of_sinks != 1)
+		return -EINVAL;
+
+	ret = src_params_general(mod, sources[0], sinks[0]);
 	if (ret < 0)
 		return ret;
 
-	return src_prepare_general(mod);
+	return src_prepare_general(mod, sources[0], sinks[0]);
 }
 
 static int src_process(struct processing_module *mod,
-		       struct input_stream_buffer *input_buffers, int num_input_buffers,
-		       struct output_stream_buffer *output_buffers, int num_output_buffers)
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	/* src component needs 1 source and 1 sink buffer */
-	struct audio_stream __sparse_cache *source_c = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink_c = output_buffers[0].data;
-	int consumed = 0;
-	int produced = 0;
 	int ret;
 
 	comp_dbg(dev, "src_process()");
 
-	ret = src_get_copy_limits(cd, source_c, sink_c);
+	/* src component needs 1 source and 1 sink */
+	ret = src_get_copy_limits(cd, sources[0], sinks[0]);
 	if (ret) {
 		comp_dbg(dev, "No data to process.");
 		return 0;
 	}
 
-	cd->src_func(dev, cd, source_c, sink_c, &consumed, &produced);
-	src_update_buffer_position(input_buffers, output_buffers, &consumed, &produced);
+	ret = cd->src_func(cd, sources[0], sinks[0]);
 
-	comp_dbg(dev, "src_process(), consumed = %u,  produced = %u", consumed, produced);
-
-	return 0;
+	return ret;
 }
 
 static int src_set_config(struct processing_module *mod, uint32_t config_id,
@@ -1120,7 +1051,7 @@ static int src_free(struct processing_module *mod)
 static struct module_interface src_interface = {
 	.init  = src_init,
 	.prepare = src_prepare,
-	.process_audio_stream = src_process,
+	.process = src_process,
 	.set_configuration = src_set_config,
 	.get_configuration = src_get_config,
 	.reset = src_reset,
