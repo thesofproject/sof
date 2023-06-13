@@ -774,6 +774,29 @@ audio_stream_rewind_bytes_without_wrap(const struct audio_stream __sparse_cache 
 }
 
 /**
+ * @brief Calculate position of write pointer to the position before the data was copied
+ * to source buffer.
+ * @param source Stream to get information from.
+ * @param bytes  Number of bytes copied to source buffer.
+ * @return Previous position of the write pointer.
+ */
+static inline uint32_t
+*audio_stream_rewind_wptr_by_bytes(const struct audio_stream __sparse_cache *source,
+				       const uint32_t bytes)
+{
+	void *wptr = audio_stream_get_wptr(source);
+	int to_begin = audio_stream_rewind_bytes_without_wrap(source, wptr);
+
+	assert((intptr_t)wptr >= (intptr_t)source->addr);
+	assert((intptr_t)source->end_addr > (intptr_t)wptr);
+
+	if (to_begin > bytes)
+		return (uint32_t *)((intptr_t)wptr - bytes);
+	else
+		return (uint32_t *)((intptr_t)source->end_addr - (bytes - to_begin));
+}
+
+/**
  * @brief Calculates numbers of s16 samples to buffer wrap when buffer
  * is read forward towards end address.
  * @param source Stream to get information from.
