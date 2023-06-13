@@ -81,6 +81,22 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,USE_CHAIN_DMA=
 DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
+"sof-hda-generic\;sof-hda-efx-mbdrc-generic\;\
+HDA_CONFIG=efx,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
+
+"sof-hda-generic\;sof-hda-efx-mbdrc-generic-2ch\;\
+HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
+USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
+
+"sof-hda-generic\;sof-hda-efx-mbdrc-generic-4ch\;\
+HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,USE_CHAIN_DMA=true,\
+DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
+
 # CAVS HDA topology with gain and SRC before mixin for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-src-generic\;HDA_CONFIG=src,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 
