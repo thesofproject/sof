@@ -1061,16 +1061,23 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
-static int copier_unbind(struct comp_dev *dev, void *data)
+static int copier_mod_unbind(struct processing_module *mod, void *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct dai_data *dd = cd->dd[0];
 
 	if (dev->ipc_config.type == SOF_COMP_DAI)
 		return dai_zephyr_unbind(dd, dev, data);
 
 	return 0;
+}
+
+static int copier_unbind(struct comp_dev *dev, void *data)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	return copier_mod_unbind(mod, data);
 }
 
 static const struct comp_driver comp_copier = {
