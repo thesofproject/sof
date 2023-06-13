@@ -326,15 +326,11 @@ static int aria_copy(struct comp_dev *dev)
 		goto out;
 
 	buffer_stream_invalidate(source_c, copy_bytes);
-
 	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0, copy_samples);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in, copy_bytes);
 
 	aria_process_data(dev, cd->buf_out, copy_samples, cd->buf_in, copy_samples);
 
-	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out, copy_bytes);
 	audio_stream_copy_from_linear(cd->buf_out, 0, &sink_c->stream, 0, copy_samples);
-
 	buffer_stream_writeback(sink_c, copy_bytes);
 
 	comp_update_buffer_produce(sink_c, copy_bytes);
