@@ -13,6 +13,8 @@
 #define __SOF_AUDIO_MODULE_GENERIC__
 
 #include <sof/audio/component.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/sink_api.h>
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
 #include "module_interface.h"
@@ -180,10 +182,22 @@ struct processing_module {
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
-	uint32_t num_input_buffers; /**< number of input buffers */
-	uint32_t num_output_buffers; /**< number of output buffers */
+	union {
+		struct {
+			/* this is used in case of raw data or audio_stream mode */
+			struct input_stream_buffer *input_buffers;
+			struct output_stream_buffer *output_buffers;
+			uint32_t num_input_buffers; /**< number of inputs */
+			uint32_t num_output_buffers; /**< number of outputs */
+		};
+		struct {
+			/* this is used in case of sink/source processing */
+			struct sof_source __sparse_cache *sources[MODULE_MAX_SOURCES];
+			struct sof_sink __sparse_cache *sinks[MODULE_MAX_SOURCES];
+			uint32_t num_of_sources;
+			uint32_t num_of_sinks;
+		};
+	};
 
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
