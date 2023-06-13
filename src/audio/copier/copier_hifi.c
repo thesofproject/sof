@@ -31,7 +31,8 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	ae_valign uu = AE_ZALIGN64();
 	ae_valign su = AE_ZALIGN64();
 	int remaining_samples = frame * audio_stream_get_channels(&sink->stream);
-	uint32_t *dst = audio_stream_get_rptr(&sink->stream);
+	uint32_t bytes = frame * audio_stream_frame_bytes(&sink->stream);
+	uint32_t *dst = audio_stream_rewind_wptr_by_bytes(&sink->stream, bytes);
 	ae_int32x2 *in = (ae_int32x2 *)dst;
 	ae_int32x2 *out = (ae_int32x2 *)dst;
 
