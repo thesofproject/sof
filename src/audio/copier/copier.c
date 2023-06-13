@@ -223,26 +223,15 @@ static void copier_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int copier_prepare(struct comp_dev *dev)
+static int copier_mod_prepare(struct processing_module *mod,
+			      struct sof_source __sparse_cache **sources, int num_of_sources,
+			      struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	comp_dbg(dev, "copier_prepare()");
-
-	/* cannot configure DAI while active */
-	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "copier_config_prepare(): Component is in active state.");
-		return 0;
-	}
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -276,6 +265,27 @@ static int copier_prepare(struct comp_dev *dev)
 	}
 
 	return 0;
+}
+
+static int copier_prepare(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
+
+	/* cannot configure DAI while active */
+	if (dev->state == COMP_STATE_ACTIVE) {
+		comp_info(dev, "copier_config_prepare(): Component is in active state.");
+		return 0;
+	}
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return copier_mod_prepare(mod, NULL, 0, NULL, 0);
 }
 
 static int copier_mod_reset(struct processing_module *mod)
@@ -626,11 +636,11 @@ static int copier_copy(struct comp_dev *dev)
 	return do_multi_endpoint_module_copy(cd, dev);
 }
 
-/* configure the DMA params */
-static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+static int copier_mod_params(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int i, ret = 0;
 
 	comp_dbg(dev, "copier_params()");
@@ -658,6 +668,17 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	}
 
 	return ret;
+}
+
+/* configure the DMA params */
+static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	/* will remove once fully convert to module interface in last patch */
+	mod->stream_params = params;
+
+	return copier_mod_params(mod);
 }
 
 static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
