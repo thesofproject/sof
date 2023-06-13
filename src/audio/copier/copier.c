@@ -778,22 +778,40 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 	return 0;
 }
 
+static int copier_set_configuration(struct processing_module *mod,
+				    uint32_t config_id,
+				    enum module_cfg_fragment_position pos,
+				    uint32_t data_offset_size,
+				    const uint8_t *fragment, size_t fragment_size,
+				    uint8_t *response,
+				    size_t response_size)
+{
+	struct comp_dev *dev = mod->dev;
+
+	comp_dbg(dev, "copier_set_config()");
+
+	switch (config_id) {
+	case IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT:
+		return copier_set_sink_fmt(dev, fragment, fragment_size);
+	case IPC4_COPIER_MODULE_CFG_ATTENUATION:
+		return set_attenuation(dev, fragment_size, fragment);
+	default:
+		return -EINVAL;
+	}
+}
+
 static int copier_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				   bool first_block,
 				   bool last_block,
 				   uint32_t data_offset,
 				   const char *data)
 {
+	struct processing_module *mod = comp_get_drvdata(dev);
+
 	comp_dbg(dev, "copier_set_large_config()");
 
-	switch (param_id) {
-	case IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT:
-		return copier_set_sink_fmt(dev, data, data_offset);
-	case IPC4_COPIER_MODULE_CFG_ATTENUATION:
-		return set_attenuation(dev, data_offset, data);
-	default:
-		return -EINVAL;
-	}
+	return copier_set_configuration(mod, param_id, MODULE_CFG_FRAGMENT_SINGLE,
+					data_offset, data, data_offset, NULL, 0);
 }
 
 static inline void convert_u64_to_u32s(uint64_t val, uint32_t *val_l, uint32_t *val_h)
@@ -802,22 +820,20 @@ static inline void convert_u64_to_u32s(uint64_t val, uint32_t *val_l, uint32_t *
 	*val_h = (uint32_t)((val >> 32) & 0xffffffff);
 }
 
-static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t *data_offset,
-				   char *data)
+static int copier_get_configuration(struct processing_module *mod,
+				    uint32_t config_id, uint32_t *data_offset_size,
+				    uint8_t *fragment, size_t fragment_size)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading_extended llp_ext;
+	struct comp_dev *dev = mod->dev;
+	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading llp;
 
 	if (cd->ipc_gtw)
 		return 0;
 
-	switch (param_id) {
+	switch (config_id) {
 	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING:
 		if (!cd->endpoint_num ||
 		    comp_get_endpoint_type(dev) !=
@@ -826,16 +842,16 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 			return -EINVAL;
 		}
 
-		if (*data_offset < sizeof(struct ipc4_llp_reading)) {
-			comp_err(dev, "Config size %d is inadequate", *data_offset);
+		if (*data_offset_size < sizeof(struct ipc4_llp_reading)) {
+			comp_err(dev, "Config size %d is inadequate", *data_offset_size);
 			return -EINVAL;
 		}
 
-		*data_offset = sizeof(struct ipc4_llp_reading);
+		*data_offset_size = sizeof(struct ipc4_llp_reading);
 		memset(&llp, 0, sizeof(llp));
 
 		if (dev->state != COMP_STATE_ACTIVE) {
-			memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
+			memcpy_s(fragment, sizeof(llp), &llp, sizeof(llp));
 			return 0;
 		}
 
@@ -844,7 +860,7 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 
 		convert_u64_to_u32s(posn.comp_posn, &llp.llp_l, &llp.llp_u);
 		convert_u64_to_u32s(posn.wallclock, &llp.wclk_l, &llp.wclk_u);
-		memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
+		memcpy_s(fragment, sizeof(llp), &llp, sizeof(llp));
 
 		return 0;
 
@@ -856,16 +872,16 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 			return -EINVAL;
 		}
 
-		if (*data_offset < sizeof(struct ipc4_llp_reading_extended)) {
-			comp_err(dev, "Config size %d is inadequate", *data_offset);
+		if (*data_offset_size < sizeof(struct ipc4_llp_reading_extended)) {
+			comp_err(dev, "Config size %d is inadequate", *data_offset_size);
 			return -EINVAL;
 		}
 
-		*data_offset = sizeof(struct ipc4_llp_reading_extended);
+		*data_offset_size = sizeof(struct ipc4_llp_reading_extended);
 		memset(&llp_ext, 0, sizeof(llp_ext));
 
 		if (dev->state != COMP_STATE_ACTIVE) {
-			memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
+			memcpy_s(fragment, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
 			return 0;
 		}
 
@@ -878,16 +894,27 @@ static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
 				    &llp_ext.llp_reading.wclk_u);
 
 		convert_u64_to_u32s(posn.dai_posn, &llp_ext.tpd_low, &llp_ext.tpd_high);
-		memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
+		memcpy_s(fragment, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
 
 		return 0;
 
 	default:
-		comp_err(dev, "unsupported param %d", param_id);
+		comp_err(dev, "unsupported param %d", config_id);
 		break;
 	}
 
 	return -EINVAL;
+}
+
+static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t *data_offset,
+				   char *data)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	return copier_get_configuration(mod, param_id, data_offset, data, 0);
 }
 
 static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
