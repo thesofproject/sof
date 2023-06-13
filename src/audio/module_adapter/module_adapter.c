@@ -729,9 +729,17 @@ static int module_adapter_simple_copy(struct comp_dev *dev)
 	}
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer __sparse_cache *buffer_c;
 		struct comp_buffer *source;
+		struct comp_dev *source_dev;
 
 		source = container_of(blist, struct comp_buffer, sink_list);
+		buffer_c = buffer_acquire(source);
+		source_dev = buffer_c->source;
+		buffer_release(buffer_c);
+		if (source_dev->virtual_module)
+			source = list_first_item(&source_dev->bsource_list, struct comp_buffer,
+						 sink_list);
 		source_c[i++] = buffer_acquire(source);
 	}
 
@@ -827,6 +835,9 @@ out:
 
 int module_adapter_copy(struct comp_dev *dev)
 {
+	if (dev->virtual_module)
+		return 0;
+
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *source, *sink;

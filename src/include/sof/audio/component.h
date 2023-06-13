@@ -599,6 +599,8 @@ struct comp_dev {
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
+	bool virtual_module;
+
 	/* private data - core does not touch this */
 	void *priv_data;	/**< private data */
 
