@@ -27,6 +27,8 @@
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 
 #define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
+
+#define PROBE_DMA_ELEM_SIZE	    1024
 #endif /* __PLATFORM_LIB_DMA_H__ */
 #else
 #error "This file shouldn't be included from outside of sof/lib/dma.h"

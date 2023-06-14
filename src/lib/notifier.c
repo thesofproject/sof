@@ -109,6 +109,7 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 		    (!caller || handle->caller == caller)) {
 			if (!--handle->num_registrations) {
 				list_item_del(&handle->list);
+				list_item_del(&notify->list[NOTIFIER_ID_BUFFER_PRODUCE]);
 				rfree(handle);
 			}
 		}

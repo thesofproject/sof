@@ -22,6 +22,7 @@
 	irqstr_get_sof_int(((int *)dma->plat_data.drv_plat_data)[chan])
 #define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
 
+#define PROBE_DMA_ELEM_SIZE	    32
 #endif /* __PLATFORM_LIB_DMA_H__ */
 
 #else

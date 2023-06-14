@@ -47,6 +47,7 @@
 
 #define SDMA_CORE_RATIO 1/* Enable ACR bit as it's needed for this platform */
 
+#define PROBE_DMA_ELEM_SIZE	    32
 #endif /* __PLATFORM_LIB_DMA_H__ */
 
 #else

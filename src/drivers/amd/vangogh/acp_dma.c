@@ -25,7 +25,8 @@
 #define ACP_MAX_STREAMS				8
 #define ACP_DMA_BUFFER_PERIOD_COUNT		2
 #define ACP_SYST_MEM_WINDOW			0x4000000
-
+#define PROBE_UPDATE_POS			0x80000000
+static uint32_t probe_pos_update, probe_pos;
 /* Need to look for proper uuid for amd platform*/
 DECLARE_SOF_UUID("acpdma", acpdma_uuid, 0x70f2d3f2, 0xcbb6, 0x4984,
 		 0xa2, 0xd8, 0x0d, 0xd5, 0x14, 0xb8, 0x0b, 0xc2);
@@ -48,6 +49,8 @@ struct acp_dma_config {
 	uint32_t sys_buff_size;
 	/* virtual system memory offset for system memory buffer */
 	uint32_t phy_off;
+		/* probe_channel id  */
+	uint32_t probe_channel;
 };
 
 struct acp_dma_chan_data {
@@ -180,6 +183,7 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 						 unsigned int req_chan)
 {
+	uint32_t *p = NULL;
 	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
@@ -203,6 +207,19 @@ static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 
 	acp_dma_chan->config[req_chan].rd_size = 0;
 	acp_dma_chan->config[req_chan].wr_size = 0;
+	acp_dma_chan->config[req_chan].size = 0;
+	acp_dma_chan->config[req_chan].probe_channel = 0xFF;
+	p = dma->priv_data;
+	if (p != NULL) {
+		acp_dma_chan->config[req_chan].probe_channel = *p;
+		if (acp_dma_chan->config[req_chan].probe_channel == channel->index) {
+			/*probe update pos & flag*/
+			probe_pos_update = 0;
+			probe_pos = 0;
+			io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0),
+				0);
+		}
+	}
 	return channel;
 }
 
@@ -218,6 +235,15 @@ static void acp_dma_channel_put(struct dma_chan_data *channel)
 	/* reset read and write pointer */
 	acp_dma_chan->config[channel->index].rd_size = 0;
 	acp_dma_chan->config[channel->index].wr_size = 0;
+	acp_dma_chan->config[channel->index].size = 0;
+	if (acp_dma_chan->config[channel->index].probe_channel == channel->index) {
+		acp_dma_chan->config[channel->index].probe_channel = 0XFF;
+		probe_pos_update = 0;
+		probe_pos = 0;
+		/*probe update pos & flag*/
+		io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0),
+		(PROBE_UPDATE_POS | 0));
+	}
 }
 
 /* Stop the requested channel */
@@ -340,10 +366,11 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 		.elem.size = bytes,
 	};
 	acp_dma_ch_sts_t ch_sts;
+	struct acp_dma_chan_data *acp_dma_chan;
 	uint32_t dmach_mask = (1 << channel->index);
 	int ret = 0;
-
-	if (flags & DMA_COPY_ONE_SHOT) {
+	acp_dma_chan = dma_chan_get_data(channel);
+	if (channel->index == DMA_TRACE_CHANNEL) {
 		ret = acp_dma_start(channel);
 		if (ret < 0)
 			return ret;
@@ -356,16 +383,30 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 		ret = acp_dma_stop(channel);
 	}
 	/* Reconfigure dma descriptors for stream channels only */
-	if (channel->index != DMA_TRACE_CHANNEL) {
+	else {
 		/* Reconfigure the dma descriptors for next buffer of data after the call back */
 		dma_reconfig(channel, bytes);
 		/* Start the dma for requested channel */
-			acp_dma_start(channel);
+		ret = acp_dma_start(channel);
+		if (ret < 0)
+			return ret;
 		/* Stop the dma for requested channel */
-			acp_dma_stop(channel);
+		ret = acp_dma_stop(channel);
 	}
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+	if (ret >= 0)
+		if (acp_dma_chan->config[channel->index].probe_channel == channel->index) {
+			probe_pos_update += bytes;
+			probe_pos += bytes;
+			if (probe_pos >= (16*1024)) {
+				io_reg_write((PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0),
+				(PROBE_UPDATE_POS | probe_pos_update));
+				acp_dsp_to_host_intr_trig();
+				probe_pos = 0;
+			}
+		}
+
 	return ret;
 }
 
@@ -453,29 +494,38 @@ static int dma_setup(struct dma_chan_data *channel,
 	tc = dma_config_dscr[dscr_strt_idx].trns_cnt.bits.trns_cnt;
 	/* DMA configuration for stream */
 	if (channel->index != DMA_TRACE_CHANNEL) {
-		acp_dma_chan->dir = dir;
-		acp_dma_chan->idx = channel->index;
-		dma_cfg->phy_off =  phy_off[channel->index];
-		dma_cfg->size =  tc * dscr_cnt;
-		dma_cfg->sys_buff_size = syst_buff_size[channel->index];
+		if (!dma_cfg->size) {
+			acp_dma_chan->dir = dir;
+			acp_dma_chan->idx = channel->index;
+			dma_cfg->phy_off =  phy_off[channel->index];
+			dma_cfg->size =  tc * dscr_cnt;
+			dma_cfg->sys_buff_size = syst_buff_size[channel->index];
 
-		if (dir == DMA_DIR_HMEM_TO_LMEM) {
-			/* Playback */
-			dma_config_dscr[dscr_strt_idx].dest_addr =
-				(dma_config_dscr[dscr_strt_idx].dest_addr & ACP_DRAM_ADDRESS_MASK);
-			dma_cfg->base  =
-				dma_config_dscr[dscr_strt_idx].dest_addr | ACP_DRAM_ADDR_TRNS;
-			dma_cfg->wr_size = 0;
-			dma_cfg->rd_size = dma_cfg->size;
-		} else {
-			/* Capture */
-			dma_config_dscr[dscr_strt_idx].src_addr =
-				(dma_config_dscr[dscr_strt_idx].src_addr & ACP_DRAM_ADDRESS_MASK);
-			dma_cfg->base =
-				dma_config_dscr[dscr_strt_idx].src_addr | ACP_DRAM_ADDR_TRNS;
-			dma_cfg->wr_size = dma_cfg->size;
-			dma_cfg->rd_size = 0;
-		}
+			if (dir == DMA_DIR_HMEM_TO_LMEM) {
+				/* Playback */
+				dma_config_dscr[dscr_strt_idx].dest_addr =
+					(dma_config_dscr[dscr_strt_idx].dest_addr &
+					ACP_DRAM_ADDRESS_MASK);
+				dma_cfg->base  =
+					dma_config_dscr[dscr_strt_idx].dest_addr |
+					ACP_DRAM_ADDR_TRNS;
+				dma_cfg->wr_size = 0;
+				dma_cfg->rd_size = dma_cfg->size;
+			} else {
+				/* Capture */
+				dma_config_dscr[dscr_strt_idx].src_addr =
+					(dma_config_dscr[dscr_strt_idx].src_addr &
+					ACP_DRAM_ADDRESS_MASK);
+				dma_cfg->base =
+					dma_config_dscr[dscr_strt_idx].src_addr |
+					ACP_DRAM_ADDR_TRNS;
+			if (dma_cfg->probe_channel == channel->index)
+				dma_cfg->wr_size = 0;
+			else
+				dma_cfg->wr_size = dma_cfg->size;
+				dma_cfg->rd_size = 0;
+			}
+}
 	}
 	/* clear the dma channel control bits */
 	dma_cntl = (acp_dma_cntl_0_t)dma_chan_reg_read(channel, ACP_DMA_CNTL_0);
@@ -505,17 +555,6 @@ static int acp_dma_set_config(struct dma_chan_data *channel,
 
 	channel->direction = config->direction;
 	dir = config->direction;
-	if (config->cyclic) {
-		tr_err(&acpdma_tr,
-		       "DMA: cyclic configurations are not supported");
-		return -EINVAL;
-	}
-	if (config->scatter) {
-		tr_err(&acpdma_tr,
-		       "DMA: scatter is not supported Chan.Index %d scatter %d",
-		       channel->index, config->scatter);
-		return -EINVAL;
-	}
 	return dma_setup(channel, &config->elem_array, dir);
 }
 

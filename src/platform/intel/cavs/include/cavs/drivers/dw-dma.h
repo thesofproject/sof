@@ -50,6 +50,9 @@
 #define DW_CFG_LOW_DEF		0x3
 #define DW_CFG_HIGH_DEF		0x0
 
+/* DMA_ELEM_SIZE for probe configuration	    */
+#define PROBE_DMA_ELEM_SIZE	    32
+
 /* LLPC address */
 #define DW_CHLLPC(dma, chan) \
 	SHIM_GPDMA_CHLLPC((dma)->plat_data.id, (chan)->index)

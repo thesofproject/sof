@@ -14,6 +14,7 @@
 /* number of supported DMACs */
 #define PLATFORM_NUM_DMACS	6
 
+#define PROBE_DMA_ELEM_SIZE	    32
 #endif /* __PLATFORM_LIB_DMA_H__ */
 
 #else
