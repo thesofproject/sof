@@ -1344,6 +1344,7 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 
 static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
 {
+	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
 	int num_sources = 0;
 	int num_sinks = 0;
@@ -1357,8 +1358,12 @@ static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
 	comp_dbg(dev, "num_sources=%d num_sinks=%d", num_sources, num_sinks);
 	if (num_sources > 1 || num_sinks > 1)
 		return true;
-	else
-		return false;
+
+	/* re-assign the source/sink modules */
+	mod->sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	mod->source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+
+	return false;
 }
 
 int module_adapter_bind(struct comp_dev *dev, void *data)
@@ -1405,13 +1410,9 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 	/* set the source dev pointer */
 	mod_source_info->sources[source_index] = source_dev;
 
-	/* Disable 1 source 1 sink simple copy mode if multiple source buffers */
-	if (module_adapter_multi_sink_source_check(dev)) {
-		comp_dbg(dev, "module_adapter_bind(), multi_sink_or_source = true");
-		mod->multi_source_or_sink = true;
-	}
-
 	module_source_info_release(mod_source_info);
+
+	mod->multi_source_or_sink = module_adapter_multi_sink_source_check(dev);
 
 	return 0;
 }
@@ -1445,13 +1446,8 @@ int module_adapter_unbind(struct comp_dev *dev, void *data)
 	if (source_index >= 0)
 		mod_source_info->sources[source_index] = NULL;
 
-	/* Re-enable 1 source 1 sink simple copy mode if single source buffer */
-	if (mod->simple_copy && !module_adapter_multi_sink_source_check(dev)) {
-		comp_dbg(dev, "module_adapter_bind(), multi_sink_or_source = false");
-		mod->multi_source_or_sink = false;
-	}
-
 	module_source_info_release(mod_source_info);
+	mod->multi_source_or_sink = module_adapter_multi_sink_source_check(dev);
 
 	return 0;
 }
