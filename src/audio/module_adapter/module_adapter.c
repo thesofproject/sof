@@ -14,6 +14,10 @@
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/sink_source_utils.h>
+#include <sof/audio/dp_queue.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -386,6 +390,107 @@ static int module_adapter_legacy_prepare(struct comp_dev *dev)
 	return ret;
 }
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
+{
+	struct list_item *blist;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int i;
+	int ret;
+	struct dp_queue *dp_queue;
+
+	/* for DP processing we need to create a DP QUEUE for each module input/output
+	 * till pipeline2.0 is ready, DP processing requires double buffering
+	 */
+
+	/* TODO: calculate proper DP queues sizes. buffers.c should have 1ms
+	 * TODO: shared/not shared
+	 */
+
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source_buffer;
+		struct comp_buffer __sparse_cache *source_buffer_c;
+
+		source_buffer = container_of(blist, struct comp_buffer, sink_list);
+		source_buffer_c = buffer_acquire(source_buffer);
+		/*
+		 * IBS - size of source buffer
+		 * OBS - size required by the DP component TODO
+		 */
+		dp_queue = dp_queue_create(audio_stream_get_size(&source_buffer_c->stream),
+					   audio_stream_get_size(&source_buffer_c->stream),
+					   dev->is_shared ?
+						DP_QUEUE_MODE_SHARED : DP_QUEUE_MODE_SIMPLE,
+					   &source_buffer->stream.runtime_stream_params);
+		buffer_release(source_buffer_c);
+		if (!dp_queue)
+			goto err;
+		mod->sources[i] = dp_queue_get_source(dp_queue);
+		i++;
+	}
+	mod->num_of_sources = i;
+
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink_buffer;
+		struct comp_buffer __sparse_cache *sink_buffer_c;
+
+		sink_buffer = container_of(blist, struct comp_buffer, source_list);
+		sink_buffer_c = buffer_acquire(sink_buffer);
+		/*
+		 * IBS - size required by the DP component TODO
+		 * OBS - size of destination buffer
+		 */
+		dp_queue = dp_queue_create(audio_stream_get_size(&sink_buffer_c->stream),
+					   audio_stream_get_size(&sink_buffer_c->stream),
+					   dev->is_shared ?
+						DP_QUEUE_MODE_SHARED : DP_QUEUE_MODE_SIMPLE,
+					   &sink_buffer->stream.runtime_stream_params);
+		buffer_release(sink_buffer_c);
+		if (!dp_queue)
+			goto err;
+		mod->sinks[i] = dp_queue_get_sink(dp_queue);
+
+		i++;
+	}
+	mod->num_of_sinks = i;
+
+	/* call the module prepare */
+	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
+
+	if (ret)
+		goto err;
+
+	return 0;
+
+err:
+	for (int i = 0; i < mod->num_of_sources; i++)
+		if (mod->sources[i]) {
+			struct dp_queue *dp_queue = dp_queue_get_from_source(mod->sources[i]);
+
+			dp_queue_free(dp_queue);
+			mod->sources[i] = NULL;
+		}
+	mod->num_of_sinks = 0;
+
+	for (int i = 0; i < mod->num_of_sinks; i++)
+		if (mod->sinks[i]) {
+			struct dp_queue *dp_queue = dp_queue_get_from_sink(mod->sinks[i]);
+
+			dp_queue_free(dp_queue);
+			mod->sinks[i] = NULL;
+		}
+	mod->num_of_sinks = 0;
+	return -ENOMEM;
+}
+#else
+static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
+{
+	return -EINVAL;
+}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
 /*
  * \brief Prepare the module
  * \param[in] dev - component device pointer.
@@ -401,11 +506,21 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_adapter_prepare() start");
 
-	/* Prepare module */
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
+	    mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+
+		ret = module_adapter_dp_queue_prepare(dev);
+
+	else if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
+		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+
 		ret = module_adapter_sink_src_prepare(dev);
-	else if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod))
+
+	else if ((IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) &&
+		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+
 		ret = module_adapter_legacy_prepare(dev);
+
 	else
 		ret = -EINVAL;
 
@@ -926,6 +1041,72 @@ out:
 	return ret;
 }
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+static int module_adapter_copy_dp_queues(struct comp_dev *dev)
+{
+	/*
+	 * copy data from component audio streams to dp_queue
+	 * DP module processing itself will take place in DP thread
+	 * This is an adapter, to be removed when pipeline2.0 is ready
+	 */
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int i = 0;
+	struct list_item *blist;
+
+	list_for_item(blist, &dev->bsource_list) {
+		/* input - we need to copy data from source audio_stream to dp_queue
+		 * this is a bit tricky - the dp_queue from the component point of
+		 * view is a source, yet this procedure must copy data to it, so a sink
+		 * handler to the dp_queue is needed
+		 */
+		struct dp_queue *dp_queue = dp_queue_get_from_source(mod->sources[i]);
+		struct sof_sink __sparse_cache *dp_queue_as_sink = dp_queue_get_sink(dp_queue);
+		struct comp_buffer *buffer =
+				container_of(blist, struct comp_buffer, sink_list);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+		struct sof_source __sparse_cache *audio_stream_as_source =
+				audio_stream_get_source(&buffer_c->stream);
+
+		uint32_t to_copy = MIN(sink_get_free_size(dp_queue_as_sink),
+				       source_get_data_available(audio_stream_as_source));
+
+		source_to_sink_copy(audio_stream_as_source, dp_queue_as_sink, true, to_copy);
+
+		buffer_release(buffer_c);
+		i++;
+	}
+
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		/* output - same trick here. The sink from the component point of view
+		 * is a source od data that must be copied to audio_stream
+		 */
+		struct dp_queue *dp_queue = dp_queue_get_from_sink(mod->sinks[i]);
+		struct sof_source __sparse_cache *dp_queue_as_source =
+				dp_queue_get_source(dp_queue);
+		struct comp_buffer *buffer =
+				container_of(blist, struct comp_buffer, source_list);
+		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+		struct sof_sink __sparse_cache *audio_stream_as_sink =
+				audio_stream_get_sink(&buffer_c->stream);
+
+		uint32_t to_copy = MIN(sink_get_free_size(audio_stream_as_sink),
+				       source_get_data_available(dp_queue_as_source));
+
+		source_to_sink_copy(dp_queue_as_source, audio_stream_as_sink, true, to_copy);
+
+		buffer_release(buffer_c);
+		i++;
+	}
+	return 0;
+}
+#else
+static int module_adapter_copy_dp_queues(struct comp_dev *dev)
+{
+	return -ENOTSUP;
+}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
 static int module_adapter_sink_source_copy(struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *source_buffers_c[PLATFORM_MAX_STREAMS];
@@ -1086,6 +1267,9 @@ int module_adapter_copy(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_copy(): start");
 
 	struct processing_module *mod = comp_get_drvdata(dev);
+
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		return module_adapter_copy_dp_queues(dev);
 
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		return module_adapter_audio_stream_type_copy(dev);
@@ -1319,6 +1503,27 @@ int module_adapter_reset(struct comp_dev *dev)
 		mod->num_output_buffers = 0;
 	}
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
+	    mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		for (int i = 0; i < mod->num_of_sources; i++)
+			if (mod->sources[i]) {
+				struct dp_queue *dp_queue =
+						dp_queue_get_from_source(mod->sources[i]);
+				dp_queue_free(dp_queue);
+				mod->sources[i] = NULL;
+			}
+		mod->num_of_sources = 0;
+		for (int i = 0; i < mod->num_of_sinks; i++)
+			if (mod->sinks[i]) {
+				struct dp_queue *dp_queue =
+						dp_queue_get_from_sink(mod->sinks[i]);
+				dp_queue_free(dp_queue);
+				mod->sinks[i] = NULL;
+			}
+		mod->num_of_sinks = 0;
+	}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
 
