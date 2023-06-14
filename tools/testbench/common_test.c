@@ -196,7 +196,6 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p)
 int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipeline *p,
 		       struct tplg_context *ctx)
 {
-	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	struct sof_ipc_pcm_params params = {{0}};
 	char message[DEBUG_MSG_LEN];
@@ -243,13 +242,6 @@ int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipelin
 
 	params.params.host_period_bytes = fs_period * params.params.channels *
 		params.params.sample_container_bytes;
-
-	/* get scheduling component device for pipeline*/
-	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
-	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp\n");
-		return -EINVAL;
-	}
 
 	/* Get pipeline host component */
 	cd = tb_get_pipeline_host(p);
