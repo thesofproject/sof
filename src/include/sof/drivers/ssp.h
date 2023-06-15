@@ -228,11 +228,13 @@ extern const struct dai_driver ssp_driver;
 #define ssp_irq(ssp) \
 	ssp->plat_data.irq
 
-#define SSP_CLK_MCLK_ES_REQ	BIT(0)
-#define SSP_CLK_MCLK_ACTIVE	BIT(1)
-#define SSP_CLK_BCLK_ES_REQ	BIT(2)
-#define SSP_CLK_BCLK_ACTIVE	BIT(3)
+#define SSP_CLK_MCLK_IS_NEEDED	BIT(1)
+#define SSP_CLK_MCLK_ES_REQ	BIT(2)
+#define SSP_CLK_MCLK_ACTIVE	BIT(3)
 #define SSP_CLK_MCLK_AON_REQ	BIT(4)
+#define SSP_CLK_BCLK_IS_NEEDED	BIT(5)
+#define SSP_CLK_BCLK_ES_REQ	BIT(6)
+#define SSP_CLK_BCLK_ACTIVE	BIT(7)
 
 /* SSP private data */
 struct ssp_pdata {
