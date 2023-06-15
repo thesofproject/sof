@@ -39,4 +39,5 @@ If applicable, add a screenshot (drag-and-drop an image), or console logs
 (cut-and-paste text and put a code fence (\`\`\`) before and after, to help
 explain the issue.
 
-Please also include the relevant sections from the firmware log and kernel log in the report (and attach the full logs for complete reference). Kernel log is taken from *dmesg* and firmware log from *sof-logger*. See https://thesofproject.github.io/latest/developer_guides/debugability/logger/index.html
+**Logs**
+Please include the relevant sections from the firmware log and kernel log(with complete IPC Payloads) in the report (and attach the full logs for complete reference also IPC payloads are required). Kernel log is taken from *dmesg* and firmware log from *sof-logger*. See https://thesofproject.github.io/latest/developer_guides/debugability/logger/index.html
