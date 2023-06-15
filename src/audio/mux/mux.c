@@ -527,18 +527,24 @@ static int mux_process(struct processing_module *mod,
 	struct comp_buffer __sparse_cache *source_c;
 	struct list_item *clist;
 	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
-	int frames;
+	int frames = 0;
 	int sink_bytes;
 	int source_bytes;
-	int i;
+	int i, j;
 
 	comp_dbg(dev, "mux_process()");
 
 	/* align source streams with their respective configurations */
+	j = 0;
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
 		source_c = buffer_acquire(source);
 		if (source_c->source->state == dev->state) {
+			if (frames)
+				frames = MIN(frames, input_buffers[j].size);
+			else
+				frames = input_buffers[j].size;
+
 			i = get_stream_index(dev, cd, source_c->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
@@ -549,13 +555,13 @@ static int mux_process(struct processing_module *mod,
 			sources_stream[i] = &source_c->stream;
 		}
 		buffer_release(source_c);
+		j++;
 	}
 
 	/* check if there are any sources active */
 	if (num_input_buffers == 0)
 		return 0;
 
-	frames = input_buffers[0].size;
 	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
 	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 	mux_prepare_active_look_up(cd, output_buffers[0].data, &sources_stream[0]);
@@ -564,7 +570,16 @@ static int mux_process(struct processing_module *mod,
 	cd->mux(dev, output_buffers[0].data, &sources_stream[0], frames, &cd->active_lookup);
 
 	/* Update consumed and produced */
-	mod->input_buffers[0].consumed = source_bytes;
+	j = 0;
+	list_for_item(clist, &dev->bsource_list) {
+		source = container_of(clist, struct comp_buffer, sink_list);
+		source_c = buffer_acquire(source);
+		if (source_c->source->state == dev->state)
+			mod->input_buffers[j].consumed = source_bytes;
+
+		buffer_release(source_c);
+		j++;
+	}
 	mod->output_buffers[0].size = sink_bytes;
 	return 0;
 }
