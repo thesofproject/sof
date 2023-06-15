@@ -142,13 +142,15 @@ static int ssp_mclk_prepare_enable(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	struct sof_ipc_dai_config *config = &ssp->config;
-	int ret;
+	int ret = 0;
 
 	if (ssp->clk_active & SSP_CLK_MCLK_ACTIVE)
 		return 0;
 
 	/* MCLK config */
-	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+	if (ssp->clk_active & SSP_CLK_MCLK_IS_NEEDED)
+		ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+
 	if (ret < 0)
 		dai_err(dai, "ssp_mclk_prepare_enable(): invalid mclk_rate = %d for mclk_id = %d",
 			config->ssp.mclk_rate, config->ssp.mclk_id);
@@ -165,7 +167,8 @@ static void ssp_mclk_disable_unprepare(struct dai *dai)
 	if (!(ssp->clk_active & SSP_CLK_MCLK_ACTIVE))
 		return;
 
-	mn_release_mclk(ssp->config.ssp.mclk_id);
+	if (ssp->clk_active & SSP_CLK_MCLK_IS_NEEDED)
+		mn_release_mclk(ssp->config.ssp.mclk_id);
 
 	ssp->clk_active &= ~SSP_CLK_MCLK_ACTIVE;
 }
@@ -178,6 +181,9 @@ static int ssp_bclk_prepare_enable(struct dai *dai)
 	uint32_t mdiv;
 	bool need_ecs = false;
 	int ret = 0;
+
+	if (!(ssp->clk_active & SSP_CLK_BCLK_IS_NEEDED))
+		goto out;
 
 	if (ssp->clk_active & SSP_CLK_BCLK_ACTIVE)
 		return 0;
@@ -239,7 +245,8 @@ static void ssp_bclk_disable_unprepare(struct dai *dai)
 	if (!(ssp->clk_active & SSP_CLK_BCLK_ACTIVE))
 		return;
 #if CONFIG_INTEL_MN
-	mn_release_bclk(dai->index);
+	if (ssp->clk_active & SSP_CLK_BCLK_IS_NEEDED)
+		mn_release_bclk(dai->index);
 #endif
 	ssp->clk_active &= ~SSP_CLK_BCLK_ACTIVE;
 }
@@ -344,16 +351,19 @@ static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
 	case SOF_DAI_FMT_CBC_CFC:
+		ssp->clk_active |= SSP_CLK_MCLK_IS_NEEDED | SSP_CLK_BCLK_IS_NEEDED;
 		sscr1 |= SSCR1_SCFR;
 		cfs = true;
 		break;
 	case SOF_DAI_FMT_CBP_CFC:
+		ssp->clk_active |= SSP_CLK_MCLK_IS_NEEDED;
 		sscr1 |= SSCR1_SCLKDIR;
 		/* FIXME: this mode has not been tested */
 
 		cfs = true;
 		break;
 	case SOF_DAI_FMT_CBC_CFP:
+		ssp->clk_active |= SSP_CLK_MCLK_IS_NEEDED | SSP_CLK_BCLK_IS_NEEDED;
 		sscr1 |= SSCR1_SCFR | SSCR1_SFRMDIR;
 		/* FIXME: this mode has not been tested */
 		break;
@@ -868,11 +878,18 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
-	/* ssp blob is set by pcm_hw_params for ipc4 stream, so enable
-	 * mclk and bclk at this time.
+	/* ssp blob is set by pcm_hw_params for ipc4 stream.
+	 * Configure MCLK/BCLK only if SSP is the clock provider
 	 */
-	mn_set_mclk_blob(blob->i2s_driver_config.mclk_config.mdivc,
-			 blob->i2s_driver_config.mclk_config.mdivr);
+	if (!(blob->i2s_driver_config.i2s_config.ssc1 & (SSCR1_SCLKDIR | SSCR1_SFRMDIR))) {
+		ssp->clk_active |= SSP_CLK_MCLK_IS_NEEDED;
+		if (!(blob->i2s_driver_config.i2s_config.ssc1 & SSCR1_SCLKDIR))
+			ssp->clk_active |= SSP_CLK_BCLK_IS_NEEDED;
+
+		mn_set_mclk_blob(blob->i2s_driver_config.mclk_config.mdivc,
+				 blob->i2s_driver_config.mclk_config.mdivr);
+	}
+
 	ssp->clk_active |= SSP_CLK_MCLK_ES_REQ;
 
 	/* enable port */
