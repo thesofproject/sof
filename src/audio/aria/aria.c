@@ -232,6 +232,12 @@ static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data 
 	audio_stream_set_channels(&buffer_c->stream, cd->chan_cnt);
 	audio_stream_set_rate(&buffer_c->stream, cd->base.audio_fmt.sampling_frequency);
 
+#ifdef ARIA_GENERIC
+	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
+#else
+	audio_stream_init_alignment_constants(8, 1, &buffer_c->stream);
+#endif
+
 	buffer_release(buffer_c);
 }
 
@@ -298,11 +304,11 @@ static int aria_trigger(struct comp_dev *dev, int cmd)
 
 static int aria_copy(struct comp_dev *dev)
 {
-	struct comp_copy_limits c;
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct aria_data *cd;
 	uint32_t copy_bytes, copy_samples;
+	uint32_t bytes, frames;
 
 	cd = comp_get_drvdata(dev);
 
@@ -316,14 +322,17 @@ static int aria_copy(struct comp_dev *dev)
 	source_c = buffer_acquire(source);
 	sink_c = buffer_acquire(sink);
 
-	comp_get_copy_limits(source_c, sink_c, &c);
-	copy_bytes = MIN(c.frames * c.source_frame_bytes, cd->base.ibs);
+	frames = audio_stream_avail_frames_aligned(&source_c->stream,
+						   &sink_c->stream);
+	bytes = frames * audio_stream_frame_bytes(&source_c->stream);
 
-	/* Aria algo supports only 4-bytes containers */
-	copy_samples = copy_bytes >> 2;
+	copy_bytes = MIN(bytes, cd->base.ibs);
 
 	if (copy_bytes == 0)
 		goto out;
+
+	/* Aria algo supports only 4-bytes containers */
+	copy_samples = copy_bytes >> 2;
 
 	buffer_stream_invalidate(source_c, copy_bytes);
 	audio_stream_copy_to_linear(&source_c->stream, 0, cd->buf_in, 0, copy_samples);
