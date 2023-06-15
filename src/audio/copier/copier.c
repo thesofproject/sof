@@ -678,10 +678,10 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 		return -EINVAL;
 	}
 
-	audio_stream_fmt_conversion(cd->config.base.audio_fmt.depth,
-				    cd->config.base.audio_fmt.valid_bit_depth,
+	audio_stream_fmt_conversion(cd->config.out_fmt.depth,
+				    cd->config.out_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
-				    cd->config.base.audio_fmt.s_type);
+				    cd->config.out_fmt.s_type);
 
 	if (frame_fmt < SOF_IPC_FRAME_S24_4LE) {
 		comp_err(dev, "frame_fmt %d isn't supported by attenuation",
