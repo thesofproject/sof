@@ -286,8 +286,15 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 		 (char *)audio_stream_get_addr(&buffer->stream)));
 }
 
+/*
+ * Locking: must be called with interrupts disabled! Serialized IPCs protect us
+ * from racing attach / detach calls, but the scheduler can interrupt the IPC
+ * thread and begin using the buffer for streaming. FIXME: this is still a
+ * problem with different cores.
+ */
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
+	struct list_item *list = buffer_comp_list(buffer, dir);
 	struct list_item __sparse_cache *needs_sync;
 	bool further_buffers_exist;
 
@@ -302,11 +309,17 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 	if (further_buffers_exist)
 		dcache_writeback_region(needs_sync, sizeof(struct list_item));
 	/* The cache line can be prefetched here, invalidate it after prepending */
-	list_item_prepend(buffer_comp_list(buffer, dir), head);
+	list_item_prepend(list, head);
 	if (further_buffers_exist)
 		dcache_invalidate_region(needs_sync, sizeof(struct list_item));
+	/* no dirty cache lines exist for this buffer yet, no need to write back */
+	dcache_invalidate_region(uncache_to_cache(list), sizeof(*list));
 }
 
+/*
+ * Locking: must be called with interrupts disabled! See buffer_attach() above
+ * for details
+ */
 void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item __sparse_cache *needs_sync_prev, *needs_sync_next;
@@ -329,8 +342,10 @@ void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 		dcache_writeback_region(needs_sync_next, sizeof(struct list_item));
 	if (buffers_before_exist)
 		dcache_writeback_region(needs_sync_prev, sizeof(struct list_item));
+	dcache_writeback_region(uncache_to_cache(buf_list), sizeof(*buf_list));
 	/* buffers before or after can be prefetched here */
 	list_item_del(buf_list);
+	dcache_invalidate_region(uncache_to_cache(buf_list), sizeof(*buf_list));
 	if (buffers_after_exist)
 		dcache_invalidate_region(needs_sync_next, sizeof(struct list_item));
 	if (buffers_before_exist)
