@@ -18,6 +18,7 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#include <rtos/interrupt.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -439,13 +440,17 @@ int module_adapter_prepare(struct comp_dev *dev)
 		for (i = 0; i < mod->num_output_buffers; i++) {
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
 								  0, PLATFORM_DCACHE_ALIGN);
+			uint32_t flags;
+
 			if (!buffer) {
 				comp_err(dev, "module_adapter_prepare(): failed to allocate local buffer");
 				ret = -ENOMEM;
 				goto free;
 			}
 
+			irq_local_disable(flags);
 			buffer_attach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+			irq_local_enable(flags);
 
 			buffer_c = buffer_acquire(buffer);
 			buffer_set_params(buffer_c, mod->stream_params, BUFFER_UPDATE_FORCE);
@@ -480,8 +485,11 @@ free:
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
+		uint32_t flags;
 
+		irq_local_disable(flags);
 		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
 
@@ -1404,8 +1412,11 @@ void module_adapter_free(struct comp_dev *dev)
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  sink_list);
+		uint32_t flags;
 
+		irq_local_disable(flags);
 		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
 
