@@ -151,12 +151,12 @@ static int lib_manager_unload_module(uint32_t module_id, struct sof_man_module *
 	st_rodata_size = st_rodata_size * CONFIG_MM_DRV_PAGE_SIZE;
 
 	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
-
-	dcache_invalidate_region(va_base_text, st_text_size);
+	if (ret < 0)
+		return ret;
 
 	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
-
-	dcache_invalidate_region(va_base_rodata, st_rodata_size);
+	if (ret < 0)
+		return ret;
 
 	/* There are modules marked as lib_code. This is code shared between several modules inside
 	 * the library. Unload all lib_code modules with last none lib_code module unload.
