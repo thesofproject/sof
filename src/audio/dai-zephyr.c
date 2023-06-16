@@ -639,6 +639,11 @@ static int dai_playback_params(struct dai_data *dd, struct comp_dev *dev, uint32
 			goto out;
 		}
 
+		if (!max_block_count) {
+			comp_err(dev, "dai_playback_params(): invalid max-block-count of zero");
+			goto out;
+		}
+
 		if (max_block_count < period_count) {
 			comp_dbg(dev, "dai_playback_params(): block count = %d not supported by DMA", period_count);
 			buf_size = period_count * period_bytes;
