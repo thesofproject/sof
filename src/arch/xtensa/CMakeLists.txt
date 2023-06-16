@@ -376,7 +376,7 @@ add_custom_target(
 	COMMAND ${CMAKE_COMMAND} -E copy sof_text-${fw_name}.bin ${PROJECT_BINARY_DIR}/fwimage_3_0.bin
 	COMMAND ${CMAKE_COMMAND} -E copy sof_data-${fw_name}.bin ${PROJECT_BINARY_DIR}/fwdata_3_0.bin
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name} ${PROJECT_BINARY_DIR}/sof-${fw_name}.out
-	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.dis ${PROJECT_BINARY_DIR}/sof_rn.dis DEPENDS sof_post_process
+	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.dis ${PROJECT_BINARY_DIR}/sof-${fw_name}.dis DEPENDS sof_post_process
 	VERBATIM
 	USES_TERMINAL
 )
