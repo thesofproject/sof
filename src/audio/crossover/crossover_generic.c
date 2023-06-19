@@ -4,12 +4,13 @@
 //
 // Author: Sebastiano Carlucci <scarlucci@google.com>
 
-#include <stdint.h>
-#include <sof/audio/format.h>
+#include <ipc/stream.h>
+#include <sof/audio/module_adapter/module/module_interface.h>
 #include <sof/audio/component.h>
-#include <sof/audio/format.h>
 #include <sof/audio/crossover/crossover.h>
+#include <sof/audio/format.h>
 #include <sof/math/iir_df2t.h>
+#include <stdint.h>
 
 /*
  * \brief Splits x into two based on the coefficients set in the lp
@@ -86,13 +87,13 @@ static void crossover_generic_split_4way(int32_t in,
 }
 
 #if CONFIG_FORMAT_S16LE
-static void crossover_s16_default_pass(const struct comp_dev *dev,
-				       const struct comp_buffer __sparse_cache *source,
+static void crossover_s16_default_pass(struct comp_data *cd,
+				       struct input_stream_buffer *bsource,
 				       struct comp_buffer __sparse_cache *sinks[],
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = bsource->data;
 	int16_t *x;
 	int32_t *y;
 	int i, j;
@@ -111,13 +112,13 @@ static void crossover_s16_default_pass(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void crossover_s32_default_pass(const struct comp_dev *dev,
-				       const struct comp_buffer __sparse_cache *source,
+static void crossover_s32_default_pass(struct comp_data *cd,
+				       struct input_stream_buffer *bsource,
 				       struct comp_buffer __sparse_cache *sinks[],
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = bsource->data;
 	int32_t *x, *y;
 	int i, j;
 	int n = audio_stream_get_channels(source_stream) * frames;
@@ -135,15 +136,14 @@ static void crossover_s32_default_pass(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE
-static void crossover_s16_default(const struct comp_dev *dev,
-				  const struct comp_buffer __sparse_cache *source,
+static void crossover_s16_default(struct comp_data *cd,
+				  struct input_stream_buffer *bsource,
 				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = bsource->data;
 	struct audio_stream __sparse_cache *sink_stream;
 	int16_t *x, *y;
 	int ch, i, j;
@@ -174,15 +174,14 @@ static void crossover_s16_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void crossover_s24_default(const struct comp_dev *dev,
-				  const struct comp_buffer __sparse_cache *source,
+static void crossover_s24_default(struct comp_data *cd,
+				  struct input_stream_buffer *bsource,
 				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = bsource->data;
 	struct audio_stream __sparse_cache *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
@@ -213,15 +212,14 @@ static void crossover_s24_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void crossover_s32_default(const struct comp_dev *dev,
-				  const struct comp_buffer __sparse_cache *source,
+static void crossover_s32_default(struct comp_data *cd,
+				  struct input_stream_buffer *bsource,
 				  struct comp_buffer __sparse_cache *sinks[],
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = &source->stream;
+	const struct audio_stream __sparse_cache *source_stream = bsource->data;
 	struct audio_stream __sparse_cache *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;

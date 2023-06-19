@@ -45,12 +45,12 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_init(sof);
 	sys_comp_file_init();
 	sys_comp_asrc_init();
-	sys_comp_crossover_init();
 	sys_comp_dcblock_init();
 	sys_comp_multiband_drc_init();
 	sys_comp_selector_init();
 
 	/* Module adapter components */
+	sys_comp_module_crossover_interface_init();
 	sys_comp_module_demux_interface_init();
 	sys_comp_module_drc_interface_init();
 	sys_comp_module_eq_fir_interface_init();

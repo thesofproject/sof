@@ -4,6 +4,7 @@
 //
 // Author: Sebastiano Carlucci <scarlucci@google.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -36,7 +37,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-static const struct comp_driver comp_crossover;
+LOG_MODULE_REGISTER(crossover, CONFIG_SOF_LOG_LEVEL);
 
 /* 948c9ad1-806a-4131-ad6c-b2bda9e35a9f */
 DECLARE_SOF_RT_UUID("crossover", crossover_uuid, 0x948c9ad1, 0x806a, 0x4131,
@@ -96,8 +97,8 @@ static inline void crossover_reset_state(struct comp_data *cd)
  * \return the position at which pipe_id is found in config->assign_sink.
  *	   -EINVAL if not found.
  */
-static int crossover_get_stream_index(struct sof_crossover_config *config,
-					  uint32_t pipe_id)
+static int crossover_get_stream_index(struct processing_module *mod,
+				      struct sof_crossover_config *config, uint32_t pipe_id)
 {
 	int i;
 	uint32_t *assign_sink = config->assign_sink;
@@ -106,8 +107,8 @@ static int crossover_get_stream_index(struct sof_crossover_config *config,
 		if (assign_sink[i] == pipe_id)
 			return i;
 
-	comp_cl_err(&comp_crossover, "crossover_get_stream_index() error: couldn't find any assignment for connected pipeline %u",
-		    pipe_id);
+	comp_err(mod->dev, "crossover_get_stream_index() error: couldn't find any assignment for connected pipeline %u",
+		 pipe_id);
 
 	return -EINVAL;
 }
@@ -123,56 +124,65 @@ static int crossover_get_stream_index(struct sof_crossover_config *config,
  * \return number of sinks assigned. This number should be equal to
  *	   config->num_sinks if no errors were found.
  */
-static int crossover_assign_sinks(struct comp_dev *dev,
-				  struct sof_crossover_config *config,
-				  struct comp_buffer **sinks)
+static int crossover_assign_sinks(struct processing_module *mod,
+				  struct comp_buffer **sinks,
+				  bool *enabled)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_crossover_config *config = cd->config;
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	int num_sinks = 0;
 	int i;
+	int j = 0;
 
-	/* Align sink streams with their respective configurations */
 	list_for_item(sink_list, &dev->bsink_list) {
-		unsigned int pipeline_id, state;
+		unsigned int sink_id, state;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
-
-		pipeline_id = sink_c->pipeline_id;
+#if CONFIG_IPC_MAJOR_4
+		sink_id = cd->output_pin_index[j];
+#else
+		sink_id = sink_c->pipeline_id;
+#endif
 		state = sink_c->sink->state;
 		buffer_release(sink_c);
-
-		if (state != dev->state)
+		if (state != dev->state) {
+			j++;
 			continue;
+		}
 
 		/* If no config is set, then assign the sinks in order */
 		if (!config) {
 			sinks[num_sinks++] = sink;
+			enabled[j++] = true;
 			continue;
 		}
 
-		i = crossover_get_stream_index(config, pipeline_id);
+		i = crossover_get_stream_index(mod, config, sink_id);
 
 		/* If this sink buffer is not assigned
 		 * in the configuration.
 		 */
 		if (i < 0) {
 			comp_err(dev,
-				 "crossover_acquire_sinks(), could not find sink %d in config",
+				 "crossover_assign_sinks(), could not find sink %d in config",
 				 pipeline_id);
 			break;
 		}
 
 		if (sinks[i]) {
 			comp_err(dev,
-				 "crossover_acquire_sinks(), multiple sinks from pipeline %d are assigned",
+				 "crossover_assign_sinks(), multiple sinks from pipeline %d are assigned",
 				 pipeline_id);
 			break;
 		}
 
 		sinks[i] = sink;
+		enabled[j++] = true;
 		num_sinks++;
 	}
 
@@ -263,26 +273,26 @@ int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
  *
  * \param nch number of channels in the audio stream.
  */
-static int crossover_init_coef(struct comp_data *cd, int nch)
+static int crossover_init_coef(struct processing_module *mod, int nch)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_biquad *crossover;
 	struct sof_crossover_config *config = cd->config;
 	int ch, err;
 
 	if (!config) {
-		comp_cl_err(&comp_crossover, "crossover_init_coef(), no config is set");
+		comp_err(mod->dev, "crossover_init_coef(), no config is set");
 		return -EINVAL;
 	}
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_cl_err(&comp_crossover, "crossover_init_coef(), invalid channels count (%i)",
-			    nch);
+		comp_err(mod->dev, "crossover_init_coef(), invalid channels count (%i)", nch);
 		return -EINVAL;
 	}
 
-	comp_cl_info(&comp_crossover, "crossover_init_coef(), initializing %i-way crossover",
-		     config->num_sinks);
+	comp_info(mod->dev, "crossover_init_coef(), initializing %i-way crossover",
+		  config->num_sinks);
 
 	/* Collect the coef array and assign it to every channel */
 	crossover = config->coef;
@@ -291,8 +301,8 @@ static int crossover_init_coef(struct comp_data *cd, int nch)
 					     config->num_sinks);
 		/* Free all previously allocated blocks in case of an error */
 		if (err < 0) {
-			comp_cl_err(&comp_crossover, "crossover_init_coef(), could not assign coefficients to ch %d",
-				    ch);
+			comp_err(mod->dev, "crossover_init_coef(), could not assign coefficients to ch %d",
+				 ch);
 			crossover_reset_state(cd);
 			return err;
 		}
@@ -304,121 +314,226 @@ static int crossover_init_coef(struct comp_data *cd, int nch)
 /**
  * \brief Setup the state, coefficients and processing functions for crossover.
  */
-static int crossover_setup(struct comp_data *cd, int nch)
+static int crossover_setup(struct processing_module *mod, int nch)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	int ret = 0;
 
 	/* Reset any previous state */
 	crossover_reset_state(cd);
 
 	/* Assign LR4 coefficients from config */
-	ret = crossover_init_coef(cd, nch);
+	ret = crossover_init_coef(mod, nch);
 
 	return ret;
 }
+
+#if CONFIG_IPC_MAJOR_4
+/* Note: Crossover needs to have in the rimage manifest the init_config set to 1 to let
+ * kernel know that the base_cfg_ext needs to be appended to the IPC payload. The
+ * Extension is needed to know the output pin indices.
+ */
+static int crossover_init_output_pins(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	const struct ipc4_base_module_extended_cfg *base_cfg = mod->priv.cfg.init_data;
+	uint16_t num_input_pins = base_cfg->base_cfg_ext.nb_input_pins;
+	uint16_t num_output_pins = base_cfg->base_cfg_ext.nb_output_pins;
+	struct ipc4_input_pin_format *input_pin;
+	struct ipc4_output_pin_format *output_pin;
+	int i;
+
+	comp_dbg(dev, "Number of input pins %u, output pins %u", num_input_pins, num_output_pins);
+
+	if (num_input_pins != 1 || num_output_pins > SOF_CROSSOVER_MAX_STREAMS) {
+		comp_err(dev, "Illegal number of pins %u %u", num_input_pins, num_output_pins);
+		return -EINVAL;
+	}
+
+	input_pin = (struct ipc4_input_pin_format *)base_cfg->base_cfg_ext.pin_formats;
+	output_pin = (struct ipc4_output_pin_format *)(input_pin + 1);
+	cd->num_output_pins = num_output_pins;
+	comp_dbg(dev, "input pin index = %u", input_pin->pin_index);
+	for (i = 0; i < num_output_pins; i++) {
+		comp_dbg(dev, "output pin %d index = %u", i, output_pin[i].pin_index);
+		cd->output_pin_index[i] = output_pin[i].pin_index;
+	}
+
+	return 0;
+}
+#endif
 
 /**
  * \brief Creates a Crossover Filter component.
  * \return Pointer to Crossover Filter component device.
  */
-static struct comp_dev *crossover_new(const struct comp_driver *drv,
-				      const struct comp_ipc_config *config,
-				      const void *spec)
+static int crossover_init(struct processing_module *mod)
 {
-	struct comp_dev *dev;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd;
-	const struct ipc_config_process *ipc_crossover = spec;
+	const struct module_config *ipc_crossover = &md->cfg;
 	size_t bs = ipc_crossover->size;
 	int ret;
 
-	comp_cl_info(&comp_crossover, "crossover_new()");
+	comp_info(dev, "crossover_init()");
 
 	/* Check that the coefficients blob size is sane */
 	if (bs > SOF_CROSSOVER_MAX_SIZE) {
-		comp_cl_err(&comp_crossover, "crossover_new(), blob size (%d) exceeds maximum allowed size (%i)",
-			    bs, SOF_CROSSOVER_MAX_SIZE);
-		return NULL;
+		comp_err(dev, "crossover_init(), blob size (%d) exceeds maximum allowed size (%i)",
+			 bs, SOF_CROSSOVER_MAX_SIZE);
+		return -ENOMEM;
 	}
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	if (!cd)
+		return -ENOMEM;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-		     SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, cd);
-
-	cd->crossover_process = NULL;
-	cd->crossover_split = NULL;
-	cd->config = NULL;
+	md->private = cd;
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_crossover, "crossover_new(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "crossover_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
 		goto cd_fail;
 	}
 
 	/* Get configuration data and reset Crossover state */
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_crossover->data);
 	if (ret < 0) {
-		comp_cl_err(&comp_crossover, "crossover_new(): comp_init_data_blob() failed.");
+		comp_err(dev, "crossover_init(): comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
-	crossover_reset_state(cd);
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+#if CONFIG_IPC_MAJOR_4
+	ret = crossover_init_output_pins(mod);
+	if (ret < 0) {
+		comp_err(dev, "crossover_init(): crossover_init_output_pins() failed.");
+		goto cd_fail;
+	}
+#endif
+
+	crossover_reset_state(cd);
+	return 0;
 
 cd_fail:
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
-	rfree(dev);
-	return NULL;
+	return ret;
 }
 
 /**
  * \brief Frees Crossover Filter component.
  */
-static void crossover_free(struct comp_dev *dev)
+static int crossover_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "crossover_free()");
+	comp_info(mod->dev, "crossover_free()");
 
 	comp_data_blob_handler_free(cd->model_handler);
 
 	crossover_reset_state(cd);
 
 	rfree(cd);
-	rfree(dev);
+	return 0;
 }
+
+#if CONFIG_IPC_MAJOR_4
+/**
+ * \brief Check sink streams configuration for matching pin index for output pins
+ */
+static int crossover_check_sink_assign(struct processing_module *mod,
+				       struct sof_crossover_config *config)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	uint32_t pin_index;
+	int num_assigned_sinks = 0;
+	int i, j;
+	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
+
+	for (j = 0; j < cd->num_output_pins; j++) {
+		pin_index = cd->output_pin_index[j];
+		i = crossover_get_stream_index(mod, config, pin_index);
+		if (i < 0) {
+			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %u",
+				  pin_index);
+			break;
+		}
+
+		if (assigned_sinks[i]) {
+			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pin %u are assigned",
+				  pin_index);
+			break;
+		}
+
+		assigned_sinks[i] = true;
+		num_assigned_sinks++;
+	}
+
+	return num_assigned_sinks;
+}
+#else
+/**
+ * \brief Check sink streams configuration for matching pipeline IDs
+ */
+static int crossover_check_sink_assign(struct processing_module *mod,
+				       struct sof_crossover_config *config)
+{
+	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *sink;
+	struct comp_buffer __sparse_cache *sink_c;
+	struct list_item *sink_list;
+	int num_assigned_sinks = 0;
+	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
+	int i;
+
+	list_for_item(sink_list, &dev->bsink_list) {
+		unsigned int pipeline_id;
+
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		pipeline_id = sink_c->pipeline_id;
+		buffer_release(sink_c);
+
+		i = crossover_get_stream_index(mod, config, pipeline_id);
+		if (i < 0) {
+			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %d",
+				  pipeline_id);
+			break;
+		}
+
+		if (assigned_sinks[i]) {
+			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pipeline %d are assigned",
+				  pipeline_id);
+			break;
+		}
+
+		assigned_sinks[i] = true;
+		num_assigned_sinks++;
+	}
+
+	return num_assigned_sinks;
+}
+#endif
 
 /**
  * \brief Verifies that the config is formatted correctly.
  *
  * The function can only be called after the buffers have been initialized.
  */
-static int crossover_validate_config(struct comp_dev *dev,
+static int crossover_validate_config(struct processing_module *mod,
 				     struct sof_crossover_config *config)
 {
-	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
-	struct list_item *sink_list;
+	struct comp_dev *dev = mod->dev;
 	uint32_t size = config->size;
-	int32_t num_assigned_sinks = 0;
-	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
-	int i;
+	int32_t num_assigned_sinks;
 
 	if (size > SOF_CROSSOVER_MAX_SIZE || !size) {
-		comp_err(dev, "crossover_validate_config(), size %d is invalid",
-			 size);
+		comp_err(dev, "crossover_validate_config(), size %d is invalid", size);
 		return -EINVAL;
 	}
 
@@ -432,30 +547,7 @@ static int crossover_validate_config(struct comp_dev *dev,
 	/* Align the crossover's sinks, to their respective configuration in
 	 * the config.
 	 */
-	list_for_item(sink_list, &dev->bsink_list) {
-		unsigned int pipeline_id;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		pipeline_id = sink_c->pipeline_id;
-		buffer_release(sink_c);
-
-		i = crossover_get_stream_index(config, pipeline_id);
-		if (i < 0) {
-			comp_warn(dev, "crossover_validate_config(), could not assign sink %d",
-				  pipeline_id);
-			break;
-		}
-
-		if (assigned_sinks[i]) {
-			comp_warn(dev, "crossover_validate_config(), multiple sinks from pipeline %d are assigned",
-				  pipeline_id);
-			break;
-		}
-
-		assigned_sinks[i] = true;
-		num_assigned_sinks++;
-	}
+	num_assigned_sinks = crossover_check_sink_assign(mod, config);
 
 	/* Config is invalid if the number of assigned sinks
 	 * is different than what is configured.
@@ -469,117 +561,50 @@ static int crossover_validate_config(struct comp_dev *dev,
 	return 0;
 }
 
-static int crossover_verify_params(struct comp_dev *dev,
-				   struct sof_ipc_stream_params *params)
+/* used to pass standard and bespoke commands (with data) to component */
+static int crossover_set_config(struct processing_module *mod, uint32_t config_id,
+				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				size_t response_size)
 {
-	int ret;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(dev, "crossover_verify_params()");
+	comp_info(mod->dev, "crossover_set_config()");
 
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "crossover_verify_params() error: comp_verify_params() failed.");
-		return ret;
+#if CONFIG_IPC_MAJOR_3
+	/* TODO: This check seems to work only for IPC3, FW crash happens from reject from
+	 * topology embedded blob.
+	 */
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(mod->dev, "crossover_set_config(), invalid command");
+		return -EINVAL;
 	}
+#endif
 
-	return 0;
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
+				  fragment_size);
 }
 
-/**
- * \brief Sets Crossover Filter component audio stream parameters.
- * \param[in,out] dev Crossover Filter base component device.
- * \return Error code.
- */
-static int crossover_params(struct comp_dev *dev,
-			    struct sof_ipc_stream_params *params)
+static int crossover_get_config(struct processing_module *mod,
+				uint32_t config_id, uint32_t *data_offset_size,
+				uint8_t *fragment, size_t fragment_size)
 {
-	int err = 0;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
-	comp_dbg(dev, "crossover_params()");
+	comp_info(mod->dev, "crossover_get_config()");
 
-	err = crossover_verify_params(dev, params);
-	if (err < 0)
-		comp_err(dev, "crossover_params(): pcm params verification failed");
+#if CONFIG_IPC_MAJOR_3
 
-	return err;
-}
-
-static int crossover_cmd_set_data(struct comp_dev *dev,
-				  struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "crossover_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		break;
-	default:
-		comp_err(dev, "crossover_cmd_set_data(), invalid command");
-		ret = -EINVAL;
-		break;
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(mod->dev, "crossover_get_config(), invalid command");
+		return -EINVAL;
 	}
+#endif
 
-	return ret;
-}
-
-static int crossover_cmd_get_data(struct comp_dev *dev,
-				  struct sof_ipc_ctrl_data *cdata, int max_size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "crossover_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
-		break;
-	default:
-		comp_err(dev, "crossover_cmd_get_data(), invalid command");
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-/**
- * \brief Handles incoming IPC commands for Crossover component.
- */
-static int crossover_cmd(struct comp_dev *dev, int cmd, void *data,
-			 int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
-
-	comp_info(dev, "crossover_cmd()");
-
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = crossover_cmd_set_data(dev, cdata);
-		break;
-	case COMP_CMD_GET_DATA:
-		ret = crossover_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	default:
-		comp_err(dev, "crossover_cmd(), invalid command");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-/**
- * \brief Sets Crossover Filter component state.
- * \param[in,out] dev Crossover Filter base component device.
- * \param[in] cmd Command type.
- * \return Error code.
- */
-static int crossover_trigger(struct comp_dev *dev, int cmd)
-{
-	comp_info(dev, "crossover_trigger()");
-
-	return comp_set_state(dev, cmd);
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
 /**
@@ -587,40 +612,39 @@ static int crossover_trigger(struct comp_dev *dev, int cmd)
  * \param[in,out] dev Crossover Filter base component device.
  * \return Error code.
  */
-static int crossover_copy(struct comp_dev *dev)
+static int crossover_process_audio_stream(struct processing_module *mod,
+					  struct input_stream_buffer *input_buffers,
+					  int num_input_buffers,
+					  struct output_stream_buffer *output_buffers,
+					  int num_output_buffers)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
 	struct comp_buffer *sinks[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
-	struct comp_buffer __sparse_cache *sinks_c[SOF_CROSSOVER_MAX_STREAMS];
-	int i, ret = 0;
+	bool enabled_buffers[PLATFORM_MAX_STREAMS] = { false };
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
 	uint32_t num_sinks;
 	uint32_t num_assigned_sinks = 0;
-	uint32_t frames = UINT_MAX;
-	uint32_t source_bytes, avail;
-	uint32_t sinks_bytes[SOF_CROSSOVER_MAX_STREAMS] = { 0 };
+	/* The frames count to process from module adapter applies for source buffer and
+	 * all sink buffers. The function module_single_source_setup() checks the frames
+	 * avail/free from all source and sink combinations.
+	 */
+	uint32_t frames = input_buffers[0].size;
+	uint32_t frame_bytes = audio_stream_frame_bytes(input_buffers[0].data);
+	uint32_t processed_bytes;
+	int ret;
+	int i;
 
-	comp_dbg(dev, "crossover_copy()");
-
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	source_c = buffer_acquire(source);
+	comp_dbg(dev, "crossover_process_audio_stream()");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = crossover_setup(cd, audio_stream_get_channels(&source_c->stream));
+		ret = crossover_setup(mod, audio_stream_get_channels(source));
 		if (ret < 0) {
-			comp_err(dev, "crossover_copy(), failed Crossover setup");
-			goto out;
+			comp_err(dev, "crossover_process_audio_stream(), failed Crossover setup");
+			return ret;
 		}
-	}
-
-	/* Check if source is active */
-	if (source_c->source->state != dev->state) {
-		ret = -EINVAL;
-		goto out;
 	}
 
 	/* Use the assign_sink array from the config to route
@@ -629,7 +653,7 @@ static int crossover_copy(struct comp_dev *dev)
 	 * state than the component. Therefore not all sinks are guaranteed
 	 * to be assigned: sink[i] can be NULL, 0 <= i <= config->num_sinks
 	 */
-	num_assigned_sinks = crossover_assign_sinks(dev, cd->config, sinks);
+	num_assigned_sinks = crossover_assign_sinks(mod, sinks, enabled_buffers);
 	if (cd->config && num_assigned_sinks != cd->config->num_sinks)
 		comp_dbg(dev, "crossover_copy(), number of assigned sinks (%i) does not match number of sinks in config (%i).",
 			 num_assigned_sinks, cd->config->num_sinks);
@@ -642,167 +666,148 @@ static int crossover_copy(struct comp_dev *dev)
 	else
 		num_sinks = num_assigned_sinks;
 
-	/* Find the number of frames to copy over */
-	for (i = 0; i < num_sinks; i++) {
-		if (!sinks[i])
-			continue;
-		/*
-		 * WARNING: if a different thread happens to lock the same
-		 * buffers in different order, they can deadlock
-		 */
-		sinks_c[i] = buffer_acquire(sinks[i]);
-		avail = audio_stream_avail_frames(&source_c->stream,
-						  &sinks_c[i]->stream);
-		frames = MIN(frames, avail);
-	}
-
-	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
-
-	for (i = 0; i < num_sinks; i++)
-		if (sinks[i])
-			sinks_bytes[i] = frames *
-				audio_stream_frame_bytes(&sinks_c[i]->stream);
-
 	/* Process crossover */
-	buffer_stream_invalidate(source_c, source_bytes);
-	cd->crossover_process(dev, source_c, sinks_c, num_sinks, frames);
+	if (!frames)
+		return -ENODATA;
 
-	for (i = 0; i < num_sinks; i++) {
-		if (!sinks[i])
-			continue;
-		buffer_stream_writeback(sinks_c[i], sinks_bytes[i]);
-		comp_update_buffer_produce(sinks_c[i], sinks_bytes[i]);
+	cd->crossover_process(cd, input_buffers, sinks, num_sinks, frames);
+
+	processed_bytes = frames * frame_bytes;
+	mod->input_buffers[0].consumed = processed_bytes;
+	for (i = 0; i < num_output_buffers; i++) {
+		if (enabled_buffers[i])
+			mod->output_buffers[i].size = processed_bytes;
 	}
 
-	/* Release buffers in reverse order */
-	for (i = num_sinks - 1; i >= 0; i--)
-		if (sinks[i])
-			buffer_release(sinks_c[i]);
+	return 0;
+}
 
-	comp_update_buffer_consume(source_c, source_bytes);
+#if CONFIG_IPC_MAJOR_4
+/**
+ * \brief IPC4 specific component prepare, updates source and sink buffers formats from base_cfg
+ */
+static void crossover_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sinkb, *sourceb;
+	struct list_item *sink_list;
+	struct comp_dev *dev = mod->dev;
 
-out:
+	comp_dbg(dev, "crossover_params()");
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
 	buffer_release(source_c);
 
-	return ret;
+	list_for_item(sink_list, &dev->bsink_list) {
+		sinkb = container_of(sink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sinkb);
+		ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
+		buffer_release(sink_c);
+	}
 }
+#endif
 
 /**
  * \brief Prepares Crossover Filter component for processing.
  * \param[in,out] dev Crossover Filter base component device.
  * \return Error code.
  */
-static int crossover_prepare(struct comp_dev *dev)
+static int crossover_prepare(struct processing_module *mod,
+			     struct sof_source __sparse_cache **sources, int num_of_sources,
+			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd =  module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct list_item *sink_list;
-	int32_t sink_period_bytes;
-	int ret;
+	int channels;
+	int ret = 0;
 
 	comp_info(dev, "crossover_prepare()");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+#if CONFIG_IPC_MAJOR_4
+	crossover_params(mod);
+#endif
 
 	/* Crossover has a variable number of sinks */
-	source = list_first_item(&dev->bsource_list,
-				 struct comp_buffer, sink_list);
+	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	source_c = buffer_acquire(source);
 
 	/* Get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	channels = audio_stream_get_channels(&source_c->stream);
+	audio_stream_init_alignment_constants(1, 1, &source_c->stream);
+	buffer_release(source_c);
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
-
-		if (cd->source_format != audio_stream_get_frm_fmt(&sink_c->stream)) {
-			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different for sink %d.",
-				 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream),
-				 sink_c->pipeline_id);
-			ret = -EINVAL;
+		if (cd->source_format == audio_stream_get_frm_fmt(&sink_c->stream)) {
+			audio_stream_init_alignment_constants(1, 1, &sink_c->stream);
 		} else {
-			sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
-								      dev->frames);
-			if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
-				comp_err(dev,
-					 "crossover_prepare(), sink %d buffer size %d is insufficient",
-					 sink_c->pipeline_id, audio_stream_get_size(&sink_c->stream));
-				ret = -ENOMEM;
-			}
+			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
+				 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream));
+			ret = -EINVAL;
 		}
 
 		buffer_release(sink_c);
-
 		if (ret < 0)
-			goto out;
+			return ret;
 	}
 
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
-		  cd->source_format, cd->source_format,
-		  audio_stream_get_channels(&source_c->stream));
+		  cd->source_format, cd->source_format, channels);
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	/* Initialize Crossover */
-	if (cd->config && crossover_validate_config(dev, cd->config) < 0) {
+	if (cd->config && crossover_validate_config(mod, cd->config) < 0) {
 		/* If config is invalid then delete it */
 		comp_err(dev, "crossover_prepare(), invalid binary config format");
 		crossover_free_config(&cd->config);
 	}
 
 	if (cd->config) {
-		ret = crossover_setup(cd, audio_stream_get_channels(&source_c->stream));
+		ret = crossover_setup(mod, channels);
 		if (ret < 0) {
 			comp_err(dev, "crossover_prepare(), setup failed");
-			goto out;
+			return ret;
 		}
 
-		cd->crossover_process =
-			crossover_find_proc_func(cd->source_format);
+		cd->crossover_process = crossover_find_proc_func(cd->source_format);
 		if (!cd->crossover_process) {
 			comp_err(dev, "crossover_prepare(), No processing function matching frame_fmt %i",
 				 cd->source_format);
-			ret = -EINVAL;
-			goto out;
+			return -EINVAL;
 		}
 
-		cd->crossover_split =
-			crossover_find_split_func(cd->config->num_sinks);
+		cd->crossover_split = crossover_find_split_func(cd->config->num_sinks);
 		if (!cd->crossover_split) {
 			comp_err(dev, "crossover_prepare(), No split function matching num_sinks %i",
 				 cd->config->num_sinks);
-			ret = -EINVAL;
-			goto out;
+			return -EINVAL;
 		}
 	} else {
 		comp_info(dev, "crossover_prepare(), setting crossover to passthrough mode");
 
-		cd->crossover_process =
-			crossover_find_proc_func_pass(cd->source_format);
-
+		cd->crossover_process = crossover_find_proc_func_pass(cd->source_format);
 		if (!cd->crossover_process) {
 			comp_err(dev, "crossover_prepare(), No passthrough function matching frame_fmt %i",
 				 cd->source_format);
-			ret = -EINVAL;
-			goto out;
+			return -EINVAL;
 		}
 	}
 
-out:
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	buffer_release(source_c);
-
-	return ret;
+	return 0;
 }
 
 /**
@@ -810,47 +815,30 @@ out:
  * \param[in,out] dev Crossover Filter base component device.
  * \return Error code.
  */
-static int crossover_reset(struct comp_dev *dev)
+static int crossover_reset(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "crossover_reset()");
+	comp_info(mod->dev, "crossover_reset()");
 
 	crossover_reset_state(cd);
 
 	cd->crossover_process = NULL;
 	cd->crossover_split = NULL;
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
 	return 0;
 }
 
 /** \brief Crossover Filter component definition. */
-static const struct comp_driver comp_crossover = {
-	.uid	= SOF_RT_UUID(crossover_uuid),
-	.tctx	= &crossover_tr,
-	.ops	= {
-		.create		= crossover_new,
-		.free		= crossover_free,
-		.params		= crossover_params,
-		.cmd		= crossover_cmd,
-		.trigger	= crossover_trigger,
-		.copy		= crossover_copy,
-		.prepare	= crossover_prepare,
-		.reset		= crossover_reset,
-	},
+static struct module_interface crossover_interface = {
+	.init  = crossover_init,
+	.prepare = crossover_prepare,
+	.process_audio_stream = crossover_process_audio_stream,
+	.set_configuration = crossover_set_config,
+	.get_configuration = crossover_get_config,
+	.reset = crossover_reset,
+	.free = crossover_free
 };
 
-static SHARED_DATA struct comp_driver_info comp_crossover_info = {
-	.drv = &comp_crossover,
-};
-
-UT_STATIC void sys_comp_crossover_init(void)
-{
-	comp_register(platform_shared_get(&comp_crossover_info,
-					  sizeof(comp_crossover_info)));
-}
-
-DECLARE_MODULE(sys_comp_crossover_init);
-SOF_MODULE_INIT(crossover, sys_comp_crossover_init);
+DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
+SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
