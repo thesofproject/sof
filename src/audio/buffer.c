@@ -163,7 +163,7 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 
 	return 0;
 }
-
+/* TEST */
 bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
