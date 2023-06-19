@@ -33,6 +33,17 @@
 #include <platform/chip_registers.h>
 
 static uint32_t dmic_rngbuff_size;
+char *dmic_rngbuff_addr1;
+int *dmic_rngbuff_iaddr;
+uint32_t bytes_per_sample;
+uint32_t num_chs;
+uint32_t samplerate_khz;
+uint32_t silence_cnt;
+uint32_t silence_incr;
+int coeff;
+int numFilterBuffers;
+#define DMIC_SETTLING_TIME_MS 360
+#define DMIC_SMOOTH_TIME_MS 40
 /* 109c7aba-a7ba-43c3-b9-42-59-e2-0a-66-11-be */
 DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
 		0xb9, 0x42, 0x59, 0xe2, 0x0a, 0x66, 0x11, 0xbe);
@@ -91,6 +102,8 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+	silence_incr = 0;
+	coeff = 0;
 
 	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
@@ -214,6 +227,7 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 				struct dma_sg_config *config)
 {
 	uint32_t ring_buff_addr;
+	uint32_t timeperiod_ms;
 	acp_wov_rx_ringbufsize_t dmic_ringbuff_size;
 	acp_wov_rx_intr_watermark_size_t watermark;
 
@@ -222,6 +236,7 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 	switch (config->direction) {
 	case DMA_DIR_DEV_TO_MEM:
 	case DMA_DIR_MEM_TO_DEV:
+		dmic_rngbuff_addr1 = (char *)config->elem_array.elems[0].dest;
 		config->elem_array.elems[0].dest =
 			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
 		ring_buff_addr = (config->elem_array.elems[0].dest | ACP_SRAM);
@@ -238,6 +253,12 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 		watermark.bits.rx_intr_watermark_size = (dmic_rngbuff_size >> 1);
 		io_reg_write(PU_REGISTER_BASE +
 			ACP_WOV_RX_INTR_WATERMARK_SIZE, watermark.u32all);
+
+		timeperiod_ms = dmic_rngbuff_size / (num_chs * samplerate_khz *
+		bytes_per_sample * config->elem_array.count);
+		silence_cnt = DMIC_SETTLING_TIME_MS / timeperiod_ms;
+		numFilterBuffers = DMIC_SMOOTH_TIME_MS / timeperiod_ms;
+
 		break;
 	default:
 		tr_err(&acp_dmic_dma_tr, "unsupported config direction");
@@ -257,10 +278,33 @@ static int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 static int acp_dmic_dma_copy(struct dma_chan_data *channel, int bytes,
 			  uint32_t flags)
 {
+	uint32_t i;
+	uint32_t j;
+	int numsamples;
+	char *dmic_rngbuff_addr2 = dmic_rngbuff_addr1;
 	struct dma_cb_data next = {
 		.channel = channel,
 		.elem.size = bytes,
 	};
+	if (silence_incr < silence_cnt) {
+		if (silence_incr % 2)
+			dmic_rngbuff_addr2 = dmic_rngbuff_addr1 + (dmic_rngbuff_size >> 1);
+		for (i = 0; i < (dmic_rngbuff_size >> 1); i = i + 1)
+			dmic_rngbuff_addr2[i] = 0;
+		silence_incr = silence_incr + 1;
+	} else if (silence_incr < (silence_cnt + numFilterBuffers)) {
+		numsamples = ((dmic_rngbuff_size >> 1) / (num_chs * bytes_per_sample));
+		if (silence_incr % 2)
+			dmic_rngbuff_addr2 = dmic_rngbuff_addr1 + (dmic_rngbuff_size >> 1);
+		dmic_rngbuff_iaddr = (int *)dmic_rngbuff_addr2;
+		for (i = 0; i < (numsamples * num_chs); i = i + num_chs, coeff++) {
+			for (j = 0; j < num_chs; j++) {
+				dmic_rngbuff_iaddr[i + j] = (dmic_rngbuff_iaddr[i + j] /
+				(numsamples * numFilterBuffers)) * coeff;
+			}
+		}
+		silence_incr = silence_incr + 1;
+	}
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 			NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return 0;
