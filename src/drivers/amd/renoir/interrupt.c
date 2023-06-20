@@ -359,7 +359,7 @@ void acp_dsp_sw_intr_disable(void)
 }
 
 /* This function triggers a host interrupt from ACP DSP */
-void acp_dsp_to_host_Intr_trig(void)
+void acp_dsp_to_host_intr_trig(void)
 {
 	acp_sw_intr_trig_t  sw_intr_trig;
 	/* Read the Software Interrupt controller register and update */
@@ -370,7 +370,7 @@ void acp_dsp_to_host_Intr_trig(void)
 	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
 }
 
-/* Clear the Acknowledge ( status) for the host to DSP inteerupt */
+/* Clear the Acknowledge ( status) for the host to DSP interrupt */
 void acp_ack_intr_from_host(void)
 {
 	/* acknowledge the host interrupt */
