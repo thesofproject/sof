@@ -153,6 +153,8 @@ set(TPLGS
 
 	#To support HDMI-in capture with RT1308 ssp-amplifier products.
 	"sof-tgl-rt1308-hdmi-ssp\;sof-tgl-rt1308-ssp2-hdmi-ssp15\;-DAMP_SSP_NUM=2\;-DHDMI_1_SSP_NUM=1\;-DHDMI_2_SSP_NUM=5\;-DPLATFORM=tgl"
+	#Topologies for No SSP-amp or codec+HDMI-IN capture support.
+	"sof-tgl-rt1308-hdmi-ssp\;sof-tgl-nocodec-hdmi-ssp15\;-DNO_AMP\;-DHDMI_1_SSP_NUM=1\;-DHDMI_2_SSP_NUM=5\;-DPLATFORM=tgl"
 
 	## i.MX8 (i.MX8QM and i.MX8QXP) topologies
 	"sof-imx8-nocodec\;sof-imx8-nocodec"
