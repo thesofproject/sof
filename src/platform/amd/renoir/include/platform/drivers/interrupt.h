@@ -93,7 +93,7 @@ void acp_dsp_sw_intr_disable(void);
 
 void acp_intr_route(void);
 
-void acp_dsp_to_host_Intr_trig(void);
+void acp_dsp_to_host_intr_trig(void);
 
 void acp_ack_intr_from_host(void);
 

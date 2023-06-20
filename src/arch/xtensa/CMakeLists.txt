@@ -33,6 +33,10 @@ get_filename_component(_plf_ld_script ${platform_folder} NAME)
 set(platform_ld_script ${_plf_ld_script}.x)
 set(platform_rom_ld_script rom.x)
 
+if(CONFIG_AMD)
+	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/amd/common/include)
+endif()
+
 # includes
 
 # None of these should be included if Zephyr strict headers are used.

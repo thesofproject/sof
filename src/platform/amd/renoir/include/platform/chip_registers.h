@@ -521,17 +521,6 @@ typedef	union acp_srbm_cycle_sts {
 unsigned int	u32all;
 } acp_srbm_cycle_sts_t;
 
-typedef union acp_future_reg_aclk_0 {
-	struct {
-		unsigned int	dsp_msg:1;
-		unsigned int	dsp_aclk:1;
-		unsigned int	host_msg:1;
-		unsigned int	host_aclk:1;
-		unsigned int	:28;
-	} bits;
-	unsigned int    u32all;
-} acp_future_reg_aclk_0_t;
-
 typedef	union acp_i2stdm_rxfrmt {
 	struct {
 		unsigned int	i2stdm_frame_len :9;

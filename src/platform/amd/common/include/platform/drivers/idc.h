@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 AMD.All rights reserved.
+ * Copyright(c) 2023 AMD.All rights reserved.
  *
  * Author:      Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
- *              Bala Kishore <balakishore.pati@amd.com>
+ *              SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
  */
 #if defined(__XTOS_RTOS_IDC_H__) || defined(__ZEPHYR_RTOS_IDC_H__)
 
