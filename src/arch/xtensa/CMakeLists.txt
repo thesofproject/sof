@@ -16,6 +16,8 @@ elseif(CONFIG_RENOIR)
 	set(platform_folder amd/renoir)
 elseif(CONFIG_REMBRANDT)
 	set(platform_folder amd/rembrandt)
+elseif(CONFIG_VANGOGH)
+	set(platform_folder amd/vangogh)
 elseif(CONFIG_MT8186)
         set(platform_folder mt8186)
 elseif(CONFIG_MT8188)
@@ -468,7 +470,7 @@ add_custom_target(
 # NXP
 set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
-list(APPEND UNSIGNED_RI rn rmb)
+list(APPEND UNSIGNED_RI rn rmb vangogh)
 # MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 
