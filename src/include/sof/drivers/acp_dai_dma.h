@@ -42,6 +42,7 @@ int acp_dma_init(struct sof *sof);
 #define ACP_DRAM_ADDRESS_MASK		0x0FFFFFFF
 #define ACP_ACLK_CLK_SEL		0x3
 #define ACP_INTERNAL_CLK_SEL		0x0
+#define ACP_DRAM_ADDR_TRNS		0x01000000
 
 extern const struct dai_driver acp_spdai_driver;
 extern const struct dai_driver acp_sp_virtual_dai_driver;
