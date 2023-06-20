@@ -9,7 +9,7 @@ set -e
 # They must have a toolchain available in the latest Docker image.
 DEFAULT_PLATFORMS=(
     imx8 imx8x imx8m imx8ulp
-    rn rmb
+    rn rmb vangogh
     mt8186 mt8195
 )
 
@@ -233,6 +233,13 @@ do
 			ARCH="xtensa"
 			XTENSA_CORE="LX7_HiFi5_PROD"
 			HOST="xtensa-rmb-elf"
+			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			;;
+		vangogh)
+			PLATFORM="vangogh"
+			ARCH="xtensa"
+			XTENSA_CORE="ACP_5_0_001_PROD"
+			HOST="xtensa-vangogh-elf"
 			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
 			;;
 		mt8186)
