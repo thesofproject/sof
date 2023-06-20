@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2021 AMD.All rights reserved.
+ * Copyright(c) 2023 AMD.All rights reserved.
  *
  * Author:      Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
- *              Anup Kulkarni <anup.kulkarni@amd.com>
- *              Bala Kishore <balakishore.pati@amd.com>
+ *              SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
  */
 
 /*
@@ -18,6 +17,9 @@
 
 /* brief Number of available DSP cores (conf. by kconfig) */
 #define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
+
+/* brief Maximum allowed number of DSP cores */
+#define MAX_CORE_COUNT	1
 
 /* brief Id of master DSP core */
 #define PLATFORM_MASTER_CORE_ID	0
