@@ -72,10 +72,8 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		dt->handler(dt->arg);
 		cycles1 = k_cycle_get_32();
 
-		if (cycles1 > cycles0)
-			diff = cycles1 - cycles0;
-		else
-			diff = UINT32_MAX - cycles0 + cycles1;
+		/* This handles wrapping correctly too */
+		diff = cycles1 - cycles0;
 
 		timer_fired = k_timer_status_get(&zephyr_domain->timer);
 		if (timer_fired > 1)
