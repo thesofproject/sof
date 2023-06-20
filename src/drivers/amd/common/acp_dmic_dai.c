@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2021 AMD. All rights reserved.
+//Copyright(c) 2023 AMD. All rights reserved.
 //
 // Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
-//		Anup Kulkarni <anup.kulkarni@amd.com>
-//		Bala Kishore <balakishore.pati@amd.com>
+//		SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
 
 #include <sof/audio/component.h>
 #include <sof/drivers/acp_dai_dma.h>
@@ -28,7 +27,6 @@ DECLARE_TR_CTX(acp_dmic_dai_tr, SOF_UUID(acp_dmic_dai_uuid), LOG_LEVEL_INFO);
 static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 					  const void *spec_config)
 {
-	dai_info(dai, "ACP: acp_dmic_set_config");
 	acp_wov_pdm_no_of_channels_t pdm_channels;
 	const struct sof_ipc_dai_config *config = spec_config;
 	struct acp_pdata *acpdata = dai_get_drvdata(dai);
@@ -49,7 +47,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 		clk_ctrl.bits.brm_clk_ctrl = 1;
 		break;
 	default:
-		dai_err(dai, "ACP:acp_dmic_set_config unsupported samplerate");
+		dai_err(dai, "unsupported samplerate");
 		return -EINVAL;
 	}
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL, clk_ctrl.u32all);
@@ -61,7 +59,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 		pdm_channels.bits.pdm_no_of_channels = 1;
 		break;
 	default:
-		dai_err(dai, "ACP:acp_dmic_set_config unsupported channels");
+		dai_err(dai, "acp_dmic_set_config unsupported channels");
 		return -EINVAL;
 	}
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_PDM_NO_OF_CHANNELS,
@@ -71,7 +69,6 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 
 static int acp_dmic_dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	dai_dbg(dai, "acp_dmic_dai_trigger");
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_STOP:
@@ -85,11 +82,11 @@ static int acp_dmic_dai_probe(struct dai *dai)
 {
 	struct acp_pdata *acp;
 
-	dai_info(dai, "ACP: acp_dmic_dai_probe");
+	dai_info(dai, "dmic dai probe");
 	/* allocate private data */
 	acp = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*acp));
 	if (!acp) {
-		dai_err(dai, "acp_dmic_dai_probe(): alloc failed");
+		dai_err(dai, "dmic dai probe alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, acp);
@@ -100,7 +97,6 @@ static int acp_dmic_dai_remove(struct dai *dai)
 {
 	struct acp_pdata *acp = dai_get_drvdata(dai);
 
-	dai_info(dai, "acp_dmic_dai_remove()");
 	rfree(acp);
 	dai_set_drvdata(dai, NULL);
 	return 0;
@@ -113,7 +109,7 @@ static int acp_dmic_dai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction);
 	default:
-		dai_err(dai, "acp_dmic_dai_get_fifo(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -136,7 +132,7 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 		params->rate = acpdata->dmic_params.pdm_rate;
 		break;
 	default:
-		dai_err(dai, "ACP:unsupported samplerate %d", acpdata->dmic_params.pdm_rate);
+		dai_err(dai, "unsupported samplerate %d", acpdata->dmic_params.pdm_rate);
 		return -EINVAL;
 	}
 	switch (acpdata->dmic_params.pdm_ch) {
@@ -145,7 +141,7 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 		params->channels = acpdata->dmic_params.pdm_ch;
 		break;
 	default:
-		dai_err(dai, "ACP:unsupported channels %d", acpdata->dmic_params.pdm_ch);
+		dai_err(dai, "unsupported channels %d", acpdata->dmic_params.pdm_ch);
 		return -EINVAL;
 	}
 	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;

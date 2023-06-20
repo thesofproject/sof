@@ -31,60 +31,21 @@
 #include <stdint.h>
 #include <platform/fw_scratch_mem.h>
 #include <platform/chip_registers.h>
+#include <platform/acp_sp_dma.h>
 
 /*3ac07334-41ce-4447-a2c5-dff0d1fa1392*/
 DECLARE_SOF_UUID("acp-sp", acp_sp_uuid, 0x3ac07334, 0x41ce, 0x4447,
 		0xa2, 0xc5, 0xdf, 0xf0, 0xd1, 0xfa, 0x13, 0x92);
-DECLARE_TR_CTX(acp_sp_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(acp_sp_rmb_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
-#define SP_FIFO_SIZE		512
 #define SP_TX_FIFO_ADDR		(SP_FIFO_SIZE * 2)
 #define SP_RX_FIFO_ADDR		(SP_TX_FIFO_ADDR+SP_FIFO_SIZE)
-#define SP_IER_DISABLE		0x0
 
 static uint64_t prev_tx_pos;
 static uint64_t prev_rx_pos;
 static uint32_t sp_buff_size;
 
-/* allocate next free DMA channel */
-static struct dma_chan_data *acp_dai_sp_dma_channel_get(struct dma *dma,
-						   unsigned int req_chan)
-{
-	k_spinlock_key_t key;
-	struct dma_chan_data *channel;
-
-	key = k_spin_lock(&dma->lock);
-	if (req_chan >= dma->plat_data.channels) {
-		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sp_tr, "Channel %d not in range", req_chan);
-		return NULL;
-	}
-	channel = &dma->chan[req_chan];
-	if (channel->status != COMP_STATE_INIT) {
-		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sp_tr, "channel already in use %d", req_chan);
-		return NULL;
-	}
-	atomic_add(&dma->num_channels_busy, 1);
-	channel->status = COMP_STATE_READY;
-	k_spin_unlock(&dma->lock, key);
-	return channel;
-}
-
-/* channel must not be running when this is called */
-static void acp_dai_sp_dma_channel_put(struct dma_chan_data *channel)
-{
-	k_spinlock_key_t key;
-
-	notifier_unregister_all(NULL, channel);
-	key = k_spin_lock(&channel->dma->lock);
-	channel->status = COMP_STATE_INIT;
-	atomic_sub(&channel->dma->num_channels_busy, 1);
-	k_spin_unlock(&channel->dma->lock, key);
-
-}
-
-static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
+int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 {
 	acp_i2stdm_ier_t	sp_ier;
 	acp_i2stdm_iter_t	sp_iter;
@@ -124,27 +85,14 @@ static int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 		sp_irer.bits.i2stdm_rx_samplen = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_tr, "Start direction not defined %d", channel->direction);
+		tr_err(&acp_sp_rmb_tr, "Start direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 
 	return 0;
 }
 
-
-static int acp_dai_sp_dma_release(struct dma_chan_data *channel)
-{
-	/* nothing to do on rembrandt */
-	return 0;
-}
-
-static int acp_dai_sp_dma_pause(struct dma_chan_data *channel)
-{
-	/* nothing to do on rembrandt */
-	return 0;
-}
-
-static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
+int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 {
 	acp_i2stdm_irer_t	sp_irer;
 	acp_i2stdm_iter_t	sp_iter;
@@ -170,7 +118,7 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 		sp_irer.bits.i2stdm_rx_en = 0;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_tr, "Stop direction not defined %d", channel->direction);
+		tr_err(&acp_sp_rmb_tr, "Stop direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
@@ -189,27 +137,19 @@ static int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 	return 0;
 }
 
-static int acp_dai_sp_dma_status(struct dma_chan_data *channel,
-			    struct dma_chan_status *status,
-			    uint8_t direction)
-{
-	/* nothing to do on rembrandt */
-	return 0;
-}
-
 /* set the DMA channel configuration, source/target address, buffer sizes */
-static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
-				struct dma_sg_config *config)
+int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
+			      struct dma_sg_config *config)
 {
 	uint32_t sp_buff_addr;
 	uint32_t sp_fifo_addr;
 
 	if (!config->cyclic) {
-		tr_err(&acp_sp_tr, "cyclic configurations only supported!");
+		tr_err(&acp_sp_rmb_tr, "cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_sp_tr, "scatter enabled, that is not supported for now!");
+		tr_err(&acp_sp_rmb_tr, "scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -261,63 +201,16 @@ static int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (sp_buff_size >> 1));
 
 	} else {
-		tr_err(&acp_sp_tr, "DMA Config channel direction undefined %d", channel->direction);
+		tr_err(&acp_sp_rmb_tr, "DMA Config channel direction undefined %d",
+		       channel->direction);
 		return -EINVAL;
 	}
 
 	return 0;
 }
 
-static int acp_dai_sp_dma_copy(struct dma_chan_data *channel, int bytes,
-			  uint32_t flags)
-{
-	struct dma_cb_data next = {
-		.channel = channel,
-		.elem.size = bytes,
-	};
-	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
-			NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
-	return 0;
-}
-
-static int acp_dai_sp_dma_probe(struct dma *dma)
-{
-	int channel;
-
-	if (dma->chan) {
-		tr_err(&acp_sp_tr, "Repeated probe");
-		return -EEXIST;
-	}
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
-			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
-			    sizeof(struct dma_chan_data));
-	if (!dma->chan) {
-		tr_err(&acp_sp_tr, "Probe failure,unable to allocate channel descriptors");
-		return -ENOMEM;
-	}
-	for (channel = 0; channel < dma->plat_data.channels; channel++) {
-		dma->chan[channel].dma = dma;
-		dma->chan[channel].index = channel;
-		dma->chan[channel].status = COMP_STATE_INIT;
-	}
-	atomic_init(&dma->num_channels_busy, 0);
-	return 0;
-}
-
-static int acp_dai_sp_dma_remove(struct dma *dma)
-{
-	if (!dma->chan) {
-		tr_err(&acp_sp_tr, "remove called without probe,it's a no-op");
-		return 0;
-	}
-
-	rfree(dma->chan);
-	dma->chan = NULL;
-	return 0;
-}
-
-static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
-				   uint32_t *avail, uint32_t *free)
+int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
+				 uint32_t *avail, uint32_t *free)
 {
 	uint64_t tx_low, curr_tx_pos, tx_high;
 	uint64_t rx_low, curr_rx_pos, rx_high;
@@ -341,13 +234,13 @@ static int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 		*free = (sp_buff_size >> 1);
 		*avail = (sp_buff_size >> 1);
 	} else {
-		tr_err(&acp_sp_tr, "Channel direction not defined %d", channel->direction);
+		tr_err(&acp_sp_rmb_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	return 0;
 }
 
-static int acp_dai_sp_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
+int acp_dai_sp_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 {
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
@@ -366,7 +259,7 @@ static int acp_dai_sp_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t
 	return 0;
 }
 
-static int acp_dai_sp_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
+int acp_dai_sp_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 {
 	uint32_t status;
 	acp_dsp0_intr_stat_t acp_intr_stat;
@@ -405,20 +298,3 @@ static int acp_dai_sp_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_
 		return -EINVAL;
 	}
 }
-
-const struct dma_ops acp_dai_sp_dma_ops = {
-	.channel_get		= acp_dai_sp_dma_channel_get,
-	.channel_put		= acp_dai_sp_dma_channel_put,
-	.start			= acp_dai_sp_dma_start,
-	.stop			= acp_dai_sp_dma_stop,
-	.pause			= acp_dai_sp_dma_pause,
-	.release		= acp_dai_sp_dma_release,
-	.copy			= acp_dai_sp_dma_copy,
-	.status			= acp_dai_sp_dma_status,
-	.set_config		= acp_dai_sp_dma_set_config,
-	.interrupt		= acp_dai_sp_dma_interrupt,
-	.probe			= acp_dai_sp_dma_probe,
-	.remove			= acp_dai_sp_dma_remove,
-	.get_data_size		= acp_dai_sp_dma_get_data_size,
-	.get_attribute		= acp_dai_sp_dma_get_attribute,
-};

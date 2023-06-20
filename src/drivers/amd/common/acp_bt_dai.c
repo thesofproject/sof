@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2021 AMD. All rights reserved.
+//Copyright(c) 2023 AMD. All rights reserved.
 //
 //Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
-//		Anup Kulkarni<anup.kulkarni@amd.com>
-//		Bala Kishore <balakishore.pati@amd.com>
+//		SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
 
 #include <sof/audio/component.h>
 #include <sof/drivers/acp_dai_dma.h>
@@ -19,22 +18,22 @@
 #include <sof/lib/io.h>
 #include <platform/chip_offset_byte.h>
 
-/* 4abd71ba-8619-458a-b33f-160fc0cf809b */
-DECLARE_SOF_UUID("btdai", btdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
-		  0xb3, 0x3f, 0x16, 0x0f, 0xc0, 0xcf, 0x80, 0x9b);
+/* 20865bfe-b833-4ff9-b22a-0482c3477497 */
+DECLARE_SOF_UUID("btdai", btdai_uuid, 0x20865bfe, 0xb833, 0x4ff9,
+		 0xb2, 0x2a, 0x04, 0x82, 0xc3, 0x47, 0x74, 0x97);
 
 DECLARE_TR_CTX(btdai_tr, SOF_UUID(btdai_uuid), LOG_LEVEL_INFO);
 
 static inline int btdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				   const void *spec_config)
 {
-	/* nothing to do on renoir */
+	/* nothing to do */
 	return 0;
 }
 
 static int btdai_trigger(struct dai *dai, int cmd, int direction)
 {
-	/* nothing to do on renoir */
+	/* nothing to do */
 	return 0;
 }
 
@@ -57,7 +56,7 @@ static int btdai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction);
 	default:
-		dai_err(dai, "btdai_get_fifo(): Not a valid direction");
+		dai_err(dai, "Not a valid direction");
 		return -EINVAL;
 	}
 }
