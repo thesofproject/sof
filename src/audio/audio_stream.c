@@ -136,12 +136,33 @@ static int audio_stream_sink_set_alignment_constants(struct sof_sink __sparse_ca
 	return 0;
 }
 
+static struct sof_audio_stream_params __sparse_cache *audio_stream_source_params(
+	struct sof_source __sparse_cache *source)
+{
+	struct audio_stream __sparse_cache *audio_stream =
+			attr_container_of(source, struct audio_stream __sparse_cache,
+					  source_api, __sparse_cache);
+
+	return &audio_stream->runtime_stream_params;
+}
+
+static struct sof_audio_stream_params __sparse_cache *audio_stream_sink_params(
+	struct sof_sink __sparse_cache *sink)
+{
+	struct audio_stream __sparse_cache *audio_stream =
+			attr_container_of(sink, struct audio_stream __sparse_cache,
+					  sink_api, __sparse_cache);
+
+	return &audio_stream->runtime_stream_params;
+}
+
 static const struct source_ops audio_stream_source_ops = {
 	.get_data_available = audio_stream_get_data_available,
 	.get_data = audio_stream_get_data,
 	.release_data = audio_stream_release_data,
 	.audio_set_ipc_params = audio_stream_set_ipc_params_source,
-	.set_alignment_constants = audio_stream_source_set_alignment_constants
+	.set_alignment_constants = audio_stream_source_set_alignment_constants,
+	.audio_stream_params = audio_stream_source_params,
 };
 
 static const struct sink_ops audio_stream_sink_ops = {
@@ -149,7 +170,8 @@ static const struct sink_ops audio_stream_sink_ops = {
 	.get_buffer = audio_stream_get_buffer,
 	.commit_buffer = audio_stream_commit_buffer,
 	.audio_set_ipc_params = audio_stream_set_ipc_params_sink,
-	.set_alignment_constants = audio_stream_sink_set_alignment_constants
+	.set_alignment_constants = audio_stream_sink_set_alignment_constants,
+	.audio_stream_params = audio_stream_sink_params,
 };
 
 void audio_stream_init(struct audio_stream __sparse_cache *audio_stream,
@@ -165,11 +187,7 @@ void audio_stream_init(struct audio_stream __sparse_cache *audio_stream,
 	 */
 	audio_stream_init_alignment_constants(1, 1, audio_stream);
 
-	source_init(audio_stream_get_source(audio_stream), &audio_stream_source_ops,
-		    (__sparse_force struct sof_audio_stream_params *)
-		    &audio_stream->runtime_stream_params);
-	sink_init(audio_stream_get_sink(audio_stream), &audio_stream_sink_ops,
-		  (__sparse_force struct sof_audio_stream_params *)
-		  &audio_stream->runtime_stream_params);
+	source_init(audio_stream_get_source(audio_stream), &audio_stream_source_ops);
+	sink_init(audio_stream_get_sink(audio_stream), &audio_stream_sink_ops);
 	audio_stream_reset(audio_stream);
 }

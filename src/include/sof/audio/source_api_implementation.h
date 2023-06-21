@@ -7,12 +7,12 @@
 #ifndef __SOF_SOURCE_API_IMPLEMENTATION_H__
 #define __SOF_SOURCE_API_IMPLEMENTATION_H__
 
+#include <sof/audio/stream_common.h>
 #include <sof/common.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 /* forward def */
-struct sof_audio_stream_params;
 
 /**
  * this is a definition of internals of source API
@@ -39,6 +39,12 @@ struct source_ops {
 	 * see comment of source_release_data()
 	 */
 	int (*release_data)(struct sof_source __sparse_cache *source, size_t free_size);
+
+	/**
+	 * get a pointer to runtime parameters
+	 */
+	struct sof_audio_stream_params __sparse_cache *(*audio_stream_params)(
+		struct sof_source __sparse_cache *source);
 
 	/**
 	 * OPTIONAL: Notification to the source implementation about changes in audio format
@@ -72,7 +78,7 @@ struct sof_source {
 	const struct source_ops *ops;
 	size_t requested_read_frag_size;	/** keeps size of data obtained by get_data() */
 	size_t num_of_bytes_processed;	/** processed bytes counter */
-	struct sof_audio_stream_params *audio_stream_params;
+	struct sof_audio_stream_params audio_stream_params;
 };
 
 /**
@@ -80,12 +86,7 @@ struct sof_source {
  *
  * @param source pointer to the structure
  * @param ops pointer to API operations
- * @param audio_stream_params pointer to structure with audio parameters
- *	  note that the audio_stream_params must be accessible by the caller core
- *	  the implementation must ensure coherent access to the parameteres
- *	  in case of i.e. cross core shared queue, it must be located in non-cached memory
  */
-void source_init(struct sof_source __sparse_cache *source, const struct source_ops *ops,
-		 struct sof_audio_stream_params *audio_stream_params);
+void source_init(struct sof_source __sparse_cache *source, const struct source_ops *ops);
 
 #endif /* __SOF_SOURCE_API_IMPLEMENTATION_H__ */

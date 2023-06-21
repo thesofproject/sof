@@ -7,12 +7,10 @@
 #include <sof/audio/source_api_implementation.h>
 #include <sof/audio/audio_stream.h>
 
-void source_init(struct sof_source __sparse_cache *source, const struct source_ops *ops,
-		 struct sof_audio_stream_params *audio_stream_params)
+void source_init(struct sof_source __sparse_cache *source, const struct source_ops *ops)
 {
 	source->ops = ops;
 	source->requested_read_frag_size = 0;
-	source->audio_stream_params = audio_stream_params;
 }
 
 size_t source_get_data_available(struct sof_source __sparse_cache *source)
@@ -68,38 +66,38 @@ void source_reset_num_of_processed_bytes(struct sof_source __sparse_cache *sourc
 
 enum sof_ipc_frame source_get_frm_fmt(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->frame_fmt;
+	return source->ops->audio_stream_params(source)->frame_fmt;
 }
 
 enum sof_ipc_frame source_get_valid_fmt(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->valid_sample_fmt;
+	return source->ops->audio_stream_params(source)->valid_sample_fmt;
 }
 
 unsigned int source_get_rate(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->rate;
+	return source->ops->audio_stream_params(source)->rate;
 }
 
 unsigned int source_get_channels(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->channels;
+	return source->ops->audio_stream_params(source)->channels;
 }
 
 uint32_t source_get_buffer_fmt(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->buffer_fmt;
+	return source->ops->audio_stream_params(source)->buffer_fmt;
 }
 
 bool source_get_underrun(struct sof_source __sparse_cache *source)
 {
-	return source->audio_stream_params->underrun_permitted;
+	return source->ops->audio_stream_params(source)->underrun_permitted;
 }
 
 int source_set_valid_fmt(struct sof_source __sparse_cache *source,
 			 enum sof_ipc_frame valid_sample_fmt)
 {
-	source->audio_stream_params->valid_sample_fmt = valid_sample_fmt;
+	source->ops->audio_stream_params(source)->valid_sample_fmt = valid_sample_fmt;
 	if (source->ops->on_audio_format_set)
 		return source->ops->on_audio_format_set(source);
 	return 0;
@@ -107,7 +105,7 @@ int source_set_valid_fmt(struct sof_source __sparse_cache *source,
 
 int source_set_rate(struct sof_source __sparse_cache *source, unsigned int rate)
 {
-	source->audio_stream_params->rate = rate;
+	source->ops->audio_stream_params(source)->rate = rate;
 	if (source->ops->on_audio_format_set)
 		return source->ops->on_audio_format_set(source);
 	return 0;
@@ -115,7 +113,7 @@ int source_set_rate(struct sof_source __sparse_cache *source, unsigned int rate)
 
 int source_set_channels(struct sof_source __sparse_cache *source, unsigned int channels)
 {
-	source->audio_stream_params->channels = channels;
+	source->ops->audio_stream_params(source)->channels = channels;
 	if (source->ops->on_audio_format_set)
 		return source->ops->on_audio_format_set(source);
 	return 0;
@@ -123,7 +121,7 @@ int source_set_channels(struct sof_source __sparse_cache *source, unsigned int c
 
 int source_set_buffer_fmt(struct sof_source __sparse_cache *source, uint32_t buffer_fmt)
 {
-	source->audio_stream_params->buffer_fmt = buffer_fmt;
+	source->ops->audio_stream_params(source)->buffer_fmt = buffer_fmt;
 	if (source->ops->on_audio_format_set)
 		return source->ops->on_audio_format_set(source);
 	return 0;
@@ -131,7 +129,7 @@ int source_set_buffer_fmt(struct sof_source __sparse_cache *source, uint32_t buf
 
 int source_set_underrun(struct sof_source __sparse_cache *source, bool underrun_permitted)
 {
-	source->audio_stream_params->underrun_permitted = underrun_permitted;
+	source->ops->audio_stream_params(source)->underrun_permitted = underrun_permitted;
 	if (source->ops->on_audio_format_set)
 		return source->ops->on_audio_format_set(source);
 	return 0;
