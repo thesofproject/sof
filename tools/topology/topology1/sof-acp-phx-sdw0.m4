@@ -46,14 +46,14 @@ PCM_PLAYBACK_ADD(ACP-SW0-PIN0-Playback, 1, PIPELINE_PCM_1)
 # PCM  id 0
 
 # Capture pipeline 2 on PCM 0 using max 2 channels of s16le.
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-rtnr-capture.m4,
         2, 0, 2, s16le,
-        2000, 0, 0,
+        4000, 0, 0,
         48000, 48000, 48000)
 
 # Capture DAI is ACPSP using 2 periods
 DAI_ADD(sof/pipe-dai-capture.m4, 2, ACP_SDW, 7, SW1-PIN1-Capture,
-PIPELINE_SINK_2, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+PIPELINE_SINK_2, 2, s16le, 4000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 DAI_CONFIG(ACP_SDW, 1, 8, SW1-PIN1-Capture,
 	   ACP_SDW_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),

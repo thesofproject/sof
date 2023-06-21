@@ -203,6 +203,7 @@ set(TPLGS
 	"sof-acp-rmb\;sof-rmb-rt5682s-rt1019"
 	"sof-acp-rmb\;sof-rmb-nau8825-max98360"
 	"sof-acp-phx-sdw0\;sof-phx-rt715-rt711-rt1316"
+	"sof-acp-phx-sdw0\;sof-phx-rt715-rt711-rt1316-rtnr\;-DRTNR"
 	"sof-acp-phx-sdw0_NonAggWithACPDMIC\;sof-acp-phx-sdw0_NonAggWithACPDMIC"
 	"sof-acp-phx-sdw0_AggWithACPDMIC\;sof-acp-phx-sdw0_AggWithACPDMIC"
 	"sof-acp-phx-sdw0_AggWithoutACPDMIC\;sof-acp-phx-sdw0_AggWithoutACPDMIC"
