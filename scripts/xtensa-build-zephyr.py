@@ -73,6 +73,7 @@ else:
 
 
 @dataclasses.dataclass
+# pylint:disable=too-many-instance-attributes
 class PlatformConfig:
 	"Product parameters"
 	name: str
@@ -83,6 +84,7 @@ class PlatformConfig:
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	IPC4_RIMAGE_DESC: str = None
 	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
+	aliases: list = dataclasses.field(default_factory=list)
 
 platform_configs = {
 	#  Intel platforms
@@ -92,6 +94,7 @@ platform_configs = {
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
 		IPC4_RIMAGE_DESC = "tgl-cavs.toml",
+		aliases = ['adl', 'ehl']
 	),
 	"tgl-h" : PlatformConfig(
 		"tgl-h", "intel_adsp_cavs25_tgph",
@@ -99,6 +102,7 @@ platform_configs = {
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
 		IPC4_RIMAGE_DESC = "tgl-h-cavs.toml",
+		aliases = ['adl-s']
 	),
 	"mtl" : PlatformConfig(
 		"mtl", "intel_adsp_ace15_mtpm",
@@ -297,6 +301,18 @@ def execute_command(*run_args, **run_kwargs):
 
 	return subprocess.run(*run_args, **run_kwargs)
 
+def symlink_or_copy(directory, origbase, newbase):
+	"""Create a symbolic link or copy in the same directory. Don't
+	bother Windows users with symbolic links because they require
+	special privileges. Windows don't care about /lib/firmware/sof/
+	anyway. Make a copy instead to preserve cross-platform consistency.
+
+	"""
+	new = pathlib.Path(directory) / newbase
+	if py_platform.system() == "Windows":
+		shutil.copy2(pathlib.Path(directory) / origbase, new)
+	else:
+		new.symlink_to(origbase)
 
 def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
@@ -490,8 +506,9 @@ def clean_staging(platform):
 	rmtree_if_exists(sof_output_dir / platform)
 
 	# Remaining .ri and .ldc files
-	for f in sof_output_dir.glob(f"**/sof-{platform}.*"):
-		os.remove(f)
+	for p in [ platform ] + platform_configs[platform].aliases:
+		for f in sof_output_dir.glob(f"**/sof-{p}.*"):
+			os.remove(f)
 
 
 RIMAGE_BUILD_DIR  = west_top / "build-rimage"
@@ -759,6 +776,9 @@ def build_platforms():
 		# Extract metadata
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
+		for p_alias in platform_configs[platform].aliases:
+			symlink_or_copy(sof_platform_output_dir, f"sof-{platform}.ldc", f"sof-{p_alias}.ldc")
+
 		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
@@ -816,6 +836,11 @@ def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 	os.makedirs(install_key_dir, exist_ok=True)
 	# looses file owner and group - file is commonly accessible
 	shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
+
+	# The production key is usually different
+	if args.key_type_subdir != "none" and args.fw_naming != "AVS":
+		for p_alias in platform_configs[platform].aliases:
+			symlink_or_copy(install_key_dir, output_fwname, f"sof-{p_alias}.ri")
 
 
 	# sof-info/ directory
