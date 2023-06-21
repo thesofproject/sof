@@ -175,6 +175,7 @@ jobs:
       - name: build
         run: cd workspace && ./sof/zephyr/docker-run.sh
              ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
+             --cmake-args=-DEXTRA_CXXFLAGS=-Werror
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
              --cmake-args=--warn-uninitialized
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
@@ -321,6 +322,7 @@ jobs:
         run: python sof/scripts/xtensa-build-zephyr.py
           --no-interactive
           --cmake-args=-DEXTRA_CFLAGS=-Werror
+          --cmake-args=-DEXTRA_CXXFLAGS=-Werror
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
           --cmake-args=--warn-uninitialized ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
