@@ -119,6 +119,11 @@ static int ssp_mclk_prepare_enable(struct dai *dai)
 	struct sof_ipc_dai_config *config = &ssp->config;
 	int ret;
 
+	if (!config->ssp.mclk_rate) {
+		dai_info(dai, "ssp_mclk_prepare_enable(): SSP%d do not need mclk", dai->index);
+		return 0;
+	}
+
 	if (ssp->clk_active & SSP_CLK_MCLK_ACTIVE)
 		return 0;
 
@@ -136,6 +141,9 @@ static int ssp_mclk_prepare_enable(struct dai *dai)
 static void ssp_mclk_disable_unprepare(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	if (!ssp->config.ssp.mclk_rate)
+		return;
 
 	if (!(ssp->clk_active & SSP_CLK_MCLK_ACTIVE))
 		return;
@@ -410,21 +418,23 @@ static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
 		SSCR2_PSPSRWFDFD : 0;
 
-	if (!config->ssp.mclk_rate ||
-	    config->ssp.mclk_rate > ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
-		dai_err(dai, "ssp_set_config(): invalid MCLK = %d Hz (valid < %d)",
-			config->ssp.mclk_rate,
-			ssp_freq[MAX_SSP_FREQ_INDEX].freq);
-		ret = -EINVAL;
-		goto out;
-	}
+	/* not every codec reqire mclk */
+	if (config->ssp.mclk_rate) {
+		if (config->ssp.mclk_rate > ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
+			dai_err(dai, "ssp_set_config(): invalid MCLK = %d Hz (valid < %d)",
+				config->ssp.mclk_rate,
+				ssp_freq[MAX_SSP_FREQ_INDEX].freq);
+			ret = -EINVAL;
+			goto out;
+		}
 
-	if (!config->ssp.bclk_rate ||
-	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
-		dai_err(dai, "ssp_set_config(): BCLK %d Hz = 0 or > MCLK %d Hz",
-			config->ssp.bclk_rate, config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
+		if (!config->ssp.bclk_rate ||
+		    config->ssp.bclk_rate > config->ssp.mclk_rate) {
+			dai_err(dai, "ssp_set_config(): BCLK %d Hz = 0 or > MCLK %d Hz",
+				config->ssp.bclk_rate, config->ssp.mclk_rate);
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	/* calc frame width based on BCLK and rate - must be divisable */
