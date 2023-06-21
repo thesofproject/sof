@@ -175,7 +175,7 @@ static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 	uint32_t num_of_sources = 0;
 	uint32_t num_of_sinks = 0;
-	int ret;
+	int ret, i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	list_for_item(blist, &dev->bsink_list) {
@@ -204,11 +204,11 @@ static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	ret = module_prepare(mod, audio_src, num_of_sources, audio_sink, num_of_sinks);
 
 	/* release all source buffers in reverse order */
-	for (int i = num_of_sources - 1; i >= 0; i--)
+	for (i = num_of_sources - 1; i >= 0; i--)
 		buffer_release(source_buffers_c[i]);
 
 	/* release all sink buffers in reverse order */
-	for  (int i = num_of_sinks - 1; i >= 0 ; i--)
+	for  (i = num_of_sinks - 1; i >= 0 ; i--)
 		buffer_release(sinks_buffers_c[i]);
 
 	return ret;
@@ -911,7 +911,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	struct list_item *blist;
 	uint32_t num_of_sources = 0;
 	uint32_t num_of_sinks = 0;
-	int ret;
+	int ret, i;
 
 	comp_dbg(dev, "module_adapter_sink_source_copy(): start");
 
@@ -946,13 +946,13 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	}
 
 	/* release all source buffers in reverse order */
-	for (int i = num_of_sources - 1; i >= 0; i--) {
+	for (i = num_of_sources - 1; i >= 0; i--) {
 		mod->total_data_consumed += source_get_num_of_processed_bytes(audio_src[i]);
 		buffer_release(source_buffers_c[i]);
 	}
 
 	/* release all sink buffers in reverse order */
-	for  (int i = num_of_sinks - 1; i >= 0 ; i--) {
+	for  (i = num_of_sinks - 1; i >= 0 ; i--) {
 		mod->total_data_produced += sink_get_num_of_processed_bytes(audio_sink[i]);
 		buffer_release(sinks_buffers_c[i]);
 	}
