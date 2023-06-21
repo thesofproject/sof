@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <rtos/panic.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,8 +58,6 @@ static inline uint8_t *array_alloc_from(byte_array_t *ba,
 #endif
 
 #ifdef __cplusplus
-/* clang-format off */
-#define assert(cond)
 
 static inline uint8_t *array_get_data(const byte_array_t &ba)
 {
