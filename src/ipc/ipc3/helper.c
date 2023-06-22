@@ -277,10 +277,14 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_MODULE_ADAPTER:
 	case SOF_COMP_NONE:
 		config->process.type = proc->type;
-		config->process.size = proc->size;
 #if CONFIG_LIBRARY || UNIT_TEST
+		/* FIXME: protocol code paths shouldn't be different for testing */
+		config->process.size = proc->size;
 		config->process.data = proc->data + comp->ext_data_length;
 #else
+		/* Clamp size, don't trust the protocol-supplied value! */
+		config->process.size = MIN(proc->size,
+					   SOF_IPC_MSG_MAX_SIZE - sizeof(*proc));
 		config->process.data = proc->data;
 #endif
 		break;
