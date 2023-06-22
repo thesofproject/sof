@@ -236,7 +236,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	uint32_t buff_size; /* size of local buffer */
 	int i = 0;
 
-	comp_dbg(dev, "module_adapter_prepare() start");
+	comp_info(dev, "module_adapter_prepare() start");
 
 	/* Prepare module */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
