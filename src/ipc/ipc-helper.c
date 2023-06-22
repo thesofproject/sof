@@ -291,7 +291,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
-	if (!icd->cd->bsource_list.next || !icd->cd->bsource_list.next) {
+	if (!icd->cd->bsource_list.next || !icd->cd->bsink_list.next) {
 		/* Unfortunate: the buffer list node gets initialized
 		 * at the component level and thus can contain NULLs
 		 * (which is an invalid list!) if the component's
