@@ -24,10 +24,28 @@
 
 #define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
+#if ASSEMBLY
+#define BIT(b)			(1 << (b))
+#else
+#define BIT(b)			(1UL << (b))
+#endif
+
 #if !defined(__ASSEMBLER__) && defined(__XTENSA__)
 
 #ifndef assert
 #define assert(x) do {} while (0)
+#endif
+
+#ifndef __packed
+#define __packed __attribute__((packed))
+#endif
+
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+
+#ifndef __aligned
+#define __aligned(x) __attribute__((__aligned__(x)))
 #endif
 
 #define VERIFY_ALIGN
