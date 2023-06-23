@@ -53,7 +53,7 @@ bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
  */
 int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 			uint32_t size, const void *init_data);
-
+#if 0
 /**
  * Handles IPC set command.
  *
@@ -62,7 +62,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
  */
 int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			   struct sof_ipc_ctrl_data *cdata);
-
+#endif
 /**
  * Handles IPC set command.
  *
@@ -88,6 +88,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 			    bool first_block, bool last_block,
 			    uint32_t data_offset, const char *data);
+#if 0
 /**
  * Handles IPC get command.
  * @param blob_handler Data blob handler
@@ -96,6 +97,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
  */
 int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 			   struct sof_ipc_ctrl_data *cdata, int size);
+#endif
 
 /**
  * Returns new data blob handler.

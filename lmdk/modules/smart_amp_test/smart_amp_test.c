@@ -17,28 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct module_interface smart_amp_test_interface;
-
-void *loadable_module_main(void *mod_cfg, void *parent_ppl, void **mod_ptr)
-{
-	return &smart_amp_test_interface;
-}
-
-DECLARE_LOADABLE_MODULE(smart_amp_test)
-
-__attribute__((section(".module")))
-const struct sof_man_module_manifest main_manifest = {
-	.module = {
-		.name = "SMATEST",
-		.uuid = {0x1E, 0x96, 0x7A, 0x16, 0xE4, 0x8A, 0xEA, 0x11,
-			 0x89, 0xF1, 0x00, 0x0C, 0x29, 0xCE, 0x16, 0x35},
-		.entry_point = (uint32_t)MODULE_PACKAGE_ENTRY_POINT_NAME(smart_amp_test),
-		.type = { .load_type = SOF_MAN_MOD_TYPE_MODULE,
-		.domain_ll = 1 },
-		.affinity_mask = 1,
-	}
-};
-
 enum mem_zone {
 	SOF_MEM_ZONE_SYS = 0,		/**< System zone */
 	SOF_MEM_ZONE_SYS_RUNTIME,	/**< System-runtime zone */
@@ -48,6 +26,8 @@ enum mem_zone {
 	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
 };
 
+/* FIXME: only one instance is supported ATM */
+static struct smart_amp_data smart_amp_priv;
 
 static int smart_amp_init(struct processing_module *mod)
 {
@@ -58,9 +38,13 @@ static int smart_amp_init(struct processing_module *mod)
 	int ret;
 	const struct ipc4_base_module_extended_cfg *base_cfg = mod_data->cfg.init_data;
 
+#if 0
 	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
 	if (!sad)
 		return -ENOMEM;
+#else
+	sad = &smart_amp_priv;
+#endif
 
 	mod_data->private = sad;
 
@@ -88,7 +72,7 @@ static int smart_amp_init(struct processing_module *mod)
 
 sad_fail:
 	comp_data_blob_handler_free(sad->model_handler);
-	rfree(sad);
+//	rfree(sad);
 	return ret;
 }
 
@@ -286,7 +270,7 @@ static int smart_amp_free(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 
 	comp_data_blob_handler_free(sad->model_handler);
-	rfree(sad);
+//	rfree(sad);
 	return 0;
 }
 
@@ -403,4 +387,24 @@ struct module_interface smart_amp_test_interface = {
 	.get_configuration = smart_amp_get_config,
 	.reset = smart_amp_reset,
 	.free = smart_amp_free
+};
+
+void *loadable_module_main(void *mod_cfg, void *parent_ppl, void **mod_ptr)
+{
+	return &smart_amp_test_interface;
+}
+
+DECLARE_LOADABLE_MODULE(smart_amp_test)
+
+__attribute__((section(".module")))
+const struct sof_man_module_manifest main_manifest = {
+	.module = {
+		.name = "SMATEST",
+		.uuid = {0x1E, 0x96, 0x7A, 0x16, 0xE4, 0x8A, 0xEA, 0x11,
+			 0x89, 0xF1, 0x00, 0x0C, 0x29, 0xCE, 0x16, 0x35},
+		.entry_point = (uint32_t)MODULE_PACKAGE_ENTRY_POINT_NAME(smart_amp_test),
+		.type = { .load_type = SOF_MAN_MOD_TYPE_MODULE,
+		.domain_ll = 1 },
+		.affinity_mask = 1,
+	}
 };
