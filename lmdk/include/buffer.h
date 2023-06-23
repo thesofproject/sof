@@ -11,6 +11,7 @@
 #include <../include/audio_stream.h>
 #include <../include/math/numbers.h>
 #include <../include/common.h>
+#include <../include/lib/cache.h>
 #include <../include/lib/uuid.h>
 #include <../include/list.h>
 #include <../include/coherent.h>
@@ -19,6 +20,7 @@
 #include <../include/ipc/topology.h>
 #include <../include/format.h>
 #include <../include/component.h>
+#include <../include/pipeline.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,6 +32,7 @@ struct comp_dev;
  *  @{
  */
 
+#if 0
 /* buffer tracing */
 extern struct tr_ctx buffer_tr;
 
@@ -96,6 +99,7 @@ extern struct tr_ctx buffer_tr;
 #endif
 
 #endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
+#endif
 
 /** @}*/
 
@@ -136,7 +140,7 @@ struct comp_buffer {
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
-	struct tr_ctx tctx;			/* trace settings */
+//	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */

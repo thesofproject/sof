@@ -26,6 +26,10 @@
 
 #if !defined(__ASSEMBLER__) && defined(__XTENSA__)
 
+#ifndef assert
+#define assert(x) do {} while (0)
+#endif
+
 #define VERIFY_ALIGN
 
 #endif
