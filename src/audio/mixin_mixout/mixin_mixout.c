@@ -298,12 +298,15 @@ static int mixin_process(struct processing_module *mod,
 
 	comp_dbg(dev, "mixin_process()");
 
+	/*
+	 * block mixin pipeline until at least one mixout pipeline started or until its source is
+	 * active
+	 */
+	if (num_output_buffers == 0 || num_input_buffers == 0)
+		return 0;
+
 	source_avail_frames = audio_stream_get_avail_frames(input_buffers[0].data);
 	sinks_free_frames = INT32_MAX;
-
-	/* block mixin pipeline until at least one mixout pipeline started */
-	if (num_output_buffers == 0)
-		return 0;
 
 	if (num_output_buffers > MIXIN_MAX_SINKS) {
 		comp_err(dev, "mixin_process(): Invalid output buffer count %d",
