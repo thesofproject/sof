@@ -13,6 +13,7 @@
 #include <../include/module_adapter/system_service/system_service.h>
 #include <../include/buffer.h>
 #include <../include/audio_stream.h>
+#include <ipc4/module.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -63,8 +64,8 @@ static int smart_amp_init(struct processing_module *mod)
 
 	/* Copy the pin formats */
 	bs = sizeof(sad->ipc4_cfg.input_pins) + sizeof(sad->ipc4_cfg.output_pin);
-	memcpy_s(sad->ipc4_cfg.input_pins, bs,
-		 base_cfg->base_cfg_ext.pin_formats, bs);
+	mod->sys_service->SafeMemcpy(sad->ipc4_cfg.input_pins, bs,
+				     base_cfg->base_cfg_ext.pin_formats, bs);
 
 	mod->simple_copy = true;
 
@@ -84,7 +85,6 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 	struct comp_dev *dev = mod->dev;
 	struct smart_amp_data *sad = module_get_private_data(mod);
 
-
 	switch (config_id) {
 	case SMART_AMP_SET_MODEL:
 		return comp_data_blob_set(sad->model_handler, pos,
@@ -92,7 +92,8 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 	case SMART_AMP_SET_CONFIG:
 		if (fragment_size != sizeof(sad->config))
 			return -EINVAL;
-		memcpy_s(&sad->config, sizeof(sad->config), fragment, fragment_size);
+		mod->sys_service->SafeMemcpy(&sad->config, sizeof(sad->config),
+					     fragment, fragment_size);
 		return 0;
 	default:
 		return -EINVAL;
@@ -109,7 +110,8 @@ static inline int smart_amp_get_config(struct processing_module *mod,
 
 	switch (config_id) {
 	case SMART_AMP_GET_CONFIG:
-		ret = memcpy_s(fragment, fragment_size, &sad->config, sizeof(sad->config));
+		ret = mod->sys_service->SafeMemcpy(fragment, fragment_size,
+						   &sad->config, sizeof(sad->config));
 		if (ret) {
 			return ret;
 		}
@@ -135,7 +137,7 @@ static int smart_amp_process_s16(struct processing_module *mod,
 	int i;
 	int j;
 
-	bsource->consumed += frames * source->channels * sizeof(int16_t);
+	bsource->consumed += frames * audio_stream_get_channels(source) * sizeof(int16_t);
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
@@ -168,7 +170,7 @@ static int smart_amp_process_s32(struct processing_module *mod,
 	int i;
 	int j;
 
-	bsource->consumed += frames * source->channels * sizeof(int32_t);
+	bsource->consumed += frames * audio_stream_get_channels(source) * sizeof(int32_t);
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
 			if (chan_map[j] != -1) {
@@ -290,7 +292,7 @@ static void smart_amp_set_params(struct processing_module *mod)
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int i;
 
-	memset(params, 0, sizeof(*params));
+	mod->sys_service->VecMemset(params, 0, sizeof(*params));
 	params->channels = audio_fmt->channels_count;
 	params->rate = audio_fmt->sampling_frequency;
 	params->sample_container_bytes = audio_fmt->depth / 8;
@@ -304,7 +306,10 @@ static void smart_amp_set_params(struct processing_module *mod)
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
 		struct ipc4_output_pin_format *sink_fmt = &sad->ipc4_cfg.output_pin;
-		struct ipc4_audio_format out_fmt = sink_fmt->audio_fmt;
+		struct ipc4_audio_format out_fmt;
+
+		mod->sys_service->SafeMemcpy(&out_fmt, sizeof(out_fmt),
+					     &sink_fmt->audio_fmt, sizeof(sink_fmt->audio_fmt));
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
@@ -360,8 +365,9 @@ static int smart_amp_prepare(struct processing_module *mod)
 		buffer_c = buffer_acquire(source_buffer);
 		audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
 		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			buffer_c->stream.channels = sad->config.feedback_channels;
-			buffer_c->stream.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+			audio_stream_set_channels(&buffer_c->stream, sad->config.feedback_channels);
+			audio_stream_set_rate(&buffer_c->stream,
+					      mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency);
 		}
 		buffer_release(buffer_c);
 	}
