@@ -790,6 +790,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *source_c;
 	struct comp_buffer __sparse_cache *sink_c;
+	uint32_t num_output_buffers = 0;
 	uint32_t frames;
 	int ret;
 
@@ -805,7 +806,11 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 		buffer_stream_invalidate(source_c,
 					 frames * audio_stream_frame_bytes(&source_c->stream));
 
-	ret = module_process_legacy(mod, mod->input_buffers, 1, mod->output_buffers, 1);
+	if (sink_c->sink->state == dev->state)
+		num_output_buffers = 1;
+
+	ret = module_process_legacy(mod, mod->input_buffers, 1,
+				    mod->output_buffers, num_output_buffers);
 
 	/* consume from the input buffer */
 	mod->total_data_consumed += mod->input_buffers[0].consumed;
