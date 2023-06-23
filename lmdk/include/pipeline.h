@@ -7,9 +7,17 @@
 
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
-
-#include <../include/list.h>
-#include <../include/ipc/topology.h>
+#if 0
+#include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#include <sof/list.h>
+#include <rtos/task.h>
+#include <rtos/sof.h>
+#include <rtos/spinlock.h>
+#include <sof/audio/pipeline-trace.h>
+#include <ipc/topology.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,7 +26,7 @@ struct comp_buffer;
 struct comp_dev;
 struct ipc;
 struct ipc_msg;
-
+#endif
 /*
  * Pipeline status to stop execution of current path, but to keep the
  * pipeline alive, when processing COMP_TRIGGER_STOP or COMP_TRIGGER_PAUSE
@@ -40,16 +48,10 @@ struct ipc_msg;
 /* pipeline processing directions */
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
-
+#if 0
 /*
  * Audio pipeline.
  */
-
-struct tr_ctx {
-	const struct sof_uuid_entry *uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
-	uint32_t level;				/**< Default log level */
-};
-
 struct pipeline {
 	uint32_t comp_id;	/**< component id for pipeline */
 	uint32_t pipeline_id;	/**< pipeline id */
@@ -98,7 +100,7 @@ struct pipeline_walk_context {
 	int (*comp_func)(struct comp_dev *cd, struct comp_buffer *buffer,
 			 struct pipeline_walk_context *ctx, int dir);
 	void *comp_data;
-	void (*buff_func)(struct comp_buffer *buffer, void *data);
+	void (*buff_func)(struct comp_buffer __sparse_cache *buffer, void *data);
 	void *buff_data;
 	struct comp_buffer *incoming;
 	/**< pipelines to be scheduled after trigger walk */
@@ -419,5 +421,5 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
  * \param[in] xrun_limit_usecs Limit in micro secs that pipeline will tolerate.
  */
 int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs);
-
+#endif
 #endif /* __SOF_AUDIO_PIPELINE_H__ */

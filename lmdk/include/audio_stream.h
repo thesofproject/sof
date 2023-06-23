@@ -14,13 +14,18 @@
 #ifndef __SOF_AUDIO_AUDIO_STREAM_H__
 #define __SOF_AUDIO_AUDIO_STREAM_H__
 
+#include <../include/common.h>
 #include <../include/format.h>
+#include <../include/lib/cache.h>
+#include <../include/lib/string.h>
 #include <../include/math/numbers.h>
 #include <../include/ipc/stream.h>
 #include <../include/ipc4/base-config.h>
 
 #include <stdbool.h>
 #include <stdint.h>
+//#include <string.h>
+
 #include <../include/errno.h>
 /** \addtogroup audio_stream_api Audio Stream API
  *  @{
