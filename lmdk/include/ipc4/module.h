@@ -4,9 +4,6 @@
  */
 
 /*
- * This file contains structures that are exact copies of an existing ABI used
- * by IOT middleware. They are Intel specific and will be used by one middleware.
- *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
  *
@@ -25,6 +22,7 @@
 #define __IPC4_MODULE_H__
 
 #include <ipc4/error_status.h>
+#include <common.h>
 
 #include <stdint.h>
 
@@ -72,7 +70,7 @@ struct ipc4_module_init_ext_data {
 	struct ipc4_module_init_ext_init extended_init;
 
 	/**< Data (actual size set to param_block_size) */
-	uint32_t param_data[0];
+	uint32_t param_data[];
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_module_init_gna_config {
@@ -145,11 +143,15 @@ struct ipc4_module_init_instance {
 			uint32_t _hw_reserved_2     : 2;
 		} r;
 	} extension;
-
-	struct ipc4_module_init_ext_init ext_init;
-	struct ipc4_module_init_ext_data ext_data;
-	struct ipc4_module_init_gna_config gna_config;
-	struct ipc4_module_init_data init_data;
+/*
+ * The following objects are optional and follow this structure in this
+ * order provided the respective object bit is set in preceding object.
+ *
+ *	struct ipc4_module_init_ext_init ext_init;
+ *	struct ipc4_module_init_ext_data ext_data;
+ *	struct ipc4_module_init_gna_config gna_config;
+ *	struct ipc4_module_init_data init_data;
+ */
 } __attribute__((packed, aligned(4)));
 
 /*!
