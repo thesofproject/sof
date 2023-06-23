@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include <../include/list.h>
+#include <../include/lib/memory.h>
 
 #define __coherent __attribute__((packed, aligned(64)))
 
@@ -49,21 +50,21 @@
  * This structure must not be accessed outside of these APIs.
  * The shared flag is only set at coherent init and thereafter it's RO.
  */
-struct k_spinlock {
-};
-
-typedef uint32_t k_spinlock_key_t;
+//struct k_spinlock {
+//};
+//
+//typedef uint32_t k_spinlock_key_t;
 
 struct coherent {
-	union {
-		struct {
-			struct k_spinlock lock;	/* locking mechanism */
-			k_spinlock_key_t key;	/* lock flags */
-		};
+//	union {
+//		struct {
+//			struct k_spinlock lock;	/* locking mechanism */
+//			k_spinlock_key_t key;	/* lock flags */
+//		};
 //#ifdef __ZEPHYR__
 //		struct k_mutex mutex;
 //#endif
-	};
+//	};
 	uint8_t sleep_allowed;	/* the object will never be acquired or released
 				 * in atomic context */
 	uint8_t shared;		/* shared on other non coherent cores */
@@ -99,7 +100,8 @@ struct coherent {
 #define CHECK_ATOMIC(_c)	assert(!(_c)->sleep_allowed)
 #endif
 
-#if CONFIG_INCOHERENT
+#if 1//CONFIG_INCOHERENT
+#if 0
 /* When coherent_acquire() is called, we are sure not to have cache for this memory */
 __must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
 								     const size_t size)
@@ -196,7 +198,7 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 
 #define coherent_shared(object, member) __coherent_shared(&(object)->member, \
 							  sizeof(*object))
-
+#endif // 0
 #ifdef __ZEPHYR__
 
 __must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
@@ -204,6 +206,7 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 {
 	struct coherent __sparse_cache *cc = uncache_to_cache(c);
 
+#if 0
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
 	CHECK_SLEEP(c);
@@ -218,6 +221,7 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 		/* invalidate local copy */
 		dcache_invalidate_region(cc, size);
 	}
+#endif
 
 	/* client can now use cached object safely */
 	return cc;
@@ -228,6 +232,7 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 {
 	struct coherent *uc = cache_to_uncache(c);
 
+#if 0
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 	CHECK_SLEEP(c);
@@ -243,8 +248,10 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 		/* unlock on uncache alias */
 		k_mutex_unlock(&uc->mutex);
 	}
+#endif
 }
 
+#if 0
 static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
 	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
@@ -266,12 +273,14 @@ static inline void *__coherent_init_thread(size_t offset, const size_t size)
 
 	return object;
 }
+#endif
 
 #define coherent_init_thread(type, member) __coherent_init_thread(offsetof(type, member), \
 								  sizeof(type))
 
 static inline void __coherent_shared_thread(struct coherent *c, const size_t size)
 {
+#if 0
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
 	CHECK_SLEEP(c);
@@ -281,6 +290,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 	c->shared = true;
 	dcache_invalidate_region(uncache_to_cache(c), size);
 	k_mutex_unlock(&c->mutex);
+#endif
 }
 
 #define coherent_shared_thread(object, member) __coherent_shared_thread(&(object)->member, \
@@ -288,6 +298,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 
 #endif /* __ZEPHYR__ */
 
+#if 0
 #define coherent_free(object, member)						\
 	do {									\
 		/* assert if someone passes a cache address in here. */		\
@@ -297,6 +308,12 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 						   sizeof(*object));		\
 		rfree(object);							\
 	} while (0)
+#elif 0
+#define coherent_free(object, member)						\
+	do {									\
+		rfree(object);							\
+	} while (0)
+#endif
 
 #else /* CONFIG_INCOHERENT */
 

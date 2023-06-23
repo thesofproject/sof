@@ -11,7 +11,6 @@
 #include <../data_blob.h>
 #include <../ipc4/base-config.h>
 
-
 #define SOF_SMART_AMP_FEEDBACK_QUEUE_ID        1
 
 #define SMART_AMP_MAX_STREAM_CHAN   8

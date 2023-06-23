@@ -16,6 +16,7 @@
 #ifndef __SOF_AUDIO_COMPONENT_H__
 #define __SOF_AUDIO_COMPONENT_H__
 
+#include <../include/buffer.h>
 #include <../include/format.h>
 #include <../include/list.h>
 #include <../include/math/numbers.h>
@@ -33,6 +34,7 @@ struct comp_dev;
 struct sof_ipc_stream_posn;
 struct dai_hw_params;
 struct timestamp_data;
+struct comp_buffer;
 
 /** \addtogroup component_api Component API
  *  @{
