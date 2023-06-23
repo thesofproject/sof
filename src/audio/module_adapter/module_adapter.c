@@ -791,10 +791,14 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *source_c;
 	struct comp_buffer __sparse_cache *sink_c;
 	uint32_t frames;
-	int ret;
+	int ret = 0;
 
 	source_c = buffer_acquire(mod->source_comp_buffer);
 	sink_c = buffer_acquire(mod->sink_comp_buffer);
+
+	if (sink_c->sink->state != dev->state || source_c->source->state != dev->state)
+		goto out;
+
 	frames = audio_stream_avail_frames_aligned(&source_c->stream, &sink_c->stream);
 	mod->input_buffers[0].size = frames;
 	mod->input_buffers[0].consumed = 0;
@@ -819,7 +823,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 
 	if (mod->output_buffers[0].size)
 		audio_stream_produce(&sink_c->stream, mod->output_buffers[0].size);
-
+out:
 	/* release all buffers */
 	buffer_release(sink_c);
 	buffer_release(source_c);
