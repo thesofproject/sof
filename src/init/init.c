@@ -186,7 +186,7 @@ int secondary_core_init(struct sof *sof)
 		scheduler_init_ll(dma_domain);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	err = scheduler_dp_init_secondary_core();
+	err = scheduler_dp_init();
 	if (err < 0)
 		return err;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */

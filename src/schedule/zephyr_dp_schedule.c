@@ -9,6 +9,7 @@
 #include <rtos/task.h>
 #include <stdint.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
@@ -28,7 +29,7 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
-	struct k_spinlock lock;		/* synchronization between cores */
+	struct task task;		/* LL task - source of DP tick */
 };
 
 struct task_dp_pdata {
@@ -39,20 +40,24 @@ struct task_dp_pdata {
 	struct k_sem sem;		/* semaphore for task scheduling */
 };
 
-/*
- * there's only one instance of DP scheduler for all cores
- * Keep pointer to it here
+/* Single CPU-wide lock
+ * as each per-core instance if dp-scheduler has separate structures, it is enough to
+ * use irq_lock instead of cross-core spinlocks
  */
-static struct scheduler_dp_data *dp_sch;
-
-static inline k_spinlock_key_t scheduler_dp_lock(void)
+static inline unsigned int scheduler_dp_lock(void)
 {
-	return k_spin_lock(&dp_sch->lock);
+	return irq_lock();
 }
 
-static inline void scheduler_dp_unlock(k_spinlock_key_t key)
+static inline void scheduler_dp_unlock(unsigned int key)
 {
-	k_spin_unlock(&dp_sch->lock, key);
+	irq_unlock(key);
+}
+
+/* dummy LL task - to start LL on secondary cores */
+static enum task_state scheduler_dp_ll_tick_dummy(void *data)
+{
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 /*
@@ -70,13 +75,8 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	struct list_item *tlist;
 	struct task *curr_task;
 	struct task_dp_pdata *pdata;
-	k_spinlock_key_t lock_key;
-
-	if (cpu_get_id() != PLATFORM_PRIMARY_CORE_ID)
-		return;
-
-	if (!dp_sch)
-		return;
+	unsigned int lock_key;
+	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
 	lock_key = scheduler_dp_lock();
 	list_for_item(tlist, &dp_sch->tasks) {
@@ -102,8 +102,7 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 
 static int scheduler_dp_task_cancel(void *data, struct task *task)
 {
-	(void)(data);
-	k_spinlock_key_t lock_key;
+	unsigned int lock_key;
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
 	lock_key = scheduler_dp_lock();
@@ -118,7 +117,7 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 
 static int scheduler_dp_task_free(void *data, struct task *task)
 {
-	k_spinlock_key_t lock_key;
+	unsigned int lock_key;
 	struct task_dp_pdata *pdata = task->priv_data;
 
 	/* abort the execution of the thread */
@@ -144,7 +143,7 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	(void)p2;
 	(void)p3;
 	struct task_dp_pdata *task_pdata = task->priv_data;
-	k_spinlock_key_t lock_key;
+	unsigned int lock_key;
 	enum task_state state;
 
 	while (1) {
@@ -192,7 +191,6 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 		} else {
 			scheduler_dp_unlock(lock_key);
 		}
-
 	};
 
 	/* never be here */
@@ -201,9 +199,9 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,
 				     uint64_t period)
 {
-	struct scheduler_dp_data *sch = data;
+	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
-	k_spinlock_key_t lock_key;
+	unsigned int lock_key;
 
 	lock_key = scheduler_dp_lock();
 
@@ -218,7 +216,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	pdata->ticks_period = period / LL_TIMER_PERIOD_US;
 
 	/* add a task to DP scheduler list */
-	list_item_prepend(&task->list, &sch->tasks);
+	list_item_prepend(&task->list, &dp_sch->tasks);
 
 	if (start == SCHEDULER_DP_RUN_TASK_IMMEDIATELY) {
 		/* trigger the task immediately, don't wait for LL tick */
@@ -233,6 +231,8 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 	scheduler_dp_unlock(lock_key);
 
+	/* start LL task - run DP tick start and period are irrelevant for LL (that's bad)*/
+	schedule_task(&dp_sch->task, 0, 0);
 	return 0;
 }
 
@@ -242,26 +242,27 @@ static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task_free	= scheduler_dp_task_free,
 };
 
-int scheduler_dp_init_secondary_core(void)
-{
-	if (!dp_sch)
-		return -ENOMEM;
-
-	/* register the scheduler instance for secondary core */
-	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
-
-	return 0;
-}
-
 int scheduler_dp_init(void)
 {
-	dp_sch = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dp_sch));
+	int ret;
+	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+						   sizeof(struct scheduler_dp_data));
 	if (!dp_sch)
 		return -ENOMEM;
 
 	list_init(&dp_sch->tasks);
 
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
+
+	/* init src of DP tick */
+	ret = schedule_task_init_ll(&dp_sch->task,
+				    SOF_UUID(dp_sched_uuid),
+				    SOF_SCHEDULE_LL_TIMER,
+				    0, scheduler_dp_ll_tick_dummy, dp_sch,
+				    cpu_get_id(), 0);
+
+	if (ret)
+		return ret;
 
 	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
 
@@ -288,18 +289,24 @@ int scheduler_dp_task_init(struct task **task,
 	k_tid_t thread_id = NULL;
 	int ret;
 
+	/* must be called on the same core the task will be binded to */
+	assert(cpu_get_id() == core);
+
 	/*
 	 * allocate memory
 	 * to avoid multiple malloc operations allocate all required memory as a single structure
 	 * and return pointer to task_memory->task
+	 * As the structure contains zephyr kernel specific data, it must be located in
+	 * shared, non cached memory
 	 */
-	task_memory = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*task_memory));
+	task_memory = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			      sizeof(*task_memory));
 	if (!task_memory) {
 		tr_err(&dp_tr, "zephyr_dp_task_init(): memory alloc failed");
 		return -ENOMEM;
 	}
 
-	/* allocate stack - must be aligned so a separate alloc */
+	/* allocate stack - must be aligned and cached so a separate alloc */
 	stack_size = Z_KERNEL_STACK_SIZE_ADJUST(stack_size);
 	p_stack = (__sparse_force void __sparse_cache *)
 		rballoc_align(0, SOF_MEM_CAPS_RAM, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);

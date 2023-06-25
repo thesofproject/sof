@@ -16,20 +16,10 @@
 /**
  *
  * DP scheduler is a scheduler that creates a separate preemptible Zephyr thread for each SOF task
- *   There's only one instance of DP in the system, however, threads can be assigned and pinned
- *   to any core in the system for its execution, there's no SMP processing.
  *
  * The task execution may be delayed and task may be re-scheduled periodically
  * NOTE: delayed start and rescheduling takes place in sync with LL scheduler, meaning the
- *   DP scheduler is triggered as the last task of LL running on a primary core.
- *   That implies a limitation: LL scheduler MUST be running on primary core in order to have
- *   this feature working.
- *   It is fine, because rescheduling is a feature used for data processing when a pipeline is
- *   running.
- *
- * Other possible usage of DP scheduler is to schedule task with DP_SCHEDULER_RUN_TASK_IMMEDIATELY
- *   as start parameter. It will force the task to work without any delays and async to LL.
- *   This kind of scheduling may be used for staring regular zephyr tasks using SOF api
+ *   DP scheduler is triggered on each core after all LL task have been completed
  *
  * Task run() may return:
  *  SOF_TASK_STATE_RESCHEDULE - the task will be rescheduled as specified in scheduler period
@@ -68,12 +58,8 @@
 int scheduler_dp_init(void);
 
 /**
- * \brief Set the Data Processing scheduler to be accessible at secondary cores
- */
-int scheduler_dp_init_secondary_core(void);
-
-/**
  * \brief initialize a DP task and add it to scheduling
+ * It must be called on core the task is declared to run on
  *
  * \param[out] task pointer, pointer to allocated task structure will be return
  * \param[in] uid pointer to UUID of the task
