@@ -38,6 +38,7 @@ DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
 DECLARE_TR_CTX(acp_dmic_dma_rn_tr, SOF_UUID(acp_dmic_dma_uuid), LOG_LEVEL_INFO);
 
 uint32_t dmic_rngbuff_size;
+extern struct acp_dmic_silence acp_initsilence;
 
 int acp_dmic_dma_start(struct dma_chan_data *channel)
 {
@@ -54,6 +55,8 @@ int acp_dmic_dma_start(struct dma_chan_data *channel)
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
 	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
+	acp_initsilence.silence_incr = 0;
+	acp_initsilence.coeff = 0;
 
 	if (!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en && !acp_pdm_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
@@ -155,6 +158,7 @@ int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 			    struct dma_sg_config *config)
 {
 	uint32_t ring_buff_addr;
+	uint32_t timeperiod_ms;
 	acp_wov_rx_ringbufaddr_t dmic_ringbuff_addr;
 	acp_wov_rx_ringbufsize_t dmic_ringbuff_size;
 	acp_wov_rx_intr_watermark_size_t watermark;
@@ -164,6 +168,7 @@ int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 	switch (config->direction) {
 	case DMA_DIR_DEV_TO_MEM:
 	case DMA_DIR_MEM_TO_DEV:
+		acp_initsilence.dmic_rngbuff_addr1 = (char *)config->elem_array.elems[0].dest;
 		ring_buff_addr = config->elem_array.elems[0].dest &
 						ACP_DRAM_ADDRESS_MASK;
 		/* Load Ring buffer address */
@@ -181,6 +186,11 @@ int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 		watermark.bits.rx_intr_watermark_size = (dmic_rngbuff_size >> 1);
 		io_reg_write(PU_REGISTER_BASE +
 			ACP_WOV_RX_INTR_WATERMARK_SIZE, watermark.u32all);
+		timeperiod_ms = dmic_rngbuff_size / (acp_initsilence.num_chs *
+			acp_initsilence.samplerate_khz * acp_initsilence.bytes_per_sample *
+			config->elem_array.count);
+		acp_initsilence.silence_cnt = DMIC_SETTLING_TIME_MS / timeperiod_ms;
+		acp_initsilence.numfilterbuffers = DMIC_SMOOTH_TIME_MS / timeperiod_ms;
 		break;
 	default:
 		tr_err(&acp_dmic_dma_rn_tr,

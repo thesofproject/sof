@@ -34,6 +34,7 @@
 #include <platform/acp_dmic_dma.h>
 
 extern uint32_t dmic_rngbuff_size;
+struct acp_dmic_silence acp_initsilence;
 
 /* dc2199ea-cdae-4d23-a413-ffe442f785f2 */
 DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0xdc2199ea, 0xcdae, 0x4d23,
@@ -106,10 +107,40 @@ static int acp_dmic_dma_status(struct dma_chan_data *channel,
 static int acp_dmic_dma_copy(struct dma_chan_data *channel, int bytes,
 			     uint32_t flags)
 {
+	uint32_t i;
+	uint32_t j;
+	int numsamples;
+	char *dmic_rngbuff_addr2 = acp_initsilence.dmic_rngbuff_addr1;
 	struct dma_cb_data next = {
 		.channel = channel,
 		.elem.size = bytes,
 	};
+	if (acp_initsilence.silence_incr < acp_initsilence.silence_cnt) {
+		if (acp_initsilence.silence_incr & 1)
+			dmic_rngbuff_addr2 = acp_initsilence.dmic_rngbuff_addr1 +
+								(dmic_rngbuff_size >> 1);
+		for (i = 0; i < (dmic_rngbuff_size >> 1); i++)
+			dmic_rngbuff_addr2[i] = 0;
+		acp_initsilence.silence_incr++;
+	} else if (acp_initsilence.silence_incr < acp_initsilence.silence_cnt +
+			acp_initsilence.numfilterbuffers) {
+		numsamples = (dmic_rngbuff_size >> 1) / (acp_initsilence.num_chs *
+					acp_initsilence.bytes_per_sample);
+		if (acp_initsilence.silence_incr & 1)
+			dmic_rngbuff_addr2 = acp_initsilence.dmic_rngbuff_addr1 +
+								(dmic_rngbuff_size >> 1);
+		acp_initsilence.dmic_rngbuff_iaddr = (int *)dmic_rngbuff_addr2;
+		for (i = 0; i < numsamples * acp_initsilence.num_chs;
+			i += acp_initsilence.num_chs, acp_initsilence.coeff++) {
+			for (j = 0; j < acp_initsilence.num_chs; j++) {
+				acp_initsilence.dmic_rngbuff_iaddr[i + j] =
+					(acp_initsilence.dmic_rngbuff_iaddr[i + j] /
+					(numsamples * acp_initsilence.numfilterbuffers)) *
+					acp_initsilence.coeff;
+			}
+		}
+		acp_initsilence.silence_incr++;
+	}
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return 0;
