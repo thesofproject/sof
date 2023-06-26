@@ -6,6 +6,9 @@
 // Author: Andrula Song <andrula.song@intel.com>
 // Author: Chao Song <chao.song@linux.intel.com>
 
+static int (*gcd)(int a, int b);
+#define MODULE_BUILD
+
 #include "../include/loadable_processing_module.h"
 #include <rimage/sof/user/manifest.h>
 #include <../include/smart_amp_test.h>
@@ -49,8 +52,10 @@ static int smart_amp_init(struct processing_module *mod)
 
 	mod_data->private = sad;
 
+	gcd = mod->sys_service->math_gcd;
+
 	/* component model data handler */
-	sad->model_handler = comp_data_blob_handler_new(dev);
+	sad->model_handler = mod->sys_service->data_blob_handler_new(dev);
 	if (!sad->model_handler) {
 		ret = -ENOMEM;
 		goto sad_fail;
@@ -72,7 +77,7 @@ static int smart_amp_init(struct processing_module *mod)
 	return 0;
 
 sad_fail:
-	comp_data_blob_handler_free(sad->model_handler);
+	mod->sys_service->data_blob_handler_free(sad->model_handler);
 //	rfree(sad);
 	return ret;
 }
@@ -87,7 +92,7 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 
 	switch (config_id) {
 	case SMART_AMP_SET_MODEL:
-		return comp_data_blob_set(sad->model_handler, pos,
+		return mod->sys_service->data_blob_set(sad->model_handler, pos,
 					 data_offset_size, fragment, fragment_size);
 	case SMART_AMP_SET_CONFIG:
 		if (fragment_size != sizeof(sad->config))
@@ -271,7 +276,7 @@ static int smart_amp_free(struct processing_module *mod)
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_data_blob_handler_free(sad->model_handler);
+	mod->sys_service->data_blob_handler_free(sad->model_handler);
 //	rfree(sad);
 	return 0;
 }
@@ -337,7 +342,7 @@ static int smart_amp_params(struct processing_module *mod)
 	int ret;
 
 	smart_amp_set_params(mod);
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	ret = mod->sys_service->comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
 		return -EINVAL;
 	}
