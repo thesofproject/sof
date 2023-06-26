@@ -7,14 +7,19 @@ endif()
 
 if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_VOLUME)
-	add_local_sources(sof
-		module/volume/volume_generic.c
-		module/volume/volume_hifi3.c
-		module/volume/volume_hifi4.c
-		module/volume/volume_generic_with_peakvol.c
-		module/volume/volume_hifi3_with_peakvol.c
-		module/volume/volume_hifi4_with_peakvol.c
-		module/volume/volume.c)
+		if(CONFIG_COMP_PEAK_VOL)
+			add_local_sources(sof
+				module/volume/volume_generic_with_peakvol.c
+				module/volume/volume_hifi3_with_peakvol.c
+				module/volume/volume_hifi4_with_peakvol.c
+				module/volume/volume.c)
+		else()
+			add_local_sources(sof
+				module/volume/volume_generic.c
+				module/volume/volume_hifi3.c
+				module/volume/volume_hifi4.c
+				module/volume/volume.c)
+		endif()
 	endif()
 
 	if(CONFIG_CADENCE_CODEC)

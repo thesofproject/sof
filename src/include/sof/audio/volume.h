@@ -136,7 +136,7 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream __sparse_cache *source
  */
 
 struct vol_data {
-#if CONFIG_IPC_MAJOR_4
+#if CONFIG_COMP_PEAK_VOL
 	uint32_t mailbox_offset;		/**< store peak volume in mailbox */
 
 	/**< these values will be stored to mailbox for host (IPC4) */

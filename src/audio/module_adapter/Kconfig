@@ -176,13 +176,24 @@ config COMP_VOLUME_LINEAR_RAMP
        help
          This option enables volume linear ramp shape.
 
-config COMP_PEAK_VOL
+choice "COMP_VOLUME_TYPE"
+	prompt "The processing type of volume"
+	default COMP_PEAK_VOL
+	depends on IPC_MAJOR_4
+
+	config COMP_PEAK_VOL
        bool "Report peak vol data to host"
-	   default y
-	   depends on IPC_MAJOR_4
        help
          This option enables reporting to host peak vol regs.
          See: struct ipc4_peak_volume_regs
+
+	config COMP_GAIN
+	bool "GAIN component"
+	help
+	  This option enables gain to change volume. It works
+	  as peak volume without updating peak vol to host
+endchoice
+
 
 choice "PEAK_METER_UPDATE_PERIOD_CHOICE"
 	prompt "The periods(ms) of updating peak meter value"
@@ -220,13 +231,6 @@ config PEAK_METER_UPDATE_PERIOD
 	help
 	  Decide which period of update the peak volume meter value
 
-config COMP_GAIN
-	bool "GAIN component"
-	default y
-	depends on IPC_MAJOR_4
-	help
-	  This option enables gain to change volume. It works
-	  as peak volume without updating peak vol to host
 
 endif # volume
 

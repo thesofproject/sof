@@ -23,8 +23,6 @@ LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
 
 #ifdef VOLUME_HIFI3
 
-#if CONFIG_COMP_PEAK_VOL
-
 #include <xtensa/tie/xt_hifi3.h>
 
 #if CONFIG_FORMAT_S24LE
@@ -454,5 +452,4 @@ const struct comp_func_map volume_func_map[] = {
 };
 
 const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
-#endif
 #endif

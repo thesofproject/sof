@@ -25,8 +25,6 @@ LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
 #ifdef VOLUME_GENERIC
 
-#if CONFIG_COMP_PEAK_VOL
-
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief Volume s24 to s24 multiply function
@@ -384,5 +382,4 @@ const struct comp_func_map volume_func_map[] = {
 };
 
 const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
-#endif
 #endif

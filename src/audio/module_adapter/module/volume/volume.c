@@ -498,12 +498,13 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 			   uint32_t const curve_type,
 			   uint64_t const curve_duration)
 {
+#if CONFIG_COMP_PEAK_VOL
 	/* update target volume in peak_regs */
 	cd->peak_regs.target_volume[channel] = target_volume;
 	/* update peak meter in peak_regs */
 	cd->peak_regs.peak_meter[channel] = 0;
 	cd->peak_cnt = 0;
-
+#endif
 	/* init target volume */
 	cd->tvolume[channel] = target_volume;
 	/* init ramp start volume*/
@@ -597,7 +598,7 @@ static int volume_init(struct processing_module *mod)
 		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
 		return -ENOMEM;
 	}
-
+#if CONFIG_COMP_PEAK_VOL
 	/* malloc memory to store temp peak volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
@@ -608,7 +609,7 @@ static int volume_init(struct processing_module *mod)
 		comp_err(dev, "volume_init(): Failed to allocate %d for peak_vol", vol_size);
 		return -ENOMEM;
 	}
-
+#endif
 	md->private = cd;
 
 	for (channel = 0; channel < channels_count ; channel++) {
@@ -628,8 +629,10 @@ static int volume_init(struct processing_module *mod)
 
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
 
+#if CONFIG_COMP_PEAK_VOL
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
+#endif
 
 	cd->attenuation = 0;
 	cd->is_passthrough = false;
@@ -677,7 +680,7 @@ static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 static int volume_free(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-#if CONFIG_IPC_MAJOR_4
+#if CONFIG_COMP_PEAK_VOL
 	struct ipc4_peak_volume_regs regs;
 
 	/* clear mailbox */
@@ -1102,8 +1105,11 @@ static int volume_get_config(struct processing_module *mod,
 	switch (config_id) {
 	case IPC4_VOLUME:
 		for (i = 0; i < cd->channels; i++) {
+#if CONFIG_COMP_PEAK_VOL
 			uint32_t volume = cd->peak_regs.target_volume[i];
-
+#else
+			uint32_t volume = cd->tvolume[i];
+#endif
 			cdata[i].channel_id = i;
 			cdata[i].target_volume = convert_volume_ipc3_to_ipc4(volume);
 		}
@@ -1158,7 +1164,7 @@ static int volume_params(struct processing_module *mod)
 
 static void volume_update_current_vol_ipc4(struct vol_data *cd)
 {
-#if CONFIG_IPC_MAJOR_4
+#if CONFIG_COMP_PEAK_VOL
 	int i;
 
 	assert(cd);
@@ -1296,12 +1302,13 @@ static int volume_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "volume_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
+#if CONFIG_COMP_PEAK_VOL
 	cd->peak_cnt = 0;
 	cd->peak_report_cnt = CONFIG_PEAK_METER_UPDATE_PERIOD * 1000 / mod->dev->period;
 	if (cd->peak_report_cnt == 0)
 		cd->peak_report_cnt = 1;
-
+#endif
+#if CONFIG_IPC_MAJOR_4
 	ret = volume_params(mod);
 	if (ret < 0)
 		return ret;
