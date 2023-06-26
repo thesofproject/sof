@@ -28,7 +28,10 @@
 	__size - (__size % __alignment);		\
 })
 #endif /* !ROUND_DOWN */
+
+#ifndef MODULE_BUILD
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
+#endif
 
 /* This is a divide function that returns ceil of the quotient.
  * E.g. ceil_divide(9, 3) returns 3, ceil_divide(10, 3) returns 4.
