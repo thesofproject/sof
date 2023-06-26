@@ -19,6 +19,9 @@
 #include <sof/lib/io.h>
 #include <platform/chip_offset_byte.h>
 
+extern uint32_t num_chs;
+extern uint32_t samplerate_khz;
+extern uint32_t bytes_per_sample;
 /*0ae40946-dfd2-4140-91-52-0d-d5-a3-ea-ae-81*/
 DECLARE_SOF_UUID("acp_dmic_dai", acp_dmic_dai_uuid, 0x0ae40946, 0xdfd2, 0x4140,
 		0x91, 0x52, 0x0d, 0xd5, 0xa3, 0xea, 0xae, 0x81);
@@ -37,6 +40,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 	acpdata->dmic_params = config->acpdmic;
 	clk_ctrl = (acp_wov_clk_ctrl_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
 	clk_ctrl.u32all = 0;
+	samplerate_khz = (acpdata->dmic_params.pdm_rate / 1000);
 	switch (acpdata->dmic_params.pdm_rate) {
 	case 48000:
 		/* DMIC Clock for 48K sample rate */
@@ -51,6 +55,7 @@ static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai
 		return -EINVAL;
 	}
 	io_reg_write(PU_REGISTER_BASE + ACP_WOV_CLK_CTRL, clk_ctrl.u32all);
+	num_chs = acpdata->dmic_params.pdm_ch;
 	return 0;
 }
 
@@ -127,6 +132,7 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 	params->channels = ACP_DEFAULT_NUM_CHANNELS;
 	params->buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+	bytes_per_sample = 4;
 	return 0;
 }
 
