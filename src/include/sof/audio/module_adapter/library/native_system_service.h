@@ -81,6 +81,11 @@ typedef enum _adsp_iface_id {
  */
 typedef struct _system_service_iface {} system_service_iface;
 
+struct comp_dev;
+struct sof_ipc_stream_params;
+struct comp_data_blob_handler;
+enum module_cfg_fragment_position;
+
 /*! \brief Defines prototype of the "GetInterface" function
  *
  * \param id service id
@@ -110,5 +115,13 @@ struct native_system_service_api {
 					   uint32_t actual_payload_size);
 
 	AdspErrorCode (*get_interface)(adsp_iface_id id, system_service_iface **iface);
+	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
+				  struct sof_ipc_stream_params *params);
+	int (*math_gcd)(int a, int b);
+	struct comp_data_blob_handler *(*data_blob_handler_new)(struct comp_dev *dev);
+	void (*data_blob_handler_free)(struct comp_data_blob_handler *handler);
+	int (*data_blob_set)(struct comp_data_blob_handler *blob_handler,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size);
 };
 #endif /*NATIVE_SYSTEM_SERVICE_H*/

@@ -128,6 +128,10 @@ AdspErrorCode native_system_service_get_interface(adsp_iface_id id, system_servi
 	return ADSP_NO_ERROR;
 }
 
+#include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
+#include <sof/math/numbers.h>
+
 struct native_system_service_api native_system_service = {
 	.log_message  = native_system_service_log_message,
 	.safe_memcpy = native_system_service_safe_memcpy,
@@ -135,5 +139,10 @@ struct native_system_service_api native_system_service = {
 	.vec_memset = native_system_service_vec_memset,
 	.notification_create = native_system_service_create_notification,
 	.notification_send = native_system_service_send_notif_msg,
-	.get_interface = native_system_service_get_interface
+	.get_interface = native_system_service_get_interface,
+	.comp_verify_params = comp_verify_params,
+	.math_gcd = gcd,
+	.data_blob_handler_new_ext = data_blob_handler_new_ext,
+	.data_blob_handler_free = data_blob_handler_free,
+	.data_blob_set = data_blob_set,
 };
