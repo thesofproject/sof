@@ -14,6 +14,21 @@
 
 /* 109c7aba-a7ba-43c3-b9-42-59-e2-0a-66-11-be */
 
+#define DMIC_SETTLING_TIME_MS 360
+#define DMIC_SMOOTH_TIME_MS 40
+
+struct acp_dmic_silence {
+	uint32_t bytes_per_sample;
+	uint32_t num_chs;
+	uint32_t samplerate_khz;
+	uint32_t silence_cnt;
+	uint32_t silence_incr;
+	int coeff;
+	int numfilterbuffers;
+	char *dmic_rngbuff_addr1;
+	int *dmic_rngbuff_iaddr;
+};
+
 int acp_dmic_dma_start(struct dma_chan_data *channel);
 int acp_dmic_dma_stop(struct dma_chan_data *channel);
 int acp_dmic_dma_set_config(struct dma_chan_data *channel,
