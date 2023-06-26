@@ -167,6 +167,11 @@ typedef struct _SystemServiceIface {} SystemServiceIface;
  */
 typedef AdspErrorCode (*SystemServiceGetInterfaceFct) (AdspIfaceId id, SystemServiceIface **iface);
 
+struct comp_dev;
+struct sof_ipc_stream_params;
+struct comp_data_blob_handler;
+enum module_cfg_fragment_position;
+
 /*! \brief The adsp_system_service is actually a set of C-function pointers gathered in a C-struct
  * which brings some basic functionalities to module in runtime.
  *
@@ -223,6 +228,14 @@ typedef struct adsp_system_service {
 	 */
 	const SystemServiceGetInterfaceFct GetInterface;
 
+	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
+				  struct sof_ipc_stream_params *params);
+	int (*math_gcd)(int a, int b);
+	struct comp_data_blob_handler *(*data_blob_handler_new)(struct comp_dev *dev);
+	void (*data_blob_handler_free)(struct comp_data_blob_handler *handler);
+	int (*data_blob_set)(struct comp_data_blob_handler *blob_handler,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size);
 } adsp_system_service;
 
 #ifdef __cplusplus

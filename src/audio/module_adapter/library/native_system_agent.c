@@ -39,6 +39,9 @@ AdspErrorCode SystemServiceGetInterface(AdspIfaceId id, SystemServiceIface **ifa
 
 typedef void* (*native_create_instance_f)(void *mod_cfg, void *parent_ppl,
 					  void **mod_ptr);
+#include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
+#include <sof/math/numbers.h>
 
 struct native_system_agent native_sys_agent = {
 		.system_service = {
@@ -48,7 +51,12 @@ struct native_system_agent native_sys_agent = {
 			.VecMemset = SystemServiceVecMemset,
 			.NotificationCreate = SystemServiceCreateNotification,
 			.NotificationSend = SystemServiceSendNotificationMessage,
-			.GetInterface = SystemServiceGetInterface
+			.GetInterface = SystemServiceGetInterface,
+			.comp_verify_params = comp_verify_params,
+			.math_gcd = gcd,
+			.data_blob_handler_new_ext = data_blob_handler_new_ext,
+			.data_blob_handler_free = data_blob_handler_free,
+			.data_blob_set = data_blob_set,
 		},
 	};
 
