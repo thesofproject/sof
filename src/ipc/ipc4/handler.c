@@ -1068,6 +1068,24 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 	header->ext = 0;
 }
 
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC)
+void ipc_send_failed_power_transition_response(void)
+{
+	struct ipc4_message_request *request = ipc_from_hdr(&msg_data.msg_in);
+	struct ipc4_message_reply response;
+
+	response.primary.r.status = IPC4_POWER_TRANSITION_FAILED;
+	response.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
+	response.primary.r.msg_tgt = request->primary.r.msg_tgt;
+	response.primary.r.type = request->primary.r.type;
+
+	msg_reply.header = response.primary.dat;
+	list_init(&msg_reply.list);
+
+	ipc_msg_send_direct(&msg_reply, NULL);
+}
+#endif /* defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC) */
+
 void ipc_send_panic_notification(void)
 {
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_EXCEPTION_CAUGHT);

@@ -44,6 +44,8 @@
 DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
 		 0x86, 0x7f, 0x54, 0x7a, 0xf0, 0x88, 0x34, 0xda);
 
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
 /**
  * @brief Private data for IPC.
  *
@@ -95,11 +97,29 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 {
 	struct ipc *ipc = (struct ipc *)arg;
 
-	/* we are not entering D3 - return error code bad message */
-	if (!(ipc->task_mask & IPC_TASK_POWERDOWN))
-		return -EBADMSG;
+	int ret = 0;
 
-	return 0;
+	if (!(ipc->task_mask & IPC_TASK_POWERDOWN)) {
+		tr_err(&ipc_tr,
+		       "ipc task mask not set to IPC_TASK_POWERDOWN. Current value: %u",
+		       ipc->task_mask);
+		ret = -ENOMSG;
+	}
+
+	if (!ipc->pm_prepare_D3) {
+		tr_err(&ipc_tr, "power state D3 not requested");
+		ret = -EBADMSG;
+	}
+
+	if (!list_is_empty(&ipc->msg_list)) {
+		tr_err(&ipc_tr, "there are queued IPC messages to be sent");
+		ret = -EINPROGRESS;
+	}
+
+	if (ret != 0)
+		ipc_send_failed_power_transition_response();
+
+	return ret;
 }
 
 /**
