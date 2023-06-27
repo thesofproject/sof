@@ -163,7 +163,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 }
 
 int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
-		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		       int pos, uint32_t data_offset_size,
 		       const uint8_t *fragment_in, size_t fragment_size)
 {
 #if CONFIG_IPC_MAJOR_3
