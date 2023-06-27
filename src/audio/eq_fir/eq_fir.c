@@ -190,7 +190,7 @@ static int eq_fir_params(struct processing_module *mod)
 				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-	comp_params.frame_fmt = frame_fmt;
+	comp_params.frame_fmt = valid_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;

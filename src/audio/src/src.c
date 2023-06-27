@@ -551,7 +551,7 @@ static int src_set_params(struct processing_module *mod, struct sof_sink __spars
 				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-	src_params.frame_fmt = frame_fmt;
+	src_params.frame_fmt = valid_fmt;
 	component_set_nearest_period_frames(dev, src_params.rate);
 
 	ret = sink_set_params(sink, &src_params, true);

@@ -343,7 +343,7 @@ static void test_keyword_set_params(struct comp_dev *dev,
 				    &frame_fmt, &valid_fmt,
 				    cd->base_cfg.audio_fmt.s_type);
 
-	params->frame_fmt = frame_fmt;
+	params->frame_fmt = valid_fmt;
 }
 
 static int test_keyword_set_config(struct comp_dev *dev, const char *data,
