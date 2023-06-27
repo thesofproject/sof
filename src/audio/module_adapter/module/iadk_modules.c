@@ -163,7 +163,7 @@ static int iadk_modules_prepare(struct processing_module *mod)
 		struct module_interface *mod_in =
 					(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->prepare(mod);
+		ret = mod_in->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	} else {
 		ret = iadk_wrapper_prepare(mod->priv.module_adapter);
 	}
@@ -216,8 +216,8 @@ static int iadk_modules_process(struct processing_module *mod,
 		struct module_interface *mod_in =
 					(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->process(mod, input_buffers, num_input_buffers, output_buffers,
-				      num_output_buffers);
+		ret = mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
+					       output_buffers, num_output_buffers);
 	} else {
 		ret = iadk_wrapper_process(mod->priv.module_adapter, input_buffers,
 					   num_input_buffers, output_buffers,
