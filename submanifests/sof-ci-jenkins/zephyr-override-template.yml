@@ -24,3 +24,4 @@ manifest:
         # Download only what sof-ci-jenkins uses to save a lot of time
         name-allowlist:
           - hal_xtensa
+          - hal_nxp
