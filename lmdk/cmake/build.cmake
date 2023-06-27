@@ -25,6 +25,7 @@ foreach(MODULE ${MODULES_LIST})
 		"${LMDK_BASE}/include"
 		"${RIMAGE_INCLUDE_DIR}"
 		"${SOF_BASE}/src/include/module"
+		"${SOF_BASE}/src/include"
 	)
 
 	# generate linker script
