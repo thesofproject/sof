@@ -21,5 +21,13 @@ cmake_path(ABSOLUTE_PATH LMDK_BASE NORMALIZE)
 set(SOF_BASE ${LMDK_BASE}/..)
 cmake_path(ABSOLUTE_PATH SOF_BASE NORMALIZE)
 
+# zephyr root dir
+set(ZEPHYR_BASE ${SOF_BASE}/../zephyr)
+cmake_path(ABSOLUTE_PATH ZEPHYR_BASE NORMALIZE)
+
+# zephyr build root dir
+set(ZEPHYR_BUILD ${BUILD_DIR}/zephyr)
+cmake_path(ABSOLUTE_PATH ZEPHYR_BUILD NORMALIZE)
+
 set(RIMAGE_INCLUDE_DIR ${SOF_BASE}/rimage/src/include)
 cmake_path(ABSOLUTE_PATH RIMAGE_INCLUDE_DIR NORMALIZE)

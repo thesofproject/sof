@@ -15,9 +15,6 @@
 #include <../../include/component.h>
 #include "module_interface.h"
 #include <../include/coherent.h>
-#if CONFIG_INTEL_MODULES
-#include "iadk_modules.h"
-#endif
 
 #define module_get_private_data(mod) (mod->priv.private)
 #define MAX_BLOB_SIZE 8192

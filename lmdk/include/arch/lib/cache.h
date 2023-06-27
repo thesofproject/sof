@@ -10,14 +10,11 @@
 #ifndef __ARCH_LIB_CACHE_H__
 #define __ARCH_LIB_CACHE_H__
 
-//#include <xtensa/config/core-isa.h>
-
 #define DCACHE_LINE_SIZE	XCHAL_DCACHE_LINESIZE
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <../include/arch/xtensa/hal.h>
-//#include <sof/compiler_attributes.h>
+#include <xtensa/hal.h>
 #include <stddef.h>
 #include <stdint.h>
 

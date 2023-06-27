@@ -19,12 +19,19 @@
 #include <../include/ipc/stream.h>
 #include <../include/ipc/topology.h>
 #include <../include/format.h>
-#include <../include/component.h>
 #include <../include/pipeline.h>
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/**
+ * Trace context.
+ */
+struct tr_ctx {
+	const struct sof_uuid_entry *uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
+	uint32_t level;				/**< Default log level */
+};
 
 struct comp_dev;
 
@@ -140,7 +147,7 @@ struct comp_buffer {
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
-//	struct tr_ctx tctx;			/* trace settings */
+	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */

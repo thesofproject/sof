@@ -17,6 +17,10 @@ foreach(MODULE ${MODULES_LIST})
 
   target_include_directories(${MODULE} PRIVATE
     "${LMDK_BASE}/include"
+    "${ZEPHYR_BASE}/include"
+    "${ZEPHYR_BASE}/soc/xtensa/intel_adsp/common/include"
+    "${ZEPHYR_BASE}/soc/xtensa/intel_adsp/ace/include/intel_ace15_mtpm"
+    "${ZEPHYR_BUILD}/include/generated"
     "${RIMAGE_INCLUDE_DIR}"
   )
 

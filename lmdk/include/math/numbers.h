@@ -21,13 +21,6 @@
 	__a < 0 ? -1 :		\
 	__a > 0 ? 1 : 0;	\
 })
-#ifndef ROUND_DOWN
-#define ROUND_DOWN(size, alignment) ({			\
-	typeof(size) __size = (size);			\
-	typeof(alignment) __alignment = (alignment);	\
-	__size - (__size % __alignment);		\
-})
-#endif /* !ROUND_DOWN */
 
 #ifndef MODULE_BUILD
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */

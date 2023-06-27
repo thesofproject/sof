@@ -57,14 +57,6 @@ struct comp_buffer;
 /** @}*/
 
 
-/**
- * Trace context.
- */
-struct tr_ctx {
-	const struct sof_uuid_entry *uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
-	uint32_t level;				/**< Default log level */
-};
-
 /** \name Standard Component Stream Commands
  *  TODO: use IPC versions after 1.1
  *
