@@ -457,10 +457,10 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	copy_bytes = host_get_copy_bytes_normal(hd, dev);
 	if (!copy_bytes)
 		return 0;
-
+#if !CONFIG_DMA_INTEL_ADSP_HDA_TIMING_L1_EXIT
 	/* Register Host DMA usage */
 	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
-
+#endif
 	cb(dev, copy_bytes);
 
 	hd->partial_size += copy_bytes;
@@ -564,10 +564,12 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 		if (ret < 0)
 			comp_err(dev, "host_trigger(): dma_start() failed, ret = %u",
 				 ret);
+#if !CONFIG_DMA_INTEL_ADSP_HDA_TIMING_L1_EXIT
 		/* Register common L1 exit for all channels */
 		ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 								NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
 								NOTIFIER_FLAG_AGGREGATE);
+#endif
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
@@ -576,9 +578,11 @@ int host_zephyr_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				comp_err(dev, "host_trigger(): dma stop failed: %d",
 					 ret);
+#if !CONFIG_DMA_INTEL_ADSP_HDA_TIMING_L1_EXIT
 			/* Unregister L1 exit */
 			notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 								NOTIFIER_ID_LL_POST_RUN);
+#endif
 		}
 
 		break;
