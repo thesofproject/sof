@@ -121,7 +121,7 @@ static int google_rtc_audio_processing_params(
 		audio_stream_set_rate(&sink_c->stream, cd->config.output_fmt.sampling_frequency);
 
 		sink_c->buffer_fmt = out_fmt->interleaving_style;
-		params->frame_fmt = frame_fmt;
+		params->frame_fmt = valid_fmt;
 
 		sink_c->hw_params_configured = true;
 

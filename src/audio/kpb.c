@@ -275,7 +275,7 @@ static void kpb_set_params(struct comp_dev *dev,
 				    &frame_fmt, &valid_fmt,
 				    kpb->ipc4_cfg.base_cfg.audio_fmt.s_type);
 
-	params->frame_fmt = frame_fmt;
+	params->frame_fmt = valid_fmt;
 }
 
 /**
