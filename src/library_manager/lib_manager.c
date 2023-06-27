@@ -429,9 +429,7 @@ void lib_manager_dma_buffer_free(struct lib_manager_dma_buf *buffer)
  */
 static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
 {
-	uint32_t addr_align;
 	int chan_index;
-	int ret;
 
 	/* Initialize dma_ext with zeros */
 	memset(dma_ext, 0, sizeof(struct lib_manager_dma_ext));
@@ -442,17 +440,6 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 		tr_err(&lib_manager_tr, "dma_ext_init(): dma.dmac = NULL");
 		return -ENODEV;
 	}
-
-	/* get required address alignment for dma buffer */
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	ret = dma_get_attribute(dma_ext->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
-#else
-	ret = dma_get_attribute_legacy(dma_ext->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				       &addr_align);
-#endif
-	if (ret < 0)
-		return ret;
 
 	chan_index = dma_request_channel(dma_ext->dma->z_dev, &dma_id);
 	dma_ext->chan = &dma_ext->dma->chan[chan_index];
