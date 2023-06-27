@@ -24,7 +24,7 @@
 #define TDFB_GENERIC	0
 #define TDFB_HIFIEP	1
 #define TDFB_HIFI3	0
-#elif XCHAL_HAVE_HIFI3 == 1
+#elif XCHAL_HAVE_HIFI3 == 1 || XCHAL_HAVE_HIFI4 == 1
 #define TDFB_HIFI3	1
 #define TDFB_HIFIEP	0
 #define TDFB_GENERIC	0
