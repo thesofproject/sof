@@ -174,7 +174,7 @@ static int modules_prepare(struct processing_module *mod,
 		struct module_interface *mod_in =
 					(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->prepare(mod, NULL, 0, NULL, 0);
+		ret = mod_in->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	} else {
 		ret = iadk_wrapper_prepare(mod->priv.module_adapter);
 	}
