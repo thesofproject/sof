@@ -599,6 +599,15 @@ struct comp_dev {
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
+	/*
+	 * When a module sets bypass_processing, the module adapter will skip invoking its module
+	 * process callback.
+	 * TODO: this flag should ideally be in struct processing_module but since all modules
+	 * have not been converted to use the module adapter yet, keep this here for now.
+	 */
+	bool bypass_processing; /**< module processing can be bypassed */
+	bool bypass_capable; /**< module is bypass capable */
+
 	/* private data - core does not touch this */
 	void *priv_data;	/**< private data */
 
