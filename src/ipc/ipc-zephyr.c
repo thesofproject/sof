@@ -17,15 +17,11 @@
 #include <sof/ipc/schedule.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
-#if defined(CONFIG_PM)
+#if defined(CONFIG_PM_POLICY_CUSTOM)
 #include <sof/lib/cpu.h>
-#include <zephyr/pm/device.h>
-#include <zephyr/pm/state.h>
-#include <zephyr/irq.h>
-#include <zephyr/pm/policy.h>
 #else
 #include <sof/lib/pm_runtime.h>
-#endif /* CONFIG_PM */
+#endif
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>
 #include <sof/list.h>
@@ -83,51 +79,6 @@ static bool message_handler(const struct device *dev, void *arg, uint32_t data, 
 	return false;
 }
 
-#ifdef CONFIG_PM_DEVICE
-/**
- * @brief IPC device suspend handler callback function.
- * Checks whether device power state should be actually changed.
- *
- * @param dev IPC device.
- * @param arg IPC struct pointer.
- */
-static int ipc_device_suspend_handler(const struct device *dev, void *arg)
-{
-	struct ipc *ipc = (struct ipc *)arg;
-
-	/* we are not entering D3 - return error code bad message */
-	if (!(ipc->task_mask & IPC_TASK_POWERDOWN))
-		return -EBADMSG;
-
-	return 0;
-}
-
-/**
- * @brief IPC device resume handler callback function.
- * Resets IPC control after context restore.
- *
- * @param dev IPC device.
- * @param arg IPC struct pointer.
- */
-static int ipc_device_resume_handler(const struct device *dev, void *arg)
-{
-	struct ipc *ipc = (struct ipc *)arg;
-
-	ipc_set_drvdata(ipc, NULL);
-	ipc->task_mask = 0;
-	ipc->pm_prepare_D3 = false;
-
-	/* attach handlers */
-	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);
-
-	/* schedule task */
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
-			       &ipc_task_ops, ipc, 0, 0);
-
-	return 0;
-}
-#endif /* CONFIG_PM_DEVICE */
-
 #if CONFIG_DEBUG_IPC_COUNTERS
 
 static inline void increment_ipc_received_counter(void)
@@ -179,7 +130,7 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
 	    ipc_get()->pm_prepare_D3) {
-#if defined(CONFIG_PM)
+#if defined(CONFIG_PM_POLICY_CUSTOM)
 		/**
 		 * @note For primary core this function
 		 * will only force set lower power state
@@ -194,7 +145,7 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 		 * powered off and IPC sent.
 		 */
 		platform_pm_runtime_power_off();
-#endif /* CONFIG_PM  */
+#endif /* CONFIG_PM_POLICY_CUSTOM  */
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
@@ -250,12 +201,6 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* attach handlers */
 	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);
-#ifdef CONFIG_PM
-	intel_adsp_ipc_set_suspend_handler(INTEL_ADSP_IPC_HOST_DEV,
-					   ipc_device_suspend_handler, ipc);
-	intel_adsp_ipc_set_resume_handler(INTEL_ADSP_IPC_HOST_DEV,
-					  ipc_device_resume_handler, ipc);
-#endif
 
 	return 0;
 }
