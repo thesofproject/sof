@@ -238,7 +238,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
 
-	return intel_adsp_ipc_send_message(INTEL_ADSP_IPC_HOST_DEV, hdr->pri, hdr->ext);
+	if (!intel_adsp_ipc_send_message(INTEL_ADSP_IPC_HOST_DEV, hdr->pri, hdr->ext))
+		/* IPC device is busy with something else */
+		return -EBUSY;
+
+	return 0;
 }
 
 void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
