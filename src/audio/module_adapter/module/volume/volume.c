@@ -1432,7 +1432,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 
 	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
 	if (!mod) {
-		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
+		comp_err(dev, "volume_new(), failed to allocate memory for module");
 		goto fail;
 	}
 
