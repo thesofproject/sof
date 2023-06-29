@@ -805,6 +805,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *sink_c;
 	struct comp_dev *source_dev;
 	uint32_t num_output_buffers = 0;
+	uint32_t num_input_buffers = 0;
 	uint32_t frames;
 	int ret;
 
@@ -835,7 +836,10 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	if (sink_c->sink->state == dev->state)
 		num_output_buffers = 1;
 
-	ret = module_process_legacy(mod, mod->input_buffers, 1,
+	if (source_c->source->state == dev->state)
+		num_input_buffers = 1;
+
+	ret = module_process_legacy(mod, mod->input_buffers, num_input_buffers,
 				    mod->output_buffers, num_output_buffers);
 
 	/* consume from the input buffer */
