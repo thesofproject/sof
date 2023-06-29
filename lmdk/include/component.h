@@ -540,6 +540,7 @@ struct comp_ipc_config {
 	uint32_t core;		/**< core we run on */
 	uint32_t id;		/**< component id */
 	uint32_t pipeline_id;	/**< component pipeline id */
+	uint32_t proc_domain;   /**< processing domain - LL or DP */
 	enum sof_comp_type type;	/**< component type */
 	uint32_t periods_sink;	/**< 0 means variable */
 	uint32_t periods_source;/**< 0 means variable */
