@@ -528,13 +528,49 @@ static int do_conversion_copy(struct comp_dev *dev,
 	return 0;
 }
 
+static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
+				struct comp_buffer __sparse_cache *src_c,
+				struct comp_copy_limits *processed_data)
+{
+	struct comp_buffer __sparse_cache *sink_c;
+	struct list_item *sink_list;
+	struct comp_buffer *sink;
+	int ret = 0;
+
+	list_for_item(sink_list, &dev->bsink_list) {
+		struct comp_dev *sink_dev;
+
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink_c = buffer_acquire(sink);
+		sink_dev = sink_c->sink;
+		processed_data->sink_bytes = 0;
+		if (sink_dev->state == COMP_STATE_ACTIVE) {
+			ret = do_conversion_copy(dev, cd, src_c, sink_c, processed_data);
+			cd->output_total_data_processed += processed_data->sink_bytes;
+		}
+		buffer_release(sink_c);
+		if (ret < 0) {
+			comp_err(dev, "failed to copy buffer for comp %x",
+				 dev->ipc_config.id);
+			break;
+		}
+	}
+
+	if (!ret) {
+		comp_update_buffer_consume(src_c, processed_data->source_bytes);
+		if (!cd->endpoint_num || cd->bsource_buffer)
+			cd->input_total_data_processed += processed_data->source_bytes;
+	}
+
+	return ret;
+}
+
 static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev *dev)
 {
-	struct comp_buffer *src, *sink;
 	struct comp_buffer __sparse_cache *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
-	struct list_item *sink_list;
-	int ret  = 0;
+	struct comp_buffer *src;
+	int ret;
 
 	processed_data.source_bytes = 0;
 
@@ -574,31 +610,7 @@ static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev
 		}
 	}
 
-	/* zero or more components on outputs, module copy case */
-	list_for_item(sink_list, &dev->bsink_list) {
-		struct comp_dev *sink_dev;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		sink_dev = sink_c->sink;
-		processed_data.sink_bytes = 0;
-		if (sink_dev->state == COMP_STATE_ACTIVE) {
-			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
-			cd->output_total_data_processed += processed_data.sink_bytes;
-		}
-		buffer_release(sink_c);
-		if (ret < 0) {
-			comp_err(dev, "failed to copy buffer for comp %x",
-				 dev->ipc_config.id);
-			break;
-		}
-	}
-
-	if (!ret) {
-		comp_update_buffer_consume(src_c, processed_data.source_bytes);
-		if (!cd->endpoint_num || cd->bsource_buffer)
-			cd->input_total_data_processed += processed_data.source_bytes;
-	}
+	ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
 
 	buffer_release(src_c);
 
