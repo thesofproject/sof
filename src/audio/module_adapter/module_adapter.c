@@ -803,11 +803,22 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_buffer __sparse_cache *source_c;
 	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_dev *source_dev;
 	uint32_t num_output_buffers = 0;
+	uint32_t num_input_buffers = 0;
 	uint32_t frames;
 	int ret;
 
 	source_c = buffer_acquire(mod->source_comp_buffer);
+	source_dev = source_c->source;
+
+	/* bypass the source dev processing if it has enabled bypass */
+	if (source_dev->bypass_processing) {
+		struct processing_module *source_mod = comp_get_drvdata(source_dev);
+
+		buffer_release(source_c);
+		source_c = buffer_acquire(source_mod->source_comp_buffer);
+	}
 	sink_c = buffer_acquire(mod->sink_comp_buffer);
 	frames = audio_stream_avail_frames_aligned(&source_c->stream, &sink_c->stream);
 	mod->input_buffers[0].size = frames;
@@ -825,7 +836,10 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	if (sink_c->sink->state == dev->state)
 		num_output_buffers = 1;
 
-	ret = module_process_legacy(mod, mod->input_buffers, 1,
+	if (source_c->source->state == dev->state)
+		num_input_buffers = 1;
+
+	ret = module_process_legacy(mod, mod->input_buffers, num_input_buffers,
 				    mod->output_buffers, num_output_buffers);
 
 	/* consume from the input buffer */
@@ -857,8 +871,12 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	uint32_t num_output_buffers = 0;
 	int ret, i = 0;
 
-	if (mod->stream_copy_single_to_single)
+	if (mod->stream_copy_single_to_single) {
+		if (mod->dev->bypass_processing)
+			return 0;
+
 		return module_adapter_audio_stream_copy_1to1(dev);
+	}
 
 	/* acquire all sink and source buffers */
 	list_for_item(blist, &dev->bsink_list) {
@@ -869,10 +887,20 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	}
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
+		struct comp_dev *source_dev;
 		struct comp_buffer *source;
 
 		source = container_of(blist, struct comp_buffer, sink_list);
-		source_c[i++] = buffer_acquire(source);
+		source_c[i] = buffer_acquire(source);
+		source_dev = source_c[i]->source;
+		/* bypass the source dev processing if it has enabled bypass */
+		if (source_dev->bypass_processing) {
+			struct processing_module *source_mod = comp_get_drvdata(source_dev);
+
+			buffer_release(source_c[i]);
+			source_c[i] = buffer_acquire(source_mod->source_comp_buffer);
+		}
+		i++;
 	}
 
 	/* setup active input/output buffers for processing */
@@ -1509,13 +1537,18 @@ static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
 
 	comp_dbg(dev, "num_sources=%d num_sinks=%d", num_sources, num_sinks);
 
-	if (num_sources != 1 || num_sinks != 1)
+	if (num_sources != 1 || num_sinks != 1) {
+		mod->dev->bypass_processing = false;
 		return true;
+	}
 
 	/* re-assign the source/sink modules */
 	mod->sink_comp_buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	mod->source_comp_buffer = list_first_item(&dev->bsource_list,
 						  struct comp_buffer, sink_list);
+
+	if (mod->dev->bypass_capable)
+		mod->dev->bypass_processing = true;
 
 	return false;
 }
