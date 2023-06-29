@@ -125,7 +125,6 @@ static int mixin_init(struct processing_module *mod)
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	dev->ipc_config.frame_fmt = frame_fmt;
-	dev->bypass_capable = true;
 
 	return 0;
 }
