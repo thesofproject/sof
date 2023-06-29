@@ -469,12 +469,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static inline struct comp_buffer *get_endpoint_buffer(struct copier_data *cd)
-{
-	return cd->multi_endpoint_buffer ? cd->multi_endpoint_buffer :
-		cd->endpoint_buffer[IPC4_COPIER_GATEWAY_PIN];
-}
-
 static int do_endpoint_copy(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -596,7 +590,7 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 		if (ret < 0)
 			return ret;
 
-		src_c = buffer_acquire(get_endpoint_buffer(cd));
+		src_c = buffer_acquire(cd->multi_endpoint_buffer);
 		ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
 		buffer_release(src_c);
 
@@ -613,7 +607,7 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 	src_c = buffer_acquire(src);
 
 	/* gateway(s) on output */
-	sink_c = buffer_acquire(get_endpoint_buffer(cd));
+	sink_c = buffer_acquire(cd->multi_endpoint_buffer);
 	ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
 	buffer_release(sink_c);
 
