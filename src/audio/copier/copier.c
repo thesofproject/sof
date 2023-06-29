@@ -565,7 +565,24 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 	return ret;
 }
 
-static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev *dev)
+static int copier_module_copy(struct copier_data *cd, struct comp_dev *dev)
+{
+	struct comp_buffer __sparse_cache *src_c;
+	struct comp_copy_limits processed_data;
+	struct comp_buffer *src;
+	int ret;
+
+	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src_c = buffer_acquire(src);
+
+	ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
+
+	buffer_release(src_c);
+
+	return ret;
+}
+
+static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
@@ -574,44 +591,38 @@ static int do_multi_endpoint_module_copy(struct copier_data *cd, struct comp_dev
 
 	processed_data.source_bytes = 0;
 
-	if (cd->endpoint_num && !cd->bsource_buffer) {
+	if (!cd->bsource_buffer) {
 		/* gateway(s) as input */
 		ret = do_endpoint_copy(dev);
 		if (ret < 0)
 			return ret;
 
 		src_c = buffer_acquire(get_endpoint_buffer(cd));
-	} else {
-		/* component as input */
-		if (list_is_empty(&dev->bsource_list)) {
-			comp_err(dev, "No source buffer bound");
-			return -EINVAL;
-		}
+		ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
+		buffer_release(src_c);
 
-		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		src_c = buffer_acquire(src);
-
-		if (cd->endpoint_num) {
-			/* gateway(s) on output */
-			sink_c = buffer_acquire(get_endpoint_buffer(cd));
-			ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
-			buffer_release(sink_c);
-
-			if (ret < 0) {
-				buffer_release(src_c);
-				return ret;
-			}
-
-			ret = do_endpoint_copy(dev);
-			if (ret < 0) {
-				buffer_release(src_c);
-				return ret;
-			}
-		}
+		return ret;
 	}
 
-	ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
+	/* component as input */
+	if (list_is_empty(&dev->bsource_list)) {
+		comp_err(dev, "No source buffer bound");
+		return -EINVAL;
+	}
 
+	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src_c = buffer_acquire(src);
+
+	/* gateway(s) on output */
+	sink_c = buffer_acquire(get_endpoint_buffer(cd));
+	ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
+	buffer_release(sink_c);
+
+	if (ret < 0)
+		goto err;
+
+	ret = do_endpoint_copy(dev);
+err:
 	buffer_release(src_c);
 
 	return ret;
@@ -639,16 +650,20 @@ static int copier_copy(struct comp_dev *dev)
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
 			return do_endpoint_copy(dev);
-		break;
+
+		/* do nothing in the gateway copier case */
+		return 0;
 	case SOF_COMP_DAI:
 		if (cd->endpoint_num == 1)
 			return dai_common_copy(cd->dd[0], dev, cd->converter);
-		break;
+
+		return copier_multi_endpoint_dai_copy(cd, dev);
 	default:
 		break;
 	}
-	/* handle multi-endpoint and module copy */
-	return do_multi_endpoint_module_copy(cd, dev);
+
+	/* module copier case */
+	return copier_module_copy(cd, dev);
 }
 
 static int copier_mod_params(struct processing_module *mod)
