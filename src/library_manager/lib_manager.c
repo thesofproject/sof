@@ -20,6 +20,7 @@
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
+#include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
 
 #include <errno.h>
@@ -331,17 +332,16 @@ static void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t li
 
 int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 {
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	/* allocate new  comp_driver_info */
 	struct comp_driver_info *new_drv_info;
 	struct comp_driver *drv = NULL;
 	struct sof_man_module *mod;
 	int ret;
 
-	uint32_t align = 4;
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-
-	new_drv_info = rballoc_align(0, SOF_MEM_CAPS_RAM,
-				     sizeof(struct comp_driver_info), align);
+	new_drv_info = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
+			       SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
+			       sizeof(struct comp_driver_info));
 
 	if (!new_drv_info) {
 		tr_err(&lib_manager_tr, "lib_manager_register_module(): alloc failed");
@@ -349,8 +349,9 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 		goto cleanup;
 	}
 
-	drv = rballoc_align(0, SOF_MEM_CAPS_RAM,
-			    sizeof(struct comp_driver), align);
+	drv = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
+		      SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
+		      sizeof(struct comp_driver));
 	if (!drv) {
 		tr_err(&lib_manager_tr, "lib_manager_register_module(): alloc failed");
 		ret = -ENOMEM;
@@ -399,16 +400,17 @@ static void lib_manager_dma_buffer_update(struct lib_manager_dma_buf *buffer,
 static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint32_t size,
 				       uint32_t align)
 {
-	/* allocate new buffer */
+	/*
+	 * allocate new buffer: this is the actual DMA buffer but we
+	 * traditionally allocate a cached address for it
+	 */
 	buffer->addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
-
 	if (!buffer->addr) {
 		tr_err(&lib_manager_tr, "dma_buffer_init(): alloc failed");
 		return -ENOMEM;
 	}
 
-	bzero((void *)buffer->addr, size);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr, size);
+	dcache_invalidate_region((void __sparse_cache *)buffer->addr, size);
 
 	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %#lx, %#lx",
 	       buffer->addr, buffer->end_addr);
@@ -487,6 +489,8 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	int ret;
 	uint32_t avail_bytes = 0;
 
+	tr_info(&lib_manager_tr, "load %u", size);
+
 	config.channel_direction = HOST_TO_MEMORY;
 	config.source_data_size = sizeof(uint32_t);
 	config.dest_data_size = sizeof(uint32_t);
@@ -516,11 +520,12 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	while (avail_bytes < size) {
 		/* get data sizes from DMA */
 		ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
-
 		if (ret < 0)
 			goto return_on_fail;
 
 		avail_bytes = stat.pending_length;
+		if (avail_bytes)
+			tr_info(&lib_manager_tr, "%u available", avail_bytes);
 
 		k_usleep(100);
 	}
@@ -557,14 +562,14 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 		lib_manager_dma_buffer_update(dma_buf, bytes_to_copy);
 
 		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
-		if (ret < 0)
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "failed to copy %u", bytes_to_copy);
 			return ret;
+		}
 		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
 			 (void *)dma_buf->addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
 	}
-
-	dcache_writeback_region(dst_addr, dst_size);
 
 	return 0;
 }
@@ -586,9 +591,12 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	local_add = (__sparse_force void __sparse_cache *)rballoc_align(0, caps, size, addr_align);
 #endif
 	if (!local_add) {
-		tr_err(&lib_manager_tr, "dma_buffer_init(): alloc failed");
+		tr_err(&lib_manager_tr, "lib_manager_allocate_store_mem(): alloc failed");
 		return NULL;
 	}
+
+	sys_cache_data_invd_range(local_add, size);
+	sys_cache_instr_invd_range(local_add, size);
 
 	return local_add;
 }
@@ -613,8 +621,6 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	/* Copy data from temp_mft_buf to destination memory (pointed by library_base_address) */
 	memcpy_s((__sparse_force void *)library_base_address, MAN_MAX_SIZE_V1_8,
 		 (__sparse_force void *)man_buffer, MAN_MAX_SIZE_V1_8);
-
-	dcache_writeback_invalidate_region(library_base_address, MAN_MAX_SIZE_V1_8);
 
 	/* Copy remaining library part into storage buffer */
 	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
@@ -663,7 +669,11 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	if (ret < 0)
 		goto cleanup;
 
-	/* Load manifest to temporary buffer */
+	/*
+	 * Load manifest to temporary buffer. FIXME: unclear why such a long delay is
+	 * needed. 50ms are still not enough.
+	 */
+	k_usleep(100000);
 	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
 		goto cleanup;
