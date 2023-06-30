@@ -18,6 +18,8 @@ function crossover_plot_freq(lp, hp, fs, num_sinks);
 % Then to plot the transferfn for y1 we would create a filter such as:
 %  x(n) ---> LR4 LO-PASS --> LR4 LO-PASS --> y1(n)
 
+figure;
+
 f = linspace(1, fs/2, 500);
 
 if num_sinks == 2
@@ -63,11 +65,11 @@ if num_sinks == 4
 end
 end
 
-function [h12, w] = cascade_bqs_fr(f, fs, varargin);
+function [h12, w] = cascade_bqs_fr(f, fs, varargin)
 bq1 = varargin{1};
 bq2 = varargin{2};
-[h1, w] = freqz(bq1.b, bq1.a, f, fs);
-[h2, w] = freqz(bq2.b, bq2.a, f, fs);
+[h1, w1] = freqz(bq1.b, bq1.a, f, fs);
+[h2, w2] = freqz(bq2.b, bq2.a, f, fs);
 h12 = h1.*h2;
 for i=3:length(varargin)
 	bq = varargin{i};

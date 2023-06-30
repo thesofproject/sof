@@ -1,4 +1,4 @@
-function crossover = crossover_gen_coefs(fs, fc_low, fc_mid, fc_high);
+function crossover = crossover_gen_coefs(fs, fc_low, fc_mid, fc_high)
 
 addpath ./../eq/
 switch nargin
@@ -10,19 +10,19 @@ end
 rmpath ./../eq
 end
 
-function crossover_2way = crossover_generate_2way(fs, fc);
+function crossover_2way = crossover_generate_2way(fs, fc)
 	crossover_2way.lp = [lp_iir(fs, fc, 0)];
 	crossover_2way.hp = [hp_iir(fs, fc, 0)];
 end
 
-function crossover_3way = crossover_generate_3way(fs, fc_low, fc_high);
+function crossover_3way = crossover_generate_3way(fs, fc_low, fc_high)
 	% Duplicate one set of coefficients. The duplicate set will be used to merge back the
 	% output that is out of phase.
 	crossover_3way.lp = [lp_iir(fs, fc_low, 0) lp_iir(fs, fc_high, 0) lp_iir(fs, fc_high, 0)];
 	crossover_3way.hp = [hp_iir(fs, fc_low, 0) hp_iir(fs, fc_high, 0) hp_iir(fs, fc_high, 0)];
 end
 
-function crossover_4way = crossover_generate_4way(fs, fc_low, fc_mid, fc_high);
+function crossover_4way = crossover_generate_4way(fs, fc_low, fc_mid, fc_high)
 	crossover_4way.lp = [lp_iir(fs, fc_low, 0) lp_iir(fs, fc_mid, 0) lp_iir(fs, fc_high, 0)];
 	crossover_4way.hp = [hp_iir(fs, fc_low, 0) hp_iir(fs, fc_mid, 0) hp_iir(fs, fc_high, 0)];
 end
@@ -54,7 +54,7 @@ function [b, a] = high_pass_2nd_resonance(f, resonance, fs)
 		b = [1 - cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	% Compute biquad coefficients for highpass filter
 	resonance = max(0.0, resonance); % can't go negative
@@ -90,7 +90,7 @@ function [b, a] = low_pass_2nd_resonance(f, resonance, fs)
 		b = [cutoff, 0, 0];
 		a = [1, 0, 0];
 		return;
-	endif
+	end
 
 	% Compute biquad coefficients for lowpass filter
 	resonance = max(0.0, resonance); % can't go negative
