@@ -5,7 +5,7 @@ qf_iir = 30;
 
 addpath ./../eq
 
-if length(lowpass) != length(highpass)
+if length(lowpass) ~= length(highpass)
 	error("length of lowpass and highpass array do not match");
 end
 
