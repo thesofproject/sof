@@ -24,7 +24,11 @@ include(`bytecontrol.m4')
 
 define(CROSSOVER_priv, concat(`crossover_bytes_', PIPELINE_ID))
 define(MY_CROSSOVER_CTRL, concat(`crossover_control_', PIPELINE_ID))
-include(`crossover_coef_default.m4')
+
+# define filter, default is crossover_coef_default.m4
+ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, crossover_coef_default.m4)')
+include(PIPELINE_FILTER1)
+
 C_CONTROLBYTES(MY_CROSSOVER_CTRL, PIPELINE_ID,
      CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
      CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
