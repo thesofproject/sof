@@ -469,36 +469,29 @@ static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t 
 
 static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, uint32_t size)
 {
-	struct dma_config config;
+	struct dma_block_config dma_block_cfg = {
+		.block_size = size,
+		.dest_address = dma_ext->dmabp.addr,
+		.flow_control_mode = 1,
+	};
+	struct dma_config config = {
+		.channel_direction = HOST_TO_MEMORY,
+		.source_data_size = sizeof(uint32_t),
+		.dest_data_size = sizeof(uint32_t),
+		.block_count = 1,
+		.head_block = &dma_block_cfg,
+	};
 	struct dma_status stat;
-	struct dma_block_config *dma_block_cfg;
-	int ret;
 	uint32_t avail_bytes = 0;
-
-	config.channel_direction = HOST_TO_MEMORY;
-	config.source_data_size = sizeof(uint32_t);
-	config.dest_data_size = sizeof(uint32_t);
-	config.block_count = 1;
-
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT,
-				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-				sizeof(struct dma_block_config));
-	if (!dma_block_cfg)
-		return -ENOMEM;
-
-	config.head_block = dma_block_cfg;
-	dma_block_cfg->block_size = size;
-	dma_block_cfg->dest_address = dma_ext->dmabp.addr;
-	dma_block_cfg->flow_control_mode = 1;
+	int ret;
 
 	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
-
 	if (ret < 0)
-		goto return_on_fail;
+		return ret;
 
 	ret = dma_start(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
 	if (ret < 0)
-		goto return_on_fail;
+		return ret;
 
 	/* Wait till whole data acquired */
 	while (avail_bytes < size) {
@@ -506,25 +499,23 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 		ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
 
 		if (ret < 0)
-			goto return_on_fail;
+			return ret;
 
 		avail_bytes = stat.pending_length;
 
 		k_usleep(100);
 	}
 	ret = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
-
 	if (ret < 0)
-		goto return_on_fail;
+		return ret;
+
 	ret = dma_reload(dma_ext->chan->dma->z_dev, dma_ext->chan->index, 0, 0, size);
 	if (ret < 0)
-		goto return_on_fail;
+		return ret;
 
 	dcache_invalidate_region((void __sparse_cache *)dma_ext->dmabp.addr, size);
 
-return_on_fail:
-	rfree(dma_block_cfg);
-	return ret;
+	return 0;
 }
 
 static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
