@@ -127,16 +127,8 @@ struct perf_cnt_data {
 			(uint32_t)sof_cycle_get_64();				\
 		uint32_t cpu_ts =						\
 			(uint32_t)perf_cnt_get_cpu_ts();			\
-		if (plat_ts > (pcd)->plat_ts)					\
-			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;	\
-		else                                             \
-			(pcd)->plat_delta_last = UINT32_MAX - (pcd)->plat_ts   \
-									+ plat_ts; \
-		if (cpu_ts > (pcd)->cpu_ts)			\
-			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts; \
-		else								\
-			(pcd)->cpu_delta_last = UINT32_MAX - (pcd)->cpu_ts	\
-									+ cpu_ts;\
+		(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;		\
+		(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;			\
 		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)		\
 			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;	\
 		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {		\
