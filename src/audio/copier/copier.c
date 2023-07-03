@@ -469,28 +469,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static int do_endpoint_copy(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct copier_data *cd = module_get_private_data(mod);
-
-	switch (dev->ipc_config.type) {
-	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw)
-			return host_common_copy(cd->hd, dev, copier_host_dma_cb);
-		break;
-	case SOF_COMP_DAI:
-		if (cd->endpoint_num == 1)
-			return dai_common_copy(cd->dd[0], dev, cd->converter);
-
-		return dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
-						      cd->endpoint_num);
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
 			      struct comp_buffer __sparse_cache *src,
@@ -586,7 +564,8 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 
 	if (!cd->bsource_buffer) {
 		/* gateway(s) as input */
-		ret = do_endpoint_copy(dev);
+		ret = dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
+						     cd->endpoint_num);
 		if (ret < 0)
 			return ret;
 
@@ -614,7 +593,8 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 	if (ret < 0)
 		goto err;
 
-	ret = do_endpoint_copy(dev);
+	ret = dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
+					     cd->endpoint_num);
 err:
 	buffer_release(src_c);
 
@@ -642,7 +622,7 @@ static int copier_copy(struct comp_dev *dev)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			return do_endpoint_copy(dev);
+			return host_common_copy(cd->hd, dev, copier_host_dma_cb);
 
 		/* do nothing in the gateway copier case */
 		return 0;
