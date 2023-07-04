@@ -32,7 +32,7 @@ public:
 			 uint32_t param2 = 0, uint32_t param3 = 0, uint32_t param4 = 0)
 	{
 		(void)_ignored;
-		system_service_.LogMessage(LOG_LEVEL, log_entry, &log_handle_,
+		system_service_.log_message(LOG_LEVEL, log_entry, &log_handle_,
 					   param1, param2, param3, param4);
 	}
 
@@ -41,7 +41,6 @@ private:
 	AdspSystemService const &system_service_;
 	AdspLogHandle const &log_handle_;
 };
-
 } /* namespace intel_adsp */
 
 #endif /* #ifdef __cplusplus */
