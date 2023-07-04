@@ -1058,5 +1058,5 @@ static struct module_interface src_interface = {
 	.free = src_free,
 };
 
-DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
+DECLARE_MODULE_ADAPTER_WITH_TYPE(src_interface, src_uuid, src_tr, SOF_COMP_SRC);
 SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);

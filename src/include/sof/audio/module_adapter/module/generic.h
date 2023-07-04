@@ -33,7 +33,7 @@
 				(value)); \
 	} while (0)
 
-#define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
+#define DECLARE_MODULE_ADAPTER_WITH_TYPE(adapter, uuid, tr, comp_type)		\
 static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *drv, \
 					 const struct comp_ipc_config *config, \
 					 const void *spec) \
@@ -42,7 +42,7 @@ static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *dr
 } \
 \
 static const struct comp_driver comp_##adapter##_module = { \
-	.type = SOF_COMP_MODULE_ADAPTER, \
+	.type = comp_type, \
 	.uid = SOF_RT_UUID(uuid), \
 	.tctx = &(tr), \
 	.ops = { \
@@ -74,6 +74,9 @@ UT_STATIC void sys_comp_module_##adapter##_init(void) \
 } \
 \
 DECLARE_MODULE(sys_comp_module_##adapter##_init)
+
+#define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
+	DECLARE_MODULE_ADAPTER_WITH_TYPE(adapter, uuid, tr, SOF_COMP_MODULE_ADAPTER)
 
 /**
  * \enum module_state

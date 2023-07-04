@@ -121,6 +121,11 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		goto out;
 	}
 
+	if (comp->type > SOF_COMP_MODULE_ADAPTER) {
+		tr_err(&comp_tr, "Bad component type: %d\n", comp->type);
+		goto out;
+	}
+
 	/* search driver list with UUID */
 	key = k_spin_lock(&drivers->lock);
 
@@ -134,16 +139,23 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		}
 	}
 
-	if (!drv)
+	k_spin_unlock(&drivers->lock, key);
+
+	if (!drv) {
 		tr_err(&comp_tr,
 		       "get_drv(): the provided UUID (%8x%8x%8x%8x) doesn't match to any driver!",
 		       *(uint32_t *)(&comp_ext->uuid[0]),
 		       *(uint32_t *)(&comp_ext->uuid[4]),
 		       *(uint32_t *)(&comp_ext->uuid[8]),
 		       *(uint32_t *)(&comp_ext->uuid[12]));
+		goto out;
+	}
 
-	k_spin_unlock(&drivers->lock, key);
-
+	if (drv->type != comp->type && drv->type != SOF_COMP_MODULE_ADAPTER) {
+		tr_err(&comp_tr, "get_drv(): Found %pU driver and IPC type differ %d != %d",
+		       drv->tctx->uuid_p, drv->type, comp->type);
+		drv = NULL;
+	}
 out:
 	if (drv)
 		tr_dbg(&comp_tr, "get_drv(), found driver type %d, uuid %pU",

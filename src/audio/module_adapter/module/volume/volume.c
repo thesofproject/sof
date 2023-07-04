@@ -1671,7 +1671,7 @@ static struct module_interface gain_interface = {
 	.free = volume_free
 };
 
-DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
+DECLARE_MODULE_ADAPTER_WITH_TYPE(gain_interface, gain_uuid, gain_tr, SOF_COMP_VOLUME);
 SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
 #endif
 #endif
