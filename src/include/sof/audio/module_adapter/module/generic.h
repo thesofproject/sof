@@ -60,6 +60,12 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.bind = module_adapter_bind,\
 		.unbind = module_adapter_unbind,\
 		.get_total_data_processed = module_adapter_get_total_data_processed,\
+		.dai_get_hw_params = module_adapter_get_hw_params,\
+		.position = module_adapter_position,\
+		.dai_ts_config = module_adapter_ts_config_op,\
+		.dai_ts_start = module_adapter_ts_start_op,\
+		.dai_ts_stop = module_adapter_ts_stop_op,\
+		.dai_ts_get = module_adapter_ts_get_op,\
 	}, \
 }; \
 \
@@ -277,6 +283,13 @@ int module_adapter_bind(struct comp_dev *dev, void *data);
 int module_adapter_unbind(struct comp_dev *dev, void *data);
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input);
+int module_adapter_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
+				 int dir);
+int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
+int module_adapter_ts_config_op(struct comp_dev *dev);
+int module_adapter_ts_start_op(struct comp_dev *dev);
+int module_adapter_ts_stop_op(struct comp_dev *dev);
+int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd);
 
 static inline void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 						 struct output_stream_buffer *output_buffers,
