@@ -44,8 +44,6 @@
 #include <zephyr/drivers/dai.h>
 #endif
 
-static const struct comp_driver comp_copier;
-
 LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 
 /* this id aligns windows driver requirement to support windows driver */
@@ -84,9 +82,6 @@ static int copier_init(struct processing_module *mod)
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
 
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
 	if (!ipc_pipe) {
@@ -144,6 +139,9 @@ static int copier_init(struct processing_module *mod)
 		};
 
 		dev->direction_set = true;
+	} else {
+		/* set max sink count for module copier */
+		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;
 	}
 
 	dev->direction = cd->direction;
@@ -154,43 +152,7 @@ error:
 	return ret;
 }
 
-static struct comp_dev *copier_new(const struct comp_driver *drv,
-				   const struct comp_ipc_config *config,
-				   const void *spec)
-{
-	struct comp_dev *dev;
-	struct processing_module *mod;
-	struct module_data *md;
-	int ret;
-
-	comp_cl_dbg(&comp_copier, "copier_new()");
-
-	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
-	if (!mod)
-		return NULL;
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		goto error_dev;
-
-	dev->ipc_config = *config;
-
-	comp_set_drvdata(dev, mod);
-	md = &mod->priv;
-	mod->dev = dev;
-	md->cfg.init_data = spec;
-
-	ret = copier_init(mod);
-	if (!ret)
-		return dev;
-
-	rfree(dev);
-error_dev:
-	rfree(mod);
-	return NULL;
-}
-
-static void copier_mod_free(struct processing_module *mod)
+static int copier_free(struct processing_module *mod)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -211,27 +173,25 @@ static void copier_mod_free(struct processing_module *mod)
 	}
 
 	rfree(cd);
+
+	return 0;
 }
 
-static void copier_free(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
+static int copier_params(struct processing_module *mod);
 
-	copier_mod_free(mod);
-
-	rfree(mod);
-	rfree(dev);
-}
-
-static int copier_mod_prepare(struct processing_module *mod,
-			      struct sof_source __sparse_cache **sources, int num_of_sources,
-			      struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+static int copier_prepare(struct processing_module *mod,
+			  struct sof_source __sparse_cache **sources, int num_of_sources,
+			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "copier_prepare()");
+	ret = copier_params(mod);
+	if (ret < 0)
+		return ret;
+
+	comp_info(dev, "copier_prepare()");
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -267,28 +227,7 @@ static int copier_mod_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static int copier_prepare(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	int ret;
-
-	/* cannot configure DAI while active */
-	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "copier_config_prepare(): Component is in active state.");
-		return 0;
-	}
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	return copier_mod_prepare(mod, NULL, 0, NULL, 0);
-}
-
-static int copier_mod_reset(struct processing_module *mod)
+static int copier_reset(struct processing_module *mod)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
@@ -320,18 +259,6 @@ static int copier_mod_reset(struct processing_module *mod)
 	}
 
 	return 0;
-}
-
-static int copier_reset(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	int ret;
-
-	ret = copier_mod_reset(mod);
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	return ret;
 }
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
@@ -536,21 +463,59 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 	return ret;
 }
 
-static int copier_module_copy(struct copier_data *cd, struct comp_dev *dev)
+static int copier_module_copy(struct processing_module *mod,
+			      struct input_stream_buffer *input_buffers, int num_input_buffers,
+			      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
+	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_buffer __sparse_cache *src_c;
 	struct comp_copy_limits processed_data;
-	struct comp_buffer *src;
-	int ret;
+	int i;
 
-	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	src_c = buffer_acquire(src);
+	if (!num_input_buffers || !num_output_buffers)
+		return 0;
 
-	ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
+	src_c = attr_container_of(input_buffers[0].data, struct comp_buffer __sparse_cache,
+				  stream, __sparse_cache);
 
-	buffer_release(src_c);
+	processed_data.source_bytes = 0;
 
-	return ret;
+	/* convert format and copy to each active sink */
+	for (i = 0; i < num_output_buffers; i++) {
+		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_dev *sink_dev;
+
+		sink_c = attr_container_of(output_buffers[i].data,
+					   struct comp_buffer __sparse_cache,
+					   stream, __sparse_cache);
+		sink_dev = sink_c->sink;
+		processed_data.sink_bytes = 0;
+		if (sink_dev->state == COMP_STATE_ACTIVE) {
+			uint32_t samples;
+			int sink_queue_id;
+
+			sink_queue_id = IPC4_SINK_QUEUE_ID(sink_c->id);
+			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
+				return -EINVAL;
+
+			/* update corresponding sink format in case it isn't updated */
+			update_buffer_format(sink_c, &cd->out_fmt[sink_queue_id]);
+
+			comp_get_copy_limits(src_c, sink_c, &processed_data);
+
+			samples = processed_data.frames *
+					audio_stream_get_channels(output_buffers[i].data);
+			cd->converter[sink_queue_id](input_buffers[0].data, 0,
+						     output_buffers[i].data, 0, samples);
+
+			output_buffers[i].size = processed_data.sink_bytes;
+			cd->output_total_data_processed += processed_data.sink_bytes;
+		}
+	}
+
+	input_buffers[0].consumed = processed_data.source_bytes;
+
+	return 0;
 }
 
 static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_dev *dev)
@@ -612,12 +577,14 @@ err:
  * from single stream (for output gateways) so such gateways work kind of like a single
  * gateway, i.e., produce/consume single stream.
  */
-static int copier_copy(struct comp_dev *dev)
+static int copier_process(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers, int num_input_buffers,
+			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "copier_copy()");
+	comp_dbg(dev, "copier_process()");
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -636,10 +603,11 @@ static int copier_copy(struct comp_dev *dev)
 	}
 
 	/* module copier case */
-	return copier_module_copy(cd, dev);
+	return copier_module_copy(mod, input_buffers, num_input_buffers, output_buffers,
+				  num_output_buffers);
 }
 
-static int copier_mod_params(struct processing_module *mod)
+static int copier_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct copier_data *cd = module_get_private_data(mod);
@@ -671,17 +639,6 @@ static int copier_mod_params(struct processing_module *mod)
 	}
 
 	return ret;
-}
-
-/* configure the DMA params */
-static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	/* will remove once fully convert to module interface in last patch */
-	mod->stream_params = params;
-
-	return copier_mod_params(mod);
 }
 
 static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
@@ -799,20 +756,6 @@ static int copier_set_configuration(struct processing_module *mod,
 	}
 }
 
-static int copier_set_large_config(struct comp_dev *dev, uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t data_offset,
-				   const char *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "copier_set_large_config()");
-
-	return copier_set_configuration(mod, param_id, MODULE_CFG_FRAGMENT_SINGLE,
-					data_offset, data, data_offset, NULL, 0);
-}
-
 static inline void convert_u64_to_u32s(uint64_t val, uint32_t *val_l, uint32_t *val_h)
 {
 	*val_l = (uint32_t)(val & 0xffffffff);
@@ -905,17 +848,6 @@ static int copier_get_configuration(struct processing_module *mod,
 	return -EINVAL;
 }
 
-static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t *data_offset,
-				   char *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	return copier_get_configuration(mod, param_id, data_offset, data, 0);
-}
-
 static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -959,22 +891,6 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 	}
 
 	return ret;
-}
-
-static int copier_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct copier_data *cd = module_get_private_data(mod);
-
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->config.base;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
 }
 
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
@@ -1060,59 +976,42 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
-static int copier_mod_unbind(struct processing_module *mod, void *data)
+static int copier_unbind(struct processing_module *mod, void *data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct dai_data *dd = cd->dd[0];
 
-	if (dev->ipc_config.type == SOF_COMP_DAI)
+	if (dev->ipc_config.type == SOF_COMP_DAI) {
+		struct dai_data *dd = cd->dd[0];
+
 		return dai_zephyr_unbind(dd, dev, data);
+	}
 
 	return 0;
 }
 
-static int copier_unbind(struct comp_dev *dev, void *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	return copier_mod_unbind(mod, data);
-}
-
-static const struct comp_driver comp_copier = {
-	.uid	= SOF_RT_UUID(copier_comp_uuid),
-	.tctx	= &copier_comp_tr,
-	.ops	= {
-		.create				= copier_new,
-		.free				= copier_free,
-		.trigger			= copier_comp_trigger,
-		.copy				= copier_copy,
-		.set_large_config		= copier_set_large_config,
-		.get_large_config		= copier_get_large_config,
-		.params				= copier_params,
-		.prepare			= copier_prepare,
-		.reset				= copier_reset,
-		.get_total_data_processed	= copier_get_processed_data,
-		.get_attribute			= copier_get_attribute,
-		.position			= copier_position,
-		.dai_ts_config			= copier_dai_ts_config_op,
-		.dai_ts_start			= copier_dai_ts_start_op,
-		.dai_ts_stop			= copier_dai_ts_stop_op,
-		.dai_ts_get			= copier_dai_ts_get_op,
-		.dai_get_hw_params		= copier_get_hw_params,
-		.unbind			= copier_unbind,
-	},
+static struct module_endpoint_ops copier_endpoint_ops = {
+	.get_total_data_processed = copier_get_processed_data,
+	.position = copier_position,
+	.dai_ts_config = copier_dai_ts_config_op,
+	.dai_ts_start = copier_dai_ts_start_op,
+	.dai_ts_stop = copier_dai_ts_stop_op,
+	.dai_ts_get = copier_dai_ts_get_op,
+	.dai_get_hw_params = copier_get_hw_params,
+	.trigger = copier_comp_trigger
 };
 
-static SHARED_DATA struct comp_driver_info comp_copier_info = {
-	.drv = &comp_copier,
+static struct module_interface copier_interface = {
+	.init  = copier_init,
+	.prepare = copier_prepare,
+	.process_audio_stream = copier_process,
+	.reset = copier_reset,
+	.free = copier_free,
+	.set_configuration = copier_set_configuration,
+	.get_configuration = copier_get_configuration,
+	.unbind = copier_unbind,
+	.endpoint_ops = &copier_endpoint_ops,
 };
 
-UT_STATIC void sys_comp_copier_init(void)
-{
-	comp_register(platform_shared_get(&comp_copier_info,
-					  sizeof(comp_copier_info)));
-}
-
-DECLARE_MODULE(sys_comp_copier_init);
-SOF_MODULE_INIT(copier, sys_comp_copier_init);
+DECLARE_MODULE_ADAPTER(copier_interface, copier_comp_uuid, copier_comp_tr);
+SOF_MODULE_INIT(copier, sys_comp_module_copier_interface_init);
