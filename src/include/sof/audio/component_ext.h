@@ -386,24 +386,62 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 	return sof_get()->comp_drivers;
 }
 
+#if CONFIG_IPC_MAJOR_4
+static inline int comp_ipc4_bind_remote(struct comp_dev *dev, void *data)
+{
+	struct idc_msg msg = { IDC_MSG_BIND,
+		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
+		sizeof(struct ipc4_module_bind_unbind), data};
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+#endif
+
 static inline int comp_bind(struct comp_dev *dev, void *data)
 {
+#if CONFIG_IPC_MAJOR_4
+	if (dev->drv->ops.bind)
+		return cpu_is_me(dev->ipc_config.core) ?
+			dev->drv->ops.bind(dev, data) : comp_ipc4_bind_remote(dev, data);
+
+	return 0;
+#else
 	int ret = 0;
 
 	if (dev->drv->ops.bind)
 		ret = dev->drv->ops.bind(dev, data);
 
 	return ret;
+#endif
 }
+
+#if CONFIG_IPC_MAJOR_4
+static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, void *data)
+{
+	struct idc_msg msg = { IDC_MSG_UNBIND,
+		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
+		sizeof(struct ipc4_module_bind_unbind), data};
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+#endif
 
 static inline int comp_unbind(struct comp_dev *dev, void *data)
 {
+#if CONFIG_IPC_MAJOR_4
+	if (dev->drv->ops.unbind)
+		return cpu_is_me(dev->ipc_config.core) ?
+			dev->drv->ops.unbind(dev, data) : comp_ipc4_unbind_remote(dev, data);
+
+	return 0;
+#else
 	int ret = 0;
 
 	if (dev->drv->ops.unbind)
 		ret = dev->drv->ops.unbind(dev, data);
 
 	return ret;
+#endif
 }
 
 static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint32_t stream_no,
