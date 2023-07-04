@@ -48,6 +48,7 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       int dir, struct pipeline *pipeline)
 {
+	struct processing_module *mod = comp_get_drvdata(parent_dev);
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
 	int ret;
@@ -100,6 +101,9 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		ret = init_pipeline_reg(parent_dev);
 		if (ret)
 			goto e_conv;
+
+		/* set max sink count for playback */
+		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;
 	} else {
 		config->frame_fmt = out_frame_fmt;
 		pipeline->sink_comp = parent_dev;

@@ -142,6 +142,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
+	struct processing_module *mod = comp_get_drvdata(parent_dev);
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;
 	enum ipc4_gateway_type type;
@@ -271,10 +272,14 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 			return ret;
 	}
 
-	if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		pipeline->sink_comp = parent_dev;
-	else
+	} else {
 		pipeline->source_comp = parent_dev;
+
+		/* set max sink count for capture */
+		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;
+	}
 
 	return 0;
 }
