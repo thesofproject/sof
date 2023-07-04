@@ -212,6 +212,9 @@ struct processing_module {
 	 */
 	bool stream_copy_single_to_single;
 
+	/* pointer to system services for loadable modules */
+	uint32_t *sys_service;
+
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
 

@@ -16,7 +16,7 @@
 #include <utilities/array.h>
 #include <adsp_error_code.h>
 #include <logger.h>
-#include <system_service.h>
+#include <native_system_service.h>
 #include <system_agent_interface.h>
 #include <module_initial_settings_concrete.h>
 #include <iadk_module_adapter.h>
@@ -32,29 +32,28 @@ void* operator new(size_t size, intel_adsp::ModuleHandle *placeholder) throw()
 }
 
 extern "C" {
+	void native_system_service_log_message (AdspLogPriority log_priority, uint32_t log_entry,
+						AdspLogHandle const* log_handle, uint32_t param1,
+						uint32_t param2, uint32_t param3, uint32_t param4);
 
-	void SystemServiceLogMessage (AdspLogPriority log_priority, uint32_t log_entry,
-				      AdspLogHandle const* log_handle, uint32_t param1,
-				      uint32_t param2, uint32_t param3, uint32_t param4);
-
-	AdspErrorCode SystemServiceSafeMemcpy(void *RESTRICT dst, size_t maxlen,
+	AdspErrorCode native_system_service_safe_memcpy(void *RESTRICT dst, size_t maxlen,
 					      const void *RESTRICT src, size_t len);
 
-	AdspErrorCode SystemServiceSafeMemmove(void *dst, size_t maxlen,
+	AdspErrorCode native_system_service_safe_memmove(void *dst, size_t maxlen,
 					       const void *src, size_t len);
 
-	void* SystemServiceVecMemset(void *dst, int c, size_t len);
+	void *native_system_service_vec_memset(void *dst, int c, size_t len);
 
-	AdspErrorCode SystemServiceCreateNotification(NotificationParams *params,
+	AdspErrorCode native_system_service_create_notification(notification_params *params,
 						      uint8_t *notification_buffer,
 						      uint32_t notification_buffer_size,
-						      AdspNotificationHandle *handle);
+						      adsp_notification_handle *handle);
 
-	AdspErrorCode SystemServiceSendNotificationMessage(NotificationTarget notification_target,
-							   AdspNotificationHandle message,
+	AdspErrorCode native_system_service_send_notif_msg(adsp_notification_target notification_target,
+							   adsp_notification_handle message,
 							   uint32_t actual_payload_size);
 
-	AdspErrorCode SystemServiceGetInterface(AdspIfaceId id, SystemServiceIface **iface);
+	AdspErrorCode native_system_service_get_interface(adsp_iface_id id, system_service_iface **iface);
 }
 
 namespace intel_adsp
@@ -64,13 +63,13 @@ namespace system
 
 /* Structure storing handles to system service operations */
 AdspSystemService SystemAgent::system_service_ = {
-	SystemServiceLogMessage,
-	SystemServiceSafeMemcpy,
-	SystemServiceSafeMemmove,
-	SystemServiceVecMemset,
-	SystemServiceCreateNotification,
-	SystemServiceSendNotificationMessage,
-	SystemServiceGetInterface,
+	native_system_service_log_message,
+	native_system_service_safe_memcpy,
+	native_system_service_safe_memmove,
+	native_system_service_vec_memset,
+	native_system_service_create_notification,
+	native_system_service_send_notif_msg,
+	native_system_service_get_interface,
 };
 
 SystemAgent::SystemAgent(uint32_t module_id,
