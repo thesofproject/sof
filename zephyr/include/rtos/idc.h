@@ -102,6 +102,9 @@
 
 #define IDC_HEADER_TO_AMS_SLOT_MASK(x)	(x & 0xFFFF)
 
+#define IDC_MSG_BIND IDC_TYPE(0xD)
+#define IDC_MSG_UNBIND IDC_TYPE(0xE)
+
 /** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
 #define IDC_SCC_CORE_SHIFT		0
 #define IDC_SCC_CORE_MASK		0xff
