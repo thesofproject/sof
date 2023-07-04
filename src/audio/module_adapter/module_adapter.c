@@ -256,17 +256,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
-	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
-	 */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sink);
-
-	mod->period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
-	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
-
-	buffer_release(sink_c);
-
 	/*
 	 * check if the component is already active. This could happen in the case of mixer when
 	 * one of the sources is already active
@@ -284,7 +273,22 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+	/* nothing more to do for HOST/DAI type modules */
+	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
+		return 0;
+
 	mod->deep_buff_bytes = 0;
+
+	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
+	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	 */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sink);
+
+	mod->period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
+	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
+
+	buffer_release(sink_c);
 
 	/*
 	 * compute number of input buffers and make the source_info shared if the module is on a
@@ -867,6 +871,10 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	uint32_t num_input_buffers, num_output_buffers;
 	int ret, i = 0;
 
+	/* handle special case of HOST/DAI type components */
+	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
+		return module_process_legacy(mod, NULL, 0, NULL, 0);
+
 	if (mod->stream_copy_single_to_single)
 		return module_adapter_audio_stream_copy_1to1(dev);
 
@@ -1330,6 +1338,13 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
+	/* handle host/DAI gateway modules separately */
+	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI) {
+		struct module_data *md = &mod->priv;
+
+		return md->ops->endpoint_ops->trigger(dev, cmd);
+	}
+
 	/*
 	 * If the module doesn't support pause, keep it active along with the rest of the
 	 * downstream modules
@@ -1436,6 +1451,125 @@ void module_adapter_free(struct comp_dev *dev)
 	coherent_free_thread(mod->source_info, c);
 	rfree(mod);
 	rfree(dev);
+}
+
+/*
+ * \brief Get DAI hw params
+ * \param[in] dev - component device pointer
+ * \param[in] params - pointer to stream params
+ * \param[in] dir - stream direction
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
+				 int dir)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->dai_get_hw_params)
+		return md->ops->endpoint_ops->dai_get_hw_params(dev, params, dir);
+
+	return -EOPNOTSUPP;
+}
+
+/*
+ * \brief Get stream position
+ * \param[in] dev - component device pointer
+ * \param[in] posn - pointer to stream position
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->position)
+		return md->ops->endpoint_ops->position(dev, posn);
+
+	return -EOPNOTSUPP;
+}
+
+/*
+ * \brief DAI timestamp configure
+ * \param[in] dev - component device pointer
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_ts_config_op(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->dai_ts_config)
+		return md->ops->endpoint_ops->dai_ts_config(dev);
+
+	return -EOPNOTSUPP;
+}
+
+/*
+ * \brief DAI timestamp start
+ * \param[in] dev - component device pointer
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_ts_start_op(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->dai_ts_start)
+		return md->ops->endpoint_ops->dai_ts_start(dev);
+
+	return -EOPNOTSUPP;
+}
+
+/*
+ * \brief DAI timestamp stop
+ * \param[in] dev - component device pointer
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_ts_stop_op(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->dai_ts_stop)
+		return md->ops->endpoint_ops->dai_ts_stop(dev);
+
+	return -EOPNOTSUPP;
+}
+
+/*
+ * \brief Get DAI timestamp
+ * \param[in] dev - component device pointer
+ * \param[in] tsd - Timestamp data pointer
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->dai_ts_get)
+		return md->ops->endpoint_ops->dai_ts_get(dev, tsd);
+
+	return -EOPNOTSUPP;
 }
 
 #if CONFIG_IPC_MAJOR_4
@@ -1645,6 +1779,10 @@ uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+
+	if (md->ops->endpoint_ops && md->ops->endpoint_ops->get_total_data_processed)
+		return md->ops->endpoint_ops->get_total_data_processed(dev, stream_no, input);
 
 	if (input)
 		return mod->total_data_produced;
