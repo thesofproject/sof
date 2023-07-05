@@ -433,6 +433,29 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	return ALIGN_DOWN(dma_copy_bytes, hd->dma_copy_align);
 }
 
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+static inline bool stream_sync(struct host_data *hd, struct comp_dev *dev)
+{
+	if (!hd->is_grouped)
+		return true;
+
+	uint64_t current_time = k_cycle_get_64();
+
+	if (current_time >= hd->next_sync) {
+		hd->next_sync = current_time + hd->period_in_cycles;
+		comp_dbg(dev, "hd(%p) next sync = %llu", hd, hd->next_sync);
+		return true;
+	}
+
+	return false;
+}
+#else
+static inline bool stream_sync(struct host_data *hd, struct comp_dev *dev)
+{
+	return true;
+}
+#endif
+
 /**
  * Performs copy operation for host component working in normal mode.
  * It means DMA works continuously and doesn't need reconfiguration.
@@ -471,11 +494,14 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	    audio_stream_get_size(&buffer_c->stream) < hd->period_bytes << 3 ||
 	    audio_stream_get_size(&buffer_c->stream) - hd->partial_size <=
 	    (2 + threshold) * hd->period_bytes) {
-		ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0, hd->partial_size);
-		if (ret < 0)
-			comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
+		if (stream_sync(hd, dev)) {
+			ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0,
+					 hd->partial_size);
+			if (ret < 0)
+				comp_err(dev, "dma_reload() failed, ret = %u", ret);
 
-		hd->partial_size = 0;
+			hd->partial_size = 0;
+		}
 	}
 
 	buffer_release(buffer_c);

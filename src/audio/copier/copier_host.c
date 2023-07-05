@@ -6,11 +6,90 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/host_copier.h>
+#include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <ipc4/copier.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
+
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+
+/* NOTE: The code that modifies and checks the contents of the list can be executed on different
+ * cores. But since adding and removing modules is done exclusively via IPC, and we never add or
+ * remove more than one module, these functions do not require synchronization.
+ */
+struct fpi_sync_group {
+	uint32_t id;
+	uint32_t period;
+	uint32_t ref_count;
+	struct list_item item;
+};
+
+static struct list_item group_list_head = LIST_INIT(group_list_head);
+
+static struct fpi_sync_group *find_group_by_id(uint32_t id)
+{
+	struct list_item *item;
+
+	list_for_item(item, &group_list_head) {
+		struct fpi_sync_group *group = list_item(item, struct fpi_sync_group, item);
+
+		if (group->id == id)
+			return group;
+	}
+
+	return NULL;
+}
+
+int add_to_fpi_sync_group(struct comp_dev *parent_dev,
+			  struct host_data *hd,
+			  struct ipc4_copier_sync_group *sync_group)
+{
+	struct fpi_sync_group *group = find_group_by_id(sync_group->group_id);
+
+	if (group) {
+		if (group->period != sync_group->fpi_update_period_usec) {
+			comp_err(parent_dev, "incorrect period %u for group %u (currently %u)",
+				 group->id, group->period, sync_group->fpi_update_period_usec);
+			return -EINVAL;
+		}
+
+		group->ref_count++;
+	} else {
+		group = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*group));
+		if (!group) {
+			comp_err(parent_dev, "Failed to alloc memory for new group");
+			return -ENOMEM;
+		}
+
+		group->id = sync_group->group_id;
+		group->period = sync_group->fpi_update_period_usec;
+		group->ref_count = 1;
+		list_item_append(&group->item, &group_list_head);
+	}
+
+	hd->is_grouped = true;
+	hd->group_id = group->id;
+	hd->period_in_cycles = k_us_to_cyc_ceil64(group->period);
+	comp_dbg(parent_dev, "gtw added to group %u with period %u", group->id, group->period);
+	return 0;
+}
+
+void delete_from_fpi_sync_group(struct host_data *hd)
+{
+	struct fpi_sync_group *group = find_group_by_id(hd->group_id);
+
+	if (!group)
+		return;
+
+	group->ref_count--;
+	if (group->ref_count == 0) {
+		list_item_del(&group->item);
+		rfree(group);
+	}
+}
+#endif
 
 /* Playback only */
 static int init_pipeline_reg(struct comp_dev *dev)
@@ -81,6 +160,36 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		comp_err(parent_dev, "copier: host new failed with exit");
 		goto e_data;
 	}
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+	/* Size of a configuration without optional parameters. */
+	const uint32_t basic_size = sizeof(*copier_cfg) +
+				    (copier_cfg->gtw_cfg.config_length - 1) * sizeof(uint32_t);
+	/* Additional data size */
+	const uint32_t tlv_buff_size = config->ipc_config_size - basic_size;
+	const uint32_t min_tlv_size = sizeof(struct ipc4_copier_sync_group) + 2 * sizeof(uint32_t);
+
+	if (tlv_buff_size >= min_tlv_size) {
+		const uint32_t tlv_addr = (uint32_t)copier_cfg + basic_size;
+		uint32_t value_size = 0;
+		void *value_ptr = NULL;
+
+		tlv_value_get((void *)tlv_addr, tlv_buff_size, HDA_SYNC_FPI_UPDATE_GROUP,
+			      &value_ptr, &value_size);
+
+		if (value_ptr) {
+			struct ipc4_copier_sync_group *sync_group;
+
+			if (value_size != sizeof(struct ipc4_copier_sync_group))
+				return -EINVAL;
+
+			sync_group = (struct ipc4_copier_sync_group *)((void *)value_ptr);
+
+			ret = add_to_fpi_sync_group(parent_dev, hd, sync_group);
+			if (ret < 0)
+				return ret;
+		}
+	}
+#endif
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
 		get_converter_func(&copier_cfg->base.audio_fmt,
@@ -122,6 +231,10 @@ e_data:
 
 void copier_host_free(struct copier_data *cd)
 {
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+	if (cd->hd->is_grouped)
+		delete_from_fpi_sync_group(cd->hd);
+#endif
 	host_common_free(cd->hd);
 	rfree(cd->hd);
 }

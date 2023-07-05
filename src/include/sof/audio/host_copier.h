@@ -96,6 +96,12 @@ struct host_data {
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 	struct ipc_msg *msg;	/**< host notification */
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+	bool is_grouped;
+	uint8_t group_id;
+	uint64_t next_sync;
+	uint64_t period_in_cycles;
+#endif
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,

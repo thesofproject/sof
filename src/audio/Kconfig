@@ -32,6 +32,16 @@ config HOST_DMA_RELOAD_THRESHOLD
 	  The DMA buffer threshold in milliseconds to trigger host DMA
 	  reloading.
 
+config HOST_DMA_STREAM_SYNCHRONIZATION
+	bool "Stream DMA Transfers Synchronization"
+	default y if ACE
+	default n
+	help
+	  Enable synchronized Firmware Pointer Increment (FPI) register updates of HD-A gateways
+	  belonging to a group defined by the driver. The driver may also specify an update period
+	  for each group, different than the default one determined by the system tick frequency.
+	  This feature will allow host lower power consumption in scenarios with deep buffering.
+
 config COMP_DAI
 	bool "DAI component"
 	default y
