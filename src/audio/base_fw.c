@@ -4,6 +4,7 @@
 #include <sof/audio/component.h>
 #include <sof/lib/memory.h>
 #include <sof/ut.h>
+#include <sof/tlv.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
@@ -32,105 +33,85 @@ DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_comp_uuid), LOG_LEVEL_INFO);
 
 static struct ipc4_system_time_info global_system_time_info;
 
-static inline void set_tuple(struct ipc4_tuple *tuple, uint32_t type, uint32_t length, void *data)
-{
-	tuple->type = type;
-	tuple->length = length;
-	memcpy_s(tuple->data, length, data, length);
-}
-
-static inline void set_tuple_uint32(struct ipc4_tuple *tuple, uint32_t type, uint32_t value)
-{
-	tuple->type = type;
-	tuple->length = sizeof(uint32_t);
-	memcpy_s(tuple->data, tuple->length, &value, tuple->length);
-}
-
-/* tuple is a variable length struct and the length of
- * the last variable field is saved in tuple->length.
- */
-static inline struct ipc4_tuple *next_tuple(struct ipc4_tuple *tuple)
-{
-	return (struct ipc4_tuple *)((char *)(tuple) + sizeof(*tuple) + tuple->length);
-}
-
 static int basefw_config(uint32_t *data_offset, char *data)
 {
 	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
-	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	struct ipc4_scheduler_config sche_cfg;
 	uint32_t log_bytes_size = 0;
 
-	set_tuple(tuple, IPC4_FW_VERSION_FW_CFG, sizeof(version), version);
+	tlv_value_set(tuple, IPC4_FW_VERSION_FW_CFG, sizeof(version), version);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MEMORY_RECLAIMED_FW_CFG, 1);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MEMORY_RECLAIMED_FW_CFG, 1);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG, CLK_MAX_CPU_HZ);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG, CLK_MAX_CPU_HZ);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, clock_get_freq(CPU_LPRO_FREQ_IDX));
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple,
+			     IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG,
+			     clock_get_freq(CPU_LPRO_FREQ_IDX));
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_UAOL_SUPPORT, 0);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 0);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_DL_MAILBOX_BYTES_FW_CFG, MAILBOX_HOSTBOX_SIZE);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_DL_MAILBOX_BYTES_FW_CFG, MAILBOX_HOSTBOX_SIZE);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_UL_MAILBOX_BYTES_FW_CFG, MAILBOX_DSPBOX_SIZE);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_UL_MAILBOX_BYTES_FW_CFG, MAILBOX_DSPBOX_SIZE);
 
 	/* TODO: add log support */
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 	log_bytes_size = SOF_IPC4_LOGGING_MTRACE_PAGE_SIZE;
 #endif
-	set_tuple_uint32(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, log_bytes_size);
+	tlv_value_uint32_set(tuple, IPC4_TRACE_LOG_BYTES_FW_CFG, log_bytes_size);
 
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_PPL_CNT_FW_CFG, IPC4_MAX_PPL_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_PPL_CNT_FW_CFG, IPC4_MAX_PPL_COUNT);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_ASTATE_COUNT_FW_CFG, IPC4_MAX_CLK_STATES);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_ASTATE_COUNT_FW_CFG, IPC4_MAX_CLK_STATES);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_MODULE_PIN_COUNT_FW_CFG, IPC4_MAX_SRC_QUEUE);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_MODULE_PIN_COUNT_FW_CFG, IPC4_MAX_SRC_QUEUE);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_MOD_INST_COUNT_FW_CFG, IPC4_MAX_MODULE_INSTANCES);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_MOD_INST_COUNT_FW_CFG, IPC4_MAX_MODULE_INSTANCES);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_LL_TASKS_PER_PRI_COUNT_FW_CFG,
-			 IPC4_MAX_LL_TASKS_PER_PRI_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_LL_TASKS_PER_PRI_COUNT_FW_CFG,
+			     IPC4_MAX_LL_TASKS_PER_PRI_COUNT);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_LL_PRI_COUNT, SOF_IPC4_MAX_PIPELINE_PRIORITY + 1);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_LL_PRI_COUNT, SOF_IPC4_MAX_PIPELINE_PRIORITY + 1);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_DP_TASKS_COUNT_FW_CFG, IPC4_MAX_DP_TASKS_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_DP_TASKS_COUNT_FW_CFG, IPC4_MAX_DP_TASKS_COUNT);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MODULES_COUNT_FW_CFG, 5);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MODULES_COUNT_FW_CFG, 5);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MAX_LIBS_COUNT_FW_CFG, IPC4_MAX_LIBS_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MAX_LIBS_COUNT_FW_CFG, IPC4_MAX_LIBS_COUNT);
 
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	sche_cfg.sys_tick_cfg_length = 0;
 	sche_cfg.sys_tick_divider = 1;
 	sche_cfg.sys_tick_multiplier = 1;
 	sche_cfg.sys_tick_source = SOF_SCHEDULE_LL_TIMER;
-	set_tuple(tuple, IPC4_SCHEDULER_CONFIGURATION, sizeof(sche_cfg), &sche_cfg);
+	tlv_value_set(tuple, IPC4_SCHEDULER_CONFIGURATION, sizeof(sche_cfg), &sche_cfg);
 
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 
 	return 0;
@@ -138,37 +119,37 @@ static int basefw_config(uint32_t *data_offset, char *data)
 
 static int basefw_hw_config(uint32_t *data_offset, char *data)
 {
-	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t value;
 
-	set_tuple_uint32(tuple, IPC4_CAVS_VER_HW_CFG, HW_CFG_VERSION);
+	tlv_value_uint32_set(tuple, IPC4_CAVS_VER_HW_CFG, HW_CFG_VERSION);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, CONFIG_CORE_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_DSP_CORES_HW_CFG, CONFIG_CORE_COUNT);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_MEM_PAGE_BYTES_HW_CFG, HOST_PAGE_SIZE);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_MEM_PAGE_BYTES_HW_CFG, HOST_PAGE_SIZE);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_EBB_SIZE_BYTES_HW_CFG, SRAM_BANK_SIZE);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_EBB_SIZE_BYTES_HW_CFG, SRAM_BANK_SIZE);
 
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	value = SOF_DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
-	set_tuple_uint32(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
+	tlv_value_uint32_set(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
 
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	/* 2 DMIC dais */
 	value =  DAI_NUM_SSP_BASE + DAI_NUM_HDA_IN + DAI_NUM_HDA_OUT +
 			DAI_NUM_ALH_BI_DIR_LINKS + 2;
-	set_tuple_uint32(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
+	tlv_value_uint32_set(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
 
-	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
 
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 
 	return 0;
@@ -180,7 +161,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
  */
 static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 {
-	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	struct ipc4_sram_state_info info;
 	uint32_t *tuple_data;
 	uint32_t index;
@@ -219,7 +200,7 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
 		ptr[i] = 0xfff;
 
-	set_tuple(tuple, IPC4_HPSRAM_STATE, size, tuple_data);
+	tlv_value_set(tuple, IPC4_HPSRAM_STATE, size, tuple_data);
 
 	/* set lpsram */
 	info.free_phys_mem_pages = 0;
@@ -242,11 +223,11 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
 		ptr[i] = 0xfff;
 
-	tuple = next_tuple(tuple);
-	set_tuple(tuple, IPC4_LPSRAM_STATE, size, tuple_data);
+	tuple = tlv_next(tuple);
+	tlv_value_set(tuple, IPC4_LPSRAM_STATE, size, tuple_data);
 
 	/* calculate total tuple size */
-	tuple = next_tuple(tuple);
+	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 
 	rfree(tuple_data);
@@ -388,20 +369,20 @@ static int basefw_resource_allocation_request(bool first_block,
 
 static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 {
-	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t core_kcps[CONFIG_CORE_COUNT] = {0};
 	int core_id;
 
-	set_tuple_uint32(tuple, IPC4_ACTIVE_CORES_MASK, cpu_enabled_cores());
-	tuple = next_tuple(tuple);
+	tlv_value_uint32_set(tuple, IPC4_ACTIVE_CORES_MASK, cpu_enabled_cores());
+	tuple = tlv_next(tuple);
 
 	for (core_id = 0; core_id < CONFIG_CORE_COUNT; core_id++) {
 		if (cpu_is_core_enabled(core_id))
 			core_kcps[core_id] = core_kcps_get(core_id);
 	}
 
-	set_tuple(tuple, IPC4_CORE_KCPS, sizeof(core_kcps), core_kcps);
-	tuple = next_tuple(tuple);
+	tlv_value_set(tuple, IPC4_CORE_KCPS, sizeof(core_kcps), core_kcps);
+	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 	return 0;
 }
