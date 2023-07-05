@@ -49,7 +49,7 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 					      uint32_t size, uint32_t flags)
 {
 	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL),
-					size, SYS_MM_MEM_PERM_RW | SYS_MM_MEM_PERM_EXEC);
+					size, flags);
 	if (ret < 0)
 		return ret;
 
@@ -84,14 +84,14 @@ static int lib_manager_load_module(uint32_t module_id, struct sof_man_module *mo
 	st_rodata_size = st_rodata_size * CONFIG_MM_DRV_PAGE_SIZE;
 
 	/* Copy Code */
-	ret = lib_manager_load_data_from_storage(va_base_text, src_txt,
-						 st_text_size, SYS_MM_MEM_PERM_EXEC);
+	ret = lib_manager_load_data_from_storage(va_base_text, src_txt, st_text_size,
+						 SYS_MM_MEM_PERM_RW | SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		goto err;
 
 	/* Copy RODATA */
 	ret = lib_manager_load_data_from_storage(va_base_rodata, src_rodata,
-						 st_rodata_size, SYS_MM_MEM_PERM_EXEC);
+						 st_rodata_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		goto err;
 
