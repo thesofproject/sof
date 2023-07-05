@@ -481,33 +481,17 @@ static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t 
 	return 0;
 }
 
-static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, uint32_t size)
+static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext,
+					   struct dma_config *config, uint32_t size)
 {
-	struct dma_block_config dma_block_cfg = {
-		.block_size = size,
-		.dest_address = dma_ext->dmabp.addr,
-		.flow_control_mode = 1,
-	};
-	struct dma_config config = {
-		.channel_direction = HOST_TO_MEMORY,
-		.source_data_size = sizeof(uint32_t),
-		.dest_data_size = sizeof(uint32_t),
-		.block_count = 1,
-		.head_block = &dma_block_cfg,
-	};
 	struct dma_status stat;
 	int ret;
 	uint32_t avail_bytes = 0;
 
 	tr_info(&lib_manager_tr, "load %u", size);
 
-	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
-	if (ret < 0)
-		return ret;
-
-	ret = dma_start(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
-	if (ret < 0)
-		return ret;
+	if (!config->user_data)
+		config->user_data = dma_ext;
 
 	/* Wait till whole data acquired */
 	while (avail_bytes < size) {
@@ -522,9 +506,6 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 
 		k_usleep(100);
 	}
-	ret = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
-	if (ret < 0)
-		return ret;
 
 	ret = dma_reload(dma_ext->chan->dma->z_dev, dma_ext->chan->index, 0, 0, size);
 	if (ret < 0)
@@ -535,7 +516,7 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	return 0;
 }
 
-static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
+static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext, struct dma_config *config,
 				  void __sparse_cache *dst_addr, uint32_t dst_size)
 {
 	struct lib_manager_dma_buf *const dma_buf = &dma_ext->dmabp;
@@ -552,7 +533,7 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 
 		lib_manager_dma_buffer_update(dma_buf, bytes_to_copy);
 
-		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
+		ret = lib_manager_load_data_from_host(dma_ext, config, bytes_to_copy);
 		if (ret < 0) {
 			tr_err(&lib_manager_tr, "failed to copy %u", bytes_to_copy);
 			return ret;
@@ -592,7 +573,7 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	return local_add;
 }
 
-static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
+static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext, struct dma_config *config,
 				     void __sparse_cache *man_buffer,
 				     uint32_t lib_id, uint32_t addr_align)
 {
@@ -614,7 +595,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 		 (__sparse_force void *)man_buffer, MAN_MAX_SIZE_V1_8);
 
 	/* Copy remaining library part into storage buffer */
-	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
+	ret = lib_manager_store_data(dma_ext, config, (uint8_t __sparse_cache *)library_base_address +
 				     MAN_MAX_SIZE_V1_8, preload_size - MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
 		return ret;
@@ -627,16 +608,27 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 
 int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 {
+	struct dma_block_config dma_block_cfg = {
+		.block_size = MAN_MAX_SIZE_V1_8,
+		.flow_control_mode = 1,
+	};
+	struct dma_config config = {
+		.channel_direction = HOST_TO_MEMORY,
+		.source_data_size = sizeof(uint32_t),
+		.dest_data_size = sizeof(uint32_t),
+		.block_count = 1,
+		.head_block = &dma_block_cfg,
+	};
 	struct lib_manager_dma_ext dma_ext;
 	uint32_t addr_align;
-	int ret;
+	int ret, ret2;
 	void __sparse_cache *man_tmp_buffer = NULL;
 
 	lib_manager_init();
 
 	ret = lib_manager_dma_init(&dma_ext, dma_id);
 	if (ret < 0)
-		goto cleanup;
+		return ret;
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	ret = dma_get_attribute(dma_ext.dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
@@ -646,36 +638,51 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 				       &addr_align);
 #endif
 	if (ret < 0)
-		goto cleanup;
+		goto e_init;
 
 	/* allocate temporary manifest buffer */
 	man_tmp_buffer = (__sparse_force void __sparse_cache *)rballoc_align(0, SOF_MEM_CAPS_DMA,
 								MAN_MAX_SIZE_V1_8, addr_align);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
-		goto cleanup;
+		goto e_init;
 	}
 
 	ret = lib_manager_dma_buffer_init(&dma_ext.dmabp, MAN_MAX_SIZE_V1_8, addr_align);
 	if (ret < 0)
-		goto cleanup;
+		goto e_buf;
 
-	/*
-	 * Load manifest to temporary buffer. FIXME: unclear why such a long delay is
-	 * needed. 50ms are still not enough.
-	 */
-	k_usleep(100000);
-	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	dma_block_cfg.dest_address = dma_ext.dmabp.addr;
+
+	ret = dma_config(dma_ext.chan->dma->z_dev, dma_ext.chan->index, &config);
 	if (ret < 0)
 		goto cleanup;
 
-	ret = lib_manager_store_library(&dma_ext, man_tmp_buffer, lib_id, addr_align);
+	ret = dma_start(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	if (ret < 0)
+		goto cleanup;
+
+	/* Load manifest to temporary buffer. */
+	ret = lib_manager_store_data(&dma_ext, &config, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	if (ret < 0)
+		goto cleanup;
+
+	ret = lib_manager_store_library(&dma_ext, &config, man_tmp_buffer, lib_id, addr_align);
+	if (ret < 0)
+		tr_err(&lib_manager_tr, "library loading error %d", ret);
+
+	ret2 = dma_stop(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	if (ret2 < 0) {
+		tr_err(&lib_manager_tr, "error %d stopping DMA", ret);
+		if (!ret)
+			ret = ret2;
+	}
 
 cleanup:
 	lib_manager_dma_buffer_free(&dma_ext.dmabp);
-
+e_buf:
 	rfree((__sparse_force void *)man_tmp_buffer);
-
+e_init:
 	lib_manager_dma_deinit(&dma_ext, dma_id);
 
 	return ret;
