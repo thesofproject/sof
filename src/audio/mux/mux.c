@@ -204,7 +204,7 @@ static int build_config(struct processing_module *mod)
 }
 #endif
 
-static int mux_init(struct processing_module *mod)
+static int mux_demux_common_init(struct processing_module *mod)
 {
 	struct module_data *module_data = &mod->priv;
 	struct comp_dev *dev = mod->dev;
@@ -250,6 +250,19 @@ err:
 	return ret;
 }
 
+static int mux_init(struct processing_module *mod)
+{
+	mod->max_sources = MUX_MAX_STREAMS;
+
+	return mux_demux_common_init(mod);
+}
+
+static int demux_init(struct processing_module *mod)
+{
+	mod->max_sinks = MUX_MAX_STREAMS;
+
+	return mux_demux_common_init(mod);
+}
 #if CONFIG_IPC_MAJOR_4
 /* In ipc4 case param is figured out by module config so we need to first
  * set up param then verify param. BTW for IPC3 path, the param is sent by
@@ -729,7 +742,7 @@ DECLARE_MODULE_ADAPTER(mux_interface, mux_uuid, mux_tr);
 SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
 
 static struct module_interface demux_interface = {
-	.init  = mux_init,
+	.init  = demux_init,
 	.set_configuration = mux_set_config,
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,

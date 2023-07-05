@@ -123,6 +123,7 @@ static int mixin_init(struct processing_module *mod)
 	dev->ipc_config.frame_fmt = valid_fmt;
 	mod->skip_src_buffer_invalidate = true;
 
+	mod->max_sinks = MIXIN_MAX_SINKS;
 	return 0;
 }
 
@@ -151,6 +152,7 @@ static int mixout_init(struct processing_module *mod)
 	dev->ipc_config.frame_fmt = valid_fmt;
 	mod->skip_sink_buffer_writeback = true;
 
+	mod->max_sources = MIXOUT_MAX_SOURCES;
 	return 0;
 }
 

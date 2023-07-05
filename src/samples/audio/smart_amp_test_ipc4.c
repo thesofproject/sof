@@ -76,6 +76,8 @@ static int smart_amp_init(struct processing_module *mod)
 	memcpy_s(&sad->ipc4_cfg.output_pin, out_size,
 		 &base_cfg->base_cfg_ext.pin_formats[in_size], out_size);
 
+	mod->max_sources = SMART_AMP_NUM_IN_PINS;
+
 	return 0;
 
 sad_fail:
