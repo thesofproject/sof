@@ -63,7 +63,6 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 }
 
 static int copier_dai_init(struct comp_dev *parent_dev,
-			   const struct comp_driver *drv,
 			   struct comp_ipc_config *config,
 			   const struct ipc4_copier_module_cfg *copier,
 			   struct pipeline *pipeline,
@@ -140,19 +139,12 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
-	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
-				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;
 	enum ipc4_gateway_type type;
-	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	int dai_count;
 	int i, ret;
-
-	drv = ipc4_get_drv((uint8_t *)&id);
-	if (!drv)
-		return -EINVAL;
 
 	config->type = SOF_COMP_DAI;
 
@@ -252,7 +244,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	for (i = 0; i < dai_count; i++) {
 		dai.dai_index = dai_index[i];
-		ret = copier_dai_init(parent_dev, drv, config, copier, pipeline, &dai, type, i,
+		ret = copier_dai_init(parent_dev, config, copier, pipeline, &dai, type, i,
 				      dai_count);
 		if (ret) {
 			comp_err(parent_dev, "failed to create dai");
