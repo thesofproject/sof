@@ -313,8 +313,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* check processing mode */
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) &&
-	    mod->num_input_buffers > 1 && mod->num_output_buffers > 1) {
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->max_sources > 1 && mod->max_sinks > 1) {
 		comp_err(dev, "module_adapter_prepare(): Invalid use of simple_copy");
 		return -EINVAL;
 	}
@@ -333,10 +332,10 @@ int module_adapter_prepare(struct comp_dev *dev)
 #endif
 
 	/* allocate memory for input buffers */
-	if (mod->num_input_buffers) {
+	if (mod->max_sources) {
 		mod->input_buffers =
 			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				sizeof(*mod->input_buffers) * mod->num_input_buffers);
+				sizeof(*mod->input_buffers) * mod->max_sources);
 		if (!mod->input_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
 			return -ENOMEM;
@@ -346,10 +345,10 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* allocate memory for output buffers */
-	if (mod->num_output_buffers) {
+	if (mod->max_sinks) {
 		mod->output_buffers =
 			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				sizeof(*mod->output_buffers) * mod->num_output_buffers);
+				sizeof(*mod->output_buffers) * mod->max_sinks);
 		if (!mod->output_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
 			ret = -ENOMEM;
@@ -865,8 +864,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	struct comp_buffer __sparse_cache *sinks_c[PLATFORM_MAX_STREAMS];
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
-	uint32_t num_input_buffers = 0;
-	uint32_t num_output_buffers = 0;
+	uint32_t num_input_buffers, num_output_buffers;
 	int ret, i = 0;
 
 	if (mod->stream_copy_single_to_single)
@@ -879,6 +877,12 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		sink = container_of(blist, struct comp_buffer, source_list);
 		sinks_c[i++] = buffer_acquire(sink);
 	}
+	num_output_buffers = i;
+	if (num_output_buffers > mod->max_sinks) {
+		comp_err(dev, "Invalid number of sinks %d\n", num_output_buffers);
+		return -EINVAL;
+	}
+
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
@@ -886,16 +890,28 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 		source_c[i++] = buffer_acquire(source);
 	}
+	num_input_buffers = i;
+	if (num_input_buffers > mod->max_sources) {
+		comp_err(dev, "Invalid number of sinks %d\n", num_input_buffers);
+		return -EINVAL;
+	}
 
 	/* setup active input/output buffers for processing */
-	if (mod->num_output_buffers == 1) {
-		num_input_buffers = module_single_sink_setup(dev, source_c, sinks_c);
-		if (sinks_c[0]->sink->state == dev->state)
-			num_output_buffers = 1;
+	if (num_output_buffers == 1) {
+		module_single_sink_setup(dev, source_c, sinks_c);
+		if (sinks_c[0]->sink->state != dev->state) {
+			num_output_buffers = 0;
+			buffer_release(sinks_c[0]);
+		}
+	} else if (num_input_buffers == 1) {
+		module_single_source_setup(dev, source_c, sinks_c);
+		if (source_c[0]->source->state != dev->state) {
+			num_input_buffers = 0;
+			buffer_release(source_c[0]);
+		}
 	} else {
-		num_output_buffers = module_single_source_setup(dev, source_c, sinks_c);
-		if (source_c[0]->source->state == dev->state)
-			num_input_buffers = 1;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	ret = module_process_legacy(mod, mod->input_buffers, num_input_buffers,
@@ -928,12 +944,10 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	mod->total_data_consumed += mod->input_buffers[0].consumed;
 
 	/* release all source buffers */
-	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
+	for (i = 0; i < num_input_buffers; i++) {
 		buffer_release(source_c[i]);
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
-		i++;
 	}
 
 	/* produce data into all active output buffers */
@@ -953,25 +967,20 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	mod->total_data_produced += mod->output_buffers[0].size;
 
 	/* release all sink buffers */
-	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
+	for (i = 0; i < num_output_buffers; i++) {
 		buffer_release(sinks_c[i]);
-		mod->output_buffers[i++].size = 0;
+		mod->output_buffers[i].size = 0;
 	}
 
 	return 0;
 out:
-	i = 0;
-	list_for_item(blist, &dev->bsink_list)
-		buffer_release(sinks_c[i++]);
-	i = 0;
-	list_for_item(blist, &dev->bsource_list)
-		buffer_release(source_c[i++]);
-
-	for (i = 0; i < mod->num_output_buffers; i++)
+	for (i = 0; i < num_output_buffers; i++) {
+		buffer_release(sinks_c[i]);
 		mod->output_buffers[i].size = 0;
+	}
 
-	for (i = 0; i < mod->num_input_buffers; i++) {
+	for (i = 0; i < num_input_buffers; i++) {
+		buffer_release(source_c[i]);
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
 	}
