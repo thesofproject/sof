@@ -444,28 +444,8 @@ static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t 
 
 static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, uint32_t size)
 {
-	struct dma_block_config dma_block_cfg = {
-		.block_size = size,
-		.dest_address = dma_ext->dma_addr,
-		.flow_control_mode = 1,
-	};
-	struct dma_config config = {
-		.channel_direction = HOST_TO_MEMORY,
-		.source_data_size = sizeof(uint32_t),
-		.dest_data_size = sizeof(uint32_t),
-		.block_count = 1,
-		.head_block = &dma_block_cfg,
-	};
 	struct dma_status stat;
 	int ret;
-
-	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
-	if (ret < 0)
-		return ret;
-
-	ret = dma_start(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
-	if (ret < 0)
-		return ret;
 
 	ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
 	if (ret < 0)
@@ -479,15 +459,6 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 		if (ret < 0)
 			return ret;
 	}
-	ret = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
-	if (ret < 0)
-		return ret;
-
-	ret = dma_reload(dma_ext->chan->dma->z_dev, dma_ext->chan->index, 0, 0, size);
-	if (ret < 0)
-		return ret;
-
-	dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, size);
 
 	return 0;
 }
@@ -509,9 +480,11 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
 		if (ret < 0)
 			return ret;
+		dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, bytes_to_copy);
 		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
 			 (void *)dma_ext->dma_addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
+		dma_reload(dma_ext->chan->dma->z_dev, dma_ext->chan->index, 0, 0, bytes_to_copy);
 	}
 
 	return 0;
@@ -579,9 +552,20 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 
 int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 {
+	struct dma_block_config dma_block_cfg = {
+		.block_size = MAN_MAX_SIZE_V1_8,
+		.flow_control_mode = 1,
+	};
+	struct dma_config config = {
+		.channel_direction = HOST_TO_MEMORY,
+		.source_data_size = sizeof(uint32_t),
+		.dest_data_size = sizeof(uint32_t),
+		.block_count = 1,
+		.head_block = &dma_block_cfg,
+	};
 	struct lib_manager_dma_ext dma_ext;
 	uint32_t addr_align;
-	int ret;
+	int ret, ret2;
 	void __sparse_cache *man_tmp_buffer = NULL;
 
 	if (!lib_id || lib_id >= LIB_MANAGER_MAX_LIBS) {
@@ -594,7 +578,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 
 	ret = lib_manager_dma_init(&dma_ext, dma_id);
 	if (ret < 0)
-		goto cleanup;
+		return ret;
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	ret = dma_get_attribute(dma_ext.dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
@@ -604,19 +588,19 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 				       &addr_align);
 #endif
 	if (ret < 0)
-		goto cleanup;
+		goto e_init;
 
 	/* allocate temporary manifest buffer */
 	man_tmp_buffer = (__sparse_force void __sparse_cache *)rballoc_align(0, SOF_MEM_CAPS_DMA,
 								MAN_MAX_SIZE_V1_8, addr_align);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
-		goto cleanup;
+		goto e_init;
 	}
 
 	ret = lib_manager_dma_buffer_alloc(&dma_ext, MAN_MAX_SIZE_V1_8, addr_align);
 	if (ret < 0)
-		goto cleanup;
+		goto e_buf;
 
 	/*
 	 * make sure that the DSP is running full speed for the duration of
@@ -626,20 +610,42 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	if (ret < 0)
 		goto cleanup;
 
-	/* Load manifest to temporary buffer */
-	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	dma_block_cfg.dest_address = dma_ext.dma_addr;
+
+	ret = dma_config(dma_ext.chan->dma->z_dev, dma_ext.chan->index, &config);
 	if (ret < 0)
 		goto kcps_rollback;
 
+	ret = dma_start(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	if (ret < 0)
+		goto cleanup;
+
+	/* Load manifest to temporary buffer. */
+	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	if (ret < 0)
+		goto stop_dma;
+
 	ret = lib_manager_store_library(&dma_ext, man_tmp_buffer, lib_id, addr_align);
+	if (ret < 0)
+		tr_err(&lib_manager_tr, "library loading error %d", ret);
+
+stop_dma:
+	ret2 = dma_stop(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	if (ret2 < 0) {
+		tr_err(&lib_manager_tr, "error %d stopping DMA", ret);
+		if (!ret)
+			ret = ret2;
+	}
 
 kcps_rollback:
 	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
 
 cleanup:
 	rfree((void *)dma_ext.dma_addr);
-	rfree((__sparse_force void *)man_tmp_buffer);
 
+e_buf:
+	rfree((__sparse_force void *)man_tmp_buffer);
+e_init:
 	lib_manager_dma_deinit(&dma_ext, dma_id);
 
 	return ret;
