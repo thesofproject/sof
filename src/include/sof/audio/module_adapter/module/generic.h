@@ -218,6 +218,10 @@ struct processing_module {
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;
 	uint64_t total_data_produced;
+
+	/* max source/sinks supported by the module */
+	uint32_t max_sources;
+	uint32_t max_sinks;
 };
 
 /*****************************************************************************/

@@ -145,6 +145,10 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	}
 #endif
 
+	/* Modules must modify them if they support more than 1 source/sink */
+	mod->max_sources = 1;
+	mod->max_sinks = 1;
+
 	/* Init processing module */
 	ret = module_init(mod, interface);
 	if (ret) {
