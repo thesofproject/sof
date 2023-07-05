@@ -398,12 +398,6 @@ enum ipc4_hw_config_params {
 	IPC4_UAOL_CAPS_HW_CFG            = 10
 };
 
-struct ipc4_tuple {
-	uint32_t type;
-	uint32_t length;
-	char data[];
-} __attribute__((packed, aligned(4)));
-
 enum ipc4_memory_type {
 	/* High power sram memory */
 	IPC4_HP_SRAM_MEMORY = 0,
