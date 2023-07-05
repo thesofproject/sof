@@ -119,6 +119,14 @@ enum ipc4_copier_features {
 	IPC4_COPIER_FAST_MODE = 0
 };
 
+#if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
+#define HDA_SYNC_FPI_UPDATE_GROUP 0
+struct ipc4_copier_sync_group {
+	uint32_t group_id;
+	uint32_t fpi_update_period_usec;
+} __packed __aligned(4);
+#endif
+
 struct ipc4_copier_gateway_cfg {
 	/* ID of Gateway Node. If node_id is valid, i.e. != -1, copier instance is connected to the
 	 * specified gateway using either input pin 0 or output pin 0 depending on
