@@ -327,26 +327,6 @@ int platform_boot_complete(uint32_t boot_message)
 
 #endif
 
-/* init HW  */
-static void platform_init_hw(void)
-{
-	io_reg_write(DSP_INIT_GENO,
-		GENO_MDIVOSEL | GENO_DIOPTOSEL);
-
-	io_reg_write(DSP_INIT_IOPO,
-		IOPO_DMIC_FLAG | IOPO_I2S_FLAG);
-
-#ifndef __ZEPHYR__
-	io_reg_write(DSP_INIT_ALHO,
-		ALHO_ASO_FLAG | ALHO_CSO_FLAG);
-
-	io_reg_write(DSP_INIT_LPGPDMA(0),
-		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
-	io_reg_write(DSP_INIT_LPGPDMA(1),
-		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
-#endif
-}
-
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
@@ -376,9 +356,6 @@ int platform_init(struct sof *sof)
 	 * until we are allowed to do full power gating (by the IPC req).
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
-
-	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
-	platform_init_hw();
 
 	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
