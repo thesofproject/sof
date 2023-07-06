@@ -389,26 +389,6 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 
 #if CONFIG_TIGERLAKE
-	/* initialize PM for boot */
-
-	/* request configured ring oscillator and wait for status ready */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | CAVS_DEFAULT_RO);
-	while (!(shim_read(SHIM_CLKSTS) & CAVS_DEFAULT_RO))
-		idelay(16);
-
-	shim_write(SHIM_CLKCTL,
-		   CAVS_DEFAULT_RO | /* Request configured RING Osc */
-		   CAVS_DEFAULT_RO_FOR_MEM | /* Select configured
-					     * RING Oscillator Clk for memory
-					     */
-		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
-		   SHIM_CLKCTL_LMCS_DIV4 | /* LP mem clock div by 4 */
-		   SHIM_CLKCTL_TCPLCG_DIS_ALL); /* Allow Local Clk Gating */
-
-	/* prevent LP GPDMA 0&1 clock gating */
-	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
-	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
-
 	/* prevent DSP Common power gating */
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
