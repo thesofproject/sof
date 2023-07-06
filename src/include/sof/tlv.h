@@ -31,7 +31,7 @@ struct sof_tlv {
  * @param tlv Pointer to the base TLV.
  * @return struct sof_tlv* Pointer to the next TLV.
  */
-static inline struct sof_tlv *tlv_next(struct sof_tlv *tlv)
+static inline struct sof_tlv *tlv_next(const struct sof_tlv *tlv)
 {
 	return (struct sof_tlv *)((char *)(tlv) + sizeof(*tlv) + tlv->length);
 }
