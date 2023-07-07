@@ -541,7 +541,7 @@ static int asrc_params(struct comp_dev *dev,
 
 	err = asrc_verify_params(dev, pcm_params);
 	if (err < 0) {
-		comp_err(dev, "src_params(): pcm params verification failed.");
+		comp_err(dev, "asrc_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
 
