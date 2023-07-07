@@ -539,6 +539,10 @@ static int asrc_params(struct comp_dev *dev,
 
 	comp_info(dev, "asrc_params()");
 
+#if CONFIG_IPC_MAJOR_4
+	ipc4_base_module_cfg_to_stream_params(&cd->ipc_config.base, pcm_params);
+#endif
+
 	err = asrc_verify_params(dev, pcm_params);
 	if (err < 0) {
 		comp_err(dev, "src_params(): pcm params verification failed.");
