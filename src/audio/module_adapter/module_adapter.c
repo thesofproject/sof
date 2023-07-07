@@ -548,6 +548,10 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 			return ret;
 	}
 
+#if CONFIG_IPC_MAJOR_4
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, mod->stream_params);
+#endif
 	return 0;
 }
 
