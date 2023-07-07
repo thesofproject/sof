@@ -4,6 +4,7 @@
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
+#include <ipc4/base-config.h>
 #include <ipc4/copier.h>
 #include <sof/audio/component_ext.h>
 
@@ -57,29 +58,6 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 }
 #endif
 
-void update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
-			  const struct ipc4_audio_format *fmt)
-{
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i;
-
-	audio_stream_set_channels(&buf_c->stream, fmt->channels_count);
-	audio_stream_set_rate(&buf_c->stream, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
-
-	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
-	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
-	audio_stream_set_buffer_fmt(&buf_c->stream, fmt->interleaving_style);
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
-
-	buf_c->hw_params_configured = true;
-}
-
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params)
 {
@@ -111,7 +89,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 
 		j = IPC4_SINK_QUEUE_ID(sink_c->id);
 
-		update_buffer_format(sink_c, &cd->out_fmt[j]);
+		ipc4_update_buffer_format(sink_c, &cd->out_fmt[j]);
 
 		buffer_release(sink_c);
 	}
@@ -127,7 +105,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 		source_c = buffer_acquire(source);
 
 		in_fmt = &cd->config.base.audio_fmt;
-		update_buffer_format(source_c, in_fmt);
+		ipc4_update_buffer_format(source_c, in_fmt);
 
 		buffer_release(source_c);
 	}
