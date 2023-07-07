@@ -611,9 +611,6 @@ static int mixout_reset(struct processing_module *mod)
 	return 0;
 }
 
-static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
-					     struct sof_ipc_stream_params *params);
-
 /* params are derived from base config for ipc4 path */
 static int mixin_params(struct processing_module *mod)
 {
@@ -625,7 +622,7 @@ static int mixin_params(struct processing_module *mod)
 
 	comp_dbg(dev, "mixin_params()");
 
-	base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
 	/* Buffers between mixins and mixouts are not used (mixin writes data directly to mixout
 	 * sink). But, anyway, let's setup these buffers properly just in case.
@@ -732,30 +729,6 @@ static int mixin_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static void base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
-					     struct sof_ipc_stream_params *params)
-{
-	enum sof_ipc_frame frame_fmt, valid_fmt;
-	int i;
-
-	memset(params, 0, sizeof(struct sof_ipc_stream_params));
-	params->channels = base_cfg->audio_fmt.channels_count;
-	params->rate = base_cfg->audio_fmt.sampling_frequency;
-	params->sample_container_bytes = base_cfg->audio_fmt.depth / 8;
-	params->sample_valid_bytes = base_cfg->audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = base_cfg->audio_fmt.interleaving_style;
-	params->buffer.size = base_cfg->obs * 2;
-
-	audio_stream_fmt_conversion(base_cfg->audio_fmt.depth,
-				    base_cfg->audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    base_cfg->audio_fmt.s_type);
-	params->frame_fmt = valid_fmt;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
-}
-
 static int mixout_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
@@ -768,7 +741,7 @@ static int mixout_params(struct processing_module *mod)
 
 	comp_dbg(dev, "mixout_params()");
 
-	base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
