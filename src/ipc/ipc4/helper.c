@@ -826,3 +826,26 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
 }
+
+void ipc4_update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
+			       const struct ipc4_audio_format *fmt)
+{
+	enum sof_ipc_frame valid_fmt, frame_fmt;
+	int i;
+
+	audio_stream_set_channels(&buf_c->stream, fmt->channels_count);
+	audio_stream_set_rate(&buf_c->stream, fmt->sampling_frequency);
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    fmt->s_type);
+
+	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
+	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
+	audio_stream_set_buffer_fmt(&buf_c->stream, fmt->interleaving_style);
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
+
+	buf_c->hw_params_configured = true;
+}
