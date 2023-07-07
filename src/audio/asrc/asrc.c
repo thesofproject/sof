@@ -539,6 +539,10 @@ static int asrc_params(struct comp_dev *dev,
 
 	comp_info(dev, "asrc_params()");
 
+#if CONFIG_IPC_MAJOR_4
+	ipc4_base_module_cfg_to_stream_params(&cd->ipc_config.base, pcm_params);
+#endif
+
 	err = asrc_verify_params(dev, pcm_params);
 	if (err < 0) {
 		comp_err(dev, "asrc_params(): pcm params verification failed.");
@@ -552,6 +556,12 @@ static int asrc_params(struct comp_dev *dev,
 
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
+
+#if CONFIG_IPC_MAJOR_4
+	/* update the source/sink buffer formats. Sink rate will be modified below */
+	ipc4_update_buffer_format(source_c, &cd->ipc_config.base.audio_fmt);
+	ipc4_update_buffer_format(sink_c, &cd->ipc_config.base.audio_fmt);
+#endif
 
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
