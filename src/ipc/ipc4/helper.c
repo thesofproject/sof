@@ -803,3 +803,26 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	return IPC4_SUCCESS;
 }
 
+void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
+					   struct sof_ipc_stream_params *params)
+{
+	enum sof_ipc_frame frame_fmt, valid_fmt;
+	int i;
+
+	memset(params, 0, sizeof(struct sof_ipc_stream_params));
+	params->channels = base_cfg->audio_fmt.channels_count;
+	params->rate = base_cfg->audio_fmt.sampling_frequency;
+	params->sample_container_bytes = base_cfg->audio_fmt.depth / 8;
+	params->sample_valid_bytes = base_cfg->audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = base_cfg->audio_fmt.interleaving_style;
+	params->buffer.size = base_cfg->obs * 2;
+
+	audio_stream_fmt_conversion(base_cfg->audio_fmt.depth,
+				    base_cfg->audio_fmt.valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    base_cfg->audio_fmt.s_type);
+	params->frame_fmt = valid_fmt;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
+}
