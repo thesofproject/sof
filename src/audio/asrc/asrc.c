@@ -557,6 +557,12 @@ static int asrc_params(struct comp_dev *dev,
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
 
+#if CONFIG_IPC_MAJOR_4
+	/* update the source/sink buffer formats. Sink rate will be modified below */
+	ipc4_update_buffer_format(source_c, &cd->ipc_config.base.audio_fmt);
+	ipc4_update_buffer_format(sink_c, &cd->ipc_config.base.audio_fmt);
+#endif
+
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
 		audio_stream_set_rate(&sink_c->stream, asrc_get_sink_rate(&cd->ipc_config));
