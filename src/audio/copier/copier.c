@@ -25,6 +25,7 @@
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc4/alh.h>
+#include <ipc4/base-config.h>
 #include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
@@ -499,7 +500,7 @@ static int copier_module_copy(struct processing_module *mod,
 				return -EINVAL;
 
 			/* update corresponding sink format in case it isn't updated */
-			update_buffer_format(sink_c, &cd->out_fmt[sink_queue_id]);
+			ipc4_update_buffer_format(sink_c, &cd->out_fmt[sink_queue_id]);
 
 			comp_get_copy_limits(src_c, sink_c, &processed_data);
 
@@ -688,7 +689,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 
 		sink_id = IPC4_SINK_QUEUE_ID(sink_c->id);
 		if (sink_id == sink_fmt->sink_id) {
-			update_buffer_format(sink_c, &sink_fmt->sink_fmt);
+			ipc4_update_buffer_format(sink_c, &sink_fmt->sink_fmt);
 			buffer_release(sink_c);
 			break;
 		}
