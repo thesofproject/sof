@@ -237,4 +237,8 @@ union ipc4_cfg_param_id_data {
 	} f;
 } __attribute__((packed, aligned(4)));
 
+struct sof_ipc_stream_params;
+void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
+					   struct sof_ipc_stream_params *params);
+
 #endif
