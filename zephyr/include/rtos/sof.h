@@ -12,7 +12,9 @@
 #include <sof/lib/memory.h>
 #include <rtos/spinlock.h>
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 struct cascade_root;
+#endif
 struct clock_info;
 struct comp_driver_list;
 struct dai_info;
@@ -21,7 +23,9 @@ struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
 struct mm;
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 struct mn;
+#endif
 struct ams_shared_context;
 struct notify_data;
 struct pm_runtime_data;
@@ -83,14 +87,18 @@ struct sof {
 	/* platform DMA information */
 	const struct dma_info *dma_info;
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	/* cascading interrupt controller root */
 	struct cascade_root *cascade_root;
+#endif
 
 	/* list of registered component drivers */
 	struct comp_driver_list *comp_drivers;
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	/* M/N dividers */
 	struct mn *mn;
+#endif
 
 	/* probes */
 	struct probe_pdata *probe;
