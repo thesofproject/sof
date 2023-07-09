@@ -1056,7 +1056,6 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size)
 {
-	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
@@ -1070,8 +1069,7 @@ static int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		return ret;
 
 	/* return if more fragments are expected or if the module is not prepared */
-	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
-	    md->state < MODULE_INITIALIZED)
+	if (pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE)
 		return 0;
 
 	switch (config_id) {
