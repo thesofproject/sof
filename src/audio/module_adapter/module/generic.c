@@ -83,11 +83,12 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 
 	comp_dbg(dev, "module_init() start");
 
+#if CONFIG_IPC_MAJOR_3
 	if (mod->priv.state == MODULE_INITIALIZED)
 		return 0;
 	if (mod->priv.state > MODULE_INITIALIZED)
 		return -EPERM;
-
+#endif
 	if (!interface) {
 		comp_err(dev, "module_init(): could not find module interface for comp id %d",
 			 dev_comp_id(dev));
@@ -118,7 +119,9 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	}
 
 	comp_dbg(dev, "module_init() done");
+#if CONFIG_IPC_MAJOR_3
 	md->state = MODULE_INITIALIZED;
+#endif
 
 	return ret;
 }
@@ -202,11 +205,12 @@ int module_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "module_prepare() start");
 
+#if CONFIG_IPC_MAJOR_3
 	if (mod->priv.state == MODULE_IDLE)
 		return 0;
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
-
+#endif
 	ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	if (ret) {
 		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
@@ -224,7 +228,9 @@ int module_prepare(struct processing_module *mod,
 	md->cfg.avail = false;
 	md->cfg.data = NULL;
 
+#if CONFIG_IPC_MAJOR_3
 	md->state = MODULE_IDLE;
+#endif
 	comp_dbg(dev, "module_prepare() done");
 
 	return ret;
@@ -242,6 +248,7 @@ int module_process_legacy(struct processing_module *mod,
 
 	comp_dbg(dev, "module_process_legacy() start");
 
+#if CONFIG_IPC_MAJOR_3
 	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
@@ -250,7 +257,7 @@ int module_process_legacy(struct processing_module *mod,
 
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
-
+#endif
 	if (md->ops->process_audio_stream)
 		ret = md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
 						    output_buffers, num_output_buffers);
@@ -268,8 +275,10 @@ int module_process_legacy(struct processing_module *mod,
 
 	comp_dbg(dev, "module_process_legacy() done");
 
+#if CONFIG_IPC_MAJOR_3
 	/* reset state to idle */
 	md->state = MODULE_IDLE;
+#endif
 	return 0;
 }
 
@@ -285,6 +294,7 @@ int module_process_sink_src(struct processing_module *mod,
 
 	comp_dbg(dev, "module_process sink src() start");
 
+#if CONFIG_IPC_MAJOR_3
 	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
@@ -293,7 +303,7 @@ int module_process_sink_src(struct processing_module *mod,
 
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
-
+#endif
 	assert(md->ops->process);
 	ret = md->ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 
@@ -305,8 +315,10 @@ int module_process_sink_src(struct processing_module *mod,
 
 	comp_dbg(dev, "module_process sink src() done");
 
+#if CONFIG_IPC_MAJOR_3
 	/* reset state to idle */
 	md->state = MODULE_IDLE;
+#endif
 	return ret;
 }
 
@@ -315,9 +327,11 @@ int module_reset(struct processing_module *mod)
 	int ret;
 	struct module_data *md = &mod->priv;
 
+#if CONFIG_IPC_MAJOR_3
 	/* if the module was never prepared, no need to reset */
 	if (md->state < MODULE_IDLE)
 		return 0;
+#endif
 
 	ret = md->ops->reset(mod);
 	if (ret) {
@@ -333,12 +347,13 @@ int module_reset(struct processing_module *mod)
 	rfree(md->cfg.data);
 	md->cfg.data = NULL;
 
+#if CONFIG_IPC_MAJOR_3
 	/*
 	 * reset the state to allow the module's prepare callback to be invoked again for the
 	 * subsequent triggers
 	 */
 	md->state = MODULE_INITIALIZED;
-
+#endif
 	return 0;
 }
 
@@ -376,8 +391,9 @@ int module_free(struct processing_module *mod)
 		rfree(md->runtime_params);
 		md->runtime_params = NULL;
 	}
+#if CONFIG_IPC_MAJOR_3
 	md->state = MODULE_DISABLED;
-
+#endif
 	return ret;
 }
 
