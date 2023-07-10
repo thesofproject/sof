@@ -1118,39 +1118,28 @@ static int volume_get_config(struct processing_module *mod,
 static int volume_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct sof_ipc_stream_params vol_params;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
-	int i, ret;
 
 	comp_dbg(dev, "volume_params()");
 
-	vol_params = *params;
-	vol_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	vol_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
-	vol_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	vol_params.frame_fmt = valid_fmt;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		vol_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	component_set_nearest_period_frames(dev, vol_params.rate);
+	component_set_nearest_period_frames(dev, params->rate);
 
 	/* volume component will only ever have 1 sink buffer */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink_c = buffer_acquire(sinkb);
-	ret = buffer_set_params(sink_c, &vol_params, true);
+	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
 	buffer_release(sink_c);
 
-	return ret;
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(source_c);
+
+	return 0;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
