@@ -30,6 +30,8 @@ void sys_comp_module_mixer_interface_init(void);
 
 #endif
 
+#define MIXER_MAX_SOURCES	2
+
 /* mixer component private data */
 struct mixer_data {
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,

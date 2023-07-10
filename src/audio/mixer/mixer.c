@@ -56,6 +56,8 @@ static int mixer_init(struct processing_module *mod)
 	mod_data->private = md;
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
 	mod->no_pause = true;
+	mod->max_sources = MIXER_MAX_SOURCES;
+
 	return 0;
 }
 
