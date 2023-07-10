@@ -99,6 +99,7 @@ void SystemAgent::CheckIn(ProcessingModuleInterface& processing_module,
 		core_id_,
 		module_size_
 		);
+	(void)module_adapter;
 	log_handle = reinterpret_cast<LogHandle*>(log_handle_);
 }
 
