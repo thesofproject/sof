@@ -407,6 +407,12 @@ static int volume_init(struct processing_module *mod)
 	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
 	int i;
 
+	if (!vol || cfg->size != sizeof(*vol)) {
+		comp_err(dev, "volume_init(): No configuration data or bad data size %u",
+			 cfg->size);
+		return -EINVAL;
+	}
+
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
 	if (!cd)
 		return -ENOMEM;
