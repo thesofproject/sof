@@ -31,6 +31,10 @@ NUM_HDMIS=0,SDW_SPK_STREAM=SDW2-Playback,SDW_SPK_IN_STREAM=SDW2-Capture,SDW_DMIC
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+"cavs-sdw\;sof-mtl-rt1318-l12-rt714-l0\;PLATFORM=mtl,SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=3,\
+USE_CHAIN_DMA=true,NUM_SDW_AMP_LINKS=2,SDW_SPK_STREAM=SDW1-Playback,SDW_SPK_IN_STREAM=SDW1-Capture,\
+SDW_DMIC_STREAM=SDW0-Capture"
+
 # Below topologies are used on Chromebooks
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
