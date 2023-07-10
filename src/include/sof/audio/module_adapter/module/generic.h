@@ -356,4 +356,16 @@ int find_module_source_index(struct module_source_info __sparse_cache *msi,
 	return -EINVAL;
 }
 
+static inline int module_process_stream(struct processing_module *mod,
+					struct input_stream_buffer *input_buffers,
+					int num_input_buffers,
+					struct output_stream_buffer *output_buffers,
+					int num_output_buffers)
+{
+	struct module_data *md = &mod->priv;
+
+	return md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
+					     output_buffers, num_output_buffers);
+}
+
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */

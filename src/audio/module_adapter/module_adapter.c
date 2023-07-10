@@ -880,7 +880,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 
 	/* handle special case of HOST/DAI type components */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
+#if CONFIG_IPC_MAJOR_3
 		return module_process_legacy(mod, NULL, 0, NULL, 0);
+#else
+		return module_process_stream(mod, NULL, 0, NULL, 0);
+#endif
 
 	if (mod->stream_copy_single_to_single)
 		return module_adapter_audio_stream_copy_1to1(dev);
