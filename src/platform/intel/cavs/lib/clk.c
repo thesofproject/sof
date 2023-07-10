@@ -86,36 +86,8 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 	clock_unlock(key);
 }
 
-/* LPRO_ONLY mode */
-#if CONFIG_CAVS_LPRO_ONLY
-
-/*
- * This is call from public API, there is no clock switch for core waiti, so
- * value of value frequency index in 'active' state doesn't need to be saved in
- * any additional variable and restored in future.
- */
-static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
-{
-	select_cpu_clock(freq_idx, true);
-}
-
-static void platform_clock_low_power_mode(int clock, bool enable)
-{
-	/* do nothing for LPRO_ONLY mode */
-}
-
-void platform_clock_on_waiti(void)
-{
-/* do nothing for LPRO_ONLY mode */
-}
-
-void platform_clock_on_wakeup(void)
-{
-/* do nothing for LPRO_ONLY mode */
-}
-
 /* USE_LPRO_IN_WAITI mode */
-#elif CONFIG_CAVS_USE_LPRO_IN_WAITI
+#if CONFIG_CAVS_USE_LPRO_IN_WAITI
 
 /* Store clock source that was active before going to waiti,
  * so it can be restored on wake up.

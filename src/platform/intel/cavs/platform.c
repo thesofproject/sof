@@ -155,13 +155,8 @@ const struct ext_man_windows xsram_window
 #endif
 
 #if CONFIG_TIGERLAKE
-#if CONFIG_CAVS_LPRO_ONLY
-#define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
-#define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
-#else
 #define CAVS_DEFAULT_RO		SHIM_CLKCTL_RHROSCC
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
-#endif
 #endif
 
 #if CONFIG_DW_GPIO
@@ -304,7 +299,7 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
 
-#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
+#if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
@@ -393,11 +388,7 @@ int platform_init(struct sof *sof)
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
-#if CONFIG_CAVS_LPRO_ONLY
-	init_dsp_r_state(r1_r_state);
-#else
 	init_dsp_r_state(r0_r_state);
-#endif /* CONFIG_CAVS_LPRO_ONLY */
 #endif /* CONFIG_DSP_RESIDENCY_COUNTERS */
 #endif /* CONFIG_TIGERLAKE */
 
