@@ -62,6 +62,7 @@ SOF_TOP = pathlib.Path(__file__).parents[1].resolve()
 west_top = pathlib.Path(SOF_TOP, "..").resolve()
 
 sof_fw_version = None
+sof_build_version = None
 
 if py_platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
@@ -212,6 +213,11 @@ Noted that with fw_naming set as 'AVS', there will be output subdirectories for 
 						default=[], help="Paths to overlays")
 	parser.add_argument("-p", "--pristine", required=False, action="store_true",
 						help="Perform pristine build removing build directory.")
+	parser.add_argument("-b", "--build_version", required=False,
+						help="Overrides cmake provided build version")
+	parser.add_argument("-f", "--fw_version", required=False,
+						help="Overrides cmake provided fw version")
+
 	parser.add_argument("-u", "--update", required=False, action="store_true",
 		help="""Runs west update command - clones SOF dependencies. Downloads next to this sof clone a new Zephyr
 project with its required dependencies. Creates a modules/audio/sof symbolic link pointing
@@ -255,6 +261,15 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 
 	if args.all:
 		args.platforms = platform_names
+
+	global sof_fw_version
+	global sof_build_version
+
+	if args.fw_version is not None:
+		sof_fw_version = args.fw_version
+
+	if args.build_version is not None:
+		sof_build_version = args.build_version
 
 	# print help message if no arguments provided
 	if len(sys.argv) == 1:
@@ -624,7 +639,12 @@ def rimage_options(platform_dict):
 	# FIXME: drop this line once the following test is fixed
 	# tests/avs/fw_00_basic/test_01_load_fw_extended.py::TestLoadFwExtended::()::
 	#                         test_00_01_load_fw_and_check_version
-	opts.append(("-b", "1"))
+
+	global sof_build_version
+	if sof_build_version is not None:
+		opts.append(("-b", sof_build_version))
+	else:
+		opts.append(("-b", "1"))
 
 	if args.ipc == "IPC4":
 		rimage_desc = platform_dict["IPC4_RIMAGE_DESC"]
