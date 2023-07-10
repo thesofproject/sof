@@ -137,7 +137,6 @@ void aria_algo_get_data_even_channel(struct comp_dev *dev,
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
 	ae_int32x2 in_sample, out_sample;
-	const int inc = sizeof(ae_int32);
 	ae_int32x2 gain;
 	const int ch_n = cd->chan_cnt;
 
