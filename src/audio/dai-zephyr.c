@@ -259,7 +259,6 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = dma_buffer_copy_to(local_buf, dma_buf,
 					 dd->process, bytes);
-		buffer_release(local_buf);
 	} else {
 		struct list_item *sink_list;
 
@@ -269,7 +268,6 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
 		 */
 		ret = dma_buffer_copy_from_no_consume(dma_buf, local_buf, dd->process, bytes);
-		buffer_release(local_buf);
 #if CONFIG_IPC_MAJOR_4
 		/* Skip in case of endpoint DAI devices created by the copier */
 		if (converter) {
@@ -318,7 +316,6 @@ err:
 		audio_stream_consume(&dma_buf->stream, bytes);
 	}
 
-	local_buf = buffer_acquire(dd->local_buffer);
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
 		struct comp_buffer __sparse_cache *source_c, *sink_c;
@@ -997,8 +994,11 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		buffer_c = buffer_acquire(dd->dma_buffer);
 		buffer_set_params(buffer_c, &hw_params,
 				  BUFFER_UPDATE_FORCE);
+		dd->sampling = get_sample_bytes(hw_params.frame_fmt);
 		buffer_release(buffer_c);
 	}
+
+	dd->fast_mode = dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE);
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 		dai_playback_params(dd, dev, period_bytes, period_count) :
@@ -1507,8 +1507,7 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
-	uint32_t dma_fmt;
-	uint32_t sampling;
+	uint32_t sampling = dd->sampling;
 	struct comp_buffer __sparse_cache *buf_c;
 	struct dma_status stat;
 	uint32_t avail_bytes;
@@ -1539,13 +1538,6 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	avail_bytes = stat.pending_length;
 	free_bytes = stat.free;
-
-	buf_c = buffer_acquire(dd->dma_buffer);
-
-	dma_fmt = audio_stream_get_frm_fmt(&buf_c->stream);
-	sampling = get_sample_bytes(dma_fmt);
-
-	buffer_release(buf_c);
 
 	/* handle module runtime unbind */
 	if (!dd->local_buffer) {
@@ -1608,7 +1600,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
-	if (!(dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
+	if (!dd->fast_mode)
 		samples = MIN(samples, dd->period_bytes / sampling);
 
 	copy_bytes = samples * sampling;
