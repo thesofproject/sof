@@ -970,12 +970,6 @@ static int host_reset(struct comp_dev *dev)
 	return 0;
 }
 
-/* copy and process stream data from source to sink buffers */
-int host_common_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
-{
-	return hd->copy(hd, dev, cb);
-}
-
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
