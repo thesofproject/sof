@@ -122,12 +122,12 @@ static int init_pipeline_reg(struct comp_dev *dev)
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
  */
-int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
+int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       struct pipeline *pipeline)
 {
-	struct processing_module *mod = comp_get_drvdata(parent_dev);
-	struct comp_ipc_config *config = &parent_dev->ipc_config;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
 	int dir = cd->direction;
@@ -156,9 +156,9 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	if (!hd)
 		return -ENOMEM;
 
-	ret = host_common_new(hd, parent_dev, &ipc_host, config->id);
+	ret = host_common_new(hd, dev, &ipc_host, config->id);
 	if (ret < 0) {
-		comp_err(parent_dev, "copier: host new failed with exit");
+		comp_err(dev, "copier: host new failed with exit");
 		goto e_data;
 	}
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
@@ -197,7 +197,7 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 				   &copier_cfg->out_fmt,
 				   ipc4_gtw_host, IPC4_DIRECTION(dir));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter for host, dir %d", dir);
+		comp_err(dev, "failed to get converter for host, dir %d", dir);
 		ret = -EINVAL;
 		goto e_conv;
 	}
@@ -207,8 +207,8 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		config->frame_fmt = in_frame_fmt;
-		pipeline->source_comp = parent_dev;
-		ret = init_pipeline_reg(parent_dev);
+		pipeline->source_comp = dev;
+		ret = init_pipeline_reg(dev);
 		if (ret)
 			goto e_conv;
 
@@ -216,9 +216,9 @@ int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;
 	} else {
 		config->frame_fmt = out_frame_fmt;
-		pipeline->sink_comp = parent_dev;
+		pipeline->sink_comp = dev;
 	}
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
+	dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	return 0;
 

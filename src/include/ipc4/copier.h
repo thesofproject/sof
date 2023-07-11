@@ -280,7 +280,7 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      enum ipc4_direction_type dir);
 
 struct comp_ipc_config;
-int create_endpoint_buffer(struct comp_dev *parent_dev,
+int create_endpoint_buffer(struct comp_dev *dev,
 			   struct copier_data *cd,
 			   struct comp_ipc_config *config,
 			   const struct ipc4_copier_module_cfg *copier_cfg,

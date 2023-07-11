@@ -31,18 +31,18 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 	return nibble_map;
 }
 
-static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
+static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 						const struct ipc4_copier_module_cfg *copier_cfg,
 						int index)
 {
-	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	const struct sof_alh_configuration_blob *alh_blob;
 	uint8_t chan_bitmask;
 	int channels;
 
 	if (!copier_cfg->gtw_cfg.config_length) {
-		comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
+		comp_err(dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
 		return -EINVAL;
 	}
 
@@ -54,7 +54,7 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 
 	channels = popcount(chan_bitmask);
 	if (channels < 1 || channels > SOF_IPC_MAX_CHANNELS) {
-		comp_err(parent_dev, "Invalid channels mask: 0x%x", chan_bitmask);
+		comp_err(dev, "Invalid channels mask: 0x%x", chan_bitmask);
 		return -EINVAL;
 	}
 
@@ -64,7 +64,7 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *parent_dev,
 	return 0;
 }
 
-static int copier_dai_init(struct comp_dev *parent_dev,
+static int copier_dai_init(struct comp_dev *dev,
 			   struct comp_ipc_config *config,
 			   const struct ipc4_copier_module_cfg *copier,
 			   struct pipeline *pipeline,
@@ -72,7 +72,7 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 			   enum ipc4_gateway_type type,
 			   int index, int dai_count)
 {
-	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd;
 	int ret;
@@ -86,7 +86,7 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 					    &out_valid_fmt,
 					    copier->out_fmt.s_type);
 		config->frame_fmt = out_frame_fmt;
-		pipeline->sink_comp = parent_dev;
+		pipeline->sink_comp = dev;
 		cd->bsource_buffer = true;
 	} else {
 		enum sof_ipc_frame in_frame_fmt, in_valid_fmt;
@@ -96,14 +96,14 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 					    &in_frame_fmt, &in_valid_fmt,
 					    copier->base.audio_fmt.s_type);
 		config->frame_fmt = in_frame_fmt;
-		pipeline->source_comp = parent_dev;
+		pipeline->source_comp = dev;
 	}
 
-	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
+	dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	/* save the channel map and count for ALH multi-gateway */
 	if (type == ipc4_gtw_alh && is_multi_gateway(copier->gtw_cfg.node_id)) {
-		ret = copier_set_alh_multi_gtw_channel_map(parent_dev, copier, index);
+		ret = copier_set_alh_multi_gtw_channel_map(dev, copier, index);
 		if (ret < 0)
 			return ret;
 	}
@@ -112,14 +112,14 @@ static int copier_dai_init(struct comp_dev *parent_dev,
 	if (!dd)
 		return -ENOMEM;
 
-	ret = dai_common_new(dd, parent_dev, dai);
+	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)
 		goto free_dd;
 
 	pipeline->sched_id = config->id;
 
 	cd->dd[index] = dd;
-	ret = comp_dai_config(cd->dd[index], parent_dev, dai, copier);
+	ret = comp_dai_config(cd->dd[index], dev, dai, copier);
 	if (ret < 0)
 		goto e_zephyr_free;
 
@@ -137,12 +137,12 @@ free_dd:
  * ssp, dmic or alh. Sof dai component can support this case so copier
  * reuses dai component to support non-host gateway.
  */
-int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
+int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		      struct comp_ipc_config *config,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
-	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;
 	enum ipc4_gateway_type type;
@@ -177,7 +177,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
-			comp_err(parent_dev, "No ssp dma_config found in blob!");
+			comp_err(dev, "No ssp dma_config found in blob!");
 			return -EINVAL;
 		}
 		dai.out_fmt = &copier->out_fmt;
@@ -214,14 +214,14 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 				dai_count = alh_blob->alh_cfg.count;
 				if (dai_count > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_count < 0) {
-					comp_err(parent_dev, "Invalid dai_count: %d", dai_count);
+					comp_err(dev, "Invalid dai_count: %d", dai_count);
 					return -EINVAL;
 				}
 				for (i = 0; i < dai_count; i++)
 					dai_index[i] =
 					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
 			} else {
-				comp_err(parent_dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
+				comp_err(dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
 				return -EINVAL;
 			}
 		} else {
@@ -237,7 +237,7 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
-			comp_err(parent_dev, "No dmic dma_config found in blob!");
+			comp_err(dev, "No dmic dma_config found in blob!");
 			return -EINVAL;
 		}
 		dai.out_fmt = &copier->out_fmt;
@@ -248,10 +248,10 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	for (i = 0; i < dai_count; i++) {
 		dai.dai_index = dai_index[i];
-		ret = copier_dai_init(parent_dev, config, copier, pipeline, &dai, type, i,
+		ret = copier_dai_init(dev, config, copier, pipeline, &dai, type, i,
 				      dai_count);
 		if (ret) {
-			comp_err(parent_dev, "failed to create dai");
+			comp_err(dev, "failed to create dai");
 			return ret;
 		}
 	}
@@ -260,22 +260,22 @@ int copier_dai_create(struct comp_dev *parent_dev, struct copier_data *cd,
 			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
 					   IPC4_DIRECTION(dai.direction));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter type %d, dir %d",
+		comp_err(dev, "failed to get converter type %d, dir %d",
 			 type, dai.direction);
 		return -EINVAL;
 	}
 
 	/* create multi_endpoint_buffer for ALH multi-gateway case */
 	if (dai_count > 1) {
-		ret = create_endpoint_buffer(parent_dev, cd, config, copier, type, true, 0);
+		ret = create_endpoint_buffer(dev, cd, config, copier, type, true, 0);
 		if (ret < 0)
 			return ret;
 	}
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		pipeline->sink_comp = parent_dev;
+		pipeline->sink_comp = dev;
 	} else {
-		pipeline->source_comp = parent_dev;
+		pipeline->source_comp = dev;
 
 		/* set max sink count for capture */
 		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;

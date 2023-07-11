@@ -115,7 +115,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 int host_common_copy(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb);
 void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t bytes);
 void host_common_one_shot(struct host_data *hd, uint32_t bytes);
-int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
+int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       struct pipeline *pipeline);
 void copier_host_free(struct copier_data *cd);

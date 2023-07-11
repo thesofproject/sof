@@ -100,7 +100,7 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 
 void copier_ipcgtw_reset(struct comp_dev *dev);
 
-int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
+int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 			 struct comp_ipc_config *config,
 			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline);
 
