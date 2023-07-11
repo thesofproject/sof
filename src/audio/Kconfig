@@ -301,6 +301,15 @@ config MAXIM_DSM
 	  feedback processing block running on capture thread with
 	  amp current and voltage feedback.
 
+config AW_SKTUNE
+	bool "Awinic SKTune component"
+	select COMP_BLOB
+	default n
+	help
+	  Select for Awinic SKTune component.
+	  This component protect the speaker from overheating and
+	  excursion violation.1
+
 config COMP_ASRC
 	bool "ASRC component"
 	default y
