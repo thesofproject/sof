@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	image.imr_type = MAN_DEFAULT_IMR_TYPE;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:p:l")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:pl")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
