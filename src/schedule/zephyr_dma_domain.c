@@ -47,11 +47,30 @@ K_KERNEL_STACK_ARRAY_DEFINE(zephyr_dma_domain_stack,
 			    CONFIG_CORE_COUNT,
 			    ZEPHYR_PDOMAIN_STACK_SIZE);
 
-struct zephyr_dma_domain_data {
-	int irq; /* IRQ associated with channel */
-	struct dma_chan_data *channel; /* channel data */
-	bool enabled_irq; /* true if DMA IRQ was already enabled */
+struct zephyr_dma_domain_channel {
+	struct dma_chan_data *channel;
+	/* used when unregistering a pipeline task - the channel
+	 * which we're disabling is the one that has been tied to the
+	 * passed pipeline task.
+	 */
+	struct pipeline_task *pipe_task;
+	/* pointer to parent struct zephyr_dma_domain_irq.
+	 *
+	 * mostly used during unregister operation to avoid
+	 * having to look for a channel's IRQ parent after it
+	 * has been fetched.
+	 */
+	struct zephyr_dma_domain_irq *irq_data;
+	/* used to keep track of channels using the same INTID */
+	struct list_item list;
+};
+
+struct zephyr_dma_domain_irq {
+	uint32_t intid; /* IRQ number */
+	bool enabled; /* true if IRQ has been enabled */
 	struct zephyr_dma_domain_thread *dt;
+	struct list_item list; /* used to keep track of all IRQs */
+	struct list_item channels; /* list of channels using this IRQ */
 };
 
 struct zephyr_dma_domain_thread {
@@ -66,7 +85,8 @@ struct zephyr_dma_domain {
 	struct dma *dma_array; /* array of scheduling DMAs */
 	uint32_t num_dma; /* number of scheduling DMAs */
 
-	struct zephyr_dma_domain_data data[PLATFORM_NUM_DMACS][PLATFORM_MAX_DMA_CHAN];
+	struct list_item irqs; /* list of all IRQs used by the DMACs */
+
 	/* array of Zephyr threads - one for each core */
 	struct zephyr_dma_domain_thread domain_thread[CONFIG_CORE_COUNT];
 };
@@ -109,6 +129,8 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 	zephyr_dma_domain->dma_array = dma_array;
 	zephyr_dma_domain->num_dma = num_dma;
 
+	list_init(&zephyr_dma_domain->irqs);
+
 	/* set pdata */
 	ll_sch_domain_set_pdata(domain, zephyr_dma_domain);
 
@@ -130,57 +152,105 @@ static void zephyr_dma_domain_thread_fn(void *p1, void *p2, void *p3)
 
 static void dma_irq_handler(void *data)
 {
-	struct zephyr_dma_domain_data *zephyr_dma_domain_data;
+	struct zephyr_dma_domain_irq *irq_data;
 	struct zephyr_dma_domain_thread *dt;
-	struct dma_chan_data *channel;
 	struct k_sem *sem;
-	int channel_index, irq;
+	struct list_item *i;
+	struct zephyr_dma_domain_channel *chan_data;
 
-	zephyr_dma_domain_data = data;
-	channel = zephyr_dma_domain_data->channel;
-	channel_index = channel->index;
-	sem = &zephyr_dma_domain_data->dt->sem;
-	irq = zephyr_dma_domain_data->irq;
-	dt = zephyr_dma_domain_data->dt;
+	irq_data = data;
+	sem = &irq_data->dt->sem;
+	dt = irq_data->dt;
 
-	/* clear IRQ */
-	dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
-	interrupt_clear_mask(irq, BIT(channel_index));
+	/* go through each channel using the INTID which corresponds to the IRQ
+	 * that has been triggered. For each channel, we clear the IRQ bit, thus
+	 * stopping them from asserting the IRQ.
+	 */
+	list_for_item(i, &irq_data->channels) {
+		chan_data = container_of(i, struct zephyr_dma_domain_channel, list);
+
+		if (dma_interrupt_legacy(chan_data->channel, DMA_IRQ_STATUS_GET))
+			dma_interrupt_legacy(chan_data->channel, DMA_IRQ_CLEAR);
+	}
+
+	/* clear IRQ - the mask argument is unused ATM */
+	interrupt_clear_mask(irq_data->intid, 0);
 
 	/* give resources to thread semaphore */
 	if (dt->handler)
 		k_sem_give(sem);
 }
 
-static int enable_dma_irq(struct zephyr_dma_domain_data *data)
+static int enable_dma_irq(struct zephyr_dma_domain_irq *irq_data)
 {
+	struct zephyr_dma_domain_channel *chan_data;
 	int ret;
 
-	dma_interrupt_legacy(data->channel, DMA_IRQ_CLEAR);
+	/* ATM, it's impossible to have two channels added to the IRQ list
+	 * without calling enable_dma_irq. Therefore, the channel for which we
+	 * need to UNMASK/CLEAR the IRQ is the last one added to the channel
+	 * list.
+	 */
+	chan_data = container_of(irq_data->channels.prev,
+					struct zephyr_dma_domain_channel, list);
 
-	ret = interrupt_register(data->irq, dma_irq_handler, data);
-	if (ret < 0)
-		return ret;
+	dma_interrupt_legacy(chan_data->channel, DMA_IRQ_CLEAR);
 
-	interrupt_enable(data->irq, data);
+	/* only enable the interrupt once. Also register the ISR and data once.
+	 *
+	 * note: irq_data->enabled is never set to false but since the irq_data is
+	 * free'd and allocated each time with rzalloc it will be set to false by
+	 * default.
+	 */
+	if (!irq_data->enabled) {
+		/* the mask argument is unused ATM */
+		interrupt_clear_mask(irq_data->intid, 0);
 
-	interrupt_clear_mask(data->irq, BIT(data->channel->index));
+		ret = interrupt_register(irq_data->intid, dma_irq_handler, irq_data);
+		if (ret < 0)
+			return ret;
 
-	dma_interrupt_legacy(data->channel, DMA_IRQ_UNMASK);
+		interrupt_enable(irq_data->intid, irq_data);
+
+		irq_data->enabled = true;
+	}
+
+	dma_interrupt_legacy(chan_data->channel, DMA_IRQ_UNMASK);
 
 	return 0;
 }
 
+static struct zephyr_dma_domain_irq *fetch_irq_data(struct zephyr_dma_domain *domain,
+						uint32_t intid)
+{
+	struct zephyr_dma_domain_irq *crt;
+	struct list_item *i;
+
+	/* go through the list of IRQs used by the DMACs and find the one
+	 * using the same INTID as the one passed as argument to this function.
+	 */
+	list_for_item(i, &domain->irqs) {
+		crt = container_of(i, struct zephyr_dma_domain_irq, list);
+
+		if (crt->intid == intid)
+			return crt;
+	}
+
+	return NULL;
+}
+
 static int register_dma_irq(struct zephyr_dma_domain *domain,
-			    struct zephyr_dma_domain_data **data,
+			    struct zephyr_dma_domain_irq **irq_data,
 			    struct zephyr_dma_domain_thread *dt,
 			    struct pipeline_task *pipe_task,
 			    int core)
 {
 	struct dma *crt_dma;
 	struct dma_chan_data *crt_chan;
-	struct zephyr_dma_domain_data *crt_data;
+	struct zephyr_dma_domain_irq *crt_irq_data;
+	struct zephyr_dma_domain_channel *chan_data;
 	int i, j, irq, ret;
+	uint32_t flags;
 
 	/* iterate through all available channels in order to find a
 	 * suitable channel for which the DMA IRQs will be enabled.
@@ -190,7 +260,6 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 
 		for (j = 0; j < crt_dma->plat_data.channels; j++) {
 			crt_chan = crt_dma->chan + j;
-			crt_data = &domain->data[i][j];
 
 			/* skip if channel is not a scheduling source */
 			if (!dma_is_scheduling_source(crt_chan))
@@ -204,31 +273,59 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			if (core != crt_chan->core)
 				continue;
 
-			/* skip if IRQ was already registered */
-			if (crt_data->enabled_irq)
-				continue;
-
 			/* get IRQ number for current channel */
 			irq = interrupt_get_irq(dma_chan_irq(crt_dma, j),
 						dma_chan_irq_name(crt_dma, j));
 
-			crt_data->irq = irq;
-			crt_data->channel = crt_chan;
-			crt_data->dt = dt;
+			crt_irq_data = fetch_irq_data(domain, irq);
+
+			if (!crt_irq_data) {
+				/* if there's no list item matching given IRQ then
+				 * that IRQ hasn't been allocated yet so we need to do
+				 * so here.
+				 */
+				crt_irq_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
+						SOF_MEM_CAPS_RAM, sizeof(*crt_irq_data));
+				if (!crt_irq_data)
+					return -ENOMEM;
+
+				list_init(&crt_irq_data->channels);
+
+				crt_irq_data->intid = irq;
+				crt_irq_data->dt = dt;
+
+				list_item_append(&crt_irq_data->list, &domain->irqs);
+			}
+
+			chan_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
+				SOF_MEM_CAPS_RAM, sizeof(*chan_data));
+			if (!chan_data)
+				return -ENOMEM;
+
+			irq_local_disable(flags);
+
+			chan_data->channel = crt_chan;
+			/* bind registrable ptask to channel */
+			chan_data->pipe_task = pipe_task;
+			chan_data->irq_data = crt_irq_data;
+
+			list_item_append(&chan_data->list, &crt_irq_data->channels);
 
 			if (dt->started) {
-				/* if the Zephyr thread was started, we
-				 * can safely enable the DMA IRQs
+				/* the IRQ should only be enabled after the DT has
+				 * been started to avoid missing some interrupts.
 				 */
-				ret = enable_dma_irq(crt_data);
-				if (ret < 0)
+				ret = enable_dma_irq(crt_irq_data);
+				if (ret < 0) {
+					irq_local_enable(flags);
 					return ret;
-
-				crt_data->enabled_irq = true;
+				}
 			}
 
 			/* let caller know we have found a channel */
-			*data = crt_data;
+			*irq_data = crt_irq_data;
+
+			irq_local_enable(flags);
 
 			return 0;
 		}
@@ -248,14 +345,15 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	struct zephyr_dma_domain *zephyr_dma_domain;
 	struct zephyr_dma_domain_thread *dt;
 	struct pipeline_task *pipe_task;
-	struct zephyr_dma_domain_data *data;
+	struct zephyr_dma_domain_irq *irq_data;
 	k_tid_t thread;
 	int core, ret;
+	uint32_t flags;
 	char thread_name[] = "dma_domain_thread0";
 
 	zephyr_dma_domain = ll_sch_get_pdata(domain);
 	core = cpu_get_id();
-	data = NULL;
+	irq_data = NULL;
 	dt = zephyr_dma_domain->domain_thread + core;
 	pipe_task = pipeline_task_get(task);
 
@@ -278,7 +376,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	 * resources to the Zephyr thread semaphore on the same core
 	 */
 	ret = register_dma_irq(zephyr_dma_domain,
-			       &data,
+			       &irq_data,
 			       dt,
 			       pipe_task,
 			       core);
@@ -340,13 +438,14 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 
 	dt->started = true;
 
-	/* TODO: maybe remove the second condition */
-	if (data && !data->enabled_irq) {
+	if (irq_data && !irq_data->enabled) {
 		/* enable the DMA IRQ since register_dma_irq wasn't able
 		 * to do so because of the fact that the Zephyr thread
 		 * hadn't started at that point
 		 */
-		ret = enable_dma_irq(data);
+		irq_local_disable(flags);
+		ret = enable_dma_irq(irq_data);
+		irq_local_enable(flags);
 		if (ret < 0) {
 			tr_err(&ll_tr,
 			       "failed to enable DMA IRQ for pipe task %p on core %d",
@@ -354,8 +453,6 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 			       core);
 			return ret;
 		}
-
-		data->enabled_irq = true;
 
 		return 0;
 	}
@@ -372,54 +469,49 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	return -EINVAL;
 }
 
-static void disable_dma_irq(struct zephyr_dma_domain_data *data)
+static struct zephyr_dma_domain_channel *fetch_channel_by_ptask(struct zephyr_dma_domain *domain,
+								struct pipeline_task *pipe_task)
 {
-	dma_interrupt_legacy(data->channel, DMA_IRQ_MASK);
-	dma_interrupt_legacy(data->channel, DMA_IRQ_CLEAR);
-	interrupt_clear_mask(data->irq, BIT(data->channel->index));
-	interrupt_disable(data->irq, data);
-	interrupt_unregister(data->irq, data);
-}
+	struct zephyr_dma_domain_irq *irq_data;
+	struct zephyr_dma_domain_channel *chan_data;
+	struct list_item *i, *j;
 
-static int unregister_dma_irq(struct zephyr_dma_domain *domain,
-			      struct pipeline_task *pipe_task,
-			      int core)
-{
-	struct zephyr_dma_domain_data *crt_data;
-	struct dma *crt_dma;
-	int i, j;
+	/* go through all of the channel and find the one tied to the
+	 * same pipeline task as the one passed as argument to this function.
+	 */
+	list_for_item(i, &domain->irqs) {
+		irq_data = container_of(i, struct zephyr_dma_domain_irq, list);
 
-	for (i = 0; i < domain->num_dma; i++) {
-		crt_dma = domain->dma_array + i;
+		list_for_item(j, &irq_data->channels) {
+			chan_data = container_of(j, struct zephyr_dma_domain_channel, list);
 
-		for (j = 0; j < crt_dma->plat_data.channels; j++) {
-			crt_data = &domain->data[i][j];
-
-			/* skip if DMA IRQ wasn't enabled */
-			if (!crt_data->enabled_irq)
-				continue;
-
-			/* skip if channel not owned by current core */
-			if (crt_data->channel->core != core)
-				continue;
-
-			/* skip if channel is still active */
-			if (crt_data->channel->status == COMP_STATE_ACTIVE)
-				continue;
-
-			disable_dma_irq(crt_data);
-
-			crt_data->enabled_irq = false;
-
-			tr_info(&ll_tr, "unregister_dma_irq(): unregistered IRQ for task %p",
-				pipe_task);
-
-			return 0;
+			if (chan_data->pipe_task == pipe_task)
+				return chan_data;
 		}
 	}
 
-	/* if this point is reached then something went wrong */
-	return -EINVAL;
+	return NULL;
+}
+
+static void disable_dma_irq(struct zephyr_dma_domain_channel *chan_data)
+{
+	dma_interrupt_legacy(chan_data->channel, DMA_IRQ_MASK);
+	dma_interrupt_legacy(chan_data->channel, DMA_IRQ_CLEAR);
+
+	/* the IRQ needs to be disable only when there's no more
+	 * channels using it (a.k.a the list of channels is empty)
+	 */
+	if (list_is_empty(&chan_data->irq_data->channels)) {
+		/* the mask argument is unusued ATM */
+		interrupt_clear_mask(chan_data->irq_data->intid, 0);
+
+		interrupt_disable(chan_data->irq_data->intid, chan_data->irq_data);
+		interrupt_unregister(chan_data->irq_data->intid, chan_data->irq_data);
+
+		list_item_del(&chan_data->irq_data->list);
+
+		rfree(chan_data->irq_data);
+	}
 }
 
 static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
@@ -429,7 +521,9 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	struct zephyr_dma_domain *zephyr_dma_domain;
 	struct zephyr_dma_domain_thread *dt;
 	struct pipeline_task *pipe_task;
-	int ret, core;
+	struct zephyr_dma_domain_channel *chan_data;
+	int core;
+	uint32_t flags;
 
 	zephyr_dma_domain = ll_sch_get_pdata(domain);
 	pipe_task = pipeline_task_get(task);
@@ -450,13 +544,29 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	if (!pipe_task->registrable)
 		return 0;
 
-	ret = unregister_dma_irq(zephyr_dma_domain, pipe_task, core);
-	if (ret < 0) {
-		tr_err(&ll_tr, "failed to unregister DMA IRQ for pipe task %p on core %d",
-		       pipe_task,
-		       core);
-		return ret;
+	irq_local_disable(flags);
+
+	chan_data = fetch_channel_by_ptask(zephyr_dma_domain, pipe_task);
+	if (!chan_data) {
+		irq_local_enable(flags);
+		tr_err(&ll_tr, "pipeline task %p doesn't have an associated channel.", pipe_task);
+		return -EINVAL;
 	}
+
+	if (chan_data->channel->status == COMP_STATE_ACTIVE) {
+		tr_warn(&ll_tr, "trying to unregister ptask %p while channel still active.",
+			pipe_task);
+	}
+
+	/* remove channel from parent IRQ's list */
+	list_item_del(&chan_data->list);
+
+	/* disable DMA IRQ if need be */
+	disable_dma_irq(chan_data);
+
+	rfree(chan_data);
+
+	irq_local_enable(flags);
 
 	/* TODO: thread abortion logic goes here */
 
