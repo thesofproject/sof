@@ -36,7 +36,8 @@ manifest:
     - name: rimage
       repo-path: rimage
       path: sof/rimage
-      revision: 4ce79b152e23c7b3937a09ef57cdd69d125a9214
+      # temporary for testing https://github.com/thesofproject/rimage/pull/168
+      revision: 1f25853fdfab6cac1d628bd12e3d937516e0405b
 
     - name: tomlc99
       repo-path: tomlc99
