@@ -223,7 +223,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	}
 }
 
-int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
+int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 			 struct comp_ipc_config *config,
 			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline)
 {
@@ -234,7 +234,7 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 
 	gtw_cfg = &copier->gtw_cfg;
 	if (!gtw_cfg->config_length) {
-		comp_err(parent_dev, "ipcgtw_create(): empty ipc4_gateway_config_data");
+		comp_err(dev, "ipcgtw_create(): empty ipc4_gateway_config_data");
 		return -EINVAL;
 	}
 
@@ -246,7 +246,7 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	 */
 	config->type = SOF_COMP_HOST;
 
-	ret = create_endpoint_buffer(parent_dev, cd, config, copier, ipc4_gtw_none, false, 0);
+	ret = create_endpoint_buffer(dev, cd, config, copier, ipc4_gtw_none, false, 0);
 	if (ret < 0)
 		return ret;
 
@@ -257,7 +257,7 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	}
 
 	ipcgtw_data->node_id = gtw_cfg->node_id;
-	ipcgtw_data->dev = parent_dev;
+	ipcgtw_data->dev = dev;
 
 	blob = (const struct ipc4_ipc_gateway_config_blob *)
 		((const struct ipc4_gateway_config_data *)gtw_cfg->config_data)->config_blob;
@@ -265,7 +265,7 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 	/* Endpoint buffer is created in copier with size specified in copier config. That buffer
 	 * will be resized to size specified in IPC gateway blob later in ipcgtw_params().
 	 */
-	comp_dbg(parent_dev, "ipcgtw_create(): buffer_size: %u", blob->buffer_size);
+	comp_dbg(dev, "ipcgtw_create(): buffer_size: %u", blob->buffer_size);
 	ipcgtw_data->buf_size = blob->buffer_size;
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
@@ -273,24 +273,24 @@ int copier_ipcgtw_create(struct comp_dev *parent_dev, struct copier_data *cd,
 				   &copier->out_fmt,
 				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
-		comp_err(parent_dev, "failed to get converter for IPC gateway, dir %d",
+		comp_err(dev, "failed to get converter for IPC gateway, dir %d",
 			 cd->direction);
 		ret = -EINVAL;
 		goto e_ipcgtw;
 	}
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(parent_dev, config->core,
+		comp_buffer_connect(dev, config->core,
 				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
-		pipeline->source_comp = parent_dev;
+		pipeline->source_comp = dev;
 	} else {
-		comp_buffer_connect(parent_dev, config->core,
+		comp_buffer_connect(dev, config->core,
 				    cd->endpoint_buffer[cd->endpoint_num],
 				    PPL_CONN_DIR_BUFFER_TO_COMP);
 		cd->bsource_buffer = true;
-		pipeline->sink_comp = parent_dev;
+		pipeline->sink_comp = dev;
 	}
 
 	list_item_append(&ipcgtw_data->item, &ipcgtw_list_head);
