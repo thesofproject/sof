@@ -123,13 +123,14 @@ static int init_pipeline_reg(struct comp_dev *dev)
  * component to support host gateway.
  */
 int copier_host_create(struct comp_dev *parent_dev, struct copier_data *cd,
-		       struct comp_ipc_config *config,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
-		       int dir, struct pipeline *pipeline)
+		       struct pipeline *pipeline)
 {
 	struct processing_module *mod = comp_get_drvdata(parent_dev);
+	struct comp_ipc_config *config = &parent_dev->ipc_config;
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
+	int dir = cd->direction;
 	int ret;
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
