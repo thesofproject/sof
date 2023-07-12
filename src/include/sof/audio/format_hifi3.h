@@ -27,4 +27,14 @@ static inline int16_t sat_int16(int32_t x)
 	return AE_SAT16X4(x, x);
 }
 
+static inline int8_t sat_int8(int32_t x)
+{
+	if (x > INT8_MAX)
+		return INT8_MAX;
+	else if (x < INT8_MIN)
+		return INT8_MIN;
+	else
+		return (int8_t)x;
+}
+
 #endif /* __SOF_AUDIO_FORMAT_HIFI3_H__ */
