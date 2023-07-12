@@ -701,24 +701,10 @@ static void set_selector_params(struct processing_module *mod,
 		struct comp_buffer *sink_buf =
 			container_of(sink_list, struct comp_buffer, source_list);
 		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_buf);
-		enum sof_ipc_frame frame_fmt, valid_fmt;
 
-		audio_stream_fmt_conversion(out_fmt->depth,
-					    out_fmt->valid_bit_depth,
-					    &frame_fmt, &valid_fmt,
-					    out_fmt->s_type);
-
-		audio_stream_set_frm_fmt(&sink->stream, frame_fmt);
-		audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
+		ipc4_update_buffer_format(sink, out_fmt);
 		audio_stream_set_channels(&sink->stream, params->channels);
 		audio_stream_set_rate(&sink->stream, params->rate);
-
-		audio_stream_set_buffer_fmt(&sink->stream, out_fmt->interleaving_style);
-
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			sink->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
-
-		sink->hw_params_configured = true;
 		buffer_release(sink);
 	}
 
@@ -730,28 +716,9 @@ static void set_selector_params(struct processing_module *mod,
 	 */
 	src_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	source = buffer_acquire(src_buf);
-	if (!source->hw_params_configured) {
-		struct ipc4_audio_format *in_fmt;
-		enum sof_ipc_frame frame_fmt, valid_fmt;
 
-		in_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
-		audio_stream_fmt_conversion(in_fmt->depth,
-					    in_fmt->valid_bit_depth,
-					    &frame_fmt, &valid_fmt,
-					    in_fmt->s_type);
-
-		audio_stream_set_frm_fmt(&source->stream, frame_fmt);
-		audio_stream_set_valid_fmt(&source->stream, valid_fmt);
-		audio_stream_set_channels(&source->stream, in_fmt->channels_count);
-		audio_stream_set_rate(&source->stream, in_fmt->sampling_frequency);
-
-		audio_stream_set_buffer_fmt(&source->stream, in_fmt->interleaving_style);
-
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			source->chmap[i] = (in_fmt->ch_map >> i * 4) & 0xf;
-
-		source->hw_params_configured = true;
-	}
+	if (!source->hw_params_configured)
+		ipc4_update_buffer_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	buffer_release(source);
 }
