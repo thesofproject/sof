@@ -275,9 +275,8 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct list_item *source_list;
-	int i, j, valid_bit_depth;
+	int j, valid_bit_depth;
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
 
@@ -304,32 +303,16 @@ static void set_mux_params(struct processing_module *mod)
 						      &sink_c->stream);
 
 		if (!sink_c->hw_params_configured) {
-			struct ipc4_audio_format out_fmt;
-
-			out_fmt = cd->md.output_format;
-			audio_stream_fmt_conversion(out_fmt.depth,
-						    out_fmt.valid_bit_depth,
-						    &frame_fmt, &valid_fmt,
-						    out_fmt.s_type);
-
-			audio_stream_set_frm_fmt(&sink_c->stream, frame_fmt);
-			audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
-			audio_stream_set_channels(&sink_c->stream, out_fmt.channels_count);
-			audio_stream_set_rate(&sink_c->stream, out_fmt.sampling_frequency);
-
-			audio_stream_set_buffer_fmt(&sink_c->stream, out_fmt.interleaving_style);
+			ipc4_update_buffer_format(sink_c, &cd->md.output_format);
 			params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
-
-			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-				sink_c->chmap[i] = (out_fmt.ch_map >> i * 4) & 0xf;
-
-			sink_c->hw_params_configured = true;
 		}
 		buffer_release(sink_c);
 	}
 
 	/* update each source format */
 	if (!list_is_empty(&dev->bsource_list)) {
+		struct ipc4_audio_format *audio_fmt;
+
 		list_for_item(source_list, &dev->bsource_list)
 		{
 			source = container_of(source_list, struct comp_buffer, sink_list);
@@ -339,47 +322,12 @@ static void set_mux_params(struct processing_module *mod)
 			j = source_c->id;
 			cd->config.streams[j].pipeline_id = source_c->pipeline_id;
 			valid_bit_depth = cd->md.base_cfg.audio_fmt.valid_bit_depth;
-			if (j == BASE_CFG_QUEUED_ID) {
-				audio_stream_set_channels(&source_c->stream,
-							  cd->md.base_cfg.audio_fmt.channels_count);
-				audio_stream_set_rate(&source_c->stream,
-						      cd->md.base_cfg.audio_fmt.sampling_frequency);
-				audio_stream_fmt_conversion(cd->md.base_cfg.audio_fmt.depth,
-							    valid_bit_depth,
-							    &frame_fmt, &valid_fmt,
-							    cd->md.base_cfg.audio_fmt.s_type);
+			if (j == BASE_CFG_QUEUED_ID)
+				audio_fmt = &cd->md.base_cfg.audio_fmt;
+			else
+				audio_fmt = &cd->md.reference_format;
 
-				audio_stream_set_buffer_fmt
-					(&source_c->stream,
-					 cd->md.base_cfg.audio_fmt.interleaving_style);
-
-				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-					source_c->chmap[i] =
-						(cd->md.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
-			} else {
-				/* set parameters for reference input channels */
-				audio_stream_set_channels(&source_c->stream,
-							  cd->md.reference_format.channels_count);
-				audio_stream_set_rate(&source_c->stream,
-						      cd->md.reference_format.sampling_frequency);
-				audio_stream_fmt_conversion(cd->md.reference_format.depth,
-							    cd->md.reference_format.valid_bit_depth,
-							    &frame_fmt, &valid_fmt,
-							    cd->md.reference_format.s_type);
-
-				audio_stream_set_buffer_fmt
-					(&source_c->stream,
-					 cd->md.reference_format.interleaving_style);
-
-				for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-					source_c->chmap[i] =
-						(cd->md.reference_format.ch_map >> i * 4) & 0xf;
-			}
-
-			audio_stream_set_frm_fmt(&source_c->stream, frame_fmt);
-			audio_stream_set_valid_fmt(&source_c->stream, valid_fmt);
-
-			source_c->hw_params_configured = true;
+			ipc4_update_buffer_format(source_c, audio_fmt);
 			buffer_release(source_c);
 		}
 	}
