@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2019 Intel Corporation. All rights reserved.
-//
-// Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+/*
+ * Copyright(c) 2023 Intel Corporation. All rights reserved.
+ *
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *	   Adrian Warecki <adrian.warecki@intel.com>
+ */
 
 /**
  * \file audio/pcm_converter/pcm_converter_generic.c
  * \brief PCM converter generic processing implementation
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  * \authors Karol Trzcinski <karolx.trzcinski@linux.intel.com>
+ * \authors Adrian Warecki <adrian.warecki@intel.com>
  */
 
 #include <sof/audio/pcm_converter.h>
@@ -484,6 +487,9 @@ static int pcm_convert_f_to_s32(const struct audio_stream __sparse_cache *source
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 
 const struct pcm_func_map pcm_func_map[] = {
+#if CONFIG_PCM_CONVERTER_FORMAT_U8
+	{ SOF_IPC_FRAME_U8, SOF_IPC_FRAME_U8, audio_stream_copy },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 */
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, audio_stream_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S16LE */
@@ -493,7 +499,7 @@ const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S24_3LE
 	{ SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S24_3LE, audio_stream_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S24_3LE */
-#if  CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
+#if CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, pcm_convert_s16_to_s24 },
 	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, pcm_convert_s24_to_s16 },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE */
@@ -841,6 +847,10 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
 		ipc4_gtw_alh, ipc4_playback, pcm_convert_s24_to_s32 },
 #endif
+#if CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_U8, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_U8,
+		ipc4_gtw_all, ipc4_bidirection, audio_stream_copy },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S16LE */
 #if CONFIG_PCM_CONVERTER_FORMAT_S32LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
 		ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh | ipc4_gtw_host | ipc4_gtw_dmic),
