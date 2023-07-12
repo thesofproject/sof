@@ -154,23 +154,11 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 				   struct processing_module *mod)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
-	enum sof_ipc_frame valid_fmt, frame_fmt;
 	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
-	struct aria_data *cd = module_get_private_data(mod);
 
 	buffer_c = buffer_acquire(buffer);
 
-	audio_stream_fmt_conversion(audio_fmt->depth,
-				    audio_fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    audio_fmt->s_type);
-	audio_stream_set_buffer_fmt(&buffer_c->stream,
-				   audio_fmt->interleaving_style);
-	audio_stream_set_frm_fmt(&buffer_c->stream, frame_fmt);
-	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
-	audio_stream_set_channels(&buffer_c->stream, cd->chan_cnt);
-	audio_stream_set_rate(&buffer_c->stream, audio_fmt->sampling_frequency);
-
+	ipc4_update_buffer_format(buffer_c, audio_fmt);
 #ifdef ARIA_GENERIC
 	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
 #else
