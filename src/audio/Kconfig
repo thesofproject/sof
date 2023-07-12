@@ -525,6 +525,12 @@ endmenu # "Audio components"
 
 menu "Data formats"
 
+config FORMAT_U8
+	bool "Support U8"
+	default n
+	help
+	  Support unsigned 8 bit processing data format
+
 config FORMAT_S16LE
 	bool "Support S16LE"
 	default y

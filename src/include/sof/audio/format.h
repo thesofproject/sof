@@ -172,6 +172,8 @@ static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 		return 2;
 	case SOF_IPC_FRAME_S24_3LE:
 		return 3;
+	case SOF_IPC_FRAME_U8:
+		return 1;
 	default:
 		return 4;
 	}
