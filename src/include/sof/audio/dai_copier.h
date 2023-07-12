@@ -58,7 +58,6 @@ int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data);
 struct ipc4_copier_module_cfg;
 struct copier_data;
 int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
-		      struct comp_ipc_config *config,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline);
 

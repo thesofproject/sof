@@ -138,11 +138,11 @@ free_dd:
  * reuses dai component to support non-host gateway.
  */
 int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
-		      struct comp_ipc_config *config,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_ipc_config *config = &dev->ipc_config;
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;
 	enum ipc4_gateway_type type;
