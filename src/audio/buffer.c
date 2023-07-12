@@ -312,8 +312,13 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 	list_item_prepend(list, head);
 	if (further_buffers_exist)
 		dcache_invalidate_region(needs_sync, sizeof(struct list_item));
-	/* no dirty cache lines exist for this buffer yet, no need to write back */
+#if CONFIG_INTEL
+	/*
+	 * Until now the buffer object wasn't in cache, but uncached access to it could have
+	 * triggered a cache prefetch. Drop that cache line to avoid using stale data in it.
+	 */
 	dcache_invalidate_region(uncache_to_cache(list), sizeof(*list));
+#endif
 }
 
 /*
