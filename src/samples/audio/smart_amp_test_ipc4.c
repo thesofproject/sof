@@ -88,25 +88,13 @@ sad_fail:
 
 static void smart_amp_set_params(struct processing_module *mod)
 {
-	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_dev *dev = mod->dev;
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_buffer *sink;
 	struct comp_buffer __sparse_cache *sink_c;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
-	int i;
 
-	memset(params, 0, sizeof(*params));
-	params->channels = audio_fmt->channels_count;
-	params->rate = audio_fmt->sampling_frequency;
-	params->sample_container_bytes = audio_fmt->depth / 8;
-	params->sample_valid_bytes = audio_fmt->valid_bit_depth / 8;
-	params->buffer_fmt = audio_fmt->interleaving_style;
-	params->buffer.size = mod->priv.cfg.base_cfg.ibs;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		params->chmap[i] = (audio_fmt->ch_map >> i * 4) & 0xf;
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
@@ -116,18 +104,8 @@ static void smart_amp_set_params(struct processing_module *mod)
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
 
-		audio_stream_fmt_conversion(out_fmt.depth,
-					    out_fmt.valid_bit_depth,
-					    &frame_fmt, &valid_fmt,
-					    out_fmt.s_type);
-
-		audio_stream_set_frm_fmt(&sink_c->stream, frame_fmt);
-		audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
-		audio_stream_set_channels(&sink_c->stream, out_fmt.channels_count);
-		audio_stream_set_rate(&sink_c->stream, out_fmt.sampling_frequency);
-		audio_stream_set_buffer_fmt(&sink_c->stream, out_fmt.interleaving_style);
+		ipc4_update_buffer_format(sink_c, &out_fmt);
 		params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
-		sink_c->hw_params_configured = true;
 		buffer_release(sink_c);
 	}
 }
