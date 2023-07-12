@@ -29,8 +29,69 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define BYTES_TO_U8_SAMPLES	0
 #define BYTES_TO_S16_SAMPLES	1
 #define BYTES_TO_S32_SAMPLES	2
+
+#if CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+static int pcm_convert_u8_to_s32(const struct audio_stream __sparse_cache *source,
+				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
+				uint32_t ooffset, uint32_t samples)
+{
+	uint8_t *src = audio_stream_get_rptr(source);
+	int32_t *dst = audio_stream_get_wptr(sink);
+	uint32_t processed;
+	uint32_t nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_U8_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = (INT8_MIN + *src) << 24;
+			src++;
+			dst++;
+		}
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s32_to_u8(const struct audio_stream __sparse_cache *source,
+				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
+				uint32_t ooffset, uint32_t samples)
+{
+	int32_t *src = audio_stream_get_rptr(source);
+	uint8_t *dst = audio_stream_get_wptr(sink);
+	uint32_t processed;
+	uint32_t nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_U8_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int8(Q_SHIFT_RND(*src, 24, 0)) - INT8_MIN;
+			src++;
+			dst++;
+		}
+	}
+
+	return samples;
+}
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 
@@ -490,6 +551,10 @@ const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_U8
 	{ SOF_IPC_FRAME_U8, SOF_IPC_FRAME_U8, audio_stream_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 */
+#if CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+	{ SOF_IPC_FRAME_U8, SOF_IPC_FRAME_S32_LE, pcm_convert_u8_to_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_U8, pcm_convert_s32_to_u8 },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, audio_stream_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S16LE */
