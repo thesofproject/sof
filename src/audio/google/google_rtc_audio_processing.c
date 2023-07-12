@@ -109,22 +109,7 @@ static int google_rtc_audio_processing_params(
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
-
-		audio_stream_fmt_conversion(out_fmt->depth,
-					    out_fmt->valid_bit_depth,
-					    &frame_fmt, &valid_fmt,
-					    out_fmt->s_type);
-
-		audio_stream_set_frm_fmt(&sink_c->stream, frame_fmt);
-		audio_stream_set_valid_fmt(&sink_c->stream, valid_fmt);
-		audio_stream_set_channels(&sink_c->stream, cd->config.output_fmt.channels_count);
-		audio_stream_set_rate(&sink_c->stream, cd->config.output_fmt.sampling_frequency);
-
-		sink_c->buffer_fmt = out_fmt->interleaving_style;
-		params->frame_fmt = valid_fmt;
-
-		sink_c->hw_params_configured = true;
-
+		ipc4_update_buffer_format(sink_c, out_fmt);
 		buffer_release(sink_c);
 	}
 #endif
