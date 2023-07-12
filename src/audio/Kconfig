@@ -561,6 +561,12 @@ config FORMAT_CONVERT_HIFI3
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
 
+config PCM_CONVERTER_FORMAT_U8
+	bool "Support U8"
+	default n
+	help
+	  Support 8 bit processing data format without sign
+
 config PCM_CONVERTER_FORMAT_S16LE
 	bool "Support S16LE"
 	default y
