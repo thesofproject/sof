@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <sof/audio/drc/drc_plat_conf.h>
+#include <sof/audio/buffer.h>
 #include <sof/platform.h>
 #include <user/drc.h>
 
