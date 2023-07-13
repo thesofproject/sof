@@ -232,7 +232,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	/* todo use fallback to comp_verify_params when ready */
 
 	/* resampling not supported */
-	if (src_fmt->rate != audio_stream_get_rate(snk_fmt)) {
+	if (audio_stream_get_rate(src_fmt) != audio_stream_get_rate(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d rate mismatch",
 			 audio_stream_get_rate(src_fmt), audio_stream_get_rate(snk_fmt));
 		ret = -EINVAL;
@@ -240,7 +240,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* upmix/downmix not supported */
-	if (src_fmt->channels != audio_stream_get_channels(snk_fmt)) {
+	if (audio_stream_get_channels(src_fmt) != audio_stream_get_channels(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d channels mismatch",
 			 audio_stream_get_channels(src_fmt), audio_stream_get_channels(snk_fmt));
 		ret = -EINVAL;
@@ -248,7 +248,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* different frame format not supported */
-	if (src_fmt->frame_fmt != audio_stream_get_frm_fmt(snk_fmt)) {
+	if (audio_stream_get_frm_fmt(src_fmt) != audio_stream_get_frm_fmt(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d sample format mismatch",
 			 audio_stream_get_frm_fmt(src_fmt), audio_stream_get_frm_fmt(snk_fmt));
 		ret = -EINVAL;
@@ -256,7 +256,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* different interleaving is not supported */
-	if (source_c->buffer_fmt != sink_c->buffer_fmt) {
+	if (audio_stream_get_buffer_fmt(src_fmt) != audio_stream_get_buffer_fmt(snk_fmt)) {
 		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch");
 		ret = -EINVAL;
 		goto out;
@@ -268,7 +268,7 @@ static int waves_effect_check(struct comp_dev *dev)
 		goto out;
 	}
 
-	if (!layout_is_supported(source_c->buffer_fmt)) {
+	if (!layout_is_supported(audio_stream_get_buffer_fmt(src_fmt))) {
 		comp_err(dev, "waves_effect_check() non interleaved format not supported");
 		ret = -EINVAL;
 		goto out;
@@ -281,7 +281,7 @@ static int waves_effect_check(struct comp_dev *dev)
 		goto out;
 	}
 
-	if (src_fmt->channels != 2) {
+	if (audio_stream_get_channels(src_fmt) != 2) {
 		comp_err(dev, "waves_effect_check() channels %d not supported",
 			 audio_stream_get_channels(src_fmt));
 		ret = -EINVAL;
@@ -325,10 +325,10 @@ static int waves_effect_init(struct processing_module *mod)
 		goto out;
 	}
 
-	buffer_format = layout_convert_sof_to_me(source_c->buffer_fmt);
+	buffer_format = layout_convert_sof_to_me(audio_stream_get_buffer_fmt(src_fmt));
 	if (buffer_format < 0) {
 		comp_err(dev, "waves_effect_init() sof buffer format %d not supported",
-			 source_c->buffer_fmt);
+			 audio_stream_get_buffer_fmt(src_fmt));
 		ret = -EINVAL;
 		goto out;
 	}
