@@ -4,10 +4,10 @@
 //
 // Author: Mark Barton <mark.barton@xperi.com>
 
-#include "sof/audio/module_adapter/module/generic.h"
 #include <rtos/init.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/dts/DtsSofInterface.h>
 
-#include "DtsSofInterface.h"
 
 /* d95fc34f-370f-4ac7-bc86-bfdc5be241e6 */
 DECLARE_SOF_RT_UUID("dts_codec", dts_uuid, 0xd95fc34f, 0x370f, 0x4ac7,

@@ -76,7 +76,6 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_DTS_CODEC)
 	add_local_sources(sof module/dts.c)
 	target_compile_definitions(sof PRIVATE -DDTS_MATH_INT32 -DDTS_XTENSA)
-	target_include_directories(sof PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/dts/)
 	sof_add_static_library(DtsCodec ${CMAKE_CURRENT_LIST_DIR}/lib/release/libdts-sof-interface-i32.a)
 	endif()
 
