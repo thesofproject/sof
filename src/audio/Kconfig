@@ -114,6 +114,13 @@ config COMP_SRC
 	help
 	  Select for SRC component
 
+config COMP_STUBS
+	bool "Build all selected third-party (3P) components with stubs"
+	default n
+	help
+	  Select to force all 3P blocks to link against stubs rather than their libraries. This
+	  should only be used in testing environments like fuzzers or CI.
+
 if COMP_SRC
 
 choice
