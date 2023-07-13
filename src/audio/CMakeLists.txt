@@ -57,11 +57,6 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_MUX)
 		add_subdirectory(mux)
 	endif()
-	if(CONFIG_COMP_SWITCH)
-		add_local_sources(sof
-			switch.c
-		)
-	endif()
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
 			dai-legacy.c
