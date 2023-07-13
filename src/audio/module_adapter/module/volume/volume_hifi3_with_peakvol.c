@@ -369,6 +369,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 				// AE_SA16X4_IC(out_sample, outu, out);
 				AE_S16_0_XP(out_sample, out, inc);
 			}
+			peak_vol = AE_SLAA32(peak_vol, PEAK_16S_32C_ADJUST);
 			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
 		}
 		out0 = audio_stream_wrap(sink, out0 + n);
@@ -430,6 +431,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				/* store the output */
 				AE_S16_0_XP(in_sample, out, inc);
 			}
+			peak_vol = AE_SLAA32(peak_vol, PEAK_16S_32C_ADJUST);
 			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
 		}
 		out0 = audio_stream_wrap(sink, out0 + n);
