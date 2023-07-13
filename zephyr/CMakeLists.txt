@@ -734,7 +734,11 @@ zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
 )
 
 zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/waves.c
+	${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
+	${SOF_AUDIO_PATH}/module_adapter/module/waves/maxx_stub.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_PROBE

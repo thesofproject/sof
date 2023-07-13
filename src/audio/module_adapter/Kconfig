@@ -240,12 +240,21 @@ endif # volume
 
 	config WAVES_CODEC
 	bool "Waves codec"
+	select WAVES_CODEC_STUB if COMP_STUBS
 	default n
 	help
 		Select to include Waves codec. Waves codec implements MaxxEffect API.
 		API definition together with pre-compiled library is shared by Waves Audio Ltd.
 		If library is not provided will result in compilation error.
 		For more information, contact consumer@waves.com.
+
+	config WAVES_CODEC_STUB
+	bool "Waves codec stub"
+	depends on WAVES_CODEC
+	default n
+	help
+		Select to build the waves codec with a stub file. This should only be used for
+		testing or CI.
 
 	config DTS_CODEC
 	bool "DTS codec"
