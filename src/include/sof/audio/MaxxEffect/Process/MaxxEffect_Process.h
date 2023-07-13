@@ -72,9 +72,9 @@
 #ifndef MAXX_EFFECT_PROCESS_H
 #define MAXX_EFFECT_PROCESS_H
 
-#include "MaxxEffect/MaxxEffect.h"
-#include "MaxxEffect/MaxxStatus.h"
-#include "MaxxEffect/MaxxStream.h"
+#include <sof/audio/MaxxEffect/MaxxEffect.h>
+#include <sof/audio/MaxxEffect/MaxxStatus.h>
+#include <sof/audio/MaxxEffect/MaxxStream.h>
 
 #ifdef __cplusplus
 extern "C" {

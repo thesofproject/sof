@@ -54,9 +54,9 @@
 #define MAXX_EFFECT_INITIALIZE_H
 
 #include <stdint.h>
-#include "MaxxEffect/MaxxEffect.h"
-#include "MaxxEffect/MaxxStatus.h"
-#include "MaxxEffect/MaxxStream.h"
+#include <sof/audio/MaxxEffect/MaxxEffect.h>
+#include <sof/audio/MaxxEffect/MaxxStatus.h>
+#include <sof/audio/MaxxEffect/MaxxStream.h>
 
 #ifdef __cplusplus
 extern "C" {
