@@ -74,7 +74,6 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data twice) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 2);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
@@ -169,7 +168,6 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data twice) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 2);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
@@ -243,7 +241,6 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data twice) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 2);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
@@ -341,7 +338,6 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data twice) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 2);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
@@ -414,7 +410,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data 4 times) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 4);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
@@ -523,7 +518,6 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data 4 times) as circular buffer */
-	memset(peakvol, 0, sizeof(ae_f32) * channels_count * 4);
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
