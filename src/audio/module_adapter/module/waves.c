@@ -4,19 +4,16 @@
 //
 // Author: Oleksandr Strelchenko <oleksandr.strelchenko@waves.com>
 //
+
+#include <rtos/init.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/debug.h>
 #include <sof/compiler_attributes.h>
-#include <rtos/init.h>
-
-#include "MaxxEffect/MaxxEffect.h"
-#include "MaxxEffect/MaxxStream.h"
-#include "MaxxEffect/MaxxStatus.h"
-#include "MaxxEffect/Initialize/MaxxEffect_Initialize.h"
-#include "MaxxEffect/Process/MaxxEffect_Process.h"
-#include "MaxxEffect/Process/MaxxEffect_Reset.h"
-#include "MaxxEffect/Control/RPC/MaxxEffect_RPC_Server.h"
-#include "MaxxEffect/Control/Direct/MaxxEffect_Revision.h"
+#include <sof/audio/MaxxEffect/Initialize/MaxxEffect_Initialize.h>
+#include <sof/audio/MaxxEffect/Process/MaxxEffect_Process.h>
+#include <sof/audio/MaxxEffect/Process/MaxxEffect_Reset.h>
+#include <sof/audio/MaxxEffect/Control/RPC/MaxxEffect_RPC_Server.h>
+#include <sof/audio/MaxxEffect/Control/Direct/MaxxEffect_Revision.h>
 
 #define MAX_CONFIG_SIZE_BYTES (8192)
 #define NUM_IO_STREAMS (1)

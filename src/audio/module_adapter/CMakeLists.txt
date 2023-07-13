@@ -70,7 +70,6 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	add_local_sources(sof module/waves.c)
 	sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
 	# folder with Waves API must be among include directories
-	target_include_directories(sof PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/)
 	endif()
 
 	if(CONFIG_DTS_CODEC)

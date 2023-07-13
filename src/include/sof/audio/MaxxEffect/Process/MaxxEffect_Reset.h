@@ -5,8 +5,8 @@
 #ifndef MAXX_EFFECT_RESET_H
 #define MAXX_EFFECT_RESET_H
 
-#include "MaxxEffect/MaxxEffect.h"
-#include "MaxxEffect/MaxxStatus.h"
+#include <sof/audio/MaxxEffect/MaxxEffect.h>
+#include <sof/audio/MaxxEffect/MaxxStatus.h>
 
 #ifdef __cplusplus
 extern "C" {

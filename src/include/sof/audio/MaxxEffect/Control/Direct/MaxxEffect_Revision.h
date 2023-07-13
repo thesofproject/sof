@@ -6,8 +6,8 @@
 #define MAXX_EFFECT_REVISION_H
 
 #include <stdint.h>
-#include "MaxxEffect/MaxxEffect.h"
-#include "MaxxEffect/MaxxStatus.h"
+#include <sof/audio/MaxxEffect/MaxxEffect.h>
+#include <sof/audio/MaxxEffect/MaxxStatus.h>
 
 #ifdef __cplusplus
 extern "C" {
