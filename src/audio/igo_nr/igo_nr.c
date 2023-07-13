@@ -276,9 +276,9 @@ static inline int32_t set_capture_func(struct comp_dev *dev)
 }
 
 static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config, void *spec)
+				   const struct comp_ipc_config *config, const void *spec)
 {
-	struct ipc_config_process *ipc_igo_nr = spec;
+	const struct ipc_config_process *ipc_igo_nr = spec;
 	struct comp_dev *dev = NULL;
 	struct comp_data *cd = NULL;
 	size_t bs = ipc_igo_nr->size;
