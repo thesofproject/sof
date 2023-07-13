@@ -100,7 +100,6 @@ static int mixin_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct mixin_data *md;
 	int i;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	comp_dbg(dev, "mixin_init()");
 
@@ -115,12 +114,6 @@ static int mixin_init(struct processing_module *mod)
 		md->sink_config[i].gain = IPC4_MIXIN_UNITY_GAIN;
 	}
 
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	dev->ipc_config.frame_fmt = valid_fmt;
 	mod->skip_src_buffer_invalidate = true;
 
 	mod->max_sinks = MIXIN_MAX_SINKS;
@@ -132,7 +125,6 @@ static int mixout_init(struct processing_module *mod)
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *mo_data;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
 
 	comp_dbg(dev, "mixout_new()");
 
@@ -144,12 +136,6 @@ static int mixout_init(struct processing_module *mod)
 	mod_source_info->private = mo_data;
 	module_source_info_release(mod_source_info);
 
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	dev->ipc_config.frame_fmt = valid_fmt;
 	mod->skip_sink_buffer_writeback = true;
 
 	mod->max_sources = MIXOUT_MAX_SOURCES;
