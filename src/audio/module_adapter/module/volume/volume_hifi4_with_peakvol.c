@@ -488,7 +488,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m;
+		cd->peak_regs.peak_meter[i] = m << PEAK_16S_32C_ADJUST;
 	}
 }
 
@@ -558,7 +558,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m;
+		cd->peak_regs.peak_meter[i] = m << PEAK_16S_32C_ADJUST;
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */

@@ -288,7 +288,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int nmax, n, i, j;
 	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
-	int32_t tmp;
+	uint32_t tmp;
 
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
@@ -310,6 +310,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 							      Q_SHIFT_BITS_32(15, VOL_QXY_Y, 15));
 				tmp = MAX(abs(x0[i]), tmp);
 			}
+			tmp <<= PEAK_16S_32C_ADJUST;
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
@@ -342,7 +343,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	int nmax, n, i, j;
 	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
-	int32_t tmp;
+	uint32_t tmp;
 
 	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
@@ -362,6 +363,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				y0[i] = x0[i];
 				tmp = MAX(abs(x0[i]), tmp);
 			}
+			tmp <<= PEAK_16S_32C_ADJUST;
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
