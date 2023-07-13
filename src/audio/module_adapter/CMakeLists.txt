@@ -67,8 +67,12 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	endif()
 
 	if(CONFIG_WAVES_CODEC)
-	add_local_sources(sof module/waves.c)
+	add_local_sources(sof module/waves/waves.c)
+	if (CONFIG_WAVES_CODEC_STUB)
+	add_local_sources(sof module/waves/maxx_stub.c)
+	else()
 	sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
+	endif()
 	# folder with Waves API must be among include directories
 	endif()
 
