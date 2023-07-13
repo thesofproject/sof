@@ -15,6 +15,7 @@ config COMP_GOOGLE_HOTWORD_DETECT
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	bool "Google Real Time Communication Audio processing"
 	select COMP_BLOB
+	select GOOGLE_RTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
 	default n
 	help
 	  Select for Google real-time communication audio processing. It
