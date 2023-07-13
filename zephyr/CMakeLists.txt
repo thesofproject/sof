@@ -524,10 +524,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_KPB
 	${SOF_AUDIO_PATH}/kpb.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SWITCH
-	${SOF_AUDIO_PATH}/switch.c
-)
-
 if(CONFIG_IPC_MAJOR_3)
 	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
 		${SOF_AUDIO_PATH}/mixer/mixer.c

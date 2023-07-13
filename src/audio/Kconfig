@@ -208,12 +208,6 @@ config COMP_MUX
 	help
 	  Select for MUX component
 
-config COMP_SWITCH
-	bool "Switch component"
-	default n
-	help
-	  Select for Switch component
-
 config COMP_KPB
 	bool "KPB component"
 	default y
