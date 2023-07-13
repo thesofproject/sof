@@ -730,7 +730,11 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/dts.c
+	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_DTS_CODEC_STUB
+	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
