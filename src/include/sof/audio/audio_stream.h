@@ -159,7 +159,7 @@ static inline bool audio_stream_get_underrun(const struct audio_stream __sparse_
 	return buf->runtime_stream_params.underrun_permitted;
 }
 
-static inline uint32_t audio_stream_get_buffer_fmt(struct audio_stream __sparse_cache *buf)
+static inline uint32_t audio_stream_get_buffer_fmt(const struct audio_stream __sparse_cache *buf)
 {
 	return buf->runtime_stream_params.buffer_fmt;
 }
