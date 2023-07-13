@@ -1208,6 +1208,9 @@ static int volume_process(struct processing_module *mod,
 		cd->peak_cnt = 0;
 		peak_vol_update(cd);
 		memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
+#ifdef VOLUME_HIFI4
+		memset(cd->peak_vol, 0, sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4);
+#endif
 	}
 #endif
 
