@@ -702,6 +702,10 @@ if (CONFIG_SAMPLES)
 	endif()
 endif()
 
+zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
+	${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
 	${SOF_AUDIO_PATH}/tdfb/tdfb.c
 	${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
