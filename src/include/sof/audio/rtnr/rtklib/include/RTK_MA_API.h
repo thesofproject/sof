@@ -7,6 +7,8 @@
 #ifndef _RTK_MA_API_H_
 #define _RTK_MA_API_H_
 
+#include <sof/audio/rtnr/rtnr.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
