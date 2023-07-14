@@ -67,7 +67,7 @@ DECLARE_TR_CTX(rtnr_tr, SOF_UUID(rtnr_uuid), LOG_LEVEL_INFO);
 
 /* Static functions */
 static int rtnr_set_config_bytes(struct comp_dev *dev,
-				 unsigned char *data, uint32_t size);
+				 const unsigned char *data, uint32_t size);
 
 /* Called by the processing library for debugging purpose */
 void rtnr_printf(int a, int b, int c, int d, int e)
@@ -530,7 +530,7 @@ static int rtnr_reconfigure(struct comp_dev *dev)
 }
 
 static int rtnr_set_config_bytes(struct comp_dev *dev,
-				 unsigned char *data, uint32_t size)
+				 const unsigned char *data, uint32_t size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
