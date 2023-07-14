@@ -547,6 +547,15 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (!source || !source->pipeline)
 			return NULL;
 
+		/* As pipeline data is allocated in cached space, continue calculation for next
+		 * connected pipeline only if that pipeline is on same core.
+		 * This is a workaround, the real solution would be to use something like
+		 * process_on_core() to continue calculation on required core. However, as this
+		 * "latency feature" seems never used anyway, this workaround could be enough.
+		 */
+		if (!cpu_is_me(source->ipc_config.core))
+			return NULL;
+
 		/* Get a next sink component */
 		ipc_sink = ipc_get_ppl_sink_comp(ipc, source->pipeline->pipeline_id);
 	}
