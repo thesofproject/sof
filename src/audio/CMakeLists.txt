@@ -128,6 +128,11 @@ add_local_sources(sof
 	component.c
 	data_blob.c
 	buffer.c
+	source_api_helper.c
+	sink_api_helper.c
+	sink_source_utils.c
+	audio_stream.c
+	channel_map.c
 )
 
 # Audio Modules with various optimizaitons

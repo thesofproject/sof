@@ -74,3 +74,11 @@ alsamixer -Dsof:bdw-nocodec:1
 The code is full of ```TODO``` statements that need to be resolved. This
 also include the ```hack-install.sh``` install script for module
 installation. YMMV.
+
+#TODO Items (and T-shirt size) for single pipeline E2E audio
+ * IPC4 support in tplg parser (M)
+ * IPC4 support in plugin (pipe/ipc4.c) (M)
+ * Fix ALSA -Dhw: device support (S), currently only default ALSA device works
+ * Deprecate POSIX message queues for IPC and use UNIX sockets.(S)
+ * Make better build system for modules i.e. remove hack-install.sh (S)
+ * Need a simpler aplay/arecord cmd line.
