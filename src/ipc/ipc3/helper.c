@@ -191,8 +191,8 @@ union ipc_config_specific {
 } __attribute__((packed, aligned(4)));
 
 /* build component specific data */
-static void comp_specific_builder(struct sof_ipc_comp *comp,
-				  union ipc_config_specific *config)
+static int comp_specific_builder(struct sof_ipc_comp *comp,
+				 union ipc_config_specific *config)
 {
 #if CONFIG_LIBRARY
 	struct sof_ipc_comp_file *file = (struct sof_ipc_comp_file *)comp;
@@ -285,8 +285,9 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 #endif
 		break;
 	default:
-		break;
+		return -EINVAL;
 	}
+	return 0;
 }
 
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
@@ -328,8 +329,11 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
 
 	/* build the component */
+	if (comp_specific_builder(comp, &spec) < 0) {
+		comp_cl_err(drv, "comp_new(): component type not recognized");
+		return NULL;
+	}
 	comp_common_builder(comp, &config);
-	comp_specific_builder(comp, &spec);
 	cdev = drv->ops.create(drv, &config, &spec);
 	if (!cdev) {
 		comp_cl_err(drv, "comp_new(): unable to create the new component");
