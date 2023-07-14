@@ -158,7 +158,23 @@ static int idc_ipc4_unbind(uint32_t comp_id)
 
 	return comp_unbind(ipc_dev->cd, bu);
 }
-#endif
+
+static int idc_get_attribute(uint32_t comp_id)
+{
+	struct ipc_comp_dev *ipc_dev;
+	struct idc_payload *idc_payload;
+	struct get_attribute_remote_payload *get_attr_payload;
+
+	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
+	if (!ipc_dev)
+		return -ENODEV;
+
+	idc_payload = idc_payload_get(*idc_get(), cpu_get_id());
+	get_attr_payload = (struct get_attribute_remote_payload *)idc_payload;
+
+	return comp_get_attribute(ipc_dev->cd, get_attr_payload->type, get_attr_payload->value);
+}
+#endif	/* CONFIG_IPC_MAJOR_4 */
 
 /**
  * \brief Executes IDC component params message.
@@ -367,6 +383,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_UNBIND):
 		ret = idc_ipc4_unbind(msg->extension);
+		break;
+	case iTS(IDC_MSG_GET_ATTRIBUTE):
+		ret = idc_get_attribute(msg->extension);
 		break;
 #endif
 	case iTS(IDC_MSG_PARAMS):
