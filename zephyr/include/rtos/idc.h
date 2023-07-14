@@ -108,6 +108,7 @@
 
 #define IDC_MSG_BIND IDC_TYPE(0xD)
 #define IDC_MSG_UNBIND IDC_TYPE(0xE)
+#define IDC_MSG_GET_ATTRIBUTE IDC_TYPE(0xF)
 
 /** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
 #define IDC_SCC_CORE_SHIFT		0

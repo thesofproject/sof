@@ -208,15 +208,61 @@ static inline int comp_prepare(struct comp_dev *dev)
 
 int comp_copy(struct comp_dev *dev);
 
+#if CONFIG_IPC_MAJOR_4
+struct get_attribute_remote_payload {
+	uint32_t type;
+	void *value;
+};
+
+static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t type,
+						 void *value)
+{
+	struct ipc4_base_module_cfg *base_cfg;
+	struct get_attribute_remote_payload payload = {};
+	struct idc_msg msg = { IDC_MSG_GET_ATTRIBUTE,
+		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
+		sizeof(payload), &payload};
+	int ret;
+
+	/* Only COMP_ATTR_BASE_CONFIG is supported for remote access */
+	if (type != COMP_ATTR_BASE_CONFIG)
+		return -EINVAL;
+
+	base_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*base_cfg));
+	if (!base_cfg)
+		return -ENOMEM;
+
+	payload.type = type;
+	payload.value = base_cfg;
+
+	ret = idc_send_msg(&msg, IDC_BLOCKING);
+
+	if (ret == 0)
+		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
+			 base_cfg, sizeof(struct ipc4_base_module_cfg));
+
+	rfree(base_cfg);
+	return ret;
+}
+#endif	/* CONFIG_IPC_MAJOR_4 */
 
 /** See comp_ops::get_attribute */
 static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
+#if CONFIG_IPC_MAJOR_4
+	if (dev->drv->ops.get_attribute)
+		return cpu_is_me(dev->ipc_config.core) ?
+			dev->drv->ops.get_attribute(dev, type, value) :
+			comp_ipc4_get_attribute_remote(dev, type, value);
+
+	return 0;
+#else
 	if (dev->drv->ops.get_attribute)
 		return dev->drv->ops.get_attribute(dev, type, value);
 
 	return 0;
+#endif
 }
 
 /** See comp_ops::set_attribute */
