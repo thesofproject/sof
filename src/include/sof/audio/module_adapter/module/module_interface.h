@@ -67,6 +67,9 @@ struct output_stream_buffer {
 	uint32_t size; /* size of data in the buffer */
 };
 
+struct comp_dev;
+struct timestamp_data;
+
 /**
  * \struct module_endpoint_ops
  * \brief Ops relevant only for the endpoint devices such as the host copier or DAI copier.
