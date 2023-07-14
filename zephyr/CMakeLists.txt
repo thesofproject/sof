@@ -682,6 +682,10 @@ zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
 	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
+	${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
