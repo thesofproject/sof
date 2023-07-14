@@ -117,8 +117,8 @@ static int acp_dmic_dma_start(struct dma_chan_data *channel)
 
 	if (!sw0_audio_tx_en && !sw0_audio_rx_en && !hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
-		/* Request SMU to set aclk to 600 Mhz */
-		acp_change_clock_notify(600000000);
+		/* Request SMU to set aclk to 900 Mhz */
+		acp_change_clock_notify(900000000);
 	}
 	channel->status = COMP_STATE_ACTIVE;
 	if (channel->direction == DMA_DIR_DEV_TO_MEM) {

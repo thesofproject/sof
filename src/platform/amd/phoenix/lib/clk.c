@@ -45,7 +45,7 @@ DECLARE_SOF_UUID("acp-clk", acp_clk_uuid, 0xb414df09, 0x9e31, 0x4c59,
 DECLARE_TR_CTX(acp_clk_tr, SOF_UUID(acp_clk_uuid), LOG_LEVEL_INFO);
 
 const struct freq_table platform_cpu_freq[] = {
-	{600000000, 600000 },
+	{900000000, 900000 },
 };
 
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),

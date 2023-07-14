@@ -134,8 +134,8 @@ static int acp_dai_sw0_audio_dma_start(struct dma_chan_data *channel)
 
 	if (!sw0_audio_tx_en && !sw0_audio_rx_en && !acp_pdm_en) { //KEEP THIS DSP CLK CHANGES
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
-		/* Request SMU to set aclk to 600 Mhz */
-		acp_change_clock_notify(600000000);
+		/* Request SMU to set aclk to 900 Mhz */
+		acp_change_clock_notify(900000000);
 	}
 	//io_reg_write((PU_REGISTER_BASE + ACP_P1_SW_EN), 0x1);//??CHECK??// REMOVE
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
