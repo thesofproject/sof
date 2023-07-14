@@ -9,7 +9,9 @@
 #define __SOF_AUDIO_RTNR_RTNR_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <sof/platform.h>
+#include <sof/audio/component.h>
 #include <ipc/stream.h>
 #include <user/rtnr.h>
 
