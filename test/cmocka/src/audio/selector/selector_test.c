@@ -440,6 +440,7 @@ static void test_audio_sel(void **state)
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 	/* TODO: add S24_3LE support */
+	/* TODO: add S24_4LE_MSB support */
 	/* TODO: add U8 support */
 	default:
 		break;
