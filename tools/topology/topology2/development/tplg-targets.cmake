@@ -21,10 +21,12 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec.bin,DEEPBUFFER_FW_DMA_MS=1
 PLATFORM=adl"
 
 "cavs-nocodec-multicore\;sof-tgl-nocodec-multicore-ssp0-ssp2\;PLATFORM=tgl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-multicore-ssp0-ssp2.bin"
+SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-multicore-ssp0-ssp2.bin,\
+PASSTHROUGH=true"
 
 "cavs-nocodec-multicore\;sof-adl-nocodec-multicore-ssp0-ssp2\;PLATFORM=adl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec-multicore-ssp0-ssp2.bin"
+SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec-multicore-ssp0-ssp2.bin,\
+PASSTHROUGH=true"
 
 # SDW topology for MTL
 "cavs-sdw\;mtl-sdw\;NUM_HDMIS=0"
