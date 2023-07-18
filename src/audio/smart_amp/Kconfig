@@ -4,7 +4,6 @@ menu "Smart amplifier solutions"
 	visible if COMP_SMART_AMP
 
 	config MAXIM_DSM
-		depends on CAVS
 		bool "Maxim DSM solution"
 		default n
 		help
