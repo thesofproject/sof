@@ -265,7 +265,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 
 	/* create multi_endpoint_buffer for ALH multi-gateway case */
 	if (dai_count > 1) {
-		ret = create_endpoint_buffer(dev, cd, config, copier, type, true, 0);
+		ret = create_endpoint_buffer(dev, cd, copier, true);
 		if (ret < 0)
 			return ret;
 	}

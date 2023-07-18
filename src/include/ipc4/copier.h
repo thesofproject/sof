@@ -274,11 +274,8 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 struct comp_ipc_config;
 int create_endpoint_buffer(struct comp_dev *dev,
 			   struct copier_data *cd,
-			   struct comp_ipc_config *config,
 			   const struct ipc4_copier_module_cfg *copier_cfg,
-			   enum ipc4_gateway_type type,
-			   bool create_multi_endpoint_buffer,
-			   int index);
+			   bool create_multi_endpoint_buffer);
 
 enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type);
