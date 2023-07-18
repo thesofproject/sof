@@ -43,10 +43,12 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-ssp0-ssp2.bin,DEEPBUFFER_F
 DEEPBUFFER_D0I3_COMPATIBLE=true"
 
 "cavs-nocodec-multicore\;sof-mtl-nocodec-multicore\;PLATFORM=mtl,SSP1_ENABLED=true,SSP0_CORE_ID=0,\
-SSP1_CORE_ID=1,SSP2_CORE_ID=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore.bin"
+SSP1_CORE_ID=1,SSP2_CORE_ID=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore.bin,\
+PASSTHROUGH=true"
 
 "cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-ssp0-ssp2\;PLATFORM=mtl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore-ssp0-ssp2.bin"
+SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore-ssp0-ssp2.bin,\
+PASSTHROUGH=true"
 
 "cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-4ch\;PLATFORM=mtl,SSP1_ENABLED=false,\
 SSP0_CORE_ID=0,DMIC_CORE_ID=1,SSP2_CORE_ID=2,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
