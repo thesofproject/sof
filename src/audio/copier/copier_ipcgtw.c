@@ -246,7 +246,7 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	 */
 	config->type = SOF_COMP_HOST;
 
-	ret = create_endpoint_buffer(dev, cd, config, copier, ipc4_gtw_none, false, 0);
+	ret = create_endpoint_buffer(dev, cd, copier, false);
 	if (ret < 0)
 		return ret;
 
