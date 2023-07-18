@@ -646,6 +646,10 @@ zephyr_include_directories_ifdef(CONFIG_MAXIM_DSM
 	${SOF_AUDIO_PATH}/smart_amp/include/dsm_api/inc/
 )
 
+zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
+	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 	${SOF_AUDIO_PATH}/aria/aria.c
 	${SOF_AUDIO_PATH}/aria/aria_hifi3.c
