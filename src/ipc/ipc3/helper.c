@@ -284,6 +284,8 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		config->process.data = proc->data;
 #endif
 		break;
+	case SOF_COMP_MIXER:
+		break;
 	default:
 		return -EINVAL;
 	}
