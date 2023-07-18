@@ -224,9 +224,9 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 }
 
 int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
-			 struct comp_ipc_config *config,
 			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline)
 {
+	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg;
 	const struct ipc4_ipc_gateway_config_blob *blob;

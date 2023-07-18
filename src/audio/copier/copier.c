@@ -123,8 +123,7 @@ static int copier_init(struct processing_module *mod)
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			ret = copier_ipcgtw_create(dev, cd, &dev->ipc_config,
-						   copier, ipc_pipe->pipeline);
+			ret = copier_ipcgtw_create(dev, cd, copier, ipc_pipe->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create IPC gateway");
 				goto error;
