@@ -41,6 +41,7 @@ struct lib_manager_dma_ext {
 	struct dma *dma;
 	struct dma_chan_data *chan;
 	uintptr_t dma_addr;		/**< buffer start pointer */
+	uint32_t addr_align;
 };
 
 static struct ext_library loader_ext_lib;
@@ -416,13 +417,14 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 #endif /* CONFIG_INTEL_MODULES */
 
 static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
-					uint32_t size, uint32_t align)
+					uint32_t size)
 {
 	/*
 	 * allocate new buffer: this is the actual DMA buffer but we
 	 * traditionally allocate a cached address for it
 	 */
-	dma_ext->dma_addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
+	dma_ext->dma_addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size,
+						     dma_ext->addr_align);
 	if (!dma_ext->dma_addr) {
 		tr_err(&lib_manager_tr, "lib_manager_dma_buffer_alloc(): alloc failed");
 		return -ENOMEM;
@@ -564,7 +566,7 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 
 static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 				     void __sparse_cache *man_buffer,
-				     uint32_t lib_id, uint32_t addr_align)
+				     uint32_t lib_id)
 {
 	void __sparse_cache *library_base_address;
 	struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
@@ -598,8 +600,10 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	return 0;
 }
 
-int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
+static int lib_manager_setup(uint32_t dma_id)
 {
+	struct ext_library *_ext_lib = ext_lib_get();
+	struct lib_manager_dma_ext *dma_ext;
 	struct dma_block_config dma_block_cfg = {
 		.block_size = MAN_MAX_SIZE_V1_8,
 		.flow_control_mode = 1,
@@ -611,44 +615,30 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		.block_count = 1,
 		.head_block = &dma_block_cfg,
 	};
-	struct lib_manager_dma_ext dma_ext;
-	uint32_t addr_align;
-	int ret, ret2;
-	void __sparse_cache *man_tmp_buffer = NULL;
+	int ret;
 
-	if (!lib_id || lib_id >= LIB_MANAGER_MAX_LIBS) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_load_library(): invalid lib_id: %u", lib_id);
-		return -EINVAL;
-	}
+	if (_ext_lib->runtime_data)
+		return 0;
 
-	lib_manager_init();
+	dma_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			  sizeof(*dma_ext));
+	if (!dma_ext)
+		return -ENOMEM;
 
-	ret = lib_manager_dma_init(&dma_ext, dma_id);
+	ret = lib_manager_dma_init(dma_ext, dma_id);
 	if (ret < 0)
-		return ret;
+		goto err_dma_init;
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	ret = dma_get_attribute(dma_ext.dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
-#else
-	ret = dma_get_attribute_legacy(dma_ext.dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				       &addr_align);
-#endif
+	ret = dma_get_attribute(dma_ext->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&dma_ext->addr_align);
 	if (ret < 0)
-		goto e_init;
+		goto err_dma_init;
 
-	/* allocate temporary manifest buffer */
-	man_tmp_buffer = (__sparse_force void __sparse_cache *)rballoc_align(0, SOF_MEM_CAPS_DMA,
-								MAN_MAX_SIZE_V1_8, addr_align);
-	if (!man_tmp_buffer) {
-		ret = -ENOMEM;
-		goto e_init;
-	}
-
-	ret = lib_manager_dma_buffer_alloc(&dma_ext, MAN_MAX_SIZE_V1_8, addr_align);
+	ret = lib_manager_dma_buffer_alloc(dma_ext, MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
-		goto e_buf;
+		goto err_dma_buffer;
+
+	dma_block_cfg.dest_address = dma_ext->dma_addr;
 
 	/*
 	 * make sure that the DSP is running full speed for the duration of
@@ -656,27 +646,78 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	 */
 	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
 	if (ret < 0)
-		goto cleanup;
+		goto err_dma_buffer;
 
-	dma_block_cfg.dest_address = dma_ext.dma_addr;
-
-	ret = dma_config(dma_ext.chan->dma->z_dev, dma_ext.chan->index, &config);
+	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
 	if (ret < 0)
-		goto kcps_rollback;
+		goto err_dma;
 
-	ret = dma_start(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	ret = dma_start(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
 	if (ret < 0)
+		goto err_dma;
+
+	_ext_lib->runtime_data = dma_ext;
+
+	return 0;
+
+err_dma:
+	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+
+err_dma_buffer:
+	lib_manager_dma_deinit(dma_ext, dma_id);
+
+err_dma_init:
+	rfree(dma_ext);
+	return ret;
+}
+
+int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
+{
+	void __sparse_cache *man_tmp_buffer;
+	struct lib_manager_dma_ext *dma_ext;
+	struct ext_library *_ext_lib;
+	int ret, ret2;
+
+	if (type == SOF_IPC4_GLB_LOAD_LIBRARY &&
+	    (lib_id == 0 || lib_id >= LIB_MANAGER_MAX_LIBS)) {
+		tr_err(&lib_manager_tr,
+		       "lib_manager_load_library(): invalid lib_id: %u", lib_id);
+		return -EINVAL;
+	}
+
+	lib_manager_init();
+
+	_ext_lib = ext_lib_get();
+
+	if (type == SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE || !_ext_lib->runtime_data) {
+		ret = lib_manager_setup(dma_id);
+		if (ret)
+			return ret;
+
+		if (type == SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE)
+			return 0;
+	}
+
+	dma_ext = _ext_lib->runtime_data;
+
+	/* allocate temporary manifest buffer */
+	man_tmp_buffer = (__sparse_force void __sparse_cache *)
+			rballoc_align(0, SOF_MEM_CAPS_DMA,
+				      MAN_MAX_SIZE_V1_8, dma_ext->addr_align);
+	if (!man_tmp_buffer) {
+		ret = -ENOMEM;
 		goto cleanup;
+	}
 
 	/* Load manifest to temporary buffer. */
-	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	ret = lib_manager_store_data(dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
 	if (ret < 0)
 		goto stop_dma;
 
-	ret = lib_manager_store_library(&dma_ext, man_tmp_buffer, lib_id, addr_align);
+	ret = lib_manager_store_library(dma_ext, man_tmp_buffer, lib_id);
 
 stop_dma:
-	ret2 = dma_stop(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
+	ret2 = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
 	if (ret2 < 0) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_load_library(): error stopping DMA: %d", ret);
@@ -684,16 +725,14 @@ stop_dma:
 			ret = ret2;
 	}
 
-kcps_rollback:
-	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+	rfree((__sparse_force void *)man_tmp_buffer);
 
 cleanup:
-	rfree((void *)dma_ext.dma_addr);
-
-e_buf:
-	rfree((__sparse_force void *)man_tmp_buffer);
-e_init:
-	lib_manager_dma_deinit(&dma_ext, dma_id);
+	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+	rfree((void *)dma_ext->dma_addr);
+	lib_manager_dma_deinit(dma_ext, dma_id);
+	rfree(dma_ext);
+	_ext_lib->runtime_data = NULL;
 
 	if (!ret)
 		tr_info(&ipc_tr, "loaded library id: %u", lib_id);

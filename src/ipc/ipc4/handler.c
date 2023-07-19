@@ -499,10 +499,16 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 static int ipc4_load_library(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_load_library library;
+	int ret;
 
 	library.header.dat = ipc4->primary.dat;
 
-	return lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id);
+	ret = lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id,
+				       ipc4->primary.r.type);
+	if (ret != 0)
+		return (ret == -EINVAL) ? IPC4_ERROR_INVALID_PARAM : IPC4_FAILURE;
+
+	return IPC4_SUCCESS;
 }
 #endif
 
@@ -647,6 +653,9 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 	/* Loads library (using Code Load or HD/A Host Output DMA) */
 #ifdef CONFIG_LIBRARY_MANAGER
 	case SOF_IPC4_GLB_LOAD_LIBRARY:
+		ret = ipc4_load_library(ipc4);
+		break;
+	case SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE:
 		ret = ipc4_load_library(ipc4);
 		break;
 #endif
