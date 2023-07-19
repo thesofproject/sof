@@ -81,6 +81,8 @@ enum ipc4_message_type {
 	SOF_IPC4_GLB_RESTORE_PIPELINE = 23,
 	/**< Loads library */
 	SOF_IPC4_GLB_LOAD_LIBRARY = 24,
+	/**< Loads library prepare */
+	SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE = 25,
 	/**< Internal FW message */
 	SOF_IPC4_GLB_INTERNAL_MESSAGE = 26,
 	/**< Notification (FW to SW driver) */

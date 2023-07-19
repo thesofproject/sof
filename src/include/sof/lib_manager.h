@@ -84,6 +84,8 @@ struct ext_library {
 	uint32_t mods_exec_load_cnt;
 	struct ipc_lib_msg *lib_notif_pool;
 	uint32_t lib_notif_count;
+
+	void *runtime_data;
 };
 
 /* lib manager context, used by lib_notification */
@@ -150,12 +152,14 @@ int lib_manager_free_module(const struct comp_driver *drv,
  *
  * param[in] dma_id - channel used to transfer binary from host
  * param[in] lib_id
+ * param[in] type - ipc command type
+ *           (SOF_IPC4_GLB_LOAD_LIBRARY or SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE)
  *
  * Function will load library manifest into temporary buffer.
  * Then it will read library parameters, allocate memory for library and load it into
  * destination memory region.
  */
-int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id);
+int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type);
 
 /*
  * \brief Initialize message
