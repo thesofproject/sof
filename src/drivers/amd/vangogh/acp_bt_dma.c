@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2022 AMD. All rights reserved.
+//Copyright(c) 2023 AMD. All rights reserved.
 //
 //Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //		Bala Kishore <balakishore.pati@amd.com>
@@ -146,8 +146,12 @@ static int acp_dai_bt_dma_pause(struct dma_chan_data *channel)
 
 static int acp_dai_bt_dma_stop(struct dma_chan_data *channel)
 {
-	acp_bttdm_iter_t        bt_tdm_iter;
-	acp_bttdm_irer_t        bt_tdm_irer;
+	acp_i2stdm_irer_t sp_irer;
+	acp_i2stdm_iter_t sp_iter;
+	acp_bttdm_iter_t bt_tdm_iter;
+	acp_bttdm_irer_t bt_tdm_irer;
+	acp_hstdm_iter_t hs_iter;
+	acp_hstdm_irer_t hs_irer;
 
 	switch (channel->status) {
 	case COMP_STATE_READY:
@@ -175,10 +179,20 @@ static int acp_dai_bt_dma_stop(struct dma_chan_data *channel)
 
 	bt_tdm_iter = (acp_bttdm_iter_t)io_reg_read(PU_REGISTER_BASE + ACP_BTTDM_ITER);
 	bt_tdm_irer = (acp_bttdm_irer_t)io_reg_read(PU_REGISTER_BASE + ACP_BTTDM_IRER);
-	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en) {
+	
+	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
+	sp_irer = (acp_i2stdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_IRER));
+	
+	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
+	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
+	
+	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en && 
+	!sp_iter.bits.i2stdm_txen && !sp_irer.bits.i2stdm_rx_en && !hs_iter.bits.hstdm_txen
+	&&  hs_irer.bits.hstdm_rx_en) {
 		io_reg_write((PU_REGISTER_BASE + ACP_BTTDM_IER), BT_IER_DISABLE);
 		/* Request SMU to scale down aclk to minimum clk */
 		acp_change_clock_notify(0);
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
 	}
 
 	return 0;
@@ -213,7 +227,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 	}
 
 	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
-		(volatile acp_scratch_mem_config_t *)(PU_REGISTER_BASE + SCRATCH_REG_OFFSET);
+		(volatile acp_scratch_mem_config_t *)(PU_SCRATCH_REG_BASE + SCRATCH_REG_OFFSET);
 	channel->is_scheduling_source = true;
 	channel->direction = config->direction;
 	bt_buff_size = config->elem_array.elems[0].size * config->elem_array.count;
@@ -222,7 +236,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 
 		/* BT Transmit FIFO Address and FIFO Size */
-		bt_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_fifo_buffer);
+		bt_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_transmit_bt_fifo_buffer);
 		bt_fifo_addr = (bt_fifo_addr & ACP_DRAM_ADDRESS_MASK);
 		bt_fifo_addr = (bt_fifo_addr - ACP_DRAM_PHY_TRNS);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_FIFOADDR), bt_fifo_addr);
@@ -231,7 +245,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 		/* Transmit RINGBUFFER Address and size */
 		config->elem_array.elems[0].src =
 			(config->elem_array.elems[0].src & ACP_DRAM_ADDRESS_MASK);
-		bt_ringbuff_addr = (config->elem_array.elems[0].src | 0x01000000);
+		bt_ringbuff_addr = (config->elem_array.elems[0].src | ACP_DRAM_ADDR_TRNS);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_RINGBUFADDR), bt_ringbuff_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_TX_RINGBUFSIZE), bt_buff_size);
 
@@ -245,7 +259,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_DEV_TO_MEM:
 
 		/* BT Receive FIFO Address and FIFO Size*/
-		bt_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_receive_fifo_buffer);
+		bt_fifo_addr = (uint32_t)(&pscratch_mem_cfg->acp_receive_bt_fifo_buffer);
 		bt_fifo_addr = (bt_fifo_addr & ACP_DRAM_ADDRESS_MASK);
 		bt_fifo_addr = (bt_fifo_addr - ACP_DRAM_PHY_TRNS);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_FIFOADDR), bt_fifo_addr);
@@ -254,7 +268,7 @@ static int acp_dai_bt_dma_set_config(struct dma_chan_data *channel,
 		/* Receive RINGBUFFER Address and size */
 		config->elem_array.elems[0].dest =
 			(config->elem_array.elems[0].dest & ACP_DRAM_ADDRESS_MASK);
-		bt_ringbuff_addr = (config->elem_array.elems[0].dest | 0x01000000);
+		bt_ringbuff_addr = (config->elem_array.elems[0].dest | ACP_DRAM_ADDR_TRNS);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_RINGBUFADDR), bt_ringbuff_addr);
 		io_reg_write((PU_REGISTER_BASE + ACP_BT_RX_RINGBUFSIZE), bt_buff_size);
 
@@ -384,7 +398,7 @@ static int acp_dai_bt_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_
 	switch (cmd) {
 	case DMA_IRQ_STATUS_GET:
 		acp_intr_stat =  (acp_dsp0_intr_stat_t)
-			(dma_reg_read(channel->dma, ACP_DSP0_INTR_STAT));
+			dma_reg_read(channel->dma, ACP_DSP0_INTR_STAT);
 		status = acp_intr_stat.bits.audio_buffer_int_stat;
 		return (status & (1 << channel->index));
 	case DMA_IRQ_CLEAR:

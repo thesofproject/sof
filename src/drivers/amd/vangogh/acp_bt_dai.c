@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2022 AMD. All rights reserved.
+//Copyright(c) 2023 AMD. All rights reserved.
 //
 //Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //		Bala Kishore <balakishore.pati@amd.com>
@@ -28,6 +28,7 @@ static inline int btdai_set_config(struct dai *dai, struct ipc_config_dai *commo
 				   const void *spec_config)
 {
 	/* nothing to do on vangogh */
+	io_reg_write(PU_REGISTER_BASE + ACP_I2STDM1_MSTRCLKGEN, 0x40081);
 	return 0;
 }
 

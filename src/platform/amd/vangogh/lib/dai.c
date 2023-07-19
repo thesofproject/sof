@@ -48,10 +48,9 @@ static struct dai spdai[] = {
 		.drv = &acp_spdai_driver,
 	}
 };
-#ifdef ACP_BT_ENABLE
 static struct dai btdai[] = {
 	{
-		.index = 0,
+		.index = 2,
 		.plat_data = {
 			.base = DAI_BASE,
 			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
@@ -68,7 +67,6 @@ static struct dai btdai[] = {
 		.drv = &acp_btdai_driver,
 	},
 };
-#endif
 
 const struct dai_type_info dti[] = {
 	{
@@ -81,13 +79,11 @@ const struct dai_type_info dti[] = {
 		.dai_array	= spdai,
 		.num_dais	= ARRAY_SIZE(spdai)
 	},
-#ifdef ACP_BT_ENABLE
 	{
 		.type = SOF_DAI_AMD_BT,
 		.dai_array = btdai,
 		.num_dais = ARRAY_SIZE(btdai)
 	},
-#endif
 };
 
 const struct dai_info lib_dai = {
@@ -104,11 +100,9 @@ int dai_init(struct sof *sof)
 		k_spinlock_init(&hsdai[i].lock);
 	for (i = 0; i < ARRAY_SIZE(spdai); i++)
 		k_spinlock_init(&spdai[i].lock);
-#ifdef ACP_BT_ENABLE
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(btdai); i++)
 		k_spinlock_init(&btdai[i].lock);
-#endif
 	sof->dai_info = &lib_dai;
 	return 0;
 }

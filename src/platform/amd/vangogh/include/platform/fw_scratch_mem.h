@@ -110,9 +110,11 @@ typedef struct  acp_scratch_memory_config {
 	/* ACP transmit fifo buffers */
 	uint8_t			acp_transmit_fifo_buffer[768] __attribute__((aligned(64)));
 	uint8_t			acp_transmit_hs_fifo_buffer[768] __attribute__((aligned(64)));
+	uint8_t			acp_transmit_bt_fifo_buffer[768] __attribute__((aligned(64)));
 
 	/* ACP receive fifo buffer */
 	uint8_t			acp_receive_fifo_buffer[768] __attribute__((aligned(64)));
+	uint8_t			acp_receive_bt_fifo_buffer[768] __attribute__((aligned(64)));
 
 	uint32_t			reserve[];
 } __attribute__((packed, aligned(4))) acp_scratch_mem_config_t;
