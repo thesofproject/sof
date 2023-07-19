@@ -103,6 +103,7 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	ipc_config.id = comp_id;
 	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config.core = module_init->extension.r.core_id;
+	ipc_config.ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (module_init->extension.r.proc_domain)

@@ -553,6 +553,9 @@ struct comp_ipc_config {
 	uint32_t periods_source;/**< 0 means variable */
 	uint32_t frame_fmt;	/**< SOF_IPC_FRAME_ */
 	uint32_t xrun_action;	/**< action we should take on XRUN */
+#if CONFIG_IPC_MAJOR_4
+	uint32_t ipc_config_size;	/**< size of a config received by ipc */
+#endif
 };
 
 /**
