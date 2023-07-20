@@ -24,7 +24,7 @@
 
 #if CONFIG_MULTICORE && CONFIG_SMP
 
-extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
+extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_MAX_NUM_CPUS,
 				   CONFIG_ISR_STACK_SIZE);
 
 static atomic_t start_flag;
@@ -216,7 +216,7 @@ int cpu_enabled_cores(void)
 	unsigned int i;
 	int mask = 0;
 
-	for (i = 0; i < CONFIG_MP_NUM_CPUS; i++)
+	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++)
 		if (arch_cpu_active(i))
 			mask |= BIT(i);
 
