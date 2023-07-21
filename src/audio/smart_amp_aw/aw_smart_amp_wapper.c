@@ -21,7 +21,6 @@
 #include <sof/audio/smart_amp/aw_smart_amp.h>
 #include "aw_api_public.h"
 
-
 #define SOF_SMART_AMP_RX_ENABLE   	(0x10013D11)
 #define SOF_SMART_AMP_RX_PARAMS   	(0x10013D02)
 //#define SOF_SMART_AMP_TX_ENABLE   	(0x10013D13)
@@ -90,8 +89,8 @@ int smart_amp_get_param(sktune_t *sktune,
 	switch (params_id) {
 	case SOF_SMART_AMP_RX_ENABLE : {
 		if (max_size >= sizeof(int32_t)) {
-			 data_buf[0] = sktune->enable;
-			 buf_size = sizeof(uint32_t);
+			data_buf[0] = sktune->enable;
+			buf_size = sizeof(uint32_t);
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -107,12 +106,12 @@ int smart_amp_get_param(sktune_t *sktune,
 	} break;
 	case SOF_SMART_AMP_RX_VMAX_L : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_vmax(sktune->handle, data_buf, CHANNEL_LEFT);
-			 if (ret < 0) {
+			ret = sktune_api_get_vmax(sktune->handle, data_buf, CHANNEL_LEFT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get vmax l failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -120,41 +119,41 @@ int smart_amp_get_param(sktune_t *sktune,
 	} break;
 	case SOF_SMART_AMP_RX_VMAX_R : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_vmax(sktune->handle, data_buf, CHANNEL_RIGHT);
-			 if (ret < 0) {
+			ret = sktune_api_get_vmax(sktune->handle, data_buf, CHANNEL_RIGHT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get vmax r failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
 		}
 	} break;
 	case SOF_SMART_AMP_RX_CALI_CFG_L : {
-		 ret = sktune_api_get_start_cali_cfg(sktune->handle, (char *)data_buf, max_size, CHANNEL_LEFT);
-		 if (ret < 0) {
+		ret = sktune_api_get_start_cali_cfg(sktune->handle, (char *)data_buf, max_size, CHANNEL_LEFT);
+		if (ret < 0) {
 			comp_err(dev, "[Awinic] get cali cfg l failed ");
-		 } else {
+		} else {
 			buf_size = ret;
-		 }
+		}
 	} break;
 	case SOF_SMART_AMP_RX_CALI_CFG_R : {
-		 ret = sktune_api_get_start_cali_cfg(sktune->handle, (char *)data_buf, max_size, CHANNEL_RIGHT);
-		 if (ret < 0) {
+		ret = sktune_api_get_start_cali_cfg(sktune->handle, (char *)data_buf, max_size, CHANNEL_RIGHT);
+		if (ret < 0) {
 			comp_err(dev, "[Awinic] get cali cfg r failed ");
-		 } else {
+		} else {
 			buf_size = ret;
-		 }
+		}
 	} break;
 	case SOF_SMART_AMP_RX_RE_L : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_cali_re(sktune->handle, data_buf, CHANNEL_LEFT);
-			 if (ret < 0) {
+			ret = sktune_api_get_cali_re(sktune->handle, data_buf, CHANNEL_LEFT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get cali re l failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -162,12 +161,12 @@ int smart_amp_get_param(sktune_t *sktune,
 	} break;
 	case SOF_SMART_AMP_RX_RE_R : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_cali_re(sktune->handle, data_buf, CHANNEL_RIGHT);
-			 if (ret < 0) {
+			ret = sktune_api_get_cali_re(sktune->handle, data_buf, CHANNEL_RIGHT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get cali re r failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -176,27 +175,27 @@ int smart_amp_get_param(sktune_t *sktune,
 	case SOF_SMART_AMP_RX_REAL_DATA_L : {
 		ret = sktune_api_get_cali_data(sktune->handle, (char *)data_buf, max_size, CHANNEL_LEFT);
 		if (ret < 0) {
-		   comp_err(dev, "[Awinic] get cali data l failed ");
+			comp_err(dev, "[Awinic] get cali data l failed ");
 		} else {
-		   buf_size = ret;
+			buf_size = ret;
 		}
 	} break; 
 	case SOF_SMART_AMP_RX_REAL_DATA_R : {
 		ret = sktune_api_get_cali_data(sktune->handle, (char *)data_buf, max_size, CHANNEL_RIGHT);
 		if (ret < 0) {
-		   comp_err(dev, "[Awinic] get cali data r failed ");
+			comp_err(dev, "[Awinic] get cali data r failed ");
 		} else {
-		   buf_size = ret;
+			buf_size = ret;
 		}
 	} break; 
 	case SOF_SMART_AMP_RX_F0_L : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_cali_f0(sktune->handle, data_buf, CHANNEL_LEFT);
-			 if (ret < 0) {
+			ret = sktune_api_get_cali_f0(sktune->handle, data_buf, CHANNEL_LEFT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get f0 l failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -204,12 +203,12 @@ int smart_amp_get_param(sktune_t *sktune,
 	} break;
 	case SOF_SMART_AMP_RX_F0_R : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_cali_f0(sktune->handle, data_buf, CHANNEL_RIGHT);
-			 if (ret < 0) {
+			ret = sktune_api_get_cali_f0(sktune->handle, data_buf, CHANNEL_RIGHT);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get f0 r failed ");
-			 } else {
+			} else {
 				buf_size = ret;
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -217,12 +216,12 @@ int smart_amp_get_param(sktune_t *sktune,
 	} break;
 	case SOF_SMART_AMP_RX_SPIN : {
 		if (max_size >= sizeof(int32_t)) {
-			 ret = sktune_api_get_spin_mode(sktune->handle, (uint32_t *)data_buf);
-			 if (ret < 0) {
+			ret = sktune_api_get_spin_mode(sktune->handle, (uint32_t *)data_buf);
+			if (ret < 0) {
 				comp_err(dev, "[Awinic] get spin failed ");
-			 } else {
+			} else {
 				buf_size = sizeof(int32_t);
-			 }
+			}
 		} else {
 			comp_err(dev, "[Awinic] bad params size  %d ", max_size);
 			ret = -1;
@@ -231,9 +230,9 @@ int smart_amp_get_param(sktune_t *sktune,
 	case SOF_SMART_AMP_RX_MSG : {
 		ret = smartpa_amp_get_msg_parser(sktune, dev, (char *)data_buf, max_size, AW_MSG_ID_0);
 		if (ret < 0) {
-		   comp_err(dev, "[Awinic] get msg failed ");
+			comp_err(dev, "[Awinic] get msg failed ");
 		} else {
-		   buf_size = ret;
+			buf_size = ret;
 		}
 	} break;
 	default : {
@@ -254,7 +253,6 @@ int smart_amp_get_param(sktune_t *sktune,
 
 	return 0;
 }
-
 
 static int smart_amp_set_msg_parser(sktune_t *sktune, struct comp_dev *dev, char *data_buf, uint32_t len, int msg_id)
 {
@@ -335,7 +333,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 	case SOF_SMART_AMP_RX_VMAX_R : {
 		if (params_size >= sizeof(uint32_t)) {
 			ret = sktune_api_set_vmax(sktune->handle, *((int32_t*)params_data), CHANNEL_RIGHT);
@@ -346,19 +344,19 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 	case SOF_SMART_AMP_RX_CALI_CFG_L : {
 		ret = sktune_api_set_start_cali_cfg(sktune->handle, (char *)params_data, params_size, CHANNEL_LEFT);
 		if (ret < 0) {
 			comp_err(dev, "[Awinic] set cali cfg failed ");
 		}
-	}break;
+	} break;
 	case SOF_SMART_AMP_RX_CALI_CFG_R : {
 		ret = sktune_api_set_start_cali_cfg(sktune->handle, (char *)params_data, params_size, CHANNEL_RIGHT);
 		if (ret < 0) {
 			comp_err(dev, "[Awinic] set cali cfg failed ");
 		}
-	}break;
+	} break;
 
 	case SOF_SMART_AMP_RX_RE_L : {
 		if (params_size >= sizeof(uint32_t)) {
@@ -370,7 +368,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 
 	case SOF_SMART_AMP_RX_RE_R : {
 		if (params_size >= sizeof(uint32_t)) {
@@ -382,7 +380,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 
 	case SOF_SMART_AMP_RX_NOISE_L : {
 		if (params_size >= sizeof(uint32_t)) {
@@ -394,7 +392,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 
 	case SOF_SMART_AMP_RX_NOISE_R : {
 		if (params_size >= sizeof(uint32_t)) {
@@ -406,7 +404,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 	case SOF_SMART_AMP_RX_SPIN : {
 		if (params_size >= sizeof(uint32_t)) {
 			ret = sktune_api_set_spin_mode(sktune->handle, (uint32_t*)params_data);
@@ -417,7 +415,7 @@ int smart_amp_set_param(sktune_t *sktune,
 			comp_err(dev, "[Awinic] bad params size  %d ", params_size);
 			ret = -1;
 		}
-	}break;
+	} break;
 	case SOF_SMART_AMP_RX_MSG : {
 		ret = smart_amp_set_msg_parser(sktune->handle, dev, (char *)params_data, params_size, AW_MSG_ID_0);
 		if (ret < 0) {
@@ -435,7 +433,6 @@ int smart_amp_set_param(sktune_t *sktune,
 	return ret;
 }
 
-
 static void smart_amp_sktune_free(sktune_t* sktune)
 {
 	rfree(sktune->frame_in.data_ptr);
@@ -452,9 +449,8 @@ sktune_t* smart_amp_sktune_alloc(struct comp_dev *dev)
 	uint32_t size;
 	sktune_t* sktune = NULL;
 
-
 	/*memory allocation for sktune*/
-	sktune = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(sktune_t));
+	sktune = rmalloc(0, SOF_MEM_CAPS_RAM, sizeof(sktune_t));
 	if (!sktune) {
 		comp_err(dev, "[Awinic] SKTune alloc failed!");
 		return NULL;
@@ -503,7 +499,6 @@ sktune_t* smart_amp_sktune_alloc(struct comp_dev *dev)
 
 	sum_mem_size += size;
 
-
 	/* memory allocation of SKTune handle */
 	algo_size = sktune_api_get_size();
 	if(algo_size == 0) {
@@ -529,7 +524,6 @@ err:
 	return NULL;
 
 }
-
 
 int smart_amp_init(sktune_t *      sktune, struct comp_dev *dev)
 {
@@ -565,7 +559,6 @@ int smart_amp_deinit(sktune_t *       sktune, struct comp_dev *dev)
 	return 0;
 }
 
-
 int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
 {
 
@@ -583,18 +576,17 @@ int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
 int smart_amp_flush(sktune_t *sktune, struct comp_dev *dev)
 {
 	memset(sktune->frame_in.data_ptr, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
+			SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
 	memset(sktune->frame_out.data_ptr, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
+			SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
 	memset(sktune->frame_iv.data_ptr, 0,
-	       SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t));
+			SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t));
 
 
 	comp_dbg(dev, "[Awinic] Reset (handle:%p)", sktune);
 
 	return 0;
 }
-
 
 static int smart_amp_get_buffer(char *buf, uint32_t frames,
 				const struct audio_stream __sparse_cache *stream, uint32_t num_ch)
@@ -632,10 +624,9 @@ static int smart_amp_get_buffer(char *buf, uint32_t frames,
 	return byte_num;
 }
 
-
 int smart_amp_fb_data_prepare(sktune_t *       sktune, struct comp_dev *dev,
 				const struct audio_stream __sparse_cache *source,
-			     uint32_t frames)
+				uint32_t frames)
 
 {
 	int num_ch, ret;
@@ -661,14 +652,12 @@ int smart_amp_fb_data_prepare(sktune_t *       sktune, struct comp_dev *dev,
 	
 	sktune->frame_iv.actual_data_len = (uint32_t)ret;
 
-
 	return 0;
 }
 
-
 int smart_amp_ff_data_prepare(sktune_t *       sktune, struct comp_dev *dev,
 				const struct audio_stream __sparse_cache *source,
-			     uint32_t frames)
+				uint32_t frames)
 {
 	int num_ch, ret;
 	
@@ -682,7 +671,7 @@ int smart_amp_ff_data_prepare(sktune_t *       sktune, struct comp_dev *dev,
 		return -1;
 	}
 
-	num_ch = MIN(audio_stream_get_channels(source), SMART_AMP_FB_MAX_CH_NUM);
+	num_ch = MIN(audio_stream_get_channels(source), SMART_AMP_FF_MAX_CH_NUM);
 
 	ret = smart_amp_get_buffer(sktune->frame_in.data_ptr, frames, source, num_ch);
 	if (ret < 0) {
@@ -695,7 +684,6 @@ int smart_amp_ff_data_prepare(sktune_t *       sktune, struct comp_dev *dev,
 
 	return 0;
 }
-
 
 static int smart_amp_put_buffer(char *buf, uint32_t frames,
 				const struct audio_stream __sparse_cache *stream, 
@@ -733,11 +721,10 @@ static int smart_amp_put_buffer(char *buf, uint32_t frames,
 	return 0;
 }
 
-
 int smart_amp_process(sktune_t *       sktune, struct comp_dev *dev,
 				const struct audio_stream __sparse_cache *source,
 				const struct audio_stream __sparse_cache *sink,
-			     uint32_t frames, int num_ch_out)
+				uint32_t frames, int num_ch_out)
 {
 	int ret;
 
@@ -749,10 +736,8 @@ int smart_amp_process(sktune_t *       sktune, struct comp_dev *dev,
 
 
 	ret = smart_amp_put_buffer(sktune->frame_in.data_ptr,
-			   frames, sink,
-			   MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
+				frames, sink,
+				MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
 
 	return 0;
 }
-
-

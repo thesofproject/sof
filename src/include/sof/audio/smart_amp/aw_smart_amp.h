@@ -16,7 +16,9 @@
 /* Awinic Maximum number of channels for algorithm out */
 #define SMART_AMP_FF_OUT_MAX_CH_NUM	4
 /* Awinic Maximum number of channels for feedback  */
-#define SMART_AMP_FB_MAX_CH_NUM		4
+#define SMART_AMP_FB_MAX_CH_NUM		2
+/* Awinic cache buffer size (10ms)  */
+#define SMART_AMP_BUF_TIME          10
 
 #define SMART_AMP_FRM_SZ	48 /* samples per 1ms */
 #define SMART_AMP_FF_BUF_SZ	(SMART_AMP_FRM_SZ * SMART_AMP_FF_MAX_CH_NUM)
@@ -24,9 +26,9 @@
 
 /* Awinic SKune protect process buffer size */
 #define SMART_AMP_FF_BUF_DB_SZ\
-	(SMART_AMP_FF_BUF_SZ * SMART_AMP_FF_MAX_CH_NUM)
+	(SMART_AMP_FF_BUF_SZ * SMART_AMP_BUF_TIME)
 #define SMART_AMP_FB_BUF_DB_SZ\
-	(SMART_AMP_FB_BUF_SZ * SMART_AMP_FB_MAX_CH_NUM)
+	(SMART_AMP_FB_BUF_SZ * SMART_AMP_BUF_TIME)
 
 
 typedef struct media_info {

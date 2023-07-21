@@ -189,20 +189,15 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 static int smart_amp_ctrl_get_data(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata, int size)
 {
-	int ret = 0;
-
 	comp_dbg(dev, "[Awinic] smart_amp_ctrl_get_data() size: %d", size);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		ret = smart_amp_ctrl_get_bin_data(dev, cdata, size);
-		break;
+		return smart_amp_ctrl_get_bin_data(dev, cdata, size);
 	default:
 		comp_err(dev, "[Awinic] smart_amp_ctrl_get_data(): invalid cdata->cmd");
 		return -EINVAL;
 	}
-
-	return ret;
 }
 
 static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
@@ -316,6 +311,8 @@ static int smart_amp_comp_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "[Awinic] smart_amp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -335,8 +332,6 @@ static int smart_amp_comp_trigger(struct comp_dev *dev, int cmd)
 
 	return ret;
 }
-
-
 
 static int smart_amp_comp_copy(struct comp_dev *dev)
 {
