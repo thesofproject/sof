@@ -63,9 +63,6 @@ static void irq_handler(void *arg)
 
 	/* reply message(done) from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1)) {
-		/* Disable GP interrupt #1 */
-		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1));
-
 		/* Clear GP pending interrupt #1 */
 		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1),
 			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
@@ -73,16 +70,10 @@ static void irq_handler(void *arg)
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
 		ipc->is_notification_pending = false;
-
-		/* unmask GP interrupt #1 */
-		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 1), 0);
 	}
 
 	/* new message from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0)) {
-		/* Disable GP interrupt #0 */
-		imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, 0, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0));
-
 		/* Clear GP pending interrupt #0 */
 		imx_mu_write(IMX_MU_xSR_GIPn(IMX_MU_VERSION, 0),
 			     IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
@@ -117,8 +108,23 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-	/* enable GP interrupt #0 - accept new messages */
-	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GIER, IMX_MU_xCR_GIEn(IMX_MU_VERSION, 0), 0);
+	int ret;
+
+	/* make sure GIR0 and GIR1 are not already set before asserting GIR0 */
+	ret = poll_for_register_delay(MU_BASE + IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR),
+					IMX_MU_xCR_GIRn(IMX_MU_VERSION, 0),
+					0,
+					100);
+	if (ret < 0)
+		tr_err(&ipc_tr, "failed poll for GIR0");
+
+
+	ret = poll_for_register_delay(MU_BASE + IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR),
+					IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1),
+					0,
+					100);
+	if (ret < 0)
+		tr_err(&ipc_tr, "failed poll for GIR1");
 
 	/* request GP interrupt #0 - notify host that reply is ready */
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 0), 0);
@@ -141,13 +147,15 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
+	uint32_t gir0_set, gir1_set, control;
+
+	control = imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR));
+	gir1_set = control & IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1);
+	gir0_set = control & IMX_MU_xCR_GIRn(IMX_MU_VERSION, 0);
 
 	/* can't send notification when one is in progress */
-	if (ipc->is_notification_pending ||
-	    imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) &
-					IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1)) {
+	if (ipc->is_notification_pending || gir0_set || gir1_set)
 		return -EBUSY;
-	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
