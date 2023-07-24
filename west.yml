@@ -36,7 +36,7 @@ manifest:
     - name: rimage
       repo-path: rimage
       path: sof/rimage
-      revision: 48777207f5fdc49314dd4709d660e891c48d5ba9
+      revision: aa0ac9eae67506b86e30d66ec75b6f514d729150
 
     - name: tomlc99
       repo-path: tomlc99
