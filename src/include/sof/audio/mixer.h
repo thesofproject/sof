@@ -48,7 +48,7 @@ typedef void (*mixer_func)(struct comp_dev *dev, struct audio_stream __sparse_ca
 
 /** \brief Volume processing functions map. */
 struct mixer_func_map {
-	uint16_t frame_fmt;	/**< frame format */
+	enum sof_ipc_frame frame_fmt;	/**< frame format */
 	mixer_func func;	/**< volume processing function */
 };
 
