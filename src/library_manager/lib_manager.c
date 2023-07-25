@@ -17,6 +17,7 @@
 
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
@@ -656,16 +657,26 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	if (ret < 0)
 		goto cleanup;
 
-	/* Load manifest to temporary buffer */
-	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	/*
+	 * make sure that the DSP is running full speed for the duration of
+	 * library loading
+	 */
+	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
 	if (ret < 0)
 		goto cleanup;
 
+	/* Load manifest to temporary buffer */
+	ret = lib_manager_store_data(&dma_ext, man_tmp_buffer, MAN_MAX_SIZE_V1_8);
+	if (ret < 0)
+		goto kcps_rollback;
+
 	ret = lib_manager_store_library(&dma_ext, man_tmp_buffer, lib_id, addr_align);
+
+kcps_rollback:
+	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
 
 cleanup:
 	lib_manager_dma_buffer_free(&dma_ext.dmabp);
-
 	rfree((__sparse_force void *)man_tmp_buffer);
 
 	lib_manager_dma_deinit(&dma_ext, dma_id);
