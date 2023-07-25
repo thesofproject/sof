@@ -37,9 +37,14 @@ static int audio_stream_commit_buffer(struct sof_sink __sparse_cache *sink, size
 	struct audio_stream __sparse_cache *audio_stream =
 			attr_container_of(sink, struct audio_stream __sparse_cache,
 					  sink_api, __sparse_cache);
+	struct comp_buffer __sparse_cache *buffer_c =
+			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+					  stream, __sparse_cache);
 
-	if (commit_size)
+	if (commit_size) {
+		buffer_stream_writeback(buffer_c, commit_size);
 		audio_stream_produce(audio_stream, commit_size);
+	}
 
 	return 0;
 }
@@ -60,8 +65,14 @@ static int audio_stream_get_data(struct sof_source __sparse_cache *source, size_
 			attr_container_of(source, struct audio_stream __sparse_cache,
 					  source_api, __sparse_cache);
 
+	struct comp_buffer __sparse_cache *buffer_c =
+			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+					  stream, __sparse_cache);
+
 	if (req_size > audio_stream_get_data_available(source))
 		return -ENODATA;
+
+	buffer_stream_invalidate(buffer_c, req_size);
 
 	/* get circular buffer parameters */
 	*data_ptr = audio_stream->r_ptr;
