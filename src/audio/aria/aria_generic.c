@@ -19,10 +19,9 @@ const uint8_t INDEX_TAB[] = {
 		0,    1,    2,    3
 };
 
-inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
+inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 				struct audio_stream __sparse_cache *source, int frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
 	int32_t max_data = 0;
 	int32_t sample_abs;
 	uint32_t att = cd->att;
@@ -50,9 +49,10 @@ inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
 	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data(struct comp_dev *dev, struct audio_stream __sparse_cache *sink, int frames)
+void aria_algo_get_data(struct processing_module *mod,
+			struct audio_stream __sparse_cache *sink, int frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 	int32_t step, in_sample;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
@@ -96,7 +96,7 @@ void aria_algo_get_data(struct comp_dev *dev, struct audio_stream __sparse_cache
 	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
 }
 
-aria_get_data_func aria_algo_get_data_func(struct comp_dev *dev)
+aria_get_data_func aria_algo_get_data_func(struct processing_module *mod)
 {
 	return aria_algo_get_data;
 }
