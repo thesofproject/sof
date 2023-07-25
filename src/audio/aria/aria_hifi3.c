@@ -20,10 +20,9 @@ const uint8_t INDEX_TAB[] = {
 		0,    1,    2,    3
 };
 
-inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
+inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 				struct audio_stream __sparse_cache *source, int frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
 	/* detecting maximum value in data chunk */
 	ae_int32x2 in_sample;
 	ae_int32x2 max_data = AE_ZERO32();
@@ -61,11 +60,11 @@ inline void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
 	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data_odd_channel(struct comp_dev *dev,
+void aria_algo_get_data_odd_channel(struct processing_module *mod,
 				    struct audio_stream __sparse_cache *sink,
 				    int frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 	size_t i, m, n, ch;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
@@ -118,11 +117,11 @@ void aria_algo_get_data_odd_channel(struct comp_dev *dev,
 	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
 }
 
-void aria_algo_get_data_even_channel(struct comp_dev *dev,
+void aria_algo_get_data_even_channel(struct processing_module *mod,
 				     struct audio_stream __sparse_cache *sink,
 				     int frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 	size_t i, m, n, ch;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
@@ -174,9 +173,9 @@ void aria_algo_get_data_even_channel(struct comp_dev *dev,
 	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
 }
 
-aria_get_data_func aria_algo_get_data_func(struct comp_dev *dev)
+aria_get_data_func aria_algo_get_data_func(struct processing_module *mod)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 
 	if (cd->chan_cnt & 1)
 		return aria_algo_get_data_odd_channel;

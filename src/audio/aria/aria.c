@@ -28,8 +28,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_aria;
-
 LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
 
 /* these ids aligns windows driver requirement to support windows driver */
@@ -48,10 +46,9 @@ static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
 	return ALIGN_UP(num_of_ms * chan_cnt * smpl_group_cnt, 2) * sizeof(int32_t);
 }
 
-static int aria_algo_init(struct comp_dev *dev, void *buffer_desc,
+static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 			  size_t att, size_t chan_cnt, size_t smpl_group_cnt)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
 	size_t idx;
 
 	cd->chan_cnt = chan_cnt;
@@ -74,18 +71,18 @@ static int aria_algo_init(struct comp_dev *dev, void *buffer_desc,
 	return 0;
 }
 
-void aria_process_data(struct comp_dev *dev,
-		       struct audio_stream __sparse_cache *source,
-		       struct audio_stream __sparse_cache *sink,
-		       size_t frames)
+static inline void aria_process_data(struct processing_module *mod,
+				     struct audio_stream __sparse_cache *source,
+				     struct audio_stream __sparse_cache *sink,
+				     size_t frames)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 	size_t data_size = audio_stream_frame_bytes(source) * frames;
 	size_t sample_size = audio_stream_get_channels(source) * frames;
 
 	if (cd->att) {
-		aria_algo_calc_gain(dev, INDEX_TAB[cd->gain_state + 1], source, frames);
-		cd->aria_get_data(dev, sink, frames);
+		aria_algo_calc_gain(cd, INDEX_TAB[cd->gain_state + 1], source, frames);
+		cd->aria_get_data(mod, sink, frames);
 	} else {
 		/* bypass processing gets unprocessed data from buffer */
 		cir_buf_copy(cd->data_ptr, cd->data_addr, cd->data_end,
@@ -99,34 +96,29 @@ void aria_process_data(struct comp_dev *dev,
 	cd->data_ptr = cir_buf_wrap(cd->data_ptr + sample_size, cd->data_addr, cd->data_end);
 }
 
-static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
-		     const void *spec)
+int aria_init(struct processing_module *mod)
 {
-	const struct ipc4_aria_module_cfg *aria = spec;
+	struct comp_dev *dev = mod->dev;
+	struct module_data *mod_data = &mod->priv;
+	struct ipc4_base_module_cfg *base_cfg = &mod_data->cfg.base_cfg;
+	const struct ipc4_aria_module_cfg *aria = mod_data->cfg.init_data;
 	struct aria_data *cd;
 	size_t ibs, chc, sgs, sgc, req_mem, att;
 	void *buf;
-	int ret;
 
-	dev->ipc_config = *config;
+	comp_info(dev, "aria_init()");
+
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
-		comp_free(dev);
 		return -ENOMEM;
 	}
 
-	/* Copy received data format to local structures */
-	ret = memcpy_s(&cd->base, sizeof(struct ipc4_base_module_cfg),
-		       &aria->base_cfg, sizeof(struct ipc4_base_module_cfg));
-	if (ret < 0)
-		return ret;
-
-	ibs = cd->base.ibs;
-	chc = cd->base.audio_fmt.channels_count;
-	sgs = (cd->base.audio_fmt.depth >> 3) * chc;
+	ibs = base_cfg->ibs;
+	chc = base_cfg->audio_fmt.channels_count;
+	sgs = (base_cfg->audio_fmt.depth >> 3) * chc;
 	sgc = ibs / sgs;
 	req_mem = get_required_emory(chc, sgc);
 	att = aria->attenuation;
@@ -136,71 +128,48 @@ static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
 			  att, ARIA_MAX_ATT);
 		att = ARIA_MAX_ATT;
 	}
-
-	comp_set_drvdata(dev, cd);
+	mod_data->private = cd;
 
 	buf = rballoc(0, SOF_MEM_CAPS_RAM, req_mem);
 
 	if (!buf) {
-		rfree(buf);
 		rfree(cd);
-		comp_free(dev);
 		comp_err(dev, "init_aria(): allocation failed for size %d", req_mem);
 		return -ENOMEM;
 	}
 
-	return aria_algo_init(dev, buf, att, chc, sgc);
+	return aria_algo_init(cd, buf, att, chc, sgc);
 }
 
-static struct comp_dev *aria_new(const struct comp_driver *drv,
-				 const struct comp_ipc_config *config,
-				 const void *spec)
+static int aria_free(struct processing_module *mod)
 {
-	struct comp_dev *dev;
-	int ret;
-
-	comp_cl_info(&comp_aria, "aria_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	ret = init_aria(dev, config, spec);
-	if (ret < 0) {
-		comp_free(dev);
-		return NULL;
-	}
-	dev->state = COMP_STATE_READY;
-
-	return dev;
-}
-
-static void aria_free(struct comp_dev *dev)
-{
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct aria_data *cd = module_get_private_data(mod);
 
 	rfree(cd->data_addr);
 	rfree(cd);
-	rfree(dev);
+	return 0;
 }
 
-static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data *cd)
+static void aria_set_stream_params(struct comp_buffer *buffer,
+				   struct processing_module *mod)
 {
 	struct comp_buffer __sparse_cache *buffer_c;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
+	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
+	struct aria_data *cd = module_get_private_data(mod);
 
 	buffer_c = buffer_acquire(buffer);
 
-	audio_stream_fmt_conversion(cd->base.audio_fmt.depth,
-				    cd->base.audio_fmt.valid_bit_depth,
+	audio_stream_fmt_conversion(audio_fmt->depth,
+				    audio_fmt->valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
-				    cd->base.audio_fmt.s_type);
+				    audio_fmt->s_type);
 	audio_stream_set_buffer_fmt(&buffer_c->stream,
-				    cd->base.audio_fmt.interleaving_style);
+				   audio_fmt->interleaving_style);
 	audio_stream_set_frm_fmt(&buffer_c->stream, frame_fmt);
 	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
 	audio_stream_set_channels(&buffer_c->stream, cd->chan_cnt);
-	audio_stream_set_rate(&buffer_c->stream, cd->base.audio_fmt.sampling_frequency);
+	audio_stream_set_rate(&buffer_c->stream, audio_fmt->sampling_frequency);
 
 #ifdef ARIA_GENERIC
 	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
@@ -211,19 +180,22 @@ static void aria_set_stream_params(struct comp_buffer *buffer, struct aria_data 
 	buffer_release(buffer_c);
 }
 
-static int aria_prepare(struct comp_dev *dev)
+static int aria_prepare(struct processing_module *mod,
+			struct sof_source __sparse_cache **sources, int num_of_sources,
+			struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	int ret;
 	struct comp_buffer *source, *sink;
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct comp_dev *dev = mod->dev;
+	struct aria_data *cd = module_get_private_data(mod);
 
 	comp_info(dev, "aria_prepare()");
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	aria_set_stream_params(source, cd);
+	aria_set_stream_params(source, mod);
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	aria_set_stream_params(sink, cd);
+	aria_set_stream_params(sink, mod);
 
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "aria_prepare(): Component is in active state.");
@@ -237,14 +209,15 @@ static int aria_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	cd->aria_get_data = aria_algo_get_data_func(dev);
+	cd->aria_get_data = aria_algo_get_data_func(mod);
 
 	return 0;
 }
 
-static int aria_reset(struct comp_dev *dev)
+static int aria_reset(struct processing_module *mod)
 {
-	struct aria_data *cd = comp_get_drvdata(dev);
+	struct comp_dev *dev = mod->dev;
+	struct aria_data *cd = module_get_private_data(mod);
 	int idx;
 
 	comp_info(dev, "aria_reset()");
@@ -260,103 +233,46 @@ static int aria_reset(struct comp_dev *dev)
 	memset(cd->data_addr, 0, sizeof(int32_t) * cd->buff_size);
 	cd->gain_state = 0;
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
 	return 0;
 }
 
-static int aria_trigger(struct comp_dev *dev, int cmd)
-{
-	comp_info(dev, "aria_trigger()");
 
-	return comp_set_state(dev, cmd);
-}
-
-static int aria_copy(struct comp_dev *dev)
+static int aria_process(struct processing_module *mod,
+			struct input_stream_buffer *input_buffers, int num_input_buffers,
+			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	/* Aria algo supports only 4-bytes containers */
-	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	struct aria_data *cd;
+	struct aria_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	uint32_t copy_bytes;
-	uint32_t frames;
-
-	cd = comp_get_drvdata(dev);
+	uint32_t frames = input_buffers[0].size;
 
 	comp_dbg(dev, "aria_copy()");
-
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
-
-	frames = audio_stream_avail_frames_aligned(&source_c->stream,
-						   &sink_c->stream);
 
 	frames = MIN(frames, cd->smpl_group_cnt);
 
 	/* Aria won't change the stream format and channels, so sink and source
 	 * has the same bytes to produce and consume.
 	 */
-	copy_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
+	copy_bytes = frames * audio_stream_frame_bytes(input_buffers[0].data);
 	if (copy_bytes == 0)
-		goto out;
+		return 0;
 
-	buffer_stream_invalidate(source_c, copy_bytes);
-	aria_process_data(dev, &source_c->stream, &sink_c->stream, frames);
-	buffer_stream_writeback(sink_c, copy_bytes);
+	aria_process_data(mod, input_buffers[0].data, output_buffers[0].data, frames);
 
-	comp_update_buffer_produce(sink_c, copy_bytes);
-	comp_update_buffer_consume(source_c, copy_bytes);
-
-out:
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	input_buffers[0].consumed = copy_bytes;
+	output_buffers[0].size = copy_bytes;
 
 	return 0;
 }
 
-static int aria_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct aria_data *cd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->base;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static const struct comp_driver comp_aria = {
-	.uid	= SOF_RT_UUID(aria_comp_uuid),
-	.tctx	= &aria_comp_tr,
-	.ops	= {
-		.create			= aria_new,
-		.free			= aria_free,
-		.trigger		= aria_trigger,
-		.copy			= aria_copy,
-		.prepare		= aria_prepare,
-		.reset			= aria_reset,
-		.get_attribute		= aria_get_attribute,
-	},
+static struct module_interface aria_interface = {
+	.init  = aria_init,
+	.prepare = aria_prepare,
+	.process_audio_stream = aria_process,
+	.reset = aria_reset,
+	.free = aria_free
 };
 
-static SHARED_DATA struct comp_driver_info comp_aria_info = {
-	.drv = &comp_aria,
-};
-
-UT_STATIC void sys_comp_aria_init(void)
-{
-	comp_register(platform_shared_get(&comp_aria_info,
-					  sizeof(comp_aria_info)));
-}
-
-DECLARE_MODULE(sys_comp_aria_init);
-SOF_MODULE_INIT(aria, sys_comp_aria_init);
+DECLARE_MODULE_ADAPTER(aria_interface, aria_comp_uuid, aria_comp_tr);
+SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);

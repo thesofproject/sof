@@ -21,6 +21,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <ipc4/module.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <ipc4/base-config.h>
 #include <user/trace.h>
 #include <stddef.h>
@@ -46,23 +47,22 @@
 /**
  * \brief aria get data function interface
  */
-typedef void (*aria_get_data_func)(struct comp_dev *dev,
+typedef void (*aria_get_data_func)(struct processing_module *mod,
 				   struct audio_stream __sparse_cache *sink, int frames);
 
+struct aria_data;
 /**
  * \brief Aria gain processing function
  */
-void aria_algo_calc_gain(struct comp_dev *dev, size_t gain_idx,
+void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 			 struct audio_stream __sparse_cache *source, int frames);
 
-aria_get_data_func aria_algo_get_data_func(struct comp_dev *dev);
+aria_get_data_func aria_algo_get_data_func(struct processing_module *mod);
 
 /**
  * \brief Aria component private data.
  */
 struct aria_data {
-	struct ipc4_base_module_cfg base;
-
 	/* channels count */
 	size_t chan_cnt;
 	/* sample groups to process count */
