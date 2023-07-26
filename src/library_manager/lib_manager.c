@@ -622,6 +622,12 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 	int ret;
 	void __sparse_cache *man_tmp_buffer = NULL;
 
+	if (!lib_id || lib_id >= LIB_MANAGER_MAX_LIBS) {
+		tr_err(&lib_manager_tr,
+		       "lib_manager_load_library(): invalid lib_id: %u", lib_id);
+		return -EINVAL;
+	}
+
 	lib_manager_init();
 
 	ret = lib_manager_dma_init(&dma_ext, dma_id);
