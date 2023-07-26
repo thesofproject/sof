@@ -24,6 +24,16 @@ static int vmh_test(void)
 	if (!h)
 		return -ENOMEM;
 
+	char *buf = vmh_alloc(h, 1616);
+
+	if (!buf)
+		return -ENOMEM;
+
+	buf[0] = 0;
+	buf[1615] = 15;
+
+	vmh_free(h, buf);
+
 	return vmh_free_heap(h);
 }
 
