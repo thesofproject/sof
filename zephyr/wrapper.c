@@ -36,7 +36,7 @@
 
 LOG_MODULE_REGISTER(zephyr, CONFIG_SOF_LOG_LEVEL);
 
-extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
+extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_MAX_NUM_CPUS,
 				   CONFIG_ISR_STACK_SIZE);
 
 /* 300aaad4-45d2-8313-25d0-5e1d6086cdd1 */
@@ -284,8 +284,8 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
  */
 #if CONFIG_MULTICORE && CONFIG_SMP
 
-static struct idc idc[CONFIG_MP_NUM_CPUS];
-static struct idc *p_idc[CONFIG_MP_NUM_CPUS];
+static struct idc idc[CONFIG_MP_MAX_NUM_CPUS];
+static struct idc *p_idc[CONFIG_MP_MAX_NUM_CPUS];
 
 struct idc **idc_get(void)
 {

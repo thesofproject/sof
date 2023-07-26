@@ -8,7 +8,7 @@ if(CONFIG_INTEL)
 	add_subdirectory(intel)
 endif()
 
-if(CONFIG_RENOIR OR CONFIG_REMBRANDT)
+if(CONFIG_AMD)
 	add_subdirectory(amd)
 endif()
 

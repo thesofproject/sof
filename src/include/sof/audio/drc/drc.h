@@ -8,6 +8,7 @@
 #define __SOF_AUDIO_DRC_DRC_H__
 
 #include <stdint.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/drc/drc_plat_conf.h>
 #include <sof/audio/buffer.h>
 #include <sof/platform.h>
@@ -58,7 +59,7 @@ struct drc_state {
 	int32_t max_attack_compression_diff_db; /* Q8.24 */
 };
 
-typedef void (*drc_func)(const struct comp_dev *dev,
+typedef void (*drc_func)(struct processing_module *mod,
 			 const struct audio_stream __sparse_cache *source,
 			 struct audio_stream __sparse_cache *sink,
 			 uint32_t frames);
@@ -81,9 +82,9 @@ struct drc_proc_fnmap {
 extern const struct drc_proc_fnmap drc_proc_fnmap[];
 extern const size_t drc_proc_fncount;
 
-void drc_default_pass(const struct comp_dev *dev, const struct audio_stream *source,
-		      struct audio_stream *sink, uint32_t frames);
-
+void drc_default_pass(struct processing_module *mod,
+		      const struct audio_stream __sparse_cache *source,
+		      struct audio_stream __sparse_cache *sink, uint32_t frames);
 /**
  * \brief Returns DRC processing function.
  */

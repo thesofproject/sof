@@ -114,6 +114,13 @@ config COMP_SRC
 	help
 	  Select for SRC component
 
+config COMP_STUBS
+	bool "Build all selected third-party (3P) components with stubs"
+	default n
+	help
+	  Select to force all 3P blocks to link against stubs rather than their libraries. This
+	  should only be used in testing environments like fuzzers or CI.
+
 if COMP_SRC
 
 choice
@@ -471,15 +478,26 @@ config COMP_LEGACY_INTERFACE
 config COMP_IGO_NR
 	bool "IGO NR component"
 	select COMP_BLOB
+	select COMP_IGO_NR_STUB if COMP_STUBS
 	default n
 	help
 	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
 	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
 	  info@intelli-go.com for any questions about the binary.
 
+config COMP_IGO_NR_STUB
+	bool "IGO NR component"
+	select COMP_BLOB
+	depends on COMP_IGO_NR
+	default n
+	help
+	  This option builds the IGO adapter with a stub library, it should only be used for
+	  testing or CI purposes.
+
 config COMP_RTNR
 	bool "RTNR component"
 	select COMP_BLOB
+	select COMP_RTNR_STUB if COMP_STUBS
 	default n
 	help
 	  Select for Realtek noise reduction/suppression(NR/NS) component.
@@ -490,6 +508,14 @@ config COMP_RTNR
 	  according to improve signal-to-noise ratios. The feature links to a
 	  proprietary binary libSOF_RTK_MA_API.a, libSuite_rename.a, libNet.a and libPreset.a.
 	  Please contact antz0525@realtek.com for any question about the binary.
+
+config COMP_RTNR_STUB
+	bool "RTNR component stub"
+	select COMP_BLOB
+	depends on COMP_RTNR
+	default n
+	help
+	  Stub out the RTNR library for testing and CI purposes.
 
 config COMP_MFCC
 	bool "MFCC component"
@@ -518,6 +544,12 @@ config COMP_MFCC
 endmenu # "Audio components"
 
 menu "Data formats"
+
+config FORMAT_U8
+	bool "Support U8"
+	default n
+	help
+	  Support unsigned 8 bit processing data format
 
 config FORMAT_S16LE
 	bool "Support S16LE"
@@ -548,6 +580,12 @@ config FORMAT_CONVERT_HIFI3
 	default y
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
+
+config PCM_CONVERTER_FORMAT_U8
+	bool "Support U8"
+	default n
+	help
+	  Support 8 bit processing data format without sign
 
 config PCM_CONVERTER_FORMAT_S16LE
 	bool "Support S16LE"

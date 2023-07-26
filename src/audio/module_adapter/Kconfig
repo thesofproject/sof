@@ -240,6 +240,7 @@ endif # volume
 
 	config WAVES_CODEC
 	bool "Waves codec"
+	select WAVES_CODEC_STUB if COMP_STUBS
 	default n
 	help
 		Select to include Waves codec. Waves codec implements MaxxEffect API.
@@ -247,15 +248,32 @@ endif # volume
 		If library is not provided will result in compilation error.
 		For more information, contact consumer@waves.com.
 
+	config WAVES_CODEC_STUB
+	bool "Waves codec stub"
+	depends on WAVES_CODEC
+	default n
+	help
+		Select to build the waves codec with a stub file. This should only be used for
+		testing or CI.
+
 	config DTS_CODEC
 	bool "DTS codec"
 	default n
+	select DTS_CODEC_STUB if COMP_STUBS
 	help
 		Select to include DTS codec.
 		In order to compile with this option enabled, a pre-compiled static library
 		must be provided by DTS for your target platform. If this library is not present
 		then compilation errors will occur.
 		For more information, please contact sales@xperi.com
+
+	config DTS_CODEC_STUB
+	bool "DTS codec stub"
+	depends on DTS_CODEC
+	default n
+	help
+		Select to include DTS codec stub library. This is meant for testing and CI
+		purposes only.
 
 	config INTEL_MODULES
 	bool "Intel modules"

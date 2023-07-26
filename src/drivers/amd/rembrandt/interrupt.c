@@ -407,7 +407,7 @@ void acp_dsp_to_host_intr_trig(void)
 	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
 }
 
-/* Clear the Acknowledge ( status) for the host to DSP inteerupt */
+/* Clear the Acknowledge ( status) for the host to DSP interrupt */
 void acp_ack_intr_from_host(void)
 {
 	/* acknowledge the host interrupt */

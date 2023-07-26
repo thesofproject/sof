@@ -26,7 +26,7 @@ typedef union acp_cfg_dma_trns_cnt {
 		uint32_t  reserved : 12;
 		uint32_t  ioc : 1;
 	} bits;
-	unsigned int    u32All;
+	unsigned int    u32all;
 } __attribute__((packed, aligned(4))) acp_cfg_dma_trns_cnt_t;
 
 typedef struct acp_config_dma_descriptor {

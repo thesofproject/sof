@@ -1,0 +1,64 @@
+---
+
+name: Build test all components
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+jobs:
+
+  stub-build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        # Keep these names short due to questionable Github UI choices
+        IPC: [ipc3, ipc4]
+
+    steps:
+      - name: add i386 arch
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+
+      - name: apt-get install i386 packages
+        run: |
+
+          # We don't know why Github requires us to explicit all these i386
+          # dependencies. On a vanilla Ubuntu 22.04 the last apt-get is
+          # enough.
+          # Also, it does not seem possible to download Github images for
+          # local testing which means trial and error for this requires a
+          # force-push every time: excruciatingly slow!
+          sudo apt-get -y install       \
+            libgcc-s1:i386 libc6-dev:i386 libstdc++6:i386         \
+            libgomp1:i386  libitm1:i386   libatomic1:i386         \
+            libasan8:i386  libubsan1:i386 libquadmath0:i386       \
+
+          sudo apt-get -y install \
+            libc6-dev-i386 libstdc++-12-dev:i386
+
+      - name: apt-get install build tools
+        run:
+          sudo apt-get -y install
+            clang llvm ninja-build device-tree-compiler python3-pyelftools
+
+      - uses: actions/checkout@v3
+        with:
+          path: ./workspace/sof
+
+      - name: west update
+        run: |
+          cd workspace/sof
+          pip3 install west
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: build
+        run: |
+          cd workspace
+          clang --verbose
+          set -x
+          sof/scripts/fuzz.sh -b -c stub_build_all_${{ matrix.IPC }}.conf -- "$cmake_arg"

@@ -32,7 +32,6 @@
 #define ACP_SW_INTR_TRIG                              0x124181C
 #define ACP_SMU_MAILBOX                               0x1241820
 #define DSP_INTERRUPT_ROUTING_CTRL                    0x1241824
-#define ACP_FUTURE_REG_ACLK_0			      0x1241860
 #define ACP_TIMER                                     0x1241874
 #define ACP_TIMER_CNTL                                0x1241878
 #define ACP_AXI2DAGB_SEM_0			      0x1241880

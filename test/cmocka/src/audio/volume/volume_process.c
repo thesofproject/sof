@@ -278,8 +278,10 @@ static void test_audio_vol(void **state)
 	case SOF_IPC_FRAME_FLOAT:
 		fill_source_s32(vol_state);
 		break;
-	case SOF_IPC_FRAME_S24_3LE:
-		/* TODO: add 3LE support */
+
+	/* TODO: add 3LE support */
+	/* TODO: add U8 support */
+	default:
 		break;
 	}
 

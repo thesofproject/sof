@@ -438,8 +438,10 @@ static void test_audio_sel(void **state)
 		fill_source_s32(sel_state);
 		break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-/* TODO: add S24_3LE support */
-	case SOF_IPC_FRAME_S24_3LE:
+
+	/* TODO: add S24_3LE support */
+	/* TODO: add U8 support */
+	default:
 		break;
 	}
 

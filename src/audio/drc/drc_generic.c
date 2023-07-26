@@ -465,7 +465,8 @@ static void drc_process_one_division(struct drc_state *state,
 	drc_compress_output(state, p, nbyte, nch);
 }
 
-void drc_default_pass(const struct comp_dev *dev, const struct audio_stream __sparse_cache *source,
+void drc_default_pass(struct processing_module *mod,
+		      const struct audio_stream __sparse_cache *source,
 		      struct audio_stream __sparse_cache *sink, uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
@@ -526,7 +527,7 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 	*y = y0;
 }
 
-static void drc_s16_default(const struct comp_dev *dev,
+static void drc_s16_default(struct processing_module *mod,
 			    const struct audio_stream __sparse_cache *source,
 			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
@@ -535,7 +536,7 @@ static void drc_s16_default(const struct comp_dev *dev,
 	int16_t *y = audio_stream_get_wptr(sink);
 	int nch = audio_stream_get_channels(source);
 	int samples = frames * nch;
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment_samples;
@@ -672,7 +673,7 @@ static void drc_delay_input_sample_s24(struct drc_state *state,
 	*y = y0;
 }
 
-static void drc_s24_default(const struct comp_dev *dev,
+static void drc_s24_default(struct processing_module *mod,
 			    const struct audio_stream __sparse_cache *source,
 			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
@@ -681,7 +682,7 @@ static void drc_s24_default(const struct comp_dev *dev,
 	int32_t *y = audio_stream_get_wptr(sink);
 	int nch = audio_stream_get_channels(source);
 	int samples = frames * nch;
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment_samples;
@@ -720,7 +721,7 @@ static void drc_s24_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void drc_s32_default(const struct comp_dev *dev,
+static void drc_s32_default(struct processing_module *mod,
 			    const struct audio_stream __sparse_cache *source,
 			    struct audio_stream __sparse_cache *sink,
 			    uint32_t frames)
@@ -729,7 +730,7 @@ static void drc_s32_default(const struct comp_dev *dev,
 	int32_t *y = audio_stream_get_wptr(sink);
 	int nch = audio_stream_get_channels(source);
 	int samples = frames * nch;
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment_samples;

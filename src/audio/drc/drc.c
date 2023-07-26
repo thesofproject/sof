@@ -4,36 +4,38 @@
 //
 // Author: Pin-chih Lin <johnylin@google.com>
 
-#include <sof/audio/component.h>
-#include <sof/audio/data_blob.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/drc/drc.h>
 #include <sof/audio/drc/drc_algorithm.h>
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
-#include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/common.h>
-#include <rtos/panic.h>
+#include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
-#include <rtos/init.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
-#include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
-#include <rtos/string.h>
-#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <rtos/alloc.h>
+#include <rtos/init.h>
+#include <rtos/panic.h>
+#include <rtos/string.h>
+#include <sof/common.h>
+#include <sof/list.h>
+#include <sof/platform.h>
+#include <sof/ut.h>
 #include <user/eq.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_drc;
+LOG_MODULE_REGISTER(drc, CONFIG_SOF_LOG_LEVEL);
 
 /* b36ee4da-006f-47f9-a06d-fecbe2d8b6ce */
 DECLARE_SOF_RT_UUID("drc", drc_uuid, 0xb36ee4da, 0x006f, 0x47f9,
@@ -139,353 +141,234 @@ static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
  * End of DRC setup code. Next the standard component methods.
  */
 
-static struct comp_dev *drc_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
+static int drc_init(struct processing_module *mod)
 {
-	struct comp_dev *dev = NULL;
-	struct drc_comp_data *cd = NULL;
-	const struct ipc_config_process *ipc_drc = spec;
-	size_t bs = ipc_drc->size;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *cfg = &md->cfg;
+	struct drc_comp_data *cd;
+	size_t bs = cfg->size;
 	int ret;
 
-	comp_cl_info(&comp_drc, "drc_new()");
+	comp_info(dev, "drc_init()");
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */
 	if (bs > SOF_DRC_MAX_SIZE) {
-		comp_cl_err(&comp_drc, "drc_new(), error: configuration blob size = %u > %d",
-			    bs, SOF_DRC_MAX_SIZE);
-		return NULL;
+		comp_err(dev, "drc_init(), error: configuration blob size = %u > %d",
+			 bs, SOF_DRC_MAX_SIZE);
+		return -EINVAL;
 	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto fail;
+		return -ENOMEM;
 
-	comp_set_drvdata(dev, cd);
-
-	cd->drc_func = NULL;
+	md->private = cd;
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_drc, "drc_new(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "drc_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
 		goto cd_fail;
 	}
 
 	/* Get configuration data and reset DRC state */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_drc->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_cl_err(&comp_drc, "drc_new(): comp_init_data_blob() failed.");
+		comp_err(dev, "drc_init(): comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
-	drc_reset_state(&cd->state);
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+	drc_reset_state(&cd->state);
+	return 0;
 
 cd_fail:
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
-fail:
-	rfree(dev);
-	return NULL;
+	return ret;
 }
 
-static void drc_free(struct comp_dev *dev)
+static int drc_free(struct processing_module *mod)
 {
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "drc_free()");
+	comp_info(mod->dev, "drc_free()");
 
 	comp_data_blob_handler_free(cd->model_handler);
-
 	rfree(cd);
-	rfree(dev);
-}
-
-static int drc_params(struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_info(dev, "drc_params()");
-
-	comp_dbg(dev, "drc_verify_params()");
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "drc_params(): comp_verify_params() failed.");
-		return -EINVAL;
-	}
-
-	/* All configuration work is postponed to prepare(). */
 	return 0;
 }
 
-static int drc_cmd_get_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata, int max_size)
+static int drc_set_config(struct processing_module *mod, uint32_t config_id,
+			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			  size_t response_size)
 {
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
+	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "drc_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
-		break;
-	default:
-		comp_err(dev, "drc_cmd_get_data() error: invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
+	comp_info(mod->dev, "drc_set_config()");
+
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
+				  fragment_size);
 }
 
-static int drc_cmd_set_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata)
+static int drc_get_config(struct processing_module *mod,
+			  uint32_t config_id, uint32_t *data_offset_size,
+			  uint8_t *fragment, size_t fragment_size)
 {
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "drc_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		break;
-	default:
-		comp_err(dev, "drc_cmd_set_data() error: invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
+	comp_info(mod->dev, "drc_get_config()");
 
-	return ret;
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static int drc_cmd(struct comp_dev *dev, int cmd, void *data,
-		   int max_data_size)
+static void drc_set_alignment(struct audio_stream __sparse_cache *source,
+			      struct audio_stream __sparse_cache *sink)
 {
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
-
-	comp_info(dev, "drc_cmd()");
-
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = drc_cmd_set_data(dev, cdata);
-		break;
-	case COMP_CMD_GET_DATA:
-		ret = drc_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	default:
-		comp_err(dev, "drc_cmd(), invalid command");
-		ret = -EINVAL;
-	}
-
-	return ret;
+	/* Currently no optimizations those would use wider loads and stores */
+	audio_stream_init_alignment_constants(1, 1, source);
+	audio_stream_init_alignment_constants(1, 1, sink);
 }
 
-static int drc_trigger(struct comp_dev *dev, int cmd)
+static int drc_process(struct processing_module *mod,
+		       struct input_stream_buffer *input_buffers,
+		       int num_input_buffers,
+		       struct output_stream_buffer *output_buffers,
+		       int num_output_buffers)
 {
+	struct drc_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	int frames = input_buffers[0].size;
 	int ret;
 
-	comp_info(dev, "drc_trigger()");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		ret = PPL_STATUS_PATH_STOP;
-
-	return ret;
-}
-
-static void drc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			struct comp_buffer __sparse_cache *sink, int frames,
-			uint32_t source_bytes, uint32_t sink_bytes)
-{
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
-
-	buffer_stream_invalidate(source, source_bytes);
-
-	cd->drc_func(dev, &source->stream, &sink->stream, frames);
-
-	buffer_stream_writeback(sink, sink_bytes);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
-}
-
-/* copy and process stream data from source to sink buffers */
-static int drc_copy(struct comp_dev *dev)
-{
-	struct comp_copy_limits cl;
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	int ret = 0;
-
-	comp_dbg(dev, "drc_copy()");
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
+	comp_dbg(dev, "drc_process()");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = drc_setup(cd, audio_stream_get_channels(&source_c->stream),
-				audio_stream_get_rate(&source_c->stream));
+		ret = drc_setup(cd, audio_stream_get_channels(source),
+				audio_stream_get_rate(source));
 		if (ret < 0) {
 			comp_err(dev, "drc_copy(), failed DRC setup");
-			goto out;
+			return ret;
 		}
 	}
 
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source_c, sink_c, &cl);
+	cd->drc_func(mod, source, sink, frames);
 
-	/* Run DRC function */
-	drc_process(dev, source_c, sink_c, cl.frames, cl.source_bytes,
-		    cl.sink_bytes);
-
-out:
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
-	return ret;
+	/* calc new free and available */
+	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+	return 0;
 }
 
-static int drc_prepare(struct comp_dev *dev)
+#if CONFIG_IPC_MAJOR_4
+static void drc_params(struct processing_module *mod)
 {
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
+
+	comp_dbg(dev, "drc_params()");
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(sink_c);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(source_c);
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+static int drc_prepare(struct processing_module *mod,
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+{
+	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	uint32_t sink_period_bytes;
+	struct comp_dev *dev = mod->dev;
+	int channels;
+	int rate;
 	int ret;
 
 	comp_info(dev, "drc_prepare()");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+#if CONFIG_IPC_MAJOR_4
+	drc_params(mod);
+#endif
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	source_c = buffer_acquire(sourceb);
+	sink_c = buffer_acquire(sinkb);
+	drc_set_alignment(&source_c->stream, &sink_c->stream);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	channels = audio_stream_get_channels(&sink_c->stream);
+	rate = audio_stream_get_rate(&sink_c->stream);
+	buffer_release(sink_c);
+	buffer_release(source_c);
 
 	/* Initialize DRC */
-	comp_info(dev, "drc_prepare(), source_format=%d, sink_format=%d",
-		  cd->source_format, cd->source_format);
+	comp_info(dev, "drc_prepare(), source_format=%d", cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
-		ret = drc_setup(cd, audio_stream_get_channels(&source_c->stream),
-				audio_stream_get_rate(&source_c->stream));
+		ret = drc_setup(cd, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "drc_prepare() error: drc_setup failed.");
-			goto out_source;
+			return ret;
 		}
 
 		cd->drc_func = drc_find_proc_func(cd->source_format);
 		if (!cd->drc_func) {
 			comp_err(dev, "drc_prepare(), No proc func");
-			ret = -EINVAL;
-			goto out_source;
+			return -EINVAL;
 		}
 	} else {
 		/* Generic function for all formats */
 		cd->drc_func = drc_default_pass;
 	}
+
 	comp_info(dev, "drc_prepare(), DRC is configured.");
-
-	sink_c = buffer_acquire(sinkb);
-
-	/* validate sink data format and period bytes */
-	if (cd->source_format != audio_stream_get_frm_fmt(&sink_c->stream)) {
-		comp_err(dev, "drc_prepare(): Source fmt %d and sink fmt %d are different.",
-			 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream));
-		ret = -EINVAL;
-		goto out_sink;
-	}
-
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
-						      dev->frames);
-
-	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
-		comp_err(dev, "drc_prepare(), sink buffer size %d is insufficient",
-			 audio_stream_get_size(&sink_c->stream));
-		ret = -ENOMEM;
-	}
-
-out_sink:
-	buffer_release(sink_c);
-out_source:
-	buffer_release(source_c);
-
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	return ret;
-}
-
-static int drc_reset(struct comp_dev *dev)
-{
-	struct drc_comp_data *cd = comp_get_drvdata(dev);
-
-	comp_info(dev, "drc_reset()");
-
-	drc_reset_state(&cd->state);
-
-	cd->source_format = 0;
-	cd->drc_func = NULL;
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static const struct comp_driver comp_drc = {
-	.uid = SOF_RT_UUID(drc_uuid),
-	.tctx = &drc_tr,
-	.ops = {
-		.create  = drc_new,
-		.free    = drc_free,
-		.params  = drc_params,
-		.cmd     = drc_cmd,
-		.trigger = drc_trigger,
-		.copy    = drc_copy,
-		.prepare = drc_prepare,
-		.reset   = drc_reset,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_drc_info = {
-	.drv = &comp_drc,
-};
-
-UT_STATIC void sys_comp_drc_init(void)
+static int drc_reset(struct processing_module *mod)
 {
-	comp_register(platform_shared_get(&comp_drc_info,
-					  sizeof(comp_drc_info)));
+	struct drc_comp_data *cd = module_get_private_data(mod);
+
+	comp_info(mod->dev, "drc_reset()");
+
+	drc_reset_state(&cd->state);
+
+	return 0;
 }
 
-DECLARE_MODULE(sys_comp_drc_init);
-SOF_MODULE_INIT(drc, sys_comp_drc_init);
+static struct module_interface drc_interface = {
+	.init  = drc_init,
+	.prepare = drc_prepare,
+	.process_audio_stream = drc_process,
+	.set_configuration = drc_set_config,
+	.get_configuration = drc_get_config,
+	.reset = drc_reset,
+	.free = drc_free
+};
+
+DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
+SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);

@@ -159,7 +159,7 @@ static inline bool audio_stream_get_underrun(const struct audio_stream __sparse_
 	return buf->runtime_stream_params.underrun_permitted;
 }
 
-static inline uint32_t audio_stream_get_buffer_fmt(struct audio_stream __sparse_cache *buf)
+static inline uint32_t audio_stream_get_buffer_fmt(const struct audio_stream __sparse_cache *buf)
 {
 	return buf->runtime_stream_params.buffer_fmt;
 }
@@ -1039,6 +1039,14 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 	 */
 	*frame_fmt = (depth >> 3) - 2;
 	*valid_fmt = (valid >> 3) - 2;
+
+#ifdef CONFIG_FORMAT_U8
+	if (depth == 8)
+		*frame_fmt = SOF_IPC_FRAME_U8;
+
+	if (valid == 8)
+		*valid_fmt = SOF_IPC_FRAME_U8;
+#endif /* CONFIG_FORMAT_U8 */
 
 	/* really 24_3LE */
 	if (valid == 24 && depth == 24) {

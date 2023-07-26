@@ -19,6 +19,11 @@ DEBUG_START
 # define the default macros.
 # define them in your specific platform .m4 if needed.
 
+#undefine the DYNAMIC flag (if enabled, save it) for smart amplifier as it uses volatile kcontrols
+ifdef(`DYNAMIC', `define(`SAVED_DYNAMIC', DYNAMIC)',`')
+undefine(`DYNAMIC')
+
+
 # define(`SMART_AMP_CORE', 1) define the DSP core that the DSM pipeline will be run on, if not done yet
 ifdef(`SMART_AMP_CORE',`',`define(`SMART_AMP_CORE', 0)')
 
@@ -234,5 +239,8 @@ DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
 		      SSP_TDM(8, 32, 15, 255),
 		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 32, 0, SMART_SSP_QUIRK)))
 ')
+
+#Re-enable DYNAMIC flag if it was enabled for other pipelines
+ifdef(`SAVED_DYNAMIC', `define(`DYNAMIC', 1)',`')
 
 DEBUG_END

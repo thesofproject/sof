@@ -4,8 +4,8 @@ menu "Smart amplifier solutions"
 	visible if COMP_SMART_AMP
 
 	config MAXIM_DSM
-		depends on CAVS
 		bool "Maxim DSM solution"
+		select MAXIM_DSM_STUB if COMP_STUBS
 		default n
 		help
 		  Select to apply Maxim DSM(Dynamic Speaker Management) solution
@@ -13,6 +13,14 @@ menu "Smart amplifier solutions"
 		  pre-compiled library provided by Maxim will be required for
 		  building the FW binary with this option enabled. The library
 		  itself should be statically linked with the SoF FW binary image.
+
+	config MAXIM_DSM_STUB
+		bool "Maxim DSM solution"
+		depends on MAXIM_DSM
+		default n
+		help
+		  Select to build the Maxim DSM adapter with a stub library. This
+		  should only be used for CI and testing.
 
 endmenu
 

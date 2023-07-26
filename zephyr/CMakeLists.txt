@@ -642,6 +642,14 @@ zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
 	${SOF_AUDIO_PATH}/smart_amp/smart_amp_maxim_dsm.c
 )
 
+zephyr_include_directories_ifdef(CONFIG_MAXIM_DSM
+	${SOF_AUDIO_PATH}/smart_amp/include/dsm_api/inc/
+)
+
+zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
+	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 	${SOF_AUDIO_PATH}/aria/aria.c
 	${SOF_AUDIO_PATH}/aria/aria_hifi3.c
@@ -678,19 +686,29 @@ zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
 	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
+	${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
-	)
+if (CONFIG_SAMPLES)
+	if(CONFIG_IPC_MAJOR_3)
+		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
+		)
+	elseif(CONFIG_IPC_MAJOR_4)
+		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
+		)
+	endif()
 endif()
+
+zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
+	${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
 	${SOF_AUDIO_PATH}/tdfb/tdfb.c
@@ -724,11 +742,19 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/dts.c
+	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_DTS_CODEC_STUB
+	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/waves.c
+	${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
+	${SOF_AUDIO_PATH}/module_adapter/module/waves/maxx_stub.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_PROBE
