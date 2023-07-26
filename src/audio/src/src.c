@@ -921,12 +921,6 @@ static int src_init(struct processing_module *mod)
 
 	comp_dbg(dev, "src_init()");
 
-	if (dev->ipc_config.type != SOF_COMP_SRC || !cfg->init_data ||
-	    cfg->size != sizeof(cd->ipc_config)) {
-		comp_err(dev, "src_init(): Missing or bad size (%u) init data",
-			 cfg->size);
-		return -EINVAL;
-	}
 	/* validate init data - either SRC sink or source rate must be set */
 	if (src_rate_check(cfg->init_data) < 0) {
 		comp_err(dev, "src_init(): SRC sink and source rate are not set");
