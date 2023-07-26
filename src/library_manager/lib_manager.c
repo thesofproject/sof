@@ -37,22 +37,10 @@ DECLARE_SOF_UUID("lib_manager", lib_manager_uuid, 0x54cf5598, 0x8b29, 0x11ec,
 
 DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 
-/**
- * DMA buffer
- */
-struct lib_manager_dma_buf {
-	uintptr_t w_ptr;	/**< write pointer */
-	uintptr_t r_ptr;	/**< read pointer */
-	uintptr_t addr;		/**< buffer start pointer */
-	uintptr_t end_addr;	/**< buffer end pointer */
-	uint32_t size;		/**< buffer size */
-	uint32_t avail;		/**< buffer avail data */
-};
-
 struct lib_manager_dma_ext {
 	struct dma *dma;
 	struct dma_chan_data *chan;
-	struct lib_manager_dma_buf dmabp;
+	uintptr_t dma_addr;		/**< buffer start pointer */
 };
 
 static struct ext_library loader_ext_lib;
@@ -388,41 +376,26 @@ cleanup:
 	return ret;
 }
 
-static void lib_manager_dma_buffer_update(struct lib_manager_dma_buf *buffer,
-					  uint32_t size)
-{
-	buffer->size = size;
-	buffer->w_ptr = buffer->addr;
-	buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + buffer->size;
-	buffer->avail = 0;
-}
-
-static int lib_manager_dma_buffer_init(struct lib_manager_dma_buf *buffer, uint32_t size,
-				       uint32_t align)
+static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
+					uint32_t size, uint32_t align)
 {
 	/*
 	 * allocate new buffer: this is the actual DMA buffer but we
 	 * traditionally allocate a cached address for it
 	 */
-	buffer->addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
-	if (!buffer->addr) {
-		tr_err(&lib_manager_tr, "dma_buffer_init(): alloc failed");
+	dma_ext->dma_addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size, align);
+	if (!dma_ext->dma_addr) {
+		tr_err(&lib_manager_tr, "lib_manager_dma_buffer_alloc(): alloc failed");
 		return -ENOMEM;
 	}
 
-	dcache_invalidate_region((void __sparse_cache *)buffer->addr, size);
+	dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, size);
 
-	tr_dbg(&lib_manager_tr, "lib_manager_dma_buffer_init(): %#lx, %#lx",
-	       buffer->addr, buffer->end_addr);
+	tr_dbg(&lib_manager_tr,
+	       "lib_manager_dma_buffer_alloc(): address: %#lx, size: %u",
+	       dma_ext->dma_addr, size);
 
 	return 0;
-}
-
-void lib_manager_dma_buffer_free(struct lib_manager_dma_buf *buffer)
-{
-	rfree((void *)buffer->addr);
-	memset(buffer, 0, sizeof(struct lib_manager_dma_buf));
 }
 
 /**
@@ -473,7 +446,7 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 {
 	struct dma_block_config dma_block_cfg = {
 		.block_size = size,
-		.dest_address = dma_ext->dmabp.addr,
+		.dest_address = dma_ext->dma_addr,
 		.flow_control_mode = 1,
 	};
 	struct dma_config config = {
@@ -514,7 +487,7 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	if (ret < 0)
 		return ret;
 
-	dcache_invalidate_region((void __sparse_cache *)dma_ext->dmabp.addr, size);
+	dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, size);
 
 	return 0;
 }
@@ -522,7 +495,6 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 				  void __sparse_cache *dst_addr, uint32_t dst_size)
 {
-	struct lib_manager_dma_buf *const dma_buf = &dma_ext->dmabp;
 	uint32_t copied_bytes = 0;
 
 	while (copied_bytes < dst_size) {
@@ -534,13 +506,11 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 		else
 			bytes_to_copy = dst_size - copied_bytes;
 
-		lib_manager_dma_buffer_update(dma_buf, bytes_to_copy);
-
 		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
 		if (ret < 0)
 			return ret;
 		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
-			 (void *)dma_buf->addr, bytes_to_copy);
+			 (void *)dma_ext->dma_addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
 	}
 
@@ -644,7 +614,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		goto cleanup;
 	}
 
-	ret = lib_manager_dma_buffer_init(&dma_ext.dmabp, MAN_MAX_SIZE_V1_8, addr_align);
+	ret = lib_manager_dma_buffer_alloc(&dma_ext, MAN_MAX_SIZE_V1_8, addr_align);
 	if (ret < 0)
 		goto cleanup;
 
@@ -667,7 +637,7 @@ kcps_rollback:
 	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
 
 cleanup:
-	lib_manager_dma_buffer_free(&dma_ext.dmabp);
+	rfree((void *)dma_ext.dma_addr);
 	rfree((__sparse_force void *)man_tmp_buffer);
 
 	lib_manager_dma_deinit(&dma_ext, dma_id);
