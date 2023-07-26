@@ -457,7 +457,6 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 		.head_block = &dma_block_cfg,
 	};
 	struct dma_status stat;
-	uint32_t avail_bytes = 0;
 	int ret;
 
 	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
@@ -468,16 +467,17 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	if (ret < 0)
 		return ret;
 
+	ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
+	if (ret < 0)
+		return ret;
+
 	/* Wait till whole data acquired */
-	while (avail_bytes < size) {
-		/* get data sizes from DMA */
+	while (stat.pending_length < size) {
+		k_usleep(100);
+
 		ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
 		if (ret < 0)
 			return ret;
-
-		avail_bytes = stat.pending_length;
-
-		k_usleep(100);
 	}
 	ret = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
 	if (ret < 0)
