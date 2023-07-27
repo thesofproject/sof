@@ -436,11 +436,18 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
 	 * kept atomic, so we have to lock here too.
 	 */
 	zephyr_ll_lock(sch, &flags);
-	if (task->state != SOF_TASK_STATE_FREE) {
+
+	/*
+	 * SOF_TASK_STATE_CANCEL can only be assigned to a task which is on scheduler's list.
+	 * Later such task will be removed from the list by zephyr_ll_task_done(). Do nothing
+	 * for tasks which were never scheduled or were already removed from scheduler's list.
+	 */
+	if (task->state != SOF_TASK_STATE_INIT && task->state != SOF_TASK_STATE_FREE) {
 		task->state = SOF_TASK_STATE_CANCEL;
 		/* let domain know that a task has been cancelled */
 		domain_task_cancel(sch->ll_domain, task);
 	}
+
 	zephyr_ll_unlock(sch, &flags);
 
 	return 0;
