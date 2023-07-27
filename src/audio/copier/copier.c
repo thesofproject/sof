@@ -561,6 +561,10 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 
 	ret = dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
 					     cd->endpoint_num);
+	if (!ret) {
+		comp_update_buffer_consume(src_c, processed_data.source_bytes);
+		cd->input_total_data_processed += processed_data.source_bytes;
+	}
 err:
 	buffer_release(src_c);
 
