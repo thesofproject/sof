@@ -179,7 +179,7 @@ static int simple_write_module(struct image *image, struct manifest_module *modu
 		return file_error("cant seek to header", image->out_file);
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
-	if (count != 1) 
+	if (count != 1)
 		return file_error("failed to write section header", image->out_file);
 
 	err = fseek(image->out_fd, ptr_cur, SEEK_SET);

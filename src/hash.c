@@ -100,7 +100,7 @@ int hash_update(struct hash_context *context, const void *data, size_t size)
 		return context->error;
 
 	assert(context->state == HS_UPDATE);
-	
+
 	if (!EVP_DigestUpdate(context->context, data, size))
 		return hash_error(context, EINVAL, "Unable to update hash context.");
 
@@ -168,7 +168,7 @@ int hash_single(const void *data, size_t size, const EVP_MD *algo, void *output,
 	assert(algo);
 	assert(data);
 	assert(output);
-	 
+
 	//algo_out_size = EVP_MD_get_size(algo);
 	algo_out_size = EVP_MD_size(algo);
 	if (algo_out_size <= 0)
