@@ -499,15 +499,10 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 static int ipc4_load_library(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_load_library library;
-	int ret = IPC4_UNAVAILABLE;
 
 	library.header.dat = ipc4->primary.dat;
-	library.data.dat = ipc4->extension.dat;
 
-	ret = lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id);
-	tr_info(&ipc_tr, "ipc: ipc4_load_library %d", ret);
-
-	return ret;
+	return lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id);
 }
 #endif
 

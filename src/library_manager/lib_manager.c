@@ -413,7 +413,8 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	dma_ext->dma = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
 			       DMA_ACCESS_EXCLUSIVE);
 	if (!dma_ext->dma) {
-		tr_err(&lib_manager_tr, "dma_ext_init(): dma.dmac = NULL");
+		tr_err(&lib_manager_tr,
+		       "lib_manager_dma_init(): dma_ext->dma = NULL");
 		return -ENODEV;
 	}
 
@@ -634,13 +635,12 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id)
 		goto stop_dma;
 
 	ret = lib_manager_store_library(&dma_ext, man_tmp_buffer, lib_id, addr_align);
-	if (ret < 0)
-		tr_err(&lib_manager_tr, "library loading error %d", ret);
 
 stop_dma:
 	ret2 = dma_stop(dma_ext.chan->dma->z_dev, dma_ext.chan->index);
 	if (ret2 < 0) {
-		tr_err(&lib_manager_tr, "error %d stopping DMA", ret);
+		tr_err(&lib_manager_tr,
+		       "lib_manager_load_library(): error stopping DMA: %d", ret);
 		if (!ret)
 			ret = ret2;
 	}
@@ -655,6 +655,9 @@ e_buf:
 	rfree((__sparse_force void *)man_tmp_buffer);
 e_init:
 	lib_manager_dma_deinit(&dma_ext, dma_id);
+
+	if (!ret)
+		tr_info(&ipc_tr, "loaded library id: %u", lib_id);
 
 	return ret;
 }
