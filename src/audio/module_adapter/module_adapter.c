@@ -858,7 +858,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 		buffer_stream_writeback(sink_c, mod->output_buffers[0].size);
 
 	if (mod->output_buffers[0].size)
-		audio_stream_produce(&sink_c->stream, mod->output_buffers[0].size);
+		comp_update_buffer_produce(sink_c, mod->output_buffers[0].size);
 
 	/* release all buffers */
 	buffer_release(sink_c);
@@ -973,7 +973,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		if (!mod->skip_sink_buffer_writeback)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
 		if (mod->output_buffers[i].size)
-			audio_stream_produce(&sink_c->stream, mod->output_buffers[i].size);
+			comp_update_buffer_produce(sink_c, mod->output_buffers[i].size);
 	}
 
 	mod->total_data_produced += mod->output_buffers[0].size;
