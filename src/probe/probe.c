@@ -1164,7 +1164,7 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 
 		fw_logs = enable_logs(&probe[i]);
 
-		if (!fw_logs && probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
+		if (!fw_logs) {
 #if CONFIG_IPC_MAJOR_4
 			dev = ipc_get_comp_by_id(ipc_get(),
 						 IPC4_COMP_ID(buf_id->fields.module_id,
