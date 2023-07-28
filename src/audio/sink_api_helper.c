@@ -175,3 +175,13 @@ int sink_set_alignment_constants(struct sof_sink __sparse_cache *sink,
 		return sink->ops->set_alignment_constants(sink, byte_align, frame_align_req);
 	return 0;
 }
+
+void sink_set_obs(struct sof_sink __sparse_cache *sink, size_t obs)
+{
+	sink->obs = obs;
+}
+
+size_t sink_get_obs(struct sof_sink __sparse_cache *sink)
+{
+	return sink->obs;
+}
