@@ -129,6 +129,8 @@ int sink_set_rate(struct sof_sink __sparse_cache *sink, unsigned int rate);
 int sink_set_channels(struct sof_sink __sparse_cache *sink, unsigned int channels);
 int sink_set_overrun(struct sof_sink __sparse_cache *sink, bool overrun_permitted);
 int sink_set_buffer_fmt(struct sof_sink __sparse_cache *sink, uint32_t buffer_fmt);
+void sink_set_obs(struct sof_sink __sparse_cache *sink, size_t obs);
+size_t sink_get_obs(struct sof_sink __sparse_cache *sink);
 
 /**
  * initial set of audio parameters, provided in sof_ipc_stream_params
