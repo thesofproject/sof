@@ -175,3 +175,18 @@ int sink_set_alignment_constants(struct sof_sink __sparse_cache *sink,
 		return sink->ops->set_alignment_constants(sink, byte_align, frame_align_req);
 	return 0;
 }
+
+void sink_set_min_free(struct sof_sink __sparse_cache *sink, size_t min_free)
+{
+	sink->min_free = min_free;
+}
+
+size_t sink_get_min_free(struct sof_sink __sparse_cache *sink)
+{
+	return sink->min_free;
+}
+
+bool sink_get_is_enough_free(struct sof_sink __sparse_cache *sink)
+{
+	return (sink->min_free <= sink_get_free_size(sink));
+}

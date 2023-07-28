@@ -160,4 +160,8 @@ int sink_set_alignment_constants(struct sof_sink __sparse_cache *sink,
 				 const uint32_t byte_align,
 				 const uint32_t frame_align_req);
 
+void sink_set_min_free(struct sof_sink __sparse_cache *sink, size_t min_free);
+size_t sink_get_min_free(struct sof_sink __sparse_cache *sink);
+bool sink_get_is_enough_free(struct sof_sink __sparse_cache *sink);
+
 #endif /* __SOF_SINK_API_H__ */
