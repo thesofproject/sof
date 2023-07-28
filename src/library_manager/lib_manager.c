@@ -185,7 +185,7 @@ static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module
 					inst_offset);
 
 	tr_dbg(&lib_manager_tr,
-	       "lib_manager_get_instance_bss_address() instance_bss_size: %#x, pointer: %p",
+	       "lib_manager_get_instance_bss_address(): instance_bss_size: %#x, pointer: %p",
 	       instance_bss_size, (__sparse_force void *)va_base);
 
 	return va_base;
@@ -201,7 +201,8 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 									    instance_id, mod);
 
 	if ((is_pages * CONFIG_MM_DRV_PAGE_SIZE) > bss_size) {
-		tr_err(&lib_manager_tr,  "is_pages (%d) invalid, required: %d",
+		tr_err(&lib_manager_tr,
+		       "lib_manager_allocate_module_instance(): invalid is_pages: %u, required: %u",
 		       is_pages, bss_size / CONFIG_MM_DRV_PAGE_SIZE);
 		return -ENOMEM;
 	}
@@ -243,11 +244,13 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 
-	tr_dbg(&lib_manager_tr, "lib_manager_allocate_module() mod_id: 0x%x", ipc_config->id);
+	tr_dbg(&lib_manager_tr, "lib_manager_allocate_module(): mod_id: %#x",
+	       ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	if (!desc) {
-		tr_err(&lib_manager_tr, "lib_manager_get_library_module_desc() failed: NULL");
+		tr_err(&lib_manager_tr,
+		       "lib_manager_allocate_module(): failed to get module descriptor");
 		return 0;
 	}
 
@@ -260,7 +263,8 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	ret = lib_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
 						   base_cfg->is_pages, mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed: %d", ret);
+		tr_err(&lib_manager_tr,
+		       "lib_manager_allocate_module(): module allocation failed: %d", ret);
 		return 0;
 	}
 	return mod->entry_point;
@@ -275,7 +279,7 @@ int lib_manager_free_module(const struct comp_driver *drv,
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	int ret;
 
-	tr_dbg(&lib_manager_tr, "lib_manager_free_module() mod_id: 0x%x", ipc_config->id);
+	tr_dbg(&lib_manager_tr, "lib_manager_free_module(): mod_id: %#x", ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
@@ -286,7 +290,8 @@ int lib_manager_free_module(const struct comp_driver *drv,
 
 	ret = lib_manager_free_module_instance(module_id, IPC4_INST_ID(ipc_config->id), mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed: %d", ret);
+		tr_err(&lib_manager_tr,
+		       "lib_manager_free_module(): free module instance failed: %d", ret);
 		return ret;
 	}
 	return 0;
@@ -333,7 +338,8 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 			       sizeof(struct comp_driver_info));
 
 	if (!new_drv_info) {
-		tr_err(&lib_manager_tr, "lib_manager_register_module(): alloc failed");
+		tr_err(&lib_manager_tr,
+		       "lib_manager_register_module(): failed to allocate comp_driver_info");
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -342,7 +348,8 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 		      SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct comp_driver));
 	if (!drv) {
-		tr_err(&lib_manager_tr, "lib_manager_register_module(): alloc failed");
+		tr_err(&lib_manager_tr,
+		       "lib_manager_register_module(): failed to allocate comp_driver");
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -356,6 +363,8 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 #if CONFIG_INTEL_MODULES
 	DECLARE_DYNAMIC_MODULE_ADAPTER(drv, SOF_COMP_MODULE_ADAPTER, *uid, lib_manager_tr);
 #else
+	tr_err(&lib_manager_tr,
+	       "lib_manager_register_module(): Dynamic module loading is not supported");
 	ret = -ENOTSUP;
 	goto cleanup;
 #endif
@@ -366,7 +375,6 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 
 cleanup:
 	if (ret < 0) {
-		tr_err(&lib_manager_tr, "lib_manager_register_module() failed: %d", ret);
 		if (drv)
 			rfree(drv);
 		if (new_drv_info)
