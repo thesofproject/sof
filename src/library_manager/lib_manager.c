@@ -529,10 +529,11 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 
 	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
 	library_base_address = lib_manager_allocate_store_mem(preload_size, 0);
-	tr_err(&lib_manager_tr, "lib_manager_store_library(): pointer: %p",
-	       (__sparse_force void *)library_base_address);
 	if (!library_base_address)
 		return -ENOMEM;
+
+	tr_dbg(&lib_manager_tr, "lib_manager_store_library(): pointer: %p",
+	       (__sparse_force void *)library_base_address);
 
 	/* Copy data from temp_mft_buf to destination memory (pointed by library_base_address) */
 	memcpy_s((__sparse_force void *)library_base_address, MAN_MAX_SIZE_V1_8,
