@@ -72,6 +72,7 @@ struct sof_source {
 	const struct source_ops *ops;
 	size_t requested_read_frag_size;	/** keeps size of data obtained by get_data() */
 	size_t num_of_bytes_processed;	/** processed bytes counter */
+	size_t min_available;		/** min available data as declared by the module */
 	struct sof_audio_stream_params *audio_stream_params;
 };
 

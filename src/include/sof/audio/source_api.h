@@ -171,4 +171,8 @@ int source_set_alignment_constants(struct sof_source __sparse_cache *source,
 				   const uint32_t byte_align,
 				   const uint32_t frame_align_req);
 
+void source_set_min_available(struct sof_source __sparse_cache *source, size_t min_available);
+size_t source_get_min_available(struct sof_source __sparse_cache *source);
+bool source_get_is_enough_available(struct sof_source __sparse_cache *source);
+
 #endif /* __SOF_SOURCE_API_H__ */

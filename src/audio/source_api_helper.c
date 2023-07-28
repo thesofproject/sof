@@ -165,3 +165,19 @@ int source_set_alignment_constants(struct sof_source __sparse_cache *source,
 		return source->ops->set_alignment_constants(source, byte_align, frame_align_req);
 	return 0;
 }
+
+void source_set_min_available(struct sof_source __sparse_cache *source, size_t min_available)
+{
+	source->min_available = min_available;
+}
+
+bool source_get_is_enough_available(struct sof_source __sparse_cache *source)
+{
+	return (source->min_available <= source_get_data_available(source));
+}
+
+size_t source_get_min_available(struct sof_source __sparse_cache *source)
+{
+	return source->min_available;
+}
+
