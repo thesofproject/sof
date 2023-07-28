@@ -165,3 +165,13 @@ int source_set_alignment_constants(struct sof_source __sparse_cache *source,
 		return source->ops->set_alignment_constants(source, byte_align, frame_align_req);
 	return 0;
 }
+
+void source_set_ibs(struct sof_source __sparse_cache *source, size_t ibs)
+{
+	source->ibs = ibs;
+}
+
+size_t source_get_ibs(struct sof_source __sparse_cache *source)
+{
+	return source->ibs;
+}

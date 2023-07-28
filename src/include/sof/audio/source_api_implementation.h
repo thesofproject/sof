@@ -70,8 +70,9 @@ struct source_ops {
 /** internals of source API. NOT TO BE MODIFIED OUTSIDE OF source_api_helper.h */
 struct sof_source {
 	const struct source_ops *ops;
-	size_t requested_read_frag_size;	/** keeps size of data obtained by get_data() */
-	size_t num_of_bytes_processed;	/** processed bytes counter */
+	size_t requested_read_frag_size; /** keeps size of data obtained by get_data() */
+	size_t num_of_bytes_processed;	 /** processed bytes counter */
+	size_t ibs;			 /** input buffer size as declared in module bind IPC */
 	struct sof_audio_stream_params *audio_stream_params;
 };
 
