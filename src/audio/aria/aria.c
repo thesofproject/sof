@@ -112,7 +112,6 @@ static int init_aria(struct comp_dev *dev, const struct comp_ipc_config *config,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)spec, sizeof(*aria));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
