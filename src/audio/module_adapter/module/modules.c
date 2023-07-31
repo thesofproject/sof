@@ -155,7 +155,7 @@ static int modules_init(struct processing_module *mod)
  *          There is one assumption - all IADK modules utilize IPC4 protocol.
  */
 static int modules_prepare(struct processing_module *mod,
-			   struct sof_source __sparse_cache **sources, int num_of_sources,
+			   struct sof_source **sources, int num_of_sources,
 			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;

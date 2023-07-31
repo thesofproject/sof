@@ -27,18 +27,18 @@ struct source_ops {
 	/**
 	 * see comment of source_get_data_available()
 	 */
-	size_t (*get_data_available)(struct sof_source __sparse_cache *source);
+	size_t (*get_data_available)(struct sof_source *source);
 
 	/**
 	 * see comment of source_get_data_available()
 	 */
-	int (*get_data)(struct sof_source __sparse_cache *source, size_t req_size,
+	int (*get_data)(struct sof_source *source, size_t req_size,
 			void **data_ptr, void **buffer_start, size_t *buffer_size);
 
 	/**
 	 * see comment of source_release_data()
 	 */
-	int (*release_data)(struct sof_source __sparse_cache *source, size_t free_size);
+	int (*release_data)(struct sof_source *source, size_t free_size);
 
 	/**
 	 * OPTIONAL: Notification to the source implementation about changes in audio format
@@ -49,20 +49,20 @@ struct source_ops {
 	 *
 	 * @retval 0 if success, negative if new parameteres are not supported
 	 */
-	int (*on_audio_format_set)(struct sof_source __sparse_cache *source);
+	int (*on_audio_format_set)(struct sof_source *source);
 
 	/**
 	 * OPTIONAL
 	 * see source_set_params comments
 	 */
-	int (*audio_set_ipc_params)(struct sof_source __sparse_cache *source,
+	int (*audio_set_ipc_params)(struct sof_source *source,
 				    struct sof_ipc_stream_params *params, bool force_update);
 
 	/**
 	 * OPTIONAL
 	 * see comment for source_set_alignment_constants
 	 */
-	int (*set_alignment_constants)(struct sof_source __sparse_cache *source,
+	int (*set_alignment_constants)(struct sof_source *source,
 				       const uint32_t byte_align,
 				       const uint32_t frame_align_req);
 };
@@ -86,7 +86,7 @@ struct sof_source {
  *	  the implementation must ensure coherent access to the parameteres
  *	  in case of i.e. cross core shared queue, it must be located in non-cached memory
  */
-void source_init(struct sof_source __sparse_cache *source, const struct source_ops *ops,
+void source_init(struct sof_source *source, const struct source_ops *ops,
 		 struct sof_audio_stream_params *audio_stream_params);
 
 #endif /* __SOF_SOURCE_API_IMPLEMENTATION_H__ */

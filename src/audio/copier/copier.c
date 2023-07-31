@@ -181,7 +181,7 @@ static int copier_free(struct processing_module *mod)
 static int copier_params(struct processing_module *mod);
 
 static int copier_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
+			  struct sof_source **sources, int num_of_sources,
 			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct copier_data *cd = module_get_private_data(mod);

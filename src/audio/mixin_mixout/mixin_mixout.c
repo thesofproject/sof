@@ -686,7 +686,7 @@ static int mixin_params(struct processing_module *mod)
  * if downstream is not currently active.
  */
 static int mixin_prepare(struct processing_module *mod,
-			 struct sof_source __sparse_cache **sources, int num_of_sources,
+			 struct sof_source **sources, int num_of_sources,
 			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixin_data *md = module_get_private_data(mod);
@@ -783,7 +783,7 @@ static int mixout_params(struct processing_module *mod)
 }
 
 static int mixout_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
+			  struct sof_source **sources, int num_of_sources,
 			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct module_source_info __sparse_cache *mod_source_info;

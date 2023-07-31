@@ -21,7 +21,7 @@ static int passthrough_codec_init(struct processing_module *mod)
 }
 
 static int passthrough_codec_prepare(struct processing_module *mod,
-				     struct sof_source __sparse_cache **sources, int num_of_sources,
+				     struct sof_source **sources, int num_of_sources,
 				     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;

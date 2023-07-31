@@ -245,10 +245,10 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
-		   struct sof_source __sparse_cache **sources, int num_of_sources,
+		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);
 int module_process_sink_src(struct processing_module *mod,
-			    struct sof_source __sparse_cache **sources, int num_of_sources,
+			    struct sof_source **sources, int num_of_sources,
 			    struct sof_sink **sinks, int num_of_sinks);
 int module_process_legacy(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,

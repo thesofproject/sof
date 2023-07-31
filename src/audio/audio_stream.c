@@ -54,7 +54,7 @@ static int audio_stream_commit_buffer(struct sof_sink *sink, size_t commit_size)
 	return 0;
 }
 
-static size_t audio_stream_get_data_available(struct sof_source __sparse_cache *source)
+static size_t audio_stream_get_data_available(struct sof_source *source)
 {
 	struct audio_stream __sparse_cache *audio_stream =
 			attr_container_of(source, struct audio_stream __sparse_cache,
@@ -63,7 +63,7 @@ static size_t audio_stream_get_data_available(struct sof_source __sparse_cache *
 	return audio_stream_get_avail_bytes(audio_stream);
 }
 
-static int audio_stream_get_data(struct sof_source __sparse_cache *source, size_t req_size,
+static int audio_stream_get_data(struct sof_source *source, size_t req_size,
 				 void  **data_ptr, void **buffer_start, size_t *buffer_size)
 {
 	struct audio_stream __sparse_cache *audio_stream =
@@ -80,7 +80,7 @@ static int audio_stream_get_data(struct sof_source __sparse_cache *source, size_
 	return 0;
 }
 
-static int audio_stream_release_data(struct sof_source __sparse_cache *source, size_t free_size)
+static int audio_stream_release_data(struct sof_source *source, size_t free_size)
 {
 	struct audio_stream __sparse_cache *audio_stream =
 			attr_container_of(source, struct audio_stream __sparse_cache,
@@ -92,7 +92,7 @@ static int audio_stream_release_data(struct sof_source __sparse_cache *source, s
 	return 0;
 }
 
-static int audio_stream_set_ipc_params_source(struct sof_source __sparse_cache *source,
+static int audio_stream_set_ipc_params_source(struct sof_source *source,
 					      struct sof_ipc_stream_params *params,
 					      bool force_update)
 {
@@ -120,7 +120,7 @@ static int audio_stream_set_ipc_params_sink(struct sof_sink *sink,
 	return buffer_set_params(buffer, params, force_update);
 }
 
-static int audio_stream_source_set_alignment_constants(struct sof_source __sparse_cache *source,
+static int audio_stream_source_set_alignment_constants(struct sof_source *source,
 						       const uint32_t byte_align,
 						       const uint32_t frame_align_req)
 {

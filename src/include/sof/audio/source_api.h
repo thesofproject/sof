@@ -54,13 +54,13 @@ struct sof_ipc_stream_params;
  * Retrieves size of available data (in bytes)
  * return number of bytes that are available for immediate use
  */
-size_t source_get_data_available(struct sof_source __sparse_cache *source);
+size_t source_get_data_available(struct sof_source *source);
 
 /**
  * Retrieves size of available data (in frames)
  * return number of bytes that are available for immediate use
  */
-size_t source_get_data_frames_available(struct sof_source __sparse_cache *source);
+size_t source_get_data_frames_available(struct sof_source *source);
 
 /**
  * Retrieves a fragment of circular data to be used by the caller (to read)
@@ -93,7 +93,7 @@ size_t source_get_data_frames_available(struct sof_source __sparse_cache *source
  *
  * @retval -ENODATA if req_size is bigger than available data
  */
-int source_get_data(struct sof_source __sparse_cache *source, size_t req_size,
+int source_get_data(struct sof_source *source, size_t req_size,
 		    void **data_ptr, void **buffer_start, size_t *buffer_size);
 
 /**
@@ -110,36 +110,36 @@ int source_get_data(struct sof_source __sparse_cache *source, size_t req_size,
  *
  * @return proper error code (0  on success)
  */
-int source_release_data(struct sof_source __sparse_cache *source, size_t free_size);
+int source_release_data(struct sof_source *source, size_t free_size);
 
 /**
  * Get total number of bytes processed by the source (meaning - freed by source_release_data())
  */
-size_t source_get_num_of_processed_bytes(struct sof_source __sparse_cache *source);
+size_t source_get_num_of_processed_bytes(struct sof_source *source);
 
 /**
  * sets counter of total number of bytes processed  to zero
  */
-void source_reset_num_of_processed_bytes(struct sof_source __sparse_cache *source);
+void source_reset_num_of_processed_bytes(struct sof_source *source);
 
 /** get size of a single audio frame (in bytes) */
-size_t source_get_frame_bytes(struct sof_source __sparse_cache *source);
+size_t source_get_frame_bytes(struct sof_source *source);
 
 /** set of functions for retrieve audio parameters */
-enum sof_ipc_frame source_get_frm_fmt(struct sof_source __sparse_cache *source);
-enum sof_ipc_frame source_get_valid_fmt(struct sof_source __sparse_cache *source);
-unsigned int source_get_rate(struct sof_source __sparse_cache *source);
-unsigned int source_get_channels(struct sof_source __sparse_cache *source);
-uint32_t source_get_buffer_fmt(struct sof_source __sparse_cache *source);
-bool source_get_underrun(struct sof_source __sparse_cache *source);
+enum sof_ipc_frame source_get_frm_fmt(struct sof_source *source);
+enum sof_ipc_frame source_get_valid_fmt(struct sof_source *source);
+unsigned int source_get_rate(struct sof_source *source);
+unsigned int source_get_channels(struct sof_source *source);
+uint32_t source_get_buffer_fmt(struct sof_source *source);
+bool source_get_underrun(struct sof_source *source);
 
 /** set of functions for setting audio parameters */
-int source_set_valid_fmt(struct sof_source __sparse_cache *source,
+int source_set_valid_fmt(struct sof_source *source,
 			 enum sof_ipc_frame valid_sample_fmt);
-int source_set_rate(struct sof_source __sparse_cache *source, unsigned int rate);
-int source_set_channels(struct sof_source __sparse_cache *source, unsigned int channels);
-int source_set_underrun(struct sof_source __sparse_cache *source, bool underrun_permitted);
-int source_set_buffer_fmt(struct sof_source __sparse_cache *source, uint32_t buffer_fmt);
+int source_set_rate(struct sof_source *source, unsigned int rate);
+int source_set_channels(struct sof_source *source, unsigned int channels);
+int source_set_underrun(struct sof_source *source, bool underrun_permitted);
+int source_set_buffer_fmt(struct sof_source *source, uint32_t buffer_fmt);
 
 /**
  * initial set of audio parameters, provided in sof_ipc_stream_params
@@ -149,7 +149,7 @@ int source_set_buffer_fmt(struct sof_source __sparse_cache *source, uint32_t buf
  * @param force_update tells the implementation that the params should override actual settings
  * @return 0 if success
  */
-int source_set_params(struct sof_source __sparse_cache *source,
+int source_set_params(struct sof_source *source,
 		      struct sof_ipc_stream_params *params, bool force_update);
 
 /**
@@ -167,12 +167,12 @@ int source_set_params(struct sof_source __sparse_cache *source,
  *
  * @return 0 if success
  */
-int source_set_alignment_constants(struct sof_source __sparse_cache *source,
+int source_set_alignment_constants(struct sof_source *source,
 				   const uint32_t byte_align,
 				   const uint32_t frame_align_req);
 
-void source_set_min_available(struct sof_source __sparse_cache *source, size_t min_available);
-size_t source_get_min_available(struct sof_source __sparse_cache *source);
-bool source_get_is_enough_available(struct sof_source __sparse_cache *source);
+void source_set_min_available(struct sof_source *source, size_t min_available);
+size_t source_get_min_available(struct sof_source *source);
+bool source_get_is_enough_available(struct sof_source *source);
 
 #endif /* __SOF_SOURCE_API_H__ */
