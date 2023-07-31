@@ -5,6 +5,7 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 #include <sof/audio/mfcc/mfcc_comp.h>
+#ifdef MFCC_GENERIC
 
 #include <sof/audio/component.h>
 #include <sof/audio/audio_stream.h>
@@ -235,3 +236,4 @@ int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr
 }
 
 #endif /* CONFIG_FORMAT_S16LE */
+#endif
