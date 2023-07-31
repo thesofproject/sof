@@ -15,6 +15,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* __XCC__ is both for xt_xcc and xt_clang */
+#if defined(__XCC__)
+# include <xtensa/config/core-isa.h>
+# if XCHAL_HAVE_HIFI4
+#  define MFCC_HIFI4
+# elif XCHAL_HAVE_HIFI3
+#  define MFCC_HIFI3
+# else
+#  define MFCC_GENERIC
+# endif
+#else
+# define MFCC_GENERIC
+#endif
+
 #define MFCC_MAGIC 0x6d666363 /* ASCII for "mfcc" */
 
 /* Set to 16 for lower RAM and MCPS with slightly lower quality. Set to 32 for best
