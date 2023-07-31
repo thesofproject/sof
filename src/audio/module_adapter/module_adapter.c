@@ -130,6 +130,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 			goto err;
 		}
 		dst->init_data = dst->data;
+	} else {
+		goto err;
 	}
 #else
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
