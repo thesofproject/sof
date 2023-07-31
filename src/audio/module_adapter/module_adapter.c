@@ -562,7 +562,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
  * @buff_size: size of the module input buffer
  * @bytes: number of bytes available in the source buffer
  */
-static void
+static inline void
 ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
 			      void __sparse_cache *buff, uint32_t buff_size, size_t bytes)
 {
@@ -590,7 +590,7 @@ ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
  * @buff: pointer to the module output buffer
  * @bytes: number of bytes available in the module output buffer
  */
-static void
+static inline void
 ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
 			    void __sparse_cache *buff, size_t bytes)
 {
@@ -620,7 +620,7 @@ ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
  *
  * \return: none.
  */
-static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t bytes)
+static inline void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t bytes)
 {
 	uint32_t tmp, copy_bytes = bytes;
 	void *ptr;
@@ -635,8 +635,10 @@ static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t by
 	comp_update_buffer_produce(sink, bytes);
 }
 
-static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __sparse_cache *src_buffer,
-				struct comp_buffer __sparse_cache *sink_buffer, uint32_t produced)
+static inline void module_copy_samples(struct comp_dev *dev,
+				       struct comp_buffer __sparse_cache *src_buffer,
+				       struct comp_buffer __sparse_cache *sink_buffer,
+				       uint32_t produced)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_copy_limits cl;
@@ -673,7 +675,7 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __spars
 	comp_update_buffer_consume(src_buffer, copy_bytes);
 }
 
-static void module_adapter_process_output(struct comp_dev *dev)
+static inline void module_adapter_process_output(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
