@@ -541,8 +541,10 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	/* Copy remaining library part into storage buffer */
 	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
 				     MAN_MAX_SIZE_V1_8, preload_size - MAN_MAX_SIZE_V1_8);
-	if (ret < 0)
+	if (ret < 0) {
+		rfree(library_base_address);
 		return ret;
+	}
 
 	/* Now update sof context with new library */
 	lib_manager_update_sof_ctx((__sparse_force void *)library_base_address, lib_id);
