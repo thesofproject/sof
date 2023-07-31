@@ -159,7 +159,7 @@ struct module_interface {
 	 */
 	int (*prepare)(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+		       struct sof_sink **sinks, int num_of_sinks);
 
 	/**
 	 * Module specific processing procedure
@@ -182,7 +182,7 @@ struct module_interface {
 	 */
 	int (*process)(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+		       struct sof_sink **sinks, int num_of_sinks);
 
 	/**
 	 * process_audio_stream (depreciated)

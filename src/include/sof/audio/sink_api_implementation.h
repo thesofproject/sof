@@ -27,18 +27,18 @@ struct sink_ops {
 	/**
 	 * see comment of sink_get_free_size()
 	 */
-	size_t (*get_free_size)(struct sof_sink __sparse_cache *sink);
+	size_t (*get_free_size)(struct sof_sink *sink);
 
 	/**
 	 * see comment of sink_get_buffer()
 	 */
-	int (*get_buffer)(struct sof_sink __sparse_cache *sink, size_t req_size,
+	int (*get_buffer)(struct sof_sink *sink, size_t req_size,
 			  void **data_ptr, void **buffer_start, size_t *buffer_size);
 
 	/**
 	 * see comment of sink_commit_buffer()
 	 */
-	int (*commit_buffer)(struct sof_sink __sparse_cache *sink, size_t commit_size);
+	int (*commit_buffer)(struct sof_sink *sink, size_t commit_size);
 
 	/**
 	 * OPTIONAL: Notification to the sink implementation about changes in audio format
@@ -49,20 +49,20 @@ struct sink_ops {
 	 *
 	 * @retval 0 if success, negative if new parameters are not supported
 	 */
-	int (*on_audio_format_set)(struct sof_sink __sparse_cache *sink);
+	int (*on_audio_format_set)(struct sof_sink *sink);
 
 	/**
 	 * OPTIONAL
 	 * see sink_set_params comments
 	 */
-	int (*audio_set_ipc_params)(struct sof_sink __sparse_cache *sink,
+	int (*audio_set_ipc_params)(struct sof_sink *sink,
 				    struct sof_ipc_stream_params *params, bool force_update);
 
 	/**
 	 * OPTIONAL
 	 * see comment for sink_set_alignment_constants
 	 */
-	int (*set_alignment_constants)(struct sof_sink __sparse_cache *sink,
+	int (*set_alignment_constants)(struct sof_sink *sink,
 				       const uint32_t byte_align,
 				       const uint32_t frame_align_req);
 };
@@ -86,7 +86,7 @@ struct sof_sink {
  *	  the implementation must ensure coherent access to the parameteres
  *	  in case of i.e. cross core shared queue, it must be located in non-cached memory
  */
-void sink_init(struct sof_sink __sparse_cache *sink, const struct sink_ops *ops,
+void sink_init(struct sof_sink *sink, const struct sink_ops *ops,
 	       struct sof_audio_stream_params *audio_stream_params);
 
 #endif /* __SOF_SINK_API_IMPLEMENTATION_H__ */

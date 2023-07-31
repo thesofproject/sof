@@ -102,7 +102,7 @@ struct comp_data {
 	int sample_container_bytes;
 	int channels_count;
 	int (*src_func)(struct comp_data *cd, struct sof_source __sparse_cache *source,
-			struct sof_sink __sparse_cache *sink);
+			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
 };
 
@@ -336,14 +336,14 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 
 /* Fallback function */
 static int src_fallback(struct comp_data *cd, struct sof_source __sparse_cache *source,
-			struct sof_sink __sparse_cache *sink)
+			struct sof_sink *sink)
 {
 	return 0;
 }
 
 /* Normal 2 stage SRC */
 static int src_2s(struct comp_data *cd,
-		  struct sof_source __sparse_cache *source, struct sof_sink __sparse_cache *sink)
+		  struct sof_source __sparse_cache *source, struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -444,7 +444,7 @@ static int src_2s(struct comp_data *cd,
 
 /* 1 stage SRC for simple conversions */
 static int src_1s(struct comp_data *cd, struct sof_source __sparse_cache *source,
-		  struct sof_sink __sparse_cache *sink)
+		  struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	int ret;
@@ -483,7 +483,7 @@ static int src_1s(struct comp_data *cd, struct sof_source __sparse_cache *source
 
 /* A fast copy function for same in and out rate */
 static int src_copy_sxx(struct comp_data *cd, struct sof_source __sparse_cache *source,
-			struct sof_sink __sparse_cache *sink)
+			struct sof_sink *sink)
 {
 	int frames = cd->param.blk_in;
 
@@ -531,7 +531,7 @@ static int src_stream_pcm_sink_rate_check(struct ipc4_config_src cfg,
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static int src_set_params(struct processing_module *mod, struct sof_sink __sparse_cache *sink)
+static int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params src_params;
 	struct sof_ipc_stream_params *params = mod->stream_params;
@@ -561,7 +561,7 @@ static int src_set_params(struct processing_module *mod, struct sof_sink __spars
 	return ret;
 }
 
-static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_cache  *sink)
+static void src_set_sink_params(struct comp_dev *dev, struct sof_sink  *sink)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_data *cd = module_get_private_data(mod);
@@ -609,12 +609,12 @@ static int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 	return 0;
 }
 
-static int src_set_params(struct processing_module *mod, struct sof_sink __sparse_cache *sink)
+static int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 {
 	return 0;
 }
 
-static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_cache *sink)
+static void src_set_sink_params(struct comp_dev *dev, struct sof_sink *sink)
 {
 	/* empty */
 }
@@ -624,7 +624,7 @@ static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_c
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static void src_set_alignment(struct sof_source __sparse_cache *source,
-			      struct sof_sink __sparse_cache *sink)
+			      struct sof_sink *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
@@ -672,7 +672,7 @@ static int src_verify_params(struct processing_module *mod)
 
 static int src_get_copy_limits(struct comp_data *cd,
 			       struct sof_source __sparse_cache *source,
-			       struct sof_sink __sparse_cache *sink)
+			       struct sof_sink *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
@@ -716,7 +716,7 @@ static int src_get_copy_limits(struct comp_data *cd,
 
 static int src_params_general(struct processing_module *mod,
 			      struct sof_source __sparse_cache *source,
-			      struct sof_sink __sparse_cache *sink)
+			      struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -826,7 +826,7 @@ static int src_params_general(struct processing_module *mod,
 
 static int src_prepare_general(struct processing_module *mod,
 			       struct sof_source __sparse_cache *source,
-			       struct sof_sink __sparse_cache *sink)
+			       struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -971,7 +971,7 @@ static int src_init(struct processing_module *mod)
 
 static int src_prepare(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+		       struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 
@@ -989,7 +989,7 @@ static int src_prepare(struct processing_module *mod,
 
 static int src_process(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;

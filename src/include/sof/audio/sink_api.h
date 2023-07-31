@@ -54,13 +54,13 @@ struct sof_ipc_stream_params;
  * Retrieves size of free space available in sink (in bytes)
  * return number of free bytes in buffer available to immediate filling
  */
-size_t sink_get_free_size(struct sof_sink __sparse_cache *sink);
+size_t sink_get_free_size(struct sof_sink *sink);
 
 /**
  * Retrieves size of free space available in sink (in frames)
  * return number of free bytes in buffer available to immediate filling
  */
-size_t sink_get_free_frames(struct sof_sink __sparse_cache *sink);
+size_t sink_get_free_frames(struct sof_sink *sink);
 
 /**
  * Get a circular buffer to operate on (to write).
@@ -81,7 +81,7 @@ size_t sink_get_free_frames(struct sof_sink __sparse_cache *sink);
  * @retval -ENODATA if req_size is bigger than free space
  *
  */
-int sink_get_buffer(struct sof_sink __sparse_cache *sink, size_t req_size,
+int sink_get_buffer(struct sof_sink *sink, size_t req_size,
 		    void **data_ptr, void **buffer_start, size_t *buffer_size);
 
 /**
@@ -96,7 +96,7 @@ int sink_get_buffer(struct sof_sink __sparse_cache *sink, size_t req_size,
  *	  commit_buffer with commit_size==MAXINT
  * @return proper error code (0  on success)
  */
-int sink_commit_buffer(struct sof_sink __sparse_cache *sink, size_t commit_size);
+int sink_commit_buffer(struct sof_sink *sink, size_t commit_size);
 
 /**
  * Get total number of bytes processed by the sink (meaning - committed by sink_commit_buffer())
@@ -104,31 +104,31 @@ int sink_commit_buffer(struct sof_sink __sparse_cache *sink, size_t commit_size)
  * @param sink a handler to sink
  * @return total number of processed data
  */
-size_t sink_get_num_of_processed_bytes(struct sof_sink __sparse_cache *sink);
+size_t sink_get_num_of_processed_bytes(struct sof_sink *sink);
 
 /**
  * sets counter of total number of bytes processed  to zero
  */
-void sink_reset_num_of_processed_bytes(struct sof_sink __sparse_cache *sink);
+void sink_reset_num_of_processed_bytes(struct sof_sink *sink);
 
 /** get size of a single audio frame (in bytes) */
-size_t sink_get_frame_bytes(struct sof_sink __sparse_cache *sink);
+size_t sink_get_frame_bytes(struct sof_sink *sink);
 
 /** set of functions for retrieve audio parameters */
-enum sof_ipc_frame sink_get_frm_fmt(struct sof_sink __sparse_cache *sink);
-enum sof_ipc_frame sink_get_valid_fmt(struct sof_sink __sparse_cache *sink);
-uint32_t sink_get_rate(struct sof_sink __sparse_cache *sink);
-uint32_t sink_get_channels(struct sof_sink __sparse_cache *sink);
-uint32_t sink_get_buffer_fmt(struct sof_sink __sparse_cache *sink);
-bool sink_get_overrun(struct sof_sink __sparse_cache *sink);
+enum sof_ipc_frame sink_get_frm_fmt(struct sof_sink *sink);
+enum sof_ipc_frame sink_get_valid_fmt(struct sof_sink *sink);
+uint32_t sink_get_rate(struct sof_sink *sink);
+uint32_t sink_get_channels(struct sof_sink *sink);
+uint32_t sink_get_buffer_fmt(struct sof_sink *sink);
+bool sink_get_overrun(struct sof_sink *sink);
 
 /** set of functions for setting audio parameters */
-int sink_set_frm_fmt(struct sof_sink __sparse_cache *sink, enum sof_ipc_frame frame_fmt);
-int sink_set_valid_fmt(struct sof_sink __sparse_cache *sink, enum sof_ipc_frame valid_sample_fmt);
-int sink_set_rate(struct sof_sink __sparse_cache *sink, unsigned int rate);
-int sink_set_channels(struct sof_sink __sparse_cache *sink, unsigned int channels);
-int sink_set_overrun(struct sof_sink __sparse_cache *sink, bool overrun_permitted);
-int sink_set_buffer_fmt(struct sof_sink __sparse_cache *sink, uint32_t buffer_fmt);
+int sink_set_frm_fmt(struct sof_sink *sink, enum sof_ipc_frame frame_fmt);
+int sink_set_valid_fmt(struct sof_sink *sink, enum sof_ipc_frame valid_sample_fmt);
+int sink_set_rate(struct sof_sink *sink, unsigned int rate);
+int sink_set_channels(struct sof_sink *sink, unsigned int channels);
+int sink_set_overrun(struct sof_sink *sink, bool overrun_permitted);
+int sink_set_buffer_fmt(struct sof_sink *sink, uint32_t buffer_fmt);
 
 /**
  * initial set of audio parameters, provided in sof_ipc_stream_params
@@ -138,7 +138,7 @@ int sink_set_buffer_fmt(struct sof_sink __sparse_cache *sink, uint32_t buffer_fm
  * @param force_update tells the implementation that the params should override actual settings
  * @return 0 if success
  */
-int sink_set_params(struct sof_sink __sparse_cache *sink,
+int sink_set_params(struct sof_sink *sink,
 		    struct sof_ipc_stream_params *params, bool force_update);
 
 /**
@@ -156,12 +156,12 @@ int sink_set_params(struct sof_sink __sparse_cache *sink,
  *
  * @return 0 if success
  */
-int sink_set_alignment_constants(struct sof_sink __sparse_cache *sink,
+int sink_set_alignment_constants(struct sof_sink *sink,
 				 const uint32_t byte_align,
 				 const uint32_t frame_align_req);
 
-void sink_set_min_free(struct sof_sink __sparse_cache *sink, size_t min_free);
-size_t sink_get_min_free(struct sof_sink __sparse_cache *sink);
-bool sink_get_is_enough_free(struct sof_sink __sparse_cache *sink);
+void sink_set_min_free(struct sof_sink *sink, size_t min_free);
+size_t sink_get_min_free(struct sof_sink *sink);
+bool sink_get_is_enough_free(struct sof_sink *sink);
 
 #endif /* __SOF_SINK_API_H__ */

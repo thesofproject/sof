@@ -1069,7 +1069,7 @@ audio_stream_get_source(struct audio_stream __sparse_cache *audio_stream)
 	return &audio_stream->source_api;
 }
 
-static inline struct sof_sink __sparse_cache *
+static inline struct sof_sink *
 audio_stream_get_sink(struct audio_stream __sparse_cache *audio_stream)
 {
 	return &audio_stream->sink_api;
