@@ -223,9 +223,10 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	int status;
 	int ret;
 
-	tr_dbg(&ipc_tr, "ipc4 set pipeline %d state %x:", ppl_icd->id, cmd);
-
 	status = ppl_icd->pipeline->status;
+	tr_dbg(&ipc_tr, "ipc4 set pipeline %d cmd state %x: from state %x", ppl_icd->id,
+	       cmd, status);
+
 	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
 	if (status != COMP_STATE_INIT) {
 		int host_id;
@@ -252,6 +253,8 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 		case COMP_STATE_READY:
 			cmd = COMP_TRIGGER_PRE_START;
 
+			tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: params",
+			       ppl_icd->id, cmd);
 			ret = ipc4_pcm_params(host);
 			if (ret < 0)
 				return IPC4_INVALID_REQUEST;
@@ -267,6 +270,8 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	case SOF_IPC4_PIPELINE_STATE_RESET:
 		switch (status) {
 		case COMP_STATE_INIT:
+			tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: reset from init",
+			       ppl_icd->id, cmd);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
@@ -277,6 +282,8 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 			return 0;
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+			tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: pause from reset",
+			       ppl_icd->id, cmd);
 			ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 			if (ret < 0) {
 				ipc_cmd_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
@@ -297,6 +304,8 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 		 * executing in the pipeline task.
 		 */
 		if (!*delayed) {
+			tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: delayed reset",
+			       ppl_icd->id, cmd);
 			ret = pipeline_reset(host->cd->pipeline, host->cd);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
@@ -306,6 +315,8 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
 		switch (status) {
 		case COMP_STATE_INIT:
+			tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: pause from init",
+			       ppl_icd->id, cmd);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
@@ -330,12 +341,17 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
 		return IPC4_INVALID_REQUEST;
 	}
 
+	tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: from state %x", ppl_icd->id,
+	       cmd, status);
+
 	/* trigger the component */
 	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
 	if (ret < 0) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", ppl_icd->id, cmd, ret);
 		ret = IPC4_PIPELINE_STATE_NOT_SET;
 	} else if (ret == PPL_STATUS_SCHEDULED) {
+		tr_dbg(&ipc_tr, "ipc4: set pipeline %d new cmd state %x: trigger delayed",
+		       ppl_icd->id, cmd);
 		*delayed = true;
 		ret = 0;
 	}
