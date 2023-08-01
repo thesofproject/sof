@@ -405,6 +405,7 @@ static int ipc_wait_for_compound_msg(void)
 		k_sleep(Z_TIMEOUT_MS(10));
 
 		if (!try_count--) {
+			atomic_set(&msg_data.delayed_reply, 0);
 			ipc_cmd_err(&ipc_tr, "ipc4: failed to wait schedule thread");
 			return IPC4_FAILURE;
 		}
