@@ -328,20 +328,14 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 }
 
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
-					      uint32_t src_queue, uint32_t dst_queue)
+					      uint32_t src_obs, uint32_t src_queue,
+					      uint32_t dst_queue)
 {
-	struct ipc4_base_module_cfg src_cfg;
 	struct sof_ipc_buffer ipc_buf;
-	int buf_size, ret;
-
-	ret = comp_get_attribute(src, COMP_ATTR_BASE_CONFIG, &src_cfg);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to get base config for src %#x", dev_comp_id(src));
-		return NULL;
-	}
+	int buf_size;
 
 	/* double it since obs is single buffer size */
-	buf_size = src_cfg.obs * 2;
+	buf_size = src_obs * 2;
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
@@ -357,6 +351,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
 	struct comp_dev *sink;
+	struct ipc4_base_module_cfg source_src_cfg;
+	struct ipc4_base_module_cfg sink_src_cfg;
 	uint32_t flags;
 	int src_id, sink_id;
 	int ret;
@@ -376,12 +372,32 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!cpu_is_me(source->ipc_config.core) && source->ipc_config.core == sink->ipc_config.core)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
-	buffer = ipc4_create_buffer(source, sink, bu->extension.r.src_queue,
+	ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to get base config for module %#x", dev_comp_id(source));
+		return IPC4_FAILURE;
+	}
+
+	ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG, &sink_src_cfg);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to get base config for module %#x", dev_comp_id(sink));
+		return IPC4_FAILURE;
+	}
+
+	buffer = ipc4_create_buffer(source, sink, source_src_cfg.obs, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
+
+	/*
+	 * set ibs and obs in sink/src api of created buffer
+	 *	IBS of a buffer is OBS of source component
+	 *	OBS of a buffer is IBS of destination component
+	 */
+	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
+	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
 
 	/*
 	 * Connect and bind the buffer to both source and sink components with the interrupts
@@ -405,6 +421,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
 		goto e_sink_connect;
 	}
+
 
 	ret = comp_bind(source, bu);
 	if (ret < 0)
