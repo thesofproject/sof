@@ -239,8 +239,8 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
 	int allocation_error_code = -ENOMEM;
 	size_t i, mem_block_iterator, allocation_bitarray_offset,
-		check_offset, check_size, check_position, block_count,
-		physical_block_count, block_size, allocation_bitarray_position;
+		check_offset, check_size, check_position, physical_block_count,
+		block_count = 0, block_size = 0, allocation_bitarray_position = 0;
 	uintptr_t *ptrs_to_map = NULL;
 
 	/* We will gather error code when allocating on physical block
@@ -491,7 +491,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 		return -EINVAL;
 
 	size_t mem_block_iterator, i, size_to_free, block_size, ptr_bit_array_offset,
-		ptr_bit_array_position, physical_block_count, phys_block_end,
+		ptr_bit_array_position, physical_block_count,
 		check_offset, check_position, check_size;
 	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
 	bool ptr_range_found;
