@@ -396,15 +396,16 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 	}
 }
 
+/* wait for IPCs to complete on other cores and be nice to any LL work */
 static int ipc_wait_for_compound_msg(void)
 {
-	int try_count = 30;
+	int try_count = 30; /* timeout out is 30 x 10ms so 300ms for IPC */
 
 	while (atomic_read(&msg_data.delayed_reply)) {
-		k_sleep(Z_TIMEOUT_US(250));
+		k_sleep(Z_TIMEOUT_MS(10));
 
 		if (!try_count--) {
-			ipc_cmd_err(&ipc_tr, "failed to wait schedule thread");
+			ipc_cmd_err(&ipc_tr, "ipc4: failed to wait schedule thread");
 			return IPC4_FAILURE;
 		}
 	}
