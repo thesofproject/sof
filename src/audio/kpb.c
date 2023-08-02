@@ -2384,9 +2384,16 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				uint32_t data_offset,
 				const char *data)
 {
+	/* We can use extended param id for both extended
+	 * and standard param id
+	 */
+	union ipc4_extended_param_id extended_param_id;
+
 	comp_info(dev, "kpb_set_large_config()");
 
-	switch (param_id) {
+	extended_param_id.full = param_id;
+
+	switch (extended_param_id.part.parameter_type) {
 	case KP_BUF_CLIENT_MIC_SELECT:
 		return kpb_set_micselect(dev, data, data_offset);
 	default:
