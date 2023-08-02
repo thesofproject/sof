@@ -570,15 +570,6 @@ struct comp_dev {
 	uint32_t frames;	   /**< number of frames we copy to sink */
 	struct pipeline *pipeline; /**< pipeline we belong to */
 
-	uint32_t min_sink_bytes;   /**< min free sink buffer size measured in
-				     *  bytes required to run component's
-				     *  processing
-				     */
-	uint32_t min_source_bytes; /**< amount of data measured in bytes
-				     *  available at source buffer required
-				     *  to run component's processing
-				     */
-
 	struct task *task;	/**< component's processing task used
 				  *  1) for components running on different core
 				  *    than the rest of the pipeline
