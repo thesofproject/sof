@@ -36,6 +36,9 @@
 #define SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE	3
 #define SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE	3
 
+/* Special large_param_id values */
+#define VENDOR_CONFIG_PARAM 0xFF
+
 enum sof_ipc4_module_type {
 	SOF_IPC4_MOD_INIT_INSTANCE		= 0,
 	SOF_IPC4_MOD_CONFIG_GET			= 1,
@@ -50,6 +53,18 @@ enum sof_ipc4_module_type {
 	SOF_IPC4_MOD_EXIT_MODULE_RESTORE	= 10,
 	SOF_IPC4_MOD_DELETE_INSTANCE		= 11,
 };
+
+/*
+ * Structs for Vendor Config Set
+ */
+
+union ipc4_extended_param_id {
+	uint32_t full;
+	struct{
+		uint32_t parameter_type     : 8;
+		uint32_t parameter_instance : 24;
+	} part;
+} __packed __aligned(4);
 
 /*
  * Host Driver sends this message to create a new module instance.

@@ -22,6 +22,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/numbers.h>
+#include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <ipc4/error_status.h>
 #include <ipc/header.h>
@@ -872,7 +873,8 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	if (config.primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id,
+				       config.primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
@@ -921,6 +923,69 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	return ret;
 }
 
+static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
+						  const struct comp_driver *drv,
+						  uint32_t module_id,
+						  uint32_t instance_id,
+						  bool init_block,
+						  bool final_block,
+						  uint32_t data_off_size,
+						  const char *data)
+{
+	int ret;
+
+	/* Old FW comment: bursted configs */
+	if (init_block && final_block) {
+		const struct sof_tlv *tlv = (struct sof_tlv *)data;
+		/* if there is no payload in this large config set
+		 * (4 bytes type | 4 bytes length=0 | no value)
+		 * we do not handle such case
+		 */
+		if (data_off_size < sizeof(struct sof_tlv))
+			return IPC4_INVALID_CONFIG_DATA_STRUCT;
+
+		/* ===Iterate over payload===
+		 * Payload can have multiple sof_tlv structures inside,
+		 * You can find how many by checking payload size (data_off_size)
+		 * Here we just set pointer end_offset to the end of data
+		 * and iterate until we reach that
+		 */
+		const uint8_t *end_offset = data + data_off_size;
+
+		while ((const uint8_t *)tlv < end_offset) {
+			/* check for invalid length */
+			if (!tlv->length)
+				return IPC4_INVALID_CONFIG_DATA_LEN;
+
+			ret = drv->ops.set_large_config(dev, tlv->type, init_block,
+				final_block, tlv->length, tlv->value);
+			if (ret < 0) {
+				ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
+					    (uint32_t)module_id, (uint32_t)instance_id);
+				return IPC4_INVALID_RESOURCE_ID;
+			}
+			/* Move pointer to the end of this tlv */
+			tlv = (struct sof_tlv *)((const uint8_t *)tlv +
+				sizeof(struct sof_tlv) + ALIGN_UP(tlv->length, 4));
+		}
+		return IPC4_SUCCESS;
+	}
+	/* else, !(init_block && final_block) */
+	const struct sof_tlv *tlv = (struct sof_tlv *)data;
+	uint32_t param_id = 0;
+
+	if (init_block) {
+		/* for initial block use param_id from tlv
+		 * move pointer and size to end of the tlv
+		 */
+		param_id = tlv->type;
+		data += sizeof(struct sof_tlv);
+		data_off_size -= sizeof(struct sof_tlv);
+	}
+	return drv->ops.set_large_config(dev, param_id, init_block, final_block,
+					 data_off_size, (uint8_t *)data);
+}
+
 static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config config;
@@ -956,16 +1021,25 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	}
 
-	ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
-					config.extension.r.init_block,
-					config.extension.r.final_block,
-					config.extension.r.data_off_size,
-					(const char *)MAILBOX_HOSTBOX_BASE);
-	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
-			    (uint32_t)config.primary.r.module_id,
-			    (uint32_t)config.primary.r.instance_id);
-		ret = IPC4_INVALID_RESOURCE_ID;
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		ret = ipc4_set_vendor_config_module_instance(dev, drv,
+							     (uint32_t)config.primary.r.module_id,
+							     (uint32_t)config.primary.r.instance_id,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     config.extension.r.data_off_size,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
+			config.extension.r.init_block, config.extension.r.final_block,
+			config.extension.r.data_off_size, (const char *)MAILBOX_HOSTBOX_BASE);
+		if (ret < 0) {
+			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
+				    (uint32_t)config.primary.r.module_id,
+				    (uint32_t)config.primary.r.instance_id);
+			ret = IPC4_INVALID_RESOURCE_ID;
+		}
 	}
 
 	return ret;
