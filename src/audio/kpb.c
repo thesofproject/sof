@@ -38,6 +38,7 @@
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <ipc/topology.h>
+#include <ipc4/module.h>
 #include <ipc4/kpb.h>
 #include <user/kpb.h>
 #include <user/trace.h>
@@ -106,6 +107,8 @@ struct comp_data {
 	uint32_t num_of_in_channels;
 	uint32_t offsets[KPB_MAX_MICSEL_CHANNELS];
 	struct kpb_micselector_config mic_sel;
+	struct kpb_fmt_dev_list fmt_device_list;
+	struct fast_mode_task fmt;
 
 #if CONFIG_AMS
 	uint32_t kpd_uuid_id;
@@ -141,6 +144,23 @@ static inline bool validate_host_params(struct comp_dev *dev,
 					size_t hb_size_req);
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
+#ifdef CONFIG_IPC_MAJOR_4
+/* KpbFastModeTaskModulesList Namespace */
+static inline int alloc_fmt_module_list_item(struct kpb_fmt_dev_list *fmt_device_list,
+					     struct comp_dev *mi_ptr, struct comp_dev ***item);
+static int clear_fmt_modules_list(struct kpb_fmt_dev_list *fmt_device_list,
+				  uint32_t outpin_idx);
+static int prepare_fmt_modules_list(struct comp_dev *kpb_dev, uint32_t outpin_idx,
+				    const struct kpb_task_params *modules_to_prepare);
+/* FMT Namespace */
+static int register_modules_list(struct fast_mode_task *fmt,
+				 struct device_list *new_list, size_t list_idx);
+static int unregister_modules_list(struct fast_mode_task *fmt,
+				   struct device_list *list_to_remove, size_t list_idx);
+/* Devicelist */
+static int devicelist_push(struct device_list *devlist, struct comp_dev **dev);
+static void devicelist_reset(struct device_list *devlist, bool remove_items);
+#endif
 
 static uint64_t kpb_task_deadline(void *data)
 {
@@ -376,7 +396,8 @@ static int kpb_unbind(struct comp_dev *dev, void *data)
 	else
 		kpb->host_sink = NULL;
 
-	return 0;
+	/* Clear fmt config */
+	return clear_fmt_modules_list(&kpb->fmt_device_list, bu->extension.r.src_queue);
 }
 
 #else /* CONFIG_IPC_MAJOR_4 */
@@ -2378,15 +2399,177 @@ static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 	return 0;
 }
 
+#ifdef CONFIG_IPC_MAJOR_4
+
+static int devicelist_push(struct device_list *devlist, struct comp_dev **dev)
+{
+	if (devlist->count != DEVICE_LIST_SIZE) {
+		devlist->devs[devlist->count] = dev;
+		devlist->count++;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static void devicelist_reset(struct device_list *devlist, bool remove_items)
+{
+	/* clear items */
+	if (remove_items) {
+		for (int i = 0; i < DEVICE_LIST_SIZE; i++)
+			*devlist->devs[i] = NULL;
+	}
+	/* zero the pointers */
+	for (int i = 0; i < DEVICE_LIST_SIZE; i++)
+		devlist->devs[i] = NULL;
+
+	devlist->count = 0;
+}
+
+static inline int alloc_fmt_module_list_item(struct kpb_fmt_dev_list *fmt_device_list,
+					     struct comp_dev *mi_ptr, struct comp_dev ***item)
+{
+	/* -1 means we did not find the slot yet */
+	int first_empty_slot_idx = -1;
+
+	for (size_t module_slot_idx = 0; module_slot_idx < FAST_MODE_TASK_MAX_MODULES_COUNT;
+	     ++module_slot_idx){
+		/* check if module already added */
+		if (fmt_device_list->modules_list_item[module_slot_idx] == mi_ptr)
+			return -EINVAL;
+		/* finding first available empty slot */
+		if (first_empty_slot_idx < 0 &&
+		    !fmt_device_list->modules_list_item[module_slot_idx])
+			first_empty_slot_idx = module_slot_idx;
+	}
+	/* add item to first available empty slot */
+	if (first_empty_slot_idx >= 0) {
+		fmt_device_list->modules_list_item[first_empty_slot_idx] = mi_ptr;
+		*item = &fmt_device_list->modules_list_item[first_empty_slot_idx];
+		return 0;
+	}
+	return -ENOMEM;
+}
+
+static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
+				    uint32_t outpin_idx,
+				    const struct kpb_task_params *modules_to_prepare)
+{
+	int ret;
+	struct comp_dev *dev;
+	struct kpb_fmt_dev_list *fmt_device_list =
+		&((struct comp_data *)comp_get_drvdata(kpb_dev))->fmt_device_list;
+
+	fmt_device_list->kpb_list_item[outpin_idx] = kpb_dev;
+	ret = devicelist_push(&fmt_device_list->device_list[outpin_idx],
+			      &fmt_device_list->kpb_list_item[outpin_idx]);
+	if (ret < 0)
+		return ret;
+
+	for (size_t mod_idx = 0; mod_idx < modules_to_prepare->number_of_modules; ++mod_idx) {
+		uint32_t comp_id = IPC4_COMP_ID(modules_to_prepare->dev_ids[mod_idx].module_id,
+						modules_to_prepare->dev_ids[mod_idx].instance_id);
+
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return -EINVAL;
+
+		struct comp_dev **new_list_item_ptr;
+
+		ret = alloc_fmt_module_list_item(fmt_device_list, dev, &new_list_item_ptr);
+		if (ret < 0)
+			return ret;
+		*new_list_item_ptr = dev;
+		ret = devicelist_push(&fmt_device_list->device_list[outpin_idx],
+				      new_list_item_ptr);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+static int clear_fmt_modules_list(struct kpb_fmt_dev_list *fmt_device_list,
+				  uint32_t outpin_idx)
+{
+	if (outpin_idx >= KPB_MAX_SINK_CNT)
+		return -EINVAL;
+
+	devicelist_reset(&fmt_device_list->device_list[outpin_idx], true);
+	return 0;
+}
+
+static int unregister_modules_list(struct fast_mode_task *fmt,
+				   struct device_list *list_to_remove, size_t list_idx)
+{
+	if (list_to_remove == fmt->device_list[list_idx]) {
+		fmt->device_list[list_idx] = NULL;
+		return 0;
+	}
+	if (!fmt->device_list[list_idx]) {
+		/* Nothing to do here */
+		return 0;
+	}
+	return -EINVAL;
+}
+
+/* Comment from Old FW, may be outdated:
+ * Important: function below should be called only from within critical section
+ * (Goto KPB for more details)
+ */
+static int register_modules_list(struct fast_mode_task *fmt,
+				 struct device_list *new_list, size_t list_idx)
+{
+	if (list_idx >= ARRAY_SIZE(fmt->device_list))
+		return -EINVAL;
+
+	/* Check if slot is free */
+	if (!fmt->device_list[list_idx]) {
+		fmt->device_list[list_idx] = new_list;
+		return 0;
+	}
+	if (new_list == fmt->device_list[list_idx]) {
+		/* Already registered. */
+		return 0;
+	}
+	/* was ADSP_ALREADY_IN_USE */
+	return -EINVAL;
+}
+
+static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_task_params *cfg,
+				    size_t pin)
+{
+	if (pin >= KPB_MAX_SINK_CNT || pin == REALTIME_PIN_ID || !cfg)
+		return -EINVAL;
+
+	struct comp_data *priv_data = (struct comp_data *)comp_get_drvdata(kpb_dev);
+	int ret = unregister_modules_list(&priv_data->fmt,
+					  &priv_data->fmt_device_list.device_list[pin],
+					  pin);
+	if (ret)
+		return -EINVAL;
+
+	ret = clear_fmt_modules_list(&priv_data->fmt_device_list, pin);
+	if (ret)
+		return -EINVAL;
+
+	/* When modules count IS 0 we only need to remove modules from Fast Mode. */
+	if (cfg->number_of_modules > 0) {
+		ret = prepare_fmt_modules_list(kpb_dev, pin, cfg);
+		if (!ret)
+			ret = register_modules_list(&priv_data->fmt,
+						    &priv_data->fmt_device_list.device_list[pin],
+						    pin);
+	}
+	return ret;
+}
+#endif
+
 static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
 				bool last_block,
 				uint32_t data_offset,
 				const char *data)
 {
-	/* We can use extended param id for both extended
-	 * and standard param id
-	 */
+	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
 
 	comp_info(dev, "kpb_set_large_config()");
@@ -2394,6 +2577,18 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	extended_param_id.full = param_id;
 
 	switch (extended_param_id.part.parameter_type) {
+#ifdef CONFIG_IPC_MAJOR_4
+	case KP_BUF_CFG_FM_MODULE: {
+		/* Modules count equals 0 is a special case in which we want to clear list for
+		 * given pin. Reference FW also allowed for cfg/data to be NULL, but this is no
+		 * longer the case.
+		 */
+		const struct kpb_task_params *cfg = (struct kpb_task_params *)data;
+		uint32_t outpin_id = extended_param_id.part.parameter_instance;
+
+		return configure_fast_mode_task(dev, cfg, outpin_id);
+	}
+#endif
 	case KP_BUF_CLIENT_MIC_SELECT:
 		return kpb_set_micselect(dev, data, data_offset);
 	default:

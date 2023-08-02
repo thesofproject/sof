@@ -43,6 +43,7 @@ struct comp_buffer;
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
 	 (channels_number))
 #define KPB_MAX_NO_OF_CLIENTS 2
+#define KPB_MAX_SINK_CNT (1 + KPB_MAX_NO_OF_CLIENTS)
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
@@ -66,6 +67,9 @@ struct comp_buffer;
  * i.e. number of max supported channels - reference channels)
  */
 #define KPB_MAX_MICSEL_CHANNELS 4
+/* Used in FMT */
+#define FAST_MODE_TASK_MAX_MODULES_COUNT 16
+#define REALTIME_PIN_ID 0
 
 /** All states below as well as relations between them are documented in
  * the sof-dosc in [kpbm-state-diagram]
@@ -159,18 +163,88 @@ struct history_data {
 	struct history_buffer *c_hb; /**< current buffer used for writing */
 };
 
-enum ipc4_kpb_module_config_params {
-	/* Mic selector for client - sets microphone id for real time sink mic selector
-	 * IPC4-compatible ID - please do not change the number
-	 */
-	KP_BUF_CLIENT_MIC_SELECT = 11,
-};
+/* moved to ipc4/kpb.h */
+/* enum ipc4_kpb_module_config_params */
 
 /* Stores KPB mic selector config */
 struct kpb_micselector_config {
 	/* channel bit set to 1 implies channel selection */
 	uint32_t mask;
 };
+
+struct kpb_task_params {
+	/* If largeconfigset is set to KP_POS_IN_BUFFER then number of modules must
+	 * correspond to number of modules between kpb and copier attached to hostdma.
+	 * Once draining path is configured, cannot be reinitialized/changed.
+	 */
+	uint32_t number_of_modules;
+	struct {
+		uint16_t module_id;
+		uint16_t instance_id;
+	} dev_ids[1];
+};
+
+/* fmt namespace: */
+#define FAST_MODE_TASK_MAX_LIST_COUNT 5
+
+struct fast_mode_task {
+	/*! Array of pointers to all module lists to be processed. */
+	struct device_list *device_list[FAST_MODE_TASK_MAX_LIST_COUNT];
+};
+
+/* The +1 is here because we also push the kbp device
+ * handle in addition to the max number of modules
+ */
+#define DEVICE_LIST_SIZE (FAST_MODE_TASK_MAX_MODULES_COUNT + 1)
+
+/* Devicelist type
+ * In Reference FW KPB used Bi-dir lists to store modules for FMT. It is possible that lists are
+ * not necessary, but in case it might be wrong, here we use an array
+ * with a list interface to switch it to a list easily.
+ */
+struct device_list {
+	struct comp_dev **devs[DEVICE_LIST_SIZE];
+	/* number of items AND index of next empty box */
+	size_t count;
+};
+
+/*
+ *
+ *
+ *	KPB FMT config set steps:
+ *	1. Get dev_ids of module instances from IPC
+ *	2. Alloc this kpb module instance on kpb_list_item, save address of where it was allocated
+ *	3. Push the address on dev_list.device_list
+ *	2. For each dev_id get device handler(module instance)
+ *	3. Alloc device handler in modules_list_item, save address of where it was allocated
+ *	4. Register this address in fmt.device_list
+ *
+ *	Pointer structure:
+ *
+ *		COMP_DEVS
+ *		  ^
+ *		  |
+ *		dev_list.modules_list_item(comp_dev* )
+ *		  ^
+ *		  |
+ *		dev_list.device_list(comp_dev**)
+ *		  ^
+ *		  |
+ *		fmt.device_list(device_list*)
+ *
+ *
+ */
+
+/* KpbFastModeTaskModulesList Namespace */
+struct kpb_fmt_dev_list {
+	/*! Array of  all module lists to be processed. */
+	struct device_list device_list[FAST_MODE_TASK_MAX_LIST_COUNT];
+	/* One for each sinkpin. */
+	struct comp_dev *kpb_list_item[KPB_MAX_SINK_CNT];
+	struct comp_dev *modules_list_item[FAST_MODE_TASK_MAX_MODULES_COUNT];
+	struct comp_dev *kpb_mi_ptr;
+};
+
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
 #endif

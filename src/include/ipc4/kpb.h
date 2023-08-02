@@ -19,4 +19,16 @@
 struct ipc4_kpb_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 } __packed __aligned(4);
+
+/* For the sake of compatibility, do not change IDs, only add new ones.*/
+enum ipc4_kpb_module_config_params {
+	/*! Configure the module ID's which would be part of the Fast mode tasks */
+	KP_BUF_CFG_FM_MODULE = 1,
+	/* Mic selector for client - sets microphone id for real time sink mic selector
+	 * IPC4-compatible ID - please do not change the number
+	 */
+	KP_BUF_CLIENT_MIC_SELECT = 11,
+};
+
 #endif
+
