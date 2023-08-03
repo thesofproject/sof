@@ -218,7 +218,6 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 		config->frame_fmt = out_frame_fmt;
 		pipeline->sink_comp = dev;
 	}
-	dev->ipc_config.frame_fmt = config->frame_fmt;
 
 	return 0;
 
