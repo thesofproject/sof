@@ -51,4 +51,14 @@ config SOF_LOG_LEVEL
 	default 3 if SOF_LOG_LEVEL_INF
 	default 4 if SOF_LOG_LEVEL_DBG
 
+config SOF_LOG_DBG_BUFFER
+	bool "Log buffer state on each consume/produce call"
+	default n
+	help
+	  Dumps buffer struct audio_stream values on each call to comp_update_buffer_consume()
+	  and comp_update_buffer_produce().
+	  WARNING: Produces too much log output which usually results in many log messaged been
+	  dropped! Also, if selected log backend formats log messages at runtime, enabling this
+	  option results in significant CPU load!
+
 endmenu
