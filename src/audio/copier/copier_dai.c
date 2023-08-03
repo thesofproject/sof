@@ -99,8 +99,6 @@ static int copier_dai_init(struct comp_dev *dev,
 		pipeline->source_comp = dev;
 	}
 
-	dev->ipc_config.frame_fmt = config->frame_fmt;
-
 	/* save the channel map and count for ALH multi-gateway */
 	if (type == ipc4_gtw_alh && is_multi_gateway(copier->gtw_cfg.node_id)) {
 		ret = copier_set_alh_multi_gtw_channel_map(dev, copier, index);
