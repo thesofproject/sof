@@ -15,6 +15,8 @@
 #include <string.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
+#include <ipc4/copier.h>
+#include <ipc4/gateway.h>
 #include <sof/common.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
@@ -59,19 +61,20 @@ static int buffer_ipc3_build(struct tplg_context *ctx, void *_buffer)
 	return 0;
 }
 
-/* MIXER - IPC4 */
 static const struct sof_topology_token buffer4_tokens[] = {
-	/* TODO */
 };
 
 static const struct sof_topology_token_group buffer_ipc4_tokens[] = {
 	{buffer4_tokens, ARRAY_SIZE(buffer4_tokens)},
 };
 
-static int buffer_ipc4_build(struct tplg_context *ctx, void *buffer)
+static int buffer_ipc4_build(struct tplg_context *ctx, void *_copier)
 {
-	/* TODO */
-	return 0;
+	struct ipc4_copier_module_cfg *copier = _copier;
+
+	copier->gtw_cfg.node_id.dw = IPC4_INVALID_NODE_ID;
+
+	return tplg_parse_widget_audio_formats(ctx);
 }
 
 static const struct sof_topology_module_desc buffer_ipc[] = {
