@@ -31,6 +31,7 @@ target_sources(sof_tplg_parser PUBLIC
 	buffer.c
 	graph.c
 	object.c
+	audio_formats.c
 )
 
 sof_append_relative_path_definitions(sof_tplg_parser)
