@@ -297,7 +297,20 @@ static int add_pipeline_cps_consumption(struct comp_dev *current,
 		cd = &md->cfg.base_cfg;
 	}
 
-	if (cd->cpc == 0) {
+	if (CONFIG_OVERRIDE_CPC_AS_HZ_DIVIDED_BY) {
+		uint32_t new_cpc = CLK_MAX_CPU_HZ / CONFIG_OVERRIDE_CPC_AS_HZ_DIVIDED_BY;
+
+		if (!cd->cpc)
+			tr_warn(pipe,
+				"CPC for module: %#x, core: %d: 0, overriding to %u",
+				current->ipc_config.id, ppl_data->p->core, new_cpc);
+		else
+			tr_info(pipe,
+				"CPC for module: %#x, core: %d: %u, overriding to %u",
+				current->ipc_config.id, ppl_data->p->core, cd->cpc, new_cpc);
+
+		cd->cpc = new_cpc;
+	} else if (cd->cpc == 0) {
 		/* Use maximum clock budget, assume 1ms chunk size */
 		cd->cpc = CLK_MAX_CPU_HZ / 1000;
 		tr_warn(pipe,
