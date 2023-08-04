@@ -14,10 +14,13 @@
 #include <string.h>
 #include <math.h>
 #include <ipc/topology.h>
+#include <ipc4/peak_volume.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
+
+#define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
 
 /* volume IPC3 */
 static const struct sof_topology_token volume3_tokens[] = {
@@ -94,19 +97,35 @@ err:
 	return ret;
 }
 
-/* ASRC - IPC4 */
+/* Peak Volume - IPC4 */
 static const struct sof_topology_token pga4_tokens[] = {
-	/* TODO */
+	{SOF_TKN_GAIN_VAL,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, target_volume), 0},
+	{SOF_TKN_GAIN_RAMP_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, curve_type), 0},
+	{SOF_TKN_GAIN_RAMP_DURATION,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct ipc4_peak_volume_config, curve_duration), 0},
 };
 
 static const struct sof_topology_token_group pga_ipc4_tokens[] = {
 	{pga4_tokens, ARRAY_SIZE(pga4_tokens)},
 };
 
-static int pga_ipc4_build(struct tplg_context *ctx, void *pga)
+static int pga_ipc4_build(struct tplg_context *ctx, void *_pga)
 {
-	/* TODO */
-	return 0;
+	struct ipc4_peak_volume_config *volume = _pga;
+
+	volume->channel_id = IPC4_ALL_CHANNELS_MASK;
+
+	fprintf(stdout,
+		"volume channel ID: %d, target_volume %#x, curve_type: %d curve_duration: %ld\n",
+		volume->channel_id, volume->target_volume, volume->curve_type,
+		volume->curve_duration);
+
+	return tplg_parse_widget_audio_formats(ctx);
 }
 
 static const struct sof_topology_module_desc pga_ipc[] = {
