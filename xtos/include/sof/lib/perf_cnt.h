@@ -17,14 +17,24 @@
 #include <rtos/timer.h>
 
 struct perf_cnt_data {
+	/* current platform clock */
 	uint32_t plat_ts;
+	/* current cpu clock */
 	uint32_t cpu_ts;
+	/* one period module cycles */
 	uint32_t plat_delta_last;
+	/* period module peak cycles within period_cnt */
 	uint32_t plat_delta_peak;
+	/* one period module cycles from cpu clock */
 	uint32_t cpu_delta_last;
+	/* period module peak cycles within period_cnt from cpu clock */
 	uint32_t cpu_delta_peak;
+	/* total cycles within period_cnt */
 	uint32_t cpu_delta_sum;
-	uint32_t sample_cnt;
+	/* accumulate period passed and calculate avg cycles */
+	uint32_t period_cnt;
+	/* indicate which period have peak mcps in current module */
+	uint32_t peak_mcps_period_cnt;
 };
 
 #if CONFIG_PERFORMANCE_COUNTERS
@@ -84,11 +94,11 @@ struct perf_cnt_data {
 		  (uint32_t)((pcd)->cpu_delta_peak))
 #define task_perf_cnt_avg(pcd, trace_m, arg, class) do {                             \
 		(pcd)->cpu_delta_sum += (pcd)->cpu_delta_last;          \
-		if (++(pcd)->sample_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) { \
+		if (++(pcd)->period_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) { \
 			(pcd)->cpu_delta_sum >>= PERF_CNT_CHECK_WINDOW_SIZE;      \
 			trace_m(pcd, arg, class);                                 \
 			(pcd)->cpu_delta_sum = 0;                                 \
-			(pcd)->sample_cnt = 0;                                    \
+			(pcd)->period_cnt = 0;                                    \
 			(pcd)->plat_delta_peak = 0;                               \
 			(pcd)->cpu_delta_peak = 0;                                \
 		}                                                             \
@@ -104,13 +114,14 @@ struct perf_cnt_data {
  */
 #define perf_cnt_average(pcd, trace_m, arg) do {                             \
 		(pcd)->cpu_delta_sum += (pcd)->cpu_delta_last;               \
-		if (++(pcd)->sample_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) {\
+		if (++(pcd)->period_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) {\
 			(pcd)->cpu_delta_sum >>= PERF_CNT_CHECK_WINDOW_SIZE; \
 			trace_m(pcd, arg);                                   \
 			(pcd)->cpu_delta_sum = 0;                            \
-			(pcd)->sample_cnt = 0;                               \
+			(pcd)->period_cnt = 0;                               \
 			(pcd)->plat_delta_peak = 0;                          \
 			(pcd)->cpu_delta_peak = 0;                           \
+			(pcd)->peak_mcps_period_cnt = 0;			     \
 		}                                                            \
 	} while (0)
 
@@ -129,8 +140,10 @@ struct perf_cnt_data {
 			(uint32_t)perf_cnt_get_cpu_ts();			\
 		(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;		\
 		(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;			\
-		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)		\
+		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak) {		\
 			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;	\
+			(pcd)->peak_mcps_period_cnt = (pcd)->period_cnt;		\
+		}								\
 		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {		\
 			(pcd)->cpu_delta_peak = (pcd)->cpu_delta_last;		\
 			trace_m(pcd, arg);					\
