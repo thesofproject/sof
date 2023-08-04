@@ -16,6 +16,7 @@
 #include <ipc/topology.h>
 #include <ipc/stream.h>
 #include <kernel/tokens.h>
+#include <sof/list.h>
 
 /* temporary - current MAXLEN is not define in UAPI header - fix pending */
 #ifndef SNDRV_CTL_ELEM_ID_NAME_MAXLEN
@@ -38,11 +39,52 @@ struct sof;
 struct fuzz;
 struct sof_topology_module_desc;
 
+struct sof_ipc4_audio_format {
+	uint32_t sampling_frequency;
+	uint32_t bit_depth;
+	uint32_t ch_map;
+	uint32_t ch_cfg; /* sof_ipc4_channel_config */
+	uint32_t interleaving_style;
+	uint32_t fmt_cfg; /* channels_count valid_bit_depth s_type */
+} __packed __aligned(4);
+
+/**
+ * struct sof_ipc4_pin_format - Module pin format
+ * @pin_index: pin index
+ * @buffer_size: buffer size in bytes
+ * @audio_fmt: audio format for the pin
+ *
+ * This structure can be used for both output or input pins and the pin_index is relative to the
+ * pin type i.e output/input pin
+ */
+struct sof_ipc4_pin_format {
+	uint32_t pin_index;
+	uint32_t buffer_size;
+	struct sof_ipc4_audio_format audio_fmt;
+};
+
+/**
+ * struct sof_ipc4_available_audio_format - Available audio formats
+ * @output_pin_fmts: Available output pin formats
+ * @input_pin_fmts: Available input pin formats
+ * @num_input_formats: Number of input pin formats
+ * @num_output_formats: Number of output pin formats
+ */
+struct sof_ipc4_available_audio_format {
+	struct sof_ipc4_pin_format *output_pin_fmts;
+	struct sof_ipc4_pin_format *input_pin_fmts;
+	uint32_t num_input_formats;
+	uint32_t num_output_formats;
+};
+
 struct tplg_comp_info {
 	char *name;
 	int id;
 	int type;
 	int pipeline_id;
+	void *ipc_payload;
+	struct list_item item; /* item in a list */
+	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
 };
 
 /*
@@ -59,6 +101,7 @@ struct tplg_context {
 	/* current IPC object and widget */
 	struct snd_soc_tplg_hdr *hdr;
 	struct snd_soc_tplg_dapm_widget *widget;
+	struct tplg_comp_info *current_comp_info;
 	int comp_id;
 	size_t widget_size;
 	int dev_type;
@@ -209,4 +252,5 @@ int tplg_create_object(struct tplg_context *ctx,
 int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
 			 int count, struct snd_soc_tplg_vendor_array *array,
 			 int priv_size, int num_sets, int object_size);
+int tplg_parse_widget_audio_formats(struct tplg_context *ctx);
 #endif
