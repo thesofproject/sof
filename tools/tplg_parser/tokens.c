@@ -83,15 +83,17 @@ int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
 	return 0;
 }
 
-/* parse vendor tokens in topology */
-int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
-		     int count, struct snd_soc_tplg_vendor_array *array,
-		     int priv_size)
+int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
+			 int count, struct snd_soc_tplg_vendor_array *array,
+			 int priv_size, int num_sets, int object_size)
 {
+	size_t offset = 0;
+	int total = 0;
+	int found = 0;
 	int asize;
-	int ret = 0;
+	int ret;
 
-	while (priv_size > 0 && ret == 0) {
+	while (priv_size > 0 && total < count * num_sets) {
 		asize = array->size;
 
 		/* validate asize */
@@ -103,34 +105,54 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 
 		/* make sure there is enough data before parsing */
 		priv_size -= asize;
-
 		if (priv_size < 0) {
 			fprintf(stderr, "error: invalid priv size 0x%x\n",
-				asize);
+				priv_size);
 			return -EINVAL;
 		}
 
 		/* call correct parser depending on type */
 		switch (array->type) {
 		case SND_SOC_TPLG_TUPLE_TYPE_UUID:
-			ret = sof_parse_uuid_tokens(object, tokens, count, array);
+			found = sof_parse_uuid_tokens(object + offset, tokens, count, array);
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_STRING:
-			ret = sof_parse_string_tokens(object, tokens, count, array);
+			ret = sof_parse_string_tokens(object + offset, tokens, count, array);
+			if (ret < 0)
+				return ret;
+			found = ret;
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
 		case SND_SOC_TPLG_TUPLE_TYPE_BYTE:
 		case SND_SOC_TPLG_TUPLE_TYPE_WORD:
 		case SND_SOC_TPLG_TUPLE_TYPE_SHORT:
-			ret = sof_parse_word_tokens(object, tokens, count, array);
+			found = sof_parse_word_tokens(object + offset, tokens, count, array);
 			break;
 		default:
 			fprintf(stderr, "error: unknown token type %d\n",
 				array->type);
 			return -EINVAL;
 		}
+
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
+
+		if (found >= count) {
+			total += found;
+			offset += object_size;
+			found = 0;
+		}
 	}
-	return ret;
+
+	return 0;
+}
+
+/* parse vendor tokens in topology */
+int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
+		     int count, struct snd_soc_tplg_vendor_array *array,
+		     int priv_size)
+{
+	/* object_size is not needed when parsing only 1 set of tokens */
+	return sof_parse_token_sets(object, tokens, count, array, priv_size, 1, 0);
 }
 
 /* parse word tokens */
@@ -140,6 +162,7 @@ int sof_parse_word_tokens(void *object,
 			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_value_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_value_elem) * array->num_elems +
@@ -166,10 +189,11 @@ int sof_parse_word_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 /* parse uuid tokens */
@@ -179,6 +203,7 @@ int sof_parse_uuid_tokens(void *object,
 			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_uuid_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_uuid_elem) * array->num_elems +
@@ -205,10 +230,11 @@ int sof_parse_uuid_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 /* parse string tokens */
@@ -218,6 +244,7 @@ int sof_parse_string_tokens(void *object,
 			    struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_string_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_string_elem) * array->num_elems +
@@ -244,10 +271,11 @@ int sof_parse_string_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 bool tplg_is_valid_priv_size(size_t size_read, size_t priv_size,
