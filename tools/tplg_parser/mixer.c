@@ -44,25 +44,15 @@ static int mixer_ipc3_build(struct tplg_context *ctx, void *_mixer)
 	return 0;
 }
 
-/* MIXER - IPC4 */
-static const struct sof_topology_token mixer4_tokens[] = {
-	/* TODO */
-};
-
-static const struct sof_topology_token_group mixer_ipc4_tokens[] = {
-	{mixer4_tokens, ARRAY_SIZE(mixer4_tokens)},
-};
-
 static int mixer_ipc4_build(struct tplg_context *ctx, void *mixer)
 {
-	/* TODO */
-	return 0;
+	return tplg_parse_widget_audio_formats(ctx);
 }
 
 static const struct sof_topology_module_desc mixer_ipc[] = {
 	{3, mixer_ipc3_tokens, ARRAY_SIZE(mixer_ipc3_tokens),
 		mixer_ipc3_build, sizeof(struct sof_ipc_comp_mixer) + UUID_SIZE},
-	{4, mixer_ipc4_tokens, ARRAY_SIZE(mixer_ipc4_tokens), mixer_ipc4_build},
+	{4, NULL, 0, mixer_ipc4_build},
 };
 
 int tplg_new_mixer(struct tplg_context *ctx, void *mixer, size_t mixer_size,
