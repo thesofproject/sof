@@ -127,8 +127,7 @@ static const struct sof_topology_token_group process_ipc4_tokens[] = {
 
 static int process_ipc4_build(struct tplg_context *ctx, void *process)
 {
-	/* TODO */
-	return 0;
+	return tplg_parse_widget_audio_formats(ctx);
 }
 
 static const struct sof_topology_module_desc process_ipc[] = {
@@ -171,6 +170,39 @@ static int process_append_data3(void *_process_ipc,
 	return 0;
 }
 
+static int process_append_data4(void *_process_ipc,
+				struct snd_soc_tplg_ctl_hdr *ctl,
+				struct snd_soc_tplg_private *priv_data,
+				size_t max_process_size)
+{
+	struct sof_ipc_comp_process *process_ipc = _process_ipc;
+	struct snd_soc_tplg_bytes_control *bytes_ctl;
+	size_t size;
+
+	if (ctl->ops.info != SND_SOC_TPLG_CTL_BYTES)
+		return 0;
+
+	/* Size is process IPC plus private data minus ABI header */
+	bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl;
+	size = bytes_ctl->priv.size - sizeof(struct sof_abi_hdr);
+
+	/* validate if everything will fit */
+	if (size > max_process_size) {
+		fprintf(stderr, "error: process priv data too big, have %zu need %zu\n",
+			max_process_size, size);
+		return -EINVAL;
+	}
+
+	/* Copy configuration data, need to strip ABI header */
+	memcpy((char *)process_ipc + process_ipc->size,
+	       (char *)priv_data->data + sizeof(struct sof_abi_hdr), size);
+	process_ipc->size += size;
+
+	fprintf(stdout, "process configuration data size %#x\n", process_ipc->size);
+
+	return 0;
+}
+
 int tplg_new_process(struct tplg_context *ctx, void *process, size_t process_size,
 		     struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size)
 {
@@ -204,7 +236,7 @@ int tplg_new_process(struct tplg_context *ctx, void *process, size_t process_siz
 						   priv_data, process_size);
 			break;
 		case 4:
-			/* TODO */
+			ret = process_append_data4(process, ctl, priv_data, process_size);
 			break;
 		default:
 			break;
