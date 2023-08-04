@@ -206,5 +206,7 @@ bool tplg_is_valid_priv_size(size_t size_read, size_t priv_size,
 int tplg_create_object(struct tplg_context *ctx,
 		       const struct sof_topology_module_desc *desc, int num_desc,
 		       const char *name, void *object, size_t max_object_size);
-
+int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
+			 int count, struct snd_soc_tplg_vendor_array *array,
+			 int priv_size, int num_sets, int object_size);
 #endif
