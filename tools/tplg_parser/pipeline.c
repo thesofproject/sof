@@ -62,16 +62,21 @@ static int pipeline_ipc3_build(struct tplg_context *ctx, void *_pipeline)
 
 /* Pipeline - IPC4 */
 static const struct sof_topology_token pipeline4_tokens[] = {
-	/* TODO */
+	{SOF_TKN_SCHED_CORE, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct sof_ipc_pipe_new, core)},
 };
 
 static const struct sof_topology_token_group pipeline_ipc4_tokens[] = {
 	{pipeline4_tokens, ARRAY_SIZE(pipeline4_tokens)},
 };
 
-static int pipeline_ipc4_build(struct tplg_context *ctx, void *pipeline)
+static int pipeline_ipc4_build(struct tplg_context *ctx, void *_pipeline)
 {
-	/* TODO */
+	struct sof_ipc_pipe_new *pipeline = _pipeline;
+
+	pipeline->pipeline_id = ctx->pipeline_id;
+	fprintf(stdout, "pipeline: %d core: %d\n", pipeline->pipeline_id, pipeline->core);
+
 	return 0;
 }
 
