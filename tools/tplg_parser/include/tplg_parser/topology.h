@@ -79,6 +79,7 @@ struct sof_ipc4_available_audio_format {
 
 struct tplg_comp_info {
 	char *name;
+	char *stream_name;
 	int id;
 	int type;
 	int pipeline_id;
@@ -90,6 +91,14 @@ struct tplg_comp_info {
 struct tplg_route_info {
 	struct tplg_comp_info *source;
 	struct tplg_comp_info *sink;
+	struct list_item item; /* item in a list */
+};
+
+struct tplg_pcm_info {
+	char *name;
+	int id;
+	struct tplg_comp_info *playback_host;
+	struct tplg_comp_info *capture_host;
 	struct list_item item; /* item in a list */
 };
 
@@ -163,6 +172,11 @@ struct tplg_context {
 	({struct snd_soc_tplg_dapm_graph_elem *w;				\
 	w = (struct snd_soc_tplg_dapm_graph_elem *)(ctx->tplg_base + ctx->tplg_offset); \
 	ctx->tplg_offset += sizeof(*w); w; })
+
+#define tplg_get_pcm(ctx)                                                       \
+	({struct snd_soc_tplg_pcm *pcm;                         \
+	pcm = (struct snd_soc_tplg_pcm *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*pcm) + pcm->priv.size; pcm; })
 
 static inline int tplg_valid_widget(struct snd_soc_tplg_dapm_widget *widget)
 {
@@ -261,4 +275,7 @@ int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
 int tplg_parse_widget_audio_formats(struct tplg_context *ctx);
 int tplg_parse_graph(struct tplg_context *ctx, struct list_item *widget_list,
 		     struct list_item *route_list);
+int tplg_parse_pcm(struct tplg_context *ctx, struct list_item *widget_list,
+		   struct list_item *pcm_list);
+
 #endif
