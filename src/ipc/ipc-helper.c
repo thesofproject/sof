@@ -36,7 +36,7 @@
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
+struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
 {
 	struct comp_buffer *buffer;
 
@@ -44,7 +44,8 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
 
 	/* allocate buffer */
-	buffer = buffer_alloc(desc->size, desc->caps, desc->flags, PLATFORM_DCACHE_ALIGN);
+	buffer = buffer_alloc(desc->size, desc->caps, desc->flags, PLATFORM_DCACHE_ALIGN,
+			      is_shared);
 	if (buffer) {
 		buffer->id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
@@ -174,8 +175,8 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 {
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
-		/* set the buffer as a coherent object */
-		coherent_shared_thread(buffer, c);
+		/* buffer must be shared */
+		assert(buffer->is_shared);
 
 		if (!comp->is_shared)
 			comp_make_shared(comp);

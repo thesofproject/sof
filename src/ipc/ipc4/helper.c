@@ -315,7 +315,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	return IPC4_SUCCESS;
 }
 
-static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
+static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
 					      uint32_t src_obs, uint32_t src_queue,
 					      uint32_t dst_queue)
 {
@@ -330,7 +330,7 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = src->ipc_config.core;
-	return buffer_new(&ipc_buf);
+	return buffer_new(&ipc_buf, is_shared);
 }
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
@@ -344,6 +344,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct ipc4_base_module_cfg sink_src_cfg;
 	uint32_t flags;
 	int src_id, sink_id;
+	bool is_shared;
 	int ret;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
@@ -360,6 +361,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	/* Pass IPC to target core if both modules has the same target core */
 	if (!cpu_is_me(source->ipc_config.core) && source->ipc_config.core == sink->ipc_config.core)
 		return ipc4_process_on_core(source->ipc_config.core, false);
+	is_shared = (source->ipc_config.core != sink->ipc_config.core);
 
 	ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
 	if (ret < 0) {
@@ -373,8 +375,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_FAILURE;
 	}
 
-	buffer = ipc4_create_buffer(source, sink, source_src_cfg.obs, bu->extension.r.src_queue,
-				    bu->extension.r.dst_queue);
+	buffer = ipc4_create_buffer(source, is_shared, source_src_cfg.obs,
+				    bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;

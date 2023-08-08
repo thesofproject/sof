@@ -133,8 +133,6 @@ extern struct tr_ctx buffer_tr;
  * 5) write back cached data and release lock using uncache pointer.
  */
 struct comp_buffer {
-	struct coherent c;
-
 	/* data buffer */
 	struct audio_stream stream;
 
@@ -144,6 +142,7 @@ struct comp_buffer {
 	uint32_t caps;
 	uint32_t core;
 	struct tr_ctx tctx;			/* trace settings */
+	bool is_shared;			/* buffer structure is shared between 2 cores */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -188,8 +187,9 @@ struct buffer_cb_free {
 	} while (0)
 
 /* pipeline buffer creation and destruction */
-struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align);
-struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc);
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align,
+				 bool is_shared);
+struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
 int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment);
 void buffer_free(struct comp_buffer *buffer);
 void buffer_zero(struct comp_buffer __sparse_cache *buffer);
@@ -209,32 +209,27 @@ bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
 static inline void buffer_stream_invalidate(struct comp_buffer __sparse_cache *buffer,
 					    uint32_t bytes)
 {
-	if (!is_coherent_shared(buffer, c))
-		return;
-
-	audio_stream_invalidate(&buffer->stream, bytes);
+	if (buffer->is_shared)
+		audio_stream_invalidate(&buffer->stream, bytes);
 }
 
 static inline void buffer_stream_writeback(struct comp_buffer __sparse_cache *buffer,
 					   uint32_t bytes)
 {
-	if (!is_coherent_shared(buffer, c))
-		return;
-
-	audio_stream_writeback(&buffer->stream, bytes);
+	if (buffer->is_shared)
+		audio_stream_writeback(&buffer->stream, bytes);
 }
 
+/* stubs for acquire/release for compilation, to be removed at last step */
 __must_check static inline struct comp_buffer __sparse_cache *buffer_acquire(
 	struct comp_buffer *buffer)
 {
-	struct coherent __sparse_cache *c = coherent_acquire_thread(&buffer->c, sizeof(*buffer));
-
-	return attr_container_of(c, struct comp_buffer __sparse_cache, c, __sparse_cache);
+	return (struct comp_buffer __sparse_cache *)buffer;
 }
 
 static inline void buffer_release(struct comp_buffer __sparse_cache *buffer)
 {
-	coherent_release_thread(&buffer->c, sizeof(*buffer));
+	(void)buffer;
 }
 
 /*

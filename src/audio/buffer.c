@@ -27,7 +27,8 @@ DECLARE_SOF_RT_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
 		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
-struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align)
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align,
+				 bool is_shared)
 {
 	struct comp_buffer *buffer;
 	struct comp_buffer __sparse_cache *buffer_c;
@@ -42,16 +43,17 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 		return NULL;
 	}
 
-	/*
-	 * allocate new buffer, align the allocation size to a cache line for
-	 * the coherent API
-	 */
-	buffer = coherent_init_thread(struct comp_buffer, c);
+	/* allocate new buffer	 */
+	enum mem_zone zone = is_shared ? SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
+
+	buffer = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
 		return NULL;
 	}
 
+	buffer->is_shared = is_shared;
 	stream_addr = rballoc_align(0, caps, size, align);
 	if (!stream_addr) {
 		rfree(buffer);
@@ -69,18 +71,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	audio_stream_set_overrun(&buffer_c->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
 
 	buffer_release(buffer_c);
-
-	/*
-	 * The buffer hasn't yet been marked as shared, hence buffer_release()
-	 * hasn't written back and invalidated the cache. Therefore we have to
-	 * do this manually now before adding to the lists. Buffer list
-	 * structures are always accessed uncached and they're never modified at
-	 * run-time, i.e. buffers are never relinked. So we have to make sure,
-	 * that what we have written into buffer's cache is in RAM before
-	 * modifying that RAM bypassing cache, and that after this cache is
-	 * re-loaded again.
-	 */
-	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
@@ -303,30 +293,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
-	struct list_item __sparse_cache *needs_sync;
-	bool further_buffers_exist;
-
-	/*
-	 * There can already be buffers on the target list. If we just link this
-	 * buffer, we modify the first buffer's list header via uncached alias,
-	 * so its cached copy can later be written back, overwriting the
-	 * modified header. FIXME: this is still a problem with different cores.
-	 */
-	further_buffers_exist = !list_is_empty(head);
-	needs_sync = uncache_to_cache(head->next);
-	if (further_buffers_exist)
-		dcache_writeback_region(needs_sync, sizeof(struct list_item));
-	/* The cache line can be prefetched here, invalidate it after prepending */
 	list_item_prepend(list, head);
-	if (further_buffers_exist)
-		dcache_invalidate_region(needs_sync, sizeof(struct list_item));
-#if CONFIG_INTEL
-	/*
-	 * Until now the buffer object wasn't in cache, but uncached access to it could have
-	 * triggered a cache prefetch. Drop that cache line to avoid using stale data in it.
-	 */
-	dcache_invalidate_region(uncache_to_cache(list), sizeof(*list));
-#endif
 }
 
 /*
@@ -335,32 +302,6 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
  */
 void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
-	struct list_item __sparse_cache *needs_sync_prev, *needs_sync_next;
-	bool buffers_after_exist, buffers_before_exist;
 	struct list_item *buf_list = buffer_comp_list(buffer, dir);
-
-	/*
-	 * There can be more buffers linked together with this one, that will
-	 * still be staying on their respective pipelines and might get used via
-	 * their cached aliases. If we just unlink this buffer, we modify their
-	 * list header via uncached alias, so their cached copy can later be
-	 * written back, overwriting the modified header. FIXME: this is still a
-	 * problem with different cores.
-	 */
-	buffers_after_exist = head != buf_list->next;
-	buffers_before_exist = head != buf_list->prev;
-	needs_sync_prev = uncache_to_cache(buf_list->prev);
-	needs_sync_next = uncache_to_cache(buf_list->next);
-	if (buffers_after_exist)
-		dcache_writeback_region(needs_sync_next, sizeof(struct list_item));
-	if (buffers_before_exist)
-		dcache_writeback_region(needs_sync_prev, sizeof(struct list_item));
-	dcache_writeback_region(uncache_to_cache(buf_list), sizeof(*buf_list));
-	/* buffers before or after can be prefetched here */
 	list_item_del(buf_list);
-	dcache_invalidate_region(uncache_to_cache(buf_list), sizeof(*buf_list));
-	if (buffers_after_exist)
-		dcache_invalidate_region(needs_sync_next, sizeof(struct list_item));
-	if (buffers_before_exist)
-		dcache_invalidate_region(needs_sync_prev, sizeof(struct list_item));
 }
