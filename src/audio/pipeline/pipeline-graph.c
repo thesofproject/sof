@@ -176,10 +176,6 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 		buffer_c->sink = comp;
 
 	buffer_release(buffer_c);
-
-	/* The buffer might be marked as shared later, write back the cache */
-	if (!buffer->c.shared)
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 }
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
