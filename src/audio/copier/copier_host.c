@@ -185,7 +185,7 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 
 			sync_group = (struct ipc4_copier_sync_group *)((void *)value_ptr);
 
-			ret = add_to_fpi_sync_group(parent_dev, hd, sync_group);
+			ret = add_to_fpi_sync_group(dev, hd, sync_group);
 			if (ret < 0)
 				return ret;
 		}
