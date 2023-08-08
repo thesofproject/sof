@@ -204,8 +204,8 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
-
-	buffer = buffer_new(&ipc_buf);
+	/* allocate not shared buffer */
+	buffer = buffer_new(&ipc_buf, false);
 	if (!buffer)
 		return -ENOMEM;
 

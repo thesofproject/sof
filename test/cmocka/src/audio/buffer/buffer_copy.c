@@ -29,8 +29,8 @@ static void test_audio_buffer_copy_underrun(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *src = buffer_new(&test_buf_desc);
-	struct comp_buffer *snk = buffer_new(&test_buf_desc);
+	struct comp_buffer *src = buffer_new(&test_buf_desc, false);
+	struct comp_buffer *snk = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(src);
 	assert_non_null(snk);
@@ -56,8 +56,8 @@ static void test_audio_buffer_copy_overrun(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *src = buffer_new(&test_buf_desc);
-	struct comp_buffer *snk = buffer_new(&test_buf_desc);
+	struct comp_buffer *src = buffer_new(&test_buf_desc, false);
+	struct comp_buffer *snk = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(src);
 	assert_non_null(snk);
@@ -85,8 +85,8 @@ static void test_audio_buffer_copy_success(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *src = buffer_new(&test_buf_desc);
-	struct comp_buffer *snk = buffer_new(&test_buf_desc);
+	struct comp_buffer *src = buffer_new(&test_buf_desc, false);
+	struct comp_buffer *snk = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(src);
 	assert_non_null(snk);
@@ -111,8 +111,8 @@ static void test_audio_buffer_copy_fit_space_constraint(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *src = buffer_new(&test_buf_desc);
-	struct comp_buffer *snk = buffer_new(&test_buf_desc);
+	struct comp_buffer *src = buffer_new(&test_buf_desc, false);
+	struct comp_buffer *snk = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(src);
 	assert_non_null(snk);
@@ -139,8 +139,8 @@ static void test_audio_buffer_copy_fit_no_space_constraint(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *src = buffer_new(&test_buf_desc);
-	struct comp_buffer *snk = buffer_new(&test_buf_desc);
+	struct comp_buffer *src = buffer_new(&test_buf_desc, false);
+	struct comp_buffer *snk = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(src);
 	assert_non_null(snk);

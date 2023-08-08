@@ -27,7 +27,7 @@ static void test_audio_buffer_new(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *buf = buffer_new(&test_buf_desc);
+	struct comp_buffer *buf = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(buf);
 	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);

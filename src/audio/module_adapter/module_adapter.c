@@ -448,8 +448,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate buffer for all sinks */
 	if (list_is_empty(&mod->sink_buffer_list)) {
 		for (i = 0; i < mod->num_output_buffers; i++) {
+			/* allocate not shared buffer */
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
-								  0, PLATFORM_DCACHE_ALIGN);
+								  0, PLATFORM_DCACHE_ALIGN, false);
 			uint32_t flags;
 
 			if (!buffer) {
