@@ -87,6 +87,12 @@ struct tplg_comp_info {
 	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
 };
 
+struct tplg_route_info {
+	struct tplg_comp_info *source;
+	struct tplg_comp_info *sink;
+	struct list_item item; /* item in a list */
+};
+
 /*
  * Per topology data.
  *
@@ -253,4 +259,6 @@ int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
 			 int count, struct snd_soc_tplg_vendor_array *array,
 			 int priv_size, int num_sets, int object_size);
 int tplg_parse_widget_audio_formats(struct tplg_context *ctx);
+int tplg_parse_graph(struct tplg_context *ctx, struct list_item *widget_list,
+		     struct list_item *route_list);
 #endif
