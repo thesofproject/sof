@@ -21,6 +21,7 @@ target_sources(sof_tplg_parser PUBLIC
 	tokens.c
 	process.c
 	control.c
+	pcm.c
 	pga.c
 	mixer.c
 	pipeline.c
