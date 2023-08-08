@@ -454,7 +454,7 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 	}
 
 	/* register buffer with pipeline */
-	buffer = buffer_new(desc);
+	buffer = buffer_new(desc, false);
 	if (!buffer) {
 		tr_err(&ipc_tr, "ipc_buffer_new(): buffer_new() failed");
 		return -ENOMEM;
@@ -572,6 +572,12 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d -> connect", buffer->id,
 	       comp->id);
 
+#if CONFIG_INCOHERENT
+	if (comp->core != buffer->cb->core) {
+		tr_err(&ipc_tr, "ipc: shared buffers are not supported for IPC3 incoherent architectures");
+		return -ENOTSUP;
+	}
+#endif
 	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
 				   PPL_CONN_DIR_COMP_TO_BUFFER);
 }
@@ -582,6 +588,12 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d -> connect", comp->id,
 	       buffer->id);
 
+#if CONFIG_INCOHERENT
+	if (comp->core != buffer->cb->core) {
+		tr_err(&ipc_tr, "ipc: shared buffers are not supported for IPC3 incoherent architectures");
+		return -ENOTSUP;
+	}
+#endif
 	return comp_buffer_connect(comp->cd, comp->core, buffer->cb,
 				   PPL_CONN_DIR_BUFFER_TO_COMP);
 }

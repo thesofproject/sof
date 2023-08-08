@@ -28,7 +28,7 @@ static void test_audio_buffer_write_10_bytes_out_of_256_and_read_back
 		.size = 256
 	};
 
-	struct comp_buffer *buf = buffer_new(&test_buf_desc);
+	struct comp_buffer *buf = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(buf);
 	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);
@@ -63,7 +63,7 @@ static void test_audio_buffer_fill_10_bytes(void **state)
 		.size = 10
 	};
 
-	struct comp_buffer *buf = buffer_new(&test_buf_desc);
+	struct comp_buffer *buf = buffer_new(&test_buf_desc, false);
 
 	assert_non_null(buf);
 	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);

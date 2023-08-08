@@ -23,7 +23,7 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 		},
 		.size = buffer_size,
 	};
-	struct comp_buffer *buffer = buffer_new(&desc);
+	struct comp_buffer *buffer = buffer_new(&desc, false);
 
 	memset(buffer->stream.addr, 0, buffer_size);
 
@@ -58,7 +58,7 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 		},
 		.size = buffer_size,
 	};
-	struct comp_buffer *buffer = buffer_new(&desc);
+	struct comp_buffer *buffer = buffer_new(&desc, false);
 
 	memset(buffer->stream.addr, 0, buffer_size);
 
