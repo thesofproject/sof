@@ -229,7 +229,7 @@ static void crossover_s32_default(struct comp_data *cd,
 
 	for (ch = 0; ch < nch; ch++) {
 		idx = ch;
-		state = &cd->state[0];
+		state = &cd->state[ch];
 		for (i = 0; i < frames; i++) {
 			x = audio_stream_read_frag_s32(source_stream, idx);
 			cd->crossover_split(*x, out, state);
