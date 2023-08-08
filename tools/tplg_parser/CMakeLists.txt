@@ -24,7 +24,7 @@ target_sources(sof_tplg_parser PUBLIC
 	pga.c
 	mixer.c
 	pipeline.c
-	pcm.c
+	host.c
 	dai.c
 	asrc.c
 	src.c
