@@ -20,8 +20,8 @@ anchor_freq = anchor_freq / (stage_ratio * stage_ratio);
 [emp(1), emp(2)] = stage_gain_adjust(emp(1), emp(2));
 
 % Print emp and deemp
-emp
-deemp
+%emp
+%deemp
 
 % Convert the coefficients to values usable with SOF
 emp_coefs = iir_coef_quant(emp);
