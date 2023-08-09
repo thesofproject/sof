@@ -162,20 +162,20 @@ _rom_store_table = 0;
 PROVIDE(_memmap_vecbase_reset = XCHAL_WINDOW_VECTORS_VADDR);
 
 /* Various memory-map dependent cache attribute settings: */
-_memmap_cacheattr_wb_base = 0x44024000;
-_memmap_cacheattr_wt_base = 0x11021000;
-_memmap_cacheattr_bp_base = 0x22022000;
-_memmap_cacheattr_unused_mask = 0x00F00FFF;
-_memmap_cacheattr_wb_trapnull = 0x4422422F;
-_memmap_cacheattr_wba_trapnull = 0x4422422F;
-_memmap_cacheattr_wbna_trapnull = 0x25222222;
-_memmap_cacheattr_wt_trapnull = 0x1122122F;
+_memmap_cacheattr_wb_base = 0x20004400;
+_memmap_cacheattr_wt_base = 0x20001100;
+_memmap_cacheattr_bp_base = 0x20002200;
+_memmap_cacheattr_unused_mask = 0x0FFF00FF;
+_memmap_cacheattr_wb_trapnull = 0x2222442F;
+_memmap_cacheattr_wba_trapnull = 0x2222442F;
+_memmap_cacheattr_wbna_trapnull = 0x2222552F;
+_memmap_cacheattr_wt_trapnull = 0x2222112F;
 _memmap_cacheattr_bp_trapnull = 0x2222222F;
-_memmap_cacheattr_wb_strict = 0x44F24FFF;
-_memmap_cacheattr_wt_strict = 0x11F21FFF;
-_memmap_cacheattr_bp_strict = 0x22F22FFF;
-_memmap_cacheattr_wb_allvalid = 0x44224222;
-_memmap_cacheattr_wt_allvalid = 0x11221222;
+_memmap_cacheattr_wb_strict = 0x2FFF44FF;
+_memmap_cacheattr_wt_strict = 0x2FFF11FF;
+_memmap_cacheattr_bp_strict = 0x2FFF22FF;
+_memmap_cacheattr_wb_allvalid = 0x22224422;
+_memmap_cacheattr_wt_allvalid = 0x22221122;
 _memmap_cacheattr_bp_allvalid = 0x22222222;
 PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 _EXT_MAN_ALIGN_ = 16;
@@ -359,8 +359,7 @@ SECTIONS
     _text_end = ABSOLUTE(.);
     _etext = .;
   } >sof_iram_text_start :sof_iram_text_start_phdr
-
-
+  
   .rodata : ALIGN(4)
   {
     _rodata_start = ABSOLUTE(.);
@@ -464,6 +463,11 @@ SECTIONS
   } >sof_sram1 :sof_sram1_phdr
 
 
+
+
+
+
+
 .sof_stack (NOLOAD) : ALIGN(8)
   {
     . = ALIGN (4096);
@@ -478,6 +482,7 @@ SECTIONS
     *(.reset.rodata)
     _reset_rodata_end = ABSOLUTE(.);
   } >sof_sram1 :sof_sram1_phdr
+
 
   .system_heap (NOLOAD) : ALIGN(8)
   {
