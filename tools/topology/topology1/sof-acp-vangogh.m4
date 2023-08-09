@@ -62,6 +62,16 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 DAI_ADD(sof/pipe-dai-capture.m4, 3, ACPSP, 0, acp-headset-codec,
 PIPELINE_SINK_3, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
+# Capture pipeline 6 on PCM 1 using max 2 channels of s16le.
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+        6, 1, 2, s16le,
+        2000, 0, 0,
+        48000, 48000, 48000)
+
+# Capture DAI is ACPHS using 2 periods
+DAI_ADD(sof/pipe-dai-capture.m4, 6, ACPHS, 1, acp-amp-codec,
+PIPELINE_SINK_6, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+
 # Playback pipeline 4 on PCM 2 using max 2 channels of s16le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
@@ -93,7 +103,7 @@ PIPELINE_SINK_5, 2, s16le, 2000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 PCM_DUPLEX_ADD(I2SSP, 0, PIPELINE_PCM_1, PIPELINE_PCM_3)
 
 # PCM  id 1
-PCM_PLAYBACK_ADD(I2SHS, 1, PIPELINE_PCM_2)
+PCM_DUPLEX_ADD(I2SHS, 1, PIPELINE_PCM_2, PIPELINE_PCM_6)
 
 # PCM  id 2
 PCM_DUPLEX_ADD(I2SBT, 2, PIPELINE_PCM_4, PIPELINE_PCM_5)

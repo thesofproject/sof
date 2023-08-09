@@ -24,6 +24,11 @@ static struct dai hsdai[] = {
 			.depth          = 8,
 			.handshake      = 1,
 			},
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+				.offset         = DAI_BASE + HS_RX_FIFO_OFFST,
+				.depth          = 8,
+				.handshake      = 0,
+			},
 		},
 		.drv = &acp_hsdai_driver,
 	},
