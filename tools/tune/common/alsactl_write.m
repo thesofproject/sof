@@ -1,5 +1,7 @@
 function alsactl_write(fn, blob8)
+
 %% Write blob
+check_create_dir(fn);
 fh = fopen(fn, 'w');
 
 %% Pad blob length to multiple of four bytes

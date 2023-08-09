@@ -1,6 +1,8 @@
 function blob_write(fn, blob8)
 
+
 %% Write blob
+check_create_dir(fn);
 fh = fopen(fn, 'wb');
 fwrite(fh, blob8, 'uint8');
 fclose(fh);
@@ -15,5 +17,7 @@ for i = 1:nl
 	end
 	fprintf(1, "\n");
 end
+
+fprintf(1, "\n");
 
 end
