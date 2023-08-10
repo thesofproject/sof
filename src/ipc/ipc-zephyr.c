@@ -35,6 +35,8 @@
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <ipc/header.h>
+#include <sof/ipc/msg.h>
+#include <ipc4/notification.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -112,8 +114,27 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 	}
 
 	if (!list_is_empty(&ipc->msg_list)) {
-		tr_err(&ipc_tr, "there are queued IPC messages to be sent");
-		ret = -EINPROGRESS;
+		struct list_item *slist;
+		struct ipc_msg *msg;
+		/* The only possible message that can be added during power transition procedure is
+		 * SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS.
+		 */
+		const uint32_t exp_hdr = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
+		bool only_buff_status = true;
+
+		list_for_item(slist, &ipc->msg_list) {
+			msg = container_of(slist, struct ipc_msg, list);
+
+			if (msg->header != exp_hdr)
+				only_buff_status = false;
+		}
+
+		if (only_buff_status) {
+			tr_warn(&ipc_tr, "continuing D3 procedure with the msg in the queue");
+		} else {
+			tr_err(&ipc_tr, "there are queued IPC messages to be sent");
+			ret = -EINPROGRESS;
+		}
 	}
 
 	if (ret != 0)
