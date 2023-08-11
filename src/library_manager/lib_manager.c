@@ -324,6 +324,7 @@ static void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t li
 	/* TODO: maybe need to call here dcache_writeback here? */
 }
 
+#if CONFIG_INTEL_MODULES
 int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 {
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
@@ -360,14 +361,8 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 	mod = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
-#if CONFIG_INTEL_MODULES
 	DECLARE_DYNAMIC_MODULE_ADAPTER(drv, SOF_COMP_MODULE_ADAPTER, *uid, lib_manager_tr);
-#else
-	tr_err(&lib_manager_tr,
-	       "lib_manager_register_module(): Dynamic module loading is not supported");
-	ret = -ENOTSUP;
-	goto cleanup;
-#endif
+
 	new_drv_info->drv = drv;
 
 	/* Register new driver in the list */
@@ -383,6 +378,15 @@ cleanup:
 
 	return ret;
 }
+
+#else /* CONFIG_INTEL_MODULES */
+int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
+{
+	tr_err(&lib_manager_tr,
+	       "lib_manager_register_module(): Dynamic module loading is not supported");
+	return -ENOTSUP;
+}
+#endif /* CONFIG_INTEL_MODULES */
 
 static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 					uint32_t size, uint32_t align)
