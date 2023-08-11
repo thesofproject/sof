@@ -220,6 +220,7 @@ set(TPLGS
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DHEADPHONE=rt5682\;-DPLATFORM=jsl-dedede"
 	"sof-jsl-rt5682\;sof-jsl-cs42l42-mx98360a\;-DHEADPHONE=cs42l42\;-DPLATFORM=jsl-dedede"
 	"sof-jsl-rt5682\;sof-jsl-rt5682\;-DHEADPHONE=rt5682\;-DPLATFORM=icl\;-DNO_AMP"
+	"sof-jsl-rt5682\;sof-jsl-rt5650\;-DHEADPHONE=rt5650\;-DPLATFORM=jsl-rt1015"
 
 	## DRC/EQ topologies
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-drceq\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=adl\;-DLINUX_MACHINE_DRIVER=sof_rt5682\;-DAMP_SSP=2\;-DDYNAMIC=1\;-DDRC_EQ"
