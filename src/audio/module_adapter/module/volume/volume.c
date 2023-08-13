@@ -1294,10 +1294,11 @@ static int volume_prepare(struct processing_module *mod,
 
 #if CONFIG_IPC_MAJOR_4
 	cd->peak_cnt = 0;
+#if CONFIG_COMP_PEAK_VOL
 	cd->peak_report_cnt = CONFIG_PEAK_METER_UPDATE_PERIOD * 1000 / mod->dev->period;
 	if (cd->peak_report_cnt == 0)
 		cd->peak_report_cnt = 1;
-
+#endif
 	ret = volume_params(mod);
 	if (ret < 0)
 		return ret;
