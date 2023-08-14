@@ -576,6 +576,7 @@ static void src_set_sink_params(struct comp_dev *dev, struct sof_sink __sparse_c
 	sink_set_valid_fmt(sink, valid_fmt);
 	sink_set_channels(sink, cd->ipc_config.base.audio_fmt.channels_count);
 	sink_set_buffer_fmt(sink, cd->ipc_config.base.audio_fmt.interleaving_style);
+	sink_set_rate(sink, cd->ipc_config.sink_rate);
 }
 
 #elif CONFIG_IPC_MAJOR_3
