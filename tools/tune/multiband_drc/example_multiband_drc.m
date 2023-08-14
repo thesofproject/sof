@@ -1,4 +1,4 @@
-function example_multiband_drc();
+function example_multiband_drc()
 
 prm.name = "default";
 prm.sample_rate = 48000;
@@ -119,9 +119,9 @@ drc_params(4).band_lower_freq = prm.band_lower_freq(4) / nyquist;
 [emp_coefs, deemp_coefs] = iir_gen_quant_coefs(iir_params);
 
 % Generate Crossover quantized coefs struct from parameters
-crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate,
-					    drc_params(2).band_lower_freq,
-					    drc_params(3).band_lower_freq,
+crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate, ...
+					    drc_params(2).band_lower_freq, ...
+					    drc_params(3).band_lower_freq, ...
 					    drc_params(4).band_lower_freq);
 
 % Generate DRC quantized coefs struct from parameters
@@ -147,4 +147,4 @@ alsactl_write(alsa4_fn, blob8_ipc4);
 
 rmpath ../common
 
-endfunction
+end
