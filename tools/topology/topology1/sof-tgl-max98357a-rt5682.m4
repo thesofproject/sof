@@ -30,8 +30,24 @@ DEBUG_START
 #
 ifdef(`2CH_2WAY', `ifdef(`4CH_PASSTHROUGH', `fatal_error(note: 2CH_2WAY and 4CH_PASSTHROUGH are mutually exclusive)')')
 
-ifdef(`USE_DA7219',`define(HEADPHONE, `DA7219')',`define(HEADPHONE, `RT5682')')
-ifdef(`USE_DA7219',`define(MCLK_RATE, `24576000')',`define(MCLK_RATE, `19200000')')
+#
+# Set headphone type, default is RT5682
+#
+ifdef(`USE_DA7219',`define(HEADPHONE, `DA7219')',`
+	ifdef(`USE_RT5650',`define(HEADPHONE, `RT5650')',`define(HEADPHONE, `RT5682')')')
+
+#
+# Set the MCLK rate for headphone and amplifier SSP ports
+#
+ifelse(
+	HEADPHONE, `DA7219', `
+	define(MCLK_RATE, `24576000')',
+	HEADPHONE, `RT5650', `
+	define(MCLK_RATE, `24576000')
+	define(CODEC, `RT5650')',
+	HEADPHONE, `RT5682', `
+	define(MCLK_RATE, `19200000')',
+	`fatal_error(note: unknown HEADPHONE type)')
 
 #
 # Define the demux configure
@@ -456,6 +472,12 @@ ifelse(
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 32, 3, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
+	CODEC, `RT5650', `
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, MCLK_RATE, codec_mclk_in),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 32, 3, 3),
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24, 0, 0, 0, SSP_CC_MCLK_AON)))',
 	)')
 
 ifdef(`NO_HEADPHONE',`',`
@@ -474,6 +496,12 @@ ifelse(
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))',
+	HEADPHONE, `RT5650', `
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, MCLK_RATE, codec_mclk_in),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 32, 3, 3),
+		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_MCLK_AON)))',
 	)')
 
 # 4 HDMI/DP outputs (ID: 3,4,5,6)
