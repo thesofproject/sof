@@ -28,7 +28,7 @@ elseif (num_bands == 3)
 else % (num_bands == 4)
 	% 4-way crossover
 	crossover = crossover_gen_coefs(sample_rate, fc_low, fc_med, fc_high);
-endif
+end
 
 assert(length(crossover.lp) == filter_len && length(crossover.hp) == filter_len);
 

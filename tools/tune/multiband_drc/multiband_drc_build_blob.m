@@ -79,7 +79,7 @@ for i = 1:length(drc_coefs) % drc_coef
 	blob8(j:j+3) = word2byte(drc_coefs(i).kE, sh); j=j+4;
 end
 
-endfunction
+end
 
 function bytes = word2byte(word, sh)
 bytes = uint8(zeros(1,4));
