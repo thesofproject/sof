@@ -1,18 +1,38 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-menu "Smart amplifier solutions"
-	visible if COMP_SMART_AMP
+if COMP_SMART_AMP
+
+choice
+        prompt "Smart Amplifier solution applied"
+        default PASSTHRU_AMP
+	help
+	  The selection for Smart Amplifier component implementation
+	  will depend on the Amplifier solution supplier. It is fair
+	  to treat the supported solutions as mutually exclusive ones.
+	  There should be no more than one solution selected per build
+	  config. When Smart Amplifier is present but no solution is
+	  supported, the passthrough mode will be applied as default.
+
+	config PASSTHRU_AMP
+		bool "Stream Passthrough"
+		help
+		  The default option as the passthrough mode while no other
+		  solution is applied. While selected, the feed-forward input
+		  frames will be passed to output after channel remapping. No
+		  gain or latency will be produced. In the meanwhile, the
+		  feedback input frames will be consumed but dropped directly.
 
 	config MAXIM_DSM
 		bool "Maxim DSM solution"
 		select MAXIM_DSM_STUB if COMP_STUBS
-		default n
 		help
 		  Select to apply Maxim DSM(Dynamic Speaker Management) solution
 		  for Smart Amplifier. As the third-party supply, the
 		  pre-compiled library provided by Maxim will be required for
 		  building the FW binary with this option enabled. The library
 		  itself should be statically linked with the SoF FW binary image.
+
+endchoice
 
 	config MAXIM_DSM_STUB
 		bool "Maxim DSM solution"
@@ -22,5 +42,4 @@ menu "Smart amplifier solutions"
 		  Select to build the Maxim DSM adapter with a stub library. This
 		  should only be used for CI and testing.
 
-endmenu
-
+endif

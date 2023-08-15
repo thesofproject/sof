@@ -179,6 +179,21 @@ static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 	}
 }
 
+static inline uint32_t get_sample_bitdepth(enum sof_ipc_frame fmt)
+{
+	switch (fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 16;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S24_3LE:
+		return 24;
+	case SOF_IPC_FRAME_U8:
+		return 8;
+	default:
+		return 32;
+	}
+}
+
 static inline uint32_t get_frame_bytes(enum sof_ipc_frame fmt,
 				       uint32_t channels)
 {
