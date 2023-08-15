@@ -555,6 +555,8 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	struct sof_ipc_stream_params hw_params;
 	int ret;
 
+	memset(&hw_params, 0, sizeof(hw_params));
+
 	ret = dai_common_get_hw_params(dd, dev, &hw_params, params->direction);
 	if (ret < 0) {
 		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
