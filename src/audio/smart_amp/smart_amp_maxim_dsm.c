@@ -20,8 +20,119 @@
 #include <sof/audio/smart_amp/smart_amp.h>
 #include "dsm_api_public.h"
 
-static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
+/* Maxim DSM(Dynamic Speaker Management) process buffer size */
+#define DSM_FRM_SZ		48
+#define DSM_FF_BUF_SZ		(DSM_FRM_SZ * SMART_AMP_FF_MAX_CH_NUM)
+#define DSM_FB_BUF_SZ		(DSM_FRM_SZ * SMART_AMP_FB_MAX_CH_NUM)
+
+#define DSM_FF_BUF_DB_SZ	(DSM_FF_BUF_SZ * SMART_AMP_FF_MAX_CH_NUM)
+#define DSM_FB_BUF_DB_SZ	(DSM_FB_BUF_SZ * SMART_AMP_FB_MAX_CH_NUM)
+
+/* DSM parameter table structure
+ * +--------------+-----------------+---------------------------------+
+ * | ID (4 bytes) | VALUE (4 bytes) | 1st channel :                   |
+ * |              |                 | 8 bytes per single parameter    |
+ * +--------------+-----------------+---------------------------------+
+ * | ...          | ...             | Repeat N times for N parameters |
+ * +--------------+-----------------+---------------------------------+
+ * | ID (4 bytes) | VALUE (4 bytes) | 2nd channel :                   |
+ * |              |                 | 8 bytes per single parameter    |
+ * +--------------+-----------------+---------------------------------+
+ * | ...          | ...             | Repeat N times for N parameters |
+ * +--------------+-----------------+---------------------------------+
+ */
+enum dsm_param {
+	DSM_PARAM_ID = 0,
+	DSM_PARAM_VALUE,
+	DSM_PARAM_MAX
+};
+
+#define DSM_SINGLE_PARAM_SZ	(DSM_PARAM_MAX * SMART_AMP_FF_MAX_CH_NUM)
+
+static const int supported_fmt_count = 3;
+static const uint16_t supported_fmts[] = {
+	SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE
+};
+
+union maxim_dsm_buf {
+	int16_t *buf16;
+	int32_t *buf32;
+};
+
+struct maxim_dsm_ff_buf_struct_t {
+	int32_t *buf;
+	int avail;
+};
+
+struct maxim_dsm_fb_buf_struct_t {
+	int32_t *buf;
+	int avail;
+	int rdy;
+};
+
+struct smart_amp_buf_struct_t {
+	/* buffer : feed forward process input */
+	int32_t *input;
+	/* buffer : feed forward process output */
+	int32_t *output;
+	/* buffer : feedback voltage */
+	int32_t *voltage;
+	/* buffer : feedback current */
+	int32_t *current;
+	/* buffer : feed forward variable length -> fixed length */
+	struct maxim_dsm_ff_buf_struct_t ff;
+	/* buffer : feed forward variable length <- fixed length */
+	struct maxim_dsm_ff_buf_struct_t ff_out;
+	/* buffer : feedback variable length -> fixed length */
+	struct maxim_dsm_fb_buf_struct_t fb;
+};
+
+struct param_buf_struct_t {
+	int id;
+	int value;
+};
+
+struct smart_amp_caldata {
+	uint32_t data_size;			/* size of component's model data */
+	void *data;				/* model data pointer */
+	uint32_t data_pos;			/* data position for read/write */
+};
+
+struct smart_amp_param_struct_t {
+	struct param_buf_struct_t param;	/* variable to keep last parameter ID/value */
+	struct smart_amp_caldata caldata;	/* model data buffer */
+	int pos;				/* data position for read/write */
+	int max_param;				/* keep max number of DSM parameters */
+};
+
+/* self-declared inner model data struct */
+struct smart_amp_mod_struct_t {
+	struct smart_amp_mod_data_base base;
+	struct smart_amp_buf_struct_t buf;
+	void *dsmhandle;
+	/* DSM variables for the initialization */
+	int delayedsamples[SMART_AMP_FF_MAX_CH_NUM << 2];
+	int circularbuffersize[SMART_AMP_FF_MAX_CH_NUM << 2];
+	/* Number of samples of feed forward and feedback frame */
+	int ff_fr_sz_samples;
+	int fb_fr_sz_samples;
+	int channelmask;
+	/* Number of channels of DSM */
+	int nchannels;
+	/* Number of samples of feed forward channel */
+	int ifsamples;
+	/* Number of samples of feedback channel */
+	int ibsamples;
+	/* Number of processed samples */
+	int ofsamples;
+	/* Channel bit dempth */
+	int bitwidth;
+	struct smart_amp_param_struct_t param;
+};
+
+static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk)
 {
+	const struct comp_dev *dev = hspk->base.dev;
 	int *circularbuffersize = hspk->circularbuffersize;
 	int *delayedsamples = hspk->delayedsamples;
 	struct dsm_api_init_ext_t initparam;
@@ -33,11 +144,16 @@ static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *
 	initparam.ipdelayedsamples      = delayedsamples;
 	initparam.isamplingrate         = DSM_DEFAULT_SAMPLE_RATE;
 
+	if (!hspk->dsmhandle) {
+		comp_err(dev, "[DSM] Initialization failed: dsmhandle not allocated");
+		return -EINVAL;
+	}
+
 	retcode = dsm_api_init(hspk->dsmhandle, &initparam,
 			       sizeof(struct dsm_api_init_ext_t));
 	if (retcode != DSM_API_OK) {
 		goto exit;
-	} else	{
+	} else {
 		hspk->ff_fr_sz_samples =
 			initparam.off_framesizesamples;
 		hspk->fb_fr_sz_samples =
@@ -60,8 +176,62 @@ exit:
 	return (int)retcode;
 }
 
-static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk,
-				   struct comp_dev *dev)
+static int maxim_dsm_get_num_param(struct smart_amp_mod_struct_t *hspk)
+{
+	enum DSM_API_MESSAGE retcode;
+	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
+
+	/* Get number of parameters */
+	cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(DSM_API_GET_MAXIMUM_CMD_ID);
+	retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
+	if (retcode != DSM_API_OK)
+		return 0;
+
+	return MIN(DSM_DEFAULT_MAX_NUM_PARAM, cmdblock[DSM_GET_CH1_IDX]);
+}
+
+static int maxim_dsm_get_handle_size(struct smart_amp_mod_struct_t *hspk)
+{
+	enum DSM_API_MESSAGE retcode;
+	struct dsm_api_memory_size_ext_t memsize;
+	int *circularbuffersize = hspk->circularbuffersize;
+
+	memsize.ichannels = DSM_DEFAULT_NUM_CHANNEL;
+	memsize.ipcircbuffersizebytes = circularbuffersize;
+	memsize.isamplingrate = DSM_DEFAULT_SAMPLE_RATE;
+	memsize.omemsizerequestedbytes = 0;
+	memsize.numeqfilters = DSM_DEFAULT_NUM_EQ;
+	retcode = dsm_api_get_mem(&memsize,
+				  sizeof(struct dsm_api_memory_size_ext_t));
+	if (retcode != DSM_API_OK)
+		return 0;
+
+	return memsize.omemsizerequestedbytes;
+}
+
+static int maxim_dsm_flush(struct smart_amp_mod_struct_t *hspk)
+{
+	const struct comp_dev *dev = hspk->base.dev;
+
+	memset(hspk->buf.input, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
+	memset(hspk->buf.output, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
+	memset(hspk->buf.voltage, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
+	memset(hspk->buf.current, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
+
+	memset(hspk->buf.ff.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
+	memset(hspk->buf.ff_out.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
+	memset(hspk->buf.fb.buf, 0, DSM_FB_BUF_DB_SZ * sizeof(int32_t));
+
+	hspk->buf.ff.avail = DSM_FF_BUF_SZ;
+	hspk->buf.ff_out.avail = 0;
+	hspk->buf.fb.avail = 0;
+
+	comp_dbg(dev, "[DSM] Reset (handle:%p)", hspk);
+
+	return 0;
+}
+
+static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk)
 {
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	int32_t *db = (int32_t *)caldata->data;
@@ -96,7 +266,7 @@ static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk,
 }
 
 static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
-					struct comp_dev *dev)
+					const struct comp_dev *dev)
 {
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	int32_t *db = (int32_t *)caldata->data;
@@ -125,42 +295,10 @@ static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
-int maxim_dsm_get_param_forced(struct smart_amp_mod_struct_t *hspk,
-			       struct comp_dev *dev)
+static int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
+			       struct sof_ipc_ctrl_data *cdata, int size)
 {
-	struct smart_amp_caldata *caldata = &hspk->param.caldata;
-	int32_t *db = (int32_t *)caldata->data;
-	enum DSM_API_MESSAGE retcode;
-	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
-	int num_param = hspk->param.max_param;
-	int idx;
-
-	/* Update all parameter values from the DSM component */
-	for (idx = 0 ; idx <= num_param ;  idx++) {
-		cmdblock[0] = DSM_SET_CMD_ID(idx);
-		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
-		if (retcode != DSM_API_OK) {
-			/* set zero if the parameter is not readable */
-			cmdblock[DSM_GET_CH1_IDX] = 0;
-			cmdblock[DSM_GET_CH2_IDX] = 0;
-		}
-		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
-		db[idx * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | idx;
-		db[idx * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
-		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
-		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
-		 */
-		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | idx;
-		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
-	}
-
-	return 0;
-}
-
-int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
-			struct comp_dev *dev,
-			struct sof_ipc_ctrl_data *cdata, int size)
-{
+	const struct comp_dev *dev = hspk->base.dev;
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	size_t bs;
 	int ret;
@@ -203,10 +341,10 @@ int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
-int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
-			struct comp_dev *dev,
-			struct sof_ipc_ctrl_data *cdata)
+static int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
+			       struct sof_ipc_ctrl_data *cdata)
 {
+	const struct comp_dev *dev = hspk->base.dev;
 	struct smart_amp_param_struct_t *param = &hspk->param;
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	/* Model database */
@@ -265,9 +403,9 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
-int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk,
-			    struct comp_dev *dev)
+static int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk)
 {
+	const struct comp_dev *dev = hspk->base.dev;
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	int32_t *db = (int32_t *)caldata->data;
 	int num_param = hspk->param.max_param;
@@ -290,25 +428,56 @@ int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
-static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
-			      struct comp_dev *dev, void *in, void *out,
-			      int nsamples, int szsample)
+/**
+ * mod_ops implementation.
+ */
+
+static int maxim_dsm_get_config(struct smart_amp_mod_data_base *mod,
+				struct sof_ipc_ctrl_data *cdata, uint32_t size)
 {
-	union smart_amp_buf buf, buf_out;
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+
+	return maxim_dsm_get_param(hspk, cdata, size);
+}
+
+static int maxim_dsm_set_config(struct smart_amp_mod_data_base *mod,
+				struct sof_ipc_ctrl_data *cdata)
+{
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+
+	return maxim_dsm_set_param(hspk, cdata);
+}
+
+static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
+			     uint32_t frames,
+			     struct smart_amp_mod_stream *in,
+			     struct smart_amp_mod_stream *out)
+{
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+	union maxim_dsm_buf buf, buf_out;
 	int16_t *input = (int16_t *)hspk->buf.input;
 	int16_t *output = (int16_t *)hspk->buf.output;
 	int32_t *input32 = hspk->buf.input;
 	int32_t *output32 = hspk->buf.output;
 	int *w_ptr = &hspk->buf.ff.avail;
 	int *r_ptr = &hspk->buf.ff_out.avail;
-	bool is_16bit = szsample == 2 ? true : false;
+	bool is_16bit = (in->frame_fmt == SOF_IPC_FRAME_S16_LE);
+	int szsample = (is_16bit ? 2 : 4);
+	int nsamples = frames * in->channels;
 	int remain;
 	int idx;
+	int ret = 0;
 
 	buf.buf16 = (int16_t *)hspk->buf.ff.buf;
 	buf.buf32 = (int32_t *)hspk->buf.ff.buf;
 	buf_out.buf16 = (int16_t *)hspk->buf.ff_out.buf;
 	buf_out.buf32 = (int32_t *)hspk->buf.ff_out.buf;
+
+	/* Report all frames consumed even if buffer overflow to prevent source
+	 * congestion. Same for frames produced to keep the stream rolling.
+	 */
+	in->consumed = frames;
+	out->produced = frames;
 
 	/* Current pointer(w_ptr) + number of input frames(nsamples)
 	 * must be smaller than buffer size limit
@@ -316,16 +485,17 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 	if (*w_ptr + nsamples <= DSM_FF_BUF_DB_SZ) {
 		if (is_16bit)
 			memcpy_s(&buf.buf16[*w_ptr], nsamples * szsample,
-				 in, nsamples * szsample);
+				 in->buf.data, nsamples * szsample);
 		else
 			memcpy_s(&buf.buf32[*w_ptr], nsamples * szsample,
-				 in, nsamples * szsample);
+				 in->buf.data, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
-		comp_warn(dev,
+		comp_warn(mod->dev,
 			  "[DSM] Feed Forward buffer overflow. (w_ptr : %d + %d > %d)",
 			  *w_ptr, nsamples, DSM_FF_BUF_DB_SZ);
-		return;
+		ret = -EOVERFLOW;
+		goto error;
 	}
 
 	/* Run DSM Feedforward process if the buffer is ready */
@@ -387,10 +557,10 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 	/* Output buffer preparation */
 	if (*r_ptr >= nsamples) {
 		if (is_16bit)
-			memcpy_s(out, nsamples * szsample,
+			memcpy_s(out->buf.data, nsamples * szsample,
 				 buf_out.buf16, nsamples * szsample);
 		else
-			memcpy_s(out, nsamples * szsample,
+			memcpy_s(out->buf.data, nsamples * szsample,
 				 buf_out.buf32, nsamples * szsample);
 
 		remain = (*r_ptr - nsamples);
@@ -405,30 +575,47 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 					 remain * szsample);
 		}
 		*r_ptr -= nsamples;
-	} else {
-		memset(out, 0, nsamples * szsample);
-		comp_err(dev,
-			 "[DSM] DSM FF process underrun. r_ptr : %d",
-			 *r_ptr);
+		return ret;
 	}
+	/* else { */
+	comp_err(mod->dev, "[DSM] DSM FF process underrun. r_ptr : %d", *r_ptr);
+	ret = -ENODATA;
+
+error:
+	/* TODO(Maxim): undefined behavior when buffer overflow in previous code.
+	 *              It leads to early return and no sample written to output
+	 *              buffer. However the sink buffer will still writeback
+	 *              avail_frames data copied from output buffer.
+	 */
+	/* set all-zero output when buffer overflow or process underrun. */
+	memset_s(out->buf.data, out->buf.size, 0, nsamples * szsample);
+	return ret;
 }
 
-static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
-			      struct comp_dev *dev, void *in,
-			      int nsamples, int szsample)
+static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
+			     uint32_t frames,
+			     struct smart_amp_mod_stream *in)
 {
-	union smart_amp_buf buf;
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+	union maxim_dsm_buf buf;
 	int *w_ptr = &hspk->buf.fb.avail;
 	int16_t *v = (int16_t *)hspk->buf.voltage;
 	int16_t *i = (int16_t *)hspk->buf.current;
 	int32_t *v32 = hspk->buf.voltage;
 	int32_t *i32 = hspk->buf.current;
-	bool is_16bit = szsample == 2 ? true : false;
+	bool is_16bit = (in->frame_fmt == SOF_IPC_FRAME_S16_LE);
+	int szsample = (is_16bit ? 2 : 4);
+	int nsamples = frames * in->channels;
 	int remain;
 	int idx;
 
 	buf.buf16 = (int16_t *)hspk->buf.fb.buf;
 	buf.buf32 = hspk->buf.fb.buf;
+
+	/* Set all frames consumed even if buffer overflow to prevent source
+	 * congestion.
+	 */
+	in->consumed = frames;
 
 	/* Current pointer(w_ptr) + number of input frames(nsamples)
 	 * must be smaller than buffer size limit
@@ -436,16 +623,17 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 	if (*w_ptr + nsamples <= DSM_FB_BUF_DB_SZ) {
 		if (is_16bit)
 			memcpy_s(&buf.buf16[*w_ptr], nsamples * szsample,
-				 in, nsamples * szsample);
+				 in->buf.data, nsamples * szsample);
 		else
 			memcpy_s(&buf.buf32[*w_ptr], nsamples * szsample,
-				 in, nsamples * szsample);
+				 in->buf.data, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
-		comp_warn(dev, "[DSM] Feedback buffer overflow. w_ptr : %d",
+		comp_warn(mod->dev, "[DSM] Feedback buffer overflow. w_ptr : %d",
 			  *w_ptr);
-		return;
+		return -EOVERFLOW;
 	}
+
 	/* Run DSM Feedback process if the buffer is ready */
 	if (*w_ptr >= DSM_FB_BUF_SZ) {
 		if (is_16bit) {
@@ -490,300 +678,171 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 					   hspk->channelmask,
 					   (short *)i32, (short *)v32, &hspk->ibsamples);
 	}
-}
-
-int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
-{
-	memset(hspk->buf.frame_in, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.frame_out, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.frame_iv, 0,
-	       SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t));
-
-	memset(hspk->buf.input, 0, DSM_FF_BUF_SZ * sizeof(int16_t));
-	memset(hspk->buf.output, 0, DSM_FF_BUF_SZ * sizeof(int16_t));
-	memset(hspk->buf.voltage, 0, DSM_FF_BUF_SZ * sizeof(int16_t));
-	memset(hspk->buf.current, 0, DSM_FF_BUF_SZ * sizeof(int16_t));
-
-	memset(hspk->buf.ff.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.ff_out.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.fb.buf, 0, DSM_FB_BUF_DB_SZ * sizeof(int32_t));
-
-	hspk->buf.ff.avail = DSM_FF_BUF_SZ;
-	hspk->buf.ff_out.avail = 0;
-	hspk->buf.fb.avail = 0;
-
-	comp_dbg(dev, "[DSM] Reset (handle:%p)", hspk);
-
 	return 0;
 }
 
-int smart_amp_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
+static int maxim_dsm_preinit(struct smart_amp_mod_data_base *mod)
 {
-	return maxim_dsm_init(hspk, dev);
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+
+	/* Bitwidth information is not available. Use 16bit as default.
+	 * Re-initialize in the prepare function if ncessary
+	 */
+	hspk->bitwidth = 16;
+	return maxim_dsm_init(hspk);
 }
 
-int smart_amp_get_all_param(struct smart_amp_mod_struct_t *hspk,
-			    struct comp_dev *dev)
+static int maxim_dsm_query_memblk_size(struct smart_amp_mod_data_base *mod,
+				       enum smart_amp_mod_memblk blk)
 {
-	if (maxim_dsm_get_all_param(hspk, dev) < 0)
-		return -EINVAL;
-	return 0;
-}
-
-int smart_amp_get_num_param(struct smart_amp_mod_struct_t *hspk,
-			    struct comp_dev *dev)
-{
-	enum DSM_API_MESSAGE retcode;
-	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
-
-	/* Get number of parameters */
-	cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(DSM_API_GET_MAXIMUM_CMD_ID);
-	retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
-	if (retcode != DSM_API_OK)
-		return 0;
-
-	return MIN(DSM_DEFAULT_MAX_NUM_PARAM, cmdblock[DSM_GET_CH1_IDX]);
-}
-
-int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,
-			      struct comp_dev *dev)
-{
-	enum DSM_API_MESSAGE retcode;
-	struct dsm_api_memory_size_ext_t memsize;
-	int *circularbuffersize = hspk->circularbuffersize;
-
-	memsize.ichannels = DSM_DEFAULT_NUM_CHANNEL;
-	memsize.ipcircbuffersizebytes = circularbuffersize;
-	memsize.isamplingrate = DSM_DEFAULT_SAMPLE_RATE;
-	memsize.omemsizerequestedbytes = 0;
-	memsize.numeqfilters = DSM_DEFAULT_NUM_EQ;
-	retcode = dsm_api_get_mem(&memsize,
-				  sizeof(struct dsm_api_memory_size_ext_t));
-	if (retcode != DSM_API_OK)
-		return 0;
-
-	return memsize.omemsizerequestedbytes;
-}
-
-int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
-{
-	/* Return error if the format is not supported by DSM component */
-	if (sample_rate != DSM_DEFAULT_SAMPLE_RATE)
-		return -EINVAL;
-	if (ch_num > DSM_DEFAULT_NUM_CHANNEL)
-		return -EINVAL;
-
-	return 0;
-}
-
-static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
-				const struct audio_stream *stream,
-				int8_t *chan_map, uint32_t num_ch)
-{
-	int idx, ch;
-	uint32_t in_frag = 0;
-	union smart_amp_buf input, output;
-	int index;
-
-	input.buf16 = audio_stream_get_rptr(stream);
-	input.buf32 = audio_stream_get_rptr(stream);
-	output.buf16 = (int16_t *)buf;
-	output.buf32 = (int32_t *)buf;
-
-	switch (audio_stream_get_frm_fmt(stream)) {
-	case SOF_IPC_FRAME_S16_LE:
-		for (idx = 0 ; idx < frames ; idx++) {
-			for (ch = 0 ; ch < num_ch; ch++) {
-				if (chan_map[ch] == -1)
-					continue;
-				index = in_frag + chan_map[ch];
-				input.buf16 =
-					audio_stream_read_frag_s16(stream,
-								   index);
-				output.buf16[num_ch * idx + ch] = *input.buf16;
-			}
-			in_frag += audio_stream_get_channels(stream);
-		}
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		for (idx = 0 ; idx < frames ; idx++) {
-			for (ch = 0 ; ch < num_ch ; ch++) {
-				if (chan_map[ch] == -1)
-					continue;
-				index = in_frag + chan_map[ch];
-				input.buf32 =
-					audio_stream_read_frag_s32(stream,
-								   index);
-				output.buf32[num_ch * idx + ch] = *input.buf32;
-			}
-			in_frag += audio_stream_get_channels(stream);
-		}
-		break;
-	default:
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
-				const struct audio_stream *stream,
-				int8_t *chan_map, uint32_t num_ch_in,
-				uint32_t num_ch_out)
-{
-	union smart_amp_buf input, output;
-	uint32_t out_frag = 0;
-	int idx, ch;
-
-	input.buf16 = (int16_t *)buf;
-	input.buf32 = (int32_t *)buf;
-	output.buf16 = audio_stream_get_wptr(stream);
-	output.buf32 = audio_stream_get_wptr(stream);
-
-	switch (audio_stream_get_frm_fmt(stream)) {
-	case SOF_IPC_FRAME_S16_LE:
-		for (idx = 0 ; idx < frames ; idx++) {
-			for (ch = 0 ; ch < num_ch_out; ch++) {
-				if (chan_map[ch] == -1) {
-					out_frag++;
-					continue;
-				}
-				output.buf16 =
-					audio_stream_write_frag_s16(stream,
-								    out_frag);
-				*output.buf16 = input.buf16[num_ch_in * idx + ch];
-				out_frag++;
-			}
-		}
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		for (idx = 0 ; idx < frames ; idx++) {
-			for (ch = 0 ; ch < num_ch_out; ch++) {
-				if (chan_map[ch] == -1) {
-					out_frag++;
-					continue;
-				}
-				output.buf32 =
-					audio_stream_write_frag_s32(stream,
-								    out_frag);
-				*output.buf32 = input.buf32[num_ch_in * idx + ch];
-				out_frag++;
-			}
-		}
-		break;
-	default:
-		return -EINVAL;
-	}
-	return 0;
-}
-
-int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
-		      const struct audio_stream *source,
-		      const struct audio_stream *sink, int8_t *chan_map,
-		      struct smart_amp_mod_struct_t *hspk,
-		      uint32_t num_ch_in, uint32_t num_ch_out)
-{
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
 	int ret;
 
-	if (frames == 0) {
-		comp_warn(dev, "[DSM] feed forward frame size zero warning.");
-		return 0;
-	}
-
-	if (frames > SMART_AMP_FF_BUF_DB_SZ) {
-		comp_err(dev, "[DSM] feed forward frame size overflow  : %d",
-			 frames);
-		return -EINVAL;
-	}
-
-	num_ch_in = MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM);
-	num_ch_out = MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM);
-
-	ret = smart_amp_get_buffer(hspk->buf.frame_in,
-				   frames, source, chan_map,
-				   num_ch_in);
-	if (ret)
-		goto err;
-
-	switch (audio_stream_get_frm_fmt(source)) {
-	case SOF_IPC_FRAME_S16_LE:
-		maxim_dsm_ff_proc(hspk, dev,
-				  hspk->buf.frame_in,
-				  hspk->buf.frame_out,
-				  frames * num_ch_in, sizeof(int16_t));
+	switch (blk) {
+	case MOD_MEMBLK_PRIVATE:
+		/* Memory size for private data block - dsmhandle */
+		ret = maxim_dsm_get_handle_size(hspk);
+		if (ret <= 0)
+			comp_err(mod->dev, "[DSM] Get handle size error");
 		break;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		maxim_dsm_ff_proc(hspk, dev,
-				  hspk->buf.frame_in,
-				  hspk->buf.frame_out,
-				  frames * num_ch_in, sizeof(int32_t));
+	case MOD_MEMBLK_FRAME:
+		/* Memory size for frame buffer block - smart_amp_buf_struct_t */
+		/* smart_amp_buf_struct_t -> input, output, voltage, current */
+		ret = 4 * DSM_FF_BUF_SZ * sizeof(int32_t);
+		/* smart_amp_buf_struct_t -> ff, ff_out, fb */
+		ret += 2 * DSM_FF_BUF_DB_SZ * sizeof(int32_t) + DSM_FB_BUF_DB_SZ * sizeof(int32_t);
+		break;
+	case MOD_MEMBLK_PARAM:
+		/* Memory size for param blob block - caldata */
+		/* Get the max. number of parameter to allocate memory for model data */
+		ret = maxim_dsm_get_num_param(hspk);
+		if (ret < 0) {
+			comp_err(mod->dev, "[DSM] Get parameter size error");
+			return -EINVAL;
+		}
+		hspk->param.max_param = ret;
+		ret = hspk->param.max_param * DSM_SINGLE_PARAM_SZ * sizeof(int32_t);
 		break;
 	default:
 		ret = -EINVAL;
-		goto err;
+		break;
 	}
 
-	ret = smart_amp_put_buffer(hspk->buf.frame_out,
-				   frames, sink, chan_map,
-				   MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM),
-				   MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
-	if (ret)
-		goto err;
-
-	return 0;
-err:
-	comp_err(dev, "[DSM] Not supported frame format");
 	return ret;
 }
 
-int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
-		      const struct audio_stream *source,
-		      const struct audio_stream *sink, int8_t *chan_map,
-		      struct smart_amp_mod_struct_t *hspk,
-		      uint32_t num_ch)
+static int maxim_dsm_set_memblk(struct smart_amp_mod_data_base *mod,
+				enum smart_amp_mod_memblk blk,
+				struct smart_amp_buf *buf)
 {
-	int ret;
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+	int32_t *mem_ptr;
 
-	if (frames == 0) {
-		comp_warn(dev, "[DSM] feedback frame size zero warning.");
-		return 0;
-	}
-
-	if (frames > SMART_AMP_FB_BUF_DB_SZ) {
-		comp_err(dev, "[DSM] feedback frame size overflow  : %d",
-			 frames);
-		return -EINVAL;
-	}
-
-	num_ch = MIN(num_ch, SMART_AMP_FB_MAX_CH_NUM);
-
-	ret = smart_amp_get_buffer(hspk->buf.frame_iv,
-				   frames, source,
-				   chan_map, num_ch);
-	if (ret)
-		goto err;
-
-	switch (audio_stream_get_frm_fmt(source)) {
-	case SOF_IPC_FRAME_S16_LE:
-		maxim_dsm_fb_proc(hspk, dev, hspk->buf.frame_iv,
-				  frames * num_ch, sizeof(int16_t));
+	switch (blk) {
+	case MOD_MEMBLK_PRIVATE:
+		/* Assign memory to private data */
+		hspk->dsmhandle = buf->data;
+		bzero(hspk->dsmhandle, buf->size);
 		break;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		maxim_dsm_fb_proc(hspk, dev, hspk->buf.frame_iv,
-				  frames * num_ch, sizeof(int32_t));
+	case MOD_MEMBLK_FRAME:
+		/* Assign memory to frame buffers */
+		mem_ptr = (int32_t *)buf->data;
+		hspk->buf.input = mem_ptr;
+		mem_ptr += DSM_FF_BUF_SZ;
+		hspk->buf.output = mem_ptr;
+		mem_ptr += DSM_FF_BUF_SZ;
+		hspk->buf.voltage = mem_ptr;
+		mem_ptr += DSM_FF_BUF_SZ;
+		hspk->buf.current = mem_ptr;
+		mem_ptr += DSM_FF_BUF_SZ;
+		hspk->buf.ff.buf = mem_ptr;
+		mem_ptr += DSM_FF_BUF_DB_SZ;
+		hspk->buf.ff_out.buf = mem_ptr;
+		mem_ptr += DSM_FF_BUF_DB_SZ;
+		hspk->buf.fb.buf = mem_ptr;
+		break;
+	case MOD_MEMBLK_PARAM:
+		/* Assign memory to config caldata */
+		hspk->param.caldata.data = buf->data;
+		hspk->param.caldata.data_size = buf->size;
+		bzero(hspk->param.caldata.data, hspk->param.caldata.data_size);
+		hspk->param.caldata.data_pos = 0;
+
+		/* update full parameter values */
+		if (maxim_dsm_get_all_param(hspk) < 0)
+			return -EINVAL;
 		break;
 	default:
-		ret = -EINVAL;
-		goto err;
+		return -EINVAL;
 	}
 	return 0;
-err:
-	comp_err(dev, "[DSM] Not supported frame format : %d",
-		 audio_stream_get_frm_fmt(source));
+}
+
+static int maxim_dsm_get_supported_fmts(struct smart_amp_mod_data_base *mod,
+					const uint16_t **mod_fmts, int *num_mod_fmts)
+{
+	*num_mod_fmts = supported_fmt_count;
+	*mod_fmts = supported_fmts;
+	return 0;
+}
+
+static int maxim_dsm_set_fmt(struct smart_amp_mod_data_base *mod, uint16_t mod_fmt)
+{
+	struct smart_amp_mod_struct_t *hspk = (struct smart_amp_mod_struct_t *)mod;
+	int ret;
+
+	comp_dbg(mod->dev, "[DSM] smart_amp_mod_set_fmt(): %u", mod_fmt);
+
+	hspk->bitwidth = get_sample_bitdepth(mod_fmt);
+
+	ret = maxim_dsm_init(hspk);
+	if (ret) {
+		comp_err(mod->dev, "[DSM] Re-initialization error.");
+		goto error;
+	}
+	ret = maxim_dsm_restore_param(hspk);
+	if (ret) {
+		comp_err(mod->dev, "[DSM] Restoration error.");
+		goto error;
+	}
+
+error:
+	maxim_dsm_flush(hspk);
 	return ret;
+}
+
+static int maxim_dsm_reset(struct smart_amp_mod_data_base *mod)
+{
+	/* no-op for reset */
+	return 0;
+}
+
+static const struct inner_model_ops maxim_dsm_ops = {
+	.init = maxim_dsm_preinit,
+	.query_memblk_size = maxim_dsm_query_memblk_size,
+	.set_memblk = maxim_dsm_set_memblk,
+	.get_supported_fmts = maxim_dsm_get_supported_fmts,
+	.set_fmt = maxim_dsm_set_fmt,
+	.ff_proc = maxim_dsm_ff_proc,
+	.fb_proc = maxim_dsm_fb_proc,
+	.set_config = maxim_dsm_set_config,
+	.get_config = maxim_dsm_get_config,
+	.reset = maxim_dsm_reset
+};
+
+/**
+ * mod_data_create() implementation.
+ */
+
+struct smart_amp_mod_data_base *mod_data_create(const struct comp_dev *dev)
+{
+	struct smart_amp_mod_struct_t *hspk;
+
+	hspk = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hspk));
+	if (!hspk)
+		return NULL;
+
+	hspk->base.dev = dev;
+	hspk->base.mod_ops = &maxim_dsm_ops;
+	return &hspk->base;
 }
