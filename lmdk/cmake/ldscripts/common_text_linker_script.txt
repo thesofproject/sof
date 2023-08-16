@@ -1,7 +1,4 @@
-
-PHDRS {
-    text_phdr PT_LOAD;
-}
+/* The .text PHDR is already defined in text_linker_script.txt */
 
 SECTIONS {
     .common.text : ALIGN(4096){
