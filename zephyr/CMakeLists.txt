@@ -362,6 +362,9 @@ zephyr_library_sources(
 	lib.c
 )
 
+if(CONFIG_ZEPHYR_DP_SCHEDULER)
+	zephyr_library_sources(${SOF_AUDIO_PATH}/dp_queue.c)
+endif()
 if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
 	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
 endif()
