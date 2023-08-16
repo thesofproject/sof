@@ -162,6 +162,25 @@ struct module_interface {
 		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
 
 	/**
+	 * (optional) return true if the module is ready to process
+	 * This procedure should check if the module is ready for immediate
+	 * processing.
+	 *
+	 * NOTE! the call MUST NOT perform any time consuming operations
+	 *
+	 * this procedure will always return true for LL module
+	 *
+	 * For DP there's a default implementation that will do a simple check if there's
+	 * at least IBS bytes of data on first source and at least OBS free space on first sink
+	 *
+	 * In case more sophisticated check is needed the method should be implemented in
+	 * the module
+	 */
+	bool (*is_ready_to_process)(struct processing_module *mod,
+				    struct sof_source __sparse_cache **sources, int num_of_sources,
+				    struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+
+	/**
 	 * Module specific processing procedure
 	 * This procedure is responsible to consume
 	 * samples provided by the module_adapter and produce/output the processed

@@ -247,6 +247,30 @@ void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source __sparse_cache **sources, int num_of_sources,
 		   struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+
+static inline
+bool module_is_ready_to_process(struct processing_module *mod,
+				struct sof_source __sparse_cache **sources,
+				int num_of_sources,
+				struct sof_sink __sparse_cache **sinks,
+				int num_of_sinks)
+{
+	struct module_data *md = &mod->priv;
+
+	/* LL module has to be always ready for processing */
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		return true;
+
+	if (md->ops->is_ready_to_process)
+		return md->ops->is_ready_to_process(mod, sources, num_of_sources,
+						    sinks, num_of_sinks);
+	/* default action - the module is ready if there's enough data for processing and enough
+	 * space to store result. IBS/OBS as declared in init_instance
+	 */
+	return (source_get_data_available(sources[0]) >= source_get_ibs(sources[0]) &&
+		sink_get_free_size(sinks[0]) >= sink_get_obs(sinks[0]));
+}
+
 int module_process_sink_src(struct processing_module *mod,
 			    struct sof_source __sparse_cache **sources, int num_of_sources,
 			    struct sof_sink __sparse_cache **sinks, int num_of_sinks);
