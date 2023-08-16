@@ -17,6 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
+#include <sof/audio/dp_queue.h>
 #include "module_interface.h"
 
 #if CONFIG_INTEL_MODULES
@@ -199,10 +200,23 @@ struct processing_module {
 	struct sof_source *sources[MODULE_MAX_SOURCES];
 	uint32_t num_of_sources;
 	uint32_t num_of_sinks;
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
-	uint32_t num_input_buffers; /**< number of input buffers */
-	uint32_t num_output_buffers; /**< number of output buffers */
+
+	union {
+		struct {
+			/* this is used in case of raw data or audio_stream mode */
+			struct input_stream_buffer *input_buffers;
+			struct output_stream_buffer *output_buffers;
+			uint32_t num_input_buffers; /**< number of inputs */
+			uint32_t num_output_buffers; /**< number of outputs */
+		};
+		struct {
+			/* this is used in case of DP processing
+			 * dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP
+			 */
+			struct dp_queue *dp_queue_ll_to_dp[MODULE_MAX_SOURCES];
+			struct dp_queue *dp_queue_dp_to_ll[MODULE_MAX_SOURCES];
+		};
+	};
 	struct comp_buffer *source_comp_buffer; /**< single source component buffer */
 	struct comp_buffer *sink_comp_buffer; /**< single sink compoonent buffer */
 

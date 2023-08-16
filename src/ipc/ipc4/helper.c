@@ -318,14 +318,10 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 }
 
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
-					      uint32_t src_obs, uint32_t src_queue,
+					      uint32_t buf_size, uint32_t src_queue,
 					      uint32_t dst_queue)
 {
 	struct sof_ipc_buffer ipc_buf;
-	int buf_size;
-
-	/* double it since obs is single buffer size */
-	buf_size = src_obs * 2;
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
@@ -385,7 +381,20 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_FAILURE;
 	}
 
-	buffer = ipc4_create_buffer(source, sink, source_src_cfg.obs, bu->extension.r.src_queue,
+	/* create a buffer
+	 * in case of LL -> LL or LL->DP
+	 *	size = 2*obs of source module (obs is single buffer size)
+	 * in case of DP -> LL
+	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
+	 */
+	uint32_t buf_size;
+
+	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		buf_size = source_src_cfg.obs * 2;
+	else
+		buf_size = sink_src_cfg.ibs * 2;
+
+	buffer = ipc4_create_buffer(source, sink, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
@@ -393,12 +402,16 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/*
-	 * set ibs and obs in sink/src api of created buffer
-	 *	IBS of a buffer is OBS of source component
-	 *	OBS of a buffer is IBS of destination component
+	 * set ibs and obs in sink/src api of created buffer. Thats may be tricky:
+	 * buffer is connected like:
+	 *	source_src_cfg -> (sink_ifc) BUFFER (source_ifc) -> sink_src_cfg
+	 *
+	 *	source_src_cfg needs to set its OBS (out buffer size) as OBS in buffer's sink ifc
+	 *	sink_src_cfg needs to set its IBS (input buffer size) as IBS in buffer's source ifc
+	 *
 	 */
-	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
-	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
+	sink_set_obs(audio_stream_get_sink(&buffer->stream), source_src_cfg.obs);
+	source_set_ibs(audio_stream_get_source(&buffer->stream), sink_src_cfg.ibs);
 
 	lock_ll_sched(flags);
 

@@ -227,8 +227,8 @@ static int idc_prepare(uint32_t comp_id)
 
 	dev = ipc_dev->cd;
 
-	/* we're running on different core, so allocate our own task */
-	if (!dev->task) {
+	/* we're running LL on different core, so allocate our own task */
+	if (!dev->task && dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
 		/* allocate task for shared component */
 		dev->task = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(*dev->task));
