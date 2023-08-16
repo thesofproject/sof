@@ -1,7 +1,4 @@
-
-PHDRS {
-    rodata_phdr PT_LOAD;
-}
+/* The .rodata PHDR is already defined in data_linker_script.txt */
 
 SECTIONS {
     .common.rodata : ALIGN(4096) {
