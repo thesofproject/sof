@@ -306,14 +306,18 @@ int platform_boot_complete(uint32_t boot_message)
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
+#if CONFIG_IPC_MAJOR_3
 	/* get any IPC specific boot message and optional data */
 	ipc_boot_complete_msg(&header, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 
 	/* tell host we are ready */
-#if CONFIG_IPC_MAJOR_3
 	ipc_write(IPC_DIPCIDD, header.dat[1]);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.dat[0]);
 #elif CONFIG_IPC_MAJOR_4
+	/* get any IPC specific boot message and optional data */
+	ipc_boot_complete_msg(&header, 0);
+
+	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, header.ext);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.pri);
 #endif
