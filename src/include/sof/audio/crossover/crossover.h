@@ -142,7 +142,7 @@ extern const size_t crossover_split_fncount;
  */
 static inline crossover_split crossover_find_split_func(int32_t num_sinks)
 {
-	if (num_sinks < CROSSOVER_2WAY_NUM_SINKS &&
+	if (num_sinks < CROSSOVER_2WAY_NUM_SINKS ||
 	    num_sinks > CROSSOVER_4WAY_NUM_SINKS)
 		return NULL;
 	// The functions in the map are offset by 2 indices.
