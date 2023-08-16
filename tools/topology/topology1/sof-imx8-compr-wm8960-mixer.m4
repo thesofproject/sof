@@ -1,6 +1,8 @@
 #
 # Topology for i.MX8QXP/i.MX8QM/i.MX8MP boards mixing PCM and Compress streams
 #
+# CODEC: wm8960, wm8962
+#
 
 # Include topology builder
 include(`utils.m4')
@@ -63,6 +65,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 # define STREAM_NAME, based on CODEC name
 define(`STREAM_NAME',
 	`ifelse(CODEC, `wm8960', `-wm8960-hifi',
+			CODEC, `wm8962', `-wm8962',
 			`fatal_error(`Codec not supported.')')')
 
 # define DAI BE dai_link name
