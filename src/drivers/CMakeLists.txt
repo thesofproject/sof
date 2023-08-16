@@ -4,10 +4,6 @@ if(CONFIG_IMX)
 	add_subdirectory(imx)
 endif()
 
-if(CONFIG_INTEL)
-	add_subdirectory(intel)
-endif()
-
 if(CONFIG_AMD)
 	add_subdirectory(amd)
 endif()
