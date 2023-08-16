@@ -276,7 +276,7 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_buffer *sink, *source;
 	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *source_list;
-	int j, valid_bit_depth;
+	int j;
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
 
@@ -321,7 +321,6 @@ static void set_mux_params(struct processing_module *mod)
 							      &source_c->stream);
 			j = source_c->id;
 			cd->config.streams[j].pipeline_id = source_c->pipeline_id;
-			valid_bit_depth = cd->md.base_cfg.audio_fmt.valid_bit_depth;
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cd->md.base_cfg.audio_fmt;
 			else
