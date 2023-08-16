@@ -170,11 +170,14 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	)
 	endif()
 
+	zephyr_library_sources_ifdef(CONFIG_MEM_WND
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+	)
+
 	# Platform sources
 	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
@@ -186,7 +189,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	else()
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
 		lib/pm_runtime.c
 		lib/clk.c
