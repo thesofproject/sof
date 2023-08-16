@@ -289,7 +289,6 @@ config COMP_DCBLOCK
 	  the DC offset which often originates from a microphone's output.
 
 config MAXIM_DSM
-	depends on CAVS
 	bool "Maxim DSM component"
 	select COMP_BLOB
 	default n
