@@ -11,13 +11,10 @@
 #if (CONFIG_CAVS_LPS)
 #include <cavs/lps_wait.h>
 #endif
-#include <cavs/mem_window.h>
 #include <sof/common.h>
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
-#include <sof/drivers/dw-dma.h>
 #include <rtos/idc.h>
-#include <rtos/interrupt.h>
 #include <sof/ipc/common.h>
 #include <rtos/timer.h>
 #include <sof/fw-ready-metadata.h>
@@ -38,7 +35,6 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
-#include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
@@ -88,142 +84,6 @@ static const struct sof_ipc_fw_ready ready
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
 #endif
 
-#if CONFIG_DW_GPIO
-
-#include <sof/drivers/gpio.h>
-
-const struct gpio_pin_config gpio_data[] = {
-	{	/* GPIO0 */
-		.mux_id = 1,
-		.mux_config = {.bit = 0, .mask = 3, .fn = 1},
-	}, {	/* GPIO1 */
-		.mux_id = 1,
-		.mux_config = {.bit = 2, .mask = 3, .fn = 1},
-	}, {	/* GPIO2 */
-		.mux_id = 1,
-		.mux_config = {.bit = 4, .mask = 3, .fn = 1},
-	}, {	/* GPIO3 */
-		.mux_id = 1,
-		.mux_config = {.bit = 6, .mask = 3, .fn = 1},
-	}, {	/* GPIO4 */
-		.mux_id = 1,
-		.mux_config = {.bit = 8, .mask = 3, .fn = 1},
-	}, {	/* GPIO5 */
-		.mux_id = 1,
-		.mux_config = {.bit = 10, .mask = 3, .fn = 1},
-	}, {	/* GPIO6 */
-		.mux_id = 1,
-		.mux_config = {.bit = 12, .mask = 3, .fn = 1},
-	}, {	/* GPIO7 */
-		.mux_id = 1,
-		.mux_config = {.bit = 14, .mask = 3, .fn = 1},
-	}, {	/* GPIO8 */
-		.mux_id = 1,
-		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
-	}, {	/* GPIO9 */
-		.mux_id = 0,
-		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
-	}, {	/* GPIO10 */
-		.mux_id = 0,
-		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
-	}, {	/* GPIO11 */
-		.mux_id = 0,
-		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
-	}, {	/* GPIO12 */
-		.mux_id = 0,
-		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
-	}, {	/* GPIO13 */
-		.mux_id = 0,
-		.mux_config = {.bit = 0, .mask = 1, .fn = 1},
-	}, {	/* GPIO14 */
-		.mux_id = 0,
-		.mux_config = {.bit = 1, .mask = 1, .fn = 1},
-	}, {	/* GPIO15 */
-		.mux_id = 0,
-		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
-	}, {	/* GPIO16 */
-		.mux_id = 0,
-		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
-	}, {	/* GPIO17 */
-		.mux_id = 0,
-		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
-	}, {	/* GPIO18 */
-		.mux_id = 0,
-		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
-	}, {	/* GPIO19 */
-		.mux_id = 0,
-		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
-	}, {	/* GPIO20 */
-		.mux_id = 0,
-		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
-	}, {	/* GPIO21 */
-		.mux_id = 0,
-		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
-	}, {	/* GPIO22 */
-		.mux_id = 0,
-		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
-	}, {	/* GPIO23 */
-		.mux_id = 0,
-		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
-	}, {	/* GPIO24 */
-		.mux_id = 0,
-		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
-	}, {	/* GPIO25 */
-		.mux_id = 0,
-		.mux_config = {.bit = 26, .mask = 1, .fn = 1},
-	},
-};
-
-const int n_gpios = ARRAY_SIZE(gpio_data);
-
-#if CONFIG_INTEL_IOMUX
-
-#include <sof/drivers/iomux.h>
-
-struct iomux iomux_data[] = {
-	{.base = EXT_CTRL_BASE + 0x30,},
-	{.base = EXT_CTRL_BASE + 0x34,},
-	{.base = EXT_CTRL_BASE + 0x38,},
-};
-
-const int n_iomux = ARRAY_SIZE(iomux_data);
-
-#endif
-
-#endif
-
-#ifndef __ZEPHYR__
-static SHARED_DATA struct timer platform_timer = {
-	.id = TIMER3, /* external timer */
-	.irq = IRQ_EXT_TSTAMP0_LVL2,
-	.irq_name = irq_name_level2,
-};
-
-static SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
-#endif
-
-#if CONFIG_DW_SPI
-
-#include <sof/drivers/spi.h>
-
-static struct spi_platform_data spi = {
-	.base		= DW_SPI_SLAVE_BASE,
-	.type		= SOF_SPI_INTEL_SLAVE,
-	.fifo[SPI_DIR_RX] = {
-		.handshake	= DMA_HANDSHAKE_SSI_RX,
-	},
-	.fifo[SPI_DIR_TX] = {
-		.handshake	= DMA_HANDSHAKE_SSI_TX,
-	}
-};
-
-int platform_boot_complete(uint32_t boot_message)
-{
-	return spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &ready, sizeof(ready));
-}
-
-#else
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
@@ -238,38 +98,18 @@ int platform_boot_complete(uint32_t boot_message)
 	/* get any IPC specific boot message and optional data */
 	ipc_boot_complete_msg(&header, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 
-	/* tell host we are ready */
-#if CONFIG_IPC_MAJOR_3
-	ipc_write(IPC_DIPCIDD, header.dat[1]);
-	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.dat[0]);
-#elif CONFIG_IPC_MAJOR_4
+	/* tell host we are ready (IPC4) */
 	ipc_write(IPC_DIPCIDD, header.ext);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header.pri);
-#endif
+
 	return 0;
 }
-
-#endif
 
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
-#if CONFIG_DW_SPI
-	struct spi *spi_dev;
-#endif
 	int ret;
 	int i;
-
-#ifndef __ZEPHYR__
-	sof->platform_timer = platform_shared_get(&platform_timer, sizeof(platform_timer));
-	sof->cpu_timers = platform_shared_get(arch_timers, sizeof(arch_timers));
-
-	for (i = 0; i < CONFIG_CORE_COUNT; i++)
-		sof->cpu_timers[i] = (struct timer) {
-			.id = TIMER1, /* internal timer */
-			.irq = IRQ_NUM_TIMER2,
-		};
-#endif
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < CONFIG_CORE_COUNT; i++)
@@ -280,15 +120,6 @@ int platform_init(struct sof *sof)
 	 * until we are allowed to do full power gating (by the IPC req).
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
-
-	trace_point(TRACE_BOOT_PLATFORM_IRQ);
-	platform_interrupt_init();
-
-#ifndef __ZEPHYR__
-	/* init timers, clocks and schedulers */
-	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(sof->platform_timer);
-#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
@@ -322,14 +153,6 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
-	/* init low latency single channel DW-DMA domain and scheduler */
-	sof->platform_dma_domain =
-		dma_single_chan_domain_init
-			(&sof->dma_info->dma_array[PLATFORM_DW_DMA_INDEX],
-			 PLATFORM_NUM_DW_DMACS,
-			 PLATFORM_DEFAULT_CLOCK);
-	scheduler_init_ll(sof->platform_dma_domain);
-
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(sof);
@@ -346,62 +169,11 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
-#if CONFIG_DW_SPI
-	/* initialize the SPI slave */
-	trace_point(TRACE_BOOT_PLATFORM_SPI);
-	spi_init();
-	ret = spi_install(&spi, 1);
-	if (ret < 0)
-		return ret;
-
-	spi_dev = spi_get(SOF_SPI_INTEL_SLAVE);
-	if (!spi_dev)
-		return -ENODEV;
-
-	/* initialize the SPI-SLave module */
-	ret = spi_probe(spi_dev);
-	if (ret < 0)
-		return ret;
-#elif CONFIG_TRACE
-	/* Initialize DMA for Trace*/
-	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
-	dma_trace_init_complete(sof->dmat);
-#endif
-
 	/* show heap status */
 	heap_trace_all(1);
 
 	return 0;
 }
-
-#ifndef __ZEPHYR__
-void platform_wait_for_interrupt(int level)
-{
-	platform_clock_on_waiti();
-
-#ifdef CONFIG_MULTICORE
-	int cpu_id = cpu_get_id();
-
-	/* for secondary cores, if prepare_d0ix_core_mask flag is set for
-	 * specific core, we should prepare for power down before going to wait
-	 * - it is required by D0->D0ix flow.
-	 */
-	if (cpu_id != PLATFORM_PRIMARY_CORE_ID &&
-	    platform_pm_runtime_prepare_d0ix_is_req(cpu_id))
-		cpu_power_down_core(CPU_POWER_DOWN_MEMORY_ON);
-#endif
-
-#if (CONFIG_CAVS_LPS)
-	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID) ||
-	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID)
-		arch_wait_for_interrupt(level);
-	else
-		lps_wait_for_interrupt(level);
-#else
-	arch_wait_for_interrupt(level);
-#endif
-}
-#endif
 
 #if CONFIG_CAVS_IMR_D3_PERSISTENT
 /* These structs and macros are from from the ROM code header
@@ -455,9 +227,7 @@ static void imr_layout_update(void *vector)
 
 int platform_context_save(struct sof *sof)
 {
-#if CONFIG_IPC_MAJOR_4
 	ipc_get()->task_mask |= IPC_TASK_POWERDOWN;
-#endif
 
 #if CONFIG_CAVS_IMR_D3_PERSISTENT
 	/* Only support IMR restoring on cAVS 1.8 and onward at the moment. */
