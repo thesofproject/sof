@@ -118,72 +118,15 @@ zephyr_include_directories(
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
-	if (CONFIG_IPC_MAJOR_4 AND CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
 		${SOF_IPC_PATH}/ipc-zephyr.c
 	)
-	else()
-	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-	)
-	endif()
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 	)
 
-	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
-	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
-		${SOF_DRIVERS_PATH}/intel/hda/hda.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
-		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_TPLG_PARAMS
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_computed.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_NHLT
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
-	)
-
-	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
-	)
-	endif()
-
 	# Platform sources
-	if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
-	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
-		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-	)
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
-	else()
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
@@ -191,7 +134,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		lib/clk.c
 		lib/dma.c
 	)
-	endif()
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
