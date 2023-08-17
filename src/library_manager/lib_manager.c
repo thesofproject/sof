@@ -45,6 +45,10 @@ struct lib_manager_dma_ext {
 
 static struct ext_library loader_ext_lib;
 
+#if IS_ENABLED(CONFIG_MM_DRV)
+
+#define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
+
 static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
 					      uint32_t size, uint32_t flags)
 {
@@ -80,8 +84,8 @@ static int lib_manager_load_module(uint32_t module_id, struct sof_man_module *mo
 	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
 	int ret;
 
-	st_text_size = st_text_size * CONFIG_MM_DRV_PAGE_SIZE;
-	st_rodata_size = st_rodata_size * CONFIG_MM_DRV_PAGE_SIZE;
+	st_text_size = st_text_size * PAGE_SZ;
+	st_rodata_size = st_rodata_size * PAGE_SZ;
 
 	/* Copy Code */
 	ret = lib_manager_load_data_from_storage(va_base_text, src_txt, st_text_size,
@@ -137,8 +141,8 @@ static int lib_manager_unload_module(uint32_t module_id, struct sof_man_module *
 	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
 	int ret;
 
-	st_text_size = st_text_size * CONFIG_MM_DRV_PAGE_SIZE;
-	st_rodata_size = st_rodata_size * CONFIG_MM_DRV_PAGE_SIZE;
+	st_text_size = st_text_size * PAGE_SZ;
+	st_rodata_size = st_rodata_size * PAGE_SZ;
 
 	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
 	if (ret < 0)
@@ -179,7 +183,7 @@ static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module
 {
 	uint32_t instance_bss_size =
 		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
-	uint32_t inst_offset = instance_bss_size * CONFIG_MM_DRV_PAGE_SIZE * instance_id;
+	uint32_t inst_offset = instance_bss_size * PAGE_SZ * instance_id;
 	void __sparse_cache *va_base =
 		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
 					inst_offset);
@@ -196,14 +200,14 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 {
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * CONFIG_MM_DRV_PAGE_SIZE;
+			 * PAGE_SZ;
 	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
 									    instance_id, mod);
 
-	if ((is_pages * CONFIG_MM_DRV_PAGE_SIZE) > bss_size) {
+	if ((is_pages * PAGE_SZ) > bss_size) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_allocate_module_instance(): invalid is_pages: %u, required: %u",
-		       is_pages, bss_size / CONFIG_MM_DRV_PAGE_SIZE);
+		       is_pages, bss_size / PAGE_SZ);
 		return -ENOMEM;
 	}
 
@@ -224,7 +228,7 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 {
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * CONFIG_MM_DRV_PAGE_SIZE;
+			 * PAGE_SZ;
 	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
 									    instance_id, mod);
 	/*
@@ -296,6 +300,29 @@ int lib_manager_free_module(const struct comp_driver *drv,
 	}
 	return 0;
 }
+
+#else /* CONFIG_MM_DRV */
+
+#define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
+
+uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
+				     struct comp_ipc_config *ipc_config,
+				     const void *ipc_specific_config)
+{
+	tr_err(&lib_manager_tr,
+	       "lib_manager_allocate_module(): Dynamic module allocation is not supported");
+	return 0;
+}
+
+int lib_manager_free_module(const struct comp_driver *drv,
+			    struct comp_ipc_config *ipc_config)
+{
+	/* Since we cannot allocate the freeing is not considered to be an error */
+	tr_warn(&lib_manager_tr,
+		"lib_manager_free_module(): Dynamic module freeing is not supported");
+	return 0;
+}
+#endif /* CONFIG_MM_DRV */
 
 void lib_manager_init(void)
 {
@@ -518,7 +545,7 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	/* allocate new buffer: cached alias */
 	local_add = (__sparse_force void __sparse_cache *)rmalloc(SOF_MEM_ZONE_SYS, 0, caps, size);
 #else
-	uint32_t addr_align = CONFIG_MM_DRV_PAGE_SIZE;
+	uint32_t addr_align = PAGE_SZ;
 	uint32_t caps = SOF_MEM_CAPS_DMA;
 
 	/* allocate new buffer: cached alias */
@@ -542,7 +569,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	void __sparse_cache *library_base_address;
 	struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
 		((__sparse_force uint8_t *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
-	uint32_t preload_size = man_desc->header.preload_page_count * CONFIG_MM_DRV_PAGE_SIZE;
+	uint32_t preload_size = man_desc->header.preload_page_count * PAGE_SZ;
 	int ret;
 
 	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
