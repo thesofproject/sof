@@ -120,10 +120,9 @@ static int pga_ipc4_build(struct tplg_context *ctx, void *_pga)
 
 	volume->channel_id = IPC4_ALL_CHANNELS_MASK;
 
-	fprintf(stdout,
-		"volume channel ID: %d, target_volume %#x, curve_type: %d curve_duration: %ld\n",
-		volume->channel_id, volume->target_volume, volume->curve_type,
-		volume->curve_duration);
+	tplg_debug("volume channel ID: %d, target_volume %#x, curve_type: %d curve_duration: %ld\n",
+		   volume->channel_id, volume->target_volume, volume->curve_type,
+		   volume->curve_duration);
 
 	return tplg_parse_widget_audio_formats(ctx);
 }

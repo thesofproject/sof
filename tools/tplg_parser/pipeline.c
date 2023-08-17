@@ -75,7 +75,7 @@ static int pipeline_ipc4_build(struct tplg_context *ctx, void *_pipeline)
 	struct sof_ipc_pipe_new *pipeline = _pipeline;
 
 	pipeline->pipeline_id = ctx->pipeline_id;
-	fprintf(stdout, "pipeline: %d core: %d\n", pipeline->pipeline_id, pipeline->core);
+	tplg_debug("pipeline: %d core: %d\n", pipeline->pipeline_id, pipeline->core);
 
 	return 0;
 }

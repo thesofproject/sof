@@ -87,9 +87,9 @@ int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 		return ret;
 	}
 
-	fprintf(stdout, "widget: %s: number of input formats: %d number of output formats: %d\n",
-		ctx->widget->name, available_fmts->num_input_formats,
-		available_fmts->num_output_formats);
+	tplg_debug("widget: %s: number of input formats: %d number of output formats: %d\n",
+		   ctx->widget->name, available_fmts->num_input_formats,
+		   available_fmts->num_output_formats);
 
 	/* allocated memory for the audio formats */
 	available_fmts->output_pin_fmts =
@@ -131,21 +131,19 @@ int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 	pin_fmt = available_fmts->output_pin_fmts;
 	for (i = 0; i < available_fmts->num_output_formats; i++) {
 		fmt = &pin_fmt[i].audio_fmt;
-		fprintf(stdout,
-			"Output Pin index #%d: %uHz, %ubit (ch_map %#x ch_cfg %u interleaving_style %u fmt_cfg %#x) buffer size %d\n",
-			pin_fmt[i].pin_index, fmt->sampling_frequency, fmt->bit_depth, fmt->ch_map,
-			fmt->ch_cfg, fmt->interleaving_style, fmt->fmt_cfg,
-			pin_fmt[i].buffer_size);
+		tplg_debug("Output Pin index #%d: %uHz, %ubit (ch_map %#x ch_cfg %u interleaving_style %u fmt_cfg %#x) buffer size %d\n",
+			   pin_fmt[i].pin_index, fmt->sampling_frequency, fmt->bit_depth, fmt->ch_map,
+			   fmt->ch_cfg, fmt->interleaving_style, fmt->fmt_cfg,
+			   pin_fmt[i].buffer_size);
 	}
 
 	pin_fmt = available_fmts->input_pin_fmts;
 	for (i = 0; i < available_fmts->num_input_formats; i++) {
 		fmt = &pin_fmt[i].audio_fmt;
-		fprintf(stdout,
-			"Input Pin index #%d: %uHz, %ubit (ch_map %#x ch_cfg %u interleaving_style %u fmt_cfg %#x) buffer size %d\n",
-			pin_fmt[i].pin_index, fmt->sampling_frequency, fmt->bit_depth, fmt->ch_map,
-			fmt->ch_cfg, fmt->interleaving_style, fmt->fmt_cfg,
-			pin_fmt[i].buffer_size);
+		tplg_debug("Input Pin index #%d: %uHz, %ubit (ch_map %#x ch_cfg %u interleaving_style %u fmt_cfg %#x) buffer size %d\n",
+			   pin_fmt[i].pin_index, fmt->sampling_frequency, fmt->bit_depth,
+			   fmt->ch_map, fmt->ch_cfg, fmt->interleaving_style, fmt->fmt_cfg,
+			   pin_fmt[i].buffer_size);
 	}
 
 	return 0;

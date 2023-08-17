@@ -48,15 +48,15 @@ int tplg_parse_pcm(struct tplg_context *ctx, struct list_item *widget_list,
 		    (comp_info->type == SND_SOC_TPLG_DAPM_AIF_IN ||
 		     comp_info->type == SND_SOC_TPLG_DAPM_AIF_OUT)) {
 			pcm_info->playback_host = comp_info;
-			fprintf(stdout, "PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
-				pcm_info->id, comp_info->name);
+			tplg_debug("PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
+				   pcm_info->id, comp_info->name);
 		}
 		if (!strcmp(pcm->caps[1].name, comp_info->stream_name) &&
 		    (comp_info->type == SND_SOC_TPLG_DAPM_AIF_IN ||
 		     comp_info->type == SND_SOC_TPLG_DAPM_AIF_OUT)) {
 			pcm_info->capture_host = comp_info;
-			fprintf(stdout, "PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
-				pcm_info->id, comp_info->name);
+			tplg_debug("PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
+				   pcm_info->id, comp_info->name);
 		}
 	}
 

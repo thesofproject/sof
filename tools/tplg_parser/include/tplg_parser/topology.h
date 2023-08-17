@@ -11,12 +11,30 @@
 #define _COMMON_TPLG_H
 
 #include <stdbool.h>
+#include<stdarg.h>
 #include <stddef.h>
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
 #include <kernel/tokens.h>
 #include <sof/list.h>
+
+#ifdef TPLG_DEBUG
+#define DEBUG_MAX_LENGTH 256
+static inline void tplg_debug(char *fmt, ...)
+{
+	char msg[DEBUG_MAX_LENGTH];
+	va_list va;
+
+	va_start(va, fmt);
+	vsnprintf(msg, DEBUG_MAX_LENGTH, fmt, va);
+	va_end(va);
+
+	fprintf(stdout, "%s", msg);
+}
+#else
+static inline void tplg_debug(char *fmt, ...) {}
+#endif
 
 /* temporary - current MAXLEN is not define in UAPI header - fix pending */
 #ifndef SNDRV_CTL_ELEM_ID_NAME_MAXLEN
