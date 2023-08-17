@@ -407,10 +407,10 @@ struct ipc4_module_load_library {
 	} data;
 } __packed __aligned(4);
 
-#define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
-#define IPC4_MOD_ID(x) ((x) >> 16)
-#define IPC4_INST_ID(x)	((x) & 0xffff)
-#define IPC4_SRC_QUEUE_ID(x)	(((x) >> 16) & 0xffff)
-#define IPC4_SINK_QUEUE_ID(x)	((x) & 0xffff)
+#define IPC4_COMP_ID(x, y)	((y) << 16 | (x))
+#define IPC4_MOD_ID(x)	((x) & 0xffff)
+#define IPC4_INST_ID(x)	((x) >> 16)
+#define IPC4_SRC_QUEUE_ID(x)	((x) & 0xffff)
+#define IPC4_SINK_QUEUE_ID(x)	(((x) >> 16) & 0xffff)
 
 #endif
