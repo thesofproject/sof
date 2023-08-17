@@ -109,7 +109,7 @@ int tplg_parse_graph(struct tplg_context *ctx, struct list_item *widget_list,
 
 	list_item_append(&route->item, route_list);
 
-	printf("loading route %s -> %s\n", route->source->name, route->sink->name);
+	tplg_debug("loading route %s -> %s\n", route->source->name, route->sink->name);
 
 	return 0;
 }
