@@ -799,8 +799,9 @@ set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 find_package(Python3 COMPONENTS Interpreter)
 set(PYTHON3 "${Python3_EXECUTABLE}")
 
-# We don't know why we have this https://github.com/thesofproject/sof/issues/5212
+if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
 target_compile_options(SOF INTERFACE -fno-inline-functions)
+endif()
 
 # SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
 # extensions. TODO other flags required ?
