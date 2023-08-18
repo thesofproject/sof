@@ -142,16 +142,6 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	return dev;
 }
 
-static struct ipc_comp_dev *get_comp(struct ipc *ipc, uint16_t type, uint32_t id)
-{
-	struct ipc_comp_dev *c = ipc_get_comp_by_id(ipc, id);
-
-	if (c && c->type == type)
-		return c;
-
-	return NULL;
-}
-
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
 {
 	struct ipc_comp_dev *icd;
