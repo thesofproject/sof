@@ -7,7 +7,7 @@
 #	LL Playback Mixer (Mixer)
 #	LL Playback Volume B3 (DAI buffer)
 #
-# DAI_BUF --> ll mixer(M) --> B0 --> EQ_IIR 0 --> B1  --> EQ_FIR 0 --> B2 --> volume(LL) --> B3-->  sink DAI
+# DAI_BUF --> ll mixer(M) --> B0 --> EQ_IIR 0 --> B1  --> volume(LL) --> B2 -->  sink DAI
 #
 # the ll mixer is connected to one DAI_BUF by default. Additional ones can be added later
 
@@ -21,7 +21,6 @@ include(`buffer.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`eq_iir.m4')
-include(`eq_fir.m4')
 
 #
 # Controls
@@ -71,33 +70,9 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 	,
 	DEF_EQIIR_PRIV)
 
-#
-# FIR EQ
-#
-
-define(DEF_EQFIR_COEF, concat(`eqfir_coef_', PIPELINE_ID))
-define(DEF_EQFIR_PRIV, concat(`eqfir_priv_', PIPELINE_ID))
-
-# By default, use coefficients for pass frequency response
-ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_pass.m4)')
-include(PIPELINE_FILTER2)
-
-# EQ Bytes control with max value of 255
-C_CONTROLBYTES(DEF_EQFIR_COEF, PIPELINE_ID,
-	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
-	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
-	, , ,
-	CONTROLBYTES_MAX(, 4096),
-	,
-	DEF_EQFIR_PRIV)
-
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
 	LIST(`		', "DEF_EQIIR_COEF"))
-
-# "EQ 0" has 2 sink period and 2 source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
-	LIST(`		', "DEF_EQFIR_COEF"))
 
 # "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
 W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
@@ -123,9 +98,6 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 W_BUFFER(2, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(DAI_FORMAT), DAI_CHANNELS,COMP_PERIOD_FRAMES(DAI_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_COMP_MEM_CAP)
-W_BUFFER(3, COMP_BUFFER_SIZE(2,
-	COMP_SAMPLE_SIZE(DAI_FORMAT), DAI_CHANNELS,COMP_PERIOD_FRAMES(DAI_RATE, SCHEDULE_PERIOD)),
-	PLATFORM_COMP_MEM_CAP)
 
 #
 # Graph connections to pipelines
@@ -136,18 +108,14 @@ P_GRAPH(DAI_NAME, PIPELINE_ID,
 	`dapm(N_BUFFER(0), N_MIXER(0))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
-	`dapm(N_EQ_FIR(0), N_BUFFER(1))',
-	`dapm(N_BUFFER(2), N_EQ_FIR(0))',
-	`dapm(N_PGA(0), N_BUFFER(2))',
-	`dapm(N_BUFFER(3), N_PGA(0))'
-	`dapm(N_DAI_OUT, N_BUFFER(3))'))
+	`dapm(N_PGA(0), N_BUFFER(1))',
+	`dapm(N_BUFFER(2), N_PGA(0))'
+	`dapm(N_DAI_OUT, N_BUFFER(2))'))
 
 indir(`define', concat(`PIPELINE_PLAYBACK_SCHED_COMP_', PIPELINE_ID), N_DAI_OUT)
 indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
 
 undefine(`DEF_EQIIR_COEF')
 undefine(`DEF_EQIIR_PRIV')
-undefine(`DEF_EQFIR_COEF')
-undefine(`DEF_EQFIR_PRIV')
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')
