@@ -8,7 +8,6 @@ config LIBRARY_MANAGER
 	bool "Library Manager Support"
 	default n
 	depends on IPC_MAJOR_4
-	depends on MM_DRV
 	help
 	  This is support for dynamic modules loading.
 	  Externally developed modules both for SOF and Zephyr
