@@ -999,6 +999,16 @@ static int src_prepare(struct processing_module *mod,
 	return src_prepare_general(mod, sources[0], sinks[0]);
 }
 
+
+static bool src_is_ready_to_process(struct processing_module *mod,
+				    struct sof_source __sparse_cache **sources, int num_of_sources,
+				    struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+
+	return src_get_copy_limits(cd, sources[0], sinks[0]);
+}
+
 static int src_process(struct processing_module *mod,
 		       struct sof_source __sparse_cache **sources, int num_of_sources,
 		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
@@ -1059,6 +1069,7 @@ static struct module_interface src_interface = {
 	.init  = src_init,
 	.prepare = src_prepare,
 	.process = src_process,
+	.is_ready_to_process = src_is_ready_to_process,
 	.set_configuration = src_set_config,
 	.get_configuration = src_get_config,
 	.reset = src_reset,
