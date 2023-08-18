@@ -685,6 +685,10 @@ static int src_get_copy_limits(struct comp_data *cd,
 	s1 = cd->src.stage1;
 	s2 = cd->src.stage2;
 
+	/* Workaround for a pipeline issue in beginning of processing */
+	if (!source_get_frame_bytes(source))
+		return -EIO;
+
 	/* Calculate how many blocks can be processed with
 	 * available source and free sink frames amount.
 	 */
