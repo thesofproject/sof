@@ -69,6 +69,7 @@ int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed
 
 struct ipc_msg;
 
+#define COMP_TYPE_ANY		0
 #define COMP_TYPE_COMPONENT	1
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
@@ -163,12 +164,13 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
 int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
 
 /**
- * \brief Get component device from component ID.
+ * \brief Get component device from component type and ID.
  * @param ipc The global IPC context.
+ * @param type The component type
  * @param id The component ID.
  * @return Component device or NULL.
  */
-struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id);
+struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t id);
 
 /**
  * \brief Get component device from pipeline ID and type.
@@ -222,4 +224,9 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
  */
 int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			struct comp_buffer *buffer, uint32_t dir);
+
+#define ipc_get_comp_by_id(ipc, comp_id) ipc_get_comp_dev(ipc, COMP_TYPE_COMPONENT, comp_id)
+#define ipc_get_pipeline_by_id(ipc, ppln_id) ipc_get_comp_dev(ipc, COMP_TYPE_PIPELINE, ppln_id)
+#define ipc_get_buffer_by_id(ipc, buf_id) ipc_get_comp_dev(ipc, COMP_TYPE_BUFFER, buf_id)
+
 #endif

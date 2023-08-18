@@ -194,16 +194,10 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_ppl_sink;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id %d failed",
 		       comp_id);
-		return -EINVAL;
-	}
-
-	if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
-		tr_err(&ipc_tr, "ipc_pipeline_complete(): component %d not pipeline (type %d)",
-		       ipc_pipe->id, ipc_pipe->type);
 		return -EINVAL;
 	}
 
@@ -236,12 +230,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 		icd = ipc_ppl_sink;
 	}
 
-	if (icd->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
-		       icd->type, icd->id);
-		return -EINVAL;
-	}
-
 	if (icd->core != ipc_pipe->core) {
 		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->core (%d) != ipc_pipe->core (%d) for pipeline scheduling component icd->id %d",
 		       icd->core, ipc_pipe->core, icd->id);
@@ -271,13 +259,6 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not found",
 		       comp_id);
 		return -ENODEV;
-	}
-
-	/* check type */
-	if (icd->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not a COMPONENT",
-		       comp_id);
-		return -EINVAL;
 	}
 
 	/* check core */

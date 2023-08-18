@@ -222,12 +222,6 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		return -ENODEV;
 	}
 
-	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_stream_pcm_params(): pcm_dev id %d not component (type %d)",
-		       pcm_dev->id, pcm_dev->type);
-		return -EINVAL;
-	}
-
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
@@ -375,12 +369,6 @@ static int ipc_stream_pcm_free(uint32_t header)
 		return -ENODEV;
 	}
 
-	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
-			    free_req.comp_id, pcm_dev->type);
-		return -EINVAL;
-	}
-
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
@@ -416,12 +404,6 @@ static int ipc_stream_position(uint32_t header)
 	if (!pcm_dev) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
-	}
-
-	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
-			    stream.comp_id, pcm_dev->type);
-		return -EINVAL;
 	}
 
 	/* check core */
@@ -1213,12 +1195,6 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	if (!comp_dev) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", data->comp_id);
 		return -ENODEV;
-	}
-
-	if (comp_dev->type != COMP_TYPE_COMPONENT) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d is not of type component",
-			    data->comp_id);
-		return -EINVAL;
 	}
 
 	/* check core */
