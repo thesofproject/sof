@@ -114,6 +114,13 @@ config COMPILER_WORKAROUND_CACHE_ATTR
 	  There is a weird optimization bug with gcc10x and gcc8.1
 	  (with -O2 flags) on IMX platforms. See PR #4605.
 
+config COMPILER_INLINE_FUNCTION_OPTION
+        bool
+	default y if CAVS_VERSION_2_5 || ACE
+        default n
+        help
+          When enabled, -fno-inline-function option is not passed to compiler
+
 rsource "src/Kconfig"
 
 # See zephyr/modules/Kconfig
