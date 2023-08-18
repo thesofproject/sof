@@ -16,42 +16,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define DEBUG_WITH_TESTBENCH
-
-#if defined(CONFIG_LIBRARY) && defined(DEBUG_WITH_TESTBENCH)
-#define DEBUGFILES
-#endif
-
-#ifdef DEBUGFILES
-#include <stdio.h>
-FILE *fh_window;
-FILE *fh_triangles;
-FILE *fh_dct;
-FILE *fh_lifter;
-#endif
-
 /* Definitions for cepstral lifter */
 #define PI_Q23 Q_CONVERT_FLOAT(3.1415926536, 23)
 #define TWO_PI_Q23 Q_CONVERT_FLOAT(6.2831853072, 23)
 #define ONE_Q9 Q_CONVERT_FLOAT(1, 9)
 
-#ifdef MFCC_DEBUGFILES
-static void mfcc_init_debug_open(void)
-{
-	fh_window = fopen("fft_win.txt", "w");
-	fh_triangles = fopen("mel_triangles.txt", "w");
-	fh_dct = fopen("dct_matrix.txt", "w");
-	fh_lifter = fopen("lifter.txt", "w");
-}
-
-static void mfcc_init_debug_close(void)
-{
-	fclose(fh_window);
-	fclose(fh_triangles);
-	fclose(fh_dct);
-	fclose(fh_lifter);
-}
-#endif
+LOG_MODULE_REGISTER(mfcc_setup, CONFIG_SOF_LOG_LEVEL);
 
 static void mfcc_init_buffer(struct mfcc_buffer *buf, int16_t *base, int size)
 {
@@ -137,11 +107,6 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	struct psy_mel_filterbank *fb = &state->melfb;
 	struct dct_plan_16 *dct = &state->dct;
 	int ret;
-
-#ifdef MFCC_DEBUGFILES
-	mfcc_init_debug_open();
-	mfcc_generic_debug_open();
-#endif
 
 	comp_dbg(dev, "mfcc_setup()");
 
@@ -326,31 +291,6 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->cepstral_coef = (struct mat_matrix_16b *)
 		&state->mel_spectra->data[state->dct.num_in];
 
-#ifdef DEBUGFILES
-	int i, j;
-
-	for (i = 0; i < fft->fft_size; i++)
-		fprintf(fh_window, "%d\n", state->window[i]);
-
-	fprintf(fh_triangles, "%d\n", fb->mel_bins);
-	fprintf(fh_triangles, "%d\n", fb->half_fft_bins);
-	fprintf(fh_triangles, "%d\n", fb->scale_log2);
-	for (i = 0; i < fb->data_length; i++)
-		fprintf(fh_triangles, "%d\n", fb->data[i]);
-
-	for (i = 0; i < dct->num_in; i++) {
-		for (j = 0; j < dct->num_out; j++)
-			fprintf(fh_dct, " %d", mat_get_scalar_16b(dct->matrix, i, j));
-
-		fprintf(fh_dct, "\n");
-	}
-
-	for (j = 0; j < dct->num_out; j++)
-		fprintf(fh_lifter, "%d\n", mat_get_scalar_16b(state->lifter.matrix, 0, j));
-
-	mfcc_init_debug_close();
-#endif
-
 	/* Set initial state for STFT */
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
@@ -386,8 +326,4 @@ void mfcc_free_buffers(struct mfcc_comp_data *cd)
 	rfree(cd->state.melfb.data);
 	rfree(cd->state.dct.matrix);
 	rfree(cd->state.lifter.matrix);
-
-#ifdef MFCC_DEBUGFILES
-	mfcc_generic_debug_close();
-#endif
 }
