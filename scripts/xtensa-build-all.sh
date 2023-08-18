@@ -20,6 +20,9 @@ SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 # Waiting for container work in progress
 SUPPORTED_PLATFORMS+=( mt8188 )
 
+# Container work is in progress
+SUPPORTED_PLATFORMS+=( acp_6_3 )
+
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -241,6 +244,13 @@ do
 			XTENSA_CORE="ACP_5_0_001_PROD"
 			HOST="xtensa-vangogh-elf"
 			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			;;
+		acp_6_3)
+			PLATFORM="acp_6_3"
+			ARCH="xtensa"
+			XTENSA_CORE="ACP_6_3_HiFi5_PROD_Linux"
+			HOST="xtensa-acp_6_3-elf"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 		mt8186)
 			PLATFORM="mt8186"
