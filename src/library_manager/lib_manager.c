@@ -561,7 +561,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
 				     MAN_MAX_SIZE_V1_8, preload_size - MAN_MAX_SIZE_V1_8);
 	if (ret < 0) {
-		rfree(library_base_address);
+		rfree((__sparse_force void *)library_base_address);
 		return ret;
 	}
 
