@@ -24,6 +24,18 @@
  */
 #define MFCC_FFT_BITS	16
 
+/* MFCC with 16 bit FFT benefits from data normalize, for 32 bits there's no
+ * significant impact. The amount of left shifts for FFT input is limited to
+ * 10 that equals about 60 dB boost. The boost is compensated in Mel energy
+ * calculation.
+ */
+#if MFCC_FFT_BITS == 16
+#define MFCC_NORMALIZE_FFT
+#else
+#undef MFCC_NORMALIZE_FFT
+#endif
+#define MFCC_NORMALIZE_MAX_SHIFT	10
+
 struct audio_stream;
 struct comp_dev;
 
@@ -135,6 +147,32 @@ void mfcc_free_buffers(struct mfcc_comp_data *cd);
 
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);
+
+void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
+void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
+			    int prev_data_length);
+
+void mfcc_fill_fft_buffer(struct mfcc_state *state);
+
+#ifdef MFCC_NORMALIZE_FFT
+int mfcc_normalize_fft_buffer(struct mfcc_state *state);
+#endif
+
+void mfcc_apply_window(struct mfcc_state *state, int input_shift);
+
+#if CONFIG_FORMAT_S16LE
+
+int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
+				 int16_t *w_ptr, int samples);
+
+int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
+				 int samples, int16_t *r_ptr);
+
+void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames);
+#endif
 
 #ifdef UNIT_TEST
 void sys_comp_mfcc_init(void);
