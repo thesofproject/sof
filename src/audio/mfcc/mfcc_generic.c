@@ -30,59 +30,7 @@
 #endif
 #define MFCC_NORMALIZE_MAX_SHIFT	10
 
-/* Open files for data debug output in testbench */
-#define DEBUG_WITH_TESTBENCH
-#if defined(CONFIG_LIBRARY) && defined(DEBUG_WITH_TESTBENCH)
-#include <stdio.h>
-#define DEBUGFILES
-#undef DEBUGFILES_READ_FFT /* Override FFT out with file input */
-#undef DEBUGFILES_READ_MEL /* Override Mel filterbank with file input */
-#endif
-
-#ifdef MFCC_DEBUGFILES
-#ifdef DEBUGFILES_READ_FFT
-FILE *fh_fft_out_read;
-#endif
-#ifdef DEBUGFILES_READ_MEL
-FILE *fh_mel_read;
-#endif
-FILE *fh_fft_in;
-FILE *fh_fft_out;
-FILE *fh_pow;
-FILE *fh_mel;
-FILE *fh_ceps;
-
-void mfcc_generic_debug_open(void)
-{
-#ifdef DEBUGFILES_READ_FFT
-	fh_fft_out_read = fopen("ref_fft_out.txt", "r");
-#endif
-#ifdef DEBUGFILES_READ_MEL
-	fh_mel_read = fopen("ref_fft_mel.txt", "r");
-#endif
-	fh_fft_in = fopen("fft_in.txt", "w");
-	fh_fft_out = fopen("fft_out.txt", "w");
-	fh_pow = fopen("fft_pow.txt", "w");
-	fh_mel = fopen("fft_mel.txt", "w");
-	fh_ceps = fopen("ceps.txt", "w");
-}
-
-void mfcc_generic_debug_close(void)
-{
-#ifdef DEBUGFILES_READ_FFT
-	fclose(fh_fft_out_read);
-#endif
-#ifdef DEBUGFILES_READ_MEL
-	fclose(fh_mel_read);
-#endif
-	fclose(fh_fft_in);
-	fclose(fh_fft_out);
-	fclose(fh_pow);
-	fclose(fh_mel);
-	fclose(fh_ceps);
-}
-#endif
-
+LOG_MODULE_REGISTER(mfcc_generic, CONFIG_SOF_LOG_LEVEL);
 /*
  * MFCC algorithm code
  */
@@ -262,9 +210,6 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 	int i;
 	int m;
 	int cc_count = 0;
-#ifdef DEBUGFILES
-	int j;
-#endif
 
 	/* Phase 1, wait until whole fft_size is filled with valid data. This way
 	 * first output cepstral coefficients originate from streamed data and not
@@ -311,11 +256,6 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 
 		/* TODO: use_energy & !raw_energy */
 
-#ifdef DEBUGFILES
-		for (j = 0; j < fft->fft_padded_size; j++)
-			fprintf(fh_fft_in, "%d %d\n", fft->fft_buf[j].real, fft->fft_buf[j].imag);
-#endif
-
 		/* The FFT out buffer needs to be cleared to avoid to corrupt
 		 * the output. TODO: check moving it to FFT lib.
 		 */
@@ -326,24 +266,6 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 		fft_execute_16(fft->fft_plan, false);
 #else
 		fft_execute_32(fft->fft_plan, false);
-#endif
-
-#ifdef DEBUGFILES_READ_FFT
-		double re, im;
-		int ret;
-
-		for (j = 0; j < fft->half_fft_size; j++) {
-			ret = fscanf(fh_fft_out_read, "%lf %lf", &re, &im);
-			if (ret != 2)
-				break;
-
-			fft->fft_out[j].real = sat_int16((int32_t)(32768.0 * re));
-			fft->fft_out[j].imag = sat_int16((int32_t)(32768.0 * im));
-		}
-#endif
-#ifdef DEBUGFILES
-		for (j = 0; j < fft->half_fft_size; j++)
-			fprintf(fh_fft_out, "%d %d\n", fft->fft_out[j].real, fft->fft_out[j].imag);
 #endif
 
 		/* Convert powerspectrum to Mel band logarithmic spectrum */
@@ -361,18 +283,6 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 		psy_apply_mel_filterbank_32(&state->melfb, fft->fft_out, state->power_spectra,
 					    state->mel_spectra->data, mel_scale_shift);
 #endif
-#ifdef DEBUGFILES_READ_MEL
-		double val;
-		int tmp;
-
-		for (j = 0; j < state->dct.num_in; j++) {
-			tmp = fscanf(fh_mel_read, "%lf", &val);
-			if (tmp != 1)
-				break;
-
-			state->mel_spectra->data[j] = sat_int16((int32_t)(128.0 * val));
-		}
-#endif
 
 		/* Multiply Mel spectra with DCT matrix to get cepstral coefficients */
 		mat_init_16b(state->cepstral_coef, 1, state->dct.num_out, 7); /* Q8.7 */
@@ -386,17 +296,6 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 		cc_count += state->dct.num_out;
 
 		/* Output to sink buffer */
-
-#ifdef DEBUGFILES
-		for (j = 0; j < fft->half_fft_size; j++)
-			fprintf(fh_pow, "%d\n", state->power_spectra[j]);
-
-		for (j = 0; j < state->dct.num_in; j++)
-			fprintf(fh_mel, " %d\n", state->mel_spectra->data[j]);
-
-		for (j = 0; j < state->dct.num_out; j++)
-			fprintf(fh_ceps, " %d\n", state->cepstral_coef->data[j]);
-#endif
 	}
 
 	/* TODO: This version handles only one FFT run per copy(). How to pass multiple

@@ -15,12 +15,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MFCC_DEBUG_WITH_TESTBENCH
-
-#if defined(CONFIG_LIBRARY) && defined(MFCC_DEBUG_WITH_TESTBENCH)
-#define MFCC_DEBUGFILES
-#endif
-
 #define MFCC_MAGIC 0x6d666363 /* ASCII for "mfcc" */
 
 /* Set to 16 for lower RAM and MCPS with slightly lower quality. Set to 32 for best
@@ -141,11 +135,6 @@ void mfcc_free_buffers(struct mfcc_comp_data *cd);
 
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);
-
-#ifdef MFCC_DEBUGFILES
-void mfcc_generic_debug_open(void);
-void mfcc_generic_debug_close(void);
-#endif
 
 #ifdef UNIT_TEST
 void sys_comp_mfcc_init(void);
