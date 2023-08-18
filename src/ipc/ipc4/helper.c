@@ -185,7 +185,7 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	struct ipc *ipc = ipc_get();
 
 	/* check whether pipeline id is already taken or in use */
-	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->primary.r.instance_id);
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
 	if (ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: comp id is already taken, pipe_desc->instance_id = %u",
 		       (uint32_t)pipe_desc->primary.r.instance_id);
@@ -299,7 +299,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	int ret;
 
 	/* check whether pipeline exists */
-	ipc_pipe = get_comp(ipc, COMP_TYPE_PIPELINE, comp_id);
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe)
 		return IPC4_INVALID_RESOURCE_ID;
 
@@ -624,7 +624,7 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
 
-	ipc_pipe = get_comp(ipc, COMP_TYPE_PIPELINE, comp_id);
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 
 	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
@@ -753,7 +753,7 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 {
-	struct ipc_comp_dev *icd = get_comp(ipc_get(), COMP_TYPE_COMPONENT, comp_id);
+	struct ipc_comp_dev *icd = ipc_get_comp_by_id(ipc_get(), comp_id);
 
 	return icd ? icd->cd : NULL;
 }

@@ -79,19 +79,17 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 }
 
 /*
- * Components, buffers and pipelines all use the same set of monotonic ID
- * numbers passed in by the host. They are stored in different lists, hence
- * more than 1 list may need to be searched for the corresponding component.
+ * Components, buffers and pipelines are stored in the same lists, hence
+ * type and ID have to be used for the identification.
  */
-
-struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
+struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->id == id)
+		if (icd->id == id && (type == icd->type || type == COMP_TYPE_ANY))
 			return icd;
 	}
 
