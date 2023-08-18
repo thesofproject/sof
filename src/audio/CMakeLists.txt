@@ -174,7 +174,7 @@ set(crossover_sources crossover/crossover.c crossover/crossover_generic.c)
 set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c tdfb/tdfb_direction.c)
 set(drc_sources drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 set(multiband_drc_sources multiband_drc/multiband_drc_generic.c crossover/crossover.c crossover/crossover_generic.c drc/drc.c drc/drc_generic.c drc/drc_math_generic.c multiband_drc/multiband_drc.c )
-set(mfcc_sources mfcc/mfcc.c mfcc/mfcc_setup.c mfcc/mfcc_generic.c)
+set(mfcc_sources mfcc/mfcc.c mfcc/mfcc_setup.c mfcc/mfcc_common.c mfcc/mfcc_generic.c)
 set(mux_sources mux/mux.c mux/mux_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
