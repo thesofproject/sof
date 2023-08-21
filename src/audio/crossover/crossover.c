@@ -170,14 +170,14 @@ static int crossover_assign_sinks(struct processing_module *mod,
 		if (i < 0) {
 			comp_err(dev,
 				 "crossover_assign_sinks(), could not find sink %d in config",
-				 pipeline_id);
+				 sink_id);
 			break;
 		}
 
 		if (sinks[i]) {
 			comp_err(dev,
 				 "crossover_assign_sinks(), multiple sinks from pipeline %d are assigned",
-				 pipeline_id);
+				 sink_id);
 			break;
 		}
 
