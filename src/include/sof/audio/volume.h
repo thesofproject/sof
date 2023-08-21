@@ -274,11 +274,7 @@ static inline void peak_vol_update(struct vol_data *cd)
 }
 
 #ifdef UNIT_TEST
-#if CONFIG_COMP_LEGACY_INTERFACE
-void sys_comp_volume_init(void);
-#else
 void sys_comp_module_volume_interface_init(void);
-#endif
 #endif
 
 #endif /* __SOF_AUDIO_VOLUME_H__ */

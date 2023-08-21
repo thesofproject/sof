@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 
-if (CONFIG_IPC_MAJOR_4 OR CONFIG_CADENCE_CODEC OR (NOT CONFIG_COMP_LEGACY_INTERFACE) OR CONFIG_COMP_FIR)
-	add_local_sources(sof module_adapter.c module/generic.c)
-endif()
+add_local_sources(sof module_adapter.c module/generic.c)
 
 if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_VOLUME)
