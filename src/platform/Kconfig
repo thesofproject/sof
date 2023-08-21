@@ -11,18 +11,8 @@ choice
 
 config TIGERLAKE
 	bool "Build for Tigerlake"
-	select XT_IRQ_MAP
-	select DMA_GW
-	select DW
-	select DW_DMA if !ZEPHYR_NATIVE_DRIVERS
-	select DMA_HW_LLI
-	select DW_DMA_AGGREGATED_IRQ
-	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_5
-	select XT_WAITI_DELAY
-	select NO_SECONDARY_CORE_ROM
-	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Tigerlake-compatible
 
