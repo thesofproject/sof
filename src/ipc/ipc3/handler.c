@@ -784,9 +784,6 @@ static int ipc_pm_gate(uint32_t header)
 
 	if (pm_gate.flags & SOF_PM_PPG) {
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-#if (CONFIG_CAVS_LPS)
-		cpu_restore_secondary_cores();
-#endif
 	} else {
 		/* before we enable pm runtime and perform D0->D0ix flow
 		 * (primary core powers off secondary cores in
@@ -794,9 +791,6 @@ static int ipc_pm_gate(uint32_t header)
 		 * cores data for powering off (disable interrupt, perform
 		 * cache writeback).
 		 */
-#if (CONFIG_CAVS_LPS)
-		cpu_secondary_cores_prepare_d0ix();
-#endif
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	}
 
