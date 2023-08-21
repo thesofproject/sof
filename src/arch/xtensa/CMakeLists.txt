@@ -2,9 +2,7 @@
 
 # platform-specific values
 
-if(CONFIG_TIGERLAKE)
-	set(platform_folder tigerlake)
-elseif(CONFIG_IMX8)
+if(CONFIG_IMX8)
 	set(platform_folder imx8)
 elseif(CONFIG_IMX8X)
 	set(platform_folder imx8)
