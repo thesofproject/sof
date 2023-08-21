@@ -140,10 +140,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
-		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
-	)
-
 	set(PLATFORM "tigerlake")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()

@@ -8,9 +8,6 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <cavs/version.h>
-#if (CONFIG_CAVS_LPS)
-#include <cavs/lps_wait.h>
-#endif
 #include <sof/common.h>
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>

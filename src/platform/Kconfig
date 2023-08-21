@@ -356,15 +356,6 @@ config L1_DRAM_MEMORY_BANK_SIZE
 	  Specifies DRAM block size.
 	  It can be used to calculate DRAM size.
 
-config CAVS_LPS
-	bool "Intel cAVS Low Power Sequencer for Power Management"
-	depends on CAVS
-	default n
-	help
-	  Select this to enable Intel cAVS Low Power Sequencer.
-	  This option is required to support S0ix/D0ix mode
-	  on cAVS platforms.
-
 config CAVS_USE_LPRO_IN_WAITI
 	bool "Use low power ring oscillator in WFI"
 	default n
