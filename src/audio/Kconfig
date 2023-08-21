@@ -479,12 +479,6 @@ config COMP_MODULE_ADAPTER
 
 rsource "module_adapter/Kconfig"
 
-config COMP_LEGACY_INTERFACE
-	bool "Use legacy component driver interface"
-	default n
-	help
-	  Use the legacy component driver interface for component instead of the module adapter.
-
 config COMP_IGO_NR
 	bool "IGO NR component"
 	select COMP_BLOB
@@ -530,7 +524,6 @@ config COMP_RTNR_STUB
 config COMP_MFCC
 	bool "MFCC component"
 	depends on COMP_MODULE_ADAPTER
-	depends on !COMP_LEGACY_INTERFACE
 	select CORDIC_FIXED
 	select MATH_16BIT_MEL_FILTERBANK
 	select MATH_AUDITORY
