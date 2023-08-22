@@ -4,15 +4,15 @@
 set(TPLGS
 # HDMI only topology with  chain-dma passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;USE_CHAIN_DMA=true"
-# HDA topology with mixer-based pipelines for HDA and chain-dma passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,USE_CHAIN_DMA=true"
+# HDA topology with passthrough pipelines for HDA and chain-dma passthrough pipelines for HDMI
+"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=passthrough,USE_CHAIN_DMA=true"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
 "sof-hda-generic\;sof-hda-generic-4ch\;PLATFORM=mtl,\
-HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-hda-generic-4ch.bin"
+HDA_CONFIG=passthrough,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,USE_CHAIN_DMA=true"
 "sof-hda-generic\;sof-hda-generic-2ch\;PLATFORM=mtl,\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin"
+HDA_CONFIG=passthrough,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,USE_CHAIN_DMA=true"
 
 # SDW + DMIC topology with passthrough pipelines
 # We will change NUM_HDMIS to 3 once HDMI is enabled on MTL RVP
