@@ -22,7 +22,3 @@ elseif(CONFIG_MT8188)
 elseif(CONFIG_MT8195)
         add_subdirectory(mt8195)
 endif()
-
-if(CONFIG_CAVS)
-	add_subdirectory(intel)
-endif()
