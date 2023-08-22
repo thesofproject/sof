@@ -125,7 +125,8 @@ static int crossover_get_stream_index(struct processing_module *mod,
  *	   config->num_sinks if no errors were found.
  */
 static int crossover_assign_sinks(struct processing_module *mod,
-				  struct comp_buffer **sinks,
+				  struct output_stream_buffer *output_buffers,
+				  struct output_stream_buffer **assigned_obufs,
 				  bool *enabled)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -157,7 +158,7 @@ static int crossover_assign_sinks(struct processing_module *mod,
 
 		/* If no config is set, then assign the sinks in order */
 		if (!config) {
-			sinks[num_sinks++] = sink;
+			assigned_obufs[num_sinks++] = &output_buffers[j];
 			enabled[j++] = true;
 			continue;
 		}
@@ -174,14 +175,14 @@ static int crossover_assign_sinks(struct processing_module *mod,
 			break;
 		}
 
-		if (sinks[i]) {
+		if (assigned_obufs[i]) {
 			comp_err(dev,
 				 "crossover_assign_sinks(), multiple sinks from pipeline %d are assigned",
 				 sink_id);
 			break;
 		}
 
-		sinks[i] = sink;
+		assigned_obufs[i] = &output_buffers[j];
 		enabled[j++] = true;
 		num_sinks++;
 	}
@@ -618,7 +619,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 					  struct output_stream_buffer *output_buffers,
 					  int num_output_buffers)
 {
-	struct comp_buffer *sinks[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
+	struct output_stream_buffer *assigned_obufs[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
 	bool enabled_buffers[PLATFORM_MAX_STREAMS] = { false };
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -653,7 +654,8 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	 * state than the component. Therefore not all sinks are guaranteed
 	 * to be assigned: sink[i] can be NULL, 0 <= i <= config->num_sinks
 	 */
-	num_assigned_sinks = crossover_assign_sinks(mod, sinks, enabled_buffers);
+	num_assigned_sinks = crossover_assign_sinks(mod, output_buffers, assigned_obufs,
+						    enabled_buffers);
 	if (cd->config && num_assigned_sinks != cd->config->num_sinks)
 		comp_dbg(dev, "crossover_copy(), number of assigned sinks (%i) does not match number of sinks in config (%i).",
 			 num_assigned_sinks, cd->config->num_sinks);
@@ -670,7 +672,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	if (!frames)
 		return -ENODATA;
 
-	cd->crossover_process(cd, input_buffers, sinks, num_sinks, frames);
+	cd->crossover_process(cd, input_buffers, assigned_obufs, num_sinks, frames);
 
 	processed_bytes = frames * frame_bytes;
 	mod->input_buffers[0].consumed = processed_bytes;

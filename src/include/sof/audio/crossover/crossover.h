@@ -71,7 +71,7 @@ struct comp_data;
 
 typedef void (*crossover_process)(struct comp_data *cd,
 				  struct input_stream_buffer *bsource,
-				  struct comp_buffer __sparse_cache *sinks[],
+				  struct output_stream_buffer *bsinks[],
 				  int32_t num_sinks,
 				  uint32_t frames);
 
