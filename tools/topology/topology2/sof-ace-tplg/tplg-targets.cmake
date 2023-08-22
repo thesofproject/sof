@@ -2,10 +2,10 @@
 
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 set(TPLGS
-# HDMI only topology with passthrough pipelines
-"sof-hda-generic\;sof-hda-generic-idisp\;"
-# HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix"
+# HDMI only topology with  chain-dma passthrough pipelines
+"sof-hda-generic\;sof-hda-generic-idisp\;USE_CHAIN_DMA=true"
+# HDA topology with mixer-based pipelines for HDA and chain-dma passthrough pipelines for HDMI
+"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,USE_CHAIN_DMA=true"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
 "sof-hda-generic\;sof-hda-generic-4ch\;PLATFORM=mtl,\
