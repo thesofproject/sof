@@ -187,6 +187,7 @@ set(TPLGS
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019-dts\;-DDTS=`DTS'"
 	"sof-rn-rt5682-max98360\;sof-rn-rt5682-max98360"
 	"sof-acp-rmb\;sof-acp-rmb"
+	#"sof-acp-vangogh\;sof-vangogh-nau8821-max"
 	"sof-smart-amplifier-amd-nocodec\;sof-vangogh-nau8821-max"
 	"sof-acp-rmb-dmic4ch\;sof-acp-rmb-dmic4ch"
 	"sof-acp-rmb-tdm8ch-dmic4ch\;sof-acp-rmb-tdm8ch-dmic4ch-rt5682-rt1019"

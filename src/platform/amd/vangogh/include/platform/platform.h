@@ -41,13 +41,13 @@ struct timer;
 #define PLATFORM_MAX_STREAMS	8
 
 /* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE	8192
+#define DMA_TRACE_LOCAL_SIZE	(8192*3)
 
 /* trace bytes flushed during panic */
 #define DMA_FLUSH_TRACE_SIZE	(MAILBOX_TRACE_SIZE >> 2)
 
 /* the interval of DMA trace copying */
-#define DMA_TRACE_PERIOD		500000
+#define DMA_TRACE_PERIOD		100000
 
 /*
  * the interval of reschedule DMA trace copying in special case like half

@@ -19,6 +19,8 @@ include(`sof/tokens.m4')
 # Include ACP DSP configuration
 include(`platform/amd/acp.m4')
 
+DEBUG_START
+
 # Playback pipeline 1 on PCM 0 using max 2 channels of s16le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
@@ -107,3 +109,6 @@ PCM_DUPLEX_ADD(I2SHS, 1, PIPELINE_PCM_2, PIPELINE_PCM_6)
 
 # PCM  id 2
 PCM_DUPLEX_ADD(I2SBT, 2, PIPELINE_PCM_4, PIPELINE_PCM_5)
+
+DEBUG_END
+

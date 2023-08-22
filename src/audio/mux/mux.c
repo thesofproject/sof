@@ -498,10 +498,15 @@ static int demux_process(struct processing_module *mod,
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < num_output_buffers; i++) {
-		demux_prepare_active_look_up(cd, sinks_stream[i],
-					     input_buffers[0].data, look_ups[i]);
-		cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
-		mod->output_buffers[i].size = sink_bytes;
+		if((0 != look_ups[i])){
+			demux_prepare_active_look_up(cd, sinks_stream[i],
+						     input_buffers[0].data, look_ups[i]);
+			cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
+			mod->output_buffers[i].size = sink_bytes;
+		}
+		else{
+			comp_dbg(dev, "look_ups[i] is zero");
+		}
 	}
 
 	/* Update consumed */

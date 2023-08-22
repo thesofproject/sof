@@ -44,10 +44,10 @@ define(`SMART_FB_CHANNELS', 1)
 # Ref capture related
 #7->2
 define(`SMART_REF_PPL_ID', 2)
-define(`SMART_REF_CH_NUM', 1)
+define(`SMART_REF_CH_NUM', 2)
 # PCM related
 #1->0
-define(`SMART_PCM_ID', 0)
+define(`SMART_PCM_ID', 1)
 define(`SMART_PCM_NAME', `AmdSmartAmpTest')
 
 # Include Smart Amplifier support
