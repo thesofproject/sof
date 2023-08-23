@@ -61,8 +61,8 @@ struct polyphase_src {
 struct src_stage_prm {
 	int nch;
 	int times;
-	void *x_rptr;
-	void *x_end_addr;
+	void const *x_rptr;
+	void const *x_end_addr;
 	size_t x_size;
 	void *y_wptr;
 	void *y_addr;

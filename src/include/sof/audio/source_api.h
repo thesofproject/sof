@@ -94,7 +94,7 @@ size_t source_get_data_frames_available(struct sof_source *source);
  * @retval -ENODATA if req_size is bigger than available data
  */
 int source_get_data(struct sof_source *source, size_t req_size,
-		    void **data_ptr, void **buffer_start, size_t *buffer_size);
+		    void const **data_ptr, void const **buffer_start, size_t *buffer_size);
 
 /**
  * Releases fragment previously obtained by source_get_data()

@@ -33,7 +33,7 @@ struct source_ops {
 	 * see comment of source_get_data_available()
 	 */
 	int (*get_data)(struct sof_source *source, size_t req_size,
-			void **data_ptr, void **buffer_start, size_t *buffer_size);
+			void const **data_ptr, void const **buffer_start, size_t *buffer_size);
 
 	/**
 	 * see comment of source_release_data()
