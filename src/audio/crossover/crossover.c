@@ -177,7 +177,7 @@ static int crossover_assign_sinks(struct processing_module *mod,
 
 		if (assigned_obufs[i]) {
 			comp_err(dev,
-				 "crossover_assign_sinks(), multiple sinks from pipeline %d are assigned",
+				 "crossover_assign_sinks(), multiple sinks with id %d are assigned",
 				 sink_id);
 			break;
 		}
