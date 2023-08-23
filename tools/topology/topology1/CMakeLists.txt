@@ -222,13 +222,14 @@ set(TPLGS
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019"
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019-dts\;-DDTS=`DTS'"
 	"sof-rn-rt5682-max98360\;sof-rn-rt5682-max98360"
-	"sof-acp-rmb\;sof-acp-rmb"
 	"sof-acp-vangogh\;sof-vangogh-nau8821-max"
+	"sof-acp-rmb\;sof-acp-rmb"
 	"sof-acp-rmb-dmic4ch\;sof-acp-rmb-dmic4ch"
 	"sof-acp-rmb-tdm8ch-dmic4ch-rt5682-rt1019\;sof-acp-rmb-tdm8ch-dmic4ch-rt5682-rt1019"
 	"sof-acp-rmb-tdm8ch-dmic2ch-nau8825-max98360\;sof-acp-rmb-tdm8ch-dmic2ch-nau8825-max98360"
 	"sof-acp-rmb\;sof-rmb-rt5682s-rt1019"
 	"sof-acp-rmb\;sof-rmb-nau8825-max98360"
+	"sof-acp_6_3\;sof-acp_6_3"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
