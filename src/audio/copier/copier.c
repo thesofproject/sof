@@ -183,6 +183,8 @@ static int copier_prepare(struct processing_module *mod,
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+	struct sof_ipc_stream_params stream_params;
+	struct sof_sink __sparse_cache *sink = *sinks;
 	int ret;
 
 	ret = copier_params(mod);
@@ -190,6 +192,16 @@ static int copier_prepare(struct processing_module *mod,
 		return ret;
 
 	comp_info(dev, "copier_prepare()");
+
+	ret = dai_common_get_hw_params(cd->dd[0], dev,
+				       &stream_params, cd->direction);
+	if (ret < 0)
+		return ret;
+
+	sink->audio_stream_params->channels = stream_params.channels;
+	sink->audio_stream_params->buffer_fmt = 0;
+	sink->audio_stream_params->rate = stream_params.rate;
+	sink->audio_stream_params->frame_fmt = dev->ipc_config.frame_fmt;
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
