@@ -138,12 +138,20 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, ui
 int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update)
 {
+	uint32_t params_check;
 	int ret;
 	int i;
 
 	if (!params) {
 		buf_err(buffer, "buffer_set_params(): !params");
 		return -EINVAL;
+	}
+
+	params_check = (uint32_t)params->channels | (uint32_t)params->rate
+		| (uint32_t)params->sample_container_bytes | (uint32_t)params->sample_valid_bytes;
+	if (!params_check) {
+		buf_warn(buffer, "Skipping params reset to zero (force_update = %d)", force_update);
+		return 0;
 	}
 
 	if (buffer->hw_params_configured && !force_update)
