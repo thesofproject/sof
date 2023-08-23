@@ -293,7 +293,6 @@ static int dcblock_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 
 	comp_dbg(dev, "dcblock_copy()");
 
@@ -302,17 +301,11 @@ static int dcblock_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_frame_aligned(source_c, sink_c, &cl);
+	comp_get_copy_limits_frame_aligned(sourceb, sinkb, &cl);
 
-	dcblock_process(dev, source_c, sink_c,
+	dcblock_process(dev, sourceb, sinkb,
 			cl.frames, cl.source_bytes, cl.sink_bytes);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	return 0;
 }
@@ -336,7 +329,6 @@ static int dcblock_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 
@@ -355,25 +347,22 @@ static int dcblock_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
+	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
+	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
 
-	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
+	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
 		comp_err(dev, "dcblock_prepare(): sink buffer size %d is insufficient < %d",
-			 audio_stream_get_size(&sink_c->stream), sink_period_bytes);
+			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	dcblock_init_state(cd);
-	dcblock_set_frame_alignment(&source_c->stream, &sink_c->stream);
+	dcblock_set_frame_alignment(&sourceb->stream, &sinkb->stream);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);
 	if (!cd->dcblock_func) {
 		comp_err(dev, "dcblock_prepare(), No processing function matching frames format");
@@ -387,9 +376,6 @@ static int dcblock_prepare(struct comp_dev *dev)
 out:
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	return ret;
 }

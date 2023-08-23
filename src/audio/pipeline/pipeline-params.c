@@ -30,7 +30,6 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
 	int err = 0;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
@@ -48,12 +47,12 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 		 * a component who has different channels input/output buffers
 		 * should explicitly configure the channels of the branched buffers.
 		 */
-		err = buffer_set_params(buf_c, &ppl_data->params->params,
+		err = buffer_set_params(calling_buf, &ppl_data->params->params,
 					BUFFER_UPDATE_FORCE);
 		break;
 	default:
 		/* return 0 if params matches */
-		if (!buffer_params_match(buf_c,
+		if (!buffer_params_match(calling_buf,
 					 &ppl_data->params->params,
 					 BUFF_PARAMS_FRAME_FMT |
 					 BUFF_PARAMS_RATE)) {
@@ -66,8 +65,6 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 			err = -EINVAL;
 		}
 	}
-
-	buffer_release(buf_c);
 	return err;
 }
 
@@ -188,11 +185,8 @@ static int pipeline_comp_hw_params_buf(struct comp_dev *current,
 		return ret;
 	/* set buffer parameters */
 	if (calling_buf) {
-		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
-
-		ret = buffer_set_params(buf_c, &ppl_data->params->params,
+		ret = buffer_set_params(calling_buf, &ppl_data->params->params,
 					BUFFER_UPDATE_IF_UNSET);
-		buffer_release(buf_c);
 		if (ret < 0)
 			pipe_err(current->pipeline,
 				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);

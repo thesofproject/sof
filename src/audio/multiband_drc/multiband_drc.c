@@ -388,8 +388,8 @@ static int multiband_drc_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static void multiband_drc_set_alignment(struct audio_stream __sparse_cache *source,
-					struct audio_stream __sparse_cache *sink)
+static void multiband_drc_set_alignment(struct audio_stream *source,
+					struct audio_stream *sink)
 {
 	/* Currently no optimizations those would use wider loads and stores */
 	audio_stream_init_alignment_constants(1, 1, source);
@@ -403,8 +403,8 @@ static int multiband_drc_process(struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	int frames = input_buffers[0].size;
 	int ret;
 
@@ -435,7 +435,6 @@ static int multiband_drc_params(struct processing_module *mod)
 	struct sof_ipc_stream_params comp_params;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
@@ -458,21 +457,19 @@ static int multiband_drc_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ret = buffer_set_params(sink_c, &comp_params, true);
-	buffer_release(sink_c);
+	ret = buffer_set_params(sinkb, &comp_params, true);
+
 	return ret;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static int multiband_drc_prepare(struct processing_module *mod,
-				 struct sof_source __sparse_cache **sources, int num_of_sources,
-				 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+				 struct sof_source **sources, int num_of_sources,
+				 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	int channels;
 	int rate;
 	int ret = 0;
@@ -489,17 +486,12 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-	multiband_drc_set_alignment(&source_c->stream, &sink_c->stream);
+	multiband_drc_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	channels = audio_stream_get_channels(&source_c->stream);
-	rate = audio_stream_get_rate(&source_c->stream);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	channels = audio_stream_get_channels(&sourceb->stream);
+	rate = audio_stream_get_rate(&sourceb->stream);
 
 	/* Initialize DRC */
 	comp_dbg(dev, "multiband_drc_prepare(), source_format=%d, sink_format=%d",

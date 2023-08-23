@@ -266,7 +266,6 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct sof_ipc_stream_posn posn;
 	struct comp_dev *dai_copier;
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t latency;
 	int ret;
 
@@ -358,10 +357,8 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
-		buffer_c = buffer_acquire(buffer);
 		pipe_reg.stream_start_offset = posn.dai_posn +
-			latency * audio_stream_get_size(&buffer_c->stream);
-		buffer_release(buffer_c);
+			latency * audio_stream_get_size(&buffer->stream);
 		pipe_reg.stream_end_offset = 0;
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	} else if (cmd == COMP_TRIGGER_PAUSE) {
@@ -384,9 +381,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
-		buffer_c = buffer_acquire(buffer);
-		pipe_reg.stream_start_offset += latency * audio_stream_get_size(&buffer_c->stream);
-		buffer_release(buffer_c);
+		pipe_reg.stream_start_offset += latency * audio_stream_get_size(&buffer->stream);
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
 				      sizeof(pipe_reg.stream_start_offset));
 	}
@@ -426,7 +421,6 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 				struct comp_buffer __sparse_cache *src_c,
 				struct comp_copy_limits *processed_data)
 {
-	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
 	int ret = 0;
@@ -436,14 +430,12 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 		struct comp_dev *sink_dev;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		sink_dev = sink_c->sink;
+		sink_dev = sink->sink;
 		processed_data->sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
-			ret = do_conversion_copy(dev, cd, src_c, sink_c, processed_data);
+			ret = do_conversion_copy(dev, cd, src_c, sink, processed_data);
 			cd->output_total_data_processed += processed_data->sink_bytes;
 		}
-		buffer_release(sink_c);
 		if (ret < 0) {
 			comp_err(dev, "failed to copy buffer for comp %x",
 				 dev->ipc_config.id);
@@ -518,7 +510,6 @@ static int copier_module_copy(struct processing_module *mod,
 
 static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
 	struct comp_buffer *src;
 	int ret;
@@ -532,9 +523,7 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 		if (ret < 0)
 			return ret;
 
-		src_c = buffer_acquire(cd->multi_endpoint_buffer);
-		ret = copier_copy_to_sinks(cd, dev, src_c, &processed_data);
-		buffer_release(src_c);
+		ret = copier_copy_to_sinks(cd, dev, cd->multi_endpoint_buffer, &processed_data);
 
 		return ret;
 	}
@@ -546,24 +535,16 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 	}
 
 	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	src_c = buffer_acquire(src);
 
 	/* gateway(s) on output */
-	sink_c = buffer_acquire(cd->multi_endpoint_buffer);
-	ret = do_conversion_copy(dev, cd, src_c, sink_c, &processed_data);
-	buffer_release(sink_c);
-
-	if (ret < 0)
-		goto err;
+	ret = do_conversion_copy(dev, cd, src, cd->multi_endpoint_buffer, &processed_data);
 
 	ret = dai_zephyr_multi_endpoint_copy(cd->dd, dev, cd->multi_endpoint_buffer,
 					     cd->endpoint_num);
 	if (!ret) {
-		comp_update_buffer_consume(src_c, processed_data.source_bytes);
+		comp_update_buffer_consume(src, processed_data.source_bytes);
 		cd->input_total_data_processed += processed_data.source_bytes;
 	}
-err:
-	buffer_release(src_c);
 
 	return ret;
 }
@@ -649,7 +630,6 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
 
@@ -686,16 +666,12 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 		int sink_id;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
 
-		sink_id = IPC4_SINK_QUEUE_ID(sink_c->id);
+		sink_id = IPC4_SINK_QUEUE_ID(sink->id);
 		if (sink_id == sink_fmt->sink_id) {
-			ipc4_update_buffer_format(sink_c, &sink_fmt->sink_fmt);
-			buffer_release(sink_c);
+			ipc4_update_buffer_format(sink, &sink_fmt->sink_fmt);
 			break;
 		}
-
-		buffer_release(sink_c);
 	}
 
 	return 0;

@@ -37,7 +37,6 @@ LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink)
 {
 	struct comp_buffer *bufferb;
-	struct comp_buffer __sparse_cache *buffer_c;
 
 	if (source_or_sink)
 		bufferb = list_first_item(&dev->bsource_list,
@@ -46,10 +45,7 @@ void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_o
 		bufferb = list_first_item(&dev->bsink_list,
 					  struct comp_buffer, source_list);
 
-	buffer_c = buffer_acquire(bufferb);
-	cd->scale_vol = vol_get_processing_function(dev, buffer_c, cd);
-
-	buffer_release(buffer_c);
+	cd->scale_vol = vol_get_processing_function(dev, bufferb, cd);
 }
 
 /**

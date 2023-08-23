@@ -249,10 +249,8 @@ void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
-	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
-	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer_c->sink :
-		buffer_c->source;
-	buffer_release(buffer_c);
+	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer->sink :
+		buffer->source;
 	return comp;
 }
 

@@ -109,18 +109,13 @@ static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *d
 static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd)
 {
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t copy_bytes;
-
-	buffer_c = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
 	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = audio_stream_get_free_bytes(&buffer_c->stream);
+		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
 	else
-		copy_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
-
-	buffer_release(buffer_c);
+		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
 
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -175,19 +170,14 @@ static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd)
 {
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t copy_bytes;
 	uint32_t split_value;
 
-	buffer_c = buffer_acquire(buffer);
-
 	/* calculate minimum size to copy */
 	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = audio_stream_get_free_bytes(&buffer_c->stream);
+		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
 	else
-		copy_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
-
-	buffer_release(buffer_c);
+		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
 
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -241,19 +231,19 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 
 void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct comp_buffer __sparse_cache *source;
-	struct comp_buffer __sparse_cache *sink;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	int ret;
 	bool update_mailbox = false;
 	bool send_ipc = false;
 
 	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK) {
-		source = buffer_acquire(hd->dma_buffer);
-		sink = buffer_acquire(hd->local_buffer);
+		source = hd->dma_buffer;
+		sink = hd->local_buffer;
 		ret = dma_buffer_copy_from(source, sink, hd->process, bytes);
 	} else {
-		source = buffer_acquire(hd->local_buffer);
-		sink = buffer_acquire(hd->dma_buffer);
+		source = hd->local_buffer;
+		sink = hd->dma_buffer;
 		ret = dma_buffer_copy_to(source, sink, hd->process, bytes);
 	}
 
@@ -265,9 +255,6 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 				audio_stream_frame_bytes(&source->stream),
 			 audio_stream_get_free_samples(&sink->stream) *
 				audio_stream_frame_bytes(&sink->stream));
-
-	buffer_release(sink);
-	buffer_release(source);
 
 	if (ret < 0)
 		return;
@@ -379,8 +366,6 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev *dev)
 {
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
-	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_status dma_stat;
 	uint32_t avail_samples;
 	uint32_t free_samples;
@@ -397,18 +382,14 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 		return 0;
 	}
 
-	dma_buf_c = buffer_acquire(hd->dma_buffer);
-	dma_sample_bytes = get_sample_bytes(audio_stream_get_frm_fmt(&dma_buf_c->stream));
-	buffer_release(dma_buf_c);
-
-	buffer_c = buffer_acquire(buffer);
+	dma_sample_bytes = get_sample_bytes(audio_stream_get_frm_fmt(&hd->dma_buffer->stream));
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		avail_samples = (dma_stat.pending_length - hd->partial_size) / dma_sample_bytes;
-		free_samples = audio_stream_get_free_samples(&buffer_c->stream);
+		free_samples = audio_stream_get_free_samples(&buffer->stream);
 	} else {
-		avail_samples = audio_stream_get_avail_samples(&buffer_c->stream);
+		avail_samples = audio_stream_get_avail_samples(&buffer->stream);
 		free_samples = (dma_stat.free - hd->partial_size) / dma_sample_bytes;
 	}
 
@@ -424,8 +405,6 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (!dma_copy_bytes)
 		comp_info(dev, "no bytes to copy, available samples: %d, free_samples: %d",
 			  avail_samples, free_samples);
-
-	buffer_release(buffer_c);
 
 	/* dma_copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -464,7 +443,6 @@ static inline bool stream_sync(struct host_data *hd, struct comp_dev *dev)
  */
 static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t copy_bytes;
 	const unsigned int threshold =
 #if CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE
@@ -482,7 +460,6 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	cb(dev, copy_bytes);
 
 	hd->partial_size += copy_bytes;
-	buffer_c = buffer_acquire(hd->dma_buffer);
 
 	/*
 	 * On large buffers we don't need to reload DMA on every period. When
@@ -491,8 +468,8 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	 * also adding a 2ms safety margin.
 	 */
 	if (!IS_ENABLED(CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE) ||
-	    audio_stream_get_size(&buffer_c->stream) < hd->period_bytes << 3 ||
-	    audio_stream_get_size(&buffer_c->stream) - hd->partial_size <=
+	    audio_stream_get_size(&hd->dma_buffer->stream) < hd->period_bytes << 3 ||
+	    audio_stream_get_size(&hd->dma_buffer->stream) - hd->partial_size <=
 	    (2 + threshold) * hd->period_bytes) {
 		if (stream_sync(hd, dev)) {
 			ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0,
@@ -504,15 +481,12 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 		}
 	}
 
-	buffer_release(buffer_c);
-
 	return ret;
 }
 
 static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
 			      uint32_t buffer_bytes, uint32_t direction)
 {
-	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
 	int err;
@@ -535,11 +509,9 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 		elem_array = &hd->config.elem_array;
 	}
 
-	dma_buf_c = buffer_acquire(hd->dma_buffer);
 	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
 			   buffer_bytes,
-			   (uintptr_t)audio_stream_get_addr(&dma_buf_c->stream), 0);
-	buffer_release(dma_buf_c);
+			   (uintptr_t)audio_stream_get_addr(&hd->dma_buffer->stream), 0);
 	if (err < 0) {
 		comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");
 		return err;
@@ -759,8 +731,6 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	struct dma_sg_elem *sg_elem;
 	struct dma_config *dma_cfg = &hd->z_config;
 	struct dma_block_config dma_block_cfg;
-	struct comp_buffer __sparse_cache *host_buf_c;
-	struct comp_buffer __sparse_cache *dma_buf_c;
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
@@ -809,14 +779,13 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		hd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
 						   sink_list);
-	host_buf_c = buffer_acquire(hd->local_buffer);
 
 	period_bytes = dev->frames * get_frame_bytes(params->frame_fmt, params->channels);
 
 	if (!period_bytes) {
 		comp_err(dev, "host_params(): invalid period_bytes");
 		err = -EINVAL;
-		goto out;
+		return err;
 	}
 
 	/* determine source and sink buffer elements */
@@ -848,13 +817,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	 * but we have to write back caches after we finish anywae
 	 */
 	if (hd->dma_buffer) {
-		dma_buf_c = buffer_acquire(hd->dma_buffer);
-		err = buffer_set_size(dma_buf_c, buffer_size, addr_align);
-		buffer_release(dma_buf_c);
+		err = buffer_set_size(hd->dma_buffer, buffer_size, addr_align);
 		if (err < 0) {
 			comp_err(dev, "host_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
-			goto out;
+			return err;
 		}
 	} else {
 		/* allocate not shared buffer */
@@ -863,32 +830,30 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		if (!hd->dma_buffer) {
 			comp_err(dev, "host_params(): failed to alloc dma buffer");
 			err = -ENOMEM;
-			goto out;
+			return err;
 		}
 
-		dma_buf_c = buffer_acquire(hd->dma_buffer);
-		buffer_set_params(dma_buf_c, params, BUFFER_UPDATE_FORCE);
+		buffer_set_params(hd->dma_buffer, params, BUFFER_UPDATE_FORCE);
 
 		/* set processing function */
 		if (params->direction == SOF_IPC_STREAM_CAPTURE)
 			hd->process = pcm_get_conversion_function(
-				audio_stream_get_frm_fmt(&host_buf_c->stream),
-				audio_stream_get_frm_fmt(&dma_buf_c->stream));
+				audio_stream_get_frm_fmt(&hd->local_buffer->stream),
+				audio_stream_get_frm_fmt(&hd->dma_buffer->stream));
 		else
 			hd->process = pcm_get_conversion_function(
-				audio_stream_get_frm_fmt(&dma_buf_c->stream),
-				audio_stream_get_frm_fmt(&host_buf_c->stream));
+				audio_stream_get_frm_fmt(&hd->dma_buffer->stream),
+				audio_stream_get_frm_fmt(&hd->local_buffer->stream));
 
-		config->src_width = audio_stream_sample_bytes(&dma_buf_c->stream);
+		config->src_width = audio_stream_sample_bytes(&hd->dma_buffer->stream);
 		config->dest_width = config->src_width;
-		buffer_release(dma_buf_c);
 	}
 
 	/* create SG DMA elems for local DMA buffer */
 	err = create_local_elems(hd, dev, period_count, buffer_size / period_count,
 				 params->direction);
 	if (err < 0)
-		goto out;
+		return err;
 
 	/* set up DMA configuration - copy in sample bytes. */
 	config->cyclic = 0;
@@ -907,7 +872,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	if (channel < 0) {
 		comp_err(dev, "host_params(): requested channel %d is busy", hda_chan);
 		err = -ENODEV;
-		goto out;
+		return err;
 	}
 	hd->chan = &hd->dma->chan[channel];
 
@@ -961,7 +926,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		comp_err(dev, "host_params(): dma_config() failed");
 		dma_release_channel(hd->dma->z_dev, hd->chan->index);
 		hd->chan = NULL;
-		goto out;
+		return err;
 	}
 
 	err = dma_get_attribute(hd->dma->z_dev, DMA_ATTR_COPY_ALIGNMENT,
@@ -970,7 +935,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	if (err < 0) {
 		comp_err(dev, "host_params(): dma_get_attribute()");
 
-		goto out;
+		return err;
 	}
 
 	/* minimal copied data shouldn't be less than alignment */
@@ -983,8 +948,6 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
 
-out:
-	buffer_release(host_buf_c);
 	return err;
 }
 
@@ -1007,11 +970,7 @@ static int host_params(struct comp_dev *dev,
 
 int host_common_prepare(struct host_data *hd)
 {
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
-
-	buffer_zero(buf_c);
-	buffer_release(buf_c);
-
+	buffer_zero(hd->dma_buffer);
 	return 0;
 }
 

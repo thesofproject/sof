@@ -60,7 +60,6 @@ static int selector_verify_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *buffer, *sinkb;
-	struct comp_buffer __sparse_cache *buffer_c, *sink_c;
 	uint32_t in_channels;
 	uint32_t out_channels;
 
@@ -86,15 +85,13 @@ static int selector_verify_params(struct comp_dev *dev,
 		}
 		in_channels = cd->config.in_channels_count;
 
-		buffer_c = buffer_acquire(buffer);
-
 		/* if cd->config.out_channels_count are equal to 0
 		 * (it can vary), we set params->channels to sink buffer
 		 * channels, which were previously set in
 		 * pipeline_comp_hw_params()
 		 */
 		out_channels = cd->config.out_channels_count ?
-			cd->config.out_channels_count : audio_stream_get_channels(&buffer_c->stream);
+			cd->config.out_channels_count : audio_stream_get_channels(&buffer->stream);
 		params->channels = out_channels;
 	} else {
 		/* fetch source buffer for capture */
@@ -106,8 +103,6 @@ static int selector_verify_params(struct comp_dev *dev,
 			return -EINVAL;
 		}
 		out_channels = cd->config.out_channels_count;
-
-		buffer_c = buffer_acquire(buffer);
 
 		/* if cd->config.in_channels_count are equal to 0
 		 * (it can vary), we set params->channels to source buffer
@@ -122,12 +117,8 @@ static int selector_verify_params(struct comp_dev *dev,
 	/* Set buffer params */
 	buffer_set_params(buffer_c, params, BUFFER_UPDATE_FORCE);
 
-	buffer_release(buffer_c);
-
 	/* set component period frames */
-	sink_c = buffer_acquire(sinkb);
-	component_set_nearest_period_frames(dev, audio_stream_get_rate(&sink_c->stream));
-	buffer_release(sink_c);
+	component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
 
 	/* verify input channels */
 	switch (in_channels) {
@@ -358,7 +349,6 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
 	enum sof_comp_type type;
 	int ret;
 
@@ -367,17 +357,13 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	source_c = buffer_acquire(sourceb);
-
 	ret = comp_set_state(dev, cmd);
 
 	/* TODO: remove in the future after adding support for case when
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
 	 * new pipeline_task()
 	 */
-	type = dev_comp_type(source_c->source);
-
-	buffer_release(source_c);
+	type = dev_comp_type(sourceb->source);
 
 	return type == SOF_COMP_KPB ? PPL_STATUS_PATH_TERMINATE : ret;
 }
@@ -391,7 +377,6 @@ static int selector_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	uint32_t frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
@@ -404,33 +389,25 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	source_c = buffer_acquire(source);
-
-	if (!audio_stream_get_avail(&source_c->stream)) {
-		buffer_release(source_c);
+	if (!audio_stream_get_avail(&source->stream)) {
 		return PPL_STATUS_PATH_STOP;
 	}
 
-	sink_c = buffer_acquire(sink);
-
-	frames = audio_stream_avail_frames(&source_c->stream, &sink_c->stream);
-	source_bytes = frames * audio_stream_frame_bytes(&source_c->stream);
-	sink_bytes = frames * audio_stream_frame_bytes(&sink_c->stream);
+	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	comp_dbg(dev, "selector_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);
 
 	/* copy selected channels from in to out */
-	buffer_stream_invalidate(source_c, source_bytes);
-	cd->sel_func(dev, &sink_c->stream, &source_c->stream, frames);
-	buffer_stream_writeback(sink_c, sink_bytes);
+	buffer_stream_invalidate(source, source_bytes);
+	cd->sel_func(dev, &sink->stream, &source->stream, frames);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calculate new free and available */
-	comp_update_buffer_produce(sink_c, sink_bytes);
-	comp_update_buffer_consume(source_c, source_bytes);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
 
 	return 0;
 }
@@ -444,7 +421,6 @@ static int selector_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	size_t sink_size;
 	int ret;
 
@@ -463,30 +439,24 @@ static int selector_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* get source data format and period bytes */
-	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	cd->source_period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
+	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	cd->source_period_bytes = audio_stream_period_bytes(&sourceb->stream, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	cd->sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
+	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
 
 	/* There is an assumption that sink component will report out
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
 	comp_dbg(dev, "selector_prepare(): sourceb->schannels = %u",
-		 audio_stream_get_channels(&source_c->stream));
+		 audio_stream_get_channels(&sourceb->stream));
 	comp_dbg(dev, "selector_prepare(): sinkb->channels = %u",
-		 audio_stream_get_channels(&sink_c->stream));
+		 audio_stream_get_channels(&sinkb->stream));
 
-	sink_size = audio_stream_get_size(&sink_c->stream);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	sink_size = audio_stream_get_size(&sinkb->stream);
 
 	if (sink_size < cd->sink_period_bytes) {
 		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d",
@@ -673,7 +643,6 @@ static void set_selector_params(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *source;
 	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
 	const struct ipc4_audio_format *out_fmt = NULL;
 	struct comp_buffer *src_buf;
@@ -700,12 +669,10 @@ static void set_selector_params(struct processing_module *mod,
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_buffer *sink_buf =
 			container_of(sink_list, struct comp_buffer, source_list);
-		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_buf);
 
-		ipc4_update_buffer_format(sink, out_fmt);
-		audio_stream_set_channels(&sink->stream, params->channels);
-		audio_stream_set_rate(&sink->stream, params->rate);
-		buffer_release(sink);
+		ipc4_update_buffer_format(sink_buf, out_fmt);
+		audio_stream_set_channels(&sink_buf->stream, params->channels);
+		audio_stream_set_rate(&sink_buf->stream, params->rate);
 	}
 
 	/* update the source format
@@ -715,12 +682,9 @@ static void set_selector_params(struct processing_module *mod,
 	 * and the first one is not ready yet along with sink buffers params
 	 */
 	src_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	source = buffer_acquire(src_buf);
 
-	if (!source->hw_params_configured)
-		ipc4_update_buffer_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	buffer_release(source);
+	if (!src_buf->hw_params_configured)
+		ipc4_update_buffer_format(src_buf, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 
 static int selector_verify_params(struct processing_module *mod,
@@ -729,7 +693,6 @@ static int selector_verify_params(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t in_channels = cd->config.in_channels_count;
 	uint32_t out_channels = cd->config.out_channels_count;
 
@@ -755,15 +718,11 @@ static int selector_verify_params(struct processing_module *mod,
 		params->channels = in_channels;
 		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	}
-	buffer_c = buffer_acquire(buffer);
-	buffer_set_params(buffer_c, params, BUFFER_UPDATE_FORCE);
-	buffer_release(buffer_c);
+	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
 
 	/* set component period frames */
 	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	buffer_c = buffer_acquire(buffer);
-	component_set_nearest_period_frames(dev, audio_stream_get_rate(&buffer_c->stream));
-	buffer_release(buffer_c);
+	component_set_nearest_period_frames(dev, audio_stream_get_rate(&buffer->stream));
 
 	return 0;
 }
@@ -869,7 +828,6 @@ static int selector_prepare(struct processing_module *mod,
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	size_t sink_size;
 	int ret;
 
@@ -886,35 +844,29 @@ static int selector_prepare(struct processing_module *mod,
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
-	audio_stream_init_alignment_constants(4, 1, &source_c->stream);
-	audio_stream_init_alignment_constants(4, 1, &sink_c->stream);
+	audio_stream_init_alignment_constants(4, 1, &sourceb->stream);
+	audio_stream_init_alignment_constants(4, 1, &sinkb->stream);
 
 	/* get source data format and period bytes */
-	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	cd->source_period_bytes = audio_stream_period_bytes(&source_c->stream, dev->frames);
+	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	cd->source_period_bytes = audio_stream_period_bytes(&sourceb->stream, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	cd->sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
+	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
 
 	/* There is an assumption that sink component will report out
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
 	comp_info(dev, "selector_prepare(): source sink channel = %u %u",
-		  audio_stream_get_channels(&source_c->stream),
-		  audio_stream_get_channels(&sink_c->stream));
+		  audio_stream_get_channels(&sourceb->stream),
+		  audio_stream_get_channels(&sinkb->stream));
 
-	sink_size = audio_stream_get_size(&sink_c->stream);
+	sink_size = audio_stream_get_size(&sinkb->stream);
 
 	md->mpd.in_buff_size = cd->source_period_bytes;
 	md->mpd.out_buff_size = cd->sink_period_bytes;
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	if (sink_size < cd->sink_period_bytes) {
 		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d",

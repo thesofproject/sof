@@ -62,7 +62,6 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct list_item *sink_list;
 
 	memset(params, 0, sizeof(*params));
@@ -85,13 +84,10 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 		int j;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
 
-		j = IPC4_SINK_QUEUE_ID(sink_c->id);
+		j = IPC4_SINK_QUEUE_ID(sink->id);
 
-		ipc4_update_buffer_format(sink_c, &cd->out_fmt[j]);
-
-		buffer_release(sink_c);
+		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);
 	}
 
 	/*
@@ -102,12 +98,9 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 		struct ipc4_audio_format *in_fmt;
 
 		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
 
 		in_fmt = &cd->config.base.audio_fmt;
-		ipc4_update_buffer_format(source_c, in_fmt);
-
-		buffer_release(source_c);
+		ipc4_update_buffer_format(source, in_fmt);
 	}
 
 	/* update params for the DMA buffer */
@@ -140,7 +133,6 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t buf_size;
 	uint32_t chan_map;
 	int i;
@@ -209,19 +201,17 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	if (!buffer)
 		return -ENOMEM;
 
-	buffer_c = buffer_acquire(buffer);
-	audio_stream_set_channels(&buffer_c->stream, copier_cfg->base.audio_fmt.channels_count);
-	audio_stream_set_rate(&buffer_c->stream, copier_cfg->base.audio_fmt.sampling_frequency);
-	audio_stream_set_frm_fmt(&buffer_c->stream, config->frame_fmt);
-	audio_stream_set_valid_fmt(&buffer_c->stream, valid_fmt);
-	audio_stream_set_buffer_fmt(&buffer_c->stream,
+	audio_stream_set_channels(&buffer->stream, copier_cfg->base.audio_fmt.channels_count);
+	audio_stream_set_rate(&buffer->stream, copier_cfg->base.audio_fmt.sampling_frequency);
+	audio_stream_set_frm_fmt(&buffer->stream, config->frame_fmt);
+	audio_stream_set_valid_fmt(&buffer->stream, valid_fmt);
+	audio_stream_set_buffer_fmt(&buffer->stream,
 				    copier_cfg->base.audio_fmt.interleaving_style);
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer_c->chmap[i] = (chan_map >> i * 4) & 0xf;
+		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
 
-	buffer_c->hw_params_configured = true;
-	buffer_release(buffer_c);
+	buffer->hw_params_configured = true;
 
 	if (create_multi_endpoint_buffer)
 		cd->multi_endpoint_buffer = buffer;

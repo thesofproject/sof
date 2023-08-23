@@ -731,7 +731,6 @@ static int tdfb_prepare(struct processing_module *mod,
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt;
 	int source_channels;
@@ -744,16 +743,12 @@ static int tdfb_prepare(struct processing_module *mod,
 	/* Find source and sink buffers */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-	tdfb_set_alignment(&source_c->stream, &sink_c->stream);
+	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
 
-	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
-	source_channels = audio_stream_get_channels(&source_c->stream);
-	sink_channels = audio_stream_get_channels(&sink_c->stream);
-	rate = audio_stream_get_rate(&source_c->stream);
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
+	source_channels = audio_stream_get_channels(&sourceb->stream);
+	sink_channels = audio_stream_get_channels(&sinkb->stream);
+	rate = audio_stream_get_rate(&sourceb->stream);
 
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);

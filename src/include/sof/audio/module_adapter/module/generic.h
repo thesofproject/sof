@@ -343,7 +343,7 @@ static inline void module_source_info_release(struct module_source_info __sparse
 
 /* when source argument is NULL, this function returns the first unused entry */
 static inline
-int find_module_source_index(struct module_source_info __sparse_cache *msi,
+int find_module_source_index(struct module_source_info *msi,
 			     const struct comp_dev *source)
 {
 	int i;
