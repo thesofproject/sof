@@ -49,7 +49,8 @@ static size_t audio_stream_get_data_available(struct sof_source *source)
 }
 
 static int audio_stream_get_data(struct sof_source *source, size_t req_size,
-				 void  **data_ptr, void **buffer_start, size_t *buffer_size)
+				 void const **data_ptr, void const **buffer_start,
+				 size_t *buffer_size)
 {
 	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
 	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);

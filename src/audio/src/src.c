@@ -94,7 +94,7 @@ struct comp_data {
 	uint32_t sink_rate;
 	uint32_t source_rate;
 	int32_t *sbuf_w_ptr;
-	int32_t *sbuf_r_ptr;
+	int32_t const *sbuf_r_ptr;
 	int sbuf_avail;
 	int data_shift;
 	int source_frames;
@@ -353,7 +353,8 @@ static int src_2s(struct comp_data *cd,
 	int s2_blk_out;
 	uint32_t n_read = 0, n_written = 0;
 	int ret;
-	uint8_t *buffer_start;
+	uint8_t const *source_buffer_start;
+	uint8_t *sink_buffer_start;
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	/* chan sink == chan src therefore we only need to use one*/
@@ -366,18 +367,18 @@ static int src_2s(struct comp_data *cd,
 	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
-			      &s1.x_rptr, (void **)&buffer_start, &s1.x_size);
+			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
 	if (ret)
 		return ret;
-	s1.x_end_addr = buffer_start + s1.x_size;
+	s1.x_end_addr = source_buffer_start + s1.x_size;
 
 	ret = sink_get_buffer(sink, sink_frag_size,
-			      &s2.y_wptr, (void **)&buffer_start, &s2.y_size);
+			      &s2.y_wptr, (void **)&sink_buffer_start, &s2.y_size);
 	if (ret) {
 		source_release_data(source, 0);
 		return ret;
 	}
-	s2.y_end_addr = buffer_start + s2.y_size;
+	s2.y_end_addr = sink_buffer_start + s2.y_size;
 
 	s1.y_end_addr = sbuf_end_addr;
 	s1.y_size = sbuf_size;
@@ -448,23 +449,24 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 {
 	struct src_stage_prm s1;
 	int ret;
-	uint8_t *buffer_start;
+	uint8_t const *source_buffer_start;
+	uint8_t *sink_buffer_start;
 	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
 	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
-			      &s1.x_rptr, (void **)&buffer_start, &s1.x_size);
+			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
 	if (ret)
 		return ret;
-	s1.x_end_addr = buffer_start + s1.x_size;
+	s1.x_end_addr = source_buffer_start + s1.x_size;
 
 	ret = sink_get_buffer(sink, sink_frag_size,
-			      &s1.y_wptr, (void **)&buffer_start, &s1.y_size);
+			      &s1.y_wptr, (void **)&sink_buffer_start, &s1.y_size);
 	if (ret) {
 		source_release_data(source, 0);
 		return ret;
 	}
-	s1.y_end_addr = buffer_start + s1.y_size;
+	s1.y_end_addr = sink_buffer_start + s1.y_size;
 
 	s1.times = cd->param.stage1_times;
 	s1.state = &cd->src.state1;

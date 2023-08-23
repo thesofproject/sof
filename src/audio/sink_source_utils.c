@@ -15,9 +15,9 @@
 int source_to_sink_copy(struct sof_source *source,
 			struct sof_sink *sink, bool free, size_t size)
 {
-	uint8_t *src_ptr;
-	uint8_t *src_begin;
-	uint8_t *src_end;
+	uint8_t const *src_ptr;
+	uint8_t const *src_begin;
+	uint8_t const *src_end;
 	uint8_t *dst_ptr;
 	uint8_t *dst_begin;
 	uint8_t *dst_end;
@@ -32,8 +32,8 @@ int source_to_sink_copy(struct sof_source *source,
 		return -ENOSPC;
 
 	ret = source_get_data(source, size,
-			      (void **)&src_ptr,
-			      (void **)&src_begin,
+			      (void const **)&src_ptr,
+			      (void const **)&src_begin,
 			      &src_size);
 	if (ret)
 		return ret;
