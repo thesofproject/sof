@@ -15,7 +15,6 @@
 
 #include "interface.h"
 #include "../ipc4/base-config.h"
-#include <rtos/userspace_helper.h>
 
 #define module_get_private_data(mod) ((mod)->priv.private)
 #define module_set_private_data(mod, data) ((mod)->priv.private = data)
@@ -70,6 +69,8 @@ enum module_processing_type {
 	MODULE_PROCESS_TYPE_STREAM,
 	MODULE_PROCESS_TYPE_RAW,
 };
+
+struct userspace_context;
 
 /*
  * A pointer to this structure is passed to module API functions (from struct module_interface).

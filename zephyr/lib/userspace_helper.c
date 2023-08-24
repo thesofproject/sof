@@ -131,6 +131,19 @@ void module_driver_heap_remove(struct sys_heap *mod_drv_heap)
 	}
 }
 
+void *user_stack_allocate(size_t stack_size, uint32_t options)
+{
+	return (__sparse_force void __sparse_cache *)
+		k_thread_stack_alloc(stack_size, options & K_USER);
+}
+
+int user_stack_free(void *p_stack)
+{
+	if (!p_stack)
+		return 0;
+	return k_thread_stack_free((__sparse_force void *)p_stack);
+}
+
 int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
 {
 	struct k_mem_domain *comp_dom = mod->user_ctx->comp_dom;
@@ -144,6 +157,22 @@ int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
 }
 
 #else /* CONFIG_USERSPACE */
+
+void *user_stack_allocate(size_t stack_size, uint32_t options)
+{
+	/* allocate stack - must be aligned and cached so a separate alloc */
+	stack_size = K_KERNEL_STACK_LEN(stack_size);
+	void *p_stack = (__sparse_force void __sparse_cache *)
+		rballoc_align(SOF_MEM_FLAG_USER, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
+
+	return p_stack;
+}
+
+int user_stack_free(void *p_stack)
+{
+	rfree((__sparse_force void *)p_stack);
+	return 0;
+}
 
 void *module_driver_heap_rmalloc(struct sys_heap *mod_drv_heap, uint32_t flags, size_t bytes)
 {

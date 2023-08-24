@@ -8,6 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/task.h>
+#include <rtos/userspace_helper.h>
 #include <stdint.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -17,6 +18,8 @@
 #include <rtos/interrupt.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
+#include <zephyr/sys/sem.h>
+#include <zephyr/sys/mutex.h>
 #include <sof/lib/notifier.h>
 #include <ipc4/base_fw.h>
 
@@ -34,20 +37,59 @@ struct scheduler_dp_data {
 
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
-	struct k_thread thread;		/* memory space for a thread */
+	struct k_thread *thread;	/* pointer to the kernels' thread object */
+	struct k_thread thread_struct;	/* thread object for kernel threads */
 	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
 	size_t stack_size;		/* size of the stack in bytes */
-	struct k_sem sem;		/* semaphore for task scheduling */
+	struct k_sem *sem;		/* pointer to semaphore for task scheduling */
+	struct k_sem sem_struct;	/* semaphore for task scheduling for kernel threads */
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 };
+
+#ifdef CONFIG_USERSPACE
+/* Single CPU-wide lock
+ * The irq_lock is not available for USERSPACE (non-privileged) threads.
+ * Therefore semaphore is used to control critical section.
+ */
+#define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
+#define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
+
+/* User threads don't need access to this array. Access is performed from
+ * the kernel space via a syscall. Array must be placed in special section
+ * to be qualified as initialized by the gen_kobject_list.py script.
+ */
+static
+STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
+
+static inline unsigned int scheduler_dp_lock(uint16_t core)
+{
+	k_sem_take(&dp_lock[core], K_FOREVER);
+	return core;
+}
+
+static inline void scheduler_dp_unlock(unsigned int key)
+{
+	k_sem_give(&dp_lock[key]);
+}
+
+static inline void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
+{
+	k_thread_access_grant(thread_id, &dp_lock[core]);
+}
+
+#else /* CONFIG_USERSPACE */
+
+static inline void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
+{
+}
 
 /* Single CPU-wide lock
  * as each per-core instance if dp-scheduler has separate structures, it is enough to
  * use irq_lock instead of cross-core spinlocks
  */
-static inline unsigned int scheduler_dp_lock(void)
+static inline unsigned int scheduler_dp_lock(uint16_t core)
 {
 	return irq_lock();
 }
@@ -56,6 +98,7 @@ static inline void scheduler_dp_unlock(unsigned int key)
 {
 	irq_unlock(key);
 }
+#endif
 
 /* dummy LL task - to start LL on secondary cores */
 static enum task_state scheduler_dp_ll_tick_dummy(void *data)
@@ -226,7 +269,7 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	unsigned int lock_key;
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
-	lock_key = scheduler_dp_lock();
+	lock_key = scheduler_dp_lock(cpu_get_id());
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
 		pdata = curr_task->priv_data;
@@ -256,7 +299,7 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 
 				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
-				k_sem_give(&pdata->sem);
+				k_sem_give(pdata->sem);
 			}
 		}
 	}
@@ -271,7 +314,7 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
-	lock_key = scheduler_dp_lock();
+	lock_key = scheduler_dp_lock(cpu_get_id());
 
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
@@ -281,7 +324,7 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 		schedule_task_cancel(&dp_sch->ll_tick_src);
 
 	/* if the task is waiting on a semaphore - let it run and self-terminate */
-	k_sem_give(&pdata->sem);
+	k_sem_give(pdata->sem);
 	scheduler_dp_unlock(lock_key);
 
 	/* wait till the task has finished, if there was any task created */
@@ -294,6 +337,7 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 static int scheduler_dp_task_free(void *data, struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
+	int ret;
 
 	scheduler_dp_task_cancel(data, task);
 
@@ -305,12 +349,19 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 		pdata->thread_id = NULL;
 	}
 
+#ifdef CONFIG_USERSPACE
+	if (pdata->sem != &pdata->sem_struct)
+		k_object_free(pdata->sem);
+	if (pdata->thread != &pdata->thread_struct)
+		k_object_free(pdata->thread);
+#endif
+
 	/* free task stack */
-	rfree((__sparse_force void *)pdata->p_stack);
+	ret = user_stack_free((__sparse_force void *)pdata->p_stack);
 	pdata->p_stack = NULL;
 
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
-	return 0;
+	return ret;
 }
 
 /* Thread function called in component context, on target core */
@@ -329,14 +380,14 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 		 * the thread is started immediately after creation, it will stop on semaphore
 		 * Semaphore will be released once the task is ready to process
 		 */
-		k_sem_take(&task_pdata->sem, K_FOREVER);
+		k_sem_take(task_pdata->sem, K_FOREVER);
 
 		if (task->state == SOF_TASK_STATE_RUNNING)
 			state = task_run(task);
 		else
 			state = task->state;	/* to avoid undefined variable warning */
 
-		lock_key = scheduler_dp_lock();
+		lock_key = scheduler_dp_lock(task->core);
 		/*
 		 * check if task is still running, may have been canceled by external call
 		 * if not, set the state returned by run procedure
@@ -382,7 +433,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	uint64_t deadline_clock_ticks;
 	int ret;
 
-	lock_key = scheduler_dp_lock();
+	lock_key = scheduler_dp_lock(cpu_get_id());
 
 	if (task->state != SOF_TASK_STATE_INIT &&
 	    task->state != SOF_TASK_STATE_CANCEL &&
@@ -392,10 +443,17 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	}
 
 	/* create a zephyr thread for the task */
-	pdata->thread_id = k_thread_create(&pdata->thread, (__sparse_force void *)pdata->p_stack,
+	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)pdata->p_stack,
 					   pdata->stack_size, dp_thread_fn, task, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
+					   CONFIG_DP_THREAD_PRIORITY, task->flags, K_FOREVER);
+	if (!pdata->thread_id) {
+		tr_err(&dp_tr, "DP thread creation failed");
+		scheduler_dp_unlock(lock_key);
+		return -ECHILD;
+	}
 
+	k_thread_access_grant(pdata->thread_id, pdata->sem);
+	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, task->core);
 	if (ret < 0) {
@@ -403,8 +461,18 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		goto err;
 	}
 
-	/* start the thread,  it should immediately stop at a semaphore, so clean it */
-	k_sem_reset(&pdata->sem);
+#ifdef CONFIG_USERSPACE
+	if (task->flags & K_USER) {
+		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
+		if (ret < 0) {
+			tr_err(&dp_tr, "user_memory_init_shared() failed");
+			goto err;
+		}
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* start the thread, it should immediately stop at a semaphore, so clean it */
+	k_sem_init(pdata->sem, 0, 1);
 	k_thread_start(pdata->thread_id);
 
 	/* if there's no DP tasks scheduled yet, run ll tick source task */
@@ -474,7 +542,8 @@ int scheduler_dp_task_init(struct task **task,
 			   const struct task_ops *ops,
 			   struct processing_module *mod,
 			   uint16_t core,
-			   size_t stack_size)
+			   size_t stack_size,
+			   uint32_t options)
 {
 	void __sparse_cache *p_stack = NULL;
 	struct sys_heap *const user_heap = mod->dev->drv->user_heap;
@@ -505,9 +574,7 @@ int scheduler_dp_task_init(struct task **task,
 	}
 
 	/* allocate stack - must be aligned and cached so a separate alloc */
-	stack_size = Z_KERNEL_STACK_SIZE_ADJUST(stack_size);
-	p_stack = (__sparse_force void __sparse_cache *)
-		rballoc_align(SOF_MEM_FLAG_KERNEL, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
+	p_stack = user_stack_allocate(stack_size, options);
 	if (!p_stack) {
 		tr_err(&dp_tr, "stack alloc failed");
 		ret = -ENOMEM;
@@ -516,20 +583,40 @@ int scheduler_dp_task_init(struct task **task,
 
 	/* internal SOF task init */
 	ret = schedule_task_init(&task_memory->task, uid, SOF_SCHEDULE_DP, 0, ops->run,
-				 mod, core, 0);
+				 mod, core, options);
 	if (ret < 0) {
 		tr_err(&dp_tr, "schedule_task_init failed");
 		goto err;
 	}
+
+	/* Point to ksem semaphore for kernel threads synchronization */
+	/* It will be overwritten for K_USER threads to dynamic ones.  */
+	task_memory->pdata.sem = &task_memory->pdata.sem_struct;
+	task_memory->pdata.thread = &task_memory->pdata.thread_struct;
+
+#ifdef CONFIG_USERSPACE
+	if (options & K_USER) {
+		task_memory->pdata.sem = k_object_alloc(K_OBJ_SEM);
+		if (!task_memory->pdata.sem) {
+			tr_err(&dp_tr, "Semaphore object allocation failed");
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		task_memory->pdata.thread = k_object_alloc(K_OBJ_THREAD);
+		if (!task_memory->pdata.thread) {
+			tr_err(&dp_tr, "Thread object allocation failed");
+			ret = -ENOMEM;
+			goto err;
+		}
+	}
+#endif /* CONFIG_USERSPACE */
 
 	/* initialize other task structures */
 	task_memory->task.ops.complete = ops->complete;
 	task_memory->task.ops.get_deadline = ops->get_deadline;
 	task_memory->task.state = SOF_TASK_STATE_INIT;
 	task_memory->task.core = core;
-
-	/* initialize semaprhore */
-	k_sem_init(&task_memory->pdata.sem, 0, 1);
 
 	/* success, fill the structures */
 	task_memory->task.priv_data = &task_memory->pdata;
@@ -538,11 +625,15 @@ int scheduler_dp_task_init(struct task **task,
 	task_memory->pdata.mod = mod;
 	*task = &task_memory->task;
 
-
 	return 0;
 err:
 	/* cleanup - free all allocated resources */
-	rfree((__sparse_force void *)p_stack);
+	if (user_stack_free((__sparse_force void *)p_stack))
+		tr_err(&dp_tr, "user_stack_free failed!");
+
+	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
+	k_object_free(task_memory->pdata.sem);
+	k_object_free(task_memory->pdata.thread);
 	module_driver_heap_free(user_heap, task_memory);
 	return ret;
 }
@@ -555,7 +646,7 @@ void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_
 	struct scheduler_dp_data *dp_sch =
 		(struct scheduler_dp_data *)scheduler_get_data(SOF_SCHEDULE_DP);
 
-	lock_key = scheduler_dp_lock();
+	lock_key = scheduler_dp_lock(cpu_get_id());
 	scheduler_get_task_info(scheduler_props, data_off_size,  &dp_sch->tasks);
 	scheduler_dp_unlock(lock_key);
 }
