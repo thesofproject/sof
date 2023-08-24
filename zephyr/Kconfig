@@ -173,4 +173,20 @@ config STACK_SIZE_IPC_TX
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
 
+config SEC_DOMAIN_MAX_NUMBER
+	int "Number of security domains"
+	depends on USERSPACE
+	default 3
+	help
+	  Each security domain has its own worker to service requests to non-privileged modules.
+	  Several instances of the same module or modules signed by the same provider can share
+	  single worker to save resources
+
+config UM_MODULESMAX_NUM
+	int "Number of non-priviledged modules"
+	depends on USERSPACE
+	default 8
+	help
+	  Number of supported non-privileged modules
+
 endif
