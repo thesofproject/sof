@@ -41,6 +41,38 @@ struct userspace_context;
 struct sys_heap *module_driver_heap_init(void);
 
 /**
+ * Add memory region to non-privileged module memory domain.
+ * @param domain - pointer to the modules memory domain.
+ * @param addr   - pointer to memory region start
+ * @param size   - size of the memory region
+ * @param attr   - memory region access attributes
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * Function adds page aligned region to the memory domain.
+ * Caller should take care to not expose other data than these
+ * intended to be shared with the module.
+ */
+int user_add_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size, uint32_t attr);
+
+/**
+ * Remove memory region from non-privileged module memory domain.
+ * @param domain - pointer to the modules memory domain.
+ * @param addr   - pointer to memory region start
+ * @param size   - size of the memory region
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * Function removes previously added page aligned region
+ * from the memory domain.
+ */
+int user_remove_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size);
+
+/**
  * Add DP scheduler created thread to module memory domain.
  * @param thread_id - id of thread to be added to memory domain.
  * @param module    - processing module structure
