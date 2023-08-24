@@ -1070,13 +1070,13 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 /** get a handler to source API
  * NOTE! to use the handlers the buffer must be acquired by buffer_acquire
  */
-static inline struct sof_source __sparse_cache *
+static inline struct sof_source *
 audio_stream_get_source(struct audio_stream __sparse_cache *audio_stream)
 {
 	return &audio_stream->source_api;
 }
 
-static inline struct sof_sink __sparse_cache *
+static inline struct sof_sink *
 audio_stream_get_sink(struct audio_stream __sparse_cache *audio_stream)
 {
 	return &audio_stream->sink_api;

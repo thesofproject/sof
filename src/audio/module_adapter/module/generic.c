@@ -196,8 +196,8 @@ static int validate_config(struct module_config *cfg)
 }
 
 int module_prepare(struct processing_module *mod,
-		   struct sof_source __sparse_cache **sources, int num_of_sources,
-		   struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+		   struct sof_source **sources, int num_of_sources,
+		   struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 	struct module_data *md = &mod->priv;
@@ -283,8 +283,8 @@ int module_process_legacy(struct processing_module *mod,
 }
 
 int module_process_sink_src(struct processing_module *mod,
-			    struct sof_source __sparse_cache **sources, int num_of_sources,
-			    struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			    struct sof_source **sources, int num_of_sources,
+			    struct sof_sink **sinks, int num_of_sinks)
 
 {
 	struct comp_dev *dev = mod->dev;

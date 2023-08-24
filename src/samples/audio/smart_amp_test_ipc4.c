@@ -345,8 +345,8 @@ static int smart_amp_reset(struct processing_module *mod)
 }
 
 static int smart_amp_prepare(struct processing_module *mod,
-			     struct sof_source __sparse_cache **sources, int num_of_sources,
-			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;

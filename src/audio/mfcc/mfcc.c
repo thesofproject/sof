@@ -187,8 +187,8 @@ static void mfcc_set_alignment(struct audio_stream *source, struct audio_stream 
 }
 
 static int mfcc_prepare(struct processing_module *mod,
-			struct sof_source __sparse_cache **sources, int num_of_sources,
-			struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb;
