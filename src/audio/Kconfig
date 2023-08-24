@@ -573,12 +573,6 @@ config FORMAT_S24LE
 	help
 	  Support 24 bit processing data format with sign and in little endian format
 
-config FORMAT_S24_3LE
-	bool "Support S24_3LE"
-	default n
-	help
-	  Support packed 24 bit processing data format with sign and in little endian format
-
 config FORMAT_S32LE
 	bool "Support S32LE"
 	default y
