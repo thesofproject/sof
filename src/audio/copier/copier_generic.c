@@ -284,11 +284,6 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth, &out, &out_valid,
 				    out_fmt->s_type);
 
-	if (in_fmt->s_type == IPC4_TYPE_MSB_INTEGER && in_valid == SOF_IPC_FRAME_S24_4LE)
-		in_valid = SOF_IPC_FRAME_S24_4LE_MSB;
-	if (out_fmt->s_type == IPC4_TYPE_MSB_INTEGER && out_valid == SOF_IPC_FRAME_S24_4LE)
-		out_valid = SOF_IPC_FRAME_S24_4LE_MSB;
-
 	/* check container & sample size */
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))
 		return pcm_get_conversion_function(in, out);
