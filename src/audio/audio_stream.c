@@ -31,12 +31,10 @@ static int audio_stream_get_buffer(struct sof_sink *sink, size_t req_size,
 static int audio_stream_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
 	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
-	struct comp_buffer __sparse_cache *buffer_c =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
-					  stream, __sparse_cache);
+	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	if (commit_size) {
-		buffer_stream_writeback(buffer_c, commit_size);
+		buffer_stream_writeback(buffer, commit_size);
 		audio_stream_produce(audio_stream, commit_size);
 	}
 
@@ -54,14 +52,12 @@ static int audio_stream_get_data(struct sof_source *source, size_t req_size,
 				 void  **data_ptr, void **buffer_start, size_t *buffer_size)
 {
 	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
-	struct comp_buffer __sparse_cache *buffer_c =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
-					  stream, __sparse_cache);
+	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	if (req_size > audio_stream_get_data_available(source))
 		return -ENODATA;
 
-	buffer_stream_invalidate(buffer_c, req_size);
+	buffer_stream_invalidate(buffer, req_size);
 
 	/* get circular buffer parameters */
 	*data_ptr = audio_stream->r_ptr;
@@ -85,9 +81,7 @@ static int audio_stream_set_ipc_params_source(struct sof_source *source,
 					      bool force_update)
 {
 	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
-	struct comp_buffer __sparse_cache *buffer =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
-					  stream, __sparse_cache);
+	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	return buffer_set_params(buffer, params, force_update);
 }
@@ -97,9 +91,7 @@ static int audio_stream_set_ipc_params_sink(struct sof_sink *sink,
 					    bool force_update)
 {
 	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
-	struct comp_buffer __sparse_cache *buffer =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
-					  stream, __sparse_cache);
+	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	return buffer_set_params(buffer, params, force_update);
 }
