@@ -400,7 +400,7 @@ err:
 
 /* just stubs for now. Remove these after making these ops optional in the module adapter */
 static int up_down_mixer_prepare(struct processing_module *mod,
-				 struct sof_source __sparse_cache **sources, int num_of_sources,
+				 struct sof_source **sources, int num_of_sources,
 				 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);

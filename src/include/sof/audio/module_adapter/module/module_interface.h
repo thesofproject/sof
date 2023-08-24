@@ -158,7 +158,7 @@ struct module_interface {
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct processing_module *mod,
-		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_source **sources, int num_of_sources,
 		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
 
 	/**
@@ -177,7 +177,7 @@ struct module_interface {
 	 * the module
 	 */
 	bool (*is_ready_to_process)(struct processing_module *mod,
-				    struct sof_source __sparse_cache **sources, int num_of_sources,
+				    struct sof_source **sources, int num_of_sources,
 				    struct sof_sink __sparse_cache **sinks, int num_of_sinks);
 
 	/**
@@ -200,7 +200,7 @@ struct module_interface {
 	 *	- sinks are handlers to sink API struct sink*[]
 	 */
 	int (*process)(struct processing_module *mod,
-		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_source **sources, int num_of_sources,
 		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
 
 	/**
