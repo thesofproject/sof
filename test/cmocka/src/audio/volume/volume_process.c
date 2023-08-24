@@ -280,7 +280,6 @@ static void test_audio_vol(void **state)
 		break;
 
 	/* TODO: add 3LE support */
-	/* TODO: add 4LE_MSB support */
 	/* TODO: add U8 support */
 	default:
 		break;
