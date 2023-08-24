@@ -30,7 +30,7 @@ partition_name = "ADSP"
 [[cse.entry]]
 name = "ADSP.man"
 offset = "0x5c"
-length = "0x464"
+length = "0x4b8"
 [[cse.entry]]
 name = "ADSP.met"
 offset = "0x4c0"
