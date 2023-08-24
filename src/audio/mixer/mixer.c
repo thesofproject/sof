@@ -219,7 +219,7 @@ static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache 
 
 static int mixer_prepare(struct processing_module *mod,
 			 struct sof_source **sources, int num_of_sources,
-			 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;

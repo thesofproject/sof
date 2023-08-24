@@ -711,7 +711,7 @@ static void crossover_params(struct processing_module *mod)
  */
 static int crossover_prepare(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
-			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;

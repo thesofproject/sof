@@ -175,7 +175,7 @@ err:
 
 static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
-	struct sof_sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
+	struct sof_sink *audio_sink[PLATFORM_MAX_STREAMS];
 	struct sof_source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
@@ -973,7 +973,7 @@ out:
 
 static int module_adapter_sink_source_copy(struct comp_dev *dev)
 {
-	struct sof_sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
+	struct sof_sink *audio_sink[PLATFORM_MAX_STREAMS];
 	struct sof_source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;

@@ -563,7 +563,7 @@ static void eq_fir_set_alignment(struct audio_stream __sparse_cache *source,
 
 static int eq_fir_prepare(struct processing_module *mod,
 			  struct sof_source **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;

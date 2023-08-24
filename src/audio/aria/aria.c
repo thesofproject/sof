@@ -165,7 +165,7 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 
 static int aria_prepare(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
-			struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 	struct comp_buffer *source, *sink;

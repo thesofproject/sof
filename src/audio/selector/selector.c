@@ -822,7 +822,7 @@ static int selector_process(struct processing_module *mod,
  */
 static int selector_prepare(struct processing_module *mod,
 			    struct sof_source **sources, int num_of_sources,
-			    struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			    struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;

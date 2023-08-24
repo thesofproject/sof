@@ -246,13 +246,13 @@ int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
-		   struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+		   struct sof_sink **sinks, int num_of_sinks);
 
 static inline
 bool module_is_ready_to_process(struct processing_module *mod,
 				struct sof_source **sources,
 				int num_of_sources,
-				struct sof_sink __sparse_cache **sinks,
+				struct sof_sink **sinks,
 				int num_of_sinks)
 {
 	struct module_data *md = &mod->priv;
@@ -273,7 +273,7 @@ bool module_is_ready_to_process(struct processing_module *mod,
 
 int module_process_sink_src(struct processing_module *mod,
 			    struct sof_source **sources, int num_of_sources,
-			    struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+			    struct sof_sink **sinks, int num_of_sinks);
 int module_process_legacy(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers,
