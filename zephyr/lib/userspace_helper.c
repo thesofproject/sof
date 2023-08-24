@@ -156,6 +156,39 @@ int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
 	return k_mem_domain_add_thread(comp_dom, thread_id);
 }
 
+int user_add_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size, uint32_t attr)
+{
+	struct k_mem_partition part;
+	int ret;
+
+	k_mem_region_align(&part.start, &part.size, addr, size, HOST_PAGE_SIZE);
+	/* Define parameters for partition */
+	part.attr = attr;
+	ret = k_mem_domain_add_partition(domain, &part);
+	/* -EINVAL means that given page is already in the domain */
+	/* Not an error case for us. */
+	if (ret == -EINVAL)
+		return 0;
+
+	return ret;
+}
+
+int user_remove_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size)
+{
+	struct k_mem_partition part;
+	int ret;
+
+	/* Define parameters for user_partition */
+	k_mem_region_align(&part.start, &part.size, addr, size, HOST_PAGE_SIZE);
+	ret = k_mem_domain_remove_partition(domain, &part);
+	/* -ENOENT means that given partition is already removed */
+	/* Not an error case for us. */
+	if (ret == -ENOENT)
+		return 0;
+
+	return ret;
+}
+
 #else /* CONFIG_USERSPACE */
 
 void *user_stack_allocate(size_t stack_size, uint32_t options)
