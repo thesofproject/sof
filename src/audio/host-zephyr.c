@@ -768,6 +768,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t align;
 	int i, channel, err;
 	bool is_scheduling_source = dev == dev->pipeline->sched_comp;
+	uint32_t round_up_size;
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -836,8 +837,10 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	}
 
 	/* calculate DMA buffer size */
-	buffer_size = ALIGN_UP(period_bytes, align) * period_count;
-	buffer_size = MAX(buffer_size, ALIGN_UP(hd->ipc_host.dma_buffer_size, align));
+	round_up_size = (params->frame_fmt == SOF_IPC_FRAME_S24_3LE) ? (3 * align) : align;
+	buffer_size = ROUND_UP(period_bytes, round_up_size) * period_count;
+	if (hd->ipc_host.dma_buffer_size != 0)
+		buffer_size = ROUND_UP(hd->ipc_host.dma_buffer_size, buffer_size);
 
 	/* alloc DMA buffer or change its size if exists */
 	/*
@@ -970,7 +973,10 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	}
 
 	/* minimal copied data shouldn't be less than alignment */
-	hd->period_bytes = ALIGN_UP(period_bytes, hd->dma_copy_align);
+	if (params->frame_fmt != SOF_IPC_FRAME_S24_3LE)
+		hd->period_bytes = ALIGN_UP(period_bytes, hd->dma_copy_align);
+	else
+		hd->period_bytes = period_bytes;
 
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
