@@ -41,8 +41,10 @@ function drc_coefs_and_config_export(params, id)
 tplg1_fn = sprintf("../../topology/topology1/m4/drc_coef_%s.m4", id); % Control Bytes File
 tplg2_fn = sprintf("../../topology/topology2/include/components/drc/%s.conf", id); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob_fn = sprintf("../../ctl/ipc3/drc_coef_%s.blob", id); % Blob binary file
-alsa_fn = sprintf("../../ctl/ipc3/drc_coef_%s.txt", id); % ALSA CSV format file
+blob3_fn = sprintf("../../ctl/ipc3/drc_coef_%s.blob", id); % Blob binary file
+alsa3_fn = sprintf("../../ctl/ipc3/drc_coef_%s.txt", id); % ALSA CSV format file
+blob4_fn = sprintf("../../ctl/ipc4/drc/%s.blob", id); % Blob binary file
+alsa4_fn = sprintf("../../ctl/ipc4/drc/%s.txt", id); % ALSA CSV format file
 
 endian = "little";
 sample_rate = 48000;
@@ -60,8 +62,10 @@ blob8_ipc4 = drc_build_blob(config, endian, 4);
 % Generate output files
 tplg_write(tplg1_fn, blob8, "DRC");
 tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", 'Exported Control Bytes');
-blob_write(blob_fn, blob8);
-alsactl_write(alsa_fn, blob8);
+blob_write(blob3_fn, blob8);
+alsactl_write(alsa3_fn, blob8);
+blob_write(blob4_fn, blob8_ipc4);
+alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot x-y response in dB
 drc_plot_db_curve(coefs);
