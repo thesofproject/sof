@@ -56,4 +56,14 @@ config ZEPHYR_DP_SCHEDULER
 	  DP modules can be located in dieffrent cores than LL pipeline modules, may have
 	  different tick (i.e. 300ms for speech reccognition, etc.)
 
+config CHECK_INIT_PRIORITIES
+	bool "Build time initialization priorities check"
+	default n
+	help
+	  Check the build for initialization priority issues by comparing the
+	  initialization priority in the build with the device dependency
+	  derived from the devicetree definition.
+	  Fails the build on priority errors (dependent devices, inverted
+	  priority), see CHECK_INIT_PRIORITIES_FAIL_ON_WARNING to fail on
+	  warnings (dependent devices, same priority) as well.
 endif
