@@ -277,4 +277,35 @@ static inline void peak_vol_update(struct vol_data *cd)
 void sys_comp_module_volume_interface_init(void);
 #endif
 
+/* source_or_sink, true means source, false means sink */
+void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink);
+
+void volume_peak_free(struct vol_data *cd);
+
+int volume_peak_prepare(struct vol_data *cd, struct processing_module *mod);
+
+int volume_init(struct processing_module *mod);
+
+int volume_set_config(struct processing_module *mod, uint32_t config_id,
+		      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		      const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+		      size_t response_size);
+
+int volume_get_config(struct processing_module *mod,
+		      uint32_t config_id, uint32_t *data_offset_size,
+		      uint8_t *fragment, size_t fragment_size);
+
+void volume_update_current_vol_ipc4(struct vol_data *cd);
+
+void volume_reset_state(struct vol_data *cd);
+
+void volume_prepare_ramp(struct comp_dev *dev, struct vol_data *cd);
+
+int volume_set_chan(struct processing_module *mod, int chan,
+		    int32_t vol, bool constant_rate_ramp);
+
+void volume_set_chan_mute(struct processing_module *mod, int chan);
+
+void volume_set_chan_unmute(struct processing_module *mod, int chan);
+
 #endif /* __SOF_AUDIO_VOLUME_H__ */

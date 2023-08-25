@@ -47,8 +47,8 @@
 
 LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 
-#include <sof/audio/volume.h>
 #include <sof/audio/volume_uuid.h>
+#include <sof/audio/volume.h>
 
 #if CONFIG_FORMAT_S16LE
 /**
@@ -319,48 +319,13 @@ static inline void volume_ramp(struct processing_module *mod)
 		}
 	}
 
-#if CONFIG_IPC_MAJOR_4
-	cd->scale_vol = vol_get_processing_function(dev, cd);
-#else
-	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
-
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	source_c = buffer_acquire(sourceb);
-
-	cd->scale_vol = vol_get_processing_function(dev, source_c, cd);
-
-	buffer_release(source_c);
-#endif
+	set_volume_process(cd, dev, true);
 }
-
-/**
- * \brief Ramps volume changes over time.
- * \param[in,out] mod Volume processing module handle
- */
-#if CONFIG_IPC_MAJOR_3
-static void volume_ramp_check(struct processing_module *mod)
-{
-	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	int i;
-
-	/* No need to ramp in idle state, jump volume to request. */
-	cd->ramp_finished = false;
-	if (dev->state == COMP_STATE_READY) {
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			cd->volume[i] = cd->tvolume[i];
-
-		cd->ramp_finished = true;
-	}
-}
-#endif
 
 /**
  * \brief Reset state except controls.
  */
-static void reset_state(struct vol_data *cd)
+void volume_reset_state(struct vol_data *cd)
 {
 	int i;
 
@@ -378,257 +343,7 @@ static void reset_state(struct vol_data *cd)
 	cd->is_passthrough = false;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int volume_init(struct processing_module *mod)
-{
-	struct module_data *md = &mod->priv;
-	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
-	struct ipc_config_volume *vol = cfg->data;
-	struct vol_data *cd;
-	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
-	int i;
-
-	if (!vol || cfg->size != sizeof(*vol)) {
-		comp_err(dev, "volume_init(): No configuration data or bad data size %u",
-			 cfg->size);
-		return -EINVAL;
-	}
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
-	if (!cd)
-		return -ENOMEM;
-
-	/*
-	 * malloc memory to store current volume 4 times to ensure the address
-	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
-	 */
-	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
-	if (!cd->vol) {
-		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
-		return -ENOMEM;
-	}
-
-	md->private = cd;
-	cd->is_passthrough = false;
-
-	/* Set the default volumes. If IPC sets min_value or max_value to
-	 * not-zero, use them. Otherwise set to internal limits and notify
-	 * ramp step calculation about assumed range with the range set to
-	 * zero.
-	 */
-	if (vol->min_value || vol->max_value) {
-		if (vol->min_value < VOL_MIN) {
-			/* Use VOL_MIN instead, no need to stop new(). */
-			cd->vol_min = VOL_MIN;
-			comp_err(dev, "volume_new(): vol->min_value was limited to VOL_MIN.");
-		} else {
-			cd->vol_min = vol->min_value;
-		}
-
-		if (vol->max_value > VOL_MAX) {
-			/* Use VOL_MAX instead, no need to stop new(). */
-			cd->vol_max = VOL_MAX;
-			comp_err(dev, "volume_new(): vol->max_value was limited to VOL_MAX.");
-		} else {
-			cd->vol_max = vol->max_value;
-		}
-
-		cd->vol_ramp_range = vol->max_value - vol->min_value;
-	} else {
-		/* Legacy mode, set the limits to firmware capability where
-		 * VOL_MAX is a very large gain to avoid restricting valid
-		 * requests. The default ramp rate will be computed based
-		 * on 0 - 1.0 gain range assumption when vol_ramp_range
-		 * is set to 0.
-		 */
-		cd->vol_min = VOL_MIN;
-		cd->vol_max = VOL_MAX;
-		cd->vol_ramp_range = 0;
-	}
-
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
-				      cd->vol_min);
-		cd->tvolume[i] = cd->volume[i];
-		cd->mvolume[i] = cd->volume[i];
-		cd->muted[i] = false;
-	}
-
-	switch (cd->ramp_type) {
-#if CONFIG_COMP_VOLUME_LINEAR_RAMP
-	case SOF_VOLUME_LINEAR:
-	case SOF_VOLUME_LINEAR_ZC:
-#endif
-#if CONFIG_COMP_VOLUME_WINDOWS_FADE
-	case SOF_VOLUME_WINDOWS_FADE:
-#endif
-		cd->ramp_type = vol->ramp;
-		cd->initial_ramp = vol->initial_ramp;
-		break;
-	default:
-		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
-		rfree(cd);
-		rfree(cd->vol);
-		return -EINVAL;
-	}
-
-	reset_state(cd);
-
-	return 0;
-}
-
-/* CONFIG_IPC_MAJOR_3 */
-#elif CONFIG_IPC_MAJOR_4
-static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
-			   uint32_t const target_volume,
-			   uint32_t const curve_type,
-			   uint64_t const curve_duration)
-{
-	/* update target volume in peak_regs */
-	cd->peak_regs.target_volume[channel] = target_volume;
-	/* update peak meter in peak_regs */
-	cd->peak_regs.peak_meter[channel] = 0;
-	cd->peak_cnt = 0;
-
-	/* init target volume */
-	cd->tvolume[channel] = target_volume;
-	/* init ramp start volume*/
-	cd->rvolume[channel] = 0;
-	/* init muted volume */
-	cd->mvolume[channel] = 0;
-	/* set muted as false*/
-	cd->muted[channel] = false;
-#if CONFIG_COMP_VOLUME_WINDOWS_FADE
-	/* ATM there is support for the same ramp for all channels */
-	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE)
-		cd->ramp_type = SOF_VOLUME_WINDOWS_FADE;
-	else
-		cd->ramp_type = SOF_VOLUME_WINDOWS_NO_FADE;
-#endif
-	return 0;
-}
-
-/* In IPC4 driver sends volume in Q1.31 format. It is converted
- * into Q1.23 format to be processed by firmware.
- */
-static inline uint32_t convert_volume_ipc4_to_ipc3(struct comp_dev *dev, uint32_t volume)
-{
-	return sat_int32(Q_SHIFT_RND((int64_t)volume, 31, VOL_QXY_Y));
-}
-
-static inline uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
-{
-	/* In IPC4 volume is converted into Q1.23 format to be processed by firmware.
-	 * Now convert it back to Q1.31
-	 */
-	return sat_int32(Q_SHIFT_LEFT((int64_t)volume, VOL_QXY_Y, 31));
-}
-
-static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t target_volume)
-{
-	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
-	 * converted into ms value required by firmware
-	 */
-	cd->initial_ramp = Q_MULTSR_32X32((int64_t)curve_duration,
-					  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
-
-	if (!cd->initial_ramp) {
-		/* In case when initial ramp time is equal to zero, vol_min and
-		 * vol_max variables should be set to target_volume value
-		 */
-		cd->vol_min = target_volume;
-		cd->vol_max = target_volume;
-	} else {
-		cd->vol_min = VOL_MIN;
-		cd->vol_max = VOL_MAX;
-	}
-	cd->copy_gain = true;
-}
-
-static int volume_init(struct processing_module *mod)
-{
-	struct module_data *md = &mod->priv;
-	struct module_config *cfg = &md->cfg;
-	struct comp_dev *dev = mod->dev;
-	const struct ipc4_peak_volume_module_cfg *vol = cfg->init_data;
-	uint32_t target_volume[SOF_IPC_MAX_CHANNELS];
-	struct vol_data *cd;
-	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
-	uint32_t channels_count;
-	uint8_t channel_cfg;
-	uint8_t channel;
-	uint32_t instance_id = IPC4_INST_ID(dev_comp_id(dev));
-
-	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
-		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
-		return -EINVAL;
-	}
-	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	if (channels_count > SOF_IPC_MAX_CHANNELS || !channels_count) {
-		comp_err(dev, "volume_init(): Invalid channels count %u", channels_count);
-		return -EINVAL;
-	}
-
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
-	if (!cd)
-		return -ENOMEM;
-
-	/*
-	 * malloc memory to store current volume 4 times to ensure the address
-	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
-	 */
-	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
-	if (!cd->vol) {
-		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
-		return -ENOMEM;
-	}
-
-	/* malloc memory to store temp peak volume 4 times to ensure the address
-	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
-	 */
-	cd->peak_vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
-	if (!cd->peak_vol) {
-		rfree(cd->vol);
-		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d for peak_vol", vol_size);
-		return -ENOMEM;
-	}
-
-	md->private = cd;
-
-	for (channel = 0; channel < channels_count ; channel++) {
-		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
-			channel_cfg = 0;
-		else
-			channel_cfg = channel;
-
-		target_volume[channel] =
-			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
-
-		set_volume_ipc4(cd, channel,
-				target_volume[channel_cfg],
-				vol->config[channel_cfg].curve_type,
-				vol->config[channel_cfg].curve_duration);
-	}
-
-	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
-
-	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
-	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
-
-	cd->attenuation = 0;
-	cd->is_passthrough = false;
-
-	reset_state(cd);
-
-	return 0;
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
+void volume_prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 {
 	int ramp_update_us;
 
@@ -665,17 +380,10 @@ static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 static int volume_free(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-#if CONFIG_IPC_MAJOR_4
-	struct ipc4_peak_volume_regs regs;
-
-	/* clear mailbox */
-	memset_s(&regs, sizeof(regs), 0, sizeof(regs));
-	mailbox_sw_regs_write(cd->mailbox_offset, &regs, sizeof(regs));
-	rfree(cd->peak_vol);
-#endif
 
 	comp_dbg(mod->dev, "volume_free()");
 
+	volume_peak_free(cd);
 	rfree(cd->vol);
 	rfree(cd);
 
@@ -691,8 +399,8 @@ static int volume_free(struct processing_module *mod)
  *	      and variable time length ramp. When false do
  *	      a fixed length and variable rate ramp.
  */
-static inline int volume_set_chan(struct processing_module *mod, int chan,
-				  int32_t vol, bool constant_rate_ramp)
+int volume_set_chan(struct processing_module *mod, int chan,
+		    int32_t vol, bool constant_rate_ramp)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	int32_t v = vol;
@@ -779,7 +487,7 @@ static inline int volume_set_chan(struct processing_module *mod, int chan,
 
  * \param[in] chan Channel number.
  */
-static inline void volume_set_chan_mute(struct processing_module *mod, int chan)
+void volume_set_chan_mute(struct processing_module *mod, int chan)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 
@@ -796,7 +504,7 @@ static inline void volume_set_chan_mute(struct processing_module *mod, int chan)
 
  * \param[in] chan Channel number.
  */
-static inline void volume_set_chan_unmute(struct processing_module *mod, int chan)
+void volume_set_chan_unmute(struct processing_module *mod, int chan)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 
@@ -804,343 +512,6 @@ static inline void volume_set_chan_unmute(struct processing_module *mod, int cha
 		cd->muted[chan] = false;
 		volume_set_chan(mod, chan, cd->mvolume[chan], true);
 	}
-}
-
-#if CONFIG_IPC_MAJOR_3
-static int volume_set_config(struct processing_module *mod, uint32_t config_id,
-			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			     size_t response_size)
-{
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	uint32_t val;
-	uint32_t ch;
-	int j;
-	int ret = 0;
-
-	comp_dbg(dev, "volume_set_config()");
-
-	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_set_config(): invalid cdata->num_elems");
-		return -EINVAL;
-	}
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_VOLUME:
-		comp_dbg(dev, "volume_set_config(), SOF_CTRL_CMD_VOLUME, cdata->comp_id = %u",
-			 cdata->comp_id);
-		for (j = 0; j < cdata->num_elems; j++) {
-			ch = cdata->chanv[j].channel;
-			val = cdata->chanv[j].value;
-			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
-				 ch, val);
-
-			if (ch >= SOF_IPC_MAX_CHANNELS) {
-				comp_err(dev, "volume_set_config(), illegal channel = %d",
-					 ch);
-				return -EINVAL;
-			}
-
-			if (cd->muted[ch]) {
-				cd->mvolume[ch] = val;
-			} else {
-				ret = volume_set_chan(mod, ch, val, true);
-				if (ret)
-					return ret;
-			}
-		}
-
-		volume_ramp_check(mod);
-		break;
-
-	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "volume_set_config(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
-			 cdata->comp_id);
-		for (j = 0; j < cdata->num_elems; j++) {
-			ch = cdata->chanv[j].channel;
-			val = cdata->chanv[j].value;
-			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
-				 ch, val);
-			if (ch >= SOF_IPC_MAX_CHANNELS) {
-				comp_err(dev, "volume_set_config(), illegal channel = %d",
-					 ch);
-				return -EINVAL;
-			}
-
-			if (val)
-				volume_set_chan_unmute(mod, ch);
-			else
-				volume_set_chan_mute(mod, ch);
-		}
-
-		volume_ramp_check(mod);
-		break;
-
-	default:
-		comp_err(dev, "volume_set_config(): invalid cdata->cmd");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int volume_get_config(struct processing_module *mod,
-			     uint32_t config_id, uint32_t *data_offset_size,
-			     uint8_t *fragment, size_t fragment_size)
-{
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	int j;
-
-	comp_dbg(dev, "volume_get_config()");
-
-	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_get_config(): invalid cdata->num_elems %u",
-			 cdata->num_elems);
-		return -EINVAL;
-	}
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_VOLUME:
-		for (j = 0; j < cdata->num_elems; j++) {
-			cdata->chanv[j].channel = j;
-			cdata->chanv[j].value = cd->tvolume[j];
-			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
-				 cdata->chanv[j].channel,
-				 cdata->chanv[j].value);
-		}
-		break;
-	case SOF_CTRL_CMD_SWITCH:
-		for (j = 0; j < cdata->num_elems; j++) {
-			cdata->chanv[j].channel = j;
-			cdata->chanv[j].value = !cd->muted[j];
-			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
-				 cdata->chanv[j].channel,
-				 cdata->chanv[j].value);
-		}
-		break;
-	default:
-		comp_err(dev, "volume_get_config(): invalid cdata->cmd");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-/* CONFIG_IPC_MAJOR_3 */
-#elif CONFIG_IPC_MAJOR_4
-
-static int volume_set_volume(struct processing_module *mod, const uint8_t *data, int data_size)
-{
-	struct vol_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	struct ipc4_peak_volume_config cdata;
-	uint32_t i, channels_count;
-
-	if (data_size < sizeof(cdata)) {
-		comp_err(dev, "error: data_size %d should be bigger than %d", data_size,
-			 sizeof(cdata));
-		return -EINVAL;
-	}
-
-	cdata = *(const struct ipc4_peak_volume_config *)data;
-	cdata.target_volume = convert_volume_ipc4_to_ipc3(dev, cdata.target_volume);
-
-	if ((cdata.channel_id != IPC4_ALL_CHANNELS_MASK) &&
-	    (cdata.channel_id >= SOF_IPC_MAX_CHANNELS)) {
-		comp_err(dev, "Invalid channel_id %u", cdata.channel_id);
-		return -EINVAL;
-	}
-
-	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
-	cd->ramp_finished = true;
-
-	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	if (channels_count > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "Invalid channels count %u", channels_count);
-		return -EINVAL;
-	}
-
-	if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
-		for (i = 0; i < channels_count; i++) {
-			set_volume_ipc4(cd, i, cdata.target_volume,
-					cdata.curve_type,
-					cdata.curve_duration);
-
-			volume_set_chan(mod, i, cd->tvolume[i], true);
-			if (cd->volume[i] != cd->tvolume[i])
-				cd->ramp_finished = false;
-		}
-	} else {
-		set_volume_ipc4(cd, cdata.channel_id, cdata.target_volume,
-				cdata.curve_type,
-				cdata.curve_duration);
-
-		volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
-				true);
-		if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
-			cd->ramp_finished = false;
-	}
-
-	cd->is_passthrough = cd->ramp_finished;
-
-	for (i = 0; i < channels_count; i++) {
-		if (cd->volume[i] != VOL_ZERO_DB) {
-			cd->is_passthrough = false;
-			break;
-		}
-	}
-
-	cd->scale_vol = vol_get_processing_function(dev, cd);
-
-	prepare_ramp(dev, cd);
-
-	return 0;
-}
-
-static int volume_set_attenuation(struct processing_module *mod, const uint8_t *data,
-				  int data_size)
-{
-	struct vol_data *cd = module_get_private_data(mod);
-	enum sof_ipc_frame frame_fmt, valid_fmt;
-	struct comp_dev *dev = mod->dev;
-	uint32_t attenuation;
-
-	/* only support attenuation in format of 32bit */
-	if (data_size > sizeof(uint32_t)) {
-		comp_err(dev, "attenuation data size %d is incorrect", data_size);
-		return -EINVAL;
-	}
-
-	attenuation = *(const uint32_t *)data;
-	if (attenuation > 31) {
-		comp_err(dev, "attenuation %d is out of range", attenuation);
-		return -EINVAL;
-	}
-
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	if (frame_fmt < SOF_IPC_FRAME_S24_4LE) {
-		comp_err(dev, "frame_fmt %d isn't supported by attenuation",
-			 frame_fmt);
-		return -EINVAL;
-	}
-
-	cd->attenuation = attenuation;
-
-	return 0;
-}
-
-static int volume_set_config(struct processing_module *mod, uint32_t config_id,
-			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			     size_t response_size)
-{
-	struct comp_dev *dev = mod->dev;
-	int ret;
-
-	comp_dbg(dev, "volume_set_config()");
-
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)fragment, fragment_size);
-
-	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
-				       fragment_size, response, response_size);
-	if (ret < 0)
-		return ret;
-
-	/* return if more fragments are expected or if the module is not prepared */
-	if (pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE)
-		return 0;
-
-	switch (config_id) {
-	case IPC4_VOLUME:
-		return volume_set_volume(mod, fragment, fragment_size);
-	case IPC4_SET_ATTENUATION:
-		return volume_set_attenuation(mod, fragment, fragment_size);
-	default:
-		comp_err(dev, "unsupported param %d", config_id);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int volume_get_config(struct processing_module *mod,
-			     uint32_t config_id, uint32_t *data_offset_size,
-			     uint8_t *fragment, size_t fragment_size)
-{
-	struct vol_data *cd = module_get_private_data(mod);
-	struct ipc4_peak_volume_config *cdata;
-	int i;
-
-	comp_dbg(mod->dev, "volume_get_large_config()");
-
-	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(fragment, 8);
-
-	switch (config_id) {
-	case IPC4_VOLUME:
-		for (i = 0; i < cd->channels; i++) {
-			uint32_t volume = cd->peak_regs.target_volume[i];
-
-			cdata[i].channel_id = i;
-			cdata[i].target_volume = convert_volume_ipc3_to_ipc4(volume);
-		}
-		*data_offset_size = sizeof(*cdata) * cd->channels;
-		break;
-	default:
-		comp_err(mod->dev, "unsupported param %d", config_id);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int volume_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
-	struct comp_buffer *sinkb, *sourceb;
-	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "volume_params()");
-
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-
-	component_set_nearest_period_frames(dev, params->rate);
-
-	/* volume component will only ever have 1 sink buffer */
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
-	buffer_release(sink_c);
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	source_c = buffer_acquire(sourceb);
-	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
-	buffer_release(source_c);
-
-	return 0;
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-static void volume_update_current_vol_ipc4(struct vol_data *cd)
-{
-#if CONFIG_IPC_MAJOR_4
-	int i;
-
-	assert(cd);
-
-	for (i = 0; i < cd->channels; i++)
-		cd->peak_regs.current_volume[i] = cd->volume[i];
-#endif
 }
 
 /*
@@ -1274,17 +645,7 @@ static int volume_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "volume_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
-	cd->peak_cnt = 0;
-#if CONFIG_COMP_PEAK_VOL
-	cd->peak_report_cnt = CONFIG_PEAK_METER_UPDATE_PERIOD * 1000 / mod->dev->period;
-	if (cd->peak_report_cnt == 0)
-		cd->peak_report_cnt = 1;
-#endif
-	ret = volume_params(mod);
-	if (ret < 0)
-		return ret;
-#endif
+	ret = volume_peak_prepare(cd, mod);
 
 	/* volume component will only ever have 1 sink and source buffer */
 	sinkb = list_first_item(&dev->bsink_list,
@@ -1309,11 +670,8 @@ static int volume_prepare(struct processing_module *mod,
 		ret = -ENOMEM;
 		goto err;
 	}
-#if CONFIG_IPC_MAJOR_4
-	cd->scale_vol = vol_get_processing_function(dev, cd);
-#else
-	cd->scale_vol = vol_get_processing_function(dev, sink_c, cd);
-#endif
+
+	set_volume_process(cd, dev, false);
 
 	if (!cd->scale_vol) {
 		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
@@ -1355,7 +713,7 @@ static int volume_prepare(struct processing_module *mod,
 			cd->ramp_finished = false;
 	}
 
-	prepare_ramp(dev, cd);
+	volume_prepare_ramp(dev, cd);
 
 	/*
 	 * volume component does not do any format conversion, so use the buffer size for source
@@ -1383,7 +741,7 @@ static int volume_reset(struct processing_module *mod)
 	struct vol_data *cd = module_get_private_data(mod);
 
 	comp_dbg(mod->dev, "volume_reset()");
-	reset_state(cd);
+	volume_reset_state(cd);
 	return 0;
 }
 

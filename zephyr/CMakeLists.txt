@@ -497,15 +497,29 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_generic.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4_with_peakvol.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3_with_peakvol.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume_generic_with_peakvol.c
-	${SOF_AUDIO_MODULES_PATH}/volume/volume.c
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_generic.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_generic_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_ipc3.c
 )
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_generic.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi4_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_hifi3_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_generic_with_peakvol.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume.c
+		${SOF_AUDIO_MODULES_PATH}/volume/volume_ipc4.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
