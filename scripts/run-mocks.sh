@@ -24,7 +24,7 @@ EOF
 parse_opts()
 {
 	# default config if none supplied
-	CONFIG="tgph_defconfig"
+	CONFIG="imx8_defconfig"
 	VALGRIND_CMD=""
 
 	while getopts "vc:" flag; do
