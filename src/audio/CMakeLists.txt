@@ -163,7 +163,13 @@ check_optimization(hifi3 -mhifi3 "" -DOPS_HIFI3)
 set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc mfcc mux)
 
 # sources for each module
-set(volume_sources module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c)
+if(CONFIG_IPC_MAJOR_3)
+	set(volume_sources module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c
+	module_adapter/module/volume/volume_ipc3.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	set(volume_sources module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c
+	module_adapter/module/volume/volume_ipc4.c)
+endif()
 set(mixer_sources ${mixer_src})
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
