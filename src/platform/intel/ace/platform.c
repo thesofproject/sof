@@ -87,6 +87,7 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
+	kcps_budget_init();
 
 	/* Set DSP clock to MAX using KCPS API. Value should be lowered when KCPS API
 	 * for modules is implemented
