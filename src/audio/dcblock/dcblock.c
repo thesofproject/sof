@@ -4,8 +4,10 @@
 //
 // Author: Sebastiano Carlucci <scarlucci@google.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/dcblock/dcblock.h>
@@ -30,8 +32,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static const struct comp_driver comp_dcblock;
-
 LOG_MODULE_REGISTER(dcblock, CONFIG_SOF_LOG_LEVEL);
 
 /* b809efaf-5681-42b1-9ed6-04bb012dd384 */
@@ -46,13 +46,26 @@ DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);
  * H(z) = (1 - z^-1)/(1-Rz^-1).
  * Setting R to 1 makes the filter act as a passthrough component.
  */
-static void dcblock_set_passthrough(struct comp_data *cd)
+static void dcblock_set_passthrough(struct processing_module *mod)
 {
-	comp_cl_info(&comp_dcblock, "dcblock_set_passthrough()");
+	struct comp_data *cd = module_get_private_data(mod);
+
+	comp_info(mod->dev, "dcblock_set_passthrough()");
 	int i;
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		cd->R_coeffs[i] = ONE_Q2_30;
+}
+
+/**
+ * \brief Copy the DC Blocking filter coefficients from received
+ * configuration blob.
+ */
+static void dcblock_copy_coefficients(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+
+	memcpy_s(cd->R_coeffs, sizeof(cd->R_coeffs), cd->config, sizeof(cd->R_coeffs));
 }
 
 /**
@@ -65,255 +78,131 @@ static void dcblock_init_state(struct comp_data *cd)
 
 /**
  * \brief Creates DC Blocking Filter component.
- * \return Pointer to DC Blocking Filter component device.
+ * \return success.
  */
-static struct comp_dev *dcblock_new(const struct comp_driver *drv,
-				    const struct comp_ipc_config *config,
-				    const void *spec)
+static int dcblock_init(struct processing_module *mod)
 {
-	struct comp_dev *dev;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *ipc_dcblock = &md->cfg;
 	struct comp_data *cd;
-	const struct ipc_config_process *ipc_dcblock = spec;
 	size_t bs = ipc_dcblock->size;
 	int ret;
 
-	comp_cl_info(&comp_dcblock, "dcblock_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
+	comp_info(dev, "dcblock_init()");
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		return -ENOMEM;
 
-	comp_set_drvdata(dev, cd);
-
+	md->private = cd;
 	cd->dcblock_func = NULL;
-	/**
-	 * Copy over the coefficients from the blob to cd->R_coeffs
-	 * Set passthrough if the size of the blob is invalid
-	 */
-	if (bs == sizeof(cd->R_coeffs)) {
-		ret = memcpy_s(cd->R_coeffs, bs, ipc_dcblock->data, bs);
-		assert(!ret);
-	} else {
-		if (bs > 0)
-			comp_cl_warn(&comp_dcblock, "dcblock_new(), binary blob size %i, expected %i",
-				     bs, sizeof(cd->R_coeffs));
-		dcblock_set_passthrough(cd);
+
+	/* component model data handler */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_err(dev, "dcblock_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
+		goto err_cd;
 	}
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+	ret = comp_init_data_blob(cd->model_handler, bs, ipc_dcblock->data);
+	if (ret < 0) {
+		comp_err(dev, "dcblock_init(): comp_init_data_blob() failed with error: %d", ret);
+		goto err_model_cd;
+	}
+
+	return 0;
+
+err_model_cd:
+	comp_data_blob_handler_free(cd->model_handler);
+
+err_cd:
+	rfree(cd);
+	return ret;
 }
 
 /**
  * \brief Frees DC Blocking Filter component.
  * \param[in,out] dev DC Blocking Filter base component device.
  */
-static void dcblock_free(struct comp_dev *dev)
+static int dcblock_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "dcblock_free()");
+	comp_info(mod->dev, "dcblock_free()");
+	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
-	rfree(dev);
-}
-
-static int dcblock_verify_params(struct comp_dev *dev,
-				 struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "dcblock_verify_params()");
-
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "dcblock_verify_params() error: comp_verify_params() failed.");
-		return ret;
-	}
-
 	return 0;
 }
 
 /**
- * \brief Sets DC Blocking Filter component audio stream parameters.
- * \param[in,out] dev DC Blocking Filter base component device.
- * \return Error code.
- *
- * All done in prepare() since we need to know source and sink component params.
+ * \brief Handles incoming get commands for DC Blocking Filter component.
  */
-static int dcblock_params(struct comp_dev *dev,
-			  struct sof_ipc_stream_params *params)
+static int dcblock_get_config(struct processing_module *mod,
+			      uint32_t config_id, uint32_t *data_offset_size,
+			      uint8_t *fragment, size_t fragment_size)
 {
-	int err;
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(dev, "dcblock_params()");
+	comp_info(mod->dev, "dcblock_get_config()");
 
-	err = dcblock_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "dcblock_params(): pcm params verification failed");
+#if CONFIG_IPC_MAJOR_3
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(mod->dev, "dcblock_get_config(), invalid command");
 		return -EINVAL;
 	}
+#endif
 
-	return 0;
-}
-
-static int dcblock_cmd_get_data(struct comp_dev *dev,
-				struct sof_ipc_ctrl_data *cdata,
-				size_t max_size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	size_t resp_size;
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "dcblock_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Copy coefficients back to user space */
-		resp_size = sizeof(cd->R_coeffs);
-		comp_info(dev, "dcblock_cmd_get_data(), resp_size %u",
-			  resp_size);
-
-		if (resp_size > max_size) {
-			comp_err(dev, "response size %i exceeds maximum size %i ",
-				 resp_size, max_size);
-			ret = -EINVAL;
-			break;
-		}
-
-		ret = memcpy_s(cdata->data->data, cdata->data->size,
-			       cd->R_coeffs, resp_size);
-		assert(!ret);
-
-		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = resp_size;
-		break;
-	default:
-		comp_err(dev, "dcblock_cmd_get_data(), invalid command");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-static int dcblock_cmd_set_data(struct comp_dev *dev,
-				struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	size_t req_size = sizeof(cd->R_coeffs);
-	int ret = 0;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "dcblock_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Retrieve the binary controls from the packet */
-		ret = memcpy_s(cd->R_coeffs, req_size, cdata->data->data,
-			       req_size);
-		assert(!ret);
-
-		break;
-	default:
-		comp_err(dev, "dcblock_set_data(), invalid command %i",
-			 cdata->cmd);
-		ret = -EINVAL;
-	}
-
-	return ret;
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
 /**
- * \brief Handles incoming IPC commands for DC Blocking Filter component.
+ * \brief Handles incoming set commands for DC Blocking Filter component.
  */
-static int dcblock_cmd(struct comp_dev *dev, int cmd, void *data,
-		       int max_data_size)
+static int dcblock_set_config(struct processing_module *mod, uint32_t config_id,
+			      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			      const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			      size_t response_size)
 {
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "dcblock_cmd()");
+	comp_info(mod->dev, "dcblock_set_config()");
 
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = dcblock_cmd_set_data(dev, cdata);
-		break;
-	case COMP_CMD_GET_DATA:
-		ret = dcblock_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	default:
-		comp_err(dev, "dcblock_cmd(), invalid command (%i)", cmd);
-		ret = -EINVAL;
+#if CONFIG_IPC_MAJOR_3
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+
+	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
+		comp_err(mod->dev, "dcblock_set_config(), invalid command %i", cdata->cmd);
+		return -EINVAL;
 	}
-
-	return ret;
-}
-
-/**
- * \brief Sets DC Blocking Filter component state.
- * \param[in,out] dev DC Blocking Filter base component device.
- * \param[in] cmd Command type.
- * \return Error code.
- */
-static int dcblock_trigger(struct comp_dev *dev, int cmd)
-{
-	comp_info(dev, "dcblock_trigger()");
-
-	return comp_set_state(dev, cmd);
-}
-
-static void dcblock_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			    struct comp_buffer __sparse_cache *sink, int frames,
-			    uint32_t source_bytes, uint32_t sink_bytes)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	buffer_stream_invalidate(source, source_bytes);
-
-	cd->dcblock_func(dev, &source->stream, &sink->stream, frames);
-
-	buffer_stream_writeback(sink, sink_bytes);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+#endif
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
+				  fragment_size);
 }
 
 /**
  * \brief Copies and processes stream data.
- * \param[in,out] dev DC Blocking Filter base component device.
+ * \param[in,out] dev DC Blocking Filter module.
  * \return Error code.
  */
-static int dcblock_copy(struct comp_dev *dev)
+static int dcblock_process(struct processing_module *mod,
+			   struct input_stream_buffer *input_buffers,
+			   int num_input_buffers,
+			   struct output_stream_buffer *output_buffers,
+			   int num_output_buffers)
 {
-	struct comp_copy_limits cl;
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	uint32_t frames = input_buffers[0].size;
 
-	comp_dbg(dev, "dcblock_copy()");
+	comp_dbg(mod->dev, "dcblock_process()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	cd->dcblock_func(cd, source, sink, frames);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits_frame_aligned(source_c, sink_c, &cl);
-
-	dcblock_process(dev, source_c, sink_c,
-			cl.frames, cl.source_bytes, cl.sink_bytes);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-
+	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
 	return 0;
 }
 
@@ -327,33 +216,55 @@ static inline void dcblock_set_frame_alignment(struct audio_stream __sparse_cach
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
 }
+
+#if CONFIG_IPC_MAJOR_4
+static void dcblock_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
+
+	comp_dbg(dev, "dcblock_params()");
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink_c = buffer_acquire(sinkb);
+	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(sink_c);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source_c = buffer_acquire(sourceb);
+	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
+	buffer_release(source_c);
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 /**
  * \brief Prepares DC Blocking Filter component for processing.
  * \param[in,out] dev DC Blocking Filter base component device.
  * \return Error code.
  */
-static int dcblock_prepare(struct comp_dev *dev)
+static int dcblock_prepare(struct processing_module *mod,
+			   struct sof_source __sparse_cache **sources, int num_of_sources,
+			   struct sof_sink __sparse_cache **sinks, int num_of_sinks)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_buffer __sparse_cache *source_c, *sink_c;
-	uint32_t sink_period_bytes;
-	int ret;
+	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "dcblock_prepare()");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+#if CONFIG_IPC_MAJOR_4
+	dcblock_params(mod);
+#endif
 
 	/* DC Filter component will only ever have one source and sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
@@ -363,35 +274,28 @@ static int dcblock_prepare(struct comp_dev *dev)
 
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream, dev->frames);
 
-	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
-		comp_err(dev, "dcblock_prepare(): sink buffer size %d is insufficient < %d",
-			 audio_stream_get_size(&sink_c->stream), sink_period_bytes);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	dcblock_init_state(cd);
 	dcblock_set_frame_alignment(&source_c->stream, &sink_c->stream);
-	cd->dcblock_func = dcblock_find_func(cd->source_format);
-	if (!cd->dcblock_func) {
-		comp_err(dev, "dcblock_prepare(), No processing function matching frames format");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	comp_info(dev, "dcblock_prepare(), source_format=%d, sink_format=%d",
-		  cd->source_format, cd->sink_format);
-
-out:
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-
 	buffer_release(sink_c);
 	buffer_release(source_c);
 
-	return ret;
+	dcblock_init_state(cd);
+	cd->dcblock_func = dcblock_find_func(cd->source_format);
+	if (!cd->dcblock_func) {
+		comp_err(dev, "dcblock_prepare(), No processing function matching frames format");
+		return -EINVAL;
+	}
+
+	comp_info(mod->dev, "dcblock_prepare(), source_format=%d, sink_format=%d",
+		  cd->source_format, cd->sink_format);
+
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	if (cd->config)
+		dcblock_copy_coefficients(mod);
+	else
+		dcblock_set_passthrough(mod);
+
+	return 0;
 }
 
 /**
@@ -399,47 +303,28 @@ out:
  * \param[in,out] dev DC Blocking Filter base component device.
  * \return Error code.
  */
-static int dcblock_reset(struct comp_dev *dev)
+static int dcblock_reset(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "dcblock_reset()");
+	comp_info(mod->dev, "dcblock_reset()");
 
 	dcblock_init_state(cd);
 
 	cd->dcblock_func = NULL;
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
 	return 0;
 }
 
-/** \brief DC Blocking Filter component definition. */
-static const struct comp_driver comp_dcblock = {
-	.type = SOF_COMP_DCBLOCK,
-	.uid  = SOF_RT_UUID(dcblock_uuid),
-	.tctx = &dcblock_tr,
-	.ops  = {
-		 .create	= dcblock_new,
-		 .free		= dcblock_free,
-		 .params	= dcblock_params,
-		 .cmd		= dcblock_cmd,
-		 .trigger	= dcblock_trigger,
-		 .copy		= dcblock_copy,
-		 .prepare	= dcblock_prepare,
-		 .reset		= dcblock_reset,
-	},
+static struct module_interface dcblock_interface = {
+	.init  = dcblock_init,
+	.prepare = dcblock_prepare,
+	.process_audio_stream = dcblock_process,
+	.set_configuration = dcblock_set_config,
+	.get_configuration = dcblock_get_config,
+	.reset = dcblock_reset,
+	.free = dcblock_free,
 };
 
-static SHARED_DATA struct comp_driver_info comp_dcblock_info = {
-	.drv = &comp_dcblock,
-};
-
-UT_STATIC void sys_comp_dcblock_init(void)
-{
-	comp_register(platform_shared_get(&comp_dcblock_info,
-					  sizeof(comp_dcblock_info)));
-}
-
-DECLARE_MODULE(sys_comp_dcblock_init);
-SOF_MODULE_INIT(dcblock, sys_comp_dcblock_init);
+DECLARE_MODULE_ADAPTER(dcblock_interface, dcblock_uuid, dcblock_tr);
+SOF_MODULE_INIT(dcblock, sys_comp_module_dcblock_interface_init);

@@ -702,12 +702,12 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 /* declared modules */
 void sys_comp_asrc_init(void);
 void sys_comp_dai_init(void);
-void sys_comp_dcblock_init(void);
 void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_selector_init(void);
 
 void sys_comp_module_crossover_interface_init(void);
+void sys_comp_module_dcblock_interface_init(void);
 void sys_comp_module_demux_interface_init(void);
 void sys_comp_module_drc_interface_init(void);
 void sys_comp_module_eq_fir_interface_init(void);

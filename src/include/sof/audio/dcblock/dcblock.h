@@ -39,7 +39,10 @@ struct dcblock_state {
  * \brief Type definition for the processing function for the
  * DC Blocking Filter.
  */
-typedef void (*dcblock_func)(const struct comp_dev *dev,
+
+struct comp_data;
+
+typedef void (*dcblock_func)(struct comp_data *cd,
 			     const struct audio_stream __sparse_cache *source,
 			     const struct audio_stream __sparse_cache *sink,
 			     uint32_t frames);
@@ -51,6 +54,9 @@ struct comp_data {
 
 	/** coefficients for the processing function */
 	int32_t R_coeffs[PLATFORM_MAX_CHANNELS];
+
+	struct comp_data_blob_handler *model_handler;
+	int32_t *config; /**< pointer to setup blob */
 
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
