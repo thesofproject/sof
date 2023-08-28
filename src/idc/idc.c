@@ -428,7 +428,7 @@ void idc_cmd(struct idc_msg *msg)
 		ret = idc_reset(msg->extension);
 		break;
 	case iTS(IDC_MSG_PPL_STATE):
-		ret = idc_ppl_state(msg->extension);
+		ret = idc_ppl_state(msg->extension & IDC_PPL_STATE_PPL_ID_MASK);
 		break;
 	case iTS(IDC_MSG_PREPARE_D0ix):
 		idc_prepare_d0ix();

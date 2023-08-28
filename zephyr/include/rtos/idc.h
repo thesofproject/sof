@@ -108,7 +108,9 @@
 
 /** \brief IDC pipeline set state message. */
 #define IDC_MSG_PPL_STATE		IDC_TYPE(0xC)
-#define IDC_MSG_PPL_STATE_EXT(x)	IDC_EXTENSION(x)
+#define IDC_PPL_STATE_PPL_ID_SHIFT	0
+#define IDC_PPL_STATE_PPL_ID_MASK	MASK(23, 0)
+#define IDC_MSG_PPL_STATE_EXT(x)	IDC_EXTENSION((x) & IDC_PPL_STATE_PPL_ID_MASK)
 
 /** \brief IDC_MSG_SECONDARY_CORE_CRASHED header fields. */
 #define IDC_SCC_CORE_SHIFT		0
