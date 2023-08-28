@@ -83,7 +83,7 @@ void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffe
 
 	buf->s_avail += frames;
 	buf->s_free -= frames;
-	buf->w_ptr = out;
+	buf->w_ptr = (int16_t *)out;
 }
 
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
@@ -116,7 +116,7 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 
 	buf->s_avail -= prev_data_length;
 	buf->s_free += prev_data_length;
-	buf->r_ptr = in;
+	buf->r_ptr = (int16_t *)in;
 }
 
 void mfcc_fill_fft_buffer(struct mfcc_state *state)
