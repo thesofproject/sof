@@ -24,7 +24,8 @@ static K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);
 
 static void edf_work_handler(struct k_work *work)
 {
-	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct task *task = CONTAINER_OF(dwork, struct task, z_delayed_work);
 
 	task->state = SOF_TASK_STATE_RUNNING;
 
