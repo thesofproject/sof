@@ -320,7 +320,7 @@ static int idc_reset(uint32_t comp_id)
  * \param[in] ppl_id Pipeline id to be triggered.
  * \return Error code.
  */
-static int idc_ppl_state(uint32_t ppl_id)
+static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 {
 #if CONFIG_IPC_MAJOR_4
 	struct ipc *ipc = ipc_get();
@@ -328,7 +328,6 @@ static int idc_ppl_state(uint32_t ppl_id)
 	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
 	struct ipc_comp_dev *ppl_icd;
 	uint32_t cmd = *(uint32_t *)payload;
-	bool delayed = false;
 
 	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id);
 	if (!ppl_icd) {
@@ -336,10 +335,26 @@ static int idc_ppl_state(uint32_t ppl_id)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	return set_pipeline_state(ppl_icd, cmd, &delayed);
-#else
-	return 0;
+	/* if no phase specified, correct it to be a ONESHOT */
+	if (!phase)
+		phase = IDC_PPL_STATE_PHASE_ONESHOT;
+
+	if (phase & IDC_PPL_STATE_PHASE_PREPARE) {
+		int ret;
+
+		ret = ipc4_pipeline_prepare(ppl_icd, cmd);
+		if (ret)
+			return ret;
+	}
+
+	if (phase & IDC_PPL_STATE_PHASE_TRIGGER) {
+		bool delayed = false;
+
+		return ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
+	}
+
 #endif
+	return 0;
 }
 
 static void idc_prepare_d0ix(void)
@@ -428,7 +443,8 @@ void idc_cmd(struct idc_msg *msg)
 		ret = idc_reset(msg->extension);
 		break;
 	case iTS(IDC_MSG_PPL_STATE):
-		ret = idc_ppl_state(msg->extension & IDC_PPL_STATE_PPL_ID_MASK);
+		ret = idc_ppl_state(msg->extension & IDC_PPL_STATE_PPL_ID_MASK,
+				    IDC_PPL_STATE_PHASE_GET(msg->extension));
 		break;
 	case iTS(IDC_MSG_PREPARE_D0ix):
 		idc_prepare_d0ix();
