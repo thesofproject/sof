@@ -317,9 +317,9 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			tp->channels_out = atoi(optarg);
 			break;
 
-			/* enable debug prints */
+		/* set debug log level */
 		case 'd':
-			debug = 1;
+			host_trace_level = atoi(optarg);
 			break;
 
 		/* number of pipeline copy() iterations */
@@ -734,7 +734,6 @@ int main(int argc, char **argv)
 	int i, err;
 
 	/* initialize input and output sample rates, files, etc. */
-	debug = 0;
 	tp.total_cycles = 0;
 	tp.fs_in = 0;
 	tp.fs_out = 0;
@@ -795,9 +794,10 @@ int main(int argc, char **argv)
 	}
 
 	if (tp.quiet)
-		tb_enable_trace(false); /* reduce trace output */
+		tb_enable_trace(0); /* reduce trace output */
 	else
-		tb_enable_trace(true);
+		tb_enable_trace(1);
+
 
 	/* initialize ipc and scheduler */
 	if (tb_setup(sof_get(), &tp) < 0) {
