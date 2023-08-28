@@ -779,6 +779,11 @@ def build_platforms():
 		for p_alias in platform_configs[platform].aliases:
 			symlink_or_copy(sof_platform_output_dir, f"sof-{platform}.ldc", f"sof-{p_alias}.ldc")
 
+		# reproducible-zephyr.ri is less useful now that show_installed_files() shows
+		# checksums too. However: - it's still useful when only the .ri file is
+		# available (no build logs for the other image), - it makes sure sof_ri_info.py
+		# itself does not bitrot, - it can catch rimage issues, see for instance rimage
+		# fix 4fb9fe00575b
 		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
@@ -968,8 +973,8 @@ RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m']
 RI_INFO_UNSUPPORTED += ['rn']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 
-# sof_ri_info.py has not caught up with the latest rimage yet: these will print a warning.
-RI_INFO_FIXME = ['mtl', 'lnl']
+# For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
+RI_INFO_FIXME = [ ]
 
 def reproducible_checksum(platform, ri_file):
 
