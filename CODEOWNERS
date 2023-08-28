@@ -13,7 +13,7 @@
 src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
 src/include/ipc/**			@randerwang @marcinszkudlinski @pblaszko
-src/include/ipc4/**			@randerwang @marcinszkudlinski @pblaszko @aborisovich
+src/include/ipc4/**			@randerwang @marcinszkudlinski @pblaszko
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
 src/include/sof/debug/gdb/*		@abonislawski
@@ -66,7 +66,7 @@ src/drivers/mediatek/mt8195/*		@yaochunhung @kuanhsuncheng
 
 # other libs
 src/math/*				@singalsu
-src/ipc/*				@bardliao @marcinszkudlinski @pblaszko @aborisovich
+src/ipc/*				@bardliao @marcinszkudlinski @pblaszko
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@abonislawski
@@ -77,7 +77,7 @@ samples/audio/detect_test.c		@iganakov
 
 # other helpers
 # Many files overridden by *.(ba)sh pattern below
-scripts/*				@marc-hb @aborisovich
+scripts/*				@marc-hb
 
 # tools(old 'soft' repo)
 tools/logger/*				@bkokoszx @akloniex
@@ -104,21 +104,21 @@ installer/**				@marc-hb
 
 # Include only "top-level" CMakeLists.txt files; the other ones are just
 # dumb list of source files and generate too much noise.
-/CMakeLists.txt			@marc-hb @aborisovich
-/*/CMakeLists.txt			@marc-hb @aborisovich
-/test/cmocka/CMakeLists.txt		@marc-hb @aborisovich
+/CMakeLists.txt			@marc-hb
+/*/CMakeLists.txt			@marc-hb
+/test/cmocka/CMakeLists.txt		@marc-hb
 
 # There's a small enough number of files in tools/ and little
 # churn: keep it simple and take them all.
 # FIXME: some topology CMakeLists.txt files are configuration files
 # in disguise. Move them to actual configuration files.
-/tools/**/CMakeLists.txt		@marc-hb @aborisovich
+/tools/**/CMakeLists.txt		@marc-hb
 
 *.sh					@marc-hb
 *.bash					@marc-hb
 *trace.*				@akloniex
 
-/.github/				@dbaluta @cujomalainey @lgirdwood @marc-hb @aborisovich
+/.github/				@dbaluta @cujomalainey @lgirdwood @marc-hb
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
