@@ -42,12 +42,11 @@ static inline void dcblock_set_circular(const struct audio_stream __sparse_cache
 }
 
 #if CONFIG_FORMAT_S16LE
-static void dcblock_s16_default(const struct comp_dev *dev,
+static void dcblock_s16_default(struct comp_data *cd,
 				const struct audio_stream __sparse_cache *source,
 				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int16 *in;
 	ae_int16 *out;
 	ae_int32x2 R, state_x, state_y, sample;
@@ -80,12 +79,11 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void dcblock_s24_default(const struct comp_dev *dev,
+static void dcblock_s24_default(struct comp_data *cd,
 				const struct audio_stream __sparse_cache *source,
 				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int32 *in;
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
@@ -119,12 +117,11 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void dcblock_s32_default(const struct comp_dev *dev,
+static void dcblock_s32_default(struct comp_data *cd,
 				const struct audio_stream __sparse_cache *source,
 				const struct audio_stream __sparse_cache *sink,
 				uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_int32 *in;
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
