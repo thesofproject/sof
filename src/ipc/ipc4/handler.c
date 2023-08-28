@@ -234,7 +234,7 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
  *                                      /
  */
 
-static int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
+int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 {
 	struct ipc_comp_dev *host = NULL;
 	struct ipc *ipc = ipc_get();
@@ -322,8 +322,7 @@ static int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 	return ret;
 }
 
-static int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
-				 bool *delayed)
+int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *host;
 	int status;
