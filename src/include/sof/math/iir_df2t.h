@@ -29,7 +29,7 @@
 #else
 #  if defined __XCC__
 #    include <xtensa/config/core-isa.h>
-#    if XCHAL_HAVE_HIFI3 == 1
+#    if XCHAL_HAVE_HIFI3 == 1 || XCHAL_HAVE_HIFI4 == 1
 #      define IIR_GENERIC	0
 #      define IIR_HIFI3		1
 #    else
