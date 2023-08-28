@@ -11,6 +11,6 @@
 #ifndef _TRACE_H
 #define _TRACE_H
 
-void tb_enable_trace(bool enable);
+void tb_enable_trace(unsigned int log_level);
 
 #endif

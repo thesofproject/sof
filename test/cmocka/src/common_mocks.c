@@ -41,6 +41,8 @@ WEAK struct tr_ctx buffer_tr;
 WEAK struct tr_ctx comp_tr;
 WEAK struct tr_ctx ipc_tr;
 
+int host_trace_level = 1;
+
 void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 			 uint32_t alignment)
 {
