@@ -543,7 +543,9 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 		if (!cpu_is_me(ppl_icd->core)) {
 			if (use_idc) {
 				struct idc_msg msg = { IDC_MSG_PPL_STATE,
-					IDC_MSG_PPL_STATE_EXT(ppl_id[i]), ppl_icd->core,
+					IDC_MSG_PPL_STATE_EXT(ppl_id[i],
+							      IDC_PPL_STATE_PHASE_ONESHOT),
+					ppl_icd->core,
 					sizeof(cmd), &cmd, };
 
 				ret = idc_send_msg(&msg, IDC_BLOCKING);
