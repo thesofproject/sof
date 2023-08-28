@@ -29,8 +29,8 @@ static inline ae_int32x2  dcblock_cal(ae_int32x2 R, ae_int32x2 state_x, ae_int32
 }
 
 /* Setup circular for component sink and source */
-static inline void dcblock_set_circular(const struct audio_stream __sparse_cache *source,
-					const struct audio_stream __sparse_cache *sink)
+static inline void dcblock_set_circular(const struct audio_stream *source,
+					const struct audio_stream *sink)
 {
 	/* Set source as circular buffer 0 */
 	AE_SETCBEGIN0(audio_stream_get_addr(source));
@@ -43,8 +43,8 @@ static inline void dcblock_set_circular(const struct audio_stream __sparse_cache
 
 #if CONFIG_FORMAT_S16LE
 static void dcblock_s16_default(const struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -81,8 +81,8 @@ static void dcblock_s16_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S24LE
 static void dcblock_s24_default(const struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -120,8 +120,8 @@ static void dcblock_s24_default(const struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S32LE
 static void dcblock_s32_default(const struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);

@@ -579,7 +579,7 @@ int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
 }
 
 static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
-				const struct audio_stream __sparse_cache *stream,
+				const struct audio_stream *stream,
 				int8_t *chan_map, uint32_t num_ch)
 {
 	int idx, ch;
@@ -629,7 +629,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 }
 
 static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
-				const struct audio_stream __sparse_cache *stream,
+				const struct audio_stream *stream,
 				int8_t *chan_map, uint32_t num_ch_in,
 				uint32_t num_ch_out)
 {
@@ -681,8 +681,8 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 }
 
 int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
-		      const struct audio_stream __sparse_cache *source,
-		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
+		      const struct audio_stream *source,
+		      const struct audio_stream *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch_in, uint32_t num_ch_out)
 {
@@ -741,8 +741,8 @@ err:
 }
 
 int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
-		      const struct audio_stream __sparse_cache *source,
-		      const struct audio_stream __sparse_cache *sink, int8_t *chan_map,
+		      const struct audio_stream *source,
+		      const struct audio_stream *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch)
 {

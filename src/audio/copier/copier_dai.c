@@ -310,9 +310,9 @@ int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
 	return 0;
 }
 
-static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
+static int copy_single_channel_c16(const struct audio_stream *src,
 				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
+				   struct audio_stream *dst,
 				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
@@ -351,9 +351,9 @@ static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src
 	return 0;
 }
 
-static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
+static int copy_single_channel_c32(const struct audio_stream *src,
 				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
+				   struct audio_stream *dst,
 				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;

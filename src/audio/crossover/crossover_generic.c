@@ -93,8 +93,8 @@ static void crossover_s16_default_pass(struct comp_data *cd,
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream __sparse_cache *sink_stream;
-	const struct audio_stream __sparse_cache *source_stream = bsource->data;
+	const struct audio_stream *sink_stream;
+	const struct audio_stream *source_stream = bsource->data;
 	int16_t *x;
 	int32_t *y;
 	int i, j;
@@ -121,8 +121,8 @@ static void crossover_s32_default_pass(struct comp_data *cd,
 				       int32_t num_sinks,
 				       uint32_t frames)
 {
-	const struct audio_stream __sparse_cache *sink_stream;
-	const struct audio_stream __sparse_cache *source_stream = bsource->data;
+	const struct audio_stream *sink_stream;
+	const struct audio_stream *source_stream = bsource->data;
 	int32_t *x, *y;
 	int i, j;
 	int n = audio_stream_get_channels(source_stream) * frames;
@@ -149,8 +149,8 @@ static void crossover_s16_default(struct comp_data *cd,
 				  uint32_t frames)
 {
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = bsource->data;
-	struct audio_stream __sparse_cache *sink_stream;
+	const struct audio_stream *source_stream = bsource->data;
+	struct audio_stream *sink_stream;
 	int16_t *x, *y;
 	int ch, i, j;
 	int idx;
@@ -187,8 +187,8 @@ static void crossover_s24_default(struct comp_data *cd,
 				  uint32_t frames)
 {
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = bsource->data;
-	struct audio_stream __sparse_cache *sink_stream;
+	const struct audio_stream *source_stream = bsource->data;
+	struct audio_stream *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
@@ -225,8 +225,8 @@ static void crossover_s32_default(struct comp_data *cd,
 				  uint32_t frames)
 {
 	struct crossover_state *state;
-	const struct audio_stream __sparse_cache *source_stream = bsource->data;
-	struct audio_stream __sparse_cache *sink_stream;
+	const struct audio_stream *source_stream = bsource->data;
+	struct audio_stream *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;

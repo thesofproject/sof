@@ -466,8 +466,8 @@ static void drc_process_one_division(struct drc_state *state,
 }
 
 void drc_default_pass(struct processing_module *mod,
-		      const struct audio_stream __sparse_cache *source,
-		      struct audio_stream __sparse_cache *sink, uint32_t frames)
+		      const struct audio_stream *source,
+		      struct audio_stream *sink, uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
@@ -479,8 +479,8 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 
 #if CONFIG_FORMAT_S16LE
 static void drc_delay_input_sample_s16(struct drc_state *state,
-				       const struct audio_stream __sparse_cache *source,
-				       struct audio_stream __sparse_cache *sink,
+				       const struct audio_stream *source,
+				       struct audio_stream *sink,
 				       int16_t **x, int16_t **y, int samples)
 {
 	int16_t *x1;
@@ -528,8 +528,8 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 }
 
 static void drc_s16_default(struct processing_module *mod,
-			    const struct audio_stream __sparse_cache *source,
-			    struct audio_stream __sparse_cache *sink,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    uint32_t frames)
 {
 	int16_t *x = audio_stream_get_rptr(source);
@@ -574,8 +574,8 @@ static void drc_s16_default(struct processing_module *mod,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void drc_delay_input_sample_s32(struct drc_state *state,
-				       const struct audio_stream __sparse_cache *source,
-				       struct audio_stream __sparse_cache *sink,
+				       const struct audio_stream *source,
+				       struct audio_stream *sink,
 				       int32_t **x, int32_t **y, int samples)
 {
 	int32_t *x1;
@@ -625,8 +625,8 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 
 #if CONFIG_FORMAT_S24LE
 static void drc_delay_input_sample_s24(struct drc_state *state,
-				       const struct audio_stream __sparse_cache *source,
-				       struct audio_stream __sparse_cache *sink,
+				       const struct audio_stream *source,
+				       struct audio_stream *sink,
 				       int32_t **x, int32_t **y, int samples)
 {
 	int32_t *x1;
@@ -674,8 +674,8 @@ static void drc_delay_input_sample_s24(struct drc_state *state,
 }
 
 static void drc_s24_default(struct processing_module *mod,
-			    const struct audio_stream __sparse_cache *source,
-			    struct audio_stream __sparse_cache *sink,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    uint32_t frames)
 {
 	int32_t *x = audio_stream_get_rptr(source);
@@ -722,8 +722,8 @@ static void drc_s24_default(struct processing_module *mod,
 
 #if CONFIG_FORMAT_S32LE
 static void drc_s32_default(struct processing_module *mod,
-			    const struct audio_stream __sparse_cache *source,
-			    struct audio_stream __sparse_cache *sink,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    uint32_t frames)
 {
 	int32_t *x = audio_stream_get_rptr(source);

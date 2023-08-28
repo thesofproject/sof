@@ -48,8 +48,8 @@
 #define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
 
 typedef void (*asrc_proc_func)(struct comp_dev *dev,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int *consumed,
 			       int *produced);
 
@@ -122,8 +122,8 @@ static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -194,8 +194,8 @@ static void src_copy_s32(struct comp_dev *dev,
 }
 
 static void src_copy_s16(struct comp_dev *dev,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);

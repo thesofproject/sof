@@ -15,8 +15,8 @@
 #include <sof/audio/pcm_converter.h>
 #include <rtos/panic.h>
 
-int pcm_convert_as_linear(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
-			  struct audio_stream __sparse_cache *sink, uint32_t ooffset,
+int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
+			  struct audio_stream *sink, uint32_t ooffset,
 			  uint32_t samples, pcm_converter_lin_func converter)
 {
 	const int s_size_in = audio_stream_sample_bytes(source);

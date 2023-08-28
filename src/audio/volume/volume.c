@@ -57,7 +57,7 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	uint32_t curr_frames = frames;
@@ -105,7 +105,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -153,7 +153,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -593,8 +593,8 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
  * \param[in,out] source Structure pointer of source.
  * \param[in,out] sink Structure pointer of sink.
  */
-static void volume_set_alignment(struct audio_stream __sparse_cache *source,
-				 struct audio_stream __sparse_cache *sink)
+static void volume_set_alignment(struct audio_stream *source,
+				 struct audio_stream *sink)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 

@@ -26,8 +26,8 @@ DECLARE_TR_CTX(maxim_dsm_comp_tr, SOF_UUID(maxim_dsm_comp_uuid),
 #define SOF_SMART_AMP_MODEL 1
 
 typedef int(*smart_amp_proc)(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
+			     const struct audio_stream *source,
+			     const struct audio_stream *sink, uint32_t frames,
 			     int8_t *chan_map, bool is_feedback);
 
 struct smart_amp_data {
@@ -532,8 +532,8 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int smart_amp_process(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink,
+			     const struct audio_stream *source,
+			     const struct audio_stream *sink,
 			     uint32_t frames, int8_t *chan_map,
 			     bool is_feedback)
 {

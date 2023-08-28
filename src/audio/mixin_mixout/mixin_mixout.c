@@ -167,9 +167,9 @@ static int mixout_free(struct processing_module *mod)
 }
 
 static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
-			 uint16_t sink_index, struct audio_stream __sparse_cache *sink,
+			 uint16_t sink_index, struct audio_stream *sink,
 			 uint32_t start_frame, uint32_t mixed_frames,
-			 const struct audio_stream __sparse_cache *source, uint32_t frame_count)
+			 const struct audio_stream *source, uint32_t frame_count)
 {
 	const struct mixin_sink_config *sink_config;
 
@@ -197,7 +197,7 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 }
 
 /* mix silence into stream, i.e. set not yet mixed data in stream to zero */
-static void silence(struct audio_stream __sparse_cache *stream, uint32_t start_frame,
+static void silence(struct audio_stream *stream, uint32_t start_frame,
 		    uint32_t mixed_frames, uint32_t frame_count)
 {
 	uint32_t skip_mixed_frames;
@@ -445,7 +445,7 @@ static int mixout_process(struct processing_module *mod,
 	 * produced now.
 	 */
 	for (i = 0; i < num_input_buffers; i++) {
-		const struct audio_stream __sparse_cache *source_stream;
+		const struct audio_stream *source_stream;
 		struct comp_buffer __sparse_cache *unused_in_between_buf;
 		struct comp_dev *source;
 		int source_index;
@@ -470,7 +470,7 @@ static int mixout_process(struct processing_module *mod,
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_input_buffers; i++) {
-			const struct audio_stream __sparse_cache *source_stream;
+			const struct audio_stream *source_stream;
 			struct comp_buffer __sparse_cache *unused_in_between_buf;
 			struct comp_dev *source;
 			int source_index;

@@ -370,10 +370,10 @@ static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_da
 }
 
 static void mux_prepare_active_look_up(struct comp_data *cd,
-				       struct audio_stream __sparse_cache *sink,
-				       const struct audio_stream __sparse_cache **sources)
+				       struct audio_stream *sink,
+				       const struct audio_stream **sources)
 {
-	const struct audio_stream __sparse_cache *source;
+	const struct audio_stream *source;
 	int elem;
 	int active_elem = 0;
 
@@ -395,8 +395,8 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 }
 
 static void demux_prepare_active_look_up(struct comp_data *cd,
-					 struct audio_stream __sparse_cache *sink,
-					 const struct audio_stream __sparse_cache *source,
+					 struct audio_stream *sink,
+					 const struct audio_stream *source,
 					 struct mux_look_up *look_up)
 {
 	int elem;
@@ -424,7 +424,7 @@ static int demux_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct list_item *clist;
 	struct comp_buffer *sink;
-	struct audio_stream __sparse_cache *sinks_stream[MUX_MAX_STREAMS] = { NULL };
+	struct audio_stream *sinks_stream[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
 	int frames;
 	int sink_bytes;
@@ -478,7 +478,7 @@ static int mux_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source;
 	struct list_item *clist;
-	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
+	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	int frames = 0;
 	int sink_bytes;
 	int source_bytes;

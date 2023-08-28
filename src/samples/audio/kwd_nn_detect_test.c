@@ -35,7 +35,7 @@ static int kwd_nn_detect_postprocess(uint8_t confidences[KWD_NN_CONFIDENCES_SIZE
 }
 
 void kwd_nn_detect_test(struct comp_dev *dev,
-			const struct audio_stream __sparse_cache *source,
+			const struct audio_stream *source,
 			uint32_t frames)
 {
 	void *src;

@@ -129,9 +129,9 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer __sparse_cache *sink,
 			     struct comp_buffer __sparse_cache *source, size_t size,
 			     size_t sample_width, uint32_t channels);
-static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *sink,
+static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width);
-static void kpb_buffer_samples(const struct audio_stream __sparse_cache *source,
+static void kpb_buffer_samples(const struct audio_stream *source,
 			       int offset, void *sink, size_t size,
 			       size_t sample_width);
 static void kpb_reset_history_buffer(struct history_buffer *buff);
@@ -985,8 +985,8 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 				 struct comp_buffer __sparse_cache *source, size_t size,
 				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
 {
-	struct audio_stream __sparse_cache *istream = &source->stream;
-	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
 	uint16_t ch;
 	size_t i;
 
@@ -1018,8 +1018,8 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 				 struct comp_buffer __sparse_cache *source, size_t size,
 				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
 {
-	struct audio_stream __sparse_cache *istream = &source->stream;
-	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
 	uint16_t ch;
 	size_t i;
 
@@ -1052,8 +1052,8 @@ static void kpb_micselect_copy16(struct comp_buffer __sparse_cache *sink,
 				 struct comp_buffer __sparse_cache *source, size_t size,
 				 uint32_t in_channels,  uint32_t micsel_channels, uint32_t *offsets)
 {
-	struct audio_stream __sparse_cache *istream = &source->stream;
-	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
 
 	buffer_stream_invalidate(source, size);
 	size_t out_samples;
@@ -1084,8 +1084,8 @@ static void kpb_micselect_copy32(struct comp_buffer __sparse_cache *sink,
 				 struct comp_buffer __sparse_cache *source, size_t size,
 				 uint32_t in_channels, uint32_t micsel_channels, uint32_t *offsets)
 {
-	struct audio_stream __sparse_cache *istream = &source->stream;
-	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
 
 	buffer_stream_invalidate(source, size);
 	size_t out_samples;
@@ -1853,7 +1853,7 @@ out:
 
 #ifdef KPB_HIFI3
 static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
-				   struct audio_stream __sparse_cache *sink, int ooffset,
+				   struct audio_stream *sink, int ooffset,
 				   unsigned int n_samples)
 {
 	int ssize = audio_stream_sample_bytes(sink);
@@ -1901,7 +1901,7 @@ static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 }
 #else
 static void kpb_convert_24b_to_32b(const void *source, int ioffset,
-				   struct audio_stream __sparse_cache *sink,
+				   struct audio_stream *sink,
 				   int ooffset, unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(sink);
@@ -1933,7 +1933,7 @@ static void kpb_convert_24b_to_32b(const void *source, int ioffset,
  *
  * \return none.
  */
-static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *sink,
+static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width)
 {
 	unsigned int samples;
@@ -1962,7 +1962,7 @@ static void kpb_drain_samples(void *source, struct audio_stream __sparse_cache *
 }
 
 #ifdef KPB_HIFI3
-static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *source, int ioffset,
+static void kpb_convert_32b_to_24b(const struct audio_stream *source, int ioffset,
 				   void *linear_sink, int ooffset, unsigned int n_samples)
 {
 	int ssize = audio_stream_sample_bytes(source);
@@ -2000,7 +2000,7 @@ static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *sou
 	}
 }
 #else
-static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *source, int ioffset,
+static void kpb_convert_32b_to_24b(const struct audio_stream *source, int ioffset,
 				   void *sink, int ooffset, unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(source);
@@ -2033,7 +2033,7 @@ static void kpb_convert_32b_to_24b(const struct audio_stream __sparse_cache *sou
  * \param[in] size Requested copy size in bytes.
  * \param[in] sample_width Sample size.
  */
-static void kpb_buffer_samples(const struct audio_stream __sparse_cache *source,
+static void kpb_buffer_samples(const struct audio_stream *source,
 			       int offset, void *sink, size_t size,
 			       size_t sample_width)
 {
@@ -2120,8 +2120,8 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 }
 
 #ifdef KPB_HIFI3
-static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
-				struct audio_stream __sparse_cache *sink, uint32_t ooffset,
+static void kpb_copy_24b_in_32b(const struct audio_stream *source, uint32_t ioffset,
+				struct audio_stream *sink, uint32_t ooffset,
 				uint32_t n_samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
@@ -2154,8 +2154,8 @@ static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source
 	}
 }
 #else
-static void kpb_copy_24b_in_32b(const struct audio_stream __sparse_cache *source,
-				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
+static void kpb_copy_24b_in_32b(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
 				uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
@@ -2194,8 +2194,8 @@ static void kpb_copy_samples(struct comp_buffer __sparse_cache *sink,
 			     struct comp_buffer __sparse_cache *source, size_t size,
 			     size_t sample_width, uint32_t channels)
 {
-	struct audio_stream __sparse_cache *istream = &source->stream;
-	struct audio_stream __sparse_cache *ostream = &sink->stream;
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
 	unsigned int samples;
 
 	buffer_stream_invalidate(source, size);

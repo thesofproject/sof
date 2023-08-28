@@ -193,8 +193,8 @@ static int smart_amp_process_s16(struct processing_module *mod,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int16_t *src;
 	int16_t *dest;
 	uint32_t in_frag = 0;
@@ -226,8 +226,8 @@ static int smart_amp_process_s32(struct processing_module *mod,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *src;
 	int32_t *dest;
 	uint32_t in_frag = 0;

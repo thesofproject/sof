@@ -95,7 +95,7 @@ struct comp_data {
 	uint32_t frame_bytes;
 	uint32_t rate;
 	struct tone_state sg[PLATFORM_MAX_CHANNELS];
-	void (*tone_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+	void (*tone_func)(struct comp_dev *dev, struct audio_stream *sink,
 			  uint32_t frames);
 };
 
@@ -113,7 +113,7 @@ static inline void tone_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
-static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+static void tone_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			     uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);

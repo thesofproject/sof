@@ -78,7 +78,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	const struct audio_stream __sparse_cache *stream;
+	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 	unsigned int buffer_fmt, frame_fmt, rate, channels;

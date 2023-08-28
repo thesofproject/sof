@@ -311,8 +311,8 @@ static int dcblock_copy(struct comp_dev *dev)
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void dcblock_set_frame_alignment(struct audio_stream __sparse_cache *source,
-					       struct audio_stream __sparse_cache *sink)
+static inline void dcblock_set_frame_alignment(struct audio_stream *source,
+					       struct audio_stream *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;

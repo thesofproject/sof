@@ -220,8 +220,8 @@ static int waves_effect_check(struct comp_dev *dev)
 						    source_list);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	const struct audio_stream __sparse_cache *src_fmt = &source->stream;
-	const struct audio_stream __sparse_cache *snk_fmt = &sink->stream;
+	const struct audio_stream *src_fmt = &source->stream;
+	const struct audio_stream *snk_fmt = &sink->stream;
 	int ret = 0;
 
 	/* Init sink & source buffers */
@@ -298,7 +298,7 @@ static int waves_effect_init(struct processing_module *mod)
 						     sink_list);
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
-	const struct audio_stream __sparse_cache *src_fmt = &source->stream;
+	const struct audio_stream *src_fmt = &source->stream;
 	MaxxStatus_t status;
 	MaxxBuffer_Format_t sample_format;
 	MaxxBuffer_Layout_t buffer_format;

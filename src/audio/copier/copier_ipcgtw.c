@@ -37,7 +37,7 @@ static struct comp_dev *find_ipcgtw_by_node_id(union ipc4_connector_node_id node
 }
 
 static inline void audio_stream_copy_bytes_from_linear(const void *linear_source,
-						       struct audio_stream __sparse_cache *sink,
+						       struct audio_stream *sink,
 						       unsigned int bytes)
 {
 	const uint8_t *src = (const uint8_t *)linear_source;
@@ -55,7 +55,7 @@ static inline void audio_stream_copy_bytes_from_linear(const void *linear_source
 }
 
 static inline
-void audio_stream_copy_bytes_to_linear(const struct audio_stream __sparse_cache *source,
+void audio_stream_copy_bytes_to_linear(const struct audio_stream *source,
 				       void *linear_sink, unsigned int bytes)
 {
 	uint8_t *src = audio_stream_wrap(source, audio_stream_get_rptr(source));

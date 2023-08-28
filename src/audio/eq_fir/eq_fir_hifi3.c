@@ -27,8 +27,8 @@ LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
 		   struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
@@ -84,8 +84,8 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
 		   struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
@@ -156,8 +156,8 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
 		   struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int16x4 d0 = AE_ZERO16();
 	ae_int16x4 d1 = AE_ZERO16();

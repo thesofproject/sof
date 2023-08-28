@@ -72,8 +72,8 @@ static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 }
 
 static inline void aria_process_data(struct processing_module *mod,
-				     struct audio_stream __sparse_cache *source,
-				     struct audio_stream __sparse_cache *sink,
+				     struct audio_stream *source,
+				     struct audio_stream *sink,
 				     size_t frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);

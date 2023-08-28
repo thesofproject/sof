@@ -161,8 +161,8 @@ static int mfcc_process(struct processing_module *mod,
 			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers->data;
-	struct audio_stream __sparse_cache *sink = output_buffers->data;
+	struct audio_stream *source = input_buffers->data;
+	struct audio_stream *sink = output_buffers->data;
 	int frames = input_buffers->size;
 
 	comp_dbg(mod->dev, "mfcc_process(), start");

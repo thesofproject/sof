@@ -105,15 +105,15 @@ struct ipc4_mixer_mode_config {
 /**
  * \brief normal mode mixin_mixout processing function interface
  */
-typedef void (*normal_mix_func)(struct audio_stream __sparse_cache *sink, int32_t start_frame,
+typedef void (*normal_mix_func)(struct audio_stream *sink, int32_t start_frame,
 				int32_t mixed_frames,
-				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream *source,
 				int32_t frame_count, uint16_t gain);
 
 /**
  * \brief mixin_mixout mute processing function interface
  */
-typedef void (*mute_func) (struct audio_stream __sparse_cache *stream, int32_t channel_index,
+typedef void (*mute_func) (struct audio_stream *stream, int32_t channel_index,
 			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count);
 
 /**

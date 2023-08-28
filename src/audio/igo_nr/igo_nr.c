@@ -66,8 +66,8 @@ static void igo_nr_lib_process(struct comp_data *cd)
 
 #if CONFIG_FORMAT_S16LE
 static void igo_nr_capture_s16(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);
@@ -125,8 +125,8 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S24LE
 static void igo_nr_capture_s24(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);
@@ -184,8 +184,8 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S32LE
 static void igo_nr_capture_s32(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);

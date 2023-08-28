@@ -617,7 +617,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	bool enabled_buffers[PLATFORM_MAX_STREAMS] = { false };
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
 	uint32_t num_sinks;
 	uint32_t num_assigned_sinks = 0;
 	/* The frames count to process from module adapter applies for source buffer and

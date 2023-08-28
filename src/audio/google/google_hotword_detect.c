@@ -379,7 +379,7 @@ static int ghd_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
-	struct audio_stream __sparse_cache *stream;
+	struct audio_stream *stream;
 	uint32_t bytes, tail_bytes, head_bytes = 0;
 	int ret;
 

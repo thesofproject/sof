@@ -227,8 +227,8 @@ static int drc_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static void drc_set_alignment(struct audio_stream __sparse_cache *source,
-			      struct audio_stream __sparse_cache *sink)
+static void drc_set_alignment(struct audio_stream *source,
+			      struct audio_stream *sink)
 {
 	/* Currently no optimizations those would use wider loads and stores */
 	audio_stream_init_alignment_constants(1, 1, source);
@@ -243,8 +243,8 @@ static int drc_process(struct processing_module *mod,
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	int frames = input_buffers[0].size;
 	int ret;
 

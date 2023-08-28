@@ -82,7 +82,7 @@ static int mixer_process(struct processing_module *mod,
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
+	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
 	int sources_indices[PLATFORM_MAX_STREAMS];
 	int32_t i = 0, j = 0;
 	uint32_t frames = INT32_MAX;
@@ -192,7 +192,7 @@ static int mixer_reset(struct processing_module *mod)
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache *source)
+static inline void mixer_set_frame_alignment(struct audio_stream *source)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 

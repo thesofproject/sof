@@ -134,7 +134,7 @@ typedef void (*vol_scale_func)(struct processing_module *mod, struct input_strea
 /**
  * \brief volume interface for function getting nearest zero crossing frame
  */
-typedef uint32_t (*vol_zc_func)(const struct audio_stream __sparse_cache *source,
+typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
 				uint32_t frames, int64_t *prev_sum);
 
 /**

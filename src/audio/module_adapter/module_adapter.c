@@ -545,7 +545,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
  * @bytes: number of bytes available in the source buffer
  */
 static void
-ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
+ca_copy_from_source_to_module(const struct audio_stream *source,
 			      void __sparse_cache *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
@@ -573,7 +573,7 @@ ca_copy_from_source_to_module(const struct audio_stream __sparse_cache *source,
  * @bytes: number of bytes available in the module output buffer
  */
 static void
-ca_copy_from_module_to_sink(const struct audio_stream __sparse_cache *sink,
+ca_copy_from_module_to_sink(const struct audio_stream *sink,
 			    void __sparse_cache *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */

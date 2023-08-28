@@ -28,8 +28,8 @@ DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 	       LOG_LEVEL_INFO);
 
 typedef int(*smart_amp_proc)(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
+			     const struct audio_stream *source,
+			     const struct audio_stream *sink, uint32_t frames,
 			     int8_t *chan_map);
 
 struct smart_amp_data {
@@ -330,8 +330,8 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int smart_amp_process_s16(struct comp_dev *dev,
-				 const struct audio_stream __sparse_cache *source,
-				 const struct audio_stream __sparse_cache *sink,
+				 const struct audio_stream *source,
+				 const struct audio_stream *sink,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
@@ -362,8 +362,8 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 }
 
 static int smart_amp_process_s32(struct comp_dev *dev,
-				 const struct audio_stream __sparse_cache *source,
-				 const struct audio_stream __sparse_cache *sink,
+				 const struct audio_stream *source,
+				 const struct audio_stream *sink,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);

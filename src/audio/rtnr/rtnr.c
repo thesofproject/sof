@@ -716,7 +716,7 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 }
 
 static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
-				      struct audio_stream __sparse_cache *src)
+				      struct audio_stream *src)
 {
 
 	dst->size = audio_stream_get_size(src);
@@ -728,7 +728,7 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 	dst->end_addr = audio_stream_get_end_addr(src);
 }
 
-static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
+static void rtnr_copy_to_sof_stream(struct audio_stream *dst,
 				    struct audio_stream_rtnr *src)
 {
 	audio_stream_set_size(dst, src->size);
