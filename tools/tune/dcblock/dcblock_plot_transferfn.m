@@ -7,7 +7,7 @@ a = [1 -R];
 
 f = linspace(1, fs/2, 500);
 
-semilogx(f, 20*log10(freqz(b, a, f, fs)));
+semilogx(f, 20*log10(abs(freqz(b, a, f, fs))));
 grid on
 xlabel('Frequency (Hz)');
 ylabel('Magnitude (dB)');
