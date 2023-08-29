@@ -146,4 +146,26 @@ static inline void heap_trace_all(int force) {}
 
 /** @}*/
 
+#if CONFIG_USERSPACE
+/**
+ * Returns the start address of shared memory heap.
+ *
+ * @return pointer to shared memory heap start
+ *
+ * @note Needed to add shared heap to private module memory domain.
+ */
+uintptr_t get_shd_heap_start(void);
+
+/**
+ * Returns the size of shared memory heap.
+ * @param ptr None
+ *
+ * @return pointer to shared memory heap start
+ *
+ * @note Needed to add shared heap to private module memory domain
+ */
+size_t get_shd_heap_size(void);
+
+#endif
+
 #endif /* __ZEPHYR_RTOS_ALLOC_H__ */

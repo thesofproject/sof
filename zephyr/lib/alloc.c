@@ -97,7 +97,13 @@ static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
  * to allow memory management driver to control unused
  * memory pages.
  */
-__section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+#if CONFIG_USERSPACE
+#define SHD_HEAP_MEM_SIZE (HEAPMEM_SIZE / 8)
+__section(".heap_mem") static uint8_t __aligned(HOST_PAGE_SIZE) shd_heapmem[SHD_HEAP_MEM_SIZE];
+#else
+#define SHD_HEAP_MEM_SIZE 0
+#endif /* CONFIG_USERSPACE */
+__section(".heap_mem") static uint8_t __aligned(HOST_PAGE_SIZE) heapmem[HEAPMEM_SIZE - SHD_HEAP_MEM_SIZE];
 
 #elif defined(CONFIG_ARCH_POSIX)
 
@@ -123,6 +129,40 @@ extern char _end[], _heap_sentry[];
 #endif
 
 static struct k_heap sof_heap;
+
+#if CONFIG_USERSPACE
+static struct k_heap sof_shd_heap;
+
+static bool is_shd_heap_pointer(void *ptr)
+{
+	uintptr_t shd_heap_start = POINTER_TO_UINT(shd_heapmem);
+	uintptr_t shd_heap_end = POINTER_TO_UINT(shd_heapmem + SHD_HEAP_MEM_SIZE);
+	
+	if (is_cached(ptr))
+		ptr = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
+
+	return (POINTER_TO_UINT(ptr) >= shd_heap_start) && (POINTER_TO_UINT(ptr) < shd_heap_end);
+}
+
+/**
+ * Returns the start of HPSRAM Shared memory heap.
+ * @return Pointer to the HPSRAM Shared memory location which can be used
+ * for HPSRAM Shared heap.
+ */
+uintptr_t get_shd_heap_start(void)
+{
+	return ROUND_UP(POINTER_TO_UINT(shd_heapmem), HOST_PAGE_SIZE);
+}
+
+/**
+ * Returns the size of HPSRAM Shared memory heap.
+ * @return Size of the HPSRAM Shared memory region which can be used for HPSRAM Shared heap.
+ */
+size_t get_shd_heap_size(void)
+{
+	return ROUND_DOWN(SHD_HEAP_MEM_SIZE, HOST_PAGE_SIZE);
+}
+#endif /* CONFIG_USERSPACE */
 
 #if CONFIG_L3_HEAP
 static struct k_heap l3_heap;
@@ -242,6 +282,8 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t 
 	return mem;
 }
 
+extern int _unused_ram_start_marker;
+
 /**
  * Checks whether pointer is from virtual memory range.
  * @param ptr Pointer to memory being checked.
@@ -249,8 +291,7 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t 
  */
 static bool is_virtual_heap_pointer(void *ptr)
 {
-	uintptr_t virtual_heap_start = POINTER_TO_UINT(sys_cache_cached_ptr_get(&heapmem)) +
-				       HEAPMEM_SIZE;
+	uintptr_t virtual_heap_start = POINTER_TO_UINT(sys_cache_cached_ptr_get(&_unused_ram_start_marker));
 	uintptr_t virtual_heap_end = CONFIG_KERNEL_VM_BASE + CONFIG_KERNEL_VM_SIZE;
 
 	if (!is_cached(ptr))
@@ -412,6 +453,10 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 #else
 		k_panic();
 #endif
+#if CONFIG_USERSPACE
+	} else if (caps & SOF_MEM_CAPS_MMU_SHD) {
+		heap = &sof_shd_heap;
+#endif
 	} else {
 		heap = &sof_heap;
 	}
@@ -504,15 +549,19 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		tr_err(&zephyr_tr, "L3_HEAP not available.");
 		return NULL;
 #endif
+#if CONFIG_USERSPACE
+	} else if (caps & SOF_MEM_CAPS_MMU_SHD) {
+		heap = &sof_shd_heap;
+#endif /* CONFIG_USERSPACE */
 	} else {
-		heap = &sof_heap;
-	}
-
 #if CONFIG_VIRTUAL_HEAP
 	/* Use virtual heap if it is available */
 	if (virtual_buffers_heap)
 		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
 #endif /* CONFIG_VIRTUAL_HEAP */
+
+		heap = &sof_heap;
+	}
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return heap_alloc_aligned(heap, align, bytes);
@@ -543,13 +592,24 @@ void rfree(void *ptr)
 	}
 #endif
 
+#if CONFIG_USERSPACE
+	if (is_shd_heap_pointer(ptr)) {
+		heap_free(&sof_shd_heap, ptr);
+		return;
+	}
+#endif
+
 	heap_free(&sof_heap, ptr);
 }
 EXPORT_SYMBOL(rfree);
 
 static int heap_init(void)
 {
-	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHD_HEAP_MEM_SIZE);
+
+#if CONFIG_USERSPACE
+	sys_heap_init(&sof_shd_heap.heap, shd_heapmem, SHD_HEAP_MEM_SIZE);
+#endif
 
 #if CONFIG_L3_HEAP
 	if (l3_heap_copy.heap.heap)
