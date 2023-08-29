@@ -265,6 +265,14 @@ static int sdma_upload_context(struct dma_chan_data *chan)
 			   sizeof(*pdata->ctx) / 4);
 }
 
+#if CONFIG_HAVE_SDMA_FIRMWARE
+static int sdma_load_firmware(struct dma *dma, void *buf, int addr, int size)
+{
+	return sdma_run_c0(dma->chan->dma, SDMA_CMD_C0_SET_PM,
+			   (uint32_t)buf, addr, size / 2);
+}
+#endif
+
 /* Below SOF related functions will be placed */
 
 static int sdma_probe(struct dma *dma)
@@ -335,6 +343,16 @@ static int sdma_probe(struct dma *dma)
 		tr_err(&sdma_tr, "SDMA: Unable to boot");
 		goto err;
 	}
+
+#if CONFIG_HAVE_SDMA_FIRMWARE
+	ret = sdma_load_firmware(dma, (void *)sdma_code,
+				 RAM_CODE_START_ADDR,
+				 RAM_CODE_SIZE * sizeof(short));
+	if (ret < 0) {
+		tr_err(&sdma_tr, "SDMA: Failed to load firmware");
+		goto err;
+	}
+#endif
 
 	goto out;
 err:

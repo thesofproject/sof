@@ -34,3 +34,18 @@ config IMX_INTERRUPT_GENERIC
 	help
 	  This has to be selected for i.MX NXP platform that do not have irqsteer.
 	  It enables NXP platforms-specific features.
+
+config HAVE_SDMA_FIRMWARE
+	bool
+	default n
+	help
+	  Select this to load SDMA firmware to enable additional functionality
+          for SDMA controller.
+
+if HAVE_SDMA_FIRMWARE
+	config SDMA_SCRIPT_CODE
+		string "SDMA script code path"
+		help
+		  This option is a string and provides the path where to find the sdma script
+		  code header.
+endif
