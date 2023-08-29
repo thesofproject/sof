@@ -209,7 +209,6 @@ jobs:
         # Sparse matrices are complicated, see comments on Linux matrix above.
         include:
           - build_opts: -d
-            zephyr_revsion: mnfst
             platforms: mtl
 
 
