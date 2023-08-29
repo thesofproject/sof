@@ -391,8 +391,8 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
-			      struct comp_buffer __sparse_cache *src,
-			      struct comp_buffer __sparse_cache *sink,
+			      struct comp_buffer *src,
+			      struct comp_buffer *sink,
 			      struct comp_copy_limits *processed_data)
 {
 	int i;
@@ -418,7 +418,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 }
 
 static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
-				struct comp_buffer __sparse_cache *src_c,
+				struct comp_buffer *src_c,
 				struct comp_copy_limits *processed_data)
 {
 	struct list_item *sink_list;
@@ -458,26 +458,23 @@ static int copier_module_copy(struct processing_module *mod,
 			      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *src_c;
+	struct comp_buffer *src_c;
 	struct comp_copy_limits processed_data;
 	int i;
 
 	if (!num_input_buffers || !num_output_buffers)
 		return 0;
 
-	src_c = attr_container_of(input_buffers[0].data, struct comp_buffer __sparse_cache,
-				  stream, __sparse_cache);
+	src_c = container_of(input_buffers[0].data, struct comp_buffer, stream);
 
 	processed_data.source_bytes = 0;
 
 	/* convert format and copy to each active sink */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 		struct comp_dev *sink_dev;
 
-		sink_c = attr_container_of(output_buffers[i].data,
-					   struct comp_buffer __sparse_cache,
-					   stream, __sparse_cache);
+		sink_c = container_of(output_buffers[i].data, struct comp_buffer, stream);
 		sink_dev = sink_c->sink;
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {

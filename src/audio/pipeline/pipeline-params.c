@@ -128,7 +128,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 }
 
 /* save params changes made by component */
-static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache *buffer,
+static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 					      void *data)
 {
 	struct sof_ipc_stream_params *params = data;

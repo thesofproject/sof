@@ -311,7 +311,7 @@ err:
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
-		struct comp_buffer __sparse_cache *source_c, *sink_c;
+		struct comp_buffer *source_c, *sink_c;
 
 		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 					dd->local_buffer : dd->dma_buffer;

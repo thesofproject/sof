@@ -22,7 +22,7 @@ LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 #include <stdint.h>
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
-		      struct comp_buffer __sparse_cache *sink, int frame)
+		      struct comp_buffer *sink, int frame)
 {
 	int i;
 	int n;

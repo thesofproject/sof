@@ -80,7 +80,7 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
  */
 static void comp_update_params(uint32_t flag,
 			       struct sof_ipc_stream_params *params,
-			       struct comp_buffer __sparse_cache *buffer)
+			       struct comp_buffer *buffer)
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
 		params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);

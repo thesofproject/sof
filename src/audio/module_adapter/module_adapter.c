@@ -405,7 +405,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
 		mod->input_buffers[i].data =
-			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM, size);
+			(void *)rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -418,7 +418,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
 		mod->output_buffers[i].data =
-			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM,
+			 (void *)rballoc(0, SOF_MEM_CAPS_RAM,
 								      md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
@@ -546,7 +546,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
  */
 static void
 ca_copy_from_source_to_module(const struct audio_stream *source,
-			      void __sparse_cache *buff, uint32_t buff_size, size_t bytes)
+			      void *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source,
@@ -574,7 +574,7 @@ ca_copy_from_source_to_module(const struct audio_stream *source,
  */
 static void
 ca_copy_from_module_to_sink(const struct audio_stream *sink,
-			    void __sparse_cache *buff, size_t bytes)
+			    void *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
@@ -602,7 +602,7 @@ ca_copy_from_module_to_sink(const struct audio_stream *sink,
  *
  * \return: none.
  */
-static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t bytes)
+static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 {
 	uint32_t tmp, copy_bytes = bytes;
 	void *ptr;
@@ -617,8 +617,8 @@ static void generate_zeroes(struct comp_buffer __sparse_cache *sink, uint32_t by
 	comp_update_buffer_produce(sink, bytes);
 }
 
-static void module_copy_samples(struct comp_dev *dev, struct comp_buffer __sparse_cache *src_buffer,
-				struct comp_buffer __sparse_cache *sink_buffer, uint32_t produced)
+static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_buffer,
+				struct comp_buffer *sink_buffer, uint32_t produced)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_copy_limits cl;
@@ -708,8 +708,8 @@ static void module_adapter_process_output(struct comp_dev *dev)
 
 static uint32_t
 module_single_sink_setup(struct comp_dev *dev,
-			 struct comp_buffer __sparse_cache **source_c,
-			 struct comp_buffer __sparse_cache **sinks_c)
+			 struct comp_buffer **source_c,
+			 struct comp_buffer **sinks_c)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
@@ -749,8 +749,8 @@ module_single_sink_setup(struct comp_dev *dev,
 
 static uint32_t
 module_single_source_setup(struct comp_dev *dev,
-			   struct comp_buffer __sparse_cache **source_c,
-			   struct comp_buffer __sparse_cache **sinks_c)
+			   struct comp_buffer **source_c,
+			   struct comp_buffer **sinks_c)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
@@ -916,11 +916,9 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 
 	/* consume from all active input buffers */
 	for (i = 0; i < num_input_buffers; i++) {
-		struct comp_buffer __sparse_cache *src_c;
+		struct comp_buffer *src_c;
 
-		src_c = attr_container_of(mod->input_buffers[i].data,
-					  struct comp_buffer __sparse_cache,
-					  stream, __sparse_cache);
+		src_c = container_of(mod->input_buffers[i].data, struct comp_buffer, stream);
 		if (mod->input_buffers[i].consumed)
 			audio_stream_consume(&src_c->stream, mod->input_buffers[i].consumed);
 	}
@@ -938,11 +936,9 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 
 	/* produce data into all active output buffers */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 
-		sink_c = attr_container_of(mod->output_buffers[i].data,
-					   struct comp_buffer __sparse_cache,
-					   stream, __sparse_cache);
+		sink_c = container_of(mod->output_buffers[i].data, struct comp_buffer, stream);
 
 		if (!mod->skip_sink_buffer_writeback)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);
@@ -1690,7 +1686,7 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 
 int module_adapter_unbind(struct comp_dev *dev, void *data)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct module_source_info *mod_source_info;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *source_dev;

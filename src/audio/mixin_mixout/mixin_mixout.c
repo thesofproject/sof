@@ -274,7 +274,7 @@ static int mixin_process(struct processing_module *mod,
 	 * and frames free in each connected mixout sink buffer.
 	 */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer __sparse_cache *unused_in_between_buf_c;
+		struct comp_buffer *unused_in_between_buf_c;
 		struct comp_dev *mixout;
 		uint16_t sink_id;
 		struct comp_buffer *sink;
@@ -284,9 +284,8 @@ static int mixin_process(struct processing_module *mod,
 		uint32_t free_frames, pending_frames;
 
 		/* unused buffer between mixin and mixout */
-		unused_in_between_buf_c = attr_container_of(output_buffers[i].data,
-							    struct comp_buffer __sparse_cache,
-							    stream, __sparse_cache);
+		unused_in_between_buf_c = container_of(output_buffers[i].data,
+						       struct comp_buffer, stream);
 		mixout = unused_in_between_buf_c->sink;
 		sink_id = IPC4_SRC_QUEUE_ID(unused_in_between_buf_c->id);
 
@@ -329,16 +328,15 @@ static int mixin_process(struct processing_module *mod,
 	}
 
 	if (source_avail_frames > 0) {
-		struct comp_buffer __sparse_cache *source_c;
+		struct comp_buffer *source_c;
 
 		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
 		bytes_to_consume_from_source_buf =
 			audio_stream_period_bytes(input_buffers[0].data, frames_to_copy);
 		if (bytes_to_consume_from_source_buf > 0) {
 			input_buffers[0].consumed = bytes_to_consume_from_source_buf;
-			source_c = attr_container_of(input_buffers[0].data,
-						     struct comp_buffer __sparse_cache,
-						     stream, __sparse_cache);
+			source_c = container_of(input_buffers[0].data, struct comp_buffer,
+						stream);
 			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
 		}
 	} else {
@@ -446,14 +444,13 @@ static int mixout_process(struct processing_module *mod,
 	 */
 	for (i = 0; i < num_input_buffers; i++) {
 		const struct audio_stream *source_stream;
-		struct comp_buffer __sparse_cache *unused_in_between_buf;
+		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *source;
 		int source_index;
 
 		source_stream = input_buffers[i].data;
-		unused_in_between_buf = attr_container_of(source_stream,
-							  struct comp_buffer __sparse_cache,
-							  stream, __sparse_cache);
+		unused_in_between_buf = container_of(source_stream, struct comp_buffer,
+						     stream);
 
 		source = unused_in_between_buf->source;
 
@@ -471,15 +468,14 @@ static int mixout_process(struct processing_module *mod,
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_input_buffers; i++) {
 			const struct audio_stream *source_stream;
-			struct comp_buffer __sparse_cache *unused_in_between_buf;
+			struct comp_buffer *unused_in_between_buf;
 			struct comp_dev *source;
 			int source_index;
 			uint32_t pending_frames;
 
 			source_stream = input_buffers[i].data;
-			unused_in_between_buf = attr_container_of(source_stream,
-								  struct comp_buffer __sparse_cache,
-								  stream, __sparse_cache);
+			unused_in_between_buf = container_of(source_stream,
+							     struct comp_buffer, stream);
 
 			source = unused_in_between_buf->source;
 

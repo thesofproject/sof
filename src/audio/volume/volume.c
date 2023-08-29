@@ -575,7 +575,7 @@ static int volume_process(struct processing_module *mod,
  * \param[in,out] dev Volume base component device.
  */
 static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
-				       struct comp_buffer __sparse_cache *sinkb)
+				       struct comp_buffer *sinkb)
 {
 	int i;
 
@@ -631,8 +631,8 @@ static void volume_set_alignment(struct audio_stream *source,
  * to also do some type of conversion here.
  */
 static int volume_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;

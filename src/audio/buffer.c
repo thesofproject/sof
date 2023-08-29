@@ -73,7 +73,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	return buffer;
 }
 
-void buffer_zero(struct comp_buffer __sparse_cache *buffer)
+void buffer_zero(struct comp_buffer *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 
@@ -84,7 +84,7 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 					audio_stream_get_size(&buffer->stream));
 }
 
-int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment)
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment)
 {
 	void *new_ptr = NULL;
 
@@ -120,7 +120,7 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, ui
 	return 0;
 }
 
-int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
+int buffer_set_params(struct comp_buffer *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update)
 {
 	int ret;
@@ -149,7 +149,7 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 	return 0;
 }
 
-bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
+bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
@@ -203,7 +203,7 @@ void buffer_free(struct comp_buffer *buffer)
  * choice but to use our knowledge of the local notifier behaviour and pass
  * locked buffers to notification recipients.
  */
-void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
@@ -242,7 +242,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 #endif
 }
 
-void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,

@@ -267,8 +267,8 @@ static int dcblock_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-static void dcblock_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			    struct comp_buffer __sparse_cache *sink, int frames,
+static void dcblock_process(struct comp_dev *dev, struct comp_buffer *source,
+			    struct comp_buffer *sink, int frames,
 			    uint32_t source_bytes, uint32_t sink_bytes)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);

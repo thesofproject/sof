@@ -879,7 +879,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct buffer_cb_transact *cb_data = data;
-	struct comp_buffer __sparse_cache *buffer = cb_data->buffer;
+	struct comp_buffer *buffer = cb_data->buffer;
 	struct probe_dma_ext *dma;
 	uint32_t buffer_id;
 	uint32_t head, tail;

@@ -321,8 +321,8 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	dma_sg_init(elem_array);
 }
 
-int dma_buffer_copy_from(struct comp_buffer __sparse_cache *source,
-			 struct comp_buffer __sparse_cache *sink,
+int dma_buffer_copy_from(struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 dma_process_func process, uint32_t source_bytes)
 {
 	struct audio_stream *istream = &source->stream;
@@ -350,8 +350,8 @@ int dma_buffer_copy_from(struct comp_buffer __sparse_cache *source,
 	return ret;
 }
 
-int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
-		       struct comp_buffer __sparse_cache *sink,
+int dma_buffer_copy_to(struct comp_buffer *source,
+		       struct comp_buffer *sink,
 		       dma_process_func process, uint32_t sink_bytes)
 {
 	struct audio_stream *ostream = &sink->stream;
@@ -379,8 +379,8 @@ int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
 	return ret;
 }
 
-int dma_buffer_copy_from_no_consume(struct comp_buffer __sparse_cache *source,
-				    struct comp_buffer __sparse_cache *sink,
+int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
+				    struct comp_buffer *sink,
 				    dma_process_func process, uint32_t source_bytes)
 {
 	struct audio_stream *istream = &source->stream;

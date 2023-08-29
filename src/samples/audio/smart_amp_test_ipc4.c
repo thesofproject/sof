@@ -255,7 +255,7 @@ static int smart_amp_process_s32(struct processing_module *mod,
 }
 
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev,
-					    struct comp_buffer __sparse_cache *buf)
+					    struct comp_buffer *buf)
 {
 	switch (audio_stream_get_frm_fmt(&buf->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -275,9 +275,9 @@ static int smart_amp_process(struct processing_module *mod,
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer __sparse_cache *fb_buf_c;
-	struct comp_buffer __sparse_cache *buf;
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct comp_buffer *fb_buf_c;
+	struct comp_buffer *buf;
+	struct module_source_info *mod_source_info;
 	struct input_stream_buffer *fb_input = NULL;
 	/* if there is only one input stream, it should be the source input */
 	struct input_stream_buffer *src_input = &input_buffers[0];
@@ -290,9 +290,7 @@ static int smart_amp_process(struct processing_module *mod,
 
 	if (num_input_buffers == SMART_AMP_NUM_IN_PINS)
 		for (i = 0; i < num_input_buffers; i++) {
-			buf = attr_container_of(input_buffers[i].data,
-						struct comp_buffer __sparse_cache,
-						stream, __sparse_cache);
+			buf = container_of(input_buffers[i].data, struct comp_buffer, stream);
 
 			if (IPC4_SINK_QUEUE_ID(buf->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 				fb_input = &input_buffers[i];

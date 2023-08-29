@@ -158,8 +158,8 @@ void sys_comp_init(struct sof *sof)
 	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
-void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
-			  struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits(struct comp_buffer *source,
+			  struct comp_buffer *sink,
 			  struct comp_copy_limits *cl)
 {
 	cl->frames = audio_stream_avail_frames(&source->stream, &sink->stream);
@@ -169,8 +169,8 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
-void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache *source,
-					const struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
+					const struct comp_buffer *sink,
 					struct comp_copy_limits *cl)
 {
 	cl->frames = audio_stream_avail_frames_aligned(&source->stream, &sink->stream);
