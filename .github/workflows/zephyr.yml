@@ -133,14 +133,15 @@ jobs:
 
       - name: west clones
 
-        # Get some git tags in Zephyr. keep in sync with build-windows below
         run: pip3 install west && cd workspace/sof/ && west init -l &&
                west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
         run: |
           cd workspace
-          if [ 'mnfst' != '${{ matrix.zephyr_revision }}' ]; then
+          if [ 'mnfst' =  '${{ matrix.zephyr_revision }}' ]; then
+             rem_rev=$(git -C zephyr rev-parse HEAD)
+          else
              case '${{ matrix.zephyr_revision }}' in
                'zmain') rem_rev='main' ;;
                *)       echo 'Unknown matrix.zephyr_revision'; exit 1 ;;
@@ -150,17 +151,30 @@ jobs:
                  sof-ci-jenkins/zephyr-override-template.yml > test-zephyr-main.yml
              )
              west update --narrow  --fetch-opt=--filter=tree:0
-             # For some unknown reason `west` fetches using the literal remote URL
-             # which breaks --decorate. Maybe zephyrproject-rtos/west/pull/346 has
-             # some relevant background?  For now `west` uses the remote name
-             # `zephyrproject`, use that knowledge to fix --decorate but ignore any
-             # failure in case the name changes or some other issue.
-             git -C zephyr/ fetch '--filter=tree:0' zephyrproject "${rem_rev}" || true
           fi
+
+          # Because we used git tricks to speed things up, we now have two git
+          # problems:
+          #
+          # 1. git fetch without a refspec fetches zero tag. So `git describe` is
+          # different from everyone else. west normally adds `--tags` as a workaround
+          # but this is inefficient because it fetches ALL tags; so `west --narrow`
+          # does not use --tags.
+          #
+          # 2. west fetches using the remote URL, not the remote name. So remote
+          # branches (if any) are missing from --decorate below
+          #
+          #  => an "empty" and quick fetch _with_ a refspec and the remote name fixes
+          #     both issues in no time.
+
+          cd zephyr
+          git fetch --filter=tree:0 zephyrproject "$rem_rev":_branch_placeholder
+          git branch -D _branch_placeholder
+
           set -x
           west list
           west status
-          git -C zephyr/ log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          git   log --oneline -n 5 --decorate --graph --no-abbrev-commit
 
       # Not strictly necessary but saves a lot of scrolling in the next step
       # Caching a 12G image is unfortunately not possible:
@@ -291,8 +305,16 @@ jobs:
       - name: West clone
         working-directory: ${{ github.workspace }}/workspace
         # Keep in sync with build-linux above
-        run: west init -l sof &&
-             west update --narrow --fetch-opt=--filter=tree:0
+        run: |
+          west init -l sof
+          west update --narrow --fetch-opt=--filter=tree:0
+
+          # Get some tags to fix `git describe`, see build-linux comments above.
+          cd zephyr
+          $_rev = "$(git rev-parse HEAD)"
+          git fetch --filter=tree:0 zephyrproject "${_rev}:_branch_placeholder"
+          git branch -D _branch_placeholder
+
 
       # Call Setup Python again to save the PIP packages in cache
       - name: Setup Python
