@@ -339,6 +339,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
+	struct comp_buffer __sparse_cache *buffer_c;
 	struct comp_dev *source;
 	struct comp_dev *sink;
 	struct ipc4_base_module_cfg source_src_cfg;
@@ -386,8 +387,11 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 *	IBS of a buffer is OBS of source component
 	 *	OBS of a buffer is IBS of destination component
 	 */
-	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
-	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
+
+	buffer_c = buffer_acquire(buffer);
+	source_set_ibs(audio_stream_get_source(&buffer_c->stream), source_src_cfg.obs);
+	sink_set_obs(audio_stream_get_sink(&buffer_c->stream), sink_src_cfg.ibs);
+	buffer_release(buffer_c);
 
 	/*
 	 * Connect and bind the buffer to both source and sink components with the interrupts
