@@ -41,6 +41,18 @@ config SOF_ZEPHYR_HEAP_SIZE
 	 NOTE: Keep in mind that the heap size should not be greater than the physical
 	 memory size of the system defined in DT (and this includes baseFW text/data).
 
+config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
+	hex "Size of the shared buffer heap for SOF userspace modules"
+	default 0x1E000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
+	default 0x1A000 if SOC_INTEL_ACE30
+	default 0x0
+	help
+	 The size of the zephyr heap portion designated as the shared buffer heap.
+	 This heap is shared between the sof and userspace modules. It is used exclusively for
+	 allocating audio buffers between the kernel and userspace modules.
+	 NOTE: Keep in mind that the shared heap size should not be greater than the
+	 heap size.
+
 config SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 	hex "Size of the Zephyr virtual heap for SOF"
 	depends on VIRTUAL_HEAP
