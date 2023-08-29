@@ -1,16 +1,15 @@
 function blob8 = dcblock_build_blob(R_coeffs, endian, ipc_ver)
 
 %% Settings
-bits_R = 32; %Q2.30
 qy_R = 30;
 
 if nargin < 2
-        endian = 'little'
-endif
+        endian = 'little';
+end
 
 if nargin < 3
         ipc_ver = 3;
-endif
+end
 
 %% Shift values for little/big endian
 switch lower(endian)
@@ -44,7 +43,7 @@ for i=1:num_of_coeffs
 	j=j+4;
 end
 
-endfunction
+end
 
 function bytes = word2byte(word, sh)
 bytes = uint8(zeros(1,4));
