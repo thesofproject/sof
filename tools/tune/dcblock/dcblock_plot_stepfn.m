@@ -1,4 +1,4 @@
-function dcblock_plot_stepfn(R, fs);
+function dcblock_plot_stepfn(R, fs)
 % Plot the step response of a DC Blocking Filter
 % For a DC Blocking filter: H(z) = (1-1/z)/(1 - R/z)
 % Therefore the coefficients are b = [1 -1], a = [1 -R]
@@ -13,4 +13,4 @@ ylabel('Amplitude');
 tstr = sprintf("DC Blocking Filter Step Response, R = %i", R);
 title(tstr);
 
-endfunction
+end
