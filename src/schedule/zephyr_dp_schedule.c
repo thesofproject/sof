@@ -6,6 +6,7 @@
  */
 
 #include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/task.h>
 #include <stdint.h>
 #include <sof/schedule/dp_schedule.h>
@@ -34,10 +35,10 @@ struct scheduler_dp_data {
 
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
+	uint32_t period;		/* period the task should be scheduled in us */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
-	uint32_t ticks_period;		/* period the task should be scheduled in LL ticks */
-	uint32_t ticks_to_trigger;	/* number of ticks the task should be triggered after */
 	struct k_sem sem;		/* semaphore for task scheduling */
+	struct processing_module *mod;	/* the module to be scheduled */
 };
 
 /* Single CPU-wide lock
@@ -62,10 +63,6 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
 
 /*
  * function called after every LL tick
- *
- * TODO:
- * the scheduler should here calculate deadlines of all task and tell Zephyr about them
- * Currently there's an assumption that the task is always ready to run
  */
 void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
 {
@@ -81,20 +78,23 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	lock_key = scheduler_dp_lock();
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
-		pdata = curr_task->priv_data;
 
-		if (pdata->ticks_to_trigger == 0) {
-			if (curr_task->state == SOF_TASK_STATE_QUEUED) {
-				/* set new trigger time, start the thread */
-				pdata->ticks_to_trigger = pdata->ticks_period;
+		/* step 1 - check if the module is ready for processing */
+		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
+			pdata = curr_task->priv_data;
+			struct processing_module *mod = pdata->mod;
+			bool mod_ready;
+
+			mod_ready = module_is_ready_to_process(mod, mod->sources,
+							       mod->num_of_sources,
+							       mod->sinks,
+							       mod->num_of_sinks);
+			if (mod_ready) {
+				/* TODO: step 2 - caclulate deadlines */
+				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
 				k_sem_give(&pdata->sem);
 			}
-		} else {
-			if (curr_task->state == SOF_TASK_STATE_QUEUED ||
-			    curr_task->state == SOF_TASK_STATE_RUNNING)
-				/* decrease num of ticks to re-schedule */
-				pdata->ticks_to_trigger--;
 		}
 	}
 	scheduler_dp_unlock(lock_key);
@@ -212,23 +212,11 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		return -EINVAL;
 	}
 
-	/* calculate period and start time in LL ticks */
-	pdata->ticks_period = period / LL_TIMER_PERIOD_US;
-
 	/* add a task to DP scheduler list */
+	task->state = SOF_TASK_STATE_QUEUED;
 	list_item_prepend(&task->list, &dp_sch->tasks);
 
-	if (start == SCHEDULER_DP_RUN_TASK_IMMEDIATELY) {
-		/* trigger the task immediately, don't wait for LL tick */
-		pdata->ticks_to_trigger = 0;
-		task->state = SOF_TASK_STATE_RUNNING;
-		k_sem_give(&pdata->sem);
-	} else {
-		/* wait for tick */
-		pdata->ticks_to_trigger	= start / LL_TIMER_PERIOD_US;
-		task->state = SOF_TASK_STATE_QUEUED;
-	}
-
+	pdata->period = period;
 	scheduler_dp_unlock(lock_key);
 
 	/* start LL task - run DP tick start and period are irrelevant for LL (that's bad)*/
@@ -272,7 +260,7 @@ int scheduler_dp_init(void)
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,
-			   void *data,
+			   struct processing_module *mod,
 			   uint16_t core,
 			   size_t stack_size,
 			   uint32_t task_priority)
@@ -335,7 +323,7 @@ int scheduler_dp_task_init(struct task **task,
 
 	/* internal SOF task init */
 	ret = schedule_task_init(&task_memory->task, uid, SOF_SCHEDULE_DP, 0, ops->run,
-				 data, core, 0);
+				 mod, core, 0);
 	if (ret < 0) {
 		tr_err(&dp_tr, "zephyr_dp_task_init(): schedule_task_init failed");
 		goto err;
@@ -354,6 +342,7 @@ int scheduler_dp_task_init(struct task **task,
 	task_memory->task.priv_data = &task_memory->pdata;
 	task_memory->pdata.thread_id = thread_id;
 	task_memory->pdata.p_stack = p_stack;
+	task_memory->pdata.mod = mod;
 	*task = &task_memory->task;
 
 	/* start the thread - it will immediately stop at a semaphore */

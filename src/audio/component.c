@@ -328,9 +328,25 @@ int comp_copy(struct comp_dev *dev)
 
 	assert(dev->drv->ops.copy);
 
-	/* copy only if we are the owner of the LL component */
-	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
-	    cpu_is_me(dev->ipc_config.core)) {
+	/* copy only if we are the owner of component OR this is DP component
+	 *
+	 * DP components (modules) require two stage processing:
+	 *
+	 *   LL_mod -> [comp_buffer -> dp_queue] -> dp_mod -> [dp_queue -> comp_buffer] -> LL_mod
+	 *
+	 *  - in first step (it means - now) the pipeline must copy source data from comp_buffer
+	 *    to dp_queue and result data from dp_queue to comp_buffer
+	 *
+	 *  - second step will be performed by a thread specific to the DP module - DP module
+	 *    will take data from input dpQueue (using source API) , process it
+	 *    and put in output DP queue (using sink API)
+	 *
+	 * this allows the current pipeline structure to see a DP module as a "normal" LL
+	 *
+	 * to be removed when pipeline 2.0 is ready
+	 */
+	if (cpu_is_me(dev->ipc_config.core) ||
+	    dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 #if CONFIG_PERFORMANCE_COUNTERS
 		perf_cnt_init(&dev->pcd);
 #endif
