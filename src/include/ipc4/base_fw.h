@@ -4,15 +4,8 @@
  */
 
 /*
- * This file contains structures that are exact copies of an existing ABI used
- * by IOT middleware. They are Intel specific and will be used by one middleware.
- *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
- *
- * This code is mostly copied "as-is" from existing C++ interface files hence the use of
- * different style in places. The intention is to keep the interface as close as possible to
- * original so it's easier to track changes with IPC host code.
  */
 
 /**
@@ -20,6 +13,9 @@
  * \brief IPC4 global definitions.
  * NOTE: This ABI uses bit fields and is non portable.
  */
+
+#ifndef __SOF_IPC4_BASE_FW_H__
+#define __SOF_IPC4_BASE_FW_H__
 
 /* Three clk src states :low power XTAL,  low power ring
  * and high power ring oscillator
@@ -666,3 +662,5 @@ enum ipc4_power_state_type {
 	IPC4_ACTIVE_CORES_MASK = 0,
 	IPC4_CORE_KCPS = 1,
 };
+
+#endif /* __SOF_IPC4_BASE_FW_H__ */
