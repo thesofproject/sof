@@ -84,8 +84,8 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 
 		if (++runs == 1 << CYCLES_WINDOW_SIZE) {
 			cycles_sum >>= CYCLES_WINDOW_SIZE;
-			tr_info(&ll_tr, "ll timer avg %u, max %u, overruns %u",
-				cycles_sum, cycles_max, overruns);
+			tr_info(&ll_tr, "ll core %u timer avg %u, max %u, overruns %u",
+				core, cycles_sum, cycles_max, overruns);
 			cycles_sum = 0;
 			cycles_max = 0;
 			runs = 0;
