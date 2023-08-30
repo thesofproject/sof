@@ -13,6 +13,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+struct processing_module;
+
 /**
  *
  * DP scheduler is a scheduler that creates a separate preemptible Zephyr thread for each SOF task
@@ -49,9 +51,6 @@
  *
  */
 
-/** \brief tell the scheduler to run the task immediately, even if LL tick is not yet running */
-#define SCHEDULER_DP_RUN_TASK_IMMEDIATELY ((uint64_t)-1)
-
 /**
  * \brief Init the Data Processing scheduler
  */
@@ -64,7 +63,7 @@ int scheduler_dp_init(void);
  * \param[out] task pointer, pointer to allocated task structure will be return
  * \param[in] uid pointer to UUID of the task
  * \param[in] ops pointer to task functions
- * \param[in] data pointer to the thread private data
+ * \param[in] mod pointer to the module to be run
  * \param[in] core CPU the thread should run on
  * \param[in] stack_size size of stack for a zephyr task
  * \param[in] task_priority priority of the zephyr task
@@ -72,7 +71,7 @@ int scheduler_dp_init(void);
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,
-			   void *data,
+			   struct processing_module *mod,
 			   uint16_t core,
 			   size_t stack_size,
 			   uint32_t task_priority);

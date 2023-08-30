@@ -14,6 +14,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -378,15 +379,18 @@ int pipeline_comp_ll_task_init(struct pipeline *p)
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 static enum task_state dp_task_run(void *data)
 {
-	struct comp_dev *comp = data;
+	struct processing_module *mod = data;
 
-	comp->drv->ops.copy(comp);
+	module_process_sink_src(mod, mod->sources, mod->num_of_sources,
+				mod->sinks, mod->num_of_sinks);
+
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 int pipeline_comp_dp_task_init(struct comp_dev *comp)
 {
 	int ret;
+	struct processing_module *mod = comp_get_drvdata(comp);
 	struct task_ops ops  = {
 		.run		= dp_task_run,
 		.get_deadline	= NULL,
@@ -397,7 +401,7 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp)
 		ret = scheduler_dp_task_init(&comp->task,
 					     SOF_UUID(dp_task_uuid),
 					     &ops,
-					     comp,
+					     mod,
 					     comp->ipc_config.core,
 					     TASK_DP_STACK_SIZE,
 					     ZEPHYR_DP_THREAD_PRIORITY);
