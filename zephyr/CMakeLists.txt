@@ -438,13 +438,21 @@ zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
 	${SOF_MATH_PATH}/iir_df2t.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
 zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
-	${SOF_AUDIO_PATH}/asrc/asrc.c
+	${SOF_AUDIO_PATH}/asrc/asrc_ipc3.c
 	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
 	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
 	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
 )
-
+elseif(CONFIG_IPC_MAJOR_4)
+zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
+	${SOF_AUDIO_PATH}/asrc/asrc_ipc4.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
+)
+endif()
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock.c

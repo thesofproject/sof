@@ -35,6 +35,44 @@ target_sources(sof_tplg_parser PUBLIC
 	audio_formats.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+target_sources(sof_tplg_parser PUBLIC
+	tokens.c
+	process.c
+	control.c
+	pcm.c
+	pga.c
+	mixer.c
+	pipeline.c
+	host.c
+	dai.c
+	asrc_ipc3.c
+	src.c
+	buffer.c
+	graph.c
+	object.c
+	audio_formats.c
+)
+elseif(CONFIG_IPC_MAJOR_4)
+target_sources(sof_tplg_parser PUBLIC
+	tokens.c
+	process.c
+	control.c
+	pcm.c
+	pga.c
+	mixer.c
+	pipeline.c
+	host.c
+	dai.c
+	asrc_ipc4.c
+	src.c
+	buffer.c
+	graph.c
+	object.c
+	audio_formats.c
+)
+endif()
+
 sof_append_relative_path_definitions(sof_tplg_parser)
 
 target_include_directories(sof_tplg_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

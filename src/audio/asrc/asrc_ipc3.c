@@ -30,11 +30,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if CONFIG_IPC_MAJOR_4
-#include <ipc4/base-config.h>
-#include <ipc4/asrc.h>
-#endif
-
 /* Simple count value to prevent first delta timestamp
  * from being input to low-pass filter.
  */
@@ -57,25 +52,15 @@ static const struct comp_driver comp_asrc;
 
 LOG_MODULE_REGISTER(asrc, CONFIG_SOF_LOG_LEVEL);
 
-#ifndef CONFIG_IPC_MAJOR_4
 /* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
 DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
 		    0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
-#else
-/* 66b4402d-b468-42f2-81a7-b37121863dd4 */
-DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0x66b4402d, 0xb468, 0x42f2,
-		    0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4);
-#endif
 
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 
 /* asrc component private data */
 struct comp_data {
-#if CONFIG_IPC_MAJOR_4
-	struct ipc4_asrc_module_cfg ipc_config;
-#else
 	struct ipc_config_asrc ipc_config;
-#endif
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
@@ -271,7 +256,6 @@ static void src_copy_s16(struct comp_dev *dev,
 	*n_written = out_frames;
 }
 
-#ifndef CONFIG_IPC_MAJOR_4
 static inline uint32_t asrc_get_source_rate(const struct ipc_config_asrc *ipc_asrc)
 {
 	return ipc_asrc->source_rate;
@@ -291,53 +275,13 @@ static inline bool asrc_get_asynchronous_mode(const struct ipc_config_asrc *ipc_
 {
 	return ipc_asrc->asynchronous_mode;
 }
-#else
-static inline uint32_t asrc_get_source_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->base.audio_fmt.sampling_frequency;
-}
-
-static inline uint32_t asrc_get_sink_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->out_freq;
-}
-
-static inline uint32_t asrc_get_operation_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->asrc_mode & (1 << IPC4_MOD_ASRC_PUSH_MODE) ? ASRC_OM_PUSH : ASRC_OM_PULL;
-}
-
-static inline bool asrc_get_asynchronous_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return false;
-}
-
-static int asrc_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		*(struct ipc4_base_module_cfg *)value = cd->ipc_config.base;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-#endif
 
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
 				 const struct comp_ipc_config *config,
 				 const void *spec)
 {
 	struct comp_dev *dev;
-#ifndef CONFIG_IPC_MAJOR_4
 	const struct ipc_config_asrc *ipc_asrc = spec;
-#else
-	const struct ipc4_asrc_module_cfg *ipc_asrc = spec;
-#endif
 	struct comp_data *cd;
 
 	comp_cl_info(&comp_asrc, "asrc_new()");
@@ -373,7 +317,7 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 	cd->mode = asrc_get_operation_mode(ipc_asrc);
 
 	/* Use skew tracking for DAI if it was requested. The skew
-	 * is initialized here to zero. It is set later in prepare() to
+	 * is initialized here to zero. It is set later in prepare()
 	 * to 1.0 if there is no filtered skew factor from previous run.
 	 */
 	cd->track_drift = asrc_get_asynchronous_mode(ipc_asrc);
@@ -539,10 +483,6 @@ static int asrc_params(struct comp_dev *dev,
 
 	comp_info(dev, "asrc_params()");
 
-#if CONFIG_IPC_MAJOR_4
-	ipc4_base_module_cfg_to_stream_params(&cd->ipc_config.base, pcm_params);
-#endif
-
 	err = asrc_verify_params(dev, pcm_params);
 	if (err < 0) {
 		comp_err(dev, "asrc_params(): pcm params verification failed.");
@@ -556,12 +496,6 @@ static int asrc_params(struct comp_dev *dev,
 
 	source_c = buffer_acquire(sourceb);
 	sink_c = buffer_acquire(sinkb);
-
-#if CONFIG_IPC_MAJOR_4
-	/* update the source/sink buffer formats. Sink rate will be modified below */
-	ipc4_update_buffer_format(source_c, &cd->ipc_config.base.audio_fmt);
-	ipc4_update_buffer_format(sink_c, &cd->ipc_config.base.audio_fmt);
-#endif
 
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
@@ -633,7 +567,8 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	} else {
 		/* In pull mode check if source component is DAI */
 		do {
-			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+			sourceb = list_first_item(&dev->bsource_list,
+						  struct comp_buffer, sink_list);
 
 			source_c = buffer_acquire(sourceb);
 			dev = source_c->source;
@@ -1068,7 +1003,6 @@ static int asrc_reset(struct comp_dev *dev)
 	comp_info(dev, "asrc_reset(), skew_min=%d, skew_max=%d", cd->skew_min,
 		  cd->skew_max);
 
-
 	/* If any resources feasible to stop */
 	if (cd->track_drift)
 		asrc_dai_stop_timestamp(cd);
@@ -1097,9 +1031,6 @@ static const struct comp_driver comp_asrc = {
 		.copy = asrc_copy,
 		.prepare = asrc_prepare,
 		.reset = asrc_reset,
-#if CONFIG_IPC_MAJOR_4
-		.get_attribute = asrc_get_attribute,
-#endif
 	},
 };
 
