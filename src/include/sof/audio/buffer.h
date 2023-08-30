@@ -219,17 +219,6 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer,
 	if (buffer->is_shared)
 		audio_stream_writeback(&buffer->stream, bytes);
 }
-/* stubs for acquire/release for compilation, to be removed at last step */
-__must_check static inline struct comp_buffer __sparse_cache *buffer_acquire(
-	struct comp_buffer *buffer)
-{
-	return (struct comp_buffer __sparse_cache *)buffer;
-}
-
-static inline void buffer_release(struct comp_buffer __sparse_cache *buffer)
-{
-	(void)buffer;
-}
 
 /*
  * Attach a new buffer at the beginning of the list. Note, that "head" must
