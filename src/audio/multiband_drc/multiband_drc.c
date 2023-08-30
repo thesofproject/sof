@@ -321,18 +321,42 @@ static int multiband_drc_cmd_set_value(struct processing_module *mod,
 }
 #endif
 
-static int multiband_drc_set_config(struct processing_module *mod, uint32_t config_id,
+static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
 				    enum module_cfg_fragment_position pos,
 				    uint32_t data_offset_size, const uint8_t *fragment,
 				    size_t fragment_size, uint8_t *response,
 				    size_t response_size)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(mod->dev, "multiband_drc_set_config()");
+	comp_dbg(dev, "multiband_drc_set_config()");
 
-#if CONFIG_IPC_MAJOR_3
-	/* Other control types are possible only with IPC3 */
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		comp_dbg(dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID id = %d, num_elems = %d",
+			 ctl->id, ctl->num_elems);
+
+		if (ctl->id == 0 && ctl->num_elems == 1) {
+			cd->process_enabled = ctl->chanv[0].value;
+			comp_info(dev, "process_enabled = %d", cd->process_enabled);
+		} else {
+			comp_err(dev, "Illegal control id = %d, num_elems = %d",
+				 ctl->id, ctl->num_elems);
+			return -EINVAL;
+		}
+
+		return 0;
+
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+		comp_err(dev, "multiband_drc_set_config(), illegal control.");
+		return -EINVAL;
+	}
+
+#elif CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
