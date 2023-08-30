@@ -307,7 +307,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 /*
  * Coherent devices only require locking to manage shared access.
  */
-__must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
+__must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 								     const size_t size)
 {
 	if (c->shared) {
@@ -319,7 +319,7 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 		dcache_invalidate_region(cc, size);
 	}
 
-	return (__sparse_force struct coherent __sparse_cache *)c;
+	return c;
 }
 
 static inline void coherent_release(struct coherent __sparse_cache *c,

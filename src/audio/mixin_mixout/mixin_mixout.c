@@ -121,7 +121,7 @@ static int mixin_init(struct processing_module *mod)
 
 static int mixout_init(struct processing_module *mod)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct module_source_info *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *mo_data;
 
@@ -154,7 +154,7 @@ static int mixin_free(struct processing_module *mod)
 
 static int mixout_free(struct processing_module *mod)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct module_source_info *mod_source_info;
 
 	comp_dbg(mod->dev, "mixout_free()");
 
@@ -280,7 +280,7 @@ static int mixin_process(struct processing_module *mod,
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct processing_module *mixout_mod;
-		struct module_source_info __sparse_cache *mod_source_info;
+		struct module_source_info *mod_source_info;
 		uint32_t free_frames, pending_frames;
 
 		/* unused buffer between mixin and mixout */
@@ -353,7 +353,7 @@ static int mixin_process(struct processing_module *mod,
 		struct comp_dev *mixout;
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
-		struct module_source_info __sparse_cache *mod_source_info;
+		struct module_source_info *mod_source_info;
 		struct processing_module *mixout_mod;
 		uint32_t start_frame;
 		uint32_t writeback_size;
@@ -425,7 +425,7 @@ static int mixout_process(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct module_source_info *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *md;
 	uint32_t frames_to_produce = INT32_MAX;
@@ -712,7 +712,7 @@ static int mixout_prepare(struct processing_module *mod,
 			  struct sof_source **sources, int num_of_sources,
 			  struct sof_sink **sinks, int num_of_sinks)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
+	struct module_source_info *mod_source_info;
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *md;
 	int ret, i;

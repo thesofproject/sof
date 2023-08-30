@@ -336,7 +336,7 @@ struct module_source_info *module_source_info_acquire(struct module_source_info 
 	return container_of(c, struct module_source_info, c);
 }
 
-static inline void module_source_info_release(struct module_source_info __sparse_cache *msi)
+static inline void module_source_info_release(struct module_source_info *msi)
 {
 	coherent_release_thread(&msi->c, sizeof(*msi));
 }
