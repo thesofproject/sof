@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <ipc4/error_status.h>
 #include <ipc4/module.h>
-#include <platform/lib/cpu.h>
+#include <sof/lib/cpu.h>
 
 /* Reports current ROM/FW status. */
 struct ipc4_fw_status_reg {
