@@ -5,7 +5,7 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifdef __XTOS_RTOS_IDC_H__
+#ifdef __POSIX_RTOS_IDC_H__
 
 #ifndef __ARCH_DRIVERS_IDC_H__
 #define __ARCH_DRIVERS_IDC_H__
@@ -16,4 +16,4 @@
 
 #error "This file shouldn't be included from outside of XTOS's rtos/idc.h"
 
-#endif /* __XTOS_RTOS_IDC_H__ */
+#endif /* __POSIX_RTOS_IDC_H__ */

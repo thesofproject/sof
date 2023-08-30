@@ -6,7 +6,7 @@
  */
 
 /* TODO: this needs fixed as part of the "host does not need rtos headers work" */
-#ifdef __XTOS_RTOS_SPINLOCK_H__
+#ifdef __POSIX_RTOS_SPINLOCK_H__
 
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__
