@@ -4,22 +4,6 @@
 add_local_sources(sof module_adapter.c module/generic.c)
 
 if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
-	if(CONFIG_COMP_VOLUME)
-		add_local_sources(sof
-			module/volume/volume_generic.c
-			module/volume/volume_hifi3.c
-			module/volume/volume_hifi4.c
-			module/volume/volume_generic_with_peakvol.c
-			module/volume/volume_hifi3_with_peakvol.c
-			module/volume/volume_hifi4_with_peakvol.c
-			module/volume/volume.c)
-		if(CONFIG_IPC_MAJOR_3)
-			add_local_sources(sof module/volume/volume_ipc3.c)
-		elseif(CONFIG_IPC_MAJOR_4)
-			add_local_sources(sof module/volume/volume_ipc4.c)
-		endif()
-	endif()
-
 	if(CONFIG_CADENCE_CODEC)
 		add_local_sources(sof module/cadence.c)
 

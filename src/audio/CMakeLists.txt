@@ -103,6 +103,9 @@ if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_MFCC)
 		add_subdirectory(mfcc)
 	endif()
+	if(CONFIG_COMP_VOLUME)
+		add_subdirectory(volume)
+	endif()
 	subdirs(pipeline)
 	add_subdirectory(google)
 	if(CONFIG_COMP_CHAIN_DMA)
@@ -164,11 +167,9 @@ set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb
 
 # sources for each module
 if(CONFIG_IPC_MAJOR_3)
-	set(volume_sources module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c
-	module_adapter/module/volume/volume_ipc3.c)
+	set(volume_sources volume/volume.c volume/volume_generic.c volume/volume_ipc3.c)
 elseif(CONFIG_IPC_MAJOR_4)
-	set(volume_sources module_adapter/module/volume/volume.c module_adapter/module/volume/volume_generic.c
-	module_adapter/module/volume/volume_ipc4.c)
+	set(volume_sources volume/volume.c volume/volume_generic.c volume/volume_ipc4.c)
 endif()
 set(mixer_sources ${mixer_src})
 set(src_sources src/src.c src/src_generic.c)
