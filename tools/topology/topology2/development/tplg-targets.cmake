@@ -116,9 +116,14 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 
 # CAVS HDA topology for benchmarking performance
 # Copier - peak volume - mixin - mixout - aria - peak volume - mixin - mixout - copier
-"sof-hda-generic\;sof-hda-benchmark-generic-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true"
-"sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true"
-"sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true"
+"sof-hda-generic\;sof-hda-benchmark-generic-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+
+# Test topologies for simple one source and sink processing components
+"sof-hda-generic\;sof-hda-benchmark-dcblock16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock16,BENCH_DCBLOCK_PARAMS=default"
+"sof-hda-generic\;sof-hda-benchmark-dcblock24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock24,BENCH_DCBLOCK_PARAMS=default"
+"sof-hda-generic\;sof-hda-benchmark-dcblock32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock32,BENCH_DCBLOCK_PARAMS=default"
 
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
