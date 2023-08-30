@@ -17,6 +17,11 @@
  */
 typedef void(*probe_logging_hook_t)(uint8_t *buffer, size_t length);
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+void probe_logging_hook(uint8_t *buffer, size_t length);
+const struct log_backend *log_backend_probe_get(void);
+#endif
+
 /**
  * @brief Initialize the probe logging backend.
  *
