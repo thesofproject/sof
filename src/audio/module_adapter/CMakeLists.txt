@@ -3,7 +3,7 @@
 
 add_local_sources(sof module_adapter.c module/generic.c)
 
-if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
+if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_CADENCE_CODEC)
 		add_local_sources(sof module/cadence.c)
 
