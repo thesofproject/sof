@@ -109,3 +109,13 @@ void probe_logging_init(probe_logging_hook_t fn)
 {
 	probe_hook = fn;
 }
+
+const struct log_backend *log_backend_probe_get(void)
+{
+	return &log_backend_adsp_probe;
+}
+
+bool probe_is_backend_configured(void)
+{
+	return probe_hook != NULL;
+}
