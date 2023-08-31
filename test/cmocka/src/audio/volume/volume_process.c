@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/volume.h>
+#include <volume/volume.h>
 #include "../module_adapter.h"
 
 /* Add macro for a volume test level. The levels to test with this code

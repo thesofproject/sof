@@ -6,7 +6,7 @@
  */
 
 /**
- * \file audio/volume.h
+ * \file volume/volume.h
  * \brief Volume component header file
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
  *          Keyon Jie <yang.jie@linux.intel.com>\n

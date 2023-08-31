@@ -32,7 +32,7 @@
 
 LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
-#include <sof/audio/volume.h>
+#include "volume.h"
 
 void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink)
 {
