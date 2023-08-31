@@ -165,7 +165,11 @@
 #define HEAP_BUF_ALIGNMENT DCACHE_LINE_SIZE
 
 /** \brief EDF task's default stack size in bytes. */
+#ifdef CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE 8192
+#else
 #define PLATFORM_TASK_DEFAULT_STACK_SIZE 3072
+#endif
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
