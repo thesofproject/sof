@@ -110,12 +110,12 @@ static int selector_verify_params(struct comp_dev *dev,
 		 * pipeline_comp_hw_params()
 		 */
 		in_channels = cd->config.in_channels_count ?
-			cd->config.in_channels_count : audio_stream_get_channels(&buffer_c->stream);
+			cd->config.in_channels_count : audio_stream_get_channels(&buffer->stream);
 		params->channels = in_channels;
 	}
 
 	/* Set buffer params */
-	buffer_set_params(buffer_c, params, BUFFER_UPDATE_FORCE);
+	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
 
 	/* set component period frames */
 	component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
