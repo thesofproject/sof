@@ -384,10 +384,10 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 		dcache_invalidate_region(cc, size);
 	}
 
-	return (__sparse_force struct coherent __sparse_cache *)c;
+	return c;
 }
 
-static inline void coherent_release_thread(struct coherent __sparse_cache *c,
+static inline void coherent_release_thread(struct coherent *c,
 					   const size_t size)
 {
 	if (c->shared) {
