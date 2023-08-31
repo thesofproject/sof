@@ -1447,7 +1447,6 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
 	uint32_t sampling = dd->sampling;
-	uint32_t dma_fmt;
 	struct dma_status stat;
 	uint32_t avail_bytes;
 	uint32_t free_bytes;
