@@ -16,7 +16,7 @@
  */
 
 /*
- * \file include/ipc4/peak_volume.h
+ * \file volume/peak_volume.h
  * \brief peak volume definitions.
  * NOTE: This ABI uses bit fields and is non portable.
  */

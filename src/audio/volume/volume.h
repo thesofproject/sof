@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #if CONFIG_IPC_MAJOR_4
-#include <ipc4/peak_volume.h>
+#include "peak_volume.h"
 #include <ipc4/fw_reg.h>
 #endif
 

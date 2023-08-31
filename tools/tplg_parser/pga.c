@@ -14,7 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <ipc/topology.h>
-#include <ipc4/peak_volume.h>
+#include <volume/peak_volume.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
