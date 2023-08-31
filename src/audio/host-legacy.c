@@ -363,7 +363,6 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
  */
 static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -433,7 +432,6 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
 			      uint32_t buffer_bytes)
 {
-	struct comp_buffer __sparse_cache *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
 	int err;
@@ -675,8 +673,6 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params, notifier_callback_t cb)
 {
 	struct dma_sg_config *config = &hd->config;
-	struct comp_buffer __sparse_cache *host_buf_c;
-	struct comp_buffer __sparse_cache *dma_buf_c;
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
