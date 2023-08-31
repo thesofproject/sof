@@ -202,10 +202,10 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 
 #ifdef __ZEPHYR__
 
-__must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
+__must_check static inline struct coherent *coherent_acquire_thread(
 	struct coherent *c, const size_t size)
 {
-	struct coherent __sparse_cache *cc = uncache_to_cache(c);
+	struct coherent *cc = uncache_to_cache(c);
 
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
@@ -226,7 +226,7 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 	return cc;
 }
 
-static inline void coherent_release_thread(struct coherent __sparse_cache *c,
+static inline void coherent_release_thread(struct coherent *c,
 					   const size_t size)
 {
 	/* assert if someone passes a coherent address in here. */
