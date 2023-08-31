@@ -25,7 +25,7 @@
 
 LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
-#include <sof/audio/volume.h>
+#include "volume.h"
 
 #ifdef VOLUME_GENERIC
 
