@@ -374,7 +374,6 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 {
 	struct comp_buffer *buffer = hd->local_buffer;
 	struct comp_buffer *buffer_c;
-	struct comp_buffer *dma_buf_c;
 	struct dma_status dma_stat;
 	uint32_t avail_samples;
 	uint32_t free_samples;
@@ -391,9 +390,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 		return 0;
 	}
 
-	dma_buf_c = buffer_acquire(hd->dma_buffer);
-	dma_sample_bytes = get_sample_bytes(audio_stream_get_frm_fmt(&dma_buf_c->stream));
-	buffer_release(dma_buf_c);
+	dma_sample_bytes = hd->config.src_width;
 
 	buffer_c = buffer_acquire(buffer);
 
