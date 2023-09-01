@@ -492,9 +492,11 @@ static int demux_process(struct processing_module *mod,
 	if (num_output_buffers == 0)
 		return 0;
 
-	frames = input_buffers[0].size;
+	//frames = input_buffers[0].size;
+	frames = 96;
 	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
-	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	//sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	sink_bytes = 384;
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < num_output_buffers; i++) {
