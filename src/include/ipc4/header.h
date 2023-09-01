@@ -171,4 +171,31 @@ struct ipc4_message_reply {
 	} extension;
 } __attribute((packed, aligned(4)));
 
+#define SOF_IPC4_SWITCH_CONTROL_PARAM_ID 200
+#define SOF_IPC4_ENUM_CONTROL_PARAM_ID  201
+
+/**
+ * struct sof_ipc4_ctrl_value_chan: generic channel mapped value data
+ * @channel: Channel ID
+ * @value: control value
+ */
+struct sof_ipc4_ctrl_value_chan {
+	uint32_t channel;
+	uint32_t value;
+} __attribute((packed, aligned(4)));
+
+/**
+ * struct sof_ipc4_control_msg_payload - IPC payload for kcontrol parameters
+ * @id: unique id of the control
+ * @num_elems: Number of elememnts in the chanv array
+ * @reserved: reserved for future use, must be set to 0
+ * @chanv: channel ID and value array
+ */
+struct sof_ipc4_control_msg_payload {
+	uint16_t id;
+	uint16_t num_elems;
+	uint32_t reserved[4];
+	struct sof_ipc4_ctrl_value_chan chanv[];
+} __attribute((packed, aligned(4)));
+
 #endif
