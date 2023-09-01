@@ -65,7 +65,7 @@ struct ipc4_msg_data {
 static struct ipc4_msg_data msg_data;
 
 /* fw sends a fw ipc message to send the status of the last host ipc message */
-static struct ipc_msg msg_reply;
+static struct ipc_msg msg_reply = {0, 0, 0, 0, LIST_INIT(msg_reply.list)};
 
 static struct ipc_msg msg_notify;
 
@@ -1303,7 +1303,6 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	msg_reply.tx_size = 0;
 	msg_reply.header = in->primary.dat;
 	msg_reply.extension = in->extension.dat;
-	list_init(&msg_reply.list);
 
 	target = in->primary.r.msg_tgt;
 
@@ -1330,8 +1329,62 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		char *data = ipc->comp_data;
 		struct ipc4_message_reply reply;
 
+		/* Process flow and time stamp for IPC4 msg processed on secondary core :
+		 * core 0 (primary core)				core x (secondary core)
+		 * # IPC msg thread		#IPC delayed worker     #core x idc thread
+		 * ipc_task_ops.run()
+		 * ipc_do_cmd()
+		 * msg_reply.header = in->primary.dat
+		 * ipc4_process_on_core(x)
+		 * mask |= SECONDARY_CORE
+		 * idc_send_message()
+		 * Case 1:
+		 * // Ipc msg processed by secondary core		idc_ipc()
+		 * if ((mask & SECONDARY_CORE))				ipc_cmd()
+		 *	return;						ipc_msg_send()
+		 *							mask &= ~SECONDARY_CORE
+		 *
+		 *				ipc_platform_send_msg
+		 * ----------------------------------------------------------------------------
+		 * Case 2:
+		 *                                                      idc_ipc()
+		 *                                                      ipc_cmd()
+		 *							//Prepare reply msg
+		 *                                                      msg_reply.header =
+		 *                                                      reply.primary.dat;
+		 *                                                      ipc_msg_send()
+		 *                                                      mask &= ~SECONDARY_CORE
+		 *
+		 * if ((mask & IPC_TASK_SECONDARY_CORE))
+		 *	return;
+		 * // Ipc reply msg was prepared, so return
+		 * if (msg_reply.header != in->primary.dat)
+		 *	return;
+		 *				ipc_platform_send_msg
+		 * ----------------------------------------------------------------------------
+		 * Case 3:
+		 *                                                      idc_ipc()
+		 *                                                      ipc_cmd()
+		 *							//Prepare reply msg
+		 *                                                      msg_reply.header =
+		 *                                                      reply.primary.dat;
+		 *                                                      ipc_msg_send()
+		 *                                                      mask &= ~SECONDARY_CORE
+		 *
+		 *                              ipc_platform_send_msg
+		 *
+		 * if ((mask & IPC_TASK_SECONDARY_CORE))
+		 *      return;
+		 * // Ipc reply msg was prepared, so return
+		 * if (msg_reply.header != in->primary.dat)
+		 *	return;
+		 */
+
 		/* Reply prepared by secondary core */
 		if ((ipc->task_mask & IPC_TASK_SECONDARY_CORE) && cpu_is_primary(cpu_get_id()))
+			return;
+		/* Reply has been prepared by secondary core */
+		if (msg_reply.header != in->primary.dat)
 			return;
 
 		/* Do not send reply for SET_DX if we are going to enter D3
