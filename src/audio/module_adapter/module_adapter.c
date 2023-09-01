@@ -418,8 +418,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
 		mod->output_buffers[i].data =
-			 (void *)rballoc(0, SOF_MEM_CAPS_RAM,
-								      md->mpd.out_buff_size);
+			 (void *)rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
