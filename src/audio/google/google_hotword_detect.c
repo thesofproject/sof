@@ -159,7 +159,6 @@ static int ghd_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
 	int ret;
 
 	/* Detector is used only in KPB topology. It always requires channels
@@ -176,20 +175,17 @@ static int ghd_params(struct comp_dev *dev,
 	/* This detector component will only ever have 1 source */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
-	source_c = buffer_acquire(sourceb);
 
-	if (audio_stream_get_channels(source_c->stream) != 1) {
+	if (audio_stream_get_channels(sourceb->stream) != 1) {
 		comp_err(dev, "ghd_params(): Only single-channel supported");
 		ret = -EINVAL;
-	} else if (audio_stream_get_frm_fmt(&source_c->stream) != SOF_IPC_FRAME_S16_LE) {
+	} else if (audio_stream_get_frm_fmt(&sourceb->stream) != SOF_IPC_FRAME_S16_LE) {
 		comp_err(dev, "ghd_params(): Only S16_LE supported");
 		ret = -EINVAL;
-	} else if (source_c->stream.rate != KPB_SAMPLNG_FREQUENCY) {
+	} else if (sourceb->stream.rate != KPB_SAMPLNG_FREQUENCY) {
 		comp_err(dev, "ghd_params(): Only 16KHz supported");
 		ret = -EINVAL;
 	}
-
-	buffer_release(source_c);
 
 	return ret;
 }
@@ -383,8 +379,7 @@ static int ghd_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
-	struct audio_stream __sparse_cache *stream;
+	struct audio_stream *stream;
 	uint32_t bytes, tail_bytes, head_bytes = 0;
 	int ret;
 
@@ -399,8 +394,7 @@ static int ghd_copy(struct comp_dev *dev)
 	/* keyword components will only ever have 1 source */
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
-	source_c = buffer_acquire(sourceb);
-	stream = &source_c->stream;
+	stream = &sourceb->stream;
 
 	bytes = audio_stream_get_avail_bytes(stream);
 
@@ -411,7 +405,7 @@ static int ghd_copy(struct comp_dev *dev)
 		 (uint32_t)audio_stream_get_end_addr(stream));
 
 	/* copy and perform detection */
-	buffer_stream_invalidate(source_c, bytes);
+	buffer_stream_invalidate(sourceb, bytes);
 
 	tail_bytes = (char *)audio_stream_get_end_addr(stream) -
 		(char *)audio_stream_get_rptr(stream);
@@ -426,9 +420,7 @@ static int ghd_copy(struct comp_dev *dev)
 		ghd_detect(dev, stream, audio_stream_get_addr(stream), head_bytes);
 
 	/* calc new available */
-	comp_update_buffer_consume(source_c, bytes);
-
-	buffer_release(source_c);
+	comp_update_buffer_consume(sourceb, bytes);
 
 	return 0;
 }

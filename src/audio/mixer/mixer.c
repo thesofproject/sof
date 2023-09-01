@@ -82,7 +82,7 @@ static int mixer_process(struct processing_module *mod,
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
+	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
 	int sources_indices[PLATFORM_MAX_STREAMS];
 	int32_t i = 0, j = 0;
 	uint32_t frames = INT32_MAX;
@@ -174,13 +174,11 @@ static int mixer_reset(struct processing_module *mod)
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
-			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
 			bool stop = false;
 
-			if (source_c->source && source_c->source->state > COMP_STATE_READY)
+			if (source->source && source->source->state > COMP_STATE_READY)
 				stop = true;
 
-			buffer_release(source_c);
 			/* only mix the sources with the same state with mixer */
 			if (stop)
 				/* should not reset the downstream components */
@@ -194,7 +192,7 @@ static int mixer_reset(struct processing_module *mod)
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache *source)
+static inline void mixer_set_frame_alignment(struct audio_stream *source)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 
@@ -224,22 +222,18 @@ static int mixer_prepare(struct processing_module *mod,
 			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixer_data *md = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink_c;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
 	struct list_item *blist;
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
-	sink_c = buffer_acquire(sink);
-	md->mix_func = mixer_get_processing_function(dev, sink_c);
-	mixer_set_frame_alignment(&sink_c->stream);
-	buffer_release(sink_c);
+	md->mix_func = mixer_get_processing_function(dev, sink);
+	mixer_set_frame_alignment(&sink->stream);
 
 	/* check each mixer source state */
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
-		struct comp_buffer __sparse_cache *source_c;
 		bool stop;
 
 		/*
@@ -251,11 +245,9 @@ static int mixer_prepare(struct processing_module *mod,
 		 * done.
 		 */
 		source = container_of(blist, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-		mixer_set_frame_alignment(&source_c->stream);
-		stop = source_c->source && (source_c->source->state == COMP_STATE_PAUSED ||
-					    source_c->source->state == COMP_STATE_ACTIVE);
-		buffer_release(source_c);
+		mixer_set_frame_alignment(&source->stream);
+		stop = source->source && (source->source->state == COMP_STATE_PAUSED ||
+					    source->source->state == COMP_STATE_ACTIVE);
 
 		/* only prepare downstream if we have no active sources */
 		if (stop)

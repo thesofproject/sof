@@ -158,8 +158,8 @@ void sys_comp_init(struct sof *sof)
 	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
-void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
-			  struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits(struct comp_buffer *source,
+			  struct comp_buffer *sink,
 			  struct comp_copy_limits *cl)
 {
 	cl->frames = audio_stream_avail_frames(&source->stream, &sink->stream);
@@ -169,8 +169,8 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
-void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache *source,
-					const struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
+					const struct comp_buffer *sink,
 					struct comp_copy_limits *cl)
 {
 	cl->frames = audio_stream_avail_frames_aligned(&source->stream, &sink->stream);
@@ -182,8 +182,8 @@ void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache 
 
 #ifdef STREAMCOPY_HIFI3
 
-int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
-		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
+int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
+		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
 	ae_int16x4 *src = (ae_int16x4 *)((int8_t *)audio_stream_get_rptr(source) + ioffset * ssize);
@@ -227,8 +227,8 @@ int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t
 
 #else
 
-int audio_stream_copy(const struct audio_stream __sparse_cache *source, uint32_t ioffset,
-		      struct audio_stream __sparse_cache *sink, uint32_t ooffset, uint32_t samples)
+int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
+		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
 	uint8_t *src = audio_stream_wrap(source, (uint8_t *)audio_stream_get_rptr(source) +
@@ -279,7 +279,7 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 }
 
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
-				   struct audio_stream __sparse_cache *sink, int ooffset,
+				   struct audio_stream *sink, int ooffset,
 				   unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(sink); /* src fmt == sink fmt */
@@ -300,7 +300,7 @@ void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 	}
 }
 
-void audio_stream_copy_to_linear(const struct audio_stream __sparse_cache *source, int ioffset,
+void audio_stream_copy_to_linear(const struct audio_stream *source, int ioffset,
 				 void *linear_sink, int ooffset, unsigned int samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */

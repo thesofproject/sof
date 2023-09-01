@@ -101,7 +101,7 @@ struct comp_data {
 	struct ipc_msg *msg;	/**< host notification */
 
 	void (*detect_func)(struct comp_dev *dev,
-			    const struct audio_stream __sparse_cache *source, uint32_t frames);
+			    const struct audio_stream *source, uint32_t frames);
 	struct sof_ipc_comp_event event;
 
 #if CONFIG_AMS
@@ -209,7 +209,7 @@ void detect_test_notify(const struct comp_dev *dev)
 }
 
 static void default_detect_test(struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream *source,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -797,7 +797,6 @@ static int test_keyword_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
 	unsigned int channels, rate;
 	enum sof_ipc_frame frame_fmt;
 	int err;
@@ -815,11 +814,9 @@ static int test_keyword_params(struct comp_dev *dev,
 	/* keyword components will only ever have 1 source */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
-	source_c = buffer_acquire(sourceb);
-	channels = audio_stream_get_channels(&source_c->stream);
-	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
-	rate = audio_stream_get_rate(&source_c->stream);
-	buffer_release(source_c);
+	channels = audio_stream_get_channels(&sourceb->stream);
+	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
+	rate = audio_stream_get_rate(&sourceb->stream);
 
 	if (channels != 1) {
 		comp_err(dev, "test_keyword_params(): only single-channel supported");
@@ -881,7 +878,6 @@ static int test_keyword_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
 	uint32_t frames;
 
 	comp_dbg(dev, "test_keyword_copy()");
@@ -889,23 +885,18 @@ static int test_keyword_copy(struct comp_dev *dev)
 	/* keyword components will only ever have 1 source */
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
-	source_c = buffer_acquire(source);
 
-	if (!audio_stream_get_avail(&source_c->stream)) {
-		buffer_release(source_c);
+	if (!audio_stream_get_avail(&source->stream))
 		return PPL_STATUS_PATH_STOP;
-	}
 
-	frames = audio_stream_get_avail_frames(&source_c->stream);
+	frames = audio_stream_get_avail_frames(&source->stream);
 
 	/* copy and perform detection */
-	buffer_stream_invalidate(source_c, audio_stream_get_avail_bytes(&source_c->stream));
-	cd->detect_func(dev, &source_c->stream, frames);
+	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
+	cd->detect_func(dev, &source->stream, frames);
 
 	/* calc new available */
-	comp_update_buffer_consume(source_c, audio_stream_get_avail_bytes(&source_c->stream));
-
-	buffer_release(source_c);
+	comp_update_buffer_consume(source, audio_stream_get_avail_bytes(&source->stream));
 
 	return 0;
 }

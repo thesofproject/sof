@@ -34,16 +34,16 @@ void sys_comp_module_mixer_interface_init(void);
 
 /* mixer component private data */
 struct mixer_data {
-	void (*mix_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-			 const struct audio_stream __sparse_cache **sources, uint32_t count,
+	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
+			 const struct audio_stream **sources, uint32_t count,
 			 uint32_t frames);
 };
 
 /**
  * \brief mixer processing function interface
  */
-typedef void (*mixer_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-			   const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
+typedef void (*mixer_func)(struct comp_dev *dev, struct audio_stream *sink,
+			   const struct audio_stream **sources, uint32_t num_sources,
 			   uint32_t frames);
 
 /** \brief Volume processing functions map. */
@@ -64,7 +64,7 @@ extern const size_t mixer_func_count;
  * \param[in] sinkb Sink buffer to match against
  */
 static inline mixer_func mixer_get_processing_function(struct comp_dev *dev,
-						       struct comp_buffer __sparse_cache *sinkb)
+						       struct comp_buffer *sinkb)
 {
 	int i;
 

@@ -78,8 +78,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct comp_buffer __sparse_cache *source_c;
-	const struct audio_stream __sparse_cache *stream;
+	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 	unsigned int buffer_fmt, frame_fmt, rate, channels;
@@ -89,15 +88,11 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	if (!source)
 		return -EINVAL;
 
-	source_c = buffer_acquire(source);
-
-	stream = &source_c->stream;
+	stream = &source->stream;
 	buffer_fmt = audio_stream_get_buffer_fmt(stream);
 	frame_fmt = audio_stream_get_frm_fmt(stream);
 	rate = audio_stream_get_rate(stream);
 	channels = audio_stream_get_channels(stream);
-
-	buffer_release(source_c);
 
 	switch (buffer_fmt) {
 	case SOF_IPC_BUFFER_INTERLEAVED:

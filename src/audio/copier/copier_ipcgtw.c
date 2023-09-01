@@ -37,7 +37,7 @@ static struct comp_dev *find_ipcgtw_by_node_id(union ipc4_connector_node_id node
 }
 
 static inline void audio_stream_copy_bytes_from_linear(const void *linear_source,
-						       struct audio_stream __sparse_cache *sink,
+						       struct audio_stream *sink,
 						       unsigned int bytes)
 {
 	const uint8_t *src = (const uint8_t *)linear_source;
@@ -55,7 +55,7 @@ static inline void audio_stream_copy_bytes_from_linear(const void *linear_source
 }
 
 static inline
-void audio_stream_copy_bytes_to_linear(const struct audio_stream __sparse_cache *source,
+void audio_stream_copy_bytes_to_linear(const struct audio_stream *source,
 				       void *linear_sink, unsigned int bytes)
 {
 	uint8_t *src = audio_stream_wrap(source, audio_stream_get_rptr(source));
@@ -93,7 +93,6 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	const struct ipc4_ipc_gateway_cmd_data *in;
 	struct comp_dev *dev;
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
 	uint32_t data_size;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
 
@@ -110,15 +109,12 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	buf = get_buffer(dev);
 
-	if (buf) {
-		buf_c = buffer_acquire(buf);
-	} else {
+	if (!buf) {
 		/* NOTE: this func is called from IPC processing task and can be potentially
 		 * called before pipeline start even before buffer has been attached. In such
 		 * case do not report error but return 0 bytes available for GET_DATA and
 		 * 0 bytes free for SET_DATA.
 		 */
-		buf_c = NULL;
 		comp_warn(dev, "copier_ipcgtw_process(): no buffer found");
 	}
 
@@ -126,13 +122,13 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	switch (cmd->primary.r.cmd) {
 	case IPC4_IPCGWCMD_GET_DATA:
-		if (buf_c) {
+		if (buf) {
 			data_size = MIN(cmd->extension.r.data_size, SOF_IPC_MSG_MAX_SIZE - 4);
-			data_size = MIN(data_size, audio_stream_get_avail_bytes(&buf_c->stream));
-			buffer_stream_invalidate(buf_c, data_size);
-			audio_stream_copy_bytes_to_linear(&buf_c->stream, out->payload, data_size);
-			comp_update_buffer_consume(buf_c, data_size);
-			out->u.size_avail = audio_stream_get_avail_bytes(&buf_c->stream);
+			data_size = MIN(data_size, audio_stream_get_avail_bytes(&buf->stream));
+			buffer_stream_invalidate(buf, data_size);
+			audio_stream_copy_bytes_to_linear(&buf->stream, out->payload, data_size);
+			comp_update_buffer_consume(buf, data_size);
+			out->u.size_avail = audio_stream_get_avail_bytes(&buf->stream);
 			*reply_payload_size = data_size + 4;
 		} else {
 			out->u.size_avail = 0;
@@ -141,18 +137,18 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 		break;
 
 	case IPC4_IPCGWCMD_SET_DATA:
-		if (buf_c) {
+		if (buf) {
 			data_size = MIN(cmd->extension.r.data_size,
-					audio_stream_get_free_bytes(&buf_c->stream));
+					audio_stream_get_free_bytes(&buf->stream));
 			dcache_invalidate_region((__sparse_force void __sparse_cache *)
 						 MAILBOX_HOSTBOX_BASE,
 						 data_size +
 						 offsetof(struct ipc4_ipc_gateway_cmd_data,
 							  payload));
-			audio_stream_copy_bytes_from_linear(in->payload, &buf_c->stream,
+			audio_stream_copy_bytes_from_linear(in->payload, &buf->stream,
 							    data_size);
-			buffer_stream_writeback(buf_c, data_size);
-			comp_update_buffer_produce(buf_c, data_size);
+			buffer_stream_writeback(buf, data_size);
+			comp_update_buffer_produce(buf, data_size);
 			out->u.size_consumed = data_size;
 			*reply_payload_size = 4;
 		} else {
@@ -163,20 +159,16 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	case IPC4_IPCGWCMD_FLUSH_DATA:
 		*reply_payload_size = 0;
-		if (buf_c)
-			audio_stream_reset(&buf_c->stream);
+		if (buf)
+			audio_stream_reset(&buf->stream);
 		break;
 
 	default:
 		comp_err(dev, "copier_ipcgtw_process(): unexpected cmd: %u",
 			 (unsigned int)cmd->primary.r.cmd);
-		if (buf_c)
-			buffer_release(buf_c);
 		return -EINVAL;
 	}
 
-	if (buf_c)
-		buffer_release(buf_c);
 	return 0;
 }
 
@@ -184,7 +176,6 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
 	int err;
 
 	comp_dbg(dev, "ipcgtw_params()");
@@ -196,9 +187,7 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 	}
 
 	/* resize buffer to size specified in IPC gateway config blob */
-	buf_c = buffer_acquire(buf);
-	err = buffer_set_size(buf_c, ipcgtw_data->buf_size, 0);
-	buffer_release(buf_c);
+	err = buffer_set_size(buf, ipcgtw_data->buf_size, 0);
 
 	if (err < 0) {
 		comp_err(dev, "ipcgtw_params(): failed to resize buffer to %u bytes",
@@ -214,10 +203,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	struct comp_buffer *buf = get_buffer(dev);
 
 	if (buf) {
-		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(buf);
-
-		audio_stream_reset(&buf_c->stream);
-		buffer_release(buf_c);
+		audio_stream_reset(&buf->stream);
 	} else {
 		comp_warn(dev, "ipcgtw_reset(): no buffer found");
 	}

@@ -48,7 +48,7 @@ static inline void fir_core_setup_circular(struct fir_state_32x16 *fir)
 }
 
 /* Setup circular for component buffer */
-static inline void fir_comp_setup_circular(const struct audio_stream __sparse_cache *buffer)
+static inline void fir_comp_setup_circular(const struct audio_stream *buffer)
 {
 	AE_SETCBEGIN0(audio_stream_get_addr(buffer));
 	AE_SETCEND0(audio_stream_get_end_addr(buffer));

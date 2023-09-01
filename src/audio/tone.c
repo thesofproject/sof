@@ -95,7 +95,7 @@ struct comp_data {
 	uint32_t frame_bytes;
 	uint32_t rate;
 	struct tone_state sg[PLATFORM_MAX_CHANNELS];
-	void (*tone_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+	void (*tone_func)(struct comp_dev *dev, struct audio_stream *sink,
 			  uint32_t frames);
 };
 
@@ -113,7 +113,7 @@ static inline void tone_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
-static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+static void tone_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			     uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -429,7 +429,6 @@ static int tone_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -444,18 +443,12 @@ static int tone_params(struct comp_dev *dev,
 	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
-	audio_stream_set_frm_fmt(&source_c->stream, dev->ipc_config.frame_fmt);
-	audio_stream_set_frm_fmt(&sink_c->stream, dev->ipc_config.frame_fmt);
+	audio_stream_set_frm_fmt(&sourceb->stream, dev->ipc_config.frame_fmt);
+	audio_stream_set_frm_fmt(&sinkb->stream, dev->ipc_config.frame_fmt);
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames *
-			   audio_stream_frame_bytes(&source_c->stream);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
+			   audio_stream_frame_bytes(&sourceb->stream);
 
 	return 0;
 }
@@ -634,7 +627,6 @@ static int tone_trigger(struct comp_dev *dev, int cmd)
 static int tone_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t free;
 	int ret = 0;
@@ -645,24 +637,21 @@ static int tone_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	sink_c = buffer_acquire(sink);
-	free = audio_stream_get_free_bytes(&sink_c->stream);
+	free = audio_stream_get_free_bytes(&sink->stream);
 
 	/* Test that sink has enough free frames. Then run once to maintain
 	 * low latency and steady load for tones.
 	 */
 	if (free >= cd->period_bytes) {
 		/* create tone */
-		cd->tone_func(dev, &sink_c->stream, dev->frames);
-		buffer_stream_writeback(sink_c, cd->period_bytes);
+		cd->tone_func(dev, &sink->stream, dev->frames);
+		buffer_stream_writeback(sink, cd->period_bytes);
 
 		/* calc new free and available */
-		comp_update_buffer_produce(sink_c, cd->period_bytes);
+		comp_update_buffer_produce(sink, cd->period_bytes);
 
 		ret = dev->frames;
 	}
-
-	buffer_release(sink_c);
 
 	return ret;
 }

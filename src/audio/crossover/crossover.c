@@ -133,7 +133,6 @@ static int crossover_assign_sinks(struct processing_module *mod,
 	struct sof_crossover_config *config = cd->config;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	int num_sinks = 0;
 	int i;
@@ -143,14 +142,12 @@ static int crossover_assign_sinks(struct processing_module *mod,
 		unsigned int sink_id, state;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
 #if CONFIG_IPC_MAJOR_4
 		sink_id = cd->output_pin_index[j];
 #else
-		sink_id = sink_c->pipeline_id;
+		sink_id = sink->pipeline_id;
 #endif
-		state = sink_c->sink->state;
-		buffer_release(sink_c);
+		state = sink->sink->state;
 		if (state != dev->state) {
 			j++;
 			continue;
@@ -486,7 +483,6 @@ static int crossover_check_sink_assign(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
 	struct list_item *sink_list;
 	int num_assigned_sinks = 0;
 	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
@@ -496,9 +492,7 @@ static int crossover_check_sink_assign(struct processing_module *mod,
 		unsigned int pipeline_id;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		pipeline_id = sink_c->pipeline_id;
-		buffer_release(sink_c);
+		pipeline_id = sink->pipeline_id;
 
 		i = crossover_get_stream_index(mod, config, pipeline_id);
 		if (i < 0) {
@@ -623,7 +617,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	bool enabled_buffers[PLATFORM_MAX_STREAMS] = { false };
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
 	uint32_t num_sinks;
 	uint32_t num_assigned_sinks = 0;
 	/* The frames count to process from module adapter applies for source buffer and
@@ -691,7 +685,6 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 static void crossover_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct list_item *sink_list;
 	struct comp_dev *dev = mod->dev;
@@ -702,15 +695,11 @@ static void crossover_params(struct processing_module *mod)
 	component_set_nearest_period_frames(dev, params->rate);
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	source_c = buffer_acquire(sourceb);
-	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
-	buffer_release(source_c);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	list_for_item(sink_list, &dev->bsink_list) {
 		sinkb = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sinkb);
-		ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
-		buffer_release(sink_c);
+		ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 	}
 }
 #endif
@@ -727,7 +716,6 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct list_item *sink_list;
 	int channels;
 	int ret = 0;
@@ -741,27 +729,23 @@ static int crossover_prepare(struct processing_module *mod,
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	source_c = buffer_acquire(source);
 
 	/* Get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	channels = audio_stream_get_channels(&source_c->stream);
-	audio_stream_init_alignment_constants(1, 1, &source_c->stream);
-	buffer_release(source_c);
+	cd->source_format = audio_stream_get_frm_fmt(&source->stream);
+	channels = audio_stream_get_channels(&source->stream);
+	audio_stream_init_alignment_constants(1, 1, &source->stream);
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		if (cd->source_format == audio_stream_get_frm_fmt(&sink_c->stream)) {
-			audio_stream_init_alignment_constants(1, 1, &sink_c->stream);
+		if (cd->source_format == audio_stream_get_frm_fmt(&sink->stream)) {
+			audio_stream_init_alignment_constants(1, 1, &sink->stream);
 		} else {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
-				 cd->source_format, audio_stream_get_frm_fmt(&sink_c->stream));
+				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
 			ret = -EINVAL;
 		}
 
-		buffer_release(sink_c);
 		if (ret < 0)
 			return ret;
 	}

@@ -31,7 +31,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 				 bool is_shared)
 {
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
 	void *stream_addr;
 
 	tr_dbg(&buffer_tr, "buffer_alloc()");
@@ -62,14 +61,11 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	}
 
 	/* From here no more uncached access to the buffer object, except its list headers */
-	buffer_c = buffer_acquire(buffer);
-	audio_stream_set_addr(&buffer_c->stream, stream_addr);
-	buffer_init(buffer_c, size, caps);
+	audio_stream_set_addr(&buffer->stream, stream_addr);
+	buffer_init(buffer, size, caps);
 
-	audio_stream_set_underrun(&buffer_c->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
-	audio_stream_set_overrun(&buffer_c->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
-
-	buffer_release(buffer_c);
+	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
+	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
@@ -77,7 +73,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	return buffer;
 }
 
-void buffer_zero(struct comp_buffer __sparse_cache *buffer)
+void buffer_zero(struct comp_buffer *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 
@@ -88,7 +84,7 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 					audio_stream_get_size(&buffer->stream));
 }
 
-int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment)
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment)
 {
 	void *new_ptr = NULL;
 
@@ -124,7 +120,7 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, ui
 	return 0;
 }
 
-int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
+int buffer_set_params(struct comp_buffer *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update)
 {
 	int ret;
@@ -153,7 +149,7 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 	return 0;
 }
 
-bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
+bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
@@ -195,19 +191,7 @@ void buffer_free(struct comp_buffer *buffer)
 	coherent_free_thread(buffer, c);
 }
 
-/*
- * comp_update_buffer_produce() and comp_update_buffer_consume() send
- * NOTIFIER_ID_BUFFER_PRODUCE and NOTIFIER_ID_BUFFER_CONSUME notifier events
- * respectively. The only recipient of those notifications is probes. The
- * target for those notifications is always the current core, therefore notifier
- * callbacks will be called synchronously from notifier_event() calls. Therefore
- * we cannot pass unlocked buffer pointers to probes, because if they try to
- * acquire the buffer, that can cause a deadlock. In general locked objects
- * shouldn't be passed to potentially asynchronous contexts, but here we have no
- * choice but to use our knowledge of the local notifier behaviour and pass
- * locked buffers to notification recipients.
- */
-void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
@@ -229,8 +213,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 
 	audio_stream_produce(&buffer->stream, bytes);
 
-	/* Notifier looks for the pointer value to match it against registration */
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_PRODUCE,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -246,7 +229,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 #endif
 }
 
-void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
@@ -268,7 +251,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 
 	audio_stream_consume(&buffer->stream, bytes);
 
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_CONSUME,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER

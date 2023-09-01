@@ -246,7 +246,6 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink, *source;
 	int ret, frames;
 
 	comp_dbg(dev, "copier_host_dma_cb() %p", dev);
@@ -263,18 +262,13 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 	 * playback scenario.
 	 */
 	if (cd->attenuation && dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		source = buffer_acquire(cd->hd->dma_buffer);
-		sink = buffer_acquire(cd->hd->local_buffer);
-		frames = bytes / audio_stream_frame_bytes(&source->stream);
+		frames = bytes / audio_stream_frame_bytes(&cd->hd->dma_buffer->stream);
 
-		ret = apply_attenuation(dev, cd, sink, frames);
+		ret = apply_attenuation(dev, cd, cd->hd->local_buffer, frames);
 		if (ret < 0)
 			comp_dbg(dev, "copier_host_dma_cb() apply attenuation failed! %d", ret);
 
-		buffer_stream_writeback(sink, bytes);
-
-		buffer_release(source);
-		buffer_release(sink);
+		buffer_stream_writeback(cd->hd->local_buffer, bytes);
 	}
 }
 

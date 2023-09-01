@@ -319,8 +319,8 @@ static inline void module_update_buffer_position(struct input_stream_buffer *inp
 						 struct output_stream_buffer *output_buffers,
 						 uint32_t frames)
 {
-	struct audio_stream __sparse_cache *source = input_buffers->data;
-	struct audio_stream __sparse_cache *sink = output_buffers->data;
+	struct audio_stream *source = input_buffers->data;
+	struct audio_stream *sink = output_buffers->data;
 
 	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;

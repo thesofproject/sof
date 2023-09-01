@@ -103,7 +103,6 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct sof_ipc_dai_config *config = ipc_from_dai_config(dd->dai_spec_config);
-	struct comp_buffer __sparse_cache *buffer_c;
 
 	if (!config) {
 		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
@@ -145,11 +144,10 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		 * all formats, such as 8/16/24/32 bits.
 		 */
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
-		if (dd->dma_buffer) {
-			buffer_c = buffer_acquire(dd->dma_buffer);
-			audio_stream_set_frm_fmt(&buffer_c->stream, dev->ipc_config.frame_fmt);
-			buffer_release(buffer_c);
-		}
+		if (dd->dma_buffer)
+			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
+						 dev->ipc_config.frame_fmt);
+
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		/* As with HDA, the DMA channel is assigned in runtime,
 		 * not during topology parsing.
@@ -170,11 +168,9 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		break;
 	case SOF_DAI_AMD_DMIC:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
-		if (dd->dma_buffer) {
-			buffer_c = buffer_acquire(dd->dma_buffer);
-			audio_stream_set_frm_fmt(&buffer_c->stream, dev->ipc_config.frame_fmt);
-			buffer_release(buffer_c);
-		}
+		if (dd->dma_buffer)
+			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
+						 dev->ipc_config.frame_fmt);
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:

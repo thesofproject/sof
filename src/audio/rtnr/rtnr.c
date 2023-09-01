@@ -325,7 +325,6 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
 	bool channels_valid;
 
 	comp_info(dev, "rtnr_params()");
@@ -341,21 +340,17 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 							source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* set source/sink_frames/rate */
-	cd->source_rate = audio_stream_get_rate(&source_c->stream);
-	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
-	cd->sources_stream[0].rate = audio_stream_get_rate(&source_c->stream);
-	cd->sink_stream.rate = audio_stream_get_rate(&sink_c->stream);
-	channels_valid = audio_stream_get_channels(&source_c->stream) ==
-		audio_stream_get_channels(&sink_c->stream);
+	cd->source_rate = audio_stream_get_rate(&sourceb->stream);
+	cd->sink_rate = audio_stream_get_rate(&sinkb->stream);
+	cd->sources_stream[0].rate = audio_stream_get_rate(&sourceb->stream);
+	cd->sink_stream.rate = audio_stream_get_rate(&sinkb->stream);
+	channels_valid = audio_stream_get_channels(&sourceb->stream) ==
+		audio_stream_get_channels(&sinkb->stream);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	/* Currently support 16kHz sample rate only. */
@@ -369,29 +364,23 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	default:
 		comp_err(dev, "rtnr_nr_params(), invalid sample rate(%d kHz)",
 			 cd->source_rate);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	if (!channels_valid) {
 		comp_err(dev, "rtnr_params(), source/sink stream must have same channels");
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	/* set source/sink stream channels */
-	cd->sources_stream[0].channels = audio_stream_get_channels(&source_c->stream);
-	cd->sink_stream.channels = audio_stream_get_channels(&sink_c->stream);
+	cd->sources_stream[0].channels = audio_stream_get_channels(&sourceb->stream);
+	cd->sink_stream.channels = audio_stream_get_channels(&sinkb->stream);
 
 	/* set source/sink stream overrun/underrun permitted */
-	cd->sources_stream[0].overrun_permitted = audio_stream_get_overrun(&source_c->stream);
-	cd->sink_stream.overrun_permitted = audio_stream_get_overrun(&sink_c->stream);
-	cd->sources_stream[0].underrun_permitted = audio_stream_get_underrun(&source_c->stream);
-	cd->sink_stream.underrun_permitted = audio_stream_get_underrun(&sink_c->stream);
-
-out:
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	cd->sources_stream[0].overrun_permitted = audio_stream_get_overrun(&sourceb->stream);
+	cd->sink_stream.overrun_permitted = audio_stream_get_overrun(&sinkb->stream);
+	cd->sources_stream[0].underrun_permitted = audio_stream_get_underrun(&sourceb->stream);
+	cd->sink_stream.underrun_permitted = audio_stream_get_underrun(&sinkb->stream);
 
 	return ret;
 }
@@ -727,7 +716,7 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 }
 
 static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
-				      struct audio_stream __sparse_cache *src)
+				      struct audio_stream *src)
 {
 
 	dst->size = audio_stream_get_size(src);
@@ -739,7 +728,7 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 	dst->end_addr = audio_stream_get_end_addr(src);
 }
 
-static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
+static void rtnr_copy_to_sof_stream(struct audio_stream *dst,
 				    struct audio_stream_rtnr *src)
 {
 	audio_stream_set_size(dst, src->size);
@@ -851,7 +840,7 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");
@@ -874,10 +863,8 @@ static int rtnr_prepare(struct comp_dev *dev)
 
 	/* Get sink data format */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	cd->sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
-	buffer_release(sink_c);
+	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sinkb->stream);
 
 	/* Check source and sink PCM format and get processing function */
 	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);

@@ -20,7 +20,7 @@ const uint8_t INDEX_TAB[] = {
 };
 
 inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
-				struct audio_stream __sparse_cache *source, int frames)
+				struct audio_stream *source, int frames)
 {
 	int32_t max_data = 0;
 	int32_t sample_abs;
@@ -50,7 +50,7 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 }
 
 void aria_algo_get_data(struct processing_module *mod,
-			struct audio_stream __sparse_cache *sink, int frames)
+			struct audio_stream *sink, int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
 	int32_t step, in_sample;

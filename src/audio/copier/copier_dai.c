@@ -310,9 +310,9 @@ int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
 	return 0;
 }
 
-static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src,
+static int copy_single_channel_c16(const struct audio_stream *src,
 				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
+				   struct audio_stream *dst,
 				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int16_t *r_ptr = (int16_t *)audio_stream_get_rptr(src) + src_channel;
@@ -351,9 +351,9 @@ static int copy_single_channel_c16(const struct audio_stream __sparse_cache *src
 	return 0;
 }
 
-static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src,
+static int copy_single_channel_c32(const struct audio_stream *src,
 				   unsigned int src_channel,
-				   struct audio_stream __sparse_cache *dst,
+				   struct audio_stream *dst,
 				   unsigned int dst_channel, unsigned int frame_count)
 {
 	int32_t *r_ptr = (int32_t *)audio_stream_get_rptr(src) + src_channel;
@@ -395,7 +395,6 @@ static int copy_single_channel_c32(const struct audio_stream __sparse_cache *src
 int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params, int dai_index)
 {
-	struct comp_buffer __sparse_cache *buf_c;
 	struct sof_ipc_stream_params demuxed_params = *params;
 	const struct ipc4_audio_format *in_fmt = &cd->config.base.audio_fmt;
 	const struct ipc4_audio_format *out_fmt = &cd->config.out_fmt;
@@ -438,15 +437,11 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 	if (ret < 0)
 		return ret;
 
-	buf_c = buffer_acquire(cd->dd[dai_index]->dma_buffer);
 	for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
-		buf_c->chmap[j] = (cd->chan_map[dai_index] >> j * 4) & 0xf;
-	buffer_release(buf_c);
+		cd->dd[dai_index]->dma_buffer->chmap[j] = (cd->chan_map[dai_index] >> j * 4) & 0xf;
 
 	/* set channel copy func */
-	buf_c = buffer_acquire(cd->multi_endpoint_buffer);
-	container_size = audio_stream_sample_bytes(&buf_c->stream);
-	buffer_release(buf_c);
+	container_size = audio_stream_sample_bytes(&cd->multi_endpoint_buffer->stream);
 
 	switch (container_size) {
 	case 2:

@@ -174,7 +174,6 @@ static int eq_fir_params(struct processing_module *mod)
 	struct sof_ipc_stream_params comp_params;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
@@ -197,9 +196,7 @@ static int eq_fir_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ret = buffer_set_params(sink_c, &comp_params, true);
-	buffer_release(sink_c);
+	ret = buffer_set_params(sinkb, &comp_params, true);
 	return ret;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
@@ -213,8 +210,8 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 			       struct output_stream_buffer *bsink,
 			       int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
@@ -512,7 +509,7 @@ static int eq_fir_process(struct processing_module *mod,
 			  int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
@@ -554,8 +551,8 @@ static int eq_fir_process(struct processing_module *mod,
 	return 0;
 }
 
-static void eq_fir_set_alignment(struct audio_stream __sparse_cache *source,
-				 struct audio_stream __sparse_cache *sink)
+static void eq_fir_set_alignment(struct audio_stream *source,
+				 struct audio_stream *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
@@ -570,7 +567,6 @@ static int eq_fir_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	int channels;
 	enum sof_ipc_frame frame_fmt;
@@ -589,13 +585,9 @@ static int eq_fir_prepare(struct processing_module *mod,
 	/* EQ component will only ever have 1 source and 1 sink buffer. */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-	eq_fir_set_alignment(&source_c->stream, &sink_c->stream);
-	channels = audio_stream_get_channels(&sink_c->stream);
-	frame_fmt = audio_stream_get_frm_fmt(&source_c->stream);
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	eq_fir_set_alignment(&sourceb->stream, &sinkb->stream);
+	channels = audio_stream_get_channels(&sinkb->stream);
+	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 
 	cd->eq_fir_func = eq_fir_passthrough;
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);

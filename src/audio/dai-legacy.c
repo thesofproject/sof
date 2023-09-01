@@ -97,7 +97,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
-	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -113,37 +112,32 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		next->status = DMA_CB_STATUS_END;
 	}
 
-	dma_buf = buffer_acquire(dd->dma_buffer);
-
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
 		/* make sure we only playback silence during an XRUN */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
-			buffer_zero(dma_buf);
-		buffer_release(dma_buf);
+			buffer_zero(dd->dma_buffer);
 
 		return;
 	}
 
-	local_buf = buffer_acquire(dd->local_buffer);
-
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = dma_buffer_copy_to(local_buf, dma_buf,
+		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
 					 dd->process, bytes);
 	} else {
-		ret = dma_buffer_copy_from(dma_buf, local_buf,
+		ret = dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
 					   dd->process, bytes);
 	}
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
-		struct comp_buffer __sparse_cache *source_c, *sink_c;
+		struct comp_buffer *source_c, *sink_c;
 
 		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					local_buf : dma_buf;
+					dd->local_buffer : dd->dma_buffer;
 		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					dma_buf : local_buf;
+					dd->dma_buffer : dd->local_buffer;
 		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source_c->stream) *
@@ -154,9 +148,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		/* update host position (in bytes offset) for drivers */
 		dd->total_data_processed += bytes;
 	}
-
-	buffer_release(local_buf);
-	buffer_release(dma_buf);
 }
 
 int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_config_dai *dai)
@@ -357,23 +348,18 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
-		*local_buf = buffer_acquire(dd->local_buffer);
-	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
-	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
+	uint32_t local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t fifo;
 	int err = 0;
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
-	buffer_release(local_buf);
-
 	if (!dd->process) {
 		comp_err(dev, "dai_playback_params(): converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		err = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	/* set up DMA configuration */
@@ -401,15 +387,12 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(audio_stream_get_addr(&dma_buf->stream)),
+				   (uintptr_t)(audio_stream_get_addr(&dd->dma_buffer->stream)),
 				   fifo);
 		if (err < 0)
 			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
 	}
-
-out:
-	buffer_release(dma_buf);
 
 	return err;
 }
@@ -419,23 +402,18 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
-		*local_buf = buffer_acquire(dd->local_buffer);
-	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
-	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
+	uint32_t local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t fifo;
 	int err = 0;
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
 
-	buffer_release(local_buf);
-
 	if (!dd->process) {
 		comp_err(dev, "dai_capture_params(): converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
-		err = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	/* set up DMA configuration */
@@ -474,15 +452,12 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(audio_stream_get_addr(&dma_buf->stream)),
+				   (uintptr_t)(audio_stream_get_addr(&dd->dma_buffer->stream)),
 				   fifo);
 		if (err < 0)
 			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
 	}
-
-out:
-	buffer_release(dma_buf);
 
 	return err;
 }
@@ -491,7 +466,6 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
 	uint32_t period_bytes;
@@ -565,13 +539,9 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	buffer_c = buffer_acquire(dd->local_buffer);
-
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     audio_stream_get_channels(&buffer_c->stream));
-
-	buffer_release(buffer_c);
+				     audio_stream_get_channels(&dd->local_buffer->stream));
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -589,9 +559,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
-		buffer_c = buffer_acquire(dd->dma_buffer);
-		err = buffer_set_size(buffer_c, buffer_size, addr_align);
-		buffer_release(buffer_c);
+		err = buffer_set_size(dd->dma_buffer, buffer_size, addr_align);
 
 		if (err < 0) {
 			comp_err(dev, "dai_params(): buffer_set_size() failed, buffer_size = %u",
@@ -600,7 +568,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		}
 	} else {
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
-					      addr_align);
+					      addr_align, false);
 		if (!dd->dma_buffer) {
 			comp_err(dev, "dai_params(): failed to alloc dma buffer");
 			return -ENOMEM;
@@ -613,10 +581,8 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		 * frame_fmt's (using pcm converter).
 		 */
 		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
-		buffer_c = buffer_acquire(dd->dma_buffer);
-		buffer_set_params(buffer_c, &hw_params,
+		buffer_set_params(dd->dma_buffer, &hw_params,
 				  BUFFER_UPDATE_FORCE);
-		buffer_release(buffer_c);
 	}
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
@@ -685,7 +651,6 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
 
 	dd->total_data_processed = 0;
@@ -703,9 +668,7 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* clear dma buffer to avoid pop noise */
-	buffer_c = buffer_acquire(dd->dma_buffer);
-	buffer_zero(buffer_c);
-	buffer_release(buffer_c);
+	buffer_zero(dd->dma_buffer);
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -815,11 +778,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		 * this is only supported at capture mode.
 		 */
 		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
-			struct comp_buffer __sparse_cache *buffer_c =
-				buffer_acquire(dd->dma_buffer);
-
-			buffer_zero(buffer_c);
-			buffer_release(buffer_c);
+			buffer_zero(dd->dma_buffer);
 		}
 
 		/* only start the DAI if we are not XRUN handling */
@@ -947,17 +906,14 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(dd->local_buffer);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
-		comp_underrun(dev, buf_c, bytes);
+		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
 		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
-		comp_overrun(dev, buf_c, bytes);
+		comp_overrun(dev, dd->local_buffer, bytes);
 	}
-
-	buffer_release(buf_c);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -965,7 +921,6 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
-	struct comp_buffer __sparse_cache *buf_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -981,23 +936,17 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		return ret;
 	}
 
-	buf_c = buffer_acquire(dd->dma_buffer);
-
-	dma_fmt = audio_stream_get_frm_fmt(&buf_c->stream);
+	dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	sampling = get_sample_bytes(dma_fmt);
-
-	buffer_release(buf_c);
-
-	buf_c = buffer_acquire(dd->local_buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		src_samples = audio_stream_get_avail_samples(&buf_c->stream);
+		src_samples = audio_stream_get_avail_samples(&dd->local_buffer->stream);
 		sink_samples = free_bytes / sampling;
 		samples = MIN(src_samples, sink_samples);
 	} else {
 		src_samples = avail_bytes / sampling;
-		sink_samples = audio_stream_get_free_samples(&buf_c->stream);
+		sink_samples = audio_stream_get_free_samples(&dd->local_buffer->stream);
 		samples = MIN(src_samples, sink_samples);
 	}
 
@@ -1010,9 +959,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
-		 samples / audio_stream_get_channels(&buf_c->stream));
-
-	buffer_release(buf_c);
+		 samples / audio_stream_get_channels(&dd->local_buffer->stream));
 
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&

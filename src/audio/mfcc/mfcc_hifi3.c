@@ -36,7 +36,7 @@ static inline void set_circular_buf0(const void *start, const void *end)
 void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
+	struct audio_stream *source = bsource->data;
 	int copied;
 	int nmax;
 	int n;

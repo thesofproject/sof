@@ -238,11 +238,8 @@ static enum task_state chain_task_run(void *data)
 		 * mode task will update read position based on transferred data size to avoid
 		 * overwriting valid data and write position by half buffer size.
 		 */
-		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(cd->dma_buffer);
-		const size_t buff_size = audio_stream_get_size(&buffer_c->stream);
+		const size_t buff_size = audio_stream_get_size(&cd->dma_buffer->stream);
 		const size_t half_buff_size = buff_size / 2;
-
-		buffer_release(buffer_c);
 
 		if (!cd->first_data_received && host_avail_bytes > half_buff_size) {
 			ret = dma_reload(cd->chan_link->dma->z_dev,
@@ -510,7 +507,6 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 		    uint32_t fifo_size)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t addr_align;
 	size_t buff_size;
 	void *buff_addr;
@@ -598,11 +594,9 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	}
 
 	/* clear dma buffer */
-	buffer_c = buffer_acquire(cd->dma_buffer);
-	buffer_zero(buffer_c);
-	buff_addr = audio_stream_get_addr(&buffer_c->stream);
-	buff_size = audio_stream_get_size(&buffer_c->stream);
-	buffer_release(buffer_c);
+	buffer_zero(cd->dma_buffer);
+	buff_addr = audio_stream_get_addr(&cd->dma_buffer->stream);
+	buff_size = audio_stream_get_size(&cd->dma_buffer->stream);
 
 	ret = chain_init(dev, buff_addr, buff_size);
 	if (ret < 0) {
