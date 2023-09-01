@@ -182,7 +182,6 @@ static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	uint32_t num_of_sources = 0;
 	uint32_t num_of_sinks = 0;
 	int ret;
-	int i = 0;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	list_for_item(blist, &dev->bsink_list) {
@@ -888,9 +887,8 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	/* setup active input/output buffers for processing */
 	if (num_output_buffers == 1) {
 		module_single_sink_setup(dev, sources, sinks);
-		if (sinks[0]->sink->state != dev->state) {
+		if (sinks[0]->sink->state != dev->state)
 			num_output_buffers = 0;
-		}
 	} else if (num_input_buffers == 1) {
 		module_single_source_setup(dev, sources, sinks);
 		if (sources[0]->source->state != dev->state) {

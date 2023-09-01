@@ -427,7 +427,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 					  &sad->sink_buf->stream);
 
 	if (sad->feedback_buf) {
-		if (sad->feedback_buf->source && comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
+		if (sad->feedback_buf->source &&
+		    comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&sad->feedback_buf->stream);
@@ -517,8 +518,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->in_channels = audio_stream_get_channels(&sad->source_buf->stream);
 
 	if (sad->feedback_buf) {
-		audio_stream_set_channels(&sad->feedback_buf->stream, sad->config.feedback_channels);
-		audio_stream_set_rate(&sad->feedback_buf->stream, audio_stream_get_rate(&sad->source_buf->stream));
+		audio_stream_set_channels(&sad->feedback_buf->stream,
+					  sad->config.feedback_channels);
+		audio_stream_set_rate(&sad->feedback_buf->stream,
+				      audio_stream_get_rate(&sad->source_buf->stream));
 	}
 
 	sad->process = get_smart_amp_process(dev, sad->source_buf);

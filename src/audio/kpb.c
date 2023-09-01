@@ -1766,7 +1766,8 @@ static enum task_state kpb_draining_task(void *arg)
 			if (audio_stream_get_free_bytes(&draining_data->sink->stream) >= drain_req)
 				size_to_copy = drain_req;
 			else
-				size_to_copy = audio_stream_get_free_bytes(&draining_data->sink->stream);
+				size_to_copy =
+					audio_stream_get_free_bytes(&draining_data->sink->stream);
 		} else {
 			if (size_to_read > drain_req) {
 				size_to_copy = drain_req;

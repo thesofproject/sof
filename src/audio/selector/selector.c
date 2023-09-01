@@ -389,9 +389,8 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	if (!audio_stream_get_avail(&source->stream)) {
+	if (!audio_stream_get_avail(&source->stream))
 		return PPL_STATUS_PATH_STOP;
-	}
 
 	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);

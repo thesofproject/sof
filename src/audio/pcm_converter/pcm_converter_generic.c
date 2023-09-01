@@ -35,8 +35,8 @@
 
 #if CONFIG_PCM_CONVERTER_FORMAT_U8 && CONFIG_PCM_CONVERTER_FORMAT_S32LE
 static int pcm_convert_u8_to_s32(const struct audio_stream *source,
-				uint32_t ioffset, struct audio_stream *sink,
-				uint32_t ooffset, uint32_t samples)
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
 {
 	uint8_t *src = audio_stream_get_rptr(source);
 	int32_t *dst = audio_stream_get_wptr(sink);
@@ -64,8 +64,8 @@ static int pcm_convert_u8_to_s32(const struct audio_stream *source,
 }
 
 static int pcm_convert_s32_to_u8(const struct audio_stream *source,
-				uint32_t ioffset, struct audio_stream *sink,
-				uint32_t ooffset, uint32_t samples)
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
 {
 	int32_t *src = audio_stream_get_rptr(source);
 	uint8_t *dst = audio_stream_get_wptr(sink);

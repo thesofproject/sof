@@ -886,9 +886,8 @@ static int test_keyword_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
 
-	if (!audio_stream_get_avail(&source->stream)) {
+	if (!audio_stream_get_avail(&source->stream))
 		return PPL_STATUS_PATH_STOP;
-	}
 
 	frames = audio_stream_get_avail_frames(&source->stream);
 

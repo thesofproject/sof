@@ -361,7 +361,8 @@ static int smart_amp_prepare(struct processing_module *mod,
 					     sink_list);
 		audio_stream_init_alignment_constants(1, 1, &source_buffer->stream);
 		if (IPC4_SINK_QUEUE_ID(source_buffer->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			audio_stream_set_channels(&source_buffer->stream, sad->config.feedback_channels);
+			audio_stream_set_channels(&source_buffer->stream,
+						  sad->config.feedback_channels);
 			audio_stream_set_rate(&source_buffer->stream,
 					      mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency);
 		}

@@ -97,7 +97,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
-	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -124,10 +123,10 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = dma_buffer_copy_to(dd->local_buffer, dma_buf,
+		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
 					 dd->process, bytes);
 	} else {
-		ret = dma_buffer_copy_from(dma_buf, dd->local_buffer,
+		ret = dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
 					   dd->process, bytes);
 	}
 
@@ -136,9 +135,9 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		struct comp_buffer __sparse_cache *source_c, *sink_c;
 
 		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					dd->local_buffer : dma_buf;
+					dd->local_buffer : dd->dma_buffer;
 		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
-					dma_buf : dd->local_buffer;
+					dd->dma_buffer : dd->local_buffer;
 		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source_c->stream) *
@@ -467,7 +466,6 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct comp_buffer __sparse_cache *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
 	uint32_t period_bytes;
@@ -570,7 +568,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		}
 	} else {
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
-					      addr_align);
+					      addr_align, false);
 		if (!dd->dma_buffer) {
 			comp_err(dev, "dai_params(): failed to alloc dma buffer");
 			return -ENOMEM;
@@ -653,7 +651,6 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
 	int ret;
 
 	dd->total_data_processed = 0;
@@ -924,7 +921,6 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
-	struct comp_buffer __sparse_cache *buf_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;

@@ -827,8 +827,9 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		host_copy_normal;
 
 	/* set processing function */
-	hd->process = pcm_get_conversion_function(audio_stream_get_frm_fmt(&hd->local_buffer->stream),
-						  audio_stream_get_frm_fmt(&hd->local_buffer->stream));
+	hd->process =
+		pcm_get_conversion_function(audio_stream_get_frm_fmt(&hd->local_buffer->stream),
+					    audio_stream_get_frm_fmt(&hd->local_buffer->stream));
 
 out:
 
