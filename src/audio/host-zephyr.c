@@ -455,7 +455,6 @@ static inline bool stream_sync(struct host_data *hd, struct comp_dev *dev)
  */
 static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
 {
-	struct comp_buffer *buffer_c;
 	uint32_t copy_bytes;
 	const unsigned int threshold =
 #if CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE
@@ -473,7 +472,6 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	cb(dev, copy_bytes);
 
 	hd->partial_size += copy_bytes;
-	buffer_c = buffer_acquire(hd->dma_buffer);
 
 	/*
 	 * On large buffers we don't need to reload DMA on every period. When
@@ -482,8 +480,8 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	 * also adding a 2ms safety margin.
 	 */
 	if (!IS_ENABLED(CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE) ||
-	    audio_stream_get_size(&buffer_c->stream) < hd->period_bytes << 3 ||
-	    audio_stream_get_size(&buffer_c->stream) - hd->partial_size <=
+	    hd->dma_buffer_size < hd->period_bytes << 3 ||
+	    hd->dma_buffer_size - hd->partial_size <=
 	    (2 + threshold) * hd->period_bytes) {
 		if (stream_sync(hd, dev)) {
 			ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0,
@@ -494,9 +492,6 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 			hd->partial_size = 0;
 		}
 	}
-
-	buffer_release(buffer_c);
-
 	return ret;
 }
 
@@ -872,6 +867,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 		config->src_width = audio_stream_sample_bytes(&dma_buf_c->stream);
 		config->dest_width = config->src_width;
+		hd->dma_buffer_size = audio_stream_get_size(&dma_buf_c->stream);
 		buffer_release(dma_buf_c);
 	}
 
