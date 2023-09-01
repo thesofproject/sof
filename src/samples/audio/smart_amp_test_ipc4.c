@@ -277,7 +277,7 @@ static int smart_amp_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *fb_buf_c;
 	struct comp_buffer *buf;
-	struct module_source_info *mod_source_info;
+	struct module_source_info __sparse_cache *mod_source_info;
 	struct input_stream_buffer *fb_input = NULL;
 	/* if there is only one input stream, it should be the source input */
 	struct input_stream_buffer *src_input = &input_buffers[0];

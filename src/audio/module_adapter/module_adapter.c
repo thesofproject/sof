@@ -1627,7 +1627,7 @@ static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
 
 int module_adapter_bind(struct comp_dev *dev, void *data)
 {
-	struct module_source_info *mod_source_info;
+	struct module_source_info __sparse_cache *mod_source_info;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *source_dev;
