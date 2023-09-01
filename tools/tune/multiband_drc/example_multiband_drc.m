@@ -139,7 +139,7 @@ blob8_ipc4 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ..
 				      endian, 4);
 
 tplg_write(tplg1_fn, blob8, "MULTIBAND_DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", 'Exported Control Bytes');
+tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script example_multiband_drc.m");
 blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 blob_write(blob4_fn, blob8_ipc4);
