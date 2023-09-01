@@ -251,11 +251,10 @@ static int multiband_drc_init(struct processing_module *mod)
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
 #if CONFIG_IPC_MAJOR_4
-	/* Note: Currently there is no ALSA switch control in IPC4 to control
-	 * processing on/off. This workaround can be removed after is available.
-	 * Binary control for configuration blob can be used instead. There is
-	 * no processing bypass control in the blob but all processing can be
-	 * switched to neutral with supported min. 2-band mode.
+	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
+	 * before where the processing is never enabled via switch control. New
+	 * kernel sends the IPC4 switch control and sets this to desired state
+	 * before prepare.
 	 */
 	cd->process_enabled = true;
 #else
