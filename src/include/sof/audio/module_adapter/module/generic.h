@@ -327,23 +327,23 @@ static inline void module_update_buffer_position(struct input_stream_buffer *inp
 }
 
 __must_check static inline
-struct module_source_info *module_source_info_acquire(struct module_source_info *msi)
+struct module_source_info __sparse_cache *module_source_info_acquire(struct module_source_info *msi)
 {
-	struct coherent *c;
+	struct coherent __sparse_cache *c;
 
 	c = coherent_acquire_thread(&msi->c, sizeof(*msi));
 
-	return container_of(c, struct module_source_info, c);
+	return attr_container_of(c, struct module_source_info __sparse_cache, c, __sparse_cache);
 }
 
-static inline void module_source_info_release(struct module_source_info *msi)
+static inline void module_source_info_release(struct module_source_info __sparse_cache *msi)
 {
 	coherent_release_thread(&msi->c, sizeof(*msi));
 }
 
 /* when source argument is NULL, this function returns the first unused entry */
 static inline
-int find_module_source_index(struct module_source_info *msi,
+int find_module_source_index(struct module_source_info __sparse_cache *msi,
 			     const struct comp_dev *source)
 {
 	int i;

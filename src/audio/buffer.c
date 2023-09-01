@@ -191,18 +191,6 @@ void buffer_free(struct comp_buffer *buffer)
 	coherent_free_thread(buffer, c);
 }
 
-/*
- * comp_update_buffer_produce() and comp_update_buffer_consume() send
- * NOTIFIER_ID_BUFFER_PRODUCE and NOTIFIER_ID_BUFFER_CONSUME notifier events
- * respectively. The only recipient of those notifications is probes. The
- * target for those notifications is always the current core, therefore notifier
- * callbacks will be called synchronously from notifier_event() calls. Therefore
- * we cannot pass unlocked buffer pointers to probes, because if they try to
- * acquire the buffer, that can cause a deadlock. In general locked objects
- * shouldn't be passed to potentially asynchronous contexts, but here we have no
- * choice but to use our knowledge of the local notifier behaviour and pass
- * locked buffers to notification recipients.
- */
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
@@ -225,8 +213,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	audio_stream_produce(&buffer->stream, bytes);
 
-	/* Notifier looks for the pointer value to match it against registration */
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_PRODUCE,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -264,7 +251,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	audio_stream_consume(&buffer->stream, bytes);
 
-	notifier_event(cache_to_uncache(buffer), NOTIFIER_ID_BUFFER_CONSUME,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
