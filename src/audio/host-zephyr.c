@@ -247,7 +247,7 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 	bool update_mailbox = false;
 	bool send_ipc = false;
 
-	if (hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		source = buffer_acquire(hd->dma_buffer);
 		sink = buffer_acquire(hd->local_buffer);
 		ret = dma_buffer_copy_from(source, sink, hd->process, bytes);
@@ -257,20 +257,14 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 		ret = dma_buffer_copy_to(source, sink, hd->process, bytes);
 	}
 
-	/* assert dma_buffer_copy succeed */
-	if (ret < 0)
-		comp_err(dev, "host_common_update() dma buffer copy failed, dir %d bytes %d avail %d free %d",
-			 hd->ipc_host.direction, bytes,
-			 audio_stream_get_avail_samples(&source->stream) *
-				audio_stream_frame_bytes(&source->stream),
-			 audio_stream_get_free_samples(&sink->stream) *
-				audio_stream_frame_bytes(&sink->stream));
-
 	buffer_release(sink);
 	buffer_release(source);
 
-	if (ret < 0)
+	if (ret < 0) {
+		comp_err(dev, "host_common_update() copy failed, dir %d bytes %d  return: %d",
+			 dev->direction, bytes, ret);
 		return;
+	}
 
 	hd->total_data_processed += bytes;
 
