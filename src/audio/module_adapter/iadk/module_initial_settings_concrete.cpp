@@ -49,6 +49,9 @@ ModuleInitialSettingsConcrete::ModuleInitialSettingsConcrete(DwordArray const &c
 		/* It shall contain BaseModuleCfg + BaseModuleCfgExt +       */
 		/* optionally some InputPinFormat[] + OutputPinFormat[] data */
 		CompoundCfg const * unvalidated_compound_cfg = cfg_ipc_msg.dataAs<CompoundCfg>();
+		if (!unvalidated_compound_cfg)
+			return;
+
 		const size_t computed_msg_size =
 			sizeof(CompoundCfg) -
 			/* CompoundCfg already contains one InputPinFormat and
