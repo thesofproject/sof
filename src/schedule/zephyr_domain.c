@@ -23,7 +23,6 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
-#include <zephyr/timeout_q.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -112,7 +111,7 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	 * registered again next time.
 	 */
 	if (!zephyr_domain) {
-		z_abort_timeout(&timer->timeout);
+		k_timer_stop(timer);
 		return;
 	}
 
