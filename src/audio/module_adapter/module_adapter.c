@@ -176,6 +176,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
+	int memory_flags;
 	int i = 0;
 
 	comp_dbg(dev, "module_adapter_prepare() start");
@@ -287,11 +288,11 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	module_adapter_check_data(mod, dev, sink);
 
+	memory_flags = dev->drv->drv_heap ? SOF_MEM_FLAG_USER_SHARED : SOF_MEM_FLAG_USER;
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(*mod->input_buffers) * mod->max_sources);
+			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
 		if (!mod->input_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
 			return -ENOMEM;
@@ -303,8 +304,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(*mod->output_buffers) * mod->max_sinks);
+			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
 		if (!mod->output_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
 			ret = -ENOMEM;
@@ -370,7 +370,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
-		mod->input_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, size);
+		mod->input_buffers[i].data = rballoc(memory_flags, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -382,7 +382,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -395,7 +395,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_FLAG_USER,
+			struct comp_buffer *buffer = buffer_alloc(buff_size, memory_flags,
 								  PLATFORM_DCACHE_ALIGN, false);
 			uint32_t flags;
 
