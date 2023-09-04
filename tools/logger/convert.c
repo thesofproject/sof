@@ -60,8 +60,7 @@ struct proc_ldc_entry {
 	uintptr_t params[TRACE_MAX_PARAMS_COUNT];
 };
 
-static const char *BAD_PTR_STR = "<bad uid ptr 0x%.8x>";
-
+#define BAD_PTR_STR "<bad uid ptr 0x%.8x>"
 #define UUID_LOWER "%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s"
 #define UUID_UPPER "%s%s%s<%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X>%s%s%s"
 
@@ -325,7 +324,7 @@ static unsigned int timestamp_width(unsigned int precision)
 	 * gcc 9.3, this avoids a very long precision causing snprintf()
 	 * to truncate time_fmt
 	 */
-	assert(precision >= 0 && precision < 20);
+	assert(precision < 20);
 	/*
 	 * 12 digits for units is enough for 1M seconds = 11 days which
 	 * should be enough for most test runs.
@@ -339,7 +338,6 @@ static inline void print_table_header(void)
 {
 	FILE *out_fd = global_config->out_fd;
 	int hide_location = global_config->hide_location;
-	char time_fmt[32];
 
 	char date_string[64];
 	const time_t epoc_secs = time(NULL);
@@ -349,16 +347,13 @@ static inline void print_table_header(void)
 
 	if (gettime_ret) {
 		log_err("clock_gettime() failed: %s\n",
-			strerror(gettime_ret));
+			strerror(errno));
 		exit(1);
 	}
 
 	if (global_config->time_precision >= 0) {
-		const unsigned int ts_width =
-			timestamp_width(global_config->time_precision);
-		snprintf(time_fmt, sizeof(time_fmt), "%%-%ds(us)%%%ds  ",
-			 ts_width, ts_width);
-		fprintf(out_fd, time_fmt, " TIMESTAMP", "DELTA");
+		const unsigned int ts_width = timestamp_width(global_config->time_precision);
+		fprintf(out_fd, "%*s(us)%*s  ", -ts_width, " TIMESTAMP", ts_width, "DELTA");
 	}
 
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
@@ -476,7 +471,6 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp);
 	struct proc_ldc_entry proc_entry;
-	static char time_fmt[64];
 	int ret;
 
 	if (raw_output)
@@ -517,13 +511,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		ids[0] = '\0';
 
 	if (raw_output) { /* "raw" means script-friendly (not all hex) */
-		const char *entry_fmt = "%s%u %u %s%s%s ";
-
-		if (time_precision >= 0)
-			snprintf(time_fmt, sizeof(time_fmt), "%%.%df %%.%df ",
-				 time_precision, time_precision);
-
-		fprintf(out_fd, entry_fmt,
+		fprintf(out_fd, "%s%u %u %s%s%s ",
 			entry->header.level == use_colors ?
 				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 			dma_log->core_id,
@@ -531,9 +519,12 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 			get_component_name(entry->header.component_class, dma_log->uid),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
+
 		if (time_precision >= 0)
-			fprintf(out_fd, time_fmt,
-				to_usecs(dma_log->timestamp - timestamp_origin), dt);
+			fprintf(out_fd, "%.*f %.*f ",
+				time_precision, to_usecs(dma_log->timestamp - timestamp_origin),
+				time_precision, dt);
+
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
 				format_file_name(entry->file_name, raw_output),
@@ -542,13 +533,11 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		if (time_precision >= 0) {
 			const unsigned int ts_width = timestamp_width(time_precision);
 
-			snprintf(time_fmt, sizeof(time_fmt),
-				 "%%s[%%%d.%df] (%%%d.%df)%%s ",
-				 ts_width, time_precision, ts_width, time_precision);
-
-			fprintf(out_fd, time_fmt,
+			fprintf(out_fd, "%s[%*.*f] (%*.*f)%s ",
 				use_colors ? KGRN : "",
-				to_usecs(dma_log->timestamp - timestamp_origin), dt,
+				ts_width, time_precision,
+				to_usecs(dma_log->timestamp - timestamp_origin),
+				ts_width, time_precision, dt,
 				use_colors ? KNRM : "");
 		}
 
@@ -624,7 +613,13 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 	entry->params = NULL;
 
 	/* set file position to beginning of processed entry */
-	fseek(global_config->ldc_fd, entry_offset, SEEK_SET);
+	ret = fseek(global_config->ldc_fd, entry_offset, SEEK_SET);
+	if (ret) {
+		log_err("Failed to seek to entry header for offset 0x%x in dictionary.\n",
+			entry_offset);
+		ret = -1;
+		goto out;
+	}
 
 	/* fetching elf header params */
 	ret = fread(&entry->header, sizeof(entry->header), 1, global_config->ldc_fd);
@@ -640,7 +635,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -EINVAL;
 		goto out;
 	}
-	entry->file_name = (char *)malloc(entry->header.file_name_len);
+	entry->file_name = (char *)malloc(entry->header.file_name_len+1);
 
 	if (!entry->file_name) {
 		log_err("can't allocate %d byte for entry.file_name\n",
@@ -651,6 +646,8 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 
 	ret = fread(entry->file_name, sizeof(char), entry->header.file_name_len,
 		    global_config->ldc_fd);
+	entry->file_name[entry->header.file_name_len] = '\0';
+
 	if (ret != entry->header.file_name_len) {
 		log_err("Failed to read source filename for offset 0x%x in dictionary.\n",
 			entry_offset);
@@ -664,7 +661,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -EINVAL;
 		goto out;
 	}
-	entry->text = (char *)malloc(entry->header.text_len);
+	entry->text = (char *)malloc(entry->header.text_len + 1);
 	if (!entry->text) {
 		log_err("can't allocate %d byte for entry.text\n", entry->header.text_len);
 		ret = -ENOMEM;
@@ -677,6 +674,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -1;
 		goto out;
 	}
+	entry->text[entry->header.text_len] = '\0';
 
 	return 0;
 
@@ -915,8 +913,13 @@ static int logger_read(void)
 			/* When the address is not correct, move forward by one DWORD (not
 			 * entire struct dma_log)
 			 */
-			fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
+			ret = fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
 			      SEEK_CUR);
+			if (ret) {
+				log_err("fetch_entry() failed on seek, aborting\n");
+				ret = -errno;
+				break;
+			}
 			skipped_dwords++;
 			continue;
 
@@ -1013,7 +1016,7 @@ static int dump_ldc_info(void)
 	if (global_config->version_fd) {
 		struct sof_ipc_fw_version ver;
 
-		if (fread(&ver, sizeof(ver), 1, global_config->version_fd))
+		if (fread(&ver, sizeof(ver), 1, global_config->version_fd) == 1)
 			fprintf(out_fd, "Loaded FW expects checksum\t0x%08x\n",
 				ver.src_hash);
 	}
@@ -1101,7 +1104,12 @@ int convert(void)
 	}
 
 	/* read uuid section header */
-	fseek(config->ldc_fd, logs_hdr->data_offset + logs_hdr->data_length, SEEK_SET);
+	ret = fseek(config->ldc_fd, logs_hdr->data_offset + logs_hdr->data_length, SEEK_SET);
+	if (ret) {
+		log_err("Error while seeking to uuids header from %s.\n", config->ldc_file);
+		return -errno;
+	}
+
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading uuids header from %s.\n", config->ldc_file);
