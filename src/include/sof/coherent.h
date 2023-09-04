@@ -80,9 +80,23 @@ struct coherent {
 
 /* debug sharing amongst cores */
 #ifdef COHERENT_CHECK_NONSHARED_CORES
+
+#define CORE_CHECK_STRUCT_FIELD uint32_t __core; bool __is_shared
+#define CORE_CHECK_STRUCT_INIT(_c, is_shared) { (_c)->__core = cpu_get_id(); \
+						(_c)->__is_shared = is_shared; }
+#define CORE_CHECK_STRUCT(_c) { assert(!!(_c)->__is_shared == !!is_uncached(_c)); \
+				assert(cpu_get_id() == (_c)->__core || (_c)->__is_shared); }
+
 #define CHECK_COHERENT_CORE(_c) assert((_c)->core == cpu_get_id())
+
 #else
+
+#define CORE_CHECK_STRUCT_FIELD
+#define CORE_CHECK_STRUCT_INIT(_c, is_shared)
+#define CORE_CHECK_STRUCT(_c)
+
 #define CHECK_COHERENT_CORE(_c)
+
 #endif
 
 #ifdef __ZEPHYR__

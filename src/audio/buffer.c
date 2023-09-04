@@ -53,6 +53,8 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 		return NULL;
 	}
 
+	CORE_CHECK_STRUCT_INIT(buffer, is_shared);
+
 	buffer->is_shared = is_shared;
 	stream_addr = rballoc_align(0, caps, size, align);
 	if (!stream_addr) {
@@ -81,6 +83,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
+	CORE_CHECK_STRUCT(buffer);
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
@@ -92,6 +95,8 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment)
 {
 	void *new_ptr = NULL;
+
+	CORE_CHECK_STRUCT(buffer);
 
 	/* validate request */
 	if (size == 0) {
@@ -131,6 +136,8 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 	int ret;
 	int i;
 
+	CORE_CHECK_STRUCT(buffer);
+
 	if (!params) {
 		buf_err(buffer, "buffer_set_params(): !params");
 		return -EINVAL;
@@ -158,6 +165,7 @@ bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
+	CORE_CHECK_STRUCT(buffer);
 
 	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
 	     audio_stream_get_frm_fmt(&buffer->stream) != params->frame_fmt)
@@ -180,6 +188,8 @@ void buffer_free(struct comp_buffer *buffer)
 	struct buffer_cb_free cb_data = {
 		.buffer = buffer,
 	};
+
+	CORE_CHECK_STRUCT(buffer);
 
 	if (!buffer)
 		return;
@@ -255,6 +265,8 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 		.transaction_begin_address = audio_stream_get_rptr(&buffer->stream),
 	};
 
+	CORE_CHECK_STRUCT(buffer);
+
 	/* return if no bytes */
 	if (!bytes) {
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -293,6 +305,7 @@ void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint3
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
+	CORE_CHECK_STRUCT(buffer);
 	list_item_prepend(list, head);
 }
 
@@ -303,5 +316,6 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *buf_list = buffer_comp_list(buffer, dir);
+	CORE_CHECK_STRUCT(buffer);
 	list_item_del(buf_list);
 }
