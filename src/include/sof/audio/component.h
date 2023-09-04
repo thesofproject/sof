@@ -1194,4 +1194,12 @@ void comp_init_performance_data(struct comp_dev *dev);
  */
 bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used);
 
+static inline int user_get_buffer_memory_region(const struct comp_driver *drv)
+{
+#if CONFIG_USERSPACE
+	return drv->user_heap ? SOF_MEM_FLAG_USER_SHARED_BUFFER : SOF_MEM_FLAG_USER;
+#else
+	return SOF_MEM_FLAG_USER;
+#endif
+}
 #endif /* __SOF_AUDIO_COMPONENT_H__ */
