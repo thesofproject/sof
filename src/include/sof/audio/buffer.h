@@ -134,6 +134,8 @@ extern struct tr_ctx buffer_tr;
  */
 struct comp_buffer {
 	/* data buffer */
+	CORE_CHECK_STRUCT_FIELD;
+
 	struct audio_stream stream;
 
 	/* configuration */
