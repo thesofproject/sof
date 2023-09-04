@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright(c) 2023 Intel Corporation. All rights reserved. */
+/*! \mainpage Sound Open Firmware Topology2
+ *
+ * \section this_document This Document
+ *
+ * This document is generated from SOF topology2 sources and its
+ * purpose is provide examples of how SOF ALSA topologies are built
+ * through instantiating toppology2 classes.
+ *
+ * The documentation is provided using Doxygen package and a Doxygen
+ * filter that translates the topology2 classes into C-structures. The
+ * filter is implemented in python and can be found from
+ * tools/topology/topology2/doc/topology2-filter.py
+ *
+ * The topology2 language syntax is described in detail <a
+ * href="https://thesofproject.github.io/latest/developer_guides/topology2/topology2.html">here</a>.
+ *
+ * \subsection doc_reading Reading the document
+ *
+ * The purpose of the translated C code is not to document actual
+ * topology2 code, but only to provide anchors for Doxygen to form a
+ * network of links through which to navigate the topology sources and
+ * find the pieces of related Doxygen documentation. The filter also
+ * creates separate pages of the original code and add links next to
+ * the pages in the C struct definition and instance documentation.
+ *
+ * The most essential part of the documentation is the documentation of
+ * classes that shown as C structs in this Doxygen documentation.
+ *
+ * \copydoc doc_contents
+ */

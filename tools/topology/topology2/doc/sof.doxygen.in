@@ -7,7 +7,9 @@ GENERATE_MAN     = NO
 GENERATE_XML	 = YES
 
 CASE_SENSE_NAMES = NO
-INPUT            = @top_srcdir@
+INPUT            = @top_srcdir@ \
+		   @top_srcdir@/doc/extra-contents/ \
+		   @top_bindir@/contents.doxy
 
 RECURSIVE	 = YES
 FILE_PATTERNS    = *.conf
@@ -28,5 +30,5 @@ OPTIMIZE_OUTPUT_FOR_C = YES
 
 HTML_TIMESTAMP = NO
 
-EXTENSION_MAPPING = conf=C
+EXTENSION_MAPPING = conf=C,doxy=C
 FILTER_PATTERNS = *.conf=@top_srcdir@/doc/topology2-filter.py
