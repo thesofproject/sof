@@ -104,8 +104,8 @@ static int snapshot(const char *name)
 
 	for (i = 0; i < ARRAY_SIZE(debugfs); i++) {
 
-		sprintf(pinname, "%s/%s", path, debugfs[i]);
-		sprintf(poutname, "%s.%s.txt", name, debugfs[i]);
+		snprintf(pinname, sizeof(pinname), "%s/%s", path, debugfs[i]);
+		snprintf(poutname, sizeof(poutname), "%s.%s.txt", name, debugfs[i]);
 
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "rb");
@@ -132,9 +132,14 @@ static int snapshot(const char *name)
 			if (count != 4)
 				break;
 
-			sprintf(buffer, "0x%6.6x: 0x%8.8x\n", addr, val);
+			snprintf(buffer, sizeof(buffer), "0x%6.6x: 0x%8.8x\n", addr, val);
 
-			count = fwrite(buffer, 1, strlen(buffer), out_fd);
+			i = strlen(buffer);
+			count = fwrite(buffer, 1, i, out_fd);
+			if (count != i) {
+				fprintf(stderr, "error: an error occurred during write to %s: %s\n",
+					poutname, strerror(errno));
+			}
 
 			addr += 4;
 		}
@@ -164,7 +169,12 @@ static int configure_uart(const char *file, unsigned int baud)
 	tio.c_cc[VMIN] = 1;
 
 	ret = tcsetattr(fd, TCSANOW, &tio);
-	return ret < 0 ? -errno : fd;
+	if (ret < 0) {
+		close(fd);
+		return -errno;
+	}
+
+	return fd;
 }
 
 /* Concantenate `config->filter_config` with `input` + `\n` */
@@ -220,17 +230,15 @@ static void *wait_open(const char *watched_dir, const char *expected_file)
 	const int dwatch = inotify_add_watch(iqueue, watched_dir, IN_CREATE);
 	struct stat expected_stat;
 	void *ret_stream = NULL;
-
-	char * const fpath = malloc(strlen(watched_dir) + 1 + strlen(expected_file) + 1);
+	const int fpath_len = strlen(watched_dir) + 1 + strlen(expected_file) + 1;
+	char * const fpath = malloc(fpath_len);
 
 	if (!fpath) {
 		fprintf(stderr, "error: can't allocate memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	strcpy(fpath, watched_dir);
-	strcat(fpath, "/");
-	strcat(fpath, expected_file);
+	snprintf(fpath, fpath_len, "%s/%s", watched_dir, expected_file);
 
 	/* Not racy because the inotify watch was set first. */
 	if (!access(fpath, F_OK))
@@ -268,7 +276,9 @@ static void *wait_open(const char *watched_dir, const char *expected_file)
 	}
 
 fopenit:
-	stat(fpath, &expected_stat);
+	if (stat(fpath, &expected_stat))
+		goto cleanup;
+
 	if ((expected_stat.st_mode & S_IFMT) == S_IFDIR)
 		ret_stream = opendir(fpath);
 	else
@@ -364,7 +374,8 @@ int main(int argc, char *argv[])
 			if (i < 0 || 1 < i) {
 				fprintf(stderr, "%s: invalid option: -e %s\n",
 					APP_NAME, optarg);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			config.relative_timestamps = i;
 			break;
@@ -373,7 +384,8 @@ int main(int argc, char *argv[])
 			config.time_precision = atoi(optarg);
 			if (config.time_precision < 0) {
 				usage();
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			break;
 		case 'g':
@@ -403,8 +415,10 @@ int main(int argc, char *argv[])
 		usage();
 	}
 
-	if (snapshot_file)
-		return baud ? EINVAL : -snapshot(snapshot_file);
+	if (snapshot_file) {
+		ret = baud ? EINVAL : -snapshot(snapshot_file);
+		goto out;
+	}
 
 	if (!config.ldc_file) {
 		fprintf(stderr, "error: Missing ldc file\n");
