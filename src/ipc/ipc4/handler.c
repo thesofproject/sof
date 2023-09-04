@@ -67,7 +67,7 @@ static struct ipc4_msg_data msg_data;
 /* fw sends a fw ipc message to send the status of the last host ipc message */
 static struct ipc_msg msg_reply = {0, 0, 0, 0, LIST_INIT(msg_reply.list)};
 
-static struct ipc_msg msg_notify;
+static struct ipc_msg msg_notify = {0, 0, 0, 0, LIST_INIT(msg_notify.list)};
 
 /*
  * Global IPC Operations.
@@ -1146,28 +1146,15 @@ void ipc_send_panic_notification(void)
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 
-static bool is_notification_queued(void)
+static bool is_notification_queued(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	struct list_item *slist;
-	struct ipc_msg *msg;
 	k_spinlock_key_t key;
 	bool queued = false;
 
 	key = k_spin_lock(&ipc->lock);
-	if (list_is_empty(&ipc->msg_list))
-		goto out;
-
-	list_for_item(slist, &ipc->msg_list) {
-		msg = container_of(slist, struct ipc_msg, list);
-
-		if (msg == &msg_notify) {
-			queued = true;
-			break;
-		}
-	}
-
-out:
+	if (!list_is_empty(&msg->list))
+		queued = true;
 	k_spin_unlock(&ipc->lock, key);
 
 	return queued;
@@ -1176,13 +1163,12 @@ out:
 void ipc_send_buffer_status_notify(void)
 {
 	/* a single msg_notify object is used */
-	if (is_notification_queued())
+	if (is_notification_queued(&msg_notify))
 		return;
 
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 	msg_notify.extension = 0;
 	msg_notify.tx_size = 0;
-	list_init(&msg_notify.list);
 
 	tr_dbg(&ipc_tr, "tx-notify\t: %#x|%#x", msg_notify.header, msg_notify.extension);
 
