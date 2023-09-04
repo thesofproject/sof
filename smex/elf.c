@@ -17,7 +17,7 @@
 static int elf_read_sections(struct elf_module *module, bool verbose)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
-	Elf32_Shdr *section = module->section;
+	Elf32_Shdr *section;
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
@@ -128,7 +128,7 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 static int elf_read_programs(struct elf_module *module, bool verbose)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
-	Elf32_Phdr *prg = module->prg;
+	Elf32_Phdr *prg;
 	size_t count;
 	int i, ret;
 
@@ -408,10 +408,17 @@ int elf_find_section(const struct elf_module *module, const char *name)
 		ret = -errno;
 		goto out;
 	}
+	buffer[section->size - 1] = '\0';
 
 	/* find section with name */
 	for (i = 0; i < hdr->shnum; i++) {
 		s = &module->section[i];
+		if (s->name >= section->size) {
+			fprintf(stderr, "error: invalid section name string index %d\n", s->name);
+			ret = -EINVAL;
+			goto out;
+		}
+
 		if (!strcmp(name, buffer + s->name)) {
 			ret = i;
 			goto out;
@@ -431,8 +438,8 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 		     const Elf32_Shdr **dst_section, void **dst_buff)
 {
 	const Elf32_Shdr *section;
-	int section_index = -1;
-	int read;
+	int section_index;
+	int ret;
 
 	section_index = elf_find_section(module, section_name);
 	if (section_index < 0) {
@@ -451,17 +458,25 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 		return -ENOMEM;
 
 	/* fill buffer with section content */
-	fseek(module->fd, section->off, SEEK_SET);
-	read = fread(*dst_buff, 1, section->size, module->fd);
-	if (read != section->size) {
-		fprintf(stderr,
-			"error: can't read %s section %d\n", section_name,
-			-errno);
-		free(*dst_buff);
-		return -errno;
+	ret = fseek(module->fd, section->off, SEEK_SET);
+	if (ret) {
+		fprintf(stderr, "error: can't seek to %s section %d\n", section_name, -errno);
+		ret = -errno;
+		goto error;
+	}
+
+	ret = fread(*dst_buff, 1, section->size, module->fd);
+	if (ret != section->size) {
+		fprintf(stderr, "error: can't read %s section %d\n", section_name, -errno);
+		ret = -errno;
+		goto error;
 	}
 
 	return section->size;
+
+error:
+	free(*dst_buff);
+	return ret;
 }
 
 int elf_read_module(struct elf_module *module, const char *name, bool verbose)
