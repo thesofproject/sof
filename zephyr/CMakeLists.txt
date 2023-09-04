@@ -525,10 +525,19 @@ elseif(CONFIG_IPC_MAJOR_4)
 )
 endif()
 
+if(CONFIG_IPC_MAJOR_3)
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc3.c
 	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
 )
+elseif(CONFIG_IPC_MAJOR_4)
+zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc4.c
+	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c

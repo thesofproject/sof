@@ -519,3 +519,14 @@ int module_unbind(struct processing_module *mod, void *data)
 		return md->ops->unbind(mod, data);
 	return 0;
 }
+
+void module_update_buffer_position(struct input_stream_buffer *input_buffers,
+				   struct output_stream_buffer *output_buffers,
+				   uint32_t frames)
+{
+	struct audio_stream *source = input_buffers->data;
+	struct audio_stream *sink = output_buffers->data;
+
+	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
+	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
+}
