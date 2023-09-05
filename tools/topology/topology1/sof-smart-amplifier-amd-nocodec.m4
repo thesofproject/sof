@@ -40,7 +40,7 @@ define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)
 define(`SMART_TX_CHANNELS', 2)
 define(`SMART_RX_CHANNELS', 2)
-define(`SMART_FB_CHANNELS', 1)
+define(`SMART_FB_CHANNELS', 2)
 # Ref capture related
 #7->2
 define(`SMART_REF_PPL_ID', 2)

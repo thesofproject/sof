@@ -143,7 +143,7 @@ DAI_CONFIG(ACPHS, 1, SMART_BE_ID, acp-amp-codec,
 	ACPHS_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
 		      ACP_CLOCK(bclk, 3072000, codec_slave),
 		      ACP_CLOCK(fsync, 48000, codec_slave),
-		      ACP_TDM(8, 32, 3, 3),
+		      ACP_TDM(2, 32, 3, 3),
 		      ACPHS_CONFIG_DATA(ACPHS, 1, 48000, 2, 0)))
 
 DEBUG_END
