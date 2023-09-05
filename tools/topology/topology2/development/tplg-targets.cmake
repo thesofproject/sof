@@ -127,6 +127,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 "sof-hda-generic\;sof-hda-benchmark-drc16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc16,BENCH_DRC_PARAMS=enabled"
 "sof-hda-generic\;sof-hda-benchmark-drc24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc24,BENCH_DRC_PARAMS=enabled"
 "sof-hda-generic\;sof-hda-benchmark-drc32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc32,BENCH_DRC_PARAMS=enabled"
+"sof-hda-generic\;sof-hda-benchmark-eqiir16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir16,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
+"sof-hda-generic\;sof-hda-benchmark-eqiir24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir24,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
+"sof-hda-generic\;sof-hda-benchmark-eqiir32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir32,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
 
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
