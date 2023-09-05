@@ -349,8 +349,15 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 
 	if (phase & IDC_PPL_STATE_PHASE_TRIGGER) {
 		bool delayed = false;
+		int ret;
 
-		return ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
+		ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
+		if (delayed)
+			tr_err(&idc_tr,
+			       "[NOT_RIGHT] idc: comp %d: cmd %d is delayed!!",
+			       ppl_id, cmd);
+
+		return ret;
 	}
 
 #endif
