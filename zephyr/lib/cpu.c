@@ -143,12 +143,19 @@ int cpu_enable_core(int id)
 		return 0;
 
 #if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	/* During kernel initialization, the next pm state is set to ACTIVE. By checking this
+	/* Zephyr implementations on secondary cores initialzation are
+	 * different between MTL+ and other platforms.
+	 *
+	 * On MTL+ platforms, only run z_init_cpu() on boot, not when waking up from D3,
+	 * regardless whether saving to IMR is enabled or not.
+	 * During kernel initialization, the next pm state is set to ACTIVE. By checking this
 	 * value, we determine if this is the first core boot, if not, we need to skip idle thread
 	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
 	 * and the idle thread stack.
+	 *
+	 * On other platforms, run z_init_cpu() both on boot and on waking up from D3.
 	 */
-	if (!IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE) ||
+	if (!IS_ENABLED(CONFIG_ACE) ||
 	    pm_state_next_get(id)->state == PM_STATE_ACTIVE)
 		z_init_cpu(id);
 #endif
