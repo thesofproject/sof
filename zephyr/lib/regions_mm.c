@@ -5,6 +5,8 @@
  * Author: Jakub Dabek <jakub.dabek@intel.com>
  */
 
+#include <zephyr/init.h>
+
 #include <sof/lib/regions_mm.h>
 
 /* list of vmh_heap objects created */
