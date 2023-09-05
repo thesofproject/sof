@@ -143,12 +143,16 @@ int cpu_enable_core(int id)
 		return 0;
 
 #if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	/* During kernel initialization, the next pm state is set to ACTIVE. By checking this
-	 * value, we determine if this is the first core boot, if not, we need to skip idle thread
-	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
-	 * and the idle thread stack.
+	/* Intel ACE platform has implemented runtime-idle based
+	 * management of secondary cores. On these systems,
+	 * z_init_cpu() must be only run when pm_state_next_get()
+	 * returns PM_STATE_ACTIVE, or otherwise the kernel structs
+	 * and idle thread stack get overwritten.
+	 *
+	 * On other SOF platforms with Zephyr support, z_init_cpu()
+	 * must be always run at cpu_enable_core().
 	 */
-	if (!IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE) ||
+	if (!IS_ENABLED(CONFIG_ACE) ||
 	    pm_state_next_get(id)->state == PM_STATE_ACTIVE)
 		z_init_cpu(id);
 #endif
