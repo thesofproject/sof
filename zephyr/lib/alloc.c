@@ -20,7 +20,7 @@
 #include <rtos/wait.h>
 
 /* Zephyr includes */
-#include <zephyr/device.h>
+#include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/pm/policy.h>
 #include <version.h>
