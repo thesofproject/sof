@@ -148,7 +148,7 @@ int cpu_enable_core(int id)
 	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
 	 * and the idle thread stack.
 	 */
-	if (!IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE) ||
+	if (!IS_ENABLED(CONFIG_ACE) ||
 	    pm_state_next_get(id)->state == PM_STATE_ACTIVE)
 		z_init_cpu(id);
 #endif
