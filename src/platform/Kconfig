@@ -468,7 +468,7 @@ config SOF_STACK_SIZE
 
 config SECONDARY_CORE_DISABLING_TIMEOUT
 	int
-	default 5000
+	default 400
 	depends on MULTICORE
 	help
 	  Timeout value (in ms) for secondary core to enter D3 state.
