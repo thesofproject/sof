@@ -228,7 +228,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	audio_stream_produce(&buffer->stream, bytes);
 
-	notifier_event((__sparse_force void *)buffer, NOTIFIER_ID_BUFFER_PRODUCE,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -268,7 +268,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	audio_stream_consume(&buffer->stream, bytes);
 
-	notifier_event((__sparse_force void *)buffer, NOTIFIER_ID_BUFFER_CONSUME,
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER

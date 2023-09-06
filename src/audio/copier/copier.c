@@ -473,8 +473,7 @@ static int copier_module_copy(struct processing_module *mod,
 	if (!num_input_buffers || !num_output_buffers)
 		return 0;
 
-	src_c = attr_container_of(input_buffers[0].data, struct comp_buffer,
-				  stream, __sparse_cache);
+	src_c = container_of(input_buffers[0].data, struct comp_buffer, stream);
 
 	processed_data.source_bytes = 0;
 
@@ -483,9 +482,7 @@ static int copier_module_copy(struct processing_module *mod,
 		struct comp_buffer *sink_c;
 		struct comp_dev *sink_dev;
 
-		sink_c = attr_container_of(output_buffers[i].data,
-					   struct comp_buffer,
-					   stream, __sparse_cache);
+		sink_c = container_of(output_buffers[i].data, struct comp_buffer, stream);
 		sink_dev = sink_c->sink;
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
