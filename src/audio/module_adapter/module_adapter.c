@@ -421,8 +421,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
-		mod->input_buffers[i].data =
-			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM, size);
+		mod->input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -434,9 +433,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data =
-			(__sparse_force void __sparse_cache *)rballoc(0, SOF_MEM_CAPS_RAM,
-								      md->mpd.out_buff_size);
+		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -568,7 +565,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
  */
 static void
 ca_copy_from_source_to_module(const struct audio_stream *source,
-			      void __sparse_cache *buff, uint32_t buff_size, size_t bytes)
+			      void *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source,
@@ -596,7 +593,7 @@ ca_copy_from_source_to_module(const struct audio_stream *source,
  */
 static void
 ca_copy_from_module_to_sink(const struct audio_stream *sink,
-			    void __sparse_cache *buff, size_t bytes)
+			    void *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
@@ -951,9 +948,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	for (i = 0; i < num_input_buffers; i++) {
 		struct comp_buffer *src_c;
 
-		src_c = attr_container_of(mod->input_buffers[i].data,
-					  struct comp_buffer,
-					  stream, __sparse_cache);
+		src_c = container_of(mod->input_buffers[i].data, struct comp_buffer, stream);
 		if (mod->input_buffers[i].consumed)
 			audio_stream_consume(&src_c->stream, mod->input_buffers[i].consumed);
 	}
@@ -972,11 +967,8 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 
 	/* produce data into all active output buffers */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer *sink_c;
-
-		sink_c = attr_container_of(mod->output_buffers[i].data,
-					   struct comp_buffer,
-					   stream, __sparse_cache);
+		struct comp_buffer *sink_c =
+			container_of(mod->output_buffers[i].data, struct comp_buffer, stream);
 
 		if (!mod->skip_sink_buffer_writeback)
 			buffer_stream_writeback(sink_c, mod->output_buffers[i].size);

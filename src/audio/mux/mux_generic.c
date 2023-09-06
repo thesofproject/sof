@@ -54,8 +54,7 @@ static void demux_check_for_wrap(struct audio_stream *sink,
 #if CONFIG_FORMAT_S16LE
 
 static uint32_t demux_calc_frames_without_wrap_s16(struct audio_stream *sink,
-						   const struct audio_stream
-						   __sparse_cache *source,
+						   const struct audio_stream *source,
 						   struct mux_look_up *lookup)
 {
 	uint32_t frames;
@@ -80,8 +79,7 @@ static uint32_t demux_calc_frames_without_wrap_s16(struct audio_stream *sink,
 }
 
 static uint32_t mux_calc_frames_without_wrap_s16(struct audio_stream *sink,
-						 const struct audio_stream
-						 __sparse_cache **sources,
+						 const struct audio_stream **sources,
 						 struct mux_look_up *lookup)
 {
 	const struct audio_stream *source;
@@ -260,8 +258,7 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 
 static uint32_t mux_calc_frames_without_wrap_s32(struct audio_stream *sink,
-						 const struct audio_stream
-						 __sparse_cache **sources,
+						 const struct audio_stream **sources,
 						 struct mux_look_up *lookup)
 {
 	const struct audio_stream *source;
@@ -290,8 +287,7 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct audio_stream *sink,
 }
 
 static uint32_t demux_calc_frames_without_wrap_s32(struct audio_stream *sink,
-						   const struct audio_stream
-						   __sparse_cache *source,
+						   const struct audio_stream *source,
 						   struct mux_look_up *lookup)
 {
 	uint32_t frames;

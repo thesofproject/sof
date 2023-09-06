@@ -293,9 +293,7 @@ static int smart_amp_process(struct processing_module *mod,
 
 	if (num_input_buffers == SMART_AMP_NUM_IN_PINS)
 		for (i = 0; i < num_input_buffers; i++) {
-			buf = attr_container_of(input_buffers[i].data,
-						struct comp_buffer,
-						stream, __sparse_cache);
+			buf = container_of(input_buffers[i].data, struct comp_buffer, stream);
 
 			if (IPC4_SINK_QUEUE_ID(buf->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 				fb_input = &input_buffers[i];
