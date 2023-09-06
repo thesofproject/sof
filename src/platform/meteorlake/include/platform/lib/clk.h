@@ -14,7 +14,7 @@
 
 #include <ace/lib/clk.h>
 
-#define CLK_MAX_CPU_HZ		400000000
+#define CLK_MAX_CPU_HZ		CONFIG_XTENSA_CCOUNT_HZ
 
 #define CPU_WOVCRO_FREQ_IDX	0
 
@@ -28,7 +28,7 @@
 
 #define SSP_DEFAULT_IDX		1
 
-#define NUM_CPU_FREQ		3
+#define NUM_CPU_FREQ		2
 
 #define NUM_SSP_FREQ		3
 
