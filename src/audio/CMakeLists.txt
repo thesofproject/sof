@@ -168,11 +168,12 @@ set(sof_audio_modules mixer volume src asrc eq-fir eq-iir dcblock crossover tdfb
 # sources for each module
 if(CONFIG_IPC_MAJOR_3)
 	set(volume_sources volume/volume.c volume/volume_generic.c volume/volume_ipc3.c)
+	set(src_sources src/src.c src/src_ipc3.c src/src_generic.c)
 elseif(CONFIG_IPC_MAJOR_4)
 	set(volume_sources volume/volume.c volume/volume_generic.c volume/volume_ipc4.c)
+	set(src_sources src/src.c src/src_ipc4.c src/src_generic.c)
 endif()
 set(mixer_sources ${mixer_src})
-set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
 set(eq-iir_sources eq_iir/eq_iir.c)

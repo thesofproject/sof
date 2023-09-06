@@ -13,6 +13,8 @@
 #include <ipc4/base-config.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/audio_stream.h>
+#include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 struct src_param {
 	int fir_s1;
@@ -122,6 +124,8 @@ int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
 
+void src_set_alignment(struct sof_source *source, struct sof_sink *sink);
+
 #if CONFIG_IPC_MAJOR_4
 /* src component private data */
 struct ipc4_config_src {
@@ -155,3 +159,32 @@ struct comp_data {
 };
 
 #endif /* __SOF_AUDIO_SRC_SRC_H__ */
+
+#if CONFIG_IPC_MAJOR_4
+
+int src_stream_pcm_source_rate_check(struct ipc4_config_src cfg,
+				     struct sof_ipc_stream_params *params);
+int src_stream_pcm_sink_rate_check(struct ipc4_config_src cfg,
+				   struct sof_ipc_stream_params *params);
+#elif CONFIG_IPC_MAJOR_3
+int src_stream_pcm_sink_rate_check(struct ipc_config_src cfg,
+				   struct sof_ipc_stream_params *params);
+int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
+				     struct sof_ipc_stream_params *params);
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+int src_rate_check(const void *spec);
+int src_set_params(struct processing_module *mod, struct sof_sink *sink);
+
+void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *source,
+				struct sof_sink *sink);
+int src_prepare_general(struct processing_module *mod,
+			struct sof_source *source,
+			struct sof_sink *sink);
+int src_init(struct processing_module *mod);
+int src_fallback(struct comp_data *cd, struct sof_source *source,
+		 struct sof_sink *sink);
+
+extern const struct sof_uuid src_uuid;
+extern struct tr_ctx src_tr;
+

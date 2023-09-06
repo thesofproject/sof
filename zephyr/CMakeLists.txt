@@ -570,13 +570,25 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
 	${SOF_AUDIO_PATH}/chain_dma.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SRC
-	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
-	${SOF_AUDIO_PATH}/src/src_generic.c
-	${SOF_AUDIO_PATH}/src/src_hifi3.c
-	${SOF_AUDIO_PATH}/src/src_hifi4.c
-	${SOF_AUDIO_PATH}/src/src.c
-)
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+		${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+		${SOF_AUDIO_PATH}/src/src_generic.c
+		${SOF_AUDIO_PATH}/src/src_hifi3.c
+		${SOF_AUDIO_PATH}/src/src_hifi4.c
+		${SOF_AUDIO_PATH}/src/src.c
+		${SOF_AUDIO_PATH}/src/src_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+		${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+		${SOF_AUDIO_PATH}/src/src_generic.c
+		${SOF_AUDIO_PATH}/src/src_hifi3.c
+		${SOF_AUDIO_PATH}/src/src_hifi4.c
+		${SOF_AUDIO_PATH}/src/src.c
+		${SOF_AUDIO_PATH}/src/src_ipc4.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 	${SOF_AUDIO_PATH}/base_fw.c
