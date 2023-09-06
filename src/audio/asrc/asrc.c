@@ -48,8 +48,8 @@
 #define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
 
 typedef void (*asrc_proc_func)(struct comp_dev *dev,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int *consumed,
 			       int *produced);
 
@@ -122,8 +122,8 @@ static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -194,8 +194,8 @@ static void src_copy_s32(struct comp_dev *dev,
 }
 
 static void src_copy_s16(struct comp_dev *dev,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -534,7 +534,7 @@ static int asrc_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	int err;
 
 	comp_info(dev, "asrc_params()");
@@ -604,7 +604,7 @@ static int asrc_params(struct comp_dev *dev,
 static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	int pid;
 
 	/* Get current pipeline ID and walk to find the DAI */
@@ -722,7 +722,7 @@ static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int sample_bytes;
@@ -978,8 +978,8 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-static void asrc_process(struct comp_dev *dev, struct comp_buffer __sparse_cache *source,
-			 struct comp_buffer __sparse_cache *sink)
+static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
+			 struct comp_buffer *sink)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int consumed = 0;
@@ -1005,7 +1005,7 @@ static int asrc_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	int frames_src;
 	int frames_snk;
 	int ret;

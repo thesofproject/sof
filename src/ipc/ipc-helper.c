@@ -80,7 +80,7 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
  */
 static void comp_update_params(uint32_t flag,
 			       struct sof_ipc_stream_params *params,
-			       struct comp_buffer __sparse_cache *buffer)
+			       struct comp_buffer *buffer)
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
 		params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
@@ -104,7 +104,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	struct list_item *clist;
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
+	struct comp_buffer *buf_c;
 	int dir = dev->direction;
 
 	if (!params) {
@@ -291,7 +291,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	irq_local_disable(flags);
 	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
 		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
-		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+		struct comp_buffer *buffer_c = buffer_acquire(buffer);
 
 		buffer_c->sink = NULL;
 		buffer_release(buffer_c);
@@ -304,7 +304,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
 		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
-		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+		struct comp_buffer *buffer_c = buffer_acquire(buffer);
 
 		buffer_c->source = NULL;
 		buffer_release(buffer_c);

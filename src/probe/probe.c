@@ -879,7 +879,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct buffer_cb_transact *cb_data = data;
-	struct comp_buffer __sparse_cache *buffer = cb_data->buffer;
+	struct comp_buffer *buffer = cb_data->buffer;
 	struct probe_dma_ext *dma;
 	uint32_t buffer_id;
 	uint32_t head, tail;
@@ -1066,7 +1066,7 @@ static bool probe_purpose_needs_ext_dma(uint32_t purpose)
 static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point_id_t probe_point)
 {
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
+	struct comp_buffer *buf_c;
 	struct list_item *sink_list, *source_list;
 	unsigned int queue_id;
 

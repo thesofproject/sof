@@ -100,8 +100,8 @@ struct sof_selector_avs_ipc4_config {
 };
 
 #else
-typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-			 const struct audio_stream __sparse_cache *source, uint32_t frames);
+typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream *sink,
+			 const struct audio_stream *source, uint32_t frames);
 #endif
 
 /** \brief Selector component private data. */

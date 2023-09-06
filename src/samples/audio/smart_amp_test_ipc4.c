@@ -92,7 +92,7 @@ static void smart_amp_set_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
@@ -196,8 +196,8 @@ static int smart_amp_process_s16(struct processing_module *mod,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int16_t *src;
 	int16_t *dest;
 	uint32_t in_frag = 0;
@@ -229,8 +229,8 @@ static int smart_amp_process_s32(struct processing_module *mod,
 				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *src;
 	int32_t *dest;
 	uint32_t in_frag = 0;
@@ -258,7 +258,7 @@ static int smart_amp_process_s32(struct processing_module *mod,
 }
 
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev,
-					    struct comp_buffer __sparse_cache *buf)
+					    struct comp_buffer *buf)
 {
 	switch (audio_stream_get_frm_fmt(&buf->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -278,8 +278,8 @@ static int smart_amp_process(struct processing_module *mod,
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer __sparse_cache *fb_buf_c;
-	struct comp_buffer __sparse_cache *buf;
+	struct comp_buffer *fb_buf_c;
+	struct comp_buffer *buf;
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct input_stream_buffer *fb_input = NULL;
 	/* if there is only one input stream, it should be the source input */
@@ -294,7 +294,7 @@ static int smart_amp_process(struct processing_module *mod,
 	if (num_input_buffers == SMART_AMP_NUM_IN_PINS)
 		for (i = 0; i < num_input_buffers; i++) {
 			buf = attr_container_of(input_buffers[i].data,
-						struct comp_buffer __sparse_cache,
+						struct comp_buffer,
 						stream, __sparse_cache);
 
 			if (IPC4_SINK_QUEUE_ID(buf->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
@@ -345,14 +345,14 @@ static int smart_amp_reset(struct processing_module *mod)
 }
 
 static int smart_amp_prepare(struct processing_module *mod,
-			     struct sof_source __sparse_cache **sources, int num_of_sources,
-			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source_buffer;
 	struct comp_buffer *sink_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	struct list_item *blist;
 	int ret;
 

@@ -48,14 +48,14 @@
  * \brief aria get data function interface
  */
 typedef void (*aria_get_data_func)(struct processing_module *mod,
-				   struct audio_stream __sparse_cache *sink, int frames);
+				   struct audio_stream *sink, int frames);
 
 struct aria_data;
 /**
  * \brief Aria gain processing function
  */
 void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
-			 struct audio_stream __sparse_cache *source, int frames);
+			 struct audio_stream *source, int frames);
 
 aria_get_data_func aria_algo_get_data_func(struct processing_module *mod);
 

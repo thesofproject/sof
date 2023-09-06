@@ -143,7 +143,7 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *sink = bsink->data;
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &cd->state.buf;

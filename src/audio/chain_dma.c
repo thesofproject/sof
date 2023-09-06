@@ -238,7 +238,7 @@ static enum task_state chain_task_run(void *data)
 		 * mode task will update read position based on transferred data size to avoid
 		 * overwriting valid data and write position by half buffer size.
 		 */
-		struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(cd->dma_buffer);
+		struct comp_buffer *buffer_c = buffer_acquire(cd->dma_buffer);
 		const size_t buff_size = audio_stream_get_size(&buffer_c->stream);
 		const size_t half_buff_size = buff_size / 2;
 
@@ -510,7 +510,7 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 		    uint32_t fifo_size)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t addr_align;
 	size_t buff_size;
 	void *buff_addr;

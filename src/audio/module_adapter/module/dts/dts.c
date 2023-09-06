@@ -78,8 +78,8 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 {
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct comp_buffer __sparse_cache *source_c;
-	const struct audio_stream __sparse_cache *stream;
+	struct comp_buffer *source_c;
+	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 	unsigned int buffer_fmt, frame_fmt, rate, channels;
@@ -184,8 +184,8 @@ static int dts_codec_init(struct processing_module *mod)
 }
 
 static int dts_codec_prepare(struct processing_module *mod,
-			     struct sof_source __sparse_cache **sources, int num_of_sources,
-			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;

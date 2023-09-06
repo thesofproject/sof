@@ -60,7 +60,7 @@ static int selector_verify_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *buffer, *sinkb;
-	struct comp_buffer __sparse_cache *buffer_c, *sink_c;
+	struct comp_buffer *buffer_c, *sink_c;
 	uint32_t in_channels;
 	uint32_t out_channels;
 
@@ -358,7 +358,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source_c;
 	enum sof_comp_type type;
 	int ret;
 
@@ -391,7 +391,7 @@ static int selector_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	uint32_t frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
@@ -444,7 +444,7 @@ static int selector_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	size_t sink_size;
 	int ret;
 
@@ -673,7 +673,7 @@ static void set_selector_params(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *source;
+	struct comp_buffer *source;
 	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
 	const struct ipc4_audio_format *out_fmt = NULL;
 	struct comp_buffer *src_buf;
@@ -700,7 +700,7 @@ static void set_selector_params(struct processing_module *mod,
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_buffer *sink_buf =
 			container_of(sink_list, struct comp_buffer, source_list);
-		struct comp_buffer __sparse_cache *sink = buffer_acquire(sink_buf);
+		struct comp_buffer *sink = buffer_acquire(sink_buf);
 
 		ipc4_update_buffer_format(sink, out_fmt);
 		audio_stream_set_channels(&sink->stream, params->channels);
@@ -729,7 +729,7 @@ static int selector_verify_params(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t in_channels = cd->config.in_channels_count;
 	uint32_t out_channels = cd->config.out_channels_count;
 
@@ -862,14 +862,14 @@ static int selector_process(struct processing_module *mod,
  * \return Error code.
  */
 static int selector_prepare(struct processing_module *mod,
-			    struct sof_source __sparse_cache **sources, int num_of_sources,
-			    struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			    struct sof_source **sources, int num_of_sources,
+			    struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	size_t sink_size;
 	int ret;
 

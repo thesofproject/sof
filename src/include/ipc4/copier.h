@@ -272,7 +272,7 @@ struct copier_data {
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
-		      struct comp_buffer __sparse_cache *sink, int frame);
+		      struct comp_buffer *sink, int frame);
 
 pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      const struct ipc4_audio_format *out_fmt,

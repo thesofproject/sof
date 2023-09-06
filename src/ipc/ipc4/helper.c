@@ -241,7 +241,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free sink buffer allocated by current component in bind function */
 		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
-			struct comp_buffer __sparse_cache *buffer_c;
+			struct comp_buffer *buffer_c;
 			struct comp_dev *sink;
 
 			buffer = container_of(list, struct comp_buffer, source_list);
@@ -257,7 +257,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free source buffer allocated by current component in bind function */
 		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
-			struct comp_buffer __sparse_cache *buffer_c;
+			struct comp_buffer *buffer_c;
 			struct comp_dev *source;
 
 			buffer = container_of(list, struct comp_buffer, sink_list);
@@ -337,7 +337,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	struct comp_dev *source;
 	struct comp_dev *sink;
 	struct ipc4_base_module_cfg source_src_cfg;
@@ -490,7 +490,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
-		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(buf);
+		struct comp_buffer *buf_c = buffer_acquire(buf);
 		bool found = buf_c->id == buffer_id;
 
 		buffer_release(buf_c);
@@ -841,7 +841,7 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
 }
 
-void ipc4_update_buffer_format(struct comp_buffer __sparse_cache *buf_c,
+void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt)
 {
 	enum sof_ipc_frame valid_fmt, frame_fmt;

@@ -133,7 +133,7 @@ static int crossover_assign_sinks(struct processing_module *mod,
 	struct sof_crossover_config *config = cd->config;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct list_item *sink_list;
 	int num_sinks = 0;
 	int i;
@@ -486,7 +486,7 @@ static int crossover_check_sink_assign(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct list_item *sink_list;
 	int num_assigned_sinks = 0;
 	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
@@ -623,7 +623,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	bool enabled_buffers[PLATFORM_MAX_STREAMS] = { false };
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
 	uint32_t num_sinks;
 	uint32_t num_assigned_sinks = 0;
 	/* The frames count to process from module adapter applies for source buffer and
@@ -691,7 +691,7 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 static void crossover_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct list_item *sink_list;
 	struct comp_dev *dev = mod->dev;
@@ -721,13 +721,13 @@ static void crossover_params(struct processing_module *mod)
  * \return Error code.
  */
 static int crossover_prepare(struct processing_module *mod,
-			     struct sof_source __sparse_cache **sources, int num_of_sources,
-			     struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct list_item *sink_list;
 	int channels;
 	int ret = 0;

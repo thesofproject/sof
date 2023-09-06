@@ -89,7 +89,7 @@ static int google_rtc_audio_processing_params(
 	int ret;
 #if CONFIG_IPC_MAJOR_4
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct comp_buffer *sink;
 
 	/* update sink buffer format */
@@ -502,7 +502,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 {
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
 	struct list_item *source_buffer_list_item;
-	struct comp_buffer __sparse_cache *output_c;
+	struct comp_buffer *output_c;
 	unsigned int aec_channels = 0, frame_fmt, rate;
 	int ret;
 
@@ -512,7 +512,7 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	list_for_item(source_buffer_list_item, &dev->bsource_list) {
 		struct comp_buffer *source = container_of(source_buffer_list_item,
 							  struct comp_buffer, sink_list);
-		struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+		struct comp_buffer *source_c = buffer_acquire(source);
 
 #if CONFIG_IPC_MAJOR_4
 		if (IPC4_SINK_QUEUE_ID(source_c->id) == SOF_AEC_FEEDBACK_QUEUE_ID) {
@@ -592,7 +592,7 @@ static int google_rtc_audio_processing_reset(struct comp_dev *dev)
 static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 {
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buffer_c, *mic_buf, *output_buf;
+	struct comp_buffer *buffer_c, *mic_buf, *output_buf;
 	struct comp_copy_limits cl;
 	int16_t *src, *dst, *ref;
 	uint32_t num_aec_reference_frames;

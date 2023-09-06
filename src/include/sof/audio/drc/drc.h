@@ -60,8 +60,8 @@ struct drc_state {
 };
 
 typedef void (*drc_func)(struct processing_module *mod,
-			 const struct audio_stream __sparse_cache *source,
-			 struct audio_stream __sparse_cache *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 uint32_t frames);
 
 /* DRC component private data */
@@ -83,8 +83,8 @@ extern const struct drc_proc_fnmap drc_proc_fnmap[];
 extern const size_t drc_proc_fncount;
 
 void drc_default_pass(struct processing_module *mod,
-		      const struct audio_stream __sparse_cache *source,
-		      struct audio_stream __sparse_cache *sink, uint32_t frames);
+		      const struct audio_stream *source,
+		      struct audio_stream *sink, uint32_t frames);
 /**
  * \brief Returns DRC processing function.
  */

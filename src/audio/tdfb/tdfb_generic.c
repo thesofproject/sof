@@ -58,8 +58,8 @@ static inline void tdfb_core(struct tdfb_comp_data *cd, int in_nch, int out_nch)
 void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int16_t *x = audio_stream_get_rptr(source);
 	int16_t *y = audio_stream_get_wptr(sink);
 	int fmax;
@@ -104,8 +104,8 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = audio_stream_get_wptr(sink);
 	int fmax;
@@ -150,8 +150,8 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = audio_stream_get_wptr(sink);
 	int fmax;

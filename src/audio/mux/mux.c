@@ -274,7 +274,7 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct list_item *source_list;
 	int j;
 	const uint32_t byte_align = 1;
@@ -375,10 +375,10 @@ static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_da
 }
 
 static void mux_prepare_active_look_up(struct comp_data *cd,
-				       struct audio_stream __sparse_cache *sink,
-				       const struct audio_stream __sparse_cache **sources)
+				       struct audio_stream *sink,
+				       const struct audio_stream **sources)
 {
-	const struct audio_stream __sparse_cache *source;
+	const struct audio_stream *source;
 	int elem;
 	int active_elem = 0;
 
@@ -400,8 +400,8 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 }
 
 static void demux_prepare_active_look_up(struct comp_data *cd,
-					 struct audio_stream __sparse_cache *sink,
-					 const struct audio_stream __sparse_cache *source,
+					 struct audio_stream *sink,
+					 const struct audio_stream *source,
 					 struct mux_look_up *look_up)
 {
 	int elem;
@@ -429,8 +429,8 @@ static int demux_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct list_item *clist;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
-	struct audio_stream __sparse_cache *sinks_stream[MUX_MAX_STREAMS] = { NULL };
+	struct comp_buffer *sink_c;
+	struct audio_stream *sinks_stream[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
 	int frames;
 	int sink_bytes;
@@ -487,9 +487,9 @@ static int mux_process(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source_c;
 	struct list_item *clist;
-	const struct audio_stream __sparse_cache *sources_stream[MUX_MAX_STREAMS] = { NULL };
+	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	int frames = 0;
 	int sink_bytes;
 	int source_bytes;
@@ -560,7 +560,7 @@ static int mux_reset(struct processing_module *mod)
 		list_for_item(blist, &dev->bsource_list) {
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
-			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+			struct comp_buffer *source_c = buffer_acquire(source);
 			int state = source_c->source->state;
 
 			buffer_release(source_c);
@@ -578,16 +578,16 @@ static int mux_reset(struct processing_module *mod)
 }
 
 static int mux_prepare(struct processing_module *mod,
-		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct list_item *blist;
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *source_c;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *source_c;
+	struct comp_buffer *sink_c;
 	struct sof_mux_config *config;
 	size_t blob_size;
 	int state;

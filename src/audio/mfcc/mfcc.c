@@ -161,8 +161,8 @@ static int mfcc_process(struct processing_module *mod,
 			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers->data;
-	struct audio_stream __sparse_cache *sink = output_buffers->data;
+	struct audio_stream *source = input_buffers->data;
+	struct audio_stream *sink = output_buffers->data;
 	int frames = input_buffers->size;
 
 	comp_dbg(mod->dev, "mfcc_process(), start");
@@ -187,14 +187,14 @@ static void mfcc_set_alignment(struct audio_stream *source, struct audio_stream 
 }
 
 static int mfcc_prepare(struct processing_module *mod,
-			struct sof_source __sparse_cache **sources, int num_of_sources,
-			struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *source_c;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *source_c;
+	struct comp_buffer *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;

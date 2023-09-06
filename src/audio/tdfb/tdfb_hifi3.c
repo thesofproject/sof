@@ -19,8 +19,8 @@
 void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int16x4 d;
@@ -108,8 +108,8 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d;
@@ -197,8 +197,8 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d;

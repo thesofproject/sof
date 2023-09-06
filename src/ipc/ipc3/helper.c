@@ -487,7 +487,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	unsigned int core;
 	bool sink_active = false;
 	bool source_active = false;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 
 	/* check whether buffer exists */
 	ibd = ipc_get_buffer_by_id(ipc, buffer_id);

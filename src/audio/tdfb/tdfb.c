@@ -660,8 +660,8 @@ static int tdfb_process(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	int frame_count = input_buffers[0].size;
 	int ret;
 
@@ -715,8 +715,8 @@ static int tdfb_process(struct processing_module *mod,
 	return 0;
 }
 
-static void tdfb_set_alignment(struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink)
+static void tdfb_set_alignment(struct audio_stream *source,
+			       struct audio_stream *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
@@ -726,12 +726,12 @@ static void tdfb_set_alignment(struct audio_stream __sparse_cache *source,
 }
 
 static int tdfb_prepare(struct processing_module *mod,
-			struct sof_source __sparse_cache **sources, int num_of_sources,
-			struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt;
 	int source_channels;

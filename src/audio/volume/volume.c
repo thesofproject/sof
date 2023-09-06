@@ -57,7 +57,7 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	uint32_t curr_frames = frames;
@@ -105,7 +105,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream __sparse_cache *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -153,7 +153,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream __sparse_cache *source,
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s32(const struct audio_stream __sparse_cache *source,
+static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
@@ -575,7 +575,7 @@ static int volume_process(struct processing_module *mod,
  * \param[in,out] dev Volume base component device.
  */
 static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
-				       struct comp_buffer __sparse_cache *sinkb)
+				       struct comp_buffer *sinkb)
 {
 	int i;
 
@@ -593,8 +593,8 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
  * \param[in,out] source Structure pointer of source.
  * \param[in,out] sink Structure pointer of sink.
  */
-static void volume_set_alignment(struct audio_stream __sparse_cache *source,
-				 struct audio_stream __sparse_cache *sink)
+static void volume_set_alignment(struct audio_stream *source,
+				 struct audio_stream *sink)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 
@@ -631,14 +631,14 @@ static void volume_set_alignment(struct audio_stream __sparse_cache *source,
  * to also do some type of conversion here.
  */
 static int volume_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
