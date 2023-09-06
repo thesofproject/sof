@@ -208,15 +208,13 @@ int buffer_set_params(struct comp_buffer *buffer,
 bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag);
 
-static inline void buffer_stream_invalidate(struct comp_buffer *buffer,
-					    uint32_t bytes)
+static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 	if (buffer->is_shared)
 		audio_stream_invalidate(&buffer->stream, bytes);
 }
 
-static inline void buffer_stream_writeback(struct comp_buffer *buffer,
-					   uint32_t bytes)
+static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
 	if (buffer->is_shared)
 		audio_stream_writeback(&buffer->stream, bytes);

@@ -139,14 +139,12 @@ static inline uint32_t audio_stream_get_free(const struct audio_stream *buf)
 	return buf->free;
 }
 
-static inline enum sof_ipc_frame audio_stream_get_frm_fmt(
-	const struct audio_stream *buf)
+static inline enum sof_ipc_frame audio_stream_get_frm_fmt(const struct audio_stream *buf)
 {
 	return buf->runtime_stream_params.frame_fmt;
 }
 
-static inline enum sof_ipc_frame audio_stream_get_valid_fmt(
-	const struct audio_stream *buf)
+static inline enum sof_ipc_frame audio_stream_get_valid_fmt(const struct audio_stream *buf)
 {
 	return buf->runtime_stream_params.valid_sample_fmt;
 }
@@ -441,8 +439,7 @@ static inline void audio_stream_init_alignment_constants(const uint32_t byte_ali
  * @param frames Number of processing frames.
  * @return Period size in bytes.
  */
-static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
-						 uint32_t frames)
+static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf, uint32_t frames)
 {
 	return frames * audio_stream_frame_bytes(buf);
 }
@@ -454,8 +451,7 @@ static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
  * @param ptr Pointer
  * @return Pointer, adjusted if necessary.
  */
-static inline void *audio_stream_wrap(const struct audio_stream *buffer,
-				      void *ptr)
+static inline void *audio_stream_wrap(const struct audio_stream *buffer, void *ptr)
 {
 	if (ptr >= buffer->end_addr)
 		ptr = (char *)buffer->addr +
@@ -492,8 +488,7 @@ static inline void *cir_buf_wrap(void *ptr, void *buf_addr, void *buf_end)
  * @param ptr Pointer
  * @return Pointer, adjusted if necessary.
  */
-static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer,
-					     void *ptr)
+static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer, void *ptr)
 {
 	if (ptr < buffer->addr)
 		ptr = (char *)buffer->end_addr - ((char *)buffer->addr - (char *)ptr);
@@ -683,8 +678,7 @@ audio_stream_avail_frames_aligned(const struct audio_stream *source,
  * @param buffer Buffer to update.
  * @param bytes Number of written bytes.
  */
-static inline void audio_stream_produce(struct audio_stream *buffer,
-					uint32_t bytes)
+static inline void audio_stream_produce(struct audio_stream *buffer, uint32_t bytes)
 {
 	buffer->w_ptr = audio_stream_wrap(buffer,
 					  (char *)buffer->w_ptr + bytes);
@@ -711,8 +705,7 @@ static inline void audio_stream_produce(struct audio_stream *buffer,
  * @param buffer Buffer to update.
  * @param bytes Number of read bytes.
  */
-static inline void audio_stream_consume(struct audio_stream *buffer,
-					uint32_t bytes)
+static inline void audio_stream_consume(struct audio_stream *buffer, uint32_t bytes)
 {
 	buffer->r_ptr = audio_stream_wrap(buffer,
 					  (char *)buffer->r_ptr + bytes);
@@ -753,8 +746,7 @@ static inline void audio_stream_reset(struct audio_stream *buffer)
  * @param buff_addr Address of the memory block to assign.
  * @param size Size of the memory block in bytes.
  */
-void audio_stream_init(struct audio_stream *audio_stream,
-		       void *buff_addr, uint32_t size);
+void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint32_t size);
 
 /**
  * Invalidates (in DSP d-cache) the buffer in range [r_ptr, r_ptr+bytes],
@@ -762,8 +754,7 @@ void audio_stream_init(struct audio_stream *audio_stream,
  * @param buffer Buffer.
  * @param bytes Size of the fragment to invalidate.
  */
-static inline void audio_stream_invalidate(struct audio_stream *buffer,
-					   uint32_t bytes)
+static inline void audio_stream_invalidate(struct audio_stream *buffer, uint32_t bytes)
 {
 	uint32_t head_size = bytes;
 	uint32_t tail_size = 0;
@@ -786,8 +777,7 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer,
  * @param buffer Buffer.
  * @param bytes Size of the fragment to write back.
  */
-static inline void audio_stream_writeback(struct audio_stream *buffer,
-					  uint32_t bytes)
+static inline void audio_stream_writeback(struct audio_stream *buffer, uint32_t bytes)
 {
 	uint32_t head_size = bytes;
 	uint32_t tail_size = 0;
@@ -811,8 +801,7 @@ static inline void audio_stream_writeback(struct audio_stream *buffer,
  * @return Number of data samples to buffer wrap.
  */
 static inline int
-audio_stream_bytes_without_wrap(const struct audio_stream *source,
-				const void *ptr)
+audio_stream_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
 {
 	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
 	return (intptr_t)source->end_addr - (intptr_t)ptr;
@@ -827,8 +816,7 @@ audio_stream_bytes_without_wrap(const struct audio_stream *source,
  *	   need to add size of sample to returned bytes count.
  */
 static inline int
-audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source,
-				       const void *ptr)
+audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
 {
 	assert((intptr_t)ptr >= (intptr_t)source->addr);
 	int to_begin = (intptr_t)ptr - (intptr_t)source->addr;
@@ -843,8 +831,7 @@ audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source,
  * @return Previous position of the write pointer.
  */
 static inline uint32_t
-*audio_stream_rewind_wptr_by_bytes(const struct audio_stream *source,
-				       const uint32_t bytes)
+*audio_stream_rewind_wptr_by_bytes(const struct audio_stream *source, const uint32_t bytes)
 {
 	void *wptr = audio_stream_get_wptr(source);
 	int to_begin = audio_stream_rewind_bytes_without_wrap(source, wptr);
@@ -866,8 +853,7 @@ static inline uint32_t
  * @return Number of data s16 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s16(const struct audio_stream *source,
-				      const void *ptr)
+audio_stream_samples_without_wrap_s16(const struct audio_stream *source, const void *ptr)
 {
 	int to_end = (int16_t *)source->end_addr - (int16_t *)ptr;
 
@@ -883,8 +869,7 @@ audio_stream_samples_without_wrap_s16(const struct audio_stream *source,
  * @return Number of data s24 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s24(const struct audio_stream *source,
-				      const void *ptr)
+audio_stream_samples_without_wrap_s24(const struct audio_stream *source, const void *ptr)
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
@@ -900,8 +885,7 @@ audio_stream_samples_without_wrap_s24(const struct audio_stream *source,
  * @return Number of data s32 samples until circular wrap need at end
  */
 static inline int
-audio_stream_samples_without_wrap_s32(const struct audio_stream *source,
-				      const void *ptr)
+audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const void *ptr)
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
@@ -947,8 +931,7 @@ static inline int cir_buf_samples_without_wrap_s32(void *ptr, void *buf_end)
  * @return Number of data frames to buffer wrap.
  */
 static inline uint32_t
-audio_stream_frames_without_wrap(const struct audio_stream *source,
-				 const void *ptr)
+audio_stream_frames_without_wrap(const struct audio_stream *source, const void *ptr)
 {
 	uint32_t bytes = audio_stream_bytes_without_wrap(source, ptr);
 	uint32_t frame_bytes = audio_stream_frame_bytes(source);
@@ -1011,8 +994,7 @@ void audio_stream_copy_to_linear(const struct audio_stream *source, int ioffset,
  * @return 0 if there is enough free space in buffer.
  * @return 1 if there is not enough free space in buffer.
  */
-static inline int audio_stream_set_zero(struct audio_stream *buffer,
-					uint32_t bytes)
+static inline int audio_stream_set_zero(struct audio_stream *buffer, uint32_t bytes)
 {
 	uint32_t head_size = bytes;
 	uint32_t tail_size = 0;
@@ -1071,7 +1053,6 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 }
 
 /** get a handler to source API
- * NOTE! to use the handlers the buffer must be acquired by buffer_acquire
  */
 static inline struct sof_source *
 audio_stream_get_source(struct audio_stream *audio_stream)

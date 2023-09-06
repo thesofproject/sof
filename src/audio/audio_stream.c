@@ -134,8 +134,7 @@ static const struct sink_ops audio_stream_sink_ops = {
 	.set_alignment_constants = audio_stream_sink_set_alignment_constants
 };
 
-void audio_stream_init(struct audio_stream *audio_stream,
-		       void *buff_addr, uint32_t size)
+void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint32_t size)
 {
 	audio_stream->size = size;
 	audio_stream->addr = buff_addr;
