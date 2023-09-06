@@ -6,20 +6,20 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 
-static size_t audio_stream_get_free_size(struct sof_sink __sparse_cache *sink)
+static size_t audio_stream_get_free_size(struct sof_sink *sink)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(sink, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(sink, struct audio_stream,
 					  sink_api, __sparse_cache);
 
 	return audio_stream_get_free_bytes(audio_stream);
 }
 
-static int audio_stream_get_buffer(struct sof_sink __sparse_cache *sink, size_t req_size,
+static int audio_stream_get_buffer(struct sof_sink *sink, size_t req_size,
 				   void **data_ptr, void **buffer_start, size_t *buffer_size)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(sink, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(sink, struct audio_stream,
 					  sink_api, __sparse_cache);
 
 	if (req_size > audio_stream_get_free_size(sink))
@@ -32,13 +32,13 @@ static int audio_stream_get_buffer(struct sof_sink __sparse_cache *sink, size_t 
 	return 0;
 }
 
-static int audio_stream_commit_buffer(struct sof_sink __sparse_cache *sink, size_t commit_size)
+static int audio_stream_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(sink, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(sink, struct audio_stream,
 					  sink_api, __sparse_cache);
-	struct comp_buffer __sparse_cache *buffer_c =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+	struct comp_buffer *buffer_c =
+			attr_container_of(audio_stream, struct comp_buffer,
 					  stream, __sparse_cache);
 
 	if (commit_size) {
@@ -49,24 +49,24 @@ static int audio_stream_commit_buffer(struct sof_sink __sparse_cache *sink, size
 	return 0;
 }
 
-static size_t audio_stream_get_data_available(struct sof_source __sparse_cache *source)
+static size_t audio_stream_get_data_available(struct sof_source *source)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(source, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(source, struct audio_stream,
 					  source_api, __sparse_cache);
 
 	return audio_stream_get_avail_bytes(audio_stream);
 }
 
-static int audio_stream_get_data(struct sof_source __sparse_cache *source, size_t req_size,
+static int audio_stream_get_data(struct sof_source *source, size_t req_size,
 				 void  **data_ptr, void **buffer_start, size_t *buffer_size)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(source, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(source, struct audio_stream,
 					  source_api, __sparse_cache);
 
-	struct comp_buffer __sparse_cache *buffer_c =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+	struct comp_buffer *buffer_c =
+			attr_container_of(audio_stream, struct comp_buffer,
 					  stream, __sparse_cache);
 
 	if (req_size > audio_stream_get_data_available(source))
@@ -81,10 +81,10 @@ static int audio_stream_get_data(struct sof_source __sparse_cache *source, size_
 	return 0;
 }
 
-static int audio_stream_release_data(struct sof_source __sparse_cache *source, size_t free_size)
+static int audio_stream_release_data(struct sof_source *source, size_t free_size)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(source, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(source, struct audio_stream,
 					  source_api, __sparse_cache);
 
 	if (free_size)
@@ -93,40 +93,40 @@ static int audio_stream_release_data(struct sof_source __sparse_cache *source, s
 	return 0;
 }
 
-static int audio_stream_set_ipc_params_source(struct sof_source __sparse_cache *source,
+static int audio_stream_set_ipc_params_source(struct sof_source *source,
 					      struct sof_ipc_stream_params *params,
 					      bool force_update)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(source, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(source, struct audio_stream,
 					  source_api, __sparse_cache);
-	struct comp_buffer __sparse_cache *buffer =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+	struct comp_buffer *buffer =
+			attr_container_of(audio_stream, struct comp_buffer,
 					  stream, __sparse_cache);
 
 	return buffer_set_params(buffer, params, force_update);
 }
 
-static int audio_stream_set_ipc_params_sink(struct sof_sink __sparse_cache *sink,
+static int audio_stream_set_ipc_params_sink(struct sof_sink *sink,
 					    struct sof_ipc_stream_params *params,
 					    bool force_update)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(sink, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(sink, struct audio_stream,
 					  sink_api, __sparse_cache);
-	struct comp_buffer __sparse_cache *buffer =
-			attr_container_of(audio_stream, struct comp_buffer __sparse_cache,
+	struct comp_buffer *buffer =
+			attr_container_of(audio_stream, struct comp_buffer,
 					  stream, __sparse_cache);
 
 	return buffer_set_params(buffer, params, force_update);
 }
 
-static int audio_stream_source_set_alignment_constants(struct sof_source __sparse_cache *source,
+static int audio_stream_source_set_alignment_constants(struct sof_source *source,
 						       const uint32_t byte_align,
 						       const uint32_t frame_align_req)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(source, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(source, struct audio_stream,
 					  source_api, __sparse_cache);
 
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, audio_stream);
@@ -134,12 +134,12 @@ static int audio_stream_source_set_alignment_constants(struct sof_source __spars
 	return 0;
 }
 
-static int audio_stream_sink_set_alignment_constants(struct sof_sink __sparse_cache *sink,
+static int audio_stream_sink_set_alignment_constants(struct sof_sink *sink,
 						     const uint32_t byte_align,
 						     const uint32_t frame_align_req)
 {
-	struct audio_stream __sparse_cache *audio_stream =
-			attr_container_of(sink, struct audio_stream __sparse_cache,
+	struct audio_stream *audio_stream =
+			attr_container_of(sink, struct audio_stream,
 					  sink_api, __sparse_cache);
 
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, audio_stream);
@@ -163,7 +163,7 @@ static const struct sink_ops audio_stream_sink_ops = {
 	.set_alignment_constants = audio_stream_sink_set_alignment_constants
 };
 
-void audio_stream_init(struct audio_stream __sparse_cache *audio_stream,
+void audio_stream_init(struct audio_stream *audio_stream,
 		       void *buff_addr, uint32_t size)
 {
 	audio_stream->size = size;

@@ -109,7 +109,7 @@ static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *d
 static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd)
 {
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t copy_bytes;
 
 	buffer_c = buffer_acquire(buffer);
@@ -175,7 +175,7 @@ static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd)
 {
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t copy_bytes;
 	uint32_t split_value;
 
@@ -241,8 +241,8 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 
 void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
-	struct comp_buffer __sparse_cache *source;
-	struct comp_buffer __sparse_cache *sink;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	int ret;
 	bool update_mailbox = false;
 	bool send_ipc = false;
@@ -379,8 +379,8 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev *dev)
 {
 	struct comp_buffer *buffer = hd->local_buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
-	struct comp_buffer __sparse_cache *dma_buf_c;
+	struct comp_buffer *buffer_c;
+	struct comp_buffer *dma_buf_c;
 	struct dma_status dma_stat;
 	uint32_t avail_samples;
 	uint32_t free_samples;
@@ -464,7 +464,7 @@ static inline bool stream_sync(struct host_data *hd, struct comp_dev *dev)
  */
 static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t copy_bytes;
 	const unsigned int threshold =
 #if CONFIG_HOST_DMA_RELOAD_DELAY_ENABLE
@@ -512,7 +512,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
 			      uint32_t buffer_bytes, uint32_t direction)
 {
-	struct comp_buffer __sparse_cache *dma_buf_c;
+	struct comp_buffer *dma_buf_c;
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
 	int err;
@@ -759,8 +759,8 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	struct dma_sg_elem *sg_elem;
 	struct dma_config *dma_cfg = &hd->z_config;
 	struct dma_block_config dma_block_cfg;
-	struct comp_buffer __sparse_cache *host_buf_c;
-	struct comp_buffer __sparse_cache *dma_buf_c;
+	struct comp_buffer *host_buf_c;
+	struct comp_buffer *dma_buf_c;
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
@@ -1007,7 +1007,7 @@ static int host_params(struct comp_dev *dev,
 
 int host_common_prepare(struct host_data *hd)
 {
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(hd->dma_buffer);
+	struct comp_buffer *buf_c = buffer_acquire(hd->dma_buffer);
 
 	buffer_zero(buf_c);
 	buffer_release(buf_c);

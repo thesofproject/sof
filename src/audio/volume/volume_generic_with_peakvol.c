@@ -57,8 +57,8 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t vol;
 	int32_t *x, *x0;
 	int32_t *y, *y0;
@@ -112,8 +112,8 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x, *x0;
 	int32_t *y, *y0;
 	int nmax, n, i, j;
@@ -166,8 +166,8 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t vol;
 	int32_t *x, *x0;
 	int32_t *y, *y0;
@@ -224,8 +224,8 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x, *x0;
 	int32_t *y, *y0;
 	int nmax, n, i, j;
@@ -280,8 +280,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t vol;
 	int16_t *x, *x0;
 	int16_t *y, *y0;
@@ -336,8 +336,8 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x, *x0;
 	int32_t *y, *y0;
 	int nmax, n, i, j;

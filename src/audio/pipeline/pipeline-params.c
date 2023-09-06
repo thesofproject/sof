@@ -30,7 +30,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
+	struct comp_buffer *buf_c = buffer_acquire(calling_buf);
 	int err = 0;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
@@ -131,7 +131,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 }
 
 /* save params changes made by component */
-static void pipeline_update_buffer_pcm_params(struct comp_buffer __sparse_cache *buffer,
+static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 					      void *data)
 {
 	struct sof_ipc_stream_params *params = data;
@@ -188,7 +188,7 @@ static int pipeline_comp_hw_params_buf(struct comp_dev *current,
 		return ret;
 	/* set buffer parameters */
 	if (calling_buf) {
-		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(calling_buf);
+		struct comp_buffer *buf_c = buffer_acquire(calling_buf);
 
 		ret = buffer_set_params(buf_c, &ppl_data->params->params,
 					BUFFER_UPDATE_IF_UNSET);

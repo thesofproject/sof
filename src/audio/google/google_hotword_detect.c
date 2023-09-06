@@ -159,7 +159,7 @@ static int ghd_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source_c;
 	int ret;
 
 	/* Detector is used only in KPB topology. It always requires channels
@@ -383,8 +383,8 @@ static int ghd_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
-	struct audio_stream __sparse_cache *stream;
+	struct comp_buffer *source_c;
+	struct audio_stream *stream;
 	uint32_t bytes, tail_bytes, head_bytes = 0;
 	int ret;
 

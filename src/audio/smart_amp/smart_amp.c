@@ -26,8 +26,8 @@ DECLARE_TR_CTX(maxim_dsm_comp_tr, SOF_UUID(maxim_dsm_comp_uuid),
 #define SOF_SMART_AMP_MODEL 1
 
 typedef int(*smart_amp_proc)(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink, uint32_t frames,
+			     const struct audio_stream *source,
+			     const struct audio_stream *sink, uint32_t frames,
 			     int8_t *chan_map, bool is_feedback);
 
 struct smart_amp_data {
@@ -518,7 +518,7 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
 		if (sad->feedback_buf) {
-			struct comp_buffer __sparse_cache *buf = buffer_acquire(sad->feedback_buf);
+			struct comp_buffer *buf = buffer_acquire(sad->feedback_buf);
 			buffer_zero(buf);
 			buffer_release(buf);
 		}
@@ -534,8 +534,8 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int smart_amp_process(struct comp_dev *dev,
-			     const struct audio_stream __sparse_cache *source,
-			     const struct audio_stream __sparse_cache *sink,
+			     const struct audio_stream *source,
+			     const struct audio_stream *sink,
 			     uint32_t frames, int8_t *chan_map,
 			     bool is_feedback)
 {
@@ -558,7 +558,7 @@ static int smart_amp_process(struct comp_dev *dev,
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
+	struct comp_buffer *source_buf = buffer_acquire(sad->source_buf);
 	enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&source_buf->stream);
 
 	buffer_release(source_buf);
@@ -577,8 +577,8 @@ static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 static int smart_amp_copy(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *source_buf = buffer_acquire(sad->source_buf);
-	struct comp_buffer __sparse_cache *sink_buf = buffer_acquire(sad->sink_buf);
+	struct comp_buffer *source_buf = buffer_acquire(sad->source_buf);
+	struct comp_buffer *sink_buf = buffer_acquire(sad->sink_buf);
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
 	uint32_t avail_frames;
@@ -595,7 +595,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	avail_frames = avail_passthrough_frames;
 
 	if (sad->feedback_buf) {
-		struct comp_buffer __sparse_cache *feedback_buf = buffer_acquire(sad->feedback_buf);
+		struct comp_buffer *feedback_buf = buffer_acquire(sad->feedback_buf);
 
 		if (comp_get_state(dev, feedback_buf->source) == dev->state) {
 			/* feedback */
@@ -661,7 +661,7 @@ static int smart_amp_reset(struct comp_dev *dev)
 static int smart_amp_prepare(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *source_c, *buf_c;
+	struct comp_buffer *source_c, *buf_c;
 	struct list_item *blist;
 	int ret;
 	int bitwidth;

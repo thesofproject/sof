@@ -167,9 +167,9 @@ static int mixout_free(struct processing_module *mod)
 }
 
 static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
-			 uint16_t sink_index, struct audio_stream __sparse_cache *sink,
+			 uint16_t sink_index, struct audio_stream *sink,
 			 uint32_t start_frame, uint32_t mixed_frames,
-			 const struct audio_stream __sparse_cache *source, uint32_t frame_count)
+			 const struct audio_stream *source, uint32_t frame_count)
 {
 	const struct mixin_sink_config *sink_config;
 
@@ -197,7 +197,7 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 }
 
 /* mix silence into stream, i.e. set not yet mixed data in stream to zero */
-static void silence(struct audio_stream __sparse_cache *stream, uint32_t start_frame,
+static void silence(struct audio_stream *stream, uint32_t start_frame,
 		    uint32_t mixed_frames, uint32_t frame_count)
 {
 	uint32_t skip_mixed_frames;
@@ -274,19 +274,19 @@ static int mixin_process(struct processing_module *mod,
 	 * and frames free in each connected mixout sink buffer.
 	 */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer __sparse_cache *unused_in_between_buf_c;
+		struct comp_buffer *unused_in_between_buf_c;
 		struct comp_dev *mixout;
 		uint16_t sink_id;
 		struct comp_buffer *sink;
 		struct mixout_data *mixout_data;
 		struct processing_module *mixout_mod;
 		struct module_source_info __sparse_cache *mod_source_info;
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 		uint32_t free_frames, pending_frames;
 
 		/* unused buffer between mixin and mixout */
 		unused_in_between_buf_c = attr_container_of(output_buffers[i].data,
-							    struct comp_buffer __sparse_cache,
+							    struct comp_buffer,
 							    stream, __sparse_cache);
 		mixout = unused_in_between_buf_c->sink;
 		sink_id = IPC4_SRC_QUEUE_ID(unused_in_between_buf_c->id);
@@ -334,7 +334,7 @@ static int mixin_process(struct processing_module *mod,
 	}
 
 	if (source_avail_frames > 0) {
-		struct comp_buffer __sparse_cache *source_c;
+		struct comp_buffer *source_c;
 
 		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
 		bytes_to_consume_from_source_buf =
@@ -342,7 +342,7 @@ static int mixin_process(struct processing_module *mod,
 		if (bytes_to_consume_from_source_buf > 0) {
 			input_buffers[0].consumed = bytes_to_consume_from_source_buf;
 			source_c = attr_container_of(input_buffers[0].data,
-						     struct comp_buffer __sparse_cache,
+						     struct comp_buffer,
 						     stream, __sparse_cache);
 			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
 		}
@@ -363,7 +363,7 @@ static int mixin_process(struct processing_module *mod,
 		struct module_source_info __sparse_cache *mod_source_info;
 		struct processing_module *mixout_mod;
 		uint32_t start_frame;
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 		uint32_t writeback_size;
 
 		mixout = active_mixouts[i];
@@ -455,14 +455,14 @@ static int mixout_process(struct processing_module *mod,
 	 * produced now.
 	 */
 	for (i = 0; i < num_input_buffers; i++) {
-		const struct audio_stream __sparse_cache *source_stream;
-		struct comp_buffer __sparse_cache *unused_in_between_buf;
+		const struct audio_stream *source_stream;
+		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *source;
 		int source_index;
 
 		source_stream = input_buffers[i].data;
 		unused_in_between_buf = attr_container_of(source_stream,
-							  struct comp_buffer __sparse_cache,
+							  struct comp_buffer,
 							  stream, __sparse_cache);
 
 		source = unused_in_between_buf->source;
@@ -480,15 +480,15 @@ static int mixout_process(struct processing_module *mod,
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_input_buffers; i++) {
-			const struct audio_stream __sparse_cache *source_stream;
-			struct comp_buffer __sparse_cache *unused_in_between_buf;
+			const struct audio_stream *source_stream;
+			struct comp_buffer *unused_in_between_buf;
 			struct comp_dev *source;
 			int source_index;
 			uint32_t pending_frames;
 
 			source_stream = input_buffers[i].data;
 			unused_in_between_buf = attr_container_of(source_stream,
-								  struct comp_buffer __sparse_cache,
+								  struct comp_buffer,
 								  stream, __sparse_cache);
 
 			source = unused_in_between_buf->source;
@@ -547,7 +547,7 @@ static int mixout_reset(struct processing_module *mod)
 	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
 			struct comp_buffer *source;
-			struct comp_buffer __sparse_cache *source_c;
+			struct comp_buffer *source_c;
 			bool stop;
 
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
@@ -584,7 +584,7 @@ static int mixin_params(struct processing_module *mod)
 	 */
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 		enum sof_ipc_frame frame_fmt, valid_fmt;
 		uint16_t sink_id;
 
@@ -641,13 +641,13 @@ static int mixin_params(struct processing_module *mod)
  * if downstream is not currently active.
  */
 static int mixin_prepare(struct processing_module *mod,
-			 struct sof_source __sparse_cache **sources, int num_of_sources,
-			 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixin_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	enum sof_ipc_frame fmt;
 	int ret;
 
@@ -687,7 +687,7 @@ static int mixout_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	uint32_t sink_period_bytes, sink_stream_size;
@@ -737,8 +737,8 @@ static int mixout_params(struct processing_module *mod)
 }
 
 static int mixout_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct module_source_info __sparse_cache *mod_source_info;
 	struct comp_dev *dev = mod->dev;

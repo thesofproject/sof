@@ -28,8 +28,8 @@ struct multiband_drc_state {
 };
 
 typedef void (*multiband_drc_func)(const struct processing_module *mod,
-				   const struct audio_stream __sparse_cache *source,
-				   struct audio_stream __sparse_cache *sink,
+				   const struct audio_stream *source,
+				   struct audio_stream *sink,
 				   uint32_t frames);
 
 /* Multiband DRC component private data */

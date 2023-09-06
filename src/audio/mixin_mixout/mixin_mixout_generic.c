@@ -17,9 +17,9 @@
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
-static void normal_mix_channel_s16(struct audio_stream __sparse_cache *sink, int32_t start_frame,
+static void normal_mix_channel_s16(struct audio_stream *sink, int32_t start_frame,
 				   int32_t mixed_frames,
-				   const struct audio_stream __sparse_cache *source,
+				   const struct audio_stream *source,
 				   int32_t frame_count, uint16_t gain)
 {
 	int32_t frames_to_mix, frames_to_copy, left_frames;
@@ -61,7 +61,7 @@ static void normal_mix_channel_s16(struct audio_stream __sparse_cache *sink, int
 	}
 }
 
-static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t channel_index,
+static void mute_channel_s16(struct audio_stream *stream, int32_t channel_index,
 			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
 {
 	int32_t skip_mixed_frames, n, left_frames, i, channel_count, frames, samples;
@@ -101,9 +101,9 @@ static void mute_channel_s16(struct audio_stream __sparse_cache *stream, int32_t
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
-static void normal_mix_channel_s24(struct audio_stream __sparse_cache *sink, int32_t start_frame,
+static void normal_mix_channel_s24(struct audio_stream *sink, int32_t start_frame,
 				   int32_t mixed_frames,
-				   const struct audio_stream __sparse_cache *source,
+				   const struct audio_stream *source,
 				   int32_t frame_count, uint16_t gain)
 {
 	int32_t frames_to_mix, frames_to_copy, left_frames;
@@ -153,9 +153,9 @@ static void normal_mix_channel_s24(struct audio_stream __sparse_cache *sink, int
  * parameters: multichannel stream is treated as single channel and so the entire stream
  * contents is mixed.
  */
-static void normal_mix_channel_s32(struct audio_stream __sparse_cache *sink, int32_t start_frame,
+static void normal_mix_channel_s32(struct audio_stream *sink, int32_t start_frame,
 				   int32_t mixed_frames,
-				   const struct audio_stream __sparse_cache *source,
+				   const struct audio_stream *source,
 				   int32_t frame_count, uint16_t gain)
 {
 	int32_t frames_to_mix, frames_to_copy, left_frames;
@@ -198,7 +198,7 @@ static void normal_mix_channel_s32(struct audio_stream __sparse_cache *sink, int
 #endif	/* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S24LE
-static void mute_channel_s32(struct audio_stream __sparse_cache *stream, int32_t channel_index,
+static void mute_channel_s32(struct audio_stream *stream, int32_t channel_index,
 			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
 {
 	int32_t skip_mixed_frames, left_frames, n, channel_count, i, frames, samples;

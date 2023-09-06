@@ -36,8 +36,8 @@ static int32_t dcblock_generic(struct dcblock_state *state,
 
 #if CONFIG_FORMAT_S16LE
 static void dcblock_s16_default(struct comp_data *cd,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct dcblock_state *state;
@@ -76,8 +76,8 @@ static void dcblock_s16_default(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S24LE
 static void dcblock_s24_default(struct comp_data *cd,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct dcblock_state *state;
@@ -116,8 +116,8 @@ static void dcblock_s24_default(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S32LE
 static void dcblock_s32_default(struct comp_data *cd,
-				const struct audio_stream __sparse_cache *source,
-				const struct audio_stream __sparse_cache *sink,
+				const struct audio_stream *source,
+				const struct audio_stream *sink,
 				uint32_t frames)
 {
 	struct dcblock_state *state;

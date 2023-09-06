@@ -82,7 +82,7 @@ static int mixer_process(struct processing_module *mod,
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	const struct audio_stream __sparse_cache *sources_stream[PLATFORM_MAX_STREAMS];
+	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
 	int sources_indices[PLATFORM_MAX_STREAMS];
 	int32_t i = 0, j = 0;
 	uint32_t frames = INT32_MAX;
@@ -174,7 +174,7 @@ static int mixer_reset(struct processing_module *mod)
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
-			struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+			struct comp_buffer *source_c = buffer_acquire(source);
 			bool stop = false;
 
 			if (source_c->source && source_c->source->state > COMP_STATE_READY)
@@ -194,7 +194,7 @@ static int mixer_reset(struct processing_module *mod)
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache *source)
+static inline void mixer_set_frame_alignment(struct audio_stream *source)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 
@@ -220,11 +220,11 @@ static inline void mixer_set_frame_alignment(struct audio_stream __sparse_cache 
 }
 
 static int mixer_prepare(struct processing_module *mod,
-			 struct sof_source __sparse_cache **sources, int num_of_sources,
-			 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixer_data *md = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
 	struct list_item *blist;
@@ -239,7 +239,7 @@ static int mixer_prepare(struct processing_module *mod,
 	/* check each mixer source state */
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
-		struct comp_buffer __sparse_cache *source_c;
+		struct comp_buffer *source_c;
 		bool stop;
 
 		/*

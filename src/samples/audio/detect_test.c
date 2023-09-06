@@ -101,7 +101,7 @@ struct comp_data {
 	struct ipc_msg *msg;	/**< host notification */
 
 	void (*detect_func)(struct comp_dev *dev,
-			    const struct audio_stream __sparse_cache *source, uint32_t frames);
+			    const struct audio_stream *source, uint32_t frames);
 	struct sof_ipc_comp_event event;
 
 #if CONFIG_AMS
@@ -209,7 +209,7 @@ void detect_test_notify(const struct comp_dev *dev)
 }
 
 static void default_detect_test(struct comp_dev *dev,
-				const struct audio_stream __sparse_cache *source,
+				const struct audio_stream *source,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -797,7 +797,7 @@ static int test_keyword_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
-	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source_c;
 	unsigned int channels, rate;
 	enum sof_ipc_frame frame_fmt;
 	int err;
@@ -881,7 +881,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
-	struct comp_buffer __sparse_cache *source_c;
+	struct comp_buffer *source_c;
 	uint32_t frames;
 
 	comp_dbg(dev, "test_keyword_copy()");

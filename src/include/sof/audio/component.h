@@ -817,7 +817,7 @@ static inline void component_set_nearest_period_frames(struct comp_dev *current,
  * @param copy_bytes Requested size of data to be available.
  */
 static inline void comp_underrun(struct comp_dev *dev,
-				 struct comp_buffer __sparse_cache *source,
+				 struct comp_buffer *source,
 				 uint32_t copy_bytes)
 {
 	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
@@ -839,7 +839,7 @@ static inline void comp_underrun(struct comp_dev *dev,
  * @param sink Sink buffer.
  * @param copy_bytes Requested size of free space to be available.
  */
-static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer __sparse_cache *sink,
+static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 				uint32_t copy_bytes)
 {
 	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
@@ -864,8 +864,8 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer __spars
  * @param[in] sink Sink buffer.
  * @param[out] cl Current copy limits.
  */
-void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
-			  struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits(struct comp_buffer *source,
+			  struct comp_buffer *sink,
 			  struct comp_copy_limits *cl);
 
 /**
@@ -877,8 +877,8 @@ void comp_get_copy_limits(struct comp_buffer __sparse_cache *source,
  * @param[in] sink Buffer of sink.
  * @param[out] cl Current copy limits.
  */
-void comp_get_copy_limits_frame_aligned(const struct comp_buffer __sparse_cache *source,
-					const struct comp_buffer __sparse_cache *sink,
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
+					const struct comp_buffer *sink,
 					struct comp_copy_limits *cl);
 
 /**
@@ -894,7 +894,7 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    struct comp_copy_limits *cl)
 {
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 
 	source_c = buffer_acquire(source);
 	sink_c = buffer_acquire(sink);
@@ -919,7 +919,7 @@ void comp_get_copy_limits_with_lock_frame_aligned(struct comp_buffer *source,
 						  struct comp_buffer *sink,
 						  struct comp_copy_limits *cl)
 {
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 
 	source_c = buffer_acquire(source);
 	sink_c = buffer_acquire(sink);

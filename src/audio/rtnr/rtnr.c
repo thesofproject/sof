@@ -325,7 +325,7 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	bool channels_valid;
 
 	comp_info(dev, "rtnr_params()");
@@ -727,7 +727,7 @@ static int rtnr_trigger(struct comp_dev *dev, int cmd)
 }
 
 static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
-				      struct audio_stream __sparse_cache *src)
+				      struct audio_stream *src)
 {
 
 	dst->size = audio_stream_get_size(src);
@@ -739,7 +739,7 @@ static void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst,
 	dst->end_addr = audio_stream_get_end_addr(src);
 }
 
-static void rtnr_copy_to_sof_stream(struct audio_stream __sparse_cache *dst,
+static void rtnr_copy_to_sof_stream(struct audio_stream *dst,
 				    struct audio_stream_rtnr *src)
 {
 	audio_stream_set_size(dst, src->size);
@@ -851,7 +851,7 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");

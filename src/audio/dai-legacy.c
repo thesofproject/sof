@@ -97,7 +97,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
-	struct comp_buffer __sparse_cache *local_buf, *dma_buf;
+	struct comp_buffer *local_buf, *dma_buf;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -138,7 +138,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0) {
-		struct comp_buffer __sparse_cache *source_c, *sink_c;
+		struct comp_buffer *source_c, *sink_c;
 
 		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 					local_buf : dma_buf;
@@ -357,7 +357,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
+	struct comp_buffer *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
@@ -419,7 +419,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct comp_buffer __sparse_cache *dma_buf = buffer_acquire(dd->dma_buffer),
+	struct comp_buffer *dma_buf = buffer_acquire(dd->dma_buffer),
 		*local_buf = buffer_acquire(dd->local_buffer);
 	uint32_t local_fmt = audio_stream_get_frm_fmt(&local_buf->stream);
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dma_buf->stream);
@@ -491,7 +491,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params = *params;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t frame_size;
 	uint32_t period_count;
 	uint32_t period_bytes;
@@ -685,7 +685,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	int ret;
 
 	dd->total_data_processed = 0;
@@ -815,7 +815,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		 * this is only supported at capture mode.
 		 */
 		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
-			struct comp_buffer __sparse_cache *buffer_c =
+			struct comp_buffer *buffer_c =
 				buffer_acquire(dd->dma_buffer);
 
 			buffer_zero(buffer_c);
@@ -947,7 +947,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c = buffer_acquire(dd->local_buffer);
+	struct comp_buffer *buf_c = buffer_acquire(dd->local_buffer);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
@@ -965,7 +965,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 {
 	uint32_t dma_fmt;
 	uint32_t sampling;
-	struct comp_buffer __sparse_cache *buf_c;
+	struct comp_buffer *buf_c;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;

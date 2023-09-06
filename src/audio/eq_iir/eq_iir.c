@@ -64,8 +64,8 @@ static void eq_iir_s16_default(struct processing_module *mod, struct input_strea
 			       struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
 	int16_t *x0;
 	int16_t *y0;
@@ -112,8 +112,8 @@ static void eq_iir_s24_default(struct processing_module *mod, struct input_strea
 			       struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -160,8 +160,8 @@ static void eq_iir_s32_default(struct processing_module *mod, struct input_strea
 			       struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -209,8 +209,8 @@ static void eq_iir_s32_16_default(struct processing_module *mod,
 				  struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int16_t *y0;
@@ -257,8 +257,8 @@ static void eq_iir_s32_24_default(struct processing_module *mod,
 				  struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
 	int32_t *x0;
 	int32_t *y0;
@@ -303,8 +303,8 @@ static void eq_iir_s32_24_default(struct processing_module *mod,
 static void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 			struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
@@ -314,8 +314,8 @@ static void eq_iir_pass(struct processing_module *mod, struct input_stream_buffe
 static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 				struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x = audio_stream_get_rptr(source);
 	int16_t *y = audio_stream_get_wptr(sink);
 	int nmax;
@@ -344,8 +344,8 @@ static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stre
 static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 				struct output_stream_buffer *bsink, uint32_t frames)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	int32_t *x = audio_stream_get_rptr(source);
 	int32_t *y = audio_stream_get_wptr(sink);
 	int nmax;
@@ -694,7 +694,7 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 				struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	uint32_t buffer_flag;
 	int ret;
 
@@ -794,8 +794,8 @@ static int eq_iir_process(struct processing_module *mod,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
@@ -821,8 +821,8 @@ static int eq_iir_process(struct processing_module *mod,
  * \param[in,out] source Structure pointer of source.
  * \param[in,out] sink Structure pointer of sink.
  */
-static void eq_iir_set_alignment(struct audio_stream __sparse_cache *source,
-				 struct audio_stream __sparse_cache *sink)
+static void eq_iir_set_alignment(struct audio_stream *source,
+				 struct audio_stream *sink)
 {
 	const uint32_t byte_align = 8;
 	const uint32_t frame_align_req = 2;
@@ -838,7 +838,7 @@ static int eq_iir_params(struct processing_module *mod)
 	struct sof_ipc_stream_params comp_params;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
@@ -880,12 +880,12 @@ static void eq_iir_set_passthrough_func(struct comp_data *cd,
 }
 
 static int eq_iir_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;

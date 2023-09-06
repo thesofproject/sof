@@ -61,8 +61,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample = AE_ZERO32();
 	ae_f32x2 volume = AE_ZERO32();
@@ -147,8 +147,8 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 					   struct output_stream_buffer *bsink, uint32_t frames,
 					   uint32_t attenuation)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	int i, n, m;
 	ae_valign inu = AE_ZALIGN64();
@@ -198,8 +198,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample = AE_ZERO32();
 	ae_f32x2 volume = AE_ZERO32();
@@ -289,8 +289,8 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 					   struct output_stream_buffer *bsink, uint32_t frames,
 					   uint32_t attenuation)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	int i, n, m;
 	ae_valign inu = AE_ZALIGN64();
@@ -339,8 +339,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f32x2 volume0 = AE_ZERO32();
 	ae_f32x2 volume1 = AE_ZERO32();
 	ae_f32x2 out_sample0 = AE_ZERO32();
@@ -436,8 +436,8 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				       struct output_stream_buffer *bsink, uint32_t frames,
 				       uint32_t attenuation)
 {
-	struct audio_stream __sparse_cache *source = bsource->data;
-	struct audio_stream __sparse_cache *sink = bsink->data;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 	ae_f16x4 in_sample = AE_ZERO16();
 	int i, n, m;
 	ae_valign inu = AE_ZALIGN64();

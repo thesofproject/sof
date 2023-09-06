@@ -13,8 +13,8 @@
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
+static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	ae_int16x4 * in[PLATFORM_MAX_CHANNELS];
@@ -69,8 +69,8 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream __sparse_cache *
 
 #if CONFIG_FORMAT_S24LE
 /* Mix n 24 bit PCM source streams to one sink stream */
-static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
+static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
@@ -114,8 +114,8 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream __sparse_cache *
 
 #if CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
-		      const struct audio_stream __sparse_cache **sources, uint32_t num_sources,
+static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	ae_q32s * in[PLATFORM_MAX_CHANNELS];

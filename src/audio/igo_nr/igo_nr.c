@@ -66,8 +66,8 @@ static void igo_nr_lib_process(struct comp_data *cd)
 
 #if CONFIG_FORMAT_S16LE
 static void igo_nr_capture_s16(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);
@@ -125,8 +125,8 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S24LE
 static void igo_nr_capture_s24(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);
@@ -184,8 +184,8 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 
 #if CONFIG_FORMAT_S32LE
 static void igo_nr_capture_s32(struct comp_data *cd,
-			       const struct audio_stream __sparse_cache *source,
-			       struct audio_stream __sparse_cache *sink,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       int32_t frames)
 {
 	int32_t nch = audio_stream_get_channels(source);
@@ -379,7 +379,7 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	int32_t err;
 
 	comp_info(dev, "igo_nr_params()");
@@ -619,8 +619,8 @@ static int32_t igo_nr_cmd(struct comp_dev *dev,
 }
 
 static void igo_nr_process(struct comp_dev *dev,
-			   struct comp_buffer __sparse_cache *source,
-			   struct comp_buffer __sparse_cache *sink,
+			   struct comp_buffer *source,
+			   struct comp_buffer *sink,
 			   struct comp_copy_limits *cl,
 			   int32_t frames)
 
@@ -701,7 +701,7 @@ static int32_t igo_nr_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t src_frames;
 	int32_t sink_frames;

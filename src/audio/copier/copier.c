@@ -178,8 +178,8 @@ static int copier_free(struct processing_module *mod)
 static int copier_params(struct processing_module *mod);
 
 static int copier_prepare(struct processing_module *mod,
-			  struct sof_source __sparse_cache **sources, int num_of_sources,
-			  struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -266,7 +266,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	struct sof_ipc_stream_posn posn;
 	struct comp_dev *dai_copier;
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t latency;
 	int ret;
 
@@ -396,8 +396,8 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 static int do_conversion_copy(struct comp_dev *dev,
 			      struct copier_data *cd,
-			      struct comp_buffer __sparse_cache *src,
-			      struct comp_buffer __sparse_cache *sink,
+			      struct comp_buffer *src,
+			      struct comp_buffer *sink,
 			      struct comp_copy_limits *processed_data)
 {
 	int i;
@@ -423,10 +423,10 @@ static int do_conversion_copy(struct comp_dev *dev,
 }
 
 static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
-				struct comp_buffer __sparse_cache *src_c,
+				struct comp_buffer *src_c,
 				struct comp_copy_limits *processed_data)
 {
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
 	int ret = 0;
@@ -466,25 +466,25 @@ static int copier_module_copy(struct processing_module *mod,
 			      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *src_c;
+	struct comp_buffer *src_c;
 	struct comp_copy_limits processed_data;
 	int i;
 
 	if (!num_input_buffers || !num_output_buffers)
 		return 0;
 
-	src_c = attr_container_of(input_buffers[0].data, struct comp_buffer __sparse_cache,
+	src_c = attr_container_of(input_buffers[0].data, struct comp_buffer,
 				  stream, __sparse_cache);
 
 	processed_data.source_bytes = 0;
 
 	/* convert format and copy to each active sink */
 	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer __sparse_cache *sink_c;
+		struct comp_buffer *sink_c;
 		struct comp_dev *sink_dev;
 
 		sink_c = attr_container_of(output_buffers[i].data,
-					   struct comp_buffer __sparse_cache,
+					   struct comp_buffer,
 					   stream, __sparse_cache);
 		sink_dev = sink_c->sink;
 		processed_data.sink_bytes = 0;
@@ -518,7 +518,7 @@ static int copier_module_copy(struct processing_module *mod,
 
 static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_dev *dev)
 {
-	struct comp_buffer __sparse_cache *src_c, *sink_c;
+	struct comp_buffer *src_c, *sink_c;
 	struct comp_copy_limits processed_data;
 	struct comp_buffer *src;
 	int ret;
@@ -649,7 +649,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
 

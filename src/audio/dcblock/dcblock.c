@@ -194,8 +194,8 @@ static int dcblock_process(struct processing_module *mod,
 			   int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	uint32_t frames = input_buffers[0].size;
 
 	comp_dbg(mod->dev, "dcblock_process()");
@@ -207,8 +207,8 @@ static int dcblock_process(struct processing_module *mod,
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void dcblock_set_frame_alignment(struct audio_stream __sparse_cache *source,
-					       struct audio_stream __sparse_cache *sink)
+static inline void dcblock_set_frame_alignment(struct audio_stream *source,
+					       struct audio_stream *sink)
 {
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 1;
@@ -221,7 +221,7 @@ static inline void dcblock_set_frame_alignment(struct audio_stream __sparse_cach
 static void dcblock_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
@@ -248,12 +248,12 @@ static void dcblock_params(struct processing_module *mod)
  * \return Error code.
  */
 static int dcblock_prepare(struct processing_module *mod,
-			   struct sof_source __sparse_cache **sources, int num_of_sources,
-			   struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "dcblock_prepare()");

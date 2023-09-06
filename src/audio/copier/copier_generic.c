@@ -22,7 +22,7 @@ LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 #include <stdint.h>
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
-		      struct comp_buffer __sparse_cache *sink, int frame)
+		      struct comp_buffer *sink, int frame)
 {
 	int i;
 	int n;
@@ -62,7 +62,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sink, *source;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct list_item *sink_list;
 
 	memset(params, 0, sizeof(*params));
@@ -140,7 +140,7 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	enum sof_ipc_frame valid_fmt;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	uint32_t buf_size;
 	uint32_t chan_map;
 	int i;

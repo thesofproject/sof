@@ -100,7 +100,7 @@ struct pipeline_walk_context {
 	int (*comp_func)(struct comp_dev *cd, struct comp_buffer *buffer,
 			 struct pipeline_walk_context *ctx, int dir);
 	void *comp_data;
-	void (*buff_func)(struct comp_buffer __sparse_cache *buffer, void *data);
+	void (*buff_func)(struct comp_buffer *buffer, void *data);
 	void *buff_data;
 	struct comp_buffer *incoming;
 	/**< pipelines to be scheduled after trigger walk */

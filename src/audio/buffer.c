@@ -31,7 +31,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 				 bool is_shared)
 {
 	struct comp_buffer *buffer;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	void *stream_addr;
 
 	tr_dbg(&buffer_tr, "buffer_alloc()");
@@ -80,7 +80,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	return buffer;
 }
 
-void buffer_zero(struct comp_buffer __sparse_cache *buffer)
+void buffer_zero(struct comp_buffer *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
 	CORE_CHECK_STRUCT(buffer);
@@ -92,7 +92,7 @@ void buffer_zero(struct comp_buffer __sparse_cache *buffer)
 					audio_stream_get_size(&buffer->stream));
 }
 
-int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, uint32_t alignment)
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment)
 {
 	void *new_ptr = NULL;
 
@@ -130,7 +130,7 @@ int buffer_set_size(struct comp_buffer __sparse_cache *buffer, uint32_t size, ui
 	return 0;
 }
 
-int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
+int buffer_set_params(struct comp_buffer *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update)
 {
 	int ret;
@@ -161,7 +161,7 @@ int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
 	return 0;
 }
 
-bool buffer_params_match(struct comp_buffer __sparse_cache *buffer,
+bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
@@ -206,7 +206,7 @@ void buffer_free(struct comp_buffer *buffer)
 	coherent_free_thread(buffer, c);
 }
 
-void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
@@ -244,7 +244,7 @@ void comp_update_buffer_produce(struct comp_buffer __sparse_cache *buffer, uint3
 #endif
 }
 
-void comp_update_buffer_consume(struct comp_buffer __sparse_cache *buffer, uint32_t bytes)
+void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,

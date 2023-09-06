@@ -168,7 +168,7 @@ free:
 static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 			    int dir)
 {
-	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
+	struct comp_buffer *buffer_c = buffer_acquire(buffer);
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
 		buffer_c->source = comp;
@@ -410,7 +410,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
 		struct comp_buffer *buffer = buffer_from_list(clist, dir);
-		struct comp_buffer __sparse_cache *buffer_c;
+		struct comp_buffer *buffer_c;
 		struct comp_dev *buffer_comp;
 		int err = 0;
 

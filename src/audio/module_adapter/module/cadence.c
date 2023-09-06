@@ -633,8 +633,8 @@ static int cadence_codec_init_process(struct processing_module *mod)
 }
 
 static int cadence_codec_prepare(struct processing_module *mod,
-				 struct sof_source __sparse_cache **sources, int num_of_sources,
-				 struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+				 struct sof_source **sources, int num_of_sources,
+				 struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret = 0, mem_tabs_size;
 	struct comp_dev *dev = mod->dev;
@@ -716,7 +716,7 @@ cadence_codec_process(struct processing_module *mod,
 		      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_buffer *local_buff;
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	struct cadence_codec_data *cd = codec->private;

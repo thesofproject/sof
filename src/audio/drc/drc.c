@@ -227,8 +227,8 @@ static int drc_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static void drc_set_alignment(struct audio_stream __sparse_cache *source,
-			      struct audio_stream __sparse_cache *sink)
+static void drc_set_alignment(struct audio_stream *source,
+			      struct audio_stream *sink)
 {
 	/* Currently no optimizations those would use wider loads and stores */
 	audio_stream_init_alignment_constants(1, 1, source);
@@ -243,8 +243,8 @@ static int drc_process(struct processing_module *mod,
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream __sparse_cache *source = input_buffers[0].data;
-	struct audio_stream __sparse_cache *sink = output_buffers[0].data;
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
 	int frames = input_buffers[0].size;
 	int ret;
 
@@ -272,7 +272,7 @@ static int drc_process(struct processing_module *mod,
 static void drc_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
@@ -294,12 +294,12 @@ static void drc_params(struct processing_module *mod)
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static int drc_prepare(struct processing_module *mod,
-		       struct sof_source __sparse_cache **sources, int num_of_sources,
-		       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	int channels;
 	int rate;

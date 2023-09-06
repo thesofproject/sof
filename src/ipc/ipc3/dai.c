@@ -103,7 +103,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct sof_ipc_dai_config *config = ipc_from_dai_config(dd->dai_spec_config);
-	struct comp_buffer __sparse_cache *buffer_c;
+	struct comp_buffer *buffer_c;
 
 	if (!config) {
 		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",

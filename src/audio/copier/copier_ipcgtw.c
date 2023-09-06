@@ -37,7 +37,7 @@ static struct comp_dev *find_ipcgtw_by_node_id(union ipc4_connector_node_id node
 }
 
 static inline void audio_stream_copy_bytes_from_linear(const void *linear_source,
-						       struct audio_stream __sparse_cache *sink,
+						       struct audio_stream *sink,
 						       unsigned int bytes)
 {
 	const uint8_t *src = (const uint8_t *)linear_source;
@@ -55,7 +55,7 @@ static inline void audio_stream_copy_bytes_from_linear(const void *linear_source
 }
 
 static inline
-void audio_stream_copy_bytes_to_linear(const struct audio_stream __sparse_cache *source,
+void audio_stream_copy_bytes_to_linear(const struct audio_stream *source,
 				       void *linear_sink, unsigned int bytes)
 {
 	uint8_t *src = audio_stream_wrap(source, audio_stream_get_rptr(source));
@@ -93,7 +93,7 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	const struct ipc4_ipc_gateway_cmd_data *in;
 	struct comp_dev *dev;
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
+	struct comp_buffer *buf_c;
 	uint32_t data_size;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
 
@@ -184,7 +184,7 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
-	struct comp_buffer __sparse_cache *buf_c;
+	struct comp_buffer *buf_c;
 	int err;
 
 	comp_dbg(dev, "ipcgtw_params()");
@@ -214,7 +214,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	struct comp_buffer *buf = get_buffer(dev);
 
 	if (buf) {
-		struct comp_buffer __sparse_cache *buf_c = buffer_acquire(buf);
+		struct comp_buffer *buf_c = buffer_acquire(buf);
 
 		audio_stream_reset(&buf_c->stream);
 		buffer_release(buf_c);

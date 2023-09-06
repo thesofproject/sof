@@ -246,7 +246,7 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer __sparse_cache *sink, *source;
+	struct comp_buffer *sink, *source;
 	int ret, frames;
 
 	comp_dbg(dev, "copier_host_dma_cb() %p", dev);

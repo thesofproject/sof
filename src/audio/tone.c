@@ -95,7 +95,7 @@ struct comp_data {
 	uint32_t frame_bytes;
 	uint32_t rate;
 	struct tone_state sg[PLATFORM_MAX_CHANNELS];
-	void (*tone_func)(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+	void (*tone_func)(struct comp_dev *dev, struct audio_stream *sink,
 			  uint32_t frames);
 };
 
@@ -113,7 +113,7 @@ static inline void tone_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
-static void tone_s32_default(struct comp_dev *dev, struct audio_stream __sparse_cache *sink,
+static void tone_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			     uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -429,7 +429,7 @@ static int tone_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer __sparse_cache *source_c, *sink_c;
+	struct comp_buffer *source_c, *sink_c;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -634,7 +634,7 @@ static int tone_trigger(struct comp_dev *dev, int cmd)
 static int tone_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sink;
-	struct comp_buffer __sparse_cache *sink_c;
+	struct comp_buffer *sink_c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t free;
 	int ret = 0;

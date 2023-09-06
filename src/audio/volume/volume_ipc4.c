@@ -366,7 +366,7 @@ int volume_get_config(struct processing_module *mod,
 static int volume_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer __sparse_cache *sink_c, *source_c;
+	struct comp_buffer *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 

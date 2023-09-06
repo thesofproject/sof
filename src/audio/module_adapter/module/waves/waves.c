@@ -220,10 +220,10 @@ static int waves_effect_check(struct comp_dev *dev)
 						    source_list);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
-	struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
-	const struct audio_stream __sparse_cache *src_fmt = &source_c->stream;
-	const struct audio_stream __sparse_cache *snk_fmt = &sink_c->stream;
+	struct comp_buffer *source_c = buffer_acquire(source);
+	struct comp_buffer *sink_c = buffer_acquire(sink);
+	const struct audio_stream *src_fmt = &source_c->stream;
+	const struct audio_stream *snk_fmt = &sink_c->stream;
 	int ret = 0;
 
 	/* Init sink & source buffers */
@@ -303,10 +303,10 @@ static int waves_effect_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
-	struct comp_buffer __sparse_cache *source_c = buffer_acquire(source);
+	struct comp_buffer *source_c = buffer_acquire(source);
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
-	const struct audio_stream __sparse_cache *src_fmt = &source_c->stream;
+	const struct audio_stream *src_fmt = &source_c->stream;
 	MaxxStatus_t status;
 	MaxxBuffer_Format_t sample_format;
 	MaxxBuffer_Layout_t buffer_format;
@@ -686,8 +686,8 @@ static int waves_codec_init(struct processing_module *mod)
 }
 
 static int waves_codec_prepare(struct processing_module *mod,
-			       struct sof_source __sparse_cache **sources, int num_of_sources,
-			       struct sof_sink __sparse_cache **sinks, int num_of_sinks)
+			       struct sof_source **sources, int num_of_sources,
+			       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	int ret;

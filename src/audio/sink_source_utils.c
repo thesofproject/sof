@@ -12,8 +12,8 @@
 #include <sof/math/numbers.h>
 #include <limits.h>
 
-int source_to_sink_copy(struct sof_source __sparse_cache *source,
-			struct sof_sink __sparse_cache *sink, bool free, size_t size)
+int source_to_sink_copy(struct sof_source *source,
+			struct sof_sink *sink, bool free, size_t size)
 {
 	uint8_t *src_ptr;
 	uint8_t *src_begin;
