@@ -10,6 +10,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <ipc4/base-config.h>
+#include <sof/audio/ipc-config.h>
+#include <sof/audio/audio_stream.h>
 
 struct src_param {
 	int fir_s1;
@@ -118,5 +121,37 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s);
 int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
+
+#if CONFIG_IPC_MAJOR_4
+/* src component private data */
+struct ipc4_config_src {
+	struct ipc4_base_module_cfg base;
+	uint32_t sink_rate;
+};
+#endif
+
+struct comp_data {
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_config_src ipc_config;
+#else
+	struct ipc_config_src ipc_config;
+#endif /* CONFIG_IPC_MAJOR_4 */
+	struct polyphase_src src;
+	struct src_param param;
+	int32_t *delay_lines;
+	uint32_t sink_rate;
+	uint32_t source_rate;
+	int32_t *sbuf_w_ptr;
+	int32_t const *sbuf_r_ptr;
+	int sbuf_avail;
+	int data_shift;
+	int source_frames;
+	int sink_frames;
+	int sample_container_bytes;
+	int channels_count;
+	int (*src_func)(struct comp_data *cd, struct sof_source *source,
+			struct sof_sink *sink);
+	void (*polyphase_func)(struct src_stage_prm *s);
+};
 
 #endif /* __SOF_AUDIO_SRC_SRC_H__ */

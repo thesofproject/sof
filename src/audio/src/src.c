@@ -63,11 +63,6 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_IPC_MAJOR_4
-/* src component private data */
-struct ipc4_config_src {
-	struct ipc4_base_module_cfg base;
-	uint32_t sink_rate;
-};
 
 /* e61bb28d-149a-4c1f-b709-46823ef5f5a3 */
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xe61bb28d, 0x149a, 0x4c1f,
@@ -81,30 +76,6 @@ DECLARE_SOF_RT_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 DECLARE_TR_CTX(src_tr, SOF_UUID(src_uuid), LOG_LEVEL_INFO);
-
-struct comp_data {
-#if CONFIG_IPC_MAJOR_4
-	struct ipc4_config_src ipc_config;
-#else
-	struct ipc_config_src ipc_config;
-#endif /* CONFIG_IPC_MAJOR_4 */
-	struct polyphase_src src;
-	struct src_param param;
-	int32_t *delay_lines;
-	uint32_t sink_rate;
-	uint32_t source_rate;
-	int32_t *sbuf_w_ptr;
-	int32_t const *sbuf_r_ptr;
-	int sbuf_avail;
-	int data_shift;
-	int source_frames;
-	int sink_frames;
-	int sample_container_bytes;
-	int channels_count;
-	int (*src_func)(struct comp_data *cd, struct sof_source *source,
-			struct sof_sink *sink);
-	void (*polyphase_func)(struct src_stage_prm *s);
-};
 
 /* Calculates the needed FIR delay line length */
 static int src_fir_delay_length(struct src_stage *s)
