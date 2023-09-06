@@ -704,30 +704,6 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static int google_rtc_audio_processing_set_large_config(struct comp_dev *dev,
-							uint32_t param_id,
-							bool first_block,
-							bool last_block,
-							uint32_t data_offset,
-							const char *data)
-{
-	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
-	size_t bcfg_size, ext_size;
-
-	switch (param_id) {
-	case IPC4_AEC_SET_EXT_FMT:
-		bcfg_size = sizeof(struct ipc4_base_module_cfg);
-		ext_size = sizeof(cd->config) - bcfg_size;
-		memcpy_s((void *)&cd->config + bcfg_size, ext_size, data, ext_size);
-		return 0;
-	default:
-		comp_err(dev, "Invalid param %d", param_id);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int google_rtc_audio_processing_get_attribute(struct comp_dev *dev,
 						     uint32_t type, void *value)
 {
@@ -759,7 +735,6 @@ static const struct comp_driver google_rtc_audio_processing = {
 		.reset = google_rtc_audio_processing_reset,
 #if CONFIG_IPC_MAJOR_4
 		.get_attribute = google_rtc_audio_processing_get_attribute,
-		.set_large_config = google_rtc_audio_processing_set_large_config,
 #endif
 	},
 };
