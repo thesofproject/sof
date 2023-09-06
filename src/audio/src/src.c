@@ -13,8 +13,6 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/src/src.h>
-#include <sof/audio/src/src_config.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
@@ -40,18 +38,21 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "src.h"
+#include "src_config.h"
+
 #if SRC_SHORT || CONFIG_COMP_SRC_TINY
-#include <sof/audio/coefficients/src/src_tiny_int16_define.h>
-#include <sof/audio/coefficients/src/src_tiny_int16_table.h>
+#include "src/src_tiny_int16_define.h"
+#include "src/src_tiny_int16_table.h"
 #elif CONFIG_COMP_SRC_SMALL
-#include <sof/audio/coefficients/src/src_small_int32_define.h>
-#include <sof/audio/coefficients/src/src_small_int32_table.h>
+#include "src/src_small_int32_define.h"
+#include "src/src_small_int32_table.h"
 #elif CONFIG_COMP_SRC_STD
-#include <sof/audio/coefficients/src/src_std_int32_define.h>
-#include <sof/audio/coefficients/src/src_std_int32_table.h>
+#include "src/src_std_int32_define.h"
+#include "src/src_std_int32_table.h"
 #elif CONFIG_COMP_SRC_IPC4_FULL_MATRIX
-#include <sof/audio/coefficients/src/src_ipc4_int32_define.h>
-#include <sof/audio/coefficients/src/src_ipc4_int32_table.h>
+#include "src/src_ipc4_int32_define.h"
+#include "src/src_ipc4_int32_table.h"
 #else
 #error "No valid configuration selected for SRC"
 #endif

@@ -6,11 +6,12 @@
 
 /* HiFi3 optimized code parts for SRC */
 
-#include <sof/audio/src/src_config.h>
+#include "src_config.h"
 
 #if SRC_HIFI3
 
-#include <sof/audio/src/src.h>
+#include "src.h"
+
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
 #include <stddef.h>

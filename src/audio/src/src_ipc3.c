@@ -13,8 +13,6 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/src/src.h>
-#include <sof/audio/src/src_config.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
@@ -39,6 +37,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
+
+#include "src.h"
+#include "src_config.h"
 
 /* c1c5326d-8390-46b4-aa47-95c3beca6550 */
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
