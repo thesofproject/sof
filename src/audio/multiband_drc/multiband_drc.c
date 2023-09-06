@@ -34,6 +34,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/notification.h>
+#endif
+
+#define TEST_NOTIFICATIONS	1
+
 LOG_MODULE_REGISTER(multiband_drc, CONFIG_SOF_LOG_LEVEL);
 
 /* 0d9f2256-8e4f-47b3-8448-239a334f1191 */
@@ -223,6 +229,43 @@ static int multiband_drc_setup(struct processing_module *mod, int16_t channels, 
  * End of Multiband DRC setup code. Next the standard component methods.
  */
 
+#if CONFIG_IPC_MAJOR_4
+static struct ipc_msg *multiband_drc_notification_init(struct comp_ipc_config *ipc_config)
+{
+	struct ipc_msg msg_proto;
+	union ipc4_notification_header *primary =
+		(union ipc4_notification_header *)&msg_proto.header;
+	struct ipc_msg *msg;
+	struct multiband_drc_notification_payload *payload;
+
+	memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
+
+	primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
+				 sizeof(struct multiband_drc_notification_payload));
+	if (!msg)
+		return NULL;
+
+	payload = (struct multiband_drc_notification_payload *)msg->tx_data;
+	payload->module_data.instance_id = IPC4_INST_ID(ipc_config->id);
+	payload->module_data.module_id = IPC4_MOD_ID(ipc_config->id);
+	payload->module_data.event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+		SOF_IPC4_SWITCH_CONTROL_PARAM_ID;
+	payload->module_data.event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+		sizeof(struct sof_ipc4_ctrl_value_chan);
+
+	payload->control_msg.id = 0;
+	payload->control_msg.num_elems = 1;
+	payload->control_value.channel = 0;
+
+	return msg;
+}
+#endif
+
 static int multiband_drc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
@@ -277,6 +320,13 @@ static int multiband_drc_init(struct processing_module *mod)
 	}
 	multiband_drc_reset_state(&cd->state);
 
+#if CONFIG_IPC_MAJOR_4
+	cd->msg = multiband_drc_notification_init(&dev->ipc_config);
+	if (!cd->msg) {
+		comp_err(dev, "failed to initialize notification.");
+		goto cd_fail;
+	}
+#endif
 	return 0;
 
 cd_fail:
@@ -290,6 +340,8 @@ static int multiband_drc_free(struct processing_module *mod)
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "multiband_drc_free()");
+
+	ipc_msg_free(cd->msg);
 
 	comp_data_blob_handler_free(cd->model_handler);
 
@@ -419,6 +471,18 @@ static void multiband_drc_set_alignment(struct audio_stream __sparse_cache *sour
 	audio_stream_init_alignment_constants(1, 1, sink);
 }
 
+static void multiband_drc_send_module_notify(struct multiband_drc_comp_data *cd, uint32_t val)
+{
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_msg *msg = cd->msg;
+	struct multiband_drc_notification_payload *ipc_payload;
+
+	ipc_payload = (struct multiband_drc_notification_payload *)msg->tx_data;
+	ipc_payload->control_value.value = val;
+	ipc_msg_send(msg, NULL, false);
+#endif
+}
+
 static int multiband_drc_process(struct processing_module *mod,
 				 struct input_stream_buffer *input_buffers, int num_input_buffers,
 				 struct output_stream_buffer *output_buffers,
@@ -432,6 +496,20 @@ static int multiband_drc_process(struct processing_module *mod,
 	int ret;
 
 	comp_dbg(dev, "multiband_drc_process()");
+
+#if TEST_NOTIFICATIONS
+	cd->ctrl_update_count++;
+	if (cd->ctrl_update_count == 1000) {
+		multiband_drc_send_module_notify(cd, 1);
+		comp_info(dev, "notify 1");
+	}
+
+	if (cd->ctrl_update_count >= 2000) {
+		multiband_drc_send_module_notify(cd, 0);
+		cd->ctrl_update_count = 0;
+		comp_info(dev, "notify 0");
+	}
+#endif
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {

@@ -13,9 +13,14 @@
 #include <sof/math/iir_df2t.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
+#include <sof/ipc/msg.h>
 #include <sof/platform.h>
 #include <user/multiband_drc.h>
 #include <stdint.h>
+
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#endif
 
 /**
  * Stores the state of the sub-components in Multiband DRC
@@ -37,12 +42,22 @@ struct multiband_drc_comp_data {
 	struct multiband_drc_state state;        /**< compressor state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_multiband_drc_config *config; /**< pointer to setup blob */
+	struct ipc_msg *msg;			 /**< host notification */
 	bool config_ready;                       /**< set when fully received */
 	enum sof_ipc_frame source_format;        /**< source frame format */
 	bool process_enabled;                    /**< true if component is enabled */
 	multiband_drc_func multiband_drc_func;   /**< processing function */
 	crossover_split crossover_split;         /**< crossover n-way split func */
+	uint32_t ctrl_update_count;
 };
+
+#if CONFIG_IPC_MAJOR_4
+struct multiband_drc_notification_payload {
+	struct sof_ipc4_notify_module_data module_data;
+	struct sof_ipc4_control_msg_payload control_msg;
+	struct sof_ipc4_ctrl_value_chan control_value;
+};
+#endif
 
 struct multiband_drc_proc_fnmap {
 	enum sof_ipc_frame frame_fmt;
