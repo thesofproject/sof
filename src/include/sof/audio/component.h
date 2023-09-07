@@ -720,6 +720,7 @@ void sys_comp_module_demux_interface_init(void);
 void sys_comp_module_drc_interface_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
 void sys_comp_module_eq_iir_interface_init(void);
+void sys_comp_module_google_rtc_audio_processing_interface_init(void);
 void sys_comp_module_mfcc_interface_init(void);
 void sys_comp_module_mixer_interface_init(void);
 void sys_comp_module_multiband_drc_interface_init(void);
