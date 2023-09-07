@@ -168,14 +168,10 @@ free:
 static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 			    int dir)
 {
-	struct comp_buffer *buffer_c = buffer_acquire(buffer);
-
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		buffer_c->source = comp;
+		buffer->source = comp;
 	else
-		buffer_c->sink = comp;
-
-	buffer_release(buffer_c);
+		buffer->sink = comp;
 }
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
@@ -410,7 +406,6 @@ int pipeline_for_each_comp(struct comp_dev *current,
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
 		struct comp_buffer *buffer = buffer_from_list(clist, dir);
-		struct comp_buffer *buffer_c;
 		struct comp_dev *buffer_comp;
 		int err = 0;
 
@@ -434,27 +429,21 @@ int pipeline_for_each_comp(struct comp_dev *current,
 
 		buffer_comp = buffer_get_comp(buffer, dir);
 
-		buffer_c = buffer_acquire(buffer);
-
 		/* execute operation on buffer */
 		if (ctx->buff_func)
-			ctx->buff_func(buffer_c, ctx->buff_data);
+			ctx->buff_func(buffer, ctx->buff_data);
 
 		/* don't go further if this component is not connected */
 		if (buffer_comp &&
 		    (!ctx->skip_incomplete || buffer_comp->pipeline) &&
 		    ctx->comp_func) {
-			buffer_c->walking = true;
-			buffer_release(buffer_c);
+			buffer->walking = true;
 
 			err = ctx->comp_func(buffer_comp, buffer,
 					     ctx, dir);
 
-			buffer_c = buffer_acquire(buffer);
-			buffer_c->walking = false;
+			buffer->walking = false;
 		}
-
-		buffer_release(buffer_c);
 
 		if (err < 0 || err == PPL_STATUS_PATH_STOP)
 			return err;
