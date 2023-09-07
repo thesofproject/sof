@@ -832,7 +832,7 @@ static int rtnr_copy(struct comp_dev *dev)
 		comp_dbg(dev, "rtnr_copy() passthrough");
 
 		/* Get source, sink, number of frames etc. to process. */
-		comp_get_copy_limits_with_lock(source, sink, &cl);
+		comp_get_copy_limits(source, sink, &cl);
 
 		buffer_stream_invalidate(source, cl.source_bytes);
 
