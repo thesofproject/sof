@@ -101,17 +101,19 @@ dnl     time_domain, sched_comp)
 
 # Volume switch capture pipeline 2 on PCM 0 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP0_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
+ifdef(`DISABLE_SSP0',,
+	`PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	2, 0, 2, PIPE_BITS,
 	1000, 0, SSP0_CORE_ID,
-	48000, 48000, 48000)
+	48000, 48000, 48000)')
 
 # Volume switch capture pipeline 4 on PCM 1 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP1_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
+ifdef(`DISABLE_SSP1',,
+	`PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	4, 1, 2, PIPE_BITS,
 	1000, 0, SSP1_CORE_ID,
-	48000, 48000, 48000)
+	48000, 48000, 48000)')
 
 # Volume switch capture pipeline 6 on PCM 2 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline with priority 0 on core SSP2_CORE_ID
@@ -132,19 +134,21 @@ dnl     deadline, priority, core, time_domain)
 # playback DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP0_CORE_ID
 # The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
+ifdef(`DISABLE_SSP0',,
+	`DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, SSP, SSP0_IDX, NoCodec-0,
 	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
+	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)')
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP0_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+ifdef(`DISABLE_SSP0',,
+	`PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	7, 0, 2, PIPE_BITS,
 	1000, 0, SSP0_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_1)
+	PIPELINE_PLAYBACK_SCHED_COMP_1)')
 
 # Deep buffer playback pipeline 11 on PCM 3 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP0_CORE_ID with priority 0.
@@ -158,33 +162,37 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP0_IDX
-DAI_ADD(sof/pipe-dai-capture.m4,
+ifdef(`DISABLE_SSP0',,
+	`DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, SSP0_IDX, NoCodec-0,
 	PIPELINE_SINK_2, 2, DAI_BITS,
-	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # playback DAI is SSP1 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
-DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
+ifdef(`DISABLE_SSP1',,
+	`DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	3, SSP, SSP1_IDX, NoCodec-1,
 	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
+	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)')
 
 # Low Latency playback pipeline 8 on PCM 1 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP1_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+ifdef(`DISABLE_SSP1',,
+	`PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	8, 1, 2, PIPE_BITS,
 	1000, 0, SSP1_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_3)
+	PIPELINE_PLAYBACK_SCHED_COMP_3)')
 
 # capture DAI is SSP1 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
-DAI_ADD(sof/pipe-dai-capture.m4,
+ifdef(`DISABLE_SSP1',,
+	`DAI_ADD(sof/pipe-dai-capture.m4,
 	4, SSP, SSP1_IDX, NoCodec-1,
 	PIPELINE_SINK_4, 2, DAI_BITS,
-	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP2_CORE_ID
@@ -214,8 +222,8 @@ SectionGraph."mixer-host" {
 
 	lines [
 		# connect mixer dai pipelines to PCM pipelines
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_7)
-		dapm(PIPELINE_MIXER_3, PIPELINE_SOURCE_8)
+		ifdef(`DISABLE_SSP0',,`dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_7)')
+		ifdef(`DISABLE_SSP1',,	`dapm(PIPELINE_MIXER_3, PIPELINE_SOURCE_8)')
 		dapm(PIPELINE_MIXER_5, PIPELINE_SOURCE_9)
 	]
 }
