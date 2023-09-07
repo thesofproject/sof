@@ -241,14 +241,11 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free sink buffer allocated by current component in bind function */
 		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
-			struct comp_buffer *buffer_c;
 			struct comp_dev *sink;
 
 			buffer = container_of(list, struct comp_buffer, source_list);
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
-			buffer_c = buffer_acquire(buffer);
-			sink = buffer_c->sink;
-			buffer_release(buffer_c);
+			sink = buffer->sink;
 
 			/* free the buffer only when the sink module has also been disconnected */
 			if (!sink)
@@ -257,14 +254,11 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free source buffer allocated by current component in bind function */
 		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
-			struct comp_buffer *buffer_c;
 			struct comp_dev *source;
 
 			buffer = container_of(list, struct comp_buffer, sink_list);
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-			buffer_c = buffer_acquire(buffer);
-			source = buffer_c->source;
-			buffer_release(buffer_c);
+			source = buffer->source;
 
 			/* free the buffer only when the source module has also been disconnected */
 			if (!source)
@@ -337,7 +331,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
-	struct comp_buffer *buffer_c;
 	struct comp_dev *source;
 	struct comp_dev *sink;
 	struct ipc4_base_module_cfg source_src_cfg;
@@ -388,10 +381,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 *	OBS of a buffer is IBS of destination component
 	 */
 
-	buffer_c = buffer_acquire(buffer);
-	source_set_ibs(audio_stream_get_source(&buffer_c->stream), source_src_cfg.obs);
-	sink_set_obs(audio_stream_get_sink(&buffer_c->stream), sink_src_cfg.ibs);
-	buffer_release(buffer_c);
+	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
+	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
 
 	/*
 	 * Connect and bind the buffer to both source and sink components with the interrupts
@@ -490,10 +481,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
-		struct comp_buffer *buf_c = buffer_acquire(buf);
-		bool found = buf_c->id == buffer_id;
-
-		buffer_release(buf_c);
+		bool found = buf->id == buffer_id;
 
 		if (found) {
 			buffer = buf;
