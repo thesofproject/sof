@@ -209,7 +209,8 @@ config COMP_TONE
 	default n
 	select CORDIC_FIXED
 	help
-	  Select for Tone component
+	  Select for Tone component.
+	  Warning: This component is deprecated and will be removed from SOF v2.8.
 
 config COMP_MIXER
 	bool "Mixer component"
