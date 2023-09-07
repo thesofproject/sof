@@ -669,9 +669,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 
 	/*
 	 * Use uncached address everywhere to access components to rule out
-	 * multi-core failures. In the future we might decide to switch over to
-	 * the latest coherence API for performance. In that case components
-	 * will be acquired for cached access and released afterwards.
+	 * multi-core failures. TODO: verify if cached alias may be used in some cases
 	 */
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bytes);
 	if (!dev)
@@ -885,55 +883,6 @@ void comp_get_copy_limits(struct comp_buffer *source,
 void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
 					const struct comp_buffer *sink,
 					struct comp_copy_limits *cl);
-
-/**
- * Version of comp_get_copy_limits that locks both buffers to guarantee
- * consistent state readings.
- *
- * @param[in] source Source buffer.
- * @param[in] sink Sink buffer
- * @param[out] cl Current copy limits.
- */
-static inline
-void comp_get_copy_limits_with_lock(struct comp_buffer *source,
-				    struct comp_buffer *sink,
-				    struct comp_copy_limits *cl)
-{
-	struct comp_buffer *source_c, *sink_c;
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
-
-	comp_get_copy_limits(source_c, sink_c, cl);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-}
-
-/**
- * Version of comp_get_copy_limits_with_lock_frame_aligned that locks both
- * buffers to guarantee consistent state readings and the frames aligned with
- * the requirement.
- *
- * @param[in] source Buffer of source.
- * @param[in] sink Buffer of sink
- * @param[out] cl Current copy limits.
- */
-static inline
-void comp_get_copy_limits_with_lock_frame_aligned(struct comp_buffer *source,
-						  struct comp_buffer *sink,
-						  struct comp_copy_limits *cl)
-{
-	struct comp_buffer *source_c, *sink_c;
-
-	source_c = buffer_acquire(source);
-	sink_c = buffer_acquire(sink);
-
-	comp_get_copy_limits_frame_aligned(source_c, sink_c, cl);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
-}
 
 /**
  * Get component state.
