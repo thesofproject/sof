@@ -155,7 +155,7 @@ struct ipc4_copier_module_cfg {
 	/* audio format for output pin 0 */
 	struct ipc4_audio_format out_fmt;
 	uint32_t copier_feature_mask;
-	struct ipc4_copier_gateway_cfg  gtw_cfg;
+	struct ipc4_copier_gateway_cfg gtw_cfg;
 } __attribute__((packed, aligned(4)));
 
 enum ipc4_copier_module_config_params {
@@ -242,6 +242,7 @@ struct copier_data {
 	 * from the IPC data.
 	 */
 	struct ipc4_copier_module_cfg config;
+	void *gtw_cfg;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
