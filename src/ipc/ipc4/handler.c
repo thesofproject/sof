@@ -782,7 +782,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 
 static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_init_instance module_init = {};
+	struct ipc4_module_init_instance module_init;
 	struct comp_dev *dev;
 	/* we only need the common header here, all we have from the IPC */
 	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
