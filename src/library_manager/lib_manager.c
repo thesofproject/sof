@@ -424,14 +424,12 @@ static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 	 * allocate new buffer: this is the actual DMA buffer but we
 	 * traditionally allocate a cached address for it
 	 */
-	dma_ext->dma_addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA, size,
+	dma_ext->dma_addr = (uintptr_t)rballoc_align(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_DMA, size,
 						     dma_ext->addr_align);
 	if (!dma_ext->dma_addr) {
 		tr_err(&lib_manager_tr, "lib_manager_dma_buffer_alloc(): alloc failed");
 		return -ENOMEM;
 	}
-
-	dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, size);
 
 	tr_dbg(&lib_manager_tr,
 	       "lib_manager_dma_buffer_alloc(): address: %#lx, size: %u",
@@ -528,7 +526,7 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 		ret = lib_manager_load_data_from_host(dma_ext, bytes_to_copy);
 		if (ret < 0)
 			return ret;
-		dcache_invalidate_region((void __sparse_cache *)dma_ext->dma_addr, bytes_to_copy);
+
 		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
 			 (void *)dma_ext->dma_addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
