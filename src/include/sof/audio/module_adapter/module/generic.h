@@ -175,6 +175,12 @@ struct module_source_info {
 	void *private; /**< additional module-specific private info */
 };
 
+enum module_processing_type {
+	MODULE_PROCESS_TYPE_SOURCE_SINK,
+	MODULE_PROCESS_TYPE_STREAM,
+	MODULE_PROCESS_TYPE_RAW,
+};
+
 /* module_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
@@ -261,6 +267,8 @@ struct processing_module {
 	/* max source/sinks supported by the module */
 	uint32_t max_sources;
 	uint32_t max_sinks;
+
+	enum module_processing_type proc_type;
 };
 
 /*****************************************************************************/
