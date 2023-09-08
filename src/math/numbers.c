@@ -12,6 +12,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/numbers.h>
+#include <rtos/symbol.h>
 #include <stdint.h>
 
 /* This function returns the greatest common divisor of two numbers
@@ -72,6 +73,7 @@ int gcd(int a, int b)
 	/* restore common factors of 2 */
 	return a << k;
 }
+EXPORT_SYMBOL(gcd);
 
 #if CONFIG_NUMBERS_VECTOR_FIND
 

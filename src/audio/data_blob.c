@@ -7,6 +7,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
+#include <rtos/symbol.h>
 #include <ipc/topology.h>
 #include <ipc/control.h>
 #include <sof/audio/component.h>
@@ -426,6 +427,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 	return 0;
 }
+EXPORT_SYMBOL(comp_data_blob_set);
 
 int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			   struct sof_ipc_ctrl_data *cdata)
@@ -645,6 +647,7 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 
 	return handler;
 }
+EXPORT_SYMBOL(comp_data_blob_handler_new_ext);
 
 void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 {
@@ -655,3 +658,4 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 
 	rfree(blob_handler);
 }
+EXPORT_SYMBOL(comp_data_blob_handler_free);

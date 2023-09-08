@@ -24,6 +24,7 @@
 #include <sof/platform.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
@@ -160,6 +161,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 	return 0;
 }
+EXPORT_SYMBOL(comp_verify_params);
 
 int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			struct comp_buffer *buffer, uint32_t dir)

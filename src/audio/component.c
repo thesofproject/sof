@@ -15,6 +15,7 @@
 #include <sof/list.h>
 #include <rtos/sof.h>
 #include <rtos/string.h>
+#include <rtos/symbol.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -49,6 +50,7 @@ int comp_register(struct comp_driver_info *drv)
 
 	return 0;
 }
+EXPORT_SYMBOL(comp_register);
 
 void comp_unregister(struct comp_driver_info *drv)
 {
