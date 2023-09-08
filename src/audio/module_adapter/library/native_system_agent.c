@@ -30,9 +30,6 @@ void *native_system_agent_start(uint32_t *sys_service,
 	native_sys_agent.log_handle = log_handle;
 
 	void *system_agent_p = &native_sys_agent;
-	uint32_t **sys_service_p = &sys_service;
-
-	*sys_service_p = (uint32_t *)(&native_sys_agent.system_service);
 
 	native_create_instance_f ci = (native_create_instance_f)entry_point;
 
