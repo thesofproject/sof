@@ -17,6 +17,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
+#include <rtos/symbol.h>
 #include <rtos/wait.h>
 
 /* Zephyr includes */
@@ -272,6 +273,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 
 	return ptr;
 }
+EXPORT_SYMBOL(rmalloc);
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
@@ -320,6 +322,7 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 
 	return ptr;
 }
+EXPORT_SYMBOL(rzalloc);
 
 /**
  * Allocates memory block from SOF_MEM_ZONE_BUFFER.
@@ -337,6 +340,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 	return (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, align, bytes);
 }
+EXPORT_SYMBOL(rballoc_align);
 
 /*
  * Free's memory allocated by above alloc calls.
@@ -355,6 +359,7 @@ void rfree(void *ptr)
 
 	heap_free(&sof_heap, ptr);
 }
+EXPORT_SYMBOL(rfree);
 
 static int heap_init(void)
 {

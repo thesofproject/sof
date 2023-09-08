@@ -5,6 +5,7 @@
 
 #include <module/audio/sink_api.h>
 #include <module/audio/audio_stream.h>
+#include <rtos/symbol.h>
 
 /* This file contains public sink API functions that were too large to mark is as inline. */
 
@@ -23,6 +24,7 @@ int sink_get_buffer(struct sof_sink *sink, size_t req_size,
 		sink->requested_write_frag_size = req_size;
 	return ret;
 }
+EXPORT_SYMBOL(sink_get_buffer);
 
 int sink_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
@@ -44,6 +46,7 @@ int sink_commit_buffer(struct sof_sink *sink, size_t commit_size)
 	sink->num_of_bytes_processed += commit_size;
 	return ret;
 }
+EXPORT_SYMBOL(sink_commit_buffer);
 
 int sink_set_frm_fmt(struct sof_sink *sink, enum sof_ipc_frame frame_fmt)
 {

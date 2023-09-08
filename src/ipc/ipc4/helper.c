@@ -19,6 +19,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <rtos/symbol.h>
 #include <rtos/wait.h>
 
 /* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
@@ -1030,6 +1031,7 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
 }
+EXPORT_SYMBOL(ipc4_base_module_cfg_to_stream_params);
 
 void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt)
@@ -1087,3 +1089,4 @@ void ipc4_update_sink_format(struct sof_sink *sink,
 	sink_set_valid_fmt(sink, valid_fmt);
 	sink_set_buffer_fmt(sink, fmt->interleaving_style);
 }
+EXPORT_SYMBOL(ipc4_update_buffer_format);

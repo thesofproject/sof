@@ -6,6 +6,7 @@
 
 #include <module/audio/source_api.h>
 #include <module/audio/audio_stream.h>
+#include <rtos/symbol.h>
 
 /* This file contains public source API functions that were too large to mark is as inline. */
 
@@ -23,6 +24,7 @@ int source_get_data(struct sof_source *source, size_t req_size,
 		source->requested_read_frag_size = req_size;
 	return ret;
 }
+EXPORT_SYMBOL(source_get_data);
 
 int source_release_data(struct sof_source *source, size_t free_size)
 {
@@ -44,6 +46,7 @@ int source_release_data(struct sof_source *source, size_t free_size)
 	source->num_of_bytes_processed += free_size;
 	return ret;
 }
+EXPORT_SYMBOL(source_release_data);
 
 size_t source_get_frame_bytes(struct sof_source *source)
 {
