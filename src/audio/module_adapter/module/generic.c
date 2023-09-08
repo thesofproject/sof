@@ -99,7 +99,7 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 	if (!interface->init || !interface->prepare ||
 	    !interface->reset || !interface->free ||
 	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data != 1)) {
+	     !!interface->process_raw_data < 1)) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
@@ -257,10 +257,10 @@ int module_process_legacy(struct processing_module *mod,
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 #endif
-	if (md->ops->process_audio_stream)
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		ret = md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
 						    output_buffers, num_output_buffers);
-	else if (md->ops->process_raw_data)
+	else if (IS_PROCESSING_MODE_RAW_DATA(mod))
 		ret = md->ops->process_raw_data(mod, input_buffers, num_input_buffers,
 						output_buffers, num_output_buffers);
 	else
