@@ -64,6 +64,8 @@ static int copier_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct ipc4_copier_module_cfg *copier = (struct ipc4_copier_module_cfg *)md->cfg.init_data;
 	struct comp_ipc_config *config = &dev->ipc_config;
+	void *gtw_cfg = NULL;
+	size_t gtw_cfg_size;
 	int i, ret = 0;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -78,7 +80,31 @@ static int copier_init(struct processing_module *mod)
 	 */
 	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0) {
 		ret = -EINVAL;
-		goto error;
+		goto error_cd;
+	}
+
+	/* Allocate memory and store gateway_cfg in runtime. Gateway cfg has to
+	 * be kept even after copier is created e.g. during SET_PIPELINE_STATE
+	 * IPC when dai_config_dma_channel() is called second time and DMA
+	 * config is used to assign dma_channel_id value.
+	 */
+	if (copier->gtw_cfg.config_length) {
+		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
+		gtw_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				  gtw_cfg_size);
+		if (!gtw_cfg) {
+			ret = -ENOMEM;
+			goto error_cd;
+		}
+
+		ret = memcpy_s(gtw_cfg, gtw_cfg_size, &copier->gtw_cfg.config_data,
+			       gtw_cfg_size);
+		if (ret) {
+			comp_err(dev, "Unable to copy gateway config from copier blob");
+			goto error;
+		}
+
+		cd->gtw_cfg = gtw_cfg;
 	}
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
@@ -148,6 +174,8 @@ static int copier_init(struct processing_module *mod)
 	dev->state = COMP_STATE_READY;
 	return 0;
 error:
+	rfree(gtw_cfg);
+error_cd:
 	rfree(cd);
 	return ret;
 }
@@ -172,6 +200,8 @@ static int copier_free(struct processing_module *mod)
 		break;
 	}
 
+	if (cd)
+		rfree(cd->gtw_cfg);
 	rfree(cd);
 
 	return 0;
