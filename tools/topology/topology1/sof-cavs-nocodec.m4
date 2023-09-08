@@ -46,6 +46,8 @@ ifelse(NCORES, `4',
 define(DMIC_48k_CORE_ID, `0')
 define(DMIC_16k_CORE_ID, `0')
 define(SSP0_CORE_ID, `0')
+define(SSP0_PIPE7_CORE_ID, `1')
+define(SSP0_PIPE11_CORE_ID, `0')
 define(SSP1_CORE_ID, `0')
 define(SSP2_CORE_ID, `0')
 ')
@@ -55,6 +57,8 @@ ifelse(NCORES, `2',
 define(DMIC_48k_CORE_ID, `0')
 define(DMIC_16k_CORE_ID, `0')
 define(SSP0_CORE_ID, `0')
+define(SSP0_PIPE7_CORE_ID, `0')
+define(SSP0_PIPE11_CORE_ID, `0')
 define(SSP1_CORE_ID, `0')
 define(SSP2_CORE_ID, `0')
 ')
@@ -64,6 +68,8 @@ ifelse(NCORES, `1',
 define(DMIC_48k_CORE_ID, `0')
 define(DMIC_16k_CORE_ID, `0')
 define(SSP0_CORE_ID, `0')
+define(SSP0_PIPE7_CORE_ID, `0')
+define(SSP0_PIPE11_CORE_ID, `0')
 define(SSP1_CORE_ID, `0')
 define(SSP2_CORE_ID, `0')
 ')
@@ -141,7 +147,7 @@ DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 # Set 1000us deadline on core SSP0_CORE_ID with priority 0
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	7, 0, 2, PIPE_BITS,
-	1000, 0, SSP0_CORE_ID,
+	1000, 0, SSP0_PIPE7_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
@@ -151,7 +157,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 # TODO: Modify pipeline deadline to account for deep buffering
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	11, 3, 2, PIPE_BITS,
-	1000, 0, SSP0_CORE_ID,
+	1000, 0, SSP0_PIPE11_CORE_ID,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
