@@ -99,7 +99,7 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	if (!interface->init || !interface->prepare ||
 	    !interface->reset || !interface->free ||
 	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data != 1)) {
+	     !!interface->process_raw_data < 1)) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;

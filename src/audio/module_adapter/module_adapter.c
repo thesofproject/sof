@@ -32,14 +32,9 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
  * helpers to determine processing type
  * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
  */
-#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_audio_stream)
-
-#define IS_PROCESSING_MODE_RAW_DATA(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_raw_data)
-
-#define IS_PROCESSING_MODE_SINK_SOURCE(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process)
+#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_STREAM)
+#define IS_PROCESSING_MODE_RAW_DATA(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_RAW)
+#define IS_PROCESSING_MODE_SINK_SOURCE(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_SOURCE_SINK)
 
 /*
  * \brief Create a module adapter component.
@@ -163,6 +158,16 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	/* Modules must modify them if they support more than 1 source/sink */
 	mod->max_sources = 1;
 	mod->max_sinks = 1;
+
+	/* The order of preference */
+	if (interface->process)
+		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
+	else if (interface->process_audio_stream)
+		mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
+	else if (interface->process_raw_data)
+		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
+	else
+		goto err;
 
 	/* Init processing module */
 	ret = module_init(mod, interface);
