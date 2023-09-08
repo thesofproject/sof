@@ -145,6 +145,9 @@ int volume_init(struct processing_module *mod)
 		cd->muted[i] = false;
 	}
 
+	/* all target volume are same */
+	cd->ramp_channel_counter = 1;
+
 	switch (cd->ramp_type) {
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
 	case SOF_VOLUME_LINEAR:
@@ -217,6 +220,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 					return ret;
 			}
 		}
+		volume_set_ramp_channel_counter(cd, cd->channels);
 
 		volume_ramp_check(mod);
 		break;
