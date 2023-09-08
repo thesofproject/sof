@@ -29,14 +29,9 @@
  * helpers to determine processing type
  * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
  */
-#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_audio_stream)
-
-#define IS_PROCESSING_MODE_RAW_DATA(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_raw_data)
-
-#define IS_PROCESSING_MODE_SINK_SOURCE(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process)
+#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_STREAM)
+#define IS_PROCESSING_MODE_RAW_DATA(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_RAW)
+#define IS_PROCESSING_MODE_SINK_SOURCE(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_SOURCE_SINK)
 
 #define MAX_BLOB_SIZE 8192
 #define MODULE_MAX_SOURCES 8

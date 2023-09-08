@@ -93,6 +93,16 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	mod->max_sources = 1;
 	mod->max_sinks = 1;
 
+	/* The order of preference */
+	if (interface->process)
+		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
+	else if (interface->process_audio_stream)
+		mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
+	else if (interface->process_raw_data)
+		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
+	else
+		goto err;
+
 	/* Init processing module */
 	ret = module_init(mod, interface);
 	if (ret) {

@@ -142,10 +142,21 @@ static int modules_init(struct processing_module *mod)
 		struct module_interface *mod_in =
 					(struct module_interface *)md->module_adapter;
 
+		/* The order of preference */
+		if (mod_in->process)
+			mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
+		else if (mod_in->process_audio_stream)
+			mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
+		else if (mod_in->process_raw_data)
+			mod->proc_type = MODULE_PROCESS_TYPE_RAW;
+		else
+			return -EINVAL;
+
 		ret = mod_in->init(mod);
 	} else {
 		ret = iadk_wrapper_init(md->module_adapter);
 	}
+
 	return ret;
 }
 
@@ -195,18 +206,45 @@ static int modules_init_process(struct processing_module *mod)
 	return 0;
 }
 
+static int modules_process(struct processing_module *mod,
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks)
+{
+	if (!mod->is_native_sof)
+		return -EOPNOTSUPP;
+
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+
+	return mod_in->process(mod, sources, num_of_sources, sinks, num_of_sinks);
+}
+
+static int modules_process_audio_stream(struct processing_module *mod,
+					struct input_stream_buffer *input_buffers,
+					int num_input_buffers,
+					struct output_stream_buffer *output_buffers,
+					int num_output_buffers)
+{
+	if (!mod->is_native_sof)
+		return -EOPNOTSUPP;
+
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+
+	return mod_in->process_audio_stream(mod, input_buffers, num_input_buffers,
+					    output_buffers, num_output_buffers);
+}
+
 /*
- * \brief modules_process.
+ * \brief modules_process_raw.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
  *          error code on failure
  */
-static int modules_process(struct processing_module *mod,
-			   struct input_stream_buffer *input_buffers,
-			   int num_input_buffers,
-			   struct output_stream_buffer *output_buffers,
-			   int num_output_buffers)
+static int modules_process_raw(struct processing_module *mod,
+			       struct input_stream_buffer *input_buffers,
+			       int num_input_buffers,
+			       struct output_stream_buffer *output_buffers,
+			       int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
@@ -384,7 +422,9 @@ static int modules_reset(struct processing_module *mod)
 static const struct module_interface interface = {
 	.init = modules_init,
 	.prepare = modules_prepare,
-	.process_raw_data = modules_process,
+	.process_raw_data = modules_process_raw,
+	.process = modules_process,
+	.process_audio_stream = modules_process_audio_stream,
 	.set_processing_mode = modules_set_processing_mode,
 	.get_processing_mode = modules_get_processing_mode,
 	.set_configuration = modules_set_configuration,
