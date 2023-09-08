@@ -64,6 +64,96 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 	return 0;
 }
 
+static int copier_alh_assign_dai_index(struct comp_dev *dev,
+				       void *gtw_cfg_data,
+				       union ipc4_connector_node_id node_id,
+				       struct ipc_config_dai *dai,
+				       int *dai_index,
+				       int *dai_count)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
+	const struct sof_alh_configuration_blob *alh_blob = gtw_cfg_data;
+	uint8_t *dma_config;
+	size_t alh_cfg_size, dma_config_length;
+	int i, dai_num, ret;
+
+	if (!cd->config.gtw_cfg.config_length) {
+		comp_err(mod->dev, "No gateway config found in blob!");
+		return -EINVAL;
+	}
+
+	switch (dai->type) {
+	case SOF_DAI_INTEL_HDA:
+		/* We use DAI_INTEL_HDA for ACE 2.0 platforms */
+		alh_cfg_size = get_alh_config_size(alh_blob);
+		dma_config = (uint8_t *)gtw_cfg_data + alh_cfg_size;
+		dma_config_length = (cd->config.gtw_cfg.config_length << 2) - alh_cfg_size;
+
+		/* Here we check node_id if we need to use FW aggregation,
+		 * in other words do we need to create multiple dai or not
+		 */
+		if (!is_multi_gateway(node_id)) {
+			/* Find DMA config in blob and retrieve stream_id */
+			ret = ipc4_find_dma_config_multiple(dai, dma_config, dma_config_length,
+							    alh_blob->alh_cfg.mapping[0].alh_id, 0);
+			if (ret != 0) {
+				comp_err(mod->dev, "No sndw dma_config found in blob!");
+				return -EINVAL;
+			}
+			dai_index[0] = dai->host_dma_config[0]->stream_id;
+			return 0;
+		}
+
+		dai_num = alh_blob->alh_cfg.count;
+		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num < 0) {
+			comp_err(mod->dev, "Invalid dai_count: %d", dai_num);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < dai_num; i++) {
+			ret = ipc4_find_dma_config_multiple(dai, dma_config,
+							    dma_config_length,
+							    alh_blob->alh_cfg.mapping[i].alh_id, i);
+			if (ret != 0) {
+				comp_err(mod->dev, "No sndw dma_config found in blob!");
+				return -EINVAL;
+			}
+
+			/* To process data on SoundWire interface HD-A DMA is used so it seems
+			 * logical to me to use stream tag as a dai_index instead of PDI.
+			 */
+			dai_index[i] = dai->host_dma_config[i]->stream_id;
+		}
+
+		*dai_count = dai_num;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		/* Use DAI_INTEL_ALH for ACE 1.0 and older */
+		if (!is_multi_gateway(node_id)) {
+			dai_index[0] = IPC4_ALH_DAI_INDEX(node_id.f.v_index);
+			return 0;
+		}
+
+		dai_num = alh_blob->alh_cfg.count;
+		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num < 0) {
+			comp_err(mod->dev, "Invalid dai_count: %d", dai_num);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < dai_num; i++)
+			dai_index[i] = IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
+
+		*dai_count = dai_num;
+		break;
+	default:
+		comp_err(mod->dev, "Invalid dai type selected: %d", dai->type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int copier_dai_init(struct comp_dev *dev,
 			   struct comp_ipc_config *config,
 			   const struct ipc4_copier_module_cfg *copier,
@@ -100,7 +190,8 @@ static int copier_dai_init(struct comp_dev *dev,
 	}
 
 	/* save the channel map and count for ALH multi-gateway */
-	if (type == ipc4_gtw_alh && is_multi_gateway(copier->gtw_cfg.node_id)) {
+	if ((type == ipc4_gtw_alh || type == ipc4_gtw_link) &&
+	    is_multi_gateway(copier->gtw_cfg.node_id)) {
 		ret = copier_set_alh_multi_gtw_channel_map(dev, copier, index);
 		if (ret < 0)
 			return ret;
@@ -182,50 +273,19 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
+#if defined(CONFIG_ACE_VERSION_2_0)
+		dai.type = SOF_DAI_INTEL_HDA;
+		dai.is_config_blob = true;
+		type = ipc4_gtw_link;
+#else
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_alh;
-
-		/* copier
-		 * {
-		 *  gtw_cfg
-		 *  {
-		 *     gtw_node_id;
-		 *     config_length;
-		 *     config_data
-		 *     {
-		 *	   count;
-		 *	  {
-		 *	     node_id;  \\ normal gtw id
-		 *	     mask;
-		 *	  }  mapping[MAX_ALH_COUNT];
-		 *     }
-		 *   }
-		 * }
-		 */
-		 /* get gtw node id in config data */
-		if (is_multi_gateway(node_id)) {
-			if (copier->gtw_cfg.config_length) {
-				const struct sof_alh_configuration_blob *alh_blob =
-					(const struct sof_alh_configuration_blob *)
-						copier->gtw_cfg.config_data;
-
-				dai_count = alh_blob->alh_cfg.count;
-				if (dai_count > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_count < 0) {
-					comp_err(dev, "Invalid dai_count: %d", dai_count);
-					return -EINVAL;
-				}
-				for (i = 0; i < dai_count; i++)
-					dai_index[i] =
-					IPC4_ALH_DAI_INDEX(alh_blob->alh_cfg.mapping[i].alh_id);
-			} else {
-				comp_err(dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
-				return -EINVAL;
-			}
-		} else {
-			dai_index[dai_count - 1] = IPC4_ALH_DAI_INDEX(node_id.f.v_index);
-		}
-
+#endif /* defined(CONFIG_ACE_VERSION_2_0) */
+		ret = copier_alh_assign_dai_index(dev, cd->gtw_cfg, node_id,
+						  &dai, dai_index, &dai_count);
+		if (ret)
+			return ret;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
@@ -425,7 +485,6 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 				cd->converter[IPC4_COPIER_GATEWAY_PIN];
 		return ret;
 	}
-
 	/* For ALH multi-gateway case, params->channels is a total multiplexed
 	 * number of channels. Demultiplexed number of channels for each individual
 	 * gateway comes in blob's struct ipc4_alh_multi_gtw_cfg.

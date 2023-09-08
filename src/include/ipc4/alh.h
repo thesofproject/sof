@@ -66,4 +66,12 @@ struct sof_alh_configuration_blob {
 	struct ipc4_alh_multi_gtw_cfg alh_cfg;
 } __attribute__((packed, aligned(4)));
 
+static inline size_t
+get_alh_config_size(const struct sof_alh_configuration_blob *alh_blob)
+{
+	return sizeof(alh_blob->gtw_attributes) +
+	       sizeof(alh_blob->alh_cfg.count) +
+	       sizeof(alh_blob->alh_cfg.mapping[0]) * alh_blob->alh_cfg.count;
+}
+
 #endif

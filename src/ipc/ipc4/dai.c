@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/module_adapter/module/generic.h>
 
 #include "../audio/copier/copier.h"
 #include "../audio/copier/dai_copier.h"
@@ -84,6 +85,29 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
+#if defined(CONFIG_ACE_VERSION_2_0)
+		if (copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_output_class ||
+		    copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_input_class) {
+			struct processing_module *mod = comp_get_drvdata(dev);
+			struct copier_data *cd = module_get_private_data(mod);
+
+			if (!cd->gtw_cfg) {
+				comp_err(dev, "No gateway config found!");
+				return DMA_CHAN_INVALID;
+			}
+
+			channel = DMA_CHAN_INVALID;
+			const struct sof_alh_configuration_blob *alh_blob = cd->gtw_cfg;
+
+			for (int i = 0; i < alh_blob->alh_cfg.count; i++) {
+				if (dai->host_dma_config[i]->stream_id == dai->dai_index) {
+					channel = dai->host_dma_config[i]->dma_channel_id;
+					break;
+				}
+			}
+			break;
+		}
+#endif /* defined(CONFIG_ACE_VERSION_2_0) */
 		channel = copier_cfg->gtw_cfg.node_id.f.v_index;
 		break;
 	case SOF_DAI_INTEL_ALH:
