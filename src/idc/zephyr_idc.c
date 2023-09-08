@@ -63,7 +63,8 @@ static void idc_handler(struct k_p4wq_work *work)
 	int payload = -1;
 	k_spinlock_key_t key;
 
-	sys_cache_data_flush_range(msg, sizeof(*msg));
+	/* A message is received from another core, invalidate local cache */
+	sys_cache_data_invd_range(msg, sizeof(*msg));
 
 	if (msg->size == sizeof(int)) {
 		const int idc_handler_memcpy_err __unused =
@@ -123,12 +124,14 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 					       msg->payload, msg->size);
 		assert(!idc_send_memcpy_err);
 
+		/* Sending a message to another core, write back local payload cache */
 		sys_cache_data_flush_range(payload->data, MIN(sizeof(payload->data), msg->size));
 	}
 
 	/* Temporarily store sender core ID */
 	msg_cp->core = cpu_get_id();
 
+	/* Sending a message to another core, write back local message cache */
 	sys_cache_data_flush_range(msg_cp, sizeof(*msg_cp));
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
 
