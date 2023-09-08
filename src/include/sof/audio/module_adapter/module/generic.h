@@ -155,7 +155,7 @@ struct module_data {
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
 	struct module_config cfg; /**< module configuration data */
-	struct module_interface *ops; /**< module specific operations */
+	const struct module_interface *ops; /**< module specific operations */
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 	void *module_adapter; /**<loadable module interface handle */
@@ -240,7 +240,7 @@ struct processing_module {
 /* Module generic interfaces						     */
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
-int module_init(struct processing_module *mod, struct module_interface *interface);
+int module_init(struct processing_module *mod, const struct module_interface *interface);
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment);
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
@@ -290,7 +290,7 @@ int module_unbind(struct processing_module *mod, void *data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config,
-				    struct module_interface *interface, const void *spec);
+				    const struct module_interface *interface, const void *spec);
 int module_adapter_prepare(struct comp_dev *dev);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int module_adapter_copy(struct comp_dev *dev);

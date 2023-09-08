@@ -375,8 +375,8 @@ static int modules_reset(struct processing_module *mod)
 }
 
 /* Processing Module Adapter API*/
-static struct module_interface interface = {
-	.init  = modules_init,
+static const struct module_interface interface = {
+	.init = modules_init,
 	.prepare = modules_prepare,
 	.process_raw_data = modules_process,
 	.set_processing_mode = modules_set_processing_mode,

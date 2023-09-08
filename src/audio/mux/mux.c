@@ -675,8 +675,8 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 				  fragment, fragment_size);
 }
 
-static struct module_interface mux_interface = {
-	.init  = mux_init,
+static const struct module_interface mux_interface = {
+	.init = mux_init,
 	.set_configuration = mux_set_config,
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,
@@ -688,8 +688,8 @@ static struct module_interface mux_interface = {
 DECLARE_MODULE_ADAPTER(mux_interface, mux_uuid, mux_tr);
 SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
 
-static struct module_interface demux_interface = {
-	.init  = demux_init,
+static const struct module_interface demux_interface = {
+	.init = demux_init,
 	.set_configuration = mux_set_config,
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,

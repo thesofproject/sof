@@ -965,7 +965,7 @@ static int selector_reset(struct processing_module *mod)
 }
 
 /** \brief Selector component definition. */
-static struct module_interface selector_interface = {
+static const struct module_interface selector_interface = {
 	.init			= selector_init,
 	.prepare		= selector_prepare,
 	.process_audio_stream	= selector_process,

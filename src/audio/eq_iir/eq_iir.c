@@ -960,8 +960,8 @@ static int eq_iir_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface eq_iir_interface = {
-	.init  = eq_iir_init,
+static const struct module_interface eq_iir_interface = {
+	.init = eq_iir_init,
 	.prepare = eq_iir_prepare,
 	.process_audio_stream = eq_iir_process,
 	.set_configuration = eq_iir_set_config,

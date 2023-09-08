@@ -254,8 +254,8 @@ static int aria_process(struct processing_module *mod,
 	return 0;
 }
 
-static struct module_interface aria_interface = {
-	.init  = aria_init,
+static const struct module_interface aria_interface = {
+	.init = aria_init,
 	.prepare = aria_prepare,
 	.process_audio_stream = aria_process,
 	.reset = aria_reset,

@@ -745,8 +745,8 @@ static int volume_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface volume_interface = {
-	.init  = volume_init,
+static const struct module_interface volume_interface = {
+	.init = volume_init,
 	.prepare = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
@@ -759,8 +759,8 @@ DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
 SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
 
 #if CONFIG_COMP_GAIN
-static struct module_interface gain_interface = {
-	.init  = volume_init,
+static const struct module_interface gain_interface = {
+	.init = volume_init,
 	.prepare = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,

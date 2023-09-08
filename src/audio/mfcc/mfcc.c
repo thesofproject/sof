@@ -268,14 +268,14 @@ static int mfcc_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface mfcc_interface = {
-		.init = mfcc_init,
-		.free = mfcc_free,
-		.set_configuration = mfcc_set_config,
-		.get_configuration = mfcc_get_config,
-		.process_audio_stream = mfcc_process,
-		.prepare = mfcc_prepare,
-		.reset = mfcc_reset,
+static const struct module_interface mfcc_interface = {
+	.init = mfcc_init,
+	.free = mfcc_free,
+	.set_configuration = mfcc_set_config,
+	.get_configuration = mfcc_get_config,
+	.process_audio_stream = mfcc_process,
+	.prepare = mfcc_prepare,
+	.reset = mfcc_reset,
 };
 
 DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);

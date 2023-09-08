@@ -883,8 +883,8 @@ waves_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	return 0;
 }
 
-static struct module_interface waves_interface = {
-	.init  = waves_codec_init,
+static const struct module_interface waves_interface = {
+	.init = waves_codec_init,
 	.prepare = waves_codec_prepare,
 	.process_raw_data = waves_codec_process,
 	.set_configuration = waves_codec_set_configuration,
