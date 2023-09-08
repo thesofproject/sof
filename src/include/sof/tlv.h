@@ -33,6 +33,9 @@ struct sof_tlv {
  */
 static inline struct sof_tlv *tlv_next(const struct sof_tlv *tlv)
 {
+	if (tlv->length % sizeof(uint32_t) != 0)
+		return NULL;
+
 	return (struct sof_tlv *)((char *)(tlv) + sizeof(*tlv) + tlv->length);
 }
 
@@ -92,6 +95,24 @@ static inline void tlv_value_get(const void *data,
 
 		tlv = tlv_next(tlv);
 	}
+}
+
+/**
+ * @brief Retrieves pointer to the TLV Structure value of the specified type
+ *
+ * @param tlv TLV struct pointer.
+ * @param type Value type.
+ * @return Value pointer
+ */
+static inline void *tlv_value_ptr_get(struct sof_tlv *tlv, uint32_t type)
+{
+	if ((uintptr_t)tlv % sizeof(uint32_t) != 0)
+		return NULL;
+
+	if (tlv->type != type)
+		return NULL;
+
+	return (void *)tlv->value;
 }
 
 #endif /* __SOF_TLV_H__ */
