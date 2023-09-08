@@ -8,7 +8,6 @@
 #ifndef __SOF_AUDIO_SMART_AMP_H__
 #define __SOF_AUDIO_SMART_AMP_H__
 
-#include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
 
