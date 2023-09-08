@@ -60,6 +60,15 @@ do { \
 	(comp_dynamic_module)->ops.set_large_config = module_set_large_config;\
 	(comp_dynamic_module)->ops.get_large_config = module_get_large_config;\
 	(comp_dynamic_module)->ops.get_attribute = module_adapter_get_attribute; \
+	(comp_dynamic_module)->ops.bind = module_adapter_bind;		\
+	(comp_dynamic_module)->ops.unbind = module_adapter_unbind;	\
+	(comp_dynamic_module)->ops.get_total_data_processed = module_adapter_get_total_data_processed; \
+	(comp_dynamic_module)->ops.dai_get_hw_params = module_adapter_get_hw_params; \
+	(comp_dynamic_module)->ops.position = module_adapter_position;	\
+	(comp_dynamic_module)->ops.dai_ts_config = module_adapter_ts_config_op;	\
+	(comp_dynamic_module)->ops.dai_ts_start = module_adapter_ts_start_op; \
+	(comp_dynamic_module)->ops.dai_ts_stop = module_adapter_ts_stop_op; \
+	(comp_dynamic_module)->ops.dai_ts_get = module_adapter_ts_get_op; \
 } while (0)
 
 #endif /* __SOF_AUDIO_MODULES__ */
