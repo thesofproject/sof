@@ -176,6 +176,7 @@ struct vol_data {
 	bool copy_gain;				/**< control copy gain or not */
 	uint32_t attenuation;			/**< peakmeter adjustment in range [0 - 31] */
 	bool is_passthrough;			/**< is passthrough or do gain multiplication */
+	uint32_t ramp_channel_counter;		/**< channels need new ramp volume */
 };
 
 /** \brief Volume processing functions map. */
@@ -307,5 +308,7 @@ int volume_set_chan(struct processing_module *mod, int chan,
 void volume_set_chan_mute(struct processing_module *mod, int chan);
 
 void volume_set_chan_unmute(struct processing_module *mod, int chan);
+
+void volume_set_ramp_channel_counter(struct vol_data *cd, uint32_t channels_count);
 
 #endif /* __SOF_AUDIO_VOLUME_H__ */
