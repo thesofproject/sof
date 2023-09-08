@@ -222,8 +222,7 @@ int module_prepare(struct processing_module *mod,
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
-	if (md->cfg.data)
-		rfree(md->cfg.data);
+	rfree(md->cfg.data);
 
 	md->cfg.avail = false;
 	md->cfg.data = NULL;
