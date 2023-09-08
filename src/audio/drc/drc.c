@@ -360,8 +360,8 @@ static int drc_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface drc_interface = {
-	.init  = drc_init,
+static const struct module_interface drc_interface = {
+	.init = drc_init,
 	.prepare = drc_prepare,
 	.process_audio_stream = drc_process,
 	.set_configuration = drc_set_config,

@@ -116,8 +116,8 @@ static int passthrough_codec_free(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface passthrough_interface = {
-	.init  = passthrough_codec_init,
+static const struct module_interface passthrough_interface = {
+	.init = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
 	.process_raw_data = passthrough_codec_process,
 	.reset = passthrough_codec_reset,

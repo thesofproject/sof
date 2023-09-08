@@ -387,8 +387,8 @@ static int smart_amp_prepare(struct processing_module *mod,
 	return ret;
 }
 
-static struct module_interface smart_amp_interface = {
-	.init  = smart_amp_init,
+static const struct module_interface smart_amp_interface = {
+	.init = smart_amp_init,
 	.prepare = smart_amp_prepare,
 	.process_audio_stream = smart_amp_process,
 	.set_configuration = smart_amp_set_config,

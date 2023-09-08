@@ -819,7 +819,7 @@ static int tdfb_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface tdfb_interface = {
+static const struct module_interface tdfb_interface = {
 	.init = tdfb_init,
 	.free = tdfb_free,
 	.set_configuration = tdfb_set_config,

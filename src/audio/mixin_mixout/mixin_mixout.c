@@ -852,8 +852,8 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 	return 0;
 }
 
-static struct module_interface mixin_interface = {
-	.init  = mixin_init,
+static const struct module_interface mixin_interface = {
+	.init = mixin_init,
 	.prepare = mixin_prepare,
 	.process_audio_stream = mixin_process,
 	.set_configuration = mixin_set_config,
@@ -864,8 +864,8 @@ static struct module_interface mixin_interface = {
 DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
 SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 
-static struct module_interface mixout_interface = {
-	.init  = mixout_init,
+static const struct module_interface mixout_interface = {
+	.init = mixout_init,
 	.prepare = mixout_prepare,
 	.process_audio_stream = mixout_process,
 	.reset = mixout_reset,

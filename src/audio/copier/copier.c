@@ -1000,8 +1000,8 @@ static struct module_endpoint_ops copier_endpoint_ops = {
 	.trigger = copier_comp_trigger
 };
 
-static struct module_interface copier_interface = {
-	.init  = copier_init,
+static const struct module_interface copier_interface = {
+	.init = copier_init,
 	.prepare = copier_prepare,
 	.process_audio_stream = copier_process,
 	.reset = copier_reset,

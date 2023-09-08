@@ -636,7 +636,7 @@ static int eq_fir_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface eq_fir_interface = {
+static const struct module_interface eq_fir_interface = {
 		.init = eq_fir_init,
 		.free = eq_fir_free,
 		.set_configuration = eq_fir_set_config,

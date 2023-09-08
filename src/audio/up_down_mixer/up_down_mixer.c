@@ -456,8 +456,8 @@ up_down_mixer_process(struct processing_module *mod,
 	return 0;
 }
 
-static struct module_interface up_down_mixer_interface = {
-	.init  = up_down_mixer_init,
+static const struct module_interface up_down_mixer_interface = {
+	.init = up_down_mixer_init,
 	.prepare = up_down_mixer_prepare,
 	.process_audio_stream = up_down_mixer_process,
 	.reset = up_down_mixer_reset,

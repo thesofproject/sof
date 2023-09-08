@@ -316,8 +316,8 @@ static int dcblock_reset(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface dcblock_interface = {
-	.init  = dcblock_init,
+static const struct module_interface dcblock_interface = {
+	.init = dcblock_init,
 	.prepare = dcblock_prepare,
 	.process_audio_stream = dcblock_process,
 	.set_configuration = dcblock_set_config,

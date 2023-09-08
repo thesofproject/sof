@@ -832,8 +832,8 @@ static int crossover_reset(struct processing_module *mod)
 }
 
 /** \brief Crossover Filter component definition. */
-static struct module_interface crossover_interface = {
-	.init  = crossover_init,
+static const struct module_interface crossover_interface = {
+	.init = crossover_init,
 	.prepare = crossover_prepare,
 	.process_audio_stream = crossover_process_audio_stream,
 	.set_configuration = crossover_set_config,

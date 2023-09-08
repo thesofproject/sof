@@ -1068,8 +1068,8 @@ static int src_free(struct processing_module *mod)
 	return 0;
 }
 
-static struct module_interface src_interface = {
-	.init  = src_init,
+static const struct module_interface src_interface = {
+	.init = src_init,
 	.prepare = src_prepare,
 	.process = src_process,
 	.is_ready_to_process = src_is_ready_to_process,

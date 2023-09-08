@@ -46,7 +46,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
  */
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config,
-				    struct module_interface *interface, const void *spec)
+				    const struct module_interface *interface, const void *spec)
 {
 	int ret;
 	struct comp_dev *dev;

@@ -75,7 +75,7 @@ err:
 	return ret;
 }
 
-int module_init(struct processing_module *mod, struct module_interface *interface)
+int module_init(struct processing_module *mod, const struct module_interface *interface)
 {
 	int ret;
 	struct module_data *md = &mod->priv;

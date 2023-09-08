@@ -451,8 +451,8 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	return 0;
 }
 
-static struct module_interface dts_interface = {
-	.init  = dts_codec_init,
+static const struct module_interface dts_interface = {
+	.init = dts_codec_init,
 	.prepare = dts_codec_prepare,
 	.process_raw_data = dts_codec_process,
 	.set_configuration = dts_codec_set_configuration,

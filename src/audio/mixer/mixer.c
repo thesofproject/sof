@@ -266,8 +266,8 @@ static int mixer_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static struct module_interface mixer_interface = {
-	.init  = mixer_init,
+static const struct module_interface mixer_interface = {
+	.init = mixer_init,
 	.prepare = mixer_prepare,
 	.process_audio_stream = mixer_process,
 	.reset = mixer_reset,
