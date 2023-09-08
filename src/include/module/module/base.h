@@ -60,6 +60,12 @@ struct module_data {
 #endif /* SOF_MODULE_PRIVATE */
 };
 
+enum module_processing_type {
+	MODULE_PROCESS_TYPE_SOURCE_SINK,
+	MODULE_PROCESS_TYPE_STREAM,
+	MODULE_PROCESS_TYPE_RAW,
+};
+
 /*
  * A pointer to this structure is passed to module API functions (from struct module_interface).
  * This structure should contain only fields that should be available to a module.
@@ -153,6 +159,8 @@ struct processing_module {
 	/* max source/sinks supported by the module */
 	uint32_t max_sources;
 	uint32_t max_sinks;
+
+	enum module_processing_type proc_type;
 #endif /* SOF_MODULE_PRIVATE */
 };
 
