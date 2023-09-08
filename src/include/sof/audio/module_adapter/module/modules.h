@@ -68,6 +68,13 @@ static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
 	drv->ops.get_attribute = module_adapter_get_attribute;
 	drv->ops.bind = module_adapter_bind;
 	drv->ops.unbind = module_adapter_unbind;
+	drv->ops.get_total_data_processed = module_adapter_get_total_data_processed;
+	drv->ops.dai_get_hw_params = module_adapter_get_hw_params;
+	drv->ops.position = module_adapter_position;
+	drv->ops.dai_ts_config = module_adapter_ts_config_op;
+	drv->ops.dai_ts_start = module_adapter_ts_start_op;
+	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
+	drv->ops.dai_ts_get = module_adapter_ts_get_op;
 }
 
 #endif /* __SOF_AUDIO_MODULES__ */
