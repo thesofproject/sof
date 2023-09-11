@@ -31,7 +31,7 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		 * enabled as it is unneeded
 		 */
 		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs		= DMA_DEV_SAI,
+		.devs		= DMA_DEV_SAI | DMA_DEV_MICFIL,
 		.base		= SDMA3_BASE,
 		.channels	= 32,
 		.irq		= SDMA3_IRQ,
