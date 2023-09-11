@@ -75,6 +75,7 @@ struct comp_buffer;
 #define DMA_DEV_SP_VIRTUAL	BIT(11) /**< connectable to ACP SP VIRTUAL I2S */
 #define DMA_DEV_HS_VIRTUAL	BIT(12) /**< connectable to ACP HS VIRTUAL I2S */
 #define DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
+#define DMA_DEV_MICFIL		BIT(14) /**< connectable to MICFIL fifo */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1

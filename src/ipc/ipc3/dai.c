@@ -65,6 +65,10 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 		break;
+	case SOF_DAI_IMX_MICFIL:
+		channel = dai_get_handshake(dd->dai, dai->direction,
+					    dd->stream_id);
+		break;
 	case SOF_DAI_AMD_BT:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
@@ -156,8 +160,8 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		 */
 		dd->stream_id = config->alh.stream_id;
 		break;
+	case SOF_DAI_IMX_MICFIL:
 	case SOF_DAI_IMX_SAI:
-		COMPILER_FALLTHROUGH;
 	case SOF_DAI_IMX_ESAI:
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;

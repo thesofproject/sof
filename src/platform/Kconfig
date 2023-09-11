@@ -100,6 +100,7 @@ config IMX8M
 	select XT_WAITI_DELAY
 	select IMX
 	select IMX_SDMA
+	select IMX_MICFIL
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	select IMX_INTERRUPT_IRQSTEER
 	help
