@@ -239,6 +239,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 		${SOF_DRIVERS_PATH}/imx/sdma.c
 		${SOF_DRIVERS_PATH}/imx/sai.c
 		${SOF_DRIVERS_PATH}/imx/ipc.c
+		${SOF_DRIVERS_PATH}/imx/micfil.c
 		${SOF_DRIVERS_PATH}/imx/interrupt-irqsteer.c
 	)
 

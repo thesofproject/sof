@@ -6,6 +6,8 @@
 
 #include <sof/common.h>
 #include <sof/drivers/sai.h>
+#include <sof/drivers/micfil.h>
+
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <rtos/sof.h>
@@ -142,12 +144,37 @@ static SHARED_DATA struct dai sai[] = {
 
 };
 
+static SHARED_DATA struct dai micfil[] = {
+{
+	.index = 2,
+	.plat_data = {
+		.base = MICFIL_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = 0, /* No playback */
+			.handshake = 0,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = MICFIL_BASE + REG_MICFIL_DATACH0,
+			.handshake = 24,
+		},
+	},
+
+	.drv = &micfil_driver,
+},
+};
+
 const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_IMX_SAI,
 		.dai_array = cache_to_uncache_init((struct dai *)sai),
 		.num_dais = ARRAY_SIZE(sai)
 	},
+	{
+		.type = SOF_DAI_IMX_MICFIL,
+		.dai_array = cache_to_uncache_init((struct dai *)micfil),
+		.num_dais = ARRAY_SIZE(micfil)
+	},
+
 };
 
 const struct dai_info lib_dai = {

@@ -54,4 +54,11 @@ struct sof_ipc_dai_sai_params {
 	uint16_t reserved2;	/* alignment */
 
 } __attribute__((packed, aligned(4)));
+
+/* MICFIL Configuration Request - SOF_IPC_DAI_MICFIL_CONFIG */
+struct sof_ipc_dai_micfil_params {
+	uint32_t pdm_rate;
+	uint32_t pdm_ch;
+} __attribute__((packed, aligned(4)));
+
 #endif /* __IPC_DAI_IMX_H__ */
