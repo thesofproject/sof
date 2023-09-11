@@ -42,17 +42,17 @@
 #include "src_config.h"
 
 #if SRC_SHORT || CONFIG_COMP_SRC_TINY
-#include "src/src_tiny_int16_define.h"
-#include "src/src_tiny_int16_table.h"
+#include "coef/src_tiny_int16_define.h"
+#include "coef/src_tiny_int16_table.h"
 #elif CONFIG_COMP_SRC_SMALL
-#include "src/src_small_int32_define.h"
-#include "src/src_small_int32_table.h"
+#include "coef/src_small_int32_define.h"
+#include "coef/src_small_int32_table.h"
 #elif CONFIG_COMP_SRC_STD
-#include "src/src_std_int32_define.h"
-#include "src/src_std_int32_table.h"
+#include "coef/src_std_int32_define.h"
+#include "coef/src_std_int32_table.h"
 #elif CONFIG_COMP_SRC_IPC4_FULL_MATRIX
-#include "src/src_ipc4_int32_define.h"
-#include "src/src_ipc4_int32_table.h"
+#include "coef/src_ipc4_int32_define.h"
+#include "coef/src_ipc4_int32_table.h"
 #else
 #error "No valid configuration selected for SRC"
 #endif
