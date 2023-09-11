@@ -63,6 +63,155 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
 
 /*
  * function called after every LL tick
+ *
+ * This function checks if the queued DP tasks are ready to processing (meaning
+ *    the module run by the task has enough data at all sources and enough free space
+ *    on all sinks)
+ *
+ *    if the task becomes ready, a deadline is set allowing Zephyr to schedule threads
+ *    in right order
+ *
+ * TODO: currently there's a limitation - DP module must be surrounded by LL modules.
+ * it simplifies algorithm - there's no need to browse through DP chains calculating
+ * deadlines for each module in function of all modules execution status.
+ * Now is simple - modules deadline is its start + tick time.
+ *
+ * example:
+ *  Lets assume we do have a pipeline:
+ *
+ *  LL1 -> DP1 -> LL2 -> DP2 -> LL3 -> DP3 -> LL4
+ *
+ *  all LLs starts in 1ms tick
+ *
+ *  for simplification lets assume
+ *   - all LLs are on primary core, all DPs on secondary (100% CPU is for DP)
+ *   - context switching requires 0 cycles
+ *
+ *  DP1 - starts every 1ms, needs 0.5ms to finish processing
+ *  DP2 - starts every 2ms, needs 0.6ms to finish processing
+ *  DP3 - starts every 10ms, needs 0.3ms to finish processing
+ *
+ * TICK0
+ *	only LL1 is ready to run
+ *		LL1 processing (producing data chunk for DP1)
+ *
+ * TICK1
+ *	LL1 is ready to run
+ *	DP1 is ready tu run (has data from LL1) set deadline to TICK2
+ *	  LL1 processing (producing second data chunk for DP1)
+ *	  DP1 processing for 0.5ms (consuming first data chunk, producing data chunk for LL2)
+ *	CPU is idle for 0.5ms
+ *
+ * TICK2
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK3
+ *	LL2 is ready to run
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing 50% data chunk for DP2)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *	CPU is idle for 0.5ms
+ *
+ * TICK3
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK4
+ *	LL2 is ready to run
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing rest of data chunk for DP2)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *	CPU is idle for 0.5ms
+ *
+ * TICK4
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK5
+ *	LL2 is ready to run
+ *	DP2 is ready to run set deadline to TICK6
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing 50% of second data chunk for DP2)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.5ms (no data produced as DP2 has 0.1ms to go)
+ *	100% CPU used
+ *
+ *	!!!!!! Note here - DP1 must do before DP2 as it MUST finish in this tick. DP2 can wait
+ *		>>>>>>> this is what we call EDF - EARIEST DEADLINE FIRST <<<<<<
+ *
+ * TICK5
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK6
+ *	LL2 is ready to run
+ *	DP2 is in progress, deadline is set to TICK6
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing rest of second data chunk for DP2)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.1ms (producing TWO data chunks for LL3)
+ *	CPU is idle for 0.4ms (60% used)
+ *
+ * TICK6
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK7
+ *	LL2 is ready to run
+ *	DP2 is ready to run set deadline to TICK8
+ *	LL3 is ready to run
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing 50% of second data chunk for DP2)
+ *		LL3 processing (producing 10% of first data chunk for DP3)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.5ms (no data produced as DP2 has 0.1ms to go)
+ *	100% CPU used
+ *
+ *
+ *
+ *   (........ 9 more cycles - LL3 procuces 100% of data for DP3......)
+ *
+ *
+ * TICK15
+ *	LL1 is ready to run
+ *	DP1 is ready tu run set deadline to TICK16
+ *	LL2 is ready to run
+ *	DP2 is ready to run set deadline to TICK17
+ *	LL3 is ready to run
+ *	DP3 is ready to run set deadline to TICK25
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing 50% of data chunk for DP2)
+ *		LL3 processing (producing 10% of second data chunk for DP3)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.5ms (no data produced as DP2 has 0.1ms to go)
+ *	100% CPU used -
+ *	!!! note that DP3 is ready but has no chance to get CPU in this cycle
+ *
+ * TICK16
+ *	LL1 is ready to run set deadline to TICK17
+ *	DP1 is ready tu run
+ *	LL2 is ready to run
+ *	DP2 is in progress, deadline is set to TICK17
+ *	LL3 is ready to run
+ *	DP3 is in progress, deadline is set to TICK25
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing rest of data chunk for DP2)
+ *		LL3 processing (producing 10% of second data chunk for DP3)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.1ms (producing data)
+ *		DP3 processing for 0.2ms (producing 10 data chunks for LL4)
+ *	90% CPU used
+ *
+ * TICK17
+ *	LL1 is ready to run
+ *	DP1 is ready tu run
+ *	LL2 is ready to run
+ *	DP2 is ready to run
+ *	LL3 is ready to run
+ *	LL4 is ready to run
+ *			!! NOTE that DP3 is not ready - it will be ready again in TICK25
+ *		LL1 processing (producing data chunk for DP1)
+ *		LL2 processing (producing rest of data chunk for DP2)
+ *		LL3 processing (producing next 10% of second data chunk for DP3)
+ *		LL4 processing (consuming 10% of data prepared by DP3)
+ *		DP1 processing for 0.5ms (producing data chunk for LL2)
+ *		DP2 processing for 0.5ms (no data produced as DP2 has 0.1ms to go)
+ *		100% CPU used
+ *
+ *
+ * Now - pipeline is in stable state, CPU used almost in 100% (it would be 100% if DP3
+ * needed 1.2ms for processing - but the example would be too complicated)
  */
 void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
 {
@@ -90,7 +239,18 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 							       mod->sinks,
 							       mod->num_of_sinks);
 			if (mod_ready) {
-				/* TODO: step 2 - caclulate deadlines */
+				int period_clock_ticks = pdata->period *
+							 CONFIG_SYS_CLOCK_TICKS_PER_SEC;
+				/* period is in us - convert to seconds in next step
+				 * or it always will be zero - its fixed point calculation
+				 */
+				period_clock_ticks /= 1000000;
+
+				/* set a deadline - in Zephyr's CLOCK_TICKS_PER_SEC
+				 * this sets a deadline from now for given num of ticks
+				 */
+				k_thread_deadline_set(pdata->thread_id, period_clock_ticks);
+
 				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
 				k_sem_give(&pdata->sem);
@@ -221,6 +381,8 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 	/* start LL task - run DP tick start and period are irrelevant for LL (that's bad)*/
 	schedule_task(&dp_sch->task, 0, 0);
+
+	tr_info(&dp_tr, "DP taks scheduled with period %u", pdata->period);
 	return 0;
 }
 
