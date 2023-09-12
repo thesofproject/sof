@@ -151,7 +151,7 @@
 #define SDMA_SCRIPT_SHP2MCU_OFF		893
 #define SDMA_SCRIPT_MCU2SHP_OFF		962
 
-#ifdef CONFIG_SDMA_SCRIPT_CODE
+#if CONFIG_HAVE_SDMA_FIRMWARE
 #include "sdma_script_code_imx7d_4_5.h"
 #endif
 
