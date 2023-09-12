@@ -4,8 +4,10 @@
 //
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
+// Author: Adrian Warecki <adrian.warecki@intel.com>
 
 #include <sof/audio/coefficients/up_down_mixer/up_down_mixer.h>
+#include <sof/audio/up_down_mixer/up_down_mixer_manifest.h>
 #include <sof/audio/up_down_mixer/up_down_mixer.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
@@ -36,7 +38,7 @@ DECLARE_SOF_RT_UUID("up_down_mixer", up_down_mixer_comp_uuid, 0x42f8060c, 0x832f
 		    0x4dbf, 0xb2, 0x47, 0x51, 0xe9, 0x61, 0x99, 0x7b, 0x34);
 
 DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_comp_uuid),
-	       LOG_LEVEL_INFO);
+		LOG_LEVEL_INFO);
 
 int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
@@ -455,13 +457,10 @@ static int up_down_mixer_process(struct processing_module *mod,
 	return 0;
 }
 
-static struct module_interface up_down_mixer_interface = {
+struct module_interface up_down_mixer_interface = {
 	.init  = up_down_mixer_init,
 	.prepare = up_down_mixer_prepare,
 	.process_audio_stream = up_down_mixer_process,
 	.reset = up_down_mixer_reset,
 	.free = up_down_mixer_free
 };
-
-DECLARE_MODULE_ADAPTER(up_down_mixer_interface, up_down_mixer_comp_uuid, up_down_mixer_comp_tr);
-SOF_MODULE_INIT(up_down_mixer, sys_comp_module_up_down_mixer_interface_init);

@@ -694,11 +694,6 @@ zephyr_library_sources_ifdef(CONFIG_MATH_EXP
 	${SOF_MATH_PATH}/exp_fcn_hifi.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux.c
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
@@ -782,6 +777,15 @@ include(../scripts/cmake/version.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
+
+
+# Compile up_down_mixer as loadable module
+sof_loadable_library(updwmix ${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.toml)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
+	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
+	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
+)
 
 sof_loadable_library_finalize()
 
