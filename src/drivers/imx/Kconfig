@@ -36,7 +36,7 @@ config IMX_INTERRUPT_GENERIC
 	  It enables NXP platforms-specific features.
 
 config HAVE_SDMA_FIRMWARE
-	bool
+	bool "Enable SDMA firmware load"
 	default n
 	help
 	  Select this to load SDMA firmware to enable additional functionality
