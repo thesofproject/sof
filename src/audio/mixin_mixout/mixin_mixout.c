@@ -517,6 +517,22 @@ static int mixin_params(struct processing_module *mod)
 	return 0;
 }
 
+static void init_source_alignment(struct comp_dev *dev)
+{
+	struct comp_buffer *buf;
+	struct comp_buffer __sparse_cache *buf_c;
+
+	if (list_is_empty(&dev->bsource_list)) {
+		comp_warn(dev, "No source buffer found!");
+		return;
+	}
+
+	buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	buf_c = buffer_acquire(buf);
+	audio_stream_init_alignment_constants(1, 1, &buf_c->stream);
+	buffer_release(buf_c);
+}
+
 /*
  * Prepare the mixer. The mixer may already be running at this point with other
  * sources. Make sure we only prepare the "prepared" source streams and not
@@ -541,6 +557,8 @@ static int mixin_prepare(struct processing_module *mod,
 	ret = mixin_params(mod);
 	if (ret < 0)
 		return ret;
+
+	init_source_alignment(dev);
 
 	if (list_is_empty(&dev->bsink_list)) {
 		comp_err(dev, "At least one sink expected!");
@@ -624,6 +642,8 @@ static int mixout_prepare(struct processing_module *mod,
 		return ret;
 
 	comp_dbg(dev, "mixout_prepare()");
+
+	init_source_alignment(dev);
 
 	if (list_is_empty(&dev->bsink_list)) {
 		comp_err(dev, "No sink buffer found!");
