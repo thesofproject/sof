@@ -350,6 +350,10 @@ static inline void audio_stream_set_buffer_fmt(struct audio_stream __sparse_cach
 #define audio_stream_get_frag(buffer, ptr, idx, sample_size) \
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
+static inline void audio_stream_init_alignment_constants(const uint32_t byte_align,
+							 const uint32_t frame_align_req,
+							 struct audio_stream __sparse_cache *strm);
+
 /**
  * Applies parameters to the buffer.
  * @param buffer Buffer.
@@ -365,6 +369,29 @@ static inline int audio_stream_set_params(struct audio_stream __sparse_cache *bu
 	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
 	buffer->runtime_stream_params.rate = params->rate;
 	buffer->runtime_stream_params.channels = params->channels;
+
+	/* FIXME: This is a workaround, proper fix for audio_stream_avail_frames_aligned()
+	 * preferred.
+	 *
+	 * There are multiple problems with current audio_stream_avail_frames_aligned()
+	 * implementation:
+	 *
+	 * (1) default alignment initialization in audio_stream_init() does not
+	 * work as frame format is set later,
+	 *
+	 * (2) if alignment was not explicitly initialized, audio_stream_avail_frames_aligned()
+	 * returns wrong (higher) number of frames,
+	 *
+	 * (3) audio_stream_avail_frames_aligned() returns wrong result for formats
+	 * with frame size not equal to power of 2, e.g. for streams with 3, 5 and 7 channels.
+	 *
+	 * For cross-core connection such problems result in weird bugs: corrupted
+	 * memory due to wrong invalidate size.
+	 *
+	 * Note, this workaround will not work for 8 bit audio!
+	 */
+	if (buffer->runtime_stream_params.align_shift_idx == 0)
+		audio_stream_init_alignment_constants(1, 1, buffer);
 
 	return 0;
 }
