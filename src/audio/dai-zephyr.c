@@ -1669,7 +1669,7 @@ static int dai_copy(struct comp_dev *dev)
 int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct dai_ts_cfg cfg;
+	struct dai_ts_cfg *cfg = (struct dai_ts_cfg *)&dd->ts_config;
 
 	comp_dbg(dev, "dai_ts_config()");
 	if (!dd->chan) {
@@ -1679,26 +1679,26 @@ int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 
 	switch (dai->type) {
 	case SOF_DAI_INTEL_SSP:
-		cfg.type = DAI_INTEL_SSP;
+		cfg->type = DAI_INTEL_SSP;
 		break;
 	case SOF_DAI_INTEL_ALH:
-		cfg.type = DAI_INTEL_ALH;
+		cfg->type = DAI_INTEL_ALH;
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		cfg.type = DAI_INTEL_DMIC;
+		cfg->type = DAI_INTEL_DMIC;
 		break;
 	default:
 		comp_err(dev, "dai_ts_config(), not supported dai type");
 		return -EINVAL;
 	}
 
-	cfg.direction = dai->direction;
-	cfg.index = dd->dai->index;
-	cfg.dma_id = dd->dma->plat_data.id;
-	cfg.dma_chan_index = dd->chan->index;
-	cfg.dma_chan_count = dd->dma->plat_data.channels;
+	cfg->direction = dai->direction;
+	cfg->index = dd->dai->index;
+	cfg->dma_id = dd->dma->plat_data.id;
+	cfg->dma_chan_index = dd->chan->index;
+	cfg->dma_chan_count = dd->dma->plat_data.channels;
 
-	return dai_ts_config(dd->dai->dev, &cfg);
+	return dai_ts_config(dd->dai->dev, cfg);
 }
 
 static int dai_ts_config_op(struct comp_dev *dev)
@@ -1710,9 +1710,7 @@ static int dai_ts_config_op(struct comp_dev *dev)
 
 int dai_common_ts_start(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_ts_cfg cfg;
-
-	return dai_ts_start(dd->dai->dev, &cfg);
+	return dai_ts_start(dd->dai->dev, (struct dai_ts_cfg *)&dd->ts_config);
 }
 
 static int dai_ts_start_op(struct comp_dev *dev)
@@ -1725,11 +1723,10 @@ static int dai_ts_start_op(struct comp_dev *dev)
 
 int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
 {
-	struct dai_ts_data tsdata;
-	struct dai_ts_cfg cfg;
+	struct dai_ts_data *tsdata = (struct dai_ts_data *)tsd;
+	struct dai_ts_cfg *cfg = (struct dai_ts_cfg *)&dd->ts_config;
 
-	/* TODO: convert to timestamp_data */
-	return dai_ts_get(dd->dai->dev, &cfg, &tsdata);
+	return dai_ts_get(dd->dai->dev, cfg, tsdata);
 }
 
 static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
@@ -1743,9 +1740,7 @@ static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 
 int dai_common_ts_stop(struct dai_data *dd, struct comp_dev *dev)
 {
-	struct dai_ts_cfg cfg;
-
-	return dai_ts_stop(dd->dai->dev, &cfg);
+	return dai_ts_stop(dd->dai->dev, (struct dai_ts_cfg *)&dd->ts_config);
 }
 
 static int dai_ts_stop_op(struct comp_dev *dev)
