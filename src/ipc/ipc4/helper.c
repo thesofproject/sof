@@ -389,12 +389,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
 	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
 
-	/*
-	 * Connect and bind the buffer to both source and sink components with the interrupts
-	 * disabled to prevent the IPC task getting preempted which could result in buffers being
-	 * only half connected when a pipeline task gets executed. A spinlock isn't required
-	 * because all connected pipelines need to be on the same core.
-	 */
 	irq_local_disable(flags);
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
@@ -412,6 +406,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto e_sink_connect;
 	}
 
+	/* comp_bind() may call comp_bind_remote() and so IDC interrupt should be enabled */
+	irq_local_enable(flags);
 
 	ret = comp_bind(source, bu);
 	if (ret < 0)
@@ -433,13 +429,12 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
-	irq_local_enable(flags);
-
 	return IPC4_SUCCESS;
 
 e_sink_bind:
 	comp_unbind(source, bu);
 e_src_bind:
+	irq_local_disable(flags);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -500,19 +495,14 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!buffer)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	/*
-	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
-	 * even in case of errors. Disable interrupts during disconnect and unbinding to prevent
-	 * the IPC task getting preempted which could result in buffers being only half connected
-	 * when a pipeline task gets executed. A spinlock isn't required because all connected
-	 * pipelines need to be on the same core.
-	 */
 	irq_local_disable(flags);
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+	irq_local_enable(flags);
+
+	/* comp_unbind() may call comp_unbind_remote() and so IDC interrupt should be enabled */
 	ret = comp_unbind(src, bu);
 	ret1 = comp_unbind(sink, bu);
-	irq_local_enable(flags);
 
 	buffer_free(buffer);
 
