@@ -630,7 +630,7 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 	return 0;
 }
 
-int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
+int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
@@ -649,9 +649,11 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	 * pipeline w/o connection to gateway, so direction is not configured in binding phase.
 	 * Need to update direction for such modules when pipeline is completed.
 	 */
-	ret = ipc4_update_comps_direction(ipc, comp_id);
-	if (ret < 0)
-		return ret;
+	if (cmd != SOF_IPC4_PIPELINE_STATE_RESET) {
+		ret = ipc4_update_comps_direction(ipc, comp_id);
+		if (ret < 0)
+			return ret;
+	}
 
 	return ipc_pipeline_complete(ipc, comp_id);
 }

@@ -274,7 +274,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		switch (status) {
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: reset from init", ppl_icd->id);
-			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
+			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
@@ -296,7 +296,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		switch (status) {
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: pause from init", ppl_icd->id);
-			ret = ipc4_pipeline_complete(ipc, ppl_icd->id);
+			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
 			if (ret < 0)
 				ret = IPC4_INVALID_REQUEST;
 
