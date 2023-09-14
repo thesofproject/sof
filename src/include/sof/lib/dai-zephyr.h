@@ -53,15 +53,6 @@ struct dai {
 	struct k_spinlock lock;		/* protect properties */
 };
 
-struct timestamp_cfg {
-	uint32_t walclk_rate; /* Rate in Hz, e.g. 19200000 */
-	int type; /* SSP, DMIC, HDA, etc. */
-	int direction; /* Playback, capture */
-	int index; /* For SSPx to select correct timestamp register */
-	int dma_id; /* GPDMA id*/
-	int dma_chan_index; /* Used GPDMA channel */
-	int dma_chan_count; /* Channels in single GPDMA */
-};
 union hdalink_cfg {
 	uint16_t full;
 	struct {
@@ -127,7 +118,7 @@ struct dai_data {
 	struct comp_dev *dai_dev;
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
-	struct timestamp_cfg ts_config;
+	struct dai_ts_cfg ts_config;
 	struct dai *dai;
 	struct dma *dma;
 	struct dai_group *group;		/* NULL if no group assigned */
