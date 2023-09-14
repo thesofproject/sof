@@ -681,8 +681,11 @@ static int asrc_dai_stop_timestamp(struct comp_data *cd)
 	return -EINVAL;
 }
 
-static int asrc_dai_get_timestamp(struct comp_data *cd,
-				  struct timestamp_data *tsd)
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	static int asrc_dai_get_timestamp(struct comp_data *cd, struct dai_ts_data *tsd)
+#else
+	static int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
+#endif
 {
 	if (!cd->dai_dev)
 		return -EINVAL;
@@ -909,7 +912,11 @@ err:
 
 static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 {
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	struct dai_ts_data tsd;
+#else
 	struct timestamp_data tsd;
+#endif
 	int64_t tmp;
 	int32_t delta_sample;
 	int32_t delta_ts;

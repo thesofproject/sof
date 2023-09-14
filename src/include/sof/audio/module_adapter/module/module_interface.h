@@ -69,6 +69,7 @@ struct output_stream_buffer {
 
 struct comp_dev;
 struct timestamp_data;
+struct dai_ts_data;
 /**
  * \struct module_endpoint_ops
  * \brief Ops relevant only for the endpoint devices such as the host copier or DAI copier.
@@ -120,7 +121,11 @@ struct module_endpoint_ops {
 	 *
 	 * Mandatory for components that allocate DAI.
 	 */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	int (*dai_ts_get)(struct comp_dev *dev, struct dai_ts_data *tsd);
+#else
 	int (*dai_ts_get)(struct comp_dev *dev, struct timestamp_data *tsd);
+#endif
 
 	/**
 	 * Fetches hardware stream parameters.

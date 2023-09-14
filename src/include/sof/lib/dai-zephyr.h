@@ -33,6 +33,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.
@@ -61,21 +62,6 @@ struct timestamp_cfg {
 	int dma_chan_index; /* Used GPDMA channel */
 	int dma_chan_count; /* Channels in single GPDMA */
 };
-
-struct timestamp_data {
-	uint64_t walclk; /* Wall clock */
-	uint64_t sample; /* Sample count */
-	uint32_t walclk_rate; /* Rate in Hz, e.g. 19200000 */
-};
-
-struct timestamp_ops {
-	int (*ts_config)(struct dai *dai, struct timestamp_cfg *cfg);
-	int (*ts_start)(struct dai *dai, struct timestamp_cfg *cfg);
-	int (*ts_stop)(struct dai *dai, struct timestamp_cfg *cfg);
-	int (*ts_get)(struct dai *dai, struct timestamp_cfg *cfg,
-		      struct timestamp_data *tsd);
-};
-
 union hdalink_cfg {
 	uint16_t full;
 	struct {

@@ -940,7 +940,11 @@ static int copier_dai_ts_start_op(struct comp_dev *dev)
 	return dai_common_ts_start(dd, dev);
 }
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+static int copier_dai_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
+#else
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+#endif
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);

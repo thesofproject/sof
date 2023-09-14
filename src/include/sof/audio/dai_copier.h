@@ -44,7 +44,11 @@ int dai_common_ts_start(struct dai_data *dd, struct comp_dev *dev);
 
 int dai_common_ts_stop(struct dai_data *dd, struct comp_dev *dev);
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct dai_ts_data *tsd);
+#else
 int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd);
+#endif
 
 int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params, int dir);
