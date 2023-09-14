@@ -159,7 +159,7 @@ int volume_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	for (channel = 0; channel < channels_count ; channel++) {
+	for (channel = 0; channel < channels_count; channel++) {
 		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
 			channel_cfg = 0;
 		else
