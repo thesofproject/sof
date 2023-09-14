@@ -229,6 +229,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
 	uint32_t clk_div;
+	bool tdm_enable;
 	struct sai_pdata *sai = dai_get_drvdata(dai);
 
 	sai->config = *config;
@@ -250,6 +251,14 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	} else {
 		clk_div = (config->sai.mclk_rate / config->sai.bclk_rate / 2) - 1;
 	}
+
+	/* TDM mode is enabled only when fmt is dsp_a or dsp_b and
+	 * we can have from 1 to 32 channels.
+	 * for any other formats we assume I2S like interface where
+	 * audio frames have 2 channels, even for mono scenario. The
+	 * second channel will be masked out.
+	 */
+	tdm_enable = false;
 
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
@@ -285,6 +294,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_FSE;
 		val_cr4 |= REG_SAI_CR4_SYWD(1U);
+		tdm_enable = true;
 		break;
 	case SOF_DAI_FMT_DSP_B:
 		/*
@@ -293,6 +303,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 */
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_SYWD(1U);
+		tdm_enable = true;
 		break;
 	case SOF_DAI_FMT_PDM:
 		val_cr2 |= REG_SAI_CR2_BCP;
@@ -368,7 +379,12 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	}
 #endif
 
-	val_cr4 |= REG_SAI_CR4_FRSZ(sai->params.tdm_slots);
+	if (tdm_enable)
+		val_cr4 |= REG_SAI_CR4_FRSZ(sai->params.tdm_slots);
+	else
+		val_cr4 |= REG_SAI_CR4_FRSZ(
+		    (sai->params.tdm_slots == 1) ? 2 : sai->params.tdm_slots);
+
 	val_cr4 |= REG_SAI_CR4_CHMOD;
 	val_cr4 |= REG_SAI_CR4_MF;
 
