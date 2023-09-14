@@ -1566,7 +1566,11 @@ int module_adapter_ts_stop_op(struct comp_dev *dev)
  *	0 - success
  *	value < 0 - failure.
  */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+int module_adapter_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
+#else
 int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+#endif
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;

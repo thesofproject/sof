@@ -1721,15 +1721,14 @@ static int dai_ts_start_op(struct comp_dev *dev)
 	return dai_common_ts_start(dd, dev);
 }
 
-int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestamp_data *tsd)
+int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct dai_ts_data *tsd)
 {
-	struct dai_ts_data *tsdata = (struct dai_ts_data *)tsd;
 	struct dai_ts_cfg *cfg = (struct dai_ts_cfg *)&dd->ts_config;
 
-	return dai_ts_get(dd->dai->dev, cfg, tsdata);
+	return dai_ts_get(dd->dai->dev, cfg, tsd);
 }
 
-static int dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
+static int dai_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
