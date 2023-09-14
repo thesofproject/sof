@@ -355,6 +355,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_IMX8ULP
 	switch (sai->params.tdm_slot_width) {
 	case 8:
 		val_cr4 |= REG_SAI_CR4_FPACK_8;
@@ -365,6 +366,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	default:
 		break;
 	}
+#endif
 
 	val_cr4 |= REG_SAI_CR4_FRSZ(sai->params.tdm_slots);
 	val_cr4 |= REG_SAI_CR4_CHMOD;
