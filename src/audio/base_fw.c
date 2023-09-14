@@ -51,7 +51,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple,
 			     IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG,
-			     clock_get_freq(CPU_LPRO_FREQ_IDX));
+			     clock_get_freq(CPU_LOWEST_FREQ_IDX));
 
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
