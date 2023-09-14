@@ -14,6 +14,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -177,48 +179,53 @@ static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *source_buffers_c[PLATFORM_MAX_STREAMS];
 	struct comp_buffer __sparse_cache *sinks_buffers_c[PLATFORM_MAX_STREAMS];
-	struct sof_sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
-	struct sof_source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
-	uint32_t num_of_sources = 0;
-	uint32_t num_of_sinks = 0;
 	int ret;
-	int i = 0;
+	int i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
+	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer_uc;
 
 		sink_buffer_uc = container_of(blist, struct comp_buffer, source_list);
-		sinks_buffers_c[num_of_sinks] = buffer_acquire(sink_buffer_uc);
-		audio_sink[num_of_sinks] =
-				audio_stream_get_sink(&sinks_buffers_c[num_of_sinks]->stream);
-		sink_reset_num_of_processed_bytes(audio_sink[num_of_sinks]);
-		num_of_sinks++;
+		sinks_buffers_c[i] = buffer_acquire(sink_buffer_uc);
+		mod->sinks[i] = audio_stream_get_sink(&sinks_buffers_c[i]->stream);
+		i++;
 	}
+	mod->num_of_sinks = i;
 
+	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer_uc;
 
 		source_buffer_uc = container_of(blist, struct comp_buffer, sink_list);
-		source_buffers_c[num_of_sources] = buffer_acquire(source_buffer_uc);
-		audio_src[num_of_sources] =
-				audio_stream_get_source(&source_buffers_c[num_of_sources]->stream);
-		source_reset_num_of_processed_bytes(audio_src[num_of_sources]);
-		num_of_sources++;
+		source_buffers_c[i] = buffer_acquire(source_buffer_uc);
+		mod->sources[i] = audio_stream_get_source(&source_buffers_c[i]->stream);
+		i++;
 	}
+	mod->num_of_sources = i;
 
 	/* Prepare module */
-	ret = module_prepare(mod, audio_src, num_of_sources, audio_sink, num_of_sinks);
+	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
 
-	/* release all source buffers in reverse order */
-	for (i = num_of_sources - 1; i >= 0; i--)
+	mod->period_bytes = audio_stream_period_bytes(&sinks_buffers_c[0]->stream, dev->frames);
+
+	/* release all source buffers in reverse order
+	 * unfortunately till https://github.com/thesofproject/sof/issues/8006 is implemented
+	 * also pointers to sinks/sources must be wiped
+	 */
+	for (i = mod->num_of_sources - 1; i >= 0; i--) {
+		mod->sources[i] = NULL;
 		buffer_release(source_buffers_c[i]);
+	}
 
 	/* release all sink buffers in reverse order */
-	for  (i = num_of_sinks - 1; i >= 0 ; i--)
+	for  (i = mod->num_of_sinks - 1; i >= 0 ; i--) {
+		mod->sinks[i] = NULL;
 		buffer_release(sinks_buffers_c[i]);
+	}
 
 	return ret;
 }
@@ -248,9 +255,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	/* Prepare module */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
+
 		ret = module_adapter_sink_src_prepare(dev);
-	else
+	else if ((IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) &&
+		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+
 		ret = module_prepare(mod, NULL, 0, NULL, 0);
+	else
+		ret = -EINVAL;
 
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
@@ -292,6 +304,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
 
 	buffer_release(sink_c);
+
+	mod->num_input_buffers = 0;
+	mod->num_output_buffers = 0;
 
 	/*
 	 * compute number of input buffers and make the source_info shared if the module is on a
@@ -513,7 +528,9 @@ in_data_free:
 
 in_out_free:
 	rfree(mod->output_buffers);
+	mod->output_buffers = NULL;
 	rfree(mod->input_buffers);
+	mod->input_buffers = NULL;
 	return ret;
 }
 
@@ -1011,56 +1028,56 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 {
 	struct comp_buffer __sparse_cache *source_buffers_c[PLATFORM_MAX_STREAMS];
 	struct comp_buffer __sparse_cache *sinks_buffers_c[PLATFORM_MAX_STREAMS];
-	struct sof_sink __sparse_cache *audio_sink[PLATFORM_MAX_STREAMS];
-	struct sof_source __sparse_cache *audio_src[PLATFORM_MAX_STREAMS];
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
-	uint32_t num_of_sources = 0;
-	uint32_t num_of_sinks = 0;
 	int ret;
-	int i = 0;
-
+	int i;
 	comp_dbg(dev, "module_adapter_sink_source_copy(): start");
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
+	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer;
 
 		sink_buffer = container_of(blist, struct comp_buffer, source_list);
-		sinks_buffers_c[num_of_sinks] = buffer_acquire(sink_buffer);
-		audio_sink[num_of_sinks] =
-				audio_stream_get_sink(&sinks_buffers_c[num_of_sinks]->stream);
-		sink_reset_num_of_processed_bytes(audio_sink[num_of_sinks]);
-		num_of_sinks++;
+		sinks_buffers_c[i] = buffer_acquire(sink_buffer);
+		mod->sinks[i] = audio_stream_get_sink(&sinks_buffers_c[i]->stream);
+		sink_reset_num_of_processed_bytes(mod->sinks[i]);
+		i++;
 	}
 
+	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer;
 
 		source_buffer = container_of(blist, struct comp_buffer, sink_list);
-		source_buffers_c[num_of_sources] = buffer_acquire(source_buffer);
-		audio_src[num_of_sources] =
-				audio_stream_get_source(&source_buffers_c[num_of_sources]->stream);
-		source_reset_num_of_processed_bytes(audio_src[num_of_sources]);
-		num_of_sources++;
+		source_buffers_c[i] = buffer_acquire(source_buffer);
+		mod->sources[i] = audio_stream_get_source(&source_buffers_c[i]->stream);
+		source_reset_num_of_processed_bytes(mod->sources[i]);
+		i++;
 	}
 
-	ret = module_process_sink_src(mod, audio_src, num_of_sources, audio_sink, num_of_sinks);
+	ret = module_process_sink_src(mod, mod->sources, mod->num_of_sources,
+				      mod->sinks, mod->num_of_sinks);
 
 	if (ret != -ENOSPC && ret != -ENODATA && ret) {
 		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %x",
 			 ret);
 	}
 
-	/* release all source buffers in reverse order */
-	for (i = num_of_sources - 1; i >= 0; i--) {
-		mod->total_data_consumed += source_get_num_of_processed_bytes(audio_src[i]);
+	/* release all source buffers in reverse order
+	 * unfortunately till https://github.com/thesofproject/sof/issues/8006 is implemented
+	 * also pointers to sinks/sources must be wiped
+	 */
+	for (i = mod->num_of_sources - 1; i >= 0; i--) {
+		mod->total_data_consumed += source_get_num_of_processed_bytes(mod->sources[i]);
+		mod->sources[i] = NULL;
 		buffer_release(source_buffers_c[i]);
 	}
 
-	/* release all sink buffers in reverse order */
-	for  (i = num_of_sinks - 1; i >= 0 ; i--) {
-		mod->total_data_produced += sink_get_num_of_processed_bytes(audio_sink[i]);
+	for  (i = mod->num_of_sinks - 1; i >= 0 ; i--) {
+		mod->total_data_produced += sink_get_num_of_processed_bytes(mod->sinks[i]);
+		mod->sinks[i] = NULL;
 		buffer_release(sinks_buffers_c[i]);
 	}
 
@@ -1411,11 +1428,22 @@ int module_adapter_reset(struct comp_dev *dev)
 		for (i = 0; i < mod->num_input_buffers; i++)
 			rfree((__sparse_force void *)mod->input_buffers[i].data);
 	}
-	rfree(mod->output_buffers);
-	rfree(mod->input_buffers);
+	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
+		rfree(mod->output_buffers);
+		rfree(mod->input_buffers);
 
-	mod->num_input_buffers = 0;
-	mod->num_output_buffers = 0;
+		mod->num_input_buffers = 0;
+		mod->num_output_buffers = 0;
+	}
+
+
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
+	    mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
+		for (int i = 0; i < mod->num_of_sources; i++)
+			mod->sources[i] = NULL;
+		for (int i = 0; i < mod->num_of_sinks; i++)
+			mod->sinks[i] = NULL;
+	}
 
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;

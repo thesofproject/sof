@@ -15,6 +15,8 @@
 #include <sof/audio/component.h>
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include "module_interface.h"
 
 #if CONFIG_INTEL_MODULES
@@ -186,6 +188,17 @@ struct processing_module {
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
+
+	/* sink and source handlers for the module
+	 * NOTE! till https://github.com/thesofproject/sof/issues/8006 is implemented:
+	 * 1) sparse warnings may be generated
+	 * 2) sinks and sources API provided by audio_stream cannot be kept here,
+	 *    as they may be used only when the buffer is acquired
+	 */
+	struct sof_sink *sinks[MODULE_MAX_SOURCES];
+	struct sof_source *sources[MODULE_MAX_SOURCES];
+	uint32_t num_of_sources;
+	uint32_t num_of_sinks;
 	struct input_stream_buffer *input_buffers;
 	struct output_stream_buffer *output_buffers;
 	uint32_t num_input_buffers; /**< number of input buffers */
