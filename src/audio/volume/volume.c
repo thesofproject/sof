@@ -332,7 +332,7 @@ static inline void volume_ramp(struct processing_module *mod)
 		}
 		cd->volume[i] = new_vol;
 	}
-
+	/* assign other channel volume as the first calculated volume with same volume case */
 	for (i = cd->ramp_channel_counter; i < cd->channels; i++)
 		cd->volume[i] = cd->volume[0];
 
@@ -557,8 +557,9 @@ static int volume_process(struct processing_module *mod,
 	comp_dbg(mod->dev, "volume_process()");
 
 	while (avail_frames) {
+#if CONFIG_COMP_PEAK_VOL
 		volume_update_current_vol_ipc4(cd);
-
+#endif
 		if (cd->ramp_finished || cd->vol_ramp_frames > avail_frames) {
 			/* without ramping process all at once */
 			frames = avail_frames;
