@@ -1669,7 +1669,7 @@ static int dai_copy(struct comp_dev *dev)
 int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct dai_ts_cfg *cfg = (struct dai_ts_cfg *)&dd->ts_config;
+	struct dai_ts_cfg *cfg = &dd->ts_config;
 
 	comp_dbg(dev, "dai_ts_config()");
 	if (!dd->chan) {
