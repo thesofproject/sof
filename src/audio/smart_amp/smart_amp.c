@@ -518,9 +518,7 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
 		if (sad->feedback_buf) {
-			struct comp_buffer *buf = buffer_acquire(sad->feedback_buf);
-			buffer_zero(buf);
-			buffer_release(buf);
+			buffer_zero(sad->feedback_buf);
 		}
 		break;
 	case COMP_TRIGGER_PAUSE:
@@ -558,10 +556,7 @@ static int smart_amp_process(struct comp_dev *dev,
 static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer *source_buf = buffer_acquire(sad->source_buf);
-	enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&source_buf->stream);
-
-	buffer_release(source_buf);
+	enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sad->source_buf->stream);
 
 	switch (fmt) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -577,8 +572,8 @@ static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 static int smart_amp_copy(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer *source_buf = buffer_acquire(sad->source_buf);
-	struct comp_buffer *sink_buf = buffer_acquire(sad->sink_buf);
+	struct comp_buffer *source_buf = sad->source_buf;
+	struct comp_buffer *sink_buf = sad->sink_buf;
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
 	uint32_t avail_frames;
@@ -595,7 +590,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	avail_frames = avail_passthrough_frames;
 
 	if (sad->feedback_buf) {
-		struct comp_buffer *feedback_buf = buffer_acquire(sad->feedback_buf);
+		struct comp_buffer *feedback_buf = sad->feedback_buf;
 
 		if (comp_get_state(dev, feedback_buf->source) == dev->state) {
 			/* feedback */
@@ -619,8 +614,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(feedback_buf, feedback_bytes);
 		}
-
-		buffer_release(feedback_buf);
 	}
 
 	/* bytes calculation */
@@ -636,9 +629,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 	/* source/sink buffer pointers update */
 	comp_update_buffer_consume(source_buf, source_bytes);
 	comp_update_buffer_produce(sink_buf, sink_bytes);
-
-	buffer_release(sink_buf);
-	buffer_release(source_buf);
 
 	return 0;
 }
@@ -661,7 +651,6 @@ static int smart_amp_reset(struct comp_dev *dev)
 static int smart_amp_prepare(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct comp_buffer *source_c, *buf_c;
 	struct list_item *blist;
 	int ret;
 	int bitwidth;
@@ -676,45 +665,38 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer = container_of(blist, struct comp_buffer,
 								 sink_list);
-		source_c = buffer_acquire(source_buffer);
 
-		if (source_c->source->ipc_config.type == SOF_COMP_DEMUX) {
+		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX) {
 			sad->feedback_buf = source_buffer;
 		} else {
 			sad->source_buf = source_buffer;
-			sad->in_channels = audio_stream_get_channels(&source_c->stream);
+			sad->in_channels = audio_stream_get_channels(&source_buffer->stream);
 		}
-
-		buffer_release(source_c);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-	buf_c = buffer_acquire(sad->sink_buf);
-	sad->out_channels = audio_stream_get_channels(&buf_c->stream);
-	buffer_release(buf_c);
-
-	source_c = buffer_acquire(sad->source_buf);
+	sad->out_channels = audio_stream_get_channels(&sad->sink_buf->stream);
 
 	if (sad->feedback_buf) {
-		buf_c = buffer_acquire(sad->feedback_buf);
+		audio_stream_set_channels(&sad->feedback_buf->stream,
+					  sad->config.feedback_channels);
+		audio_stream_set_rate(&sad->feedback_buf->stream,
+				      audio_stream_get_rate(&sad->source_buf->stream));
 
-		audio_stream_set_channels(&buf_c->stream, sad->config.feedback_channels);
-		audio_stream_set_rate(&buf_c->stream, audio_stream_get_rate(&source_c->stream));
-		buffer_release(buf_c);
-
-		ret = smart_amp_check_audio_fmt(audio_stream_get_rate(&source_c->stream),
-						audio_stream_get_channels(&source_c->stream));
+		ret = smart_amp_check_audio_fmt(audio_stream_get_rate(&sad->source_buf->stream),
+						audio_stream_get_channels
+						(&sad->source_buf->stream));
 		if (ret) {
 			comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
-				 audio_stream_get_rate(&source_c->stream),
-				 audio_stream_get_channels(&source_c->stream));
+				 audio_stream_get_rate(&sad->source_buf->stream),
+				 audio_stream_get_channels(&sad->source_buf->stream));
 			goto error;
 		}
 	}
 
-	switch (audio_stream_get_frm_fmt(&source_c->stream)) {
+	switch (audio_stream_get_frm_fmt(&sad->source_buf->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		bitwidth = 16;
 		break;
@@ -726,7 +708,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		break;
 	default:
 		comp_err(dev, "[DSM] smart_amp_process() error: not supported frame format %d",
-			 audio_stream_get_frm_fmt(&source_c->stream));
+			 audio_stream_get_frm_fmt(&sad->source_buf->stream));
 		goto error;
 	}
 
@@ -751,8 +733,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	}
 
 error:
-	buffer_release(source_c);
-
 	smart_amp_flush(sad->mod_handle, dev);
 	return ret;
 }
