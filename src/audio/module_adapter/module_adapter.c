@@ -281,6 +281,7 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		i++;
 	}
 	mod->num_of_sources = i;
+	uint32_t period = UINT32_MAX;
 
 	i = 0;
 	list_init(&mod->dp_queue_dp_to_ll_list);
@@ -311,10 +312,27 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			 sizeof(dp_queue->audio_stream_params),
 			 &sink_buffer->stream.runtime_stream_params,
 			 sizeof(sink_buffer->stream.runtime_stream_params));
+		/* calculate time required the module to provide OBS data portion - a period */
+		uint32_t sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
+				      (sink_get_frame_bytes(mod->sinks[i]) *
+				      sink_get_rate(mod->sinks[i]));
+		/* note the minimal period for the module */
+		if (period > sink_period)
+			period = sink_period;
 
 		i++;
 	}
 	mod->num_of_sinks = i;
+	/* set the period for the module unless it has already been calculated by the
+	 * module itself during prepare
+	 * It may happen i.e. for modules like phrase detect that do not produce audio data
+	 * but events and therefore don't have any deadline for processing
+	 * Second example is a module with variable data rate on output (like MPEG encoder)
+	 */
+	if (!dev->period) {
+		comp_info(dev, "DP Module period set to %u", period);
+		dev->period = period;
+	}
 
 	return 0;
 

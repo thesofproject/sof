@@ -260,7 +260,14 @@ static int pipeline_comp_complete(struct comp_dev *current,
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
-	current->period = ppl_data->p->period;
+	/* LL module has its period always eq period of the pipeline
+	 * DP period is set to 0 as sink format may not yet been set
+	 * It will be calculated during module prepare operation
+	 * either by the module or to default value based on module's OBS
+	 */
+	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		current->period = ppl_data->p->period;
+
 	current->priority = ppl_data->p->priority;
 
 	return pipeline_for_each_comp(current, ctx, dir);
