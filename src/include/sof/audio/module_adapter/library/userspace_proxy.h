@@ -14,10 +14,12 @@
 #include <stdbool.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/app_memory/app_memdomain.h>
 #include <utilities/array.h>
 
 #include <native_system_agent.h>
 #include <module/module/interface.h>
+#include <sof/audio/module_adapter/library/userspace_proxy_user.h>
 
 struct module_interface;
 struct comp_driver;
@@ -28,6 +30,7 @@ struct system_agent_params;
 struct userspace_context {
 	struct k_mem_domain *comp_dom;			/* Module specific memory domain	*/
 	const struct module_interface *interface;	/* Userspace module interface		*/
+	struct user_work_item *work_item;		/* work item for user worker thread	*/
 };
 #endif /* CONFIG_USERSPACE */
 
