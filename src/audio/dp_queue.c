@@ -73,7 +73,7 @@ static inline void dp_queue_writeback_shared(struct dp_queue *dp_queue,
 }
 
 static inline
-uint8_t __sparse_cache *dp_queue_get_pointer(struct dp_queue *dp_queue, uint32_t offset)
+uint8_t __sparse_cache *dp_queue_get_pointer(struct dp_queue *dp_queue, size_t offset)
 {
 	/* check if offset is not in "double area"
 	 * lines below do a quicker version of offset %= dp_queue->data_buffer_size;
@@ -84,7 +84,7 @@ uint8_t __sparse_cache *dp_queue_get_pointer(struct dp_queue *dp_queue, uint32_t
 }
 
 static inline
-uint32_t dp_queue_inc_offset(struct dp_queue *dp_queue, uint32_t offset, uint32_t inc)
+size_t dp_queue_inc_offset(struct dp_queue *dp_queue, size_t offset, size_t inc)
 {
 	assert(inc <= dp_queue->data_buffer_size);
 	offset += inc;
@@ -161,20 +161,20 @@ static int dp_queue_get_data(struct sof_source *source, size_t req_size,
 			     void const **data_ptr, void const **buffer_start, size_t *buffer_size)
 {
 	struct dp_queue *dp_queue = dp_queue_from_source(source);
-	__sparse_cache void *_data_ptr;
+	__sparse_cache void *data_ptr_c;
 
 	CORE_CHECK_STRUCT(dp_queue);
 	if (req_size > dp_queue_get_data_available(source))
 		return -ENODATA;
 
-	_data_ptr = dp_queue_get_pointer(dp_queue, dp_queue->_read_offset);
+	data_ptr_c = dp_queue_get_pointer(dp_queue, dp_queue->_read_offset);
 
 	/* clean cache in provided data range */
-	dp_queue_invalidate_shared(dp_queue, _data_ptr, req_size);
+	dp_queue_invalidate_shared(dp_queue, data_ptr_c, req_size);
 
 	*buffer_start = (__sparse_force void *)dp_queue->_data_buffer;
 	*buffer_size = dp_queue->data_buffer_size;
-	*data_ptr = (__sparse_force void *)_data_ptr;
+	*data_ptr = (__sparse_force void *)data_ptr_c;
 
 	return 0;
 }
@@ -262,24 +262,22 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 
 	CORE_CHECK_STRUCT_INIT(dp_queue, flags & DP_QUEUE_MODE_SHARED);
 
-	/* initiate sink/source */
+	/* initiate structures */
 	source_init(dp_queue_get_source(dp_queue), &dp_queue_source_ops,
 		    &dp_queue->audio_stream_params);
 	sink_init(dp_queue_get_sink(dp_queue), &dp_queue_sink_ops,
 		  &dp_queue->audio_stream_params);
+
+	list_init(&dp_queue->list);
 
 	/* set obs/ibs in sink/source interfaces */
 	sink_set_min_free_space(&dp_queue->_sink_api, min_free_space);
 	source_set_min_available(&dp_queue->_source_api, min_available);
 
 	uint32_t max_ibs_obs = MAX(min_available, min_free_space);
-	uint32_t min_ibs_obs = MIN(min_available, min_free_space);
 
 	/* calculate required buffer size */
-	if (max_ibs_obs % min_ibs_obs == 0)
-		dp_queue->data_buffer_size = 2 * max_ibs_obs;
-	else
-		dp_queue->data_buffer_size = 3 * max_ibs_obs;
+	dp_queue->data_buffer_size = 2 * max_ibs_obs;
 
 	/* allocate data buffer - always in cached memory alias */
 	dp_queue->data_buffer_size = ALIGN_UP(dp_queue->data_buffer_size, PLATFORM_DCACHE_ALIGN);

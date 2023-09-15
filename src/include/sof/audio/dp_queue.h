@@ -25,9 +25,38 @@
  *  1) incoming and outgoing data rate MUST be the same
  *  2) Both data consumer and data producer declare max chunk sizes they want to use (IBS/OBS)
  *
- * required Buffer size:
- *	- 2*MAX(IBS,OBS) if the larger of IBS/OBS is multiplication of smaller
- *	- 3*MAX(IBS,OBS) otherwise
+ * required Buffer size is 2*MAX(IBS,OBS) to allow free read/write in various data chunk sizes
+ * and execution periods (of course in/out data rates must be same)
+ * example:
+ *  Consumer reads 5bytes each 3 cycles (IBS = 5)
+ *  producer writes 3bytes every 5 cycles (OBS = 3)
+ *    - cycle0 buffer empty, producer starting processing, consumer must wait
+ *    - cycle3 produce 3 bytes (buf occupation = 3)
+ *    - cycle6 produce 3 bytes (buf occupation = 6), consumer becomes ready
+ *		in DP thread will start now - asyn to LL cycles
+ *		in this example assuming it consumes data in next cycle
+ *    - cycle7 consume 5 bytes, (buf occupation = 1)
+ *    - cycle9 produce 3 bytes (buf occupation = 4)
+ *    - cycle12 (producer goes first) produce 3 bytes (buf occupation = 7)
+ *		consume 5 bytes (buf occupation = 2)
+ *    - cycle15 produce 3 bytes (buf occupation = 5)
+ *		consumer has enough data, but is busy processing prev data
+ *    - cycle15 consume 5 bytes (buf occupation = 0)
+ *
+ * ===> max buf occupation = 7
+ *
+ * The worst case is when IBS=OBS and equal periods of consumer/producer
+ * the buffer must be 2*MAX(IBS,OBS) as we do not know who goes first - consumer or producer,
+ * especially when both are located on separate cores and EDF scheduling is used
+ *
+ *  Consumer reads 5 bytes every cycle (IBS = 5)
+ *  producer writes 5 bytes every cycle (OBS = 5)
+ *    - cycle0 consumer goes first - must wait (buf occupation = 0)
+ *		producer produce 5 bytes (buf occupation = 5)
+ *    - cycle1 producer goes first - produce 5 bytes (buf occupation = 10)
+ *		consumer consumes 5 bytes (buf occupation = 5)
+ * ===> max buf occupation = 10
+ *
  *
  * The queue may work in 2 modes
  * 1) local mode
@@ -80,6 +109,9 @@ struct sof_audio_stream_params;
 struct dp_queue {
 	CORE_CHECK_STRUCT_FIELD;
 
+	/* public */
+	struct list_item list;	/**< fields for connection queues in a list */
+
 	/* public: read only */
 	struct sof_audio_stream_params audio_stream_params;
 	size_t data_buffer_size;
@@ -91,8 +123,8 @@ struct dp_queue {
 	uint32_t _flags;		/* DP_QUEUE_MODE_* */
 
 	uint8_t __sparse_cache *_data_buffer;
-	uint32_t _write_offset;		/* private: to be modified by data producer using API */
-	uint32_t _read_offset;		/* private: to be modified by data consumer using API */
+	size_t _write_offset;		/* private: to be modified by data producer using API */
+	size_t _read_offset;		/* private: to be modified by data consumer using API */
 
 	bool _hw_params_configured;
 };
@@ -110,12 +142,13 @@ struct dp_queue {
 struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags);
 
 /**
- * @brief free dp queue memory
+ * @brief remove the queue from the list, free dp queue memory
  */
 static inline
 void dp_queue_free(struct dp_queue *dp_queue)
 {
 	CORE_CHECK_STRUCT(dp_queue);
+	list_item_del(&dp_queue->list);
 	rfree((__sparse_force void *)dp_queue->_data_buffer);
 	rfree(dp_queue);
 }
@@ -162,6 +195,30 @@ bool dp_queue_is_shared(struct dp_queue *dp_queue)
 {
 	CORE_CHECK_STRUCT(dp_queue);
 	return !!(dp_queue->_flags & DP_QUEUE_MODE_SHARED);
+}
+
+/**
+ * @brief append a dp_queue to the list
+ */
+static inline void dp_queue_append_to_list(struct dp_queue *item, struct list_item *list)
+{
+	list_item_append(&item->list, list);
+}
+
+/**
+ * @brief return a pointer to the first dp_queue on the list
+ */
+static inline struct dp_queue *dp_queue_get_first_item(struct list_item *list)
+{
+	return list_first_item(list, struct dp_queue, list);
+}
+
+/**
+ * @brief return a pointer to the next dp_queue on the list
+ */
+static inline struct dp_queue *dp_queue_get_next_item(struct dp_queue *item)
+{
+	return list_next_item(item, list);
 }
 
 #endif /* __SOF_DP_QUEUE_H__ */
