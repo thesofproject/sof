@@ -366,7 +366,6 @@ int volume_get_config(struct processing_module *mod,
 static int volume_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sink_c, *source_c;
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
@@ -378,14 +377,10 @@ static int volume_params(struct processing_module *mod)
 
 	/* volume component will only ever have 1 sink buffer */
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ipc4_update_buffer_format(sink_c, &mod->priv.cfg.base_cfg.audio_fmt);
-	buffer_release(sink_c);
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	source_c = buffer_acquire(sourceb);
-	ipc4_update_buffer_format(source_c, &mod->priv.cfg.base_cfg.audio_fmt);
-	buffer_release(source_c);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	return 0;
 }

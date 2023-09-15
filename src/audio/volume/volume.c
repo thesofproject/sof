@@ -638,7 +638,6 @@ static int volume_prepare(struct processing_module *mod,
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
@@ -653,20 +652,15 @@ static int volume_prepare(struct processing_module *mod,
 	sourceb = list_first_item(&dev->bsource_list,
 				  struct comp_buffer, sink_list);
 
-	sink_c = buffer_acquire(sinkb);
-	source_c = buffer_acquire(sourceb);
-
-	volume_set_alignment(&source_c->stream, &sink_c->stream);
-
-	buffer_release(source_c);
+	volume_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get sink period bytes */
-	sink_period_bytes = audio_stream_period_bytes(&sink_c->stream,
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (audio_stream_get_size(&sink_c->stream) < sink_period_bytes) {
+	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
 		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d",
-			 audio_stream_get_size(&sink_c->stream), sink_period_bytes);
+			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -680,7 +674,7 @@ static int volume_prepare(struct processing_module *mod,
 		goto err;
 	}
 
-	cd->zc_get = vol_get_zc_function(dev, sink_c);
+	cd->zc_get = vol_get_zc_function(dev, sinkb);
 	if (!cd->zc_get) {
 		comp_err(dev, "volume_prepare(): invalid cd->zc_get");
 		ret = -EINVAL;
@@ -695,16 +689,14 @@ static int volume_prepare(struct processing_module *mod,
 	 */
 	cd->ramp_finished = false;
 
-	cd->channels = audio_stream_get_channels(&sink_c->stream);
+	cd->channels = audio_stream_get_channels(&sinkb->stream);
 	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
 		ret = -EINVAL;
 		goto err;
 	}
 
 	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX /
-					audio_stream_get_rate(&sink_c->stream));
-
-	buffer_release(sink_c);
+					audio_stream_get_rate(&sinkb->stream));
 
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
@@ -725,7 +717,6 @@ static int volume_prepare(struct processing_module *mod,
 	return 0;
 
 err:
-	buffer_release(sink_c);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 }
