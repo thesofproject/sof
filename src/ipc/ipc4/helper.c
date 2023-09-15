@@ -335,6 +335,15 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	return buffer_new(&ipc_buf);
 }
 
+/* FIXME: avoid Zephyr internal platform specific defines */
+#ifdef CONFIG_SOC_SERIES_INTEL_ACE
+	#define lock_ll_sched(flags)    irq_disable(ACE_IRQ_TO_ZEPHYR(ACE_INTL_TTS))
+	#define unlock_ll_sched(flags)  irq_enable(ACE_IRQ_TO_ZEPHYR(ACE_INTL_TTS))
+#else
+	#define lock_ll_sched(flags)    irq_local_disable(flags)
+	#define unlock_ll_sched(flags)  irq_local_enable(flags)
+#endif
+
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
@@ -346,6 +355,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t flags;
 	int src_id, sink_id;
 	int ret;
+
+	ARG_UNUSED(flags);
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -389,7 +400,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
 	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
 
-	irq_local_disable(flags);
+	lock_ll_sched(flags);
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -407,8 +418,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/* comp_bind() may call comp_bind_remote() and so IDC interrupt should be enabled */
-	irq_local_enable(flags);
-
 	ret = comp_bind(source, bu);
 	if (ret < 0)
 		goto e_src_bind;
@@ -429,17 +438,18 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
+	unlock_ll_sched(flags);
+
 	return IPC4_SUCCESS;
 
 e_sink_bind:
 	comp_unbind(source, bu);
 e_src_bind:
-	irq_local_disable(flags);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	irq_local_enable(flags);
+	unlock_ll_sched(flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -458,6 +468,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t src_id, sink_id, buffer_id;
 	uint32_t flags;
 	int ret, ret1;
+
+	ARG_UNUSED(flags);
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -495,14 +507,13 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!buffer)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	irq_local_disable(flags);
+	lock_ll_sched(flags);
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-	irq_local_enable(flags);
-
 	/* comp_unbind() may call comp_unbind_remote() and so IDC interrupt should be enabled */
 	ret = comp_unbind(src, bu);
 	ret1 = comp_unbind(sink, bu);
+	unlock_ll_sched(flags);
 
 	buffer_free(buffer);
 
