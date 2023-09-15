@@ -350,17 +350,14 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
-		struct comp_buffer *sink_c = buffer_acquire(sink);
 		int sink_buf_id;
 
-		if (!sink_c->sink) {
+		if (!sink->sink) {
 			ret = -EINVAL;
-			buffer_release(sink_c);
 			break;
 		}
 
-		sink_buf_id = sink_c->id;
-		buffer_release(sink_c);
+		sink_buf_id = sink->id;
 
 		if (sink_buf_id == buf_id) {
 			if (sink_buf_id == 0)
@@ -869,17 +866,13 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
-		struct comp_buffer *sink_c = buffer_acquire(sink);
 		enum sof_comp_type type;
 
-		if (!sink_c->sink) {
+		if (!sink->sink) {
 			ret = -EINVAL;
-			buffer_release(sink_c);
 			break;
 		}
-
-		type = dev_comp_type(sink_c->sink);
-		buffer_release(sink_c);
+		type = dev_comp_type(sink->sink);
 
 		switch (type) {
 		case SOF_COMP_SELECTOR:
@@ -907,18 +900,15 @@ static int kpb_prepare(struct comp_dev *dev)
 		list_for_item(sink_list, &dev->bsink_list) {
 			struct comp_buffer *sink =
 				container_of(sink_list, struct comp_buffer, source_list);
-			struct comp_buffer *sink_c = buffer_acquire(sink);
 
 			audio_stream_init_alignment_constants(byte_align, frame_align_req,
-							      &sink_c->stream);
-			sink_id = sink_c->id;
+							      &sink->stream);
+			sink_id = sink->id;
 
 			if (sink_id == 0)
-				audio_stream_set_channels(&sink_c->stream, kpb->num_of_sel_mic);
+				audio_stream_set_channels(&sink->stream, kpb->num_of_sel_mic);
 			else
-				audio_stream_set_channels(&sink_c->stream, kpb->config.channels);
-
-			buffer_release(sink_c);
+				audio_stream_set_channels(&sink->stream, kpb->config.channels);
 		}
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
@@ -1188,7 +1178,6 @@ static int kpb_copy(struct comp_dev *dev)
 	int ret = 0;
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct comp_buffer *source, *sink;
-	struct comp_buffer *source_c, *sink_c = NULL;
 	size_t copy_bytes = 0, produced_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
 	struct draining_data *dd = &kpb->draining_task_data;
@@ -1206,13 +1195,11 @@ static int kpb_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
-	source_c = buffer_acquire(source);
-
 	/* Validate source */
-	if (!audio_stream_get_rptr(&source_c->stream)) {
+	if (!audio_stream_get_rptr(&source->stream)) {
 		comp_err(dev, "kpb_copy(): invalid source pointers.");
 		ret = -EINVAL;
-		goto out;
+		return ret;
 	}
 
 	switch (kpb->state) {
@@ -1227,29 +1214,27 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		sink_c = buffer_acquire(sink);
-
 		/* Validate sink */
-		if (!audio_stream_get_wptr(&sink_c->stream)) {
+		if (!audio_stream_get_wptr(&sink->stream)) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
 			ret = -EINVAL;
 			break;
 		}
 
-		copy_bytes = audio_stream_get_copy_bytes(&source_c->stream, &sink_c->stream);
+		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
-				 audio_stream_get_free_bytes(&sink_c->stream),
-				 audio_stream_get_avail_bytes(&source_c->stream));
+				 audio_stream_get_free_bytes(&sink->stream),
+				 audio_stream_get_avail_bytes(&source->stream));
 			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
 		if (kpb->num_of_sel_mic == 0) {
-			kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
+			kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
 		} else {
-			uint32_t avail = audio_stream_get_avail_bytes(&source_c->stream);
-			uint32_t free = audio_stream_get_free_bytes(&sink_c->stream);
+			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
+			uint32_t free = audio_stream_get_free_bytes(&sink->stream);
 
 			copy_bytes = MIN(avail, free * channels / kpb->num_of_sel_mic);
 			copy_bytes = ROUND_DOWN(copy_bytes, (sample_width >> 3) * channels);
@@ -1265,13 +1250,13 @@ static int kpb_copy(struct comp_dev *dev)
 				ret = PPL_STATUS_PATH_STOP;
 				break;
 			}
-			kpb_micselect_copy(dev, sink_c, source_c, produced_bytes, channels);
+			kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
 		}
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
 		 */
 		if (copy_bytes <= kpb->hd.buffer_size) {
-			ret = kpb_buffer_data(dev, source_c, copy_bytes);
+			ret = kpb_buffer_data(dev, source, copy_bytes);
 
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
@@ -1290,11 +1275,11 @@ static int kpb_copy(struct comp_dev *dev)
 		}
 
 		if (kpb->num_of_sel_mic == 0)
-			comp_update_buffer_produce(sink_c, copy_bytes);
+			comp_update_buffer_produce(sink, copy_bytes);
 		else
-			comp_update_buffer_produce(sink_c, produced_bytes);
+			comp_update_buffer_produce(sink, produced_bytes);
 
-		comp_update_buffer_consume(source_c, copy_bytes);
+		comp_update_buffer_consume(source, copy_bytes);
 
 		break;
 	case KPB_STATE_HOST_COPY:
@@ -1307,20 +1292,18 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		sink_c = buffer_acquire(sink);
-
 		/* Validate sink */
-		if (!audio_stream_get_wptr(&sink_c->stream)) {
+		if (!audio_stream_get_wptr(&sink->stream)) {
 			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
 			ret = -EINVAL;
 			break;
 		}
 
-		copy_bytes = audio_stream_get_copy_bytes(&source_c->stream, &sink_c->stream);
+		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
-				 audio_stream_get_free_bytes(&sink_c->stream),
-				 audio_stream_get_avail_bytes(&source_c->stream));
+				 audio_stream_get_free_bytes(&sink->stream),
+				 audio_stream_get_avail_bytes(&source->stream));
 			/* NOTE! We should stop further pipeline copy due to
 			 * no data availability however due to HW bug
 			 * (no HOST DMA IRQs) we need to call host copy
@@ -1329,10 +1312,10 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		kpb_copy_samples(sink_c, source_c, copy_bytes, sample_width, channels);
+		kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
 
-		comp_update_buffer_produce(sink_c, copy_bytes);
-		comp_update_buffer_consume(source_c, copy_bytes);
+		comp_update_buffer_produce(sink, copy_bytes);
+		comp_update_buffer_consume(source, copy_bytes);
 
 		break;
 	case KPB_STATE_INIT_DRAINING:
@@ -1340,12 +1323,12 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining and init draining we only buffer data in
 		 * the internal history buffer.
 		 */
-		avail_bytes = audio_stream_get_avail_bytes(&source_c->stream);
+		avail_bytes = audio_stream_get_avail_bytes(&source->stream);
 		copy_bytes = MIN(avail_bytes, kpb->hd.free);
 		ret = PPL_STATUS_PATH_STOP;
 		if (copy_bytes) {
-			buffer_stream_invalidate(source_c, copy_bytes);
-			ret = kpb_buffer_data(dev, source_c, copy_bytes);
+			buffer_stream_invalidate(source, copy_bytes);
+			ret = kpb_buffer_data(dev, source, copy_bytes);
 			dd->buffered_while_draining += copy_bytes;
 			kpb->hd.free -= copy_bytes;
 
@@ -1354,10 +1337,10 @@ static int kpb_copy(struct comp_dev *dev)
 				break;
 			}
 
-			comp_update_buffer_consume(source_c, copy_bytes);
+			comp_update_buffer_consume(source, copy_bytes);
 		} else {
 			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
-				  audio_stream_get_avail_bytes(&source_c->stream),
+				  audio_stream_get_avail_bytes(&source->stream),
 				  kpb->hd.free);
 		}
 
@@ -1368,11 +1351,6 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = -EIO;
 		break;
 	}
-
-out:
-	if (sink_c)
-		buffer_release(sink_c);
-	buffer_release(source_c);
 
 	return ret;
 }
@@ -1750,7 +1728,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 static enum task_state kpb_draining_task(void *arg)
 {
 	struct draining_data *draining_data = (struct draining_data *)arg;
-	struct comp_buffer *sink = buffer_acquire(draining_data->sink);
+	struct comp_buffer *sink = draining_data->sink;
 	struct history_buffer *buff = draining_data->hb;
 	size_t drain_req = draining_data->drain_req;
 	size_t sample_width = draining_data->sample_width;
@@ -1880,13 +1858,9 @@ static enum task_state kpb_draining_task(void *arg)
 out:
 	draining_time_end = sof_cycle_get_64();
 
-	buffer_release(sink);
-
 	/* Reset host-sink copy mode back to its pre-draining value */
-	sink = buffer_acquire(kpb->host_sink);
-	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE,
+	comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 			   &kpb->draining_task_data.copy_type);
-	buffer_release(sink);
 
 	draining_time_ms = k_cyc_to_ms_near64(draining_time_end - draining_time_start);
 	if (draining_time_ms <= UINT_MAX)
