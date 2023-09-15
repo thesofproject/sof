@@ -91,9 +91,9 @@ namespace dsp_fw
 		AdspErrorCode
 		IadkModuleAdapter_GetConfiguration(uint32_t config_id,
 		                               enum module_cfg_fragment_position fragment_position,
-		                               uint32_t data_offset_size,
+		                               uint32_t &data_offset_size,
 		                               uint8_t *fragment_buffer,
-		                               size_t fragment_size);
+		                               size_t &fragment_size);
 		/**
 		 * Module specific reset procedure, called as part of codec_adapter component
 		 * reset in .reset(). This should reset all parameters to their initial stage
@@ -146,7 +146,7 @@ int iadk_wrapper_set_configuration(void *md, uint32_t config_id,
 
 int iadk_wrapper_get_configuration(void *md, uint32_t config_id,
 				   enum module_cfg_fragment_position pos,
-				   uint32_t data_offset_size,
+				   uint32_t *data_offset_size,
 				   uint8_t *fragment, size_t fragment_size);
 
 int iadk_wrapper_process(void *md,
