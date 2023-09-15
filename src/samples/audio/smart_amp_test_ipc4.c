@@ -92,7 +92,6 @@ static void smart_amp_set_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_buffer *sink;
-	struct comp_buffer *sink_c;
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
@@ -102,11 +101,9 @@ static void smart_amp_set_params(struct processing_module *mod)
 		struct ipc4_audio_format out_fmt = sink_fmt->audio_fmt;
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
 
-		ipc4_update_buffer_format(sink_c, &out_fmt);
-		params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
-		buffer_release(sink_c);
+		ipc4_update_buffer_format(sink, &out_fmt);
+		params->frame_fmt = audio_stream_get_frm_fmt(&sink->stream);
 	}
 }
 
@@ -350,7 +347,6 @@ static int smart_amp_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source_buffer;
 	struct comp_buffer *sink_buffer;
-	struct comp_buffer *buffer_c;
 	struct list_item *blist;
 	int ret;
 
@@ -363,22 +359,19 @@ static int smart_amp_prepare(struct processing_module *mod,
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-		buffer_c = buffer_acquire(source_buffer);
-		audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
-		if (IPC4_SINK_QUEUE_ID(buffer_c->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
-			audio_stream_set_channels(&buffer_c->stream, sad->config.feedback_channels);
-			audio_stream_set_rate(&buffer_c->stream,
+		audio_stream_init_alignment_constants(1, 1, &source_buffer->stream);
+		if (IPC4_SINK_QUEUE_ID(source_buffer->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+			audio_stream_set_channels(&source_buffer->stream,
+						  sad->config.feedback_channels);
+			audio_stream_set_rate(&source_buffer->stream,
 					      mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency);
 		}
-		buffer_release(buffer_c);
 	}
 
 	sink_buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	buffer_c = buffer_acquire(sink_buffer);
-	sad->out_channels = audio_stream_get_channels(&buffer_c->stream);
-	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
-	sad->process = get_smart_amp_process(dev, buffer_c);
-	buffer_release(buffer_c);
+	sad->out_channels = audio_stream_get_channels(&sink_buffer->stream);
+	audio_stream_init_alignment_constants(1, 1, &sink_buffer->stream);
+	sad->process = get_smart_amp_process(dev, sink_buffer);
 
 	if (!sad->process) {
 		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
