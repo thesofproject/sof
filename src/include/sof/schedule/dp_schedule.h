@@ -92,6 +92,7 @@ enum {
 	DP_TASK_EVENT_PROCESS	= BIT(0),	/* Need to process data */
 	DP_TASK_EVENT_CANCEL	= BIT(1),	/* Thread cancellation */
 	DP_TASK_EVENT_IPC	= BIT(2),	/* IPC message */
+	DP_TASK_EVENT_IPC_DONE	= BIT(3),	/* IPC processing has completed. */
 };
 
 struct bind_info;
