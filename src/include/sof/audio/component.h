@@ -581,7 +581,12 @@ struct comp_dev {
 				  *  2) for all DP tasks
 				  */
 	uint32_t size;		/**< component's allocated size */
-	uint32_t period;	/**< component's processing period */
+	uint32_t period;	/**< component's processing period
+				  *  for LL modules is set to LL pipeline's period
+				  *  for DP module its meaning is "the time the module MUST
+				  *  provide data that allows the following module to perform
+				  *  without glitches"
+				  */
 	uint32_t priority;	/**< component's processing priority */
 	bool is_shared;		/**< indicates whether component is shared
 				  *  across cores
