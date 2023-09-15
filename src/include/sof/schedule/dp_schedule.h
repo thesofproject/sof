@@ -89,6 +89,7 @@ void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props,
 enum {
 	DP_TASK_EVENT_PROCESS	= BIT(0),	/* Need to process data */
 	DP_TASK_EVENT_CANCEL	= BIT(1),	/* Thread cancellation */
+	DP_TASK_EVENT_IPC_DONE	= BIT(3),	/* IPC processing has completed. */
 };
 
 #endif /* __SOF_SCHEDULE_DP_SCHEDULE_H__ */

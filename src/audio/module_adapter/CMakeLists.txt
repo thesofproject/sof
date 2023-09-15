@@ -66,6 +66,7 @@ if(zephyr) ###  Zephyr ###
 
 	zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_PROXY
 		library/userspace_proxy.c
+		library/userspace_proxy_user.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC

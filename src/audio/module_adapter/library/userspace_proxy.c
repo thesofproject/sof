@@ -27,13 +27,18 @@
 
 #include <sof/lib_manager.h>
 #include <sof/audio/component.h>
+#include <sof/schedule/dp_schedule.h>
 #include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <zephyr/sys/sem.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
+#include <sof/audio/module_adapter/library/userspace_proxy_user.h>
 #include <rimage/sof/user/manifest.h>
+
+ /* Assume that all the code runs in supervisor mode and don't made a system calls. */
+#define __ZEPHYR_SUPERVISOR__
 
 LOG_MODULE_REGISTER(userspace_proxy, CONFIG_SOF_LOG_LEVEL);
 
@@ -43,6 +48,139 @@ SOF_DEFINE_REG_UUID(userspace_proxy);
 DECLARE_TR_CTX(userspace_proxy_tr, SOF_UUID(userspace_proxy_uuid), LOG_LEVEL_INFO);
 
 static const struct module_interface userspace_proxy_interface;
+
+struct user_worker {
+	k_tid_t thread_id;			/* ipc worker thread ID			*/
+	uint32_t reference_count;		/* module reference count		*/
+	void *stack_ptr;			/* pointer to worker stack		*/
+	struct k_work_user_q work_queue;
+	struct k_event event;
+};
+
+static struct user_worker worker;
+
+static int user_worker_create(void)
+{
+	if (worker.reference_count) {
+		worker.reference_count++;
+		return 0;
+	}
+
+	worker.stack_ptr = user_stack_allocate(CONFIG_SOF_STACK_SIZE, K_USER);
+	if (!worker.stack_ptr) {
+		tr_err(&userspace_proxy_tr, "Userspace worker stack allocation failed.");
+		return -ENOMEM;
+	}
+
+	k_event_init(&worker.event);
+	k_work_user_queue_start(&worker.work_queue, worker.stack_ptr, CONFIG_SOF_STACK_SIZE, 0,
+				NULL);
+
+	worker.thread_id = k_work_user_queue_thread_get(&worker.work_queue);
+
+	k_thread_access_grant(worker.thread_id, &worker.event);
+
+	worker.reference_count++;
+	return 0;
+}
+
+static void user_worker_free(void)
+{
+	/* Module removed so decrement counter */
+	worker.reference_count--;
+
+	/* Free worker resources if no more active user space modules */
+	if (worker.reference_count == 0) {
+		k_thread_abort(worker.thread_id);
+		user_stack_free(worker.stack_ptr);
+	}
+}
+
+static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap *user_heap)
+{
+	struct user_work_item *work_item = NULL;
+	int ret;
+
+	ret = user_worker_create();
+	if (ret)
+		return ret;
+
+	work_item = sof_heap_alloc(user_heap, SOF_MEM_FLAG_COHERENT, sizeof(*work_item), 0);
+	if (!work_item)
+		return -ENOMEM;
+
+	k_work_user_init(&work_item->work_item, userspace_proxy_worker_handler);
+
+	work_item->event = &worker.event;
+	work_item->params.context = user_ctx;
+	user_ctx->work_item = work_item;
+
+	return 0;
+}
+
+static void user_work_item_free(struct userspace_context *user_ctx, struct k_heap *user_heap)
+{
+	sof_heap_free(user_heap, user_ctx->work_item);
+	user_worker_free();
+}
+
+static inline struct module_params *user_work_get_params(struct userspace_context *user_ctx)
+{
+	return &user_ctx->work_item->params;
+}
+
+static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t cmd,
+				  bool ipc_payload_access)
+{
+	struct module_params *params = user_work_get_params(user_ctx);
+	struct k_mem_partition ipc_part = {
+		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
+		.size = MAILBOX_HOSTBOX_SIZE,
+		.attr = K_MEM_PARTITION_P_RO_U_RO,
+	};
+	int ret;
+
+	params->cmd = cmd;
+
+	if (ipc_payload_access) {
+		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &ipc_part);
+		if (ret < 0) {
+			tr_err(&userspace_proxy_tr, "add mailbox to domain error: %d", ret);
+			return ret;
+		}
+	}
+
+	/* Switch worker thread to module memory domain */
+	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker.thread_id);
+	if (ret < 0) {
+		tr_err(&userspace_proxy_tr, "failed to switch memory domain: error: %d", ret);
+		goto done;
+	}
+
+	ret = k_work_user_submit_to_queue(&worker.work_queue, &user_ctx->work_item->work_item);
+	if (ret < 0) {
+		tr_err(&userspace_proxy_tr, "k_work_user_submit_to_queue(): error: %d", ret);
+		goto done;
+	}
+
+	/* Timeout value is aligned with the ipc_wait_for_compound_msg function */
+	if (!k_event_wait_safe(&worker.event, DP_TASK_EVENT_IPC_DONE, false,
+			       Z_TIMEOUT_US(250 * 20))) {
+		tr_err(&userspace_proxy_tr, "ipc processing timedout.");
+		ret = -ETIMEDOUT;
+	}
+
+done:
+	if (ipc_payload_access) {
+		ret = k_mem_domain_remove_partition(user_ctx->comp_dom, &ipc_part);
+		if (ret < 0)
+			tr_err(&userspace_proxy_tr, "Mailbox remove from domain error: %d", ret);
+	}
+
+	return ret;
+}
+
+extern struct k_mem_partition common_partition;
 
 static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 				       const struct comp_driver *drv)
@@ -73,11 +211,16 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 #endif
 
 	struct k_mem_partition *parts_ptr[] = {
+		&common_partition,
 #ifdef HEAP_PART_CACHED
 		&heap_part_cached,
 #endif
 		&heap_part
 	};
+
+	tr_dbg(&userspace_proxy_tr, "Common partition %p + %zx, attr = %u",
+	       UINT_TO_POINTER(common_partition.start), common_partition.size,
+	       common_partition.attr);
 
 	return k_mem_domain_init(user_ctx->comp_dom, ARRAY_SIZE(parts_ptr), parts_ptr);
 }
@@ -125,6 +268,27 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 	return ret;
 }
 
+static int userspace_proxy_start_agent(struct userspace_context *user_ctx,
+				       system_agent_start_fn start_fn,
+				       const struct system_agent_params *agent_params,
+				       const void **agent_interface)
+{
+	const byte_array_t * const mod_cfg = (byte_array_t *)agent_params->mod_cfg;
+	struct module_params *params = user_work_get_params(user_ctx);
+	int ret;
+
+	params->ext.agent.start_fn = start_fn;
+	params->ext.agent.params = *agent_params;
+	params->ext.agent.mod_cfg = *mod_cfg;
+
+	ret = userspace_proxy_invoke(user_ctx, MODULE_CMD_AGENT_START, true);
+	if (ret)
+		return ret;
+
+	*agent_interface = params->ext.agent.out_interface;
+	return 0;
+}
+
 int userspace_proxy_create(struct userspace_context **user_ctx, const struct comp_driver *drv,
 			   const struct sof_man_module *manifest, system_agent_start_fn start_fn,
 			   const struct system_agent_params *agent_params,
@@ -156,13 +320,17 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	/* Start the system agent, if provided. */
-	if (start_fn) {
-		ret = start_fn(agent_params, agent_interface);
+	ret = user_work_item_init(context, drv->user_heap);
+	if (ret)
+		goto error_dom;
 
+	/* Start the system agent, if provided. */
+
+	if (start_fn) {
+		ret = userspace_proxy_start_agent(context, start_fn, agent_params, agent_interface);
 		if (ret) {
 			tr_err(&userspace_proxy_tr, "System agent failed with error %d.", ret);
-			goto error_dom;
+			goto error_work_item;
 		}
 	}
 
@@ -182,6 +350,8 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 
 	return 0;
 
+error_work_item:
+	user_work_item_free(context, drv->user_heap);
 error_dom:
 	rfree(domain);
 error:
@@ -192,6 +362,7 @@ error:
 void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_context *user_ctx)
 {
 	tr_dbg(&userspace_proxy_tr, "userspace proxy destroy");
+	user_work_item_free(user_ctx, drv->user_heap);
 	rfree(user_ctx->comp_dom);
 	k_heap_free(drv->user_heap, user_ctx);
 }
@@ -206,10 +377,18 @@ void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_con
  */
 static int userspace_proxy_init(struct processing_module *mod)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
+	params->mod = mod;
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_INIT, true);
+	if (ret)
+		return ret;
+
 	/* Return status from module code operation. */
-	return mod->user_ctx->interface->init(mod);
+	return params->status;
 }
 
 /**
@@ -223,21 +402,40 @@ static int userspace_proxy_prepare(struct processing_module *mod,
 				   struct sof_source **sources, int num_of_sources,
 				   struct sof_sink **sinks, int num_of_sinks)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->prepare)
 		return 0;
 
-	return mod->user_ctx->interface->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+	params->ext.proc.sources = sources;
+	params->ext.proc.num_of_sources = num_of_sources;
+	params->ext.proc.sinks = sinks;
+	params->ext.proc.num_of_sinks = num_of_sinks;
+
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_PREPARE, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
- * Copy parameters to user worker accessible space.
- * Queue module init() operation and return its result.
- * Module init() code is performed in user workqueue.
+ * Forward processing request to the module's process() implementation.
  *
- * @param mod - pointer to processing module structure.
- * @return 0 for success, error otherwise.
+ * It is invoked by the DP thread running in userspace, so no
+ * additional queuing or context switching is performed here.
+ *
+ * @param mod Pointer to the processing module instance.
+ * @param sources Array of input sources for the module.
+ * @param num_of_sources Number of input sources.
+ * @param sinks Array of output sinks for the module.
+ * @param num_of_sinks Number of output sinks.
+ *
+ * @return 0 on success, negative error code on failure.
  */
 static int userspace_proxy_process(struct processing_module *mod, struct sof_source **sources,
 				   int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
@@ -255,10 +453,18 @@ static int userspace_proxy_process(struct processing_module *mod, struct sof_sou
  */
 static int userspace_proxy_reset(struct processing_module *mod)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	if (!mod->user_ctx->interface->reset)
 		return 0;
 
-	return mod->user_ctx->interface->reset(mod);
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_RESET, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -271,13 +477,19 @@ static int userspace_proxy_reset(struct processing_module *mod)
  */
 static int userspace_proxy_free(struct processing_module *mod)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
 	int ret = 0;
 
 	comp_dbg(mod->dev, "start");
 
-	if (mod->user_ctx->interface->free)
-		ret = mod->user_ctx->interface->free(mod);
+	if (mod->user_ctx->interface->free) {
+		ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_FREE, false);
+		if (ret)
+			return ret;
+		ret = params->status;
+	}
 
+	/* Destroy workqueue if this was last active userspace module */
 	userspace_proxy_destroy(mod->dev->drv, mod->user_ctx);
 	mod->user_ctx = NULL;
 
@@ -309,14 +521,28 @@ static int userspace_proxy_set_configuration(struct processing_module *mod, uint
 					     size_t fragment_size, uint8_t *response,
 					     size_t response_size)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->set_configuration)
 		return 0;
 
-	return mod->user_ctx->interface->set_configuration(mod, config_id, pos, data_offset_size,
-							   fragment, fragment_size,
-							   response, response_size);
+	params->ext.set_conf.config_id = config_id;
+	params->ext.set_conf.pos = pos;
+	params->ext.set_conf.data_off_size = data_offset_size;
+	params->ext.set_conf.fragment = fragment;
+	params->ext.set_conf.fragment_size = fragment_size;
+	params->ext.set_conf.response = response;
+	params->ext.set_conf.response_size = response_size;
+
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_SET_CONF, true);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -338,13 +564,37 @@ static int userspace_proxy_get_configuration(struct processing_module *mod, uint
 					     uint32_t *data_offset_size, uint8_t *fragment,
 					     size_t fragment_size)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	struct k_mem_domain *domain = mod->user_ctx->comp_dom;
+	struct k_mem_partition ipc_resp_part = {
+		.start = (uintptr_t)ipc_get()->comp_data,
+		.size = SOF_IPC_MSG_MAX_SIZE,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->get_configuration)
 		return -EIO;
 
-	return mod->user_ctx->interface->get_configuration(mod, config_id, data_offset_size,
-							   fragment, fragment_size);
+	params->ext.get_conf.config_id = config_id;
+	params->ext.get_conf.data_off_size = data_offset_size;
+	params->ext.get_conf.fragment = fragment;
+	params->ext.get_conf.fragment_size = fragment_size;
+
+	ret = k_mem_domain_add_partition(domain, &ipc_resp_part);
+	if (ret < 0) {
+		comp_err(mod->dev, "add response buffer to domain error: %d", ret);
+		return ret;
+	}
+
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_GET_CONF, true);
+
+	k_mem_domain_remove_partition(domain, &ipc_resp_part);
+
+	/* Return status from module code operation. */
+	return ret ? ret : params->status;
 }
 
 /**
@@ -359,12 +609,21 @@ static int userspace_proxy_get_configuration(struct processing_module *mod, uint
 static int userspace_proxy_set_processing_mode(struct processing_module *mod,
 					       enum module_processing_mode mode)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->set_processing_mode)
 		return 0;
 
-	return mod->user_ctx->interface->set_processing_mode(mod, mode);
+	params->ext.proc_mode.mode = mode;
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_SET_PROCMOD, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -378,12 +637,20 @@ static int userspace_proxy_set_processing_mode(struct processing_module *mod,
 static
 enum module_processing_mode userspace_proxy_get_processing_mode(struct processing_module *mod)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->get_processing_mode)
 		return -EIO;
 
-	return mod->user_ctx->interface->get_processing_mode(mod);
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_GET_PROCMOD, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->ext.proc_mode.mode;
 }
 
 /**
@@ -400,14 +667,27 @@ static bool userspace_proxy_is_ready_to_process(struct processing_module *mod,
 						struct sof_sink **sinks,
 						int num_of_sinks)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->is_ready_to_process)
 		return generic_module_is_ready_to_process(mod, sources, num_of_sources, sinks,
 							  num_of_sinks);
 
-	return mod->user_ctx->interface->is_ready_to_process(mod, sources, num_of_sources,
-							     sinks, num_of_sinks);
+	params->ext.proc.sources = sources;
+	params->ext.proc.num_of_sources = num_of_sources;
+	params->ext.proc.sinks = sinks;
+	params->ext.proc.num_of_sinks = num_of_sinks;
+
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_PROC_READY, false);
+	if (ret)
+		return generic_module_is_ready_to_process(mod, sources, num_of_sources, sinks,
+							  num_of_sinks);
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -421,12 +701,21 @@ static bool userspace_proxy_is_ready_to_process(struct processing_module *mod,
  */
 static int userspace_proxy_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->bind)
 		return 0;
 
-	return mod->user_ctx->interface->bind(mod, bind_data);
+	params->ext.bind_data = bind_data;
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_BIND, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -440,12 +729,21 @@ static int userspace_proxy_bind(struct processing_module *mod, struct bind_info 
  */
 static int userspace_proxy_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
+	int ret;
+
 	comp_dbg(mod->dev, "start");
 
 	if (!mod->user_ctx->interface->unbind)
 		return 0;
 
-	return mod->user_ctx->interface->unbind(mod, unbind_data);
+	params->ext.bind_data = unbind_data;
+	ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_UNBIND, false);
+	if (ret)
+		return ret;
+
+	/* Return status from module code operation. */
+	return params->status;
 }
 
 /**
@@ -458,12 +756,18 @@ static int userspace_proxy_unbind(struct processing_module *mod, struct bind_inf
  */
 static int userspace_proxy_trigger(struct processing_module *mod, int cmd)
 {
+	struct module_params *params = user_work_get_params(mod->user_ctx);
 	int ret = 0;
 
 	comp_dbg(mod->dev, "start");
 
-	if (mod->user_ctx->interface->trigger)
-		ret = mod->user_ctx->interface->trigger(mod, cmd);
+	if (mod->user_ctx->interface->trigger) {
+		params->ext.trigger_data = cmd;
+		ret = userspace_proxy_invoke(mod->user_ctx, MODULE_CMD_TRIGGER, false);
+		if (ret)
+			return ret;
+		ret = params->status;
+	}
 
 	if (!ret)
 		ret = module_adapter_set_state(mod, mod->dev, cmd);
@@ -472,7 +776,7 @@ static int userspace_proxy_trigger(struct processing_module *mod, int cmd)
 	return ret;
 }
 
-/* Userspace Module Adapter API */
+/* Userspace Proxy Module API */
 APP_TASK_DATA static const struct module_interface userspace_proxy_interface = {
 	.init = userspace_proxy_init,
 	.is_ready_to_process = userspace_proxy_is_ready_to_process,
