@@ -153,19 +153,14 @@ static int aria_free(struct processing_module *mod)
 static void aria_set_stream_params(struct comp_buffer *buffer,
 				   struct processing_module *mod)
 {
-	struct comp_buffer *buffer_c;
 	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 
-	buffer_c = buffer_acquire(buffer);
-
-	ipc4_update_buffer_format(buffer_c, audio_fmt);
+	ipc4_update_buffer_format(buffer, audio_fmt);
 #ifdef ARIA_GENERIC
-	audio_stream_init_alignment_constants(1, 1, &buffer_c->stream);
+	audio_stream_init_alignment_constants(1, 1, &buffer->stream);
 #else
-	audio_stream_init_alignment_constants(8, 1, &buffer_c->stream);
+	audio_stream_init_alignment_constants(8, 1, &buffer->stream);
 #endif
-
-	buffer_release(buffer_c);
 }
 
 static int aria_prepare(struct processing_module *mod,
