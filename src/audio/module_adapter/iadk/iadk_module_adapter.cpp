@@ -121,9 +121,9 @@ IadkModuleAdapter::IadkModuleAdapter_SetConfiguration(uint32_t config_id,
 AdspErrorCode
 IadkModuleAdapter::IadkModuleAdapter_GetConfiguration(uint32_t config_id,
 						      enum module_cfg_fragment_position pos,
-						      uint32_t data_offset_size,
+						      uint32_t &data_offset_size,
 						      uint8_t *fragment_buffer,
-						      size_t fragment_size)
+						      size_t &fragment_size)
 {
 	intel_adsp::ConfigurationFragmentPosition fragment_position =
 			(intel_adsp::ConfigurationFragmentPosition::Enum) pos;
@@ -219,14 +219,14 @@ int iadk_wrapper_set_configuration(void *md, uint32_t config_id,
 
 int iadk_wrapper_get_configuration(void *md, uint32_t config_id,
 				   enum module_cfg_fragment_position pos,
-				   uint32_t data_offset_size,
-				   uint8_t *fragment, size_t fragment_size)
+				   uint32_t *data_offset_size,
+				   uint8_t *fragment, size_t *fragment_size)
 {
 	struct IadkModuleAdapter *mod_adp = (struct IadkModuleAdapter *) md;
 	return mod_adp->IadkModuleAdapter_GetConfiguration(config_id, pos,
-							   data_offset_size,
+							   *data_offset_size,
 							   fragment,
-							   fragment_size);
+							   *fragment_size);
 }
 
 int iadk_wrapper_process(void *md,
