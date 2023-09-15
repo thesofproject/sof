@@ -84,6 +84,14 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
 
+config SOF_USERSPACE_PROXY
+	bool "Use userspace proxy to support userspace modules"
+	select SOF_USERSPACE_USE_DRIVER_HEAP
+	help
+	  When set, userspace modules are launched inside a container created by userspace proxy.
+	  It is responsible for forwarding module function calls coming from sof running in
+	  kernelspace to the module code executed with user privileges.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help
