@@ -100,10 +100,20 @@ int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
 	src_params.frame_fmt = valid_fmt;
-	component_set_nearest_period_frames(dev, src_params.rate);
-
 	ret = sink_set_params(sink, &src_params, true);
 
+	/* if module is to be run as DP, calculate module period
+	 * according to OBS size and data rate
+	 * as SRC uses period value to calculate its internal buffers,
+	 * it must be done here, right after setting sink parameters
+	 */
+	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		dev->period = 1000000 * sink_get_min_free_space(sink) /
+		      (sink_get_frame_bytes(sink) * sink_get_rate(sink));
+
+	comp_info(dev, "SRC DP period calculated as: %u", dev->period);
+
+	component_set_nearest_period_frames(dev, src_params.rate);
 	/* Update module stream_params */
 	params->rate = cd->ipc_config.sink_rate;
 	return ret;
