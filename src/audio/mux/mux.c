@@ -274,7 +274,6 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
-	struct comp_buffer *sink_c, *source_c;
 	struct list_item *source_list;
 	int j;
 	const uint32_t byte_align = 1;
@@ -298,15 +297,13 @@ static void set_mux_params(struct processing_module *mod)
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
 		audio_stream_init_alignment_constants(byte_align, frame_align_req,
-						      &sink_c->stream);
+						      &sink->stream);
 
-		if (!sink_c->hw_params_configured) {
-			ipc4_update_buffer_format(sink_c, &cd->md.output_format);
-			params->frame_fmt = audio_stream_get_frm_fmt(&sink_c->stream);
+		if (!sink->hw_params_configured) {
+			ipc4_update_buffer_format(sink, &cd->md.output_format);
+			params->frame_fmt = audio_stream_get_frm_fmt(&sink->stream);
 		}
-		buffer_release(sink_c);
 	}
 
 	/* update each source format */
@@ -316,18 +313,16 @@ static void set_mux_params(struct processing_module *mod)
 		list_for_item(source_list, &dev->bsource_list)
 		{
 			source = container_of(source_list, struct comp_buffer, sink_list);
-			source_c = buffer_acquire(source);
 			audio_stream_init_alignment_constants(byte_align, frame_align_req,
-							      &source_c->stream);
-			j = source_c->id;
-			cd->config.streams[j].pipeline_id = source_c->pipeline_id;
+							      &source->stream);
+			j = source->id;
+			cd->config.streams[j].pipeline_id = source->pipeline_id;
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cd->md.base_cfg.audio_fmt;
 			else
 				audio_fmt = &cd->md.reference_format;
 
-			ipc4_update_buffer_format(source_c, audio_fmt);
-			buffer_release(source_c);
+			ipc4_update_buffer_format(source, audio_fmt);
 		}
 	}
 
@@ -429,7 +424,6 @@ static int demux_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct list_item *clist;
 	struct comp_buffer *sink;
-	struct comp_buffer *sink_c;
 	struct audio_stream *sinks_stream[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
 	int frames;
@@ -442,20 +436,16 @@ static int demux_process(struct processing_module *mod,
 	/* align sink streams with their respective configurations */
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		if (sink_c->sink->state == dev->state) {
-			i = get_stream_index(dev, cd, sink_c->pipeline_id);
+		if (sink->sink->state == dev->state) {
+			i = get_stream_index(dev, cd, sink->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
-				buffer_release(sink_c);
 				return i;
 			}
 
-			look_ups[i] = get_lookup_table(dev, cd, sink_c->pipeline_id);
-			sinks_stream[i] = &sink_c->stream;
+			look_ups[i] = get_lookup_table(dev, cd, sink->pipeline_id);
+			sinks_stream[i] = &sink->stream;
 		}
-
-		buffer_release(sink_c);
 	}
 
 	/* if there are no sinks active, then sinks[] is also empty */
@@ -487,7 +477,6 @@ static int mux_process(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source;
-	struct comp_buffer *source_c;
 	struct list_item *clist;
 	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	int frames = 0;
@@ -501,23 +490,20 @@ static int mux_process(struct processing_module *mod,
 	j = 0;
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-		if (source_c->source->state == dev->state) {
+		if (source->source->state == dev->state) {
 			if (frames)
 				frames = MIN(frames, input_buffers[j].size);
 			else
 				frames = input_buffers[j].size;
 
-			i = get_stream_index(dev, cd, source_c->pipeline_id);
+			i = get_stream_index(dev, cd, source->pipeline_id);
 			/* return if index wrong */
 			if (i < 0) {
-				buffer_release(source_c);
 				return i;
 			}
 
-			sources_stream[i] = &source_c->stream;
+			sources_stream[i] = &source->stream;
 		}
-		buffer_release(source_c);
 		j++;
 	}
 
@@ -536,11 +522,8 @@ static int mux_process(struct processing_module *mod,
 	j = 0;
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-		if (source_c->source->state == dev->state)
+		if (source->source->state == dev->state)
 			mod->input_buffers[j].consumed = source_bytes;
-
-		buffer_release(source_c);
 		j++;
 	}
 	mod->output_buffers[0].size = sink_bytes;
@@ -560,10 +543,7 @@ static int mux_reset(struct processing_module *mod)
 		list_for_item(blist, &dev->bsource_list) {
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
 								  sink_list);
-			struct comp_buffer *source_c = buffer_acquire(source);
-			int state = source_c->source->state;
-
-			buffer_release(source_c);
+			int state = source->source->state;
 
 			/* only mux the sources with the same state with mux */
 			if (state > COMP_STATE_READY)
@@ -586,8 +566,6 @@ static int mux_prepare(struct processing_module *mod,
 	struct list_item *blist;
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	struct comp_buffer *source_c;
-	struct comp_buffer *sink_c;
 	struct sof_mux_config *config;
 	size_t blob_size;
 	int state;
@@ -628,10 +606,8 @@ static int mux_prepare(struct processing_module *mod,
 	/* check each mux source state, set source align to 1 byte, 1 frame */
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
-		source_c = buffer_acquire(source);
-		state = source_c->source->state;
-		audio_stream_init_alignment_constants(1, 1, &source_c->stream);
-		buffer_release(source_c);
+		state = source->source->state;
+		audio_stream_init_alignment_constants(1, 1, &source->stream);
 
 		/* only prepare downstream if we have no active sources */
 		if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
@@ -641,9 +617,7 @@ static int mux_prepare(struct processing_module *mod,
 	/* set sink align to 1 byte, 1 frame */
 	list_for_item(blist, &dev->bsink_list) {
 		sink = container_of(blist, struct comp_buffer, source_list);
-		sink_c = buffer_acquire(sink);
-		audio_stream_init_alignment_constants(1, 1, &sink_c->stream);
-		buffer_release(sink_c);
+		audio_stream_init_alignment_constants(1, 1, &sink->stream);
 	}
 
 	/* prepare downstream */
