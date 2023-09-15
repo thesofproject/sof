@@ -379,7 +379,6 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct comp_buffer *sink_c, *source_c;
 	int32_t err;
 
 	comp_info(dev, "igo_nr_params()");
@@ -395,21 +394,15 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* set source/sink_frames/rate */
-	cd->source_rate = audio_stream_get_rate(&source_c->stream);
-	cd->sink_rate = audio_stream_get_rate(&sink_c->stream);
+	cd->source_rate = audio_stream_get_rate(&sourceb->stream);
+	cd->sink_rate = audio_stream_get_rate(&sinkb->stream);
 
-	if (audio_stream_get_channels(&source_c->stream) !=
-	    audio_stream_get_channels(&sink_c->stream)) {
+	if (audio_stream_get_channels(&sourceb->stream) !=
+	    audio_stream_get_channels(&sinkb->stream)) {
 		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");
 		cd->invalid_param = true;
 	}
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "igo_nr_params(), zero sink rate");
@@ -701,7 +694,6 @@ static int32_t igo_nr_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer *source_c, *sink_c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t src_frames;
 	int32_t sink_frames;
@@ -713,27 +705,21 @@ static int32_t igo_nr_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler))
 		igo_nr_set_igo_params(dev);
 
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source_c, sink_c, &cl);
+	comp_get_copy_limits(sourceb, sinkb, &cl);
 
-	src_frames = audio_stream_get_avail_frames(&source_c->stream);
-	sink_frames = audio_stream_get_free_frames(&sink_c->stream);
+	src_frames = audio_stream_get_avail_frames(&sourceb->stream);
+	sink_frames = audio_stream_get_free_frames(&sinkb->stream);
 
 	comp_dbg(dev, "src_frames = %d, sink_frames = %d.", src_frames, sink_frames);
 
 	/* Process only when frames count is enough. */
 	if (src_frames >= IGO_FRAME_SIZE && sink_frames >= IGO_FRAME_SIZE)
-		igo_nr_process(dev, source_c, sink_c, &cl, IGO_FRAME_SIZE);
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
+		igo_nr_process(dev, sourceb, sinkb, &cl, IGO_FRAME_SIZE);
 
 	return 0;
 }
