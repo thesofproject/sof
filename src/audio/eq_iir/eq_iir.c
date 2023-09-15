@@ -694,7 +694,6 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 				struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer *source_c, *sink_c;
 	uint32_t buffer_flag;
 	int ret;
 
@@ -705,8 +704,6 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 				  sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
 
 	/* we check whether we can support frame_fmt conversion (whether we have
 	 * such conversion function) due to source and sink buffer frame_fmt's.
@@ -714,13 +711,10 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	 * pcm frame_fmt and will not make any conversion (sink and source
 	 * frame_fmt will be equal).
 	 */
-	buffer_flag = eq_iir_find_func(audio_stream_get_frm_fmt(&source_c->stream),
-				       audio_stream_get_frm_fmt(&sink_c->stream), fm_configured,
+	buffer_flag = eq_iir_find_func(audio_stream_get_frm_fmt(&sourceb->stream),
+				       audio_stream_get_frm_fmt(&sinkb->stream), fm_configured,
 				       ARRAY_SIZE(fm_configured)) ?
 				       BUFF_PARAMS_FRAME_FMT : 0;
-
-	buffer_release(sink_c);
-	buffer_release(source_c);
 
 	ret = comp_verify_params(dev, buffer_flag, params);
 	if (ret < 0) {
@@ -838,7 +832,6 @@ static int eq_iir_params(struct processing_module *mod)
 	struct sof_ipc_stream_params comp_params;
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
-	struct comp_buffer *sink_c;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
@@ -860,9 +853,7 @@ static int eq_iir_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_c = buffer_acquire(sinkb);
-	ret = buffer_set_params(sink_c, &comp_params, true);
-	buffer_release(sink_c);
+	ret = buffer_set_params(sinkb, &comp_params, true);
 	return ret;
 }
 #endif
@@ -885,7 +876,6 @@ static int eq_iir_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
-	struct comp_buffer *source_c, *sink_c;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
@@ -910,16 +900,12 @@ static int eq_iir_prepare(struct processing_module *mod,
 	/* EQ component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	source_c = buffer_acquire(sourceb);
-	sink_c = buffer_acquire(sinkb);
-	eq_iir_set_alignment(&source_c->stream, &sink_c->stream);
+	eq_iir_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get source and sink data format */
-	channels = audio_stream_get_channels(&sink_c->stream);
-	source_format = audio_stream_get_frm_fmt(&source_c->stream);
-	sink_format = audio_stream_get_frm_fmt(&sink_c->stream);
-	buffer_release(sink_c);
-	buffer_release(source_c);
+	channels = audio_stream_get_channels(&sinkb->stream);
+	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
