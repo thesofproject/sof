@@ -191,8 +191,8 @@ static int modules_get_configuration(struct processing_module *mod, uint32_t con
 				     size_t fragment_size)
 {
 	return iadk_wrapper_get_configuration(module_get_private_data(mod), config_id,
-					      MODULE_CFG_FRAGMENT_SINGLE, *data_offset_size,
-					      fragment, fragment_size);
+					      MODULE_CFG_FRAGMENT_SINGLE, data_offset_size,
+					      fragment, &fragment_size);
 }
 
 /**
