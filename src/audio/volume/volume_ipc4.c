@@ -58,13 +58,10 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	cd->mvolume[channel] = 0;
 	/* set muted as false*/
 	cd->muted[channel] = false;
-#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+
 	/* ATM there is support for the same ramp for all channels */
-	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE)
-		cd->ramp_type = SOF_VOLUME_WINDOWS_FADE;
-	else
-		cd->ramp_type = SOF_VOLUME_WINDOWS_NO_FADE;
-#endif
+	cd->ramp_type = ipc4_curve_type_convert((enum ipc4_curve_type)curve_type);
+
 	return 0;
 }
 

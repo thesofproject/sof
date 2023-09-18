@@ -24,6 +24,7 @@
 #ifndef __SOF_IPC4_PEAK_VOL_H__
 #define __SOF_IPC4_PEAK_VOL_H__
 
+#include <ipc/topology.h>
 #include <ipc4/base-config.h>
 
 enum ipc4_vol_mode {
@@ -43,7 +44,11 @@ enum ipc4_peak_volume_param {
 
 enum ipc4_curve_type {
 	IPC4_AUDIO_CURVE_TYPE_NONE = 0,
-	IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE
+	IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE,
+	IPC4_AUDIO_CURVE_TYPE_LINEAR,
+	IPC4_AUDIO_CURVE_TYPE_LOG,
+	IPC4_AUDIO_CURVE_TYPE_LINEAR_ZC,
+	IPC4_AUDIO_CURVE_TYPE_LOG_ZC,
 };
 
 static const uint32_t IPC4_ALL_CHANNELS_MASK = 0xffffffff;
@@ -74,4 +79,28 @@ struct ipc4_peak_volume_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 	struct ipc4_peak_volume_config config[];
 } __packed __aligned(8);
+
+static inline enum sof_volume_ramp ipc4_curve_type_convert(enum ipc4_curve_type ipc4_type)
+{
+	switch (ipc4_type) {
+	case IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE:
+		return SOF_VOLUME_WINDOWS_FADE;
+
+	case IPC4_AUDIO_CURVE_TYPE_LINEAR:
+		return SOF_VOLUME_LINEAR;
+
+	case IPC4_AUDIO_CURVE_TYPE_LOG:
+		return SOF_VOLUME_LOG;
+
+	case IPC4_AUDIO_CURVE_TYPE_LINEAR_ZC:
+		return SOF_VOLUME_LINEAR_ZC;
+
+	case IPC4_AUDIO_CURVE_TYPE_LOG_ZC:
+		return SOF_VOLUME_LOG_ZC;
+
+	case IPC4_AUDIO_CURVE_TYPE_NONE:
+	default:
+		return SOF_VOLUME_WINDOWS_NO_FADE;
+	}
+}
 #endif
