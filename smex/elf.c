@@ -17,7 +17,7 @@
 static int elf_read_sections(struct elf_module *module, bool verbose)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
-	Elf32_Shdr *section = module->section;
+	Elf32_Shdr *section;
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
@@ -128,7 +128,7 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 static int elf_read_programs(struct elf_module *module, bool verbose)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
-	Elf32_Phdr *prg = module->prg;
+	Elf32_Phdr *prg;
 	size_t count;
 	int i, ret;
 
@@ -431,7 +431,7 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 		     const Elf32_Shdr **dst_section, void **dst_buff)
 {
 	const Elf32_Shdr *section;
-	int section_index = -1;
+	int section_index;
 	int read;
 
 	section_index = elf_find_section(module, section_name);
