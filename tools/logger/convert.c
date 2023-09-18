@@ -349,7 +349,7 @@ static inline void print_table_header(void)
 
 	if (gettime_ret) {
 		log_err("clock_gettime() failed: %s\n",
-			strerror(gettime_ret));
+			strerror(errno));
 		exit(1);
 	}
 
