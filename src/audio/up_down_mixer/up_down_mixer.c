@@ -419,8 +419,7 @@ static int up_down_mixer_reset(struct processing_module *mod)
 	return 0;
 }
 
-static int
-up_down_mixer_process(struct processing_module *mod,
+static int up_down_mixer_process(struct processing_module *mod,
 		      struct input_stream_buffer *input_buffers, int num_input_buffers,
 		      struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
