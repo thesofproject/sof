@@ -339,7 +339,6 @@ static inline void print_table_header(void)
 {
 	FILE *out_fd = global_config->out_fd;
 	int hide_location = global_config->hide_location;
-	char time_fmt[32];
 
 	char date_string[64];
 	const time_t epoc_secs = time(NULL);
@@ -354,11 +353,9 @@ static inline void print_table_header(void)
 	}
 
 	if (global_config->time_precision >= 0) {
-		const unsigned int ts_width =
-			timestamp_width(global_config->time_precision);
-		snprintf(time_fmt, sizeof(time_fmt), "%%-%ds(us)%%%ds  ",
-			 ts_width, ts_width);
-		fprintf(out_fd, time_fmt, " TIMESTAMP", "DELTA");
+		const unsigned int ts_width = timestamp_width(global_config->time_precision);
+
+		fprintf(out_fd, "%*s(us)%*s  ", -ts_width, " TIMESTAMP", ts_width, "DELTA");
 	}
 
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
@@ -476,7 +473,6 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp);
 	struct proc_ldc_entry proc_entry;
-	static char time_fmt[64];
 	int ret;
 
 	if (raw_output)
@@ -517,13 +513,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		ids[0] = '\0';
 
 	if (raw_output) { /* "raw" means script-friendly (not all hex) */
-		const char *entry_fmt = "%s%u %u %s%s%s ";
-
-		if (time_precision >= 0)
-			snprintf(time_fmt, sizeof(time_fmt), "%%.%df %%.%df ",
-				 time_precision, time_precision);
-
-		fprintf(out_fd, entry_fmt,
+		fprintf(out_fd, "%s%u %u %s%s%s ",
 			entry->header.level == use_colors ?
 				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 			dma_log->core_id,
@@ -531,9 +521,12 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 			get_component_name(entry->header.component_class, dma_log->uid),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
+
 		if (time_precision >= 0)
-			fprintf(out_fd, time_fmt,
-				to_usecs(dma_log->timestamp - timestamp_origin), dt);
+			fprintf(out_fd, "%.*f %.*f ",
+				time_precision, to_usecs(dma_log->timestamp - timestamp_origin),
+				time_precision, dt);
+
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
 				format_file_name(entry->file_name, raw_output),
@@ -542,13 +535,11 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		if (time_precision >= 0) {
 			const unsigned int ts_width = timestamp_width(time_precision);
 
-			snprintf(time_fmt, sizeof(time_fmt),
-				 "%%s[%%%d.%df] (%%%d.%df)%%s ",
-				 ts_width, time_precision, ts_width, time_precision);
-
-			fprintf(out_fd, time_fmt,
+			fprintf(out_fd, "%s[%*.*f] (%*.*f)%s ",
 				use_colors ? KGRN : "",
-				to_usecs(dma_log->timestamp - timestamp_origin), dt,
+				ts_width, time_precision,
+				to_usecs(dma_log->timestamp - timestamp_origin),
+				ts_width, time_precision, dt,
 				use_colors ? KNRM : "");
 		}
 
