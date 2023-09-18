@@ -35,6 +35,22 @@ function(sof_append_relative_path_definitions target)
 	endforeach()
 endfunction()
 
+macro(sof_loadable_library name toml)
+	zephyr_library_named(loadable_library_${name})
+	set_property(TARGET loadable_library_${name} PROPERTY CXX_STANDARD 17)
+	set_property(TARGET loadable_library_${name} PROPERTY TOML_FILE ${toml})
+	zephyr_library_link_libraries(SOF)
+	list(APPEND loadable_modules_list ${name})
+endmacro()
+
+macro(sof_loadable_library_finalize)
+	foreach(name ${loadable_modules_list})
+		sof_append_relative_path_definitions(loadable_library_${name})
+	endforeach()
+
+	zephyr_add_loadable("${loadable_modules_list}")
+endmacro()
+
 # Initial SOF module will contain
 #
 # 1. Application logic - pipeline, audio components, IPC processing, topology
@@ -752,5 +768,7 @@ include(../scripts/cmake/version.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
+
+sof_loadable_library_finalize()
 
 endif() # CONFIG_SOF
