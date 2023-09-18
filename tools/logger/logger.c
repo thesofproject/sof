@@ -104,8 +104,8 @@ static int snapshot(const char *name)
 
 	for (i = 0; i < ARRAY_SIZE(debugfs); i++) {
 
-		sprintf(pinname, "%s/%s", path, debugfs[i]);
-		sprintf(poutname, "%s.%s.txt", name, debugfs[i]);
+		snprintf(pinname, sizeof(pinname), "%s/%s", path, debugfs[i]);
+		snprintf(poutname, sizeof(poutname), "%s.%s.txt", name, debugfs[i]);
 
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "rb");
@@ -132,7 +132,7 @@ static int snapshot(const char *name)
 			if (count != 4)
 				break;
 
-			sprintf(buffer, "0x%6.6x: 0x%8.8x\n", addr, val);
+			snprintf(buffer, sizeof(buffer), "0x%6.6x: 0x%8.8x\n", addr, val);
 
 			count = fwrite(buffer, 1, strlen(buffer), out_fd);
 
@@ -220,17 +220,15 @@ static void *wait_open(const char *watched_dir, const char *expected_file)
 	const int dwatch = inotify_add_watch(iqueue, watched_dir, IN_CREATE);
 	struct stat expected_stat;
 	void *ret_stream = NULL;
-
-	char * const fpath = malloc(strlen(watched_dir) + 1 + strlen(expected_file) + 1);
+	const int fpath_len = strlen(watched_dir) + 1 + strlen(expected_file) + 1;
+	char * const fpath = malloc(fpath_len);
 
 	if (!fpath) {
 		fprintf(stderr, "error: can't allocate memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	strcpy(fpath, watched_dir);
-	strcat(fpath, "/");
-	strcat(fpath, expected_file);
+	snprintf(fpath, fpath_len, "%s/%s", watched_dir, expected_file);
 
 	/* Not racy because the inotify watch was set first. */
 	if (!access(fpath, F_OK))
