@@ -408,10 +408,17 @@ int elf_find_section(const struct elf_module *module, const char *name)
 		ret = -errno;
 		goto out;
 	}
+	buffer[section->size - 1] = '\0';
 
 	/* find section with name */
 	for (i = 0; i < hdr->shnum; i++) {
 		s = &module->section[i];
+		if (s->name >= section->size) {
+			fprintf(stderr, "error: invalid section name string index %d\n", s->name);
+			ret = -EINVAL;
+			goto out;
+		}
+
 		if (!strcmp(name, buffer + s->name)) {
 			ret = i;
 			goto out;
