@@ -134,7 +134,12 @@ static int snapshot(const char *name)
 
 			snprintf(buffer, sizeof(buffer), "0x%6.6x: 0x%8.8x\n", addr, val);
 
-			count = fwrite(buffer, 1, strlen(buffer), out_fd);
+			i = strlen(buffer);
+			count = fwrite(buffer, 1, i, out_fd);
+			if (count != i) {
+				fprintf(stderr, "error: an error occurred during write to %s: %s\n",
+					poutname, strerror(errno));
+			}
 
 			addr += 4;
 		}
@@ -164,7 +169,12 @@ static int configure_uart(const char *file, unsigned int baud)
 	tio.c_cc[VMIN] = 1;
 
 	ret = tcsetattr(fd, TCSANOW, &tio);
-	return ret < 0 ? -errno : fd;
+	if (ret < 0) {
+		close(fd);
+		return -errno;
+	}
+
+	return fd;
 }
 
 /* Concantenate `config->filter_config` with `input` + `\n` */
@@ -266,7 +276,9 @@ static void *wait_open(const char *watched_dir, const char *expected_file)
 	}
 
 fopenit:
-	stat(fpath, &expected_stat);
+	if (stat(fpath, &expected_stat))
+		goto cleanup;
+
 	if ((expected_stat.st_mode & S_IFMT) == S_IFDIR)
 		ret_stream = opendir(fpath);
 	else
@@ -362,7 +374,8 @@ int main(int argc, char *argv[])
 			if (i < 0 || 1 < i) {
 				fprintf(stderr, "%s: invalid option: -e %s\n",
 					APP_NAME, optarg);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			config.relative_timestamps = i;
 			break;
@@ -371,7 +384,8 @@ int main(int argc, char *argv[])
 			config.time_precision = atoi(optarg);
 			if (config.time_precision < 0) {
 				usage();
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			break;
 		case 'g':
@@ -401,8 +415,10 @@ int main(int argc, char *argv[])
 		usage();
 	}
 
-	if (snapshot_file)
-		return baud ? EINVAL : -snapshot(snapshot_file);
+	if (snapshot_file) {
+		ret = baud ? EINVAL : -snapshot(snapshot_file);
+		goto out;
+	}
 
 	if (!config.ldc_file) {
 		fprintf(stderr, "error: Missing ldc file\n");
