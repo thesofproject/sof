@@ -172,7 +172,6 @@ config COMP_VOLUME_WINDOWS_FADE
 config COMP_VOLUME_LINEAR_RAMP
        bool "Linear ramp volume transitions support"
 	   default y
-	   depends on IPC_MAJOR_3
        help
          This option enables volume linear ramp shape.
 
