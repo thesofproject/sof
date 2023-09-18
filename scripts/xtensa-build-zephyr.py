@@ -39,6 +39,7 @@ import json
 import gzip
 import dataclasses
 import concurrent.futures as concurrent
+import re
 
 from west import configuration as west_config
 
@@ -847,6 +848,13 @@ def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 		for p_alias in platform_configs[platform].aliases:
 			symlink_or_copy(install_key_dir, output_fwname, f"sof-{p_alias}.ri")
 
+
+	# Copy loadable modules
+	for file in os.listdir(abs_build_dir):
+		if (os.path.isfile(abs_build_dir / file) and re.fullmatch(".+\.ri", file) and
+		not re.fullmatch(".*zephyr\.ri", file)):
+			shutil.copy2(abs_build_dir / file,
+				install_key_dir / "".join(["sof-", platform, "-lib-", file]))
 
 	# sof-info/ directory
 
