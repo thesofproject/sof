@@ -616,7 +616,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -EINVAL;
 		goto out;
 	}
-	entry->file_name = (char *)malloc(entry->header.file_name_len);
+	entry->file_name = (char *)malloc(entry->header.file_name_len + 1);
 
 	if (!entry->file_name) {
 		log_err("can't allocate %d byte for entry.file_name\n",
@@ -627,6 +627,8 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 
 	ret = fread(entry->file_name, sizeof(char), entry->header.file_name_len,
 		    global_config->ldc_fd);
+	entry->file_name[entry->header.file_name_len] = '\0';
+
 	if (ret != entry->header.file_name_len) {
 		log_err("Failed to read source filename for offset 0x%x in dictionary.\n",
 			entry_offset);
@@ -640,7 +642,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -EINVAL;
 		goto out;
 	}
-	entry->text = (char *)malloc(entry->header.text_len);
+	entry->text = (char *)malloc(entry->header.text_len + 1);
 	if (!entry->text) {
 		log_err("can't allocate %d byte for entry.text\n", entry->header.text_len);
 		ret = -ENOMEM;
@@ -653,6 +655,7 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 		ret = -1;
 		goto out;
 	}
+	entry->text[entry->header.text_len] = '\0';
 
 	return 0;
 
