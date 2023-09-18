@@ -432,7 +432,7 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 {
 	const Elf32_Shdr *section;
 	int section_index;
-	int read;
+	int ret;
 
 	section_index = elf_find_section(module, section_name);
 	if (section_index < 0) {
@@ -451,17 +451,25 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 		return -ENOMEM;
 
 	/* fill buffer with section content */
-	fseek(module->fd, section->off, SEEK_SET);
-	read = fread(*dst_buff, 1, section->size, module->fd);
-	if (read != section->size) {
-		fprintf(stderr,
-			"error: can't read %s section %d\n", section_name,
-			-errno);
-		free(*dst_buff);
-		return -errno;
+	ret = fseek(module->fd, section->off, SEEK_SET);
+	if (ret) {
+		fprintf(stderr, "error: can't seek to %s section %d\n", section_name, -errno);
+		ret = -errno;
+		goto error;
+	}
+
+	ret = fread(*dst_buff, 1, section->size, module->fd);
+	if (ret != section->size) {
+		fprintf(stderr, "error: can't read %s section %d\n", section_name, -errno);
+		ret = -errno;
+		goto error;
 	}
 
 	return section->size;
+
+error:
+	free(*dst_buff);
+	return ret;
 }
 
 int elf_read_module(struct elf_module *module, const char *name, bool verbose)
