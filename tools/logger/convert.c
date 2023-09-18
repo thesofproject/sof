@@ -624,7 +624,13 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 	entry->params = NULL;
 
 	/* set file position to beginning of processed entry */
-	fseek(global_config->ldc_fd, entry_offset, SEEK_SET);
+	ret = fseek(global_config->ldc_fd, entry_offset, SEEK_SET);
+	if (ret) {
+		log_err("Failed to seek to entry header for offset 0x%x in dictionary.\n",
+			entry_offset);
+		ret = -errno;
+		goto out;
+	}
 
 	/* fetching elf header params */
 	ret = fread(&entry->header, sizeof(entry->header), 1, global_config->ldc_fd);
@@ -915,8 +921,13 @@ static int logger_read(void)
 			/* When the address is not correct, move forward by one DWORD (not
 			 * entire struct dma_log)
 			 */
-			fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
+			ret = fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
 			      SEEK_CUR);
+			if (ret) {
+				log_err("fetch_entry() failed on seek, aborting\n");
+				ret = -errno;
+				break;
+			}
 			skipped_dwords++;
 			continue;
 
@@ -1013,7 +1024,7 @@ static int dump_ldc_info(void)
 	if (global_config->version_fd) {
 		struct sof_ipc_fw_version ver;
 
-		if (fread(&ver, sizeof(ver), 1, global_config->version_fd))
+		if (fread(&ver, sizeof(ver), 1, global_config->version_fd) == 1)
 			fprintf(out_fd, "Loaded FW expects checksum\t0x%08x\n",
 				ver.src_hash);
 	}
@@ -1101,7 +1112,12 @@ int convert(void)
 	}
 
 	/* read uuid section header */
-	fseek(config->ldc_fd, logs_hdr->data_offset + logs_hdr->data_length, SEEK_SET);
+	ret = fseek(config->ldc_fd, logs_hdr->data_offset + logs_hdr->data_length, SEEK_SET);
+	if (ret) {
+		log_err("Error while seeking to uuids header from %s.\n", config->ldc_file);
+		return -errno;
+	}
+
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
 		log_err("Error while reading uuids header from %s.\n", config->ldc_file);
