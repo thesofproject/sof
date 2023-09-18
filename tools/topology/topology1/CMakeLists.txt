@@ -78,8 +78,6 @@ set(TPLGS
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-rpl-rt1316-l12-rt714-l0\;-DPLATFORM=rpl\;-DNOJACK\;-DAMP_1_LINK=1\;-DAMP_2_LINK=2\;-DEXT_AMP_REF\;-DMIC_LINK=0"
 	## end SoundWire NOJACK topologies
 
-	"sof-ehl-rt5660\;sof-ehl-rt5660\;-DHDMI=1"
-	"sof-ehl-rt5660\;sof-ehl-rt5660-nohdmi"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=tgl\;-DLINUX_MACHINE_DRIVER=sof_rt5682\;-DAMP_SSP=1"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=adl\;-DLINUX_MACHINE_DRIVER=sof_rt5682\;-DAMP_SSP=2"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-rtnr\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=adl\;-DLINUX_MACHINE_DRIVER=sof_rt5682\;-DAMP_SSP=2\;-DCHANNELS=2\;-DRTNR"
