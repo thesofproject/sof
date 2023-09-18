@@ -158,9 +158,8 @@ int ipc4_logging_enable_logs(bool first_block,
 	return 0;
 }
 
-#endif
+#elif CONFIG_LOG_BACKEND_SOF_PROBE
 
-#ifdef CONFIG_LOG_BACKEND_SOF_PROBE
 int ipc4_logging_enable_logs(bool first_block,
 			     bool last_block,
 			     uint32_t data_offset_or_size,
@@ -194,6 +193,16 @@ int ipc4_logging_enable_logs(bool first_block,
 	}
 
 	return 0;
+}
+
+#else /* unsupported logging method */
+
+int ipc4_logging_enable_logs(bool first_block,
+			     bool last_block,
+			     uint32_t data_offset_or_size,
+			     const char *data)
+{
+	return IPC4_UNKNOWN_MESSAGE_TYPE;
 }
 
 #endif
