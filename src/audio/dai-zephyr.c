@@ -1425,6 +1425,15 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	/* return if nothing to copy */
 	if (!frames) {
 		comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): nothing to copy");
+
+		for (i = 0; i < num_endpoints; i++) {
+			ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, 0);
+			if (ret < 0) {
+				dai_report_xrun(dd[i], dev, 0);
+				return ret;
+			}
+		}
+
 		return 0;
 	}
 
