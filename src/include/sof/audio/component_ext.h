@@ -55,6 +55,7 @@ static inline void comp_free(struct comp_dev *dev)
 	    dev->task) {
 		schedule_task_free(dev->task);
 		rfree(dev->task);
+		dev->task = NULL;
 	}
 
 	dev->drv->ops.free(dev);
