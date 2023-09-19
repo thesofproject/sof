@@ -14,11 +14,11 @@
 #include <string.h>
 #include <math.h>
 #include <ipc/topology.h>
-#include <volume/peak_volume.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
+#include <volume/peak_volume.h>
 
 #define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
 

@@ -11,13 +11,16 @@
 #define _COMMON_TPLG_H
 
 #include <stdbool.h>
-#include<stdarg.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
+#include <ipc4/copier.h>
+#include <ipc4/module.h>
 #include <kernel/tokens.h>
 #include <sof/list.h>
+#include <volume/peak_volume.h>
 
 #ifdef TPLG_DEBUG
 #define DEBUG_MAX_LENGTH 256
@@ -46,6 +49,7 @@ static inline void tplg_debug(char *fmt, ...) {}
 
 #define TPLG_PARSER_SOF_DEV 1
 #define TPLG_PARSER_FUZZER_DEV 2
+#define TPLG_MAX_PCM_PIPELINES	16
 
 #define MOVE_POINTER_BY_BYTES(p, b) ((typeof(p))((uint8_t *)(p) + (b)))
 
@@ -95,15 +99,31 @@ struct sof_ipc4_available_audio_format {
 	uint32_t num_output_formats;
 };
 
+struct tplg_pipeline_info {
+	int id;
+	int instance_id;
+	int usage_count;
+	int mem_usage;
+	char *name;
+	struct list_item item; /* item in a list */
+};
+
 struct tplg_comp_info {
+	struct list_item item; /* item in a list */
+	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
+	struct ipc4_module_init_instance module_init;
+	struct ipc4_base_module_cfg basecfg;
+	struct tplg_pipeline_info *pipe_info;
+	struct sof_uuid uuid;
 	char *name;
 	char *stream_name;
 	int id;
 	int type;
 	int pipeline_id;
 	void *ipc_payload;
-	struct list_item item; /* item in a list */
-	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
+	int ipc_size;
+	int instance_id;
+	int module_id;
 };
 
 struct tplg_route_info {
@@ -112,12 +132,19 @@ struct tplg_route_info {
 	struct list_item item; /* item in a list */
 };
 
+struct tplg_pipeline_list {
+	int count;
+	struct tplg_pipeline_info *pipelines[TPLG_MAX_PCM_PIPELINES];
+};
+
 struct tplg_pcm_info {
 	char *name;
 	int id;
 	struct tplg_comp_info *playback_host;
 	struct tplg_comp_info *capture_host;
 	struct list_item item; /* item in a list */
+	struct tplg_pipeline_list playback_pipeline_list;
+	struct tplg_pipeline_list capture_pipeline_list;
 };
 
 /*
