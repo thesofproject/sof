@@ -111,7 +111,7 @@ jobs:
           # - IPC4 default
           mtl, lnl,
           # Temporary testbed for Zephyr development.
-          -i IPC4 tgl tgl-h,
+          tgl tgl-h,
         ]
         build_opts: [""]
         # Sparse matrices are complicated, you must read this page slowly:
@@ -217,7 +217,7 @@ jobs:
           # - IPC4 default
           mtl,
           # Very few IPC3 platforms support IPC4 too.
-          -i IPC4 tgl tgl-h,
+          tgl tgl-h,
         ]
         build_opts: [""]
         # Sparse matrices are complicated, see comments on Linux matrix above.
@@ -397,7 +397,7 @@ jobs:
           # http://mywiki.wooledge.org/ParsingLs
           for regdir in 'linux-build *mtl' \
                         'windows-build *mtl' \
-                        'windows-build *-i IPC4 tgl tgl-h'; do
+                        'windows-build *tgl tgl-h'; do
             find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
               { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
           done
