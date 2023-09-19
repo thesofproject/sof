@@ -39,6 +39,7 @@ sof_append_relative_path_definitions(sof_tplg_parser)
 
 target_include_directories(sof_tplg_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/include)
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/audio)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/audio)
