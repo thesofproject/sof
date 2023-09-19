@@ -311,6 +311,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 	case SOF_IPC4_PIPELINE_STATE_EOS:
 		if (status != COMP_STATE_ACTIVE)
 			return IPC4_INVALID_REQUEST;
+		/* fallthrough */
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
 	case SOF_IPC4_PIPELINE_STATE_ERROR_STOP:
 	default:
