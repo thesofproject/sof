@@ -17,6 +17,12 @@ else()
 	add_library(sof_tplg_parser SHARED "")
 endif()
 
+if (CONFIG_IPC4)
+	set(tplg_ipc CONFIG_IPC_MAJOR_4)
+else()
+	set(tplg_ipc CONFIG_IPC_MAJOR_3)
+endif()
+
 target_sources(sof_tplg_parser PUBLIC
 	tokens.c
 	process.c
@@ -42,7 +48,6 @@ target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/i
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/audio)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
-target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/audio)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/posix/include)
 
 # Configuration time, make copy
@@ -61,7 +66,7 @@ endif()
 target_compile_options(sof_tplg_parser PRIVATE
 	-g -O -Wall -Werror -Wl,-EL -fPIC -DPIC
 	-Wmissing-prototypes ${implicit_fallthrough}
-	-DCONFIG_LIBRARY -DCONFIG_IPC_MAJOR_3)
+	-DCONFIG_LIBRARY -D${tplg_ipc})
 
 target_link_libraries(sof_tplg_parser PRIVATE -lm)
 
