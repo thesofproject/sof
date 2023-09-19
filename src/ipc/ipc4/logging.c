@@ -14,9 +14,10 @@
 #include <ipc4/base_fw.h>
 #include <ipc4/error_status.h>
 #include <ipc4/logging.h>
+#if !CONFIG_LIBRARY
 #include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log.h>
-
+#endif
 #if CONFIG_LOG_BACKEND_SOF_PROBE
 #include <sof/probe/probe.h>
 #endif
