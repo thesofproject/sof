@@ -159,6 +159,26 @@ endif # Cadence
 
 if COMP_VOLUME
 
+config COMP_VOLUME_PLAYBACK_START_FADE
+        bool "Start playback with fade-in"
+        default n
+        help
+            This option is needed to help reduce audible pops on
+            some codecs but depending on requested ramp type it
+            can increase peak MCPS by up to 3.5 per channel. Pops
+            playback direction are rare, so this should be usually
+            disabled.
+
+
+config COMP_VOLUME_CAPTURE_START_FADE
+        bool "Start capture with fade-in"
+        default y
+        help
+            This option is needed to help reduce audible pops on
+            some codecs but depending on requested ramp type it
+            can increase peak MCPS by up to 3.5 per channel. It is
+            recommended to enable this.
+
 config COMP_VOLUME_WINDOWS_FADE
        bool "Windows Fade shape volume transitions support"
        help
