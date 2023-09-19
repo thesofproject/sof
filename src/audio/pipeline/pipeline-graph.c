@@ -227,7 +227,9 @@ int pipeline_free(struct pipeline *p)
 
 	/* remove from any scheduling */
 	if (p->pipe_task) {
+#if !CONFIG_LIBRARY || UNIT_TEST
 		schedule_task_free(p->pipe_task);
+#endif
 		rfree(p->pipe_task);
 	}
 

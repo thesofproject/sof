@@ -147,6 +147,37 @@ int pipeline_copy(struct pipeline *p)
 	return ret;
 }
 
+#if CONFIG_LIBRARY && !CONFIG_LIBRARY_STATIC
+/* trigger pipeline immediately in IPC context. TODO: Add support for XRUN */
+int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
+{
+	int ret;
+
+	pipe_info(p, "pipe trigger cmd %d", cmd);
+
+	p->trigger.aborted = false;
+
+	ret = pipeline_trigger_run(p, host, cmd);
+	if (ret < 0)
+		return ret;
+
+	switch (cmd) {
+	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_PRE_RELEASE:
+		p->status = COMP_STATE_ACTIVE;
+		break;
+	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_PAUSE:
+		p->status = COMP_STATE_PAUSED;
+		break;
+	default:
+		break;
+	}
+
+	return  0;
+}
+#else
 /* only collect scheduling components */
 static int pipeline_comp_list(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
@@ -304,6 +335,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	return 0;
 }
+#endif
 
 /* Runs in IPC or in pipeline task context */
 static int pipeline_comp_trigger(struct comp_dev *current,

@@ -74,12 +74,28 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 	posn->rhdr.hdr.size = 0;
 }
 
+#if CONFIG_LIBRARY
+static inline char *ipc4_get_comp_new_data(void)
+{
+	struct ipc *ipc = ipc_get();
+	char *data = (char *)ipc->comp_data + sizeof(struct ipc4_module_init_instance);
+
+	return data;
+}
+#else
+static inline char *ipc4_get_comp_new_data(void)
+{
+	return (char *)MAILBOX_HOSTBOX_BASE;
+}
+#endif
+
 struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 	uint32_t comp_id;
+	char *data;
 
 	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
 			       module_init->primary.r.instance_id);
@@ -119,15 +135,17 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
 
+	data = ipc4_get_comp_new_data();
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
-			.data = (const unsigned char *)MAILBOX_HOSTBOX_BASE,
+			.data = (const unsigned char *)data,
 			/* spec_size in IPC4 is in DW. Convert to bytes. */
 			.size = module_init->extension.r.param_block_size * sizeof(uint32_t),
 		};
+
 		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
 	} else {
-		dev = drv->ops.create(drv, &ipc_config, (const void *)MAILBOX_HOSTBOX_BASE);
+		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
 	}
 	if (!dev)
 		return NULL;
@@ -702,12 +720,57 @@ out:
 	return drv;
 }
 
+#if CONFIG_LIBRARY
+struct ipc4_module_uuid {
+	int module_id;
+	struct sof_uuid uuid;
+};
+
+/* Hardcoded table mapping UUIDs with module ID's. TODO: replace this with a scalable solution */
+static const struct ipc4_module_uuid uuid_map[] = {
+	{0x6, {.a = 0x61bca9a8,	.b = 0x18d0, .c = 0x4a18,
+	       .d = { 0x8e, 0x7b, 0x26, 0x39, 0x21, 0x98, 0x04, 0xb7 }}}, /* gain */
+	{0x2, {.a = 0x39656eb2, .b = 0x3b71, .c = 0x4049,
+	       .d = { 0x8d, 0x3f, 0xf9, 0x2c, 0xd5, 0xc4, 0x3c, 0x09 }}}, /* mixin */
+	{0x3, {.a = 0x3c56505a, .b = 0x24d7, .c = 0x418f,
+		.d = { 0xbd, 0xdc, 0xc1, 0xf5, 0xa3, 0xac, 0x2a, 0xe0 }}}, /* mixout */
+	{0x96, {.a = 0xe2b6031c, .b = 0x47e8, .c = 0x11ed,
+		.d = { 0x07, 0xa9, 0x7f, 0x80, 0x1b, 0x6e, 0xfa, 0x6c }}}, /* host SHM write */
+	{0x98, {.a = 0xdabe8814, .b = 0x47e8, .c = 0x11ed,
+		.d = { 0xa5, 0x8b, 0xb3, 0x09, 0x97, 0x4f, 0xec, 0xce }}}, /* host SHM read */
+	{0x97, {.a = 0x72cee996, .b = 0x39f2, .c = 0x11ed,
+		.d = { 0xa0, 0x8f, 0x97, 0xfc, 0xc4, 0x2e, 0xaa, 0xeb }}}, /* ALSA aplay */
+	{0x99, {.a = 0x66def9f0, .b = 0x39f2, .c = 0x11ed,
+		.d = { 0xf7, 0x89, 0xaf, 0x98, 0xa6, 0x44, 0x0c, 0xc4 }}}, /* ALSA arecord */
+};
+
+static const struct comp_driver *ipc4_library_get_drv(int module_id)
+{
+	const struct ipc4_module_uuid *mod_uuid;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(uuid_map); i++) {
+		mod_uuid = &uuid_map[i];
+
+		if (mod_uuid->module_id == module_id)
+			return ipc4_get_drv((uint8_t *)&mod_uuid->uuid);
+	}
+
+	tr_err(&comp_tr, "ipc4_library_get_drv(): Unsupported module ID %#x\n", module_id);
+	return NULL;
+}
+#endif
+
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
 	struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
 	struct sof_man_module *mod;
 	int entry_index;
+
+#if CONFIG_LIBRARY
+	return ipc4_library_get_drv(module_id);
+#endif
 
 #ifdef RIMAGE_MANIFEST
 	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
