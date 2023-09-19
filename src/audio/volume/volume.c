@@ -622,6 +622,46 @@ static void volume_set_alignment(struct audio_stream *source,
 }
 
 /**
+ * \brief Prepare volume to start with fade-in ramp.
+ */
+#if CONFIG_COMP_VOLUME_PLAYBACK_START_FADE || CONFIG_COMP_VOLUME_CAPTURE_START_FADE
+static void volume_prepare_start_with_fade(struct processing_module *mod)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	int i;
+
+	for (i = 0; i < cd->channels; i++) {
+		cd->volume[i] = cd->vol_min;
+		volume_set_chan(mod, i, cd->tvolume[i], false);
+		if (cd->volume[i] != cd->tvolume[i])
+			cd->ramp_finished = false;
+	}
+
+	volume_prepare_ramp(mod->dev, cd);
+}
+#endif
+
+/**
+ * \brief Prepare volume to start without ramp.
+ */
+#if !CONFIG_COMP_VOLUME_PLAYBACK_START_FADE || !CONFIG_COMP_VOLUME_CAPTURE_START_FADE
+static void volume_prepare_start_without_fade(struct processing_module *mod)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	int i;
+
+	cd->is_passthrough = true;
+	for (i = 0; i < cd->channels; i++) {
+		cd->volume[i] = cd->tvolume[i];
+		if (cd->volume[i] != VOL_ZERO_DB)
+			cd->is_passthrough = false;
+	}
+
+	set_volume_process(cd, mod->dev, false);
+}
+#endif
+
+/**
  * \brief Prepares volume component for processing.
  * \param[in,out] mod Volume processing module handle
 
@@ -641,7 +681,6 @@ static int volume_prepare(struct processing_module *mod,
 	struct comp_buffer *source_c, *sink_c;
 	uint32_t sink_period_bytes;
 	int ret;
-	int i;
 
 	comp_dbg(dev, "volume_prepare()");
 
@@ -687,14 +726,6 @@ static int volume_prepare(struct processing_module *mod,
 		goto err;
 	}
 
-	/* Set current volume to min to ensure ramp starts from minimum
-	 * to previous volume request. Copy() checks for ramp finished
-	 * and executes it if it has not yet finished as result of
-	 * driver commands. Ramp is not constant rate to ensure it lasts
-	 * for entire topology specified time.
-	 */
-	cd->ramp_finished = false;
-
 	cd->channels = audio_stream_get_channels(&sink_c->stream);
 	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
 		ret = -EINVAL;
@@ -706,14 +737,24 @@ static int volume_prepare(struct processing_module *mod,
 
 	buffer_release(sink_c);
 
-	for (i = 0; i < cd->channels; i++) {
-		cd->volume[i] = cd->vol_min;
-		volume_set_chan(mod, i, cd->tvolume[i], false);
-		if (cd->volume[i] != cd->tvolume[i])
-			cd->ramp_finished = false;
-	}
-
-	volume_prepare_ramp(dev, cd);
+#if !CONFIG_COMP_VOLUME_PLAYBACK_START_FADE && !CONFIG_COMP_VOLUME_CAPTURE_START_FADE
+	volume_prepare_start_without_fade(mod);
+#elif CONFIG_COMP_VOLUME_PLAYBACK_START_FADE && CONFIG_COMP_VOLUME_CAPTURE_START_FADE
+	volume_prepare_start_with_fade(mod);
+#else
+#if CONFIG_COMP_VOLUME_PLAYBACK_START_FADE
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		volume_prepare_start_with_fade(mod);
+	else
+		volume_prepare_start_without_fade(mod);
+#endif /* CONFIG_COMP_VOLUME_PLAYBACK_START_FADE*/
+#if CONFIG_COMP_VOLUME_CAPTURE_START_FADE
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		volume_prepare_start_with_fade(mod);
+	else
+		volume_prepare_start_without_fade(mod);
+#endif /* CONFIG_COMP_VOLUME_PLAYBACK_START_FADE*/
+#endif
 
 	/*
 	 * volume component does not do any format conversion, so use the buffer size for source
