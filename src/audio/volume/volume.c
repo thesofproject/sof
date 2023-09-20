@@ -283,18 +283,22 @@ static inline void volume_ramp(struct processing_module *mod)
 		 * calculated from previous gain and ramp time. The slope
 		 * coefficient is calculated in volume_set_chan().
 		 */
-#if defined CONFIG_COMP_VOLUME_WINDOWS_FADE && defined CONFIG_COMP_VOLUME_LINEAR_RAMP
-		if (cd->ramp_type == SOF_VOLUME_WINDOWS_FADE)
+		switch (cd->ramp_type) {
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+		case SOF_VOLUME_WINDOWS_FADE:
 			new_vol = volume_windows_fade_ramp(cd, ramp_time, i);
-		else
-			new_vol = volume_linear_ramp(cd, ramp_time, i);
-#elif defined CONFIG_COMP_VOLUME_WINDOWS_FADE
-		new_vol = volume_windows_fade_ramp(cd, ramp_time, i);
-#elif defined CONFIG_COMP_VOLUME_LINEAR_RAMP
-		new_vol = volume_linear_ramp(cd, ramp_time, i);
-#else
-		new_vol = tvolume;
+			break;
 #endif
+#if CONFIG_COMP_VOLUME_LINEAR_RAMP
+		case SOF_VOLUME_LINEAR:
+		case SOF_VOLUME_LINEAR_ZC:
+			new_vol = volume_linear_ramp(cd, ramp_time, i);
+			break;
+#endif
+		default:
+			new_vol = tvolume;
+		}
+
 		if (volume < tvolume) {
 			/* ramp up, check if ramp completed */
 			if (new_vol < tvolume)

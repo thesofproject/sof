@@ -86,8 +86,13 @@ static void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t tar
 	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
 	 * converted into ms value required by firmware
 	 */
-	cd->initial_ramp = Q_MULTSR_32X32((int64_t)curve_duration,
-					  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
+	if (cd->ramp_type == SOF_VOLUME_WINDOWS_NO_FADE) {
+		cd->initial_ramp = 0;
+		cd->ramp_finished = true;
+	} else {
+		cd->initial_ramp = Q_MULTSR_32X32((int64_t)curve_duration,
+						  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
+	}
 
 	if (!cd->initial_ramp) {
 		/* In case when initial ramp time is equal to zero, vol_min and
