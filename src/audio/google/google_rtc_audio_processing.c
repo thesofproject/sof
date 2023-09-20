@@ -616,6 +616,109 @@ static void render_s16(struct google_rtc_audio_processing_comp_data *cd)
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S32LE
+static void render_s32(struct google_rtc_audio_processing_comp_data *cd)
+{
+	struct comp_buffer *buffer_c = buffer_acquire(cd->aec_reference);
+	struct comp_buffer *mic_buf;
+	struct comp_buffer *output_buf;
+	struct comp_copy_limits cl;
+	int32_t *src;
+	int32_t *dst;
+	int32_t *ref = audio_stream_get_rptr(&buffer_c->stream);
+	int channel;
+	int nmax;
+	int i, j, n;
+	uint32_t num_aec_reference_frames = audio_stream_get_avail_frames(&buffer_c->stream);
+	uint32_t num_aec_reference_bytes = audio_stream_get_avail_bytes(&buffer_c->stream);
+	int num_samples_remaining = num_aec_reference_frames *
+		audio_stream_get_channels(&buffer_c->stream);
+	int num_frames_remaining;
+
+	buffer_stream_invalidate(buffer_c, num_aec_reference_bytes);
+
+	while (num_samples_remaining) {
+		nmax = audio_stream_samples_without_wrap_s16(&buffer_c->stream, ref);
+		n = MIN(num_samples_remaining, nmax);
+		for (i = 0; i < n; i += cd->num_aec_reference_channels) {
+			j = cd->num_aec_reference_channels * cd->aec_reference_frame_index;
+			for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
+				cd->aec_reference_buffer[j] = Q_CONVERT_QTOF(ref[channel], 31);
+				j += cd->num_frames;
+			}
+
+			ref += audio_stream_get_channels(&buffer_c->stream);
+			++cd->aec_reference_frame_index;
+
+			if (cd->aec_reference_frame_index == cd->num_frames) {
+				GoogleRtcAudioProcessingAnalyzeRender_float32(cd->state,
+									      (const float **)cd->aec_reference_buffer_ptrs);
+				cd->aec_reference_frame_index = 0;
+			}
+		}
+		num_samples_remaining -= n;
+		ref = audio_stream_wrap(&buffer_c->stream, ref);
+	}
+	comp_update_buffer_consume(buffer_c, num_aec_reference_bytes);
+
+	buffer_release(buffer_c);
+
+	mic_buf = buffer_acquire(cd->raw_microphone);
+	output_buf = buffer_acquire(cd->output);
+
+	dst = audio_stream_get_wptr(&output_buf->stream);
+	src = audio_stream_get_rptr(&mic_buf->stream);
+
+	comp_get_copy_limits(mic_buf, output_buf, &cl);
+	buffer_stream_invalidate(mic_buf, cl.source_bytes);
+
+	num_frames_remaining = cl.frames;
+
+	while (num_frames_remaining) {
+		nmax = audio_stream_frames_without_wrap(&mic_buf->stream, src);
+		n = MIN(num_frames_remaining, nmax);
+		nmax = audio_stream_frames_without_wrap(&output_buf->stream, dst);
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			j = cd->raw_mic_buffer_frame_index * cd->num_capture_channels;
+			for (channel = 0; channel < cd->num_capture_channels; channel++) {
+				cd->raw_mic_buffer[j] = Q_CONVERT_QTOF(src[channel], 31);
+				j += cd->num_frames;
+			}
+			++cd->raw_mic_buffer_frame_index;
+
+			j = cd->output_buffer_frame_index * cd->num_capture_channels;
+			for (channel = 0; channel < cd->num_capture_channels; channel++) {
+				dst[channel] = Q_CONVERT_FLOAT(cd->output_buffer[j], 31);
+				j += cd->num_frames;
+			}
+			++cd->output_buffer_frame_index;
+
+			if (cd->raw_mic_buffer_frame_index == cd->num_frames) {
+				GoogleRtcAudioProcessingProcessCapture_float32(cd->state,
+									       (const float **)cd->raw_mic_buffer_ptrs,
+									       cd->output_buffer_ptrs);
+				cd->output_buffer_frame_index = 0;
+				cd->raw_mic_buffer_frame_index = 0;
+			}
+
+			src += audio_stream_get_channels(&mic_buf->stream);
+			dst += audio_stream_get_channels(&output_buf->stream);
+		}
+		num_frames_remaining -= n;
+		src = audio_stream_wrap(&mic_buf->stream, src);
+		dst = audio_stream_wrap(&output_buf->stream, dst);
+	}
+	buffer_stream_writeback(output_buf, cl.sink_bytes);
+
+	comp_update_buffer_produce(output_buf, cl.sink_bytes);
+	comp_update_buffer_consume(mic_buf, cl.source_bytes);
+
+	buffer_release(output_buf);
+	buffer_release(mic_buf);
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
 static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 {
 	struct google_rtc_audio_processing_comp_data *cd = comp_get_drvdata(dev);
@@ -679,6 +782,11 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		cd->render = render_s16;
+		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S32LE
+	case SOF_IPC_FRAME_S32_LE:
+		cd->render = render_s32;
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 	default:
