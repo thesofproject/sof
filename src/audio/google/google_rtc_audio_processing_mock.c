@@ -21,7 +21,7 @@ struct GoogleRtcAudioProcessingState {
 	int num_aec_reference_channels;
 	int num_output_channels;
 	int num_frames;
-	int16_t *aec_reference;
+	float *aec_reference;
 };
 
 static void SetFormats(GoogleRtcAudioProcessingState *const state,
@@ -138,34 +138,35 @@ int GoogleRtcAudioProcessingReconfigure(GoogleRtcAudioProcessingState *const sta
 	return 0;
 }
 
-int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *const state,
-						 const int16_t *const src,
-						 int16_t *const dest)
+int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState *const state,
+						   const float *const *src,
+						   float *const *dest)
 {
-	int16_t *ref = state->aec_reference;
-	int16_t *mic = (int16_t *) src;
-	int16_t *out = dest;
-	int n;
+	float *ref = state->aec_reference;
+	float **mic = (float **)src;
+	int n, chan;
 
-	memset(dest, 0, sizeof(int16_t) * state->num_output_channels * state->num_frames);
-	for (n = 0; n < state->num_frames; ++n) {
-		*out = *mic + *ref;
-		ref += state->num_aec_reference_channels;
-		out += state->num_output_channels;
-		mic += state->num_capture_channels;
+	for (chan = 0; chan < state->num_output_channels; chan++) {
+		memset(dest[n], 0, sizeof(float) * state->num_frames);
+		for (n = 0; n < state->num_frames; ++n)
+			dest[chan][n] = mic[chan][n] + ref[n + chan * state->num_frames];
 	}
 	return 0;
 }
 
-int GoogleRtcAudioProcessingAnalyzeRender_int16(GoogleRtcAudioProcessingState *const state,
-						const int16_t *const data)
+int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState *const state,
+						  const float *const *data)
 {
 	const size_t buffer_size =
 		sizeof(state->aec_reference[0])
-		* state->num_frames
-		* state->num_aec_reference_channels;
-	memcpy_s(state->aec_reference, buffer_size,
-		 data, buffer_size);
+		* state->num_frames;
+	int channel;
+
+	for (channel = 0; channel < state->num_aec_reference_channels; channel++) {
+		memcpy_s(&state->aec_reference[channel * state->num_frames], buffer_size,
+			 data[channel], buffer_size);
+	}
+
 	return 0;
 }
 
