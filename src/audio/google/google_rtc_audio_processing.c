@@ -105,7 +105,6 @@ static int google_rtc_audio_processing_params(
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
 		struct ipc4_audio_format *out_fmt = &cd->config.output_fmt;
-		enum sof_ipc_frame valid_fmt, frame_fmt;
 
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		sink_c = buffer_acquire(sink);
