@@ -140,8 +140,8 @@ int source_set_rate(struct sof_source *source, unsigned int rate);
 int source_set_channels(struct sof_source *source, unsigned int channels);
 int source_set_underrun(struct sof_source *source, bool underrun_permitted);
 int source_set_buffer_fmt(struct sof_source *source, uint32_t buffer_fmt);
-void source_set_ibs(struct sof_source *source, size_t ibs);
-size_t source_get_ibs(struct sof_source *source);
+void source_set_min_available(struct sof_source *source, size_t min_available);
+size_t source_get_min_available(struct sof_source *source);
 
 /**
  * initial set of audio parameters, provided in sof_ipc_stream_params
