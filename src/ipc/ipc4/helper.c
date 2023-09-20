@@ -376,13 +376,17 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/*
-	 * set ibs and obs in sink/src api of created buffer
-	 *	IBS of a buffer is OBS of source component
-	 *	OBS of a buffer is IBS of destination component
+	 * set min_free_space and min_available in sink/src api of created buffer.
+	 * buffer is connected like:
+	 *	source_module -> (sink_ifc) BUFFER (source_ifc) -> sink_module
+	 *
+	 *	source_module needs to set its OBS (out buffer size)
+	 *		as min_free_space in buffer's sink ifc
+	 *	sink_module needs to set its IBS (input buffer size)
+	 *		as min_available in buffer's source ifc
 	 */
-
-	source_set_ibs(audio_stream_get_source(&buffer->stream), source_src_cfg.obs);
-	sink_set_obs(audio_stream_get_sink(&buffer->stream), sink_src_cfg.ibs);
+	sink_set_min_free_space(audio_stream_get_sink(&buffer->stream), source_src_cfg.obs);
+	source_set_min_available(audio_stream_get_source(&buffer->stream), sink_src_cfg.ibs);
 
 	/*
 	 * Connect and bind the buffer to both source and sink components with the interrupts

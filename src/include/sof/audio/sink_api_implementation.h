@@ -72,7 +72,9 @@ struct sof_sink {
 	const struct sink_ops *ops;	  /** operations interface */
 	size_t requested_write_frag_size; /** keeps number of bytes requested by get_buffer() */
 	size_t num_of_bytes_processed;	  /** processed bytes counter */
-	size_t obs;			  /** output buffer size as declared in module bind IPC */
+	size_t min_free_space;		  /** minimum buffer space required by the module using sink
+					    *  it is module's OBS as declared in module bind IPC
+					    */
 	struct sof_audio_stream_params *audio_stream_params; /** pointer to audio params */
 };
 

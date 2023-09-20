@@ -176,12 +176,12 @@ int sink_set_alignment_constants(struct sof_sink *sink,
 	return 0;
 }
 
-void sink_set_obs(struct sof_sink *sink, size_t obs)
+void sink_set_min_free_space(struct sof_sink *sink, size_t min_free_space)
 {
-	sink->obs = obs;
+	sink->min_free_space = min_free_space;
 }
 
-size_t sink_get_obs(struct sof_sink *sink)
+size_t sink_get_min_free_space(struct sof_sink *sink)
 {
-	return sink->obs;
+	return sink->min_free_space;
 }

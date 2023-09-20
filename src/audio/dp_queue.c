@@ -245,7 +245,7 @@ static const struct sink_ops dp_queue_sink_ops = {
 	.audio_set_ipc_params = dp_queue_set_ipc_params_sink,
 };
 
-struct dp_queue *dp_queue_create(size_t ibs, size_t obs, uint32_t flags)
+struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags)
 {
 	struct dp_queue *dp_queue;
 
@@ -269,11 +269,11 @@ struct dp_queue *dp_queue_create(size_t ibs, size_t obs, uint32_t flags)
 		  &dp_queue->audio_stream_params);
 
 	/* set obs/ibs in sink/source interfaces */
-	sink_set_obs(&dp_queue->_sink_api, obs);
-	source_set_ibs(&dp_queue->_source_api, ibs);
+	sink_set_min_free_space(&dp_queue->_sink_api, min_free_space);
+	source_set_min_available(&dp_queue->_source_api, min_available);
 
-	uint32_t max_ibs_obs = MAX(ibs, obs);
-	uint32_t min_ibs_obs = MIN(ibs, obs);
+	uint32_t max_ibs_obs = MAX(min_available, min_free_space);
+	uint32_t min_ibs_obs = MIN(min_available, min_free_space);
 
 	/* calculate required buffer size */
 	if (max_ibs_obs % min_ibs_obs == 0)
@@ -288,8 +288,9 @@ struct dp_queue *dp_queue_create(size_t ibs, size_t obs, uint32_t flags)
 	if (!dp_queue->_data_buffer)
 		goto err;
 
-	tr_info(&dp_queue_tr, "DpQueue created, shared: %u ibs: %u obs %u, size %u",
-		dp_queue_is_shared(dp_queue), ibs, obs, dp_queue->data_buffer_size);
+	tr_info(&dp_queue_tr, "DpQueue created, shared: %u min_available: %u min_free_space %u, size %u",
+		dp_queue_is_shared(dp_queue), min_available, min_free_space,
+		dp_queue->data_buffer_size);
 
 	/* return a pointer to allocated structure */
 	return dp_queue;

@@ -166,12 +166,12 @@ int source_set_alignment_constants(struct sof_source *source,
 	return 0;
 }
 
-void source_set_ibs(struct sof_source *source, size_t ibs)
+void source_set_min_available(struct sof_source *source, size_t min_available)
 {
-	source->ibs = ibs;
+	source->min_available = min_available;
 }
 
-size_t source_get_ibs(struct sof_source *source)
+size_t source_get_min_available(struct sof_source *source)
 {
-	return source->ibs;
+	return source->min_available;
 }

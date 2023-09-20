@@ -98,18 +98,16 @@ struct dp_queue {
 };
 
 /**
- * @param ibs input buffer size
- *		the size of data to be produced in 1 cycle
- *		the data producer declares here how much data it will produce in single cycle
  *
- * @param obs output buffer size
- *		the size of data to be consumed in 1 cycle
- *		the data receiver declares here how much data it will consume in single cycle
+ * @param min_available  minimum data available in queue required by the module using
+ *			 dp_queue's source api
+ * @param min_free_space minimum buffer space in queue required by the module using
+ *			 dp_queue's sink api
  *
  * @param flags a combinatin of DP_QUEUE_MODE_* flags determining working mode
  *
  */
-struct dp_queue *dp_queue_create(size_t ibs, size_t obs, uint32_t flags);
+struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags);
 
 /**
  * @brief free dp queue memory
