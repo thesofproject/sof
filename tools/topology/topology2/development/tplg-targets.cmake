@@ -20,12 +20,6 @@ SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec.bin,DEEPBUFFER_FW_DMA_MS=100,\
 PLATFORM=adl"
 
-"cavs-nocodec-multicore\;sof-tgl-nocodec-multicore-ssp0-ssp2\;PLATFORM=tgl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-multicore-ssp0-ssp2.bin"
-
-"cavs-nocodec-multicore\;sof-adl-nocodec-multicore-ssp0-ssp2\;PLATFORM=adl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec-multicore-ssp0-ssp2.bin"
-
 # SDW topology for MTL
 "cavs-sdw\;mtl-sdw\;NUM_HDMIS=0"
 
@@ -39,16 +33,6 @@ DEEPBUFFER_D0I3_COMPATIBLE=true"
 "cavs-nocodec\;sof-mtl-nocodec-ssp0-ssp2\;PLATFORM=mtl,NUM_DMICS=2,SSP1_ENABLED=false,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-ssp0-ssp2.bin,DEEPBUFFER_FW_DMA_MS=100,\
 DEEPBUFFER_D0I3_COMPATIBLE=true"
-
-"cavs-nocodec-multicore\;sof-mtl-nocodec-multicore\;PLATFORM=mtl,SSP1_ENABLED=true,SSP0_CORE_ID=0,\
-SSP1_CORE_ID=1,SSP2_CORE_ID=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore.bin"
-
-"cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-ssp0-ssp2\;PLATFORM=mtl,SSP1_ENABLED=false,\
-SSP2_CORE_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec-multicore-ssp0-ssp2.bin"
-
-"cavs-nocodec-multicore\;sof-mtl-nocodec-multicore-4ch\;PLATFORM=mtl,SSP1_ENABLED=false,\
-SSP0_CORE_ID=0,DMIC_CORE_ID=1,SSP2_CORE_ID=2,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PASSTHROUGH=false,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin"
 
 # SSP topology for LNL
 "cavs-nocodec\;sof-lnl-nocodec\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
