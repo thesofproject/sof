@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+	config COMP_VOLUME
+		bool "Volume component"
+		default y
+		help
+		  Select for Volume component
+
+if COMP_VOLUME
+
+config COMP_VOLUME_WINDOWS_FADE
+       bool "Windows Fade shape volume transitions support"
+       help
+         This option enables volume ramp shape that follows
+	 power of 1.75. The shape is not linear, not logarithmic.
+	 The power function uses a lookup table that consumes
+	 256 bytes. The topology must set volume ramp token to
+	 SOF_VOLUME_WINDOWS_FADE for the volume instance to use
+	 this ramp shape.
+
+config COMP_VOLUME_LINEAR_RAMP
+       bool "Linear ramp volume transitions support"
+	   default y
+       help
+         This option enables volume linear ramp shape.
+
+config COMP_PEAK_VOL
+       bool "Report peak vol data to host"
+	   default y
+	   depends on IPC_MAJOR_4
+       help
+         This option enables reporting to host peak vol regs.
+         See: struct ipc4_peak_volume_regs
+
+choice "PEAK_METER_UPDATE_PERIOD_CHOICE"
+	prompt "The periods(ms) of updating peak meter value"
+	default PEAK_METER_UPDATE_10MS
+	depends on COMP_PEAK_VOL
+
+	config PEAK_METER_UPDATE_1MS
+		bool "1ms"
+		help
+		  Update the peak meter value every 1ms
+
+	config PEAK_METER_UPDATE_10MS
+		bool "10ms"
+		help
+		  Update the peak meter value every 10ms
+
+	config PEAK_METER_UPDATE_100MS
+		bool "100ms"
+		help
+		  Update the peak meter value every 100ms
+
+	config PEAK_METER_UPDATE_1000MS
+		bool "1000ms"
+		help
+		  Update the peak meter value every 1000ms
+	endchoice
+
+config PEAK_METER_UPDATE_PERIOD
+	int
+	depends on COMP_PEAK_VOL
+	default 1 if PEAK_METER_UPDATE_1MS
+	default 10 if PEAK_METER_UPDATE_10MS
+	default 100 if PEAK_METER_UPDATE_100MS
+	default 1000 if PEAK_METER_UPDATE_1000MS
+	help
+	  Decide which period of update the peak volume meter value
+
+config COMP_GAIN
+	bool "GAIN component"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  This option enables gain to change volume. It works
+	  as peak volume without updating peak vol to host
+
+endif # volume
