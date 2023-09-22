@@ -328,7 +328,18 @@ jobs:
         working-directory: ${{ github.workspace }}/workspace
         run: pip install -r zephyr/scripts/requirements.txt
 
+      # Ninja has been coming and going, see #8250
+      - name: choco install ninja
+        run: |
+          choco install ninja
+          ninja.exe --version
+
       # MSYS2 provides gcc x64_86 toolchain & openssl
+      # Installs in D:/a/_temp/msys64
+      #
+      # Note there is already C:/msys64/ provided by
+      # https://github.com/actions/runner-images/blob/win22/20230918.1/images/win/Windows2022-Readme.md
+      # Is it not good enough? Maybe it could save 20-30s.
       - name: Initialize MSYS2
         uses: msys2/setup-msys2@v2
         with:
