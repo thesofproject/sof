@@ -97,6 +97,7 @@ static int acp_dai_bt_dma_start(struct dma_chan_data *channel)
 
 	bt_tdm_iter = (acp_bttdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_BTTDM_ITER));
 	bt_tdm_irer = (acp_bttdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_BTTDM_IRER));
+	io_reg_write(PU_REGISTER_BASE + ACP_I2STDM1_MSTRCLKGEN, 0x40081);
 
 	if (!bt_tdm_iter.bits.bttdm_txen && !bt_tdm_irer.bits.bttdm_rx_en)
 		/* Request SMU to set aclk to 600 Mhz */
@@ -194,6 +195,7 @@ static int acp_dai_bt_dma_stop(struct dma_chan_data *channel)
 		acp_change_clock_notify(0);
 		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
 	}
+	io_reg_write(PU_REGISTER_BASE + ACP_I2STDM1_MSTRCLKGEN, 0x40080);
 
 	return 0;
 }
