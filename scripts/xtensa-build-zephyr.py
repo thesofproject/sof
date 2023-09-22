@@ -82,7 +82,6 @@ class PlatformConfig:
 	XTENSA_CORE: str
 	DEFAULT_TOOLCHAIN_VARIANT: str = "xt-clang"
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	IPC4_RIMAGE_DESC: str = None
 	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
 	aliases: list = dataclasses.field(default_factory=list)
 
@@ -93,7 +92,6 @@ platform_configs = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		IPC4_RIMAGE_DESC = "tgl-cavs.toml",
 		aliases = ['adl', 'ehl']
 	),
 	"tgl-h" : PlatformConfig(
@@ -101,7 +99,6 @@ platform_configs = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		IPC4_RIMAGE_DESC = "tgl-h-cavs.toml",
 		aliases = ['adl-s']
 	),
 	"mtl" : PlatformConfig(
@@ -550,7 +547,7 @@ def rimage_west_configuration(platform_dict, dest_dir):
 	# the user input. We could just append and leave duplicates but that would be
 	# at best confusing and at worst relying on undocumented rimage precedence.
 	extra_args = []
-	for default_opt in rimage_options(platform_dict):
+	for default_opt in rimage_options(platform_dict, dest_dir):
 		if not default_opt[0] in workspace_extra_args:
 			extra_args += default_opt
 
@@ -585,8 +582,32 @@ def build_rimage():
 			rimage_build_cmd.append("-v")
 	execute_command(rimage_build_cmd, cwd=west_top)
 
+def concat_rimage_configs(platform_name, dest_dir):
+	'''Concatenate sof image toml configs, and return the concatenated config file path.
+	[Caution]: Due to the limitation in tomlc99 library used by rimage, the platform toml
+	has to be the first. When adding new toml file, add a number prefix to the file name,
+	and make sure platform toml has the minimum number.
+	'''
+	toml_dir = SOF_TOP / "config" / platform_name
+	toml_name = platform_name + '.toml'
+	out_toml = dest_dir / toml_name
+	lines = []
 
-def rimage_options(platform_dict):
+	for root_dir, _, files in os.walk(toml_dir):
+		for toml in sorted(files):
+			toml_path = root_dir + '/' + toml
+			f = open(toml_path, 'r', encoding="utf8")
+			lines.extend(f.readlines())
+			lines.append('\n') # Append a newline between each file
+			f.close()
+
+	out_fd = open(out_toml, 'w', encoding='utf8')
+	out_fd.writelines(lines)
+	out_fd.close()
+
+	return str(out_toml)
+
+def rimage_options(platform_dict, dest_dir):
 	"""Return a list of default rimage options as a list of tuples,
 	example: [ (-f, 2.5.0), (-b, 1), (-k, key.pem),... ]
 
@@ -619,12 +640,8 @@ def rimage_options(platform_dict):
 	#                         test_00_01_load_fw_and_check_version
 	opts.append(("-b", "1"))
 
-	if platform_dict.get("IPC4_RIMAGE_DESC", None) is not None:
-		rimage_desc = platform_dict["IPC4_RIMAGE_DESC"]
-	else:
-		rimage_desc = platform_dict["name"] + ".toml"
-
-	opts.append(("-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)))
+	rimage_desc = concat_rimage_configs(platform_dict["name"], dest_dir)
+	opts.append(("-c", rimage_desc))
 
 	return opts
 
