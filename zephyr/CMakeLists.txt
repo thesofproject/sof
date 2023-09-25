@@ -705,7 +705,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
-	${SOF_AUDIO_PATH}/google_hotword_detect.c
+	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
