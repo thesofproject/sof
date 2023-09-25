@@ -877,7 +877,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	}
 	num_input_buffers = i;
 	if (num_input_buffers > mod->max_sources) {
-		comp_err(dev, "Invalid number of sinks %d\n", num_input_buffers);
+		comp_err(dev, "Invalid number of sources %d\n", num_input_buffers);
 		return -EINVAL;
 	}
 
