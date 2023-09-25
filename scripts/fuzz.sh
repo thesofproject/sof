@@ -85,7 +85,7 @@ main()
   fi
 
   west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
-      "${fuzz_configs[@]}" "$overlay_config" "$@"
+      "${fuzz_configs[@]}" $overlay_config "$@"
 
   if [ $BUILD_ONLY -eq 1 ]; then
       exit
