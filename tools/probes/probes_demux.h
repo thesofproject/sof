@@ -24,4 +24,6 @@ void parser_fetch_free_buffer(struct dma_frame_parser *p, uint8_t **d, size_t *l
 
 int parser_parse_data(struct dma_frame_parser *p, size_t d_len);
 
+void finalize_wave_files(struct dma_frame_parser *p);
+
 #endif
