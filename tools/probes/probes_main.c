@@ -66,6 +66,10 @@ void parse_data(const char *file_in, bool log_to_stdout)
 		len = fread(data, 1, len, fd_in);
 		ret = parser_parse_data(p, len);
 	} while (!ret && !feof(fd_in));
+
+	if (!log_to_stdout)
+		finalize_wave_files(p);
+
 }
 
 int main(int argc, char *argv[])

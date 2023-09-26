@@ -139,8 +139,9 @@ int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 	return i;
 }
 
-void finalize_wave_files(struct wave_files *files)
+void finalize_wave_files(struct dma_frame_parser *p)
 {
+	struct wave_files *files = p->files;
 	uint32_t i, chunk_size;
 
 	/* fill the header at the beginning of each file */
