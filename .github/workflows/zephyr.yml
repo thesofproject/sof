@@ -107,7 +107,6 @@ jobs:
         IPC_platforms: [
           # - IPC3 default
           imx8 imx8x imx8m,
-          tgl tgl-h,  # UNSUPPORTED! Will be removed
           # - IPC4 default
           mtl, lnl,
           # Temporary testbed for Zephyr development.
@@ -213,10 +212,8 @@ jobs:
         platforms: [
           # - IPC3 default
           imx8 imx8x imx8m,
-          tgl tgl-h,  # UNSUPPORTED! Will be removed
           # - IPC4 default
           mtl,
-          # Very few IPC3 platforms support IPC4 too.
           tgl tgl-h,
         ]
         build_opts: [""]
