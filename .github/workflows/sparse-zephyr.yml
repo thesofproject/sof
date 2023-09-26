@@ -57,12 +57,15 @@ jobs:
       # --pristine is important to reproduce _warnings_. It makes no
       # difference for github but it's useful for anyone trying to
       # reproduce and copying the command from the logs.
+      # "sparse" is currently incompatible with PICOLIBC (the new Zephyr default),
+      # see https://github.com/zephyrproject-rtos/zephyr/issues/63003
       - name: analyze zephyr
         working-directory: ./workspace
         run: |
              ./sof/zephyr/docker-run.sh                          \
              ./sof/zephyr/docker-build.sh ${{ matrix.platform }}          \
              --cmake-args=-DZEPHYR_SCA_VARIANT=sparse --cmake-args=-DCONFIG_LOG_USE_VLA=n  \
+             --cmake-args=-DCONFIG_MINIMAL_LIBC=y  \
              --pristine 2>&1 | tee _.log
 
              printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
