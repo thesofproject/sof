@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <sof/audio/format.h>
+#include <sof/math/numbers.h>
 #include <rtos/alloc.h>
 #include "ipc/topology.h"
 
@@ -145,11 +147,23 @@ int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *
 	int16_t *ref = state->aec_reference;
 	int16_t *mic = (int16_t *) src;
 	int16_t *out = dest;
-	int n;
+	int n, io, im, ir;
 
+	/* Mix input and reference channels to output. The matching channels numbers
+	 * are mixed. If e.g. microphone and output channels count is 4, and reference
+	 * has 2 channels, output channels 3 and 4 are copy of microphone channels 3 and 4,
+	 * and output channels 1 and 2 are sum of microphone and reference.
+	 */
 	memset(dest, 0, sizeof(int16_t) * state->num_output_channels * state->num_frames);
 	for (n = 0; n < state->num_frames; ++n) {
-		*out = *mic + *ref;
+		im = 0;
+		ir = 0;
+		for (io = 0; io < state->num_output_channels; io++) {
+			out[io] = sat_int16(
+				(im < state->num_capture_channels ? (int32_t)mic[im++] : 0) +
+				(ir < state->num_aec_reference_channels ? (int32_t)ref[ir++] : 0));
+		}
+
 		ref += state->num_aec_reference_channels;
 		out += state->num_output_channels;
 		mic += state->num_capture_channels;
