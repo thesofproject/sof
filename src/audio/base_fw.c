@@ -462,9 +462,14 @@ static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t *data_offset,
 				   char *data)
 {
+	/* We can use extended param id for both extended and standard param id */
+	union ipc4_extended_param_id extended_param_id;
+
+	extended_param_id.full = param_id;
+
 	uint32_t ret = -EINVAL;
 
-	switch (param_id) {
+	switch (extended_param_id.part.parameter_type) {
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
 		break;
@@ -473,7 +478,7 @@ static int basefw_get_large_config(struct comp_dev *dev,
 			return -EINVAL;
 	}
 
-	switch (param_id) {
+	switch (extended_param_id.part.parameter_type) {
 	case IPC4_FW_CONFIG:
 		return basefw_config(data_offset, data);
 	case IPC4_HW_CONFIG_GET:

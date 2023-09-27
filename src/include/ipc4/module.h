@@ -55,7 +55,7 @@ enum sof_ipc4_module_type {
 };
 
 /*
- * Structs for Vendor Config Set
+ * Structs for Vendor Config
  */
 
 union ipc4_extended_param_id {
@@ -65,6 +65,13 @@ union ipc4_extended_param_id {
 		uint32_t parameter_instance : 24;
 	} part;
 } __attribute__((packed, aligned(4)));
+
+struct ipc4_vendor_error {
+	/* Index of the failed parameter */
+	uint32_t param_idx;
+	/* Error code */
+	uint32_t err_code;
+};
 
 /*
  * Host Driver sends this message to create a new module instance.
