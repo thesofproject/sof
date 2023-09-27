@@ -124,6 +124,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 "sof-hda-generic\;sof-hda-benchmark-dcblock16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock16,BENCH_DCBLOCK_PARAMS=default"
 "sof-hda-generic\;sof-hda-benchmark-dcblock24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock24,BENCH_DCBLOCK_PARAMS=default"
 "sof-hda-generic\;sof-hda-benchmark-dcblock32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock32,BENCH_DCBLOCK_PARAMS=default"
+"sof-hda-generic\;sof-hda-benchmark-drc16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc16,BENCH_DRC_PARAMS=enabled"
+"sof-hda-generic\;sof-hda-benchmark-drc24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc24,BENCH_DRC_PARAMS=enabled"
+"sof-hda-generic\;sof-hda-benchmark-drc32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc32,BENCH_DRC_PARAMS=enabled"
 
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
