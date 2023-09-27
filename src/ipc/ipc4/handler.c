@@ -931,6 +931,99 @@ static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
+static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
+						   const struct comp_driver *drv,
+						   bool init_block,
+						   bool final_block,
+						   uint32_t *data_off_size,
+						   char *data_out,
+						   const char *data_in)
+{
+	const struct sof_tl * const input_tl = (struct sof_tl *)data_in;
+	int ret;
+	struct ipc4_vendor_error *error;
+
+	if (init_block && final_block) {
+		/* we use data_off_size as in/out,
+		 *  save value to new variable so it can be used as out size
+		 */
+		const int tl_count = *data_off_size / sizeof(struct sof_tl);
+		size_t produced_data = 0;
+
+		for (int i = 0; i < tl_count; i++) {
+			/* we go to next output tlv with each iteration */
+			uint32_t data_off_size_local;
+			struct sof_tlv *output_tlv = (struct sof_tlv *)(data_out + produced_data);
+
+			if (produced_data + input_tl[i].max_length > MAILBOX_DSPBOX_SIZE) {
+				tr_err(&ipc_tr, "error: response payload bigger than DSPBOX size");
+				return IPC4_FAILURE;
+			}
+
+			/* local size is in/out: max msg len goes in, msg len goes out */
+			data_off_size_local = input_tl[i].max_length;
+			ret = drv->ops.get_large_config(dev, input_tl[i].type,
+							true,
+							true,
+							&data_off_size_local, output_tlv->value);
+			if (ret) {
+				/* This is how the reference firmware handled error here. Currently
+				 * no memory is allocated for output in case of error,
+				 * so this may be obsolete.
+				 */
+				error = (struct ipc4_vendor_error *)data_out;
+				error->param_idx = input_tl[i].type;
+				error->err_code = IPC4_FAILURE;
+				*data_off_size = sizeof(*error);
+				ipc_cmd_err(&ipc_tr, "error: get_large_config returned %d", ret);
+				return IPC4_FAILURE;
+			}
+
+			/* update header */
+			output_tlv->type = input_tl[i].type;
+			output_tlv->length = data_off_size_local;
+			produced_data += data_off_size_local + sizeof(*output_tlv);
+		}
+		*data_off_size = produced_data;
+	} else {
+		char *output_buffer;
+		struct sof_tlv *tl_header;
+
+		if (init_block) {
+			*data_off_size = input_tl->max_length;
+			output_buffer = data_out + sizeof(*tl_header);
+		} else {
+			output_buffer = data_out;
+		}
+
+		ret = drv->ops.get_large_config(dev, input_tl->type,
+						init_block,
+						final_block,
+						data_off_size, output_buffer);
+
+		/* on error report which param failed */
+		if (ret) {
+			error = (struct ipc4_vendor_error *)data_out;
+			error->param_idx = input_tl->type;
+			error->err_code = IPC4_FAILURE;
+			*data_off_size = sizeof(*error);
+			ipc_cmd_err(&ipc_tr, "error: get_large_config returned %d", ret);
+			return IPC4_FAILURE;
+		}
+
+		/* for initial block update TL header */
+		if (init_block) {
+			/* we use tlv struct here for clarity, we have length not max_length */
+			tl_header = (struct sof_tlv *)data_out;
+			tl_header->type = input_tl->type;
+			tl_header->length = *data_off_size;
+			/* for initial block data_off_size includes also size of TL */
+			*data_off_size += sizeof(*tl_header);
+		}
+	}
+	return IPC4_SUCCESS;
+}
+
 static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
@@ -973,10 +1066,24 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	}
 
 	data_offset =  config.extension.r.data_off_size;
-	ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
-					config.extension.r.init_block,
-					config.extension.r.final_block,
-					&data_offset, data);
+
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		/* For now only vendor_config case uses payload from hostbox */
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+					 config.extension.r.data_off_size);
+		ret = ipc4_get_vendor_config_module_instance(dev, drv,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     &data_offset,
+							     data,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
+						config.extension.r.init_block,
+						config.extension.r.final_block,
+						&data_offset, data);
+	}
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
