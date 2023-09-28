@@ -132,8 +132,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		new_heap->physical_blocks_allocators[i] = new_allocator;
 
 		/* Fill allocators data based on config and virtual region data */
-		new_allocator->num_blocks = cfg->block_bundles_table[i].number_of_blocks;
-		new_allocator->blk_sz_shift = ilog2(cfg->block_bundles_table[i].block_size);
+		new_allocator->info.num_blocks = cfg->block_bundles_table[i].number_of_blocks;
+		new_allocator->info.blk_sz_shift = ilog2(cfg->block_bundles_table[i].block_size);
 		new_allocator->buffer =	(uint8_t *)new_heap->virtual_region->addr + offset;
 
 		/* Create bit array that is a part of mem_block kept as a ptr */
@@ -270,11 +270,11 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 		 * mem_block.
 		 */
 		block_size =
-		    1 << heap->physical_blocks_allocators[mem_block_iterator]->blk_sz_shift;
+		    1 << heap->physical_blocks_allocators[mem_block_iterator]->info.blk_sz_shift;
 		block_count = SOF_DIV_ROUND_UP((uint64_t)alloc_size, (uint64_t)block_size);
 
 		if (block_count >
-		    heap->physical_blocks_allocators[mem_block_iterator]->num_blocks)
+		    heap->physical_blocks_allocators[mem_block_iterator]->info.num_blocks)
 			continue;
 		/* Try span alloc on first available mem_block for non span
 		 * check if block size is sufficient.
@@ -455,7 +455,7 @@ int vmh_free_heap(struct vmh_heap *heap)
 		if (!heap->physical_blocks_allocators[i])
 			continue;
 		if (!sys_bitarray_is_region_cleared(heap->physical_blocks_allocators[i]->bitmap,
-				heap->physical_blocks_allocators[i]->num_blocks, 0))
+				heap->physical_blocks_allocators[i]->info.num_blocks, 0))
 			return -ENOTEMPTY;
 	}
 
@@ -503,13 +503,13 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 		mem_block_iter < MAX_MEMORY_ALLOCATORS_COUNT;
 		mem_block_iter++) {
 		block_size =
-			1 << heap->physical_blocks_allocators[mem_block_iter]->blk_sz_shift;
+			1 << heap->physical_blocks_allocators[mem_block_iter]->info.blk_sz_shift;
 
 		if (vmh_is_ptr_in_memory_range((uintptr_t)ptr,
 				(uintptr_t)heap->physical_blocks_allocators
 				[mem_block_iter]->buffer,
 				heap->physical_blocks_allocators
-				[mem_block_iter]->num_blocks * block_size)) {
+				[mem_block_iter]->info.num_blocks * block_size)) {
 			ptr_range_found = true;
 			break;
 		}
@@ -556,7 +556,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 			 */
 			size_t bits_to_check =
 				heap->physical_blocks_allocators
-					[mem_block_iter]->num_blocks - ptr_bit_array_position;
+					[mem_block_iter]->info.num_blocks - ptr_bit_array_position;
 
 			/* Neeeeeeeds optimization - thinking how to do it properly
 			 * each set bit in order after another means one allocated block.
