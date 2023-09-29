@@ -165,16 +165,6 @@ struct module_data {
 	uint32_t module_entry_point; /**<loadable module entry point address */
 };
 
-/*
- * Used by the module to keep track of the number of sources bound to it and can be accessed
- * from different cores
- */
-struct module_source_info {
-	struct coherent c;
-	struct comp_dev *sources[MODULE_MAX_SOURCES];
-	void *private; /**< additional module-specific private info */
-};
-
 /* module_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
@@ -249,9 +239,6 @@ struct processing_module {
 
 	/* pointer to system services for loadable modules */
 	uint32_t *sys_service;
-
-	/* table containing the list of connected sources */
-	struct module_source_info *source_info;
 
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;
@@ -354,36 +341,6 @@ static inline void module_update_buffer_position(struct input_stream_buffer *inp
 
 	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
-}
-
-__must_check static inline
-struct module_source_info __sparse_cache *module_source_info_acquire(struct module_source_info *msi)
-{
-	struct coherent __sparse_cache *c;
-
-	c = coherent_acquire_thread(&msi->c, sizeof(*msi));
-
-	return attr_container_of(c, struct module_source_info __sparse_cache, c, __sparse_cache);
-}
-
-static inline void module_source_info_release(struct module_source_info __sparse_cache *msi)
-{
-	coherent_release_thread(&msi->c, sizeof(*msi));
-}
-
-/* when source argument is NULL, this function returns the first unused entry */
-static inline
-int find_module_source_index(struct module_source_info __sparse_cache *msi,
-			     const struct comp_dev *source)
-{
-	int i;
-
-	for (i = 0; i < MODULE_MAX_SOURCES; i++) {
-		if (msi->sources[i] == source)
-			return i;
-	}
-
-	return -EINVAL;
 }
 
 static inline int module_process_stream(struct processing_module *mod,

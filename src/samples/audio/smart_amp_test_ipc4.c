@@ -277,7 +277,6 @@ static int smart_amp_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *fb_buf_c;
 	struct comp_buffer *buf;
-	struct module_source_info __sparse_cache *mod_source_info;
 	struct input_stream_buffer *fb_input = NULL;
 	/* if there is only one input stream, it should be the source input */
 	struct input_stream_buffer *src_input = &input_buffers[0];
@@ -285,8 +284,6 @@ static int smart_amp_process(struct processing_module *mod,
 	uint32_t avail_frames = 0;
 	uint32_t sink_bytes;
 	uint32_t i;
-
-	mod_source_info = module_source_info_acquire(mod->source_info);
 
 	if (num_input_buffers == SMART_AMP_NUM_IN_PINS)
 		for (i = 0; i < num_input_buffers; i++) {
@@ -326,7 +323,6 @@ static int smart_amp_process(struct processing_module *mod,
 
 	output_buffers[0].size = sink_bytes;
 
-	module_source_info_release(mod_source_info);
 	return 0;
 }
 
