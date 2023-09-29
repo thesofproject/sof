@@ -89,14 +89,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	/* align the allocation size to a cache line for the coherent API */
-	mod->source_info = coherent_init_thread(struct module_source_info, c);
-	if (!mod->source_info) {
-		rfree(dev);
-		rfree(mod);
-		return NULL;
-	}
-
 	dst = &mod->priv.cfg;
 	mod->dev = dev;
 
@@ -186,7 +178,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
-	coherent_free_thread(mod->source_info, c);
 	rfree(mod);
 	rfree(dev);
 	return NULL;
@@ -449,23 +440,10 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		return 0;
 
-	/*
-	 * compute number of input buffers and make the source_info shared if the module is on a
-	 * different core than any of it's sources
-	 */
+	/* compute number of input buffers */
 	mod->num_of_sources = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *buf;
-		struct comp_dev *source;
-
-		buf = buffer_from_list(blist, PPL_DIR_UPSTREAM);
-		source = buffer_get_comp(buf, PPL_DIR_UPSTREAM);
-
-		if (source->pipeline && source->pipeline->core != dev->pipeline->core)
-			coherent_shared_thread(mod->source_info, c);
-
+	list_for_item(blist, &dev->bsource_list)
 		mod->num_of_sources++;
-	}
 
 	/* compute number of output buffers */
 	mod->num_of_sinks = 0;
@@ -1649,7 +1627,6 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
-	coherent_free_thread(mod->source_info, c);
 	rfree(mod);
 	rfree(dev);
 }
@@ -1885,97 +1862,28 @@ static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
 
 int module_adapter_bind(struct comp_dev *dev, void *data)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu;
-	struct comp_dev *source_dev;
-	int source_index;
-	int src_id;
 	int ret;
 
 	ret = module_bind(mod, data);
 	if (ret < 0)
 		return ret;
 
-	bu = (struct ipc4_module_bind_unbind *)data;
-	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
-
 	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
-
-	/* nothing to do if this module is the source during bind */
-	if (dev->ipc_config.id == src_id)
-		return 0;
-
-	source_dev = ipc4_get_comp_dev(src_id);
-	if (!source_dev) {
-		comp_err(dev, "module_adapter_bind: no source with ID %d found", src_id);
-		return -EINVAL;
-	}
-
-	mod_source_info = module_source_info_acquire(mod->source_info);
-
-	source_index = find_module_source_index(mod_source_info, source_dev);
-	/*
-	 * this should never happen as source_info should have been already cleared in
-	 * module_adapter_unbind()
-	 */
-	if (source_index >= 0)
-		mod_source_info->sources[source_index] = NULL;
-
-	/* find an empty slot in the source_info array */
-	source_index = find_module_source_index(mod_source_info, NULL);
-	if (source_index < 0) {
-		/* no free slot in module source_info array */
-		comp_err(dev, "Too many inputs!");
-		module_source_info_release(mod_source_info);
-		return -ENOMEM;
-	}
-
-	/* set the source dev pointer */
-	mod_source_info->sources[source_index] = source_dev;
-
-	module_source_info_release(mod_source_info);
 
 	return 0;
 }
 
 int module_adapter_unbind(struct comp_dev *dev, void *data)
 {
-	struct module_source_info __sparse_cache *mod_source_info;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu;
-	struct comp_dev *source_dev;
-	int source_index;
-	int src_id;
 	int ret;
 
 	ret = module_unbind(mod, data);
 	if (ret < 0)
 		return ret;
 
-	bu = (struct ipc4_module_bind_unbind *)data;
-	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
-
 	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
-
-	/* nothing to do if this module is the source during unbind */
-	if (dev->ipc_config.id == src_id)
-		return 0;
-
-	source_dev = ipc4_get_comp_dev(src_id);
-	if (!source_dev) {
-		comp_err(dev, "module_adapter_bind: no source with ID %d found", src_id);
-		return -EINVAL;
-	}
-
-	mod_source_info = module_source_info_acquire(mod->source_info);
-
-	/* find the index of the source in the sources array and clear it */
-	source_index = find_module_source_index(mod_source_info, source_dev);
-	if (source_index >= 0)
-		mod_source_info->sources[source_index] = NULL;
-
-	module_source_info_release(mod_source_info);
 
 	return 0;
 }
