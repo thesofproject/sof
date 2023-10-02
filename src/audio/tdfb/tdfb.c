@@ -40,6 +40,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#include <ipc4/notification.h>
+#endif
+
 /* The driver assigns running numbers for control index. If there's single control of
  * type switch, enum, binary they all have index 0.
  */
@@ -57,10 +63,60 @@ DECLARE_SOF_RT_UUID("tdfb", tdfb_uuid,  0xdd511749, 0xd9fa, 0x455c, 0xb3, 0xa7,
 
 DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
 
-/* IPC */
+/* IPC helpers for control update to user space */
 
-/* TODO: ALSA control update to user space need to be moved to module adapter */
+#if CONFIG_IPC_MAJOR_4
+static struct ipc_msg *tdfb_notification_init(struct processing_module *mod,
+					      uint32_t control_type_param_id,
+					      uint32_t control_id)
+{
+	struct ipc_msg msg_proto;
+	struct comp_dev *dev = mod->dev;
+	struct comp_ipc_config *ipc_config = &dev->ipc_config;
+	union ipc4_notification_header *primary =
+		(union ipc4_notification_header *)&msg_proto.header;
+	struct ipc_msg *msg;
+	struct tdfb_notification_payload *payload;
 
+	/* Clear header, extension, and other ipc_msg members */
+	memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
+	primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
+				 sizeof(struct tdfb_notification_payload));
+	if (!msg)
+		return NULL;
+
+	payload = (struct tdfb_notification_payload *)msg->tx_data;
+	payload->module_data.instance_id = IPC4_INST_ID(ipc_config->id);
+	payload->module_data.module_id = IPC4_MOD_ID(ipc_config->id);
+	payload->module_data.event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+		control_type_param_id;
+	payload->module_data.event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+		sizeof(struct sof_ipc4_ctrl_value_chan);
+	payload->control_msg.id = control_id;
+	payload->control_msg.num_elems = 1;
+	payload->control_value.channel = 0;
+
+	comp_dbg(dev, "instance_id = 0x%08x, module_id = 0x%08x",
+		 payload->module_data.instance_id, payload->module_data.module_id);
+	return msg;
+}
+
+static void tdfb_send_notification(struct ipc_msg *msg, uint32_t val)
+{
+	struct tdfb_notification_payload *ipc_payload;
+
+	ipc_payload = (struct tdfb_notification_payload *)msg->tx_data;
+	ipc_payload->control_value.value = val;
+	ipc_msg_send(msg, NULL, false);
+}
+
+/* end CONFIG_IPC_MAJOR_4 */
+
+#elif CONFIG_IPC_MAJOR_3
 static int init_get_ctl_ipc(struct processing_module *mod)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
@@ -94,6 +150,7 @@ static void send_get_ctl_ipc(struct processing_module *mod)
 
 	ipc_msg_send(cd->msg, cd->ctrl_data, false);
 }
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 /*
  * The optimized FIR functions variants need to be updated into function
@@ -447,9 +504,19 @@ static int tdfb_init(struct processing_module *mod)
 	 */
 
 	/* Initialize IPC for direction of arrival estimate update */
+#if CONFIG_IPC_MAJOR_4
+	cd->msg = tdfb_notification_init(mod, SOF_IPC4_ENUM_CONTROL_PARAM_ID,
+					 CTRL_INDEX_AZIMUTH_ESTIMATE);
+	if (!cd->msg) {
+		comp_err(dev, "Failed to initialize control notification.");
+		ret = -EINVAL;
+		goto err_free_cd;
+	}
+#elif CONFIG_IPC_MAJOR_3
 	ret = init_get_ctl_ipc(mod);
 	if (ret)
 		goto err_free_cd;
+#endif
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -476,7 +543,9 @@ static int tdfb_init(struct processing_module *mod)
 	return 0;
 
 err:
+	/* These are null if not used for IPC version */
 	rfree(cd->ctrl_data);
+	ipc_msg_free(cd->msg);
 
 err_free_cd:
 	rfree(cd);
@@ -503,6 +572,7 @@ static int tdfb_free(struct processing_module *mod)
  * Module commands handling
  */
 
+#if CONFIG_IPC_MAJOR_3
 static int tdfb_cmd_switch_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
 {
 	int j;
@@ -557,11 +627,16 @@ static int tdfb_cmd_get_value(struct processing_module *mod, struct sof_ipc_ctrl
 	comp_err(mod->dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
 	return -EINVAL;
 }
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 static int tdfb_get_config(struct processing_module *mod,
-			   uint32_t config_id, uint32_t *data_offset_size,
+			   uint32_t param_id, uint32_t *data_offset_size,
 			   uint8_t *fragment, size_t fragment_size)
 {
+#if CONFIG_IPC_MAJOR_4
+	comp_err(mod->dev, "tdfb_get_config(), Not supported, should not happen");
+	return -EINVAL;
+#elif CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
@@ -570,8 +645,10 @@ static int tdfb_get_config(struct processing_module *mod,
 
 	comp_dbg(mod->dev, "tdfb_get_config(), binary");
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
+#endif /* CONFIG_IPC_MAJOR_3 */
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int tdfb_cmd_enum_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
 {
 	if (cdata->num_elems != 1)
@@ -634,16 +711,80 @@ static int tdfb_cmd_set_value(struct processing_module *mod, struct sof_ipc_ctrl
 	return -EINVAL;
 }
 
-static int tdfb_set_config(struct processing_module *mod, uint32_t config_id,
+/* end CONFIG_IPC_MAJOR_3 */
+
+#elif CONFIG_IPC_MAJOR_4
+static int tdfb_cmd_enum_set(struct sof_ipc4_control_msg_payload *ctl, struct tdfb_comp_data *cd)
+{
+	if (ctl->num_elems != 1)
+		return -EINVAL;
+
+	if (ctl->chanv[0].value > SOF_TDFB_MAX_ANGLES)
+		return -EINVAL;
+
+	switch (ctl->id) {
+	case CTRL_INDEX_AZIMUTH:
+		cd->az_value = ctl->chanv[0].value;
+		cd->update = true;
+		break;
+	case CTRL_INDEX_AZIMUTH_ESTIMATE:
+		cd->az_value_estimate = ctl->chanv[0].value;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int tdfb_cmd_switch_set(struct sof_ipc4_control_msg_payload *ctl, struct tdfb_comp_data *cd)
+{
+	if (ctl->num_elems != 1)
+		return -EINVAL;
+
+	switch (ctl->id) {
+	case CTRL_INDEX_PROCESS:
+		cd->beam_on = ctl->chanv[0].value;
+		cd->update = true;
+		break;
+	case CTRL_INDEX_DIRECTION:
+		cd->direction_updates = ctl->chanv[0].value;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
+static int tdfb_set_config(struct processing_module *mod, uint32_t param_id,
 			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			   size_t response_size)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
+
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		comp_info(mod->dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID id = %d, num_elems = %d",
+			  ctl->id, ctl->num_elems);
+		return tdfb_cmd_switch_set(ctl, cd);
+
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+		comp_info(mod->dev, "SOF_IPC4_ENUM_CONTROL_PARAM_ID id = %d, num_elems = %d",
+			  ctl->id, ctl->num_elems);
+		return tdfb_cmd_enum_set(ctl, cd);
+	}
+#elif CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
 		return tdfb_cmd_set_value(mod, cdata);
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 	comp_dbg(mod->dev, "tdfb_set_config(), binary");
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
@@ -705,7 +846,11 @@ static int tdfb_process(struct processing_module *mod,
 			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
 
 		if (cd->direction_updates && cd->direction_change) {
+#if CONFIG_IPC_MAJOR_3
 			send_get_ctl_ipc(mod);
+#elif CONFIG_IPC_MAJOR_4
+			tdfb_send_notification(cd->msg, cd->az_value_estimate);
+#endif
 			cd->direction_change = false;
 			comp_dbg(dev, "tdfb_dupd %d %d",
 				 cd->az_value_estimate, cd->direction.az_slow);
@@ -725,6 +870,24 @@ static void tdfb_set_alignment(struct audio_stream *source,
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
 }
 
+#if CONFIG_IPC_MAJOR_4
+static void tdfb_params(struct processing_module *mod)
+{
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+}
+#endif
+
 static int tdfb_prepare(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
 			struct sof_sink **sinks, int num_of_sinks)
@@ -739,6 +902,10 @@ static int tdfb_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "tdfb_prepare()");
+
+#if CONFIG_IPC_MAJOR_4
+	tdfb_params(mod);
+#endif
 
 	/* Find source and sink buffers */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

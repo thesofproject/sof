@@ -17,6 +17,10 @@
 #include <sof/platform.h>
 #include <user/tdfb.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#endif
+
 /* Select optimized code variant when xt-xcc compiler is used */
 #if defined __XCC__
 #include <xtensa/config/core-isa.h>
@@ -109,6 +113,14 @@ struct tdfb_comp_data {
 			  struct output_stream_buffer *bsink,
 			  int frames);
 };
+
+#if CONFIG_IPC_MAJOR_4
+struct tdfb_notification_payload {
+	struct sof_ipc4_notify_module_data module_data;
+	struct sof_ipc4_control_msg_payload control_msg;
+	struct sof_ipc4_ctrl_value_chan control_value; /* One channel value */
+};
+#endif
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
