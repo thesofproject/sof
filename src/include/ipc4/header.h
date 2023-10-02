@@ -173,6 +173,7 @@ struct ipc4_message_reply {
 
 #define SOF_IPC4_SWITCH_CONTROL_PARAM_ID 200
 #define SOF_IPC4_ENUM_CONTROL_PARAM_ID  201
+#define SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL ((uint32_t)(0xA15A << 16))
 
 /**
  * struct sof_ipc4_ctrl_value_chan: generic channel mapped value data
@@ -196,6 +197,22 @@ struct sof_ipc4_control_msg_payload {
 	uint16_t num_elems;
 	uint32_t reserved[4];
 	struct sof_ipc4_ctrl_value_chan chanv[];
+} __attribute((packed, aligned(4)));
+
+/**
+ * struct sof_ipc4_notify_module_data - payload for module notification
+ * @instance_id: instance ID of the originator module of the notification
+ * @module_id: module ID of the originator of the notification
+ * @event_id: module specific event id
+ * @event_data_size: Size of the @event_data (if any) in bytes
+ * @event_data: Optional notification data, module and notification dependent
+ */
+struct sof_ipc4_notify_module_data {
+	uint16_t instance_id;
+	uint16_t module_id;
+	uint32_t event_id;
+	uint32_t event_data_size;
+	uint8_t event_data[];
 } __attribute((packed, aligned(4)));
 
 #endif
