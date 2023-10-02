@@ -1,8 +1,10 @@
 % bf_export(bf)
 %
 % Inputs
-% bf.sofctl_fn ..... filename of ascii text format blob
-% bf.tplg_fn ....... filename of topology m4 format blob
+% bf.sofctl3_fn .... filename of ascii text format blob
+% bf.sofctl4_fn .... filename of ascii text format blob
+% bf.tplg1_fn ...... filename of topology m4 format blob
+% bf.tplg2_fn ...... filename of topology m4 format blob
 % bf ............... the design procedure output
 
 % SPDX-License-Identifier: BSD-3-Clause
@@ -13,7 +15,8 @@
 
 function bf = bf_export(bf)
 
-% Use functionc from EQ tool, test utils
+% Use functionc from common, test utils
+addpath('../common');
 addpath('../eq');
 addpath('../../test/audio/test_utils');
 
@@ -73,23 +76,50 @@ end
 
 %% Build blob
 bf.all_filters = filters;
-bp = bf_blob_pack(bf);
+bp3 = bf_blob_pack(bf, 3);
+bp4 = bf_blob_pack(bf, 4);
 
 %% Export
-if isempty(bf.sofctl_fn)
-	fprintf(1, 'No sof-ctl output file specified.\n');
+if isempty(bf.sofctl3_fn)
+	fprintf(1, 'No sof-ctl3 output file specified.\n');
 else
-	fprintf(1, 'Exporting to %s\n', bf.sofctl_fn);
-	mkdir_check(bf.sofctl_path);
-	eq_alsactl_write(bf.sofctl_fn, bp);
+	fprintf(1, 'Exporting to %s\n', bf.sofctl3_fn);
+	mkdir_check(bf.sofctl3_path);
+	alsactl_write(bf.sofctl3_fn, bp3);
 end
 
-if isempty(bf.tplg_fn)
-	fprintf(1, 'No topology output file specified.\n');
+if isempty(bf.sofctl4_fn)
+	fprintf(1, 'No sof-ctl4 output file specified.\n');
 else
-	fprintf(1, 'Exporting to %s\n', bf.tplg_fn);
-	mkdir_check(bf.tplg_path);
-	eq_tplg_write(bf.tplg_fn, bp, 'DEF_TDFB_PRIV');
+	fprintf(1, 'Exporting to %s\n', bf.sofctl4_fn);
+	mkdir_check(bf.sofctl4_path);
+	alsactl_write(bf.sofctl4_fn, bp4);
 end
+
+if isempty(bf.export_note)
+	export_note = sprintf("Exported with script example_%s_array.m", bf.array);
+else
+	export_note = bf.export_note;
+end
+
+if isempty(bf.tplg1_fn)
+	fprintf(1, 'No topology1 output file specified.\n');
+else
+	fprintf(1, 'Exporting to %s\n', bf.tplg1_fn);
+	mkdir_check(bf.tplg1_path);
+	tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note);
+end
+
+if isempty(bf.tplg2_fn)
+	fprintf(1, 'No topology2 output file specified.\n');
+else
+	fprintf(1, 'Exporting to %s\n', bf.tplg2_fn);
+	mkdir_check(bf.tplg2_path);
+	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note);
+end
+
+rmpath('../../test/audio/test_utils');
+rmpath('../eq');
+rmpath('../common');
 
 end

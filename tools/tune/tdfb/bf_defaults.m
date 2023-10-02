@@ -19,8 +19,10 @@ bf.plot_box = 0.20;  % Show 20cm wide plot cube for array geometry
 bf.array_angle = [0 0 0]; % Array rotation angles for xyz
 bf.tplg_fn = '';
 bf.sofctl_fn = '';
-bf.tplg_path = '../../topology/topology1/m4/tdfb';
-bf.sofctl_path = '../../ctl/tdfb';
+bf.tplg1_path = '../../topology/topology1/m4/tdfb';
+bf.tplg2_path = '../../topology/topology2/include/components/tdfb';
+bf.sofctl3_path = '../../ctl/ipc3/tdfb';
+bf.sofctl4_path = '../../ctl/ipc4/tdfb';
 bf.data_path = './data';
 bf.endian = 'little';
 bf.fn = 1;
@@ -56,5 +58,6 @@ bf.sinerot_fn = {''};
 bf.diffuse_fn = {''};
 bf.random_fn = {''};
 bf.mat_fn = {''};
+bf.export_note = '';
 
 end
