@@ -16,8 +16,10 @@ end
 
 function line_xyz(fs, fir_length, az)
 
-tplg_fn = sprintf('coef_line4_0mm36mm146mm182mm_%dkhz.m4', fs/1e3);
-sofctl_fn = sprintf('coef_line4_0mm36mm146mm182mm_%dkhz.txt', fs/1e3);
+tplg1_fn = sprintf('coef_line4_0mm36mm146mm182mm_%dkhz.m4', fs/1e3);
+sofctl3_fn = sprintf('coef_line4_0mm36mm146mm182mm_%dkhz.txt', fs/1e3);
+tplg2_fn = sprintf('line4_0mm36mm146mm182mm_%dkhz.conf', fs/1e3);
+sofctl4_fn = sprintf('line4_0mm36mm146mm182mm_%dkhz.txt', fs/1e3);
 
 % Get defaults
 close all;
@@ -52,6 +54,7 @@ bf = bf_filenames_helper(bf, 'line4_0mm36mm146mm182mm');
 bf = bf_design(bf);
 
 % Export files for topology and sof-ctl
+bf.export_note = 'Created with script example_line_0mm36mm146mm182mm.m';
 bf_export(bf);
 
 end

@@ -34,18 +34,26 @@ end
 [az_str_pm] = angles_to_str(bf.steer_az);
 [el_str_pm] = angles_to_str(bf.steer_el);
 
-if nargin > 1
-    idstr = sprintf('%s_az%sel%sdeg_%dkhz', ...
-                id, az_str_pm, el_str_pm, round(bf.fs/1e3));
+if strcmp(bf.array, 'line')
+	el_str_show = '';
 else
-    idstr = sprintf('%s%s_%smm_az%sel%sdeg_%dkhz', ...
+	el_str_show = sprintf('_el%s', el_str_pm);
+end
+
+if nargin > 1
+    idstr = sprintf('%s_az%s%s_%dkhz', ...
+                id, az_str_pm, el_str_show, round(bf.fs/1e3));
+else
+    idstr = sprintf('%s%s_%smm_az%s%s_%dkhz', ...
                 bf.array, mic_n_str, mic_d_str, ...
-                az_str_pm, el_str_pm, round(bf.fs/1e3));
+                az_str_pm, el_str_show, round(bf.fs/1e3));
 end
 
 % Contain multiple (az, el) angles
-bf.sofctl_fn = fullfile(bf.sofctl_path, sprintf('coef_%s.txt', idstr));
-bf.tplg_fn = fullfile(bf.tplg_path, sprintf('coef_%s.m4', idstr));
+bf.sofctl3_fn = fullfile(bf.sofctl3_path, sprintf('coef_%s.txt', idstr));
+bf.tplg1_fn = fullfile(bf.tplg1_path, sprintf('coef_%s.m4', idstr));
+bf.sofctl4_fn = fullfile(bf.sofctl4_path, sprintf('%s.txt', idstr));
+bf.tplg2_fn = fullfile(bf.tplg2_path, sprintf('%s.conf', idstr));
 
 
 for n = 1:length(bf.steer_az)

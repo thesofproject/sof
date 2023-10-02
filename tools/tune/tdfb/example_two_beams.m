@@ -25,44 +25,54 @@ for fs = [16e3 48e3]
 	close all;
 
 	%% 2 mic 50 mm array
-	tplg_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 50e-3;  % 50 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 1);
+	line2_two_beams(fs, d, a1, a2, fn, 1);
 
 	%% 2 mic 68 mm array
-	tplg_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line2_68mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line2_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 68e-3;  % 68 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 1);
+	line2_two_beams(fs, d, a1, a2, fn, 1);
 
 	%% 4 mic 28 mm spaced array
-	tplg_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 28e-3;  % 28 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 1);
+	line4_two_beams(fs, d, a1, a2, fn, 1);
 
 	%% 4 mic 68 mm spaced array
-	tplg_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line4_68mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line4_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 68e-3;  % 68 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 1);
+	line4_two_beams(fs, d, a1, a2, fn, 1);
 
 	%% 4 mic 78 mm spaced array
-	tplg_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line4_78mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line4_78mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 78e-3;  % 78 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 1);
+	line4_two_beams(fs, d, a1, a2, fn, 1);
 end
 
 %% Export blob with just +/- 90 deg beams for testbench beampattern check
@@ -71,29 +81,35 @@ az = [90];
 azstr = az_to_string(az);
 for fs = [16e3 48e3]
 	%% 2 mic 50 mm array, disable beam off description in blob to force processing on
-	tplg_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 50e-3;  % 50 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 0);
+	line2_two_beams(fs, d, a1, a2, fn, 0);
 
 	%% 4 mic 28 mm spaced array, no beam off configuration
-	tplg_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg1_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 28e-3;  % 28 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
-	line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, 0);
+	line4_two_beams(fs, d, a1, a2, fn, 0);
 end
 
 %% Circular array with two beams
 az = 30;
 azstr = az_to_string(az);
 for fs = [48e3 16e3]
-	tplg_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	sofctl_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	circular_two_beams(fs, 100e-3, 8, az, -az, tplg_fn, sofctl_fn, 0);
+	fn.tplg1_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	fn.sofctl3_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	fn.tplg2_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
+	fn.sofctl4_fn = sprintf('coef_circular8_100mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
+	circular_two_beams(fs, 100e-3, 8, az, -az, fn, 0);
 end
 
 %% Creates beamformer with two beams for device with device with microphones
@@ -110,7 +126,7 @@ function s = az_to_string(az)
 	end
 end
 
-function line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, add_beam_off);
+function line2_two_beams(fs, d, a1, a2, fn, add_beam_off);
 
 % Get defaults
 bf1 = bf_defaults();
@@ -152,15 +168,18 @@ bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
+bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
+bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
+bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
+bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
+bfm.export_note = 'Created with script example_two_beams.m';
 bf_export(bfm);
 
 end
 
-function line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, add_beam_off);
+function line4_two_beams(fs, d, a1, a2, fn, add_beam_off);
 
 % Get defaults
 bf1 = bf_defaults();
@@ -201,15 +220,18 @@ bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
+bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
+bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
+bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
+bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
+bfm.export_note = 'Created with script example_two_beams.m';
 bf_export(bfm);
 
 end
 
-function circular_two_beams(fs, r, n, a1, a2, tplg_fn, sofctl_fn, add_beam_off)
+function circular_two_beams(fs, r, n, a1, a2, fn, add_beam_off)
 
 % Get defaults and common settings
 bf1 = bf_defaults();
@@ -244,10 +266,13 @@ bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
+bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
+bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
+bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
+bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
+bfm.export_note = 'Created with script example_two_beams.m';
 bf_export(bfm);
 
 end
@@ -273,8 +298,10 @@ switch fs
 end
 
 % Setup array
-tplg_fn = sprintf('coef_line4_0mm36mm146mm182mm_%s_%dkhz.m4', azstr, fs/1e3);
-sofctl_fn = sprintf('coef_line4_0mm36mm146mm182mm_%s_%dkhz.txt', azstr, fs/1e3);
+tplg1_fn = sprintf('coef_line4_0mm36mm146mm182mm_%s_%dkhz.m4', azstr, fs/1e3);
+sofctl3_fn = sprintf('coef_line4_0mm36mm146mm182mm_%s_%dkhz.txt', azstr, fs/1e3);
+tplg2_fn = sprintf('line4_0mm36mm146mm182mm_%s_%dkhz.conf', azstr, fs/1e3);
+sofctl4_fn = sprintf('line4_0mm36mm146mm182mm_%s_%dkhz.txt', azstr, fs/1e3);
 a1 = az;   % Azimuth +az deg
 a2 = -az;  % Azimuth -az deg
 close all;
@@ -317,10 +344,13 @@ bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
+bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, sofctl3_fn);
+bfm.tplg1_fn = fullfile(bfm.tplg1_path, tplg1_fn);
+bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, sofctl4_fn);
+bfm.tplg2_fn = fullfile(bfm.tplg2_path, tplg2_fn);
 
 % Export files for topology and sof-ctl
+bfm.export_note = 'Created with script example_two_beams.m';
 bf_export(bfm);
 
 end

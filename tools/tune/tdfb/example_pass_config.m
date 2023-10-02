@@ -27,8 +27,11 @@ bf.num_filters          = 2;     % Two filters
 bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
 
 % Files
-bf.sofctl_fn = fullfile(bf.sofctl_path, 'coef_line2_pass.txt');
-bf.tplg_fn = fullfile(bf.tplg_path, 'coef_line2_pass.m4');
+bf.export_note = 'Exported with script example_pass_config.m';
+bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line2_pass.txt');
+bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line2_pass.m4');
+bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line2_pass.txt');
+bf.tplg2_fn = fullfile(bf.tplg2_path, 'line2_pass.conf');
 bf_export(bf);
 
 % Setup for four channels
@@ -43,8 +46,10 @@ bf.num_filters = 4;
 bf.w = [1 0 0 0; 1 0 0 0; 1 0 0 0; 1 0 0 0]'; % Four FIR filters with first tap set to one
 
 % Files
-bf.sofctl_fn = fullfile(bf.sofctl_path, 'coef_line4_pass.txt');
-bf.tplg_fn = fullfile(bf.tplg_path, 'coef_line4_pass.m4');
+bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4_pass.txt');
+bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4_pass.m4');
+bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4_pass.txt');
+bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4_pass.conf');
 bf_export(bf);
 
 end

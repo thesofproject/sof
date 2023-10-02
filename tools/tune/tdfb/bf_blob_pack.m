@@ -1,4 +1,4 @@
-function blob8 = bf_blob_pack(bf)
+function blob8 = bf_blob_pack(bf, ipc_version)
 
 %% Pack TDFB struct to bytes
 %
@@ -143,7 +143,7 @@ end
 nbytes_data = nb16 * 2;
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = eq_get_abi(nbytes_data);
+[abi_bytes, nbytes_abi] = get_abi(nbytes_data, ipc_version);
 
 %% Initialize uint8 array with correct size
 nbytes = nbytes_abi + nbytes_data;
