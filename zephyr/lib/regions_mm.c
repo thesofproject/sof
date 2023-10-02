@@ -492,24 +492,24 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	if (heap->core_id != cpu_get_id())
 		return -EINVAL;
 
-	size_t mem_block_iterator, i, size_to_free, block_size, ptr_bit_array_offset,
+	size_t mem_block_iter, i, size_to_free, block_size, ptr_bit_array_offset,
 		ptr_bit_array_position, physical_block_count,
 		check_offset, check_position, check_size;
 	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
 	bool ptr_range_found;
 
 	/* Get allocator from which ptr was allocated */
-	for (mem_block_iterator = 0, ptr_range_found = false;
-		mem_block_iterator < MAX_MEMORY_ALLOCATORS_COUNT;
-		mem_block_iterator++) {
+	for (mem_block_iter = 0, ptr_range_found = false;
+		mem_block_iter < MAX_MEMORY_ALLOCATORS_COUNT;
+		mem_block_iter++) {
 		block_size =
-			1 << heap->physical_blocks_allocators[mem_block_iterator]->blk_sz_shift;
+			1 << heap->physical_blocks_allocators[mem_block_iter]->blk_sz_shift;
 
 		if (vmh_is_ptr_in_memory_range((uintptr_t)ptr,
 				(uintptr_t)heap->physical_blocks_allocators
-				[mem_block_iterator]->buffer,
+				[mem_block_iter]->buffer,
 				heap->physical_blocks_allocators
-				[mem_block_iterator]->num_blocks * block_size)) {
+				[mem_block_iter]->num_blocks * block_size)) {
 			ptr_range_found = true;
 			break;
 		}
@@ -528,19 +528,19 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 
 		/* Not sure if that is fastest way to find the size comments welcome */
 		ptr_bit_array_offset = (uintptr_t)ptr
-			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iterator]->buffer;
+			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iter]->buffer;
 		ptr_bit_array_position = ptr_bit_array_offset / block_size;
 
 		/* Allocation bit array check */
 		int bit_value, prev_bit_value = 0;
 
-		sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iterator],
+		sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iter],
 			ptr_bit_array_position, &bit_value);
 		/* If checked bit is in position 0 we assume it is valid
 		 * and assigned 0 for further logic
 		 */
 		if (ptr_bit_array_position)
-			sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iterator],
+			sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iter],
 				ptr_bit_array_position - 1, &prev_bit_value);
 
 		/* If bit is 1 we know we could be at the start of the allocation,
@@ -556,7 +556,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 			 */
 			size_t bits_to_check =
 				heap->physical_blocks_allocators
-					[mem_block_iterator]->num_blocks - ptr_bit_array_position;
+					[mem_block_iter]->num_blocks - ptr_bit_array_position;
 
 			/* Neeeeeeeds optimization - thinking how to do it properly
 			 * each set bit in order after another means one allocated block.
@@ -567,7 +567,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 				i < bits_to_check;
 				i++) {
 
-				sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iterator], i,
+				sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iter], i,
 					&bit_value);
 				if (bit_value)
 					size_to_free += block_size;
@@ -582,10 +582,10 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 		}
 
 		retval = sys_mem_blocks_free_contiguous(
-			heap->physical_blocks_allocators[mem_block_iterator], ptr,
+			heap->physical_blocks_allocators[mem_block_iter], ptr,
 			size_to_free / block_size);
 	} else {
-		retval = sys_mem_blocks_free(heap->physical_blocks_allocators[mem_block_iterator],
+		retval = sys_mem_blocks_free(heap->physical_blocks_allocators[mem_block_iter],
 			1, &ptr);
 	}
 
@@ -610,13 +610,13 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 		phys_block_ptr = phys_aligned_ptr + i * CONFIG_MM_DRV_PAGE_SIZE;
 
 		check_offset = phys_block_ptr
-			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iterator]->buffer;
+			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iter]->buffer;
 		check_position = check_offset / block_size;
 
 		check_size = CONFIG_MM_DRV_PAGE_SIZE / block_size;
 
 		if (sys_bitarray_is_region_cleared(
-				heap->physical_blocks_allocators[mem_block_iterator]->bitmap,
+				heap->physical_blocks_allocators[mem_block_iter]->bitmap,
 				check_size, check_offset))
 			sys_mm_drv_unmap_region((void *)phys_block_ptr,
 					CONFIG_MM_DRV_PAGE_SIZE);
