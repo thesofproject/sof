@@ -58,7 +58,7 @@ set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
-set(RIMAGE_TOP ${sof_top_dir}/rimage)
+set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
 # Save path to rimage configuration files in cmake cache for later use by
 # rimage during the "west sign" stage

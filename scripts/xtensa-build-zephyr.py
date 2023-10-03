@@ -512,7 +512,7 @@ RIMAGE_BUILD_DIR  = west_top / "build-rimage"
 # for now we must stick to `sof/rimage/[tomlc99]` for
 # backwards-compatibility with XTOS platforms and git submodules, see more
 # detailed comments in west.yml
-RIMAGE_SOURCE_DIR = west_top / "sof" / "rimage"
+RIMAGE_SOURCE_DIR = west_top / "sof" / "tools" / "rimage"
 
 
 def rimage_west_configuration(platform_dict, dest_dir):
@@ -563,14 +563,11 @@ def rimage_west_configuration(platform_dict, dest_dir):
 
 def build_rimage():
 
-	# Detect non-west rimage duplicates, example: git submdule
-	# SOF_TOP/rimage = sof2/rimage
-	nested_rimage = pathlib.Path(SOF_TOP, "rimage")
-	if nested_rimage.is_dir() and not nested_rimage.samefile(RIMAGE_SOURCE_DIR):
-		raise RuntimeError(
-			f"""Two rimage source directories found.
-     Move non-west {nested_rimage} out of west workspace {west_top}.
-     See output of 'west list'."""
+	old_rimage_loc = SOF_TOP / "rimage"
+	# Don't warn on empty directories
+	if ( old_rimage_loc  / "CMakeLists.txt" ).exists():
+		warnings.warn(f"""{old_rimage_loc} is now ignored,
+		new location is {RIMAGE_SOURCE_DIR}"""
 		)
 	rimage_dir_name = RIMAGE_BUILD_DIR.name
 	# CMake build rimage module
