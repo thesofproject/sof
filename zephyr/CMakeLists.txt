@@ -711,10 +711,15 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
 	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
 )
-
-zephyr_library_sources_ifdef(CONFIG_DTS_CODEC_STUB
-	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
-)
+if (CONFIG_DTS_CODEC)
+	if (CONFIG_DTS_CODEC_STUB)
+		zephyr_library_sources(
+			${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
+		)
+	else()
+		zephyr_library_import(DtsCodec ${SOF_AUDIO_PATH}/module_adapter/lib/release/libdts-sof-interface-i32.a)
+	endif()
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
 	${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
