@@ -1,7 +1,10 @@
-function tplg_write(fn, blob8, name, comment)
+function tplg_write(fn, blob8, name, comment, howto)
 
 if nargin < 4
 	comment = 'Exported Control Bytes';
+end
+if nargin < 5
+	howto = [];
 end
 
 %% Pad blob length to multiple of four bytes
@@ -14,6 +17,9 @@ blob8_new(1:n_orig) = blob8;
 fh = fopen(fn, 'w');
 nl = 8;
 fprintf(fh, '# %s %s\n', comment, date());
+if ~isempty(howto)
+	fprintf(fh, '# %s\n', howto);
+end
 fprintf(fh, 'CONTROLBYTES_PRIV(%s_priv,\n', name);
 fprintf(fh, '`       bytes "');
 for i = 1:nl:n_new
@@ -33,5 +39,6 @@ for i = 1:nl:n_new
 end
 fprintf(fh, ')\n');
 fclose(fh);
+fprintf('Blob size %d was written to file %s\n', n_new, fn);
 
 end
