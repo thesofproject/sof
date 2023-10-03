@@ -475,7 +475,7 @@ ifelse(
 		SSP_CLOCK(bclk, 6144000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 32, 3, 15),
-		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24, 0, 0, 0, SSP_CC_BCLK_ES)))',
 	CODEC, `RT5650', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, MCLK_RATE, codec_mclk_in),
 		SSP_CLOCK(bclk, 3072000, codec_slave),
