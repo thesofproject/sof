@@ -43,7 +43,7 @@ project(SOF C ASM)
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 
-set(RIMAGE_TOP "${PROJECT_SOURCE_DIR}/rimage")
+set(RIMAGE_TOP "${PROJECT_SOURCE_DIR}/tools/rimage")
 
 # check git hooks
 include(scripts/cmake/git-hooks.cmake)
