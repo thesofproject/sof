@@ -36,19 +36,19 @@ define(`SMART_BE_ID', 1)
 
 # Playback related
 #2->1
-define(`SMART_PB_PPL_ID', 1)
+define(`SMART_PB_PPL_ID', 2)
 define(`SMART_PB_CH_NUM', 2)
 define(`SMART_TX_CHANNELS', 2)
 define(`SMART_RX_CHANNELS', 2)
 define(`SMART_FB_CHANNELS', 2)
 # Ref capture related
 #7->2
-define(`SMART_REF_PPL_ID', 2)
+define(`SMART_REF_PPL_ID', 6)
 define(`SMART_REF_CH_NUM', 2)
 # PCM related
 #1->0
 define(`SMART_PCM_ID', 1)
-define(`SMART_PCM_NAME', `AmdSmartAmpTest')
+define(`SMART_PCM_NAME', `I2SHS')
 
 # Include Smart Amplifier support
 include(`sof-smart-amplifier-amd.m4')
