@@ -14,6 +14,7 @@
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+#include <ipc4/base_fw.h>
 
 LOG_MODULE_REGISTER(schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -74,4 +75,42 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 	sch->data = data;
 
 	scheduler_register(sch);
+}
+
+/* Locks for the list here should be held by the caller,
+ * as different schedulers use different locks
+ */
+void scheduler_get_task_info(struct scheduler_props *scheduler_props,
+			     uint32_t *data_off_size,
+			     struct list_item *tasks)
+{
+	/* TODO
+	 * - container_of(tlist, struct task, list)->uid->id could possibly be used as task id,
+	 *   but currently accessing it crashes, so setting the value to 0 for now
+	 */
+	struct task_props *task_props;
+	struct list_item *tlist;
+
+	scheduler_props->core_id = cpu_get_id();
+	scheduler_props->task_count = 0;
+	*data_off_size += sizeof(*scheduler_props);
+
+	task_props = (struct task_props *)((uint8_t *)scheduler_props + sizeof(*scheduler_props));
+	list_for_item(tlist, tasks) {
+		/* Fill SchedulerProps */
+		scheduler_props->task_count++;
+
+		/* Fill TaskProps */
+		task_props->task_id = 0;
+
+		/* Left unimplemented */
+		task_props->module_instance_count = 0;
+
+		/* TODO: after module instances are implemented, remember to increase
+		 * data_off_size and the offset to next task_props by the amount of
+		 * module instances included
+		 */
+		*data_off_size += sizeof(*task_props);
+		task_props++;
+	}
 }
