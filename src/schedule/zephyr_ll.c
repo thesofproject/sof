@@ -14,6 +14,7 @@
 #include <rtos/task.h>
 #include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
+#include <ipc4/base_fw.h>
 
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -526,4 +527,17 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);
 
 	return 0;
+}
+
+void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
+				uint32_t *data_off_size)
+{
+	uint32_t flags;
+
+	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_LL;
+	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	zephyr_ll_lock(ll_sch, &flags);
+	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
+	zephyr_ll_unlock(ll_sch, &flags);
 }

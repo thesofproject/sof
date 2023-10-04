@@ -12,6 +12,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
+#include <ipc4/base_fw.h>
 
 struct processing_module;
 
@@ -75,5 +76,14 @@ int scheduler_dp_task_init(struct task **task,
 			   uint16_t core,
 			   size_t stack_size,
 			   uint32_t task_priority);
+
+/**
+ * \brief Extract information about scheduler's tasks
+ *
+ * \param scheduler_props Structure to be filled
+ * \param data_off_size Pointer to the current size of the scheduler_props, to be updated
+ */
+void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props,
+				uint32_t *data_off_size);
 
 #endif /* __SOF_SCHEDULE_DP_SCHEDULE_H__ */

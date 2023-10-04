@@ -16,6 +16,9 @@
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 #include <intel_adsp_hda.h>
 #endif
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -455,6 +458,43 @@ static int basefw_set_fw_config(bool first_block,
 	return 0;
 }
 
+int schedulers_info_get(uint32_t *data_off_size,
+			char *data,
+			uint32_t core_id)
+{
+	/* TODO
+	 * Core id parameter is not yet used. For now we only get scheduler info from current core
+	 * Other cores info can be added by implementing idc request for this data.
+	 * Do this if Schedulers info get ipc has uses for accurate info per core
+	 */
+
+	struct scheduler_props *scheduler_props;
+	/* the internal structs have irregular sizes so we cannot use indexing, and have to
+	 *  reassign pointers for each element
+	 */
+	struct schedulers_info *schedulers_info = (struct schedulers_info *)data;
+
+	schedulers_info->scheduler_count = 0;
+
+	/* smallest response possible is just zero schedulers count
+	 * here we replace max_len from data_off_size to serve as output size
+	 */
+	*data_off_size = sizeof(struct schedulers_info);
+
+	/* ===================== LL_TIMER SCHEDULER INFO ============================ */
+	schedulers_info->scheduler_count++;
+	scheduler_props = (struct scheduler_props *)(data + *data_off_size);
+	scheduler_get_task_info_ll(scheduler_props, data_off_size);
+
+	/* ===================== DP SCHEDULER INFO ============================ */
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	schedulers_info->scheduler_count++;
+	scheduler_props = (struct scheduler_props *)(data + *data_off_size);
+	scheduler_get_task_info_dp(scheduler_props, data_off_size);
+#endif
+	return 0;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -498,13 +538,15 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	break;
 	case IPC4_POWER_STATE_INFO_GET:
 		return basefw_power_state_info_get(data_offset, data);
+	case IPC4_SCHEDULERS_INFO_GET:
+		return schedulers_info_get(data_offset, data,
+					 extended_param_id.part.parameter_instance);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
 	case IPC4_MODULES_INFO_GET:
 	case IPC4_PIPELINE_LIST_INFO_GET:
 	case IPC4_PIPELINE_PROPS_GET:
-	case IPC4_SCHEDULERS_INFO_GET:
 	case IPC4_GATEWAYS_INFO_GET:
 	case IPC4_LIBRARIES_INFO_GET:
 	case IPC4_PERF_MEASUREMENTS_STATE:

@@ -18,6 +18,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
 #include <sof/lib/notifier.h>
+#include <ipc4/base_fw.h>
 
 #include <zephyr/kernel/thread.h>
 
@@ -529,4 +530,17 @@ err:
 	rfree((__sparse_force void *)p_stack);
 	rfree(task_memory);
 	return ret;
+}
+
+void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_t *data_off_size)
+{
+	unsigned int lock_key;
+
+	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_DP;
+	struct scheduler_dp_data *dp_sch =
+		(struct scheduler_dp_data *)scheduler_get_data(SOF_SCHEDULE_DP);
+
+	lock_key = scheduler_dp_lock();
+	scheduler_get_task_info(scheduler_props, data_off_size,  &dp_sch->tasks);
+	scheduler_dp_unlock(lock_key);
 }

@@ -671,4 +671,34 @@ enum ipc4_power_state_type {
 	IPC4_CORE_KCPS = 1,
 };
 
+/* Scheduler info get structures */
+
+struct task_props {
+	/* Unique ID of task. */
+	uint32_t  task_id;
+	/* Specifies number of items in module_instance_id array. */
+	uint32_t  module_instance_count;
+	/*  Array of IDs of module instances running inside the task. */
+	uint32_t  module_instance_id[];
+} __packed __aligned(4);
+
+struct scheduler_props {
+	/* Processing domain, one of:
+	 * COMP_PROCESSING_DOMAIN_LL or COMP_PROCESSING_DOMAIN_DP
+	 */
+	uint32_t   processing_domain;
+	/* ID of core that scheduler is running on. */
+	uint32_t   core_id;
+	/* Specifies number of items in task_info array. */
+	uint32_t   task_count;
+	struct task_props  task_info[];
+} __packed __aligned(4);
+
+struct schedulers_info {
+	/* Specifies number of items in scheduler_info array. */
+	uint32_t        scheduler_count;
+	/* Array of scheduler properties. */
+	struct scheduler_props  scheduler_info[];
+} __packed __aligned(4);
+
 #endif /* __SOF_IPC4_BASE_FW_H__ */
