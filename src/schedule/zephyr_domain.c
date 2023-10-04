@@ -69,6 +69,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		k_sem_take(&dt->sem, K_FOREVER);
 
 		cycles0 = k_cycle_get_32();
+		adsp_clock_idle_exit();
 		dt->handler(dt->arg);
 		cycles1 = k_cycle_get_32();
 
