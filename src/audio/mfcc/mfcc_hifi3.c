@@ -88,7 +88,7 @@ void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffe
 	}
 	buf->s_avail += copied;
 	buf->s_free -= copied;
-	buf->w_ptr = out;
+	buf->w_ptr = (int16_t *)out;
 }
 
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
@@ -121,7 +121,7 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 
 	buf->s_avail -= prev_data_length;
 	buf->s_free += prev_data_length;
-	buf->r_ptr = in;
+	buf->r_ptr = (void *)in; /* int16_t pointer but direct cast is not possible */
 }
 
 void mfcc_fill_fft_buffer(struct mfcc_state *state)
@@ -156,7 +156,7 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state)
 
 	buf->s_avail -= fft->fft_hop_size;
 	buf->s_free += fft->fft_hop_size;
-	buf->r_ptr = in;
+	buf->r_ptr = (int16_t *)in;
 
 	/* Copy for next time data back to overlap buffer */
 	idx = fft->fft_fill_start_idx + fft->fft_hop_size;
