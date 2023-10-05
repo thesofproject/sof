@@ -760,6 +760,9 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	case SDMA_CHAN_TYPE_SHP2MCU:
 		sdma_script_addr = SDMA_SCRIPT_SHP2MCU_OFF;
 		break;
+	case SDMA_CHAN_TYPE_SAI2MCU:
+		sdma_script_addr = SDMA_SCRIPT_SAI2MCU_OFF;
+		break;
 	default:
 		/* This case doesn't happen; we need to assign the other cases
 		 * for AP2MCU and MCU2AP

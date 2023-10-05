@@ -143,6 +143,8 @@
 /* SHP2MCU is host to DAI, faster but only works with SDRAM */
 #define SDMA_CHAN_TYPE_SHP2MCU		3
 #define SDMA_CHAN_TYPE_MCU2SHP		4
+/* used for multi-fifo script */
+#define SDMA_CHAN_TYPE_SAI2MCU		5
 
 /* TODO check and move these to platform data */
 #define SDMA_SCRIPT_AP2AP_OFF		644
@@ -150,6 +152,7 @@
 #define SDMA_SCRIPT_MCU2AP_OFF		749
 #define SDMA_SCRIPT_SHP2MCU_OFF		893
 #define SDMA_SCRIPT_MCU2SHP_OFF		962
+#define SDMA_SCRIPT_SAI2MCU_OFF		6710
 
 #if CONFIG_HAVE_SDMA_FIRMWARE
 #include "sdma_script_code_imx7d_4_5.h"
