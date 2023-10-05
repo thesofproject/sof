@@ -589,6 +589,7 @@ static int sdma_status(struct dma_chan_data *channel,
 		break;
 	case SDMA_CHAN_TYPE_AP2MCU:
 	case SDMA_CHAN_TYPE_MCU2SHP:
+	case SDMA_CHAN_TYPE_SAI2MCU:
 		status->r_pos = bd->buf_addr;
 		status->w_pos = pdata->fifo_paddr;
 		/* We cannot see the target address */
@@ -607,6 +608,8 @@ static int sdma_read_config(struct dma_chan_data *channel,
 {
 	int i;
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	struct dai_data *dd = channel->dev_data;
+	uint32_t dma_dev = dd->dai->drv->dma_dev;
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
@@ -616,7 +619,10 @@ static int sdma_read_config(struct dma_chan_data *channel,
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		pdata->hw_event = config->src_dev;
-		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
+		if (dma_dev == DMA_DEV_MICFIL)
+			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SAI2MCU;
+		else
+			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
 		pdata->fifo_paddr = config->elem_array.elems[0].src;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
