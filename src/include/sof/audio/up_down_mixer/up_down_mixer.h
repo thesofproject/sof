@@ -10,14 +10,11 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
-#include <rtos/bit.h>
 #include <sof/common.h>
-#include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <ipc4/up_down_mixer.h>
 #include <ipc4/module.h>
 #include <ipc4/base-config.h>
-#include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
 

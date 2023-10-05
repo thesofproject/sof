@@ -19,29 +19,13 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <rtos/panic.h>
 #include <rtos/idc.h>
-#include <sof/common.h>
-#include <sof/list.h>
-#include <rtos/alloc.h>
-#include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/memory.h>
-#include <sof/lib/perf_cnt.h>
-#include <sof/math/numbers.h>
 #include <sof/schedule/schedule.h>
-#include <rtos/sof.h>
-#include <sof/trace/trace.h>
 #include <ipc/control.h>
-#include <ipc/stream.h>
 #include <sof/ipc/topology.h>
 #include <kernel/abi.h>
-#include <user/trace.h>
 
-#include <errno.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <limits.h>
 
 struct comp_dev;
