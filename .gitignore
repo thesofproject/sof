@@ -1,50 +1,16 @@
-*.o
-*.Po
-*.so*
-*~
-*.a
-*.la
-*.lo
-*.Tpo
-*.swp
-*.bin
-*.map
-*.ri
-*.orig
-*.rej
-*.rom
-*.man
-.version
-*.x
-.build
-*.dis
-*.lst
-*.log
-*.html
-*.js
-*.png
-*.md5
-*.xml
-*.css
-*.xsd
-*.patch
-*.xslt
-*.mbox
+# Do not mass copy/paste/diverge in every project your non-project
+# specific, personal git ignore preferences like: *.mbox, *.patch, *.rej,
+# cscope*, TAGS, *~,...
+#
+# Instead, set your non-project specific, personal git ignore preference
+# only once for all git projects in your home directory:
+#     https://git-scm.com/docs/gitignore
+# So this does not interfere other people's "git status" preferences.
+#
+# Also, don't use `git add *` or `git commit -a` and git push blindly
+# without a look at which files are getting pushed. This is bad no
+# matter what is in git ignore.
 
-*.gz
-*.xz
-src/arch/xtensa/sof
-src/arch/xtensa/boot_ldr
-src/arch/xtensa/sof-*
-src/arch/xtensa/boot_ldr-*
-src/arch/xtensa/module
-src/arch/xtensa/rom
-src/arch/xtensa/rom-*
-boot_module
-
-tap-driver.sh
-test-driver
-*.trs
 tools/test/audio/reports/*
 tools/test/audio/zeros_in.raw
 
@@ -57,11 +23,3 @@ build*/
 .settings
 .project
 .cproject
-
-/tags
-/TAGS
-
-# cscope files
-cscope.*
-ncscope.*
-
