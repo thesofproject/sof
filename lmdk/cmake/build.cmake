@@ -19,6 +19,7 @@ foreach(MODULE ${MODULES_LIST})
 	target_include_directories(${MODULE} PRIVATE
 		"${LMDK_BASE}/include"
 		"${RIMAGE_INCLUDE_DIR}"
+		"${SOF_BASE}/src/include/module"
 	)
 
 	# generate linker script
