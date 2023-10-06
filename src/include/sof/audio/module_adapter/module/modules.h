@@ -35,7 +35,7 @@
  *  - Processing Module Adapter - SOF base FW side of ProcessingModuleInterface API
  *
  * Using the same philosofy loadable modules are using module adapter to interact with SOF FW.
- * Module recognision is done by checking module API version defined in module_api_ver.h
+ * Module recognision is done by checking module API version defined in module/module/api_ver.h
  * with version read from elf file.
  */
 
