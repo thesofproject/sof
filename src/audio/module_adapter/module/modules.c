@@ -12,7 +12,7 @@
 #include <native_system_agent.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
-#include <module_api_ver.h>
+#include <module/module/api_ver.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
