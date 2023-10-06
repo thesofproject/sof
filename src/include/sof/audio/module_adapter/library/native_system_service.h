@@ -5,10 +5,12 @@
 /*! \file native_system_service.h */
 #ifndef NATIVE_SYSTEM_SERVICE_H
 #define NATIVE_SYSTEM_SERVICE_H
+
+#include <stdint.h>
+
 #include "logger.h"
 #include "adsp_stddef.h"
-#include "adsp_error_code.h"
-#include <stdint.h>
+#include <module/iadk/adsp_error_code.h>
 
 /*! \brief This struct defines the obfuscating type for notifications. */
 typedef struct _adsp_notification_handle {} *adsp_notification_handle;
