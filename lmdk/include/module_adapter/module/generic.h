@@ -57,6 +57,13 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.get_attribute = module_adapter_get_attribute,\
 		.bind = module_adapter_bind,\
 		.unbind = module_adapter_unbind,\
+		.get_total_data_processed = module_adapter_get_total_data_processed,\
+		.dai_get_hw_params = module_adapter_get_hw_params,\
+		.position = module_adapter_position,\
+		.dai_ts_config = module_adapter_ts_config_op,\
+		.dai_ts_start = module_adapter_ts_start_op,\
+		.dai_ts_stop = module_adapter_ts_stop_op,\
+		.dai_ts_get = module_adapter_ts_get_op,\
 	}, \
 }; \
 \
@@ -177,15 +184,36 @@ struct processing_module {
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
-	uint32_t num_input_buffers; /**< number of input buffers */
-	uint32_t num_output_buffers; /**< number of output buffers */
-	/*
-	 * flag set by a module that produces period_bytes every copy. It can be used by modules
-	 * that support 1:1, 1:N, N:1 sources:sinks configuration.
+
+	/* sink and source handlers for the module
+	 * NOTE! till https://github.com/thesofproject/sof/issues/8006 is implemented:
+	 * 1) sparse warnings may be generated
+	 * 2) sinks and sources API provided by audio_stream cannot be kept here,
+	 *    as they may be used only when the buffer is acquired
 	 */
-	bool simple_copy;
+	struct sof_sink *sinks[MODULE_MAX_SOURCES];
+	struct sof_source *sources[MODULE_MAX_SOURCES];
+	uint32_t num_of_sources;
+	uint32_t num_of_sinks;
+
+	union {
+		struct {
+			/* this is used in case of raw data or audio_stream mode */
+			struct input_stream_buffer *input_buffers;
+			struct output_stream_buffer *output_buffers;
+			uint32_t num_input_buffers; /**< number of inputs */
+			uint32_t num_output_buffers; /**< number of outputs */
+		};
+		struct {
+			/* this is used in case of DP processing
+			 * dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP
+			 */
+			struct dp_queue *dp_queue_ll_to_dp[MODULE_MAX_SOURCES];
+			struct dp_queue *dp_queue_dp_to_ll[MODULE_MAX_SOURCES];
+		};
+	};
+	struct comp_buffer *source_comp_buffer; /**< single source component buffer */
+	struct comp_buffer *sink_comp_buffer; /**< single sink compoonent buffer */
 
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
@@ -205,6 +233,13 @@ struct processing_module {
 	 */
 	bool skip_src_buffer_invalidate;
 
+	/*
+	 * True for module with one source component buffer and one sink component buffer
+	 * to enable reduction of module processing overhead. False if component uses
+	 * multiple buffers.
+	 */
+	bool stream_copy_single_to_single;
+
 	/* flag to insure that module is loadable */
 	bool is_native_sof;
 
@@ -213,6 +248,16 @@ struct processing_module {
 
 	/* table containing the list of connected sources */
 	struct module_source_info *source_info;
+
+	/* total processed data after stream started */
+	uint64_t total_data_consumed;
+	uint64_t total_data_produced;
+
+	/* max source/sinks supported by the module */
+	uint32_t max_sources;
+	uint32_t max_sinks;
+
+	int proc_type;
 };
 
 /*****************************************************************************/
@@ -223,10 +268,16 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment);
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
-int module_prepare(struct processing_module *mod);
-int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		   int num_input_buffers, struct output_stream_buffer *output_buffers,
-		   int num_output_buffers);
+int module_prepare(struct processing_module *mod,
+		   struct sof_source **sources, int num_of_sources,
+		   struct sof_sink **sinks, int num_of_sinks);
+int module_process_sink_src(struct processing_module *mod,
+			    struct sof_source **sources, int num_of_sources,
+			    struct sof_sink **sinks, int num_of_sinks);
+int module_process_legacy(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers, int num_input_buffers,
+			  struct output_stream_buffer *output_buffers,
+			  int num_output_buffers);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
 int module_set_configuration(struct processing_module *mod,
@@ -234,6 +285,8 @@ int module_set_configuration(struct processing_module *mod,
 			     enum module_cfg_fragment_position pos, size_t data_offset_size,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size);
+int module_bind(struct processing_module *mod, void *data);
+int module_unbind(struct processing_module *mod, void *data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config,
@@ -252,6 +305,15 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
 int module_adapter_bind(struct comp_dev *dev, void *data);
 int module_adapter_unbind(struct comp_dev *dev, void *data);
+uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
+						 uint32_t stream_no, bool input);
+int module_adapter_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
+				 int dir);
+int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
+int module_adapter_ts_config_op(struct comp_dev *dev);
+int module_adapter_ts_start_op(struct comp_dev *dev);
+int module_adapter_ts_stop_op(struct comp_dev *dev);
+int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd);
 
 static inline void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 						 struct output_stream_buffer *output_buffers,
@@ -272,7 +334,7 @@ struct module_source_info *module_source_info_acquire(struct module_source_info 
 //	c = coherent_acquire_thread(&msi->c, sizeof(*msi));
 //
 //	return attr_container_of(c, struct module_source_info , c, );
-return NULL;
+	return NULL;
 }
 
 static inline void module_source_info_release(struct module_source_info  *msi)

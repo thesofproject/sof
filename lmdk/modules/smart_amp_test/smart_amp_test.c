@@ -72,8 +72,6 @@ static int smart_amp_init(struct processing_module *mod)
 	mod->sys_service->SafeMemcpy(sad->ipc4_cfg.input_pins, bs,
 				     base_cfg->base_cfg_ext.pin_formats, bs);
 
-	mod->simple_copy = true;
-
 	return 0;
 
 sad_fail:
@@ -349,7 +347,9 @@ static int smart_amp_params(struct processing_module *mod)
 	return 0;
 }
 
-static int smart_amp_prepare(struct processing_module *mod)
+static int smart_amp_prepare(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -393,7 +393,7 @@ static int smart_amp_prepare(struct processing_module *mod)
 struct module_interface smart_amp_test_interface = {
 	.init  = smart_amp_init,
 	.prepare = smart_amp_prepare,
-	.process = smart_amp_process,
+	.process_audio_stream = smart_amp_process,
 	.set_configuration = smart_amp_set_config,
 	.get_configuration = smart_amp_get_config,
 	.reset = smart_amp_reset,
