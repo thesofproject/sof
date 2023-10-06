@@ -63,6 +63,81 @@ struct output_stream_buffer {
 	uint32_t size; /* size of data in the buffer */
 };
 
+struct comp_dev;
+struct timestamp_data;
+/**
+ * \struct module_endpoint_ops
+ * \brief Ops relevant only for the endpoint devices such as the host copier or DAI copier.
+ *	  Other modules should not implement these.
+ */
+struct module_endpoint_ops {
+	/**
+	 * Returns total data processed in number bytes.
+	 * @param dev Component device
+	 * @param stream_no Index of input/output stream
+	 * @param input Selects between input (true) or output (false) stream direction
+	 * @return total data processed if succeeded, 0 otherwise.
+	 */
+	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
+	/**
+	 * Retrieves component rendering position.
+	 * @param dev Component device.
+	 * @param posn Receives reported position.
+	 */
+	int (*position)(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
+	/**
+	 * Configures timestamping in attached DAI.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
+	int (*dai_ts_config)(struct comp_dev *dev);
+
+	/**
+	 * Starts timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
+	int (*dai_ts_start)(struct comp_dev *dev);
+
+	/**
+	 * Stops timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
+	int (*dai_ts_stop)(struct comp_dev *dev);
+
+	/**
+	 * Gets timestamp.
+	 * @param dev Component device.
+	 * @param tsd Receives timestamp data.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
+	int (*dai_ts_get)(struct comp_dev *dev, struct timestamp_data *tsd);
+
+	/**
+	 * Fetches hardware stream parameters.
+	 * @param dev Component device.
+	 * @param params Receives copy of stream parameters retrieved from
+	 *	DAI hw settings.
+	 * @param dir Stream direction (see enum sof_ipc_stream_direction).
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
+	int (*dai_get_hw_params)(struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params, int dir);
+
+	/**
+	 * Triggers device state.
+	 * @param dev Component device.
+	 * @param cmd Trigger command.
+	 */
+	int (*trigger)(struct comp_dev *dev, int cmd);
+};
+
 struct processing_module;
 /**
  * \struct module_interface
@@ -78,16 +153,80 @@ struct module_interface {
 	 * Module specific prepare procedure, called as part of module_adapter
 	 * component preparation in .prepare()
 	 */
-	int (*prepare)(struct processing_module *mod);
+	int (*prepare)(struct processing_module *mod,
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks);
+
 	/**
-	 * Module specific processing procedure, called as part of module_adapter
-	 * component copy in .copy(). This procedure is responsible to consume
+	 * (optional) return true if the module is ready to process
+	 * This procedure should check if the module is ready for immediate
+	 * processing.
+	 *
+	 * NOTE! the call MUST NOT perform any time consuming operations
+	 *
+	 * this procedure will always return true for LL module
+	 *
+	 * For DP there's a default implementation that will do a simple check if there's
+	 * at least IBS bytes of data on first source and at least OBS free space on first sink
+	 *
+	 * In case more sophisticated check is needed the method should be implemented in
+	 * the module
+	 */
+	bool (*is_ready_to_process)(struct processing_module *mod,
+				    struct sof_source __sparse_cache **sources, int num_of_sources,
+				    struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+
+
+	/**
+	 * Module specific processing procedure
+	 * This procedure is responsible to consume
 	 * samples provided by the module_adapter and produce/output the processed
 	 * ones back to module_adapter.
+	 *
+	 * there are 3 versions of the procedure, the difference is the format of
+	 * input/output data
+	 *
+	 * the module MUST implement one and ONLY one of them
+	 *
+	 * process_audio_stream and process_raw_data are depreciated and will be removed
+	 * once pipeline learns to use module API directly (without module adapter)
+	 * modules that need such processing should use proper wrappers
+	 *
+	 * process
+	 *	- sources are handlers to source API struct source*[]
+	 *	- sinks are handlers to sink API struct sink*[]
 	 */
-	int (*process)(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		       int num_input_buffers, struct output_stream_buffer *output_buffers,
-		       int num_output_buffers);
+	int (*process)(struct processing_module *mod,
+		       struct sof_source __sparse_cache **sources, int num_of_sources,
+		       struct sof_sink __sparse_cache **sinks, int num_of_sinks);
+
+	/**
+	 * process_audio_stream (depreciated)
+	 *	- sources are input_stream_buffer[]
+	 *	    - sources[].data is a pointer to audio_stream structure
+	 *	- sinks are output_stream_buffer[]
+	 *	    - sinks[].data is a pointer to audio_stream structure
+	 *
+	 * It can be used by modules that support 1:1, 1:N, N:1 sources:sinks configuration.
+	 */
+	int (*process_audio_stream)(struct processing_module *mod,
+				    struct input_stream_buffer *input_buffers,
+				    int num_input_buffers,
+				    struct output_stream_buffer *output_buffers,
+				    int num_output_buffers);
+
+	/**
+	 * process_raw_data (depreciated)
+	 *	- sources are input_stream_buffer[]
+	 *	    - sources[].data is a pointer to raw audio data
+	 *	- sinks are output_stream_buffer[]
+	 *	    - sinks[].data is a pointer to raw audio data
+	 */
+	int (*process_raw_data)(struct processing_module *mod,
+				struct input_stream_buffer *input_buffers,
+				int num_input_buffers,
+				struct output_stream_buffer *output_buffers,
+				int num_output_buffers);
 
 	/**
 	 * Set module configuration for the given configuration ID
@@ -141,6 +280,17 @@ struct module_interface {
 	 * free in .free(). This should free all memory allocated during module initialization.
 	 */
 	int (*free)(struct processing_module *mod);
+
+	/**
+	 * Module specific bind procedure, called when modules are bound with each other
+	 */
+	int (*bind)(struct processing_module *mod, void *data);
+	/**
+	 * Module specific unbind procedure, called when modules are disconnected from one another
+	 */
+	int (*unbind)(struct processing_module *mod, void *data);
+
+	const struct module_endpoint_ops *endpoint_ops;
 };
 
 /* Convert first_block/last_block indicator to fragment position */
