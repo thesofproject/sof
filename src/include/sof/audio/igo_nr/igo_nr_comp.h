@@ -35,11 +35,6 @@ struct comp_data {
 	uint32_t source_rate;	/* Sample rate in Hz */
 	uint32_t sink_format;	/* For used PCM sample format */
 	uint32_t source_format;	/* For used PCM sample format */
-	int32_t source_frames;	/* Nominal # of frames to process at source */
-	int32_t sink_frames;	/* Nominal # of frames to process at sink */
-	int32_t source_frames_max;	/* Max # of frames to process at source */
-	int32_t sink_frames_max;	/* Max # of frames to process at sink */
-	int32_t frames;		/* IO buffer length */
 	void (*igo_nr_func)(struct comp_data *cd,
 			    const struct audio_stream *source,
 			    struct audio_stream *sink,
