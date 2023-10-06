@@ -4,6 +4,7 @@
 //
 // Author: Fu-Yun TSUO <fy.tsuo@intelli-go.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -30,6 +31,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#endif
+
 #define SOF_IGO_NR_MAX_SIZE 4096		/* Max size for coef data in bytes */
 
 enum IGO_NR_ENUM {
@@ -37,7 +42,7 @@ enum IGO_NR_ENUM {
 	IGO_NR_ENUM_LAST,
 };
 
-static const struct comp_driver comp_igo_nr;
+LOG_MODULE_REGISTER(igo_nr, CONFIG_SOF_LOG_LEVEL);
 
 /* 696ae2bc-2877-11eb-adc1-0242ac120002 */
 DECLARE_SOF_RT_UUID("igo-nr", igo_nr_uuid,  0x696ae2bc, 0x2877, 0x11eb, 0xad, 0xc1,
@@ -240,10 +245,11 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 }
 #endif
 
-static inline int32_t set_capture_func(struct comp_dev *dev)
+static inline int32_t set_capture_func(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb;
+	struct comp_dev *dev = mod->dev;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -275,124 +281,100 @@ static inline int32_t set_capture_func(struct comp_dev *dev)
 	return 0;
 }
 
-static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
-				   const struct comp_ipc_config *config, const void *spec)
+static int igo_nr_init(struct processing_module *mod)
 {
-	const struct ipc_config_process *ipc_igo_nr = spec;
-	struct comp_dev *dev = NULL;
-	struct comp_data *cd = NULL;
-	size_t bs = ipc_igo_nr->size;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *cfg = &md->cfg;
+	struct comp_data *cd;
+	size_t bs = cfg->size;
 	int32_t ret;
 
-	comp_cl_info(&comp_igo_nr, "igo_nr_new()");
+	comp_info(dev, "igo_nr_init()");
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_IGO_NR_MAX_SIZE) {
-		comp_cl_err(&comp_igo_nr, "igo_nr_new() error: configuration blob size = %u > %d",
-			    bs, SOF_IGO_NR_MAX_SIZE);
-		return NULL;
+		comp_err(dev, "igo_nr_init() error: configuration blob size = %u > %d",
+			 bs, SOF_IGO_NR_MAX_SIZE);
+		return -EINVAL;
 	}
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto fail;
+		return -ENOMEM;
 
+	md->private = cd;
 	ret = IgoLibGetInfo(&cd->igo_lib_info);
 	if (ret != IGO_RET_OK) {
-		comp_cl_err(&comp_igo_nr, "igo_nr_new(): IgoLibGetInfo() Failed.");
+		comp_err(dev, "igo_nr_init(): IgoLibGetInfo() Failed.");
+		ret = -EINVAL;
 		goto cd_fail;
 	}
 
 	cd->p_handle = rballoc(0, SOF_MEM_CAPS_RAM, cd->igo_lib_info.handle_size);
 	if (!cd->p_handle) {
-		comp_cl_err(&comp_igo_nr, "igo_nr_new(): igo_handle memory rballoc error");
+		comp_err(dev, "igo_nr_init(): igo_handle memory rballoc error for size %d",
+			 cd->igo_lib_info.handle_size);
+		ret = -ENOMEM;
 		goto cd_fail;
 	}
-
-	comp_set_drvdata(dev, cd);
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_igo_nr, "igo_nr_new(): comp_data_blob_handler_new() failed.");
-		goto cd_fail;
+		comp_err(dev, "igo_nr_init(): comp_data_blob_handler_new() failed.");
+		ret = -ENOMEM;
+		goto cd_fail2;
 	}
 
 	/* Get configuration data */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_igo_nr->data);
+	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_cl_err(&comp_igo_nr, "igo_nr_new(): comp_init_data_blob() failed.");
-		goto cd_fail;
+		comp_err(dev, "igo_nr_init(): comp_init_data_blob() failed.");
+		ret = -ENOMEM;
+		goto cd_fail3;
 	}
-	dev->state = COMP_STATE_READY;
 
-	comp_cl_info(&comp_igo_nr, "igo_nr created");
+	/* update downstream (playback) or upstream (capture) buffer parameters */
+	mod->verify_params_flags = BUFF_PARAMS_RATE;
+	comp_info(dev, "igo_nr created");
+	return 0;
 
-	return dev;
+cd_fail3:
+	comp_data_blob_handler_free(cd->model_handler);
+
+cd_fail2:
+	rfree(cd->p_handle);
 
 cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
-fail:
-	rfree(dev);
-	return NULL;
+	return ret;
 }
 
-static void igo_nr_free(struct comp_dev *dev)
+static int igo_nr_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "igo_nr_free()");
+	comp_info(mod->dev, "igo_nr_free()");
 
 	comp_data_blob_handler_free(cd->model_handler);
 
 	rfree(cd->p_handle);
 	rfree(cd);
-	rfree(dev);
+	return 0;
 }
 
-static int32_t igo_nr_verify_params(struct comp_dev *dev,
-				    struct sof_ipc_stream_params *params)
+/* check component audio stream parameters */
+static int32_t igo_nr_check_params(struct processing_module *mod)
 {
-	int32_t ret;
-
-	comp_dbg(dev, "igo_nr_verify_params()");
-
-	/* update downstream (playback) or upstream (capture) buffer parameters
-	 */
-	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
-	if (ret < 0)
-		comp_err(dev, "igo_nr_verify_params(): comp_verify_params() failed.");
-
-	return ret;
-}
-
-/* set component audio stream parameters */
-static int32_t igo_nr_params(struct comp_dev *dev,
-			     struct sof_ipc_stream_params *pcm_params)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sinkb, *sourceb;
-	int32_t err;
+	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "igo_nr_params()");
+	comp_info(dev, "igo_nr_check_params()");
 
-	err = igo_nr_verify_params(dev, pcm_params);
-	if (err < 0) {
-		comp_err(dev, "igo_nr_params(): pcm params verification failed.");
-		return err;
-	}
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = audio_stream_get_rate(&sourceb->stream);
@@ -408,24 +390,6 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 		comp_err(dev, "igo_nr_params(), zero sink rate");
 		return -EINVAL;
 	}
-
-	cd->sink_frames = dev->frames;
-	cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
-					cd->sink_rate);
-
-	/* Use empirical add +10 for target frames number to avoid xruns and
-	 * distorted audio in beginning of streaming. It's slightly more than
-	 * min. needed and does not increase much peak load and buffer memory
-	 * consumption. The copy() function will find the limits and process
-	 * less frames after the buffers levels stabilize.
-	 */
-	cd->source_frames_max = cd->source_frames + 10;
-	cd->sink_frames_max = cd->sink_frames + 10;
-	cd->frames = MAX(cd->source_frames_max, cd->sink_frames_max);
-
-	comp_dbg(dev, "igo_nr_params(), source_rate=%u, sink_rate=%u, source_frames_max=%d, sink_frames_max=%d",
-		 cd->source_rate, cd->sink_rate,
-		 cd->source_frames_max, cd->sink_frames_max);
 
 	/* The igo_nr supports sample rate 48000 only. */
 	switch (cd->source_rate) {
@@ -457,94 +421,64 @@ static int32_t igo_nr_check_config_validity(struct comp_dev *dev,
 	}
 }
 
-#if CONFIG_IPC_MAJOR_3
-static inline void igo_nr_set_chan_process(struct comp_dev *dev, int32_t chan)
+static inline void igo_nr_set_chan_process(struct comp_data *cd, int32_t chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-
 	if (!cd->process_enable[chan])
 		cd->process_enable[chan] = true;
 }
 
-static inline void igo_nr_set_chan_passthrough(struct comp_dev *dev, int32_t chan)
+static inline void igo_nr_set_chan_passthrough(struct comp_data *cd, int32_t chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-
 	if (cd->process_enable[chan]) {
 		cd->process_enable[chan] = false;
 		IgoLibInit(cd->p_handle, &cd->igo_lib_config, &cd->config.igo_params);
 	}
 }
 
-static int32_t igo_nr_cmd_get_data(struct comp_dev *dev,
-				   struct sof_ipc_ctrl_data *cdata,
-				   int32_t max_size)
+static int igo_nr_get_config(struct processing_module *mod,
+			     uint32_t config_id, uint32_t *data_offset_size,
+			     uint8_t *fragment, size_t fragment_size)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t ret;
+	struct comp_dev *dev = mod->dev;
+
+#if CONFIG_IPC_MAJOR_3
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	int j;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "igo_nr_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, max_size);
-		break;
-	default:
-		comp_err(dev, "igo_nr_cmd_get_data() error: invalid cdata->cmd %u", cdata->cmd);
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-static int32_t igo_nr_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t j;
-	int32_t ret = 0;
-
-	switch (cdata->cmd) {
+		comp_info(dev, "igo_nr_get_config(), SOF_CTRL_CMD_BINARY");
+		return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 	case SOF_CTRL_CMD_SWITCH:
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->process_enable[j];
-			comp_info(dev, "igo_nr_cmd_get_value(), channel = %u, value = %u",
+			comp_info(dev, "igo_nr_get_config(), channel = %u, value = %u",
 				  cdata->chanv[j].channel,
 				  cdata->chanv[j].value);
 		}
-		break;
+		return 0;
 	default:
-		comp_err(dev, "igo_nr_cmd_get_value() error: invalid cdata->cmd %d", cdata->cmd);
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-static int32_t igo_nr_cmd_set_data(struct comp_dev *dev,
-				   struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t ret;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "igo_nr_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		break;
-	default:
-		comp_err(dev, "igo_nr_cmd_set_data() error: invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
+		comp_err(dev, "igo_nr_cmd_get_config() error: invalid cdata->cmd %d", cdata->cmd);
+		return -EINVAL;
 	}
 
-	if (ret >= 0)
-		ret = igo_nr_check_config_validity(dev, cd);
-
-	return ret;
+#elif CONFIG_IPC_MAJOR_4
+	comp_err(dev, "igo_nr_cmd_get_config() error: not supported");
+	return -EINVAL;
+#endif
 }
 
-static int32_t igo_nr_set_chan(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int32_t igo_nr_set_chan(struct processing_module *mod, void *data)
 {
+#if CONFIG_IPC_MAJOR_3
+	struct sof_ipc_ctrl_data *cdata = data;
+#elif CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_control_msg_payload *cdata = data;
+#endif
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	uint32_t val;
 	int32_t ch;
 	int32_t j;
@@ -559,85 +493,72 @@ static int32_t igo_nr_set_chan(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 		}
 
 		if (val)
-			igo_nr_set_chan_process(dev, ch);
+			igo_nr_set_chan_process(cd, ch);
 		else
-			igo_nr_set_chan_passthrough(dev, ch);
+			igo_nr_set_chan_passthrough(cd, ch);
 	}
 
 	return 0;
 }
 
-static int32_t igo_nr_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int igo_nr_set_config(struct processing_module *mod, uint32_t param_id,
+			     enum module_cfg_fragment_position pos,
+			     uint32_t data_offset_size, const uint8_t *fragment,
+			     size_t fragment_size, uint8_t *response,
+			     size_t response_size)
 {
-	int32_t ret;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	comp_info(dev, "igo_nr_set_config()");
+
+#if CONFIG_IPC_MAJOR_3
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
 	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_BINARY:
+		comp_info(dev, "igo_nr_cmd_set_config(), SOF_CTRL_CMD_BINARY");
+		ret = comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+					 fragment, fragment_size);
+		if (ret >= 0)
+			ret = igo_nr_check_config_validity(dev, cd);
+
+		return ret;
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "igo_nr_cmd_set_value(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
+		comp_dbg(dev, "igo_nr_cmd_set_config(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
 			 cdata->comp_id);
-		ret = igo_nr_set_chan(dev, cdata);
-		break;
+		return igo_nr_set_chan(mod, cdata);
 
 	default:
-		comp_err(dev, "igo_nr_cmd_set_value() error: invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-/* used to pass standard and bespoke commands (with data) to component */
-static int32_t igo_nr_cmd(struct comp_dev *dev,
-			  int32_t cmd,
-			  void *data,
-			  int32_t max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = data;
-
-	comp_info(dev, "igo_nr_cmd()");
-
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		return igo_nr_cmd_set_data(dev, cdata);
-	case COMP_CMD_GET_DATA:
-		return igo_nr_cmd_get_data(dev, cdata, max_data_size);
-	case COMP_CMD_SET_VALUE:
-		return igo_nr_cmd_set_value(dev, cdata);
-	case COMP_CMD_GET_VALUE:
-		return igo_nr_cmd_get_value(dev, cdata);
-	default:
-		comp_err(dev, "igo_nr_cmd() error: invalid command");
+		comp_err(dev, "igo_nr_cmd_set_config() error: invalid cdata->cmd");
 		return -EINVAL;
 	}
-}
+#elif CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		comp_info(dev, "igo_nr_cmd_set_config(), SOF_IPC4_SWITCH_CONTROL_PARAM_ID");
+		return igo_nr_set_chan(mod, ctl);
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+		comp_err(dev, "igo_nr_set_config(), illegal control.");
+		return -EINVAL;
+	}
+
+	comp_info(dev, "igo_nr_cmd_set_config(), bytes");
+	ret = comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment, fragment_size);
+	if (ret >= 0)
+		ret = igo_nr_check_config_validity(dev, cd);
+
+	return ret;
 #endif
-
-static void igo_nr_process(struct comp_dev *dev,
-			   struct comp_buffer *source,
-			   struct comp_buffer *sink,
-			   struct comp_copy_limits *cl,
-			   int32_t frames)
-
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t source_bytes = frames * cl->source_frame_bytes;
-	uint32_t sink_bytes = frames * cl->sink_frame_bytes;
-
-	buffer_stream_invalidate(source, source_bytes);
-
-	cd->igo_nr_func(cd, &source->stream, &sink->stream, frames);
-
-	buffer_stream_writeback(sink, sink_bytes);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(source, source_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
 }
 
-static void igo_nr_print_config(struct comp_dev *dev)
+static void igo_nr_print_config(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "  igo_params_ver		%d",
 		 cd->config.igo_params.igo_params_ver);
@@ -676,10 +597,11 @@ static void igo_nr_print_config(struct comp_dev *dev)
 
 }
 
-static void igo_nr_set_igo_params(struct comp_dev *dev)
+static void igo_nr_set_igo_params(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "igo_nr_set_igo_params()");
 	igo_nr_check_config_validity(dev, cd);
@@ -687,48 +609,42 @@ static void igo_nr_set_igo_params(struct comp_dev *dev)
 	if (p_config) {
 		comp_info(dev, "New config detected.");
 		cd->config = *p_config;
-		igo_nr_print_config(dev);
+		igo_nr_print_config(mod);
 	}
 }
 
 /* copy and process stream data from source to sink buffers */
-static int32_t igo_nr_copy(struct comp_dev *dev)
+static int igo_nr_process(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers, int num_input_buffers,
+			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
-	struct comp_copy_limits cl;
-	struct comp_buffer *sourceb, *sinkb;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t src_frames;
-	int32_t sink_frames;
+	struct comp_dev *dev = mod->dev;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = input_buffers[0].data;
+	struct audio_stream *sink = output_buffers[0].data;
+	int frames = input_buffers[0].size;
 
 	comp_dbg(dev, "igo_nr_copy()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler))
-		igo_nr_set_igo_params(dev);
+		igo_nr_set_igo_params(mod);
 
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
-
-	src_frames = audio_stream_get_avail_frames(&sourceb->stream);
-	sink_frames = audio_stream_get_free_frames(&sinkb->stream);
-
-	comp_dbg(dev, "src_frames = %d, sink_frames = %d.", src_frames, sink_frames);
+	comp_dbg(dev, "frames = %d", frames);
 
 	/* Process only when frames count is enough. */
-	if (src_frames >= IGO_FRAME_SIZE && sink_frames >= IGO_FRAME_SIZE)
-		igo_nr_process(dev, sourceb, sinkb, &cl, IGO_FRAME_SIZE);
+	if (frames >= IGO_FRAME_SIZE) {
+		cd->igo_nr_func(cd, source, sink, IGO_FRAME_SIZE);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0],
+					      IGO_FRAME_SIZE);
+	}
 
 	return 0;
 }
 
-static void igo_nr_lib_init(struct comp_dev *dev)
+static void igo_nr_lib_init(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
 	cd->igo_lib_config.algo_name = "igo_nr";
 	cd->igo_lib_config.in_ch_num = 1;
@@ -752,97 +668,103 @@ static void igo_nr_lib_init(struct comp_dev *dev)
 	cd->igo_stream_data_out.sampling_rate = 48000;
 }
 
-static int32_t igo_nr_prepare(struct comp_dev *dev)
+#if CONFIG_IPC_MAJOR_4
+static void igo_nr_ipc4_params(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t ret;
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
+
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+static void igo_nr_set_alignment(struct audio_stream *source, struct audio_stream *sink)
+{
+	/* Currently no optimizations those would use wider loads and stores */
+	audio_stream_init_alignment_constants(1, IGO_FRAME_SIZE, source);
+	audio_stream_init_alignment_constants(1, IGO_FRAME_SIZE, sink);
+}
+
+static int32_t igo_nr_prepare(struct processing_module *mod,
+			      struct sof_source **sources, int num_of_sources,
+			      struct sof_sink **sinks, int num_of_sinks)
+{
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_dev *dev = mod->dev;
+	struct comp_data *cd = module_get_private_data(mod);
+	int ret;
 
 	comp_dbg(dev, "igo_nr_prepare()");
 
-	igo_nr_set_igo_params(dev);
+#if CONFIG_IPC_MAJOR_4
+	igo_nr_ipc4_params(mod);
+#endif
 
-	igo_nr_lib_init(dev);
-
-	comp_dbg(dev, "post igo_nr_lib_init");
-	igo_nr_print_config(dev);
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
+	ret = igo_nr_check_params(mod);
+	if (ret)
 		return ret;
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	igo_nr_set_alignment(&sourceb->stream, &sinkb->stream);
+
+	igo_nr_set_igo_params(mod);
+
+	igo_nr_lib_init(mod);
+
+	comp_dbg(dev, "post igo_nr_lib_init");
+	igo_nr_print_config(mod);
 
 	/* Clear in/out buffers */
 	memset(cd->in, 0, IGO_NR_IN_BUF_LENGTH * sizeof(int16_t));
 	memset(cd->out, 0, IGO_NR_OUT_BUF_LENGTH * sizeof(int16_t));
 
-	/* Default NR on */
+	/* Default NR on
+	 *
+	 * Note: There is a race condition with this switch control set and kernel set
+	 * ALSA switch control if such is defined in topology. This set overrides kernel
+	 * SOF driver set for control since it happens just after component init. The
+	 * user needs to re-apply the control to get expected operation. The owner of
+	 * this component should check if this is desired operation. A possible fix would
+	 * be set here only if kernel has not applied the switch control.
+	 */
 	cd->process_enable[cd->config.active_channel_idx] = true;
 
-	return set_capture_func(dev);
+	return set_capture_func(mod);
 }
 
-static int32_t igo_nr_reset(struct comp_dev *dev)
+static int igo_nr_reset(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "igo_nr_reset()");
+	comp_info(mod->dev, "igo_nr_reset()");
 
 	cd->igo_nr_func = NULL;
 
 	cd->source_rate = 0;
 	cd->sink_rate = 0;
-	cd->source_frames = 0;
-	cd->sink_frames = 0;
-	cd->source_frames_max = 0;
-	cd->sink_frames_max = 0;
-	cd->frames = 0;
 	cd->invalid_param = false;
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static int32_t igo_nr_trigger(struct comp_dev *dev, int32_t cmd)
-{
-	int32_t ret;
-
-	comp_info(dev, "igo_nr_trigger(), command = %u", cmd);
-
-	ret = comp_set_state(dev, cmd);
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		ret = PPL_STATUS_PATH_STOP;
-
-	return ret;
-}
-
-static const struct comp_driver comp_igo_nr = {
-	.uid = SOF_RT_UUID(igo_nr_uuid),
-	.tctx	= &igo_nr_tr,
-	.ops = {
-		.create = igo_nr_new,
-		.free = igo_nr_free,
-		.params = igo_nr_params,
-#if CONFIG_IPC_MAJOR_3
-		.cmd = igo_nr_cmd,
-#endif
-		.copy = igo_nr_copy,
-		.prepare = igo_nr_prepare,
-		.reset = igo_nr_reset,
-		.trigger = igo_nr_trigger,
-	},
+static const struct module_interface igo_nr_interface = {
+	.init = igo_nr_init,
+	.prepare = igo_nr_prepare,
+	.process_audio_stream = igo_nr_process,
+	.set_configuration = igo_nr_set_config,
+	.get_configuration = igo_nr_get_config,
+	.reset = igo_nr_reset,
+	.free = igo_nr_free
 };
 
-static SHARED_DATA struct comp_driver_info comp_igo_nr_info = {
-	.drv = &comp_igo_nr,
-};
-
-UT_STATIC void sys_comp_igo_nr_init(void)
-{
-	comp_register(platform_shared_get(&comp_igo_nr_info,
-					  sizeof(comp_igo_nr_info)));
-}
-
-DECLARE_MODULE(sys_comp_igo_nr_init);
-SOF_MODULE_INIT(igo_nr, sys_comp_igo_nr_init);
+DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
+SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
