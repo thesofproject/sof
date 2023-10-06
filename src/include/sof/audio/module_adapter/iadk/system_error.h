@@ -7,7 +7,7 @@
 #ifndef _ADSP_SYSTEM_ERROR_H_
 #define _ADSP_SYSTEM_ERROR_H_
 
-#include "adsp_error_code.h"
+#include <module/iadk/adsp_error_code.h>
 
 namespace intel_adsp
 {
