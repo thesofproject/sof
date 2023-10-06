@@ -104,6 +104,45 @@ static int get_first_irq(uint64_t ints)
 	return ffs(ints) - 1;
 }
 
+static inline void acp_handle_irq_5(struct irq_cascade_desc *cascade,
+				    uint32_t line_index, uint64_t status)
+{
+	int core = cpu_get_id();
+	struct list_item *clist;
+	struct irq_desc *child = NULL;
+	int bit;
+	bool handled;
+	k_spinlock_key_t key;
+
+	while (status) {
+		bit = get_first_irq(status);
+		handled = false;
+		status &= ~(1ull << bit);
+		bit = 5;
+
+		key = k_spin_lock(&cascade->lock);
+
+		list_for_item(clist, &cascade->child[bit].list) {
+			child = container_of(clist, struct irq_desc, irq_list);
+
+			if (child->handler && (child->cpu_mask & 1 << core)) {
+				k_spin_unlock(&cascade->lock, key);
+				child->handler(child->handler_arg);
+				k_spin_lock(&cascade->lock);
+				handled = true;
+			}
+		}
+
+		k_spin_unlock(&cascade->lock, key);
+
+		if (!handled) {
+			tr_err(&acp_irq_tr, "irq_handler(): not handled, bit %d",
+			       bit);
+			acp_irq_mask_int(line_index * IRQS_PER_LINE + bit);
+		}
+	}
+}
+
 static inline void acp_handle_irq(struct irq_cascade_desc *cascade,
 				    uint32_t line_index, uint64_t status)
 {
@@ -140,6 +179,24 @@ static inline void acp_handle_irq(struct irq_cascade_desc *cascade,
 	}
 }
 
+static void irqhandler_5(void *data)
+{
+	uint32_t line_index = 5;
+	struct irq_desc *parent = data;
+	struct irq_cascade_desc *cascade =
+		container_of(parent, struct irq_cascade_desc, desc);
+	uint64_t status;
+
+	line_index = 5;
+	status = acp_get_irq_interrupts(line_index);
+
+	if (status)
+		/* Handle current interrupts */
+		acp_handle_irq_5(cascade, line_index, status);
+	else
+		tr_err(&acp_irq_tr, "invalid interrupt status");
+}
+
 static inline void irq_handler(void *data, uint32_t line_index)
 {
 	struct irq_desc *parent = data;
@@ -165,7 +222,6 @@ DEFINE_IRQ_HANDLER(0)
 DEFINE_IRQ_HANDLER(1)
 DEFINE_IRQ_HANDLER(3)
 DEFINE_IRQ_HANDLER(4)
-DEFINE_IRQ_HANDLER(5)
 
 static void acp_irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 {
@@ -207,6 +263,7 @@ static const struct irq_cascade_tmpl dsp_irq[] = {
 		.global_mask = false,
 	},
 	{
+		.name = "irqsteer1",
 		.irq = IRQ_NUM_EXT_LEVEL5,
 		.handler = irqhandler_5,
 		.ops = &irq_ops,
