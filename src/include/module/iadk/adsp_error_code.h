@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022 - 2023 Intel Corporation. All rights reserved.
+ *
+ * Author: Adrian Warecki <adrian.warecki@intel.com>
  */
 
-#ifndef _ADSP_ERROR_CODE_H_
-#define _ADSP_ERROR_CODE_H_
+#ifndef __MODULE_IADK_ADSP_ERROR_CODE_H__
+#define __MODULE_IADK_ADSP_ERROR_CODE_H__
 
 #include <stdint.h>
 
@@ -34,4 +36,4 @@ typedef uint32_t AdspErrorCode;
 /* Service is not supported on target platform. */
 #define ADSP_SERVICE_UNAVAILABLE 143
 
-#endif /* _ADSP_ERROR_CODE_H_ */
+#endif /* __MODULE_IADK_ADSP_ERROR_CODE_H__ */

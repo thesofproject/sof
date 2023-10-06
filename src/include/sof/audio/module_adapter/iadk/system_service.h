@@ -9,7 +9,7 @@
 
 #include "logger.h"
 #include "adsp_stddef.h"
-#include "adsp_error_code.h"
+#include <module/iadk/adsp_error_code.h>
 #include "native_system_service.h"
 #include <stdint.h>
 
