@@ -55,6 +55,7 @@ DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
  * \return: zero on success
  *          error code on failure
  */
+extern struct native_system_service_api native_system_service;
 static int modules_init(struct processing_module *mod)
 {
 	uint32_t module_entry_point;
@@ -146,6 +147,7 @@ static int modules_init(struct processing_module *mod)
 		else
 			return -EINVAL;
 
+		mod->sys_service = &native_system_service;
 		ret = mod_in->init(mod);
 	} else {
 		ret = iadk_wrapper_init(md->module_adapter);
