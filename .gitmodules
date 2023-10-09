@@ -1,3 +1,5 @@
+
+# Old, independent rimage submodule. To be removed.
 [submodule "rimage"]
 	path = rimage
 # This is a _relative_ submodule URL. In some use cases it's better than
@@ -17,3 +19,21 @@
 # .git/config the first time. Then .gitmodules is never used again after
 # cloning.
 	url = ../rimage
+
+# This is required for non-Zephyr ("XTOS") configurations. Zephyr
+# configs also get it from sof/west.yml which adds the burden of keeping
+# both tomlc99 SHA1s synchronized but in practice this barely ever moves.
+[submodule "tomlc99"]
+	path = tools/rimage/tomlc99
+	# This is a _absolute_ submodule URL. In some use cases it's
+	# better than an _relative_ submodule URL, in other cases it's
+	# not. One size does unfortunately not fit all.  Among other
+	# pages, http://blog.tremily.us/posts/Relative_submodules/ has a
+	# good comparison.
+	#
+	# A local and temporary edit of this url can be enough because
+	# .gitmodules is used _only once_ to submodule --init[ialize]
+	# .git/config the first time. Then .gitmodules is never used
+	# again after cloning tomlc99 the first time.
+	url = https://github.com/thesofproject/tomlc99.git
+	branch = master

@@ -1,0 +1,632 @@
+version = [3, 0]
+
+[adsp]
+name = "mtl"
+image_size = "0x2C0000" # (22) bank * 128KB
+alias_mask = "0xE0000000"
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0x1FF80000"
+size = "0x400"
+[[adsp.mem_zone]]
+type = "IMR"
+base = "0xA104A000"
+size = "0x2000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xa00f0000"
+size = "0x100000"
+
+[[adsp.mem_alias]]
+type = "uncached"
+base = "0x40000000"
+[[adsp.mem_alias]]
+type = "cached"
+base = "0xA0000000"
+
+[cse]
+partition_name = "ADSP"
+[[cse.entry]]
+name = "ADSP.man"
+offset = "0x5c"
+length = "0x4b8"
+[[cse.entry]]
+name = "ADSP.met"
+offset = "0x4c0"
+length = "0x70"
+[[cse.entry]]
+name = "ADSP"
+offset = "0x540"
+length = "0x0"  # calculated by rimage
+
+[css]
+
+[signed_pkg]
+name = "ADSP"
+partition_usage = "0x23"
+[[signed_pkg.module]]
+name = "ADSP.met"
+
+[adsp_file]
+[[adsp_file.comp]]
+base_offset = "0x2000"
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0x40000"
+
+[module]
+count = 25
+	[[module.entry]]
+	name = "BRNGUP"
+	uuid = "2B79E4F3-4675-F649-89DF-3BC194A91AEB"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "0"
+	auto_start = "0"
+
+	[[module.entry]]
+	name = "BASEFW"
+	uuid = "0E398C32-5ADE-BA4B-93B1-C50432280EE4"
+	affinity_mask = "3"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "0"
+	auto_start = "0"
+
+	[[module.entry]]
+	name = "MIXIN"
+	uuid = "39656EB2-3B71-4049-8D3F-F92CD5C43C09"
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "1"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0,   0,   0xfeef, 0xc,  0x8,   0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 296, 4996000, 384, 384, 0, 4996, 0,
+			2, 0, 0, 0, 296, 2652000, 384, 384, 0, 2652, 0,
+			3, 0, 0, 0, 296, 2928000, 512, 512, 0, 2928, 0,
+			4, 0, 0, 0, 296, 2572000, 128, 128, 0, 2572, 0,
+			5, 0, 0, 0, 296, 3760000, 1536, 1536, 0, 3760, 0]
+
+	[[module.entry]]
+	name = "MIXOUT"
+	uuid = "3C56505A-24D7-418F-BDDC-C1F5A3AC2AE0"
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "2"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 520, 2280000, 384, 384, 0, 2280, 0,
+			2, 0, 0, 0, 520, 1988000, 384, 384, 0, 1988, 0,
+			3, 0, 0, 0, 520, 7631000, 512, 512, 0, 7631, 0,
+			4, 0, 0, 0, 520, 1953000, 128, 128, 0, 1953, 0,
+			5, 0, 0, 0, 520, 2301000, 1536, 1536, 0, 2301, 0]
+
+	[[module.entry]]
+	name = "COPIER"
+	uuid = "9BA00C83-CA12-4A83-943C-1FA2E82F9DDA"
+	affinity_mask = "0x1"
+	instance_count = "32"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "3"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 280, 4918000, 768, 768, 0, 4918, 0,
+			2, 0, 0, 0, 280, 6526000, 768, 768, 0, 6526, 0,
+			3, 0, 0, 0, 280, 6388000, 384, 384, 0, 6388, 0,
+			4, 0, 0, 0, 280, 4682000, 512, 512, 0, 4682, 0,
+			5, 0, 0, 0, 280, 5738000, 512, 512, 0, 5738, 0,
+			6, 0, 0, 0, 280, 6250000, 256, 256, 0, 6250, 0,
+			7, 0, 0, 0, 280, 6460000, 768, 768, 0, 6460, 0,
+			8, 0, 0, 0, 280, 7116000, 768, 768, 0, 7116, 0,
+			9, 0, 0, 0, 280, 6008000, 384, 384, 0, 6008, 0,
+			10, 0, 0, 0, 280, 6258000, 512, 512, 0, 6258, 0,
+			11, 0, 0, 0, 280, 7188000, 1024, 1024, 0, 7188, 0,
+			12, 0, 0, 0, 280, 7272000, 1536, 1536, 0, 7272, 0,
+			13, 0, 0, 0, 280, 6290000, 768, 768, 0, 6290, 0,
+			14, 0, 0, 0, 280, 6604000, 1024, 1024, 0, 6604, 0,
+			15, 0, 0, 0, 280, 6198000, 384, 384, 0, 6198, 0,
+			16, 0, 0, 0, 280, 6250000, 384, 384, 0, 6250, 0,
+			17, 0, 0, 0, 280, 6258000, 256, 256, 0, 6258, 0,
+			18, 0, 0, 0, 280, 4354000, 256, 256, 0, 4354, 0,
+			19, 0, 0, 0, 280, 6198000, 256, 256, 0, 6198, 0,
+			20, 0, 0, 0, 280, 6250000, 128, 128, 0, 6250, 0,
+			21, 0, 0, 0, 280, 6250000, 128, 128, 0, 6250, 0,
+			22, 0, 0, 0, 280, 6206000, 128, 128, 0, 6206, 0,
+			23, 0, 0, 0, 280, 4170000, 64, 64, 0, 4170, 0,
+			24, 0, 0, 0, 280, 4234000, 96, 96, 0, 4234, 0,
+			25, 0, 0, 0, 280, 6198000, 96, 96, 0, 6198, 0,
+			26, 0, 0, 0, 280, 6250000, 96, 96, 0, 6250, 0,
+			27, 0, 0, 0, 280, 6198000, 192, 192, 0, 6198, 0,
+			28, 0, 0, 0, 280, 6258000, 192, 192, 0, 6258, 0,
+			29, 0, 0, 0, 280, 6392000, 720, 720, 0, 6392, 0,
+			30, 0, 0, 0, 280, 6250000, 360, 360, 0, 6250, 0,
+			31, 0, 0, 0, 280, 5326000, 360, 360, 0, 5326, 0,
+			32, 0, 0, 0, 280, 6258000, 180, 180, 0, 6258, 0,
+			33, 0, 0, 0, 280, 4354000, 256, 256, 0, 4354, 0,
+			34, 0, 0, 0, 280, 4898000, 256, 256, 0, 4898, 0,
+			35, 0, 0, 0, 280, 6246000, 128, 128, 0, 6246, 0,
+			36, 0, 0, 0, 280, 6250000, 192, 192, 0, 6250, 0,
+			37, 0, 0, 0, 280, 6250000, 48, 48, 0, 6250, 0,
+			38, 0, 0, 0, 280, 4170000, 64, 64, 0, 4170, 0,
+			39, 0, 0, 0, 280, 6198000, 64, 64, 0, 6198, 0,
+			40, 0, 0, 0, 280, 6246000, 32, 32, 0, 6246, 0,
+			41, 0, 0, 0, 280, 5272000, 192, 384, 0, 5272, 0]
+
+	[[module.entry]]
+	name = "PEAKVOL"
+	uuid = "8A171323-94A3-4E1D-AFE9-FE5DBAA4C393"
+	affinity_mask = "0x1"
+	instance_count = "10"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "4"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 480, 11667000, 384, 384, 0, 11667, 0,
+			2, 0, 0, 0, 480, 5943000, 192, 192, 0, 5943, 0,
+			3, 0, 0, 0, 480, 12567000, 720, 720, 0, 12567, 0,
+			4, 0, 0, 0, 480, 7360000, 768, 768, 0, 7360, 0,
+			5, 0, 0, 0, 480, 12236000, 1536, 1536, 0, 12236, 0]
+
+	[[module.entry]]
+	name = "GAIN"
+	uuid = "61BCA9A8-18D0-4A18-8E7B-2639219804B7"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 416, 12100000, 1536, 1536, 0, 12100, 0,
+			2, 0, 0, 0, 416, 10183000, 384, 384, 0, 10183, 0,
+			3, 0, 0, 0, 416, 8192000, 512, 512, 0, 8192, 0,
+			4, 0, 0, 0, 416, 10091000, 128, 128, 0, 10091, 0,
+			5, 0, 0, 0, 416, 5908000, 768, 768, 0, 5908, 0]
+
+	[[module.entry]]
+	name = "ASRC"
+	uuid = "66B4402D-B468-42F2-81A7-B37121863DD4"
+	affinity_mask = "0x3"
+	instance_count = "2"
+	domain_types = "0"
+
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	pin = [0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	mod_cfg = [1, 0, 0, 0, 20480, 21808000, 64, 192, 0, 21808, 0,
+			2, 0, 0, 0, 20480, 45820000, 64, 384, 0, 45820, 0,
+			3, 0, 0, 0, 20480, 75236000, 512, 1440, 0, 75236, 0,
+			4, 0, 0, 0, 20480, 79732000, 512, 1536, 0, 79732, 0,
+			5, 0, 0, 0, 20480, 50411000, 184, 384, 0, 50411, 0,
+			6, 0, 0, 0, 20480, 24236000, 192, 128, 0, 24236, 0,
+			7, 0, 0, 0, 20480, 46753000, 192, 384, 0, 46753, 0,
+			8, 0, 0, 0, 20480, 30032000, 256, 256, 0, 30032, 0,
+			9, 0, 0, 0, 20480, 48676000, 256, 384, 0, 48676, 0,
+			10, 0, 0, 0, 20480, 46548000, 360, 360, 0, 46548, 0,
+			11, 0, 0, 0, 20480, 94372000, 1440, 1536, 0, 94372, 0,
+			12, 0, 0, 0, 20480, 42912000, 1536, 512, 0, 42912, 0,
+			13, 0, 0, 0, 20480, 31871000, 384, 192, 0, 31871, 0,
+			14, 0, 0, 0, 20480, 34216000, 384, 256, 0, 34216, 0,
+			15, 0, 0, 0, 20480, 83448000, 1536, 1440, 0, 83448, 0]
+
+	[[module.entry]]
+	name = "SRC"
+	uuid = "E61BB28D-149A-4C1F-B709-46823EF5F5AE"
+	affinity_mask = "0x1"
+	#instance_count = "10"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "7"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xffff, 0xc, 0x8, 0x05ff,
+			1, 0, 0xf6c9, 0xc, 0x8, 0x05ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 12832, 15976000, 128, 512, 0, 15976, 0,
+			2, 0, 0, 0, 12832, 15340000, 64, 256, 0, 15340, 0,
+			3, 0, 0, 0, 12832, 21880000, 96, 512, 0, 21880, 0,
+			4, 0, 0, 0, 12832, 19968000, 48, 256, 0, 19968, 0,
+			5, 0, 0, 0, 12832, 18236000, 64, 256, 0, 18236, 0,
+			6, 0, 0, 0, 12832, 15244000, 32, 256, 0, 15244, 0,
+			7, 0, 0, 0, 12832, 56028000, 1536, 512, 0, 56028, 0,
+			8, 0, 0, 0, 12832, 46740000, 768, 256, 0, 46740, 0,
+			9, 0, 0, 0, 12832, 24656000, 768, 512, 0, 24656, 0,
+			10, 0, 0, 0, 12832, 23516000, 384, 256, 0, 23516, 0,
+			11, 0, 0, 0, 12832, 29368000, 384, 488, 0, 29368, 0,
+			12, 0, 0, 0, 12832, 27164000, 192, 244, 0, 27164, 0,
+			13, 0, 0, 0, 12832, 15892000, 384, 384, 0, 15892, 0,
+			14, 0, 0, 0, 12832, 19916000, 192, 512, 0, 19916, 0,
+			15, 0, 0, 0, 12832, 19176000, 96, 256, 0, 19176, 0,
+			16, 0, 0, 0, 12832, 12676000, 192, 192, 0, 12676, 0,
+			17, 0, 0, 0, 12832, 16280000, 384, 320, 0, 16280, 0,
+			18, 0, 0, 0, 12832, 13076000, 192, 160, 0, 13076, 0,
+			19, 0, 0, 0, 12832, 11440000, 384, 256, 0, 11440, 0,
+			20, 0, 0, 0, 12832, 10996000, 192, 128, 0, 10996, 0,
+			21, 0, 0, 0, 12832, 11428000, 384, 192, 0, 11428, 0,
+			22, 0, 0, 0, 12832, 10740000, 192, 96, 0, 10740, 0,
+			23, 0, 0, 0, 12832, 29936000, 360, 512, 0, 29936, 0,
+			24, 0, 0, 0, 12832, 27696000, 180, 256, 0, 27696, 0,
+			25, 0, 0, 0, 12832, 18368000, 256, 512, 0, 18368, 0,
+			26, 0, 0, 0, 12832, 15204000, 128, 256, 0, 15204, 0]
+
+	[[module.entry]]
+	name = "MICSEL"
+	uuid = "32FE92C1-1E17-4FC2-9758-C7F3542E980A"
+	affinity_mask = "0x1"
+	instance_count = "8"
+	domain_types = "0"
+	load_type = "0"
+	init_config = "1"
+	module_type = "0xC"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xe, 0xa, 0x45ff, 1, 0, 0xfeef, 0xe, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 960, 488500, 16, 16, 0, 0, 0,
+			1, 0, 0, 0, 960, 964500, 16, 16, 0, 0, 0,
+			2, 0, 0, 0, 960, 2003000, 16, 16, 0, 0, 0]
+
+	[[module.entry]]
+	name = "UPDWMIX"
+	uuid = "42F8060C-832F-4DBF-B247-51E961997B34"
+	affinity_mask = "0x1"
+	instance_count = "15"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "5"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xffff, 0xc, 0x8, 0x05ff,
+			1, 0, 0xffff, 0xc, 0x8, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 216, 5044000, 384, 192, 0, 5044, 0,
+			2, 0, 0, 0, 216, 2660000, 384, 384, 0, 2660, 0,
+			3, 0, 0, 0, 216, 3164000, 576, 384, 0, 3164, 0,
+			4, 0, 0, 0, 216, 3316000, 768, 384, 0, 3316, 0,
+			5, 0, 0, 0, 216, 5264000, 768, 384, 0, 5264, 0,
+			6, 0, 0, 0, 216, 5440000, 768, 384, 0, 5440, 0,
+			7, 0, 0, 0, 216, 2888000, 768, 192, 0, 2888, 0,
+			8, 0, 0, 0, 216, 2856000, 768, 192, 0, 2856, 0,
+			9, 0, 0, 0, 216, 2876000, 768, 192, 0, 2876, 0,
+			10, 0, 0, 0, 216, 2956000, 960, 192, 0, 2956, 0,
+			11, 0, 0, 0, 216, 2888000, 1152, 192, 0, 2888, 0,
+			12, 0, 0, 0, 216, 2888000, 1152, 192, 0, 2888, 0,
+			13, 0, 0, 0, 216, 2816000, 1536, 192, 0, 2816, 0,
+			14, 0, 0, 0, 216, 2468000, 192, 384, 0, 2468, 0,
+			15, 0, 0, 0, 216, 3084000, 576, 384, 0, 3084, 0,
+			16, 0, 0, 0, 216, 3442000, 960, 384, 0, 3442, 0,
+			17, 0, 0, 0, 216, 3478000, 1152, 384, 0, 3478, 0,
+			18, 0, 0, 0, 216, 3478000, 1152, 384, 0, 3478, 0,
+			19, 0, 0, 0, 216, 3736000, 1536, 384, 0, 3736, 0,
+			20, 0, 0, 0, 216, 3216000, 192, 1152, 0, 3216, 0,
+			21, 0, 0, 0, 216, 3308000, 384, 1152, 0, 3308, 0,
+			22, 0, 0, 0, 216, 3616000, 768, 1152, 0, 3616, 0,
+			23, 0, 0, 0, 216, 3616000, 768, 1152, 0, 3616, 0,
+			24, 0, 0, 0, 216, 4916000, 1536, 1152, 0, 4916, 0,
+			25, 0, 0, 0, 216, 3228000, 192, 1152, 0, 3228, 0,
+			26, 0, 0, 0, 216, 3452000, 384, 1152, 0, 3452, 0,
+			27, 0, 0, 0, 216, 4016000, 768, 1152, 0, 4016, 0,
+			28, 0, 0, 0, 216, 5080000, 1536, 1152, 0, 5080, 0,
+			29, 0, 0, 0, 216, 3552000, 384, 1536, 0, 3552, 0,
+			30, 0, 0, 0, 216, 3728000, 768, 1152, 0, 3728, 0]
+
+	[[module.entry]]
+	name = "PROBE"
+	uuid = "7CAD0808-AB10-CD23-EF45-12AB34CD56EF"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 100000, 48, 48, 0, 1000, 0]
+
+ 	[[module.entry]]
+	name = "MUX"
+	uuid = "64ce6e35-857a-4878-ace8-e2a2f42e3069"
+	affinity_mask = "0x1"
+	instance_count = "15"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "6"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 280, 460700, 16, 16, 0, 0, 0]
+
+	[[module.entry]]
+	name = "KDTEST"
+	uuid = "EBA8D51F-7827-47B5-82EE-DE6E7743AF67"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "8"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 480, 1114000, 64, 64, 0, 0, 0]
+
+	[[module.entry]]
+	name = "KPB"
+	uuid = "A8A0CB32-4A77-4DB1-85C7-53D7EE07BCE6"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "0xB"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 14400, 1114000, 16, 16, 0, 0, 0]
+
+	# smart amp test module config
+	[[module.entry]]
+	name = "SMATEST"
+	uuid = "167A961E-8AE4-11EA-89F1-000C29CE1635"
+	affinity_mask = "0x1"
+	instance_count = "1"
+	domain_types = "0"
+	load_type = "0"
+	init_config = "1"
+	module_type = "0xD"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 296, 5000000, 384, 384, 0, 5000, 0]
+
+	# eq iir module config
+	[[module.entry]]
+	name = "EQIIR"
+	uuid = "5150C0E6-27F9-4EC8-8351-C705B642D12F"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+		1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 1000, 0,
+				0, 0, 0, 0, 4096, 20663000, 768, 768, 0, 20663, 0]
+
+	# eq fir module config
+	[[module.entry]]
+	name = "EQFIR"
+	uuid = "43A90CE7-f3A5-41Df-AC06-BA98651AE6A3"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+		1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# Aria module config
+	[[module.entry]]
+	name = "ARIA"
+	uuid = "99F7166D-372C-43EF-81F6-22007AA15F03"
+	affinity_mask = "0x1"
+	instance_count = "8"
+	domain_types = "0"
+	load_type = "0"
+	init_config = "1"
+	module_type = "30"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 260, 1063000, 16, 21, 0, 0, 0,
+				1, 0, 0, 0, 260, 1873500, 192, 256, 0, 0, 0,
+				2, 0, 0, 0, 260, 2680000, 32, 42, 0, 0, 0,
+				3, 0, 0, 0, 260, 3591000, 64, 85, 0, 0, 0,
+				4, 0, 0, 0, 260, 4477000, 96, 128, 0, 0, 0,
+				5, 0, 0, 0, 260, 7195000, 192, 192, 0, 0, 0]
+
+	# DRC module config
+	[[module.entry]]
+	name = "DRC"
+	uuid = "B36EE4DA-006F-47F9-A06D-FECBE2D8B6CE"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# Crossover module config
+	# Note: Crossover has init_config set to 1 to let kernel know that the base_cfg_ext needs to
+	# be appended to the IPC payload. The Extension is needed to know the output pin indices.
+	[[module.entry]]
+	name = "XOVER"
+	uuid = "948C9AD1-806A-4131-AD6C-B2BDA9E35A9F"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	init_config = "1"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# Multiband-DRC module config
+	[[module.entry]]
+	name = "MB_DRC"
+	uuid = "0D9F2256-8E4F-47B3-8448-239A334F1191"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# DCblock module config
+	[[module.entry]]
+	name = "DCBLOCK"
+	uuid = "B809EFAF-5681-42B1-9ED6-04BB012DD384"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	[[module.entry]]
+        name = "RTC_AEC"
+        uuid = "B780A0A6-269F-466F-B477-23DFA05AF758"
+        affinity_mask = "0x3"
+        instance_count = "1"
+        domain_types = "0"
+        load_type = "1"
+        module_type = "10"
+	init_config = "1"
+        auto_start = "0"
+        sched_caps = [1, 0x00008000]
+
+        # pin = [dir, type, sample rate, size, container, channel-cfg]
+        pin = [0, 0, 0x8, 0x2, 0x2, 0x1,
+                0, 0, 0x8, 0x2, 0x2, 0x4,
+                1, 0, 0x8, 0x2, 0x2, 0x1]
+
+	# TDFB module config
+	[[module.entry]]
+	name = "TDFB"
+	uuid = "DD511749-D9FA-455C-B3A7-13585693F1AF"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
