@@ -42,6 +42,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <zephyr/pm/policy.h>
+
 /* Command format errors during fuzzing are reported for virtually all
  * commands, and the resulting flood of logging becomes a severe
  * performance penalty (i.e. we get a lot less fuzzing done per CPU
@@ -402,13 +404,17 @@ static int ipc_wait_for_compound_msg(void)
 	int try_count = 30; /* timeout out is 30 x 10ms so 300ms for IPC */
 
 	while (atomic_read(&msg_data.delayed_reply)) {
+		pm_policy_state_lock_get(PM_STATE_ACTIVE, 1);
 		k_sleep(Z_TIMEOUT_MS(10));
 
 		if (!try_count--) {
 			atomic_set(&msg_data.delayed_reply, 0);
 			ipc_cmd_err(&ipc_tr, "ipc4: failed to wait schedule thread");
+			pm_policy_state_lock_put(PM_STATE_ACTIVE, 1);
 			return IPC4_FAILURE;
 		}
+
+		pm_policy_state_lock_put(PM_STATE_ACTIVE, 1);
 	}
 
 	return IPC4_SUCCESS;
