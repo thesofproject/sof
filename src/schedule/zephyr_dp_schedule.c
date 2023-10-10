@@ -30,7 +30,7 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
-	struct task task;		/* LL task - source of DP tick */
+	struct task ll_tick_src;	/* LL task - source of DP tick */
 };
 
 struct task_dp_pdata {
@@ -254,12 +254,17 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 static int scheduler_dp_task_cancel(void *data, struct task *task)
 {
 	unsigned int lock_key;
+	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
 	lock_key = scheduler_dp_lock();
 
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
+
+	/* if there're no more  DP task, stop LL tick source */
+	if (list_is_empty(&dp_sch->tasks))
+		schedule_task_cancel(&dp_sch->ll_tick_src);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -268,18 +273,12 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 
 static int scheduler_dp_task_free(void *data, struct task *task)
 {
-	unsigned int lock_key;
 	struct task_dp_pdata *pdata = task->priv_data;
+
+	scheduler_dp_task_cancel(data, task);
 
 	/* abort the execution of the thread */
 	k_thread_abort(pdata->thread_id);
-
-	lock_key = scheduler_dp_lock();
-	list_item_del(&task->list);
-	task->priv_data = NULL;
-	task->state = SOF_TASK_STATE_FREE;
-	scheduler_dp_unlock(lock_key);
-
 	/* free task stack */
 	rfree((__sparse_force void *)pdata->p_stack);
 
@@ -364,6 +363,10 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		return -EINVAL;
 	}
 
+	/* if there's no DP tasks scheduled yet, run ll tick source task */
+	if (list_is_empty(&task->list))
+		schedule_task(&dp_sch->ll_tick_src, 0, 0);
+
 	/* add a task to DP scheduler list */
 	task->state = SOF_TASK_STATE_QUEUED;
 	list_item_prepend(&task->list, &dp_sch->tasks);
@@ -376,9 +379,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 	pdata->period_clock_ticks = period_clock_ticks;
 	scheduler_dp_unlock(lock_key);
-
-	/* start LL task - run DP tick start and period are irrelevant for LL (that's bad)*/
-	schedule_task(&dp_sch->task, 0, 0);
 
 	tr_dbg(&dp_tr, "DP task scheduled with period %u [us]", (uint32_t)period);
 	return 0;
@@ -403,7 +403,7 @@ int scheduler_dp_init(void)
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
 
 	/* init src of DP tick */
-	ret = schedule_task_init_ll(&dp_sch->task,
+	ret = schedule_task_init_ll(&dp_sch->ll_tick_src,
 				    SOF_UUID(dp_sched_uuid),
 				    SOF_SCHEDULE_LL_TIMER,
 				    0, scheduler_dp_ll_tick_dummy, dp_sch,
