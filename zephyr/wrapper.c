@@ -233,6 +233,7 @@ int start_complete(void)
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 #endif
+	/* It's just a comment */
 	return boot_complete();
 }
 
