@@ -79,8 +79,6 @@ int module_adapter_init_data(struct comp_dev *dev,
 			return ret;
 		}
 		dst->init_data = dst->data;
-	} else {
-		return -EINVAL;
 	}
 
 	return 0;
