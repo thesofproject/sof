@@ -364,7 +364,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	}
 
 	/* if there's no DP tasks scheduled yet, run ll tick source task */
-	if (list_is_empty(&task->list))
+	if (list_is_empty(&dp_sch->tasks))
 		schedule_task(&dp_sch->ll_tick_src, 0, 0);
 
 	/* add a task to DP scheduler list */
