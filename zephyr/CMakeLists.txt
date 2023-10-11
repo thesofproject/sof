@@ -62,7 +62,7 @@ set(RIMAGE_TOP ${sof_top_dir}/rimage)
 
 # Save path to rimage configuration files in cmake cache for later use by
 # rimage during the "west sign" stage
-set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config} CACHE PATH
+set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
     " Path to rimage board configuration files")
 
 include(ExternalProject)
