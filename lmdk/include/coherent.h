@@ -56,15 +56,7 @@
 //typedef uint32_t k_spinlock_key_t;
 
 struct coherent {
-//	union {
-//		struct {
-//			struct k_spinlock lock;	/* locking mechanism */
-//			k_spinlock_key_t key;	/* lock flags */
-//		};
-//#ifdef __ZEPHYR__
-//		struct k_mutex mutex;
-//#endif
-//	};
+	uint32_t padd[5];
 	uint8_t sleep_allowed;	/* the object will never be acquired or released
 				 * in atomic context */
 	uint8_t shared;		/* shared on other non coherent cores */

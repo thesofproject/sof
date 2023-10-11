@@ -537,15 +537,18 @@ struct comp_driver_info {
  * Audio component base configuration from IPC at creation.
  */
 struct comp_ipc_config {
-	uint32_t core;		/**< core we run on */
-	uint32_t id;		/**< component id */
-	uint32_t pipeline_id;	/**< component pipeline id */
-	uint32_t proc_domain;   /**< processing domain - LL or DP */
+	uint32_t core;			/**< core we run on */
+	uint32_t id;			/**< component id */
+	uint32_t pipeline_id;		/**< component pipeline id */
+	uint32_t proc_domain;		/**< processing domain - LL or DP */
 	enum sof_comp_type type;	/**< component type */
-	uint32_t periods_sink;	/**< 0 means variable */
-	uint32_t periods_source;/**< 0 means variable */
-	uint32_t frame_fmt;	/**< SOF_IPC_FRAME_ */
-	uint32_t xrun_action;	/**< action we should take on XRUN */
+	uint32_t periods_sink;		/**< 0 means variable */
+	uint32_t periods_source;	/**< 0 means variable */
+	uint32_t frame_fmt;		/**< SOF_IPC_FRAME_ */
+	uint32_t xrun_action;		/**< action we should take on XRUN */
+#if CONFIG_IPC_MAJOR_4
+	uint32_t ipc_config_size;	/**< size of a config received by ipc */
+#endif
 };
 
 /**
@@ -559,18 +562,10 @@ struct comp_dev {
 	uint32_t frames;	   /**< number of frames we copy to sink */
 	struct pipeline *pipeline; /**< pipeline we belong to */
 
-	uint32_t min_sink_bytes;   /**< min free sink buffer size measured in
-				     *  bytes required to run component's
-				     *  processing
-				     */
-	uint32_t min_source_bytes; /**< amount of data measured in bytes
-				     *  available at source buffer required
-				     *  to run component's processing
-				     */
-
-	struct task *task;	/**< component's processing task used only
-				  *  for components running on different core
-				  *  than the rest of the pipeline
+	struct task *task;	/**< component's processing task used
+				  *  1) for components running on different core
+				  *    than the rest of the pipeline
+				  *  2) for all DP tasks
 				  */
 	uint32_t size;		/**< component's allocated size */
 	uint32_t period;	/**< component's processing period */
@@ -579,7 +574,8 @@ struct comp_dev {
 				  *  across cores
 				  */
 	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
-	struct tr_ctx tctx;	/**< trace settings */
+	//struct tr_ctx tctx;	/**< trace settings */
+	uint32_t padd[2];
 
 	/* common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
