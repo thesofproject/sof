@@ -156,6 +156,11 @@ int platform_init(struct sof *sof)
 	sof->cpu_timers = sof->platform_timer;
 #endif
 
+#ifdef __ZEPHYR__
+	/* initialize cascade interrupts before any usage */
+	interrupt_init(sof);
+#endif
+
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
@@ -165,7 +170,9 @@ int platform_init(struct sof *sof)
 		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 
+#ifndef __ZEPHYR__
 	platform_timer_start(sof->platform_timer);
+#endif
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
