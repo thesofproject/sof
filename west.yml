@@ -33,14 +33,12 @@ manifest:
   # https://github.com/zephyrproject-rtos/zephyr/issues/58212
 
   projects:
-    - name: rimage
-      repo-path: rimage
-      path: sof/rimage
-      revision: ac487e09ca5bb34a2eebd2f3d1cfeb9e792c501a
-
+    # West convenience for Zephyr people who forgot --recursive when
+    # cloning sof.git.  This adds the burden of keeping both tomlc99
+    # SHA1s synchronized but in practice it barely ever moves.
     - name: tomlc99
       repo-path: tomlc99
-      path: sof/rimage/tomlc99
+      path: sof/tools/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
     - name: zephyr

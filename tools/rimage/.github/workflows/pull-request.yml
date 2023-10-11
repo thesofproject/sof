@@ -1,0 +1,42 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable this.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand this.yml exp.yml && diff -w -u this.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: codestyle
+
+# yamllint disable-line rule:truthy
+on: [pull_request]
+
+jobs:
+  yamllint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: run yamllint
+        run: yamllint .github/workflows/*.yml
+  checkpatch:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ env.PR_FETCH_DEPTH }}
+
+      - name: install codespell
+        run: sudo apt update && sudo apt install -y codespell
+
+      - name: checkpatch.pl PR review
+        uses: webispy/checkpatch-action@v9
+        env:
+          CHECKPATCH_COMMAND: ./scripts/checkpatch.pl
