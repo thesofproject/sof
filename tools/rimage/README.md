@@ -24,49 +24,49 @@ PATH. Zephyr users can run `west config rimage.path
 /path/to/rimage/build/rimage`; Zephyr documentation and `west sign -h`
 have more details.
 
-## Testing rimage changes with SOF Continuous Integration
+## Testing tomlc99 changes with SOF Continuous Integration
 
-This section is about leveraging SOF validation to test rimage changes
-_before_ submitting them to the rimage repository.
+This section is about leveraging SOF validation to test tomlc99 changes
+_before_ submitting them to the tomlc99 repository.
 
-Nothing here is actually specific to SOF and rimage; you can apply the
+Nothing here is actually specific to SOF and tomlc99; you can apply the
 same test logic to any submodule and parent on Github. In fact the same
 logic applies to submodule alternatives. Github is the only requirement.
 
 ### Get familiar with git submodules
 
-This is unfortunately not optional for SOF and rimage.
+This is unfortunately not optional for SOF and tomlc99.
 
 For various reasons submodules seem to confuse many git users. Maybe
 because the versions of the submodules are not directly visible in some
 configuration file like with most alternatives? Either way, an
-unfortunate prerequisite before doing any rimage work is to get familiar
+unfortunate prerequisite before doing any tomlc99 work is to get familiar
 with git submodules in general. As submodules are built-in there are
 many resources about them on the Internet. One possible starting point
 is https://git-scm.com/book/en/v2/Git-Tools-Submodules but feel free
 to use any other good tutorial instead. Make sure you actually practice
 a tutorial; don't just read it. Practicing on a temporary and throw-away
-copy of SOF + rimage is a great idea.
+copy of SOF + tomlc99 is a great idea.
 
 Obviously, you also need to be familiar with regular Github pull
 requests.
 
-### Run SOF tests on unmerged rimage commits
+### Run SOF tests on unmerged tomlc99 commits
 
-First, push the rimage commits you want to be tested to any branch of
-your rimage fork on Github.  Do _not_ submit an rimage pull request yet.
+First, push the tomlc99 commits you want to be tested to any branch of
+your tomlc99 fork on Github.  Do _not_ submit an tomlc99 pull request yet.
 
-Note your rimage fork must have been created using the actual "fork"
+Note your tomlc99 fork must have been created using the actual "fork"
 button on Github so Github is aware of the connection with the upstream
-rimage repo. In the top-left corner you should see `forked from
-thesofproject/rimage` under the name of your fork. If not then search
+tomlc99 repo. In the top-left corner you should see `forked from
+thesofproject/tomlc99` under the name of your fork. If not then search
 the Internet for "re-attach detached github fork".
 
-Then, **pretend** these rimage commits have already been accepted and
+Then, **pretend** these tomlc99 commits have already been accepted and
 merged (they have been neither) and submit to SOF a draft pull request
-that updates the main SOF branch with your brand new rimage commits to
+that updates the main SOF branch with your brand new tomlc99 commits to
 test. The only SOF commit in this SOF TEST pull request is an SOF commit
-that updates the rimage pointer to the SHA of your last rimage
+that updates the tomlc99 pointer to the SHA of your last tomlc99
 commit. If you're not sure how to do this then you must go back to the
 previous section and practice submodules more.
 
@@ -82,24 +82,24 @@ time but you can never "un-notify" reviewers.
 
 Github has very good support for submodules and will display your SOF
 TEST pull request better than what the git command line can show. For
-instance Github will list your rimage changes directly in the SOF Pull
+instance Github will list your tomlc99 changes directly in the SOF Pull
 Request. So if something looks unexpected on Github then it means you
 did something wrong. Stop immediately (except for switching to draft if
 you forgot) and ask the closest git guru for help.
 
 Search for "Submodule" in the build logs and make sure the last of your
-new rimage commits has been checked out.
+new tomlc99 commits has been checked out.
 
-Iterate and force-push your rimage branch and your SOF TEST pull request
-until all the SOF tests pass. Then you can submit your rimage pull
-request as usual. In the comments section of the rimage pull request,
-point at your test results on the SOF side to impress the rimage
-reviewers and get your rimage changes merged faster.
+Iterate and force-push your tomlc99 branch and your SOF TEST pull request
+until all the SOF tests pass. Then you can submit your tomlc99 pull
+request as usual. In the comments section of the tomlc99 pull request,
+point at your test results on the SOF side to impress the tomlc99
+reviewers and get your tomlc99 changes merged faster.
 
-Finally, after your rimage changes have been merged, you can if you want
-submit one final SOF pull request that points to the final rimage
-SHA. Or, if your rimage change is not urgently needed, you can just wait
-for someone else to do it later. If you do it, copy the rimage git log
+Finally, after your tomlc99 changes have been merged, you can if you want
+submit one final SOF pull request that points to the final tomlc99
+SHA. Or, if your tomlc99 change is not urgently needed, you can just wait
+for someone else to do it later. If you do it, copy the tomlc99 git log
 --oneline in the SOF commit message. Find some good (and less good)
-rimage commit message examples at
+commit message examples for submodule updates at
 https://github.com/thesofproject/sof/commits/main/rimage
