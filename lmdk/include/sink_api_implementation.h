@@ -73,6 +73,7 @@ struct sof_sink {
 	const struct sink_ops *ops;	/** operations interface */
 	size_t requested_write_frag_size; /** keeps number of bytes requested by get_buffer() */
 	size_t num_of_bytes_processed; /** processed bytes counter */
+	size_t obs;
 	struct sof_audio_stream_params *audio_stream_params; /** pointer to audio params */
 };
 
