@@ -8,12 +8,13 @@
 #ifndef __SOF_AUDIO_RTNR_RTNR_H__
 #define __SOF_AUDIO_RTNR_RTNR_H__
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <sof/platform.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
+#include <sof/platform.h>
 #include <ipc/stream.h>
 #include <user/rtnr.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 /**
  * \brief Type definition for the RTNR processing function
@@ -41,10 +42,10 @@ struct audio_stream_rtnr {
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
 };
 
-typedef void (*rtnr_func)(struct comp_dev *dev,
-						  struct audio_stream_rtnr **sources,
-						  struct audio_stream_rtnr *sink,
-						  int frames);
+typedef void (*rtnr_func)(struct processing_module *mod,
+			  struct audio_stream_rtnr **sources,
+			  struct audio_stream_rtnr *sink,
+			  int frames);
 
 #define RTNR_MAX_SOURCES		1 /* Microphone stream */
 
