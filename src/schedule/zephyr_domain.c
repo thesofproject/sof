@@ -50,6 +50,11 @@ struct zephyr_domain {
 	struct k_timer timer;
 	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
 	struct ll_schedule_domain *ll_domain;
+#if CONFIG_CROSS_CORE_STREAM
+	atomic_t block;
+	struct k_mutex block_mutex;
+	struct k_condvar block_condvar;
+#endif
 };
 
 /* perf measurement windows size 2^x */
@@ -66,6 +71,26 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&dt->sem, K_FOREVER);
+
+#if CONFIG_CROSS_CORE_STREAM
+		/*
+		 * If zephyr_domain->block is set -- block LL scheduler from starting its
+		 * next cycle.
+		 * Mutex locking might be somewhat expensive, hence first check for
+		 * zephyr_domain->block value is made without locking the mutex. If
+		 * zephyr_domain->block is not set -- no need to do anything. Otherwise,
+		 * usual condvar procedure is performed: mutex is locked to properly check
+		 * zephyr_domain->block value again to avoid race with unblocking procedure
+		 * (clearing zephyr_domain->block and broadcasting the condvar).
+		 */
+		if (atomic_get(&zephyr_domain->block)) {
+			k_mutex_lock(&zephyr_domain->block_mutex, K_FOREVER);
+			if (atomic_get(&zephyr_domain->block))
+				k_condvar_wait(&zephyr_domain->block_condvar,
+					       &zephyr_domain->block_mutex, K_FOREVER);
+			k_mutex_unlock(&zephyr_domain->block_mutex);
+		}
+#endif
 
 		cycles0 = k_cycle_get_32();
 		dt->handler(dt->arg);
@@ -221,9 +246,38 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	return 0;
 }
 
+#if CONFIG_CROSS_CORE_STREAM
+static void zephyr_domain_block(struct ll_schedule_domain *domain)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+
+	tr_dbg(&ll_tr, "Blocking LL scheduler");
+
+	k_mutex_lock(&zephyr_domain->block_mutex, K_FOREVER);
+	atomic_set(&zephyr_domain->block, 1);
+	k_mutex_unlock(&zephyr_domain->block_mutex);
+}
+
+static void zephyr_domain_unblock(struct ll_schedule_domain *domain)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+
+	tr_dbg(&ll_tr, "Unblocking LL scheduler");
+
+	k_mutex_lock(&zephyr_domain->block_mutex, K_FOREVER);
+	atomic_set(&zephyr_domain->block, 0);
+	k_condvar_broadcast(&zephyr_domain->block_condvar);
+	k_mutex_unlock(&zephyr_domain->block_mutex);
+}
+#endif
+
 static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,
+#if CONFIG_CROSS_CORE_STREAM
+	.domain_block		= zephyr_domain_block,
+	.domain_unblock		= zephyr_domain_unblock,
+#endif
 };
 
 struct ll_schedule_domain *zephyr_domain_init(int clk)
@@ -238,6 +292,12 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 				sizeof(*zephyr_domain));
 
 	zephyr_domain->ll_domain = domain;
+
+#if CONFIG_CROSS_CORE_STREAM
+	atomic_set(&zephyr_domain->block, 0);
+	k_mutex_init(&zephyr_domain->block_mutex);
+	k_condvar_init(&zephyr_domain->block_condvar);
+#endif
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
