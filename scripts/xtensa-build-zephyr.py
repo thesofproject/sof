@@ -134,6 +134,12 @@ platform_configs = {
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
+	"imx8ulp" : PlatformConfig(
+		"imx8ulp", "nxp_adsp_imx8ulp",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_nxp2_s7_v2_1a_prod",
+		RIMAGE_KEY = "key param ignored by imx8ulp"
+	),
 }
 
 platform_names = list(platform_configs)
@@ -952,7 +958,7 @@ def gzip_compress(fname, gzdst=None):
 # Don't run sof_ri_info and ignore silently .ri files that don't have one.
 RI_INFO_UNSUPPORTED = []
 
-RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp']
 RI_INFO_UNSUPPORTED += ['rn']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 

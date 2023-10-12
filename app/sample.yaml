@@ -21,3 +21,4 @@ tests:
       - nxp_adsp_imx8
       - nxp_adsp_imx8x
       - nxp_adsp_imx8m
+      - nxp_adsp_imx8ulp
