@@ -69,6 +69,9 @@ struct sdma_chan {
 	int next_bd;
 	int sdma_chan_type;
 	int fifo_paddr;
+
+	unsigned int watermark_level;
+	unsigned int sw_done_sel; /* software done selector */
 };
 
 /* Private data for the whole controller */
@@ -603,6 +606,47 @@ static int sdma_status(struct dma_chan_data *channel,
 	return 0;
 }
 
+static void sdma_set_watermarklevel(struct dma_chan_data *chan)
+{
+	struct sdma_chan *pdata = dma_chan_get_data(chan);
+
+	/* TODO: retrieve this information from DAI */
+	unsigned int n_fifos = 4; /* number of HW fifos used */
+	unsigned int words_per_fifo = 1; /* number of audio channels per frame */
+
+	/* sw_done_sel mimics software done configuration from Linux
+	 * see Documentation/devicetree/bindings/fsl-imx-sdma.txt
+	 */
+	unsigned int sw_done_sel = 0;
+
+	/* sw_done_sel configuration
+	 * - bit31:  sw_done
+	 * - bit15:8 selector
+	 * - bit7-0  priority
+	 */
+	sw_done_sel |= BIT(31);
+
+	/* watermark level:
+	 * bit0~11: wartermark level(wml*fifo_number)
+	 * bit15~12: to do-fifo number
+	 * bit16~19: fifo offset
+	 * bit27~24: sw done selector
+	 * bit28~31: numbers of audio channels in one frame, 0: 1 channel,1: 2 channels
+	 * bit23: sw done enable
+	 */
+
+	pdata->watermark_level |= SDMA_WATERMARK_LEVEL_SW_DONE |
+		 (sw_done_sel & 0xff) << SDMA_WATERMARK_LEVEL_SW_DONE_SEL_OFF;
+
+	pdata->watermark_level |=
+		SDMA_WATERMARK_LEVEL_N_FIFOS(n_fifos);
+
+	pdata->watermark_level |=
+		SDMA_WATERMARK_LEVEL_WORDS_PER_FIFO(words_per_fifo - 1);
+
+	pdata->sw_done_sel = sw_done_sel;
+}
+
 static int sdma_read_config(struct dma_chan_data *channel,
 			    struct dma_sg_config *config)
 {
@@ -778,6 +822,13 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	}
 
 	watermark = (config->burst_elems * width) / 8;
+
+	if (pdata->sdma_chan_type == SDMA_CHAN_TYPE_SAI2MCU) {
+		sdma_set_watermarklevel(channel);
+		watermark |= pdata->watermark_level;
+	} else {
+		watermark = (config->burst_elems * width) / 8;
+	}
 
 	memset(pdata->ctx, 0, sizeof(*pdata->ctx));
 	pdata->ctx->pc = sdma_script_addr;
