@@ -89,6 +89,12 @@
 #define SDMA_DONE0_CONFIG	0x1000
 #define SDMA_DONE1_CONFIG	0x1004
 
+#define SDMA_WATERMARK_LEVEL_N_FIFOS(x)		SET_BITS(15, 12, x)
+#define SDMA_WATERMARK_LEVEL_OFF_FIFOS(x)	SET_BITS(19, 16, x)
+#define SDMA_WATERMARK_LEVEL_WORDS_PER_FIFO(x)	SET_BITS(31, 28, x)
+#define SDMA_WATERMARK_LEVEL_SW_DONE		BIT(23)
+#define SDMA_WATERMARK_LEVEL_SW_DONE_SEL_OFF	24
+
 /* Buffer descriptor first word */
 /* Count: Data buffer size, in words */
 #define SDMA_BD_COUNT_MASK	MASK(15, 0)
