@@ -441,6 +441,8 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 
 static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 {
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
+
 	tr_dbg(&sdma_tr, "sdma_enable_event(%d, %d)", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
@@ -448,6 +450,13 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
 			    BIT(channel->index), BIT(channel->index));
+
+	if (pdata->sw_done_sel & BIT(31)) {
+		unsigned int done0;
+
+		done0 = SDMA_DONE0_CONFIG_DONE_SEL | ~SDMA_DONE0_CONFIG_DONE_DIS;
+		dma_reg_update_bits(channel->dma, SDMA_DONE0_CONFIG, 0xFF, done0);
+	}
 }
 
 static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
