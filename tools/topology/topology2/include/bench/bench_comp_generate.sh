@@ -30,12 +30,12 @@ generate_comp ()
 		Object.Widget.${comp}.1 {
 			index 1
 			<include/bench/one_input_output_format_${format}.conf>
-			<include/bench/${comp}_control_bytes_playback.conf>
+			<include/bench/${comp}_controls_playback.conf>
 		}
 		Object.Widget.${comp}.2 {
 			index 3
 			<include/bench/one_input_output_format_${format}.conf>
-			<include/bench/${comp}_control_bytes_capture.conf>
+			<include/bench/${comp}_controls_capture.conf>
 		}
 		<include/bench/host_io_gateway_pipelines_${format}.conf>
 		<include/bench/${comp}_hda_route.conf>
@@ -71,32 +71,50 @@ EOF_ROUTE
 
 generate_playback_controls ()
 {
-    fn=${comp}_control_bytes_playback.conf
+    fn=${comp}_controls_playback.conf
     echo Creating file "$fn"
     cat > "$fn" <<EOF_PLAYBACK_BYTES
 			# Created initially with script "${FULL_CMD[@]}"
 			# may need edits to modify controls
-			Object.Control.bytes."1" {
-				name '\$ANALOG_PLAYBACK_PCM ${comp^^} bytes'
-				IncludeByKey.BENCH_${comp^^}_PARAMS {
-					"default" "include/components/${comp}/default.conf"
-				}
+			Object.Control {
+				# Un-comment the supported controls in ${comp^^}
+				#bytes."1" {
+				#	name '\$ANALOG_PLAYBACK_PCM ${comp^^} bytes'
+				#	IncludeByKey.BENCH_${comp^^}_PARAMS {
+				#		"default" "include/components/${comp}/default.conf"
+				#	}
+				#}
+				#mixer."1" {
+				#	name '\$ANALOG_PLAYBACK_PCM ${comp^^} switch or volume'
+				#}
+				#enum."1" {
+				#	name '\$ANALOG_PLAYBACK_PCM ${comp^^} enum'
+				#}
 			}
 EOF_PLAYBACK_BYTES
 }
 
 generate_capture_controls ()
 {
-    fn=${comp}_control_bytes_capture.conf
+    fn=${comp}_controls_capture.conf
     echo Creating file "$fn"
     cat > "$fn" <<EOF_CAPTURE_BYTES
 			# Created initially with script "${FULL_CMD[@]}"
 			# may need edits to modify controls
-			Object.Control.bytes."1" {
-				name '\$ANALOG_CAPTURE_PCM ${comp^^} bytes'
-				IncludeByKey.BENCH_${comp^^}_PARAMS {
-					"default" "include/components/${comp}/default.conf"
-				}
+			Object.Control {
+				# Un-comment the supported controls in ${comp^^}
+				#bytes."1" {
+				#	name '\$ANALOG_CAPTURE_PCM ${comp^^} bytes'
+				#	IncludeByKey.BENCH_${comp^^}_PARAMS {
+				#		"default" "include/components/${comp}/default.conf"
+				#	}
+				#}
+				#mixer."1" {
+				#	name '\$ANALOG_CAPTURE_PCM ${comp^^} switch or volume'
+				#}
+				#enum."1" {
+				#	name '\$ANALOG_CAPTURE_PCM ${comp^^} enum'
+				#}
 			}
 EOF_CAPTURE_BYTES
 }
