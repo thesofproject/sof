@@ -1,0 +1,60 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable this.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand this.yml exp.yml && diff -w -u this.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: rimage
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - tools/rimage/**
+  push:
+    paths:
+      - tools/rimage/**
+
+jobs:
+
+  # Basic build test
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      # FIXME: add  -Wpointer-arith
+      _CFLGS: -Werror -Wall -Wmissing-prototypes
+        -Wimplicit-fallthrough=3
+
+
+    steps:
+      - uses: actions/checkout@v4
+        with: {submodules: recursive, fetch-depth: 0, filter: 'tree:0'}
+
+      - run: cmake -B build-rimage/ -S tools/rimage/ -DCMAKE_C_FLAGS="${_CFLGS}"
+
+      # VERBOSE because CFLAGS (and -Wpointer-arith) used to be ignored
+      # for years and no one noticed
+      - run: cmake --build build-rimage/ --  -j$(nproc) VERBOSE=1
+
+
+  # cppcheck
+  cppcheck:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {submodules: recursive, fetch-depth: 0, filter: 'tree:0'}
+
+      - name: apt install cppcheck
+        run: sudo apt update && sudo apt-get -y install cppcheck
+
+        # TODO enable more types of checks as they are fixed
+      - name: run cppcheck
+        run: cppcheck --platform=unix32 --force --max-configs=1024
+          --inconclusive --inline-suppr
+          --error-exitcode=1 tools/rimage/
