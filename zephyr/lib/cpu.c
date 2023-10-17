@@ -167,6 +167,7 @@ int cpu_enable_core(int id)
 
 	atomic_set(&start_flag, 1);
 
+	pm_policy_state_lock_get(PM_STATE_ACTIVE, 1);
 	return 0;
 }
 
@@ -207,6 +208,8 @@ void cpu_disable_core(int id)
 
 	if (soc_adsp_halt_cpu(id) != 0)
 		tr_err(&zephyr_tr, "failed to disable core %d", id);
+	else
+		pm_policy_state_lock_put(PM_STATE_ACTIVE, 1);
 #endif /* CONFIG_PM */
 }
 
