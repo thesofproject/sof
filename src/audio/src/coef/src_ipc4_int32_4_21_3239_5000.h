@@ -5,7 +5,7 @@
  */
 
 /** \cond GENERATED_BY_TOOLS_TUNE_SRC */
-#include "../src.h"
+
 #include <stdint.h>
 
 const int32_t src_int32_4_21_3239_5000_fir[512] = {
