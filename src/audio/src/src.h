@@ -104,7 +104,20 @@ static inline void src_dec_wrap_s16(int16_t **ptr, int16_t *addr, size_t size)
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-void src_polyphase_reset(struct polyphase_src *src);
+static inline void src_state_reset(struct src_state *state)
+{
+	state->fir_delay_size = 0;
+	state->out_delay_size = 0;
+}
+
+static inline void src_polyphase_reset(struct polyphase_src *src)
+{
+	src->number_of_stages = 0;
+	src->stage1 = NULL;
+	src->stage2 = NULL;
+	src_state_reset(&src->state1);
+	src_state_reset(&src->state2);
+}
 
 int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 		       int32_t *delay_lines_start);
@@ -173,6 +186,39 @@ int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 				     struct sof_ipc_stream_params *params);
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+/* Calculates the needed FIR delay line length */
+static inline int src_fir_delay_length(struct src_stage *s)
+{
+	return s->subfilter_length + (s->num_of_subfilters - 1) * s->idm
+		+ s->blk_in;
+}
+
+/* Calculates the FIR output delay line length */
+static inline int src_out_delay_length(struct src_stage *s)
+{
+	return 1 + (s->num_of_subfilters - 1) * s->odm;
+}
+
+/* Returns index of a matching sample rate */
+static inline int src_find_fs(int fs_list[], int list_length, int fs)
+{
+	int i;
+
+	for (i = 0; i < list_length; i++) {
+		if (fs_list[i] == fs)
+			return i;
+	}
+	return -EINVAL;
+}
+
+/* Fallback function */
+static inline int src_fallback(struct comp_data *cd,
+			       struct sof_source *source,
+			       struct sof_sink *sink)
+{
+	return 0;
+}
+
 int src_rate_check(const void *spec);
 int src_set_params(struct processing_module *mod, struct sof_sink *sink);
 
@@ -182,9 +228,45 @@ int src_prepare_general(struct processing_module *mod,
 			struct sof_source *source,
 			struct sof_sink *sink);
 int src_init(struct processing_module *mod);
-int src_fallback(struct comp_data *cd, struct sof_source *source,
-		 struct sof_sink *sink);
 
+int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
+		       int nch);
+int init_stages(struct src_stage *stage1, struct src_stage *stage2,
+		struct polyphase_src *src, struct src_param *p,
+		int n, int32_t *delay_lines_start);
+int src_1s(struct comp_data *cd, struct sof_source *source,
+	   struct sof_sink *sink);
+int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
+		 struct sof_sink *sink);
+int src_verify_params(struct processing_module *mod);
+
+bool src_get_copy_limits(struct comp_data *cd,
+			 struct sof_source *source,
+			 struct sof_sink *sink);
+int src_params_general(struct processing_module *mod,
+		       struct sof_source *source,
+		       struct sof_sink *sink);
+int src_prepare(struct processing_module *mod,
+		struct sof_source **sources, int num_of_sources,
+		struct sof_sink **sinks, int num_of_sinks);
+int src_2s(struct comp_data *cd,
+	   struct sof_source *source, struct sof_sink *sink);
+
+bool src_is_ready_to_process(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks);
+int src_process(struct processing_module *mod,
+		struct sof_source **sources, int num_of_sources,
+		struct sof_sink **sinks, int num_of_sinks);
+
+int src_set_config(struct processing_module *mod, uint32_t config_id,
+		   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+		   size_t response_size);
+int src_get_config(struct processing_module *mod, uint32_t config_id,
+		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size);
+int src_free(struct processing_module *mod);
+int src_reset(struct processing_module *mod);
 extern const struct sof_uuid src_uuid;
 extern struct tr_ctx src_tr;
 

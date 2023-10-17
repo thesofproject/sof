@@ -4,7 +4,6 @@
  *
  */
 
-#include "../src.h"
 #include <stdint.h>
 
 const int32_t src_int32_20_21_4167_5000_fir[1120] = {

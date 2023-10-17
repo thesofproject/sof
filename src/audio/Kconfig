@@ -126,6 +126,18 @@ config COMP_SRC
 	help
 	  Select for SRC component
 
+config COMP_SRC_LITE
+	bool "SRC_LITE component"
+	default y
+	help
+	  Select for SRC_LITE component
+	  which only supports a subset of conversions
+	  supported by the SRC module:
+	  48 -> 16kHz
+	  44.1 -> 16 kHz
+	  32 -> 16 kHz
+	  44.1 -> 48
+
 config COMP_STUBS
 	bool "Build all selected third-party (3P) components with stubs"
 	default n

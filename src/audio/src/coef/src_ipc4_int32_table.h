@@ -97,7 +97,6 @@
 #include "src_ipc4_int32_40_21_2381_5000.h"
 #include "src_ipc4_int32_40_21_2976_5000.h"
 #include "src_ipc4_int32_40_21_3968_5000.h"
-#include "../src.h"
 #include <stdint.h>
 
 /* SRC table */
