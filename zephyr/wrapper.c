@@ -232,6 +232,7 @@ int start_complete(void)
 #if defined(CONFIG_PM)
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_ACTIVE, 1);
 #endif
 	return boot_complete();
 }
