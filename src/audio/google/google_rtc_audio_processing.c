@@ -53,9 +53,7 @@ DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_process
 			   LOG_LEVEL_INFO);
 
 struct google_rtc_audio_processing_comp_data {
-#if CONFIG_IPC_MAJOR_4
 	struct sof_ipc4_aec_config config;
-#endif
 	uint32_t num_frames;
 	int num_aec_reference_channels;
 	int num_capture_channels;
@@ -83,7 +81,6 @@ void GoogleRtcFree(void *ptr)
 	return rfree(ptr);
 }
 
-#if CONFIG_IPC_MAJOR_4
 static void google_rtc_audio_processing_params(struct processing_module *mod)
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
@@ -106,7 +103,6 @@ static void google_rtc_audio_processing_params(struct processing_module *mod)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 }
-#endif
 
 static int google_rtc_audio_processing_reconfigure(struct processing_module *mod)
 {
@@ -255,60 +251,6 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int google_rtc_audio_processing_cmd_set_data(struct processing_module *mod,
-						    struct sof_ipc_ctrl_data *cdata)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	int ret;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		ret = comp_data_blob_set_cmd(cd->tuning_handler, cdata);
-		if (ret)
-			return ret;
-		/* Accept the new blob immediately so that userspace can write
-		 * the control in quick succession without error.
-		 * This ensures the last successful control write from userspace
-		 * before prepare/copy is applied.
-		 * The config blob is not referenced after reconfigure() returns
-		 * so it is safe to call comp_get_data_blob here which frees the
-		 * old blob. This assumes cmd() and prepare()/copy() cannot run
-		 * concurrently which is the case when there is no preemption.
-		 */
-		if (comp_is_new_data_blob_available(cd->tuning_handler)) {
-			comp_get_data_blob(cd->tuning_handler, NULL, NULL);
-			cd->reconfigure = true;
-		}
-		return 0;
-	default:
-		comp_err(mod->dev,
-			 "google_rtc_audio_processing_ctrl_set_data(): Only binary controls supported %d",
-			 cdata->cmd);
-		return -EINVAL;
-	}
-}
-
-static int google_rtc_audio_processing_cmd_get_data(struct processing_module *mod,
-						    struct sof_ipc_ctrl_data *cdata,
-						    size_t max_data_size)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-
-	comp_info(mod->dev, "google_rtc_audio_processing_ctrl_get_data(): %u", cdata->cmd);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		return comp_data_blob_get_cmd(cd->tuning_handler, cdata, max_data_size);
-	default:
-		comp_err(mod->dev,
-			 "google_rtc_audio_processing_ctrl_get_data(): Only binary controls supported %d",
-			 cdata->cmd);
-		return -EINVAL;
-	}
-}
-#endif
-
 static int google_rtc_audio_processing_set_config(struct processing_module *mod, uint32_t param_id,
 						  enum module_cfg_fragment_position pos,
 						  uint32_t data_offset_size,
@@ -316,7 +258,6 @@ static int google_rtc_audio_processing_set_config(struct processing_module *mod,
 						  size_t fragment_size, uint8_t *response,
 						  size_t response_size)
 {
-#if CONFIG_IPC_MAJOR_4
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	int ret;
 
@@ -350,25 +291,14 @@ static int google_rtc_audio_processing_set_config(struct processing_module *mod,
 	}
 
 	return 0;
-#elif CONFIG_IPC_MAJOR_3
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	return google_rtc_audio_processing_cmd_set_data(mod, cdata);
-#endif
 }
 
 static int google_rtc_audio_processing_get_config(struct processing_module *mod,
 						  uint32_t param_id, uint32_t *data_offset_size,
 						  uint8_t *fragment, size_t fragment_size)
 {
-#if CONFIG_IPC_MAJOR_4
 	comp_err(mod->dev, "google_rtc_audio_processing_ctrl_get_config(): Not supported");
 	return -EINVAL;
-#elif CONFIG_IPC_MAJOR_3
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	return google_rtc_audio_processing_cmd_get_data(mod, cdata, fragment_size);
-#endif
 }
 
 static int google_rtc_audio_processing_init(struct processing_module *mod)
@@ -389,7 +319,6 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 
 	md->private = cd;
 
-#if CONFIG_IPC_MAJOR_4
 	const struct ipc4_base_module_extended_cfg *base_cfg = md->cfg.init_data;
 	struct ipc4_input_pin_format reference_fmt, output_fmt;
 	const size_t size = sizeof(struct ipc4_input_pin_format);
@@ -404,7 +333,6 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 
 	cd->config.reference_fmt = reference_fmt.audio_fmt;
 	cd->config.output_fmt = output_fmt.audio_fmt;
-#endif
 
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
 	if (!cd->tuning_handler) {
@@ -552,20 +480,14 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 
 	comp_info(dev, "google_rtc_audio_processing_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
 	google_rtc_audio_processing_params(mod);
-#endif
 
 	/* searching for stream and feedback source buffers */
 	list_for_item(source_buffer_list_item, &dev->bsource_list) {
 		struct comp_buffer *source = container_of(source_buffer_list_item,
 							  struct comp_buffer, sink_list);
-#if CONFIG_IPC_MAJOR_4
 		if (IPC4_SINK_QUEUE_ID(buf_get_id(source)) ==
 			SOF_AEC_FEEDBACK_QUEUE_ID) {
-#else
-		if (source->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
-#endif
 			cd->aec_reference_source = i;
 			aec_channels = audio_stream_get_channels(&source->stream);
 			comp_dbg(dev, "reference index = %d, channels = %d", i, aec_channels);
