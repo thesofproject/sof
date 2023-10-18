@@ -54,7 +54,11 @@ static const struct sof_ipc_fw_ready ready
 		.abi_version = SOF_ABI_VERSION,
 		.src_hash = SOF_SRC_HASH,
 	},
+#if CONFIG_ADSP_IMR_CONTEXT_SAVE
+	.flags = DEBUG_SET_FW_READY_FLAGS | SOF_IPC_INFO_CONTEXT_SAVE,
+#else
 	.flags = DEBUG_SET_FW_READY_FLAGS,
+#endif
 };
 
 int platform_boot_complete(uint32_t boot_message)
