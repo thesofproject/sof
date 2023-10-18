@@ -35,10 +35,11 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 USE_CHAIN_DMA=true,NUM_SDW_AMP_LINKS=2,SDW_SPK_STREAM=SDW1-Playback,SDW_SPK_IN_STREAM=SDW1-Capture,\
 SDW_DMIC_STREAM=SDW0-Capture"
 
-"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-rt1713-l3\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-SDW_SPK_STREAM=Playback-SmartAmp,SDW_SPK_IN_STREAM=Capture-SmartAmp,\
-SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
-SDW_JACK_IN_STREAM=Capture-SimpleJack"
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-rt1713-l3\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1"
+
+# Jack codec + SmartAmp topology. No SDW_DMIC connection
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2"
+
 # Below topologies are used on Chromebooks
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
@@ -74,4 +75,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-sdw-cs42l42-l0-max98363-l2.bin,\
 BT_NAME=SSP1-BT,BT_INDEX=1,BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true,\
 NUM_SDW_AMP_LINKS=1,SDW_SPK_STREAM=SDW2-Playback,SDW_AMP_FEEDBACK=false,\
 SDW_JACK_CAPTURE_CH=1,DEEPBUFFER_FW_DMA_MS=100,DEEPBUFFER_D0I3_COMPATIBLE=true"
+
+# SDW topology for LNL RVP
+"cavs-sdw\;sof-lnl-rt711-4ch\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_ID=2,DMIC1_ID=3,NUM_HDMIS=0,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-rt711-4ch.bin,\
+DEEPBUFFER_FW_DMA_MS=100,DEEPBUFFER_D0I3_COMPATIBLE=true"
 )

@@ -23,6 +23,7 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 )
 sof_append_relative_path_definitions(audio_mux)

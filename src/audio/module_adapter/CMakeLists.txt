@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 
-add_local_sources(sof module_adapter.c module/generic.c)
+if(CONFIG_IPC_MAJOR_3)
+	add_local_sources(sof module_adapter.c module_adapter_ipc3.c module/generic.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	add_local_sources(sof module_adapter.c module_adapter_ipc4.c module/generic.c)
+endif()
 
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_CADENCE_CODEC)

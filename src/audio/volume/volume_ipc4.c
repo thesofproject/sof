@@ -159,7 +159,7 @@ int volume_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	for (channel = 0; channel < channels_count ; channel++) {
+	for (channel = 0; channel < channels_count; channel++) {
 		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
 			channel_cfg = 0;
 		else
@@ -175,6 +175,8 @@ int volume_init(struct processing_module *mod)
 	}
 
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
+
+	volume_set_ramp_channel_counter(cd, channels_count);
 
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
@@ -257,6 +259,8 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 			break;
 		}
 	}
+
+	volume_set_ramp_channel_counter(cd, channels_count);
 
 	cd->scale_vol = vol_get_processing_function(dev, cd);
 

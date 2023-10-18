@@ -1,11 +1,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-find_package(Git)
-set(RIMAGE_CMAKE "${SOF_ROOT_SOURCE_DIRECTORY}/rimage/CMakeLists.txt")
+set(RIMAGE_SUBMODULE "${SOF_ROOT_SOURCE_DIRECTORY}/rimage")
+if(EXISTS "${RIMAGE_SUBMODULE}/CMakeLists.txt")
+	message(WARNING
+		"${RIMAGE_SUBMODULE} is deprecated and ignored"
+	)
+endif()
 
+find_package(Git)
+set(TOMLC99_MAKE "${SOF_ROOT_SOURCE_DIRECTORY}/tools/rimage/tomlc99/Makefile")
 if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 
-	if(EXISTS "${RIMAGE_CMAKE}")
+	if(EXISTS "${TOMLC99_MAKE}")
 
 		# As incredible as it sounds, some people run neither
 		# "git status" nor "git diff" every few minutes and not
@@ -36,10 +42,10 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 	    NOT CONFIG_LIBRARY)
 
 		message(FATAL_ERROR
-"${RIMAGE_CMAKE} not found. You should have used 'git clone --recursive'. \
+"${TOMLC99_MAKE} not found. You should have used 'git clone --recursive'. \
 To fix this existing git clone run:
-git submodule update --init --merge --recursive
+git submodule update --init --merge tools/rimage/tomlc99
 ")
-	endif() # rimage/CMakeLists.txt
+	endif() # tomlc99/Makefile
 
 endif() # .git/

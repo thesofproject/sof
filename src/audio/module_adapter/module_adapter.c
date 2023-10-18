@@ -29,19 +29,6 @@
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
 /*
- * helpers to determine processing type
- * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
- */
-#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_audio_stream)
-
-#define IS_PROCESSING_MODE_RAW_DATA(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process_raw_data)
-
-#define IS_PROCESSING_MODE_SINK_SOURCE(mod) \
-		(!!((struct module_data *)&(mod)->priv)->ops->process)
-
-/*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
@@ -95,62 +82,12 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_set_drvdata(dev, mod);
 	list_init(&mod->sink_buffer_list);
 
-#if CONFIG_IPC_MAJOR_3
-	const unsigned char *data;
-	uint32_t size;
-
-	switch (config->type) {
-	case SOF_COMP_VOLUME:
-	{
-		const struct ipc_config_volume *ipc_volume = spec;
-
-		size = sizeof(*ipc_volume);
-		data = spec;
-		break;
-	}
-	case SOF_COMP_SRC:
-	{
-		const struct ipc_config_src *ipc_src = spec;
-
-		size = sizeof(*ipc_src);
-		data = spec;
-		break;
-	}
-	default:
-	{
-		const struct ipc_config_process *ipc_module_adapter = spec;
-
-		size = ipc_module_adapter->size;
-		data = ipc_module_adapter->data;
-		break;
-	}
-	}
-
-	/* Copy initial config */
-	if (size) {
-		ret = module_load_config(dev, data, size);
-		if (ret) {
-			comp_err(dev, "module_adapter_new() error %d: config loading has failed.",
-				 ret);
-			goto err;
-		}
-		dst->init_data = dst->data;
-	} else {
+	ret = module_adapter_init_data(dev, dst, config, spec);
+	if (ret) {
+		comp_err(dev, "module_adapter_new() %d: module init data failed",
+			 ret);
 		goto err;
 	}
-#else
-	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
-		const struct ipc_config_process *ipc_module_adapter = spec;
-
-		dst->init_data = ipc_module_adapter->data;
-		dst->size = ipc_module_adapter->size;
-		dst->avail = true;
-
-		memcpy(&dst->base_cfg, ipc_module_adapter->data, sizeof(dst->base_cfg));
-	} else {
-		dst->init_data = spec;
-	}
-#endif
 
 	/* Modules must modify them if they support more than 1 source/sink */
 	mod->max_sources = 1;
@@ -170,9 +107,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		pipeline_comp_dp_task_init(dev);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
-#if CONFIG_IPC_MAJOR_4
-	dst->init_data = NULL;
-#endif
+	module_adapter_reset_data(dst);
+
 	dev->state = COMP_STATE_READY;
 
 	comp_dbg(dev, "module_adapter_new() done");
@@ -461,18 +397,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-#if CONFIG_IPC_MAJOR_3
-	/* Check if audio stream client has only one source and one sink buffer to use a
-	 * simplified copy function.
-	 */
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->num_of_sources == 1 &&
-	    mod->num_of_sinks == 1) {
-		mod->source_comp_buffer = list_first_item(&dev->bsource_list,
-							  struct comp_buffer, sink_list);
-		mod->sink_comp_buffer = sink;
-		mod->stream_copy_single_to_single = true;
-	}
-#endif
+	module_adapter_check_data(mod, dev, sink);
 
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
@@ -682,10 +607,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 			return ret;
 	}
 
-#if CONFIG_IPC_MAJOR_4
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, mod->stream_params);
-#endif
+	module_adapter_set_params(mod, params);
 	return 0;
 }
 
@@ -1002,11 +924,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 
 	/* handle special case of HOST/DAI type components */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
-#if CONFIG_IPC_MAJOR_3
-		return module_process_legacy(mod, NULL, 0, NULL, 0);
-#else
-		return module_process_stream(mod, NULL, 0, NULL, 0);
-#endif
+		return module_process_endpoint(mod, NULL, 0, NULL, 0);
 
 	if (mod->stream_copy_single_to_single)
 		return module_adapter_audio_stream_copy_1to1(dev);
@@ -1454,32 +1372,6 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	return ret;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int module_source_status_count(struct comp_dev *dev, uint32_t status)
-{
-	struct list_item *blist;
-	int count = 0;
-
-	/* count source with state == status */
-	list_for_item(blist, &dev->bsource_list) {
-		/*
-		 * FIXME: this is racy, state can be changed by another core.
-		 * This is implicitly protected by serialised IPCs. Even when
-		 * IPCs are processed in the pipeline thread, the next IPC will
-		 * not be sent until the thread has processed and replied to the
-		 * current one.
-		 */
-		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  sink_list);
-
-		if (source->source && source->source->state == status)
-			count++;
-	}
-
-	return count;
-}
-#endif
-
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -1502,28 +1394,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		return PPL_STATUS_PATH_STOP;
 	}
 
-#if CONFIG_IPC_MAJOR_3
-	if (mod->num_of_sources > 1) {
-		bool sources_active;
-		int ret;
-
-		sources_active = module_source_status_count(dev, COMP_STATE_ACTIVE) ||
-				 module_source_status_count(dev, COMP_STATE_PAUSED);
-
-		/* don't stop/start module if one of the sources is active/paused */
-		if ((cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PRE_START) && sources_active) {
-			dev->state = COMP_STATE_ACTIVE;
-			return PPL_STATUS_PATH_STOP;
-		}
-
-		ret = comp_set_state(dev, cmd);
-		if (ret == COMP_STATUS_STATE_ALREADY_SET)
-			return PPL_STATUS_PATH_STOP;
-
-		return ret;
-	}
-#endif
-	return comp_set_state(dev, cmd);
+	return module_adapter_set_state(mod, dev, cmd);
 }
 
 int module_adapter_reset(struct comp_dev *dev)
@@ -1754,184 +1625,3 @@ int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 	return -EOPNOTSUPP;
 }
 
-#if CONFIG_IPC_MAJOR_4
-int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset_size, const char *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-	enum module_cfg_fragment_position pos;
-	size_t fragment_size;
-
-	/* set fragment position */
-	pos = first_last_block_to_frag_pos(first_block, last_block);
-
-	switch (pos) {
-	case MODULE_CFG_FRAGMENT_SINGLE:
-		fragment_size = data_offset_size;
-		break;
-	case MODULE_CFG_FRAGMENT_MIDDLE:
-		fragment_size = MAILBOX_DSPBOX_SIZE;
-		break;
-	case MODULE_CFG_FRAGMENT_FIRST:
-		md->new_cfg_size = data_offset_size;
-		fragment_size = MAILBOX_DSPBOX_SIZE;
-		break;
-	case MODULE_CFG_FRAGMENT_LAST:
-		fragment_size = md->new_cfg_size - data_offset_size;
-		break;
-	default:
-		comp_err(dev, "module_set_large_config(): invalid fragment position");
-		return -EINVAL;
-	}
-
-	if (md->ops->set_configuration)
-		return md->ops->set_configuration(mod, param_id, pos, data_offset_size,
-						  (const uint8_t *)data,
-						  fragment_size, NULL, 0);
-	return 0;
-}
-
-int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t *data_offset_size, char *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-	size_t fragment_size;
-
-	/* set fragment size */
-	if (first_block) {
-		if (last_block)
-			fragment_size = md->cfg.size;
-		else
-			fragment_size = SOF_IPC_MSG_MAX_SIZE;
-	} else {
-		if (!last_block)
-			fragment_size = SOF_IPC_MSG_MAX_SIZE;
-		else
-			fragment_size = md->cfg.size - *data_offset_size;
-	}
-
-	if (md->ops->get_configuration)
-		return md->ops->get_configuration(mod, param_id, data_offset_size,
-						  (uint8_t *)data, fragment_size);
-	return 0;
-}
-
-int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
-			 &mod->priv.cfg.base_cfg, sizeof(mod->priv.cfg.base_cfg));
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct list_item *blist;
-	int num_sources = 0;
-	int num_sinks = 0;
-
-	list_for_item(blist, &dev->bsource_list)
-		num_sources++;
-
-	list_for_item(blist, &dev->bsink_list)
-		num_sinks++;
-
-	comp_dbg(dev, "num_sources=%d num_sinks=%d", num_sources, num_sinks);
-
-	if (num_sources != 1 || num_sinks != 1)
-		return true;
-
-	/* re-assign the source/sink modules */
-	mod->sink_comp_buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	mod->source_comp_buffer = list_first_item(&dev->bsource_list,
-						  struct comp_buffer, sink_list);
-
-	return false;
-}
-
-int module_adapter_bind(struct comp_dev *dev, void *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	int ret;
-
-	ret = module_bind(mod, data);
-	if (ret < 0)
-		return ret;
-
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
-
-	return 0;
-}
-
-int module_adapter_unbind(struct comp_dev *dev, void *data)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	int ret;
-
-	ret = module_unbind(mod, data);
-	if (ret < 0)
-		return ret;
-
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
-
-	return 0;
-}
-
-uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
-						 uint32_t stream_no, bool input)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-
-	if (md->ops->endpoint_ops && md->ops->endpoint_ops->get_total_data_processed)
-		return md->ops->endpoint_ops->get_total_data_processed(dev, stream_no, input);
-
-	if (input)
-		return mod->total_data_produced;
-	else
-		return mod->total_data_consumed;
-}
-#else
-int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
-{
-	return -EINVAL;
-}
-int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset, const char *data)
-{
-	return 0;
-}
-
-int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t *data_offset, char *data)
-{
-	return 0;
-}
-
-int module_adapter_bind(struct comp_dev *dev, void *data)
-{
-	return 0;
-}
-
-int module_adapter_unbind(struct comp_dev *dev, void *data)
-{
-	return 0;
-}
-
-uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
-						 uint32_t stream_no, bool input)
-{
-	return 0;
-}
-#endif

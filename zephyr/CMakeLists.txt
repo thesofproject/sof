@@ -58,11 +58,11 @@ set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
+set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
 # Save path to rimage configuration files in cmake cache for later use by
 # rimage during the "west sign" stage
-get_filename_component(RIMAGE_CONFIG "../rimage/config" ABSOLUTE)
-set(RIMAGE_CONFIG_PATH ${RIMAGE_CONFIG} CACHE PATH
+set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
     " Path to rimage board configuration files")
 
 include(ExternalProject)
@@ -87,7 +87,7 @@ ExternalProject_Add(sof_logger_ep
 )
 
 # default SOF includes
-target_include_directories(SOF INTERFACE ${sof_top_dir}/rimage/src/include)
+target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
@@ -525,10 +525,19 @@ elseif(CONFIG_IPC_MAJOR_4)
 )
 endif()
 
+if(CONFIG_IPC_MAJOR_3)
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc3.c
 	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
 )
+elseif(CONFIG_IPC_MAJOR_4)
+zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc4.c
+	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c

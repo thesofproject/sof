@@ -156,6 +156,7 @@ static SHARED_DATA struct dai micfil[] = {
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset = MICFIL_BASE + REG_MICFIL_DATACH0,
 			.handshake = 24,
+			.depth = 32, /* in 4 bytes words */
 		},
 	},
 

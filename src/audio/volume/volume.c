@@ -243,6 +243,24 @@ static inline int32_t volume_windows_fade_ramp(struct vol_data *cd, int32_t ramp
 }
 #endif
 
+void volume_set_ramp_channel_counter(struct vol_data *cd, uint32_t channels_count)
+{
+	int i;
+	bool is_same_volume = true;
+
+	for (i = 1; i < channels_count; i++) {
+		if (cd->tvolume[0] != cd->tvolume[i]) {
+			is_same_volume = false;
+			break;
+		}
+	}
+
+	if (is_same_volume)
+		cd->ramp_channel_counter = 1;
+	else
+		cd->ramp_channel_counter = channels_count;
+}
+
 /**
  * \brief Ramps volume changes over time.
  * \param[in,out] vol_data Volume component data
@@ -272,7 +290,7 @@ static inline void volume_ramp(struct processing_module *mod)
 #endif
 
 	/* Update each volume if it's not at target for active channels */
-	for (i = 0; i < cd->channels; i++) {
+	for (i = 0; i < cd->ramp_channel_counter; i++) {
 		/* skip if target reached */
 		volume = cd->volume[i];
 		tvolume = cd->tvolume[i];
@@ -314,6 +332,9 @@ static inline void volume_ramp(struct processing_module *mod)
 		}
 		cd->volume[i] = new_vol;
 	}
+	/* assign other channel volume as the first calculated volume with same volume case */
+	for (i = cd->ramp_channel_counter; i < cd->channels; i++)
+		cd->volume[i] = cd->volume[0];
 
 	cd->is_passthrough = cd->ramp_finished;
 	for (i = 0; i < cd->channels; i++) {
@@ -536,8 +557,9 @@ static int volume_process(struct processing_module *mod,
 	comp_dbg(mod->dev, "volume_process()");
 
 	while (avail_frames) {
+#if CONFIG_COMP_PEAK_VOL
 		volume_update_current_vol_ipc4(cd);
-
+#endif
 		if (cd->ramp_finished || cd->vol_ramp_frames > avail_frames) {
 			/* without ramping process all at once */
 			frames = avail_frames;

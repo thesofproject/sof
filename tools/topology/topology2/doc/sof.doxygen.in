@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: BSD-3-Clause
+PROJECT_NAME     = "Sound Open Firmware Topology2"
+OUTPUT_DIRECTORY = doxygen
+GENERATE_LATEX   = NO
+GENERATE_RTF	 = NO
+GENERATE_MAN     = NO
+GENERATE_XML	 = YES
+
+CASE_SENSE_NAMES = NO
+INPUT            = @top_srcdir@ \
+		   @top_srcdir@/doc/extra-contents/ \
+		   @top_bindir@/contents.doxy
+
+RECURSIVE	 = YES
+FILE_PATTERNS    = *.conf
+IMAGE_PATH	 =
+QUIET            = YES
+WARN_LOGFILE     = doxygen_warnings.txt
+
+EXTRACT_ALL	 = YES
+EXTRACT_STATIC	 = YES
+WARN_IF_UNDOCUMENTED = NO
+SHOW_INCLUDE_FILES = YES
+JAVADOC_AUTOBRIEF = YES
+INHERIT_DOCS	 = YES
+
+MACRO_EXPANSION  = YES
+EXPAND_ONLY_PREDEF = YES
+OPTIMIZE_OUTPUT_FOR_C = YES
+
+HTML_TIMESTAMP = NO
+
+EXTENSION_MAPPING = conf=C,doxy=C
+FILTER_PATTERNS = *.conf=@top_srcdir@/doc/topology2-filter.py
