@@ -59,7 +59,8 @@ if(${CMAKE_HOST_WIN32})
 	endif()
 endif()
 
-target_link_libraries(rimage PRIVATE crypto)
+find_package(OpenSSL 3...3.9999 REQUIRED)
+target_link_libraries(rimage PRIVATE OpenSSL::Crypto)
 
 target_include_directories(rimage PRIVATE
 	src/include/
