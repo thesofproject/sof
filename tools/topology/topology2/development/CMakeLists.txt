@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 include(tplg-targets.cmake)
+include(tplg-targets-bench.cmake)
 
 add_custom_target(topology2_dev)
 
