@@ -47,4 +47,13 @@ struct comp_data {
 void sys_comp_module_eq_iir_interface_init(void);
 #endif
 
+void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames);
+
+void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames);
+
+void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames);
+
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */
