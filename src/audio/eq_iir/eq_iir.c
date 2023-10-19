@@ -22,7 +22,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/math/iir_df1.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
@@ -43,16 +42,6 @@ DECLARE_SOF_RT_UUID("eq-iir", eq_iir_uuid, 0x5150c0e6, 0x27f9, 0x4ec8,
 		 0x83, 0x51, 0xc7, 0x05, 0xb6, 0x42, 0xd1, 0x2f);
 
 DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
-
-/* IIR component private data */
-struct comp_data {
-	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct comp_data_blob_handler *model_handler;
-	struct sof_eq_iir_config *config;
-	int32_t *iir_delay;			/**< pointer to allocated RAM */
-	size_t iir_delay_size;			/**< allocated size */
-	eq_iir_func eq_iir_func;		/**< processing function */
-};
 
 #if CONFIG_FORMAT_S16LE
 
