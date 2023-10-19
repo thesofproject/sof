@@ -49,8 +49,8 @@ DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
@@ -97,8 +97,8 @@ static void eq_iir_s16_default(struct processing_module *mod, struct input_strea
 
 #if CONFIG_FORMAT_S24LE
 
-static void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
@@ -145,8 +145,8 @@ static void eq_iir_s24_default(struct processing_module *mod, struct input_strea
 
 #if CONFIG_FORMAT_S32LE
 
-static void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			struct output_stream_buffer *bsink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
