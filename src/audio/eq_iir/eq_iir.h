@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 
 /** \brief Macros to convert without division bytes count to samples count */
 #define EQ_IIR_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
@@ -30,6 +31,16 @@ struct eq_iir_func_map {
 	uint8_t source;				/**< source frame format */
 	uint8_t sink;				/**< sink frame format */
 	eq_iir_func func;			/**< processing function */
+};
+
+/* IIR component private data */
+struct comp_data {
+	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct comp_data_blob_handler *model_handler;
+	struct sof_eq_iir_config *config;
+	int32_t *iir_delay;			/**< pointer to allocated RAM */
+	size_t iir_delay_size;			/**< allocated size */
+	eq_iir_func eq_iir_func;		/**< processing function */
 };
 
 #ifdef UNIT_TEST
