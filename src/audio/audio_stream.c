@@ -141,12 +141,6 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 	audio_stream->addr = buff_addr;
 	audio_stream->end_addr = (char *)audio_stream->addr + size;
 
-	/* set the default alignment info.
-	 * set byte_align as 1 means no alignment limit on byte.
-	 * set frame_align as 1 means no alignment limit on frame.
-	 */
-	audio_stream_init_alignment_constants(1, 1, audio_stream);
-
 	source_init(audio_stream_get_source(audio_stream), &audio_stream_source_ops,
 		    &audio_stream->runtime_stream_params);
 	sink_init(audio_stream_get_sink(audio_stream), &audio_stream_sink_ops,

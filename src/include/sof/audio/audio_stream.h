@@ -349,25 +349,6 @@ static inline void audio_stream_set_buffer_fmt(struct audio_stream *buf,
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
 /**
- * Applies parameters to the buffer.
- * @param buffer Buffer.
- * @param params Parameters (frame format, rate, number of channels).
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int audio_stream_set_params(struct audio_stream *buffer,
-					  struct sof_ipc_stream_params *params)
-{
-	if (!params)
-		return -EINVAL;
-
-	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
-	buffer->runtime_stream_params.rate = params->rate;
-	buffer->runtime_stream_params.channels = params->channels;
-
-	return 0;
-}
-
-/**
  * Calculates period size in bytes based on component stream's parameters.
  * @param buf Component buffer.
  * @return Period size in bytes.
@@ -431,6 +412,31 @@ static inline void audio_stream_init_alignment_constants(const uint32_t byte_ali
 	process_size = stream->runtime_stream_params.align_frame_cnt * frame_size;
 	stream->runtime_stream_params.align_shift_idx	=
 			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
+}
+
+/**
+ * Applies parameters to the buffer.
+ * @param buffer Audio stream buffer.
+ * @param params Parameters (frame format, rate, number of channels).
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int audio_stream_set_params(struct audio_stream *buffer,
+					  struct sof_ipc_stream_params *params)
+{
+	if (!params)
+		return -EINVAL;
+
+	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
+	buffer->runtime_stream_params.rate = params->rate;
+	buffer->runtime_stream_params.channels = params->channels;
+
+	/* set the default alignment info.
+	 * set byte_align as 1 means no alignment limit on byte.
+	 * set frame_align as 1 means no alignment limit on frame.
+	 */
+	audio_stream_init_alignment_constants(1, 1, buffer);
+
+	return 0;
 }
 
 /**
