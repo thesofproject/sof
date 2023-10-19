@@ -11,7 +11,7 @@
 #include <cmocka.h>
 #include <kernel/header.h>
 #include <sof/audio/component_ext.h>
-#include <sof/audio/eq_iir/eq_iir.h>
+#include <eq_iir/eq_iir.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
 #include "../../util.h"
