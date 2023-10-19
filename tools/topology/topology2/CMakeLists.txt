@@ -4,7 +4,7 @@ add_custom_target(topologies2)
 # Check alsatplg version and build topology2 if alsatplg version is
 # 1.2.7 or greater, see https://github.com/thesofproject/sof/issues/5323
 execute_process(COMMAND alsatplg --version RESULT_VARIABLE STATUS OUTPUT_VARIABLE ALSA_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(STATUS AND NOT STATUS EQUAL 0)
+if(NOT STATUS EQUAL 0)
 	message(WARNING "alsatplg error: ${STATUS}, topology2 will be skipped")
 else()
 	string(REPLACE "\n" ";" ALSA_VERSION_LIST ${ALSA_VERSION})
