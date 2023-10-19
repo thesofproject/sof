@@ -12,7 +12,7 @@ INPUT            = @top_srcdir@ \
 		   @top_bindir@/contents.doxy
 
 RECURSIVE	 = YES
-FILE_PATTERNS    = *.conf
+FILE_PATTERNS    = *.conf,*.doxy
 IMAGE_PATH	 =
 QUIET            = YES
 WARN_LOGFILE     = doxygen_warnings.txt
