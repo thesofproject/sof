@@ -1,4 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
+
+# 3.17 required: foreach(<loop_var>... IN ZIP_LISTS <lists>)
+cmake_minimum_required(VERSION 3.17)
+
 add_custom_target(topologies2)
 
 # Check alsatplg version and build topology2 if alsatplg version is

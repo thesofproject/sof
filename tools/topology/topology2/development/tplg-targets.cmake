@@ -125,20 +125,6 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 "sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
 "sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
 
-# Test topologies for simple one source and sink processing components
-"sof-hda-generic\;sof-hda-benchmark-dcblock16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock16,BENCH_DCBLOCK_PARAMS=default"
-"sof-hda-generic\;sof-hda-benchmark-dcblock24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock24,BENCH_DCBLOCK_PARAMS=default"
-"sof-hda-generic\;sof-hda-benchmark-dcblock32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=dcblock32,BENCH_DCBLOCK_PARAMS=default"
-"sof-hda-generic\;sof-hda-benchmark-drc16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc16,BENCH_DRC_PARAMS=enabled"
-"sof-hda-generic\;sof-hda-benchmark-drc24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc24,BENCH_DRC_PARAMS=enabled"
-"sof-hda-generic\;sof-hda-benchmark-drc32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=drc32,BENCH_DRC_PARAMS=enabled"
-"sof-hda-generic\;sof-hda-benchmark-eqiir16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir16,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
-"sof-hda-generic\;sof-hda-benchmark-eqiir24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir24,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
-"sof-hda-generic\;sof-hda-benchmark-eqiir32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqiir32,BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
-"sof-hda-generic\;sof-hda-benchmark-eqfir16-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqfir16,BENCH_EQFIR_PARAMS=loudness"
-"sof-hda-generic\;sof-hda-benchmark-eqfir24-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqfir24,BENCH_EQFIR_PARAMS=loudness"
-"sof-hda-generic\;sof-hda-benchmark-eqfir32-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,BENCH_CONFIG=eqfir32,BENCH_EQFIR_PARAMS=loudness"
-
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVER_PARAMS=2way"
