@@ -111,7 +111,11 @@ void parse_printable_key(const toml_table_t *table, struct parse_ctx *ctx, const
 void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
 		   char *dst, int capacity, int *error);
 
-void parse_uuid(char *buf, uint8_t *uuid);
+/**
+ * Parse UUID hex string into a byte array. The endianness of the output
+ * is architecture-dependent: do not use in any portable code.
+ */
+void parse_uuid(const char *buf, uint8_t *uuid);
 
 /** version is stored as toml array with integer number, something like:
  *   "version = [1, 8]"
