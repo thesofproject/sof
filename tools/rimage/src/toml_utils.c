@@ -10,6 +10,7 @@
 #include <rimage/toml_utils.h>
 #include <rimage/cavs/cavs_ext_manifest.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -294,8 +295,12 @@ void parse_uuid(char *buf, uint8_t *uuid)
 	struct uuid_t id;
 	uint32_t d[10];
 
+	const int parsed_uuid_fields =
 	sscanf(buf, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", &id.d0, &d[0],
 	       &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7], &d[8], &d[9]);
+
+	assert(parsed_uuid_fields == 11);
+
 	id.d1 = (uint16_t)d[0];
 	id.d2 = (uint16_t)d[1];
 	id.d3 = (uint8_t)d[2];
