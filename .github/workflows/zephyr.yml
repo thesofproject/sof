@@ -333,14 +333,12 @@ jobs:
           ninja.exe --version
 
       # MSYS2 provides gcc x64_86 toolchain & openssl
-      # Installs in D:/a/_temp/msys64
-      #
-      # Note there is already C:/msys64/ provided by
-      # https://github.com/actions/runner-images/blob/win22/20230918.1/images/win/Windows2022-Readme.md
-      # Is it not good enough? Maybe it could save 20-30s.
       - name: Initialize MSYS2
         uses: msys2/setup-msys2@v2
         with:
+          # Try to re-use c:/msys64 which is already there
+          # https://github.com/actions/runner-images/blob/win22/20230918.1/images/win/Windows2022-Readme.md
+          release: false
           msystem: MSYS
           install: gcc openssl-devel
           path-type: inherit
