@@ -293,24 +293,25 @@ void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, const char 
 void parse_uuid(char *buf, uint8_t *uuid)
 {
 	struct uuid_t id;
-	uint32_t d[10];
+	uint32_t d[11];
 
 	const int parsed_uuid_fields =
-	sscanf(buf, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", &id.d0, &d[0],
-	       &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7], &d[8], &d[9]);
+	sscanf(buf, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", &d[0],
+	       &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7], &d[8], &d[9], &d[10]);
 
 	assert(parsed_uuid_fields == 11);
 
-	id.d1 = (uint16_t)d[0];
-	id.d2 = (uint16_t)d[1];
-	id.d3 = (uint8_t)d[2];
-	id.d4 = (uint8_t)d[3];
-	id.d5 = (uint8_t)d[4];
-	id.d6 = (uint8_t)d[5];
-	id.d7 = (uint8_t)d[6];
-	id.d8 = (uint8_t)d[7];
-	id.d9 = (uint8_t)d[8];
-	id.d10 = (uint8_t)d[9];
+	id.d0 = d[0];
+	id.d1 = (uint16_t)d[1];
+	id.d2 = (uint16_t)d[2];
+	id.d3 = (uint8_t)d[3];
+	id.d4 = (uint8_t)d[4];
+	id.d5 = (uint8_t)d[5];
+	id.d6 = (uint8_t)d[6];
+	id.d7 = (uint8_t)d[7];
+	id.d8 = (uint8_t)d[8];
+	id.d9 = (uint8_t)d[9];
+	id.d10 = (uint8_t)d[10];
 
 	memcpy(uuid, &id, sizeof(id));
 }
