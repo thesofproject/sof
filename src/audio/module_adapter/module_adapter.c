@@ -1053,13 +1053,24 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list) {
 		/* output - we need to copy data from dp_queue (as source)
 		 * to audio_stream (as sink)
+		 *
+		 * a trick is needed there:
+		 * DP may produce a huge chunk of output data (i.e. 10 LL cycles), and the
+		 * following module should be able to consume it in 1 cycle chunks, one by one
+		 *
+		 * unfortunately LL modules are designed to drain input buffer
+		 * That leads to issues when DP provide huge data portion
+		 *
+		 * FIX: copy only the following module's IBS in each LL cycle
 		 */
 		assert(dp_queue);
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, source_list);
 		struct sof_sink *data_sink = audio_stream_get_sink(&buffer->stream);
+		struct sof_source *following_mod_data_source =
+				audio_stream_get_source(&buffer->stream);
 		struct sof_source *data_src = dp_queue_get_source(dp_queue);
-		uint32_t to_copy = MIN(sink_get_free_size(data_sink),
+		uint32_t to_copy = MIN(source_get_min_available(following_mod_data_source),
 				       source_get_data_available(data_src));
 
 		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
