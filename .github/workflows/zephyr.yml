@@ -100,7 +100,6 @@ jobs:
         # Search "zephyr_revision" and see below what they expand to.
         zephyr_revision: [
           mnfst,  # special value: don't override sof/west.yml
-          zmain,  # Zephyr's main branch
         ]
         # Using groups to avoid spamming the small results box with too
         # many lines. Pay attention to COMMAS.
