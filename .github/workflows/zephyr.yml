@@ -133,7 +133,7 @@ jobs:
       - name: west clones
 
         run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--filter=tree:0
+               time west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
         run: |
@@ -149,7 +149,7 @@ jobs:
                sed -e "s#=sof_zephyr_revision_override=#${rem_rev}#" \
                  sof-ci-jenkins/zephyr-override-template.yml > test-zephyr-main.yml
              )
-             west update --narrow  --fetch-opt=--filter=tree:0
+             time west update --narrow  --fetch-opt=--filter=tree:0
           fi
 
           # Because we used git tricks to speed things up, we now have two git
@@ -167,7 +167,7 @@ jobs:
           #     both issues in no time.
 
           cd zephyr
-          git fetch --filter=tree:0 "$(git remote |head -n1)" "$rem_rev":_branch_placeholder
+          time git fetch --filter=tree:0 "$(git remote |head -n1)" "$rem_rev":_branch_placeholder
           git branch -D _branch_placeholder
 
           set -x
