@@ -6,7 +6,7 @@
  */
 
 /**
- * \file audio/aria/aria.h
+ * \file aria.h
  * \brief Aria component header file
  * \authors Adrian Bonislawski <adrian.bonislawski@intel.com>
  */
@@ -16,6 +16,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/compiler_attributes.h>
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
@@ -91,5 +92,10 @@ struct aria_data {
 };
 
 extern const uint8_t INDEX_TAB[];
+
+struct ipc4_aria_module_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	uint32_t attenuation;
+} __packed __aligned(8);
 
 #endif /* __SOF_AUDIO_ARIA_H__ */

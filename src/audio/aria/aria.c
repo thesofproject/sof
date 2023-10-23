@@ -4,7 +4,6 @@
 //
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
 
-#include <sof/audio/aria/aria.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -20,13 +19,13 @@
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
-#include <ipc4/aria.h>
 #include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "aria.h"
 
 #define ARIA_SET_ATTENUATION 1
 

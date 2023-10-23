@@ -2,8 +2,7 @@
 //
 // Copyright(c) 2023 Intel Corporation. All rights reserved.
 
-#include <sof/audio/aria/aria.h>
-#include <ipc4/aria.h>
+#include "aria.h"
 
 #ifdef ARIA_GENERIC
 
