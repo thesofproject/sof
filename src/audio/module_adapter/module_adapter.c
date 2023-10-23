@@ -1069,23 +1069,14 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
 
+	if (mod->dp_startup_delay)
+		return 0;
+
 	dp_queue = dp_queue_get_first_item(&mod->dp_queue_dp_to_ll_list);
 	list_for_item(blist, &dev->bsink_list) {
-		/* output - we need to copy data from dp_queue (as source)
-		 * to audio_stream (as sink)
-		 *
-		 * a trick is needed there as a workaround
-		 * DP may produce a huge chunk of output data (i.e. 10 LL
-		 * cycles), and the following module should be able to consume it in 1 cycle chunks
-		 *
-		 * unfortunately some modules are not prepared to work when there's more than
-		 * 1 data portion available in the buffer and are draining buffers with data loss
-		 *
-		 * a workaround: copy only the following module's IBS in each LL cycle
-		 *
-		 * required fix: all modules using sink/src interface must be aware to
-		 * process only data they need, not forcefully draining a buffer
-		 */
+	/* output - we need to copy data from dp_queue (as source)
+	 * to audio_stream (as sink)
+	 */
 		assert(dp_queue);
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, source_list);
@@ -1093,8 +1084,13 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		struct sof_source *following_mod_data_source =
 				audio_stream_get_source(&buffer->stream);
 		struct sof_source *data_src = dp_queue_get_source(dp_queue);
+		size_t dp_data_available = source_get_data_available(data_src);
+
+		if (!dp_data_available)
+			comp_err(dev, "!!!! no data available from DP");
+
 		uint32_t to_copy = MIN(source_get_min_available(following_mod_data_source),
-				       source_get_data_available(data_src));
+				       dp_data_available);
 
 		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
 		if (err)
