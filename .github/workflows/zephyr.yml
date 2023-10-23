@@ -310,7 +310,7 @@ jobs:
           # Get some tags to fix `git describe`, see build-linux comments above.
           cd zephyr
           $_rev = "$(git rev-parse HEAD)"
-          git fetch --filter=tree:0 zephyrproject "${_rev}:_branch_placeholder"
+          git fetch --filter=tree:0 "$(west list -f '{url}' zephyr)" "${_rev}:_branch_placeholder"
           git branch -D _branch_placeholder
 
 
