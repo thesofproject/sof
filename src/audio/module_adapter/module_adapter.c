@@ -1049,6 +1049,9 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
 
+	if (mod->dp_startup_delay)
+		return 0;
+
 	dp_queue = dp_queue_get_first_item(&mod->dp_queue_dp_to_ll_list);
 	list_for_item(blist, &dev->bsink_list) {
 		/* output - we need to copy data from dp_queue (as source)
