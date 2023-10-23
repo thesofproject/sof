@@ -55,6 +55,7 @@ bf = bf_design(bf);
 
 % Export files for topology and sof-ctl
 bf.export_note = 'Created with script example_line_0mm36mm146mm182mm.m';
+bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_line_0mm36mm146mm182mm.m';
 bf_export(bf);
 
 end

@@ -49,5 +49,7 @@ bf.fir_length = fir_length;
 % Design
 bf = bf_filenames_helper(bf);
 bf = bf_design(bf);
+bf.export_note = 'Created with script example_circular_array.m';
+bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_circular_array.m';
 bf_export(bf);
 end

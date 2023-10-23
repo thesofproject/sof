@@ -107,7 +107,7 @@ if isempty(bf.tplg1_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg1_fn);
 	mkdir_check(bf.tplg1_path);
-	tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note);
+	tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note, bf.export_howto);
 end
 
 if isempty(bf.tplg2_fn)
@@ -115,7 +115,7 @@ if isempty(bf.tplg2_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg2_fn);
 	mkdir_check(bf.tplg2_path);
-	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note);
+	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
 end
 
 rmpath('../../test/audio/test_utils');
