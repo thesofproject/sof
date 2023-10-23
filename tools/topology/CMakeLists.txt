@@ -25,6 +25,25 @@ ${stdout}")
 endfunction()
 
 
+# Being written in C, `alsatplg` silently ignores some invalid inputs
+# and produces an corrupt .tplg file instead of returning an error code
+# that fails the build.  For instance, alsatplg versions < 1.2.5 silently
+# corrupt `codec_consumer` and turn it into `codec_master` instead.
+# Longer story in #5192.
+alsatplg_version(STATUS ALSATPLG_VERSION_NUMBER)
+if(NOT STATUS EQUAL 0)
+	message(WARNING "alsatplg failed: ${STATUS}; all topologies skipped")
+	return()
+else()
+	if(${ALSATPLG_VERSION_NUMBER} VERSION_LESS "1.2.5")
+		message(WARNING "All topologies skipped: minimum alsatplg version 1.2.5,\
+ found ${ALSATPLG_VERSION_NUMBER}.")
+		return()
+	endif()
+	# success
+endif()
+
+
 # This use of VERBOSE relies on original CMake behavior.
 # From the add_custom_command() manual:
 #
