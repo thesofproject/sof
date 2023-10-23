@@ -58,5 +58,7 @@ function line_one_beam(fs, d, az, n_mic, n_fir)
 	% Design
 	bf = bf_filenames_helper(bf);
 	bf = bf_design(bf);
+	bf.export_note = 'Created with script example_line_array.m';
+	bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_line_array.m';
 	bf_export(bf);
 end

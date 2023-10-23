@@ -175,6 +175,7 @@ bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
 bfm.export_note = 'Created with script example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
 bf_export(bfm);
 
 end
@@ -227,6 +228,7 @@ bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
 bfm.export_note = 'Created with script example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
 bf_export(bfm);
 
 end
@@ -273,6 +275,7 @@ bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
 bfm.export_note = 'Created with script example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
 bf_export(bfm);
 
 end
@@ -351,6 +354,7 @@ bfm.tplg2_fn = fullfile(bfm.tplg2_path, tplg2_fn);
 
 % Export files for topology and sof-ctl
 bfm.export_note = 'Created with script example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
 bf_export(bfm);
 
 end

@@ -59,5 +59,5 @@ bf.diffuse_fn = {''};
 bf.random_fn = {''};
 bf.mat_fn = {''};
 bf.export_note = '';
-
+bf.export_howto = '';
 end

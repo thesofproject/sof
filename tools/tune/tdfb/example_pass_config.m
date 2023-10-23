@@ -28,6 +28,7 @@ bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
 
 % Files
 bf.export_note = 'Exported with script example_pass_config.m';
+bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_pass_config.m';
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line2_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line2_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line2_pass.txt');
