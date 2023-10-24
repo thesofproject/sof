@@ -36,10 +36,10 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sof/audio/host_copier.h>
-#include <sof/audio/dai_copier.h>
-#include <sof/audio/ipcgtw_copier.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "host_copier.h"
+#include "dai_copier.h"
+#include "ipcgtw_copier.h"
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
