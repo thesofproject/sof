@@ -614,9 +614,6 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 		return NULL;
 	}
 
-	dcache_invalidate_region(local_add, size);
-	icache_invalidate_region(local_add, size);
-
 	return local_add;
 }
 
