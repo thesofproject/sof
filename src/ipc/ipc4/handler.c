@@ -29,7 +29,6 @@
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/notification.h>
-#include <sof/audio/ipcgtw_copier.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 
@@ -42,6 +41,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../audio/copier/ipcgtw_copier.h"
 
 /* Command format errors during fuzzing are reported for virtually all
  * commands, and the resulting flood of logging becomes a severe
