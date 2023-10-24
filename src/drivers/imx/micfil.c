@@ -52,7 +52,7 @@ static int micfil_get_hw_params(struct dai *dai,
 {
 	struct micfil_pdata *micfil = dai_get_drvdata(dai);
 
-	dai_err(dai, "micfil_get_hw_params()");
+	dai_info(dai, "micfil_get_hw_params()");
 
 	params->rate = micfil->params.pdm_rate;
 	params->channels = micfil->params.pdm_ch;
