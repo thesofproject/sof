@@ -81,4 +81,10 @@ case "$platform" in
 	HOST="xtensa-mt8195-elf"
 	XTENSA_TOOLS_VERSION="RI-2019.1-linux"
 	;;
+    mtl)
+	PLATFORM="mtl"
+	XTENSA_CORE="ace10_LX7HiFi4_2022_10"
+	XTENSA_TOOLS_VERSION="RI-2022.10-linux"
+	COMPILER="xt-clang"
+	;;
 esac
