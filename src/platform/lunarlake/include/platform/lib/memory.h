@@ -56,7 +56,7 @@
 /**
  * size of HPSRAM system heap
  */
-#define HEAPMEM_SIZE 0xD0000
+#define HEAPMEM_SIZE 0xF0000
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
