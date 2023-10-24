@@ -64,16 +64,8 @@ static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *
 		return ret;
 	}
 
-	ret = memcpy_s((__sparse_force void *)vma, size, s_addr, size);
-	if (ret < 0)
-		return ret;
-
-	/* Some data can be accessed as uncached, in fact that's the default */
-	/* Both D- and I-caches have been invalidated */
-	dcache_writeback_region(vma, size);
-
 	/* TODO: Change attributes for memory to FLAGS  */
-	return 0;
+	return memcpy_s((__sparse_force void *)vma, size, s_addr, size);
 }
 
 static int llext_manager_load_module(uint32_t module_id, struct sof_man_module *mod,
@@ -98,11 +90,18 @@ static int llext_manager_load_module(uint32_t module_id, struct sof_man_module *
 	if (ret < 0)
 		return ret;
 
+	/* .text contains instructions and it also often contains local data */
+	dcache_writeback_region(va_base_text, st_text_size);
+	icache_invalidate_region(va_base_text, st_text_size);
+
 	/* Copy RODATA */
 	ret = llext_manager_load_data_from_storage(va_base_rodata, src_rodata,
 						   st_rodata_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		goto e_text;
+
+	/* Some data can be accessed as uncached, in fact that's the default */
+	dcache_writeback_region(va_base_rodata, st_rodata_size);
 
 	return 0;
 
