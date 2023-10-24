@@ -16,11 +16,12 @@
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
-#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <kernel/tokens.h>
 #include <sof/list.h>
 #include <volume/peak_volume.h>
+
+#include "copier/copier.h"
 
 #ifdef TPLG_DEBUG
 #define DEBUG_MAX_LENGTH 256

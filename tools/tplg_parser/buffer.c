@@ -15,13 +15,14 @@
 #include <string.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
-#include <ipc4/copier.h>
 #include <ipc4/gateway.h>
 #include <sof/common.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
+
+#include "copier/copier.h"
 
 /* Buffers */
 static const struct sof_topology_token buffer_tokens[] = {

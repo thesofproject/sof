@@ -3,7 +3,7 @@
 // Copyright(c) 2022 Intel Corporation. All rights reserved.
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
-#include <ipc4/copier.h>
+#include "copier.h"
 
 #if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
 

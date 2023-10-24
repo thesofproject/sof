@@ -7,8 +7,8 @@
 #include <sof/audio/component_ext.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
-#include <ipc4/copier.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "copier.h"
 #include "host_copier.h"
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);

@@ -18,7 +18,7 @@
 #include <ipc4/gateway.h>
 #include <sof/list.h>
 #include <ipc/stream.h>
-#include <ipc4/copier.h>
+#include "copier.h"
 
 /* Host communicates with IPC gateways via global IPC messages. To address a particular
  * IPC gateway, its node_id is sent in message payload. Hence we need to keep a list of existing
