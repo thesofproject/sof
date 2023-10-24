@@ -8,7 +8,7 @@
 #include <sof/lib/memory.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
-#include <ipc4/copier.h>
+#include "copier.h"
 #include "ipcgtw_copier.h"
 
 LOG_MODULE_REGISTER(ipcgtw, CONFIG_SOF_LOG_LEVEL);

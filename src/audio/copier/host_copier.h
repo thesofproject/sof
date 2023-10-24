@@ -20,7 +20,7 @@
 #include <sof/audio/ipc-config.h>
 #include <ipc/stream.h>
 #include <sof/lib/notifier.h>
-#include <ipc4/copier.h>
+#include "copier.h"
 
 typedef void (*copy_callback_t)(struct comp_dev *dev, size_t bytes);
 

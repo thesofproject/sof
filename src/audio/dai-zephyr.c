@@ -30,11 +30,12 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <ipc4/copier.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "copier/copier.h"
 #include "copier/dai_copier.h"
 
 #include <zephyr/device.h>

@@ -5,8 +5,8 @@
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
 #include <ipc4/base-config.h>
-#include <ipc4/copier.h>
 #include <sof/audio/component_ext.h>
+#include "copier.h"
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 

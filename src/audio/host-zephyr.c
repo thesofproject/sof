@@ -10,7 +10,6 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
-#include <ipc4/copier.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -32,6 +31,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "copier/copier.h"
 #include "copier/host_copier.h"
 
 static const struct comp_driver comp_host;

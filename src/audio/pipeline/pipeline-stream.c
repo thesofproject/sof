@@ -15,7 +15,6 @@
 #include <rtos/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <rtos/kernel.h>
 
@@ -24,6 +23,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+
+#include "../audio/copier/copier.h"
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 

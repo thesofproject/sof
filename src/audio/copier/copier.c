@@ -26,7 +26,6 @@
 #include <sof/trace/trace.h>
 #include <ipc4/alh.h>
 #include <ipc4/base-config.h>
-#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
 #include <ipc4/gateway.h>
@@ -37,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "copier.h"
 #include "host_copier.h"
 #include "dai_copier.h"
 #include "ipcgtw_copier.h"
