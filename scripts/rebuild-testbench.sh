@@ -57,6 +57,7 @@ setup_xtensa_tools_build()
     BUILD_TYPE=xt
     BUILD_TARGET=
     BUILD_DIR_NAME=build_xt_testbench
+    COMPILER="xt-xcc"
 
     # check needed environment variables
     test -n "${XTENSA_TOOLS_ROOT}" || die "XTENSA_TOOLS_ROOT need to be set.\n"
@@ -72,11 +73,10 @@ setup_xtensa_tools_build()
     test -n "${XTENSA_CORE}" ||
         die "Illegal platform $BUILD_PLATFORM, no XTENSA_CORE found.\n"
 
-    compiler="xt-xcc"
     install_bin=install/tools/$XTENSA_TOOLS_VERSION/XtensaTools/bin
     tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
     testbench_sections="-Wl,--sections-placement $BUILD_TESTBENCH_DIR/testbench_xcc_sections.txt"
-    export CC=$tools_bin/$compiler
+    export CC=$tools_bin/$COMPILER
     export LD=$tools_bin/xt-ld
     export OBJDUMP=$tools_bin/xt-objdump
     export LDFLAGS="-mlsp=sim $testbench_sections"
