@@ -11,6 +11,7 @@ set(sampleformats "16" "24" "32")
 set(components
 	"dcblock"
 	"drc"
+	"drc_multiband"
 	"eqiir"
 	"eqfir"
 )
@@ -18,6 +19,7 @@ set(components
 set(component_parameters
 	"BENCH_DCBLOCK_PARAMS=default"
 	"BENCH_DRC_PARAMS=enabled"
+	"BENCH_DRC_MULTIBAND_PARAMS=default"
 	"BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
 	"BENCH_EQFIR_PARAMS=loudness"
 )
