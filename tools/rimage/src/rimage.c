@@ -191,8 +191,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (image.adsp->man_ace_v1_5) {
-		if (imr_type_override)
-			image.adsp->man_ace_v1_5->adsp_file_ext.imr_type = image.imr_type;
 		image.adsp->man_ace_v1_5->css.reserved0 = pv_bit;
 	}
 
