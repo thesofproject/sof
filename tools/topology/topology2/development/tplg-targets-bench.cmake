@@ -14,6 +14,7 @@ set(components
 	"drc_multiband"
 	"eqiir"
 	"eqfir"
+	"gain"
 )
 
 set(component_parameters
@@ -22,6 +23,7 @@ set(component_parameters
 	"BENCH_DRC_MULTIBAND_PARAMS=default"
 	"BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
 	"BENCH_EQFIR_PARAMS=loudness"
+	"BENCH_GAIN_PARAMS=default"
 )
 
 foreach(p ${platforms})
