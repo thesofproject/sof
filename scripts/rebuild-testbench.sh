@@ -78,7 +78,7 @@ setup_xtensa_tools_build()
     export CC=$tools_bin/$compiler
     export LD=$tools_bin/xt-ld
     export OBJDUMP=$tools_bin/xt-objdump
-    export LDFLAGS="-mlsp=sim -Wl,-LE $testbench_sections"
+    export LDFLAGS="-mlsp=sim $testbench_sections"
     export XTENSA_CORE
 }
 
