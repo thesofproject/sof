@@ -430,10 +430,15 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	if (ret < 0)
 		return ret;
 
-	/* return if more fragments are expected or if the module is not prepared */
-	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
-	    md->state < MODULE_INITIALIZED)
+	/* return if more fragments are expected */
+	if (pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE)
 		return 0;
+
+#if CONFIG_IPC_MAJOR_3
+	// return if the module is not prepared
+	if (md->state < MODULE_INITIALIZED)
+		return 0;
+#endif
 
 	/* whole configuration received, apply it now */
 	ret = dts_codec_apply_config(mod);
