@@ -162,7 +162,10 @@ int cpu_enable_core(int id)
 		k_busy_wait(100);
 
 	atomic_set(&start_flag, 1);
-
+	/* We need to prevent clock switching for each enabled core. Prevent will be removed when
+	 * core enters idle or is disabled.
+	 */
+	pm_policy_state_lock_get(PM_STATE_ACTIVE, 2);
 	return 0;
 }
 
@@ -201,8 +204,12 @@ void cpu_disable_core(int id)
 		return;
 	}
 
-	if (soc_adsp_halt_cpu(id) != 0)
+	if (soc_adsp_halt_cpu(id) != 0) {
 		tr_err(&zephyr_tr, "failed to disable core %d", id);
+	} else {
+		/* Core is now down and we can remove prevent for clock switching. */
+		pm_policy_state_lock_put(PM_STATE_ACTIVE, 2);
+	}
 #endif /* CONFIG_PM */
 }
 

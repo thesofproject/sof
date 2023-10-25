@@ -43,6 +43,8 @@
 #include <stdint.h>
 
 #include "../audio/copier/ipcgtw_copier.h"
+/* QUESTION: call zephyr API directly or add a wrapper in pm_runtime? */
+#include <zephyr/pm/policy.h>
 
 /* Command format errors during fuzzing are reported for virtually all
  * commands, and the resulting flood of logging becomes a severe
@@ -510,13 +512,18 @@ static int ipc_wait_for_compound_msg(void)
 	int try_count = 30; /* timeout out is 30 x 10ms so 300ms for IPC */
 
 	while (atomic_read(&msg_data.delayed_reply)) {
+		/* preventing clock switching in idle */
+		pm_policy_state_lock_get(PM_STATE_ACTIVE, 2);
 		k_sleep(Z_TIMEOUT_MS(10));
 
 		if (!try_count--) {
 			atomic_set(&msg_data.delayed_reply, 0);
 			ipc_cmd_err(&ipc_tr, "ipc4: failed to wait schedule thread");
+			pm_policy_state_lock_put(PM_STATE_ACTIVE, 2);
 			return IPC4_FAILURE;
 		}
+
+		pm_policy_state_lock_put(PM_STATE_ACTIVE, 2);
 	}
 
 	return IPC4_SUCCESS;

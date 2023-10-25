@@ -93,6 +93,10 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 #endif
 
 		cycles0 = k_cycle_get_32();
+#if CONFIG_PM_IDLE_POWER_OPTIMIZATIONS
+		/* If DSP has ben in Idle we may need to restore previous clock. */
+		adsp_clock_idle_exit();
+#endif
 		dt->handler(dt->arg);
 		cycles1 = k_cycle_get_32();
 

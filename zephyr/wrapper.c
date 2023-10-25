@@ -232,6 +232,11 @@ int start_complete(void)
 #if defined(CONFIG_PM)
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	/* Prevent dynamic clock switching during idle time. Prevention must set for all active
+	 * cores, then each core will put the lock again and go into an idle state. The last
+	 * active core will try to switch the clock to the lowest frequency.
+	 */
+	pm_policy_state_lock_get(PM_STATE_ACTIVE, 2);
 #endif
 	return boot_complete();
 }
