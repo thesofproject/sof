@@ -44,7 +44,6 @@ length = "0x0"  # calculated by rimage
 
 [signed_pkg]
 name = "ADSP"
-partition_usage = "0x23"
 [[signed_pkg.module]]
 name = "ADSP.met"
 

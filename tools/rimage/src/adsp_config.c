@@ -1087,9 +1087,7 @@ static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx 
 	if (ret < 0)
 		return ret;
 
-	out->partition_usage = parse_uint32_hex_key(signed_pkg, &ctx, "partition_usage", 0, &ret);
-	if (ret < 0)
-		return ret;
+	out->partition_usage = 0x20 + image->imr_type;
 
 	/* check everything parsed, expect 1 more array */
 	ctx.array_cnt += 1;
