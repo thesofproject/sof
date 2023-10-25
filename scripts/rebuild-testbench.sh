@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2020, Mohana Datta Yelugoti
 
-# fail on any errors
+# stop on most errors
 set -e
 
 # Defaults
@@ -15,6 +15,7 @@ print_usage()
     cat <<EOFUSAGE
 usage: $0 [-f] [-p <platform>]
        -p Build testbench binary for xt-run for selected platform, e.g. -p tgl
+          When omitted, perform a BUILD_TYPE=native, compile-only check.
        -f Build testbench with compiler provided by fuzzer
           (default path: $HOME/sof/work/AFL/afl-gcc)
        -j number of parallel make/ninja jobs. Defaults to /usr/bin/nproc.
@@ -139,7 +140,7 @@ main()
     done
 
     rebuild_testbench
-
+    printf '\n'
     testbench_usage
 }
 
