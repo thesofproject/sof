@@ -800,6 +800,15 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Auint('base_offset', reader.read_dw()))
         ext.add_a(Auint('limit_offset', reader.read_dw()))
         ext.add_a(Abytes('attributes', reader.read_bytes(16)))
+    elif ext_type == 35:
+        reader.info("Signed package info extension")
+        ext = SignedPkgInfoExtension(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Auint('svn', reader.read_dw()))
+        ext.add_a(Auint('partition_usage', reader.read_b(), 'red'))
+        read_len = reader.get_offset() - begin_off
+        reader.ff_data(ext_len - read_len)
     else:
         reader.info("Other extension")
         ext = MftExtension(ext_id, 'Other Extension', reader.get_offset()-8)
@@ -1308,6 +1317,22 @@ class PlatFwAuthExtension(MftExtension):
         out += ' vcn {}'.format(self.adir['vcn'])
         out += ' bitmap {}'.format(self.adir['bitmap'])
         out += ' svn {}'.format(self.adir['svn'])
+        print(out)
+
+class SignedPkgInfoExtension(MftExtension):
+    """ Signed package info Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(SignedPkgInfoExtension,
+              self).__init__(ext_id, 'Signed package info Extension', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' svn {}'.format(self.adir['svn'])
+        out += ' partition_usage {}'.format(self.adir['partition_usage'])
         print(out)
 
 class AdspMetadataFileExt(MftExtension):
