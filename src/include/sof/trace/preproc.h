@@ -158,7 +158,7 @@
 		return_t META_CONCAT(prefix, postfix) (args)
 
 /* counteract compiler warning about unused variables */
-#define UNUSED(arg1, ...) do { META_RECURSE( \
+#define SOF_TRACE_UNUSED(arg1, ...) do { META_RECURSE( \
 	META_MAP_AGGREGATE(1, _META_VOID2, _META_VOID(arg1), __VA_ARGS__)); \
 	} while (0)
 
