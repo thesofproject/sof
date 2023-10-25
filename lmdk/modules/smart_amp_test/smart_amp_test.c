@@ -54,13 +54,6 @@ static int smart_amp_init(struct processing_module *mod)
 
 	gcd = mod->sys_service->math_gcd;
 
-	/* component model data handler */
-	sad->model_handler = mod->sys_service->data_blob_handler_new(dev);
-	if (!sad->model_handler) {
-		ret = -ENOMEM;
-		goto sad_fail;
-	}
-
 	if (base_cfg->base_cfg_ext.nb_input_pins != SMART_AMP_NUM_IN_PINS ||
 	    base_cfg->base_cfg_ext.nb_output_pins != SMART_AMP_NUM_OUT_PINS) {
 		ret = -EINVAL;
@@ -77,7 +70,6 @@ static int smart_amp_init(struct processing_module *mod)
 	return 0;
 
 sad_fail:
-	mod->sys_service->data_blob_handler_free(sad->model_handler);
 //	rfree(sad);
 	return ret;
 }
@@ -92,8 +84,7 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 
 	switch (config_id) {
 	case SMART_AMP_SET_MODEL:
-		return mod->sys_service->data_blob_set(sad->model_handler, pos,
-					 data_offset_size, fragment, fragment_size);
+		return 0;
 	case SMART_AMP_SET_CONFIG:
 		if (fragment_size != sizeof(sad->config))
 			return -EINVAL;
@@ -276,7 +267,6 @@ static int smart_amp_free(struct processing_module *mod)
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	mod->sys_service->data_blob_handler_free(sad->model_handler);
 //	rfree(sad);
 	return 0;
 }

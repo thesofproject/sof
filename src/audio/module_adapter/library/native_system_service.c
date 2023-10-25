@@ -142,7 +142,4 @@ struct native_system_service_api native_system_service = {
 	.get_interface = native_system_service_get_interface,
 	.comp_verify_params = comp_verify_params,
 	.math_gcd = gcd,
-	.data_blob_handler_new = comp_data_blob_handler_new_ext,
-	.data_blob_handler_free = comp_data_blob_handler_free,
-	.data_blob_set = comp_data_blob_set,
 };

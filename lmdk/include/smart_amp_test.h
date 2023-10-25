@@ -103,7 +103,6 @@ typedef int(*smart_amp_proc)(struct processing_module *mod,
 struct smart_amp_data {
 	struct sof_smart_amp_ipc4_config ipc4_cfg;
 	struct sof_smart_amp_config config;
-	struct comp_data_blob_handler *model_handler;
 	void *data_blob;
 	size_t data_blob_size;
 	smart_amp_proc process;
