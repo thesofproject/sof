@@ -26,6 +26,14 @@ set(component_parameters
 	"BENCH_GAIN_PARAMS=default"
 )
 
+set(components_s32
+	"aria"
+)
+
+set(component_parameters_s32
+	"BENCH_ARIA_PARAMS=default"
+)
+
 foreach(p ${platforms})
 	string(TOLOWER ${p} pl)
 
@@ -36,5 +44,13 @@ foreach(p ${platforms})
 			    #message(STATUS "Item=" ${item})
 			    list(APPEND TPLGS "${item}")
 		endforeach()
+	endforeach()
+
+	# Add components with single format
+	set (sf "32")
+	foreach(comp bench_param IN ZIP_LISTS components_s32 component_parameters_s32)
+		set(item "sof-hda-generic\;sof-hda-benchmark-${comp}${sf}-${pl}\;PLATFORM=${p},HDA_CONFIG=benchmark,BENCH_CONFIG=${comp}${sf},${bench_param}")
+		#message(STATUS "Item=" ${item})
+		list(APPEND TPLGS "${item}")
 	endforeach()
 endforeach()
