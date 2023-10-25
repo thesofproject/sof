@@ -301,10 +301,8 @@ COMPARE_REFS ?= /lib/firmware/intel
 checktree:
 	cd ${STAGING_SOF_VERSION} && \
              tree -a -v --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
-	# Update sof-cavs-nocodec.tplg when adding or removing a default platform
 	diff -u tests/staging_sof${IPC_VERSION}_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Check two random topologies are there
-	test -f ${STAGING_SOF_TPLG}/sof-tgl-nocodec.tplg
 	test -f ${STAGING_SOF_TPLG}/sof-imx8-wm8960.tplg
 	for t in sof-ctl sof-logger sof-probes; do \
 	   test -f ${STAGING_TOOLS}${VERSION_SUFFIX}/$${t}; done
