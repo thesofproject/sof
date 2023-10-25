@@ -353,13 +353,14 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			break;
 
 		/* print usage */
-		default:
-			fprintf(stderr, "unknown option %c\n", option);
-			ret = -EINVAL;
-			/* fallthrough */
 		case 'h':
 			print_usage(argv[0]);
 			exit(EXIT_SUCCESS);
+
+		default:
+			fprintf(stderr, "unknown option %c\n", option);
+			print_usage(argv[0]);
+			ret = -EINVAL;
 		}
 
 		if (ret < 0)
