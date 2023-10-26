@@ -11,6 +11,7 @@ SECTIONS {
         _data_start = ABSOLUTE(.);
         *(.data)
         *(.data.*)
+        *(.*.data)
         _data_end = ABSOLUTE(.);
     } >HPSRAM_seg : data_phdr
 
