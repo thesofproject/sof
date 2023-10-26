@@ -70,178 +70,307 @@ static void igo_nr_lib_process(struct comp_data *cd)
 }
 
 #if CONFIG_FORMAT_S16LE
-static void igo_nr_capture_s16(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       int32_t frames)
+static int igo_nr_capture_s16(struct comp_data *cd,
+			      struct sof_source *source,
+			      struct sof_sink *sink,
+			      int32_t frames)
 {
-	int32_t nch = audio_stream_get_channels(source);
-	int32_t i;
-	int32_t j;
-	int32_t idx_in = 0;
-	int32_t idx_out = 0;
-	int16_t *x;
-	int16_t *y;
+	int16_t *x, *y1, *y2;
+	int16_t *x_start, *y_start, *x_end, *y_end;
+	int16_t sample;
+	size_t x_size, y_size;
+	size_t request_size = frames * source_get_frame_bytes(source);
+	int sink_samples_without_wrap;
+	int samples_without_wrap;
+	int samples_left;
+	int ret;
+	int nch = source_get_channels(source);
+	int i, j, k;
+
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && nch > 1;
 	int32_t dbg_ch_idx;
+
+	/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+	if (cd->config.active_channel_idx >= nch)
+		dbg_ch_idx = 0;
+	else
+		dbg_ch_idx = cd->config.active_channel_idx + 1;
+
 #endif
 
-	/* Deinterleave the source buffer and keeps the active channel data as input. */
-	for (i = 0; i < frames; i++) {
+	ret = source_get_data(source, request_size, (void const **)&x,
+			      (void const **)&x_start, &x_size);
+	if (ret)
+		return ret;
 
-		/* Pass through all the other channels */
-		for (j = 0; j < nch; j++) {
-			if (j == cd->config.active_channel_idx)
-				continue;
-			x = audio_stream_read_frag_s16(source, idx_in + j);
-			y = audio_stream_write_frag_s16(sink, idx_in + j);
-			*y = (*x);
+	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	y2 = y1;
+	x_end = x_start + x_size;
+	y_end = y_start + y_size;
+
+	/* Deinterleave the source buffer and keeps the active channel data as input. */
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		samples_without_wrap = x_end - x;
+		samples_without_wrap = MIN(samples_left, samples_without_wrap);
+		sink_samples_without_wrap = y_end - y1;
+		samples_without_wrap = MIN(samples_without_wrap, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				sample = *x;
+				if (k == cd->config.active_channel_idx)
+					cd->in[i] = sample;
+				else
+					*y1 = sample;
+
+				x++;
+				y1++;
+			}
+			i++;
 		}
 
-		x = audio_stream_read_frag_s16(source, idx_in + cd->config.active_channel_idx);
-		cd->in[i] = (*x);
-
-		idx_in += nch;
+		x = cir_buf_wrap(x, x_start, x_end);
+		y1 = cir_buf_wrap(y1, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
 
 	igo_nr_lib_process(cd);
 
 	/* Interleave write the processed data into active output channel. */
-	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s16(sink, idx_out + cd->config.active_channel_idx);
-		*y = (cd->out[i]);
-
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		sink_samples_without_wrap = y_end - y2;
+		samples_without_wrap = MIN(samples_left, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				if (k == cd->config.active_channel_idx)
+					*y2 = cd->out[i];
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
-		if (cd->config.active_channel_idx >= nch)
-			dbg_ch_idx = 0;
-		else
-			dbg_ch_idx = cd->config.active_channel_idx + 1;
-		if (dbg_en) {
-			y = audio_stream_write_frag_s16(sink, idx_out + dbg_ch_idx);
-			*y = (cd->in[i]);
-		}
+				if (dbg_en && k == dbg_ch_idx)
+					*y2 = cd->in[i];
 #endif
-		idx_out += nch;
+				y2++;
+			}
+			i++;
+		}
+
+		y2 = cir_buf_wrap(y2, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
+
+	source_release_data(source, request_size);
+	sink_commit_buffer(sink, request_size);
+	return 0;
 }
 #endif
 
 #if CONFIG_FORMAT_S24LE
-static void igo_nr_capture_s24(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       int32_t frames)
+static int igo_nr_capture_s24(struct comp_data *cd,
+			      struct sof_source *source,
+			      struct sof_sink *sink,
+			      int32_t frames)
 {
-	int32_t nch = audio_stream_get_channels(source);
-	int32_t i;
-	int32_t j;
-	int32_t idx_in = 0;
-	int32_t idx_out = 0;
-	int32_t *x;
-	int32_t *y;
+	int32_t *x, *y1, *y2;
+	int32_t *x_start, *y_start, *x_end, *y_end;
+	size_t x_size, y_size;
+	size_t request_size = frames * source_get_frame_bytes(source);
+	int sink_samples_without_wrap;
+	int samples_without_wrap;
+	int samples_left;
+	int ret;
+	int nch = source_get_channels(source);
+	int i, j, k;
+
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && nch > 1;
 	int32_t dbg_ch_idx;
+
+	/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+	if (cd->config.active_channel_idx >= nch)
+		dbg_ch_idx = 0;
+	else
+		dbg_ch_idx = cd->config.active_channel_idx + 1;
+
 #endif
 
-	/* Deinterleave the source buffer and keeps the active channel data as input. */
-	for (i = 0; i < frames; i++) {
+	ret = source_get_data(source, request_size, (void const **)&x,
+			      (void const **)&x_start, &x_size);
+	if (ret)
+		return ret;
 
-		/* Pass through all the other channels */
-		for (j = 0; j < nch; j++) {
-			if (j == cd->config.active_channel_idx)
-				continue;
-			x = audio_stream_read_frag_s32(source, idx_in + j);
-			y = audio_stream_write_frag_s32(sink, idx_in + j);
-			*y = (*x);
+	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	y2 = y1;
+	x_end = x_start + x_size;
+	y_end = y_start + y_size;
+
+	/* Deinterleave the source buffer and keeps the active channel data as input. */
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		samples_without_wrap = x_end - x;
+		samples_without_wrap = MIN(samples_left, samples_without_wrap);
+		sink_samples_without_wrap = y_end - y1;
+		samples_without_wrap = MIN(samples_without_wrap, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				if (k == cd->config.active_channel_idx)
+					cd->in[i] = sat_int16(Q_SHIFT_RND(*x, 23, 15));
+				else
+					*y1 = *x;
+
+				x++;
+				y1++;
+			}
+			i++;
 		}
 
-		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
-		cd->in[i] = Q_SHIFT_RND(*x, 24, 16);
-
-		idx_in += nch;
+		x = cir_buf_wrap(x, x_start, x_end);
+		y1 = cir_buf_wrap(y1, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
 
 	igo_nr_lib_process(cd);
 
 	/* Interleave write the processed data into active output channel. */
-	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
-		*y = (cd->out[i]) << 8;
-
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		sink_samples_without_wrap = y_end - y2;
+		samples_without_wrap = MIN(samples_left, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				if (k == cd->config.active_channel_idx)
+					*y2 = cd->out[i] << 8;
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
-		if (cd->config.active_channel_idx >= nch)
-			dbg_ch_idx = 0;
-		else
-			dbg_ch_idx = cd->config.active_channel_idx + 1;
-		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
-			*y = (cd->in[i]) << 8;
-		}
+				if (dbg_en && k == dbg_ch_idx)
+					*y2 = cd->in[i] << 8;
 #endif
-		idx_out += nch;
+				y2++;
+			}
+			i++;
+		}
+
+		y2 = cir_buf_wrap(y2, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
+
+	source_release_data(source, request_size);
+	sink_commit_buffer(sink, request_size);
+	return 0;
 }
 #endif
 
 #if CONFIG_FORMAT_S32LE
-static void igo_nr_capture_s32(struct comp_data *cd,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       int32_t frames)
+static int igo_nr_capture_s32(struct comp_data *cd,
+			      struct sof_source *source,
+			      struct sof_sink *sink,
+			      int32_t frames)
 {
-	int32_t nch = audio_stream_get_channels(source);
-	int32_t i;
-	int32_t j;
-	int32_t idx_in = 0;
-	int32_t idx_out = 0;
-	int32_t *x;
-	int32_t *y;
+	int32_t *x, *y1, *y2;
+	int32_t *x_start, *y_start, *x_end, *y_end;
+	size_t x_size, y_size;
+	size_t request_size = frames * source_get_frame_bytes(source);
+	int sink_samples_without_wrap;
+	int samples_without_wrap;
+	int samples_left;
+	int ret;
+	int nch = source_get_channels(source);
+	int i, j, k;
+
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && nch > 1;
 	int32_t dbg_ch_idx;
+
+	/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+	if (cd->config.active_channel_idx >= nch)
+		dbg_ch_idx = 0;
+	else
+		dbg_ch_idx = cd->config.active_channel_idx + 1;
+
 #endif
 
-	for (i = 0; i < frames; i++) {
+	ret = source_get_data(source, request_size, (void const **)&x,
+			      (void const **)&x_start, &x_size);
+	if (ret)
+		return ret;
 
-		/* Pass through all the other channels */
-		for (j = 0; j < nch; j++) {
-			if (j == cd->config.active_channel_idx)
-				continue;
-			x = audio_stream_read_frag_s32(source, idx_in + j);
-			y = audio_stream_write_frag_s32(sink, idx_in + j);
-			*y = (*x);
+	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	y2 = y1;
+	x_end = x_start + x_size;
+	y_end = y_start + y_size;
+
+	/* Deinterleave the source buffer and keeps the active channel data as input. */
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		samples_without_wrap = x_end - x;
+		samples_without_wrap = MIN(samples_left, samples_without_wrap);
+		sink_samples_without_wrap = y_end - y1;
+		samples_without_wrap = MIN(samples_without_wrap, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				if (k == cd->config.active_channel_idx)
+					cd->in[i] = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+				else
+					*y1 = *x;
+
+				x++;
+				y1++;
+			}
+			i++;
 		}
 
-		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
-		cd->in[i] = Q_SHIFT_RND(*x, 32, 16);
-
-		idx_in += nch;
+		x = cir_buf_wrap(x, x_start, x_end);
+		y1 = cir_buf_wrap(y1, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
 
 	igo_nr_lib_process(cd);
 
 	/* Interleave write the processed data into active output channel. */
-	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
-		*y = (cd->out[i]) << 16;
-
+	i = 0;
+	samples_left = nch * frames;
+	while (samples_left) {
+		sink_samples_without_wrap = y_end - y2;
+		samples_without_wrap = MIN(samples_left, sink_samples_without_wrap);
+		for (j = 0; j < samples_without_wrap; j += nch) {
+			for (k = 0; k < nch; k++) {
+				if (k == cd->config.active_channel_idx)
+					*y2 = cd->out[i] << 16;
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
-		if (cd->config.active_channel_idx >= nch)
-			dbg_ch_idx = 0;
-		else
-			dbg_ch_idx = cd->config.active_channel_idx + 1;
-		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
-			*y = (cd->in[i]) << 16;
-		}
+				if (dbg_en && k == dbg_ch_idx)
+					*y2 = cd->in[i] << 16;
 #endif
-		idx_out += nch;
+				y2++;
+			}
+			i++;
+		}
+
+		y2 = cir_buf_wrap(y2, y_start, y_end);
+		samples_left -= samples_without_wrap;
 	}
+
+	source_release_data(source, request_size);
+	sink_commit_buffer(sink, request_size);
+	return 0;
 }
 #endif
 
@@ -365,40 +494,36 @@ static int igo_nr_free(struct processing_module *mod)
 }
 
 /* check component audio stream parameters */
-static int32_t igo_nr_check_params(struct processing_module *mod)
+static int32_t igo_nr_check_params(struct processing_module *mod, struct sof_source *source,
+				   struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "igo_nr_check_params()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
 	/* set source/sink_frames/rate */
-	cd->source_rate = audio_stream_get_rate(&sourceb->stream);
-	cd->sink_rate = audio_stream_get_rate(&sinkb->stream);
+	cd->source_rate = source_get_rate(source);
+	cd->sink_rate = sink_get_rate(sink);
 
-	if (audio_stream_get_channels(&sourceb->stream) !=
-	    audio_stream_get_channels(&sinkb->stream)) {
-		comp_err(dev, "igo_nr_params(), mismatch source/sink stream channels");
+	if (source_get_channels(source) != sink_get_channels(sink)) {
+		comp_err(dev, "igo_nr_check_params(), mismatch source/sink stream channels");
 		cd->invalid_param = true;
 	}
 
 	if (!cd->sink_rate) {
-		comp_err(dev, "igo_nr_params(), zero sink rate");
+		comp_err(dev, "igo_nr_check_params(), zero sink rate");
 		return -EINVAL;
 	}
 
 	/* The igo_nr supports sample rate 48000 only. */
 	switch (cd->source_rate) {
 	case 48000:
-		comp_info(dev, "igo_nr_params(), sample rate = 48000");
+		comp_info(dev, "igo_nr_check_params(), sample rate = 48000");
 		cd->invalid_param = false;
 		break;
 	default:
-		comp_err(dev, "igo_nr_params(), invalid sample rate");
+		comp_err(dev, "igo_nr_check_params(), invalid sample rate");
 		cd->invalid_param = true;
 	}
 
@@ -615,31 +740,33 @@ static void igo_nr_set_igo_params(struct processing_module *mod)
 
 /* copy and process stream data from source to sink buffers */
 static int igo_nr_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int frames = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	int ret;
 
 	comp_dbg(dev, "igo_nr_copy()");
+
+	/* Process only when frames count is enough. */
+	if (source_get_data_frames_available(source) < IGO_FRAME_SIZE ||
+	    sink_get_free_frames(sink) < IGO_FRAME_SIZE) {
+		comp_warn(dev, "No data to process.");
+		return 0;
+	}
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler))
 		igo_nr_set_igo_params(mod);
 
-	comp_dbg(dev, "frames = %d", frames);
+	ret = cd->igo_nr_func(cd, source, sink, IGO_FRAME_SIZE);
+	if (ret)
+		comp_err(dev, "Failed process.");
 
-	/* Process only when frames count is enough. */
-	if (frames >= IGO_FRAME_SIZE) {
-		cd->igo_nr_func(cd, source, sink, IGO_FRAME_SIZE);
-		module_update_buffer_position(&input_buffers[0], &output_buffers[0],
-					      IGO_FRAME_SIZE);
-	}
-
-	return 0;
+	return ret;
 }
 
 static void igo_nr_lib_init(struct processing_module *mod)
@@ -669,52 +796,49 @@ static void igo_nr_lib_init(struct processing_module *mod)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void igo_nr_ipc4_params(struct processing_module *mod)
+static int igo_nr_ipc4_params(struct processing_module *mod, struct sof_source *source,
+			      struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
+	int ret;
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
+	ret = source_set_params(source, params, true);
+	if (ret)
+		return ret;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+	return sink_set_params(sink, params, true);
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
-
-static void igo_nr_set_alignment(struct audio_stream *source, struct audio_stream *sink)
-{
-	/* Currently no optimizations those would use wider loads and stores */
-	audio_stream_init_alignment_constants(1, IGO_FRAME_SIZE, source);
-	audio_stream_init_alignment_constants(1, IGO_FRAME_SIZE, sink);
-}
 
 static int32_t igo_nr_prepare(struct processing_module *mod,
 			      struct sof_source **sources, int num_of_sources,
 			      struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
 	int ret;
 
 	comp_dbg(dev, "igo_nr_prepare()");
 
 #if CONFIG_IPC_MAJOR_4
-	igo_nr_ipc4_params(mod);
+	ret = igo_nr_ipc4_params(mod, source, sink);
+	if (ret) {
+		comp_err(dev, "Failed to set source or and sink parameters.");
+		return ret;
+	}
 #endif
 
-	ret = igo_nr_check_params(mod);
+	ret = igo_nr_check_params(mod, source, sink);
 	if (ret)
 		return ret;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	igo_nr_set_alignment(&sourceb->stream, &sinkb->stream);
+	source_set_alignment_constants(source, 1, IGO_FRAME_SIZE);
+	sink_set_alignment_constants(sink, 1, IGO_FRAME_SIZE);
 
 	igo_nr_set_igo_params(mod);
 
@@ -759,7 +883,7 @@ static int igo_nr_reset(struct processing_module *mod)
 static const struct module_interface igo_nr_interface = {
 	.init = igo_nr_init,
 	.prepare = igo_nr_prepare,
-	.process_audio_stream = igo_nr_process,
+	.process = igo_nr_process,
 	.set_configuration = igo_nr_set_config,
 	.get_configuration = igo_nr_get_config,
 	.reset = igo_nr_reset,
