@@ -396,7 +396,7 @@ static int man_module_create(struct image *image, struct manifest_module *module
 		fprintf(stdout, "info: ignore .bss section for bootloader module\n");
 	} else {
 		err = elf_section_header_get_by_name(&module->file.elf, ".bss", &bss);
-		if (err)
+		if (err && !image->loadable_module)
 			fprintf(stderr, "warning: can't find '.bss' section in module %s.\n",
 				module->file.elf.filename);
 
