@@ -218,22 +218,31 @@ static void sections_info_init(struct module_sections_info *info)
  * Adds section to module_sections_info structure
  * 
  * @param info Pointer to a module_sections_info structure
- * @param address section address
- * @param size section size
+ * @param section module_section structure
  */
-static void sections_info_add(struct module_sections_info *info, const uint32_t address,
-			      const size_t size)
+static void sections_info_add(struct module_sections_info *info, struct module_section *section)
 {
-	const uint32_t end = address + size;
+	const uint32_t end = section->load_address + section->size;
 
-	if (address < info->start)
-		info->start = address;
+	if (section->load_address < info->start)
+		info->start = section->load_address;
 
 	if (end > info->end)
 		info->end = end;
 
-	info->size += size;
+	info->size += section->size;
 	info->count++;
+
+	/* Add section to list */
+	section->next_section = NULL;
+
+	if (info->last_section)
+		info->last_section->next_section = section;
+
+	info->last_section = section;
+
+	if (!info->first_section)
+		info->first_section = section;
 }
 
 /**
@@ -356,11 +365,8 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 			fprintf(stdout, " ROM");
 		} else {
 			/* Add section to list */
-			if (info) {
-				sections_info_add(info, out_section->load_address, out_section->size);
-				out_section->next_section = info->first_section;
-				info->first_section = out_section;
-			}
+			if (info)
+				sections_info_add(info, out_section);
 		}
 
 		module->num_sections++;

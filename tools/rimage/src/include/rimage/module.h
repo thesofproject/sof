@@ -63,8 +63,9 @@ struct module_sections_info {
 	/* sections count */
 	unsigned int count;
 
-	/* First section */
+	/* sections list */
 	struct module_section *first_section;
+	struct module_section *last_section;
 };
 
 /*
