@@ -15,6 +15,9 @@ foreach(MODULE ${MODULES_LIST})
 
 ###	set_target_properties(${MODULE} PROPERTIES OUTPUT_NAME ${MODULE}.mod)
 
+	# uncomment line below to compile module with debug information
+	#target_compile_options(${MODULE} PUBLIC  "-g3")
+
 	target_include_directories(${MODULE} PRIVATE
 		"${LMDK_BASE}/include"
 		"${RIMAGE_INCLUDE_DIR}"
@@ -35,9 +38,9 @@ foreach(MODULE ${MODULES_LIST})
 	)
 
 	target_link_options(${MODULE} PRIVATE
-		"-nostdlib" "-nodefaultlibs"
+		"-nostartfiles"
 		"-Wl,--no-undefined" "-Wl,--unresolved-symbols=report-all" "-Wl,--error-unresolved-symbols"
-		#"-Wl,--gc-sections"	# may remove .bss and that will result in rimage error, do not use for now
+		"-Wl,--gc-sections"
 		"-Wl,-Map,$<TARGET_FILE:${MODULE}>.map"	# optional: just for debug
 		"-T" "${MODULE}_ldscripts/elf32xtensa.x"
 	)
