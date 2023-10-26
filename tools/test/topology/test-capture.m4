@@ -6,7 +6,6 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`ssp.m4')
-include(`dmic.m4')
 include(`pipeline.m4')
 
 # Include TLV library
@@ -15,8 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Apollolake DSP configuration
-include(`platform/intel/bxt.m4')
+# Include generic DSP configuration
+include(`platform/generic.m4')
 
 DEBUG_START
 
