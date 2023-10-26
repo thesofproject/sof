@@ -16,5 +16,18 @@ SECTIONS {
         _next_end = ABSOLUTE(.);
         *(.bss)
         *(.bss.*)
+
+        /* Heap memory */
+        . = ALIGN(4);
+        __stack = .;
+        _end = .;
+        KEEP(*(.heap_mem))
+
+        /* Use the unused rest of the memory page as a heap */
+        . = ALIGN(4096);
+
+        /* The sbrk function implementation by xtensa incorrectly checks whether the allocated
+           memory block fits in the heap, so we have to add 1 to the end of the heap marker. */
+        _heap_sentry = . + 1;
     } >HPSRAM_seg : bss_phdr
 }
