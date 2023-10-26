@@ -35,10 +35,10 @@ struct comp_data {
 	uint32_t source_rate;	/* Sample rate in Hz */
 	uint32_t sink_format;	/* For used PCM sample format */
 	uint32_t source_format;	/* For used PCM sample format */
-	void (*igo_nr_func)(struct comp_data *cd,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    int32_t frames);
+	int (*igo_nr_func)(struct comp_data *cd,
+			   struct sof_source *source,
+			   struct sof_sink *sink,
+			   int32_t frames);
 };
 
 #endif /* __SOF_AUDIO_IGO_NR_CONFIG_H__ */
