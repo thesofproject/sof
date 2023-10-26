@@ -14,8 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Apollolake DSP configuration
-include(`platform/intel/bxt.m4')
+# Include generic DSP configuration
+include(`platform/generic.m4')
 
 DEBUG_START
 
