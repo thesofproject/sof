@@ -80,12 +80,12 @@ static inline uint64_t mailbox_sw_reg_read64(size_t offset)
 
 static inline void mailbox_sw_regs_write(size_t offset, const void *src, size_t bytes)
 {
-	int regs_write_err __unused = memcpy_s((void *)(MAILBOX_SW_REG_BASE + offset),
-					       MAILBOX_SW_REG_SIZE - offset, src, bytes);
+	uint32_t __sparse_cache *ptr_c;
+	uint32_t *ptr;
 
-	assert(!regs_write_err);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_SW_REG_BASE +
-								       offset), bytes);
+	ptr_c = (uint32_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache(ptr_c);
+	memcpy_s(ptr, MAILBOX_SW_REG_SIZE - offset, src, bytes);
 }
 
 #endif /* __ACE_LIB_MAILBOX_H__ */
