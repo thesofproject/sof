@@ -13,8 +13,6 @@ foreach(MODULE ${MODULES_LIST})
 	add_executable(${MODULE})
 	add_subdirectory(${LMDK_BASE}/modules/${MODULE} ${MODULE}_module)
 
-###	set_target_properties(${MODULE} PROPERTIES OUTPUT_NAME ${MODULE}.mod)
-
 	# uncomment line below to compile module with debug information
 	#target_compile_options(${MODULE} PUBLIC  "-g3")
 
@@ -58,13 +56,26 @@ cmake_path(APPEND SOF_BASE "../build-rimage" OUTPUT_VARIABLE RIMAGE_SOF_INSTALL_
 cmake_path(NORMAL_PATH RIMAGE_SOF_INSTALL_DIR)
 cmake_path(ABSOLUTE_PATH SIGNING_KEY BASE_DIRECTORY ${CMAKE_SOURCE_DIR} NORMALIZE)
 
+foreach(MOD_NAME IN LISTS MODULES_LIST)
+	list(APPEND RIMAGE_MODULES_LIST ${MOD_NAME}.mod)
+
+	# Change .module section flags to tell rimage to not include it in a final image
+	add_custom_target(${MOD_NAME}.mod
+		COMMENT "Preparing .mod(ule) files for rimage"
+		DEPENDS ${MOD_NAME}
+		COMMAND ${CMAKE_OBJCOPY}
+			--set-section-flags .module=noload,readonly
+			${MOD_NAME} ${MOD_NAME}.mod
+)
+endforeach()
+
 find_program(RIMAGE_COMMAND NAMES rimage
   PATHS "${RIMAGE_INSTALL_DIR}"
   HINTS "${RIMAGE_SOF_INSTALL_DIR}"
   REQUIRED)
 
 add_custom_target(${PROJECT_NAME}_target ALL
-	DEPENDS ${MODULES_LIST}
-	COMMAND ${RIMAGE_COMMAND} -k ${SIGNING_KEY} -f 2.0.0 -b 1 -o ${RIMAGE_OUTPUT_FILE} -c ${TOML} -e ${MODULES_LIST}
+	DEPENDS ${RIMAGE_MODULES_LIST}
+	COMMAND ${RIMAGE_COMMAND} -k ${SIGNING_KEY} -f 2.0.0 -b 1 -o ${RIMAGE_OUTPUT_FILE} -c ${TOML} -e ${RIMAGE_MODULES_LIST}
 	COMMAND ${CMAKE_COMMAND} -E cat ${RIMAGE_OUTPUT_FILE}.xman ${RIMAGE_OUTPUT_FILE} > ${OUTPUT_FILE}
 )
