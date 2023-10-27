@@ -374,7 +374,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 		goto cleanup;
 	}
 
-	drv = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
+	drv = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
 		      SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct comp_driver));
 	if (!drv) {
@@ -383,7 +383,6 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 		ret = -ENOMEM;
 		goto cleanup;
 	}
-	memset(drv, 0, sizeof(struct comp_driver));
 
 	/* Fill the new_drv_info structure with already known parameters */
 	/* Check already registered components */
@@ -399,10 +398,8 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 
 cleanup:
 	if (ret < 0) {
-		if (drv)
-			rfree(drv);
-		if (new_drv_info)
-			rfree(new_drv_info);
+		rfree(drv);
+		rfree(new_drv_info);
 	}
 
 	return ret;
