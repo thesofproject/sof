@@ -169,7 +169,7 @@ static int llext_manager_free_module_bss(uint32_t module_id,
 }
 
 static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
-			      uint32_t module_id, const void **buildinfo,
+			      uint32_t module_id, struct module_data *md, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	size_t mod_size = desc->header.preload_page_count * PAGE_SZ;
@@ -177,16 +177,16 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
 						       SOF_MAN_ELF_TEXT_OFFSET + 0x8000,
 						       mod_size);
-	struct llext *ext;
 	struct llext_load_param ldr_parm = {false};
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	int ret = llext_load(&ebl.loader, mod->name, &ext, &ldr_parm);
+	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
 	if (ret < 0)
 		return ret;
 
 	mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset = (uintptr_t)ext->mem[LLEXT_MEM_TEXT] -
+	mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset =
+		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] -
 		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
 	ctx->segment_size[SOF_MAN_SEGMENT_TEXT] = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
 
@@ -198,7 +198,8 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	/* This contains all other sections, except .text, it might contain .bss too */
 	mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
 		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset = (uintptr_t)ext->mem[LLEXT_MEM_RODATA] -
+	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
+		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] -
 		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
 	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = mod_size -
 		ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
@@ -252,7 +253,7 @@ uint32_t llext_manager_allocate_module(struct processing_module *proc,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = llext_manager_link(desc, mod, module_id, buildinfo, &mod_manifest);
+	ret = llext_manager_link(desc, mod, module_id, &proc->priv, buildinfo, &mod_manifest);
 	if (ret < 0)
 		return 0;
 
