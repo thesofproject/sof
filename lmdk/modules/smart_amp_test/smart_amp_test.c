@@ -6,7 +6,6 @@
 // Author: Andrula Song <andrula.song@intel.com>
 // Author: Chao Song <chao.song@linux.intel.com>
 
-static int (*gcd)(int a, int b);
 #define MODULE_BUILD
 
 #include "../include/loadable_processing_module.h"
@@ -33,6 +32,65 @@ enum mem_zone {
 /* FIXME: only one instance is supported ATM */
 static struct smart_amp_data smart_amp_priv;
 
+/* This function returns the greatest common divisor of two numbers
+ * If both parameters are 0, gcd(0, 0) returns 0
+ * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
+ * and gcd(a, 0) returns a, because everything divides 0.
+ */
+
+int gcd(int a, int b)
+{
+	if (a == 0)
+		return b;
+
+	if (b == 0)
+		return a;
+
+	/* If the numbers are negative, convert them to positive numbers
+	 * gcd(a, b) = gcd(-a, -b) = gcd(-a, b) = gcd(a, -b)
+	 */
+
+	if (a < 0)
+		a = -a;
+
+	if (b < 0)
+		b = -b;
+
+	int aux;
+	int k;
+
+	/* Find the greatest power of 2 that devides both a and b */
+	for (k = 0; ((a | b) & 1) == 0; k++) {
+		a >>= 1;
+		b >>= 1;
+	}
+
+	/* divide by 2 until a becomes odd */
+	while ((a & 1) == 0)
+		a >>= 1;
+
+	do {
+		/*if b is even, remove all factors of 2*/
+		while ((b & 1) == 0)
+			b >>= 1;
+
+		/* both a and b are odd now. Swap so a <= b
+		 * then set b = b - a, which is also even
+		 */
+		if (a > b) {
+			aux = a;
+			a = b;
+			b = aux;
+		}
+
+		b = b - a;
+
+	} while (b != 0);
+
+	/* restore common factors of 2 */
+	return a << k;
+}
+
 static int smart_amp_init(struct processing_module *mod)
 {
 	struct smart_amp_data *sad;
@@ -51,8 +109,6 @@ static int smart_amp_init(struct processing_module *mod)
 #endif
 
 	mod_data->private = sad;
-
-	gcd = mod->sys_service->math_gcd;
 
 	if (base_cfg->base_cfg_ext.nb_input_pins != SMART_AMP_NUM_IN_PINS ||
 	    base_cfg->base_cfg_ext.nb_output_pins != SMART_AMP_NUM_OUT_PINS) {

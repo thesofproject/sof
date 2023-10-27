@@ -141,5 +141,4 @@ struct native_system_service_api native_system_service = {
 	.notification_send = native_system_service_send_notif_msg,
 	.get_interface = native_system_service_get_interface,
 	.comp_verify_params = comp_verify_params,
-	.math_gcd = gcd,
 };

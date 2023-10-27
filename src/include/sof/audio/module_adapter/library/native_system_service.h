@@ -115,6 +115,5 @@ struct native_system_service_api {
 	AdspErrorCode (*get_interface)(adsp_iface_id id, system_service_iface **iface);
 	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
 				  struct sof_ipc_stream_params *params);
-	int (*math_gcd)(int a, int b);
 };
 #endif /*NATIVE_SYSTEM_SERVICE_H*/

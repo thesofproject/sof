@@ -225,7 +225,6 @@ typedef struct adsp_system_service {
 
 	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
 				  struct sof_ipc_stream_params *params);
-	int (*math_gcd)(int a, int b);
 } adsp_system_service;
 
 #ifdef __cplusplus
