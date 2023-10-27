@@ -342,7 +342,7 @@ static bool module_is_llext(struct sof_man_module *mod)
 	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
 }
 
-uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
+uint32_t lib_manager_allocate_module(struct processing_module *proc,
 				     struct comp_ipc_config *ipc_config,
 				     const void *ipc_specific_config, const void **buildinfo)
 {
@@ -366,7 +366,7 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
 	if (module_is_llext(mod))
-		return llext_manager_allocate_module(drv, ipc_config, ipc_specific_config,
+		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config,
 						     buildinfo);
 
 	ret = lib_manager_load_module(module_id, mod);
@@ -396,7 +396,7 @@ err:
 	return 0;
 }
 
-int lib_manager_free_module(const struct comp_driver *drv,
+int lib_manager_free_module(struct processing_module *proc,
 			    struct comp_ipc_config *ipc_config)
 {
 	struct sof_man_fw_desc *desc;
@@ -411,7 +411,7 @@ int lib_manager_free_module(const struct comp_driver *drv,
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
 	if (module_is_llext(mod))
-		return llext_manager_free_module(drv, ipc_config);
+		return llext_manager_free_module(proc, ipc_config);
 
 	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
@@ -436,7 +436,7 @@ int lib_manager_free_module(const struct comp_driver *drv,
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
+uint32_t lib_manager_allocate_module(struct processing_module *proc,
 				     struct comp_ipc_config *ipc_config,
 				     const void *ipc_specific_config, const void **buildinfo)
 {
@@ -445,7 +445,7 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	return 0;
 }
 
-int lib_manager_free_module(const struct comp_driver *drv,
+int lib_manager_free_module(struct processing_module *proc,
 			    struct comp_ipc_config *ipc_config)
 {
 	/* Since we cannot allocate the freeing is not considered to be an error */

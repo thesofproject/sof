@@ -144,6 +144,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id);
  */
 struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id);
 
+struct processing_module;
 /*
  * \brief Allocate module
  *
@@ -154,7 +155,7 @@ struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id);
  * Function is responsible to allocate module in available free memory and assigning proper address.
  * (WIP) These feature will contain module validation and proper memory management.
  */
-uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
+uint32_t lib_manager_allocate_module(struct processing_module *proc,
 				     struct comp_ipc_config *ipc_config,
 				     const void *ipc_specific_config, const void **buildinfo);
 
@@ -167,7 +168,7 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
  *
  * Function is responsible to free module resources in HP memory.
  */
-int lib_manager_free_module(const struct comp_driver *drv,
+int lib_manager_free_module(struct processing_module *proc,
 			    struct comp_ipc_config *ipc_config);
 /*
  * \brief Load library
