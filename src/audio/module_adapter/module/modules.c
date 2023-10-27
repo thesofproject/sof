@@ -74,7 +74,7 @@ static int modules_init(struct processing_module *mod)
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	const void *buildinfo = NULL;
 
-	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg, &buildinfo);
+	module_entry_point = lib_manager_allocate_module(mod, config, src_cfg, &buildinfo);
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
@@ -294,7 +294,7 @@ static int modules_free(struct processing_module *mod)
 	rfree(md->mpd.out_buff);
 
 	/* Free module resources allocated in L2 memory. */
-	ret = lib_manager_free_module(dev->drv, config);
+	ret = lib_manager_free_module(mod, config);
 	if (ret < 0)
 		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
 
