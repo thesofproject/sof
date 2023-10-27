@@ -36,7 +36,9 @@ manifest:
     - name: rimage
       repo-path: rimage
       path: sof/rimage
-      revision: fbea59358d06ffa86645cdf4ce0996e352742eb5
+      # DNM temporary, pre-merge test of
+      # https://github.com/thesofproject/rimage/pull/190
+      revision: a5466e2234dbe9677f064170b9f67a3b38bfcd72
 
     - name: tomlc99
       repo-path: tomlc99
