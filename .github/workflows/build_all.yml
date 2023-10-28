@@ -61,4 +61,4 @@ jobs:
           cd workspace
           clang --verbose
           set -x
-          sof/scripts/fuzz.sh -b -c stub_build_all_${{ matrix.IPC }}.conf -- "$cmake_arg"
+          sof/scripts/fuzz.sh -b -- -DOVERLAY_CONFIG=stub_build_all_${{ matrix.IPC }}.conf
