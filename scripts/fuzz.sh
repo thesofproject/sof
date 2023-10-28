@@ -49,14 +49,14 @@ main()
 {
   setup
 
+  BUILD_ONLY=false
   # Parse "$@". getopts stops after '--'
-  while getopts "ho:t:c:b" opt; do
+  while getopts "ho:t:b" opt; do
       case "$opt" in
           h) print_help; exit 0;;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
-          b) BUILD_ONLY=1;;
-          c) OVERLAY="$OPTARG";;
+          b) BUILD_ONLY=true;;
           *) print_help; exit 1;;
       esac
   done
@@ -80,15 +80,11 @@ main()
     -DCONFIG_ASAN=y
   )
 
-  if [ ! -z $OVERLAY ]; then
-      overlay_config=$(xargs -a "$SOF_TOP/app/$OVERLAY" printf -- "-D%s ")
-  fi
-
   west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
-      "${fuzz_configs[@]}" "$overlay_config" "$@"
+      "${fuzz_configs[@]}" "$@"
 
-  if [ $BUILD_ONLY -eq 1 ]; then
-      exit
+  if $BUILD_ONLY; then
+      exit 0
   fi
 
   mkdir -p ./fuzz_corpus
