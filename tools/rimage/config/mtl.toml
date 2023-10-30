@@ -600,9 +600,10 @@ count = 27
 	[[module.entry]]
         name = "RTC_AEC"
         uuid = "B780A0A6-269F-466F-B477-23DFA05AF758"
-        affinity_mask = "0x3"
+        # bit #i = 1 means core #i is allowed.
+        affinity_mask = "0x7"
         instance_count = "1"
-        domain_types = "0"
+        domain_types = "1"
         load_type = "1"
         module_type = "10"
 	init_config = "1"
