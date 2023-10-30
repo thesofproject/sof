@@ -247,6 +247,14 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return ipc4_create_pipeline(pipe_desc);
 }
 
+static inline int ipc_comp_free_remote(struct comp_dev *dev)
+{
+	struct idc_msg msg = { IDC_MSG_FREE, IDC_MSG_FREE_EXT(dev->ipc_config.id),
+		dev->ipc_config.core,};
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
 static int ipc_pipeline_module_free(uint32_t pipeline_id)
 {
 	struct ipc *ipc = ipc_get();
@@ -284,7 +292,11 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 				buffer_free(buffer);
 		}
 
-		ret = ipc_comp_free(ipc, icd->id);
+		if (!cpu_is_me(icd->core))
+			ret = ipc_comp_free_remote(icd->cd);
+		else
+			ret = ipc_comp_free(ipc, icd->id);
+
 		if (ret)
 			return IPC4_INVALID_RESOURCE_STATE;
 
