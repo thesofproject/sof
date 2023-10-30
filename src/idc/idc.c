@@ -329,7 +329,7 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 	struct ipc_comp_dev *ppl_icd;
 	uint32_t cmd = *(uint32_t *)payload;
 
-	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id);
+	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id, IPC_COMP_IGNORE_REMOTE);
 	if (!ppl_icd) {
 		tr_err(&idc_tr, "idc: comp %d not found", ppl_id);
 		return IPC4_INVALID_RESOURCE_ID;

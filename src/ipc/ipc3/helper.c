@@ -292,7 +292,9 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 	return 0;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc,
+					    uint16_t type, uint32_t ppl_id,
+					    uint32_t ignore_remote)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -301,7 +303,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != type)
 			continue;
-		if (!cpu_is_me(icd->core))
+		if ((!cpu_is_me(icd->core)) && ignore_remote)
 			continue;
 		if (ipc_comp_pipe_id(icd) == ppl_id)
 			return icd;

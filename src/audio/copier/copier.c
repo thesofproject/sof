@@ -84,7 +84,9 @@ static int copier_init(struct processing_module *mod)
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
 
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					  config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
 	if (!ipc_pipe) {
 		comp_err(dev, "pipeline %d is not existed", config->pipeline_id);
 		ret = -EPIPE;

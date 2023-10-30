@@ -157,7 +157,9 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	return dev;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+					    uint32_t ppl_id,
+					    uint32_t ignore_remote)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -174,7 +176,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint
 			if (icd->id == ppl_id)
 				return icd;
 		} else {
-			if (!cpu_is_me(icd->core))
+			if ((!cpu_is_me(icd->core)) && ignore_remote)
 				continue;
 			if (ipc_comp_pipe_id(icd) == ppl_id)
 				return icd;
@@ -251,7 +253,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	struct ipc_comp_dev *icd;
 	int ret;
 
-	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	while (icd) {
 		struct list_item *list, *_list;
 		struct comp_buffer *buffer;
@@ -286,7 +288,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		if (ret)
 			return IPC4_INVALID_RESOURCE_STATE;
 
-		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	}
 
 	return IPC4_SUCCESS;

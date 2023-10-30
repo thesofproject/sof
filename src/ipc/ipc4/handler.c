@@ -553,7 +553,8 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	}
 
 	for (i = 0; i < ppl_count; i++) {
-		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
+		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+						 ppl_id[i], IPC_COMP_IGNORE_REMOTE);
 		if (!ppl_icd) {
 			tr_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
 			return IPC4_INVALID_RESOURCE_ID;
@@ -569,7 +570,8 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 
 	/* Run the prepare phase on the pipelines */
 	for (i = 0; i < ppl_count; i++) {
-		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
+		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+						 ppl_id[i], IPC_COMP_IGNORE_REMOTE);
 		if (!ppl_icd) {
 			ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
 			return IPC4_INVALID_RESOURCE_ID;
@@ -602,7 +604,8 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	for (i = 0; i < ppl_count; i++) {
 		bool delayed = false;
 
-		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i]);
+		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+						 ppl_id[i], IPC_COMP_IGNORE_REMOTE);
 		if (!ppl_icd) {
 			ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
 			return IPC4_INVALID_RESOURCE_ID;
