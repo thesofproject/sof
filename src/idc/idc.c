@@ -316,6 +316,25 @@ static int idc_reset(uint32_t comp_id)
 }
 
 /**
+ * \brief Executes IDC component reset message.
+ * \param[in] comp_id Component id to be reset.
+ * \return Error code.
+ */
+static int idc_comp_free(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	int ret;
+
+	icd = ipc_get_comp_by_id(ipc, comp_id);
+	if (!icd)
+		return -ENODEV;
+
+	ret = ipc_comp_free(ipc, comp_id);
+	return ret;
+}
+
+/**
  * \brief Executes IDC pipeline set state message.
  * \param[in] ppl_id Pipeline id to be triggered.
  * \return Error code.
@@ -428,6 +447,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_GET_ATTRIBUTE):
 		ret = idc_get_attribute(msg->extension);
+		break;
+	case iTS(IDC_MSG_FREE):
+		ret = idc_comp_free(msg->extension);
 		break;
 #endif
 	case iTS(IDC_MSG_PARAMS):
