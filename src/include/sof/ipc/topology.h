@@ -76,6 +76,9 @@ struct ipc_msg;
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
 
+#define IPC_COMP_ALL		0
+#define IPC_COMP_IGNORE_REMOTE	1
+
 /* IPC generic component device */
 struct ipc_comp_dev {
 	uint16_t type;	/* COMP_TYPE_ */
@@ -179,10 +182,11 @@ struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t i
  * @param ipc The global IPC context.
  * @param type The component type.
  * @param ppl_id The pipeline ID.
+ * @param ignore_remote Omit component from different core if set to IPC_COMP_IGNORE_REMOTE
  * @return component device or NULL.
  */
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
-					    uint32_t ppl_id);
+					    uint32_t ppl_id, uint32_t ignore_remote);
 /**
  * \brief Get buffer device from pipeline ID.
  * @param ipc The global IPC context.
