@@ -113,7 +113,5 @@ struct native_system_service_api {
 					   uint32_t actual_payload_size);
 
 	AdspErrorCode (*get_interface)(adsp_iface_id id, system_service_iface **iface);
-	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
-				  struct sof_ipc_stream_params *params);
 };
 #endif /*NATIVE_SYSTEM_SERVICE_H*/

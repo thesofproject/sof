@@ -222,9 +222,6 @@ typedef struct adsp_system_service {
 	 * SystemServiceGetInterfaceFct typedef.
 	 */
 	const SystemServiceGetInterfaceFct GetInterface;
-
-	int (*comp_verify_params)(struct comp_dev *dev, uint32_t flag,
-				  struct sof_ipc_stream_params *params);
 } adsp_system_service;
 
 #ifdef __cplusplus

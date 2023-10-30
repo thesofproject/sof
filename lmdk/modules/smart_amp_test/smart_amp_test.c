@@ -29,6 +29,129 @@ enum mem_zone {
 	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
 };
 
+/** \brief Retrieves the component device buffer list. */
+#define comp_buffer_list(comp, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? &(comp)->bsink_list :	\
+	 &(comp)->bsource_list)
+
+/* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
+ * with buffer parameters when specific flag is set.
+ */
+static void comp_update_params(uint32_t flag,
+			       struct sof_ipc_stream_params *params,
+			       struct comp_buffer __sparse_cache *buffer)
+{
+	if (flag & BUFF_PARAMS_FRAME_FMT)
+		params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
+
+	if (flag & BUFF_PARAMS_BUFFER_FMT)
+		params->buffer_fmt = audio_stream_get_buffer_fmt(&buffer->stream);
+
+	if (flag & BUFF_PARAMS_CHANNELS)
+		params->channels = audio_stream_get_channels(&buffer->stream);
+
+	if (flag & BUFF_PARAMS_RATE)
+		params->rate = audio_stream_get_rate(&buffer->stream);
+}
+
+int buffer_set_params(struct comp_buffer __sparse_cache *buffer,
+		      struct sof_ipc_stream_params *params, bool force_update)
+{
+	int ret;
+	int i;
+
+	if (!params)
+		return -EINVAL;
+
+	if (buffer->hw_params_configured && !force_update)
+		return 0;
+
+	ret = audio_stream_set_params(&buffer->stream, params);
+	if (ret < 0)
+		return -EINVAL;
+
+	audio_stream_set_buffer_fmt(&buffer->stream, params->buffer_fmt);
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buffer->chmap[i] = params->chmap[i];
+
+	buffer->hw_params_configured = true;
+
+	return 0;
+}
+
+int comp_verify_params(struct comp_dev *dev, uint32_t flag,
+		       struct sof_ipc_stream_params *params)
+{
+	struct list_item *buffer_list;
+	struct list_item *source_list;
+	struct list_item *sink_list;
+	struct list_item *clist;
+	struct comp_buffer *sinkb;
+	struct comp_buffer *buf;
+	struct comp_buffer __sparse_cache *buf_c;
+	int dir = dev->direction;
+
+	if (!params)
+		return -EINVAL;
+
+	source_list = comp_buffer_list(dev, PPL_DIR_UPSTREAM);
+	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
+
+	/* searching for endpoint component e.g. HOST, DETECT_TEST, which
+	 * has only one sink or one source buffer.
+	 */
+	if (list_is_empty(source_list) != list_is_empty(sink_list)) {
+		if (list_is_empty(sink_list))
+			buf = list_first_item(source_list,
+					      struct comp_buffer,
+					      sink_list);
+		else
+			buf = list_first_item(sink_list,
+					      struct comp_buffer,
+					      source_list);
+
+		buf_c = buffer_acquire(buf);
+
+		/* update specific pcm parameter with buffer parameter if
+		 * specific flag is set.
+		 */
+		comp_update_params(flag, params, buf_c);
+
+		/* overwrite buffer parameters with modified pcm
+		 * parameters
+		 */
+		buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
+
+		/* set component period frames */
+		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf_c->stream));
+
+		buffer_release(buf_c);
+	} else {
+		/* for other components we iterate over all downstream buffers
+		 * (for playback) or upstream buffers (for capture).
+		 */
+		buffer_list = comp_buffer_list(dev, dir);
+
+		list_for_item(clist, buffer_list) {
+			buf = buffer_from_list(clist, dir);
+			buf_c = buffer_acquire(buf);
+			comp_update_params(flag, params, buf_c);
+			buffer_set_params(buf_c, params, BUFFER_UPDATE_FORCE);
+			buffer_release(buf_c);
+		}
+
+		/* fetch sink buffer in order to calculate period frames */
+		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+					source_list);
+
+		buf_c = buffer_acquire(sinkb);
+		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf_c->stream));
+		buffer_release(buf_c);
+	}
+
+	return 0;
+}
+
 /* FIXME: only one instance is supported ATM */
 static struct smart_amp_data smart_amp_priv;
 
@@ -388,7 +511,7 @@ static int smart_amp_params(struct processing_module *mod)
 	int ret;
 
 	smart_amp_set_params(mod);
-	ret = mod->sys_service->comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
 		return -EINVAL;
 	}
