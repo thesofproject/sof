@@ -36,7 +36,7 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Number of channels to process for Google Real Time Communication Audio processing"
-	default 1
+	default 4
 	help
 	  Sets the number of channels to process in the Google real-time
 	  communication audio processing.
