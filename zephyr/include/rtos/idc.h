@@ -106,6 +106,10 @@
 #define IDC_MSG_UNBIND IDC_TYPE(0xE)
 #define IDC_MSG_GET_ATTRIBUTE IDC_TYPE(0xF)
 
+/** \brief IDC component delete message. */
+#define IDC_MSG_FREE		IDC_TYPE(0x10)
+#define IDC_MSG_FREE_EXT(x)	IDC_EXTENSION(x)
+
 /** \brief IDC pipeline set state message. */
 #define IDC_MSG_PPL_STATE		IDC_TYPE(0xC)
 #define IDC_PPL_STATE_PPL_ID_SHIFT	0
