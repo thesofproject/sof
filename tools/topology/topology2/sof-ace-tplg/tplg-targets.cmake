@@ -40,6 +40,10 @@ SDW_DMIC_STREAM=SDW0-Capture"
 # Jack codec + SmartAmp topology. No SDW_DMIC connection
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2"
 
+"cavs-sdw\;sof-mtl-rt722-l0\;PLATFORM=mtl,SDW_DMIC=1,NUM_HDMIS=0,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
 # Below topologies are used on Chromebooks
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
