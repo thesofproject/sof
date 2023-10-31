@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+is_zephyr(it_is)
+if(it_is)  ### Zephyr ###
+
+
+zephyr_library_sources(
+	init.c
+	ext_manifest.c
+)
+
+
+else()  ### Not Zephyr ###
+
+
 add_local_sources(sof init.c)
 
 add_library(ext_manifest STATIC "")
@@ -21,3 +34,6 @@ sof_append_relative_path_definitions(ext_manifest)
 
 target_link_libraries(ext_manifest sof_options)
 target_link_libraries(sof_static_libraries INTERFACE ext_manifest)
+
+
+endif() # Zephyr
