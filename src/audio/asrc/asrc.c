@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #if CONFIG_IPC_MAJOR_4
+#include <sof/audio/module_adapter/module/generic.h>
 #include <ipc4/base-config.h>
 #include <ipc4/asrc.h>
 #endif
@@ -645,6 +646,56 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_4
+static int asrc_dai_configure_timestamp(struct comp_data *cd)
+{
+	if (cd->dai_dev) {
+		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+		struct module_data *md = &mod->priv;
+
+		return md->ops->endpoint_ops->dai_ts_config(cd->dai_dev);
+	}
+
+	return -EINVAL;
+}
+
+static int asrc_dai_start_timestamp(struct comp_data *cd)
+{
+	if (cd->dai_dev) {
+		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+		struct module_data *md = &mod->priv;
+
+		return md->ops->endpoint_ops->dai_ts_start(cd->dai_dev);
+	}
+
+	return -EINVAL;
+}
+
+static int asrc_dai_stop_timestamp(struct comp_data *cd)
+{
+	if (cd->dai_dev) {
+		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+		struct module_data *md = &mod->priv;
+
+		return md->ops->endpoint_ops->dai_ts_stop(cd->dai_dev);
+	}
+
+	return -EINVAL;
+}
+
+static int asrc_dai_get_timestamp(struct comp_data *cd,
+				  struct dai_ts_data *tsd)
+{
+	if (cd->dai_dev) {
+		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+		struct module_data *md = &mod->priv;
+
+		return md->ops->endpoint_ops->dai_ts_get(cd->dai_dev, tsd);
+	}
+
+	return -EINVAL;
+}
+#else
 static int asrc_dai_configure_timestamp(struct comp_data *cd)
 {
 	if (cd->dai_dev)
@@ -669,17 +720,14 @@ static int asrc_dai_stop_timestamp(struct comp_data *cd)
 	return -EINVAL;
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	static int asrc_dai_get_timestamp(struct comp_data *cd, struct dai_ts_data *tsd)
-#else
-	static int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
-#endif
+static int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
 {
 	if (!cd->dai_dev)
 		return -EINVAL;
 
 	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
 }
+#endif
 
 static int asrc_trigger(struct comp_dev *dev, int cmd)
 {
