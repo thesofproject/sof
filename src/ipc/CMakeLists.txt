@@ -6,9 +6,31 @@ elseif (CONFIG_IPC_MAJOR_4)
         add_subdirectory(ipc4)
 endif()
 
-add_local_sources(sof
+set(base_files
 	ipc-common.c
 	ipc-helper.c
+)
+
+is_zephyr(it_is)
+if(it_is) ###  Zephyr ###
+
+zephyr_library_sources(
+	${base_files}
+	dma-copy.c
+)
+
+if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ACE)
+	zephyr_library_sources(
+		ipc-zephyr.c
+	)
+endif()
+
+
+else() ###  Not Zephyr ###
+
+
+add_local_sources(sof
+	${base_files}
 )
 
 if (CONFIG_TRACE)
@@ -19,3 +41,6 @@ endif()
 if (CONFIG_LIBRARY)
 	return()
 endif()
+
+
+endif() # Zephyr
