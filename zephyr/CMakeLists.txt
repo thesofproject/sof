@@ -128,6 +128,8 @@ macro(is_zephyr ret)
 endmacro()
 
 add_subdirectory(../src/init/ init_unused_install/)
+add_subdirectory(../src/ipc/  ipc_unused_install/)
+
 
 
 # Old way below: all .c files added by this giant CMake file.
@@ -136,10 +138,6 @@ add_subdirectory(../src/init/ init_unused_install/)
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
-	zephyr_library_sources(
-		${SOF_IPC_PATH}/ipc-zephyr.c
-	)
-
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 	)
@@ -164,11 +162,6 @@ endif()
 
 # Intel ACE 1.5 and newer platforms
 if (CONFIG_SOC_SERIES_INTEL_ACE)
-
-	# Driver sources
-	zephyr_library_sources(
-		${SOF_IPC_PATH}/ipc-zephyr.c
-	)
 
 	# Platform sources
 	zephyr_library_sources(
@@ -327,9 +320,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-	${SOF_IPC_PATH}/dma-copy.c
-	${SOF_IPC_PATH}/ipc-common.c
-	${SOF_IPC_PATH}/ipc-helper.c
 
 	# SOF math utilities
 	${SOF_MATH_PATH}/decibels.c
@@ -408,20 +398,6 @@ else()
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_3
-	${SOF_IPC_PATH}/ipc3/handler.c
-	${SOF_IPC_PATH}/ipc3/helper.c
-	${SOF_IPC_PATH}/ipc3/dai.c
-	${SOF_IPC_PATH}/ipc3/host-page-table.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
-	${SOF_IPC_PATH}/ipc4/handler.c
-	${SOF_IPC_PATH}/ipc4/helper.c
-	${SOF_IPC_PATH}/ipc4/dai.c
-	${SOF_IPC_PATH}/ipc4/logging.c
-	${SOF_IPC_PATH}/ipc4/notification.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c
@@ -776,7 +752,6 @@ zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
 
 zephyr_library_sources_ifdef(CONFIG_AMS
 	${SOF_LIB_PATH}/ams.c
-	${SOF_IPC_PATH}/ipc4/ams_helpers.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
