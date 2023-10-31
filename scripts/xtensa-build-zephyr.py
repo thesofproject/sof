@@ -943,7 +943,7 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 		InstFile("include/generated/sof_versions.h", "sof_versions.h",
 			 gzip=False, txt=True),
 		InstFile(BIN_NAME + ".elf"),
-		InstFile(BIN_NAME + ".lst", txt=True),
+		InstFile(BIN_NAME + ".lst", txt=True, optional=True),
 		InstFile(BIN_NAME + ".map", txt=True),
 
 		# CONFIG_BUILD_OUTPUT_STRIPPED
