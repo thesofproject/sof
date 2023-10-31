@@ -683,16 +683,14 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
 
-if (CONFIG_SAMPLES)
-	if(CONFIG_IPC_MAJOR_3)
-		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
-		)
-	elseif(CONFIG_IPC_MAJOR_4)
-		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
-		)
-	endif()
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
+	)
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
