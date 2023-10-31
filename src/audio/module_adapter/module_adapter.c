@@ -168,6 +168,9 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	 * first, set all parameters by calling "module prepare" with pointers to
 	 * "main" audio_stream buffers
 	 */
+	list_init(&mod->dp_queue_ll_to_dp_list);
+	list_init(&mod->dp_queue_dp_to_ll_list);
+
 	ret = module_adapter_sink_src_prepare(dev);
 	if (ret)
 		return ret;
@@ -177,7 +180,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	  * and copy stream parameters to shadow buffers
 	  */
 	i = 0;
-	list_init(&mod->dp_queue_ll_to_dp_list);
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer =
 			container_of(blist, struct comp_buffer, sink_list);
@@ -212,7 +214,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	i = 0;
-	list_init(&mod->dp_queue_dp_to_ll_list);
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer =
 			container_of(blist, struct comp_buffer, source_list);
