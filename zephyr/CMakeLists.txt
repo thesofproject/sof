@@ -1,7 +1,7 @@
-# This is still WIP - Not fully validated on any platform.
-
 # When west is installed, Zephyr's CMake invokes west to list and try to
-# compile every Zephyr module that can be found.
+# compile every Zephyr module that can be found. See
+# sof/zephyr/module.yml and
+# https://docs.zephyrproject.org/latest/develop/modules.html
 if(CONFIG_SOF)
 
 if(CONFIG_LIBRARY)
@@ -113,6 +113,24 @@ zephyr_include_directories(
 
 # SOC level sources
 # Files that are commented may not be needed.
+
+
+# New, "de-centralized Zephyr" way. Requires "is_zephyr()" conditionals in
+# the decentralized CMakeLists.txt files shared with XTOS.
+
+# XTOS duplicate in sof/scripts/misc.cmake; keep in sync
+macro(is_zephyr ret)
+	if(CONFIG_ZEPHYR_SOF_MODULE)
+		set(${ret} TRUE)
+	else()
+		set(${ret} FALSE)
+	endif()
+endmacro()
+
+add_subdirectory(../src/init/ init_unused_install/)
+
+
+# Old way below: all .c files added by this giant CMake file.
 
 # Intel TGL and CAVS 2.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
@@ -372,8 +390,6 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
 
 	# SOF core infrastructure - runs on top of Zephyr
-	${SOF_SRC_PATH}/init/init.c
-	${SOF_SRC_PATH}/init/ext_manifest.c
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 	${SOF_SRC_PATH}/schedule/zephyr_domain.c
 	${SOF_SRC_PATH}/schedule/schedule.c
