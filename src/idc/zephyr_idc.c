@@ -138,6 +138,9 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	switch (mode) {
 	case IDC_BLOCKING:
 		ret = k_p4wq_wait(work, K_FOREVER);
+		if (!ret)
+			/* message was sent and executed successfully, get status code */
+			ret = idc_msg_status_get(msg->core);
 		break;
 	case IDC_POWER_UP:
 	case IDC_NON_BLOCKING:
