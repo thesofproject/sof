@@ -3,7 +3,6 @@
 menu "Audio component samples"
 
         config SAMPLE_SMART_AMP
-	        depends on CAVS || ACE
 	        bool "Smart amplifier test component"
 	        default y
 	        help
