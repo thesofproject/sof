@@ -112,6 +112,10 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tlv_value_set(tuple, IPC4_SCHEDULER_CONFIGURATION, sizeof(sche_cfg), &sche_cfg);
 
 	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_FW_CONTEXT_SAVE,
+			     IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE));
+
+	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 
 	return 0;
