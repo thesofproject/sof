@@ -835,18 +835,19 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 {
 	struct ipc4_ssp_configuration_blob *blob = spec_config;
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t ssc0, sstsa, ssrsa;
+	uint32_t ssc0, sstsa, ssrsa, sscr1;
 
 	/* set config only once for playback or capture */
 	if (dai->sref > 1)
 		return 0;
 
 	ssc0 = blob->i2s_driver_config.i2s_config.ssc0;
-	sstsa = blob->i2s_driver_config.i2s_config.sstsa;
-	ssrsa = blob->i2s_driver_config.i2s_config.ssrsa;
+	sstsa =  SSTSA_GET(blob->i2s_driver_config.i2s_config.sstsa);
+	ssrsa = SSRSA_GET(blob->i2s_driver_config.i2s_config.ssrsa);
+	sscr1 = blob->i2s_driver_config.i2s_config.ssc1 & ~(SSCR1_RSRE | SSCR1_TSRE);
 
 	ssp_write(dai, SSCR0, ssc0);
-	ssp_write(dai, SSCR1, blob->i2s_driver_config.i2s_config.ssc1);
+	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSCR2, blob->i2s_driver_config.i2s_config.ssc2);
 	ssp_write(dai, SSCR3, blob->i2s_driver_config.i2s_config.ssc3);
 	ssp_write(dai, SSPSP, blob->i2s_driver_config.i2s_config.sspsp);
@@ -857,8 +858,7 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	ssp_write(dai, SSRSA, ssrsa);
 
 	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, ssto = 0x%08x, sspsp = 0x%0x",
-		 ssc0, blob->i2s_driver_config.i2s_config.ssc1,
-		 blob->i2s_driver_config.i2s_config.sscto,
+		 ssc0, sscr1, blob->i2s_driver_config.i2s_config.sscto,
 		 blob->i2s_driver_config.i2s_config.sspsp);
 	dai_info(dai, "ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, sscr3 = 0x%08x",
 		 blob->i2s_driver_config.i2s_config.ssc2, blob->i2s_driver_config.i2s_config.sspsp2,
