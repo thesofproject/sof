@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 menu "Audio component samples"
-	visible if SAMPLES
 
         config SAMPLE_SMART_AMP
 	        depends on CAVS || ACE
