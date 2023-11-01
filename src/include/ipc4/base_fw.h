@@ -365,6 +365,11 @@ enum ipc4_fw_config_params {
 	IPC4_KPB_RT_SINK_COUNT = 27,
 	/* Manual control of DMI L1 state */
 	IPC4_DMI_FORCE_L1_EXIT = 28,
+	/* Intel reserved */
+	IPC4_INTEL_RESERVED_29 = 29,
+	IPC4_INTEL_RESERVED_30 = 30,
+	/* FW context save on D3 entry */
+	IPC4_FW_CONTEXT_SAVE = 31,
 	/* Total number of FW config parameters  */
 	IPC4_FW_CFG_PARAMS_COUNT,
 	/* Max config parameter id */
