@@ -273,6 +273,9 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			if (core != crt_chan->core)
 				continue;
 
+			if (dma_chan_is_registered(crt_chan))
+				continue;
+
 			/* get IRQ number for current channel */
 			irq = interrupt_get_irq(dma_chan_irq(crt_dma, j),
 						dma_chan_irq_name(crt_dma, j));
@@ -308,6 +311,8 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			/* bind registrable ptask to channel */
 			chan_data->pipe_task = pipe_task;
 			chan_data->irq_data = crt_irq_data;
+
+			dma_chan_register(crt_chan);
 
 			list_item_append(&chan_data->list, &crt_irq_data->channels);
 
@@ -557,6 +562,8 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 		tr_warn(&ll_tr, "trying to unregister ptask %p while channel still active.",
 			pipe_task);
 	}
+
+	dma_chan_unregister(chan_data->channel);
 
 	/* remove channel from parent IRQ's list */
 	list_item_del(&chan_data->list);

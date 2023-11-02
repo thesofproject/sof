@@ -243,6 +243,8 @@ struct dma_chan_data {
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 
+	bool registered;
+
 	/* device specific data set by the device that requests the DMA channel */
 	void *dev_data;
 
@@ -493,6 +495,21 @@ static inline void dma_chan_reg_update_bits16(struct dma_chan_data *channel,
 static inline bool dma_is_scheduling_source(struct dma_chan_data *channel)
 {
 	return channel->is_scheduling_source;
+}
+
+static inline void dma_chan_register(struct dma_chan_data *channel)
+{
+	channel->registered = true;
+}
+
+static inline void dma_chan_unregister(struct dma_chan_data *channel)
+{
+	channel->registered = false;
+}
+
+static inline bool dma_chan_is_registered(struct dma_chan_data *channel)
+{
+	return channel->registered;
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
