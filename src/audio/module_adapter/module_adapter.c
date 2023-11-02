@@ -189,7 +189,8 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			sink_get_min_free_space(audio_stream_get_sink(&source_buffer->stream));
 
 		/* create a shadow dp queue */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode);
+		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
+					   buf_get_id(source_buffer));
 
 		if (!dp_queue)
 			goto err;
@@ -223,7 +224,8 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			sink_get_min_free_space(audio_stream_get_sink(&sink_buffer->stream));
 
 		/* create a shadow dp queue */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode);
+		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
+					   buf_get_id(sink_buffer));
 
 		if (!dp_queue)
 			goto err;
