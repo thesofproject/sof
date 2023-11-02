@@ -405,7 +405,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 
 	comp_get_copy_limits(src, sink, processed_data);
 
-	i = IPC4_SINK_QUEUE_ID(sink->id);
+	i = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 	if (i >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
@@ -483,7 +483,7 @@ static int copier_module_copy(struct processing_module *mod,
 			uint32_t samples;
 			int sink_queue_id;
 
-			sink_queue_id = IPC4_SINK_QUEUE_ID(sink_c->id);
+			sink_queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink_c));
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
 
@@ -668,7 +668,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 
-		sink_id = IPC4_SINK_QUEUE_ID(sink->id);
+		sink_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 		if (sink_id == sink_fmt->sink_id) {
 			ipc4_update_buffer_format(sink, &sink_fmt->sink_fmt);
 			break;

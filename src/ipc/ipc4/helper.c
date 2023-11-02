@@ -614,7 +614,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
-		bool found = buf->id == buffer_id;
+		bool found = buf_get_id(buf) == buffer_id;
 
 		if (found) {
 			buffer = buf;
