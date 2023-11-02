@@ -342,9 +342,9 @@ static bool module_is_llext(struct sof_man_module *mod)
 	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
 }
 
-uint32_t lib_manager_allocate_module(struct processing_module *proc,
-				     struct comp_ipc_config *ipc_config,
-				     const void *ipc_specific_config, const void **buildinfo)
+uintptr_t lib_manager_allocate_module(struct processing_module *proc,
+				      struct comp_ipc_config *ipc_config,
+				      const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
@@ -436,9 +436,9 @@ int lib_manager_free_module(struct processing_module *proc,
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-uint32_t lib_manager_allocate_module(struct processing_module *proc,
-				     struct comp_ipc_config *ipc_config,
-				     const void *ipc_specific_config, const void **buildinfo)
+uintptr_t lib_manager_allocate_module(struct processing_module *proc,
+				      struct comp_ipc_config *ipc_config,
+				      const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr,
 	       "lib_manager_allocate_module(): Dynamic module allocation is not supported");

@@ -229,9 +229,9 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	return 0;
 }
 
-uint32_t llext_manager_allocate_module(struct processing_module *proc,
-				       struct comp_ipc_config *ipc_config,
-				       const void *ipc_specific_config, const void **buildinfo)
+uintptr_t llext_manager_allocate_module(struct processing_module *proc,
+					struct comp_ipc_config *ipc_config,
+					const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
