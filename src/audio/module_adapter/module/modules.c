@@ -62,15 +62,7 @@ static int modules_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
-	byte_array_t mod_cfg;
-
-	mod_cfg.data = (uint8_t *)md->cfg.init_data;
-	/* Intel modules expects DW size here */
-	mod_cfg.size = md->cfg.size >> 2;
-	md->private = mod;
-
 	struct comp_ipc_config *config = &(dev->ipc_config);
-
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	const void *buildinfo = NULL;
 
@@ -79,7 +71,6 @@ static int modules_init(struct processing_module *mod)
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
 	}
-	md->module_entry_point = module_entry_point;
 	comp_info(dev, "modules_init() start");
 
 	uint32_t module_id = IPC4_MOD_ID(dev->ipc_config.id);
@@ -108,10 +99,16 @@ static int modules_init(struct processing_module *mod)
 			(module_entry->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr);
 	}
 
+	byte_array_t mod_cfg = {
+		.data = (uint8_t *)md->cfg.init_data,
+		/* Intel modules expects DW size here */
+		.size = md->cfg.size >> 2,
+	};
+
 	/* Check if module is FDK */
 	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
-		md->module_adapter = (void *)system_agent_start(md->module_entry_point, module_id,
+		md->module_adapter = (void *)system_agent_start(module_entry_point, module_id,
 								instance_id, 0, log_handle,
 								&mod_cfg);
 	} else
@@ -120,11 +117,14 @@ static int modules_init(struct processing_module *mod)
 	    mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
 		/* If start agent for sof loadable */
 		mod->is_native_sof = true;
-		md->ops = native_system_agent_start(mod->sys_service, md->module_entry_point,
+		md->ops = native_system_agent_start(mod->sys_service, module_entry_point,
 						    module_id, instance_id, 0, log_handle,
 						    &mod_cfg);
 	} else
 		return -ENOEXEC;
+
+	md->module_entry_point = module_entry_point;
+	md->private = mod;
 
 	/* Allocate module buffers */
 	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
