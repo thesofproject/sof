@@ -6,6 +6,7 @@
 //
 
 #include <sof/audio/rtnr/rtklib/include/RTK_MA_API.h>
+#include <rtos/alloc.h>
 
 void RTKMA_API_S16_Default(void *Context, struct audio_stream_rtnr **sources,
 						struct audio_stream_rtnr *sink, int frames,
@@ -36,11 +37,16 @@ void RTKMA_API_Prepare(void *Context)
 
 void *RTKMA_API_Context_Create(int sample_rate)
 {
-	return NULL;
+	/* Allocate something, to avoid return NULL and cause error
+	 * in check of success of this.
+	 */
+	return rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, 42);
 }
 
 void RTKMA_API_Context_Free(void *Context)
-{}
+{
+	rfree(Context);
+}
 
 int RTKMA_API_Parameter_Size(void *Context, unsigned int IDs)
 {
