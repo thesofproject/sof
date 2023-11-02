@@ -77,7 +77,7 @@ static int llext_manager_load_module(uint32_t module_id, struct sof_man_module *
 				     struct sof_man_fw_desc *desc)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	uint8_t *load_base = (uint8_t *)ctx->desc;
+	uint8_t *load_base = (uint8_t *)ctx->base_addr;
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
 	void *src_txt = (void *)(load_base + mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);

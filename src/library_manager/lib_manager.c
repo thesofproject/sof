@@ -150,7 +150,7 @@ static int lib_manager_load_module(const uint32_t module_id,
 				   const struct sof_man_module *const mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const uintptr_t load_offset = POINTER_TO_UINT(ctx->desc);
+	const uintptr_t load_offset = POINTER_TO_UINT(ctx->base_addr);
 	void *src;
 	void __sparse_cache *va_base;
 	size_t size;
@@ -466,21 +466,21 @@ void lib_manager_init(void)
 struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	uint8_t *buffptr = (uint8_t *)(ctx ? ctx->desc : NULL);
+	uint8_t *buffptr = ctx ? ctx->base_addr : NULL;
 
 	if (!buffptr)
 		return NULL;
 	return (struct sof_man_fw_desc *)(buffptr + SOF_MAN_ELF_TEXT_OFFSET);
 }
 
-static void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t lib_id)
+static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	/* Never freed, will panic if fails */
 	struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 						  sizeof(*ctx));
 
-	ctx->desc = desc;
+	ctx->base_addr = base_addr;
 
 	_ext_lib->desc[lib_id] = ctx;
 	/* TODO: maybe need to call dcache_writeback here? */
