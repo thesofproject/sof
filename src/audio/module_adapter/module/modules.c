@@ -58,15 +58,15 @@ DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
  */
 static int modules_init(struct processing_module *mod)
 {
-	uint32_t module_entry_point;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
 	struct comp_ipc_config *config = &(dev->ipc_config);
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	const void *buildinfo = NULL;
+	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg,
+								   &buildinfo);
 
-	module_entry_point = lib_manager_allocate_module(mod, config, src_cfg, &buildinfo);
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;

@@ -62,7 +62,7 @@ struct module_data {
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 	void *module_adapter; /**<loadable module interface handle */
-	uint32_t module_entry_point; /**<loadable module entry point address */
+	uintptr_t module_entry_point; /**<loadable module entry point address */
 	struct llext *llext; /**< Zephyr loadable extension context */
 #endif /* SOF_MODULE_PRIVATE */
 };
