@@ -40,6 +40,7 @@
  * TODO: compressed formats
  */
 struct sof_audio_stream_params {
+	uint32_t id;
 	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
 	enum sof_ipc_frame valid_sample_fmt;
 
