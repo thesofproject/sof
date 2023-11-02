@@ -15,6 +15,7 @@ set(components
 	"eqiir"
 	"eqfir"
 	"gain"
+	"rtnr"
 )
 
 set(component_parameters
@@ -24,6 +25,7 @@ set(component_parameters
 	"BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
 	"BENCH_EQFIR_PARAMS=loudness"
 	"BENCH_GAIN_PARAMS=default"
+	"BENCH_RTNR_PARAMS=default"
 )
 
 set(components_s32
