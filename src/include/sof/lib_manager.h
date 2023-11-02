@@ -82,7 +82,7 @@ struct ipc_lib_msg {
 };
 
 struct lib_manager_mod_ctx {
-	struct sof_man_fw_desc *desc;
+	void *base_addr;
 	size_t segment_size[3];
 };
 
