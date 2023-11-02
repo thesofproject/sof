@@ -183,3 +183,8 @@ size_t source_get_min_available(struct sof_source *source)
 {
 	return source->min_available;
 }
+
+uint32_t source_get_id(struct sof_source *source)
+{
+	return source->audio_stream_params->id;
+}

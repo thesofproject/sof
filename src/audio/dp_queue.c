@@ -245,7 +245,8 @@ static const struct sink_ops dp_queue_sink_ops = {
 	.audio_set_ipc_params = dp_queue_set_ipc_params_sink,
 };
 
-struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags)
+struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags,
+				 uint32_t id)
 {
 	struct dp_queue *dp_queue;
 
@@ -286,8 +287,9 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 	if (!dp_queue->_data_buffer)
 		goto err;
 
-	tr_info(&dp_queue_tr, "DpQueue created, shared: %u min_available: %u min_free_space %u, size %u",
-		dp_queue_is_shared(dp_queue), min_available, min_free_space,
+	dp_queue->audio_stream_params.id = id;
+	tr_info(&dp_queue_tr, "DpQueue created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
+		id, dp_queue_is_shared(dp_queue), min_available, min_free_space,
 		dp_queue->data_buffer_size);
 
 	/* return a pointer to allocated structure */

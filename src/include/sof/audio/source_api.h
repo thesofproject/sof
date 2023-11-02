@@ -132,6 +132,7 @@ unsigned int source_get_rate(struct sof_source *source);
 unsigned int source_get_channels(struct sof_source *source);
 uint32_t source_get_buffer_fmt(struct sof_source *source);
 bool source_get_underrun(struct sof_source *source);
+uint32_t source_get_id(struct sof_source *source);
 
 /** set of functions for setting audio parameters */
 int source_set_frm_fmt(struct sof_source *source, enum sof_ipc_frame frm_fmt);
