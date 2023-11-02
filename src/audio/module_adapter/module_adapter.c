@@ -73,8 +73,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	mod = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
 	if (!mod) {
 		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
-		rfree(dev);
-		return NULL;
+		goto err;
 	}
 
 	dst = &mod->priv.cfg;
