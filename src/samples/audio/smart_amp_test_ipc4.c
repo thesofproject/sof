@@ -289,7 +289,8 @@ static int smart_amp_process(struct processing_module *mod,
 		for (i = 0; i < num_input_buffers; i++) {
 			buf = container_of(input_buffers[i].data, struct comp_buffer, stream);
 
-			if (IPC4_SINK_QUEUE_ID(buf->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+			if (IPC4_SINK_QUEUE_ID(buf_get_id(buf)) ==
+					SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 				fb_input = &input_buffers[i];
 				fb_buf_c = buf;
 			} else {
@@ -356,7 +357,8 @@ static int smart_amp_prepare(struct processing_module *mod,
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
 		audio_stream_init_alignment_constants(1, 1, &source_buffer->stream);
-		if (IPC4_SINK_QUEUE_ID(source_buffer->id) == SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
+		if (IPC4_SINK_QUEUE_ID(buf_get_id(source_buffer)) ==
+				SOF_SMART_AMP_FEEDBACK_QUEUE_ID) {
 			audio_stream_set_channels(&source_buffer->stream,
 						  sad->config.feedback_channels);
 			audio_stream_set_rate(&source_buffer->stream,

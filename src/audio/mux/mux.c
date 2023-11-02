@@ -315,7 +315,7 @@ static void set_mux_params(struct processing_module *mod)
 			source = container_of(source_list, struct comp_buffer, sink_list);
 			audio_stream_init_alignment_constants(byte_align, frame_align_req,
 							      &source->stream);
-			j = source->id;
+			j = buf_get_id(source);
 			cd->config.streams[j].pipeline_id = source->pipeline_id;
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cd->md.base_cfg.audio_fmt;

@@ -1073,7 +1073,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 	case PROBE_TYPE_INPUT:
 		list_for_item(source_list, &dev->cd->bsource_list) {
 			buf = container_of(source_list, struct comp_buffer, sink_list);
-			queue_id = IPC4_SRC_QUEUE_ID(buf->id);
+			queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
 
 			if (queue_id == probe_point.fields.index)
 				return buf;
@@ -1082,7 +1082,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 	case PROBE_TYPE_OUTPUT:
 		list_for_item(sink_list, &dev->cd->bsink_list) {
 			buf = container_of(sink_list, struct comp_buffer, source_list);
-			queue_id = IPC4_SINK_QUEUE_ID(buf->id);
+			queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
 
 			if (queue_id == probe_point.fields.index)
 				return buf;

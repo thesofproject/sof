@@ -780,7 +780,8 @@ static int rtnr_copy(struct comp_dev *dev)
 		/* Process integer multiple of RTNR internal block length */
 		frames = frames & ~RTNR_BLK_LENGTH_MASK;
 
-		comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
+		comp_dbg(dev, "rtnr_copy() source_id: %d, frames = %d", buf_get_id(source),
+			 frames);
 
 		if (frames) {
 			source_bytes = frames * audio_stream_frame_bytes(&source->stream);
