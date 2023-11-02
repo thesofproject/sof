@@ -47,7 +47,7 @@ extern struct tr_ctx buffer_tr;
 #define trace_buf_get_id(buf_ptr) ((buf_ptr)->pipeline_id)
 
 /** \brief Retrieves subid (comp id) from the buffer */
-#define trace_buf_get_subid(buf_ptr) ((buf_ptr)->id)
+#define buf_get_id(buf_ptr) ((buf_ptr)->stream.runtime_stream_params.id)
 
 #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
 
@@ -58,36 +58,36 @@ extern struct tr_ctx buffer_tr;
 #endif
 
 #define buf_err(buf_ptr, __e, ...) LOG_ERR(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
-					   trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
+					   buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #define buf_warn(buf_ptr, __e, ...) LOG_WRN(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
-					    trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
+					    buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #define buf_info(buf_ptr, __e, ...) LOG_INF(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
-					    trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
+					    buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
-					   trace_buf_get_subid(buf_ptr), ##__VA_ARGS__)
+					   buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #else
 /** \brief Trace error message from buffer */
 #define buf_err(buf_ptr, __e, ...)						\
 	trace_dev_err(trace_buf_get_tr_ctx, trace_buf_get_id,			\
-		      trace_buf_get_subid,					\
+		      buf_get_id,					\
 		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		      __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from buffer */
 #define buf_warn(buf_ptr, __e, ...)						\
 	trace_dev_warn(trace_buf_get_tr_ctx, trace_buf_get_id,			\
-		       trace_buf_get_subid,					\
+		       buf_get_id,					\
 		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		        __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from buffer */
 #define buf_info(buf_ptr, __e, ...)						\
 	trace_dev_info(trace_buf_get_tr_ctx, trace_buf_get_id,			\
-		       trace_buf_get_subid,					\
+		       buf_get_id,					\
 		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		       __e, ##__VA_ARGS__)
 
@@ -97,7 +97,7 @@ extern struct tr_ctx buffer_tr;
 #else
 #define buf_dbg(buf_ptr, __e, ...)						\
 	trace_dev_dbg(trace_buf_get_tr_ctx, trace_buf_get_id,			\
-		      trace_buf_get_subid,					\
+		      buf_get_id,					\
 		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		      __e, ##__VA_ARGS__)
 #endif
@@ -139,7 +139,6 @@ struct comp_buffer {
 	struct audio_stream stream;
 
 	/* configuration */
-	uint32_t id;
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;

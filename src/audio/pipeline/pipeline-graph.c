@@ -181,9 +181,9 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		comp_info(comp, "connect buffer %d as sink", buffer->id);
+		comp_info(comp, "connect buffer %d as sink", buf_get_id(buffer));
 	else
-		comp_info(comp, "connect buffer %d as source", buffer->id);
+		comp_info(comp, "connect buffer %d as source", buf_get_id(buffer));
 
 	irq_local_disable(flags);
 
@@ -202,9 +202,9 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	uint32_t flags;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		comp_dbg(comp, "disconnect buffer %d as sink", buffer->id);
+		comp_dbg(comp, "disconnect buffer %d as sink", buf_get_id(buffer));
 	else
-		comp_dbg(comp, "disconnect buffer %d as source", buffer->id);
+		comp_dbg(comp, "disconnect buffer %d as source", buf_get_id(buffer));
 
 	irq_local_disable(flags);
 

@@ -561,7 +561,8 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		struct comp_buffer *source = container_of(source_buffer_list_item,
 							  struct comp_buffer, sink_list);
 #if CONFIG_IPC_MAJOR_4
-		if (IPC4_SINK_QUEUE_ID(source->id) == SOF_AEC_FEEDBACK_QUEUE_ID) {
+		if (IPC4_SINK_QUEUE_ID(buf_get_id(source)) ==
+			SOF_AEC_FEEDBACK_QUEUE_ID) {
 #else
 		if (source->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
 #endif

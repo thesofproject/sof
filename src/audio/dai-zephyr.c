@@ -284,7 +284,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 				sink_dev = sink->sink;
 
-				j = IPC4_SINK_QUEUE_ID(sink->id);
+				j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
 				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
 					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
@@ -1644,7 +1644,7 @@ int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	if (dd && dd->local_buffer) {
-		if (dd->local_buffer->id == buf_id) {
+		if (buf_get_id(dd->local_buffer) == buf_id) {
 			comp_dbg(dev, "dai_zephyr_unbind: local_buffer %x unbound", buf_id);
 			dd->local_buffer = NULL;
 		}

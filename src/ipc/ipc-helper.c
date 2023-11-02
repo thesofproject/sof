@@ -47,7 +47,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 	buffer = buffer_alloc(desc->size, desc->caps, desc->flags, PLATFORM_DCACHE_ALIGN,
 			      is_shared);
 	if (buffer) {
-		buffer->id = desc->comp.id;
+		buffer->stream.runtime_stream_params.id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
