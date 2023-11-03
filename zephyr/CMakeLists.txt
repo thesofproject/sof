@@ -447,12 +447,20 @@ zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 )
 
 if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc3.c
+	)
+
 	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc3.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
 	)
 elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc4.c
+	)
+
 	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc4.c
