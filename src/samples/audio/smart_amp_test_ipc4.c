@@ -20,10 +20,10 @@
 LOG_MODULE_REGISTER(smart_amp_test, CONFIG_SOF_LOG_LEVEL);
 
 /* 167a961e-8ae4-11ea-89f1-000c29ce1635 */
-DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_comp_uuid, 0x167a961e, 0x8ae4,
+DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_test_comp_uuid, 0x167a961e, 0x8ae4,
 		    0x11ea, 0x89, 0xf1, 0x00, 0x0c, 0x29, 0xce, 0x16, 0x35);
 
-DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
+DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_comp_uuid),
 	       LOG_LEVEL_INFO);
 typedef int(*smart_amp_proc)(struct processing_module *mod,
 			     struct input_stream_buffer *bsource,
@@ -376,7 +376,7 @@ static int smart_amp_prepare(struct processing_module *mod,
 	return ret;
 }
 
-static const struct module_interface smart_amp_interface = {
+static const struct module_interface smart_amp_test_interface = {
 	.init = smart_amp_init,
 	.prepare = smart_amp_prepare,
 	.process_audio_stream = smart_amp_process,
@@ -385,5 +385,9 @@ static const struct module_interface smart_amp_interface = {
 	.reset = smart_amp_reset,
 	.free = smart_amp_free
 };
-DECLARE_MODULE_ADAPTER(smart_amp_interface, smart_amp_comp_uuid, smart_amp_comp_tr);
-SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_interface_init);
+
+DECLARE_MODULE_ADAPTER(smart_amp_test_interface, smart_amp_test_comp_uuid, smart_amp_test_comp_tr);
+/* DECLARE_MODULE_ADAPTER() creates
+ * "sys_comp_module_<smart_amp_test_interface>_init()" (and a lot more)
+ */
+SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
