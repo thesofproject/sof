@@ -19,4 +19,6 @@ cmocka_test(comp_set_state
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 )
