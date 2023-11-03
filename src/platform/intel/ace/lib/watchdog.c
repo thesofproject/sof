@@ -92,7 +92,7 @@ void watchdog_init(void)
 		return;
 	}
 
-	for (i = 0; i < CONFIG_CORE_COUNT; i++)
+	for (i = 0; i < arch_num_cpus(); i++)
 		intel_adsp_watchdog_pause(watchdog, i);
 
 	ret = wdt_setup(watchdog, 0);
