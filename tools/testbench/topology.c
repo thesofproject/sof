@@ -50,7 +50,7 @@ static int tb_register_asrc(struct testbench_prm *tp, struct tplg_context *ctx)
 		asrc->source_rate = tp->fs_in;
 
 	/* load asrc component */
-	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&asrc)) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(asrc)) < 0) {
 		fprintf(stderr, "error: new asrc comp\n");
 		return -EINVAL;
 	}
