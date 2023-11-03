@@ -9,7 +9,6 @@
 #if FIR_HIFI3
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/math/fir_hifi3.h>
 #include <user/fir.h>
 #include <xtensa/config/defs.h>
@@ -17,6 +16,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "eq_fir.h"
 
 LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
