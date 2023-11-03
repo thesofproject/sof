@@ -19,6 +19,7 @@
 /* Zephyr includes */
 #include <version.h>
 #include <zephyr/kernel.h>
+#include <zephyr/kernel/smp.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
@@ -27,37 +28,9 @@
 extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_MAX_NUM_CPUS,
 				   CONFIG_ISR_STACK_SIZE);
 
-static atomic_t start_flag;
-static atomic_t ready_flag;
-
-/* Zephyr kernel_internal.h interface */
-extern void smp_timer_init(void);
-
-static FUNC_NORETURN void secondary_init(void *arg)
+static void secondary_init(void *arg)
 {
-	struct k_thread dummy_thread;
-
-	/*
-	 * This is an open-coded version of zephyr/kernel/smp.c
-	 * smp_init_top(). We do this so that we can call SOF
-	 * secondary_core_init() for each core.
-	 */
-
-	atomic_set(&ready_flag, 1);
-	z_smp_thread_init(arg, &dummy_thread);
-	smp_timer_init();
-
 	secondary_core_init(sof_get());
-
-#ifdef CONFIG_THREAD_STACK_INFO
-	dummy_thread.stack_info.start = (uintptr_t)z_interrupt_stacks +
-		arch_curr_cpu()->id * Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-	dummy_thread.stack_info.size = Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-#endif
-
-	z_smp_thread_swap();
-
-	CODE_UNREACHABLE; /* LCOV_EXCL_LINE */
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
@@ -113,7 +86,6 @@ void cpu_notify_state_exit(enum pm_state state)
 			/* Notifying primary core that secondary core successfully exit the D3
 			 * state and is back in the Idle thread.
 			 */
-			atomic_set(&ready_flag, 1);
 			return;
 		}
 #endif
@@ -131,6 +103,8 @@ void cpu_notify_state_exit(enum pm_state state)
 
 int cpu_enable_core(int id)
 {
+	bool cpu_resume = true;
+
 	/* only called from single core, no RMW lock */
 	__ASSERT_NO_MSG(cpu_is_primary(arch_proc_id()));
 	/*
@@ -149,19 +123,13 @@ int cpu_enable_core(int id)
 	 * and the idle thread stack.
 	 */
 	if (pm_state_next_get(id)->state == PM_STATE_ACTIVE)
-		z_init_cpu(id);
+		cpu_resume = false;
 #endif
 
-	atomic_clear(&start_flag);
-	atomic_clear(&ready_flag);
-
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
-		       secondary_init, &start_flag);
-
-	while (!atomic_get(&ready_flag))
-		k_busy_wait(100);
-
-	atomic_set(&start_flag, 1);
+	if (cpu_resume)
+		k_smp_cpu_resume(id, secondary_init, NULL, true, false);
+	else
+		k_smp_cpu_start(id, secondary_init, NULL);
 
 	return 0;
 }
@@ -248,20 +216,12 @@ int cpu_enable_secondary_core(int id)
 	if (arch_cpu_active(id))
 		return 0;
 
-#if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
-	z_init_cpu(id);
-#endif
-
-	atomic_clear(&start_flag);
 	atomic_clear(&ready_flag);
 
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
-		       secondary_init, &start_flag);
+	k_smp_cpu_start(id, secondary_init, NULL);
 
 	while (!atomic_get(&ready_flag))
 		k_busy_wait(100);
-
-	atomic_set(&start_flag, 1);
 
 	return 0;
 }
