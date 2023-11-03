@@ -21,10 +21,10 @@ static const struct comp_driver comp_smart_amp;
 LOG_MODULE_REGISTER(smart_amp_test, CONFIG_SOF_LOG_LEVEL);
 
 /* 167a961e-8ae4-11ea-89f1-000c29ce1635 */
-DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_comp_uuid, 0x167a961e, 0x8ae4,
+DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_test_comp_uuid, 0x167a961e, 0x8ae4,
 		    0x11ea, 0x89, 0xf1, 0x00, 0x0c, 0x29, 0xce, 0x16, 0x35);
 
-DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
+DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_comp_uuid),
 	       LOG_LEVEL_INFO);
 
 typedef int(*smart_amp_proc)(struct comp_dev *dev,
@@ -537,8 +537,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_smart_amp = {
 	.type = SOF_COMP_SMART_AMP,
-	.uid = SOF_RT_UUID(smart_amp_comp_uuid),
-	.tctx = &smart_amp_comp_tr,
+	.uid = SOF_RT_UUID(smart_amp_test_comp_uuid),
+	.tctx = &smart_amp_test_comp_tr,
 	.ops = {
 		.create			= smart_amp_new,
 		.free			= smart_amp_free,
@@ -555,11 +555,11 @@ static SHARED_DATA struct comp_driver_info comp_smart_amp_info = {
 	.drv = &comp_smart_amp,
 };
 
-UT_STATIC void sys_comp_smart_amp_init(void)
+UT_STATIC void sys_comp_smart_amp_test_init(void)
 {
 	comp_register(platform_shared_get(&comp_smart_amp_info,
 					  sizeof(comp_smart_amp_info)));
 }
 
-DECLARE_MODULE(sys_comp_smart_amp_init);
-SOF_MODULE_INIT(smart_amp_test, sys_comp_smart_amp_init);
+DECLARE_MODULE(sys_comp_smart_amp_test_init);
+SOF_MODULE_INIT(smart_amp_test, sys_comp_smart_amp_test_init);
