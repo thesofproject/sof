@@ -6,7 +6,6 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -36,6 +35,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "eq_fir.h"
 
 LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
