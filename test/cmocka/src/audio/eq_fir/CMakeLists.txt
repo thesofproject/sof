@@ -13,6 +13,7 @@ add_compile_options(-DUNIT_TEST)
 
 add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir.c
+	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi3.c
