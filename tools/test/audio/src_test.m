@@ -1,4 +1,4 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
@@ -11,6 +11,7 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 % fs_out     - vector of rates out, default 8 to 192 kHz
 % full_test  - set to 0 for chirp only, 1 for all, default 1
 % show_plots - set to 1 to see plots, default 0
+% comp       - set to 'src' or 'asrc', default 'src'
 %
 % A default in-out matrix with 32 bits data is tested if the
 % parameters are omitted.
@@ -47,12 +48,16 @@ end
 if nargin < 6
 	show_plots = 0;
 end
+if nargin < 7
+	comp = 'src';
+end
 if isempty(fs_in_list)
 	fs_in_list = default_in;
 end
 if isempty(fs_out_list)
 	fs_out_list = default_out;
 end
+
 
 %% Generic test pass/fail criteria
 %  Note that AAP and AIP are relaxed a bit from THD+N due to inclusion
@@ -74,6 +79,7 @@ t.ch = 0;               % 1..nch. With value 0 test a randomly selected channel.
 t.bits_in = bits_in;    % Input word length
 t.bits_out = bits_out;  % Output word length
 t.full_test = full_test; % 0 is quick check only, 1 is full set
+t.comp = comp;          % Component to test
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -435,7 +441,7 @@ end
 %%
 
 function test = test_defaults_src(t)
-test.comp = 'src';
+test.comp = t.comp;
 test.fmt = t.fmt;
 test.bits_in = t.bits_in;
 test.bits_out = t.bits_out;
