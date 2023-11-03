@@ -397,6 +397,9 @@ zephyr_library_sources(
 	lib.c
 )
 
+# SOF module interface functions
+add_subdirectory(../src/module module_unused_install/)
+
 if(CONFIG_ZEPHYR_DP_SCHEDULER)
 	zephyr_library_sources(${SOF_AUDIO_PATH}/dp_queue.c)
 endif()

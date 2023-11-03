@@ -16,9 +16,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/audio/sink_api.h>
-#include <sof/audio/sink_api_implementation.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/source_api_implementation.h>
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/math/numbers.h>
