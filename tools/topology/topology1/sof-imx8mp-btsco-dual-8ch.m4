@@ -104,7 +104,7 @@ PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, sai_config)
-dnl SAI_CLOCK: clock, freq, codec_master, polarity (optional)
+dnl SAI_CLOCK: clock, freq, codec_provider, polarity (optional)
 dnl SAI_TDM: number of channels, word width, tx mask, rx mask: decimal channel enable bits
 dnl SAI_CONFIG_DATA: index, mclk_id (optional)
 
