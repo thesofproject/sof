@@ -46,14 +46,14 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, acphs_config/acpdmic_config)
 dnl ACPHS_CONFIG(format, mclk, bclk, fsync, tdm, acphs_config_data)
-dnl ACP_CLOCK(clock, freq, codec_master, polarity)
+dnl ACP_CLOCK(clock, freq, codec_provider, polarity)
 dnl ACPHS_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 
 DAI_CONFIG(ACPHS, 0, 0, acp-headset-codec,
 	   ACPHS_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-                ACP_CLOCK(bclk, 3072000, codec_slave),
-                ACP_CLOCK(fsync, 48000, codec_slave),
+                ACP_CLOCK(bclk, 3072000, codec_consumer),
+                ACP_CLOCK(fsync, 48000, codec_consumer),
                 ACP_TDM(2, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 0, 48000, 2, 0)))
 
 #===========================================================================

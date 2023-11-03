@@ -95,8 +95,8 @@ DAI_ADD(sof/pipe-virtual-playback-passthrough.m4,
 
 DAI_CONFIG(ACPHS, 1, 1, acp-amp-codec,
 	   ACPHS_CONFIG(DSP_A, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-                ACP_CLOCK(bclk, 3072000, codec_slave),
-                ACP_CLOCK(fsync, 48000, codec_slave),
+                ACP_CLOCK(bclk, 3072000, codec_consumer),
+                ACP_CLOCK(fsync, 48000, codec_consumer),
                 ACP_TDM(8, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 1, 48000, 8, 1)))
 #/**********************************************************************************/
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s16le.
@@ -168,8 +168,8 @@ PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_3, PIPELINE_PCM_2)
 # BE configurations -
 DAI_CONFIG(ACPHS, 0, 0, acp-headset-codec,
 	ACPHS_CONFIG(DSP_A, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-	ACP_CLOCK(bclk, 3072000, codec_slave),
-	ACP_CLOCK(fsync, 48000, codec_slave),
+	ACP_CLOCK(bclk, 3072000, codec_consumer),
+	ACP_CLOCK(fsync, 48000, codec_consumer),
 	ACP_TDM(8, 32, 3, 3),ACPHS_CONFIG_DATA(ACPHS, 0, 48000, 8, 1)))
 #/**********************************************************************************/
 
