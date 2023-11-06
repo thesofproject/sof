@@ -23,6 +23,7 @@
 #define DMA_ID_DAI_HS		5
 #define DMA_ID_DAI_SP_VIRTUAL	6
 #define DMA_ID_DAI_HS_VIRTUAL	7
+#define DMA_ID_DAI_SW_AUDIO	8
 
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 
