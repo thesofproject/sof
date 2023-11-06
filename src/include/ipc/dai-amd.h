@@ -24,4 +24,11 @@ struct sof_ipc_dai_acp_params {
 	uint32_t fsync_rate;
 	uint32_t tdm_slots;
 } __attribute__((packed, aligned(4)));
+
+/* ACP Configuration Request - SOF_IPC_DAI_AMD_SDW_CONFIG */
+struct sof_ipc_dai_acp_sdw_params {
+	uint32_t reserved0;
+	uint32_t rate;
+	uint32_t channels;
+} __attribute__((packed, aligned(4)));
 #endif /* __IPC_DAI_AMD_H__ */
