@@ -82,4 +82,8 @@ void rtnr_printf(int a, int b, int c, int d, int e);
 void *rtk_rballoc(unsigned int flags, unsigned int caps, unsigned int bytes);
 void rtk_rfree(void *ptr);
 
+/* For stub processing functions */
+void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst, struct audio_stream *src);
+void rtnr_copy_to_sof_stream(struct audio_stream *dst, struct audio_stream_rtnr *src);
+
 #endif /* __SOF_AUDIO_RTNR_RTNR_H__ */
