@@ -180,7 +180,7 @@ static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd, struct comp_d
 	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 
 	split_value = host_dma_get_split(hd, copy_bytes);
-	if (split_value)
+	if (!IS_ENABLED(CONFIG_DISABLE_DESCRIPTOR_SPLIT) && split_value)
 		copy_bytes -= split_value;
 
 	local_elem->size = copy_bytes;

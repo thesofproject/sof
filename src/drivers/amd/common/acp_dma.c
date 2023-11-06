@@ -72,6 +72,7 @@ static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 
 	acp_dma_chan->config[req_chan].rd_size = 0;
 	acp_dma_chan->config[req_chan].wr_size = 0;
+	acp_dma_chan->config[req_chan].size = 0;
 	return channel;
 }
 
@@ -207,24 +208,17 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 	uint32_t dmach_mask = (1 << channel->index);
 	int ret = 0;
 
-	if (flags & DMA_COPY_ONE_SHOT) {
-		ret = acp_dma_start(channel);
-		if (ret < 0)
-			return ret;
-		ch_sts = (acp_dma_ch_sts_t)dma_reg_read(channel->dma, ACP_DMA_CH_STS);
-		while (ch_sts.bits.dmachrunsts & dmach_mask)
-			ch_sts = (acp_dma_ch_sts_t)dma_reg_read(channel->dma, ACP_DMA_CH_STS);
-		ret = acp_dma_stop(channel);
-	}
-	/* Reconfigure dma descriptors for stream channels only */
-	if (channel->index != DMA_TRACE_CHANNEL) {
-		/* Reconfigure the dma descriptors for next buffer of data after the call back */
+	if (channel->index != DMA_TRACE_CHANNEL)
 		amd_dma_reconfig(channel, bytes);
-		/* Start the dma for requested channel */
-			acp_dma_start(channel);
-		/* Stop the dma for requested channel */
-			acp_dma_stop(channel);
-	}
+
+	ret = acp_dma_start(channel);
+	if (ret < 0)
+		return ret;
+	ch_sts = (acp_dma_ch_sts_t)dma_reg_read(channel->dma, ACP_DMA_CH_STS);
+	while (ch_sts.bits.dmachrunsts & dmach_mask)
+		ch_sts = (acp_dma_ch_sts_t)dma_reg_read(channel->dma, ACP_DMA_CH_STS);
+	ret = acp_dma_stop(channel);
+
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return ret;

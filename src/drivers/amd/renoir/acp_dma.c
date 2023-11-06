@@ -69,6 +69,24 @@ void amd_dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
 			dma_cfg->rd_size = 0;
 		}
+		/* Check for wrap-around case for host buffer */
+		if (dma_cfg->wr_size + bytes > dma_cfg->size) {
+			tail = dma_cfg->size - dma_cfg->wr_size;
+			head = bytes - tail;
+
+			psrc_dscr[strt_idx].trns_cnt.bits.trns_cnt = tail;
+			psrc_dscr[strt_idx + 1].trns_cnt.bits.trns_cnt = head;
+
+			/* start from "0" like starting address of buffer */
+			psrc_dscr[strt_idx + 1].dest_addr = dma_cfg->base;
+
+			psrc_dscr[strt_idx + 1].src_addr  = src + tail;
+
+			dma_config_descriptor(strt_idx, 2, psrc_dscr, pdest_dscr);
+			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
+			dma_cfg->wr_size = 0;
+		}
+
 		dma_cfg->rd_size += head;
 		dma_cfg->rd_size %= dma_cfg->sys_buff_size;
 		dma_cfg->wr_size += bytes;
@@ -168,22 +186,24 @@ int dma_setup(struct dma_chan_data *channel,
 	tc = dma_config_dscr[dscr_strt_idx].trns_cnt.bits.trns_cnt;
 	/* DMA configuration for stream */
 	if (channel->index != DMA_TRACE_CHANNEL) {
-		acp_dma_chan->dir = dir;
-		acp_dma_chan->idx = channel->index;
-		dma_cfg->phy_off =  phy_off[channel->index];
-		dma_cfg->size =  tc * dscr_cnt;
-		dma_cfg->sys_buff_size = syst_buff_size[channel->index];
+		if (!dma_cfg->size) {
+			acp_dma_chan->dir = dir;
+			acp_dma_chan->idx = channel->index;
+			dma_cfg->phy_off =  phy_off[channel->index];
+			dma_cfg->size =  tc * dscr_cnt;
+			dma_cfg->sys_buff_size = syst_buff_size[channel->index];
 
-		if (dir == DMA_DIR_HMEM_TO_LMEM) {
-			/* Playback */
-			dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr;
-			dma_cfg->wr_size = 0;
-			dma_cfg->rd_size = dma_cfg->size;
-		} else {
-			/* Capture */
-			dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr;
-			dma_cfg->wr_size = dma_cfg->size;
-			dma_cfg->rd_size = 0;
+			if (dir == DMA_DIR_HMEM_TO_LMEM) {
+				/* Playback */
+				dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr;
+				dma_cfg->wr_size = 0;
+				dma_cfg->rd_size = dma_cfg->size;
+			} else {
+				/* Capture */
+				dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr;
+				dma_cfg->wr_size = dma_cfg->size;
+				dma_cfg->rd_size = 0;
+			}
 		}
 	}
 	/* clear the dma channel control bits */

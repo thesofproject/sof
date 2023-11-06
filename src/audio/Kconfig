@@ -725,4 +725,10 @@ config COMP_MODULE_SHARED_LIBRARY_BUILD
 	  Select if you want to build modules as shared objects that can be used to run
 	  pipelines on the host with the testbench or the ALSA plugin.
 
+config DISABLE_DESCRIPTOR_SPLIT
+	bool "Disable descriptor split"
+	default n
+	help
+	  This option disbale the descriptor split for host p-table.
+
 endmenu
