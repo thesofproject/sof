@@ -131,8 +131,10 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 	if (!pipe_task->registrable)
 		goto out;
 
-	for (i = 0; i < dma_domain->num_dma; ++i) {
-		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
+	for (i = 0; i < dma_domain->num_dma ; ++i) {
+		if (dmas[i].chan == NULL)
+			continue;
+		for (j = 0; j < dmas[i].plat_data.channels ; ++j) {
 			/* channel not set as scheduling source */
 			if (!dma_is_scheduling_source(&dmas[i].chan[j]))
 				continue;
@@ -222,7 +224,9 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 		return 0;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
-		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
+		if (dmas[i].chan == NULL)
+			continue;
+		for (j = 0; j < dmas[i].plat_data.channels ; ++j) {
 			/* channel not set as scheduling source */
 			if (!dma_is_scheduling_source(&dmas[i].chan[j]))
 				continue;
@@ -280,6 +284,8 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 	int j;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
+		if (dmas[i].chan == NULL)
+			continue;
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
 			if (!*comp) {
 				status = dma_interrupt_legacy(&dmas[i].chan[j],
