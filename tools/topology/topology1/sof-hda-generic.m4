@@ -97,12 +97,21 @@ DAI_ADD(PIPE_HEADSET_PLAYBACK,
 
 # Low Latency playback pipeline 1 on PCM 30 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+PIPELINE_PCM_ADD(
+	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-host-volume-playback.m4),
 	30, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
+
+ifdef(`DTS',
+`
+# Because there is no dai pipeline.30 for HDA0.OUT in pipe-eq-iir-dts-codec-playback.m4, so
+# using macro defined W_PIPELINE_TOP() to add missing dai pipeline back. Instead of
+# modifying in pipe-eq-iir-dts-codec-playback.m4, these changes are not necessary for all others.
+W_PIPELINE_TOP(30, HDA0.OUT, 1000, 0, 0, 1, pipe_dai_schedule_plat)
+')
 
 # Deep buffer playback pipeline 31 on PCM 31 using max 2 channels of s32le
 # Set 1000us deadline on core 0 with priority 0.
