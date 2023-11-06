@@ -120,6 +120,7 @@ static int acp_dai_bt_dma_start(struct dma_chan_data *channel)
 		io_reg_write((PU_REGISTER_BASE + ACP_BTTDM_ITER), bt_tdm_iter.u32all);
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
 		channel->status = COMP_STATE_ACTIVE;
+		prev_rx_pos = 0;
 		bt_ier = (acp_bttdm_ier_t)io_reg_read(PU_REGISTER_BASE + ACP_BTTDM_IER);
 		bt_ier.bits.bttdm_ien = 1;
 		io_reg_write((PU_REGISTER_BASE + ACP_BTTDM_IER), bt_ier.u32all);
@@ -329,27 +330,40 @@ static int acp_dai_bt_dma_remove(struct dma *dma)
 static int acp_dai_bt_dma_get_data_size(struct dma_chan_data *channel,
 					uint32_t *avail, uint32_t *free)
 {
-	uint64_t tx_low, curr_tx_pos, tx_high;
-	uint64_t rx_low, curr_rx_pos, rx_high;
-
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t tx_low, curr_tx_pos, tx_high;
 		tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_TX_LINEARPOSITIONCNTR_LOW);
 		tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high << 32) | tx_low);
+		*free = (curr_tx_pos - prev_tx_pos) > bt_buff_size ?
+			(curr_tx_pos - prev_tx_pos) % bt_buff_size :
+			(curr_tx_pos - prev_tx_pos);
+		*avail = bt_buff_size - *free;
 		prev_tx_pos = curr_tx_pos;
+#else
 		*free = bt_buff_size >> 1;
 		*avail = bt_buff_size >> 1;
+#endif
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t rx_low, curr_rx_pos, rx_high;
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_RX_LINEARPOSITIONCNTR_LOW);
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_BT_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high << 32) | rx_low);
+		*free = (curr_rx_pos - prev_rx_pos) > bt_buff_size ?
+			(curr_rx_pos - prev_rx_pos) % bt_buff_size :
+			(curr_rx_pos - prev_rx_pos);
+		*avail = bt_buff_size - *free;
 		prev_rx_pos = curr_rx_pos;
+#else
 		*free = bt_buff_size >> 1;
 		*avail = bt_buff_size >> 1;
+#endif
 	} else {
 		tr_err(&acp_bt_dma_tr, "Channel direction Not defined %d",
 		       channel->direction);

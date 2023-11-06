@@ -74,6 +74,25 @@ void amd_dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
 			dma_cfg->rd_size = 0;
 		}
+		/* Check for wrap-around case for host buffer */
+		if (dma_cfg->wr_size + bytes > dma_cfg->size) {
+			tail = dma_cfg->size - dma_cfg->wr_size;
+			head = bytes - tail;
+
+			psrc_dscr[strt_idx].trns_cnt.bits.trns_cnt = tail;
+			psrc_dscr[strt_idx + 1].trns_cnt.bits.trns_cnt = head;
+
+			psrc_dscr[strt_idx + 1].dest_addr =
+				((dma_cfg->base & ACP_DRAM_ADDRESS_MASK) | ACP_SRAM);
+
+			src1 = src + tail;
+			psrc_dscr[strt_idx + 1].src_addr  = src1;
+
+			dma_config_descriptor(strt_idx, 2, psrc_dscr, pdest_dscr);
+			dma_chan_reg_write(channel, ACP_DMA_DSCR_CNT_0, 2);
+			dma_cfg->wr_size = 0;
+		}
+
 		dma_cfg->rd_size += head;
 		dma_cfg->rd_size %= dma_cfg->sys_buff_size;
 		dma_cfg->wr_size += bytes;
@@ -197,26 +216,31 @@ int dma_setup(struct dma_chan_data *channel,
 	tc = dma_config_dscr[dscr_strt_idx].trns_cnt.bits.trns_cnt;
 	/* DMA configuration for stream */
 	if (channel->index != DMA_TRACE_CHANNEL) {
-		acp_dma_chan->dir = dir;
-		acp_dma_chan->idx = channel->index;
-		dma_cfg->phy_off =  phy_off[channel->index];
-		dma_cfg->size =  tc * dscr_cnt;
-		dma_cfg->sys_buff_size = syst_buff_size[channel->index];
+		if (!dma_cfg->size) {
+			acp_dma_chan->dir = dir;
+			acp_dma_chan->idx = channel->index;
+			dma_cfg->phy_off =  phy_off[channel->index];
+			dma_cfg->size =  tc * dscr_cnt;
+			dma_cfg->sys_buff_size = syst_buff_size[channel->index];
 
-		if (dir == DMA_DIR_HMEM_TO_LMEM) {
-			/* Playback */
-			dma_config_dscr[dscr_strt_idx].dest_addr =
-				(dma_config_dscr[dscr_strt_idx].dest_addr & ACP_DRAM_ADDRESS_MASK);
-			dma_cfg->base  = dma_config_dscr[dscr_strt_idx].dest_addr | ACP_SRAM;
-			dma_cfg->wr_size = 0;
-			dma_cfg->rd_size = dma_cfg->size;
-		} else {
-			/* Capture */
-			dma_config_dscr[dscr_strt_idx].src_addr =
-				(dma_config_dscr[dscr_strt_idx].src_addr & ACP_DRAM_ADDRESS_MASK);
-			dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | ACP_SRAM;
-			dma_cfg->wr_size = dma_cfg->size;
-			dma_cfg->rd_size = 0;
+			if (dir == DMA_DIR_HMEM_TO_LMEM) {
+				/* Playback */
+				dma_config_dscr[dscr_strt_idx].dest_addr =
+					(dma_config_dscr[dscr_strt_idx].dest_addr &
+					 ACP_DRAM_ADDRESS_MASK);
+				dma_cfg->base  =
+					dma_config_dscr[dscr_strt_idx].dest_addr | ACP_SRAM;
+				dma_cfg->wr_size = 0;
+				dma_cfg->rd_size = dma_cfg->size;
+			} else {
+				/* Capture */
+				dma_config_dscr[dscr_strt_idx].src_addr =
+					(dma_config_dscr[dscr_strt_idx].src_addr &
+					 ACP_DRAM_ADDRESS_MASK);
+				dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | ACP_SRAM;
+				dma_cfg->wr_size = dma_cfg->size;
+				dma_cfg->rd_size = 0;
+			}
 		}
 	}
 	/* clear the dma channel control bits */
@@ -244,7 +268,7 @@ int acp_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
 	case DMA_ATTR_COPY_ALIGNMENT:
-		*value = ACP_DMA_BUFFER_ALIGN_128;
+		*value = ACP_DMA_BUFFER_ALIGN;
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
 		*value = PLATFORM_DCACHE_ALIGN;
