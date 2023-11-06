@@ -9,6 +9,11 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/config.cmake)
 
+# Build common module functions from sof to a static library
+add_library(sof STATIC)
+target_include_directories(sof PRIVATE "${SOF_BASE}/src/include")
+add_subdirectory("${SOF_BASE}/src/module" module_api)
+
 foreach(MODULE ${MODULES_LIST})
 	add_executable(${MODULE})
 	add_subdirectory(${LMDK_BASE}/modules/${MODULE} ${MODULE}_module)
@@ -35,6 +40,9 @@ foreach(MODULE ${MODULES_LIST})
 		-DHPSRAM_ADDR=${HPSRAM_ADDR}
 		-P ${CMAKE_CURRENT_LIST_DIR}/ldscripts.cmake
 	)
+
+	# Link module with sof common module functions
+	target_link_libraries(${MODULE} sof)
 
 	target_link_options(${MODULE} PRIVATE
 		"-nostartfiles"
