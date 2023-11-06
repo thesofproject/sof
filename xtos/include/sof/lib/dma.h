@@ -58,6 +58,7 @@ struct comp_buffer;
 #define DMA_CAP_SP_VIRTUAL      BIT(6) /**< SP VIRTUAL DMA */
 #define DMA_CAP_HS_VIRTUAL      BIT(7) /**< HS VIRTUAL DMA */
 #define DMA_CAP_HS		BIT(8) /**< HS DMA */
+#define DMA_CAP_SW		BIT(9) /**< SW DMA */
 
 /* DMA dev type bitmasks used to define the type of DMA */
 
@@ -76,6 +77,7 @@ struct comp_buffer;
 #define DMA_DEV_HS_VIRTUAL	BIT(12) /**< connectable to ACP HS VIRTUAL I2S */
 #define DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
 #define DMA_DEV_MICFIL		BIT(14) /**< connectable to MICFIL fifo */
+#define DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
