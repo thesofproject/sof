@@ -155,7 +155,7 @@ define(`DO_DAI_CONFIG',
 `'
 `	id		"'$3`"'
 `'
-`	ifelse($1, `SSP', $5, $1, `HDA', $5, $1, `ALH', $5, $1, `ESAI', $5, $1, `SAI', $5, $1, `MICFIL', $5, $1, `AFE', $5, $1, `ACP', $5, $1, `ACPSP', $5, $1,`ACPSP_VIRTUAL', $5, $1, `ACPHS', $5, $1, `ACPHS_VIRTUAL', $5, $1, `ACPDMIC', $5, `}')'
+`	ifelse($1, `SSP', $5, $1, `HDA', $5, $1, `ALH', $5, $1, `ESAI', $5, $1, `SAI', $5, $1, `MICFIL', $5, $1, `AFE', $5, $1, `ACP', $5, $1, `ACPSP', $5, $1,`ACPSP_VIRTUAL', $5, $1, `ACPHS', $5, $1, `ACPHS_VIRTUAL', $5, $1, `ACP_SDW', $5, $1, `ACPDMIC', $5, `}')'
 `ifelse($1, `DMIC', $5, `')'
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples_common" {'
 `	tokens "sof_dai_tokens"'
