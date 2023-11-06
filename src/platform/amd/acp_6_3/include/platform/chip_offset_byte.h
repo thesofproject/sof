@@ -44,8 +44,23 @@
 
 /* Registers from ACP_AUDIO_BUFFERS block */
 #define ACP_AUDIO_RX_RINGBUFADDR                      0x1242000
+#define ACP_AUDIO_RX_RINGBUFSIZE                      0x1242004
+#define ACP_AUDIO_RX_LINKPOSITIONCNTR                 0x1242008
 #define ACP_AUDIO_RX_FIFOADDR                         0x124200C
+#define ACP_AUDIO_RX_FIFOSIZE                         0x1242010
+#define ACP_AUDIO_RX_DMA_SIZE                         0x1242014
+#define ACP_AUDIO_RX_LINEARPOSITIONCNTR_HIGH          0x1242018
+#define ACP_AUDIO_RX_LINEARPOSITIONCNTR_LOW           0x124201C
+#define ACP_AUDIO_RX_INTR_WATERMARK_SIZE              0x1242020
+#define ACP_AUDIO_TX_RINGBUFADDR                      0x1242024
+#define ACP_AUDIO_TX_RINGBUFSIZE                      0x1242028
+#define ACP_AUDIO_TX_LINKPOSITIONCNTR                 0x124202C
 #define ACP_AUDIO_TX_FIFOADDR                         0x1242030
+#define ACP_AUDIO_TX_FIFOSIZE                         0x1242034
+#define ACP_AUDIO_TX_DMA_SIZE                         0x1242038
+#define ACP_AUDIO_TX_LINEARPOSITIONCNTR_HIGH          0x124203C
+#define ACP_AUDIO_TX_LINEARPOSITIONCNTR_LOW           0x1242040
+#define ACP_AUDIO_TX_INTR_WATERMARK_SIZE              0x1242044
 
 #define ACP_BT_RX_RINGBUFADDR                         0x1242048
 #define ACP_BT_RX_RINGBUFSIZE                         0x124204C
@@ -112,6 +127,20 @@
 #define ACP_WOV_MISC_CTRL			0x1242C5C
 #define ACP_WOV_CLK_CTRL			0x1242C60
 
+#define ACP_SW_EN                                     0x1243000
+#define ACP_SW_EN_STATUS                              0x1243004
+#define ACP_SW_AUDIO_TX_EN                            0x1243010
+#define ACP_SW_AUDIO_TX_EN_STATUS                     0x1243014
+#define ACP_SW_BT_TX_EN                               0x1243050
+#define ACP_SW_BT_TX_EN_STATUS                        0x1243054
+#define ACP_SW_HS_TX_EN                          0x124306C
+#define ACP_SW_HS_TX_EN_STATUS                   0x1243070
+#define ACP_SW_AUDIO_RX_EN                            0x1243088
+#define ACP_SW_AUDIO_RX_EN_STATUS                     0x124308C
+#define ACP_SW_BT_RX_EN                               0x1243128
+#define ACP_SW_BT_RX_EN_STATUS                        0x124312C
+#define ACP_SW_HS_RX_EN                          0x1243144
+#define ACP_SW_HS_RX_EN_STATUS                   0x1243148
 /* Registers from ACP_P1_AUDIO_BUFFERS block */
 #define ACP_P1_I2S_RX_RINGBUFADDR		0x1243A00
 #define ACP_P1_I2S_RX_RINGBUFSIZE		0x1243A04
@@ -162,6 +191,11 @@
 #define ACP_P1_HS_TX_LINEARPOSITIONCNTR_LOW	0x1243AD0
 #define ACP_P1_HS_TX_INTR_WATERMARK_SIZE	0x1243AD4
 
+#define ACP_P1_SW_EN				0x1243C00
+#define ACP_P1_SW_BT_TX_EN			0x1243C50
+#define ACP_P1_SW_BT_TX_EN_STATUS	0x1243C54
+#define ACP_P1_SW_BT_RX_EN			0x1243D28
+#define ACP_P1_SW_BT_RX_EN_STATUS	0x1243D2C
 #define MP1_SMN_C2PMSG_69	0x58A14
 #define MP1_SMN_C2PMSG_85	0x58A54
 #define MP1_SMN_C2PMSG_93	0x58A74
