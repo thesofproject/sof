@@ -40,6 +40,7 @@
 #include <google_rtc_audio_processing_sof_message_reader.h>
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES 100
+#define GOOGLE_RTC_NUM_INPUT_PINS 2
 
 LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
@@ -85,6 +86,7 @@ void GoogleRtcFree(void *ptr)
 #if CONFIG_IPC_MAJOR_4
 static void google_rtc_audio_processing_params(struct processing_module *mod)
 {
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_buffer *sinkb, *sourceb;
 	struct list_item *source_list;
@@ -95,7 +97,10 @@ static void google_rtc_audio_processing_params(struct processing_module *mod)
 
 	list_for_item(source_list, &dev->bsource_list) {
 		sourceb = container_of(source_list, struct comp_buffer, sink_list);
-		ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+		if (IPC4_SINK_QUEUE_ID(source->id) == SOF_AEC_FEEDBACK_QUEUE_ID)
+			ipc4_update_buffer_format(sourceb, &cd->config.reference_fmt);
+		else
+			ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 	}
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
@@ -385,9 +390,20 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	md->private = cd;
 
 #if CONFIG_IPC_MAJOR_4
-	struct module_config *cfg = &md->cfg;
+	const struct ipc4_base_module_extended_cfg *base_cfg = md->cfg.init_data;
+	struct ipc4_input_pin_format reference_fmt, output_fmt;
+	const size_t size = sizeof(struct ipc4_input_pin_format);
 
-	cd->config = *(const struct sof_ipc4_aec_config *)cfg->init_data;
+	cd->config.base_cfg = base_cfg->base_cfg;
+
+	/* Copy the reference format from input pin 1 format */
+	memcpy_s(&reference_fmt, size,
+		 &base_cfg->base_cfg_ext.pin_formats[size], size);
+	memcpy_s(&output_fmt, size,
+		 &base_cfg->base_cfg_ext.pin_formats[size * GOOGLE_RTC_NUM_INPUT_PINS], size);
+
+	cd->config.reference_fmt = reference_fmt.audio_fmt;
+	cd->config.output_fmt = output_fmt.audio_fmt;
 #endif
 
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
