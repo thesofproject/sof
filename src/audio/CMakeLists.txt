@@ -8,7 +8,7 @@ endif()
 
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
-		host-legacy.c
+		host/host-legacy.c
 		component.c
 		buffer.c
 		source_api_helper.c

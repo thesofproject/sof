@@ -412,11 +412,11 @@ endif()
 
 if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/host-zephyr.c
+		${SOF_AUDIO_PATH}/host/host-zephyr.c
 	)
 else()
 	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/host-legacy.c
+		${SOF_AUDIO_PATH}/host/host-legacy.c
 	)
 endif()
 
