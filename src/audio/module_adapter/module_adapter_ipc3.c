@@ -60,6 +60,14 @@ int module_adapter_init_data(struct comp_dev *dev,
 		data = spec;
 		break;
 	}
+	case SOF_COMP_ASRC:
+	{
+		const struct ipc_config_asrc *ipc_asrc = spec;
+
+		size = sizeof(*ipc_asrc);
+		data = spec;
+		break;
+	}
 	default:
 	{
 		const struct ipc_config_process *ipc_module_adapter = spec;

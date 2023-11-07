@@ -708,7 +708,6 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 #define DECLARE_MODULE(init)
 
 /* declared modules */
-void sys_comp_asrc_init(void);
 void sys_comp_dai_init(void);
 void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
@@ -725,6 +724,7 @@ void sys_comp_module_mfcc_interface_init(void);
 void sys_comp_module_mixer_interface_init(void);
 void sys_comp_module_multiband_drc_interface_init(void);
 void sys_comp_module_mux_interface_init(void);
+void sys_comp_module_asrc_interface_init(void);
 void sys_comp_module_src_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
 void sys_comp_module_volume_interface_init(void);
