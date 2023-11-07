@@ -44,7 +44,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	/* init components */
 	sys_comp_init(sof);
 	sys_comp_file_init();
-	sys_comp_asrc_init();
 	sys_comp_selector_init();
 
 	/* Module adapter components */
@@ -58,6 +57,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_multiband_drc_interface_init();
 	sys_comp_module_mux_interface_init();
 	sys_comp_module_src_interface_init();
+	sys_comp_module_asrc_interface_init();
 	sys_comp_module_tdfb_interface_init();
 	sys_comp_module_volume_interface_init();
 
