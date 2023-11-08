@@ -15,7 +15,8 @@
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
 #include <sof/platform.h>
-#include <user/tdfb.h>
+
+#include "tdfb.h"
 
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
