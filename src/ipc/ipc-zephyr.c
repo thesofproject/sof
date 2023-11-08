@@ -9,7 +9,7 @@
 //         Andrey Borisovich <andrey.borisovich@intel.com>
 //         Adrian Warecki <adrian.warecki@intel.com>
 
-#include <autoconf.h>
+#include <zephyr/autoconf.h>
 
 #include <intel_adsp_ipc.h>
 #include <sof/ipc/common.h>

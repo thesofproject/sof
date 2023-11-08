@@ -40,7 +40,11 @@
 #include <zephyr/logging/log_ctrl.h>
 #include <user/abi_dbg.h>
 #include <sof_versions.h>
+#ifdef CONFIG_SOF_COMPAT_INCLUDES
 #include <version.h>
+#else
+#include <zephyr/version.h>
+#endif
 #endif
 #include <sof/lib/ams.h>
 
