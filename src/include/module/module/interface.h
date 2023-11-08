@@ -77,7 +77,7 @@ struct module_interface {
 	 */
 	int (*init)(struct processing_module *mod);
 	/**
-	 * Module specific prepare procedure, called as part of module_adapter
+	 * (optional) Module specific prepare procedure, called as part of module_adapter
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct processing_module *mod,
@@ -196,13 +196,13 @@ struct module_interface {
 	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
 
 	/**
-	 * Module specific reset procedure, called as part of module_adapter component
+	 * (optional) Module specific reset procedure, called as part of module_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * and free all memory allocated during prepare().
 	 */
 	int (*reset)(struct processing_module *mod);
 	/**
-	 * Module specific free procedure, called as part of module_adapter component
+	 * (optional) Module specific free procedure, called as part of module_adapter component
 	 * free in .free(). This should free all memory allocated during module initialization.
 	 */
 	int (*free)(struct processing_module *mod);
