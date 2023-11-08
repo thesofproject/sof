@@ -95,9 +95,8 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 		return -EIO;
 	}
 
-	/*check interface, there must be one and only one of processing procedure */
-	if (!interface->init || !interface->prepare ||
-	    !interface->reset || !interface->free ||
+	/* check interface, there must be one and only one of processing procedure */
+	if (!interface->init ||
 	    (!!interface->process + !!interface->process_audio_stream +
 	     !!interface->process_raw_data != 1)) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
@@ -211,11 +210,13 @@ int module_prepare(struct processing_module *mod,
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 #endif
-	ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
-	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-			 ret, dev_comp_id(dev));
-		return ret;
+	if (md->ops->prepare) {
+		ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		if (ret) {
+			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
+				 ret, dev_comp_id(dev));
+			return ret;
+		}
 	}
 
 	/* After prepare is done we no longer need runtime configuration
@@ -331,14 +332,15 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
-
-	ret = md->ops->reset(mod);
-	if (ret) {
-		if (ret != PPL_STATUS_PATH_STOP)
-			comp_err(mod->dev,
-				 "module_reset() error %d: module specific reset() failed for comp %d",
-				 ret, dev_comp_id(mod->dev));
-		return ret;
+	if (md->ops->reset) {
+		ret = md->ops->reset(mod);
+		if (ret) {
+			if (ret != PPL_STATUS_PATH_STOP)
+				comp_err(mod->dev,
+					 "module_reset() error %d: module specific reset() failed for comp %d",
+					 ret, dev_comp_id(mod->dev));
+			return ret;
+		}
 	}
 
 	md->cfg.avail = false;
@@ -373,13 +375,15 @@ void module_free_all_memory(struct processing_module *mod)
 
 int module_free(struct processing_module *mod)
 {
-	int ret;
+	int ret = 0;
 	struct module_data *md = &mod->priv;
 
-	ret = md->ops->free(mod);
-	if (ret)
-		comp_warn(mod->dev, "module_free(): error: %d for %d",
-			  ret, dev_comp_id(mod->dev));
+	if (md->ops->free) {
+		ret = md->ops->free(mod);
+		if (ret)
+			comp_warn(mod->dev, "module_free(): error: %d for %d",
+				  ret, dev_comp_id(mod->dev));
+	}
 
 	/* Free all memory shared by module_adapter & module */
 	md->cfg.avail = false;
