@@ -36,4 +36,27 @@ typedef uint32_t AdspErrorCode;
 /* Service is not supported on target platform. */
 #define ADSP_SERVICE_UNAVAILABLE 143
 
+#define ADSP_MAX_VALUE ADSP_FATAL_FAILURE
+
+/* SystemAgentInterface */
+#define ADSP_MODULE_CREATION_FAILURE (ADSP_MAX_VALUE + 1)
+
+/* ProcessingModuleFactoryInterface */
+
+/* Reports that the given value of Input Buffer Size is invalid */
+#define ADSP_INVALID_IBS	(ADSP_MAX_VALUE + 1)
+/* Reports that the given value of Output Buffer Size is invalid */
+#define ADSP_INVALID_OBS	(ADSP_MAX_VALUE + 2)
+/* Reports that the given value of Cycles Per Chunk processing is invalid */
+#define ADSP_INVALID_CPC	(ADSP_MAX_VALUE + 3)
+/* Reports that the settings provided for module creation are invalid */
+#define ADSP_INVALID_SETTINGS	(ADSP_MAX_VALUE + 4)
+
+/* ProcessingModuleInterface */
+/* Reports that the message content given for configuration is invalid */
+#define ADSP_INVALID_CONFIGURATION (ADSP_MAX_VALUE + 1)
+
+/* Reports that the module does not support retrieval of its current configuration information */
+#define ADSP_NO_CONFIGURATION (ADSP_MAX_VALUE + 2)
+
 #endif /* __MODULE_IADK_ADSP_ERROR_CODE_H__ */
