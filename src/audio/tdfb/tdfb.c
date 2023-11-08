@@ -15,7 +15,6 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/tdfb/tdfb_comp.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
@@ -34,11 +33,12 @@
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/ut.h>
-#include <user/tdfb.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "tdfb_comp.h"
 
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
