@@ -115,12 +115,12 @@ ifelse(
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_master),
 		SAI_CLOCK(fsync, RATE, codec_master),
-		SAI_TDM(2, 16, 3, 3),
+		SAI_TDM(2, 32, 3, 3),
 		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
 	CODEC, `wm8962', `
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_master),
 		SAI_CLOCK(fsync, RATE, codec_master),
-		SAI_TDM(2, 16, 3, 3),
+		SAI_TDM(2, 32, 3, 3),
 		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
 	)
