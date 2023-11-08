@@ -297,6 +297,11 @@ struct module_interface {
 	 */
 	int (*unbind)(struct processing_module *mod, void *data);
 
+	/**
+	 * Module specific trigger procedure, called when modules are triggered
+	 */
+	int (*trigger)(struct processing_module *mod, int cmd);
+
 	const struct module_endpoint_ops *endpoint_ops;
 };
 

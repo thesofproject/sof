@@ -1375,15 +1375,13 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
 
 	/* handle host/DAI gateway modules separately */
-	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI) {
-		struct module_data *md = &mod->priv;
-
+	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
 		return md->ops->endpoint_ops->trigger(dev, cmd);
-	}
 
 	/*
 	 * If the module doesn't support pause, keep it active along with the rest of the
@@ -1393,6 +1391,8 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		dev->state = COMP_STATE_ACTIVE;
 		return PPL_STATUS_PATH_STOP;
 	}
+	if (md->ops->trigger)
+		return md->ops->trigger(mod, cmd);
 
 	return module_adapter_set_state(mod, dev, cmd);
 }
