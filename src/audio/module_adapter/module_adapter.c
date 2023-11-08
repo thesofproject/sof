@@ -19,6 +19,7 @@
 #include <sof/audio/sink_source_utils.h>
 #include <sof/audio/dp_queue.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
@@ -240,9 +241,17 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			 &sink_buffer->stream.runtime_stream_params,
 			 sizeof(sink_buffer->stream.runtime_stream_params));
 		/* calculate time required the module to provide OBS data portion - a period */
-		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
+		uint32_t min_free_size =
+			sink_get_frame_bytes(mod->sinks[i]) *
+			(sink_get_rate(mod->sinks[i]) / (USEC_PER_SEC / LL_TIMER_PERIOD_US));
+		min_free_size = MIN(min_free_size, sink_get_min_free_space(mod->sinks[i]));
+
+		unsigned int sink_period = 1000000 * min_free_size /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
 					   sink_get_rate(mod->sinks[i]));
+		/* Round down period to integer number of LL ticks */
+		sink_period = ROUND_DOWN(sink_period, LL_TIMER_PERIOD_US);
+
 		/* note the minimal period for the module */
 		if (period > sink_period)
 			period = sink_period;
