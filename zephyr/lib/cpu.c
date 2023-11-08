@@ -17,7 +17,11 @@
 #include <rtos/alloc.h>
 
 /* Zephyr includes */
+#ifdef CONFIG_SOF_COMPAT_INCLUDES
 #include <version.h>
+#else
+#include <zephyr/version.h>
+#endif
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>

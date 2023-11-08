@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2023 Meta
+#
+# Author: Yong Cong Sin <ycsin@meta.com>
+
+menu "Compatibility"
+
+config SOF_COMPAT_INCLUDES
+	bool "Use legacy include path"
+	default n
+	help
+	  Use legacy Zephyr generated include paths,
+	  i.e. `#include <version.h> instead of:
+	  `#include <zephyr/version.h>`
+
+endmenu
+
+source "Kconfig"
