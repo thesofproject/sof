@@ -16,6 +16,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -107,9 +108,17 @@ int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 	 * as SRC uses period value to calculate its internal buffers,
 	 * it must be done here, right after setting sink parameters
 	 */
-	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		dev->period = 1000000 * sink_get_min_free_space(sink) /
+	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		uint32_t min_free_size =
+			sink_get_frame_bytes(sink) * (sink_get_rate(sink) /
+					(USEC_PER_SEC / LL_TIMER_PERIOD_US));
+		min_free_size = MIN(min_free_size, sink_get_min_free_space(sink));
+
+		dev->period = 1000000 * min_free_size /
 		      (sink_get_frame_bytes(sink) * sink_get_rate(sink));
+		/* Round down period to integer number of LL ticks */
+		dev->period = ROUND_DOWN(dev->period, LL_TIMER_PERIOD_US);
+	}
 
 	comp_info(dev, "SRC DP period calculated as: %u", dev->period);
 
