@@ -16,12 +16,6 @@
 #include <sof/math/iir_df1.h>
 #include <sof/platform.h>
 
-#include "tdfb.h"
-
-#if CONFIG_IPC_MAJOR_4
-#include <ipc4/header.h>
-#endif
-
 /* Select optimized code variant when xt-xcc compiler is used */
 #if defined __XCC__
 #include <xtensa/config/core-isa.h>
@@ -115,14 +109,6 @@ struct tdfb_comp_data {
 			  int frames);
 };
 
-#if CONFIG_IPC_MAJOR_4
-struct tdfb_notification_payload {
-	struct sof_ipc4_notify_module_data module_data;
-	struct sof_ipc4_control_msg_payload control_msg;
-	struct sof_ipc4_ctrl_value_chan control_value; /* One channel value */
-};
-#endif
-
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
 		  struct input_stream_buffer *bsource,
@@ -157,6 +143,41 @@ static inline void tdfb_cdec_s16(int16_t **ptr, int16_t *start, size_t size)
 	if (*ptr < start)
 		*ptr = (int16_t *)((uint8_t *)*ptr + size);
 }
+
+/*
+ * The optimized FIR functions variants need to be updated into function
+ * set_func.
+ */
+
+#if CONFIG_FORMAT_S16LE
+static inline void set_s16_fir(struct tdfb_comp_data *cd)
+{
+	cd->tdfb_func = tdfb_fir_s16;
+}
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+static inline void set_s24_fir(struct tdfb_comp_data *cd)
+{
+	cd->tdfb_func = tdfb_fir_s24;
+}
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+static inline void set_s32_fir(struct tdfb_comp_data *cd)
+{
+	cd->tdfb_func = tdfb_fir_s32;
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
+int tdfb_ipc_notification_init(struct processing_module *mod);
+void tdfb_send_ipc_notification(struct processing_module *mod);
+int tdfb_get_ipc_config(struct processing_module *mod,
+			uint32_t param_id, uint32_t *data_offset_size,
+			uint8_t *fragment, size_t fragment_size);
+int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
+			enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			size_t response_size);
+void tdfb_params(struct processing_module *mod);
 
 #ifdef UNIT_TEST
 void sys_comp_module_tdfb_interface_init(void);

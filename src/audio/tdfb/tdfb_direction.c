@@ -4,6 +4,7 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include "tdfb.h"
 #include "tdfb_comp.h"
 
 #include <ipc/topology.h>

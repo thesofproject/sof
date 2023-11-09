@@ -17,6 +17,15 @@
 #define SOF_TDFB_MAX_ANGLES 360		/* Up to 1 degree precision for 360 degrees coverage */
 #define SOF_TDFB_MAX_MICROPHONES 16	/* Up to 16 microphone locations */
 
+/* The driver assigns running numbers for control index. If there's single control of
+ * type switch, enum, binary they all have index 0.
+ */
+#define CTRL_INDEX_PROCESS		0	/* switch */
+#define CTRL_INDEX_DIRECTION		1	/* switch */
+#define CTRL_INDEX_AZIMUTH		0	/* enum */
+#define CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
+#define CTRL_INDEX_FILTERBANK		0	/* bytes */
+
 /*
  * sof_tdfb_config data[]
 
