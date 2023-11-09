@@ -155,7 +155,7 @@ int cpu_enable_core(int id)
 	atomic_clear(&start_flag);
 	atomic_clear(&ready_flag);
 
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
+	arch_cpu_start(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
 
 	while (!atomic_get(&ready_flag))
@@ -255,7 +255,7 @@ int cpu_enable_secondary_core(int id)
 	atomic_clear(&start_flag);
 	atomic_clear(&ready_flag);
 
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
+	arch_cpu_start(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
 
 	while (!atomic_get(&ready_flag))
