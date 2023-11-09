@@ -33,6 +33,12 @@ struct comp_dev;
 #define DRC_DIVISION_FRAMES 32
 #define DRC_DIVISION_FRAMES_MASK (DRC_DIVISION_FRAMES - 1)
 
+/* First switch control instance is zero (SOF_IPC4_SWITCH_CONTROL_PARAM_ID), and the
+ * control is common for all channels.
+ */
+#define SOF_DRC_CTRL_INDEX_ENABLE_SWITCH 0
+#define SOF_DRC_NUM_ELEMS_ENABLE_SWITCH 1
+
 /* Stores the state of DRC */
 struct drc_state {
 	/* The detector_average is the target gain obtained by looking at the
@@ -71,8 +77,10 @@ struct drc_comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct sof_drc_config *config;      /**< pointer to setup blob */
 	bool config_ready;                  /**< set when fully received */
+	bool enabled;                       /**< control processing via blob and switch */
+	bool enable_switch;                 /**< enable switch state */
 	enum sof_ipc_frame source_format;   /**< source frame format */
-	drc_func drc_func;            /**< processing function */
+	drc_func drc_func;                  /**< processing function */
 };
 
 struct drc_proc_fnmap {

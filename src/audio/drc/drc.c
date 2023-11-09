@@ -184,6 +184,13 @@ static int drc_init(struct processing_module *mod)
 	}
 
 	drc_reset_state(&cd->state);
+
+	/* Initialize DRC to enabled. If defined by topology, a control may set
+	 * enabled to false before prepare() or during streaming with the switch
+	 * control from user space.
+	 */
+	cd->enabled = true;
+	cd->enable_switch = true;
 	return 0;
 
 cd_fail:
@@ -203,15 +210,40 @@ static int drc_free(struct processing_module *mod)
 	return 0;
 }
 
-static int drc_set_config(struct processing_module *mod, uint32_t config_id,
+static int drc_set_config(struct processing_module *mod, uint32_t param_id,
 			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			  size_t response_size)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
-	comp_info(mod->dev, "drc_set_config()");
+	comp_dbg(dev, "drc_set_config()");
 
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		if (ctl->id == SOF_DRC_CTRL_INDEX_ENABLE_SWITCH &&
+		    ctl->num_elems == SOF_DRC_NUM_ELEMS_ENABLE_SWITCH) {
+			cd->enable_switch = ctl->chanv[0].value;
+			comp_info(dev, "drc_set_config(), enable_switch = %d", cd->enable_switch);
+		} else {
+			comp_err(dev, "Illegal switch control id = %d, num_elems = %d",
+				 ctl->id, ctl->num_elems);
+			return -EINVAL;
+		}
+
+		return 0;
+
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+		comp_err(dev, "drc_set_config(), illegal control.");
+		return -EINVAL;
+	}
+#endif
+
+	comp_info(dev, "drc_set_config(), bytes control");
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
 }
@@ -261,6 +293,9 @@ static int drc_process(struct processing_module *mod,
 			return ret;
 		}
 	}
+
+	/* Control pass-though in processing function with switch control */
+	cd->enabled = cd->config && cd->config->params.enabled && cd->enable_switch;
 
 	cd->drc_func(mod, source, sink, frames);
 
