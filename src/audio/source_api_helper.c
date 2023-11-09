@@ -96,6 +96,14 @@ bool source_get_underrun(struct sof_source *source)
 	return source->audio_stream_params->underrun_permitted;
 }
 
+int source_set_frm_fmt(struct sof_source *source, enum sof_ipc_frame frm_fmt)
+{
+	source->audio_stream_params->frame_fmt = frm_fmt;
+	if (source->ops->on_audio_format_set)
+		return source->ops->on_audio_format_set(source);
+	return 0;
+}
+
 int source_set_valid_fmt(struct sof_source *source,
 			 enum sof_ipc_frame valid_sample_fmt)
 {
@@ -174,4 +182,9 @@ void source_set_min_available(struct sof_source *source, size_t min_available)
 size_t source_get_min_available(struct sof_source *source)
 {
 	return source->min_available;
+}
+
+uint32_t source_get_id(struct sof_source *source)
+{
+	return source->audio_stream_params->id;
 }

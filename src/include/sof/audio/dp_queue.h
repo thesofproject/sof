@@ -138,8 +138,11 @@ struct dp_queue {
  *
  * @param flags a combinatin of DP_QUEUE_MODE_* flags determining working mode
  *
+ * @param id a stream ID, accessible later by sink_get_id/source_get_id
+ *
  */
-struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags);
+struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags,
+				 uint32_t id);
 
 /**
  * @brief remove the queue from the list, free dp queue memory

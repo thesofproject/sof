@@ -225,6 +225,35 @@ struct processing_module {
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
 
+	/* indicates that this DP module did not yet reach its first deadline and
+	 * no data should be passed yet to next LL module
+	 *
+	 * why: lets assume DP with 10ms period (a.k.a a deadline). It starts and finishes
+	 * Earlier, i.e. in 2ms providing 10ms of data. LL starts consuming data in 1ms chunks and
+	 * will drain 10ms buffer in 10ms, expecting a new portion of data on 11th ms
+	 * BUT - the DP module deadline is still 10ms, regardless if it had finished earlier
+	 * and it is completely fine that processing in next cycle takes full 10ms - as long as it
+	 * fits into the deadline.
+	 * It may lead to underruns:
+	 *
+	 * LL1 (1ms) ---> DP (10ms) -->LL2 (1ms)
+	 *
+	 * ticks 0..9 -> LL1 is producing 1ms data portions, DP is waiting, LL2 is waiting
+	 * tick 10 - DP has enough data to run, it starts processing
+	 * tick 12 - DP finishes earlier, LL2 starts consuming, LL1 is producing data
+	 * ticks 13-19 LL1 is producing data, LL2 is consuming data (both in 1ms chunks)
+	 * tick 20  - DP starts processing a new portion of 10ms data, having 10ms to finish
+	 *	      !!!! but LL2 has already consumed 8ms !!!!
+	 * tick 22 - LL2 is consuming the last 1ms data chunk
+	 * tick 23 - DP is still processing, LL2 has no data to process
+	 *			!!! UNDERRUN !!!!
+	 * tick 19 - DP finishes properly in a deadline time
+	 *
+	 * Solution: even if DP finishes before its deadline, the data must be held till
+	 * deadline time, so LL2 may start processing no earlier than tick 20
+	 */
+	bool DP_startup_delay;
+
 	/* flag to indicate module does not pause */
 	bool no_pause;
 

@@ -168,6 +168,9 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	 * first, set all parameters by calling "module prepare" with pointers to
 	 * "main" audio_stream buffers
 	 */
+	list_init(&mod->dp_queue_ll_to_dp_list);
+	list_init(&mod->dp_queue_dp_to_ll_list);
+
 	ret = module_adapter_sink_src_prepare(dev);
 	if (ret)
 		return ret;
@@ -177,7 +180,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	  * and copy stream parameters to shadow buffers
 	  */
 	i = 0;
-	list_init(&mod->dp_queue_ll_to_dp_list);
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer =
 			container_of(blist, struct comp_buffer, sink_list);
@@ -189,7 +191,8 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			sink_get_min_free_space(audio_stream_get_sink(&source_buffer->stream));
 
 		/* create a shadow dp queue */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode);
+		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
+					   buf_get_id(source_buffer));
 
 		if (!dp_queue)
 			goto err;
@@ -211,7 +214,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	i = 0;
-	list_init(&mod->dp_queue_dp_to_ll_list);
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer =
 			container_of(blist, struct comp_buffer, source_list);
@@ -223,7 +225,8 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			sink_get_min_free_space(audio_stream_get_sink(&sink_buffer->stream));
 
 		/* create a shadow dp queue */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode);
+		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
+					   buf_get_id(sink_buffer));
 
 		if (!dp_queue)
 			goto err;
@@ -1068,24 +1071,33 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
 
-	dp_queue = dp_queue_get_first_item(&mod->dp_queue_dp_to_ll_list);
-	list_for_item(blist, &dev->bsink_list) {
+	if (!mod->DP_startup_delay) {
+		dp_queue = dp_queue_get_first_item(&mod->dp_queue_dp_to_ll_list);
+		list_for_item(blist, &dev->bsink_list) {
 		/* output - we need to copy data from dp_queue (as source)
 		 * to audio_stream (as sink)
 		 */
-		assert(dp_queue);
-		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, source_list);
-		struct sof_sink *data_sink = audio_stream_get_sink(&buffer->stream);
-		struct sof_source *data_src = dp_queue_get_source(dp_queue);
-		uint32_t to_copy = MIN(sink_get_free_size(data_sink),
-				       source_get_data_available(data_src));
+			assert(dp_queue);
+			struct comp_buffer *buffer =
+					container_of(blist, struct comp_buffer, source_list);
+			struct sof_sink *data_sink = audio_stream_get_sink(&buffer->stream);
+			struct sof_source *following_mod_data_source =
+					audio_stream_get_source(&buffer->stream);
+			struct sof_source *data_src = dp_queue_get_source(dp_queue);
+			size_t dp_data_available = source_get_data_available(data_src);
 
-		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
-		if (err)
-			return err;
+			if (!dp_data_available)
+				comp_err(dev, "!!!! no data available from DP");
 
-		dp_queue = dp_queue_get_next_item(dp_queue);
+			uint32_t to_copy = MIN(source_get_min_available(following_mod_data_source),
+					       dp_data_available);
+
+			err = source_to_sink_copy(data_src, data_sink, true, to_copy);
+				return err;
+
+			dp_queue = dp_queue_get_next_item(dp_queue);
+
+		}
 	}
 	return 0;
 }

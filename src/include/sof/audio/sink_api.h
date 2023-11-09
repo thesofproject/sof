@@ -131,6 +131,7 @@ int sink_set_overrun(struct sof_sink *sink, bool overrun_permitted);
 int sink_set_buffer_fmt(struct sof_sink *sink, uint32_t buffer_fmt);
 void sink_set_min_free_space(struct sof_sink *sink, size_t min_free_space);
 size_t sink_get_min_free_space(struct sof_sink *sink);
+uint32_t sink_get_id(struct sof_sink *sink);
 
 /**
  * initial set of audio parameters, provided in sof_ipc_stream_params

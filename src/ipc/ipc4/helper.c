@@ -614,7 +614,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
-		bool found = buf->id == buffer_id;
+		bool found = buf_get_id(buf) == buffer_id;
 
 		if (found) {
 			buffer = buf;
@@ -1052,4 +1052,38 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
 
 	buf_c->hw_params_configured = true;
+}
+
+void ipc4_update_source_format(struct sof_source *source,
+			       const struct ipc4_audio_format *fmt)
+{
+	enum sof_ipc_frame valid_fmt, frame_fmt;
+
+	source_set_channels(source, fmt->channels_count);
+	source_set_rate(source, fmt->sampling_frequency);
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    fmt->s_type);
+
+	source_set_frm_fmt(source, frame_fmt);
+	source_set_valid_fmt(source, valid_fmt);
+	source_set_buffer_fmt(source, fmt->interleaving_style);
+}
+
+void ipc4_update_sink_format(struct sof_sink *sink,
+			     const struct ipc4_audio_format *fmt)
+{
+	enum sof_ipc_frame valid_fmt, frame_fmt;
+
+	sink_set_channels(sink, fmt->channels_count);
+	sink_set_rate(sink, fmt->sampling_frequency);
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    fmt->s_type);
+
+	sink_set_frm_fmt(sink, frame_fmt);
+	sink_set_valid_fmt(sink, valid_fmt);
+	sink_set_buffer_fmt(sink, fmt->interleaving_style);
 }

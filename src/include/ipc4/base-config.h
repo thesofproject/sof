@@ -244,5 +244,11 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 struct comp_buffer;
 void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt);
+struct sof_source;
+void ipc4_update_source_format(struct sof_source *source,
+			       const struct ipc4_audio_format *fmt);
+struct sof_sink;
+void ipc4_update_sink_format(struct sof_sink *sink,
+			     const struct ipc4_audio_format *fmt);
 
 #endif

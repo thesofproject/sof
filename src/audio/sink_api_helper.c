@@ -185,3 +185,9 @@ size_t sink_get_min_free_space(struct sof_sink *sink)
 {
 	return sink->min_free_space;
 }
+
+uint32_t sink_get_id(struct sof_sink *sink)
+{
+	return sink->audio_stream_params->id;
+}
+

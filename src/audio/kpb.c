@@ -357,7 +357,7 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 			break;
 		}
 
-		sink_buf_id = sink->id;
+		sink_buf_id = buf_get_id(sink);
 
 		if (sink_buf_id == buf_id) {
 			if (sink_buf_id == 0)
@@ -903,7 +903,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 			audio_stream_init_alignment_constants(byte_align, frame_align_req,
 							      &sink->stream);
-			sink_id = sink->id;
+			sink_id = buf_get_id(sink);
 
 			if (sink_id == 0)
 				audio_stream_set_channels(&sink->stream, kpb->num_of_sel_mic);
