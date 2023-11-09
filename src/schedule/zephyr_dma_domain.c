@@ -239,6 +239,26 @@ static struct zephyr_dma_domain_irq *fetch_irq_data(struct zephyr_dma_domain *do
 	return NULL;
 }
 
+bool chan_is_registered(struct zephyr_dma_domain *domain, struct dma_chan_data *chan)
+{
+	struct zephyr_dma_domain_irq *irq_data;
+	struct zephyr_dma_domain_channel *chan_data;
+	struct list_item *i, *j;
+
+	list_for_item(i, &domain->irqs) {
+		irq_data = container_of(i, struct zephyr_dma_domain_irq, list);
+
+		list_for_item(j, &irq_data->channels) {
+			chan_data = container_of(j, struct zephyr_dma_domain_channel, list);
+
+			if (chan_data->channel == chan)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 static int register_dma_irq(struct zephyr_dma_domain *domain,
 			    struct zephyr_dma_domain_irq **irq_data,
 			    struct zephyr_dma_domain_thread *dt,
@@ -271,6 +291,10 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 
 			/* skip if channel not owned by current core */
 			if (core != crt_chan->core)
+				continue;
+
+			/* skip is DMA chan is already registered with domain */
+			if (chan_is_registered(domain, crt_chan))
 				continue;
 
 			/* get IRQ number for current channel */
