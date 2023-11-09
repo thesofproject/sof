@@ -715,9 +715,17 @@ if(CONFIG_IPC_MAJOR_3)
 	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
 	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc3.c
+	)
 elseif(CONFIG_IPC_MAJOR_4)
 	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc4.c
 	)
 endif()
 

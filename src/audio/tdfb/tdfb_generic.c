@@ -8,6 +8,7 @@
 #include <sof/audio/audio_stream.h>
 #include <user/fir.h>
 
+#include "tdfb.h"
 #include "tdfb_comp.h"
 
 #if TDFB_GENERIC
