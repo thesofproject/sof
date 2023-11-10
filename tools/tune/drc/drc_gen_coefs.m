@@ -29,6 +29,7 @@ coefs.ratio_base = y0 * (coefs.knee_threshold ^ (-coefs.slope));
 % Calculate makeup gain coefficients
 full_range_makeup_gain = (1 / coefs.ratio_base) ^ 0.6; % Empirical/perceptual tuning
 coefs.master_linear_gain = db2mag(params.post_gain) * full_range_makeup_gain;
+coefs.master_linear_gain_db = 20*log10(coefs.master_linear_gain);
 
 % Calculate attack time coefficients
 attack_time = max(0.001, params.attack);
