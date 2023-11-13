@@ -20,11 +20,11 @@
 /* The driver assigns running numbers for control index. If there's single control of
  * type switch, enum, binary they all have index 0.
  */
-#define CTRL_INDEX_PROCESS		0	/* switch */
-#define CTRL_INDEX_DIRECTION		1	/* switch */
-#define CTRL_INDEX_AZIMUTH		0	/* enum */
-#define CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
-#define CTRL_INDEX_FILTERBANK		0	/* bytes */
+#define SOF_TDFB_CTRL_INDEX_PROCESS		0	/* switch */
+#define SOF_TDFB_CTRL_INDEX_DIRECTION		1	/* switch */
+#define SOF_TDFB_CTRL_INDEX_AZIMUTH		0	/* enum */
+#define SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
+#define SOF_TDFB_CTRL_INDEX_FILTERBANK		0	/* bytes */
 
 /*
  * sof_tdfb_config data[]

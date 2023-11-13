@@ -41,7 +41,7 @@ static int init_get_ctl_ipc(struct processing_module *mod)
 	cd->ctrl_data->comp_id = comp_id;
 	cd->ctrl_data->type = SOF_CTRL_TYPE_VALUE_CHAN_GET;
 	cd->ctrl_data->cmd = SOF_CTRL_CMD_ENUM;
-	cd->ctrl_data->index = CTRL_INDEX_AZIMUTH_ESTIMATE;
+	cd->ctrl_data->index = SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE;
 	cd->ctrl_data->num_elems = 0;
 	return 0;
 }
@@ -77,7 +77,7 @@ static int tdfb_cmd_switch_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp
 	int j;
 
 	/* Fail if wrong index in control, needed if several in same type */
-	if (cdata->index != CTRL_INDEX_PROCESS)
+	if (cdata->index != SOF_TDFB_CTRL_INDEX_PROCESS)
 		return -EINVAL;
 
 	for (j = 0; j < cdata->num_elems; j++)
@@ -91,12 +91,12 @@ static int tdfb_cmd_enum_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_d
 	int j;
 
 	switch (cdata->index) {
-	case CTRL_INDEX_AZIMUTH:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH:
 		for (j = 0; j < cdata->num_elems; j++)
 			cdata->chanv[j].value = cd->az_value;
 
 		break;
-	case CTRL_INDEX_AZIMUTH_ESTIMATE:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE:
 		for (j = 0; j < cdata->num_elems; j++)
 			cdata->chanv[j].value = cd->az_value_estimate;
 
@@ -150,11 +150,11 @@ static int tdfb_cmd_enum_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_d
 		return -EINVAL;
 
 	switch (cdata->index) {
-	case CTRL_INDEX_AZIMUTH:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH:
 		cd->az_value = cdata->chanv[0].value;
 		cd->update = true;
 		break;
-	case CTRL_INDEX_AZIMUTH_ESTIMATE:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE:
 		cd->az_value_estimate = cdata->chanv[0].value;
 		break;
 	default:
@@ -170,11 +170,11 @@ static int tdfb_cmd_switch_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp
 		return -EINVAL;
 
 	switch (cdata->index) {
-	case CTRL_INDEX_PROCESS:
+	case SOF_TDFB_CTRL_INDEX_PROCESS:
 		cd->beam_on = cdata->chanv[0].value;
 		cd->update = true;
 		break;
-	case CTRL_INDEX_DIRECTION:
+	case SOF_TDFB_CTRL_INDEX_DIRECTION:
 		cd->direction_updates = cdata->chanv[0].value;
 		break;
 	default:
