@@ -88,7 +88,7 @@ int tdfb_ipc_notification_init(struct processing_module *mod)
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
 	cd->msg = tdfb_notification_init(mod, SOF_IPC4_ENUM_CONTROL_PARAM_ID,
-					 CTRL_INDEX_AZIMUTH_ESTIMATE);
+					 SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE);
 	if (!cd->msg) {
 		comp_err(mod->dev, "Failed to initialize control notification.");
 		return -EINVAL;
@@ -121,11 +121,11 @@ static int tdfb_cmd_enum_set(struct sof_ipc4_control_msg_payload *ctl, struct td
 		return -EINVAL;
 
 	switch (ctl->id) {
-	case CTRL_INDEX_AZIMUTH:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH:
 		cd->az_value = ctl->chanv[0].value;
 		cd->update = true;
 		break;
-	case CTRL_INDEX_AZIMUTH_ESTIMATE:
+	case SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE:
 		cd->az_value_estimate = ctl->chanv[0].value;
 		break;
 	default:
@@ -141,11 +141,11 @@ static int tdfb_cmd_switch_set(struct sof_ipc4_control_msg_payload *ctl, struct 
 		return -EINVAL;
 
 	switch (ctl->id) {
-	case CTRL_INDEX_PROCESS:
+	case SOF_TDFB_CTRL_INDEX_PROCESS:
 		cd->beam_on = ctl->chanv[0].value;
 		cd->update = true;
 		break;
-	case CTRL_INDEX_DIRECTION:
+	case SOF_TDFB_CTRL_INDEX_DIRECTION:
 		cd->direction_updates = ctl->chanv[0].value;
 		break;
 	default:
