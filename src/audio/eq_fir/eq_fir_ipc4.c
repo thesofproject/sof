@@ -51,31 +51,20 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 int eq_fir_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct sof_ipc_stream_params comp_params;
+	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i, ret;
 
 	comp_dbg(dev, "eq_fir_params()");
 
-	comp_params = *params;
-	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
-	comp_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
 
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	comp_params.frame_fmt = valid_fmt;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ret = buffer_set_params(sinkb, &comp_params, true);
-	return ret;
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+
+	return 0;
 }
+
