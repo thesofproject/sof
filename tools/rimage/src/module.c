@@ -98,7 +98,7 @@ int module_write_whole_elf(const struct module *module, FILE *out_file, const ch
 	/* write out section data */
 	count = fwrite(buffer, module->elf.file_size, 1, out_file);
 	if (count != 1) {
-		ret = file_error("can't write data", "");// TODO: image->out_file);
+		ret = file_error("can't write data", filename);
 		goto out;
 	}
 
