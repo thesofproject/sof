@@ -111,15 +111,12 @@ void module_print_zones(const struct module *module)
 {
 	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
 
-	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->text.start, module->text.end,
-		module->text.end - module->text.start);
-	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-		module->data.start, module->data.end,
-		module->data.end - module->data.start);
-	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n",
-		module->bss.start, module->bss.end,
-		module->bss.end - module->bss.start);
+	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%zx\n",
+		module->text.start, module->text.end, module->text.file_size);
+	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%zx\n",
+		module->data.start, module->data.end, module->data.file_size);
+	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%zx\n\n",
+		module->bss.start, module->bss.end, module->bss.file_size);
 }
 
 /**
@@ -252,7 +249,7 @@ static void sections_info_add(struct module_sections_info *info, struct module_s
  */
 static void sections_info_finalize(struct module_sections_info *info)
 {
-	info->file_size = info->end - info->start;
+	info->file_size = (info->end > info->start) ? info->end - info->start : 0;
 
 	/* file sizes round up to nearest page */
 	info->file_size = (info->file_size + MAN_PAGE_SIZE - 1) & ~(MAN_PAGE_SIZE - 1);
