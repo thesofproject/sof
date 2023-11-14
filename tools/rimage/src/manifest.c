@@ -240,20 +240,21 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	segment->flags.r.load = 1;
 	segment->flags.r.readonly = 1;
 	segment->flags.r.code = 1;
+	segment->flags.r.type = SOF_MAN_SEGMENT_TEXT;
 
 	/* data segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_RODATA];
 	segment->flags.r.contents = 1;
 	segment->flags.r.alloc = 1;
 	segment->flags.r.load = 1;
-	segment->flags.r.readonly = 1;
+	segment->flags.r.readonly = 0; /* rodata segment contains also writtable data */
 	segment->flags.r.data = 1;
-	segment->flags.r.type = 1;
+	segment->flags.r.type = SOF_MAN_SEGMENT_RODATA;
 
 	/* bss segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_BSS];
 	segment->flags.r.alloc = 1;
-	segment->flags.r.type = 2;
+	segment->flags.r.type = SOF_MAN_SEGMENT_BSS;
 
 	fprintf(stdout, " Entry point 0x%8.8x\n", man_module->entry_point);
 
@@ -366,22 +367,28 @@ static int man_module_create(struct image *image, struct manifest_module *module
 	if (err)
 		return err;
 
-
 	/* data section */
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = module->file.data.start;
-	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset = module->foffset +
-								  module->text_fixup_size;
 
 	/* file_size is already aligned to MAN_PAGE_SIZE */
 	pages = module->file.data.file_size / MAN_PAGE_SIZE;
 
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length = pages;
-
-	/* Copy data sections content */
-	err = man_copy_elf_sections(image, module, &man_module->segment[SOF_MAN_SEGMENT_RODATA],
-				    module->file.data.first_section);
-	if (err)
-		return err;
+	if (pages) {
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = module->file.data.start;
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset = module->foffset +
+									  module->text_fixup_size;
+		/* Copy data sections content */
+		err = man_copy_elf_sections(image, module,
+					    &man_module->segment[SOF_MAN_SEGMENT_RODATA],
+					    module->file.data.first_section);
+		if (err)
+			return err;
+	} else {
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = 0;
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset = 0;
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.ul = 0;
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.type = SOF_MAN_SEGMENT_EMPTY;
+	}
 
 	/* bss is last */
 
