@@ -794,8 +794,7 @@ int man_write_fw_v1_5_sue(struct image *image)
 
 	/* write preload page count */
 	preload_size = image->image_end - MAN_DESC_OFFSET_V1_5_SUE;
-	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
-	m->desc.header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+	m->desc.header.preload_page_count = DIV_ROUND_UP(preload_size, MAN_PAGE_SIZE);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
 		FILE_TEXT_OFFSET_V1_5_SUE - MAN_DESC_OFFSET_V1_5_SUE +
@@ -992,8 +991,7 @@ int man_write_fw_meu_v1_5(struct image *image)
 
 	/* write preload page count */
 	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_5;
-	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
-	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+	desc->header.preload_page_count = DIV_ROUND_UP(preload_size, MAN_PAGE_SIZE);
 
 	/* calculate hash for each module */
 	man_hash_modules(image, desc);
@@ -1078,8 +1076,7 @@ int man_write_fw_meu_v1_8(struct image *image)
 
 	/* write preload page count */
 	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
-	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
-	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+	desc->header.preload_page_count = DIV_ROUND_UP(preload_size, MAN_PAGE_SIZE);
 
 	/* calculate hash for each module */
 	man_hash_modules(image, desc);
@@ -1167,8 +1164,7 @@ int man_write_fw_meu_v2_5(struct image *image)
 
 	/* write preload page count */
 	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
-	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
-	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+	desc->header.preload_page_count = DIV_ROUND_UP(preload_size, MAN_PAGE_SIZE);
 
 	/* calculate hash for each module */
 	man_hash_modules(image, desc);
