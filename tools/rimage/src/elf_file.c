@@ -411,18 +411,7 @@ int elf_open(struct elf_file *elf, const char *filename)
 	return 0;
 
 err:
-	free(elf->filename);
-	free(elf->programs);
-
-	if (elf->file)
-		fclose(elf->file);
-
-	if (elf->sections) {
-		for (int i = 0; i < elf->sections_count; i++)
-			elf_section_header_free(&elf->sections[i]);
-
-		free(elf->sections);
-	}
+	elf_free(elf);
 
 	return ret;
 }
@@ -436,13 +425,17 @@ void elf_free(struct elf_file *elf)
 	int i;
 
 	free(elf->filename);
-	fclose(elf->file);
-
-	for (i = 0; i < elf->sections_count; i++)
-		elf_section_header_free(&elf->sections[i]);
-
-	free(elf->sections);
 	free(elf->programs);
+
+	if (elf->file)
+		fclose(elf->file);
+
+	if (elf->sections) {
+		for (i = 0; i < elf->sections_count; i++)
+			elf_section_header_free(&elf->sections[i]);
+
+		free(elf->sections);
+	}
 }
 
 int elf_section_read_content(const struct elf_file *elf, const struct elf_section_header *header,
