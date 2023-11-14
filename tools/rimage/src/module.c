@@ -14,7 +14,7 @@
 #include <rimage/elf_file.h>
 #include <rimage/file_utils.h>
 #include <rimage/rimage.h>
-
+#include <rimage/misc_utils.h>
 
 int module_read_section(const struct module *module, const struct module_section *section,
 			void *buffer, const size_t size)
@@ -249,10 +249,10 @@ static void sections_info_add(struct module_sections_info *info, struct module_s
  */
 static void sections_info_finalize(struct module_sections_info *info)
 {
-	info->file_size = (info->end > info->start) ? info->end - info->start : 0;
+	size_t size = (info->end > info->start) ? info->end - info->start : 0;
 
 	/* file sizes round up to nearest page */
-	info->file_size = (info->file_size + MAN_PAGE_SIZE - 1) & ~(MAN_PAGE_SIZE - 1);
+	info->file_size = ALIGN_UP(size, MAN_PAGE_SIZE);
 }
 
 /**

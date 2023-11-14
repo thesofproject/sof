@@ -8,6 +8,7 @@
 #include <rimage/rimage.h>
 #include <rimage/manifest.h>
 #include <rimage/plat_auth.h>
+#include <rimage/misc_utils.h>
 
 void ri_adsp_meta_data_create_v1_8(struct image *image, int meta_start_offset,
 				   int meta_end_offset)
@@ -52,7 +53,7 @@ void ri_plat_ext_data_create(struct image *image)
 	fprintf(stdout, " auth: completing authentication manifest\n");
 
 	part->length = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
-	part->length += MAN_PAGE_SIZE - (part->length % MAN_PAGE_SIZE);
+	part->length = ALIGN_UP(part->length, MAN_PAGE_SIZE);
 
 	/* do this here atm */
 	desc->header.preload_page_count = part->length / MAN_PAGE_SIZE;
@@ -69,10 +70,9 @@ void ri_plat_ext_data_create_v2_5(struct image *image)
 	fprintf(stdout, " auth: completing authentication manifest\n");
 
 	size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
-	size += MAN_PAGE_SIZE - (size % MAN_PAGE_SIZE);
 
 	/* do this here atm */
-	desc->header.preload_page_count = size / MAN_PAGE_SIZE;
+	desc->header.preload_page_count = DIV_ROUND_UP(size, MAN_PAGE_SIZE);
 	ext->size = image->image_end;
 }
 
@@ -87,8 +87,7 @@ void ri_plat_ext_data_create_ace_v1_5(struct image *image)
 	fprintf(stdout, " auth: completing authentication manifest\n");
 
 	size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
-	size += MAN_PAGE_SIZE - (size % MAN_PAGE_SIZE);
 
-	desc->header.preload_page_count = size / MAN_PAGE_SIZE;
+	desc->header.preload_page_count = DIV_ROUND_UP(size, MAN_PAGE_SIZE);
 	ext->size = image->image_end;
 }
