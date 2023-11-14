@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
+#define ALIGN_UP(val, align)   (((val) + (align) - 1) & ~((align) - 1))
 
 /**
  * Reverses the order of bytes in the array

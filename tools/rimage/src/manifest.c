@@ -438,10 +438,7 @@ static int man_module_create(struct image *image, struct manifest_module *module
 	}
 
 	/* round module end upto nearest page */
-	if (image->image_end % MAN_PAGE_SIZE) {
-		image->image_end = (image->image_end / MAN_PAGE_SIZE) + 1;
-		image->image_end *= MAN_PAGE_SIZE;
-	}
+	image->image_end = ALIGN_UP(image->image_end, MAN_PAGE_SIZE);
 
 out:
 	fprintf(stdout, " Total pages text %d data %d bss %d module file limit: 0x%x\n\n",
@@ -505,10 +502,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	image->image_end = module->foffset + module->file.elf.file_size;
 
 	/* round module end up to nearest page */
-	if (image->image_end % MAN_PAGE_SIZE) {
-		image->image_end = (image->image_end / MAN_PAGE_SIZE) + 1;
-		image->image_end *= MAN_PAGE_SIZE;
-	}
+	image->image_end = ALIGN_UP(image->image_end, MAN_PAGE_SIZE);
 
 	fprintf(stdout, " Total pages text %d data %d bss %d module file limit: 0x%x\n\n",
 		man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length,
