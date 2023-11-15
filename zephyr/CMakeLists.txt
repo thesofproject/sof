@@ -686,6 +686,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_math_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_hifi3.c
+	${SOF_AUDIO_PATH}/drc/drc_hifi4.c
 	${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
 )
 

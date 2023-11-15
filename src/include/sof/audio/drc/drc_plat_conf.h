@@ -20,23 +20,31 @@
 #if DRC_AUTOARCH == 0
 #define DRC_GENERIC	1
 #define DRC_HIFI3	0
+#define DRC_HIFI4	0
 #endif
 
 /* Select optimized code variant when xt-xcc compiler is used */
 #if DRC_AUTOARCH == 1
 #if defined __XCC__
 #include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 == 1
+#if XCHAL_HAVE_HIFI4 == 1
+#define DRC_GENERIC	0
+#define DRC_HIFI3	0
+#define DRC_HIFI4	1
+#elif XCHAL_HAVE_HIFI3 == 1
 #define DRC_GENERIC	0
 #define DRC_HIFI3	1
+#define DRC_HIFI4	0
 #else
 #define DRC_GENERIC	1
 #define DRC_HIFI3	0
+#define DRC_HIFI4	0
 #endif /* XCHAL_HAVE_HIFI3 */
 #else
 /* GCC */
 #define DRC_GENERIC	1
 #define DRC_HIFI3	0
+#define DRC_HIFI4	0
 #endif /* __XCC__ */
 #endif /* DRC_AUTOARCH */
 
