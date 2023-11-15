@@ -19,8 +19,15 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
-#include "adsp_debug_window.h"
+#include <sof/debug/telemetry/telemetry.h>
+/* FIXME:
+ * Builds for some platforms like tgl fail because their defines related to memory windows are
+ * already defined somewhere else. Remove this ifdef after it's cleaned up
+ */
+#ifdef CONFIG_SOF_TELEMETRY
 #include "mem_window.h"
+#include "adsp_debug_window.h"
+#endif
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -497,6 +504,33 @@ int schedulers_info_get(uint32_t *data_off_size,
 	return 0;
 }
 
+int set_perf_meas_state(const char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY
+	enum ipc4_perf_measurements_state_set state = *data;
+
+	struct telemetry_wnd_data *wnd_data =
+			(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
+	struct system_tick_info *systick_info =
+			(struct system_tick_info *)wnd_data->system_tick_info;
+
+	switch (state) {
+	case IPC4_PERF_MEASUREMENTS_DISABLED:
+		break;
+	case IPC4_PERF_MEASUREMENTS_STOPPED:
+		for (int i = 0; i < CONFIG_MAX_CORE_COUNT; i++)
+			systick_info[i].peak_utilization = 0;
+		break;
+	case IPC4_PERF_MEASUREMENTS_STARTED:
+	case IPC4_PERF_MEASUREMENTS_PAUSED:
+		break;
+	default:
+		return -EINVAL;
+	}
+#endif
+	return IPC4_SUCCESS;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -572,7 +606,7 @@ static int basefw_set_large_config(struct comp_dev *dev,
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
-		return 0;
+		return set_perf_meas_state(data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);
