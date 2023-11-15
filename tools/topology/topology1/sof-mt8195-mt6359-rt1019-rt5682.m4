@@ -20,6 +20,8 @@ include(`sof/tokens.m4')
 # Include DSP configuration
 include(`platform/mediatek/mt8195.m4')
 
+DEBUG_START
+
 #
 # Define the demux configure
 #
@@ -187,3 +189,5 @@ DAI_CONFIG(AFE, 2, 0, AFE_SOF_UL4,
 
 DAI_CONFIG(AFE, 3, 0, AFE_SOF_UL5,
 	AFE_CONFIG(AFE_CONFIG_DATA(AFE, 3, 48000, 2, s16le)))
+
+DEBUG_END
