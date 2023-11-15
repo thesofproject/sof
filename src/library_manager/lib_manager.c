@@ -51,11 +51,12 @@ static struct ext_library loader_ext_lib;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
-static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
-					      uint32_t size, uint32_t flags)
+static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr, uint32_t size,
+					      uint32_t flags)
 {
-	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL),
-					size, flags);
+	/* Region must be first mapped as writable in order to initialize its contents. */
+	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL), size,
+					flags | SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		return ret;
 
@@ -65,118 +66,78 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 
 	dcache_writeback_region(vma, size);
 
-	/* TODO: Change attributes for memory to FLAGS  */
+	/* TODO: Change attributes for memory to FLAGS. Implementation of required function in tlb
+	 * driver is in progress.
+	 * sys_mm_drv_update_region_flags(vma, size, flags);
+	 */
 	return 0;
 }
 
-static int lib_manager_load_module(uint32_t module_id, struct sof_man_module *mod,
-				   struct sof_man_fw_desc *desc)
+static int lib_manager_load_module(const uint32_t module_id,
+				   const struct sof_man_module *const mod)
 {
-	struct ext_library *ext_lib = ext_lib_get();
-	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	size_t load_offset = (size_t)((void *)ext_lib->desc[lib_id]);
-	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	void *src_txt = (void *)(mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset + load_offset);
-	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
-	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
-	void *src_rodata =
-		(void *)(mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset + load_offset);
-	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
-	int ret;
+	const struct ext_library *const ext_lib = ext_lib_get();
+	const uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
+	const uintptr_t load_offset = POINTER_TO_UINT(ext_lib->desc[lib_id]);
+	void *src;
+	void __sparse_cache *va_base;
+	size_t size;
+	uint32_t flags;
+	int ret, idx;
 
-	st_text_size = st_text_size * PAGE_SZ;
-	st_rodata_size = st_rodata_size * PAGE_SZ;
+	for (idx = 0; idx < ARRAY_SIZE(mod->segment); ++idx) {
+		if (!mod->segment[idx].flags.r.load)
+			continue;
 
-	/* Copy Code */
-	ret = lib_manager_load_data_from_storage(va_base_text, src_txt, st_text_size,
-						 SYS_MM_MEM_PERM_RW | SYS_MM_MEM_PERM_EXEC);
-	if (ret < 0)
-		goto err;
+		flags = 0;
 
-	/* Copy RODATA */
-	ret = lib_manager_load_data_from_storage(va_base_rodata, src_rodata,
-						 st_rodata_size, SYS_MM_MEM_PERM_RW);
-	if (ret < 0)
-		goto err;
+		if (mod->segment[idx].flags.r.code)
+			flags = SYS_MM_MEM_PERM_EXEC;
+		else if (!mod->segment[idx].flags.r.readonly)
+			flags = SYS_MM_MEM_PERM_RW;
 
-	/* There are modules marked as lib_code. This is code shared between several modules inside
-	 * the library. Load all lib_code modules with first none lib_code module load.
-	 */
-	if (!mod->type.lib_code)
-		ext_lib->mods_exec_load_cnt++;
-
-	if (ext_lib->mods_exec_load_cnt == 1) {
-		struct sof_man_module *module_entry =
-		    (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
-		for (size_t idx = 0; idx < desc->header.num_module_entries;
-				++idx, ++module_entry) {
-			if (module_entry->type.lib_code) {
-				ret = lib_manager_load_module(lib_id << LIB_MANAGER_LIB_ID_SHIFT |
-							      idx, mod, desc);
-				if (ret < 0)
-					goto err;
-			}
-		}
+		src = UINT_TO_POINTER(mod->segment[idx].file_offset + load_offset);
+		va_base = (void __sparse_cache *)UINT_TO_POINTER(mod->segment[idx].v_base_addr);
+		size = mod->segment[idx].flags.r.length * PAGE_SZ;
+		ret = lib_manager_load_data_from_storage(va_base, src, size, flags);
+		if (ret < 0)
+			goto err;
 	}
 
 	return 0;
 
 err:
-	sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
-	sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
+	for (--idx; idx >= 0; --idx) {
+		if (!mod->segment[idx].flags.r.load)
+			continue;
+
+		va_base = (void __sparse_cache *)UINT_TO_POINTER(mod->segment[idx].v_base_addr);
+		size = mod->segment[idx].flags.r.length * PAGE_SZ;
+		sys_mm_drv_unmap_region((__sparse_force void *)va_base, size);
+	}
 
 	return ret;
 }
 
-static int lib_manager_unload_module(uint32_t module_id, struct sof_man_module *mod,
-				     struct sof_man_fw_desc *desc)
+static int lib_manager_unload_module(const struct sof_man_module *const mod)
 {
-	struct ext_library *ext_lib = ext_lib_get();
-	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
-	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
-	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
+	void __sparse_cache *va_base;
+	size_t size;
+	uint32_t idx;
 	int ret;
 
-	st_text_size = st_text_size * PAGE_SZ;
-	st_rodata_size = st_rodata_size * PAGE_SZ;
+	for (idx = 0; idx < ARRAY_SIZE(mod->segment); ++idx) {
+		if (!mod->segment[idx].flags.r.load)
+			continue;
 
-	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
-	if (ret < 0)
-		return ret;
-
-	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
-	if (ret < 0)
-		return ret;
-
-	/* There are modules marked as lib_code. This is code shared between several modules inside
-	 * the library. Unload all lib_code modules with last none lib_code module unload.
-	 */
-	if (mod->type.lib_code)
-		return ret;
-
-	if (!mod->type.lib_code && ext_lib->mods_exec_load_cnt > 0)
-		ext_lib->mods_exec_load_cnt--;
-
-	if (ext_lib->mods_exec_load_cnt == 0) {
-		struct sof_man_module *module_entry =
-		    (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
-		for (size_t idx = 0; idx < desc->header.num_module_entries;
-				++idx, ++module_entry) {
-			if (module_entry->type.lib_code) {
-				ret =
-				lib_manager_unload_module(lib_id << LIB_MANAGER_LIB_ID_SHIFT |
-							  idx, mod, desc);
-			}
-		}
+		va_base = (void __sparse_cache *)UINT_TO_POINTER(mod->segment[idx].v_base_addr);
+		size = mod->segment[idx].flags.r.length * PAGE_SZ;
+		ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base, size);
+		if (ret < 0)
+			return ret;
 	}
 
-	return ret;
+	return 0;
 }
 
 static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
@@ -262,7 +223,7 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = lib_manager_load_module(module_id, mod, desc);
+	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
 		return 0;
 
@@ -271,9 +232,13 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_allocate_module(): module allocation failed: %d", ret);
-		return 0;
+		goto err;
 	}
 	return mod->entry_point;
+
+err:
+	lib_manager_unload_module(mod);
+	return 0;
 }
 
 int lib_manager_free_module(const struct comp_driver *drv,
@@ -290,7 +255,7 @@ int lib_manager_free_module(const struct comp_driver *drv,
 	desc = lib_manager_get_library_module_desc(module_id);
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = lib_manager_unload_module(module_id, mod, desc);
+	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
 		return ret;
 
