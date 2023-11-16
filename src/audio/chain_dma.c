@@ -686,7 +686,7 @@ static void chain_task_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static const struct comp_driver  comp_chain_dma = {
+static const struct comp_driver comp_chain_dma = {
 	.uid = SOF_RT_UUID(chain_dma_uuid),
 	.tctx = &chain_dma_tr,
 	.ops = {
