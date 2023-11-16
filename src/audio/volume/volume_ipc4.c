@@ -94,16 +94,8 @@ static void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t tar
 						  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
 	}
 
-	if (!cd->initial_ramp) {
-		/* In case when initial ramp time is equal to zero, vol_min and
-		 * vol_max variables should be set to target_volume value
-		 */
-		cd->vol_min = target_volume;
-		cd->vol_max = target_volume;
-	} else {
-		cd->vol_min = VOL_MIN;
-		cd->vol_max = VOL_MAX;
-	}
+	cd->vol_min = VOL_MIN;
+	cd->vol_max = VOL_MAX;
 	cd->copy_gain = true;
 }
 
