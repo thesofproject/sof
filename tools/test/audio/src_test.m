@@ -227,7 +227,7 @@ end
 test = g_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -256,7 +256,7 @@ test.f_max = 0.99 * min(t.fs1/2, t.fs2/2);     % Measure up to Nyquist frequency
 test = fr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -293,7 +293,7 @@ test.fu = min(prm.c_pb * t.fs2, 20e3); % AES17 5.2.5 standard low pass as 20 kHz
 test = thdnf_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -322,7 +322,7 @@ end
 test = dr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -357,7 +357,7 @@ test.f_end = 0.5*t.fs2;
 test = aap_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -390,7 +390,7 @@ test.f_end = t.fs1/2;
 test = aip_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -420,7 +420,7 @@ test = test_defaults_src(t);
 test = chirp_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Analyze
 test.fs = t.fs2;
@@ -467,7 +467,7 @@ test.thdnf_mask_hi = [];
 test.thdnf_max = [];
 end
 
-function test = test_run_src(test, t)
+function test = test_run_src(test)
 test.fs_in = test.fs1;
 test.fs_out = test.fs2;
 test.extra_opts = '-C 300000'; % Limit to 5 min max, assume 1 ms scheduling
