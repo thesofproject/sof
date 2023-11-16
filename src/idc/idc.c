@@ -66,7 +66,6 @@ static void idc_msg_status_set(int status, uint32_t core)
 	struct idc_payload *payload = idc_payload_get(idc, core);
 
 	*(uint32_t *)payload->data = status;
-
 }
 
 /**
@@ -78,12 +77,8 @@ int idc_msg_status_get(uint32_t core)
 {
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, core);
-	int status;
 
-	status = *(uint32_t *)payload->data;
-
-
-	return status;
+	return *(uint32_t *)payload->data;
 }
 
 /**
@@ -97,7 +92,6 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
 
 	while (!cond(target_core)) {
-
 		/* spin here so other core can access IO and timers freely */
 		idelay(8192);
 
