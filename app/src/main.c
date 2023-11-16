@@ -20,7 +20,7 @@ int sof_main(int argc, char *argv[]);
  * TODO: Here comes SOF initialization
  */
 
-int main(void)
+static int sof_app_main(void)
 {
 	int ret;
 
@@ -49,3 +49,16 @@ int main(void)
 #endif
 	return 0;
 }
+
+#if CONFIG_ZTEST
+void test_main(void)
+{
+	sof_app_main();
+	k_sleep(K_FOREVER);
+}
+#else
+int main(void)
+{
+	return sof_app_main();
+}
+#endif

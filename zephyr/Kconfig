@@ -67,4 +67,14 @@ config CROSS_CORE_STREAM
 	  can be processed on different cores, however, each stream
 	  is processed entirely on single core.
 
+config SOF_BOOT_TEST
+	bool "enable SOF run-time testing"
+	depends on ZTEST
+	help
+	  Run tests during boot. This enables an SOF boot-time self-test. When
+	  enabled, the resulting image will run a number of self-tests when the
+	  first global IPC command is received, i.e. when SOF is completely
+	  initialized. After that SOF will continue running and be usable as
+	  usual.
+
 endif
