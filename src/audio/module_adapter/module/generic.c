@@ -123,7 +123,7 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 	md->state = MODULE_INITIALIZED;
 #endif
 
-	return ret;
+	return 0;
 }
 
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
