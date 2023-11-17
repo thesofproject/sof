@@ -86,7 +86,8 @@ class PlatformConfig:
 	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
 	aliases: list = dataclasses.field(default_factory=list)
 
-platform_configs = {
+# These can all be built out of the box. --all builds all these.
+platform_configs_all = {
 	#  Intel platforms
 	"tgl" : PlatformConfig(
 		"tgl", "intel_adsp_cavs25",
@@ -134,6 +135,10 @@ platform_configs = {
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
+}
+
+# These cannot be built out of the box yet
+extra_platform_configs = {
 	"imx8ulp" : PlatformConfig(
 		"imx8ulp", "nxp_adsp_imx8ulp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
@@ -142,14 +147,15 @@ platform_configs = {
 	),
 }
 
-platform_names = list(platform_configs)
+platform_configs = platform_configs_all.copy()
+platform_configs.update(extra_platform_configs)
 
 class validate_platforms_arguments(argparse.Action):
 	"""Validates positional platform arguments whether provided platform name is supported."""
 	def __call__(self, parser, namespace, values, option_string=None):
 		if values:
 			for value in values:
-				if value not in platform_names:
+				if value not in platform_configs:
 					raise argparse.ArgumentError(self, f"Unsupported platform: {value}")
 		setattr(namespace, "platforms", values)
 
@@ -174,7 +180,7 @@ def parse_args():
 				"			└── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
 				"				└── XtensaTools/\n" +
 			"$XTENSA_TOOLS_ROOT=/path/to/myXtensa ...\n" +
-			f"Supported platforms {platform_names}"))
+			f"Supported platforms: {list(platform_configs)}"))
 
 	parser.add_argument("-a", "--all", required=False, action="store_true",
 						help="Build all currently supported platforms")
@@ -257,7 +263,7 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 	args = parser.parse_args()
 
 	if args.all:
-		args.platforms = platform_names
+		args.platforms = list(platform_configs_all)
 
 	# print help message if no arguments provided
 	if len(sys.argv) == 1:
