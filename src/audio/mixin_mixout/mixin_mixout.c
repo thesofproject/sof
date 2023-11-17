@@ -727,7 +727,7 @@ static int mixout_prepare(struct processing_module *mod,
 	return 0;
 }
 
-int mixout_bind(struct processing_module *mod, void *data)
+static int mixout_bind(struct processing_module *mod, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
@@ -776,7 +776,7 @@ int mixout_bind(struct processing_module *mod, void *data)
 	return 0;
 }
 
-int mixout_unbind(struct processing_module *mod, void *data)
+static int mixout_unbind(struct processing_module *mod, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
