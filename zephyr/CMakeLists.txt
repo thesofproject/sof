@@ -56,7 +56,6 @@ set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
-set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -144,6 +143,7 @@ endmacro()
 
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
+add_subdirectory(../src/math/ math_unused_install/)
 
 
 
@@ -364,11 +364,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 
-	# SOF math utilities
-	${SOF_MATH_PATH}/decibels.c
-	${SOF_MATH_PATH}/numbers.c
-	${SOF_MATH_PATH}/trig.c
-
 	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/clk.c
 	${SOF_LIB_PATH}/notifier.c
@@ -456,9 +451,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
-	${SOF_MATH_PATH}/fir_generic.c
-	${SOF_MATH_PATH}/fir_hifi2ep.c
-	${SOF_MATH_PATH}/fir_hifi3.c
 )
 
 if(CONFIG_IPC_MAJOR_3)
@@ -482,18 +474,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
 	)
 endif()
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
-	${SOF_MATH_PATH}/iir_df1_generic.c
-	${SOF_MATH_PATH}/iir_df1_hifi3.c
-	${SOF_MATH_PATH}/iir_df1.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
-	${SOF_MATH_PATH}/iir_df2t_generic.c
-	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_MATH_PATH}/iir_df2t.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
 	${SOF_AUDIO_PATH}/asrc/asrc.c
@@ -754,15 +734,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
 	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
 	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
 	${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
-	${SOF_MATH_PATH}/sqrt_int16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_EXP
-	${SOF_MATH_PATH}/exp_fcn.c
-	${SOF_MATH_PATH}/exp_fcn_hifi.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
