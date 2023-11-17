@@ -407,7 +407,6 @@ static int arecord_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 {
 	struct comp_buffer *buffer;
 	struct alsa_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c;
 	int ret;
 
 	comp_dbg(dev, "arecord params");
@@ -429,9 +428,7 @@ static int arecord_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	/* file component sink/source buffer period count */
 	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	buf_c = buffer_acquire(buffer);
-	buffer_reset_pos(buf_c, NULL);
-	buffer_release(buf_c);
+	buffer_reset_pos(buffer, NULL);
 
 	comp_dbg(dev, "prepare done ret = %d", ret);
 
@@ -515,7 +512,6 @@ static int alsa_cmd(struct comp_dev *dev, int cmd, void *data,
 static int arecord_copy(struct comp_dev *dev)
 {
 	struct alsa_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer __sparse_cache *buf_c;
 	struct comp_buffer *buffer;
 	struct audio_stream *sink;
 	snd_pcm_sframes_t frames;
@@ -533,8 +529,7 @@ static int arecord_copy(struct comp_dev *dev)
 
 	/* file component sink buffer */
 	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	buf_c = buffer_acquire(buffer);
-	sink = &buf_c->stream;
+	sink = &buffer->stream;
 	pos = sink->w_ptr;
 
 	//FIX: this will fill buffer and higher latency, use period size
@@ -549,7 +544,6 @@ static int arecord_copy(struct comp_dev *dev)
 		if (frames < 0) {
 			comp_err(dev, "failed to read: %s: %s\n",
 				 cd->pcm_name, snd_strerror(frames));
-			buffer_release(buf_c);
 			return frames;
 		}
 
@@ -561,7 +555,6 @@ static int arecord_copy(struct comp_dev *dev)
 	/* update sink buffer pointers */
 	comp_update_buffer_produce(buffer, total * frame_bytes);
 	comp_dbg(dev, "read %d frames", total);
-	buffer_release(buf_c);
 
 	return 0;
 }
