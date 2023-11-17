@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <sof/audio/format.h>
 #include <sof/math/numbers.h>
+#include <sof/math/lut_trig.h>
 #include <sof/math/trig.h>
 
 #include "drc_plat_conf.h"
@@ -60,9 +61,8 @@ static inline int32_t drc_sin_fixed(int32_t x)
 {
 	const int32_t lshift = drc_get_lshift(30, 30, 28);
 	int32_t denorm_x = drc_mult_lshift(x, PI_OVER_TWO_Q30, lshift);
-	int32_t sin_val = sin_fixed_16b(denorm_x);
 
-	return sin_val << 16;
+	return sofm_lut_sin_fixed_16b(denorm_x) << 16;
 }
 
 #ifdef DRC_USE_CORDIC_ASIN
@@ -88,9 +88,8 @@ static inline int32_t drc_asin_fixed(int32_t x)
 static inline int32_t drc_sin_fixed(int32_t x)
 {
 	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923, 30);
-	int32_t sin_val = sin_fixed_16b(Q_MULTSR_32X32((int64_t)x, PI_OVER_TWO, 30, 30, 28));
 
-	return sin_val << 16;
+	return sofm_lut_sin_fixed_16b(Q_MULTSR_32X32((int64_t)x, PI_OVER_TWO, 30, 30, 28)) << 16;
 }
 
 #ifdef DRC_USE_CORDIC_ASIN
