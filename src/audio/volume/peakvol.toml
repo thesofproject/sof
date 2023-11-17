@@ -1,0 +1,23 @@
+	[[module.entry]]
+	name = "PEAKVOL"
+	uuid = "8A171323-94A3-4E1D-AFE9-FE5DBAA4C393"
+	affinity_mask = "0x1"
+	instance_count = "10"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "4"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 480, 11667000, 384, 384, 0, 11667, 0,
+			2, 0, 0, 0, 480, 5943000, 192, 192, 0, 5943, 0,
+			3, 0, 0, 0, 480, 12567000, 720, 720, 0, 12567, 0,
+			4, 0, 0, 0, 480, 7360000, 768, 768, 0, 7360, 0,
+			5, 0, 0, 0, 480, 12236000, 1536, 1536, 0, 12236, 0]
+
+	index = __COUNTER__

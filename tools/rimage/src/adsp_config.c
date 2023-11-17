@@ -1939,6 +1939,9 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		if (ret < 0)
 			return err_key_parse("auto_start", NULL);
 
+		parse_uint32_key(mod_entry, &ctx_entry, "index", 1, &ret);
+		/* Ignore if "index" is missing for backwards compatibility */
+
 		header = &modules->mod_ext.ext_mod_config_array[i].header;
 		header->version_major = 2;
 		header->version_minor = 5;
