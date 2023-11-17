@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_MIXER
+	bool "Mixer component"
+	default y
+	help
+	  Select for Mixer component

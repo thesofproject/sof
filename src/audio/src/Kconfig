@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_SRC
+	bool "SRC component"
+	default y
+	help
+	  Select for SRC component
+
+config COMP_SRC_LITE
+	bool "SRC_LITE component"
+	default y
+	help
+	  Select for SRC_LITE component
+	  which only supports a subset of conversions
+	  supported by the SRC module:
+	  48 -> 16kHz
+	  44.1 -> 16 kHz
+	  32 -> 16 kHz
+	  44.1 -> 48
+if COMP_SRC
+
+choice
+        prompt "SRC coefficient set"
+        default COMP_SRC_STD
+
+config COMP_SRC_STD
+	bool "Full conversions support and high quality"
+	help
+	  This coefficients set supports a large number of conversions
+	  with 8 - 192 kHz input and 8 - 48 kHz output. The coefficients
+	  are 32 bits for high conversion quality. The coefficients
+	  storage consume 79 kB. The runtime needs 8 kB. Use this if there
+	  is critical quality usage for SRC like music via headphones and
+	  need high sample rates.
+
+config COMP_SRC_SMALL
+	bool "Smaller conversions support and high quality"
+	help
+	  This coefficients set supports a small number of conversions
+	  with 8 - 48 kHz input and output. The coefficients are 32 bits
+	  for high conversion quality. The coefficients storage consumes
+	  30 kB RAM. Runtime needs 4 kB. Use this if there is critical
+	  quality usage for SRC like music via headphones.
+
+config COMP_SRC_TINY
+	bool "Reduced conversions support and reduced quality"
+	help
+	  This coefficients set supports a minimum number of conversions
+	  with 8 - 48 kHz input and output. The coefficients are 16 bits
+	  that restricts the possible stop-attenuation and could cause
+	  some audible aliasing. The bandwidth of the filters is restricted
+	  so the full 20 kHz band is not met even if sample rate would
+	  allow. The coefficients storage consumes 5 kB RAM. The runtime
+	  needs 6 kB. Use this to save RAM for other applications when SRC
+	  has no critical usage or when only need with lower quality
+	  endpoint like miniature speakers.
+
+config COMP_SRC_IPC4_FULL_MATRIX
+	bool "Full IPC4 conversions matrix support and high quality"
+	help
+	  This coefficients set supports a large number of conversions
+	  with 8 - 192 kHz input 8 - 192 kHz output. The 32 bits coefficients
+	  storate consumes 241 kB. The runtime needs 9 kB. Use this to
+	  make the full conversions set available for IPC4 build.
+
+endchoice
+
+endif # SRC

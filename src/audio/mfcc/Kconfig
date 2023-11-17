@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_MFCC
+	bool "MFCC component"
+	depends on COMP_MODULE_ADAPTER
+	select CORDIC_FIXED
+	select MATH_16BIT_MEL_FILTERBANK
+	select MATH_AUDITORY
+	select MATH_DCT
+	select MATH_DECIBELS
+	select MATH_FFT
+	select MATH_MATRIX
+	select MATH_WINDOW
+	select NATURAL_LOGARITHM_FIXED
+	select NUMBERS_NORM
+	select SQRT_FIXED
+	default y
+	help
+	  This option enables build of a Mel-frequency cepstral coefficients
+	  (MFCC) audio features extractor component. It converts the input
+	  audio stream into encoded audio data for cepstral coefficients.
+	  The characteristic of the audio features are defined in the binary
+	  control blob. Directory tools/tune/mfcc contains a tool to create
+	  the configurations.

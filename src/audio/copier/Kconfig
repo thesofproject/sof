@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_COPIER
+        bool "COPIER component"
+        default y
+        depends on IPC_MAJOR_4
+        help
+          Select for COPIER component
+
+config COMP_DAI
+	bool "DAI component"
+	default y
+	help
+	  Select for DAI component
+
+config COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
+	bool "Reverse the ordering of DMA and DAI triggers during STOP/PAUSE"
+	help
+	  Select if the ordering of DMA and DAI triggers during stop/pause should be reversed.
+	  The normal order during stop/pause is to stop DAI before stopping DMA. This option will
+	  allow reversing the order to do DMA stop before stopping DAI.
+
+config COMP_DAI_GROUP
+	bool "DAI Grouping support"
+	default y
+	help
+	  Select for grouping physical DAIs into a logical DAI that can be
+	  triggered atomically to synchronise stream start and stop operations.
