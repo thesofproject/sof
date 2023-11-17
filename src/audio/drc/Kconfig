@@ -3,6 +3,7 @@
 config COMP_DRC
 	bool "Dynamic Range Compressor component"
 	select CORDIC_FIXED
+        select MATH_LUT_SINE_FIXED
 	select NUMBERS_NORM
 	select MATH_EXP
 	select COMP_BLOB
