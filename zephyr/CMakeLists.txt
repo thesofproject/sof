@@ -48,16 +48,17 @@ zephyr_interface_library_named(SOF)
 # SOF source paths.
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
+
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
 set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
-set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
+
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
 # Save path to rimage configuration files in cmake cache for later use by
