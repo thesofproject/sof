@@ -1004,7 +1004,7 @@ static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 		 * Here we just set pointer end_offset to the end of data
 		 * and iterate until we reach that
 		 */
-		const uint8_t *end_offset = data + data_off_size;
+		const uint8_t *end_offset = (const uint8_t *)data + data_off_size;
 
 		while ((const uint8_t *)tlv < end_offset) {
 			/* check for invalid length */
@@ -1037,7 +1037,7 @@ static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 		data_off_size -= sizeof(struct sof_tlv);
 	}
 	return drv->ops.set_large_config(dev, param_id, init_block, final_block,
-					 data_off_size, (uint8_t *)data);
+					 data_off_size, data);
 }
 
 static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
