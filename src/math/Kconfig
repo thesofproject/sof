@@ -9,6 +9,17 @@ config CORDIC_FIXED
 	  Select this to enable sin(), cos(), asin(), acos(),
 	  and cexp() functions as 16 bit and 32 bit versions.
 
+config MATH_LUT_SINE_FIXED
+	bool "Lookup table based sine function"
+	default n
+	help
+	  Select this to enable sofm_lut_sin_fixed_16b() function. The
+	  calculation is using 1/4 wave lookup and interpolation. Use
+	  this for fast sine calculation in hot code parts. Sine
+	  calculation in component initialization should use the cordic
+	  version. This option consumes 1026 bytes .bss RAM for the
+	  lookup table.
+
 config POWER_FIXED
        bool "Power function"
        default n

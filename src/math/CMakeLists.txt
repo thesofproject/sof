@@ -11,6 +11,8 @@ if(CONFIG_CORDIC_FIXED)
         add_local_sources(sof trig.c)
 endif()
 
+add_local_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED sof lut_trig.c)
+
 add_local_sources_ifdef(CONFIG_SQRT_FIXED sof sqrt_int16.c)
 
 add_local_sources_ifdef(CONFIG_MATH_EXP sof exp_fcn.c exp_fcn_hifi.c)
