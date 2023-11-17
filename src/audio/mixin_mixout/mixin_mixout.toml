@@ -1,0 +1,56 @@
+	[[module.entry]]
+	name = "MIXIN"
+	uuid = "39656EB2-3B71-4049-8D3F-F92CD5C43C09"
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "1"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0,   0,   0xfeef, 0xc,  0x8,   0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 296, 4996000, 384, 384, 0, 4996, 0,
+			2, 0, 0, 0, 296, 2652000, 384, 384, 0, 2652, 0,
+			3, 0, 0, 0, 296, 2928000, 512, 512, 0, 2928, 0,
+			4, 0, 0, 0, 296, 2572000, 128, 128, 0, 2572, 0,
+			5, 0, 0, 0, 296, 3760000, 1536, 1536, 0, 3760, 0]
+
+	index = __COUNTER__
+
+	[[module.entry]]
+	name = "MIXOUT"
+	uuid = "3C56505A-24D7-418F-BDDC-C1F5A3AC2AE0"
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "2"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [1, 0, 0, 0, 520, 2280000, 384, 384, 0, 2280, 0,
+			2, 0, 0, 0, 520, 1988000, 384, 384, 0, 1988, 0,
+			3, 0, 0, 0, 520, 7631000, 512, 512, 0, 7631, 0,
+			4, 0, 0, 0, 520, 1953000, 128, 128, 0, 1953, 0,
+			5, 0, 0, 0, 520, 2301000, 1536, 1536, 0, 2301, 0]
+
+	index = __COUNTER__
