@@ -416,6 +416,11 @@ zephyr_library_sources(
 	lib.c
 )
 
+# Optional math utility
+zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
+	${SOF_MATH_PATH}/lut_trig.c
+)
+
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
