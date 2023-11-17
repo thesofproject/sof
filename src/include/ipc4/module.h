@@ -64,7 +64,7 @@ union ipc4_extended_param_id {
 		uint32_t parameter_type     : 8;
 		uint32_t parameter_instance : 24;
 	} part;
-} __packed __aligned(4);
+} __attribute__((packed, aligned(4)));
 
 /*
  * Host Driver sends this message to create a new module instance.
@@ -360,7 +360,7 @@ struct ipc4_dx_state_info {
 	 * bit[core_id] = 1 -> put core_id to D0
 	 */
 	uint32_t dx_mask;
-} __packed __aligned(4);
+} __attribute__((packed, aligned(4)));
 
 struct ipc4_module_set_dx {
 	union {
@@ -420,7 +420,7 @@ struct ipc4_module_load_library {
 			uint32_t _reserved_2		: 2;
 		} r;
 	} data;
-} __packed __aligned(4);
+} __attribute__((packed, aligned(4)));
 
 #define IPC4_COMP_ID(x, y)	((y) << 16 | (x))
 #define IPC4_MOD_ID(x)	(IS_ENABLED(CONFIG_IPC_MAJOR_4) ? ((x) & 0xffff) : 0)
