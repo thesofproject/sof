@@ -128,6 +128,20 @@ macro(is_zephyr ret)
 	endif()
 endmacro()
 
+# Wrappers for re-using existing, XTOS CMake files. Do NOT use in Zephyr-specific code.
+macro(add_local_sources target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources() target is not 'sof'")
+	endif()
+	zephyr_library_sources(${ARGN})
+endmacro()
+macro(add_local_sources_ifdef condition target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources_ifdef() target is not 'sof'")
+	endif()
+	zephyr_library_sources_ifdef(${condition} ${ARGN})
+endmacro()
+
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 
