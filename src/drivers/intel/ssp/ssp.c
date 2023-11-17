@@ -1108,9 +1108,18 @@ static int ssp_probe(struct dai *dai)
 
 static int ssp_remove(struct dai *dai)
 {
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
-	ssp_mclk_disable_unprepare(dai);
+	/*
+	 * dai comp will be freed during HW_FREE stage if dynamic pipeline is
+	 * enabled; need to check the MCLK_AON quirk to see if we need to keep
+	 * MCLK on even when dai comp is going to be freed
+	 */
+	if (!(ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_AON))
+		ssp_mclk_disable_unprepare(dai);
+
 	ssp_bclk_disable_unprepare(dai);
 
 	/* Disable SSP power */
