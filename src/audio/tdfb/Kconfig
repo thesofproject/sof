@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_TDFB
+	bool "TDFB component"
+	depends on COMP_MODULE_ADAPTER
+	select MATH_FIR
+	select MATH_IIR_DF1
+	select SQRT_FIXED
+	select CORDIC_FIXED
+	select COMP_BLOB
+	default y
+	help
+	  Select for time domain fixed beamformer (TDFB) component. The
+          beamformer component enhances microphone capture by spatial
+          suppression of noise and improvement of signal-to-noise ratio of
+          capture from beam direction. The component is essentially a generic
+          single rate FIR filter bank that performs microphone array
+          directivity enhancement when programmed with suitable configuration
+          for channels selection, channel filter coefficients, and output
+          streams mixing.
