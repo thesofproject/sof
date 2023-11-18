@@ -208,6 +208,8 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	audio_stream_set_buffer_fmt(&buffer->stream,
 				    copier_cfg->base.audio_fmt.interleaving_style);
 
+	audio_stream_set_align(1, 1, &buffer->stream);
+
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
 

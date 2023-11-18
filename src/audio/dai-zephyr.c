@@ -1334,18 +1334,14 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 				   struct comp_buffer *multi_endpoint_buffer,
 				   int num_endpoints)
 {
-	uint32_t avail_bytes = UINT32_MAX;
-	uint32_t free_bytes = UINT32_MAX;
-	uint32_t frames;
-	uint32_t src_frames, sink_frames;
 	uint32_t frame_bytes;
+	uint32_t frames_aligned;
+	uint32_t frames = UINT32_MAX;
 	int ret, i;
 	int direction;
 
 	if (!num_endpoints || !dd || !multi_endpoint_buffer)
 		return 0;
-
-	frame_bytes = audio_stream_frame_bytes(&dd[0]->dma_buffer->stream);
 
 	direction = dev->direction;
 
@@ -1361,37 +1357,41 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		case -EPIPE:
 			/* DMA status can return -EPIPE and current status content if xrun occurs */
 			if (direction == SOF_IPC_STREAM_PLAYBACK)
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() underrun occurred, endpoint: %d ret = %u",
+				comp_dbg(dev, "dma_get_status() underrun occurred endpoint: %d ret = %u",
 					 i, ret);
 			else
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() overrun occurred, enpdoint: %d ret = %u",
+				comp_dbg(dev, "dma_get_status() overrun occurred, enpdoint: %d ret = %u",
 					 i, ret);
 			break;
 		default:
 			return ret;
 		}
 
-		avail_bytes = MIN(avail_bytes, stat.pending_length);
-		free_bytes = MIN(free_bytes, stat.free);
+		/* Use frames_aligned here to avoid glitches, especially for streams
+		 * with odd number of channels. Update frames for every dai in a loop.
+		 */
+		if (direction == SOF_IPC_STREAM_PLAYBACK)
+			frames_aligned =
+				audio_stream_avail_frames_aligned(&multi_endpoint_buffer->stream,
+								  &dd[i]->dma_buffer->stream);
+		else
+			frames_aligned =
+				audio_stream_avail_frames_aligned(&dd[i]->dma_buffer->stream,
+								  &multi_endpoint_buffer->stream);
+		frames = MIN(frames, frames_aligned);
 	}
-
-	/* calculate minimum size to copy */
-	if (direction == SOF_IPC_STREAM_PLAYBACK) {
-		src_frames = audio_stream_get_avail_frames(&multi_endpoint_buffer->stream);
-		sink_frames = free_bytes / frame_bytes;
-	} else {
-		src_frames = avail_bytes / frame_bytes;
-		sink_frames = audio_stream_get_free_frames(&multi_endpoint_buffer->stream);
-	}
-
-	frames = MIN(src_frames, sink_frames);
 
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
 	 * spike if FAST_MODE is enabled, then one period limitation is omitted. All dd's have the
 	 * same period_bytes, so use the period_bytes from dd[0]
 	 */
-	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
-		frames = MIN(frames, dd[0]->period_bytes / frame_bytes);
+	if (!dd[0]->fast_mode) {
+		size_t period_frames = dd[0]->period_bytes /
+			audio_stream_frame_bytes(&dd[0]->dma_buffer->stream);
+		if (period_frames < frames)
+			frames = period_frames;
+	}
+
 	comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(), dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
