@@ -38,7 +38,7 @@
 #include <zephyr/logging/log_ctrl.h>
 #include <user/abi_dbg.h>
 #include <sof_versions.h>
-#include <version.h>
+#include <zephyr/version.h>
 #endif
 #include <sof/lib/ams.h>
 

@@ -29,7 +29,7 @@
 #include <sof_versions.h>
 
 #ifdef __ZEPHYR__
-#include <version.h>
+#include <zephyr/version.h>
 #endif
 
 #include <errno.h>

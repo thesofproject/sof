@@ -17,7 +17,7 @@
 #include <rtos/alloc.h>
 
 /* Zephyr includes */
-#include <version.h>
+#include <zephyr/version.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
