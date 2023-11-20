@@ -773,7 +773,8 @@ if (CONFIG_DTS_CODEC)
 			${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
 		)
 	else()
-		zephyr_library_import(DtsCodec ${SOF_AUDIO_PATH}/module_adapter/lib/release/libdts-sof-interface-i32.a)
+		zephyr_library_import(DtsCodec
+			${sof_top_dir}/third_party/lib/libdts-sof-interface-i32.a)
 	endif()
 endif()
 

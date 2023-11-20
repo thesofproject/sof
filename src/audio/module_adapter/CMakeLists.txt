@@ -69,7 +69,8 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		if (CONFIG_DTS_CODEC_STUB)
 			add_local_sources(sof module/dts/dts_stub.c)
 		else()
-			sof_add_static_library(DtsCodec ${CMAKE_CURRENT_LIST_DIR}/lib/release/libdts-sof-interface-i32.a)
+			sof_add_static_library(DtsCodec
+                               ${SOF_ROOT_SOURCE_DIRECTORY}/third_party/lib/libdts-sof-interface-i32.a)
 		endif()
 	endif()
 
