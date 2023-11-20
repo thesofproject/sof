@@ -208,6 +208,7 @@ set(TPLGS
 	"sof-adl-nau8825\;sof-adl-nau8318-nau8825\;-DCODEC=NAU8318\;-DFMT=s16le\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DSPK_MIC_PERIOD_US=10000\;-DDYNAMIC=1"
 	"sof-tgl-sdw-max98373-rt5682\;sof-tgl-sdw-max98373-rt5682\;-DCHANNELS=4\;-DPLATFORM=tgl"
 	"sof-tgl-sdw-max98373-rt5682\;sof-adl-sdw-max98373-rt5682\;-DCHANNELS=4\;-DPLATFORM=adl\;-DDYNAMIC=1"
+	"sof-adl-sdw-cs42l42\;sof-adl-sdw-cs42l42-4ch\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DPLATFORM=adl"
 	"sof-jsl-da7219\;sof-jsl-da7219\;-DPLATFORM=jsl"
 	"sof-jsl-da7219\;sof-jsl-da7219-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-smart-amplifier-nocodec\;sof-smart-amplifier-nocodec"
