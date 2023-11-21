@@ -151,6 +151,8 @@ rsource "rtnr/Kconfig"
 
 rsource "mfcc/Kconfig"
 
+rsource "codec/Kconfig"
+
 endmenu # "Audio components"
 
 menu "Data formats"

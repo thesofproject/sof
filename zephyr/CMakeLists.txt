@@ -786,12 +786,12 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
+	${SOF_AUDIO_PATH}/codec/dts/dts.c
 )
 if (CONFIG_DTS_CODEC)
 	if (CONFIG_DTS_CODEC_STUB)
 		zephyr_library_sources(
-			${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
+			${SOF_AUDIO_PATH}/codec/dts/dts_stub.c
 		)
 	else()
 		zephyr_library_import(DtsCodec
