@@ -510,7 +510,7 @@ ifelse(
 		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
-		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))',
+		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, eval(SSP_CC_BCLK_ES | SSP_CC_MCLK_AON))))',
 	HEADPHONE, `RT5650', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, MCLK_RATE, codec_mclk_in),
 		SSP_CLOCK(bclk, 3072000, codec_slave),
