@@ -96,9 +96,10 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 	task->state = SOF_TASK_STATE_QUEUED;
 
 	/*
-	 * Tasks are added into the list from highest to lowest priority. This
-	 * way they can then be run in the same order. Tasks with the same
-	 * priority are served on a first-come-first-serve basis
+	 * Tasks are added into the list in priority order. List order
+	 * defines schedule order. Priority 0 indicates highest
+	 * priority and is run first. Tasks with the same priority are
+	 * served on a first-come-first-served basis.
 	 */
 	list_for_item(list, &sch->tasks) {
 		task_iter = container_of(list, struct task, list);
