@@ -111,18 +111,11 @@ typedef void (*normal_mix_func)(struct audio_stream *sink, int32_t start_frame,
 				int32_t frame_count, uint16_t gain);
 
 /**
- * \brief mixin_mixout mute processing function interface
- */
-typedef void (*mute_func) (struct audio_stream *stream, int32_t channel_index,
-			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count);
-
-/**
  * @brief mixin_mixout processing functions map.
  */
 struct mix_func_map {
 	uint16_t frame_fmt;				/* frame format */
 	normal_mix_func normal_func;	/* normal mode mixin_mixout processing function */
-	mute_func mute_func;			/* mute processing function */
 };
 
 extern const struct mix_func_map mix_func_map[];
@@ -139,23 +132,6 @@ static inline normal_mix_func normal_mix_get_processing_function(int fmt)
 	for (i = 0; i < mix_count; i++) {
 		if (fmt == mix_func_map[i].frame_fmt)
 			return mix_func_map[i].normal_func;
-	}
-
-	return NULL;
-}
-
-/**
- * \brief Retrievies normal mode mixer processing function.
- * \param[in] fmt  stream PCM frame format
- */
-static inline mute_func mute_mix_get_processing_function(int fmt)
-{
-	int i;
-
-	/* map the mute function for source and sink buffers */
-	for (i = 0; i < mix_count; i++) {
-		if (fmt == mix_func_map[i].frame_fmt)
-			return mix_func_map[i].mute_func;
 	}
 
 	return NULL;
