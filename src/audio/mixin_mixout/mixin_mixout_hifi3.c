@@ -11,16 +11,9 @@
 #ifdef MIXIN_MIXOUT_HIFI3
 
 #if CONFIG_FORMAT_S16LE
-/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
- * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
- * the function to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void normal_mix_channel_s16(struct audio_stream *sink, int32_t start_frame,
-				   int32_t mixed_frames,
-				   const struct audio_stream *source,
-				   int32_t frame_count, uint16_t gain)
+static void mix_s16(struct audio_stream *sink, int32_t start_frame, int32_t mixed_frames,
+		    const struct audio_stream *source,
+		    int32_t frame_count, uint16_t gain)
 {
 	int frames_to_mix, frames_to_copy, left_frames;
 	int n, nmax, i, m, left;
@@ -107,16 +100,9 @@ static void normal_mix_channel_s16(struct audio_stream *sink, int32_t start_fram
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
- * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
- * the function to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void normal_mix_channel_s24(struct audio_stream *sink, int32_t start_frame,
-				   int32_t mixed_frames,
-				   const struct audio_stream *source,
-				   int32_t frame_count, uint16_t gain)
+static void mix_s24(struct audio_stream *sink, int32_t start_frame, int32_t mixed_frames,
+		    const struct audio_stream *source,
+		    int32_t frame_count, uint16_t gain)
 {
 	int frames_to_mix, frames_to_copy, left_frames;
 	int n, nmax, i, m, left;
@@ -197,16 +183,9 @@ static void normal_mix_channel_s24(struct audio_stream *sink, int32_t start_fram
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-/* Instead of using audio_stream_get_channels(sink) and audio_stream_get_channels(source),
- * sink_channel_count and source_channel_count are supplied as parameters. This is done to reuse
- * the function to also mix an entire stream. In this case the function is called with fake stream
- * parameters: multichannel stream is treated as single channel and so the entire stream
- * contents is mixed.
- */
-static void normal_mix_channel_s32(struct audio_stream *sink, int32_t start_frame,
-				   int32_t mixed_frames,
-				   const struct audio_stream *source,
-				   int32_t frame_count, uint16_t gain)
+static void mix_s32(struct audio_stream *sink, int32_t start_frame, int32_t mixed_frames,
+		    const struct audio_stream *source,
+		    int32_t frame_count, uint16_t gain)
 {
 	int frames_to_mix, frames_to_copy, left_frames;
 	int n, nmax, i, m, left;
@@ -289,13 +268,13 @@ static void normal_mix_channel_s32(struct audio_stream *sink, int32_t start_fram
 
 const struct mix_func_map mix_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, normal_mix_channel_s16 },
+	{ SOF_IPC_FRAME_S16_LE, mix_s16 },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, normal_mix_channel_s24 },
+	{ SOF_IPC_FRAME_S24_4LE, mix_s24 },
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, normal_mix_channel_s32 }
+	{ SOF_IPC_FRAME_S32_LE, mix_s32 }
 #endif
 };
 
