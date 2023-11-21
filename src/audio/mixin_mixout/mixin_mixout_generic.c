@@ -60,38 +60,6 @@ static void normal_mix_channel_s16(struct audio_stream *sink, int32_t start_fram
 		src += n;
 	}
 }
-
-static void mute_channel_s16(struct audio_stream *stream, int32_t channel_index,
-			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
-{
-	int32_t skip_mixed_frames, n, left_frames, i, channel_count, frames, samples;
-	int16_t *ptr;
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-	channel_count = audio_stream_get_channels(stream);
-	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (int16_t *)audio_stream_get_wptr(stream) +
-		mixed_frames * audio_stream_get_channels(stream) +
-		channel_index;
-
-	for (left_frames = frame_count; left_frames; left_frames -= frames) {
-		ptr = audio_stream_wrap(stream, ptr);
-		n = audio_stream_samples_without_wrap_s16(stream, ptr);
-		samples = left_frames * channel_count;
-		n = MIN(samples, n);
-		frames = 0;
-		for (i = 0; i < n; i += channel_count) {
-			*ptr = 0;
-			ptr += channel_count;
-			frames++;
-		}
-	}
-}
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
@@ -197,50 +165,15 @@ static void normal_mix_channel_s32(struct audio_stream *sink, int32_t start_fram
 
 #endif	/* CONFIG_FORMAT_S32LE */
 
-#if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S24LE
-static void mute_channel_s32(struct audio_stream *stream, int32_t channel_index,
-			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
-{
-	int32_t skip_mixed_frames, left_frames, n, channel_count, i, frames, samples;
-	int32_t *ptr;
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-	channel_count = audio_stream_get_channels(stream);
-
-	ptr = (int32_t *)audio_stream_get_wptr(stream) +
-		mixed_frames * audio_stream_get_channels(stream) +
-		channel_index;
-
-	for (left_frames = frame_count; left_frames > 0; left_frames -= frames) {
-		ptr = audio_stream_wrap(stream, ptr);
-		n = audio_stream_samples_without_wrap_s32(stream, ptr);
-		samples = left_frames * channel_count;
-		n =  MIN(samples, n);
-		frames = 0;
-		for (i = 0; i < n; i += channel_count) {
-			*ptr = 0;
-			ptr += channel_count;
-			frames++;
-		}
-	}
-}
-
-#endif
-
 const struct mix_func_map mix_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, normal_mix_channel_s16, mute_channel_s16},
+	{ SOF_IPC_FRAME_S16_LE, normal_mix_channel_s16 },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, normal_mix_channel_s24, mute_channel_s32},
+	{ SOF_IPC_FRAME_S24_4LE, normal_mix_channel_s24 },
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, normal_mix_channel_s32, mute_channel_s32}
+	{ SOF_IPC_FRAME_S32_LE, normal_mix_channel_s32 }
 #endif
 };
 

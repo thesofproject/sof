@@ -103,34 +103,6 @@ static void normal_mix_channel_s16(struct audio_stream *sink, int32_t start_fram
 		}
 	}
 }
-
-static void mute_channel_s16(struct audio_stream *stream, int32_t channel_index,
-			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
-{
-	int skip_mixed_frames, left_frames;
-	int off = audio_stream_get_channels(stream) * sizeof(ae_int16);
-	ae_int16 *ptr;
-	ae_int16x4 zero = AE_ZERO16();
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-
-	AE_SETCBEGIN0(audio_stream_get_addr(stream));
-	AE_SETCEND0(audio_stream_get_end_addr(stream));
-
-	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int16 *)audio_stream_get_wptr(stream) +
-		mixed_frames * audio_stream_get_channels(stream) +
-		channel_index;
-	ptr = audio_stream_wrap(stream, ptr);
-
-	for (left_frames = frame_count ; left_frames; left_frames--)
-		AE_S16_0_XC(zero, ptr, off);
-}
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
@@ -314,46 +286,15 @@ static void normal_mix_channel_s32(struct audio_stream *sink, int32_t start_fram
 
 #endif	/* CONFIG_FORMAT_S32LE */
 
-#if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S24LE
-static void mute_channel_s32(struct audio_stream *stream, int32_t channel_index,
-			     int32_t start_frame, int32_t mixed_frames, int32_t frame_count)
-{
-	int skip_mixed_frames, left_frames;
-	ae_int32 *ptr;
-	int off = audio_stream_get_channels(stream) * sizeof(ae_int32);
-	ae_int32x2 zero = AE_ZERO32();
-
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
-
-	if (frame_count <= skip_mixed_frames)
-		return;
-	frame_count -= skip_mixed_frames;
-
-	AE_SETCBEGIN0(audio_stream_get_addr(stream));
-	AE_SETCEND0(audio_stream_get_end_addr(stream));
-
-	/* audio_stream_wrap() is needed here and it is just below in a loop */
-	ptr = (ae_int32 *)audio_stream_get_wptr(stream) +
-		mixed_frames * audio_stream_get_channels(stream) +
-		channel_index;
-	ptr = audio_stream_wrap(stream, ptr);
-
-	for (left_frames = frame_count ; left_frames > 0; left_frames--)
-		AE_S32_L_XC(zero, ptr, off);
-}
-
-#endif
-
 const struct mix_func_map mix_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, normal_mix_channel_s16, mute_channel_s16},
+	{ SOF_IPC_FRAME_S16_LE, normal_mix_channel_s16 },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, normal_mix_channel_s24, mute_channel_s32},
+	{ SOF_IPC_FRAME_S24_4LE, normal_mix_channel_s24 },
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, normal_mix_channel_s32, mute_channel_s32}
+	{ SOF_IPC_FRAME_S32_LE, normal_mix_channel_s32 }
 #endif
 };
 
