@@ -559,6 +559,8 @@ config COMP_MFCC
 	  control blob. Directory tools/tune/mfcc contains a tool to create
 	  the configurations.
 
+rsource "codec/Kconfig"
+
 endmenu # "Audio components"
 
 menu "Data formats"
