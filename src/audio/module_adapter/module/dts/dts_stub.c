@@ -4,7 +4,7 @@
 //
 // Author: Curtis Malainey <cujomalainey@chromium.org>
 
-#include <sof/audio/dts/DtsSofInterface.h>
+#include "DtsSofInterface.h"
 
 DtsSofInterfaceResult DTS_SOF_INTERFACE_API dtsSofInterfaceInit(
 		DtsSofInterfaceInst           **ppInst,

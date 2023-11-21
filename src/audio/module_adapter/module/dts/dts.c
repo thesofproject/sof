@@ -6,7 +6,7 @@
 
 #include <rtos/init.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/dts/DtsSofInterface.h>
+#include "DtsSofInterface.h"
 
 
 LOG_MODULE_REGISTER(dts, CONFIG_SOF_LOG_LEVEL);
