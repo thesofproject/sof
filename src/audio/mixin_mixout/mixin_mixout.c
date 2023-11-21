@@ -74,7 +74,7 @@ struct mixin_sink_config {
 
 /* mixin component private data */
 struct mixin_data {
-	normal_mix_func normal_mix_channel;
+	mix_func mix;
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
 };
 
@@ -181,10 +181,10 @@ static int mixout_free(struct processing_module *mod)
 	return 0;
 }
 
-static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_data,
-			 uint16_t sink_index, struct audio_stream *sink,
-			 uint32_t start_frame, uint32_t mixed_frames,
-			 const struct audio_stream *source, uint32_t frame_count)
+static int mix(struct comp_dev *dev, const struct mixin_data *mixin_data,
+	       uint16_t sink_index, struct audio_stream *sink,
+	       uint32_t start_frame, uint32_t mixed_frames,
+	       const struct audio_stream *source, uint32_t frame_count)
 {
 	const struct mixin_sink_config *sink_config;
 
@@ -196,17 +196,11 @@ static int mix_and_remap(struct comp_dev *dev, const struct mixin_data *mixin_da
 
 	sink_config = &mixin_data->sink_config[sink_index];
 
-	/* Mix streams. mix_channel() is reused here to mix streams, not individual
-	 * channels. To do so, (multichannel) stream is treated as single channel:
-	 * channel count is passed as 1, channel index is 0, frame indices (start_frame
-	 * and mixed_frame) and frame count are multiplied by real stream channel count.
-	 */
-	mixin_data->normal_mix_channel(sink, start_frame * audio_stream_get_channels(sink),
-				       mixed_frames * audio_stream_get_channels(sink),
-				       source,
-				       frame_count * audio_stream_get_channels(sink),
-				       sink_config->gain);
-
+	mixin_data->mix(sink, start_frame * audio_stream_get_channels(sink),
+			mixed_frames * audio_stream_get_channels(sink),
+			source,
+			frame_count * audio_stream_get_channels(sink),
+			sink_config->gain);
 
 	return 0;
 }
@@ -394,9 +388,9 @@ static int mixin_process(struct processing_module *mod,
 			 * sink buffer has some data (written by another mixin) mix that data
 			 * with source data.
 			 */
-			ret = mix_and_remap(dev, mixin_data, sinks_ids[i], &sink->stream,
-					    start_frame, mixout_data->mixed_frames,
-					    input_buffers[0].data, frames_to_copy);
+			ret = mix(dev, mixin_data, sinks_ids[i], &sink->stream,
+				  start_frame, mixout_data->mixed_frames,
+				  input_buffers[0].data, frames_to_copy);
 			if (ret < 0) {
 				return ret;
 			}
@@ -507,7 +501,7 @@ static int mixin_reset(struct processing_module *mod)
 
 	comp_dbg(dev, "mixin_reset()");
 
-	mixin_data->normal_mix_channel = NULL;
+	mixin_data->mix = NULL;
 
 	return 0;
 }
@@ -632,14 +626,14 @@ static int mixin_prepare(struct processing_module *mod,
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		md->normal_mix_channel = normal_mix_get_processing_function(fmt);
+		md->mix = mixin_get_processing_function(fmt);
 		break;
 	default:
 		comp_err(dev, "unsupported data format %d", fmt);
 		return -EINVAL;
 	}
 
-	if (!md->normal_mix_channel) {
+	if (!md->mix) {
 		comp_err(dev, "have not found the suitable processing function");
 		return -EINVAL;
 	}
