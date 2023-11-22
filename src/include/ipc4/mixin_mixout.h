@@ -105,10 +105,10 @@ struct ipc4_mixer_mode_config {
 /**
  * \brief mixin processing function interface
  */
-typedef void (*mix_func)(struct audio_stream *sink, int32_t start_frame,
-			 int32_t mixed_frames,
+typedef void (*mix_func)(struct audio_stream *sink, int32_t start_sample,
+			 int32_t mixed_samples,
 			 const struct audio_stream *source,
-			 int32_t frame_count, uint16_t gain);
+			 int32_t sample_count, uint16_t gain);
 
 /**
  * @brief mixin processing functions map.
