@@ -145,6 +145,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_INTEL_HDA
 	DT_FOREACH_STATUS_OKAY(intel_hda_dai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_NXP_SAI
+	DT_FOREACH_STATUS_OKAY(nxp_dai_sai, GET_DEVICE_LIST)
+#endif
 };
 
 static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
