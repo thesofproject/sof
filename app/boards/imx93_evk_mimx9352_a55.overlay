@@ -24,18 +24,6 @@
 		reg = <0x42430000 DT_SIZE_K(64)>;
 	};
 
-	sai3: memory@42660000 {
-		reg = <0x42660000 DT_SIZE_K(64)>;
-	};
-
-	edma2_ch0: memory@42010000 {
-		reg = <0x42010000 DT_SIZE_K(32)>;
-	};
-
-	edma2_ch1: memory@42018000 {
-		reg = <0x42018000 DT_SIZE_K(32)>;
-	};
-
 	outbox: memory@ce100000 {
 		reg = <0xce100000 DT_SIZE_K(4)>;
 	};
@@ -58,4 +46,22 @@
 	host_ram: memory@80000000 {
 		reg = <0x80000000 DT_SIZE_M(1024)>;
 	};
+
+	host_dma: dma {
+		compatible = "nxp,sof-host-dma";
+		dma-channels = <32>;
+		#dma-cells = <0>;
+	};
+};
+
+&sai3 {
+	tx-fifo-watermark = <2>;
+	rx-fifo-watermark = <96>;
+	fifo-depth = <96>;
+	rx-sync-mode = <1>;
+	status = "okay";
+};
+
+&edma4 {
+	status = "okay";
 };
