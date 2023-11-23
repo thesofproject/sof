@@ -81,9 +81,70 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	return 0;
 }
 
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 /*
  * Copy the audio buffer page tables from the host to the DSP max of 4K.
  */
+static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
+				    struct sof_ipc_host_buffer *ring)
+{
+	struct dma_config cfg;
+	struct dma_block_config blk;
+	int channel, ret;
+	uint32_t align;
+
+	/* TODO: ATM, all of this is somewhat NXP-specific as the
+	 * DMA driver used by NXP performs the transfer via the
+	 * reload() function which may not be the case for all
+	 * vendors.
+	 */
+	if (!IS_ENABLED(CONFIG_DMA_NXP_SOF_HOST_DMA)) {
+		tr_err(&ipc_tr, "DMAC not supported for page transfer");
+		return -ENOTSUP;
+	}
+
+	channel = dma_request_channel(dmac->z_dev, 0);
+	if (channel < 0) {
+		tr_err(&ipc_tr, "failed to request channel");
+		return channel;
+	}
+
+	/* fetch copy alignment */
+	ret = dma_get_attribute(dmac->z_dev, DMA_ATTR_COPY_ALIGNMENT, &align);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to fetch copy alignment");
+		goto out_release_channel;
+	}
+
+	/* prepare DMA configuration */
+	cfg.source_data_size = sizeof(uint32_t);
+	cfg.dest_data_size = sizeof(uint32_t);
+	cfg.block_count = 1;
+	cfg.head_block = &blk;
+	cfg.channel_direction = HOST_TO_MEMORY;
+
+	blk.source_address = POINTER_TO_UINT(host_to_local(ring->phy_addr));
+	blk.dest_address = POINTER_TO_UINT(page_table);
+	blk.block_size = ALIGN_UP(SOF_DIV_ROUND_UP(ring->pages * 20, 8), align);
+
+	/* commit configuration */
+	ret = dma_config(dmac->z_dev, channel, &cfg);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to commit configuration");
+		goto out_release_channel;
+	}
+
+	/* do transfer */
+	ret = dma_reload(dmac->z_dev, channel, 0, 0, 0);
+	if (ret < 0)
+		tr_err(&ipc_tr, "failed to perform transfer");
+
+out_release_channel:
+	dma_release_channel(dmac->z_dev, channel);
+
+	return ret;
+}
+#else
 static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 				    struct sof_ipc_host_buffer *ring)
 {
@@ -115,11 +176,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to minimum DMA copy size */
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-	ret = dma_get_attribute(dmac->z_dev, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
-#else
 	ret = dma_get_attribute_legacy(dmac, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
-#endif
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_get_attribute() failed");
 		goto out;
@@ -147,6 +204,7 @@ out:
 	dma_channel_put_legacy(chan);
 	return ret;
 }
+#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 int ipc_process_host_buffer(struct ipc *ipc,
 			    struct sof_ipc_host_buffer *ring,
