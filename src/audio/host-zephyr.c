@@ -935,10 +935,12 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	case DMA_DIR_LMEM_TO_HMEM:
 		dma_cfg->channel_direction = MEMORY_TO_HOST;
 		dma_block_cfg->source_address = buffer_addr;
+		dma_block_cfg->dest_address = hd->config.elem_array.elems[0].dest;
 		break;
 	case DMA_DIR_HMEM_TO_LMEM:
 		dma_cfg->channel_direction = HOST_TO_MEMORY;
 		dma_block_cfg->dest_address = buffer_addr;
+		dma_block_cfg->source_address = hd->config.elem_array.elems[0].src;
 		break;
 	}
 
