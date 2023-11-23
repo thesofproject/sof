@@ -254,7 +254,7 @@ static uint32_t basefw_set_system_time(uint32_t param_id,
 	global_system_time_info.host_time.val_l = ((const struct ipc4_system_time *)data)->val_l;
 	global_system_time_info.host_time.val_u = ((const struct ipc4_system_time *)data)->val_u;
 
-	uint64_t current_dsp_time = sof_cycle_get_64();
+	uint64_t current_dsp_time = k_cyc_to_us_floor64(sof_cycle_get_64());
 
 	global_system_time_info.dsp_time.val_l = (uint32_t)(current_dsp_time);
 	global_system_time_info.dsp_time.val_u = (uint32_t)(current_dsp_time >> 32);
