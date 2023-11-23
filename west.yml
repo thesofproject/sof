@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: tmleman
+      url-base: https://github.com/tmleman
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
