@@ -1053,6 +1053,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
 
+	if (dev->state == comp_get_requested_state(cmd))
+		return PPL_STATUS_PATH_STOP;
+
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		comp_dbg(dev, "dai_comp_trigger_internal(), START");
@@ -1150,6 +1153,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 			dai_trigger_op(dd->dai, cmd, dev->direction);
 		break;
 	}
+
+	if (!ret)
+		return comp_set_state(dev, cmd);
 
 	return ret;
 }
