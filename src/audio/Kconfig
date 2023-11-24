@@ -329,6 +329,15 @@ config COMP_SMART_AMP
 
 rsource "smart_amp/Kconfig"
 
+config AW_SKTUNE
+	bool "Awinic SKTune component of Awinic supported chips"
+	select COMP_BLOB
+	default n
+	help
+	  Select for Awinic SKTune component.
+	  This component protect the speaker from overheating and
+	  excursion violation.
+
 config COMP_ASRC
 	bool "ASRC component"
 	default y
