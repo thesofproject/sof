@@ -830,6 +830,8 @@ if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
 target_compile_options(SOF INTERFACE -fno-inline-functions)
 endif()
 
+target_compile_options(SOF INTERFACE -Wno-address-of-packed-member)
+
 # SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
 # extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
