@@ -161,6 +161,10 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = is_blob ? DAI_INTEL_HDA_NHLT : DAI_INTEL_HDA;
 		cfg_params = is_blob ? spec_config : &sof_cfg->hda;
 		break;
+	case SOF_DAI_IMX_SAI:
+		cfg.type = DAI_IMX_SAI;
+		cfg_params = &sof_cfg->sai;
+		break;
 	default:
 		return -EINVAL;
 	}
