@@ -718,6 +718,13 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		dma_block_cfg->block_size = config->elem_array.elems[i].size;
 		dma_block_cfg->source_address = config->elem_array.elems[i].src;
 		dma_block_cfg->dest_address = config->elem_array.elems[i].dest;
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+		} else {
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+		}
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
 	}
