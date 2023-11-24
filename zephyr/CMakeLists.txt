@@ -323,16 +323,12 @@ if (CONFIG_SOC_MIMX9352_A55)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx93_a55/platform.c
 		${SOF_PLATFORM_PATH}/imx93_a55/lib/clk.c
-		${SOF_PLATFORM_PATH}/imx93_a55/lib/dma.c
-		${SOF_PLATFORM_PATH}/imx93_a55/lib/dai.c
+		lib/dma.c
 	)
 
 	# Drivers
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/ipc.c
-		${SOF_DRIVERS_PATH}/imx/edma.c
-		${SOF_DRIVERS_PATH}/imx/sai.c
 	)
 
 	zephyr_library_sources(

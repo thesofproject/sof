@@ -118,12 +118,6 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
-	/* Initialize DMA domain */
-	sof->platform_dma_domain = zephyr_dma_domain_init(&sof->dma_info->dma_array[0],
-							  1,
-							  PLATFORM_DEFAULT_CLOCK);
-	zephyr_ll_scheduler_init(sof->platform_dma_domain);
-
 	/* Initialize IPC */
 	ipc_init(sof);
 
