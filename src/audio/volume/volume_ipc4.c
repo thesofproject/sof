@@ -55,7 +55,7 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	/* init ramp start volume*/
 	cd->rvolume[channel] = 0;
 	/* init muted volume */
-	cd->mvolume[channel] = 0;
+	cd->mvolume[channel] = 0
 	/* set muted as false*/
 	cd->muted[channel] = false;
 
