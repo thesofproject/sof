@@ -17,7 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/cpu.h>
 
-#define __coherent __attribute__((packed, aligned(DCACHE_LINE_SIZE)))
+#define __coherent __aligned(DCACHE_LINE_SIZE)
 
 /*
  * The coherent API allows optimized access to memory by multiple cores, using
