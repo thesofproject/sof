@@ -224,6 +224,7 @@ static int ghd_setup_model(struct comp_dev *dev)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int ghd_ctrl_set_bin_data(struct comp_dev *dev,
 				 struct sof_ipc_ctrl_data *cdata)
 {
@@ -309,6 +310,7 @@ static int ghd_cmd(struct comp_dev *dev, int cmd, void *data,
 		return -EINVAL;
 	}
 }
+#endif
 
 static int ghd_trigger(struct comp_dev *dev, int cmd)
 {
@@ -459,7 +461,9 @@ static const struct comp_driver ghd_driver = {
 		.create		= ghd_create,
 		.free		= ghd_free,
 		.params		= ghd_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd		= ghd_cmd,
+#endif
 		.trigger	= ghd_trigger,
 		.copy		= ghd_copy,
 		.prepare	= ghd_prepare,
