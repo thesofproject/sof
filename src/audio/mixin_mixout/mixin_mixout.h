@@ -102,12 +102,19 @@ struct ipc4_mixer_mode_config {
 	struct ipc4_mixer_mode_sink_config mixer_mode_sink_configs[1];
 } __packed __aligned(4);
 
+/* Pointer to data in circular buffer together with buffer boundaries */
+struct cir_buf_ptr {
+	void *buf_start;
+	void *buf_end;
+	void *ptr;
+};
+
 /**
  * \brief mixin processing function interface
  */
-typedef void (*mix_func)(struct audio_stream *sink, int32_t start_sample,
+typedef void (*mix_func)(struct cir_buf_ptr *sink, int32_t start_sample,
 			 int32_t mixed_samples,
-			 const struct audio_stream *source,
+			 const struct cir_buf_ptr *source,
 			 int32_t sample_count, uint16_t gain);
 
 /**
