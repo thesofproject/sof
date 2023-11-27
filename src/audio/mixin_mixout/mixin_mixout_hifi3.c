@@ -10,8 +10,8 @@
 #ifdef MIXIN_MIXOUT_HIFI3
 
 #if CONFIG_FORMAT_S16LE
-static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int samples_to_mix, samples_to_copy, left_samples;
@@ -23,9 +23,9 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
-	/* audio_stream_wrap() is required and is done below in a loop */
-	ae_int16 *dst = (ae_int16 *)audio_stream_get_wptr(sink) + start_sample;
-	ae_int16 *src = audio_stream_get_rptr(source);
+	/* cir_buf_wrap() is required and is done below in a loop */
+	ae_int16 *dst = (ae_int16 *)sink->ptr + start_sample;
+	ae_int16 *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -33,12 +33,12 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	n = 0;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s16(source, src);
+		nmax = (ae_int16 *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
+		nmax = (ae_int16 *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int16x4 *)src;
 		out = (ae_int16x4 *)dst;
@@ -68,12 +68,12 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s16(source, src);
+		nmax = (ae_int16 *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
+		nmax = (ae_int16 *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int16x4 *)src;
 		out = (ae_int16x4 *)dst;
@@ -99,8 +99,8 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int samples_to_mix, samples_to_copy, left_samples;
@@ -112,9 +112,9 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
-	/* audio_stream_wrap() is required and is done below in a loop */
-	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_sample;
-	int32_t *src = audio_stream_get_rptr(source);
+	/* cir_buf_wrap() is required and is done below in a loop */
+	int32_t *dst = (int32_t *)sink->ptr + start_sample;
+	int32_t *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -122,12 +122,12 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	n = 0;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s24(source, src);
+		nmax = (int32_t *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int32x2 *)src;
 		out = (ae_int32x2 *)dst;
@@ -155,11 +155,11 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
-		nmax = audio_stream_samples_without_wrap_s24(source, src);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
+		nmax = (int32_t *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int32x2 *)src;
 		out = (ae_int32x2 *)dst;
@@ -182,8 +182,8 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int samples_to_mix, samples_to_copy, left_samples;
@@ -195,9 +195,9 @@ static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu1 = AE_ZALIGN64();
 	ae_valign outu2 = AE_ZALIGN64();
-	/* audio_stream_wrap() is required and is done below in a loop */
-	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_sample;
-	int32_t *src = audio_stream_get_rptr(source);
+	/* cir_buf_wrap() is required and is done below in a loop */
+	int32_t *dst = (int32_t *)sink->ptr + start_sample;
+	int32_t *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -205,12 +205,12 @@ static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	n = 0;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s32(source, src);
+		nmax = (int32_t *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int32x2 *)src;
 		out = (ae_int32x2 *)dst;
@@ -237,12 +237,12 @@ static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src + n);
-		dst = audio_stream_wrap(sink, dst + n);
+		src = cir_buf_wrap(src + n, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s32(source, src);
+		nmax = (int32_t *)source->buf_end - src;
 		n = AE_MIN_32_signed(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = AE_MIN_32_signed(n, nmax);
 		in = (ae_int32x2 *)src;
 		out = (ae_int32x2 *)dst;

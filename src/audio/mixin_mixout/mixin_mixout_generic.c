@@ -11,16 +11,16 @@
 #ifdef MIXIN_MIXOUT_GENERIC
 
 #if CONFIG_FORMAT_S16LE
-static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
 
-	/* audio_stream_wrap() is required and is done below in a loop */
-	int16_t *dst = (int16_t *)audio_stream_get_wptr(sink) + start_sample;
-	int16_t *src = audio_stream_get_rptr(source);
+	/* cir_buf_wrap() is required and is done below in a loop */
+	int16_t *dst = (int16_t *)sink->ptr + start_sample;
+	int16_t *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = mixed_samples - start_sample;
@@ -28,12 +28,12 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	samples_to_copy = sample_count - samples_to_mix;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s16(source, src);
+		nmax = (int16_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
+		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int16(*dst + *src++);
@@ -42,11 +42,11 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
-		nmax = audio_stream_samples_without_wrap_s16(source, src);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+		nmax = (int16_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
+		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int16_t), src, n * sizeof(int16_t));
 		dst += n;
@@ -56,15 +56,15 @@ static void mix_s16(struct audio_stream *sink, int32_t start_sample, int32_t mix
 #endif	/* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
-	/* audio_stream_wrap() is required and is done below in a loop */
-	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_sample;
-	int32_t *src = audio_stream_get_rptr(source);
+	/* cir_buf_wrap() is required and is done below in a loop */
+	int32_t *dst = (int32_t *)sink->ptr + start_sample;
+	int32_t *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = mixed_samples - start_sample;
@@ -72,12 +72,12 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	samples_to_copy = sample_count - samples_to_mix;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s24(source, src);
+		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int24(sign_extend_s24(*dst) + sign_extend_s24(*src++));
@@ -86,11 +86,11 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
-		nmax = audio_stream_samples_without_wrap_s24(source, src);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
 		dst += n;
@@ -101,14 +101,14 @@ static void mix_s24(struct audio_stream *sink, int32_t start_sample, int32_t mix
 #endif	/* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mixed_samples,
-		    const struct audio_stream *source,
+static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
+		    const struct cir_buf_ptr *source,
 		    int32_t sample_count, uint16_t gain)
 {
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
-	int32_t *dst = (int32_t *)audio_stream_get_wptr(sink) + start_sample;
-	int32_t *src = audio_stream_get_rptr(source);
+	int32_t *dst = (int32_t *)sink->ptr + start_sample;
+	int32_t *src = source->ptr;
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = mixed_samples - start_sample;
@@ -116,12 +116,12 @@ static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	samples_to_copy = sample_count - samples_to_mix;
 
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		/* calculate the remaining samples*/
-		nmax = audio_stream_samples_without_wrap_s32(source, src);
+		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*dst = sat_int32((int64_t)*dst + (int64_t)*src++);
@@ -130,11 +130,11 @@ static void mix_s32(struct audio_stream *sink, int32_t start_sample, int32_t mix
 	}
 
 	for (left_samples = samples_to_copy; left_samples > 0; left_samples -= n) {
-		src = audio_stream_wrap(source, src);
-		dst = audio_stream_wrap(sink, dst);
-		nmax = audio_stream_samples_without_wrap_s32(source, src);
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
+		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
 		dst += n;

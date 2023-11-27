@@ -984,6 +984,29 @@ static inline int audio_stream_set_zero(struct audio_stream *buffer, uint32_t by
 	return 0;
 }
 
+/**
+ * Writes zeros to circular buffer in range [ptr, ptr+bytes] with rollover if necessary.
+ * @param ptr Pointer inside circular biffer to start writing from.
+ * @param buf_addr Start of the circular buffer.
+ * @param buf_end End of the circular buffer.
+ * @param bytes Size of the fragment to write zeros.
+ */
+static inline void cir_buf_set_zero(void *ptr, void *buf_addr, void *buf_end, uint32_t bytes)
+{
+	uint32_t head_size = bytes;
+	uint32_t tail_size = 0;
+
+	/* check for potential wrap */
+	if ((char *)ptr + bytes > (char *)buf_end) {
+		head_size = (char *)buf_end - (char *)ptr;
+		tail_size = bytes - head_size;
+	}
+
+	memset(ptr, 0, head_size);
+	if (tail_size)
+		memset(buf_addr, 0, tail_size);
+}
+
 static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 					       enum ipc4_bit_depth valid,
 					       enum sof_ipc_frame *frame_fmt,
