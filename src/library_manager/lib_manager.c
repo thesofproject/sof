@@ -20,6 +20,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/module_adapter/module/modules.h>
 
 #include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
@@ -389,7 +390,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 	mod = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
-	DECLARE_DYNAMIC_MODULE_ADAPTER(drv, SOF_COMP_MODULE_ADAPTER, *uid, lib_manager_tr);
+	declare_dynamic_module_adapter(drv, SOF_COMP_MODULE_ADAPTER, uid, &lib_manager_tr);
 
 	new_drv_info->drv = drv;
 

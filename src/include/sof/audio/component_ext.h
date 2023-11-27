@@ -111,6 +111,7 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 	return -EINVAL;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /** See comp_ops::cmd */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
@@ -132,6 +133,7 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return -EINVAL;
 }
+#endif
 
 /**
  * Runs comp_ops::trigger on the core the target component is assigned to.

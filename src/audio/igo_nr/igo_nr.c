@@ -441,6 +441,23 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 	return cd->invalid_param ? -EINVAL : 0;
 }
 
+static int32_t igo_nr_check_config_validity(struct comp_dev *dev,
+					    struct comp_data *cd)
+{
+	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+
+	if (!p_config) {
+		comp_err(dev, "igo_nr_check_config_validity() error: invalid cd->model_handler");
+		return -EINVAL;
+	} else if (p_config->active_channel_idx >= SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "igo_nr_check_config_validity() error: invalid active_channel_idxs");
+		return -EINVAL;
+	} else {
+		return 0;
+	}
+}
+
+#if CONFIG_IPC_MAJOR_3
 static inline void igo_nr_set_chan_process(struct comp_dev *dev, int32_t chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -501,22 +518,6 @@ static int32_t igo_nr_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		break;
 	}
 	return ret;
-}
-
-static int32_t igo_nr_check_config_validity(struct comp_dev *dev,
-					    struct comp_data *cd)
-{
-	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-
-	if (!p_config) {
-		comp_err(dev, "igo_nr_check_config_validity() error: invalid cd->model_handler");
-		return -EINVAL;
-	} else if (p_config->active_channel_idx >= SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "igo_nr_check_config_validity() error: invalid active_channel_idxs");
-		return -EINVAL;
-	} else {
-		return 0;
-	}
 }
 
 static int32_t igo_nr_cmd_set_data(struct comp_dev *dev,
@@ -610,6 +611,7 @@ static int32_t igo_nr_cmd(struct comp_dev *dev,
 		return -EINVAL;
 	}
 }
+#endif
 
 static void igo_nr_process(struct comp_dev *dev,
 			   struct comp_buffer *source,
@@ -822,7 +824,9 @@ static const struct comp_driver comp_igo_nr = {
 		.create = igo_nr_new,
 		.free = igo_nr_free,
 		.params = igo_nr_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd = igo_nr_cmd,
+#endif
 		.copy = igo_nr_copy,
 		.prepare = igo_nr_prepare,
 		.reset = igo_nr_reset,
