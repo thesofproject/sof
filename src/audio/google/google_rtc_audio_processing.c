@@ -97,7 +97,7 @@ static void google_rtc_audio_processing_params(struct processing_module *mod)
 
 	list_for_item(source_list, &dev->bsource_list) {
 		sourceb = container_of(source_list, struct comp_buffer, sink_list);
-		if (IPC4_SINK_QUEUE_ID(sourceb->id) == SOF_AEC_FEEDBACK_QUEUE_ID)
+		if (IPC4_SINK_QUEUE_ID(buf_get_id(sourceb)) == SOF_AEC_FEEDBACK_QUEUE_ID)
 			ipc4_update_buffer_format(sourceb, &cd->config.reference_fmt);
 		else
 			ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
