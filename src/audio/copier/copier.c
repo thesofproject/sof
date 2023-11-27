@@ -729,7 +729,7 @@ static int copier_set_configuration(struct processing_module *mod,
 	case IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT:
 		return copier_set_sink_fmt(dev, fragment, fragment_size);
 	case IPC4_COPIER_MODULE_CFG_ATTENUATION:
-		return set_attenuation(dev, fragment_size, fragment);
+		return set_attenuation(dev, fragment_size, (const char *)fragment);
 	default:
 		return -EINVAL;
 	}

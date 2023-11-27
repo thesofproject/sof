@@ -53,11 +53,25 @@ int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct timestam
 int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params, int dir);
 
+#if CONFIG_LIBRARY
+static inline int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
+						 struct comp_buffer *multi_endpoint_buffer,
+						 int num_endpoints)
+{
+	return 0;
+}
+
+static inline int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
+{
+	return 0;
+}
+#else
 int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 				   struct comp_buffer *multi_endpoint_buffer,
 				   int num_endpoints);
-
 int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data);
+#endif
+
 
 struct ipc4_copier_module_cfg;
 struct copier_data;
