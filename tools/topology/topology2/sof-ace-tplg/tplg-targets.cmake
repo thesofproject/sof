@@ -35,7 +35,7 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 USE_CHAIN_DMA=true,NUM_SDW_AMP_LINKS=2,SDW_SPK_STREAM=SDW1-Playback,SDW_SPK_IN_STREAM=SDW1-Capture,\
 SDW_DMIC_STREAM=SDW0-Capture"
 
-"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-rt1713-l3\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1"
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-rt1713-l3\;PLATFORM=mtl,USE_CHAIN_DMA=true,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1"
 
 # Jack codec + SmartAmp topology. No SDW_DMIC connection
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
