@@ -69,6 +69,14 @@ struct coherent {
 	struct list_item list;	/* coherent list iteration */
 } __coherent;
 
+#if CONFIG_INCOHERENT
+#  ifdef __ZEPHYR__
+BUILD_ASSERT(sizeof(struct coherent)  <= DCACHE_LINE_SIZE, "DCACHE_LINE_SIZE too small");
+#  else
+STATIC_ASSERT(sizeof(struct coherent) <= DCACHE_LINE_SIZE,  DCACHE_LINE_SIZE_too_small);
+#  endif
+#endif
+
 /* debug address aliases */
 #ifdef COHERENT_CHECK_ALIAS
 #define ADDR_IS_INCOHERENT(_c) assert(!is_uncached(_c))
