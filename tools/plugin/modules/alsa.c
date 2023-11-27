@@ -266,23 +266,7 @@ static int set_params(struct comp_dev *dev)
 		return err;
 	}
 
-	/* is sound card HW configuration valid ? */
-	err = snd_pcm_hw_params_any(cd->handle, cd->hw_params);
-	if (err < 0) {
-		comp_err(dev, "error: cant get PCM hw_params: %s\n", snd_strerror(err));
-		return err;
-	}
-
-	/* set interleaved buffer format */
-	err = snd_pcm_hw_params_set_access(cd->handle, cd->hw_params,
-					   SND_PCM_ACCESS_RW_INTERLEAVED);
-	if (err < 0) {
-		comp_err(dev, "error: PCM can't set interleaved: %s\n", snd_strerror(err));
-		return err;
-	}
-
 	/* set sample format */
-	/* set all topology configuration */
 	switch (params->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		frame_fmt = SND_PCM_FORMAT_S16_LE;
@@ -303,6 +287,27 @@ static int set_params(struct comp_dev *dev)
 		comp_err(dev, "error: invalid frame format %d for ALSA PCM\n", params->frame_fmt);
 		return -EINVAL;
 	}
+
+	/* commit playback hw_params and sw_params. Set latency of 10ms to avoid glitches */
+	if (cd->params.direction == SND_PCM_STREAM_PLAYBACK)
+		return snd_pcm_set_params(cd->handle, frame_fmt, SND_PCM_ACCESS_RW_INTERLEAVED,
+					  params->channels, params->rate, 0, 10000);
+
+	/* is sound card HW configuration valid ? */
+	err = snd_pcm_hw_params_any(cd->handle, cd->hw_params);
+	if (err < 0) {
+		comp_err(dev, "error: cant get PCM hw_params: %s\n", snd_strerror(err));
+		return err;
+	}
+
+	/* set interleaved buffer format */
+	err = snd_pcm_hw_params_set_access(cd->handle, cd->hw_params,
+					   SND_PCM_ACCESS_RW_INTERLEAVED);
+	if (err < 0) {
+		comp_err(dev, "error: PCM can't set interleaved: %s\n", snd_strerror(err));
+		return err;
+	}
+
 	err = snd_pcm_hw_params_set_format(cd->handle, cd->hw_params, frame_fmt);
 	if (err < 0) {
 		comp_err(dev, "error: PCM can't set format %d: %s\n",
@@ -367,15 +372,15 @@ static int set_params(struct comp_dev *dev)
 	}
 
 	/* PCM should start after receiving first periods worth of data */
-	err = snd_pcm_sw_params_set_start_threshold(cd->handle, cd->sw_params, cd->period_frames);
+	err = snd_pcm_sw_params_set_start_threshold(cd->handle, cd->sw_params, 1);
 	if (err < 0) {
 		comp_err(dev, "error: PCM can't set start threshold: %s\n", snd_strerror(err));
 		return err;
 	}
 
-	/* PCM should stop if only 1/4 period worth of data is available */
+	/* PCM should stop if only buffer_frame worth of data is available */
 	err = snd_pcm_sw_params_set_stop_threshold(cd->handle, cd->sw_params,
-						   cd->period_frames / 4);
+						   cd->buffer_frames);
 	if (err < 0) {
 		comp_err(dev, "error: PCM can't set stop threshold: %s\n", snd_strerror(err));
 		return err;
@@ -542,6 +547,10 @@ static int arecord_copy(struct comp_dev *dev)
 		/* read PCM samples from file */
 		frames = snd_pcm_readi(cd->handle, pos, frames);
 		if (frames < 0) {
+			if (frames == -EPIPE) {
+				snd_pcm_prepare(cd->handle);
+				continue;
+			}
 			comp_err(dev, "failed to read: %s: %s\n",
 				 cd->pcm_name, snd_strerror(frames));
 			return frames;
@@ -586,7 +595,6 @@ static int aplay_copy(struct comp_dev *dev)
 				 sink_list);
 	source = &buffer->stream;
 	pos = source->r_ptr;
-	avail = MIN(audio_stream_get_avail_frames(source), cd->period_frames);
 	avail = audio_stream_get_avail_frames(source);
 	frame_bytes = audio_stream_frame_bytes(source);
 
@@ -596,11 +604,14 @@ static int aplay_copy(struct comp_dev *dev)
 		/* write PCM samples to PCM */
 		frames = snd_pcm_writei(cd->handle, pos, frames);
 		if (frames < 0) {
+			if (frames == -EPIPE) {
+				snd_pcm_prepare(cd->handle);
+				continue;
+			}
 			comp_err(dev, "failed to write: %s: %s\n",
 				 cd->pcm_name, snd_strerror(frames));
 			return frames;
 		}
-
 		avail -= frames;
 		pos = audio_stream_wrap(source, pos + frames * frame_bytes);
 		total += frames;
@@ -663,7 +674,7 @@ static int alsa_dai_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_pa
 	if (!strncmp(cd->ep_hw->dev_name, "default", sizeof(cd->ep_hw->dev_name))) {
 		snprintf(pcm_name, sizeof(pcm_name), "%s", cd->ep_hw->card_name);
 	} else {
-		snprintf(pcm_name, sizeof(pcm_name), "%s:%s",
+		snprintf(pcm_name, sizeof(pcm_name), "hw:%s,%s",
 			 cd->ep_hw->card_name, cd->ep_hw->dev_name);
 	}
 	cd->pcm_name = strdup(pcm_name);
