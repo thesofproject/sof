@@ -35,3 +35,8 @@ function(add_local_sources target)
 		target_sources(${target} PRIVATE ${path})
 	endforeach()
 endfunction()
+
+# Currently loadable modules do not support the Zephyr build system
+macro(is_zephyr ret)
+	set(${ret} FALSE)
+endmacro()
