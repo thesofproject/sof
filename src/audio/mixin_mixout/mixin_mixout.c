@@ -102,6 +102,15 @@ struct mixout_data {
 	 * by mixin but not yet produced in mixout.
 	 */
 	struct pending_frames pending_frames[MIXOUT_MAX_SOURCES];
+
+	/*
+	 * When several mixins are connected to one mixout (a typical case) mixout sink
+	 * buffer is acquired (via sink_get_buffer() call) in mixin_process() of first
+	 * mixin. Other connected mixins just use a pointer to the buffer stored below.
+	 * The buffer is released (committed by sink_commit_buffer() call) in mixout_process().
+	 */
+	struct cir_buf_ptr acquired_buf;
+	uint32_t acquired_buf_free_frames;
 };
 
 /* NULL is also a valid mixin argument: in such case the function returns first unused entry */
@@ -182,9 +191,9 @@ static int mixout_free(struct processing_module *mod)
 }
 
 static int mix(struct comp_dev *dev, const struct mixin_data *mixin_data,
-	       uint16_t sink_index, struct audio_stream *sink,
-	       uint32_t start_frame, uint32_t mixed_frames,
-	       const struct audio_stream *source, uint32_t frame_count)
+	       uint16_t sink_index, struct cir_buf_ptr *sink,
+	       uint32_t start_sample, uint32_t mixed_samples,
+	       const struct cir_buf_ptr *source, uint32_t sample_count)
 {
 	const struct mixin_sink_config *sink_config;
 
@@ -196,37 +205,32 @@ static int mix(struct comp_dev *dev, const struct mixin_data *mixin_data,
 
 	sink_config = &mixin_data->sink_config[sink_index];
 
-	mixin_data->mix(sink, start_frame * audio_stream_get_channels(sink),
-			mixed_frames * audio_stream_get_channels(sink),
-			source,
-			frame_count * audio_stream_get_channels(sink),
-			sink_config->gain);
+	mixin_data->mix(sink, start_sample, mixed_samples,
+			source, sample_count, sink_config->gain);
 
 	return 0;
 }
 
 /* mix silence into stream, i.e. set not yet mixed data in stream to zero */
-static void silence(struct audio_stream *stream, uint32_t start_frame,
-		    uint32_t mixed_frames, uint32_t frame_count)
+static void silence(struct cir_buf_ptr *stream, uint32_t start_offset,
+		    uint32_t mixed_bytes, uint32_t size)
 {
-	uint32_t skip_mixed_frames;
+	uint32_t skip_mixed_bytes;
 	uint8_t *ptr;
-	uint32_t size;
 	int n;
 
-	assert(mixed_frames >= start_frame);
-	skip_mixed_frames = mixed_frames - start_frame;
+	assert(mixed_bytes >= start_offset);
+	skip_mixed_bytes = mixed_bytes - start_offset;
 
-	if (frame_count <= skip_mixed_frames)
+	if (size <= skip_mixed_bytes)
 		return;
 
-	size = audio_stream_period_bytes(stream, frame_count - skip_mixed_frames);
-	ptr = (uint8_t *)audio_stream_get_wptr(stream) +
-		audio_stream_period_bytes(stream, mixed_frames);
+	size -= skip_mixed_bytes;
+	ptr = (uint8_t *)stream->ptr + mixed_bytes;
 
 	while (size) {
-		ptr = audio_stream_wrap(stream, ptr);
-		n = MIN(audio_stream_bytes_without_wrap(stream, ptr), size);
+		ptr = cir_buf_wrap(ptr, stream->buf_start, stream->buf_end);
+		n = MIN((uint8_t *)stream->buf_end - ptr, size);
 		memset(ptr, 0, n);
 		size -= n;
 		ptr += n;
@@ -250,59 +254,83 @@ static void silence(struct audio_stream *stream, uint32_t start_frame,
  * was actually mixed and so xxx_produce() is called for that amount.
  */
 static int mixin_process(struct processing_module *mod,
-			 struct input_stream_buffer *input_buffers, int num_input_buffers,
-			 struct output_stream_buffer *output_buffers, int num_output_buffers)
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixin_data *mixin_data = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	uint32_t source_avail_frames, sinks_free_frames;
-	struct comp_dev *active_mixouts[MIXIN_MAX_SINKS];
+	struct processing_module *active_mixouts[MIXIN_MAX_SINKS];
 	uint16_t sinks_ids[MIXIN_MAX_SINKS];
-	uint32_t bytes_to_consume_from_source_buf;
+	uint32_t bytes_to_consume = 0;
 	uint32_t frames_to_copy;
 	struct pending_frames *pending_frames;
 	int i, ret;
+	struct cir_buf_ptr source_ptr;
 
 	comp_dbg(dev, "mixin_process()");
 
-	source_avail_frames = audio_stream_get_avail_frames(input_buffers[0].data);
+	source_avail_frames = source_get_data_frames_available(sources[0]);
 	sinks_free_frames = INT32_MAX;
 
-	/* block mixin pipeline until at least one mixout pipeline started */
-	if (num_output_buffers == 0)
-		return 0;
-
-	if (num_output_buffers > MIXIN_MAX_SINKS) {
-		comp_err(dev, "mixin_process(): Invalid output buffer count %d",
-			 num_output_buffers);
+	if (num_of_sinks > MIXIN_MAX_SINKS) {
+		comp_err(dev, "mixin_process(): Invalid output sink count %d",
+			 num_of_sinks);
 		return -EINVAL;
 	}
 
 	/* first, let's find out how many frames can be now processed --
-	 * it is a nimimal value among frames available in source buffer
+	 * it is a minimal value among frames available in source buffer
 	 * and frames free in each connected mixout sink buffer.
 	 */
-	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer *unused_in_between_buf_c;
+	for (i = 0; i < num_of_sinks; i++) {
+		struct audio_stream *stream;
+		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *mixout;
-		uint16_t sink_id;
-		struct comp_buffer *sink;
+		struct sof_sink *mixout_sink;
 		struct mixout_data *mixout_data;
 		struct processing_module *mixout_mod;
 		uint32_t free_frames;
 
+		/* WORKAROUND: since mixin is always connected to mixout, we can safely assume
+		 * mixin sink interface is implemented via comp_buffer. This is, of course,
+		 * not the case for other modules.
+		 * TODO: find out a solution to reach mixout without knowledge of mixin
+		 * sof_sink implementation.
+		 */
+		stream = container_of(sinks[i], struct audio_stream, sink_api);
 		/* unused buffer between mixin and mixout */
-		unused_in_between_buf_c = container_of(output_buffers[i].data,
-						       struct comp_buffer, stream);
-		mixout = unused_in_between_buf_c->sink;
-		sink_id = IPC4_SRC_QUEUE_ID(buf_get_id(unused_in_between_buf_c));
+		unused_in_between_buf = container_of(stream, struct comp_buffer, stream);
+		mixout = unused_in_between_buf->sink;
 
-		active_mixouts[i] = mixout;
-		sinks_ids[i] = sink_id;
-
-		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
+		/* Skip non-active mixout like it is not connected so it does not
+		 * block other possibly connected mixouts. In addition, non-active
+		 * mixouts might have their sink buffer/interface not yet configured.
+		 */
+		if (mixout->state != COMP_STATE_ACTIVE) {
+			active_mixouts[i] = NULL;
+			continue;
+		}
 
 		mixout_mod = comp_get_drvdata(mixout);
+		active_mixouts[i] = mixout_mod;
+		mixout_sink = mixout_mod->sinks[0];
+
+		/* mixout might be created on another pipeline. Its sink stream params are usually
+		 * configured in .prepare(). It is possible that such .prepare() was not yet called
+		 * for mixout pipeline. Hence the check above if mixout state is active. However,
+		 * let's just in case check here if sink stream params are really configured as
+		 * proceeding with unconfigured sink will lead to hard to debug bugs.
+		 * Unconfigured stream params are filled with zeros.
+		 * TODO: introduce something like sink_is_configured() ?
+		 */
+		if (!mixout_sink || sink_get_channels(mixout_sink) == 0) {
+			comp_err(dev, "mixout sink not configured!");
+			return -EINVAL;
+		}
+
+		sinks_ids[i] = IPC4_SRC_QUEUE_ID(buf_get_id(unused_in_between_buf));
+
 		mixout_data = module_get_private_data(mixout_mod);
 		pending_frames = get_mixin_pending_frames(mixout_data, dev);
 		if (!pending_frames) {
@@ -310,16 +338,14 @@ static int mixin_process(struct processing_module *mod,
 			return -EINVAL;
 		}
 
-		/* Normally this should never happen as we checked above
-		 * that mixout is in active state and so its sink buffer
-		 * should be already initialized in mixout .params().
+		/* In theory, though unlikely, mixout sink can be connected to some module on
+		 * another core. In this case free space in mixout sink buffer can suddenly increase
+		 * (data consumed on another core) after the buffer was already acquired. Let's only
+		 * access free space that was at the moment of acquiring the buffer.
 		 */
-		if (!sink->hw_params_configured) {
-			comp_err(dev, "Uninitialized mixout sink buffer!");
-			return -EINVAL;
-		}
-
-		free_frames = audio_stream_get_free_frames(&sink->stream);
+		free_frames = mixout_data->acquired_buf.ptr ?
+			mixout_data->acquired_buf_free_frames :
+			sink_get_free_frames(mixout_sink);
 
 		/* mixout sink buffer may still have not yet produced data -- data
 		 * consumed and written there by mixin on previous mixin_process() run.
@@ -329,40 +355,39 @@ static int mixin_process(struct processing_module *mod,
 		sinks_free_frames = MIN(sinks_free_frames, free_frames - pending_frames->frames);
 	}
 
+	if (sinks_free_frames == 0 || sinks_free_frames == INT32_MAX)
+		return 0;
+
 	if (source_avail_frames > 0) {
-		struct comp_buffer *source_c;
+		size_t buf_size;
 
 		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
-		bytes_to_consume_from_source_buf =
-			audio_stream_period_bytes(input_buffers[0].data, frames_to_copy);
-		if (bytes_to_consume_from_source_buf > 0) {
-			input_buffers[0].consumed = bytes_to_consume_from_source_buf;
-			source_c = container_of(input_buffers[0].data, struct comp_buffer,
-						stream);
-			buffer_stream_invalidate(source_c, bytes_to_consume_from_source_buf);
-		}
+		bytes_to_consume = frames_to_copy * source_get_frame_bytes(sources[0]);
+
+		source_get_data(sources[0], bytes_to_consume, (const void **)&source_ptr.ptr,
+				(const void **)&source_ptr.buf_start, &buf_size);
+		source_ptr.buf_end = (uint8_t *)source_ptr.buf_start + buf_size;
 	} else {
 		/* if source does not produce any data -- do NOT block mixing but generate
 		 * silence as that source output.
 		 *
 		 * here frames_to_copy is silence size.
+		 *
+		 * FIXME: does not work properly for freq like 44.1 kHz.
 		 */
 		frames_to_copy = MIN(dev->frames, sinks_free_frames);
 	}
 
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
-	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_dev *mixout;
-		struct comp_buffer *sink;
+	for (i = 0; i < num_of_sinks; i++) {
 		struct mixout_data *mixout_data;
 		struct processing_module *mixout_mod;
 		uint32_t start_frame;
-		uint32_t writeback_size;
 
-		mixout = active_mixouts[i];
-		sink = list_first_item(&mixout->bsink_list, struct comp_buffer, source_list);
+		mixout_mod = active_mixouts[i];
+		if (!mixout_mod)
+			continue;
 
-		mixout_mod = comp_get_drvdata(mixout);
 		mixout_data = module_get_private_data(mixout_mod);
 		pending_frames = get_mixin_pending_frames(mixout_data, dev);
 		if (!pending_frames) {
@@ -376,34 +401,47 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		start_frame = pending_frames->frames;
 
+		/* mixout sink buffer is acquired here by its first connected mixin and is
+		 * released in mixout_process(). Other connected mixins just use a pointer
+		 * stored in mixout_data->acquired_buf.
+		 */
+		if (!mixout_data->acquired_buf.ptr) {
+			struct sof_sink *sink = mixout_mod->sinks[0];
+			size_t free_bytes = sink_get_free_size(sink);
+			size_t buf_size;
+
+			sink_get_buffer(sink, free_bytes, &mixout_data->acquired_buf.ptr,
+					&mixout_data->acquired_buf.buf_start, &buf_size);
+			mixout_data->acquired_buf.buf_end =
+				(uint8_t *)mixout_data->acquired_buf.buf_start + buf_size;
+			mixout_data->acquired_buf_free_frames =
+				free_bytes / sink_get_frame_bytes(sink);
+		}
+
 		/* if source does not produce any data but mixin is in active state -- generate
 		 * silence instead of that source data
 		 */
 		if (source_avail_frames == 0) {
+			uint32_t frame_bytes = sink_get_frame_bytes(mixout_mod->sinks[0]);
+
 			/* generate silence */
-			silence(&sink->stream, start_frame, mixout_data->mixed_frames,
-				frames_to_copy);
+			silence(&mixout_data->acquired_buf, start_frame * frame_bytes,
+				mixout_data->mixed_frames * frame_bytes,
+				frames_to_copy * frame_bytes);
 		} else {
+			uint32_t channel_count = sink_get_channels(mixout_mod->sinks[0]);
+
 			/* basically, if sink buffer has no data -- copy source data there, if
 			 * sink buffer has some data (written by another mixin) mix that data
 			 * with source data.
 			 */
-			ret = mix(dev, mixin_data, sinks_ids[i], &sink->stream,
-				  start_frame, mixout_data->mixed_frames,
-				  input_buffers[0].data, frames_to_copy);
-			if (ret < 0) {
+			ret = mix(dev, mixin_data, sinks_ids[i], &mixout_data->acquired_buf,
+				  start_frame * channel_count,
+				  mixout_data->mixed_frames * channel_count,
+				  &source_ptr, frames_to_copy * channel_count);
+			if (ret < 0)
 				return ret;
-			}
 		}
-
-		/* it would be better to writeback memory region starting from start_frame and
-		 * of frames_to_copy size (converted to bytes, of course). However, seems
-		 * there is no appropreate API. Anyway, start_frame would be 0 most of the time.
-		 */
-		writeback_size = audio_stream_period_bytes(&sink->stream,
-							   frames_to_copy + start_frame);
-		if (writeback_size > 0)
-			buffer_stream_writeback(sink, writeback_size);
 
 		pending_frames->frames += frames_to_copy;
 
@@ -411,21 +449,22 @@ static int mixin_process(struct processing_module *mod,
 			mixout_data->mixed_frames = frames_to_copy + start_frame;
 	}
 
+	if (bytes_to_consume)
+		source_release_data(sources[0], bytes_to_consume);
+
 	return 0;
 }
 
-/* mixout just calls xxx_produce() on data mixed into its sink buffer by
- * mixins.
- */
+/* mixout just commits its sink buffer with data already mixed by mixins */
 static int mixout_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *md;
 	uint32_t frames_to_produce = INT32_MAX;
+	uint32_t bytes_to_produce;
 	struct pending_frames *pending_frames;
-	uint32_t sink_bytes;
 	int i;
 
 	comp_dbg(dev, "mixout_process()");
@@ -436,38 +475,42 @@ static int mixout_process(struct processing_module *mod,
 	 * (i.e., mixed into mixout sink buffer). That is the amount that can/should be
 	 * produced now.
 	 */
-	for (i = 0; i < num_input_buffers; i++) {
+	for (i = 0; i < num_of_sources; i++) {
 		const struct audio_stream *source_stream;
 		struct comp_buffer *unused_in_between_buf;
-		struct comp_dev *source;
+		struct comp_dev *mixin;
 
-		source_stream = input_buffers[i].data;
+		/* WORKAROUND: since mixin is always connected to mixout, we can safely assume
+		 * mixout source interface is implemented via comp_buffer. This is, of course,
+		 * not the case for other modules.
+		 * TODO: find out a solution to reach mixin without knowledge of mixout
+		 * sof_source implementation.
+		 */
+		source_stream = container_of(sources[i], struct audio_stream, source_api);
 		unused_in_between_buf = container_of(source_stream, struct comp_buffer,
 						     stream);
+		mixin = unused_in_between_buf->source;
 
-		source = unused_in_between_buf->source;
-
-		pending_frames = get_mixin_pending_frames(md, source);
+		pending_frames = get_mixin_pending_frames(md, mixin);
 		if (!pending_frames)
 			continue;
 
-		if (source->state == COMP_STATE_ACTIVE || pending_frames->frames)
+		if (mixin->state == COMP_STATE_ACTIVE || pending_frames->frames)
 			frames_to_produce = MIN(frames_to_produce, pending_frames->frames);
 	}
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
-		for (i = 0; i < num_input_buffers; i++) {
+		for (i = 0; i < num_of_sources; i++) {
 			const struct audio_stream *source_stream;
 			struct comp_buffer *unused_in_between_buf;
-			struct comp_dev *source;
+			struct comp_dev *mixin;
 
-			source_stream = input_buffers[i].data;
+			source_stream = container_of(sources[i], struct audio_stream, source_api);
 			unused_in_between_buf = container_of(source_stream,
 							     struct comp_buffer, stream);
+			mixin = unused_in_between_buf->source;
 
-			source = unused_in_between_buf->source;
-
-			pending_frames = get_mixin_pending_frames(md, source);
+			pending_frames = get_mixin_pending_frames(md, mixin);
 			if (!pending_frames)
 				continue;
 
@@ -480,16 +523,26 @@ static int mixout_process(struct processing_module *mod,
 		assert(md->mixed_frames >= frames_to_produce);
 		md->mixed_frames -= frames_to_produce;
 
-		sink_bytes = frames_to_produce *
-				audio_stream_frame_bytes(output_buffers[0].data);
-		output_buffers[0].size = sink_bytes;
+		bytes_to_produce = frames_to_produce * sink_get_frame_bytes(sinks[0]);
 	} else {
-		sink_bytes = dev->frames * audio_stream_frame_bytes(output_buffers[0].data);
-		if (!audio_stream_set_zero(output_buffers[0].data, sink_bytes))
-			output_buffers[0].size = sink_bytes;
-		else
-			output_buffers[0].size = 0;
+		/* FIXME: does not work properly for freq like 44.1 kHz */
+		bytes_to_produce = dev->frames * sink_get_frame_bytes(sinks[0]);
+		bytes_to_produce = MIN(bytes_to_produce, sink_get_free_size(sinks[0]));
+
+		if (!md->acquired_buf.ptr) {
+			size_t buf_size;
+
+			sink_get_buffer(sinks[0], bytes_to_produce, &md->acquired_buf.ptr,
+					&md->acquired_buf.buf_start, &buf_size);
+			md->acquired_buf.buf_end = (uint8_t *)md->acquired_buf.buf_start + buf_size;
+		}
+
+		cir_buf_set_zero(md->acquired_buf.ptr, md->acquired_buf.buf_start,
+				 md->acquired_buf.buf_end, bytes_to_produce);
 	}
+
+	sink_commit_buffer(sinks[0], bytes_to_produce);
+	md->acquired_buf.ptr = NULL;
 
 	return 0;
 }
@@ -509,20 +562,31 @@ static int mixin_reset(struct processing_module *mod)
 static int mixout_reset(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct list_item *blist;
 
 	comp_dbg(dev, "mixout_reset()");
 
 	/* FIXME: move this to module_adapter_reset() */
 	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
-		list_for_item(blist, &dev->bsource_list) {
-			struct comp_buffer *source;
+		int i;
+
+		for (i = 0; i < mod->num_of_sources; i++) {
+			const struct audio_stream *source_stream;
+			const struct comp_buffer *source_buf;
 			bool stop;
 
-			/* FIXME: this is racy and implicitly protected by serialised IPCs */
-			source = container_of(blist, struct comp_buffer, sink_list);
-			stop = (dev->pipeline == source->source->pipeline &&
-					source->source->state > COMP_STATE_PAUSED);
+			/* WORKAROUND: since mixin is always connected to mixout, we can safely
+			 * assume mixout source interface is implemented via comp_buffer. This is,
+			 * of course, not the case for other modules.
+			 * TODO: find out a solution to reach mixin without knowledge of mixout
+			 * sof_source implementation.
+			 */
+			source_stream = container_of(mod->sources[i],
+						     struct audio_stream, source_api);
+			source_buf = container_of(source_stream, struct comp_buffer,
+						  stream);
+
+			stop = (dev->pipeline == source_buf->source->pipeline &&
+					source_buf->source->state > COMP_STATE_PAUSED);
 
 			if (stop)
 				/* should not reset the downstream components */
@@ -895,7 +959,7 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 static const struct module_interface mixin_interface = {
 	.init = mixin_init,
 	.prepare = mixin_prepare,
-	.process_audio_stream = mixin_process,
+	.process = mixin_process,
 	.set_configuration = mixin_set_config,
 	.reset = mixin_reset,
 	.free = mixin_free
@@ -907,7 +971,7 @@ SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 static const struct module_interface mixout_interface = {
 	.init = mixout_init,
 	.prepare = mixout_prepare,
-	.process_audio_stream = mixout_process,
+	.process = mixout_process,
 	.reset = mixout_reset,
 	.free = mixout_free,
 	.bind = mixout_bind,
