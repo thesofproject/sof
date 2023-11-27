@@ -14,8 +14,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
 #include <sof/platform.h>
-#include <user/multiband_drc.h>
 #include <stdint.h>
+#include "user/multiband_drc.h"
 
 /**
  * Stores the state of the sub-components in Multiband DRC
