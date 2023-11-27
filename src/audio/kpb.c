@@ -926,6 +926,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Used to pass standard and bespoke commands (with data) to component.
  * \param[in,out] dev - Volume base component device.
@@ -938,6 +939,7 @@ static int kpb_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	return 0;
 }
+#endif
 
 /**
  * \brief Resets KPB component.
@@ -2577,17 +2579,18 @@ static const struct comp_driver comp_kpb = {
 	.ops = {
 		.create		= kpb_new,
 		.free		= kpb_free,
-		.cmd		= kpb_cmd,
 		.trigger	= kpb_trigger,
 		.copy		= kpb_copy,
 		.prepare	= kpb_prepare,
 		.reset		= kpb_reset,
 		.params		= kpb_params,
 		.set_large_config = kpb_set_large_config,
-#ifdef CONFIG_IPC_MAJOR_4
+#if CONFIG_IPC_MAJOR_4
 		.get_attribute	= kpb_get_attribute,
 		.bind		= kpb_bind,
 		.unbind		= kpb_unbind,
+#elif CONFIG_IPC_MAJOR_3
+		.cmd		= kpb_cmd,
 #endif /* CONFIG_IPC_MAJOR_4 */
 	},
 };

@@ -549,6 +549,7 @@ static int rtnr_set_config_bytes(struct comp_dev *dev,
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int rtnr_set_bin_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -707,6 +708,7 @@ static int rtnr_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
+#endif
 
 static int rtnr_trigger(struct comp_dev *dev, int cmd)
 {
@@ -910,7 +912,9 @@ static const struct comp_driver comp_rtnr = {
 		.create = rtnr_new,
 		.free = rtnr_free,
 		.params = rtnr_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd = rtnr_cmd,
+#endif
 		.trigger = rtnr_trigger,
 		.copy = rtnr_copy,
 		.prepare = rtnr_prepare,

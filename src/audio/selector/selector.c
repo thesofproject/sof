@@ -231,6 +231,7 @@ static int selector_params(struct comp_dev *dev,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Sets selector control command.
  * \param[in,out] dev Selector base component device.
@@ -339,6 +340,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
+#endif
 
 /**
  * \brief Sets component state.
@@ -525,7 +527,9 @@ static const struct comp_driver comp_selector = {
 		.create		= selector_new,
 		.free		= selector_free,
 		.params		= selector_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd		= selector_cmd,
+#endif
 		.trigger	= selector_trigger,
 		.copy		= selector_copy,
 		.prepare	= selector_prepare,

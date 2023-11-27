@@ -21,10 +21,6 @@
 #include <sof/audio/dp_queue.h>
 #include "module_interface.h"
 
-#if CONFIG_INTEL_MODULES
-#include "modules.h"
-#endif
-
 /*
  * helpers to determine processing type
  * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
@@ -49,6 +45,12 @@
 				(value)); \
 	} while (0)
 
+#if CONFIG_IPC_MAJOR_4
+#define IPC_MOD_CMD(v)
+#elif CONFIG_IPC_MAJOR_3
+#define IPC_MOD_CMD(v) .cmd = v,
+#endif
+
 #define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
 static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *drv, \
 					 const struct comp_ipc_config *config, \
@@ -66,7 +68,7 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.prepare = module_adapter_prepare, \
 		.params = module_adapter_params, \
 		.copy = module_adapter_copy, \
-		.cmd = module_adapter_cmd, \
+		IPC_MOD_CMD(module_adapter_cmd) \
 		.trigger = module_adapter_trigger, \
 		.reset = module_adapter_reset, \
 		.free = module_adapter_free, \

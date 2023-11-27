@@ -338,6 +338,7 @@ struct comp_ops {
 	int (*dai_config)(struct dai_data *dd, struct comp_dev *dev,
 			  struct ipc_config_dai *dai_config, const void *dai_spec_config);
 
+#if CONFIG_IPC_MAJOR_3
 	/**
 	 * Used to pass standard and bespoke commands (with optional data).
 	 * @param dev Component device.
@@ -348,6 +349,7 @@ struct comp_ops {
 	 */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size);
+#endif
 
 	/**
 	 * Trigger, atomic - used to start/stop/pause stream operations.
