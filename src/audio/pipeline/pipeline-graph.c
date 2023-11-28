@@ -323,7 +323,6 @@ static int pipeline_comp_reset(struct comp_dev *current,
 {
 	struct pipeline *p = ctx->comp_data;
 	struct pipeline *p_current = current->pipeline;
-	int end_type;
 	int is_single_ppl = comp_is_single_pipeline(current, p->source_comp);
 	int is_same_sched = pipeline_is_same_sched_comp(p_current, p);
 	int err;
@@ -339,26 +338,11 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	if (!is_single_ppl && IPC4_MOD_ID(current->ipc_config.id))
 		return 0;
 
-	if (!is_single_ppl && !is_same_sched) {
-		/* If pipeline connected to the starting one is in improper
-		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
-		 * stop propagation. Direction param of the pipeline can not be
-		 * trusted at this point, as it might not be configured yet,
-		 * hence checking for endpoint component type.
-		 */
-		end_type = comp_get_endpoint_type(p_current->sink_comp);
-		switch (dir) {
-		case SOF_IPC_STREAM_PLAYBACK:
-			if (end_type == COMP_ENDPOINT_HOST ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-			break;
-		case SOF_IPC_STREAM_CAPTURE:
-			if (end_type == COMP_ENDPOINT_DAI ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-		}
-	}
+	/* Propagate reset across pipelines only in the same direction
+	 * and with the same scheduling behavior
+	 */
+	if (!is_single_ppl && !is_same_sched && !comp_same_dir(current, dir))
+		return 0;
 
 	/* two cases for a component still being active here:
 	 * 1. trigger function failed to handle stop event
