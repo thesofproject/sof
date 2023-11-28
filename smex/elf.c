@@ -41,7 +41,7 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 	if (count != hdr->shnum) {
 		fprintf(stderr, "error: failed to read %s section header %d\n",
 			module->elf_file, -errno);
-		return count < 0 ? -errno : -ENODATA;
+		return count > 0 ? -ENODATA : -errno;
 	}
 
 	/* read in strings */
@@ -64,7 +64,7 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 	if (count != section[hdr->shstrndx].size) {
 		fprintf(stderr, "error: failed to read %s strings %d\n",
 			module->elf_file, -errno);
-		return count < 0 ? -errno : -ENODATA;
+		return count > 0 ? -ENODATA : -errno;
 	}
 
 	module->bss_index = elf_find_section(module, ".bss");
@@ -151,7 +151,7 @@ static int elf_read_programs(struct elf_module *module, bool verbose)
 	if (count != hdr->phnum) {
 		fprintf(stderr, "error: failed to read %s program header %d\n",
 			module->elf_file, -errno);
-		return count < 0 ? -errno : -ENODATA;
+		return count > 0 ? -ENODATA : -errno;
 	}
 
 	/* check each program */
@@ -191,7 +191,7 @@ static int elf_read_hdr(struct elf_module *module, bool verbose)
 	if (count != 1) {
 		fprintf(stderr, "error: failed to read %s elf header %d\n",
 			module->elf_file, -errno);
-		return count < 0 ? -errno : -ENODATA;
+		return count > 0 ? -ENODATA : -errno;
 	}
 
 	if (!verbose)
@@ -411,7 +411,7 @@ int elf_find_section(const struct elf_module *module, const char *name)
 	if (count != section->size) {
 		fprintf(stderr, "error: can't read string section %d\n",
 			-errno);
-		ret = count < 0 ? -errno : -ENODATA;
+		ret = count > 0 ? -ENODATA : -errno;
 		goto out;
 	}
 	buffer[section->size - 1] = '\0';
