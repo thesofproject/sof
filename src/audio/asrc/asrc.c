@@ -32,75 +32,7 @@
 #include <stdint.h>
 #include "asrc.h"
 
-#if CONFIG_IPC_MAJOR_4
-#include <ipc4/base-config.h>
-#include "asrc_ipc4.h"
-#endif
-
-/* Simple count value to prevent first delta timestamp
- * from being input to low-pass filter.
- */
-#define TS_STABLE_DIFF_COUNT	2
-
-/* Low pass filter coefficient for measured drift factor,
- * The low pass function is y(n) = c1 * x(n) + c2 * y(n -1)
- * coefficient c2 needs to be 1 - c1.
- */
-#define COEF_C1		Q_CONVERT_FLOAT(0.01, 30)
-#define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
-
-typedef void (*asrc_proc_func)(struct processing_module *mod,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       int *consumed,
-			       int *produced);
-
 LOG_MODULE_REGISTER(asrc, CONFIG_SOF_LOG_LEVEL);
-
-#ifndef CONFIG_IPC_MAJOR_4
-/* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
-DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
-		    0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
-#else
-/* 66b4402d-b468-42f2-81a7-b37121863dd4 */
-DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0x66b4402d, 0xb468, 0x42f2,
-		    0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4);
-#endif
-
-DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
-
-/* asrc component private data */
-struct comp_data {
-	ipc_asrc_cfg ipc_config;
-	struct asrc_farrow *asrc_obj;	/* ASRC core data */
-	struct comp_dev *dai_dev;	/* Associated DAI component */
-	enum asrc_operation_mode mode;  /* Control for push or pull mode */
-	uint64_t ts;
-	uint32_t sink_rate;	/* Sample rate in Hz */
-	uint32_t source_rate;	/* Sample rate in Hz */
-	uint32_t sink_format;	/* For used PCM sample format */
-	uint32_t source_format;	/* For used PCM sample format */
-	uint32_t copy_count;	/* Count copy() operations  */
-	int32_t ts_prev;
-	int32_t sample_prev;
-	int32_t skew;		/* Rate factor in Q2.30 */
-	int32_t skew_min;
-	int32_t skew_max;
-	int ts_count;
-	int asrc_size;		/* ASRC object size */
-	int buf_size;		/* Samples buffer size */
-	int frames;		/* IO buffer length */
-	int source_frames;	/* Nominal # of frames to process at source */
-	int sink_frames;	/* Nominal # of frames to process at sink */
-	int source_frames_max;	/* Max # of frames to process at source */
-	int sink_frames_max;	/* Max # of frames to process at sink */
-	int data_shift;		/* Optional shift by 8 to process S24_4LE */
-	uint8_t *buf;		/* Samples buffer for input and output */
-	uint8_t *ibuf[PLATFORM_MAX_CHANNELS];	/* Input channels pointers */
-	uint8_t *obuf[PLATFORM_MAX_CHANNELS];	/* Output channels pointers */
-	bool track_drift;
-	asrc_proc_func asrc_func;		/* ASRC processing function */
-};
 
 /* In-line functions */
 
@@ -269,49 +201,6 @@ static void src_copy_s16(struct processing_module *mod,
 	*n_written = out_frames;
 }
 
-#ifndef CONFIG_IPC_MAJOR_4
-static inline uint32_t asrc_get_source_rate(const struct ipc_config_asrc *ipc_asrc)
-{
-	return ipc_asrc->source_rate;
-}
-
-static inline uint32_t asrc_get_sink_rate(const struct ipc_config_asrc *ipc_asrc)
-{
-	return ipc_asrc->sink_rate;
-}
-
-static inline uint32_t asrc_get_operation_mode(const struct ipc_config_asrc *ipc_asrc)
-{
-	return ipc_asrc->operation_mode;
-}
-
-static inline bool asrc_get_asynchronous_mode(const struct ipc_config_asrc *ipc_asrc)
-{
-	return ipc_asrc->asynchronous_mode;
-}
-#else
-static inline uint32_t asrc_get_source_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->base.audio_fmt.sampling_frequency;
-}
-
-static inline uint32_t asrc_get_sink_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->out_freq;
-}
-
-static inline uint32_t asrc_get_operation_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return ipc_asrc->asrc_mode & (1 << IPC4_MOD_ASRC_PUSH_MODE) ? ASRC_OM_PUSH : ASRC_OM_PULL;
-}
-
-static inline bool asrc_get_asynchronous_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
-{
-	return false;
-}
-
-#endif
-
 static int asrc_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
@@ -344,7 +233,7 @@ static int asrc_init(struct processing_module *mod)
 
 	/* Use skew tracking for DAI if it was requested. The skew
 	 * is initialized here to zero. It is set later in prepare() to
-	 * to 1.0 if there is no filtered skew factor from previous run.
+	 * 1.0 if there is no filtered skew factor from previous run.
 	 */
 	cd->track_drift = asrc_get_asynchronous_mode(ipc_asrc);
 	cd->skew = 0;
@@ -499,9 +388,7 @@ static int asrc_params(struct processing_module *mod)
 
 	comp_info(dev, "asrc_params()");
 
-#if CONFIG_IPC_MAJOR_4
-	ipc4_base_module_cfg_to_stream_params(&cd->ipc_config.base, pcm_params);
-#endif
+	asrc_set_stream_params(cd, pcm_params);
 
 	err = asrc_verify_params(mod, pcm_params);
 	if (err < 0) {
@@ -514,11 +401,9 @@ static int asrc_params(struct processing_module *mod)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-#if CONFIG_IPC_MAJOR_4
 	/* update the source/sink buffer formats. Sink rate will be modified below */
-	ipc4_update_buffer_format(sourceb, &cd->ipc_config.base.audio_fmt);
-	ipc4_update_buffer_format(sinkb, &cd->ipc_config.base.audio_fmt);
-#endif
+	asrc_update_buffer_format(sourceb, cd);
+	asrc_update_buffer_format(sinkb, cd);
 
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
@@ -606,94 +491,6 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 
 	return 0;
 }
-
-#if CONFIG_IPC_MAJOR_4
-static int asrc_dai_configure_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev) {
-		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
-		struct module_data *md = &mod->priv;
-
-		return md->ops->endpoint_ops->dai_ts_config(cd->dai_dev);
-	}
-
-	return -EINVAL;
-}
-
-static int asrc_dai_start_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev) {
-		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
-		struct module_data *md = &mod->priv;
-
-		return md->ops->endpoint_ops->dai_ts_start(cd->dai_dev);
-	}
-
-	return -EINVAL;
-}
-
-static int asrc_dai_stop_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev) {
-		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
-		struct module_data *md = &mod->priv;
-
-		return md->ops->endpoint_ops->dai_ts_stop(cd->dai_dev);
-	}
-
-	return -EINVAL;
-}
-
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-static int asrc_dai_get_timestamp(struct comp_data *cd,
-				  struct dai_ts_data *tsd)
-#else
-static int asrc_dai_get_timestamp(struct comp_data *cd,
-				  struct timestamp_data *tsd)
-#endif
-{
-	if (cd->dai_dev) {
-		struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
-		struct module_data *md = &mod->priv;
-
-		return md->ops->endpoint_ops->dai_ts_get(cd->dai_dev, tsd);
-	}
-
-	return -EINVAL;
-}
-#else
-static int asrc_dai_configure_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev)
-		return cd->dai_dev->drv->ops.dai_ts_config(cd->dai_dev);
-
-	return -EINVAL;
-}
-
-static int asrc_dai_start_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev)
-		return cd->dai_dev->drv->ops.dai_ts_start(cd->dai_dev);
-
-	return -EINVAL;
-}
-
-static int asrc_dai_stop_timestamp(struct comp_data *cd)
-{
-	if (cd->dai_dev)
-		return cd->dai_dev->drv->ops.dai_ts_stop(cd->dai_dev);
-
-	return -EINVAL;
-}
-
-static int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
-{
-	if (!cd->dai_dev)
-		return -EINVAL;
-
-	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
-}
-#endif
 
 static int asrc_trigger(struct processing_module *mod, int cmd)
 {
