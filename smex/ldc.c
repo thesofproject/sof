@@ -98,8 +98,13 @@ static int write_logs_dictionary(struct image *image,
 	header.base_address = section->vaddr;
 	header.data_length = section->size;
 
-	fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
-	       image->ldc_out_fd);
+	count = fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
+		       image->ldc_out_fd);
+	if (count != 1) {
+		fprintf(stderr, "error: can't write header\n");
+		ret = -errno;
+		goto out;
+	}
 
 	count = fwrite(buffer, 1, section->size, image->ldc_out_fd);
 	if (count != section->size) {
@@ -140,8 +145,12 @@ static int write_uids_dictionary(struct image *image,
 	header.base_address = section->vaddr;
 	header.data_length = section->size;
 
-	fwrite(&header, sizeof(struct snd_sof_uids_header), 1,
-	       image->ldc_out_fd);
+	if (fwrite(&header, sizeof(struct snd_sof_uids_header), 1,
+		   image->ldc_out_fd) != 1) {
+		fprintf(stderr, "error: cant't write header\n");
+		ret = -errno;
+		goto out;
+	}
 
 	if (fwrite(buffer, 1, section->size, image->ldc_out_fd) !=
 			section->size) {
