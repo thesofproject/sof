@@ -497,26 +497,26 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 	ret = fseek(module->fd, 0, SEEK_END);
 	if (ret < 0) {
 		ret = -errno;
-		goto hdr_err;
+		goto err;
 	}
 	module->file_size = ftell(module->fd);
 	ret = fseek(module->fd, 0, SEEK_SET);
 	if (ret < 0) {
 		ret = -errno;
-		goto hdr_err;
+		goto err;
 	}
 
 	/* read in elf header */
 	ret = elf_read_hdr(module, verbose);
 	if (ret < 0)
-		goto hdr_err;
+		goto err;
 
 	/* read in programs */
 	ret = elf_read_programs(module, verbose);
 	if (ret < 0) {
 		fprintf(stderr, "error: failed to read program sections %d\n",
 			ret);
-		goto hdr_err;
+		goto err;
 	}
 
 	/* read sections */
@@ -524,7 +524,7 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 	if (ret < 0) {
 		fprintf(stderr, "error: failed to read base sections %d\n",
 			ret);
-		goto sec_err;
+		goto err;
 	}
 
 	elf_module_limits(module);
@@ -543,9 +543,7 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 
 	return 0;
 
-sec_err:
-	free(module->prg);
-hdr_err:
+err:
 	fclose(module->fd);
 
 	return ret;
