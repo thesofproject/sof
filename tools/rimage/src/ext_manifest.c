@@ -198,7 +198,12 @@ int ext_man_write_cavs_25(struct image *image)
 
 	for (i = 0; i < count; i++)
 		header.len += mod_ext->ext_mod_config_array[i].header.ext_module_config_length;
-	fwrite(&header, sizeof(header), 1, image->out_ext_man_fd);
+	write_ret = fwrite(&header, sizeof(header), 1, image->out_ext_man_fd);
+	if (write_ret != 1) {
+		ret = file_error("can't write fw_ext_man_cavs_header",
+				 image->out_ext_man_file);
+		goto out;
+	}
 
 	for (i = 0; i < count; i++) {
 		write_ret = fwrite(&mod_ext->ext_mod_config_array[i].header,
