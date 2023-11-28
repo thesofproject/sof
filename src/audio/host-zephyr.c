@@ -736,7 +736,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	struct dma_sg_config *config = &hd->config;
 	struct dma_sg_elem *sg_elem;
 	struct dma_config *dma_cfg = &hd->z_config;
-	struct dma_block_config dma_block_cfg;
+	struct dma_block_config *dma_block_cfg;
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
@@ -890,12 +890,21 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	hd->chan->period = config->period;
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
-	memset(&dma_block_cfg, 0, sizeof(dma_block_cfg));
+
+	dma_block_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
+				SOF_MEM_CAPS_RAM,
+				sizeof(*dma_block_cfg));
+
+	if (!dma_block_cfg) {
+		comp_err(dev, "host_common_params: dma_block_config allocation failed");
+		err = -ENOMEM;
+		goto err_release_channel;
+	}
 
 	dma_cfg->block_count = 1;
 	dma_cfg->source_data_size = config->src_width;
 	dma_cfg->dest_data_size = config->dest_width;
-	dma_cfg->head_block  = &dma_block_cfg;
+	dma_cfg->head_block  = dma_block_cfg;
 
 	for (i = 0; i < config->elem_array.count; i++) {
 		sg_elem = config->elem_array.elems + i;
@@ -912,25 +921,23 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 			buffer_addr = addr;
 	}
 
-	dma_block_cfg.block_size = buffer_bytes;
+	dma_block_cfg->block_size = buffer_bytes;
 
 	switch (config->direction) {
 	case DMA_DIR_LMEM_TO_HMEM:
 		dma_cfg->channel_direction = MEMORY_TO_HOST;
-		dma_block_cfg.source_address = buffer_addr;
+		dma_block_cfg->source_address = buffer_addr;
 		break;
 	case DMA_DIR_HMEM_TO_LMEM:
 		dma_cfg->channel_direction = HOST_TO_MEMORY;
-		dma_block_cfg.dest_address = buffer_addr;
+		dma_block_cfg->dest_address = buffer_addr;
 		break;
 	}
 
 	err = dma_config(hd->chan->dma->z_dev, hd->chan->index, dma_cfg);
 	if (err < 0) {
 		comp_err(dev, "host_params(): dma_config() failed");
-		dma_release_channel(hd->dma->z_dev, hd->chan->index);
-		hd->chan = NULL;
-		return err;
+		goto err_free_block_cfg;
 	}
 
 	err = dma_get_attribute(hd->dma->z_dev, DMA_ATTR_COPY_ALIGNMENT,
@@ -938,7 +945,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	if (err < 0) {
 		comp_err(dev, "host_params(): dma_get_attribute()");
-		return err;
+		goto err_free_block_cfg;
 	}
 
 	/* minimal copied data shouldn't be less than alignment */
@@ -952,6 +959,15 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		host_copy_normal;
 
 	return 0;
+
+err_free_block_cfg:
+	dma_cfg->head_block = NULL;
+	rfree(dma_block_cfg);
+err_release_channel:
+	dma_release_channel(hd->dma->z_dev, hd->chan->index);
+	hd->chan = NULL;
+
+	return err;
 }
 
 static int host_params(struct comp_dev *dev,
@@ -1023,6 +1039,10 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 		buffer_free(hd->dma_buffer);
 		hd->dma_buffer = NULL;
 	}
+
+	/* free DMA block configuration */
+	if (hd->z_config.head_block)
+		rfree(hd->z_config.head_block);
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
