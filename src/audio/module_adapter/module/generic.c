@@ -30,7 +30,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	comp_dbg(dev, "module_load_config() start");
 
 	if (!cfg || !size) {
-		comp_err(dev, "module_load_config(): wrong input params! dev %x, cfg %x size %d",
+		comp_err(dev, "module_load_config(): wrong input params! dev %x, cfg %x size %zu",
 			 (uint32_t)dev, (uint32_t)cfg, size);
 		return -EINVAL;
 	}
@@ -448,7 +448,7 @@ int module_set_configuration(struct processing_module *mod,
 			return 0;
 
 		if (md->new_cfg_size > MAX_BLOB_SIZE) {
-			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %d, allowed %d",
+			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %zu, allowed %d",
 				 md->new_cfg_size, MAX_BLOB_SIZE);
 			return -EINVAL;
 		}

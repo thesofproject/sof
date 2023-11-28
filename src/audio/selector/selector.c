@@ -458,7 +458,7 @@ static int selector_prepare(struct comp_dev *dev)
 	sink_size = audio_stream_get_size(&sinkb->stream);
 
 	if (sink_size < cd->sink_period_bytes) {
-		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d",
+		comp_err(dev, "selector_prepare(): sink buffer size %zu is insufficient < %d",
 			 sink_size, cd->sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;

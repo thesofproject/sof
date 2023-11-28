@@ -59,7 +59,7 @@ static int eq_iir_init(struct processing_module *mod)
 
 	/* Check first before proceeding with dev and cd that coefficients blob size is sane */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		comp_err(dev, "eq_iir_init(), coefficients blob size %u exceeds maximum", bs);
+		comp_err(dev, "eq_iir_init(), coefficients blob size %zu exceeds maximum", bs);
 		return -EINVAL;
 	}
 

@@ -34,7 +34,7 @@ extern struct tr_ctx ipc_tr;
 
 /* convenience error trace for mismatched internal structures */
 #define IPC_SIZE_ERROR_TRACE(ctx, object)		\
-	tr_err(ctx, "ipc: size %d expected %d",		\
+	tr_err(ctx, "ipc: size %d expected %zu",	\
 	       (object).hdr.size, sizeof(object))
 
 /* Returns pipeline source component */
