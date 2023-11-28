@@ -577,8 +577,8 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
 
-	*x = x0;
-	*y = y0;
+	*x = (int16_t *)x0;
+	*y = (int16_t *)y0;
 }
 
 static void drc_s16_default(struct processing_module *mod,
@@ -715,8 +715,8 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
 
-	*x = x0;
-	*y = y0;
+	*x = (int32_t *)x0;
+	*y = (int32_t *)y0;
 }
 #endif
 
