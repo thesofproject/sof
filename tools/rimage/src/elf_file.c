@@ -117,7 +117,7 @@ static int elf_header_read(struct elf_file *elf)
 	/* read in elf header */
 	count = fread(&elf->header, sizeof(elf->header), 1, elf->file);
 	if (count != 1) {
-		if (count < 0)
+		if (!count)
 			return file_error("failed to read elf header", elf->filename);
 		else
 			return elf_error(elf, "Corrupted file.", ENODATA);
@@ -199,7 +199,7 @@ static int elf_section_headers_read(struct elf_file *elf)
 
 		count = fread(&elf->sections[i].data, sizeof(Elf32_Shdr), 1, elf->file);
 		if (count != 1) {
-			if (count < 0)
+			if (!count)
 				return file_error("failed to read section header", elf->filename);
 			else
 				return elf_error(elf, "Corrupted file.", ENODATA);
@@ -264,7 +264,7 @@ static int elf_program_headers_read(struct elf_file *elf)
 
 		count = fread(&elf->programs[i], sizeof(Elf32_Phdr), 1, elf->file);
 		if (count != 1) {
-			if (count < 0)
+			if (!count)
 				return file_error("failed to read program header", elf->filename);
 			else
 				return elf_error(elf, "Corrupted file.", ENODATA);
@@ -467,7 +467,7 @@ int elf_section_read_content(const struct elf_file *elf, const struct elf_sectio
 
 	count = fread(buffer, header->data.size, 1, elf->file);
 	if (count != 1) {
-		if (count < 0)
+		if (!count)
 			return file_error("failed to read section data", elf->filename);
 		else
 			return elf_error(elf, "Corrupted file.", ENODATA);
