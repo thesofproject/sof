@@ -82,12 +82,12 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
 			assert(!___ret);				\
 			bzero((char *)rx + tx->size, rx_size - tx->size);\
-			tr_dbg(&ipc_tr, "ipc: hdr 0x%x rx (%d) > tx (%d)",\
+			tr_dbg(&ipc_tr, "ipc: hdr 0x%x rx (%zu) > tx (%d)",\
 			       rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
-			tr_warn(&ipc_tr, "ipc: hdr 0x%x tx (%d) > rx (%d)",\
+			tr_warn(&ipc_tr, "ipc: hdr 0x%x tx (%d) > rx (%zu)",\
 				rx->cmd, tx->size, rx_size);		\
 		} else	{						\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
@@ -252,7 +252,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 	if (sizeof(pcm_params) + pcm_params.params.ext_data_length > SOF_IPC_MSG_MAX_SIZE) {
-		ipc_cmd_err(&ipc_tr, "pcm_params ext_data_length invalid size %d max allowed %d",
+		ipc_cmd_err(&ipc_tr, "pcm_params ext_data_length invalid size %d max allowed %zu",
 			    pcm_params.params.ext_data_length,
 			    SOF_IPC_MSG_MAX_SIZE - sizeof(pcm_params));
 		return -EINVAL;

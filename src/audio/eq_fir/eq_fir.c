@@ -262,7 +262,7 @@ static int eq_fir_init(struct processing_module *mod)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		comp_err(dev, "eq_fir_init(): coefficients blob size = %u > SOF_EQ_FIR_MAX_SIZE",
+		comp_err(dev, "eq_fir_init(): coefficients blob size = %zu > SOF_EQ_FIR_MAX_SIZE",
 			 bs);
 		return -EINVAL;
 	}

@@ -184,7 +184,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	}
 #endif
 
-	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() pos = %d, fragment size = %d",
+	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() pos = %d, fragment size = %zu",
 		 pos, fragment_size);
 
 	/* Check that there is no work-in-progress previous request */
