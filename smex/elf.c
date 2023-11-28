@@ -387,6 +387,11 @@ int elf_find_section(const struct elf_module *module, const char *name)
 	size_t count;
 	int ret, i;
 
+	if (module->section == NULL) {
+		fprintf(stderr, "error: NULL module section\n");
+		return -EINVAL;
+	}
+
 	section = &module->section[hdr->shstrndx];
 
 	/* alloc data data */
