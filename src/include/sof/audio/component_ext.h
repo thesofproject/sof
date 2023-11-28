@@ -500,6 +500,18 @@ static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint3
 	return ret;
 }
 
+/** Returns true if the component's pipeline matches the specified direction */
+static inline bool comp_same_dir(struct comp_dev *comp, enum sof_ipc_stream_direction dir)
+{
+	int end_type = comp_get_endpoint_type(comp->pipeline->sink_comp);
+
+	if (dir == SOF_IPC_STREAM_PLAYBACK && end_type != COMP_ENDPOINT_DAI)
+		return false;
+	if (dir == SOF_IPC_STREAM_CAPTURE && end_type != COMP_ENDPOINT_HOST)
+		return false;
+	return true;
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_COMPONENT_INT_H__ */

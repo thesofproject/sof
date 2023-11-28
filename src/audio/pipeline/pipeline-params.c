@@ -80,33 +80,15 @@ static int pipeline_comp_params(struct comp_dev *current,
 		.skip_incomplete = true,
 	};
 	int stream_direction = ppl_data->params->params.direction;
-	int end_type;
 	int err;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		/* If pipeline connected to the starting one is in improper
-		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
-		 * stop propagation of parameters not to override their config.
-		 * Direction param of the pipeline can not be trusted at this
-		 * point, as it might not be configured yet, hence checking
-		 * for endpoint component type.
-		 */
-		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
-		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (end_type == COMP_ENDPOINT_HOST ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-		}
-
-		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
-			if (end_type == COMP_ENDPOINT_DAI ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-		}
-	}
+	/* Don't propagate to pipelines in the opposite direction */
+	if (!comp_is_single_pipeline(current, ppl_data->start) &&
+	    !comp_same_dir(current, stream_direction))
+		return 0;
 
 	/* don't do any params if current is running */
 	if (current->state == COMP_STATE_ACTIVE)
@@ -279,8 +261,6 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 				 struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	int stream_direction = dir;
-	int end_type;
 	int err;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
@@ -291,24 +271,9 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 		if (IPC4_MOD_ID(current->ipc_config.id))
 			return 0;
 
-		/* If pipeline connected to the starting one is in improper
-		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
-		 * stop propagation. Direction param of the pipeline can not be
-		 * trusted at this point, as it might not be configured yet,
-		 * hence checking for endpoint component type.
-		 */
-		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
-		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (end_type == COMP_ENDPOINT_HOST ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-		}
-
-		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
-			if (end_type == COMP_ENDPOINT_DAI ||
-			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
-		}
+		/* Propagate prepare only to pipelines in the same direction */
+		if (!comp_same_dir(current, dir))
+			return 0;
 	}
 
 	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
