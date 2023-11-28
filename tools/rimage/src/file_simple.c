@@ -84,10 +84,7 @@ static int write_block(struct image *image, struct manifest_module *module,
 		section->header->name);
 
 	/* return padding size */
-	if (ret >= 0)
-		return padding;
-
-	return ret;
+	return padding;
 }
 
 /**
