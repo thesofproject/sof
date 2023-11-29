@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-set(common_files
+# Files common to Zephyr and XTOS
+add_local_sources(sof
 	dai.c
 	handler.c
 	helper.c
@@ -12,11 +13,6 @@ set(common_files
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
-
-zephyr_library_sources(
-	${common_files}
-)
-
 zephyr_library_sources_ifdef(CONFIG_AMS
 	ams_helpers.c
 )
@@ -26,7 +22,6 @@ else()  ### Not Zephyr ####
 
 
 add_local_sources(sof
-	${common_files}
 	ams_helpers.c
 )
 
