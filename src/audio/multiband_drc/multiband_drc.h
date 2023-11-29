@@ -92,6 +92,14 @@ static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df2t *iir)
 	iir->delay = NULL;
 }
 
+void multiband_drc_process_enable(bool *process_enabled);
+int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t param_id,
+				 const uint8_t *fragment, enum module_cfg_fragment_position pos,
+				 uint32_t data_offset_size, size_t fragment_size);
+int multiband_drc_get_ipc_config(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata,
+				 size_t fragment_size);
+int multiband_drc_params(struct processing_module *mod);
+
 #ifdef UNIT_TEST
 void sys_comp_module_multiband_drc_interface_init(void);
 #endif

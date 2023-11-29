@@ -695,6 +695,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc3.c
+)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc4.c
+)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
 )
