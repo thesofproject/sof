@@ -398,27 +398,6 @@ err:
 	return ret;
 }
 
-/* just stubs for now. Remove these after making these ops optional in the module adapter */
-static int up_down_mixer_prepare(struct processing_module *mod,
-				 struct sof_source **sources, int num_of_sources,
-				 struct sof_sink **sinks, int num_of_sinks)
-{
-	struct up_down_mixer_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-
-	if (!cd->mix_routine) {
-		comp_err(dev, "up_down_mixer_prepare(): mix routine not initialized");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int up_down_mixer_reset(struct processing_module *mod)
-{
-	return 0;
-}
-
 static int
 up_down_mixer_process(struct processing_module *mod,
 		      struct input_stream_buffer *input_buffers, int num_input_buffers,
@@ -458,9 +437,7 @@ up_down_mixer_process(struct processing_module *mod,
 
 static const struct module_interface up_down_mixer_interface = {
 	.init = up_down_mixer_init,
-	.prepare = up_down_mixer_prepare,
 	.process_audio_stream = up_down_mixer_process,
-	.reset = up_down_mixer_reset,
 	.free = up_down_mixer_free
 };
 
