@@ -42,16 +42,7 @@ DECLARE_SOF_RT_UUID("multiband_drc", multiband_drc_uuid, 0x0d9f2256, 0x8e4f, 0x4
 
 DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 
-static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df2t *iir)
-{
-	rfree(iir->coef);
-	rfree(iir->delay);
-
-	iir->coef = NULL;
-	iir->delay = NULL;
-}
-
-static inline void multiband_drc_reset_state(struct multiband_drc_state *state)
+static void multiband_drc_reset_state(struct multiband_drc_state *state)
 {
 	int i;
 
