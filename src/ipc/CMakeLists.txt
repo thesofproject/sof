@@ -6,7 +6,8 @@ elseif (CONFIG_IPC_MAJOR_4)
         add_subdirectory(ipc4)
 endif()
 
-set(base_files
+# Common to Zephyr and XTOS
+add_local_sources(sof
 	ipc-common.c
 	ipc-helper.c
 )
@@ -15,7 +16,6 @@ is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
 zephyr_library_sources(
-	${base_files}
 	dma-copy.c
 )
 
@@ -28,10 +28,6 @@ endif()
 
 else() ###  Not Zephyr ###
 
-
-add_local_sources(sof
-	${base_files}
-)
 
 if (CONFIG_TRACE)
 	add_local_sources(sof
