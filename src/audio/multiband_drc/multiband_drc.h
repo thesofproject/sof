@@ -83,6 +83,15 @@ static inline multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_
 	return NULL;
 }
 
+static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df2t *iir)
+{
+	rfree(iir->coef);
+	rfree(iir->delay);
+
+	iir->coef = NULL;
+	iir->delay = NULL;
+}
+
 #ifdef UNIT_TEST
 void sys_comp_module_multiband_drc_interface_init(void);
 #endif
