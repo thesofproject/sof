@@ -241,16 +241,12 @@ static int multiband_drc_init(struct processing_module *mod)
 	md->private = cd;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
-#if CONFIG_IPC_MAJOR_4
 	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
 	 * before where the processing is never enabled via switch control. New
 	 * kernel sends the IPC4 switch control and sets this to desired state
 	 * before prepare.
 	 */
-	cd->process_enabled = true;
-#else
-	cd->process_enabled = false;
-#endif
+	multiband_drc_process_enable(&cd->process_enabled);
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -288,118 +284,29 @@ static int multiband_drc_free(struct processing_module *mod)
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int multiband_drc_cmd_set_value(struct processing_module *mod,
-				       struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_dev *dev = mod->dev;
-	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "multiband_drc_multiband_drc_cmd_set_value(), SOF_CTRL_CMD_SWITCH");
-		if (cdata->num_elems == 1) {
-			cd->process_enabled = cdata->chanv[0].value;
-			comp_info(dev, "multiband_drc_cmd_set_value(), process_enabled = %d",
-				  cd->process_enabled);
-			return 0;
-		}
-	}
-
-	comp_err(mod->dev, "cmd_set_value() error: invalid cdata->cmd");
-	return -EINVAL;
-}
-#endif
-
 static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
 				    enum module_cfg_fragment_position pos,
 				    uint32_t data_offset_size, const uint8_t *fragment,
 				    size_t fragment_size, uint8_t *response,
 				    size_t response_size)
 {
-	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "multiband_drc_set_config()");
 
-#if CONFIG_IPC_MAJOR_4
-	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
-
-	switch (param_id) {
-	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
-		comp_dbg(dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID id = %d, num_elems = %d",
-			 ctl->id, ctl->num_elems);
-
-		if (ctl->id == 0 && ctl->num_elems == 1) {
-			cd->process_enabled = ctl->chanv[0].value;
-			comp_info(dev, "process_enabled = %d", cd->process_enabled);
-		} else {
-			comp_err(dev, "Illegal control id = %d, num_elems = %d",
-				 ctl->id, ctl->num_elems);
-			return -EINVAL;
-		}
-
-		return 0;
-
-	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_err(dev, "multiband_drc_set_config(), illegal control.");
-		return -EINVAL;
-	}
-
-#elif CONFIG_IPC_MAJOR_3
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
-		return multiband_drc_cmd_set_value(mod, cdata);
-#endif
-
-	comp_dbg(mod->dev, "multiband_drc_set_config(), SOF_CTRL_CMD_BINARY");
-	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
-				  fragment_size);
+	return multiband_drc_set_ipc_config(mod, param_id,
+					    fragment, pos, data_offset_size, fragment_size);
 }
-
-#if CONFIG_IPC_MAJOR_3
-static int multiband_drc_cmd_get_value(struct processing_module *mod,
-				       struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_dev *dev = mod->dev;
-	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-	int j;
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "multiband_drc_cmd_get_value(), SOF_CTRL_CMD_SWITCH");
-		for (j = 0; j < cdata->num_elems; j++)
-			cdata->chanv[j].value = cd->process_enabled;
-		if (cdata->num_elems == 1)
-			return 0;
-
-		comp_warn(dev, "multiband_drc_cmd_get_value() warn: num_elems should be 1, got %d",
-			  cdata->num_elems);
-		return 0;
-	}
-
-	comp_err(dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
-	return -EINVAL;
-}
-#endif
 
 static int multiband_drc_get_config(struct processing_module *mod,
 				    uint32_t config_id, uint32_t *data_offset_size,
 				    uint8_t *fragment, size_t fragment_size)
 {
-	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
 	comp_dbg(mod->dev, "multiband_drc_get_config()");
 
-#if CONFIG_IPC_MAJOR_3
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
-		return multiband_drc_cmd_get_value(mod, cdata);
-#endif
-
-	comp_dbg(mod->dev, "multiband_drc_get_config(), SOF_CTRL_CMD_BINARY");
-	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
+	return multiband_drc_get_ipc_config(mod, cdata, fragment_size);
 }
 
 static void multiband_drc_set_alignment(struct audio_stream *source,
@@ -442,41 +349,6 @@ static int multiband_drc_process(struct processing_module *mod,
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_4
-static int multiband_drc_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct sof_ipc_stream_params comp_params;
-	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i, ret;
-
-	comp_dbg(dev, "multiband_drc_params()");
-
-	comp_params = *params;
-	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
-	comp_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
-
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	comp_params.frame_fmt = frame_fmt;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	component_set_nearest_period_frames(dev, comp_params.rate);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ret = buffer_set_params(sinkb, &comp_params, true);
-
-	return ret;
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
 static int multiband_drc_prepare(struct processing_module *mod,
 				 struct sof_source **sources, int num_of_sources,
 				 struct sof_sink **sinks, int num_of_sinks)
@@ -490,11 +362,9 @@ static int multiband_drc_prepare(struct processing_module *mod,
 
 	comp_info(dev, "multiband_drc_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
 	ret = multiband_drc_params(mod);
 	if (ret < 0)
 		return ret;
-#endif
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
