@@ -30,8 +30,8 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	comp_dbg(dev, "module_load_config() start");
 
 	if (!cfg || !size) {
-		comp_err(dev, "module_load_config(): wrong input params! dev %x, cfg %x size %zu",
-			 (uint32_t)dev, (uint32_t)cfg, size);
+		comp_err(dev, "module_load_config(): wrong input params! dev %zx, cfg %zx size %zu",
+			 (size_t)dev, (size_t)cfg, size);
 		return -EINVAL;
 	}
 

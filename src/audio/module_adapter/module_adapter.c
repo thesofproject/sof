@@ -47,8 +47,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_cl_dbg(drv, "module_adapter_new() start");
 
 	if (!config) {
-		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %x config = %x",
-			    (uint32_t)drv, (uint32_t)config);
+		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %zx config = %zx",
+			    (size_t)drv, (size_t)config);
 		return NULL;
 	}
 
