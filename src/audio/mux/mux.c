@@ -270,9 +270,12 @@ static int demux_process(struct processing_module *mod,
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < num_output_buffers; i++) {
-		demux_prepare_active_look_up(cd, sinks_stream[i],
-					     input_buffers[0].data, look_ups[i]);
-		cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
+		if (sinks_stream[i]) {
+			demux_prepare_active_look_up(cd, sinks_stream[i],
+						     input_buffers[0].data, look_ups[i]);
+			cd->demux(dev, sinks_stream[i], input_buffers[0].data,
+				  frames, &cd->active_lookup);
+		}
 		mod->output_buffers[i].size = sink_bytes;
 	}
 
@@ -453,6 +456,31 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 				  fragment, fragment_size);
 }
 
+static int demux_trigger(struct processing_module *mod, int cmd)
+{
+	struct list_item *li;
+	struct comp_buffer *b;
+
+	/* Check for cross-pipeline sinks: in general foreign
+	 * pipelines won't be started synchronously with ours (it's
+	 * under control of host software), so output can't be
+	 * guaranteed not to overflow.  Always set the
+	 * overrun_permitted flag.  These sink components are assumed
+	 * responsible for flushing/synchronizing the stream
+	 * themselves.
+	 */
+	if (cmd == COMP_TRIGGER_PRE_START) {
+		list_for_item(li, &mod->dev->bsink_list) {
+			b = container_of(li, struct comp_buffer, source_list);
+			if (b->sink->pipeline != mod->dev->pipeline)
+				audio_stream_set_overrun(&b->stream, true);
+		}
+
+	}
+
+	return module_adapter_set_state(mod, mod->dev, cmd);
+}
+
 static const struct module_interface mux_interface = {
 	.init = mux_init,
 	.set_configuration = mux_set_config,
@@ -472,6 +500,7 @@ static const struct module_interface demux_interface = {
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,
 	.process_audio_stream = demux_process,
+	.trigger = demux_trigger,
 	.reset = mux_reset,
 	.free = mux_free,
 };
