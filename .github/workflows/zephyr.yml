@@ -82,13 +82,13 @@ jobs:
       - name: Download docker image && ls /opt/toolchains/
         run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
 
-      - name: build with many warnings, work in progress
+      - name: 64 bits build
         run: |
-          # One of the main problems: the old sof-logger is hardcoded to
-          # four 32bits parameters.
           cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
              'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
-              west build --board mimx93_evk_a55 sof/app'
+              west build --board mimx93_evk_a55 sof/app              \
+              -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror     \
+              -DEXTRA_AFLAGS=-Werror'
 
 
   build-linux:
