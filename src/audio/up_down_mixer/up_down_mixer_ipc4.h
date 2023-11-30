@@ -7,7 +7,7 @@
 #ifndef __SOF_IPC4_UP_DOWN_MIXER_H__
 #define __SOF_IPC4_UP_DOWN_MIXER_H__
 
-#include "base-config.h"
+#include <ipc4/base-config.h>
 
 /**
  *  \brief bits field map which helps to describe each channel location a the data stream buffer

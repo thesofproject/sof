@@ -5,8 +5,6 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
 
-#include <sof/audio/coefficients/up_down_mixer/up_down_mixer.h>
-#include <sof/audio/up_down_mixer/up_down_mixer.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -27,6 +25,9 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "up_down_mixer_coef.h"
+#include "up_down_mixer.h"
 
 LOG_MODULE_REGISTER(up_down_mixer, CONFIG_SOF_LOG_LEVEL);
 
