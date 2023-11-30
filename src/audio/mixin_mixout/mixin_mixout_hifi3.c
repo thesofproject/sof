@@ -4,8 +4,9 @@
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
-#include <ipc4/mixin_mixout.h>
 #include <sof/common.h>
+
+#include "mixin_mixout.h"
 
 #ifdef MIXIN_MIXOUT_HIFI3
 
