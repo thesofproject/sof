@@ -6,7 +6,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/mixer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>

@@ -4,8 +4,9 @@
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
-#include <sof/audio/mixer.h>
 #include <sof/common.h>
+
+#include "mixer.h"
 
 #ifdef MIXER_GENERIC
 

@@ -28,4 +28,6 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
+
+target_include_directories(mixer PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
 target_link_libraries(mixer PRIVATE -lm)

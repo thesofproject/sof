@@ -4,8 +4,9 @@
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
-#include <sof/audio/mixer.h>
 #include <sof/common.h>
+
+#include "mixer.h"
 
 #if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
 

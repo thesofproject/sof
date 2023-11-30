@@ -9,7 +9,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/mixer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
@@ -31,6 +30,8 @@
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "mixer.h"
 
 LOG_MODULE_REGISTER(mixer, CONFIG_SOF_LOG_LEVEL);
 
