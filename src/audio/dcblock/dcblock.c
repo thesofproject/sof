@@ -10,7 +10,6 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/dcblock/dcblock.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -31,6 +30,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "dcblock.h"
 
 LOG_MODULE_REGISTER(dcblock, CONFIG_SOF_LOG_LEVEL);
 
