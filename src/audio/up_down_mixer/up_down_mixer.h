@@ -12,11 +12,12 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
-#include <ipc4/up_down_mixer.h>
 #include <ipc4/module.h>
 #include <ipc4/base-config.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "up_down_mixer_ipc4.h"
 
 /** This type is introduced for better readability. */
 typedef const int32_t *downmix_coefficients;

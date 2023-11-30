@@ -5,7 +5,7 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
 
-#include <ipc4/up_down_mixer.h>
+#include "up_down_mixer_ipc4.h"
 #include <stdint.h>
 
 #if CONFIG_COMP_UP_DOWN_MIXER

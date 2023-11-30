@@ -4,7 +4,7 @@
 //
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@intel.com>
 
-#include <sof/audio/up_down_mixer/up_down_mixer.h>
+#include "up_down_mixer.h"
 
 #if defined(__XCC__) && XCHAL_HAVE_HIFI3
 
