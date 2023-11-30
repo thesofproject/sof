@@ -12,6 +12,8 @@
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <sof/compiler_info.h>
+#include <module/module/base.h>
+#include <module/module/interface.h>
 
 /* __XCC__ is both for xt_xcc and xt_clang */
 #if defined(__XCC__)
@@ -92,5 +94,12 @@ static inline dcblock_func dcblock_find_func(enum sof_ipc_frame src_fmt)
 
 	return NULL;
 }
+
+int dcblock_get_ipc_config(struct processing_module *mod,
+			   uint8_t *fragment, size_t fragment_size);
+int dcblock_set_ipc_config(struct processing_module *mod,
+			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			   const uint8_t *fragment, size_t fragment_size);
+void dcblock_params(struct processing_module *mod);
 
 #endif /* __SOF_AUDIO_DCBLOCK_DCBLOCK_H__ */

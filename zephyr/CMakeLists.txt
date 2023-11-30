@@ -514,6 +514,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc4.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_SEL
 	${SOF_AUDIO_PATH}/selector/selector_generic.c
 	${SOF_AUDIO_PATH}/selector/selector.c
