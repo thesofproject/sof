@@ -26,10 +26,11 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
-#include <ipc4/mixin_mixout.h>
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "mixin_mixout.h"
 
 LOG_MODULE_REGISTER(mixer, CONFIG_SOF_LOG_LEVEL);
 
