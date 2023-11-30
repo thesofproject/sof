@@ -662,8 +662,6 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct list_item *sink_list;
-	struct comp_buffer *sink;
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -692,19 +690,6 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
 							      &sink_fmt->sink_fmt, ipc4_gtw_none,
 							      ipc4_bidirection);
-
-	/* update corresponding sink format */
-	list_for_item(sink_list, &dev->bsink_list) {
-		int sink_id;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-
-		sink_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
-		if (sink_id == sink_fmt->sink_id) {
-			ipc4_update_buffer_format(sink, &sink_fmt->sink_fmt);
-			break;
-		}
-	}
 
 	return 0;
 }
@@ -990,6 +975,31 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
+static int copier_bind(struct processing_module *mod, void *data)
+{
+	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct ipc4_module_bind_unbind *bu = data;
+	uint32_t src_queue_id = bu->extension.r.src_queue;
+	struct list_item *sink_list;
+	struct comp_buffer *sink;
+
+	/* update corresponding sink format */
+	list_for_item(sink_list, &dev->bsink_list) {
+		int sink_id;
+
+		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink_id = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+		if (sink_id == src_queue_id) {
+			ipc4_update_buffer_format(sink, &cd->out_fmt[sink_id]);
+			return 0;
+		}
+	}
+
+	comp_err(dev, "No sink buffer found for src_queue=%d", src_queue_id);
+	return -ENODEV;
+}
+
 static int copier_unbind(struct processing_module *mod, void *data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
@@ -1023,6 +1033,7 @@ static const struct module_interface copier_interface = {
 	.free = copier_free,
 	.set_configuration = copier_set_configuration,
 	.get_configuration = copier_get_configuration,
+	.bind = copier_bind,
 	.unbind = copier_unbind,
 	.endpoint_ops = &copier_endpoint_ops,
 };
