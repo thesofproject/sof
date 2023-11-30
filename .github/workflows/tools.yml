@@ -27,3 +27,29 @@ jobs:
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
           ./scripts/build-tools.sh
+
+
+  SOF-alsa-plugin:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {filter: 'tree:0'}
+
+      - name: apt install
+        run: sudo apt-get update;
+          sudo apt-get -y install ninja-build libasound2-dev
+
+      # One space character is enough to detect most quoting issues
+      - name: configure
+        run: cmake  -B 'build plugin' -S tools/plugin
+          -GNinja -Wdev -Werror=dev --warn-uninitialized
+
+      # Retry with -j1 in case of error because parallel builds drown error
+      # messages.
+      - name: build ExternalProjects first to avoid build race condition
+        run: cmake --build 'build plugin' -- sof_ep parser_ep ||
+             cmake --build 'build plugin' -- sof_ep parser_ep -j1
+
+      - name: Remaining build steps
+        run: cmake --build 'build plugin' ||
+             cmake --build 'build plugin' -j1
