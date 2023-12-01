@@ -602,7 +602,7 @@ static int mixin_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_dev *dev = mod->dev;
-	struct list_item *blist;
+	int i;
 	int ret;
 
 	comp_dbg(dev, "mixin_params()");
@@ -612,14 +612,27 @@ static int mixin_params(struct processing_module *mod)
 	/* Buffers between mixins and mixouts are not used (mixin writes data directly to mixout
 	 * sink). But, anyway, let's setup these buffers properly just in case.
 	 */
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink;
+
+	/* FIXME: there are 2 problems with the loop below:
+	 *
+	 * (1) struct sof_audio_stream_params contains two frame format members: frame_fmt
+	 * and valid_sample_fmt both of type enum sof_ipc_frame. That is excessive as
+	 * enum sof_ipc_frame describes both container and sample size and so having one
+	 * variable of this type is enough. frame_fmt is set by comp_verify_params(), however,
+	 * valid_sample_fmt does not. Hence valid_sample_fmt is set below in a loop. If mess
+	 * with having both frame_fmt and valid_sample_fmt in SOF is solved when this loop can
+	 * be removed.
+	 *
+	 * (2) comp_verify_params() setup sink buffers for playback pipeline and source buffers
+	 * for capture pipelines. So in case problem (1) is solved the loop is only needed if
+	 * mixin is on capture pipeline and mixout is in playback pipeline. Such topology seems
+	 * makes not much sense and probably never used. In all other cases comp_verify_params()
+	 * will be sufficient to setup buffers and so the loop below may be removed.
+	 */
+	for (i = 0; i < mod->num_of_sinks; i++) {
 		enum sof_ipc_frame frame_fmt, valid_fmt;
 
-		sink = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
-
-		audio_stream_set_channels(&sink->stream,
-					  mod->priv.cfg.base_cfg.audio_fmt.channels_count);
+		sink_set_channels(mod->sinks[i], mod->priv.cfg.base_cfg.audio_fmt.channels_count);
 
 		/* comp_verify_params() does not modify valid_sample_fmt (a BUG?),
 		 * let's do this here
@@ -629,8 +642,8 @@ static int mixin_params(struct processing_module *mod)
 					    &frame_fmt, &valid_fmt,
 					    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-		audio_stream_set_frm_fmt(&sink->stream, frame_fmt);
-		audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
+		sink_set_frm_fmt(mod->sinks[i], frame_fmt);
+		sink_set_valid_fmt(mod->sinks[i], valid_fmt);
 	}
 
 	ret = comp_verify_params(dev, 0, params);
@@ -656,7 +669,6 @@ static int mixin_prepare(struct processing_module *mod,
 {
 	struct mixin_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sink;
 	enum sof_ipc_frame fmt;
 	int ret;
 
@@ -666,8 +678,7 @@ static int mixin_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	fmt = audio_stream_get_valid_fmt(&sink->stream);
+	fmt = sink_get_valid_fmt(sinks[0]);
 
 	/* currently inactive so setup mixer */
 	switch (fmt) {
@@ -692,7 +703,6 @@ static int mixin_prepare(struct processing_module *mod,
 static int mixout_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sink;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int ret;
@@ -707,7 +717,9 @@ static int mixout_params(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	/* FIXME: the code below could/should be removed once mess with having both frame_fmt
+	 * and valid_sample_fmt is solved (see comment in mixin_params()).
+	 */
 
 	/* comp_verify_params() does not modify valid_sample_fmt (a BUG?), let's do this here */
 	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
@@ -715,8 +727,7 @@ static int mixout_params(struct processing_module *mod)
 				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 
-	audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
-	audio_stream_set_channels(&sink->stream, params->channels);
+	sink_set_valid_fmt(mod->sinks[0], valid_fmt);
 
 	return 0;
 }
