@@ -601,7 +601,6 @@ static int mixout_reset(struct processing_module *mod)
 static int mixin_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct mixin_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct list_item *blist;
 	int ret;
@@ -616,25 +615,11 @@ static int mixin_params(struct processing_module *mod)
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
 		enum sof_ipc_frame frame_fmt, valid_fmt;
-		uint16_t sink_id;
 
 		sink = buffer_from_list(blist, PPL_DIR_DOWNSTREAM);
 
 		audio_stream_set_channels(&sink->stream,
 					  mod->priv.cfg.base_cfg.audio_fmt.channels_count);
-
-		/* Applying channel remapping may produce sink stream with channel count
-		 * different from source channel count.
-		 */
-		sink_id = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
-		if (sink_id >= MIXIN_MAX_SINKS) {
-			comp_err(dev, "Sink index out of range: %u, max sink count: %u",
-				 (uint32_t)sink_id, MIXIN_MAX_SINKS);
-			return -EINVAL;
-		}
-		if (md->sink_config[sink_id].mixer_mode == IPC4_MIXER_CHANNEL_REMAPPING_MODE)
-			audio_stream_set_channels(&sink->stream,
-						  md->sink_config[sink_id].output_channel_count);
 
 		/* comp_verify_params() does not modify valid_sample_fmt (a BUG?),
 		 * let's do this here
@@ -648,8 +633,7 @@ static int mixin_params(struct processing_module *mod)
 		audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
 	}
 
-	/* use BUFF_PARAMS_CHANNELS to skip updating channel count */
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
 		comp_err(dev, "mixin_params(): comp_verify_params() failed!");
 		return -EINVAL;
