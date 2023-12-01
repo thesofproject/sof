@@ -695,7 +695,6 @@ static int mixout_params(struct processing_module *mod)
 	struct comp_buffer *sink;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt, valid_fmt;
-	uint32_t sink_period_bytes, sink_stream_size;
 	int ret;
 
 	comp_dbg(dev, "mixout_params()");
@@ -718,23 +717,6 @@ static int mixout_params(struct processing_module *mod)
 
 	audio_stream_set_valid_fmt(&sink->stream, valid_fmt);
 	audio_stream_set_channels(&sink->stream, params->channels);
-
-	sink_stream_size = audio_stream_get_size(&sink->stream);
-
-	/* calculate period size based on config */
-	sink_period_bytes = audio_stream_period_bytes(&sink->stream,
-						      dev->frames);
-
-	if (sink_period_bytes == 0) {
-		comp_err(dev, "mixout_params(): period_bytes = 0");
-		return -EINVAL;
-	}
-
-	if (sink_stream_size < sink_period_bytes) {
-		comp_err(dev, "mixout_params(): sink buffer size %d is insufficient < %d",
-			 sink_stream_size, sink_period_bytes);
-		return -ENOMEM;
-	}
 
 	return 0;
 }
