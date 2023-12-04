@@ -56,38 +56,38 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 "cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
 
 # CAVS HDA topology with mixer-based efx eq pipelines for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
+"sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,HDMI_USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-generic-2ch\;\
 HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
-USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+HDMI_USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,USE_CHAIN_DMA=true,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,HDMI_USE_CHAIN_DMA=true,\
 DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic\;\
-HDA_CONFIG=efx,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
+HDA_CONFIG=efx,HDMI_USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-2ch\;\
 HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
-USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+HDMI_USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,USE_CHAIN_DMA=true,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,HDMI_USE_CHAIN_DMA=true,\
 DEEPBUFFER_FW_DMA_MS=100,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
 # CAVS HDA topology with gain and SRC before mixin for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-src-generic\;HDA_CONFIG=src,USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
+"sof-hda-generic\;sof-hda-src-generic\;HDA_CONFIG=src,HDMI_USE_CHAIN_DMA=true,DEEPBUFFER_FW_DMA_MS=100"
 
 # BT offload for tgl
 "cavs-nocodec-bt\;sof-nocodec-bt-tgl\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-tgl.bin,\
@@ -105,9 +105,12 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 
 # CAVS HDA topology for benchmarking performance
 # Copier - peak volume - mixin - mixout - aria - peak volume - mixin - mixout - copier
-"sof-hda-generic\;sof-hda-benchmark-generic-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
-"sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
-"sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,\
+HDMI_USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,\
+HDMI_USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,\
+HDMI_USE_CHAIN_DMA=true,BENCH_CONFIG=benchmark"
 
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
