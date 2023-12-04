@@ -85,7 +85,7 @@ static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *__restrict__ ptroutb
 		    ae_int64 *__restrict__ ptroutbitslo)
 {
 	ae_int64 producthihi, producthilo, productlolo;
-	ae_int64 producthi, productlo, product_hl_lh_h, product_hl_lh_l, carry;
+	ae_int64 producthi, product_hl_lh_h, product_hl_lh_l, carry;
 
 #if (SOFM_EXPONENTIAL_HIFI4 == 1 || SOFM_EXPONENTIAL_HIFI5 == 1)
 
@@ -126,6 +126,7 @@ static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *__restrict__ ptroutb
 	ae_int64 producthi_1c;
 	ae_int64 producthi_2c;
 	ae_int64 productlo_2c;
+	ae_int64 productlo;
 
 	ae_int64 s0 = AE_SRLI64(in_0, 63);
 	ae_int64 s1 = AE_SRLI64(in_1, 63);
@@ -190,7 +191,7 @@ static int64_t lomul_s64_sr_sat_near(int64_t a, int64_t b)
 	return AE_ADD64(temp, roundup);
 }
 
-static ae_int64 onebyfact_Q63[19] = {
+static const int64_t onebyfact_Q63[19] = {
 		4611686018427387904LL,
 		1537228672809129301LL,
 		384307168202282325LL,
@@ -235,7 +236,7 @@ int32_t sofm_exp_int32(int32_t x)
 	ae_int64 onebyfact;
 	ae_int64 temp;
 
-	ae_int64 *ponebyfact_Q63 = &onebyfact_Q63[0];
+	ae_int64 *ponebyfact_Q63 = (ae_int64 *)onebyfact_Q63;
 	ae_int64 ts = SOFM_EXP_TERMS_Q23P9;
 	ae_int64 mp = (x + SOFM_EXP_LSHIFT_BITS) >> 14; /* x in Q50.14 */;
 	xtbool flag;
