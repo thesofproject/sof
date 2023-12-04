@@ -338,7 +338,7 @@ struct comp_ops {
 	int (*dai_config)(struct dai_data *dd, struct comp_dev *dev,
 			  struct ipc_config_dai *dai_config, const void *dai_spec_config);
 
-#if CONFIG_IPC_MAJOR_3
+#if CONFIG_IPC_MAJOR_3 || CONFIG_LIBRARY
 	/**
 	 * Used to pass standard and bespoke commands (with optional data).
 	 * @param dev Component device.
