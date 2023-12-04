@@ -49,6 +49,15 @@ macro(is_zephyr ret)
 	endif()
 endmacro()
 
+# This macro
+# - saves a LOT of repetition, and
+# - mimics Zephyr, which helps with compatibility.
+macro(add_local_sources_ifdef condition target)
+	if(${condition})
+		add_local_sources(${target} ${ARGN})
+	endif()
+endmacro()
+
 # Adds sources to target like target_sources, but assumes that
 # paths are relative to subdirectory.
 # Works like:

@@ -25,9 +25,11 @@ IPC3 is not functional and not supported
 
 ```
 cd sof
-mkdir build_plugin
-cd build_plugin
-cmake ../tools/plugin -DPLUGIN_IPC4=ON
+cmake -GNinja -B build-plugin/ -S tools/plugin/
+# Build external projects first to avoid build race condition
+# Dropping -GNinja is another (very slow) option.
+cmake --build    build-plugin/ -- sof_ep parser_ep
+cmake --build    build-plugin/
 ```
 then (use default ALSA prefix atm)
 

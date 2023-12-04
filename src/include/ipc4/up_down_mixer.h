@@ -7,7 +7,6 @@
 #ifndef __SOF_IPC4_UP_DOWN_MIXER_H__
 #define __SOF_IPC4_UP_DOWN_MIXER_H__
 
-#include <sof/compiler_attributes.h>
 #include "base-config.h"
 
 /**

@@ -79,7 +79,7 @@ int volume_init(struct processing_module *mod)
 	int i;
 
 	if (!vol || cfg->size != sizeof(*vol)) {
-		comp_err(dev, "volume_init(): No configuration data or bad data size %u",
+		comp_err(dev, "volume_init(): No configuration data or bad data size %zu",
 			 cfg->size);
 		return -EINVAL;
 	}
@@ -95,7 +95,7 @@ int volume_init(struct processing_module *mod)
 	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
 	if (!cd->vol) {
 		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
+		comp_err(dev, "volume_init(): Failed to allocate %zu", vol_size);
 		return -ENOMEM;
 	}
 

@@ -307,8 +307,6 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 
 	comp_dbg(dev, "volume_set_config()");
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)fragment, fragment_size);
-
 	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
 				       fragment_size, response, response_size);
 	if (ret < 0)

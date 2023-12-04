@@ -10,9 +10,10 @@
 #include <utilities/array.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
+#include <api_version.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
-#include <module_api_ver.h>
+#include <module/module/api_ver.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
@@ -101,17 +102,22 @@ static int modules_init(struct processing_module *mod)
 
 	void *mod_adp;
 
-	/* Check if module is FDK*/
-	if (mod_buildinfo->api_version_number.fields.major < SOF_MODULE_API_MAJOR_VERSION) {
+	/* Check if module is FDK */
+	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
+	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
 		mod_adp = system_agent_start(md->module_entry_point, module_id,
 					     instance_id, 0, log_handle, &mod_cfg);
-	} else {
-		/* If not start agent for sof loadable */
+	} else
+	/* Check if module is native */
+	if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
+	    mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
+		/* If start agent for sof loadable */
 		mod->is_native_sof = true;
 		mod_adp = native_system_agent_start(mod->sys_service, md->module_entry_point,
 						    module_id, instance_id, 0, log_handle,
 						    &mod_cfg);
-	}
+	} else
+		return -ENOEXEC;
 
 	md->module_adapter = mod_adp;
 

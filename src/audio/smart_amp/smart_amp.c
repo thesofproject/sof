@@ -311,6 +311,7 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 				       struct sof_ipc_ctrl_data *cdata,
 				       int size)
@@ -436,6 +437,7 @@ static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
 		return -EINVAL;
 	}
 }
+#endif
 
 static void smart_amp_free(struct comp_dev *dev)
 {
@@ -813,7 +815,9 @@ static const struct comp_driver comp_smart_amp = {
 		.free = smart_amp_free,
 		.params = smart_amp_params,
 		.prepare = smart_amp_prepare,
+#if CONFIG_IPC_MAJOR_3
 		.cmd = smart_amp_cmd,
+#endif
 		.trigger = smart_amp_trigger,
 		.copy = smart_amp_copy,
 		.reset = smart_amp_reset,

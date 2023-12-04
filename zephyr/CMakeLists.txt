@@ -48,16 +48,17 @@ zephyr_interface_library_named(SOF)
 # SOF source paths.
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
+
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
 set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
-set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
+
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
 # Save path to rimage configuration files in cmake cache for later use by
@@ -125,6 +126,22 @@ macro(is_zephyr ret)
 	else()
 		set(${ret} FALSE)
 	endif()
+endmacro()
+
+# Wrappers for compatibility and re-use of existing, XTOS CMake files.
+# Do NOT use these macros in this file or in any other Zephyr-specific
+# CMake code.
+macro(add_local_sources target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources() target is not 'sof'")
+	endif()
+	zephyr_library_sources(${ARGN})
+endmacro()
+macro(add_local_sources_ifdef condition target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources_ifdef() target is not 'sof'")
+	endif()
+	zephyr_library_sources_ifdef(${condition} ${ARGN})
 endmacro()
 
 add_subdirectory(../src/init/ init_unused_install/)
@@ -396,6 +413,9 @@ zephyr_library_sources(
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
 )
+
+# SOF module interface functions
+add_subdirectory(../src/module module_unused_install/)
 
 if(CONFIG_ZEPHYR_DP_SCHEDULER)
 	zephyr_library_sources(${SOF_AUDIO_PATH}/dp_queue.c)
@@ -683,6 +703,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_math_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_hifi3.c
+	${SOF_AUDIO_PATH}/drc/drc_hifi4.c
 	${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
 )
 
@@ -765,15 +786,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
+	${SOF_AUDIO_PATH}/codec/dts/dts.c
 )
 if (CONFIG_DTS_CODEC)
 	if (CONFIG_DTS_CODEC_STUB)
 		zephyr_library_sources(
-			${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
+			${SOF_AUDIO_PATH}/codec/dts/dts_stub.c
 		)
 	else()
-		zephyr_library_import(DtsCodec ${SOF_AUDIO_PATH}/module_adapter/lib/release/libdts-sof-interface-i32.a)
+		zephyr_library_import(DtsCodec
+			${sof_top_dir}/third_party/lib/libdts-sof-interface-i32.a)
 	endif()
 endif()
 

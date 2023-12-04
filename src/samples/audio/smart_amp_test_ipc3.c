@@ -112,11 +112,11 @@ static int smart_amp_set_config(struct comp_dev *dev,
 	       ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
 	bs = cfg->size;
 
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
+	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs != sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "smart_amp_set_config(): invalid blob size, actual blob size = %u, expected blob size = %u",
+		comp_err(dev, "smart_amp_set_config(): invalid blob size, actual blob size = %zu, expected blob size = %zu",
 			 bs, sizeof(struct sof_smart_amp_config));
 		return -EINVAL;
 	}
@@ -137,7 +137,7 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	/* Copy back to user space */
 	bs = sad->config.size;
 
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
+	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs == 0 || bs > size)

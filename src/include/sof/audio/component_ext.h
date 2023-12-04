@@ -17,11 +17,7 @@
 #define __SOF_AUDIO_COMPONENT_INT_H__
 
 #include <sof/audio/component.h>
-#include <rtos/idc.h>
-#include <sof/list.h>
 #include <ipc/topology.h>
-#include <kernel/abi.h>
-#include <stdbool.h>
 
 /** \addtogroup component_api_helpers Component Mgmt API
  *  @{
@@ -115,6 +111,7 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 	return -EINVAL;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /** See comp_ops::cmd */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
@@ -136,6 +133,7 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return -EINVAL;
 }
+#endif
 
 /**
  * Runs comp_ops::trigger on the core the target component is assigned to.

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2018 Intel Corporation. All rights reserved.
+ * Copyright(c) 2018 - 2023 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
@@ -16,6 +16,7 @@
 #ifndef __IPC_STREAM_H__
 #define __IPC_STREAM_H__
 
+#include <module/ipc/stream.h>
 #include <ipc/header.h>
 #include <stdint.h>
 
@@ -47,18 +48,6 @@
 
 /* generic PCM flags for runtime settings */
 #define SOF_PCM_FLAG_XRUN_STOP	(1 << 0) /**< Stop on any XRUN */
-
-/* stream PCM frame format */
-enum sof_ipc_frame {
-	SOF_IPC_FRAME_S16_LE = 0,
-	SOF_IPC_FRAME_S24_4LE,
-	SOF_IPC_FRAME_S32_LE,
-	SOF_IPC_FRAME_FLOAT,
-	/* other formats here */
-	SOF_IPC_FRAME_S24_3LE,
-	SOF_IPC_FRAME_S24_4LE_MSB,
-	SOF_IPC_FRAME_U8,
-};
 
 /* stream buffer format */
 enum sof_ipc_buffer_format {

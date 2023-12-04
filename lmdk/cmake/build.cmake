@@ -9,6 +9,11 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/config.cmake)
 
+# Build common module functions from sof to a static library
+add_library(sof STATIC)
+target_include_directories(sof PRIVATE "${SOF_BASE}/src/include")
+add_subdirectory("${SOF_BASE}/src/module" module_api)
+
 foreach(MODULE ${MODULES_LIST})
 	add_executable(${MODULE})
 	add_subdirectory(${LMDK_BASE}/modules/${MODULE} ${MODULE}_module)
@@ -19,6 +24,7 @@ foreach(MODULE ${MODULES_LIST})
 	target_include_directories(${MODULE} PRIVATE
 		"${LMDK_BASE}/include"
 		"${RIMAGE_INCLUDE_DIR}"
+		"${SOF_BASE}/src/include/module"
 	)
 
 	# generate linker script
@@ -34,6 +40,9 @@ foreach(MODULE ${MODULES_LIST})
 		-DHPSRAM_ADDR=${HPSRAM_ADDR}
 		-P ${CMAKE_CURRENT_LIST_DIR}/ldscripts.cmake
 	)
+
+	# Link module with sof common module functions
+	target_link_libraries(${MODULE} sof)
 
 	target_link_options(${MODULE} PRIVATE
 		"-nostartfiles"
@@ -76,6 +85,6 @@ find_program(RIMAGE_COMMAND NAMES rimage
 
 add_custom_target(${PROJECT_NAME}_target ALL
 	DEPENDS ${RIMAGE_MODULES_LIST}
-	COMMAND ${RIMAGE_COMMAND} -k ${SIGNING_KEY} -f 2.0.0 -b 1 -o ${RIMAGE_OUTPUT_FILE} -c ${TOML} -e ${RIMAGE_MODULES_LIST}
+	COMMAND ${RIMAGE_COMMAND} -l -k ${SIGNING_KEY} -f 2.0.0 -b 1 -o ${RIMAGE_OUTPUT_FILE} -c ${TOML} -e ${RIMAGE_MODULES_LIST}
 	COMMAND ${CMAKE_COMMAND} -E cat ${RIMAGE_OUTPUT_FILE}.xman ${RIMAGE_OUTPUT_FILE} > ${OUTPUT_FILE}
 )

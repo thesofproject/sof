@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_IIR
+	bool "IIR component"
+	select COMP_BLOB
+	default y
+	depends on COMP_MODULE_ADAPTER
+	select MATH_IIR_DF1
+	help
+	  Select for IIR component

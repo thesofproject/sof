@@ -359,6 +359,14 @@ enum ipc4_fw_config_params {
 	IPC4_TELEMETRY_BUFFER_SIZE = 24,
 	/* HW version information  */
 	IPC4_BUS_HARDWARE_ID = 25,
+	/* Total memory size available in debug window */
+	IPC4_DEBUG_WINDOW_SIZE = 26,
+	/* Number of realtime Key Phrase Buffer (KPB) output pins */
+	IPC4_KPB_RT_SINK_COUNT = 27,
+	/* Manual control of DMI L1 state */
+	IPC4_DMI_FORCE_L1_EXIT = 28,
+	/* FW context save on D3 entry */
+	IPC4_FW_CONTEXT_SAVE = 29,
 	/* Total number of FW config parameters  */
 	IPC4_FW_CFG_PARAMS_COUNT,
 	/* Max config parameter id */

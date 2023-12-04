@@ -63,15 +63,5 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	# folder with Waves API must be among include directories
 	endif()
 
-	if(CONFIG_DTS_CODEC)
-		add_local_sources(sof module/dts/dts.c)
-		target_compile_definitions(sof PRIVATE -DDTS_MATH_INT32 -DDTS_XTENSA)
-		if (CONFIG_DTS_CODEC_STUB)
-			add_local_sources(sof module/dts/dts_stub.c)
-		else()
-			sof_add_static_library(DtsCodec ${CMAKE_CURRENT_LIST_DIR}/lib/release/libdts-sof-interface-i32.a)
-		endif()
-	endif()
-
 	return()
 endif()

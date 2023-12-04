@@ -9,8 +9,6 @@
 
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/sink_api_implementation.h>
-#include <sof/audio/source_api_implementation.h>
 #include <sof/audio/audio_stream.h>
 #include <rtos/bit.h>
 #include <sof/common.h>

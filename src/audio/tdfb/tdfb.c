@@ -357,7 +357,7 @@ static int tdfb_init(struct processing_module *mod)
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_TDFB_MAX_SIZE) {
-		comp_err(dev, "tdfb_init() error: configuration blob size = %u > %d",
+		comp_err(dev, "tdfb_init() error: configuration blob size = %zu > %d",
 			 bs, SOF_TDFB_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -579,7 +579,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	/* Initialize tracking */
 	ret = tdfb_direction_init(cd, rate, source_channels);
 	if (!ret) {
-		comp_info(dev, "max_lag = %d, xcorr_size = %d",
+		comp_info(dev, "max_lag = %d, xcorr_size = %zu",
 			  cd->direction.max_lag, cd->direction.d_size);
 		comp_info(dev, "line_array = %d, a_step = %d, a_offs = %d",
 			  (int)cd->direction.line_array, cd->config->angle_enum_mult,

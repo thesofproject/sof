@@ -215,7 +215,8 @@ static int mux_demux_common_init(struct processing_module *mod)
 	comp_dbg(dev, "mux_init()");
 
 	if (cfg->size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_init(): blob size %d exceeds %d", cfg->size, MUX_BLOB_MAX_SIZE);
+		comp_err(dev, "mux_init(): blob size %zu exceeds %zu",
+			 cfg->size, MUX_BLOB_MAX_SIZE);
 		return -EINVAL;
 	}
 
@@ -575,7 +576,7 @@ static int mux_prepare(struct processing_module *mod,
 
 	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
 	if (blob_size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_prepare(): illegal blob size %d", blob_size);
+		comp_err(dev, "mux_prepare(): illegal blob size %zu", blob_size);
 		return -EINVAL;
 	}
 
