@@ -17,12 +17,7 @@
 
 #if defined(EXPONENTIAL_GENERIC)
 
-#define SOFM_BIT_MASK_Q62P2 0x4000000000000000LL
 #define SOFM_CONVERG_ERROR 28823037607936LL	// error smaller than 1e-4,1/2 ^ -44.7122876200884
-#define SOFM_BIT_MASK_LOW_Q27P5 0x8000000
-#define SOFM_QUOTIENT_SCALE BIT(30)
-#define SOFM_TERMS_Q23P9 8388608
-#define SOFM_LSHIFT_BITS 8192
 
 /* inv multiplication lookup table */
 /* LUT = ceil(1/factorial(b_n) * 2 ^ 63) */
@@ -155,7 +150,7 @@ static inline int64_t lomul_s64_sr_sat_near(int64_t a, int64_t b)
 	uint64_t u64_rlo;
 
 	mul_s64(a, b, &u64_rhi, &u64_rlo);
-	const bool roundup = (u64_rlo & SOFM_BIT_MASK_LOW_Q27P5) != 0;
+	const bool roundup = (u64_rlo & SOFM_EXP_BIT_MASK_LOW_Q27P5) != 0;
 
 	u64_rlo = (u64_rhi << 36 | u64_rlo >> 28) + (roundup ? 1 : 0);
 	return u64_rlo;
@@ -182,8 +177,8 @@ int32_t sofm_exp_int32(int32_t x)
 	uint64_t ou0Lo;
 	int64_t qt;
 	int32_t b_n;
-	int32_t ts =  SOFM_TERMS_Q23P9; /* Q23.9 */
-	int64_t dividend = (x + SOFM_LSHIFT_BITS) >> 14; /* x in Q50.14 */
+	int32_t ts =  SOFM_EXP_TERMS_Q23P9; /* Q23.9 */
+	int64_t dividend = (x + SOFM_EXP_LSHIFT_BITS) >> 14; /* x in Q50.14 */
 	static const int32_t i_emin = -1342177280; /* Q4.28 */
 	static const int32_t o_emin = 56601; /* Q9.23 */
 	static const int32_t i_emax = 1342177280; /* Q4.28 */
@@ -198,16 +193,16 @@ int32_t sofm_exp_int32(int32_t x)
 		return o_emax; /* 148.4131494760513306 in Q9.23 */
 
 	/* pre-computation of 1st & 2nd terms */
-	mul_s64(dividend, SOFM_BIT_MASK_Q62P2, &ou0Hi, &ou0Lo);
+	mul_s64(dividend, SOFM_EXP_BIT_MASK_Q62P2, &ou0Hi, &ou0Lo);
 	qt = (ou0Hi << 46) | (ou0Lo >> 18);/* Q6.26 */
-	ts += (int32_t)((qt >> 35) + ((qt & SOFM_QUOTIENT_SCALE) >> 18));
+	ts += (int32_t)((qt >> 35) + ((qt & SOFM_EXP_QUOTIENT_SCALE) >> 18));
 	dividend = lomul_s64_sr_sat_near(dividend, x);
 	for (b_n = 0; b_n < ARRAY_SIZE(exp_iv_ilookup); b_n++) {
 		mul_s64(dividend, exp_iv_ilookup[b_n], &ou0Hi, &ou0Lo);
 		qt = (ou0Hi << 45) | (ou0Lo >> 19);
 
 		/* sum of the remaining terms */
-		ts += (int32_t)((qt >> 35) + ((qt & SOFM_QUOTIENT_SCALE) ? 1 : 0));
+		ts += (int32_t)((qt >> 35) + ((qt & SOFM_EXP_QUOTIENT_SCALE) ? 1 : 0));
 		dividend = lomul_s64_sr_sat_near(dividend, x);
 
 		qt  = ABS(qt);

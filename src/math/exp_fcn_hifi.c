@@ -27,11 +27,7 @@
 #endif
 
 #define SOFM_CONVERG_ERROR 28823037624320LL /* error smaller than 1e-4,1/2 ^ -44.7122876209085 */
-#define SOFM_BIT_MASK_LOW_Q27P5 0x0000000008000000
-#define SOFM_BIT_MASK_Q62P2 0x4000000000000000LL
-#define SOFM_QUOTIENT_SCALE BIT(30)
-#define SOFM_TERMS_Q23P9 0x800000
-#define SOFM_LSHIFT_BITS 0x2000
+
 /*
  * Arguments	: int64_t in_0
  *		  int64_t in_1
@@ -186,7 +182,7 @@ static int64_t lomul_s64_sr_sat_near(int64_t a, int64_t b)
 
 	mul_s64(a, b, &u64_chi, &u64_clo);
 
-	ae_int64 roundup = AE_AND64(u64_clo, SOFM_BIT_MASK_LOW_Q27P5);
+	ae_int64 roundup = AE_AND64(u64_clo, SOFM_EXP_BIT_MASK_LOW_Q27P5);
 
 	roundup = AE_SRLI64(roundup, 27);
 	temp = AE_OR64(AE_SLAI64(u64_chi, 36), AE_SRLI64(u64_clo, 28));
@@ -240,15 +236,15 @@ int32_t sofm_exp_int32(int32_t x)
 	ae_int64 temp;
 
 	ae_int64 *ponebyfact_Q63 = &onebyfact_Q63[0];
-	ae_int64 ts = SOFM_TERMS_Q23P9;
-	ae_int64 mp = (x + SOFM_LSHIFT_BITS) >> 14; /* x in Q50.14 */;
+	ae_int64 ts = SOFM_EXP_TERMS_Q23P9;
+	ae_int64 mp = (x + SOFM_EXP_LSHIFT_BITS) >> 14; /* x in Q50.14 */;
 	xtbool flag;
 	int64_t b_n;
 
-	mul_s64(mp, SOFM_BIT_MASK_Q62P2, &outhi, &outlo);
+	mul_s64(mp, SOFM_EXP_BIT_MASK_Q62P2, &outhi, &outlo);
 	qt = AE_OR64(AE_SLAI64(outhi, 46), AE_SRLI64(outlo, 18));
 
-	temp = AE_SRAI64(AE_ADD64(qt, SOFM_QUOTIENT_SCALE), 35);
+	temp = AE_SRAI64(AE_ADD64(qt, SOFM_EXP_QUOTIENT_SCALE), 35);
 
 	ts = AE_ADD64(ts, temp);
 
@@ -260,7 +256,7 @@ int32_t sofm_exp_int32(int32_t x)
 		mul_s64(mp, onebyfact, &outhi, &outlo);
 		qt = AE_OR64(AE_SLAI64(outhi, 45), AE_SRLI64(outlo, 19));
 
-		temp = AE_SRAI64(AE_ADD64(qt, SOFM_QUOTIENT_SCALE), 35);
+		temp = AE_SRAI64(AE_ADD64(qt, SOFM_EXP_QUOTIENT_SCALE), 35);
 		ts = AE_ADD64(ts, temp);
 
 		mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
