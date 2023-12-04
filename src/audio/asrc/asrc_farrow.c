@@ -12,8 +12,8 @@
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>
 #include <user/trace.h>
-#include <sof/audio/asrc/asrc_config.h>
-#include <sof/audio/asrc/asrc_farrow.h>
+#include "asrc_config.h"
+#include "asrc_farrow.h"
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
 
@@ -94,47 +94,47 @@ struct asrc_filter_params {
  * filters.
  */
 static const struct asrc_filter_params c_filter_params[CR_NUM] = {
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_44100Hz_to_48000Hz.h>
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_48000Hz.h>
+#include "coef/asrc_farrow_param_44100Hz_to_48000Hz.h"
+#include "coef/asrc_farrow_param_48000Hz_to_48000Hz.h"
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_08000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_24000Hz_to_08000Hz.h>
+#include "coef/asrc_farrow_param_24000Hz_to_08000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_24000Hz_to_16000Hz.h>
+#include "coef/asrc_farrow_param_24000Hz_to_16000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_08000Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_08000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_11025Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_11025Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_12000Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_12000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_16000Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_16000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_22050Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_22050Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_24000Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_24000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_32000Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_32000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
-#include <sof/audio/coefficients/asrc/asrc_farrow_param_48000Hz_to_44100Hz.h>
+#include "coef/asrc_farrow_param_48000Hz_to_44100Hz.h"
 #endif
 
 };
@@ -144,48 +144,48 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
  * coefficients will be attached to the _Src_farrow struct via the
  * initialise_filter function.
  */
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_44100Hz_to_48000Hz.h>
+#include "coef/asrc_farrow_coeff_44100Hz_to_48000Hz.h"
 
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_48000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_48000Hz.h"
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_08000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_24000Hz_to_08000Hz.h>
+#include "coef/asrc_farrow_coeff_24000Hz_to_08000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_24000Hz_to_16000Hz.h>
+#include "coef/asrc_farrow_coeff_24000Hz_to_16000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_08000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_08000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_11025Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_11025Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_12000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_12000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_16000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_16000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_22050Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_22050Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_24000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_24000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_32000Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_32000Hz.h"
 #endif
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
-#include <sof/audio/coefficients/asrc/asrc_farrow_coeff_48000Hz_to_44100Hz.h>
+#include "coef/asrc_farrow_coeff_48000Hz_to_44100Hz.h"
 #endif
 
 /*
