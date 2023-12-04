@@ -172,7 +172,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_ssp;
-		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
+		ret = ipc4_find_dma_config(&dai, (uint8_t *)cd->gtw_cfg,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
 			comp_err(dev, "No ssp dma_config found in blob!");
