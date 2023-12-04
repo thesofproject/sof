@@ -2,8 +2,8 @@
 //
 // Copyright(c) 2012-2019 Intel Corporation. All rights reserved.
 
-#include <sof/audio/asrc/asrc_config.h>
-#include <sof/audio/asrc/asrc_farrow.h>
+#include "asrc_config.h"
+#include "asrc_farrow.h"
 
 #if ASRC_HIFI3 == 1
 

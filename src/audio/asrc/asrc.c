@@ -2,7 +2,7 @@
 //
 // Copyright(c) 2019-2022 Intel Corporation. All rights reserved.
 
-#include <sof/audio/asrc/asrc_farrow.h>
+#include "asrc_farrow.h"
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
@@ -33,7 +33,7 @@
 
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base-config.h>
-#include <ipc4/asrc.h>
+#include "asrc_ipc4.h"
 #endif
 
 /* Simple count value to prevent first delta timestamp
