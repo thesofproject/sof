@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "asrc.h"
 
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base-config.h>
@@ -70,11 +71,7 @@ DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 
 /* asrc component private data */
 struct comp_data {
-#if CONFIG_IPC_MAJOR_4
-	struct ipc4_asrc_module_cfg ipc_config;
-#else
-	struct ipc_config_asrc ipc_config;
-#endif
+	ipc_asrc_cfg ipc_config;
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
@@ -319,11 +316,7 @@ static int asrc_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
-#ifndef CONFIG_IPC_MAJOR_4
-	const struct ipc_config_asrc *ipc_asrc = mod_data->cfg.init_data;
-#else
-	const struct ipc4_asrc_module_cfg *ipc_asrc =  mod_data->cfg.init_data;
-#endif
+	const ipc_asrc_cfg *ipc_asrc = (const ipc_asrc_cfg *)mod_data->cfg.init_data;
 	struct comp_data *cd;
 
 	comp_info(dev, "asrc_init(), source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
