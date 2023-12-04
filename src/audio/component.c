@@ -354,7 +354,20 @@ int comp_copy(struct comp_dev *dev)
 		ret = dev->drv->ops.copy(dev);
 
 #if CONFIG_PERFORMANCE_COUNTERS
+		struct ipc4_base_module_cfg dev_cfg;
+
 		perf_cnt_stamp(&dev->pcd, perf_trace_null, dev);
+
+		ret = comp_get_attribute(dev, COMP_ATTR_BASE_CONFIG, &dev_cfg);
+		if (ret < 0) {
+			comp_err(dev, "perf failed to get base config for module %#x",
+				 dev_comp_id(dev));
+			return ret;
+		}
+
+		dev->pcd.ibs = dev_cfg.ibs;
+		dev->pcd.obs = dev_cfg.obs;
+
 		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
 #endif
 	}

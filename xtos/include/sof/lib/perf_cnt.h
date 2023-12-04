@@ -35,6 +35,9 @@ struct perf_cnt_data {
 	uint32_t period_cnt;
 	/* indicate which period have peak mcps in current module */
 	uint32_t peak_mcps_period_cnt;
+	/* indicate module input buffer size and output buffer size */
+	uint32_t ibs;
+	uint32_t obs;
 };
 
 #if CONFIG_PERFORMANCE_COUNTERS
