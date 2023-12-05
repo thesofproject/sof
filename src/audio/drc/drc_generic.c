@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/math/decibels.h>
+#include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
@@ -36,7 +36,7 @@ static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
 	 *	 beta = -expf(k * linear_threshold) / k
 	 *	 gamma = -k * x
 	 */
-	knee_exp_gamma = exp_fixed(Q_MULTSR_32X32((int64_t)x, -p->K, 31, 20, 27)); /* Q12.20 */
+	knee_exp_gamma = sofm_exp_fixed(Q_MULTSR_32X32((int64_t)x, -p->K, 31, 20, 27)); /* Q12.20 */
 	return p->knee_alpha + Q_MULTSR_32X32((int64_t)p->knee_beta, knee_exp_gamma, 24, 20, 24);
 }
 
@@ -66,8 +66,10 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 		 * => y/x = ratio_base * x^(s - 1)
 		 * => y/x = ratio_base * e^(log(x) * (s - 1))
 		 */
-		exp_knee = exp_fixed(Q_MULTSR_32X32((int64_t)drc_log_fixed(Q_SHIFT_RND(x, 31, 26)),
-						    (p->slope - ONE_Q30), 26, 30, 27)); /* Q12.20 */
+		exp_knee = sofm_exp_fixed(Q_MULTSR_32X32((int64_t)
+						drc_log_fixed(Q_SHIFT_RND(x, 31, 26)),
+						(p->slope - ONE_Q30),
+						26, 30, 27)); /* Q12.20 */
 		y = Q_MULTSR_32X32((int64_t)p->ratio_base, exp_knee, 30, 20, 30);
 	}
 
@@ -149,7 +151,7 @@ void drc_update_detector_average(struct drc_state *state,
 						       p->sat_release_frames_inv_neg,
 						       21, 30, 24); /* Q8.24 */
 				sat_release_rate =
-					db2lin_fixed(db_per_frame) - ONE_Q20; /* Q12.20 */
+					sofm_db2lin_fixed(db_per_frame) - ONE_Q20; /* Q12.20 */
 				detector_average += Q_MULTSR_32X32((int64_t)gain_diff,
 								   sat_release_rate, 30, 20, 30);
 			}
@@ -226,7 +228,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		/* db_per_frame = kSpacingDb / release_frames */
 		db_per_frame = drc_inv_fixed(release_frames, 12, 30); /* Q2.30 */
 		db_per_frame = Q_MULTSR_32X32((int64_t)db_per_frame, p->kSpacingDb, 30, 0, 24);
-		envelope_rate = db2lin_fixed(db_per_frame); /* Q12.20 */
+		envelope_rate = sofm_db2lin_fixed(db_per_frame); /* Q12.20 */
 	} else {
 		int32_t sat32;
 		/* Attack mode - compression_diff_db should be positive dB */
