@@ -13,7 +13,7 @@ name: installer
 # 'workflow_dispatch' allows running this workflow manually from the
 # 'Actions' tab
 # yamllint disable-line rule:truthy
-on: [push, pull_request, workflow_dispatch]
+on: [push, pull_request, workflow_dispatch, workflow_call]
 
 jobs:
   checktree:
