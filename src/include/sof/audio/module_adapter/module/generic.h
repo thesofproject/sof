@@ -31,6 +31,7 @@
 
 #define MAX_BLOB_SIZE 8192
 #define MODULE_MAX_SOURCES 8
+#define MODULE_MAX_SINKS 8
 
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \

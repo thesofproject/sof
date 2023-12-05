@@ -66,9 +66,13 @@ static struct smart_amp_data smart_amp_priv;
 static int smart_amp_init(struct processing_module *mod)
 {
 	struct smart_amp_data *sad;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
+	const size_t in_size = sizeof(struct ipc4_input_pin_format) * SMART_AMP_NUM_IN_PINS;
+	const size_t out_size = sizeof(struct ipc4_output_pin_format) * SMART_AMP_NUM_OUT_PINS;
 	int ret;
 	const struct ipc4_base_module_extended_cfg *base_cfg = mod_data->cfg.init_data;
+	size_t size;
 
 	LOG_DBG("smart_amp_init()");
 
@@ -95,6 +99,16 @@ static int smart_amp_init(struct processing_module *mod)
 	sad->ipc4_cfg.output_pin =
 		*(struct ipc4_output_pin_format *)(base_cfg->base_cfg_ext.pin_formats
 			+ sizeof(sad->ipc4_cfg.input_pins));
+
+	/* save the base config extension */
+	size = sizeof(struct ipc4_base_module_cfg_ext) + in_size + out_size;
+	mod_data->cfg.basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+	if (!mod_data->cfg.basecfg_ext) {
+		ret = -ENOMEM;
+		goto sad_fail;
+	}
+
+	memcpy_s(mod_data->cfg.basecfg_ext, size, &base_cfg->base_cfg_ext, size);
 
 	return 0;
 
@@ -155,7 +169,10 @@ static int smart_amp_free(struct processing_module *mod)
 
 #ifndef __SOF_MODULE_SERVICE_BUILD__
 	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct module_data *mod_data = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
+	rfree(mod_data->cfg.basecfg_ext);
 	rfree(sad);
 #endif
 
