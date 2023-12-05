@@ -87,6 +87,7 @@ class PlatformConfig:
 	aliases: list = dataclasses.field(default_factory=list)
 
 # These can all be built out of the box. --all builds all these.
+# Some of these values are duplicated in sof/scripts/set_xtensa_param.sh: keep them in sync.
 platform_configs_all = {
 	#  Intel platforms
 	"tgl" : PlatformConfig(
