@@ -33,8 +33,6 @@ struct perf_cnt_data {
 	uint32_t cpu_delta_sum;
 	/* accumulate period passed and calculate avg cycles */
 	uint32_t period_cnt;
-	/* indicate which period have peak mcps in current module */
-	uint32_t peak_mcps_period_cnt;
 	/* indicate module input buffer size and output buffer size */
 	uint32_t ibs;
 	uint32_t obs;
@@ -124,7 +122,6 @@ struct perf_cnt_data {
 			(pcd)->period_cnt = 0;                               \
 			(pcd)->plat_delta_peak = 0;                          \
 			(pcd)->cpu_delta_peak = 0;                           \
-			(pcd)->peak_mcps_period_cnt = 0;			     \
 		}                                                            \
 	} while (0)
 
@@ -143,10 +140,8 @@ struct perf_cnt_data {
 			(uint32_t)perf_cnt_get_cpu_ts();			\
 		(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;		\
 		(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;			\
-		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak) {		\
+		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)		\
 			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;	\
-			(pcd)->peak_mcps_period_cnt = (pcd)->period_cnt;		\
-		}								\
 		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {		\
 			(pcd)->cpu_delta_peak = (pcd)->cpu_delta_last;		\
 			trace_m(pcd, arg);					\
