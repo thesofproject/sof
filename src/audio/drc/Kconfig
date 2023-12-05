@@ -4,7 +4,7 @@ config COMP_DRC
 	bool "Dynamic Range Compressor component"
 	select CORDIC_FIXED
 	select NUMBERS_NORM
-	select MATH_DECIBELS
+	select MATH_EXP
 	select COMP_BLOB
 	default n
 	help

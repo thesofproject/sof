@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/math/decibels.h>
+#include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
@@ -65,7 +65,7 @@ static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
 	 *	 gamma = -k * x
 	 */
 	gamma = drc_mult_lshift(x, -p->K, LSHIFT_QX31_QY20_QZ27);
-	knee_exp_gamma = exp_fixed(gamma);
+	knee_exp_gamma = sofm_exp_fixed(gamma);
 	knee_curve_k = drc_mult_lshift(p->knee_beta, knee_exp_gamma, LSHIFT_QX24_QY20_QZ24);
 	knee_curve_k = AE_ADD32(knee_curve_k, p->knee_alpha);
 	return knee_curve_k;
@@ -101,7 +101,7 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 		tmp = AE_SRAI32R(x, 5); /* Q1.31 -> Q5.26 */
 		tmp = drc_log_fixed(tmp); /* Q6.26 */
 		tmp2 = AE_SUB32(p->slope, ONE_Q30); /* Q2.30 */
-		exp_knee = exp_fixed(drc_mult_lshift(tmp, tmp2, LSHIFT_QX26_QY30_QZ27));
+		exp_knee = sofm_exp_fixed(drc_mult_lshift(tmp, tmp2, LSHIFT_QX26_QY30_QZ27));
 		y = drc_mult_lshift(p->ratio_base, exp_knee, LSHIFT_QX30_QY20_QZ30);
 	}
 
@@ -185,7 +185,8 @@ void drc_update_detector_average(struct drc_state *state,
 				db_per_frame = drc_mult_lshift(drc_lin2db_fixed(gain),
 							       p->sat_release_frames_inv_neg,
 							       LSHIFT_QX21_QY30_QZ24);
-				sat_release_rate = AE_SUB32(db2lin_fixed(db_per_frame), ONE_Q20);
+				sat_release_rate = AE_SUB32(sofm_db2lin_fixed(db_per_frame),
+							    ONE_Q20);
 				tmp = drc_mult_lshift(gain_diff, sat_release_rate,
 						      LSHIFT_QX30_QY20_QZ30);
 			}
@@ -278,7 +279,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		tmp = p->kSpacingDb << 16; /* Q16.16 */
 		/* Q8.24 */
 		db_per_frame = drc_mult_lshift(db_per_frame, tmp, LSHIFT_QX30_QY16_QZ24);
-		envelope_rate = db2lin_fixed(db_per_frame); /* Q12.20 */
+		envelope_rate = sofm_db2lin_fixed(db_per_frame); /* Q12.20 */
 	} else {
 		/* Attack mode - compression_diff_db should be positive dB */
 
