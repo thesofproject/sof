@@ -68,12 +68,12 @@ setup_xtensa_tools_build()
     # shellcheck source=scripts/set_xtensa_params.sh
     source "$SCRIPT_DIR/set_xtensa_params.sh" "$BUILD_PLATFORM"
 
-    test -n "${XTENSA_TOOLS_VERSION}" ||
-        die "Illegal platform $BUILD_PLATFORM, no XTENSA_TOOLS_VERSION found.\n"
+    test -n "${TOOLCHAIN_VER}" ||
+        die "Illegal platform $BUILD_PLATFORM, no TOOLCHAIN_VER found.\n"
     test -n "${XTENSA_CORE}" ||
         die "Illegal platform $BUILD_PLATFORM, no XTENSA_CORE found.\n"
 
-    install_bin=install/tools/$XTENSA_TOOLS_VERSION/XtensaTools/bin
+    install_bin=install/tools/$TOOLCHAIN_VER/XtensaTools/bin
     tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
     testbench_sections="-Wl,--sections-placement $BUILD_TESTBENCH_DIR/testbench_xcc_sections.txt"
     export CC=$tools_bin/$COMPILER

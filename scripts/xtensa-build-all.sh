@@ -210,8 +210,8 @@ do
 
 	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
-		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
-		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
+		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$TOOLCHAIN_VER"
+		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$TOOLCHAIN_VER"
 
 		# make sure the required version of xtensa tools is installed
 		if [ -d "$XTENSA_TOOLS_DIR" ]
