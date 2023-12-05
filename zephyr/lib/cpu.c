@@ -63,6 +63,7 @@ static FUNC_NORETURN void secondary_init(void *arg)
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
+#include <intel_adsp_ipc.h>
 
 LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 
@@ -100,6 +101,9 @@ void cpu_notify_state_entry(enum pm_state state)
 						 0,
 						 SOF_MEM_CAPS_L3,
 						 storage_buffer_size);
+#ifdef CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE
+		pm_device_action_run(INTEL_ADSP_IPC_HOST_DEV, PM_DEVICE_ACTION_SUSPEND);
+#endif /* CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE */
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 	}
 }
@@ -119,6 +123,9 @@ void cpu_notify_state_exit(enum pm_state state)
 #endif
 
 #ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+#ifdef CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE
+		pm_device_action_run(INTEL_ADSP_IPC_HOST_DEV, PM_DEVICE_ACTION_RESUME);
+#endif /* CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE */
 		/* free global_imr_ram_storage */
 		rfree(global_imr_ram_storage);
 		global_imr_ram_storage = NULL;
