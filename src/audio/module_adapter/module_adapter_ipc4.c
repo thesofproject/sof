@@ -148,6 +148,22 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
 			 &mod->priv.cfg.base_cfg, sizeof(mod->priv.cfg.base_cfg));
 		break;
+	case COMP_ATTR_BASE_CONFIG_EXT:
+	{
+		struct ipc4_base_module_cfg_ext *basecfg_ext = mod->priv.cfg.basecfg_ext;
+		size_t size;
+
+		if (!basecfg_ext) {
+			comp_err(mod->dev, "No base config extn set for module");
+			return -EINVAL;
+		}
+
+		size = basecfg_ext->nb_input_pins * sizeof(struct ipc4_input_pin_format) +
+				basecfg_ext->nb_output_pins * sizeof(struct ipc4_output_pin_format);
+		memcpy_s(value, sizeof(*basecfg_ext) + size,
+			 basecfg_ext, sizeof(*basecfg_ext) + size);
+		break;
+	}
 	default:
 		return -EINVAL;
 	}

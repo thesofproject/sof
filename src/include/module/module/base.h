@@ -30,6 +30,7 @@ struct module_config {
 	const void *init_data; /**< Initial IPC configuration. */
 #if CONFIG_IPC_MAJOR_4
 	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_base_module_cfg_ext *basecfg_ext;
 #endif
 };
 

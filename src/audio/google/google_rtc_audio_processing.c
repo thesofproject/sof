@@ -392,18 +392,36 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 #if CONFIG_IPC_MAJOR_4
 	const struct ipc4_base_module_extended_cfg *base_cfg = md->cfg.init_data;
 	struct ipc4_input_pin_format reference_fmt, output_fmt;
-	const size_t size = sizeof(struct ipc4_input_pin_format);
+	size_t in_fmt_size = sizeof(struct ipc4_input_pin_format);
+	size_t out_fmt_size = sizeof(struct ipc4_output_pin_format);
+	size_t size;
 
 	cd->config.base_cfg = base_cfg->base_cfg;
 
 	/* Copy the reference format from input pin 1 format */
-	memcpy_s(&reference_fmt, size,
-		 &base_cfg->base_cfg_ext.pin_formats[size], size);
-	memcpy_s(&output_fmt, size,
-		 &base_cfg->base_cfg_ext.pin_formats[size * GOOGLE_RTC_NUM_INPUT_PINS], size);
+	memcpy_s(&reference_fmt, in_fmt_size,
+		 &base_cfg->base_cfg_ext.pin_formats[in_fmt_size], in_fmt_size);
+	memcpy_s(&output_fmt, in_fmt_size,
+		 &base_cfg->base_cfg_ext.pin_formats[in_fmt_size * GOOGLE_RTC_NUM_INPUT_PINS],
+		 in_fmt_size);
 
 	cd->config.reference_fmt = reference_fmt.audio_fmt;
 	cd->config.output_fmt = output_fmt.audio_fmt;
+
+	/* save the base config extension */
+	size = base_cfg->base_cfg_ext.nb_input_pins * in_fmt_size +
+		base_cfg->base_cfg_ext.nb_output_pins * out_fmt_size;
+
+	md->cfg.basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				      sizeof(struct ipc4_base_module_cfg_ext) + size);
+	if (!md->cfg.basecfg_ext) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	memcpy_s(md->cfg.basecfg_ext, size + sizeof(struct ipc4_base_module_cfg_ext),
+		 &base_cfg->base_cfg_ext,
+		 size + sizeof(struct ipc4_base_module_cfg_ext));
 #endif
 
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
@@ -510,6 +528,9 @@ fail:
 		rfree(cd->memory_buffer);
 		rfree(cd->raw_mic_buffer);
 		comp_data_blob_handler_free(cd->tuning_handler);
+#if CONFIG_IPC_MAJOR_4
+		rfree(md->cfg.basecfg_ext);
+#endif
 		rfree(cd);
 	}
 
@@ -530,6 +551,11 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 	rfree(cd->memory_buffer);
 	rfree(cd->raw_mic_buffer);
 	comp_data_blob_handler_free(cd->tuning_handler);
+#if CONFIG_IPC_MAJOR_4
+	struct module_data *md = &mod->priv;
+
+	rfree(md->cfg.basecfg_ext);
+#endif
 	rfree(cd);
 	return 0;
 }
