@@ -6,6 +6,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
+#include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <sof/math/trig.h>
 
@@ -234,7 +235,7 @@ inline int32_t drc_pow_fixed(int32_t x, int32_t y)
 		return 0;
 
 	/* x^y = expf(y * log(x)) */
-	return exp_fixed(q_mult(y, drc_log_fixed(x), 30, 26, 27));
+	return sofm_exp_fixed(q_mult(y, drc_log_fixed(x), 30, 26, 27));
 }
 
 #undef q_multq
