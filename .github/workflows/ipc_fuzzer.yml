@@ -6,7 +6,21 @@ name: IPC fuzzing
 # 'Actions' tab
 
 # yamllint disable-line rule:truthy
-on: [pull_request, workflow_dispatch]
+on:
+  workflow_call:
+    inputs:
+      fuzzing_duration_s:
+        type: number
+        default: 300  # 5 minutes
+
+  workflow_dispatch:
+    inputs:
+      fuzzing_duration_s:
+        type: number
+        default: 300
+
+  pull_request:
+  # TODO: can we provide a default inputs here too?
 
 jobs:
 
@@ -66,7 +80,9 @@ jobs:
             IPC3) cmake_arg='-DCONFIG_IPC_MAJOR_3=y' ;;
             IPC4) cmake_arg='-DCONFIG_IPC_MAJOR_4=y' ;;
           esac
-          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t 300 -- "$cmake_arg"
+          duration="${{inputs.fuzzing_duration_s}}"
+          duration="${duration:-301}"  # pull_request has not 'inputs.' :-(
+          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t "$duration" -- "$cmake_arg"
 
       - name: Upload stdout
         uses: actions/upload-artifact@v3
