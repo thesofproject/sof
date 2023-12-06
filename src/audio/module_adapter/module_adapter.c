@@ -119,11 +119,10 @@ err:
 	return NULL;
 }
 
-static int module_adapter_sink_src_prepare(struct comp_dev *dev)
+static void module_adapter_sink_src_update(struct comp_dev *dev,
+					   struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
-	int ret;
 	int i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
@@ -145,6 +144,14 @@ static int module_adapter_sink_src_prepare(struct comp_dev *dev)
 		i++;
 	}
 	mod->num_of_sources = i;
+}
+
+static int module_adapter_sink_src_prepare(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
+
+	module_adapter_sink_src_update(dev, mod);
 
 	/* Prepare module */
 	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
@@ -1106,6 +1113,8 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	int i = 0;
 
 	comp_dbg(dev, "module_adapter_sink_source_copy(): start");
+
+	module_adapter_sink_src_update(dev, mod);
 
 	/* reset number of processed bytes */
 	for (i = 0; i < mod->num_of_sources; i++)
