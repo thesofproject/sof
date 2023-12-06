@@ -21,6 +21,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/counter.h>
 #endif
+#include <zephyr/logging/log_ctrl.h>
 
 /* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
 #if defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
@@ -35,6 +36,7 @@ DECLARE_SOF_RT_UUID("basefw", basefw_comp_uuid, 0xe398c32, 0x5ade, 0xba4b,
 DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_comp_uuid), LOG_LEVEL_INFO);
 
 static struct ipc4_system_time_info global_system_time_info;
+static uint64_t global_cycle_delta;
 
 static int basefw_config(uint32_t *data_offset, char *data)
 {
@@ -241,23 +243,46 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static log_timestamp_t basefw_get_timestamp(void)
+{
+	return sof_cycle_get_64() + global_cycle_delta;
+}
+
 static uint32_t basefw_set_system_time(uint32_t param_id,
 				       bool first_block,
 				       bool last_block,
 				       uint32_t data_offset,
 				       const char *data)
 {
-	/* TODO: configurate time to logging subsystem */
+	uint64_t dsp_time;
+	uint64_t dsp_cycle;
+	uint64_t host_time;
+	uint64_t host_cycle;
+
 	if (!(first_block && last_block))
 		return IPC4_INVALID_REQUEST;
 
 	global_system_time_info.host_time.val_l = ((const struct ipc4_system_time *)data)->val_l;
 	global_system_time_info.host_time.val_u = ((const struct ipc4_system_time *)data)->val_u;
 
-	uint64_t current_dsp_time = k_cyc_to_us_floor64(sof_cycle_get_64());
+	dsp_cycle = sof_cycle_get_64();
+	dsp_time = k_cyc_to_us_floor64(dsp_cycle);
 
-	global_system_time_info.dsp_time.val_l = (uint32_t)(current_dsp_time);
-	global_system_time_info.dsp_time.val_u = (uint32_t)(current_dsp_time >> 32);
+	global_system_time_info.dsp_time.val_l = (uint32_t)(dsp_time);
+	global_system_time_info.dsp_time.val_u = (uint32_t)(dsp_time >> 32);
+
+	/* use default timestamp if 64bit is not enabled since 64bit is necessary for host time */
+	if (!IS_ENABLED(CONFIG_LOG_TIMESTAMP_64BIT)) {
+		LOG_WRN("64bits timestamp is disabled, so use default timestamp");
+		return IPC4_SUCCESS;
+	}
+
+	host_time = global_system_time_info.host_time.val_l |
+			((uint64_t)global_system_time_info.host_time.val_u << 32);
+	host_cycle = k_us_to_cyc_ceil64(host_time);
+	global_cycle_delta = host_cycle - dsp_cycle;
+	log_set_timestamp_func(basefw_get_timestamp,
+			       sys_clock_hw_cycles_per_sec());
 
 	return IPC4_SUCCESS;
 }
