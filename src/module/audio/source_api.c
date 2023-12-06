@@ -53,6 +53,10 @@ size_t source_get_frame_bytes(struct sof_source *source)
 
 size_t source_get_data_frames_available(struct sof_source *source)
 {
-	return source_get_data_available(source) /
-			source_get_frame_bytes(source);
+	uint32_t frame_bytes = source_get_frame_bytes(source);
+
+	if (frame_bytes > 0)
+		return source_get_data_available(source) / frame_bytes;
+	else
+		return 0;
 }
