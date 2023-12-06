@@ -129,7 +129,7 @@ endmacro()
 
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
-
+add_subdirectory(test/)
 
 
 # Old way below: all .c files added by this giant CMake file.
