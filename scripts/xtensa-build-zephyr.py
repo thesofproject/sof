@@ -136,16 +136,16 @@ platform_configs_all = {
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
-}
-
-# These cannot be built out of the box yet
-extra_platform_configs = {
 	"imx8ulp" : PlatformConfig(
 		"imx8ulp", "nxp_adsp_imx8ulp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp2_s7_v2_1a_prod",
 		RIMAGE_KEY = "key param ignored by imx8ulp"
 	),
+}
+
+# These cannot be built out of the box yet
+extra_platform_configs = {
 }
 
 platform_configs = platform_configs_all.copy()
