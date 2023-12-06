@@ -25,6 +25,10 @@
 }
 platform=$1
 
+# If adding a new variable is required, avoid adding it to the mass
+# duplication in this first, very verbose `case` statement. Prefer
+# adding a new, smarter, per-variable `case` statement like the one for
+# ZEPHYR_TOOLCHAIN_VARIANT below
 case "$platform" in
 
     # Intel
@@ -51,10 +55,6 @@ case "$platform" in
 	PLATFORM="$platform"
 	XTENSA_CORE="ace10_LX7HiFi4_2022_10"
 	TOOLCHAIN_VER="RI-2022.10-linux"
-	# TODO: to reduce duplication, make rebuild-testbench "smarter"
-	# and able to decode ZEPHYR_TOOLCHAIN_VARIANT (even when it does
-	# not care about Zephyr)
-	COMPILER="xt-clang"
 	;;
 
     # NXP
@@ -136,4 +136,13 @@ case "$platform" in
 	>&2 printf 'Unknown xtensa platform=%s\n' "$platform"
 	return 1
 	;;
+esac
+
+case "$platform" in
+    imx8*|mtl|lnl)
+        ZEPHYR_TOOLCHAIN_VARIANT='xt-clang';;
+    *) # The previous, main case/esac already caught invalid input.
+       # This won't hurt platforms that don't use Zephyr (it's not even
+       # exported).
+        ZEPHYR_TOOLCHAIN_VARIANT='xcc';;
 esac
