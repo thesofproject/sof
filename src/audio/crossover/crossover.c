@@ -66,8 +66,8 @@ static void crossover_reset_state(struct comp_data *cd)
  * \return the position at which pipe_id is found in config->assign_sink.
  *	   -EINVAL if not found.
  */
-static int crossover_get_stream_index(struct processing_module *mod,
-				      struct sof_crossover_config *config, uint32_t pipe_id)
+int crossover_get_stream_index(struct processing_module *mod,
+			       struct sof_crossover_config *config, uint32_t pipe_id)
 {
 	int i;
 	uint32_t *assign_sink = config->assign_sink;
@@ -111,11 +111,7 @@ static int crossover_assign_sinks(struct processing_module *mod,
 		unsigned int sink_id, state;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-#if CONFIG_IPC_MAJOR_4
-		sink_id = cd->output_pin_index[j];
-#else
-		sink_id = sink->pipeline_id;
-#endif
+		sink_id = crossover_get_sink_id(cd, sink->pipeline_id, j);
 		state = sink->sink->state;
 		if (state != dev->state) {
 			j++;
@@ -295,42 +291,6 @@ static int crossover_setup(struct processing_module *mod, int nch)
 	return ret;
 }
 
-#if CONFIG_IPC_MAJOR_4
-/* Note: Crossover needs to have in the rimage manifest the init_config set to 1 to let
- * kernel know that the base_cfg_ext needs to be appended to the IPC payload. The
- * Extension is needed to know the output pin indices.
- */
-static int crossover_init_output_pins(struct processing_module *mod)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	const struct ipc4_base_module_extended_cfg *base_cfg = mod->priv.cfg.init_data;
-	uint16_t num_input_pins = base_cfg->base_cfg_ext.nb_input_pins;
-	uint16_t num_output_pins = base_cfg->base_cfg_ext.nb_output_pins;
-	struct ipc4_input_pin_format *input_pin;
-	struct ipc4_output_pin_format *output_pin;
-	int i;
-
-	comp_dbg(dev, "Number of input pins %u, output pins %u", num_input_pins, num_output_pins);
-
-	if (num_input_pins != 1 || num_output_pins > SOF_CROSSOVER_MAX_STREAMS) {
-		comp_err(dev, "Illegal number of pins %u %u", num_input_pins, num_output_pins);
-		return -EINVAL;
-	}
-
-	input_pin = (struct ipc4_input_pin_format *)base_cfg->base_cfg_ext.pin_formats;
-	output_pin = (struct ipc4_output_pin_format *)(input_pin + 1);
-	cd->num_output_pins = num_output_pins;
-	comp_dbg(dev, "input pin index = %u", input_pin->pin_index);
-	for (i = 0; i < num_output_pins; i++) {
-		comp_dbg(dev, "output pin %d index = %u", i, output_pin[i].pin_index);
-		cd->output_pin_index[i] = output_pin[i].pin_index;
-	}
-
-	return 0;
-}
-#endif
-
 /**
  * \brief Creates a Crossover Filter component.
  * \return Pointer to Crossover Filter component device.
@@ -374,13 +334,11 @@ static int crossover_init(struct processing_module *mod)
 		goto cd_fail;
 	}
 
-#if CONFIG_IPC_MAJOR_4
-	ret = crossover_init_output_pins(mod);
+	ret = crossover_output_pin_init(mod);
 	if (ret < 0) {
 		comp_err(dev, "crossover_init(): crossover_init_output_pins() failed.");
 		goto cd_fail;
 	}
-#endif
 
 	crossover_reset_state(cd);
 	return 0;
@@ -407,82 +365,6 @@ static int crossover_free(struct processing_module *mod)
 	rfree(cd);
 	return 0;
 }
-
-#if CONFIG_IPC_MAJOR_4
-/**
- * \brief Check sink streams configuration for matching pin index for output pins
- */
-static int crossover_check_sink_assign(struct processing_module *mod,
-				       struct sof_crossover_config *config)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	uint32_t pin_index;
-	int num_assigned_sinks = 0;
-	int i, j;
-	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
-
-	for (j = 0; j < cd->num_output_pins; j++) {
-		pin_index = cd->output_pin_index[j];
-		i = crossover_get_stream_index(mod, config, pin_index);
-		if (i < 0) {
-			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %u",
-				  pin_index);
-			break;
-		}
-
-		if (assigned_sinks[i]) {
-			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pin %u are assigned",
-				  pin_index);
-			break;
-		}
-
-		assigned_sinks[i] = true;
-		num_assigned_sinks++;
-	}
-
-	return num_assigned_sinks;
-}
-#else
-/**
- * \brief Check sink streams configuration for matching pipeline IDs
- */
-static int crossover_check_sink_assign(struct processing_module *mod,
-				       struct sof_crossover_config *config)
-{
-	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sink;
-	struct list_item *sink_list;
-	int num_assigned_sinks = 0;
-	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
-	int i;
-
-	list_for_item(sink_list, &dev->bsink_list) {
-		unsigned int pipeline_id;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		pipeline_id = sink->pipeline_id;
-
-		i = crossover_get_stream_index(mod, config, pipeline_id);
-		if (i < 0) {
-			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %d",
-				  pipeline_id);
-			break;
-		}
-
-		if (assigned_sinks[i]) {
-			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pipeline %d are assigned",
-				  pipeline_id);
-			break;
-		}
-
-		assigned_sinks[i] = true;
-		num_assigned_sinks++;
-	}
-
-	return num_assigned_sinks;
-}
-#endif
 
 /**
  * \brief Verifies that the config is formatted correctly.
@@ -532,20 +414,13 @@ static int crossover_set_config(struct processing_module *mod, uint32_t config_i
 				size_t response_size)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	int ret;
 
 	comp_info(mod->dev, "crossover_set_config()");
 
-#if CONFIG_IPC_MAJOR_3
-	/* TODO: This check seems to work only for IPC3, FW crash happens from reject from
-	 * topology embedded blob.
-	 */
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
-		comp_err(mod->dev, "crossover_set_config(), invalid command");
-		return -EINVAL;
-	}
-#endif
+	ret = crossover_check_config(mod, fragment);
+	if (ret < 0)
+		return ret;
 
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
@@ -557,16 +432,13 @@ static int crossover_get_config(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	int ret;
 
 	comp_info(mod->dev, "crossover_get_config()");
 
-#if CONFIG_IPC_MAJOR_3
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
-		comp_err(mod->dev, "crossover_get_config(), invalid command");
-		return -EINVAL;
-	}
-#endif
+	ret = crossover_check_config(mod, fragment);
+	if (ret < 0)
+		return ret;
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -647,32 +519,6 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_4
-/**
- * \brief IPC4 specific component prepare, updates source and sink buffers formats from base_cfg
- */
-static void crossover_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
-	struct list_item *sink_list;
-	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "crossover_params()");
-
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	component_set_nearest_period_frames(dev, params->rate);
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	list_for_item(sink_list, &dev->bsink_list) {
-		sinkb = container_of(sink_list, struct comp_buffer, source_list);
-		ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-	}
-}
-#endif
-
 /**
  * \brief Prepares Crossover Filter component for processing.
  * \param[in,out] dev Crossover Filter base component device.
@@ -691,9 +537,7 @@ static int crossover_prepare(struct processing_module *mod,
 
 	comp_info(dev, "crossover_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
 	crossover_params(mod);
-#endif
 
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;

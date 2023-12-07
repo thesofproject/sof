@@ -719,6 +719,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
+		${SOF_AUDIO_PATH}//crossover/crossover_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
+		${SOF_AUDIO_PATH}//crossover/crossover_ipc4.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc.c
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
