@@ -33,16 +33,16 @@ DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_comp_uuid),
 #include <stddef.h>
 
 #include <module/base.h>
-#include <module/api_ver.h>
 #include <module/interface.h>
 #include <iadk/adsp_error_code.h>
-#include <rimage/sof/user/manifest.h>
 #include <audio/source_api.h>
 #include <audio/sink_api.h>
 #include <ipc4/module.h>
 #include <sof/math/numbers.h>
 #endif
 #include <sof/samples/audio/smart_amp_test.h>
+#include <module/module/api_ver.h>
+#include <rimage/sof/user/manifest.h>
 
 typedef void (*smart_amp_proc)(int8_t const *src_ptr,
 			       int8_t const *src_begin,
@@ -63,12 +63,20 @@ struct smart_amp_data {
 static struct smart_amp_data smart_amp_priv;
 #endif
 
+/* When building as a loadable module, we need .bss to avoid rimage errors */
+static int keep_bss __attribute__((used));
+
 static int smart_amp_init(struct processing_module *mod)
 {
 	struct smart_amp_data *sad;
 	struct module_data *mod_data = &mod->priv;
 	int ret;
 	const struct ipc4_base_module_extended_cfg *base_cfg = mod_data->cfg.init_data;
+
+	if (!base_cfg) {
+		LOG_ERR("smart_amp_init(): no module configuration");
+		return -EINVAL;
+	}
 
 	LOG_DBG("smart_amp_init()");
 
@@ -360,13 +368,28 @@ static const struct module_interface smart_amp_test_interface = {
 	.free = smart_amp_free
 };
 
+/*
+ * We have to distinguish between 3 kinds of builds:
+ * 1. built-in: MAJOR_IADSP_API_VERSION isn't defined
+ * 2. system-service API: MAJOR_IADSP_API_VERSION and
+ *    __SOF_MODULE_SERVICE_BUILD__ are defined
+ * 3. dynamic linking: only MAJOR_IADSP_API_VERSION is defined
+ */
+
 #ifndef __SOF_MODULE_SERVICE_BUILD__
+/* All builds except system-service API */
+
 DECLARE_MODULE_ADAPTER(smart_amp_test_interface, smart_amp_test_comp_uuid, smart_amp_test_comp_tr);
 /* DECLARE_MODULE_ADAPTER() creates
  * "sys_comp_module_<smart_amp_test_interface>_init()" (and a lot more)
  */
 SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
-#else
+
+#endif
+
+#ifdef MAJOR_IADSP_API_VERSION
+/* modular: system-services or dynamic link */
+
 static const struct module_interface *loadable_module_main(void *mod_cfg,
 							   void *parent_ppl,
 							   void **mod_ptr)
@@ -374,18 +397,37 @@ static const struct module_interface *loadable_module_main(void *mod_cfg,
 	return &smart_amp_test_interface;
 }
 
-DECLARE_LOADABLE_MODULE_API_VERSION(smart_amp_test);
-
-__attribute__((section(".module")))
-const struct sof_man_module_manifest main_manifest = {
+static const struct sof_man_module_manifest main_manifest __section(".module") __attribute__((used)) = {
 	.module = {
 		.name = "SMATEST",
 		.uuid = {0x1E, 0x96, 0x7A, 0x16, 0xE4, 0x8A, 0xEA, 0x11,
 			 0x89, 0xF1, 0x00, 0x0C, 0x29, 0xCE, 0x16, 0x35},
 		.entry_point = (uint32_t)loadable_module_main,
-		.type = { .load_type = SOF_MAN_MOD_TYPE_MODULE,
-		.domain_ll = 1 },
+		.type = {
+#ifdef __SOF_MODULE_SERVICE_BUILD__
+			.load_type = SOF_MAN_MOD_TYPE_MODULE,
+#else
+			.load_type = SOF_MAN_MOD_TYPE_LLEXT,
+#endif
+			.domain_ll = 1,
+		},
 		.affinity_mask = 1,
 	}
 };
+
+#ifdef __SOF_MODULE_SERVICE_BUILD__
+/* system services */
+
+DECLARE_LOADABLE_MODULE_API_VERSION(smart_amp_test);
+
+#else
+/* dynamic link */
+
+static const struct sof_module_api_build_info buildinfo __section(".mod_buildinfo") __attribute__((used)) = {
+	.format = SOF_MODULE_API_BUILD_INFO_FORMAT,
+	.api_version_number.full = SOF_MODULE_API_CURRENT_VERSION,
+};
+
+#endif
+
 #endif
