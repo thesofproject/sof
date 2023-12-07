@@ -37,18 +37,39 @@ extern struct tr_ctx lib_manager_tr;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
-static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
-						uint32_t size, uint32_t flags)
+static int llext_manager_align_map(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
-	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL),
-					size, flags);
-	if (ret < 0)
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	return sys_mm_drv_map_region(aligned_vma, POINTER_TO_UINT(NULL),
+				     ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+}
+
+static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
+{
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
+}
+
+static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
+						size_t size, uint32_t flags)
+{
+	int ret = llext_manager_align_map(vma, size, flags);
+
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
+	}
 
 	ret = memcpy_s((__sparse_force void *)vma, size, s_addr, size);
 	if (ret < 0)
 		return ret;
 
+	/* Some data can be accessed as uncached, in fact that's the default */
+	/* Both D- and I-caches have been invalidated */
 	dcache_writeback_region(vma, size);
 
 	/* TODO: Change attributes for memory to FLAGS  */
@@ -90,7 +111,7 @@ static int llext_manager_load_module(uint32_t module_id, struct sof_man_module *
 	return 0;
 
 e_text:
-	sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
+	llext_manager_align_unmap(va_base_text, st_text_size);
 
 	return ret;
 }
@@ -109,11 +130,11 @@ static int llext_manager_unload_module(uint32_t module_id, struct sof_man_module
 	st_text_size = st_text_size * PAGE_SZ;
 	st_rodata_size = st_rodata_size * PAGE_SZ;
 
-	ret = sys_mm_drv_unmap_region((__sparse_force void *)va_base_text, st_text_size);
+	ret = llext_manager_align_unmap(va_base_text, st_text_size);
 	if (ret < 0)
 		return ret;
 
-	return sys_mm_drv_unmap_region((__sparse_force void *)va_base_rodata, st_rodata_size);
+	return llext_manager_align_unmap(va_base_rodata, st_rodata_size);
 }
 
 static void __sparse_cache *llext_manager_get_instance_bss_address(uint32_t module_id,
@@ -150,11 +171,8 @@ static int llext_manager_allocate_module_instance(uint32_t module_id, uint32_t i
 		return -ENOMEM;
 	}
 
-	/*
-	 * Map bss memory and clear it.
-	 */
-	if (sys_mm_drv_map_region((__sparse_force void *)va_base, POINTER_TO_UINT(NULL),
-				  bss_size, SYS_MM_MEM_PERM_RW) < 0)
+	/* Map bss memory and clear it. */
+	if (llext_manager_align_map(va_base, bss_size, SYS_MM_MEM_PERM_RW) < 0)
 		return -ENOMEM;
 
 	memset((__sparse_force void *)va_base, 0, bss_size);
@@ -165,15 +183,14 @@ static int llext_manager_allocate_module_instance(uint32_t module_id, uint32_t i
 static int llext_manager_free_module_instance(uint32_t module_id, uint32_t instance_id,
 					      struct sof_man_module *mod)
 {
-	uint32_t bss_size =
+	size_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
 			 * PAGE_SZ;
 	void __sparse_cache *va_base = llext_manager_get_instance_bss_address(module_id,
 									      instance_id, mod);
-	/*
-	 * Unmap bss memory.
-	 */
-	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
+
+	/* Unmap bss memory. */
+	return llext_manager_align_unmap(va_base, bss_size);
 }
 
 uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
