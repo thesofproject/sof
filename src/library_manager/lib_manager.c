@@ -140,6 +140,71 @@ static int lib_manager_unload_module(const struct sof_man_module *const mod)
 	return 0;
 }
 
+#ifdef CONFIG_LIBCODE_MODULE_SUPPORT
+/* There are modules marked as lib_code. This is code shared between several modules inside
+ * the library. Load all lib_code modules with first none lib_code module load.
+ */
+static int lib_manager_load_libcode_modules(const uint32_t module_id,
+					    const struct sof_man_fw_desc *const desc)
+{
+	struct ext_library *const ext_lib = ext_lib_get();
+	const struct sof_man_module *module_entry = (struct sof_man_module *)
+		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	const uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
+	int ret, idx;
+
+	if (++ext_lib->mods_exec_load_cnt > 1)
+		return 0;
+
+	for (idx = 0; idx < desc->header.num_module_entries; ++idx, ++module_entry) {
+		if (module_entry->type.lib_code) {
+			ret = lib_manager_load_module(lib_id << LIB_MANAGER_LIB_ID_SHIFT | idx,
+						      module_entry);
+			if (ret < 0)
+				goto err;
+		}
+	}
+
+	return 0;
+
+err:
+	for (--idx, --module_entry; idx >= 0; --idx, --module_entry) {
+		if (module_entry->type.lib_code) {
+			ret = lib_manager_unload_module(module_entry);
+			if (ret < 0)
+				goto err;
+		}
+	}
+
+	return ret;
+}
+
+/* There are modules marked as lib_code. This is code shared between several modules inside
+ * the library. Unload all lib_code modules with last none lib_code module unload.
+ */
+static int lib_manager_unload_libcode_modules(const uint32_t module_id,
+					      const struct sof_man_fw_desc *const desc)
+{
+	struct ext_library *const ext_lib = ext_lib_get();
+	const struct sof_man_module *module_entry = (struct sof_man_module *)
+		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	int ret, idx;
+
+	if (--ext_lib->mods_exec_load_cnt > 0)
+		return 0;
+
+	for (idx = 0; idx < desc->header.num_module_entries; ++idx, ++module_entry) {
+		if (module_entry->type.lib_code) {
+			ret = lib_manager_unload_module(module_entry);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+#endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
+
 static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
 								 uint32_t instance_id,
 								 struct sof_man_module *mod)
@@ -227,11 +292,20 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	if (ret < 0)
 		return 0;
 
+#ifdef CONFIG_LIBCODE_MODULE_SUPPORT
+	ret = lib_manager_load_libcode_modules(module_id, desc);
+	if (ret < 0)
+		goto err;
+#endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
+
 	ret = lib_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
 						   base_cfg->is_pages, mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_allocate_module(): module allocation failed: %d", ret);
+#ifdef CONFIG_LIBCODE_MODULE_SUPPORT
+		lib_manager_unload_libcode_modules(module_id, desc);
+#endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 		goto err;
 	}
 	return mod->entry_point;
@@ -258,6 +332,12 @@ int lib_manager_free_module(const struct comp_driver *drv,
 	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
 		return ret;
+
+#ifdef CONFIG_LIBCODE_MODULE_SUPPORT
+	ret = lib_manager_unload_libcode_modules(module_id, desc);
+	if (ret < 0)
+		return ret;
+#endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
 	ret = lib_manager_free_module_instance(module_id, IPC4_INST_ID(ipc_config->id), mod);
 	if (ret < 0) {
