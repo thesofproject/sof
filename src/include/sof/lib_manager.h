@@ -81,7 +81,9 @@ struct ipc_lib_msg {
 struct ext_library {
 	struct k_spinlock lock;	/* last locking CPU record */
 	struct sof_man_fw_desc *desc[LIB_MANAGER_MAX_LIBS];
+#ifdef CONFIG_LIBCODE_MODULE_SUPPORT
 	uint32_t mods_exec_load_cnt;
+#endif
 	struct ipc_lib_msg *lib_notif_pool;
 	uint32_t lib_notif_count;
 

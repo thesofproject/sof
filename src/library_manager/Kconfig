@@ -13,4 +13,17 @@ config LIBRARY_MANAGER
 	  Externally developed modules both for SOF and Zephyr
 	  could be used if enabled.
 	  If unsure say N.
+
+
+config LIBCODE_MODULE_SUPPORT
+	bool "Add support for libcode modules"
+	default n
+	depends on LIBRARY_MANAGER
+	help
+	  A loadable library can contain a several modules marked
+	  as lib_code. This modules contains code shared by
+	  a multiple modules. This option adds support for modules
+	  of this type.
+	  If unsure say N.
+
 endmenu
