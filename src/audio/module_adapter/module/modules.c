@@ -72,7 +72,9 @@ static int modules_init(struct processing_module *mod)
 	struct comp_ipc_config *config = &(dev->ipc_config);
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg);
+	const void *buildinfo = NULL;
+
+	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg, &buildinfo);
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
 		return -EINVAL;
@@ -92,12 +94,19 @@ static int modules_init(struct processing_module *mod)
 		comp_err(dev, "modules_init(): Failed to load manifest");
 		return -ENOMEM;
 	}
-	struct sof_man_module *module_entry =
-		    (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
-	struct sof_module_api_build_info *mod_buildinfo =
-		(struct sof_module_api_build_info *)
-		(module_entry->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr);
+	const struct sof_module_api_build_info *mod_buildinfo;
+
+	if (buildinfo) {
+		mod_buildinfo = buildinfo;
+	} else {
+		struct sof_man_module *module_entry =
+			(struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+
+		mod_buildinfo =
+			(struct sof_module_api_build_info *)
+			(module_entry->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr);
+	}
 
 	/* Check if module is FDK */
 	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&

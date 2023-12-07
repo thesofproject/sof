@@ -344,7 +344,7 @@ static bool module_is_llext(struct sof_man_module *mod)
 
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 				     struct comp_ipc_config *ipc_config,
-				     const void *ipc_specific_config)
+				     const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
@@ -366,7 +366,8 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
 	if (module_is_llext(mod))
-		return llext_manager_allocate_module(drv, ipc_config, ipc_specific_config);
+		return llext_manager_allocate_module(drv, ipc_config, ipc_specific_config,
+						     buildinfo);
 
 	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
@@ -437,7 +438,7 @@ int lib_manager_free_module(const struct comp_driver *drv,
 
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 				     struct comp_ipc_config *ipc_config,
-				     const void *ipc_specific_config)
+				     const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr,
 	       "lib_manager_allocate_module(): Dynamic module allocation is not supported");
@@ -697,7 +698,10 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	uint32_t preload_size = man_desc->header.preload_page_count * PAGE_SZ;
 	int ret;
 
-	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
+	/*
+	 * Prepare storage memory, note: it is never freed, it is assumed, that this
+	 * memory is abundant, so we store all loaded modules there permanently
+	 */
 	library_base_address = lib_manager_allocate_store_mem(preload_size, 0);
 	if (!library_base_address)
 		return -ENOMEM;

@@ -25,6 +25,11 @@
 
 #include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
+#include <zephyr/llext/buf_loader.h>
+#include <zephyr/llext/loader.h>
+#include <zephyr/llext/llext.h>
+
+#include <rimage/sof/user/manifest.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -137,18 +142,11 @@ static void __sparse_cache *llext_manager_get_bss_address(uint32_t module_id,
 }
 
 static int llext_manager_allocate_module_bss(uint32_t module_id,
-					     uint32_t is_pages, struct sof_man_module *mod)
+					     struct sof_man_module *mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
 	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
-
-	if (is_pages * PAGE_SZ > bss_size) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module_bss(): invalid is_pages: %u, required: %u",
-		       is_pages, bss_size / PAGE_SZ);
-		return -ENOMEM;
-	}
 
 	/* Map bss memory and clear it. */
 	if (llext_manager_align_map(va_base, bss_size, SYS_MM_MEM_PERM_RW) < 0)
@@ -170,17 +168,77 @@ static int llext_manager_free_module_bss(uint32_t module_id,
 	return llext_manager_align_unmap(va_base, bss_size);
 }
 
+static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
+			      uint32_t module_id, const void **buildinfo,
+			      const struct sof_man_module_manifest **mod_manifest)
+{
+	size_t mod_size = desc->header.preload_page_count * PAGE_SZ;
+	/* FIXME: where does the module begin?? */
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
+						       SOF_MAN_ELF_TEXT_OFFSET + 0x8000,
+						       mod_size);
+	struct llext *ext;
+	struct llext_load_param ldr_parm = {false};
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	int ret = llext_load(&ebl.loader, mod->name, &ext, &ldr_parm);
+
+	if (ret < 0)
+		return ret;
+
+	mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
+	mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset = (uintptr_t)ext->mem[LLEXT_MEM_TEXT] -
+		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
+	ctx->segment_size[SOF_MAN_SEGMENT_TEXT] = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+
+	tr_dbg(&lib_manager_tr, ".text: start: %#x size %#x offset %#x",
+	       mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr,
+	       ctx->segment_size[SOF_MAN_SEGMENT_TEXT],
+	       mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
+
+	/* This contains all other sections, except .text, it might contain .bss too */
+	mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
+		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
+	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset = (uintptr_t)ext->mem[LLEXT_MEM_RODATA] -
+		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
+	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = mod_size -
+		ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+
+	tr_dbg(&lib_manager_tr, ".data: start: %#x size %#x offset %#x",
+	       mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr,
+	       ctx->segment_size[SOF_MAN_SEGMENT_RODATA],
+	       mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset);
+
+	mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = ebl.loader.sects[LLEXT_MEM_BSS].sh_addr;
+	ctx->segment_size[SOF_MAN_SEGMENT_BSS] = ebl.loader.sects[LLEXT_MEM_BSS].sh_size;
+
+	tr_dbg(&lib_manager_tr, ".bss: start: %#x size %#x",
+	       mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr,
+	       ctx->segment_size[SOF_MAN_SEGMENT_BSS]);
+
+	ssize_t binfo_o = llext_find_section(&ebl.loader, ".mod_buildinfo");
+
+	if (binfo_o)
+		*buildinfo = llext_peek(&ebl.loader, binfo_o);
+
+	ssize_t mod_o = llext_find_section(&ebl.loader, ".module");
+
+	if (mod_o)
+		*mod_manifest = llext_peek(&ebl.loader, mod_o);
+
+	return 0;
+}
+
 uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 				       struct comp_ipc_config *ipc_config,
-				       const void *ipc_specific_config)
+				       const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
-	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const struct sof_man_module_manifest *mod_manifest;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
@@ -194,20 +252,23 @@ uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	for (unsigned int i = 0; i < ARRAY_SIZE(ctx->segment_size); i++)
-		ctx->segment_size[i] = mod->segment[i].flags.r.length * PAGE_SZ;
+	ret = llext_manager_link(desc, mod, module_id, buildinfo, &mod_manifest);
+	if (ret < 0)
+		return 0;
 
+	/* Map .text and the rest as .data */
 	ret = llext_manager_load_module(module_id, mod, desc);
 	if (ret < 0)
 		return 0;
 
-	ret = llext_manager_allocate_module_bss(module_id, base_cfg->is_pages, mod);
+	ret = llext_manager_allocate_module_bss(module_id, mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_allocate_module(): module allocation failed: %d", ret);
 		return 0;
 	}
-	return mod->entry_point;
+
+	return mod_manifest->module.entry_point;
 }
 
 int llext_manager_free_module(const struct comp_driver *drv,
