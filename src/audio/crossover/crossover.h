@@ -131,4 +131,13 @@ static inline void crossover_free_config(struct sof_crossover_config **config)
 	*config = NULL;
 }
 
+int crossover_get_sink_id(struct comp_data *cd, uint32_t pipeline_id, uint32_t index);
+int crossover_output_pin_init(struct processing_module *mod);
+int crossover_check_sink_assign(struct processing_module *mod,
+				struct sof_crossover_config *config);
+int crossover_check_config(struct processing_module *mod, const uint8_t *fragment);
+void crossover_params(struct processing_module *mod);
+int crossover_get_stream_index(struct processing_module *mod,
+			       struct sof_crossover_config *config, uint32_t pipe_id);
+
 #endif //  __SOF_AUDIO_CROSSOVER_CROSSOVER_H__
