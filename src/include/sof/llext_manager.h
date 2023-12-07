@@ -13,7 +13,7 @@ struct comp_ipc_config;
 
 uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 				       struct comp_ipc_config *ipc_config,
-				       const void *ipc_specific_config);
+				       const void *ipc_specific_config, const void **buildinfo);
 int llext_manager_free_module(const struct comp_driver *drv,
 			      struct comp_ipc_config *ipc_config);
 
