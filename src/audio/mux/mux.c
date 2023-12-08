@@ -10,7 +10,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
-#include <sof/audio/mux.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
@@ -31,6 +30,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "mux.h"
 
 #define MUX_BLOB_STREAMS_SIZE	(MUX_MAX_STREAMS * sizeof(struct mux_stream_data))
 #define MUX_BLOB_MAX_SIZE	(sizeof(struct sof_mux_config) + MUX_BLOB_STREAMS_SIZE)
