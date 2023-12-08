@@ -9,10 +9,11 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sof/audio/drc/drc_plat_conf.h>
 #include <sof/audio/format.h>
 #include <sof/math/numbers.h>
 #include <sof/math/trig.h>
+
+#include "drc_plat_conf.h"
 
 /* Unmark this define to use cordic arc sine implementation. */
 /* #define DRC_USE_CORDIC_ASIN */

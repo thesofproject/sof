@@ -5,8 +5,6 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/drc/drc.h>
-#include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -34,6 +32,9 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "drc.h"
+#include "drc_algorithm.h"
 
 LOG_MODULE_REGISTER(drc, CONFIG_SOF_LOG_LEVEL);
 

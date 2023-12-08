@@ -5,10 +5,11 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <stdint.h>
-#include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/format.h>
 #include <sof/math/iir_df2t.h>
+
 #include "multiband_drc.h"
+#include "../drc/drc_algorithm.h"
 
 static void multiband_drc_default_pass(const struct processing_module *mod,
 				       const struct audio_stream *source,

@@ -9,10 +9,11 @@
 
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/drc/drc_plat_conf.h>
 #include <sof/audio/buffer.h>
 #include <sof/platform.h>
-#include <user/drc.h>
+
+#include "drc_plat_conf.h"
+#include "drc_user.h"
 
 struct audio_stream;
 struct comp_dev;

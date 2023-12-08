@@ -9,12 +9,13 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/crossover/crossover.h>
-#include <sof/audio/drc/drc.h>
 #include <sof/math/iir_df2t.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
 #include <sof/platform.h>
 #include <stdint.h>
+
+#include "../drc/drc.h"
 #include "user/multiband_drc.h"
 
 /**
