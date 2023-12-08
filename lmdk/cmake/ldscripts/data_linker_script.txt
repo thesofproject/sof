@@ -15,7 +15,7 @@ SECTIONS {
         _data_end = ABSOLUTE(.);
     } >HPSRAM_seg : data_phdr
 
-    .rodata : {
+    .rodata : ALIGN(4096) {
         _rodata_start = ABSOLUTE(.);
         *(.gnu.linkonce.r.*)
         *(.rodata)
