@@ -119,39 +119,6 @@ err:
 	return NULL;
 }
 
-static int module_adapter_sink_src_prepare(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct list_item *blist;
-	int ret;
-	int i;
-
-	/* acquire all sink and source buffers, get handlers to sink/source API */
-	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink_buffer =
-				container_of(blist, struct comp_buffer, source_list);
-		mod->sinks[i] = audio_stream_get_sink(&sink_buffer->stream);
-		i++;
-	}
-	mod->num_of_sinks = i;
-
-	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source_buffer =
-				container_of(blist, struct comp_buffer, sink_list);
-
-		mod->sources[i] = audio_stream_get_source(&source_buffer->stream);
-		i++;
-	}
-	mod->num_of_sources = i;
-
-	/* Prepare module */
-	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
-
-	return ret;
-}
-
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 {
@@ -171,7 +138,7 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 	list_init(&mod->dp_queue_ll_to_dp_list);
 	list_init(&mod->dp_queue_dp_to_ll_list);
 
-	ret = module_adapter_sink_src_prepare(dev);
+	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
 	if (ret)
 		return ret;
 
@@ -198,7 +165,7 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			goto err;
 		dp_queue_append_to_list(dp_queue, &mod->dp_queue_ll_to_dp_list);
 
-		/* it will override source pointers set by module_adapter_sink_src_prepare
+		/* it will override source pointers set before
 		 * module will use shadow dpQueue for processing
 		 */
 		mod->sources[i] = dp_queue_get_source(dp_queue);
@@ -232,7 +199,7 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 			goto err;
 
 		dp_queue_append_to_list(dp_queue, &mod->dp_queue_dp_to_ll_list);
-		/* it will override sink pointers set by module_adapter_sink_src_prepare
+		/* it will override sink pointers set before
 		 * module will use shadow dpQueue for processing
 		 */
 		mod->sinks[i] = dp_queue_get_sink(dp_queue);
@@ -328,7 +295,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	else if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
 		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-		ret = module_adapter_sink_src_prepare(dev);
+		ret = module_prepare(mod, mod->sources, mod->num_of_sources,
+				     mod->sinks, mod->num_of_sinks);
 
 	else if ((IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) &&
 		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
