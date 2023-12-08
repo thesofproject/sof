@@ -5,13 +5,14 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/component.h>
-#include <sof/audio/drc/drc.h>
-#include <sof/audio/drc/drc_algorithm.h>
-#include <sof/audio/drc/drc_math.h>
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
+
+#include "drc.h"
+#include "drc_algorithm.h"
+#include "drc_math.h"
 
 #if DRC_GENERIC
 

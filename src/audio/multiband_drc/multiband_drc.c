@@ -6,7 +6,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/crossover/crossover_algorithm.h>
-#include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
@@ -32,6 +31,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../drc/drc_algorithm.h"
 #include "multiband_drc.h"
 
 LOG_MODULE_REGISTER(multiband_drc, CONFIG_SOF_LOG_LEVEL);

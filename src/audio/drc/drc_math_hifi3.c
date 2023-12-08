@@ -4,8 +4,8 @@
 //
 // Author: Pin-chih Lin <johnylin@google.com>
 
-#include <sof/audio/drc/drc_math.h>
 #include <sof/math/numbers.h>
+#include "drc_math.h"
 
 #if DRC_HIFI3 || DRC_HIFI4
 

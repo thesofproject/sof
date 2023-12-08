@@ -10,8 +10,9 @@
 
 #include <stdint.h>
 #include <user/crossover.h>
-#include <user/drc.h>
 #include <user/eq.h>
+
+#include "../../drc/drc_user.h"
 
 /* Maximum number of frequency band for Multiband DRC */
 #define SOF_MULTIBAND_DRC_MAX_BANDS SOF_CROSSOVER_MAX_STREAMS

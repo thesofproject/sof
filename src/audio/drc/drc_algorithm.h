@@ -8,9 +8,10 @@
 #define __SOF_AUDIO_DRC_DRC_ALGORITHM_H__
 
 #include <stdint.h>
-#include <sof/audio/drc/drc.h>
 #include <sof/platform.h>
-#include <user/drc.h>
+
+#include "drc_user.h"
+#include "drc.h"
 
 /* drc reset function */
 void drc_reset_state(struct drc_state *state);

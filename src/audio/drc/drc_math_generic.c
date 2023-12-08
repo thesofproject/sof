@@ -4,11 +4,12 @@
 //
 // Author: Pin-chih Lin <johnylin@google.com>
 
-#include <sof/audio/drc/drc_math.h>
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <sof/math/trig.h>
+
+#include "drc_math.h"
 
 #define q_mult(a, b, qa, qb, qy) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, qa, qb, qy))
 #define q_multq(a, b, q) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, q, q, q))
