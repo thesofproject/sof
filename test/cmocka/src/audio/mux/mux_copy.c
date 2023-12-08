@@ -10,7 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
-#include <sof/audio/mux.h>
+#include <mux/mux.h>
 
 #include <stdarg.h>
 #include <stddef.h>

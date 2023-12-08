@@ -16,11 +16,14 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
+#include <sof/lib/uuid.h>
 #include <user/trace.h>
+#include <module/module/base.h>
 #include <stdint.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base-config.h>
@@ -209,6 +212,17 @@ void sys_comp_module_mux_interface_init(void);
 void sys_comp_module_demux_interface_init(void);
 
 #endif /* UNIT_TEST */
+
+#define MUX_BLOB_STREAMS_SIZE	(MUX_MAX_STREAMS * sizeof(struct mux_stream_data))
+#define MUX_BLOB_MAX_SIZE	(sizeof(struct sof_mux_config) + MUX_BLOB_STREAMS_SIZE)
+
+extern const struct sof_uuid mux_uuid;
+extern const struct sof_uuid demux_uuid;
+extern struct tr_ctx mux_tr;
+extern struct tr_ctx demux_tr;
+
+bool mux_mix_check(struct sof_mux_config *cfg);
+int mux_params(struct processing_module *mod);
 
 #endif /* CONFIG_COMP_MUX */
 

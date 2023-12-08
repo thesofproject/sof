@@ -804,6 +804,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+		${SOF_AUDIO_PATH}/mux/mux_ipc3.c
+)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+		${SOF_AUDIO_PATH}/mux/mux_ipc4.c
+)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
 )
