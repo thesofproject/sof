@@ -169,17 +169,17 @@ def parse_args():
 				"directory structure, example:\n" +
 				"myXtensa/\n" +
 				"└── install/\n" +
-				"	├── builds/\n" +
-				"	│   ├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
-				"	│   │   └── Intel_HiFiEP/\n" +
-				"	│   └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
-				"	│  		├── LX4_langwell_audio_17_8/\n" +
-				"	│   	└── X4H3I16w2D48w3a_2017_8/\n" +
-				"	└── tools/\n" +
-				"			├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
-				"			│   └── XtensaTools/\n" +
-				"			└── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
-				"				└── XtensaTools/\n" +
+				"       ├── builds/\n" +
+				"       │   ├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
+				"       │   │   └── Intel_HiFiEP/\n" +
+				"       │   └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
+				"       │       ├── LX4_langwell_audio_17_8/\n" +
+				"       │       └── X4H3I16w2D48w3a_2017_8/\n" +
+				"       └── tools/\n" +
+				"               ├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
+				"               │   └── XtensaTools/\n" +
+				"               └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
+				"                   └── XtensaTools/\n" +
 			"$XTENSA_TOOLS_ROOT=/path/to/myXtensa ...\n" +
 			f"Supported platforms: {list(platform_configs)}"))
 
