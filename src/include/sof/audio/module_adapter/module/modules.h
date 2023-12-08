@@ -66,6 +66,8 @@ static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
 	drv->ops.set_large_config = module_set_large_config;
 	drv->ops.get_large_config = module_get_large_config;
 	drv->ops.get_attribute = module_adapter_get_attribute;
+	drv->ops.bind = module_adapter_bind;
+	drv->ops.unbind = module_adapter_unbind;
 }
 
 #endif /* __SOF_AUDIO_MODULES__ */
