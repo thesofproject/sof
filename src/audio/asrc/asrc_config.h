@@ -16,7 +16,7 @@
 #if defined __XCC__
 /* For xt-xcc */
 #include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 == 1
+#if XCHAL_HAVE_HIFI3 == 1 ||  XCHAL_HAVE_HIFI4 == 1
 /* Version for HiFi3 */
 #define ASRC_HIFI3	1
 #define ASRC_GENERIC	0
