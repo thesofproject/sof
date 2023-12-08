@@ -155,22 +155,35 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return 0;
 }
 
-static bool module_adapter_multi_sink_source_check(struct comp_dev *dev)
+static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist;
-	int num_sources = 0;
-	int num_sinks = 0;
+	int i;
 
-	list_for_item(blist, &dev->bsource_list)
-		num_sources++;
+	/* acquire all sink and source buffers, get handlers to sink/source API */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink_buffer =
+				container_of(blist, struct comp_buffer, source_list);
+		mod->sinks[i] = audio_stream_get_sink(&sink_buffer->stream);
+		i++;
+	}
+	mod->num_of_sinks = i;
 
-	list_for_item(blist, &dev->bsink_list)
-		num_sinks++;
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source_buffer =
+				container_of(blist, struct comp_buffer, sink_list);
 
-	comp_dbg(dev, "num_sources=%d num_sinks=%d", num_sources, num_sinks);
+		mod->sources[i] = audio_stream_get_source(&source_buffer->stream);
+		i++;
+	}
+	mod->num_of_sources = i;
 
-	if (num_sources != 1 || num_sinks != 1)
+	comp_dbg(dev, "num_sources=%d num_sinks=%d", mod->num_of_sinks, mod->num_of_sinks);
+
+	if (mod->num_of_sinks != 1 || mod->num_of_sinks != 1)
 		return true;
 
 	/* re-assign the source/sink modules */
@@ -190,7 +203,7 @@ int module_adapter_bind(struct comp_dev *dev, void *data)
 	if (ret < 0)
 		return ret;
 
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
+	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_prepare(dev);
 
 	return 0;
 }
@@ -204,7 +217,7 @@ int module_adapter_unbind(struct comp_dev *dev, void *data)
 	if (ret < 0)
 		return ret;
 
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_check(dev);
+	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_prepare(dev);
 
 	return 0;
 }
