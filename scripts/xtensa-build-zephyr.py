@@ -619,10 +619,6 @@ def rimage_options(platform_dict):
 	#                         test_00_01_load_fw_and_check_version
 	opts.append(("-b", "1"))
 
-	rimage_desc = platform_dict["name"] + ".toml"
-
-	opts.append(("-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)))
-
 	return opts
 
 
