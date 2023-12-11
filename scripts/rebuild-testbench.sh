@@ -5,10 +5,15 @@
 # stop on most errors
 set -e
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+SOF_REPO=$(dirname "$SCRIPT_DIR")
+BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
+
 # Defaults
 BUILD_TYPE=native
 BUILD_DIR_NAME=build_testbench
 BUILD_TARGET=install
+: "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
 
 print_usage()
 {
@@ -128,11 +133,6 @@ EOFUSAGE
 
 main()
 {
-    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-    SOF_REPO=$(dirname "$SCRIPT_DIR")
-    BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
-    : "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
-
     jobs=$(nproc)
     while getopts "fhj:p:" OPTION; do
         case "$OPTION" in
@@ -142,7 +142,7 @@ main()
                 ;;
             f) export_CC_with_afl;;
             j) jobs=$(printf '%d' "$OPTARG") ;;
-            h) print_usage; exit 1;;
+            h) print_usage; exit 0;;
             *) print_usage; exit 1;;
         esac
     done
