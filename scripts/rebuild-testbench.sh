@@ -7,7 +7,7 @@ set -e
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 SOF_REPO=$(dirname "$SCRIPT_DIR")
-BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
+TESTBENCH_DIR="$SOF_REPO"/tools/testbench
 
 # Defaults
 BUILD_TYPE=native
@@ -40,7 +40,7 @@ die()
 
 rebuild_testbench()
 {
-    cd "$BUILD_TESTBENCH_DIR"
+    cd "$TESTBENCH_DIR"
 
     rm -rf "$BUILD_DIR_NAME"
     mkdir "$BUILD_DIR_NAME"
@@ -80,7 +80,7 @@ setup_xtensa_tools_build()
 
     install_bin=install/tools/$XTENSA_TOOLS_VERSION/XtensaTools/bin
     tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
-    testbench_sections="-Wl,--sections-placement $BUILD_TESTBENCH_DIR/testbench_xcc_sections.txt"
+    testbench_sections="-Wl,--sections-placement $TESTBENCH_DIR/testbench_xcc_sections.txt"
     export CC=$tools_bin/$COMPILER
     export LD=$tools_bin/xt-ld
     export OBJDUMP=$tools_bin/xt-objdump
@@ -90,7 +90,7 @@ setup_xtensa_tools_build()
 
 export_xtensa_setup()
 {
-    export_dir=$BUILD_TESTBENCH_DIR/$BUILD_DIR_NAME
+    export_dir=$TESTBENCH_DIR/$BUILD_DIR_NAME
     export_script=$export_dir/xtrun_env.sh
     xtbench=$export_dir/testbench
     xtbench_run="XTENSA_CORE=$XTENSA_CORE \$XTENSA_TOOLS_ROOT/$install_bin/xt-run $xtbench"
