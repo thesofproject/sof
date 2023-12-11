@@ -40,15 +40,12 @@ die()
 
 rebuild_testbench()
 {
+    local bdir="$BUILD_DIR_NAME"
     cd "$TESTBENCH_DIR"
 
-    rm -rf "$BUILD_DIR_NAME"
-    mkdir "$BUILD_DIR_NAME"
-    cd "$BUILD_DIR_NAME"
-
-    cmake -DCMAKE_INSTALL_PREFIX=install  ..
-
-    cmake --build .  --  -j"${jobs}" $BUILD_TARGET
+    rm -rf "$bdir"
+    cmake -B "$bdir" -DCMAKE_INSTALL_PREFIX="$bdir"/install
+    cmake --build "$bdir"  --  -j"${jobs}" $BUILD_TARGET
 }
 
 export_CC_with_afl()
