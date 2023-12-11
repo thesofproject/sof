@@ -82,7 +82,6 @@ class PlatformConfig:
 	XTENSA_CORE: str
 	DEFAULT_TOOLCHAIN_VARIANT: str = "xt-clang"
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	IPC4_RIMAGE_DESC: str = None
 	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
 	aliases: list = dataclasses.field(default_factory=list)
 
@@ -95,7 +94,6 @@ platform_configs_all = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		IPC4_RIMAGE_DESC = "tgl-cavs.toml",
 		aliases = ['adl', 'ehl']
 	),
 	"tgl-h" : PlatformConfig(
@@ -103,7 +101,6 @@ platform_configs_all = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		IPC4_RIMAGE_DESC = "tgl-h-cavs.toml",
 		aliases = ['adl-s']
 	),
 	"mtl" : PlatformConfig(
@@ -629,10 +626,7 @@ def rimage_options(platform_dict):
 	#                         test_00_01_load_fw_and_check_version
 	opts.append(("-b", "1"))
 
-	if platform_dict.get("IPC4_RIMAGE_DESC", None) is not None:
-		rimage_desc = platform_dict["IPC4_RIMAGE_DESC"]
-	else:
-		rimage_desc = platform_dict["name"] + ".toml"
+	rimage_desc = platform_dict["name"] + ".toml"
 
 	opts.append(("-c", str(RIMAGE_SOURCE_DIR / "config" / rimage_desc)))
 
