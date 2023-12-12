@@ -67,7 +67,6 @@ void module_adapter_check_data(struct processing_module *mod, struct comp_dev *d
 void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_stream_params *params)
 {
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, mod->stream_params);
 }
 
 int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev,
