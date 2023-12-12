@@ -10,6 +10,7 @@ SOF_REPO=$(dirname "$SCRIPT_DIR")
 TESTBENCH_DIR="$SOF_REPO"/tools/testbench
 
 # Defaults
+BUILD_BACKEND='make'
 BUILD_TYPE=native
 BUILD_DIR_NAME=build_testbench
 BUILD_TARGET=install
@@ -23,7 +24,7 @@ usage: $0 [-f] [-p <platform>]
           When omitted, perform a BUILD_TYPE=native, compile-only check.
        -f Build testbench with compiler provided by fuzzer
           (default path: $HOME/sof/work/AFL/afl-gcc)
-       -j number of parallel make/ninja jobs. Defaults to /usr/bin/nproc.
+       -j number of parallel $BUILD_BACKEND jobs. Defaults to /usr/bin/nproc.
           You MUST re-run with -j1 when something is failing!
 EOFUSAGE
 }
@@ -100,11 +101,32 @@ EOFSETUP
 
 testbench_usage()
 {
+    local src_env_msg
+    if [ "$BUILD_TYPE" = 'xt' ]; then
+        export_xtensa_setup
+        src_env_msg="source $export_script"
+    fi
+
+cat <<EOF0
+Success!
+
+For temporary, interactive Kconfiguration use:
+
+   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/sof_ep/build/  menuconfig
+
+Permanent configuration is "src/arch/host/configs/library_defconfig".
+
+For instant, incremental build:
+
+   $src_env_msg
+   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/ -j$(nproc)
+
+EOF0
+
     case "$BUILD_TYPE" in
         xt)
-            export_xtensa_setup
             cat <<EOFUSAGE
-Success! Testbench binary for $BUILD_PLATFORM is in $xtbench
+Testbench binary for $BUILD_PLATFORM is in $xtbench
 it can be run with command:
 
 $xtbench_run -h
