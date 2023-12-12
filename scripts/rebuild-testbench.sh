@@ -136,7 +136,16 @@ main()
         esac
     done
 
+    # This automagically removes the -- sentinel itself if any.
+    shift "$((OPTIND -1))"
+    # Error on spurious arguments.
+    test $# -eq 0 || {
+        print_usage
+        die "Unknown arguments: %s\n" "$*"
+    }
+
     rebuild_testbench
+
     printf '\n'
     testbench_usage
 }
