@@ -77,9 +77,8 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 static int lib_manager_load_module(const uint32_t module_id,
 				   const struct sof_man_module *const mod)
 {
-	const struct ext_library *const ext_lib = ext_lib_get();
-	const uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	const uintptr_t load_offset = POINTER_TO_UINT(ext_lib->desc[lib_id]);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const uintptr_t load_offset = POINTER_TO_UINT(ctx->desc);
 	void *src;
 	void __sparse_cache *va_base;
 	size_t size;
@@ -393,9 +392,8 @@ void lib_manager_init(void)
 
 struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
 {
-	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	struct ext_library *_ext_lib = ext_lib_get();
-	uint8_t *buffptr = (uint8_t *)_ext_lib->desc[lib_id];
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	uint8_t *buffptr = (uint8_t *)(ctx ? ctx->desc : NULL);
 
 	if (!buffptr)
 		return NULL;
@@ -405,9 +403,14 @@ struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
 static void lib_manager_update_sof_ctx(struct sof_man_fw_desc *desc, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
+	/* Never freed, will panic if fails */
+	struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+						  sizeof(*ctx));
 
-	_ext_lib->desc[lib_id] = desc;
-	/* TODO: maybe need to call here dcache_writeback here? */
+	ctx->desc = desc;
+
+	_ext_lib->desc[lib_id] = ctx;
+	/* TODO: maybe need to call dcache_writeback here? */
 }
 
 #if CONFIG_INTEL_MODULES

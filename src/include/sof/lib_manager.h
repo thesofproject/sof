@@ -78,9 +78,14 @@ struct ipc_lib_msg {
 	struct list_item list;
 };
 
+struct lib_manager_mod_ctx {
+	struct sof_man_fw_desc *desc;
+	size_t segment_size[3];
+};
+
 struct ext_library {
 	struct k_spinlock lock;	/* last locking CPU record */
-	struct sof_man_fw_desc *desc[LIB_MANAGER_MAX_LIBS];
+	struct lib_manager_mod_ctx *desc[LIB_MANAGER_MAX_LIBS];
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
 	uint32_t mods_exec_load_cnt;
 #endif
@@ -96,6 +101,14 @@ extern struct tr_ctx lib_manager_tr;
 static inline struct ext_library *ext_lib_get(void)
 {
 	return sof_get()->ext_library;
+}
+
+static inline struct lib_manager_mod_ctx *lib_manager_get_mod_ctx(int module_id)
+{
+	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
+	struct ext_library *_ext_lib = ext_lib_get();
+
+	return _ext_lib->desc[lib_id];
 }
 #endif
 
