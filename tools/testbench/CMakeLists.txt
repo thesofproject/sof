@@ -50,6 +50,8 @@ install(TARGETS testbench DESTINATION bin)
 
 include(ExternalProject)
 
+# Should we do this? Only for sof_ep, not for parser_ep?
+# https://stackoverflow.com/questions/12021448/how-can-cmake-arguments-be-forwarded-to-externalproject
 ExternalProject_Add(sof_ep
 	DOWNLOAD_COMMAND ""
 	SOURCE_DIR "${sof_source_directory}"
