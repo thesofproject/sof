@@ -79,22 +79,18 @@ static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *
 static int llext_manager_load_module(uint32_t module_id, struct sof_man_module *mod,
 				     struct sof_man_fw_desc *desc)
 {
-	struct ext_library *ext_lib = ext_lib_get();
-	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
-	size_t load_offset = (size_t)((void *)ext_lib->desc[lib_id]);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	uint8_t *load_base = (uint8_t *)ctx->desc;
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	void *src_txt = (void *)(mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset + load_offset);
-	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
+	void *src_txt = (void *)(load_base + mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
+	size_t st_text_size = ctx->segment_size[SOF_MAN_SEGMENT_TEXT];
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
 		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
-	void *src_rodata =
-		(void *)(mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset + load_offset);
-	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
+	void *src_rodata = (void *)(load_base +
+				    mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset);
+	size_t st_rodata_size = ctx->segment_size[SOF_MAN_SEGMENT_RODATA];
 	int ret;
-
-	st_text_size = st_text_size * PAGE_SZ;
-	st_rodata_size = st_rodata_size * PAGE_SZ;
 
 	/* Copy Code */
 	ret = llext_manager_load_data_from_storage(va_base_text, src_txt, st_text_size,
@@ -119,16 +115,14 @@ e_text:
 static int llext_manager_unload_module(uint32_t module_id, struct sof_man_module *mod,
 				       struct sof_man_fw_desc *desc)
 {
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	size_t st_text_size = mod->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length;
+	size_t st_text_size = ctx->segment_size[SOF_MAN_SEGMENT_TEXT];
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
 		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
-	size_t st_rodata_size = mod->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length;
+	size_t st_rodata_size = ctx->segment_size[SOF_MAN_SEGMENT_RODATA];
 	int ret;
-
-	st_text_size = st_text_size * PAGE_SZ;
-	st_rodata_size = st_rodata_size * PAGE_SZ;
 
 	ret = llext_manager_align_unmap(va_base_text, st_text_size);
 	if (ret < 0)
@@ -146,7 +140,8 @@ static void __sparse_cache *llext_manager_get_bss_address(uint32_t module_id,
 static int llext_manager_allocate_module_bss(uint32_t module_id,
 					     uint32_t is_pages, struct sof_man_module *mod)
 {
-	size_t bss_size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length * PAGE_SZ;
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
 	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
 
 	if (is_pages * PAGE_SZ > bss_size) {
@@ -168,7 +163,8 @@ static int llext_manager_allocate_module_bss(uint32_t module_id,
 static int llext_manager_free_module_bss(uint32_t module_id,
 					 struct sof_man_module *mod)
 {
-	size_t bss_size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length * PAGE_SZ;
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
 	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
 
 	/* Unmap bss memory. */
@@ -185,18 +181,22 @@ uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
-	if (!desc) {
+	if (!ctx || !desc) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_allocate_module(): failed to get module descriptor");
 		return 0;
 	}
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+
+	for (unsigned int i = 0; i < ARRAY_SIZE(ctx->segment_size); i++)
+		ctx->segment_size[i] = mod->segment[i].flags.r.length * PAGE_SZ;
 
 	ret = llext_manager_load_module(module_id, mod, desc);
 	if (ret < 0)
