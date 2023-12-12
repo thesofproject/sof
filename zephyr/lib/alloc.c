@@ -115,8 +115,7 @@ static inline uintptr_t get_l3_heap_start(void)
 	 * - main_fw_load_offset
 	 * - main fw size in manifest
 	 */
-	return (uintptr_t)z_soc_uncached_ptr((__sparse_force void __sparse_cache *)
-					     ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
+	return (uintptr_t)(ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
 }
 
 /**
@@ -144,14 +143,50 @@ static bool is_l3_heap_pointer(void *ptr)
 	uintptr_t l3_heap_start = get_l3_heap_start();
 	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
 
-	if (is_cached(ptr))
-		ptr = z_soc_uncached_ptr((__sparse_force void __sparse_cache *)ptr);
-
 	if ((POINTER_TO_UINT(ptr) >= l3_heap_start) && (POINTER_TO_UINT(ptr) < l3_heap_end))
 		return true;
 
 	return false;
 }
+
+static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
+{
+	k_spinlock_key_t key;
+	void *ret;
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
+	struct sys_memory_stats stats;
+#endif
+	if (!cpu_is_primary(arch_proc_id())) {
+		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
+		return NULL;
+	}
+
+	key = k_spin_lock(&h->lock);
+	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
+	k_spin_unlock(&h->lock, key);
+
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
+	sys_heap_runtime_stats_get(&h->heap, &stats);
+	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+#endif
+
+	return ret;
+}
+
+static void l3_heap_free(struct k_heap *h, void *mem)
+{
+	if (!cpu_is_primary(arch_proc_id())) {
+		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
+		return;
+	}
+
+	k_spinlock_key_t key = k_spin_lock(&h->lock);
+
+	sys_heap_free(&h->heap, mem);
+	k_spin_unlock(&h->lock, key);
+}
+
 #endif
 
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
@@ -250,6 +285,17 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	if (caps & SOF_MEM_CAPS_L3) {
 #if CONFIG_L3_HEAP
 		heap = &l3_heap;
+		/* Uncached L3_HEAP should be not used */
+		if (!zone_is_cached(zone)) {
+			tr_err(&zephyr_tr, "L3_HEAP available for cached zones only!");
+			return NULL;
+		}
+		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, 0, bytes);
+
+		if (!ptr && zone == SOF_MEM_ZONE_SYS)
+			k_panic();
+
+		return ptr;
 #else
 		k_panic();
 #endif
@@ -334,10 +380,24 @@ EXPORT_SYMBOL(rzalloc);
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t align)
 {
-	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(&sof_heap, align, bytes);
+	struct k_heap *heap;
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(&sof_heap, align, bytes);
+	/* choose a heap */
+	if (caps & SOF_MEM_CAPS_L3) {
+#if CONFIG_L3_HEAP
+		heap = &l3_heap;
+		return (__sparse_force void *)l3_heap_alloc_aligned(heap, align, bytes);
+#else
+		k_panic();
+#endif
+	} else {
+		heap = &sof_heap;
+	}
+
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		return heap_alloc_aligned(heap, align, bytes);
+
+	return (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
 }
 EXPORT_SYMBOL(rballoc_align);
 
@@ -351,7 +411,7 @@ void rfree(void *ptr)
 
 #if CONFIG_L3_HEAP
 	if (is_l3_heap_pointer(ptr)) {
-		heap_free(&l3_heap, ptr);
+		l3_heap_free(&l3_heap, ptr);
 		return;
 	}
 #endif
