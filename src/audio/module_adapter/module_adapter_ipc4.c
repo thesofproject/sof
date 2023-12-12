@@ -236,3 +236,11 @@ uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 		return mod->total_data_consumed;
 }
 
+int module_adapter_sink_src_prepare(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+
+	/* Prepare module */
+	return module_prepare(mod, mod->sources, mod->num_of_sources,
+			      mod->sinks, mod->num_of_sinks);
+}

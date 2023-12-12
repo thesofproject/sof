@@ -325,4 +325,5 @@ void module_adapter_check_data(struct processing_module *mod, struct comp_dev *d
 void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_stream_params *params);
 int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev,
 			     int cmd);
+int module_adapter_sink_src_prepare(struct comp_dev *dev);
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */

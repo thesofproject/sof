@@ -287,3 +287,36 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	comp_dbg(dev, "module_adapter_cmd() done");
 	return ret;
 }
+
+int module_adapter_sink_src_prepare(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist;
+	int ret;
+	int i;
+
+	/* acquire all sink and source buffers, get handlers to sink/source API */
+	i = 0;
+	list_for_item(blist, &dev->bsink_list) {
+		struct comp_buffer *sink_buffer =
+				container_of(blist, struct comp_buffer, source_list);
+		mod->sinks[i] = audio_stream_get_sink(&sink_buffer->stream);
+		i++;
+	}
+	mod->num_of_sinks = i;
+
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source_buffer =
+				container_of(blist, struct comp_buffer, sink_list);
+
+		mod->sources[i] = audio_stream_get_source(&source_buffer->stream);
+		i++;
+	}
+	mod->num_of_sources = i;
+
+	/* Prepare module */
+	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
+
+	return ret;
+}
