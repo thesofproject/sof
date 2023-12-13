@@ -336,7 +336,7 @@ static int mixin_process(struct processing_module *mod,
 		assert(free_frames >= pending_frames->frames);
 		sinks_free_frames = MIN(sinks_free_frames, free_frames - pending_frames->frames);
 	}
-
+#if TBF_MIXIN_CHECK
 	if (source_avail_frames > 0) {
 		struct comp_buffer *source_c;
 
@@ -357,7 +357,9 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		frames_to_copy = MIN(dev->frames, sinks_free_frames);
 	}
-
+#else
+	frames_to_copy = dev->frames;
+#endif
 	/* iterate over all connected mixouts and mix source data into each mixout sink buffer */
 	for (i = 0; i < num_output_buffers; i++) {
 		struct comp_dev *mixout;
