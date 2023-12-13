@@ -184,8 +184,6 @@ int dma_copy_new(struct dma_copy *dc)
 	return 0;
 }
 
-#if CONFIG_DMA_GW
-
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 {
 	/* get DMA channel from DMAC */
@@ -198,4 +196,3 @@ int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 	return 0;
 }
 
-#endif
