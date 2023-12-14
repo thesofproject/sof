@@ -132,7 +132,6 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
  */
 static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
-	struct dma_sg_config config = { 0 };
 	uint32_t elem_addr, addr_align;
 	const uint32_t elem_size = sizeof(uint64_t) * DMA_ELEM_SIZE;
 	const uint32_t elem_num = PROBE_BUFFER_LOCAL_SIZE / elem_size;
@@ -151,7 +150,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
 		return -ENODEV;
 	}
-
+	dma->dc.dmac->priv_data = &dma->dc.dmac->chan->index;
 	/* get required address alignment for dma buffer */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_get_attribute(dma->dc.dmac->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
@@ -174,22 +173,19 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 
 	elem_addr = (uint32_t)dma->dmapb.addr;
 
-	config.direction = direction;
-	config.src_width = sizeof(uint32_t);
-	config.dest_width = sizeof(uint32_t);
-	config.cyclic = 0;
+	dma->config.direction = direction;
+	dma->config.src_width = sizeof(uint32_t);
+	dma->config.dest_width = sizeof(uint32_t);
+	dma->config.cyclic = 0;
 
-	err = dma_sg_alloc(&config.elem_array, SOF_MEM_ZONE_RUNTIME,
-			   config.direction, elem_num, elem_size, elem_addr, 0);
+	err = dma_sg_alloc(&dma->config.elem_array, SOF_MEM_ZONE_RUNTIME,
+			   dma->config.direction, elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
 		return err;
 
-	err = dma_set_config_legacy(dma->dc.chan, &config);
+	err = dma_set_config_legacy(dma->dc.chan, &dma->config);
 	if (err < 0)
 		return err;
-
-	dma_sg_free(&config.elem_array);
-
 	return 0;
 }
 #else
@@ -261,6 +257,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
+	dma_sg_free(&dma->config.elem_array);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_stop(dma->dc.dmac->z_dev, dma->dc.chan->index);
 #else
@@ -1421,9 +1418,10 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 #else
 				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
 				if (dev) {
-					notifier_unregister(_probe, dev->cb,
+					notifier_unregister(&buf_id->full_id, dev->cb,
 							    NOTIFIER_ID_BUFFER_PRODUCE);
-					notifier_unregister(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE);
+					notifier_unregister(&buf_id->full_id, dev->cb,
+							    NOTIFIER_ID_BUFFER_FREE);
 				}
 #endif
 				_probe->probe_points[j].stream_tag =
