@@ -82,7 +82,6 @@ class PlatformConfig:
 	XTENSA_CORE: str
 	DEFAULT_TOOLCHAIN_VARIANT: str = "xt-clang"
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
-	IPC4_CONFIG_OVERLAY: str = "ipc4_overlay.conf"
 	aliases: list = dataclasses.field(default_factory=list)
 
 # These can all be built out of the box. --all builds all these.
