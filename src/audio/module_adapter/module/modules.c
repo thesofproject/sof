@@ -62,7 +62,6 @@ static int modules_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
-	int ret = 0;
 	byte_array_t mod_cfg;
 
 	mod_cfg.data = (uint8_t *)md->cfg.init_data;
@@ -136,6 +135,8 @@ static int modules_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 	md->mpd.out_buff_size = src_cfg->obs;
+
+	int ret;
 
 	/* Call module specific init function if exists. */
 	if (mod->is_native_sof) {
