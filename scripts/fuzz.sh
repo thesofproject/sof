@@ -80,8 +80,12 @@ main()
     -DCONFIG_ASAN=y
   )
 
+  (set -x
+   # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
+   # the last 'VAL UE2' wins. Previous ones are silently ignored.
   west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
       "${fuzz_configs[@]}" "$@"
+  )
 
   if $BUILD_ONLY; then
       exit 0
