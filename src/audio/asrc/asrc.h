@@ -39,12 +39,6 @@ static inline bool asrc_get_asynchronous_mode(const struct ipc4_asrc_module_cfg 
 	return false;
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-int asrc_dai_get_timestamp(struct comp_data *cd, struct dai_ts_data *tsd);
-#else
-int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd);
-#endif
-
 #else /*IPC3 version*/
 typedef struct ipc_config_asrc ipc_asrc_cfg;
 
@@ -68,10 +62,13 @@ static inline bool asrc_get_asynchronous_mode(const struct ipc_config_asrc *ipc_
 	return ipc_asrc->asynchronous_mode;
 }
 
-int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd);
-
 #endif
 
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+int asrc_dai_get_timestamp(struct comp_data *cd, struct dai_ts_data *tsd);
+#else
+int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd);
+#endif
 /* Simple count value to prevent first delta timestamp
  * from being input to low-pass filter.
  */
