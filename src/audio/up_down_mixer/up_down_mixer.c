@@ -401,44 +401,53 @@ err:
 
 static int
 up_down_mixer_process(struct processing_module *mod,
-		      struct input_stream_buffer *input_buffers, int num_input_buffers,
-		      struct output_stream_buffer *output_buffers, int num_output_buffers)
+		      struct sof_source **input_buffers, int num_input_buffers,
+		      struct sof_sink **output_buffers, int num_output_buffers)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	uint32_t source_bytes, sink_bytes;
-	uint32_t mix_frames;
+
+	size_t output_frames, input_frames, ret, input_cirbuf_size, output_cirbuf_size;
+	const uint8_t *input0_pos, *input0_start;
+	uint8_t *output_pos, *output_start;
 
 	comp_dbg(dev, "up_down_mixer_process()");
 
-	mix_frames = audio_stream_avail_frames(mod->input_buffers[0].data,
-					       mod->output_buffers[0].data);
+	output_frames = sink_get_free_frames(output_buffers[0]);
+	input_frames = source_get_data_frames_available(input_buffers[0]);
 
-	source_bytes = mix_frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
-	sink_bytes = mix_frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
+	const size_t output_frame_bytes = sink_get_frame_bytes(output_buffers[0]);
 
-	if (source_bytes) {
-		uint32_t sink_sample_bytes;
+	ret = sink_get_buffer(output_buffers[0], output_frames * output_frame_bytes,
+			      (void **)&output_pos, (void **)&output_start, &output_cirbuf_size);
+	if (ret)
+		return -ENODATA;
 
-		audio_stream_copy_to_linear(mod->input_buffers[0].data, 0, cd->buf_in, 0,
-					    source_bytes /
-					    audio_stream_sample_bytes(mod->input_buffers[0].data));
+	const size_t input0_frame_bytes = source_get_frame_bytes(input_buffers[0]);
 
-		cd->mix_routine(cd, (uint8_t *)cd->buf_in, source_bytes, (uint8_t *)cd->buf_out);
-
-		sink_sample_bytes = audio_stream_sample_bytes(mod->output_buffers[0].data);
-		audio_stream_copy_from_linear(cd->buf_out, 0, mod->output_buffers[0].data, 0,
-					      sink_bytes / sink_sample_bytes);
-		mod->output_buffers[0].size = sink_bytes;
-		mod->input_buffers[0].consumed = source_bytes;
+	ret = source_get_data(input_buffers[0], input_frames * input0_frame_bytes,
+			      (const void **)&input0_pos, (const void **)&input0_start,
+			      &input_cirbuf_size);
+	if (ret) {
+		sink_commit_buffer(output_buffers[0], 0);
+		return -ENODATA;
 	}
 
+	cd->mix_routine(cd, (const void *)input0_start, input_cirbuf_size, (void *)output_start);
+
+	ret = sink_commit_buffer(output_buffers[0], output_frames * output_frame_bytes);
+	if (ret)
+		return ret;
+
+	ret = source_release_data(input_buffers[0], input_frames * input0_frame_bytes);
+	if (ret)
+		return ret;
 	return 0;
 }
 
 static const struct module_interface up_down_mixer_interface = {
 	.init = up_down_mixer_init,
-	.process_audio_stream = up_down_mixer_process,
+	.process = up_down_mixer_process,
 	.free = up_down_mixer_free
 };
 
