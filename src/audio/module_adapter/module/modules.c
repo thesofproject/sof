@@ -154,7 +154,7 @@ static int modules_init(struct processing_module *mod)
 
 		ret = mod_in->init(mod);
 	} else {
-		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
+		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
 		ret = iadk_wrapper_init(md->module_adapter);
 	}
 
@@ -212,7 +212,8 @@ static int modules_process(struct processing_module *mod,
 			   struct sof_sink **sinks, int num_of_sinks)
 {
 	if (!mod->is_native_sof)
-		return -EOPNOTSUPP;
+		return iadk_wrapper_process(mod->priv.module_adapter, sources,
+					    num_of_sources, sinks, num_of_sinks);
 
 	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
 
@@ -247,33 +248,20 @@ static int modules_process_raw(struct processing_module *mod,
 			       struct output_stream_buffer *output_buffers,
 			       int num_output_buffers)
 {
-	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
-	struct list_item *blist;
-	int ret;
-	int i = 0;
+
+	if (!mod->is_native_sof)
+		return -EOPNOTSUPP;
 
 	if (!md->mpd.init_done)
 		modules_init_process(mod);
 
-	/* IADK modules require output buffer size to set to its real size. */
-	list_for_item(blist, &dev->bsource_list) {
-		mod->output_buffers[i].size = md->mpd.out_buff_size;
-		i++;
-	}
 	/* Call module specific process function. */
-	if (mod->is_native_sof) {
-		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+	struct module_interface *mod_in =
+				(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
-					       output_buffers, num_output_buffers);
-	} else {
-		ret = iadk_wrapper_process(mod->priv.module_adapter, input_buffers,
-					   num_input_buffers, output_buffers,
-					   num_output_buffers);
-	}
-	return ret;
+	return mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
+					output_buffers, num_output_buffers);
 }
 
 /**

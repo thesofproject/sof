@@ -16,7 +16,15 @@
 #include <adsp_stddef.h>
 #include <system_error.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sof/audio/module_adapter/module/module_interface.h>
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 extern "C" {
 namespace dsp_fw
@@ -56,10 +64,10 @@ namespace dsp_fw
 		 * samples provided by the codec_adapter and produce/output the processed
 		 * ones back to codec_adapter.
 		 */
-		uint32_t IadkModuleAdapter_Process(struct input_stream_buffer *input_buffers,
-						   int num_input_buffers,
-						   struct output_stream_buffer *output_buffers,
-						   int num_output_buffers);
+		uint32_t IadkModuleAdapter_Process(struct sof_source **sources,
+						   int num_of_sources,
+						   struct sof_sink **sinks,
+						   int num_of_sinks);
 
 		/**
 		 * Module specific apply config procedure, called by codec_adapter every time
@@ -137,9 +145,9 @@ int iadk_wrapper_get_configuration(void *md, uint32_t config_id,
 				   uint32_t data_offset_size,
 				   uint8_t *fragment, size_t fragment_size);
 
-int iadk_wrapper_process(void *md, struct input_stream_buffer *input_buffers,
-			 int num_input_buffers, struct output_stream_buffer *output_buffers,
-			 int num_output_buffers);
+int iadk_wrapper_process(void *md,
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks);
 
 #endif /* __cplusplus */
 
