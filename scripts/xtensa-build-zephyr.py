@@ -94,19 +94,20 @@ platform_configs_all = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		aliases = ['adl', 'ehl']
+		aliases = ['adl', 'adl-n', 'ehl', 'rpl']
 	),
 	"tgl-h" : PlatformConfig(
 		"tgl-h", "intel_adsp_cavs25_tgph",
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		aliases = ['adl-s']
+		aliases = ['adl-s', 'rpl-s']
 	),
 	"mtl" : PlatformConfig(
 		"mtl", "intel_adsp_ace15_mtpm",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
+		aliases = ['arl']
 	),
 	"lnl" : PlatformConfig(
 		"lnl", "intel_adsp_ace20_lnl",
