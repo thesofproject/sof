@@ -179,8 +179,10 @@ def parse_args():
 				"               └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
 				"                   └── XtensaTools/\n" +
 			"$XTENSA_TOOLS_ROOT=/path/to/myXtensa ...\n" +
-			f"Supported platforms: {list(platform_configs)}"))
 
+			f"\nSupported platforms: {list(platform_configs)}"), add_help=False)
+
+	parser.add_argument('-h', '--help', action='store_true', help='show help')
 	parser.add_argument("-a", "--all", required=False, action="store_true",
 						help="Build all currently supported platforms")
 	parser.add_argument("platforms", nargs="*", action=validate_platforms_arguments,
@@ -265,9 +267,14 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 		args.platforms = list(platform_configs_all)
 
 	# print help message if no arguments provided
-	if len(sys.argv) == 1:
-			parser.print_help()
-			sys.exit(0)
+	if len(sys.argv) == 1 or args.help:
+		for platform in platform_configs:
+			if platform_configs[platform].aliases:
+				parser.epilog += "\nPlatform aliases for '" + platform + "':\t"
+				parser.epilog += f"{list(platform_configs[platform].aliases)}"
+
+		parser.print_help()
+		sys.exit(0)
 
 	if args.fw_naming == 'AVS':
 		if not args.use_platform_subdir:
