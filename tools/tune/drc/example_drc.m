@@ -60,8 +60,11 @@ blob8 = drc_build_blob(config, endian);
 blob8_ipc4 = drc_build_blob(config, endian, 4);
 
 % Generate output files
-tplg_write(tplg1_fn, blob8, "DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", 'Exported Control Bytes');
+my_name = mfilename();
+drc_note = sprintf("Exported with script %s.m", my_name);
+drc_howto = sprintf("cd tools/tune/drc; octave --no-window-system %s.m", my_name);
+tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
+tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
 blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 blob_write(blob4_fn, blob8_ipc4);
