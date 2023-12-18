@@ -76,58 +76,63 @@ else:
 # pylint:disable=too-many-instance-attributes
 class PlatformConfig:
 	"Product parameters"
-	name: str
+	vendor: str
 	PLAT_CONFIG: str
 	XTENSA_TOOLS_VERSION: str
 	XTENSA_CORE: str
 	DEFAULT_TOOLCHAIN_VARIANT: str = "xt-clang"
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	aliases: list = dataclasses.field(default_factory=list)
+	ipc4: bool = False
 
 # These can all be built out of the box. --all builds all these.
 platform_configs_all = {
 	#  Intel platforms
 	"tgl" : PlatformConfig(
-		"tgl", "intel_adsp_cavs25",
+		"intel", "intel_adsp_cavs25",
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		aliases = ['adl', 'adl-n', 'ehl', 'rpl']
+		aliases = ['adl', 'adl-n', 'ehl', 'rpl'],
+		ipc4 = True
 	),
 	"tgl-h" : PlatformConfig(
-		"tgl-h", "intel_adsp_cavs25_tgph",
+		"intel", "intel_adsp_cavs25_tgph",
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		aliases = ['adl-s', 'rpl-s']
+		aliases = ['adl-s', 'rpl-s'],
+		ipc4 = True
 	),
 	"mtl" : PlatformConfig(
-		"mtl", "intel_adsp_ace15_mtpm",
+		"intel", "intel_adsp_ace15_mtpm",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
-		aliases = ['arl']
+		aliases = ['arl'],
+		ipc4 = True
 	),
 	"lnl" : PlatformConfig(
-		"lnl", "intel_adsp_ace20_lnl",
+		"intel", "intel_adsp_ace20_lnl",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
+		ipc4 = True
 	),
 
 	#  NXP platforms
 	"imx8" : PlatformConfig(
-		"imx8", "nxp_adsp_imx8",
+		"imx", "nxp_adsp_imx8",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8",
 	),
 	"imx8x" : PlatformConfig(
-		"imx8x", "nxp_adsp_imx8x",
+		"imx", "nxp_adsp_imx8x",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8x"
 	),
 	"imx8m" : PlatformConfig(
-		"imx8m", "nxp_adsp_imx8m",
+		"imx", "nxp_adsp_imx8m",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
@@ -137,7 +142,7 @@ platform_configs_all = {
 # These cannot be built out of the box yet
 extra_platform_configs = {
 	"imx8ulp" : PlatformConfig(
-		"imx8ulp", "nxp_adsp_imx8ulp",
+		"imx", "nxp_adsp_imx8ulp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp2_s7_v2_1a_prod",
 		RIMAGE_KEY = "key param ignored by imx8ulp"
@@ -256,6 +261,28 @@ Otherwise, all firmware files are installed in the same staging directory by def
 			    help="""Run script in non-interactive mode when user input can not be provided.
 This should be used with programmatic script invocations (eg. Continuous Integration).
 				""")
+
+	parser.add_argument("--deployable-build", default=False, action="store_true",
+			    help="""Create a directory structure for the firmware files which can be deployed on target as it is.
+This option will cause the --fw-naming and --use-platform-subdir options to be ignored!
+The generic, default directory and file structure is IPC version dependent:
+IPC3
+    build-sof-staging/sof/VENDOR/sof/ (on target: /lib/firmware/VENDOR/sof/)
+    ├── community
+    │   └── sof-PLAT.ri
+    ├── dbgkey
+    │   └── sof-PLAT.ri
+    └── sof-PLAT.ri
+IPC4
+    build-sof-staging/sof/VENDOR/sof-ipc4/ (on target: /lib/firmware/VENDOR/sof-ipc4/)
+    └── PLAT
+        ├── community
+        │   └── sof-PLAT.ri
+        ├── dbgkey
+        │   └── sof-PLAT.ri
+        └── sof-PLAT.ri\n
+				""")
+
 	parser.add_argument("--version", required=False, action="store_true",
 			    help="Prints version of this script.")
 
@@ -273,6 +300,14 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 
 		parser.print_help()
 		sys.exit(0)
+
+	if args.deployable_build:
+		if args.fw_naming == 'AVS':
+			args.fw_naming = 'SOF'
+			print("The option '--fw-naming AVS' is ignored for deployable builds.")
+		if args.use_platform_subdir:
+			args.use_platform_subdir = False
+			print("The option '--use-platform-subdir' is ignored for deployable builds.")
 
 	if args.fw_naming == 'AVS':
 		if not args.use_platform_subdir:
@@ -310,18 +345,18 @@ def execute_command(*run_args, **run_kwargs):
 
 	return subprocess.run(*run_args, **run_kwargs)
 
-def symlink_or_copy(directory, origbase, newbase):
-	"""Create a symbolic link or copy in the same directory. Don't
-	bother Windows users with symbolic links because they require
-	special privileges. Windows don't care about /lib/firmware/sof/
-	anyway. Make a copy instead to preserve cross-platform consistency.
-
+def symlink_or_copy(targetdir, targetfile, linkdir, linkfile):
+	"""Create a relative symbolic link or copy. Don't bother Windows users
+	with symbolic links because they require special privileges.
+	Windows don't care about /lib/firmware/sof/ anyway.
+	Make a copy instead to preserve cross-platform consistency.
 	"""
-	new = pathlib.Path(directory) / newbase
+	target = pathlib.Path(targetdir) / targetfile
+	link = pathlib.Path(linkdir) / linkfile
 	if py_platform.system() == "Windows":
-		shutil.copy2(pathlib.Path(directory) / origbase, new)
+		shutil.copy2(target, link)
 	else:
-		new.symlink_to(origbase)
+		link.symlink_to(os.path.relpath(target, linkdir))
 
 def show_installed_files():
 	"""[summary] Scans output directory building binary tree from files and folders
@@ -519,6 +554,12 @@ def clean_staging(platform):
 		for f in sof_output_dir.glob(f"**/sof-{p}.*"):
 			os.remove(f)
 
+	# remove IPC4 deployable build directories
+	if platform_configs[platform].ipc4:
+		sof_platform_output_dir = sof_output_dir / platform_configs[platform].vendor / "sof-ipc4"
+		rmtree_if_exists(sof_platform_output_dir / platform)
+		for p_alias in platform_configs[platform].aliases:
+			rmtree_if_exists(sof_platform_output_dir / p_alias)
 
 RIMAGE_BUILD_DIR  = west_top / "build-rimage"
 
@@ -662,11 +703,21 @@ def build_platforms():
 	sof_output_dir.mkdir(parents=True, exist_ok=True)
 	for platform in args.platforms:
 		platf_build_environ = os.environ.copy()
-		if args.use_platform_subdir:
-			sof_platform_output_dir = pathlib.Path(sof_output_dir, platform)
+
+		if args.deployable_build:
+			vendor_output_dir = pathlib.Path(sof_output_dir, platform_configs[platform].vendor)
+			if platform_configs[platform].ipc4:
+				sof_platform_output_dir = pathlib.Path(vendor_output_dir, "sof-ipc4")
+			else:
+				sof_platform_output_dir = pathlib.Path(vendor_output_dir, "sof")
+
 			sof_platform_output_dir.mkdir(parents=True, exist_ok=True)
 		else:
-			sof_platform_output_dir = sof_output_dir
+			if args.use_platform_subdir:
+				sof_platform_output_dir = pathlib.Path(sof_output_dir, platform)
+				sof_platform_output_dir.mkdir(parents=True, exist_ok=True)
+			else:
+				sof_platform_output_dir = sof_output_dir
 
 		# For now convert the new dataclass to what it used to be
 		_dict = dataclasses.asdict(platform_configs[platform])
@@ -769,7 +820,7 @@ def build_platforms():
 		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
 
 		for p_alias in platform_configs[platform].aliases:
-			symlink_or_copy(sof_platform_output_dir, f"sof-{platform}.ldc", f"sof-{p_alias}.ldc")
+			symlink_or_copy(sof_platform_output_dir, f"sof-{platform}.ldc", sof_platform_output_dir, f"sof-{p_alias}.ldc")
 
 		# reproducible-zephyr.ri is less useful now that show_installed_files() shows
 		# checksums too. However: - it's still useful when only the .ri file is
@@ -811,7 +862,7 @@ def build_platforms():
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 
 
-def install_platform(platform, sof_platform_output_dir, platf_build_environ):
+def install_platform(platform, sof_output_dir, platf_build_environ):
 
 	# Keep in sync with caller
 	platform_build_dir_name = f"build-{platform}"
@@ -823,10 +874,14 @@ def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 		# Disguise ourselves for local testing purposes
 		output_fwname = "dsp_basefw.bin"
 	else:
-		# Regular name
+		# Regular name (deployable build also uses SOF naming convention)
 		output_fwname = "".join(["sof-", platform, ".ri"])
 
-	install_key_dir = sof_platform_output_dir
+	if args.deployable_build and platform_configs[platform].ipc4:
+		install_key_dir = pathlib.Path(sof_output_dir, platform)
+	else:
+		install_key_dir = sof_output_dir
+
 	if args.key_type_subdir != "none":
 		install_key_dir = install_key_dir / args.key_type_subdir
 
@@ -834,10 +889,24 @@ def install_platform(platform, sof_platform_output_dir, platf_build_environ):
 	# looses file owner and group - file is commonly accessible
 	shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
 
-	# The production key is usually different
-	if args.key_type_subdir != "none" and args.fw_naming != "AVS":
+	if args.deployable_build and platform_configs[platform].ipc4:
+		# IPC4 deployable builds are using separate directories per platforms
+		# create the structure and symlinks for the alias platforms
 		for p_alias in platform_configs[platform].aliases:
-			symlink_or_copy(install_key_dir, output_fwname, f"sof-{p_alias}.ri")
+			alias_fwname = "".join(["sof-", p_alias, ".ri"])
+
+			alias_key_dir = pathlib.Path(sof_output_dir, p_alias)
+			if args.key_type_subdir != "none":
+				alias_key_dir = alias_key_dir / args.key_type_subdir
+
+			os.makedirs(alias_key_dir, exist_ok=True)
+			symlink_or_copy(install_key_dir, output_fwname, alias_key_dir, alias_fwname)
+	else:
+		# non deployable builds and IPC3 deployable builds are using the same symlink scheme
+		# The production key is usually different
+		if args.key_type_subdir != "none" and args.fw_naming != "AVS":
+			for p_alias in platform_configs[platform].aliases:
+				symlink_or_copy(install_key_dir, output_fwname, install_key_dir, f"sof-{p_alias}.ri")
 
 
 	# sof-info/ directory
