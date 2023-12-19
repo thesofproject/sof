@@ -325,4 +325,13 @@ config DISABLE_DESCRIPTOR_SPLIT
 	help
 	  This option disbale the descriptor split for host p-table.
 
+config DAI_VERBOSE_GLITCH_WARNINGS
+	bool "Enable additional checks and warnings for DAI data flow"
+	default n
+	  help
+	  Select if you want to enable additional checks and warning logs for
+	  DAI data flow. If DAI copy is called with no data to process,
+	  always emit a warning. This option useful to debug issues with
+	  DAI DMA operation and issues with low-latency scheduling.
+
 endmenu
