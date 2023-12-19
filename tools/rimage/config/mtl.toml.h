@@ -181,5 +181,9 @@ load_offset = "0x40000"
 #include <audio/rtnr/rtnr.toml>
 #endif
 
+#ifdef CONFIG_COMP_IGO_NR
+#include <audio/igo_nr/igo_nr.toml>
+#endif
+
 [module]
 count = __COUNTER__
