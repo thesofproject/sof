@@ -177,5 +177,9 @@ load_offset = "0x40000"
 #include <audio/module_adapter/module/cadence.toml>
 #endif
 
+#ifdef CONFIG_COMP_RTNR
+#include <audio/rtnr/rtnr.toml>
+#endif
+
 [module]
 count = __COUNTER__
