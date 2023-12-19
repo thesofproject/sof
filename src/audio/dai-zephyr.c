@@ -1286,7 +1286,9 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 	/* return if nothing to copy */
 	if (!frames) {
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 		comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): nothing to copy");
+#endif
 
 		for (i = 0; i < num_endpoints; i++) {
 			ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, 0);
@@ -1460,6 +1462,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x",
 		 dev->direction, copy_bytes);
 
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
@@ -1469,10 +1472,13 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		 copy_bytes + free_bytes < dd->period_bytes)
 		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
+#endif
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
+#endif
 		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
 		return 0;
 	}
