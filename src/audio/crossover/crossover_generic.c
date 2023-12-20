@@ -7,10 +7,11 @@
 #include <ipc/stream.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <sof/audio/component.h>
-#include <sof/audio/crossover/crossover.h>
 #include <sof/audio/format.h>
 #include <sof/math/iir_df2t.h>
 #include <stdint.h>
+
+#include "crossover.h"
 
 /*
  * \brief Splits x into two based on the coefficients set in the lp

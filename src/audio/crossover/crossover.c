@@ -12,7 +12,6 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <module/crossover/crossover_common.h>
-#include <sof/audio/crossover/crossover.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -30,12 +29,14 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#include <user/crossover.h>
 #include <user/eq.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
+
+#include "crossover_user.h"
+#include "crossover.h"
 
 LOG_MODULE_REGISTER(crossover, CONFIG_SOF_LOG_LEVEL);
 

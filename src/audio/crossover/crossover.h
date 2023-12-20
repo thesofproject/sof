@@ -11,8 +11,9 @@
 #include <sof/math/iir_df2t.h>
 #include <module/crossover/crossover_common.h>
 #include <sof/platform.h>
-#include <user/crossover.h>
 #include <stdint.h>
+
+#include "crossover_user.h"
 
 struct comp_buffer;
 struct comp_dev;
