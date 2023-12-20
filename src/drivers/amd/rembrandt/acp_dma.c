@@ -238,8 +238,11 @@ int dma_setup(struct dma_chan_data *channel,
 					(dma_config_dscr[dscr_strt_idx].src_addr &
 					 ACP_DRAM_ADDRESS_MASK);
 				dma_cfg->base = dma_config_dscr[dscr_strt_idx].src_addr | ACP_SRAM;
-				dma_cfg->wr_size = dma_cfg->size;
 				dma_cfg->rd_size = 0;
+				if (channel->index == dma_cfg->probe_channel)
+					dma_cfg->wr_size = 0;
+				else
+					dma_cfg->wr_size = dma_cfg->size;
 			}
 		}
 	}
