@@ -125,4 +125,10 @@ static inline int32_t crossover_generic_process_lr4(int32_t in,
 	return iir_df2t(lr4, in);
 }
 
+static inline void crossover_free_config(struct sof_crossover_config **config)
+{
+	rfree(*config);
+	*config = NULL;
+}
+
 #endif //  __SOF_AUDIO_CROSSOVER_CROSSOVER_H__

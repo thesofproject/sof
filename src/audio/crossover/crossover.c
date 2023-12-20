@@ -46,17 +46,11 @@ DECLARE_SOF_RT_UUID("crossover", crossover_uuid, 0x948c9ad1, 0x806a, 0x4131,
 
 DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
 
-static inline void crossover_free_config(struct sof_crossover_config **config)
-{
-	rfree(*config);
-	*config = NULL;
-}
-
 /**
  * \brief Reset the state (coefficients and delay) of the crossover filter
  *	  across all channels
  */
-static inline void crossover_reset_state(struct comp_data *cd)
+static void crossover_reset_state(struct comp_data *cd)
 {
 	int i;
 
