@@ -1316,15 +1316,6 @@ int module_adapter_reset(struct comp_dev *dev)
 		}
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
-		/* for both LL and DP processing */
-		for (i = 0; i < mod->num_of_sources; i++)
-			mod->sources[i] = NULL;
-		for (i = 0; i < mod->num_of_sinks; i++)
-			mod->sinks[i] = NULL;
-		mod->num_of_sinks = 0;
-		mod->num_of_sources = 0;
-	}
 
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
