@@ -222,7 +222,8 @@ static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 {
 	bool ret;
 
-	assert(domain->ops->domain_is_pending);
+	if (!domain->ops->domain_is_pending)
+		return true;
 
 	ret = domain->ops->domain_is_pending(domain, task, comp);
 

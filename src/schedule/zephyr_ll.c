@@ -188,6 +188,7 @@ static void zephyr_ll_run(void *data)
 	for (list = sch->tasks.next; !list_is_empty(&sch->tasks); list = sch->tasks.next) {
 		enum task_state state;
 		struct zephyr_ll_pdata *pdata;
+		struct ll_schedule_domain *domain = sch->ll_domain;
 
 		task = container_of(list, struct task, list);
 		pdata = task->priv_data;
@@ -198,12 +199,18 @@ static void zephyr_ll_run(void *data)
 			continue;
 		}
 
-		pdata->run = true;
-		task->state = SOF_TASK_STATE_RUNNING;
+		if (domain_is_pending(domain, task, NULL)) {
+			pdata->run = true;
+			task->state = SOF_TASK_STATE_RUNNING;
+		}
 
 		/* Move the task to a temporary list */
 		list_item_del(list);
 		list_item_append(list, &task_head);
+
+		/* avoid to execute the task is not ready to run */
+		if (task->state != SOF_TASK_STATE_RUNNING)
+			continue;
 
 		zephyr_ll_unlock(sch, &flags);
 
@@ -211,6 +218,7 @@ static void zephyr_ll_run(void *data)
 		 * task's .run() should only return either
 		 * SOF_TASK_STATE_COMPLETED or SOF_TASK_STATE_RESCHEDULE
 		 */
+
 		state = do_task_run(task);
 		if (state != SOF_TASK_STATE_COMPLETED &&
 		    state != SOF_TASK_STATE_RESCHEDULE) {
@@ -237,6 +245,8 @@ static void zephyr_ll_run(void *data)
 				break;
 			}
 		}
+		/* update task state */
+		task->state = state;
 	}
 
 	/* Move tasks back */

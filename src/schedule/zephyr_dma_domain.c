@@ -12,6 +12,7 @@
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -98,12 +99,15 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 					struct task *task,
 					uint32_t num_tasks);
+static bool zephyr_dma_domain_is_pending(struct ll_schedule_domain *domain,
+			  struct task *task, struct comp_dev **comp);
 static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
 					  struct task *task);
 
 static const struct ll_schedule_domain_ops zephyr_dma_domain_ops = {
 	.domain_register	= zephyr_dma_domain_register,
 	.domain_unregister	= zephyr_dma_domain_unregister,
+	.domain_is_pending	= zephyr_dma_domain_is_pending,
 	.domain_task_cancel	= zephyr_dma_domain_task_cancel
 };
 
@@ -150,6 +154,18 @@ static void zephyr_dma_domain_thread_fn(void *p1, void *p2, void *p3)
 	}
 }
 
+void pipe_task_notify(void *arg, enum notify_id type, void *data)
+{
+	struct pipeline_task *pipe_task = (void *)arg;
+	struct task *task;
+
+	if (!pipe_task)
+		return;
+	task = &pipe_task->task;
+
+	task->state = SOF_TASK_STATE_PENDING;
+}
+
 static void dma_irq_handler(void *data)
 {
 	struct zephyr_dma_domain_irq *irq_data;
@@ -169,8 +185,11 @@ static void dma_irq_handler(void *data)
 	list_for_item(i, &irq_data->channels) {
 		chan_data = container_of(i, struct zephyr_dma_domain_channel, list);
 
-		if (dma_interrupt_legacy(chan_data->channel, DMA_IRQ_STATUS_GET))
+		if (dma_interrupt_legacy(chan_data->channel, DMA_IRQ_STATUS_GET)) {
 			dma_interrupt_legacy(chan_data->channel, DMA_IRQ_CLEAR);
+			notifier_event(chan_data, NOTIFIER_ID_DMA_IRQ,
+				NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+		}
 	}
 
 	/* clear IRQ - the mask argument is unused ATM */
@@ -350,6 +369,9 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 			*irq_data = crt_irq_data;
 
 			irq_local_enable(flags);
+
+			notifier_register(pipe_task, chan_data, NOTIFIER_ID_DMA_IRQ,
+					  pipe_task_notify, 0);
 
 			return 0;
 		}
@@ -595,6 +617,19 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	/* TODO: thread abortion logic goes here */
 
 	return 0;
+}
+
+static bool zephyr_dma_domain_is_pending(struct ll_schedule_domain *domain,
+			  struct task *task, struct comp_dev **comp)
+{
+	struct pipeline_task *pipe_task;
+
+	pipe_task = pipeline_task_get(task);
+
+	if (!pipe_task->registrable)
+		return true;
+	else
+		return (task->state == SOF_TASK_STATE_PENDING);
 }
 
 static void zephyr_dma_domain_task_cancel(struct ll_schedule_domain *domain,
