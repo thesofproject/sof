@@ -57,6 +57,9 @@ uint32_t IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **source
 			i_size = source_get_data_available(sources[i]);
 			ret = source_get_data(sources[i], i_size, (const void **)&input,
 					      (const void **)&input_start, &input_end);
+			if (ret != 0)
+				return ret;
+
 			const intel_adsp::InputStreamBuffer isb_data(
 				(uint8_t *)input, i_size, flags);
 			new (&input_stream_buffers[i]) intel_adsp::InputStreamBuffer(isb_data);
@@ -69,6 +72,9 @@ uint32_t IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **source
 			o_size = sink_get_free_size(sinks[i]);
 			ret = sink_get_buffer(sinks[i], o_size, (void **)&output,
 					(void **)&output_start, &output_end);
+			if (ret != 0)
+				return ret;
+
 			const intel_adsp::OutputStreamBuffer osb_data(
 					(uint8_t *)output, o_size);
 			new (&output_stream_buffers[i]) intel_adsp::OutputStreamBuffer(osb_data);
