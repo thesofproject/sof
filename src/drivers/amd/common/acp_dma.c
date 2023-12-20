@@ -22,10 +22,15 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <platform/acp_dma.h>
+#include <sof/probe/probe.h>
 
 DECLARE_SOF_UUID("acpdma", acpdma_uuid, 0x70f2d3f2, 0xcbb6, 0x4984,
 		 0xa2, 0xd8, 0x0d, 0xd5, 0x14, 0xb8, 0x0b, 0xc2);
 DECLARE_TR_CTX(acpdma_tr, SOF_UUID(acpdma_uuid), LOG_LEVEL_INFO);
+#define PROBE_UPDATE_POS_MASK	0x80000000
+#define PROBE_BUFFER_WATERMARK	(16 * 1024)
+static uint32_t probe_pos_update, probe_pos;
+
 
 void dma_config_descriptor(uint32_t dscr_start_idx, uint32_t dscr_count,
 			   acp_cfg_dma_descriptor_t       *psrc_dscr,
@@ -73,6 +78,17 @@ static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 	acp_dma_chan->config[req_chan].rd_size = 0;
 	acp_dma_chan->config[req_chan].wr_size = 0;
 	acp_dma_chan->config[req_chan].size = 0;
+	acp_dma_chan->config[req_chan].probe_channel = 0xFF;
+	if (dma->priv_data) {
+		acp_dma_chan->config[req_chan].probe_channel = *(uint32_t *)dma->priv_data;
+		if (acp_dma_chan->config[req_chan].probe_channel == channel->index) {
+			/*probe update pos & flag*/
+			probe_pos_update = 0;
+			probe_pos = 0;
+			io_reg_write(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0,
+				     PROBE_UPDATE_POS_MASK);
+		}
+	}
 	return channel;
 }
 
@@ -88,6 +104,15 @@ static void acp_dma_channel_put(struct dma_chan_data *channel)
 	/* reset read and write pointer */
 	acp_dma_chan->config[channel->index].rd_size = 0;
 	acp_dma_chan->config[channel->index].wr_size = 0;
+	acp_dma_chan->config[channel->index].size = 0;
+	if (acp_dma_chan->config[channel->index].probe_channel == channel->index) {
+		acp_dma_chan->config[channel->index].probe_channel = 0XFF;
+		probe_pos_update = 0;
+		probe_pos = 0;
+		/*probe update pos & flag*/
+		io_reg_write(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0,
+			     PROBE_UPDATE_POS_MASK);
+	}
 }
 
 /* Stop the requested channel */
@@ -205,9 +230,10 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 		.elem.size = bytes,
 	};
 	acp_dma_ch_sts_t ch_sts;
+	struct acp_dma_chan_data *acp_dma_chan;
 	uint32_t dmach_mask = (1 << channel->index);
 	int ret = 0;
-
+	acp_dma_chan = dma_chan_get_data(channel);
 	if (channel->index != DMA_TRACE_CHANNEL)
 		amd_dma_reconfig(channel, bytes);
 
@@ -218,7 +244,16 @@ static int acp_dma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags
 	while (ch_sts.bits.dmachrunsts & dmach_mask)
 		ch_sts = (acp_dma_ch_sts_t)dma_reg_read(channel->dma, ACP_DMA_CH_STS);
 	ret = acp_dma_stop(channel);
-
+	if (ret >= 0 && acp_dma_chan->config[channel->index].probe_channel == channel->index) {
+		probe_pos_update += bytes;
+		probe_pos += bytes;
+		if (probe_pos >= PROBE_BUFFER_WATERMARK) {
+			io_reg_write(PU_REGISTER_BASE + ACP_FUTURE_REG_ACLK_0,
+				     PROBE_UPDATE_POS_MASK | probe_pos_update);
+			acp_dsp_to_host_intr_trig();
+			probe_pos = 0;
+		}
+	}
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return ret;
@@ -241,17 +276,6 @@ static int acp_dma_set_config(struct dma_chan_data *channel,
 
 	channel->direction = config->direction;
 	dir = config->direction;
-	if (config->cyclic) {
-		tr_err(&acpdma_tr,
-		       "DMA: cyclic configurations are not supported");
-		return -EINVAL;
-	}
-	if (config->scatter) {
-		tr_err(&acpdma_tr,
-		       "DMA: scatter is not supported Chan.Index %d scatter %d",
-			channel->index, config->scatter);
-		return -EINVAL;
-	}
 	return dma_setup(channel, &config->elem_array, dir);
 }
 

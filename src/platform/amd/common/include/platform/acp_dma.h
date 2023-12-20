@@ -32,6 +32,8 @@ struct acp_dma_config {
 	uint32_t sys_buff_size;
 	/* virtual system memory offset for system memory buffer */
 	uint32_t phy_off;
+	/* probe_channel id  */
+	uint32_t probe_channel;
 };
 
 struct acp_dma_chan_data {
