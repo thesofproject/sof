@@ -5,7 +5,6 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/crossover/crossover_algorithm.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
@@ -14,6 +13,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
+#include <module/crossover/crossover_common.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>

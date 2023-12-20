@@ -10,9 +10,7 @@
 
 #include <stdint.h>
 #include <user/eq.h>
-
-/* Maximum Number of sinks allowed in config */
-#define SOF_CROSSOVER_MAX_STREAMS 4
+#include <module/crossover/crossover_common.h>
 
 /* Maximum number allowed in configuration blob */
 #define SOF_CROSSOVER_MAX_SIZE 1024

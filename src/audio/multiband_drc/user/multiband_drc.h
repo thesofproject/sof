@@ -9,8 +9,8 @@
 #define __USER_MULTIBAND_DRC_H__
 
 #include <stdint.h>
-#include <user/crossover.h>
 #include <user/eq.h>
+#include <module/crossover/crossover_common.h>
 
 #include "../../drc/drc_user.h"
 
