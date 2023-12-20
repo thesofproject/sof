@@ -8,7 +8,7 @@
 #define __SOF_AUDIO_MULTIBAND_DRC_MULTIBAND_DRC_H__
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/crossover/crossover.h>
+#include <module/crossover/crossover_common.h>
 #include <sof/math/iir_df2t.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>

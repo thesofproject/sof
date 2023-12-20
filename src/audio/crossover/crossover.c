@@ -11,8 +11,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
+#include <module/crossover/crossover_common.h>
 #include <sof/audio/crossover/crossover.h>
-#include <sof/audio/crossover/crossover_algorithm.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -49,32 +49,6 @@ static inline void crossover_free_config(struct sof_crossover_config **config)
 {
 	rfree(*config);
 	*config = NULL;
-}
-
-/**
- * \brief Reset the state of an LR4 filter.
- */
-static inline void crossover_reset_state_lr4(struct iir_state_df2t *lr4)
-{
-	rfree(lr4->coef);
-	rfree(lr4->delay);
-
-	lr4->coef = NULL;
-	lr4->delay = NULL;
-}
-
-/**
- * \brief Reset the state (coefficients and delay) of the crossover filter
- *	  of a single channel.
- */
-inline void crossover_reset_state_ch(struct crossover_state *ch_state)
-{
-	int i;
-
-	for (i = 0; i < CROSSOVER_MAX_LR4; i++) {
-		crossover_reset_state_lr4(&ch_state->lowpass[i]);
-		crossover_reset_state_lr4(&ch_state->highpass[i]);
-	}
 }
 
 /**

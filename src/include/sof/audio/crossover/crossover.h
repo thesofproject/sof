@@ -9,24 +9,13 @@
 
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <sof/math/iir_df2t.h>
+#include <module/crossover/crossover_common.h>
 #include <sof/platform.h>
 #include <user/crossover.h>
 #include <stdint.h>
 
 struct comp_buffer;
 struct comp_dev;
-
-/* Maximum number of LR4 highpass OR lowpass filters */
-#define CROSSOVER_MAX_LR4 3
-/* Number of delay slots allocated for LR4 Filters */
-#define CROSSOVER_NUM_DELAYS_LR4 4
-
-/* Number of sinks for a 2 way crossover filter */
-#define CROSSOVER_2WAY_NUM_SINKS 2
-/* Number of sinks for a 3 way crossover filter */
-#define CROSSOVER_3WAY_NUM_SINKS 3
-/* Number of sinks for a 4 way crossover filter */
-#define CROSSOVER_4WAY_NUM_SINKS 4
 
 /**
  * The Crossover filter will have from 2 to 4 outputs.
@@ -58,15 +47,6 @@ struct comp_dev;
  *
  */
 
-/**
- * Stores the state of one channel of the Crossover filter
- */
-struct crossover_state {
-	/* Store the state for each LR4 filter. */
-	struct iir_state_df2t lowpass[CROSSOVER_MAX_LR4];
-	struct iir_state_df2t highpass[CROSSOVER_MAX_LR4];
-};
-
 struct comp_data;
 
 typedef void (*crossover_process)(struct comp_data *cd,
@@ -74,9 +54,6 @@ typedef void (*crossover_process)(struct comp_data *cd,
 				  struct output_stream_buffer *bsinks[],
 				  int32_t num_sinks,
 				  uint32_t frames);
-
-typedef void (*crossover_split)(int32_t in, int32_t out[],
-				struct crossover_state *state);
 
 /* Crossover component private data */
 struct comp_data {
@@ -136,18 +113,6 @@ static inline crossover_process
 
 extern const crossover_split crossover_split_fnmap[];
 extern const size_t crossover_split_fncount;
-
-/**
- * \brief Returns Crossover split function.
- */
-static inline crossover_split crossover_find_split_func(int32_t num_sinks)
-{
-	if (num_sinks < CROSSOVER_2WAY_NUM_SINKS ||
-	    num_sinks > CROSSOVER_4WAY_NUM_SINKS)
-		return NULL;
-	// The functions in the map are offset by 2 indices.
-	return crossover_split_fnmap[num_sinks - CROSSOVER_2WAY_NUM_SINKS];
-}
 
 /*
  * \brief Runs input in through the LR4 filter and returns it's output.
