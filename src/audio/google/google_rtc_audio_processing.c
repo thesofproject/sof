@@ -80,30 +80,6 @@ void GoogleRtcFree(void *ptr)
 	return rfree(ptr);
 }
 
-static void google_rtc_audio_processing_params(struct processing_module *mod,
-					       struct sof_source *ref,
-					       struct sof_source *mic,
-					       struct sof_sink *out)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
-	struct list_item *source_list;
-	struct comp_dev *dev = mod->dev;
-
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	component_set_nearest_period_frames(dev, params->rate);
-	/* TODO - it does not work, to be checked before merging!!
-	 * ipc4_update_source_format(ref, &cd->config.reference_fmt);
-	 */
-	source_set_channels(ref,
-				CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS);
-	/* ipc4_update_source_format(mic, &mod->priv.cfg.base_cfg.audio_fmt); */
-	source_set_channels(mic, CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS);
-	/* ipc4_update_sink_format(out, &mod->priv.cfg.base_cfg.audio_fmt); */
-	sink_set_channels(out, CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS);
-}
-
 static int google_rtc_audio_processing_reconfigure(struct processing_module *mod)
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
@@ -361,8 +337,8 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 		goto fail;
 	}
 
-	cd->num_aec_reference_channels = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS;
-	cd->num_capture_channels = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS;
+	cd->num_aec_reference_channels = cd->config.reference_fmt.channels_count;
+	cd->num_capture_channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	cd->num_frames = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ /
 		GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES;
 
@@ -523,11 +499,12 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		source_set_alignment_constants(sources[i], 1, 1);
 	}
 
-	google_rtc_audio_processing_params(mod,
-					   sources[cd->aec_reference_source],
-					   sources[cd->raw_microphone_source],
-					   sinks[0]);
-
+	/* enforce format on pins */
+	ipc4_update_source_format(sources[cd->aec_reference_source],
+			&cd->config.reference_fmt);
+	ipc4_update_source_format(sources[cd->raw_microphone_source],
+			&mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_sink_format(sinks[0], &mod->priv.cfg.base_cfg.audio_fmt);
 
 	/* On some platform the playback output is left right left right due to a crossover
 	 * later on the signal processing chain. That makes the aec_reference be 4 channels

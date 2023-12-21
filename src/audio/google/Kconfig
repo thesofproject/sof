@@ -33,22 +33,6 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 	  Sets the sample rate for the memory buffer for the Google real-time
 	  communication audio processing.
 
-config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
-	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	int "Number of channels to process for Google Real Time Communication Audio processing"
-	default 4
-	help
-	  Sets the number of channels to process in the Google real-time
-	  communication audio processing.
-
-config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS
-	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	int "Number of AEC reference channels for Google Real Time Communication Audio processing"
-	default 2
-	help
-	  Sets the number AEC reference channels in the Google real-time
-	  communication audio processing.
-
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Memory buffer size for Google Real Time Communication Audio processing"
