@@ -539,8 +539,18 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		ibs = sink_src_cfg.ibs;
 	}
 
-	/* allocate buffer with size large enough to fit ibs of the sink or obs of the source */
-	buf_size = MAX(ibs * 2, obs * 2);
+	/* create a buffer
+	 * in case of LL -> LL or LL->DP
+	 *	size = 2*obs of source module (obs is single buffer size)
+	 * in case of DP -> LL
+	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
+	 */
+	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		buf_size = source_src_cfg.obs * 2;
+	else
+		buf_size = sink_src_cfg.ibs * 2;
+
+
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
