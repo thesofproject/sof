@@ -64,10 +64,10 @@ namespace dsp_fw
 		 * samples provided by the codec_adapter and produce/output the processed
 		 * ones back to codec_adapter.
 		 */
-		uint32_t IadkModuleAdapter_Process(struct sof_source **sources,
-						   int num_of_sources,
-						   struct sof_sink **sinks,
-						   int num_of_sinks);
+		int IadkModuleAdapter_Process(struct sof_source **sources,
+					      int num_of_sources,
+					      struct sof_sink **sinks,
+					      int num_of_sinks);
 
 		/**
 		 * Module specific apply config procedure, called by codec_adapter every time
