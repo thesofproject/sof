@@ -34,72 +34,8 @@ DECLARE_SOF_RT_UUID("pipe", pipe_uuid, 0x4e934adb, 0xb0ec, 0x4d33,
 
 DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 
-/* number of pipeline stream metadata objects we export in mailbox */
-#define PPL_POSN_OFFSETS \
-	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
-
-/* lookup table to determine busy/free pipeline metadata objects */
-struct pipeline_posn {
-	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
-	struct k_spinlock lock;			/**< lock mechanism */
-};
 /* the pipeline position lookup table */
 static SHARED_DATA struct pipeline_posn pipeline_posn_shared;
-
-/**
- * \brief Retrieves pipeline position structure.
- * \return Pointer to pipeline position structure.
- */
-static inline struct pipeline_posn *pipeline_posn_get(void)
-{
-	return sof_get()->pipeline_posn;
-}
-
-/**
- * \brief Retrieves first free pipeline position offset.
- * \param[in,out] posn_offset Pipeline position offset to be set.
- * \return Error code.
- */
-static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
-{
-	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
-	int ret = -EINVAL;
-	uint32_t i;
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&pipeline_posn->lock);
-
-	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
-		if (!pipeline_posn->posn_offset[i]) {
-			*posn_offset = i * sizeof(struct sof_ipc_stream_posn);
-			pipeline_posn->posn_offset[i] = true;
-			ret = 0;
-			break;
-		}
-	}
-
-
-	k_spin_unlock(&pipeline_posn->lock, key);
-
-	return ret;
-}
-
-/**
- * \brief Frees pipeline position offset.
- * \param[in] posn_offset Pipeline position offset to be freed.
- */
-static inline void pipeline_posn_offset_put(uint32_t posn_offset)
-{
-	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
-	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&pipeline_posn->lock);
-
-	pipeline_posn->posn_offset[i] = false;
-
-	k_spin_unlock(&pipeline_posn->lock, key);
-}
 
 void pipeline_posn_init(struct sof *sof)
 {

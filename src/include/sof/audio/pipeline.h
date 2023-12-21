@@ -17,6 +17,7 @@
 #include <rtos/spinlock.h>
 #include <sof/audio/pipeline-trace.h>
 #include <ipc/topology.h>
+#include <ipc/stream.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -48,6 +49,16 @@ struct ipc_msg;
 /* pipeline processing directions */
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
+
+/* number of pipeline stream metadata objects we export in mailbox */
+#define PPL_POSN_OFFSETS \
+	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
+
+/* lookup table to determine busy/free pipeline metadata objects */
+struct pipeline_posn {
+	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
+	struct k_spinlock lock;			/**< lock mechanism */
+};
 
 /*
  * Audio pipeline.
@@ -428,5 +439,59 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
  * \param[in] xrun_limit_usecs Limit in micro secs that pipeline will tolerate.
  */
 int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs);
+
+/**
+ * \brief Retrieves pipeline position structure.
+ * \return Pointer to pipeline position structure.
+ */
+static inline struct pipeline_posn *pipeline_posn_get(void)
+{
+	return sof_get()->pipeline_posn;
+}
+
+/**
+ * \brief Retrieves first free pipeline position offset.
+ * \param[in,out] posn_offset Pipeline position offset to be set.
+ * \return Error code.
+ */
+static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
+{
+	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
+	int ret = -EINVAL;
+	uint32_t i;
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&pipeline_posn->lock);
+
+	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
+		if (!pipeline_posn->posn_offset[i]) {
+			*posn_offset = i * sizeof(struct sof_ipc_stream_posn);
+			pipeline_posn->posn_offset[i] = true;
+			ret = 0;
+			break;
+		}
+	}
+
+	k_spin_unlock(&pipeline_posn->lock, key);
+
+	return ret;
+}
+
+/**
+ * \brief Frees pipeline position offset.
+ * \param[in] posn_offset Pipeline position offset to be freed.
+ */
+static inline void pipeline_posn_offset_put(uint32_t posn_offset)
+{
+	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
+	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&pipeline_posn->lock);
+
+	pipeline_posn->posn_offset[i] = false;
+
+	k_spin_unlock(&pipeline_posn->lock, key);
+}
 
 #endif /* __SOF_AUDIO_PIPELINE_H__ */
