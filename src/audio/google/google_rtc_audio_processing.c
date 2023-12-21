@@ -551,23 +551,26 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	/* check IBS/OBS in streams */
 	if (cd->num_frames * source_get_frame_bytes(sources[cd->raw_microphone_source]) !=
 	    source_get_min_available(sources[cd->raw_microphone_source])) {
-		comp_warn(dev, "Incorrect IBS on microphone source: %d, expected %u",
+		comp_err(dev, "Incorrect IBS on microphone source: %d, expected %u",
 			  source_get_min_available(sources[cd->raw_microphone_source]),
 			  cd->num_frames *
 				 source_get_frame_bytes(sources[cd->raw_microphone_source]));
+		return -EINVAL;
 	}
 	if (cd->num_frames * sink_get_frame_bytes(sinks[0]) !=
 	    sink_get_min_free_space(sinks[0])) {
-		comp_warn(dev, "Incorrect OBS on sink :%d, expected %u",
+		comp_err(dev, "Incorrect OBS on sink :%d, expected %u",
 			  sink_get_min_free_space(sinks[0]),
 			  cd->num_frames * sink_get_frame_bytes(sinks[0]));
+		return -EINVAL;
 	}
 	if (cd->num_frames * source_get_frame_bytes(sources[cd->aec_reference_source]) !=
 	    source_get_min_available(sources[cd->aec_reference_source])) {
-		comp_warn(dev, "Incorrect IBS on reference source: %d, expected %u",
+		comp_err(dev, "Incorrect IBS on reference source: %d, expected %u",
 			  source_get_min_available(sources[cd->aec_reference_source]),
 			  cd->num_frames *
 				source_get_frame_bytes(sources[cd->aec_reference_source]));
+		return -EINVAL;
 	}
 
 	/* Blobs sent during COMP_STATE_READY is assigned to blob_handler->data
@@ -733,37 +736,6 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	return 0;
 }
 
-bool google_rtc_audio_is_ready_to_process(struct processing_module *mod,
-					  struct sof_source **sources, int num_of_sources,
-					  struct sof_sink **sinks, int num_of_sinks)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	struct sof_source *ref_stream, *mic_stream;
-	struct sof_sink *out_stream;
-	size_t min_ref_bytes;
-
-
-	/* check if both input streams and output stream have enough data/space */
-	mic_stream = sources[cd->raw_microphone_source];
-	ref_stream = sources[cd->aec_reference_source];
-	out_stream = sinks[0];
-
-	/* this should  source_get_min_available(ref_stream)!!!
-	 * Currently the topology sets IBS incorrectly
-	 */
-	if (source_get_data_available(ref_stream) < cd->num_frames *
-			source_get_frame_bytes(ref_stream))
-		return false;
-
-	if (source_get_data_available(mic_stream) < source_get_min_available(mic_stream))
-		return false;
-
-	if (sink_get_free_size(out_stream) < sink_get_min_free_space(out_stream))
-		return false;
-
-	return true;
-}
-
 static struct module_interface google_rtc_audio_processing_interface = {
 	.init  = google_rtc_audio_processing_init,
 	.free = google_rtc_audio_processing_free,
@@ -772,7 +744,6 @@ static struct module_interface google_rtc_audio_processing_interface = {
 	.set_configuration = google_rtc_audio_processing_set_config,
 	.get_configuration = google_rtc_audio_processing_get_config,
 	.reset = google_rtc_audio_processing_reset,
-	.is_ready_to_process = google_rtc_audio_is_ready_to_process,
 };
 
 DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,
