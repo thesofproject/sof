@@ -39,12 +39,12 @@ int IadkModuleAdapter::IadkModuleAdapter_Prepare(void)
 	return 0;
 }
 
-uint32_t IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **sources,
-						      int num_of_sources,
-						      struct sof_sink **sinks,
-						      int num_of_sinks)
+int IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **sources,
+						 int num_of_sources,
+						 struct sof_sink **sinks,
+						 int num_of_sinks)
 {
-	uint32_t ret = 0;
+	int ret = 0;
 
 	if ((num_of_sources > 0) && (num_of_sinks > 0)) {
 		intel_adsp::InputStreamBuffer input_stream_buffers[INPUT_PIN_COUNT];
@@ -80,7 +80,14 @@ uint32_t IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **source
 			new (&output_stream_buffers[i]) intel_adsp::OutputStreamBuffer(osb_data);
 		}
 
-		ret = processing_module_.Process(input_stream_buffers, output_stream_buffers);
+		uint32_t iadk_ret =
+			processing_module_.Process(input_stream_buffers, output_stream_buffers);
+
+		/* IADK modules returns uint32_t return code. Convert to failure if Process
+		 * not successful.
+		 */
+		if (iadk_ret != 0)
+			ret = -ENODATA;
 
 		for (int i = 0; i < num_of_sources; i++) {
 			source_release_data(sources[i], input_stream_buffers[i].size);
