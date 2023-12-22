@@ -536,16 +536,20 @@ static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
 
+	pm_runtime_disable(CORE_HP_CLK, PLATFORM_PRIMARY_CORE_ID);
 	while (atomic_read(&msg_data.delayed_reply)) {
+		/* preventing clock switching in idle */
 		k_sleep(Z_TIMEOUT_US(250));
 
 		if (!try_count--) {
 			atomic_set(&msg_data.delayed_reply, 0);
 			ipc_cmd_err(&ipc_tr, "ipc4: failed to wait schedule thread");
+			pm_runtime_enable(CORE_HP_CLK, PLATFORM_PRIMARY_CORE_ID);
 			return IPC4_FAILURE;
 		}
 	}
 
+	pm_runtime_enable(CORE_HP_CLK, PLATFORM_PRIMARY_CORE_ID);
 	return IPC4_SUCCESS;
 }
 
