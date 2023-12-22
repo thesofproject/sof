@@ -108,7 +108,7 @@ platform_configs_all = {
 		"intel", "intel_adsp_ace15_mtpm",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
-		aliases = ['arl'],
+		aliases = ['arl', 'arl-s'],
 		ipc4 = True
 	),
 	"lnl" : PlatformConfig(
