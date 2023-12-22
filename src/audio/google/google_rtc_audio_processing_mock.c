@@ -10,6 +10,9 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <sof/audio/format.h>
+#include <sof/math/numbers.h>
+
 #include <rtos/alloc.h>
 #include "ipc/topology.h"
 
@@ -21,7 +24,11 @@ struct GoogleRtcAudioProcessingState {
 	int num_aec_reference_channels;
 	int num_output_channels;
 	int num_frames;
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	float *aec_reference;
+#else
+	int16_t *aec_reference;
+#endif
 };
 
 static void SetFormats(GoogleRtcAudioProcessingState *const state,
@@ -138,13 +145,14 @@ int GoogleRtcAudioProcessingReconfigure(GoogleRtcAudioProcessingState *const sta
 	return 0;
 }
 
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState *const state,
 						   const float *const *src,
 						   float * const *dest)
 {
 	float *ref = state->aec_reference;
 	float **mic = (float **)src;
-	int n, chan, ref_chan;
+	int n, chan;
 
 	for (chan = 0; chan < state->num_output_channels; chan++) {
 		for (n = 0; n < state->num_frames; ++n) {
@@ -174,6 +182,44 @@ int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState 
 
 	return 0;
 }
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *const state,
+						 const int16_t *const src,
+						 int16_t *const dest)
+{
+	int16_t *ref = state->aec_reference;
+	int16_t *mic = (int16_t *) src;
+	int16_t *out = dest;
+	int n, chan;
+
+	for (chan = 0; chan < state->num_output_channels; chan++) {
+		for (n = 0; n < state->num_frames; ++n) {
+			int16_t mic_save = mic[n + (chan * state->num_frames)];
+
+			if (chan < state->num_aec_reference_channels)
+				dest[n + (chan * state->num_frames)] =
+						mic_save + ref[n + (chan * state->num_frames)];
+			else
+				dest[n + (chan * state->num_frames)] = mic_save;
+		}
+	}
+
+	return 0;
+}
+
+int GoogleRtcAudioProcessingAnalyzeRender_int16(GoogleRtcAudioProcessingState *const state,
+						const int16_t *const data)
+{
+	const size_t buffer_size =
+		sizeof(state->aec_reference[0])
+		* state->num_frames
+		* state->num_aec_reference_channels;
+	memcpy_s(state->aec_reference, buffer_size,
+		 data, buffer_size);
+	return 0;
+}
+
+#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 void GoogleRtcAudioProcessingParseSofConfigMessage(uint8_t *message,
 						   size_t message_size,

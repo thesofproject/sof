@@ -43,6 +43,12 @@
 #define GOOGLE_RTC_NUM_INPUT_PINS 2
 #define GOOGLE_RTC_NUM_OUTPUT_PINS 1
 
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+#define BUF_TYPE float
+#else
+#define BUF_TYPE int16_t
+#endif
+
 LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
 /* b780a0a6-269f-466f-b477-23dfa05af758 */
@@ -59,10 +65,10 @@ struct google_rtc_audio_processing_comp_data {
 	int num_aec_reference_channels;
 	int num_capture_channels;
 	GoogleRtcAudioProcessingState *state;
-	float *aec_reference_buffer;
-	float *aec_reference_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
-	float *process_buffer;
-	float *process_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
+	BUF_TYPE *aec_reference_buffer;
+	BUF_TYPE *aec_reference_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
+	BUF_TYPE *process_buffer;
+	BUF_TYPE *process_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
 	uint8_t *memory_buffer;
 	struct comp_data_blob_handler *tuning_handler;
 	bool reconfigure;
@@ -591,8 +597,9 @@ static int google_rtc_audio_processing_reset(struct processing_module *mod)
 	return 0;
 }
 
-static int16_t convert_float_to_uint16_hifi(float data)
+static inline int16_t convert_google_aec_format_to_int16(BUF_TYPE data)
 {
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	const xtfloat ratio = 2 << 14;
 	xtfloat x0 = data;
 	xtfloat x1;
@@ -602,10 +609,14 @@ static int16_t convert_float_to_uint16_hifi(float data)
 	x = XT_TRUNC_S(x1, 0);
 
 	return x;
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	return data;
+#endif
 }
 
-static float convert_uint16_to_float_hifi(int16_t data)
+static inline BUF_TYPE convert_int16_to_google_aec_format(int16_t data)
 {
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	const xtfloat ratio = 2 << 14;
 	xtfloat x0 = data;
 	float x;
@@ -613,6 +624,9 @@ static float convert_uint16_to_float_hifi(int16_t data)
 	x = XT_DIV_S(x0, ratio);
 
 	return x;
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	return data;
+#endif
 }
 
 /* todo CONFIG_FORMAT_S32LE */
@@ -679,17 +693,22 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	for (int i = 0; i < cd->num_frames; i++) {
 		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
 			cd->aec_reference_buffer_ptrs[channel][i] =
-					convert_uint16_to_float_hifi(ref[channel]);
+					convert_int16_to_google_aec_format(ref[channel]);
 		}
 		ref += cd->num_aec_reference_channels;
 		if ((void *)ref >= (void *)ref_buf_end)
 			ref = (void *)ref_buf_start;
 	}
 
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	GoogleRtcAudioProcessingAnalyzeRender_float32(
 			cd->state,
 			(const float **)cd->aec_reference_buffer_ptrs);
-
+#else
+	GoogleRtcAudioProcessingAnalyzeRender_int16(
+			cd->state,
+			(const int16_t *)cd->aec_reference_buffer);
+#endif
 	source_release_data(ref_stream, num_of_bytes_to_process);
 
 	/* process main stream - de interlace and convert */
@@ -702,7 +721,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	for (int i = 0; i < cd->num_frames; i++) {
 		for (channel = 0; channel < cd->num_capture_channels; channel++)
 			cd->process_buffer_ptrs[channel][i] =
-					convert_uint16_to_float_hifi(src[channel]);
+					convert_int16_to_google_aec_format(src[channel]);
 
 		src += cd->num_capture_channels;
 		if ((void *)src >= (void *)src_buf_end)
@@ -712,9 +731,15 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	source_release_data(src_stream, num_of_bytes_to_process);
 
 	/* call the library, use same in/out buffers */
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	GoogleRtcAudioProcessingProcessCapture_float32(cd->state,
 						       (const float **)cd->process_buffer_ptrs,
 						       cd->process_buffer_ptrs);
+#else
+	GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
+						       (const int16_t *)cd->process_buffer,
+						       cd->process_buffer);
+#endif
 
 	/* same numnber of bytes to process for output stream as for mic stream */
 	ret = sink_get_buffer(dst_stream, num_of_bytes_to_process, (void **)&dst,
@@ -724,8 +749,8 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 
 	for (int i = 0; i < cd->num_frames; i++) {
 		for (channel = 0; channel < cd->num_capture_channels; channel++)
-			dst[channel] =
-				convert_float_to_uint16_hifi(cd->process_buffer_ptrs[channel][i]);
+			dst[channel] = convert_google_aec_format_to_int16(
+					cd->process_buffer_ptrs[channel][i]);
 		dst += cd->num_capture_channels;
 		if ((void *)dst >= (void *)dst_buf_end)
 			dst = (void *)dst_buf_start;
