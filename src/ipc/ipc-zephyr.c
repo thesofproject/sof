@@ -80,6 +80,10 @@ static bool message_handler(const struct device *dev, void *arg, uint32_t data, 
 #if CONFIG_DEBUG_IPC_COUNTERS
 	increment_ipc_received_counter();
 #endif
+#if CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING
+	/* If the DSP has been in Idle we may need to restore previous clock. */
+	soc_adsp_clock_idle_exit();
+#endif
 	ipc_schedule_process(ipc);
 
 	k_spin_unlock(&ipc->lock, key);
