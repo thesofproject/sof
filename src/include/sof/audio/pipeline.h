@@ -434,6 +434,36 @@ int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd);
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
 
 /**
+ * \brief report ENODATA on trigger
+ * \param[in] dev Pipeline component device.
+ * \param[in] ctx Pipeline graph walk context.
+ * \param[in] dir is the direction of the traversal.
+ * \return true on when ENODATA happen.
+ */
+bool pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
+					       struct pipeline_walk_context *ctx,
+					       int dir);
+
+/**
+ * \brief return dai data structure for current device
+ * \param[in] dev Pipeline component device.
+ * \return current device data pointer
+ */
+struct dai_data *get_pipeline_dai_device_data(struct comp_dev *dev);
+
+/**
+ * \brief determine stop propagate pipe
+ * \param[in] is_single_ppl, is a single pipe
+ * \param[in] is_same_sched, is same scheduled.
+ * \param[in] current, current device.
+ * \param[in] ctx, current pipeline context.
+ * \param[in] dir, current pipeline direction, playback or capture.
+ * \return determines continue or stop pipe trigger.
+ */
+int pipeline_is_single_triggered(bool is_single_ppl, bool is_same_sched, struct comp_dev *current,
+				 struct pipeline_walk_context *ctx, int dir);
+
+/**
  * \brief Set tolerance for pipeline xrun handling.
  * \param[in] p pipeline.
  * \param[in] xrun_limit_usecs Limit in micro secs that pipeline will tolerate.

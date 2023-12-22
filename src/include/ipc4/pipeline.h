@@ -417,4 +417,7 @@ struct ipc4_chain_dma {
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+struct comp_dev;
+struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *latency);
+
 #endif

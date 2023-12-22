@@ -413,6 +413,11 @@ zephyr_library_sources(
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
 )
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources(${SOF_AUDIO_PATH}/pipeline/pipeline-ipc3.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources(${SOF_AUDIO_PATH}/pipeline/pipeline-ipc4.c)
+endif()
 
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
