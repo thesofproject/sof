@@ -61,10 +61,14 @@ struct audio_stream {
 	void *r_ptr;	/**< Buffer read position */
 	void *addr;	/**< Buffer base address */
 	void *end_addr;	/**< Buffer end address */
+	uint8_t byte_align_req;
+	uint8_t frame_align_req;
 
 	/* runtime stream params */
 	struct sof_audio_stream_params runtime_stream_params;
 };
+
+void audio_stream_recalc_align(struct audio_stream *stream);
 
 static inline void *audio_stream_get_rptr(const struct audio_stream *buf)
 {
@@ -175,6 +179,7 @@ static inline void audio_stream_set_frm_fmt(struct audio_stream *buf,
 					    enum sof_ipc_frame val)
 {
 	buf->runtime_stream_params.frame_fmt = val;
+	audio_stream_recalc_align(buf);
 }
 
 static inline void audio_stream_set_valid_fmt(struct audio_stream *buf,
@@ -191,6 +196,7 @@ static inline void audio_stream_set_rate(struct audio_stream *buf, uint32_t val)
 static inline void audio_stream_set_channels(struct audio_stream *buf, uint16_t val)
 {
 	buf->runtime_stream_params.channels = val;
+	audio_stream_recalc_align(buf);
 }
 
 static inline void audio_stream_set_underrun(struct audio_stream *buf,
@@ -363,11 +369,7 @@ static inline int audio_stream_set_params(struct audio_stream *buffer,
 	buffer->runtime_stream_params.rate = params->rate;
 	buffer->runtime_stream_params.channels = params->channels;
 
-	/* set the default alignment info.
-	 * set byte_align as 1 means no alignment limit on byte.
-	 * set frame_align as 1 means no alignment limit on frame.
-	 */
-	audio_stream_init_alignment_constants(1, 1, buffer);
+	audio_stream_recalc_align(buffer);
 
 	return 0;
 }
