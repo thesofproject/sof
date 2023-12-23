@@ -893,16 +893,12 @@ static int kpb_prepare(struct comp_dev *dev)
 	 */
 	if (kpb->ipc4_cfg.base_cfg.ibs != kpb->ipc4_cfg.base_cfg.obs) {
 		struct list_item *sink_list;
-		const uint32_t byte_align = 1;
-		const uint32_t frame_align_req = 1;
 		uint32_t sink_id;
 
 		list_for_item(sink_list, &dev->bsink_list) {
 			struct comp_buffer *sink =
 				container_of(sink_list, struct comp_buffer, source_list);
 
-			audio_stream_init_alignment_constants(byte_align, frame_align_req,
-							      &sink->stream);
 			sink_id = buf_get_id(sink);
 
 			if (sink_id == 0)

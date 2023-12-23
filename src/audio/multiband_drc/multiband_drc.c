@@ -411,14 +411,6 @@ static int multiband_drc_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static void multiband_drc_set_alignment(struct audio_stream *source,
-					struct audio_stream *sink)
-{
-	/* Currently no optimizations those would use wider loads and stores */
-	audio_stream_init_alignment_constants(1, 1, source);
-	audio_stream_init_alignment_constants(1, 1, sink);
-}
-
 static int multiband_drc_process(struct processing_module *mod,
 				 struct input_stream_buffer *input_buffers, int num_input_buffers,
 				 struct output_stream_buffer *output_buffers,
@@ -508,8 +500,6 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
-	multiband_drc_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

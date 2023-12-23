@@ -755,9 +755,6 @@ static int asrc_prepare(struct processing_module *mod,
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	audio_stream_init_alignment_constants(1, 1, &sourceb->stream);
-	audio_stream_init_alignment_constants(1, 1, &sinkb->stream);
-
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
 	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
