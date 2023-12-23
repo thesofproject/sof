@@ -183,17 +183,6 @@ static int dcblock_process(struct processing_module *mod,
 	return 0;
 }
 
-/* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void dcblock_set_frame_alignment(struct audio_stream *source,
-					       struct audio_stream *sink)
-{
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
-
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
-}
-
 /**
  * \brief Prepares DC Blocking Filter component for processing.
  * \param[in,out] dev DC Blocking Filter base component device.
@@ -220,8 +209,6 @@ static int dcblock_prepare(struct processing_module *mod,
 
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
-
-	dcblock_set_frame_alignment(&sourceb->stream, &sinkb->stream);
 
 	dcblock_init_state(cd);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);

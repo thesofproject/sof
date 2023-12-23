@@ -177,15 +177,6 @@ static int mfcc_process(struct processing_module *mod,
 	return 0;
 }
 
-static void mfcc_set_alignment(struct audio_stream *source, struct audio_stream *sink)
-{
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
-
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
-}
-
 static int mfcc_prepare(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
 			struct sof_sink **sinks, int num_of_sinks)
@@ -207,9 +198,6 @@ static int mfcc_prepare(struct processing_module *mod,
 
 	/* get source data format */
 	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-
-	/* set align requirements */
-	mfcc_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get sink data format and period bytes */
 	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);

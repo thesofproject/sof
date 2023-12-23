@@ -623,7 +623,6 @@ static void volume_set_alignment(struct audio_stream *source,
 				 struct audio_stream *sink)
 {
 #if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-
 	/* Both source and sink buffer in HiFi 3 or HiFi4 processing version,
 	 * xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
 	 * requires 16-byte aligned.
@@ -633,18 +632,9 @@ static void volume_set_alignment(struct audio_stream *source,
 	/*There is no limit for frame number, so both source and sink set it to be 1*/
 	const uint32_t frame_align_req = 1;
 
-#else
-
-	/* Since the generic version process signal sample by sample, so there is no
-	 * limit for it, then set the byte_align and frame_align_req to be 1.
-	 */
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
-
-#endif
-
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+#endif
 }
 
 /**

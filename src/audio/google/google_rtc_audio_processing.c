@@ -576,7 +576,6 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 				 microphone_stream_channels);
 		}
 
-		audio_stream_init_alignment_constants(1, 1, &source->stream);
 		i++;
 	}
 
@@ -592,7 +591,6 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	audio_stream_init_alignment_constants(1, 1, &output->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&output->stream);
 	rate = audio_stream_get_rate(&output->stream);
 	output_stream_channels = audio_stream_get_channels(&output->stream);

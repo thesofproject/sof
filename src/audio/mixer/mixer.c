@@ -205,17 +205,8 @@ static inline void mixer_set_frame_alignment(struct audio_stream *source)
 	/*There is no limit for frame number, so set it as 1*/
 	const uint32_t frame_align_req = 1;
 
-#else
-
-	/* Since the generic version process signal sample by sample, so there is no
-	 * limit for it, then set the byte_align and frame_align_req to be 1.
-	 */
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
-
-#endif
-
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
+#endif
 }
 
 static int mixer_prepare(struct processing_module *mod,
