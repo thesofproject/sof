@@ -546,14 +546,11 @@ static int crossover_prepare(struct processing_module *mod,
 	/* Get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source->stream);
 	channels = audio_stream_get_channels(&source->stream);
-	audio_stream_init_alignment_constants(1, 1, &source->stream);
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		if (cd->source_format == audio_stream_get_frm_fmt(&sink->stream)) {
-			audio_stream_init_alignment_constants(1, 1, &sink->stream);
-		} else {
+		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
 				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
 			ret = -EINVAL;

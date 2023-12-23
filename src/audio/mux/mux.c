@@ -378,12 +378,8 @@ static int mux_prepare(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
-	struct list_item *blist;
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
 	struct sof_mux_config *config;
 	size_t blob_size;
-	int state;
 	int ret;
 
 	comp_dbg(dev, "mux_prepare()");
@@ -408,23 +404,6 @@ static int mux_prepare(struct processing_module *mod,
 	if (!cd->mux && !cd->demux) {
 		comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
 		return -EINVAL;
-	}
-
-	/* check each mux source state, set source align to 1 byte, 1 frame */
-	list_for_item(blist, &dev->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		state = source->source->state;
-		audio_stream_init_alignment_constants(1, 1, &source->stream);
-
-		/* only prepare downstream if we have no active sources */
-		if (state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE)
-			return PPL_STATUS_PATH_STOP;
-	}
-
-	/* set sink align to 1 byte, 1 frame */
-	list_for_item(blist, &dev->bsink_list) {
-		sink = container_of(blist, struct comp_buffer, source_list);
-		audio_stream_init_alignment_constants(1, 1, &sink->stream);
 	}
 
 	/* prepare downstream */

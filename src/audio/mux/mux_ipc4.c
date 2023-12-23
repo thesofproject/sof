@@ -80,8 +80,6 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_buffer *sink, *source;
 	struct list_item *source_list;
 	int j;
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
 
 	params->direction = dev->direction;
 	params->channels =  cd->md.base_cfg.audio_fmt.channels_count;
@@ -101,8 +99,6 @@ static void set_mux_params(struct processing_module *mod)
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
 		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		audio_stream_init_alignment_constants(byte_align, frame_align_req,
-						      &sink->stream);
 
 		if (!sink->hw_params_configured) {
 			ipc4_update_buffer_format(sink, &cd->md.output_format);
@@ -117,8 +113,6 @@ static void set_mux_params(struct processing_module *mod)
 		list_for_item(source_list, &dev->bsource_list)
 		{
 			source = container_of(source_list, struct comp_buffer, sink_list);
-			audio_stream_init_alignment_constants(byte_align, frame_align_req,
-							      &source->stream);
 			j = buf_get_id(source);
 			cd->config.streams[j].pipeline_id = source->pipeline_id;
 			if (j == BASE_CFG_QUEUED_ID)
