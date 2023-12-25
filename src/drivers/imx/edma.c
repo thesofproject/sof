@@ -119,6 +119,18 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
+
+	if (!channel->priv_data) {
+		int *data_copied = NULL;
+
+		channel->priv_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+					     sizeof(int));
+		if (!channel->priv_data)
+			tr_err(&edma_tr, "EDMA: Alloc priv data fail");
+		data_copied = channel->priv_data;
+		*data_copied = 0;
+	}
+
 	k_spin_unlock(&dma->lock, key);
 
 	return channel;
@@ -138,6 +150,10 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	key = k_spin_lock(&channel->dma->lock);
 	channel->status = COMP_STATE_INIT;
+	if (channel->priv_data) {
+		rfree(channel->priv_data);
+		channel->priv_data = NULL;
+	}
 	atomic_sub(&channel->dma->num_channels_busy, 1);
 	k_spin_unlock(&channel->dma->lock, key);
 }
@@ -212,6 +228,8 @@ static int edma_stop(struct dma_chan_data *channel)
 
 static int edma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 {
+	int *data_copied = channel->priv_data;
+
 	struct dma_cb_data next = {
 		.channel = channel,
 		.elem.size = bytes,
@@ -219,6 +237,8 @@ static int edma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+
+	*data_copied = 1;
 
 	return 0;
 }
@@ -529,6 +549,12 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 	 * interrupt.
 	 */
 	int32_t playback_data_size, capture_data_size;
+	int *data_copied = channel->priv_data;
+
+	if (*data_copied) {
+		*avail = *free = 0;
+		return 0;
+	}
 
 	playback_data_size = (int32_t)dma_chan_reg_read(channel,
 		EDMA_TCD_SLAST);
@@ -550,6 +576,20 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 	return 0;
 }
 
+static int edma_clear_data_copied(struct dma_chan_data *channel)
+{
+	int *data_copied = channel->priv_data;
+
+	if (!data_copied) {
+		tr_err(&edma_tr, "edma_clear_data_copied() fail");
+		return 0;
+	}
+
+	*data_copied = 0;
+
+	return 0;
+}
+
 const struct dma_ops edma_ops = {
 	.channel_get	= edma_channel_get,
 	.channel_put	= edma_channel_put,
@@ -565,4 +605,5 @@ const struct dma_ops edma_ops = {
 	.interrupt	= edma_interrupt,
 	.get_attribute	= edma_get_attribute,
 	.get_data_size	= edma_get_data_size,
+	.clear_data_copied = edma_clear_data_copied,
 };
