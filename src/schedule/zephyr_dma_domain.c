@@ -169,8 +169,10 @@ static void dma_irq_handler(void *data)
 	list_for_item(i, &irq_data->channels) {
 		chan_data = container_of(i, struct zephyr_dma_domain_channel, list);
 
-		if (dma_interrupt_legacy(chan_data->channel, DMA_IRQ_STATUS_GET))
+		if (dma_interrupt_legacy(chan_data->channel, DMA_IRQ_STATUS_GET)) {
 			dma_interrupt_legacy(chan_data->channel, DMA_IRQ_CLEAR);
+			dma_data_copied_clear(chan_data->channel);
+		}
 	}
 
 	/* clear IRQ - the mask argument is unused ATM */
