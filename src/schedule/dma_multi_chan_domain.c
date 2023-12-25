@@ -336,6 +336,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 			/* clear interrupt */
 			if (pipe_task->registrable) {
 				dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+				dma_data_copied_clear(&dmas[i].chan[j]);
 				interrupt_clear_mask(dma_domain->data[i][j].irq,
 						     BIT(j));
 			}
