@@ -198,6 +198,8 @@ struct dma_ops {
 	int (*get_data_size)(struct dma_chan_data *channel, uint32_t *avail,
 			     uint32_t *free);
 
+	int (*clear_data_copied)(struct dma_chan_data *channel);
+
 	int (*get_attribute)(struct dma *dma, uint32_t type, uint32_t *value);
 
 	int (*interrupt)(struct dma_chan_data *channel, enum dma_irq_cmd cmd);
@@ -421,6 +423,13 @@ static inline int dma_interrupt_legacy(struct dma_chan_data *channel,
 				       enum dma_irq_cmd cmd)
 {
 	return channel->dma->ops->interrupt(channel, cmd);
+}
+
+static inline int dma_data_copied_clear(struct dma_chan_data *channel)
+{
+	if (channel->dma->ops->clear_data_copied)
+		return channel->dma->ops->clear_data_copied(channel);
+	return 0;
 }
 
 /* DMA hardware register operations */
