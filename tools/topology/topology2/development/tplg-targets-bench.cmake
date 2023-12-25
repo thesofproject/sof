@@ -32,10 +32,12 @@ set(component_parameters
 
 set(components_s32
 	"aria"
+	"src"
 )
 
 set(component_parameters_s32
 	"BENCH_ARIA_PARAMS=default"
+	"BENCH_SRC_PARAMS=default"
 )
 
 foreach(p ${platforms})
