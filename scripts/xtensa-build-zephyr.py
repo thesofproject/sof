@@ -970,6 +970,10 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 		InstFile(BIN_NAME + ".lst", txt=True, optional=True),
 		InstFile(BIN_NAME + ".map", txt=True),
 
+		# Optional because it's not generated for all platforms.
+		InstFile(f"misc/generated/rimage_config.toml", "generated_rimage_config.toml",
+			 optional=True, gzip=False, txt=True),
+
 		# CONFIG_BUILD_OUTPUT_STRIPPED
 		# Renaming ELF files highlights the workaround below that strips the .comment section
 		InstFile(BIN_NAME + ".strip", renameTo=f"stripped-{BIN_NAME}.elf"),
@@ -1039,6 +1043,7 @@ CHECKSUM_WANTED = [
 
 	'*version*.h',
 	'*configs.c', # deterministic unlike .config
+	'*.toml', # rimage
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
 	'boot.mod', # no debug section -> no need to strip this ELF
 	BIN_NAME + '.lst',       # objdump --disassemble
