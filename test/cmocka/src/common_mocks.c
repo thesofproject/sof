@@ -15,6 +15,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
+#include <user/trace.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/component_ext.h>
 #include <rtos/clk.h>
@@ -41,7 +42,7 @@ WEAK struct tr_ctx buffer_tr;
 WEAK struct tr_ctx comp_tr;
 WEAK struct tr_ctx ipc_tr;
 
-int host_trace_level = 1;
+int host_trace_level = LOG_LEVEL_ERROR;
 
 void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 			 uint32_t alignment)
