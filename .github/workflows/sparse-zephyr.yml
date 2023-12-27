@@ -28,14 +28,17 @@ jobs:
       - name: git clone sparse analyzer
         uses: actions/checkout@v4
         with:
-          # TODO: switch to thesofproject/sparse
-          repository: marc-hb/sparse
+          repository: thesofproject/sparse
           fetch-depth: 0
           filter: 'tree:0'
           path: workspace/sparse
 
+      # As of its 2023 commit 98b203419679, sparse-llvm.c uses symbols
+      # (LLVMConstGEP, LLVMBuildLoad, LLVMBuildCall,...) which are:
+      #   -  -Wdeprecated in LLVM v14
+      #   -  Removed in LLVM v16
       - name: build sparse analyzer
-        run: cd workspace/sparse && make -j4
+        run: cd workspace/sparse && make -j4  # HAVE_LLVM=no
 
       - name: git clone sof
         uses: actions/checkout@v4
