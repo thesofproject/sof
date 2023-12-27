@@ -26,22 +26,23 @@ jobs:
 
     steps:
       - name: git clone sparse analyzer
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 10
           # TODO: switch to thesofproject/sparse
           repository: marc-hb/sparse
+          fetch-depth: 0
+          filter: 'tree:0'
           path: workspace/sparse
 
       - name: build sparse analyzer
         run: cd workspace/sparse && make -j4
 
       - name: git clone sof
-        uses: actions/checkout@v3
-        # From time to time this will catch a git tag and change SOF_VERSION
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 10
           path: ./workspace/sof
+          fetch-depth: 0  # fix git describe
+          filter: 'tree:0'
 
       - name: west clones
         run: pip3 install west && cd workspace/sof/ && west init -l &&
