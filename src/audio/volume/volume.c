@@ -587,7 +587,7 @@ static int volume_process(struct processing_module *mod,
 		cd->peak_cnt = 0;
 		peak_vol_update(cd);
 		memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
-#ifdef VOLUME_HIFI4
+#if SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
 		memset(cd->peak_vol, 0, sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4);
 #endif
 	}
@@ -622,7 +622,7 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
 static void volume_set_alignment(struct audio_stream *source,
 				 struct audio_stream *sink)
 {
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#if SOF_USE_HIFI(3, VOLUME) || SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
 	/* Both source and sink buffer in HiFi 3 or HiFi4 processing version,
 	 * xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
 	 * requires 16-byte aligned.
