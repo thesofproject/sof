@@ -34,19 +34,6 @@
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
 
-#if defined(__XCC__)
-# include <xtensa/config/core-isa.h>
-# if XCHAL_HAVE_HIFI4
-#  define VOLUME_HIFI4
-# elif XCHAL_HAVE_HIFI3
-#  define VOLUME_HIFI3
-# else
-#  define VOLUME_GENERIC
-# endif
-#else
-# define VOLUME_GENERIC
-#endif
-
 /**
  * \brief In IPC3 volume is in Q8.16 format, in IPC4 in Q1.31, but is converted
  * by firmware to Q1.23 format.

@@ -21,7 +21,7 @@ LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
-#ifdef VOLUME_HIFI3
+#if SOF_USE_HIFI(3, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
 

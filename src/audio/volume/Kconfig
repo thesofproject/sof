@@ -8,6 +8,8 @@
 
 if COMP_VOLUME
 
+rsource "Kconfig.simd"
+
 config COMP_VOLUME_WINDOWS_FADE
        bool "Windows Fade shape volume transitions support"
        help

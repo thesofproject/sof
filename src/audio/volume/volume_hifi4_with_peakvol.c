@@ -21,7 +21,7 @@ LOG_MODULE_DECLARE(volume_hifi4, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
-#ifdef VOLUME_HIFI4
+#if SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
 #include <xtensa/tie/xt_hifi4.h>
