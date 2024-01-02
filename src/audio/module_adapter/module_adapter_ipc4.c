@@ -38,19 +38,39 @@ int module_adapter_init_data(struct comp_dev *dev,
 			     const struct comp_ipc_config *config,
 			     const void *spec)
 {
-	if (dev->drv->type == SOF_COMP_MODULE_ADAPTER) {
-		const struct ipc_config_process *ipc_module_adapter = spec;
+	const struct ipc_config_process *cp = spec;
+	const struct ipc4_base_module_extended_cfg *cfg = (void *)cp->data;
+	size_t cfgsz = cp->size;
 
-		dst->init_data = ipc_module_adapter->data;
-		dst->size = ipc_module_adapter->size;
-		dst->avail = true;
+	assert(dev->drv->type == SOF_COMP_MODULE_ADAPTER);
+	if (cp->size < sizeof(cfg->base_cfg))
+		return -EINVAL;
 
-		memcpy_s(&dst->base_cfg,  sizeof(dst->base_cfg), ipc_module_adapter->data,
-			 sizeof(dst->base_cfg));
-	} else {
-		dst->init_data = spec;
+	dst->base_cfg = cfg->base_cfg;
+	dst->size = cp->size;
+
+	if (cp->size >= sizeof(*cfg)) {
+		int ni = cfg->base_cfg_ext.nb_input_pins;
+		int no = cfg->base_cfg_ext.nb_output_pins;
+		size_t pinsz = (ni * sizeof(*dst->input_pins))
+			+ (no * sizeof(*dst->output_pins));
+
+		if (cp->size == (sizeof(*cfg) + pinsz)) {
+			dst->nb_input_pins = ni;
+			dst->nb_output_pins = no;
+			dst->input_pins = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
+						  0, SOF_MEM_CAPS_RAM, pinsz);
+			if (!dst->input_pins)
+				return -ENOMEM;
+
+			dst->output_pins = (void *) &dst->input_pins[ni];
+			memcpy_s(dst->input_pins, pinsz,
+				 &cfg->base_cfg_ext.pin_formats[0], pinsz);
+		}
 	}
 
+	dst->init_data = cp->data; /* legacy API */
+	dst->avail = true;
 	return 0;
 }
 
