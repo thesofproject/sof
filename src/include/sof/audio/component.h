@@ -117,7 +117,6 @@ enum {
 #define COMP_ATTR_COPY_DIR	2	/**< Comp copy direction */
 #define COMP_ATTR_VDMA_INDEX	3	/**< Comp index of the virtual DMA at the gateway. */
 #define COMP_ATTR_BASE_CONFIG	4	/**< Component base config */
-#define COMP_ATTR_BASE_CONFIG_EXT 5	/**< Component base config extension */
 /** @}*/
 
 /** \name Trace macros

@@ -16,7 +16,6 @@
 #ifndef __SOF_AUDIO_COMPONENT_INT_H__
 #define __SOF_AUDIO_COMPONENT_INT_H__
 
-#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
 
@@ -217,59 +216,31 @@ struct get_attribute_remote_payload {
 static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t type,
 						 void *value)
 {
-	struct ipc4_base_module_cfg_ext *basecfg_ext;
 	struct ipc4_base_module_cfg *base_cfg;
 	struct get_attribute_remote_payload payload = {};
 	struct idc_msg msg = { IDC_MSG_GET_ATTRIBUTE,
 		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
 		sizeof(payload), &payload};
-	size_t size = MODULE_MAX_SINKS * sizeof(struct ipc4_output_pin_format) +
-			MODULE_MAX_SOURCES * sizeof(struct ipc4_input_pin_format);
 	int ret;
 
-	payload.type = type;
-
-	/*
-	 * Only COMP_ATTR_BASE_CONFIG and COMP_ATTR_BASE_CONFIG_EXT are supported for
-	 * remote access
-	 */
-	switch (type) {
-	case COMP_ATTR_BASE_CONFIG:
-		base_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-				   sizeof(*base_cfg));
-		if (!base_cfg)
-			return -ENOMEM;
-
-		payload.value = base_cfg;
-		break;
-	case COMP_ATTR_BASE_CONFIG_EXT:
-		basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-					  sizeof(*basecfg_ext) + size);
-		if (!basecfg_ext)
-			return -ENOMEM;
-
-		payload.value = basecfg_ext;
-		break;
-	default:
+	/* Only COMP_ATTR_BASE_CONFIG is supported for remote access */
+	if (type != COMP_ATTR_BASE_CONFIG)
 		return -EINVAL;
-	}
+
+	base_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*base_cfg));
+	if (!base_cfg)
+		return -ENOMEM;
+
+	payload.type = type;
+	payload.value = base_cfg;
 
 	ret = idc_send_msg(&msg, IDC_BLOCKING);
 
-	if (!ret) {
-		switch (type) {
-		case COMP_ATTR_BASE_CONFIG:
-			memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
-				 base_cfg, sizeof(struct ipc4_base_module_cfg));
-			rfree(base_cfg);
-			break;
-		case COMP_ATTR_BASE_CONFIG_EXT:
-			memcpy_s(value, size, basecfg_ext, size);
-			rfree(basecfg_ext);
-			break;
-		}
-	}
+	if (ret == 0)
+		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
+			 base_cfg, sizeof(struct ipc4_base_module_cfg));
 
+	rfree(base_cfg);
 	return ret;
 }
 #endif	/* CONFIG_IPC_MAJOR_4 */
