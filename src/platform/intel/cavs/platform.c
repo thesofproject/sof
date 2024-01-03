@@ -102,6 +102,10 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
+static struct pm_notifier pm_state_notifier = {
+	.state_exit = cpu_notify_state_exit,
+};
+
 /* Runs on the primary core only */
 int platform_init(struct sof *sof)
 {
@@ -149,6 +153,9 @@ int platform_init(struct sof *sof)
 	ret = dmac_init(sof);
 	if (ret < 0)
 		return ret;
+
+	/* register power states exit notifiers */
+	pm_notifier_register(&pm_state_notifier);
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);

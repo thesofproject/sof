@@ -7,6 +7,8 @@
 #include <iadk_module_adapter.h>
 #include <system_error.h>
 #include <errno.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,44 +39,67 @@ int IadkModuleAdapter::IadkModuleAdapter_Prepare(void)
 	return 0;
 }
 
-uint32_t IadkModuleAdapter::IadkModuleAdapter_Process(struct input_stream_buffer *input_buffers,
-						      int num_input_buffers,
-						      struct output_stream_buffer *output_buffers,
-						      int num_output_buffers)
+int IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **sources,
+						 int num_of_sources,
+						 struct sof_sink **sinks,
+						 int num_of_sinks)
 {
-	uint32_t ret = 0;
-	if ((num_input_buffers > 0) && (num_output_buffers > 0)) {
+	int ret = 0;
+
+	if ((num_of_sources > 0) && (num_of_sinks > 0)) {
 		intel_adsp::InputStreamBuffer input_stream_buffers[INPUT_PIN_COUNT];
 		intel_adsp::OutputStreamBuffer output_stream_buffers[OUTPUT_PIN_COUNT];
-		for (int i = 0; i < (int)num_input_buffers; i++) {
+		for (int i = 0; i < (int)num_of_sources; i++) {
+			uint8_t *input, *input_start;
+			size_t input_end, i_size;
+
 			intel_adsp::InputStreamFlags flags = {};
-			flags.end_of_stream = input_buffers[i].end_of_stream;
+			i_size = source_get_data_available(sources[i]);
+			ret = source_get_data(sources[i], i_size, (const void **)&input,
+					      (const void **)&input_start, &input_end);
+			if (ret != 0)
+				return ret;
+
 			const intel_adsp::InputStreamBuffer isb_data(
-				(uint8_t *)input_buffers[i].data,
-				input_buffers[i].size,
-				flags);
+				(uint8_t *)input, i_size, flags);
 			new (&input_stream_buffers[i]) intel_adsp::InputStreamBuffer(isb_data);
 		}
 
-		for (int i = 0; i < (int)num_output_buffers; i++) {
+		for (int i = 0; i < num_of_sinks; i++) {
+			uint8_t *output, *output_start;
+			size_t output_end, o_size;
+
+			o_size = sink_get_free_size(sinks[i]);
+			ret = sink_get_buffer(sinks[i], o_size, (void **)&output,
+					(void **)&output_start, &output_end);
+			if (ret != 0)
+				return ret;
+
 			const intel_adsp::OutputStreamBuffer osb_data(
-					(uint8_t *)output_buffers[i].data,
-					output_buffers[i].size);
+					(uint8_t *)output, o_size);
 			new (&output_stream_buffers[i]) intel_adsp::OutputStreamBuffer(osb_data);
 		}
 
-		ret = processing_module_.Process(input_stream_buffers, output_stream_buffers);
+		uint32_t iadk_ret =
+			processing_module_.Process(input_stream_buffers, output_stream_buffers);
 
-		for (int i = 0; i < (int)num_input_buffers; i++) {
-			input_buffers[i].consumed = input_buffers[i].size;
+		/* IADK modules returns uint32_t return code. Convert to failure if Process
+		 * not successful.
+		 */
+		if (iadk_ret != 0)
+			ret = -ENODATA;
+
+		for (int i = 0; i < num_of_sources; i++) {
+			source_release_data(sources[i], input_stream_buffers[i].size);
 		}
 
-		for (int i = 0; i < (int)num_output_buffers; i++) {
-			output_buffers[i].size = output_stream_buffers[i].size;
+		for (int i = 0; i < num_of_sinks; i++) {
+			sink_commit_buffer(sinks[i], output_stream_buffers[i].size);
 		}
 	}
 	return ret;
 }
+
 
 AdspErrorCode
 IadkModuleAdapter::IadkModuleAdapter_SetConfiguration(uint32_t config_id,
@@ -204,15 +229,15 @@ int iadk_wrapper_get_configuration(void *md, uint32_t config_id,
 							   fragment_size);
 }
 
-
-int iadk_wrapper_process(void *md, struct input_stream_buffer *input_buffers,
-			 int num_input_buffers, struct output_stream_buffer *output_buffers,
-			 int num_output_buffers)
+int iadk_wrapper_process(void *md,
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct IadkModuleAdapter *mod_adp = (struct IadkModuleAdapter *) md;
-	return mod_adp->IadkModuleAdapter_Process(input_buffers, num_input_buffers,
-						  output_buffers, num_output_buffers);
+	return mod_adp->IadkModuleAdapter_Process(sources, num_of_sources,
+						  sinks, num_of_sinks);
 }
+
 } /* namespace dsp_fw */
 
 #ifdef __cplusplus

@@ -79,7 +79,7 @@ int volume_init(struct processing_module *mod)
 	int i;
 
 	if (!vol || cfg->size != sizeof(*vol)) {
-		comp_err(dev, "volume_init(): No configuration data or bad data size %u",
+		comp_err(dev, "volume_init(): No configuration data or bad data size %zu",
 			 cfg->size);
 		return -EINVAL;
 	}
@@ -95,7 +95,7 @@ int volume_init(struct processing_module *mod)
 	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
 	if (!cd->vol) {
 		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
+		comp_err(dev, "volume_init(): Failed to allocate %zu", vol_size);
 		return -ENOMEM;
 	}
 
@@ -144,6 +144,9 @@ int volume_init(struct processing_module *mod)
 		cd->mvolume[i] = cd->volume[i];
 		cd->muted[i] = false;
 	}
+
+	/* all target volume are same */
+	cd->ramp_channel_counter = 1;
 
 	switch (cd->ramp_type) {
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
@@ -217,6 +220,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 					return ret;
 			}
 		}
+		volume_set_ramp_channel_counter(cd, cd->channels);
 
 		volume_ramp_check(mod);
 		break;

@@ -10,7 +10,6 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/dcblock/dcblock.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -31,6 +30,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "dcblock.h"
 
 LOG_MODULE_REGISTER(dcblock, CONFIG_SOF_LOG_LEVEL);
 
@@ -143,19 +144,7 @@ static int dcblock_get_config(struct processing_module *mod,
 			      uint32_t config_id, uint32_t *data_offset_size,
 			      uint8_t *fragment, size_t fragment_size)
 {
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-	struct comp_data *cd = module_get_private_data(mod);
-
-	comp_info(mod->dev, "dcblock_get_config()");
-
-#if CONFIG_IPC_MAJOR_3
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
-		comp_err(mod->dev, "dcblock_get_config(), invalid command");
-		return -EINVAL;
-	}
-#endif
-
-	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
+	return dcblock_get_ipc_config(mod, fragment, fragment_size);
 }
 
 /**
@@ -166,20 +155,8 @@ static int dcblock_set_config(struct processing_module *mod, uint32_t config_id,
 			      const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			      size_t response_size)
 {
-	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_set_config()");
-
-#if CONFIG_IPC_MAJOR_3
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
-		comp_err(mod->dev, "dcblock_set_config(), invalid command %i", cdata->cmd);
-		return -EINVAL;
-	}
-#endif
-	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
-				  fragment_size);
+	return dcblock_set_ipc_config(mod, pos, data_offset_size, fragment, fragment_size);
 }
 
 /**
@@ -217,26 +194,6 @@ static inline void dcblock_set_frame_alignment(struct audio_stream *source,
 	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
 }
 
-#if CONFIG_IPC_MAJOR_4
-static void dcblock_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
-	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "dcblock_params()");
-
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	component_set_nearest_period_frames(dev, params->rate);
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
 /**
  * \brief Prepares DC Blocking Filter component for processing.
  * \param[in,out] dev DC Blocking Filter base component device.
@@ -252,9 +209,7 @@ static int dcblock_prepare(struct processing_module *mod,
 
 	comp_info(dev, "dcblock_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
 	dcblock_params(mod);
-#endif
 
 	/* DC Filter component will only ever have one source and sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

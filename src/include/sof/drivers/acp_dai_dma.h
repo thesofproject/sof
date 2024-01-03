@@ -50,11 +50,13 @@ extern const struct dai_driver acp_btdai_driver;
 extern const struct dai_driver acp_dmic_dai_driver;
 extern const struct dai_driver acp_hsdai_driver;
 extern const struct dai_driver acp_hs_virtual_dai_driver;
+extern const struct dai_driver acp_swaudiodai_driver;
 
 /* ACP private data */
 struct acp_pdata {
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_acpdmic_params dmic_params;
 	struct sof_ipc_dai_acp_params params;
+	struct sof_ipc_dai_acp_sdw_params sdw_params;
 };
 #endif /* __SOF_DRIVERS_ACPDMA_H__ */

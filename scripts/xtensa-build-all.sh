@@ -20,6 +20,9 @@ SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 # Waiting for container work in progress
 SUPPORTED_PLATFORMS+=( mt8188 )
 
+# Container work is in progress
+SUPPORTED_PLATFORMS+=( acp_6_3 )
+
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -193,82 +196,22 @@ CURDIR="$(pwd)"
 # build platforms
 for platform in "${PLATFORMS[@]}"
 do
+
+	printf '\n   ------\n   %s\n   ------\n' "$platform"
+
 	HAVE_ROM='no'
 	DEFCONFIG_PATCH=''
 	PLATFORM_PRIVATE_KEY=''
 
-	case $platform in
-		imx8)
-			PLATFORM="imx8"
-			XTENSA_CORE="hifi4_nxp_v3_3_1_2_2017"
-			HOST="xtensa-imx-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
-		imx8x)
-			PLATFORM="imx8x"
-			XTENSA_CORE="hifi4_nxp_v3_3_1_2_2017"
-			HOST="xtensa-imx-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
-		imx8m)
-			PLATFORM="imx8m"
-			XTENSA_CORE="hifi4_mscale_v0_0_2_2017"
-			HOST="xtensa-imx8m-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
-		imx8ulp)
-			PLATFORM="imx8ulp"
-			XTENSA_CORE="hifi4_nxp2_ulp_prod"
-			HOST="xtensa-imx8ulp-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
-		rn)
-			PLATFORM="renoir"
-			XTENSA_CORE="ACP_3_1_001_PROD_2019_1"
-			HOST="xtensa-rn-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
-			;;
-		rmb)
-			PLATFORM="rembrandt"
-			ARCH="xtensa"
-			XTENSA_CORE="LX7_HiFi5_PROD"
-			HOST="xtensa-rmb-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
-			;;
-		vangogh)
-			PLATFORM="vangogh"
-			ARCH="xtensa"
-			XTENSA_CORE="ACP_5_0_001_PROD"
-			HOST="xtensa-vangogh-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
-			;;
-		mt8186)
-			PLATFORM="mt8186"
-			XTENSA_CORE="hifi5_7stg_I64D128"
-			HOST="xtensa-mt8186-elf"
-			XTENSA_TOOLS_VERSION="RI-2020.5-linux"
-			;;
-		mt8188)
-			PLATFORM="mt8188"
-			XTENSA_CORE="hifi5_7stg_I64D128"
-			HOST="xtensa-mt8188-elf"
-			XTENSA_TOOLS_VERSION="RI-2020.5-linux"
-			;;
-		mt8195)
-			PLATFORM="mt8195"
-			XTENSA_CORE="hifi4_8195_PROD"
-			HOST="xtensa-mt8195-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
-			;;
-
-	esac
+	source "${SOF_TOP}"/scripts/set_xtensa_params.sh "$platform" ||
+            die 'set_xtensa_params.sh failed'
 
 	test -z "${PRIVATE_KEY_OPTION}" || PLATFORM_PRIVATE_KEY="${PRIVATE_KEY_OPTION}"
 
 	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
-		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
-		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
+		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$TOOLCHAIN_VER"
+		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$TOOLCHAIN_VER"
 
 		# make sure the required version of xtensa tools is installed
 		if [ -d "$XTENSA_TOOLS_DIR" ]

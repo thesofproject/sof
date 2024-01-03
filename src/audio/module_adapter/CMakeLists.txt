@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 
-add_local_sources(sof module_adapter.c module/generic.c)
+if(CONFIG_IPC_MAJOR_3)
+	add_local_sources(sof module_adapter.c module_adapter_ipc3.c module/generic.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	add_local_sources(sof module_adapter.c module_adapter_ipc4.c module/generic.c)
+endif()
 
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_CADENCE_CODEC)
@@ -57,16 +61,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 			sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
 		endif()
 	# folder with Waves API must be among include directories
-	endif()
-
-	if(CONFIG_DTS_CODEC)
-		add_local_sources(sof module/dts/dts.c)
-		target_compile_definitions(sof PRIVATE -DDTS_MATH_INT32 -DDTS_XTENSA)
-		if (CONFIG_DTS_CODEC_STUB)
-			add_local_sources(sof module/dts/dts_stub.c)
-		else()
-			sof_add_static_library(DtsCodec ${CMAKE_CURRENT_LIST_DIR}/lib/release/libdts-sof-interface-i32.a)
-		endif()
 	endif()
 
 	return()

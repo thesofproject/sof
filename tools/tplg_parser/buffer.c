@@ -15,7 +15,6 @@
 #include <string.h>
 #include <ipc/topology.h>
 #include <ipc/stream.h>
-#include <ipc4/copier.h>
 #include <ipc4/gateway.h>
 #include <sof/common.h>
 #include <sof/lib/uuid.h>
@@ -23,12 +22,16 @@
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
 
+#include "copier/copier.h"
+
 /* Buffers */
 static const struct sof_topology_token buffer_tokens[] = {
 	{SOF_TKN_BUF_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_buffer, size), 0},
 	{SOF_TKN_BUF_CAPS, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_buffer, caps), 0},
+	{SOF_TKN_BUF_FLAGS, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct sof_ipc_buffer, flags), 0},
 };
 
 static const struct sof_topology_token buffer_comp_tokens[] = {

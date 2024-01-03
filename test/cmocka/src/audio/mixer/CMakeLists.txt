@@ -11,6 +11,7 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
@@ -23,6 +24,10 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
+
+target_include_directories(mixer PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
 target_link_libraries(mixer PRIVATE -lm)

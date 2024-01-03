@@ -8,6 +8,7 @@
 #ifndef __SOF_AUDIO_MODULES__
 #define __SOF_AUDIO_MODULES__
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <iadk_module_adapter.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
@@ -35,7 +36,7 @@
  *  - Processing Module Adapter - SOF base FW side of ProcessingModuleInterface API
  *
  * Using the same philosofy loadable modules are using module adapter to interact with SOF FW.
- * Module recognision is done by checking module API version defined in module_api_ver.h
+ * Module recognision is done by checking module API version defined in module/module/api_ver.h
  * with version read from elf file.
  */
 
@@ -44,22 +45,29 @@ struct comp_dev *modules_shim_new(const struct comp_driver *drv,
 				  const struct comp_ipc_config *config,
 				  const void *spec);
 
-#define DECLARE_DYNAMIC_MODULE_ADAPTER(comp_dynamic_module, mtype, uuid, tr) \
-do { \
-	(comp_dynamic_module)->type = mtype; \
-	(comp_dynamic_module)->uid = SOF_RT_UUID(uuid); \
-	(comp_dynamic_module)->tctx = &(tr); \
-	(comp_dynamic_module)->ops.create = modules_shim_new; \
-	(comp_dynamic_module)->ops.prepare = module_adapter_prepare; \
-	(comp_dynamic_module)->ops.params = module_adapter_params; \
-	(comp_dynamic_module)->ops.copy = module_adapter_copy; \
-	(comp_dynamic_module)->ops.cmd = module_adapter_cmd; \
-	(comp_dynamic_module)->ops.trigger = module_adapter_trigger; \
-	(comp_dynamic_module)->ops.reset = module_adapter_reset; \
-	(comp_dynamic_module)->ops.free = module_adapter_free; \
-	(comp_dynamic_module)->ops.set_large_config = module_set_large_config;\
-	(comp_dynamic_module)->ops.get_large_config = module_get_large_config;\
-	(comp_dynamic_module)->ops.get_attribute = module_adapter_get_attribute; \
-} while (0)
+static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
+						  enum sof_comp_type mtype,
+						  const struct sof_uuid *uuid,
+						  struct tr_ctx *tr)
+{
+	drv->type = mtype;
+	drv->uid = uuid;
+	drv->tctx = tr;
+	drv->ops.create = modules_shim_new;
+	drv->ops.prepare = module_adapter_prepare;
+	drv->ops.params = module_adapter_params;
+	drv->ops.copy = module_adapter_copy;
+#if CONFIG_IPC_MAJOR_3
+	drv->ops.cmd = module_adapter_cmd;
+#endif
+	drv->ops.trigger = module_adapter_trigger;
+	drv->ops.reset = module_adapter_reset;
+	drv->ops.free = module_adapter_free;
+	drv->ops.set_large_config = module_set_large_config;
+	drv->ops.get_large_config = module_get_large_config;
+	drv->ops.get_attribute = module_adapter_get_attribute;
+	drv->ops.bind = module_adapter_bind;
+	drv->ops.unbind = module_adapter_unbind;
+}
 
 #endif /* __SOF_AUDIO_MODULES__ */

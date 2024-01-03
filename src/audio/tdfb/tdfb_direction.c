@@ -4,8 +4,10 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include "tdfb.h"
+#include "tdfb_comp.h"
+
 #include <ipc/topology.h>
-#include <sof/audio/tdfb/tdfb_comp.h>
 #include <rtos/alloc.h>
 #include <sof/math/iir_df1.h>
 #include <sof/math/trig.h>

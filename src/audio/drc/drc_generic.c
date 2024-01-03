@@ -5,13 +5,14 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/component.h>
-#include <sof/audio/drc/drc.h>
-#include <sof/audio/drc/drc_algorithm.h>
-#include <sof/audio/drc/drc_math.h>
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
+
+#include "drc.h"
+#include "drc_algorithm.h"
+#include "drc_math.h"
 
 #if DRC_GENERIC
 
@@ -449,6 +450,7 @@ void drc_compress_output(struct drc_state *state,
 
 #endif /* DRC_GENERIC */
 
+#if DRC_GENERIC || DRC_HIFI3
 /* After one complete division of samples have been received (and one division of
  * samples have been output), we calculate shaped power average
  * (detector_average) from the input division, update envelope parameters from
@@ -542,7 +544,7 @@ static void drc_s16_default(struct processing_module *mod,
 	int fragment_samples;
 	int fragment;
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
@@ -688,7 +690,7 @@ static void drc_s24_default(struct processing_module *mod,
 	int fragment_samples;
 	int fragment;
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case. Note: use 32 bit delay function.
@@ -736,7 +738,7 @@ static void drc_s32_default(struct processing_module *mod,
 	int fragment_samples;
 	int fragment;
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
@@ -782,3 +784,4 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 };
 
 const size_t drc_proc_fncount = ARRAY_SIZE(drc_proc_fnmap);
+#endif

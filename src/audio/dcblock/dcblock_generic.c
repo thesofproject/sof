@@ -7,7 +7,8 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/audio/dcblock/dcblock.h>
+
+#include "dcblock.h"
 
 #ifdef DCBLOCK_GENERIC
 

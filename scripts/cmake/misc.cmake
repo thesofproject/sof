@@ -40,6 +40,24 @@ function(get_optimization_flag OUT_VAR)
 	endif()
 endfunction()
 
+# Zephyr duplicate in sof/zephyr/CMakeLists.txt; keep in sync
+macro(is_zephyr ret)
+	if(CONFIG_ZEPHYR_SOF_MODULE)
+		set(${ret} TRUE)
+	else()
+		set(${ret} FALSE)
+	endif()
+endmacro()
+
+# This macro
+# - saves a LOT of repetition, and
+# - mimics Zephyr, which helps with compatibility.
+macro(add_local_sources_ifdef condition target)
+	if(${condition})
+		add_local_sources(${target} ${ARGN})
+	endif()
+endmacro()
+
 # Adds sources to target like target_sources, but assumes that
 # paths are relative to subdirectory.
 # Works like:

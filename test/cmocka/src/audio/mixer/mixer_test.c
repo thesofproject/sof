@@ -18,8 +18,9 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/audio/mixer.h>
 #include <sof/audio/module_adapter/module/generic.h>
+
+#include "mixer/mixer.h"
 #include "../module_adapter.h"
 
 #ifdef HAVE_MALLOC_H

@@ -7,8 +7,8 @@ set -e
 
 CONFIG_LIST=( example_pass_config example_line_array
 	      example_line_0mm36mm146mm182mm example_circular_array example_two_beams )
-OCTAVE_CMD=( octave --no-gui --quiet )
-MATLAB_CMD=( matlab -batch )
+OCTAVE_CMD=( octave --no-window-system )
+MATLAB_CMD=( matlab -nodisplay -batch )
 
 main () {
     if command -v matlab &> /dev/null; then

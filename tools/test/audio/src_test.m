@@ -1,4 +1,4 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
@@ -11,6 +11,7 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 % fs_out     - vector of rates out, default 8 to 192 kHz
 % full_test  - set to 0 for chirp only, 1 for all, default 1
 % show_plots - set to 1 to see plots, default 0
+% comp       - set to 'src' or 'asrc', default 'src'
 %
 % A default in-out matrix with 32 bits data is tested if the
 % parameters are omitted.
@@ -47,12 +48,16 @@ end
 if nargin < 6
 	show_plots = 0;
 end
+if nargin < 7
+	comp = 'src';
+end
 if isempty(fs_in_list)
 	fs_in_list = default_in;
 end
 if isempty(fs_out_list)
 	fs_out_list = default_out;
 end
+
 
 %% Generic test pass/fail criteria
 %  Note that AAP and AIP are relaxed a bit from THD+N due to inclusion
@@ -74,6 +79,7 @@ t.ch = 0;               % 1..nch. With value 0 test a randomly selected channel.
 t.bits_in = bits_in;    % Input word length
 t.bits_out = bits_out;  % Output word length
 t.full_test = full_test; % 0 is quick check only, 1 is full set
+t.comp = comp;          % Component to test
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -221,7 +227,7 @@ end
 test = g_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -250,7 +256,7 @@ test.f_max = 0.99 * min(t.fs1/2, t.fs2/2);     % Measure up to Nyquist frequency
 test = fr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -287,7 +293,7 @@ test.fu = min(prm.c_pb * t.fs2, 20e3); % AES17 5.2.5 standard low pass as 20 kHz
 test = thdnf_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -316,7 +322,7 @@ end
 test = dr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -351,7 +357,7 @@ test.f_end = 0.5*t.fs2;
 test = aap_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -384,7 +390,7 @@ test.f_end = t.fs1/2;
 test = aip_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -414,7 +420,7 @@ test = test_defaults_src(t);
 test = chirp_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Analyze
 test.fs = t.fs2;
@@ -435,7 +441,7 @@ end
 %%
 
 function test = test_defaults_src(t)
-test.comp = 'src';
+test.comp = t.comp;
 test.fmt = t.fmt;
 test.bits_in = t.bits_in;
 test.bits_out = t.bits_out;
@@ -461,7 +467,7 @@ test.thdnf_mask_hi = [];
 test.thdnf_max = [];
 end
 
-function test = test_run_src(test, t)
+function test = test_run_src(test)
 test.fs_in = test.fs1;
 test.fs_out = test.fs2;
 test.extra_opts = '-C 300000'; % Limit to 5 min max, assume 1 ms scheduling

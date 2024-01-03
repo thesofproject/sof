@@ -2,22 +2,29 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2020, Mohana Datta Yelugoti
 
-# fail on any errors
+# stop on most errors
 set -e
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+SOF_REPO=$(dirname "$SCRIPT_DIR")
+TESTBENCH_DIR="$SOF_REPO"/tools/testbench
+
 # Defaults
+BUILD_BACKEND='make'
 BUILD_TYPE=native
 BUILD_DIR_NAME=build_testbench
 BUILD_TARGET=install
+: "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
 
 print_usage()
 {
     cat <<EOFUSAGE
 usage: $0 [-f] [-p <platform>]
        -p Build testbench binary for xt-run for selected platform, e.g. -p tgl
+          When omitted, perform a BUILD_TYPE=native, compile-only check.
        -f Build testbench with compiler provided by fuzzer
           (default path: $HOME/sof/work/AFL/afl-gcc)
-       -j number of parallel make/ninja jobs. Defaults to /usr/bin/nproc.
+       -j number of parallel $BUILD_BACKEND jobs. Defaults to /usr/bin/nproc.
           You MUST re-run with -j1 when something is failing!
 EOFUSAGE
 }
@@ -34,15 +41,12 @@ die()
 
 rebuild_testbench()
 {
-    cd "$BUILD_TESTBENCH_DIR"
+    local bdir="$BUILD_DIR_NAME"
+    cd "$TESTBENCH_DIR"
 
-    rm -rf "$BUILD_DIR_NAME"
-    mkdir "$BUILD_DIR_NAME"
-    cd "$BUILD_DIR_NAME"
-
-    cmake -DCMAKE_INSTALL_PREFIX=install  ..
-
-    cmake --build .  --  -j"${jobs}" $BUILD_TARGET
+    rm -rf "$bdir"
+    cmake -B "$bdir" -DCMAKE_INSTALL_PREFIX="$bdir"/install
+    cmake --build "$bdir"  --  -j"${jobs}" $BUILD_TARGET
 }
 
 export_CC_with_afl()
@@ -66,25 +70,33 @@ setup_xtensa_tools_build()
     # shellcheck source=scripts/set_xtensa_params.sh
     source "$SCRIPT_DIR/set_xtensa_params.sh" "$BUILD_PLATFORM"
 
-    test -n "${XTENSA_TOOLS_VERSION}" ||
-        die "Illegal platform $BUILD_PLATFORM, no XTENSA_TOOLS_VERSION found.\n"
+    test -n "${TOOLCHAIN_VER}" ||
+        die "Illegal platform $BUILD_PLATFORM, no TOOLCHAIN_VER found.\n"
     test -n "${XTENSA_CORE}" ||
         die "Illegal platform $BUILD_PLATFORM, no XTENSA_CORE found.\n"
 
-    compiler="xt-xcc"
-    install_bin=install/tools/$XTENSA_TOOLS_VERSION/XtensaTools/bin
+    # Zephyr is not part of the testbench at all but let's play nice and
+    # align with that naming convention to keep things simple.
+    case "${ZEPHYR_TOOLCHAIN_VARIANT}" in
+        xcc)       COMPILER=xt-xcc;;
+        xt-clang)  COMPILER=xt-clang;;
+        *) die 'Unknown or undefined ZEPHYR_TOOLCHAIN_VARIANT=%s\n' \
+               "${ZEPHYR_TOOLCHAIN_VARIANT}";;
+    esac
+
+    install_bin=install/tools/$TOOLCHAIN_VER/XtensaTools/bin
     tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
-    testbench_sections="-Wl,--sections-placement $BUILD_TESTBENCH_DIR/testbench_xcc_sections.txt"
-    export CC=$tools_bin/$compiler
+    testbench_sections="-Wl,--sections-placement $TESTBENCH_DIR/testbench_xcc_sections.txt"
+    export CC=$tools_bin/$COMPILER
     export LD=$tools_bin/xt-ld
     export OBJDUMP=$tools_bin/xt-objdump
-    export LDFLAGS="-mlsp=sim -Wl,-LE $testbench_sections"
+    export LDFLAGS="-mlsp=sim $testbench_sections"
     export XTENSA_CORE
 }
 
 export_xtensa_setup()
 {
-    export_dir=$BUILD_TESTBENCH_DIR/$BUILD_DIR_NAME
+    export_dir=$TESTBENCH_DIR/$BUILD_DIR_NAME
     export_script=$export_dir/xtrun_env.sh
     xtbench=$export_dir/testbench
     xtbench_run="XTENSA_CORE=$XTENSA_CORE \$XTENSA_TOOLS_ROOT/$install_bin/xt-run $xtbench"
@@ -97,11 +109,32 @@ EOFSETUP
 
 testbench_usage()
 {
+    local src_env_msg
+    if [ "$BUILD_TYPE" = 'xt' ]; then
+        export_xtensa_setup
+        src_env_msg="source $export_script"
+    fi
+
+cat <<EOF0
+Success!
+
+For temporary, interactive Kconfiguration use:
+
+   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/sof_ep/build/  menuconfig
+
+Permanent configuration is "src/arch/host/configs/library_defconfig".
+
+For instant, incremental build:
+
+   $src_env_msg
+   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/ -j$(nproc)
+
+EOF0
+
     case "$BUILD_TYPE" in
         xt)
-            export_xtensa_setup
             cat <<EOFUSAGE
-Success! Testbench binary for $BUILD_PLATFORM is in $xtbench
+Testbench binary for $BUILD_PLATFORM is in $xtbench
 it can be run with command:
 
 $xtbench_run -h
@@ -119,11 +152,6 @@ EOFUSAGE
 
 main()
 {
-    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-    SOF_REPO=$(dirname "$SCRIPT_DIR")
-    BUILD_TESTBENCH_DIR="$SOF_REPO"/tools/testbench
-    : "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
-
     jobs=$(nproc)
     while getopts "fhj:p:" OPTION; do
         case "$OPTION" in
@@ -133,13 +161,22 @@ main()
                 ;;
             f) export_CC_with_afl;;
             j) jobs=$(printf '%d' "$OPTARG") ;;
-            h) print_usage; exit 1;;
+            h) print_usage; exit 0;;
             *) print_usage; exit 1;;
         esac
     done
 
+    # This automagically removes the -- sentinel itself if any.
+    shift "$((OPTIND -1))"
+    # Error on spurious arguments.
+    test $# -eq 0 || {
+        print_usage
+        die "Unknown arguments: %s\n" "$*"
+    }
+
     rebuild_testbench
 
+    printf '\n'
     testbench_usage
 }
 

@@ -45,7 +45,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	elem_array->elems = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(struct dma_sg_elem) * ring->pages);
 	if (!elem_array->elems) {
-		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): There is no heap free with this block size: %d",
+		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): There is no heap free with this block size: %zu",
 		       sizeof(struct dma_sg_elem) * ring->pages);
 		return -ENOMEM;
 	}

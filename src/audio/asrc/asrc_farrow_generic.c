@@ -2,11 +2,11 @@
 //
 // Copyright(c) 2012-2019 Intel Corporation. All rights reserved.
 
-#include <sof/audio/asrc/asrc_config.h>
+#include "asrc_config.h"
 
 #if ASRC_GENERIC == 1
 
-#include <sof/audio/asrc/asrc_farrow.h>
+#include "asrc_farrow.h"
 #include <sof/audio/format.h>
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);

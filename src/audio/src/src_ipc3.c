@@ -170,7 +170,7 @@ int src_init(struct processing_module *mod)
 	}
 
 	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
-		comp_err(dev, "src_init(): Missing or bad size (%u) init data",
+		comp_err(dev, "src_init(): Missing or bad size (%zu) init data",
 			 cfg->size);
 		return -EINVAL;
 	}

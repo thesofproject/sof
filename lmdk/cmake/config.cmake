@@ -14,5 +14,29 @@ cmake_path(ABSOLUTE_PATH LMDK_BASE NORMALIZE)
 set(SOF_BASE ${LMDK_BASE}/..)
 cmake_path(ABSOLUTE_PATH SOF_BASE NORMALIZE)
 
-set(RIMAGE_INCLUDE_DIR ${SOF_BASE}/rimage/src/include)
+set(RIMAGE_INCLUDE_DIR ${SOF_BASE}/tools/rimage/src/include)
 cmake_path(ABSOLUTE_PATH RIMAGE_INCLUDE_DIR NORMALIZE)
+
+# Adds sources to target like target_sources, but assumes that
+# paths are relative to subdirectory.
+# Works like:
+# 	Cmake >= 3.13:
+#		target_sources(<target> PRIVATE <sources>)
+# 	Cmake < 3.13:
+#		target_sources(<target> PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/<sources>)
+function(add_local_sources target)
+	foreach(arg ${ARGN})
+		if(IS_ABSOLUTE ${arg})
+			set(path ${arg})
+		else()
+			set(path ${CMAKE_CURRENT_SOURCE_DIR}/${arg})
+		endif()
+
+		target_sources(${target} PRIVATE ${path})
+	endforeach()
+endfunction()
+
+# Currently loadable modules do not support the Zephyr build system
+macro(is_zephyr ret)
+	set(${ret} FALSE)
+endmacro()

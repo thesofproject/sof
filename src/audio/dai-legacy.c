@@ -7,7 +7,6 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
-#include <sof/audio/dai_copier.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -34,6 +33,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "copier/dai_copier.h"
 
 static const struct comp_driver comp_dai;
 

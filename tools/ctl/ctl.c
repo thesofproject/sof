@@ -86,7 +86,7 @@ static void usage(char *name)
 	fprintf(stdout, " -i {3|4} selects the IPC type to use, defaults to 3 (IPC3)\n");
 	fprintf(stdout, " -g <size> generates");
 	fprintf(stdout, " the current ABI header with given payload size\n");
-	fprintf(stdout, " -s set data using ASCII CSV input file\n");
+	fprintf(stdout, " -s set data, default is using ASCII CSV input file\n");
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
 	fprintf(stdout, " -o specify the output file.\n");

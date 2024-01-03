@@ -357,7 +357,7 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 			break;
 		}
 
-		sink_buf_id = sink->id;
+		sink_buf_id = buf_get_id(sink);
 
 		if (sink_buf_id == buf_id) {
 			if (sink_buf_id == 0)
@@ -414,7 +414,7 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 		       ipc_config->size);
 
 	if (ret) {
-		comp_err(dev, "kpb_new(): cannot memcpy_s %d bytes into sof_kpb_config (%d)\n",
+		comp_err(dev, "kpb_new(): cannot memcpy_s %d bytes into sof_kpb_config (%zu)\n",
 			 ipc_config->size, sizeof(kpb->config));
 		return -EINVAL;
 	}
@@ -478,7 +478,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	/* make sure data size is not bigger than config space */
 	if (ipc_config_size > kpb_config_size) {
-		comp_cl_err(&comp_kpb, "kpb_new(): ipc config size %u too big",
+		comp_cl_err(&comp_kpb, "kpb_new(): ipc config size %zu too big",
 			    ipc_config_size);
 		return NULL;
 	}
@@ -579,7 +579,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 			/* We managed to allocate a block of ca_size.
 			 * Now we initialize it.
 			 */
-			comp_cl_info(&comp_kpb, "kpb new memory block: %d",
+			comp_cl_info(&comp_kpb, "kpb new memory block: %zu",
 				     ca_size);
 			allocated_size += ca_size;
 			hb->start_addr = new_mem_block;
@@ -628,7 +628,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 		}
 	}
 
-	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer(): allocated %d bytes",
+	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer(): allocated %zu bytes",
 		     allocated_size);
 
 	return allocated_size;
@@ -903,7 +903,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 			audio_stream_init_alignment_constants(byte_align, frame_align_req,
 							      &sink->stream);
-			sink_id = sink->id;
+			sink_id = buf_get_id(sink);
 
 			if (sink_id == 0)
 				audio_stream_set_channels(&sink->stream, kpb->num_of_sel_mic);
@@ -926,6 +926,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Used to pass standard and bespoke commands (with data) to component.
  * \param[in,out] dev - Volume base component device.
@@ -938,6 +939,7 @@ static int kpb_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	return 0;
 }
+#endif
 
 /**
  * \brief Resets KPB component.
@@ -1339,7 +1341,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(source, copy_bytes);
 		} else {
-			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
+			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %zu",
 				  audio_stream_get_avail_bytes(&source->stream),
 				  kpb->hd.free);
 		}
@@ -1837,7 +1839,7 @@ static enum task_state kpb_draining_task(void *arg)
 		 * while we were draining real time stream could provided
 		 * new data which needs to be copy to host.
 		 */
-			comp_cl_info(&comp_kpb, "kpb: update drain_req by %d",
+			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
 				     *rt_stream_update);
 			kpb_lock(kpb);
 			drain_req += *rt_stream_update;
@@ -2295,7 +2297,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 
 	if (!host_period_size || !host_buffer_size) {
 		/* Wrong host params */
-		comp_err(dev, "kpb: host_period_size (%d) cannot be 0 and host_buffer_size (%d) cannot be 0",
+		comp_err(dev, "kpb: host_period_size (%zu) cannot be 0 and host_buffer_size (%zu) cannot be 0",
 			 host_period_size, host_buffer_size);
 		return false;
 	} else if (HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels) >
@@ -2303,7 +2305,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 		/* Host buffer size is too small - history data
 		 * may get overwritten.
 		 */
-		comp_warn(dev, "kpb: host_buffer_size (%d) must be at least %d",
+		comp_warn(dev, "kpb: host_buffer_size (%zu) must be at least %zu",
 			  host_buffer_size,
 			  HOST_BUFFER_MIN_SIZE(hb_size_req, kpb->config.channels));
 	} else if (kpb->sync_draining_mode) {
@@ -2318,7 +2320,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 		 */
 		if ((host_period_size / KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE) <
 		    pipeline_period_size) {
-			comp_err(dev, "kpb: host_period_size (%d) must be at least %d * %d",
+			comp_err(dev, "kpb: host_period_size (%zu) must be at least %d * %zu",
 				 host_period_size,
 				 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE,
 				 pipeline_period_size);
@@ -2577,17 +2579,18 @@ static const struct comp_driver comp_kpb = {
 	.ops = {
 		.create		= kpb_new,
 		.free		= kpb_free,
-		.cmd		= kpb_cmd,
 		.trigger	= kpb_trigger,
 		.copy		= kpb_copy,
 		.prepare	= kpb_prepare,
 		.reset		= kpb_reset,
 		.params		= kpb_params,
 		.set_large_config = kpb_set_large_config,
-#ifdef CONFIG_IPC_MAJOR_4
+#if CONFIG_IPC_MAJOR_4
 		.get_attribute	= kpb_get_attribute,
 		.bind		= kpb_bind,
 		.unbind		= kpb_unbind,
+#elif CONFIG_IPC_MAJOR_3
+		.cmd		= kpb_cmd,
 #endif /* CONFIG_IPC_MAJOR_4 */
 	},
 };

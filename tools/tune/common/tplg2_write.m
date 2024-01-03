@@ -1,4 +1,4 @@
-function tplg2_write(fn, blob8, component, comment)
+function tplg2_write(fn, blob8, component, comment, howto)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
@@ -8,6 +8,9 @@ function tplg2_write(fn, blob8, component, comment)
 
 if nargin < 4
 	comment = 'Exported Control Bytes';
+end
+if nargin < 5
+	howto = [];
 end
 
 %% Check that blob length is multiple of 32 bits
@@ -23,6 +26,9 @@ end
 fh = fopen(fn, 'w');
 nl = 8;
 fprintf(fh, '# %s %s\n', comment, date());
+if ~isempty(howto)
+	fprintf(fh, '# %s\n', howto);
+end
 fprintf(fh, 'Object.Base.data.\"%s\" {\n', component);
 fprintf(fh, '\tbytes \"\n');
 for i = 1:nl:n_blob

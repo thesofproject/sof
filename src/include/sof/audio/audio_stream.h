@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2020 Intel Corporation. All rights reserved.
+ * Copyright(c) 2020 - 2023 Intel Corporation. All rights reserved.
  *
  * Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
@@ -16,9 +16,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/audio/sink_api.h>
-#include <sof/audio/sink_api_implementation.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/source_api_implementation.h>
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/math/numbers.h>
@@ -26,6 +24,7 @@
 #include <rtos/cache.h>
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
+#include <module/audio/audio_stream.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -33,43 +32,6 @@
 /** \addtogroup audio_stream_api Audio Stream API
  *  @{
  */
-
-/**
- * set of parameters describing audio stream
- * this structure is shared between audio_stream.h and sink/source interface
- * TODO: compressed formats
- */
-struct sof_audio_stream_params {
-	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
-	enum sof_ipc_frame valid_sample_fmt;
-
-	uint32_t rate;		/**< Number of data frames per second [Hz] */
-	uint16_t channels;	/**< Number of samples in each frame */
-
-	/**
-	 * align_frame_cnt indicates minimum number of frames that satisfies both byte
-	 * align and frame align requirements. E.g: Consider an algorithm that processes
-	 * in blocks of 3 frames configured to process 16-bit stereo using xtensa HiFi3
-	 * SIMD. Therefore with 16-bit stereo we have a frame size of 4 bytes, and
-	 * SIMD intrinsic requirement of 8 bytes(2 frames) for HiFi3 and an algorithim
-	 * requirement of 3 frames. Hence the common processing block size has to align
-	 * with frame(1), intrinsic(2) and algorithm (3) giving us an optimum processing
-	 * block size of 6 frames.
-	 */
-	uint16_t align_frame_cnt;
-
-	/**
-	 * the free/available bytes of sink/source right shift align_shift_idx, the result
-	 * multiplied by align_frame_cnt is the frame count free/available that can meet
-	 * the align requirement.
-	 */
-	uint16_t align_shift_idx;
-
-	bool overrun_permitted; /**< indicates whether overrun is permitted */
-	bool underrun_permitted; /**< indicates whether underrun is permitted */
-
-	uint32_t buffer_fmt; /**< enum sof_ipc_buffer_format */
-};
 
 /**
  * Audio stream is a circular buffer aware of audio format of the data
@@ -349,25 +311,6 @@ static inline void audio_stream_set_buffer_fmt(struct audio_stream *buf,
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
 /**
- * Applies parameters to the buffer.
- * @param buffer Buffer.
- * @param params Parameters (frame format, rate, number of channels).
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int audio_stream_set_params(struct audio_stream *buffer,
-					  struct sof_ipc_stream_params *params)
-{
-	if (!params)
-		return -EINVAL;
-
-	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
-	buffer->runtime_stream_params.rate = params->rate;
-	buffer->runtime_stream_params.channels = params->channels;
-
-	return 0;
-}
-
-/**
  * Calculates period size in bytes based on component stream's parameters.
  * @param buf Component buffer.
  * @return Period size in bytes.
@@ -431,6 +374,31 @@ static inline void audio_stream_init_alignment_constants(const uint32_t byte_ali
 	process_size = stream->runtime_stream_params.align_frame_cnt * frame_size;
 	stream->runtime_stream_params.align_shift_idx	=
 			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
+}
+
+/**
+ * Applies parameters to the buffer.
+ * @param buffer Audio stream buffer.
+ * @param params Parameters (frame format, rate, number of channels).
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int audio_stream_set_params(struct audio_stream *buffer,
+					  struct sof_ipc_stream_params *params)
+{
+	if (!params)
+		return -EINVAL;
+
+	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
+	buffer->runtime_stream_params.rate = params->rate;
+	buffer->runtime_stream_params.channels = params->channels;
+
+	/* set the default alignment info.
+	 * set byte_align as 1 means no alignment limit on byte.
+	 * set frame_align as 1 means no alignment limit on frame.
+	 */
+	audio_stream_init_alignment_constants(1, 1, buffer);
+
+	return 0;
 }
 
 /**
@@ -1014,6 +982,29 @@ static inline int audio_stream_set_zero(struct audio_stream *buffer, uint32_t by
 		memset(buffer->addr, 0, tail_size);
 
 	return 0;
+}
+
+/**
+ * Writes zeros to circular buffer in range [ptr, ptr+bytes] with rollover if necessary.
+ * @param ptr Pointer inside circular biffer to start writing from.
+ * @param buf_addr Start of the circular buffer.
+ * @param buf_end End of the circular buffer.
+ * @param bytes Size of the fragment to write zeros.
+ */
+static inline void cir_buf_set_zero(void *ptr, void *buf_addr, void *buf_end, uint32_t bytes)
+{
+	uint32_t head_size = bytes;
+	uint32_t tail_size = 0;
+
+	/* check for potential wrap */
+	if ((char *)ptr + bytes > (char *)buf_end) {
+		head_size = (char *)buf_end - (char *)ptr;
+		tail_size = bytes - head_size;
+	}
+
+	memset(ptr, 0, head_size);
+	if (tail_size)
+		memset(buf_addr, 0, tail_size);
 }
 
 static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,

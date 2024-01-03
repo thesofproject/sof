@@ -69,6 +69,9 @@ struct sdma_chan {
 	int next_bd;
 	int sdma_chan_type;
 	int fifo_paddr;
+
+	unsigned int watermark_level;
+	unsigned int sw_done_sel; /* software done selector */
 };
 
 /* Private data for the whole controller */
@@ -438,6 +441,8 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 
 static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 {
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
+
 	tr_dbg(&sdma_tr, "sdma_enable_event(%d, %d)", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
@@ -445,6 +450,13 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
 			    BIT(channel->index), BIT(channel->index));
+
+	if (pdata->sw_done_sel & BIT(31)) {
+		unsigned int done0;
+
+		done0 = SDMA_DONE0_CONFIG_DONE_SEL | ~SDMA_DONE0_CONFIG_DONE_DIS;
+		dma_reg_update_bits(channel->dma, SDMA_DONE0_CONFIG, 0xFF, done0);
+	}
 }
 
 static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
@@ -589,6 +601,7 @@ static int sdma_status(struct dma_chan_data *channel,
 		break;
 	case SDMA_CHAN_TYPE_AP2MCU:
 	case SDMA_CHAN_TYPE_MCU2SHP:
+	case SDMA_CHAN_TYPE_SAI2MCU:
 		status->r_pos = bd->buf_addr;
 		status->w_pos = pdata->fifo_paddr;
 		/* We cannot see the target address */
@@ -602,11 +615,54 @@ static int sdma_status(struct dma_chan_data *channel,
 	return 0;
 }
 
+static void sdma_set_watermarklevel(struct dma_chan_data *chan)
+{
+	struct sdma_chan *pdata = dma_chan_get_data(chan);
+
+	/* TODO: retrieve this information from DAI */
+	unsigned int n_fifos = 4; /* number of HW fifos used */
+	unsigned int words_per_fifo = 1; /* number of audio channels per frame */
+
+	/* sw_done_sel mimics software done configuration from Linux
+	 * see Documentation/devicetree/bindings/fsl-imx-sdma.txt
+	 */
+	unsigned int sw_done_sel = 0;
+
+	/* sw_done_sel configuration
+	 * - bit31:  sw_done
+	 * - bit15:8 selector
+	 * - bit7-0  priority
+	 */
+	sw_done_sel |= BIT(31);
+
+	/* watermark level:
+	 * bit0~11: wartermark level(wml*fifo_number)
+	 * bit15~12: to do-fifo number
+	 * bit16~19: fifo offset
+	 * bit27~24: sw done selector
+	 * bit28~31: numbers of audio channels in one frame, 0: 1 channel,1: 2 channels
+	 * bit23: sw done enable
+	 */
+
+	pdata->watermark_level |= SDMA_WATERMARK_LEVEL_SW_DONE |
+		 (sw_done_sel & 0xff) << SDMA_WATERMARK_LEVEL_SW_DONE_SEL_OFF;
+
+	pdata->watermark_level |=
+		SDMA_WATERMARK_LEVEL_N_FIFOS(n_fifos);
+
+	pdata->watermark_level |=
+		SDMA_WATERMARK_LEVEL_WORDS_PER_FIFO(words_per_fifo - 1);
+
+	pdata->sw_done_sel = sw_done_sel;
+}
+
 static int sdma_read_config(struct dma_chan_data *channel,
 			    struct dma_sg_config *config)
 {
 	int i;
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	struct dai_data *dd = channel->dev_data;
+	uint32_t dma_dev = dd->dai->drv->dma_dev;
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
@@ -616,7 +672,10 @@ static int sdma_read_config(struct dma_chan_data *channel,
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		pdata->hw_event = config->src_dev;
-		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
+		if (dma_dev == DMA_DEV_MICFIL)
+			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SAI2MCU;
+		else
+			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
 		pdata->fifo_paddr = config->elem_array.elems[0].src;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
@@ -760,6 +819,9 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	case SDMA_CHAN_TYPE_SHP2MCU:
 		sdma_script_addr = SDMA_SCRIPT_SHP2MCU_OFF;
 		break;
+	case SDMA_CHAN_TYPE_SAI2MCU:
+		sdma_script_addr = SDMA_SCRIPT_SAI2MCU_OFF;
+		break;
 	default:
 		/* This case doesn't happen; we need to assign the other cases
 		 * for AP2MCU and MCU2AP
@@ -769,6 +831,13 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	}
 
 	watermark = (config->burst_elems * width) / 8;
+
+	if (pdata->sdma_chan_type == SDMA_CHAN_TYPE_SAI2MCU) {
+		sdma_set_watermarklevel(channel);
+		watermark |= pdata->watermark_level;
+	} else {
+		watermark = (config->burst_elems * width) / 8;
+	}
 
 	memset(pdata->ctx, 0, sizeof(*pdata->ctx));
 	pdata->ctx->pc = sdma_script_addr;

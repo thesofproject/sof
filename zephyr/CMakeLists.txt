@@ -1,7 +1,7 @@
-# This is still WIP - Not fully validated on any platform.
-
 # When west is installed, Zephyr's CMake invokes west to list and try to
-# compile every Zephyr module that can be found.
+# compile every Zephyr module that can be found. See
+# sof/zephyr/module.yml and
+# https://docs.zephyrproject.org/latest/develop/modules.html
 if(CONFIG_SOF)
 
 if(CONFIG_LIBRARY)
@@ -48,21 +48,22 @@ zephyr_interface_library_named(SOF)
 # SOF source paths.
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
+
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
 set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
-set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
+set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
+
 # Save path to rimage configuration files in cmake cache for later use by
 # rimage during the "west sign" stage
-get_filename_component(RIMAGE_CONFIG "../rimage/config" ABSOLUTE)
-set(RIMAGE_CONFIG_PATH ${RIMAGE_CONFIG} CACHE PATH
+set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
     " Path to rimage board configuration files")
 
 include(ExternalProject)
@@ -87,7 +88,7 @@ ExternalProject_Add(sof_logger_ep
 )
 
 # default SOF includes
-target_include_directories(SOF INTERFACE ${sof_top_dir}/rimage/src/include)
+target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
@@ -114,14 +115,46 @@ zephyr_include_directories(
 # SOC level sources
 # Files that are commented may not be needed.
 
+
+# New, "de-centralized Zephyr" way. Requires "is_zephyr()" conditionals in
+# the decentralized CMakeLists.txt files shared with XTOS.
+
+# XTOS duplicate in sof/scripts/misc.cmake; keep in sync
+macro(is_zephyr ret)
+	if(CONFIG_ZEPHYR_SOF_MODULE)
+		set(${ret} TRUE)
+	else()
+		set(${ret} FALSE)
+	endif()
+endmacro()
+
+# Wrappers for compatibility and re-use of existing, XTOS CMake files.
+# Do NOT use these macros in this file or in any other Zephyr-specific
+# CMake code.
+macro(add_local_sources target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources() target is not 'sof'")
+	endif()
+	zephyr_library_sources(${ARGN})
+endmacro()
+macro(add_local_sources_ifdef condition target)
+	if (NOT "${target}" STREQUAL "sof")
+		message(FATAL_ERROR "add_local_sources_ifdef() target is not 'sof'")
+	endif()
+	zephyr_library_sources_ifdef(${condition} ${ARGN})
+endmacro()
+
+add_subdirectory(../src/init/ init_unused_install/)
+add_subdirectory(../src/ipc/  ipc_unused_install/)
+add_subdirectory(test/)
+
+
+# Old way below: all .c files added by this giant CMake file.
+
 # Intel TGL and CAVS 2.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
-	zephyr_library_sources(
-		${SOF_IPC_PATH}/ipc-zephyr.c
-	)
-
 	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 	)
@@ -146,11 +179,6 @@ endif()
 
 # Intel ACE 1.5 and newer platforms
 if (CONFIG_SOC_SERIES_INTEL_ACE)
-
-	# Driver sources
-	zephyr_library_sources(
-		${SOF_IPC_PATH}/ipc-zephyr.c
-	)
 
 	# Platform sources
 	zephyr_library_sources(
@@ -262,6 +290,34 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 	set(PLATFORM "imx8m")
 endif()
 
+if (CONFIG_SOC_SERIES_NXP_IMX8ULP)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+		${SOF_DRIVERS_PATH}/imx/edma.c
+		${SOF_DRIVERS_PATH}/imx/sai.c
+		${SOF_DRIVERS_PATH}/imx/ipc.c
+		${SOF_DRIVERS_PATH}/imx/interrupt-generic.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/imx8ulp/platform.c
+		${SOF_PLATFORM_PATH}/imx8ulp/lib/clk.c
+		${SOF_PLATFORM_PATH}/imx8ulp/lib/dai.c
+		${SOF_PLATFORM_PATH}/imx8ulp/lib/dma.c
+		${SOF_PLATFORM_PATH}/imx8ulp/lib/memory.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/drivers/interrupt.c
+	)
+
+	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
+
+	set(PLATFORM "imx8ulp")
+endif()
+
 if (CONFIG_SOC_SERIES_MIMX9_A55)
 	# Platform sources
 	zephyr_library_sources(
@@ -309,9 +365,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-	${SOF_IPC_PATH}/dma-copy.c
-	${SOF_IPC_PATH}/ipc-common.c
-	${SOF_IPC_PATH}/ipc-helper.c
 
 	# SOF math utilities
 	${SOF_MATH_PATH}/decibels.c
@@ -344,8 +397,6 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
 
 	# SOF core infrastructure - runs on top of Zephyr
-	${SOF_SRC_PATH}/init/init.c
-	${SOF_SRC_PATH}/init/ext_manifest.c
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 	${SOF_SRC_PATH}/schedule/zephyr_domain.c
 	${SOF_SRC_PATH}/schedule/schedule.c
@@ -362,6 +413,9 @@ zephyr_library_sources(
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
 )
+
+# SOF module interface functions
+add_subdirectory(../src/module module_unused_install/)
 
 if(CONFIG_ZEPHYR_DP_SCHEDULER)
 	zephyr_library_sources(${SOF_AUDIO_PATH}/dp_queue.c)
@@ -392,20 +446,6 @@ else()
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_3
-	${SOF_IPC_PATH}/ipc3/handler.c
-	${SOF_IPC_PATH}/ipc3/helper.c
-	${SOF_IPC_PATH}/ipc3/dai.c
-	${SOF_IPC_PATH}/ipc3/host-page-table.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
-	${SOF_IPC_PATH}/ipc4/handler.c
-	${SOF_IPC_PATH}/ipc4/helper.c
-	${SOF_IPC_PATH}/ipc4/dai.c
-	${SOF_IPC_PATH}/ipc4/logging.c
-	${SOF_IPC_PATH}/ipc4/notification.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c
@@ -421,13 +461,34 @@ zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
+)
+
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc3.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc3.c
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc4.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc4.c
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
+	)
+endif()
+
+zephyr_library_sources_ifdef(CONFIG_MATH_FIR
 	${SOF_MATH_PATH}/fir_generic.c
 	${SOF_MATH_PATH}/fir_hifi2ep.c
 	${SOF_MATH_PATH}/fir_hifi3.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_IIR
-	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
@@ -449,12 +510,30 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
 	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
 )
 
+if(CONFIG_COMP_ASRC)
+	if(CONFIG_IPC_MAJOR_3)
+		zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_ipc3.c)
+	elseif(CONFIG_IPC_MAJOR_4)
+		zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_ipc4.c)
+	endif()
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi3.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
 )
+
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc4.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_SEL
 	${SOF_AUDIO_PATH}/selector/selector_generic.c
@@ -525,10 +604,19 @@ elseif(CONFIG_IPC_MAJOR_4)
 )
 endif()
 
+if(CONFIG_IPC_MAJOR_3)
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc3.c
 	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
 )
+elseif(CONFIG_IPC_MAJOR_4)
+zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc4.c
+	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c
@@ -591,6 +679,9 @@ elseif(CONFIG_IPC_MAJOR_4)
 	)
 endif()
 
+zephyr_library_sources_ifdef(CONFIG_COMP_SRC_LITE
+	${SOF_AUDIO_PATH}/src/src_lite.c
+)
 zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 	${SOF_AUDIO_PATH}/base_fw.c
 )
@@ -633,6 +724,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_math_generic.c
 	${SOF_AUDIO_PATH}/drc/drc_hifi3.c
+	${SOF_AUDIO_PATH}/drc/drc_hifi4.c
 	${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
 )
 
@@ -640,6 +732,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
 )
+
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc3.c
+)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc4.c
+)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
@@ -661,16 +763,22 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
 
-if (CONFIG_SAMPLES)
-	if(CONFIG_IPC_MAJOR_3)
-		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
-		)
-	elseif(CONFIG_IPC_MAJOR_4)
-		zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
-		)
-	endif()
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc3.c
+	)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
+		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
+	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc4.c
+	)
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
@@ -704,17 +812,33 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
 )
 
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+		${SOF_AUDIO_PATH}/mux/mux_ipc3.c
+)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+		${SOF_AUDIO_PATH}/mux/mux_ipc4.c
+)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_DTS_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts.c
+	${SOF_AUDIO_PATH}/codec/dts/dts.c
 )
-
-zephyr_library_sources_ifdef(CONFIG_DTS_CODEC_STUB
-	${SOF_AUDIO_PATH}/module_adapter/module/dts/dts_stub.c
-)
+if (CONFIG_DTS_CODEC)
+	if (CONFIG_DTS_CODEC_STUB)
+		zephyr_library_sources(
+			${SOF_AUDIO_PATH}/codec/dts/dts_stub.c
+		)
+	else()
+		zephyr_library_import(DtsCodec
+			${sof_top_dir}/third_party/lib/libdts-sof-interface-i32.a)
+	endif()
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
 	${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
@@ -738,7 +862,6 @@ zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
 
 zephyr_library_sources_ifdef(CONFIG_AMS
 	${SOF_LIB_PATH}/ams.c
-	${SOF_IPC_PATH}/ipc4/ams_helpers.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
@@ -748,6 +871,10 @@ zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
 
 zephyr_library_sources_ifdef(CONFIG_DW_DMA
 	${SOF_DRIVERS_PATH}/dw/dma.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
+       boot_test.c
 )
 
 zephyr_library_link_libraries(SOF)

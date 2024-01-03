@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+config COMP_SMART_AMP
+	bool "Smart Amplifier component"
+	select COMP_BLOB
+	default n
+	help
+	  Select for Smart Amp component. This component protect the speaker
+	  from overheating and excursion violation. This consists of two parts
+	  which are feedforward processing block running on playback thread
+	  and feedback processing block running on capture thread with amp
+	  current and voltage feedback. The internal design of this component
+	  depends on the applied Amplifier HW solution, which should be provided
+	  by the solution supplier respectively.
+
 if COMP_SMART_AMP
 
 choice

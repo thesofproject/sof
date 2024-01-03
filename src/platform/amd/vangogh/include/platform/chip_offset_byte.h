@@ -33,6 +33,7 @@
 #define ACP_SMU_MAILBOX                               0x1241820
 #define DSP_INTERRUPT_ROUTING_CTRL_0		      0x1241824
 #define DSP_INTERRUPT_ROUTING_CTRL_1                  0x1241828
+#define ACP_FUTURE_REG_ACLK_0                         0x1241864
 
 #define ACP_TIMER                                     0x1241878
 #define ACP_TIMER_CNTL                                0x124187C

@@ -13,6 +13,7 @@ add_compile_options(-DUNIT_TEST)
 
 add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir.c
+	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi3.c
@@ -21,6 +22,7 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/math/fir_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
@@ -29,6 +31,8 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c

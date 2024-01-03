@@ -28,7 +28,7 @@
 #include "src_small_int32_8_7_4535_5000.h"
 #include "src_small_int32_20_21_4167_5000.h"
 #include "src_small_int32_21_20_4167_5000.h"
-#include "../src.h"
+
 #include <stdint.h>
 
 /* SRC table */

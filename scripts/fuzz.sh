@@ -4,28 +4,50 @@ set -e
 print_help()
 {
     cat <<EOFHELP
-# Simple wrapper around a libfuzzer test run, as much for
-# documentation as direct use.  The idea here is really simple: build
-# for the Zephyr "native_posix" board (which is a just a x86
-# executable for the build host, not an emulated device) and run the
-# resulting zephyr.exe file.  This specifies a "fuzz_corpus" directory
-# to save the seeds that produce useful coverage output for use in
-# repeated runs (these are not particularly large, we might consider
-# curating and commiting such a seed directory to the tree).
-#
-# The tool will run until it finds a failure condition.  You will see
-# MANY errors on stdout from all the randomized input.  Don't try to
-# capture this, either let it output to a terminal or arrange to keep
-# only the last XXX lines after the tool exits.
-#
-# The only prerequisite to install is a clang compiler on the host.
-# Versions 12+ have all been observed to work.
-#
-# You will need the kconfigs specified below for correct operation,
-# but can add more at the end of this script's command line to
-# duplicate configurations as needed.  Alternatively you can pass
-# overlay files in kconfig syntax via:
-#    fuzz.sh  -t 300 -- -DOVERLAY_CONFIG=..., etc...
+
+Usage:
+
+      $0 -b      -- -DOVERLAY_CONFIG=stub_build_all_ipc4.conf -DEXTRA_CFLAGS=...
+      $0 -t 500  -- -DOVERLAY_CONFIG=stub_build_all_ipc3.conf ...
+
+
+  -b         Do not run/fuzz: stop after the build.
+  -t n       Fuzz for n seconds.
+  -o ofile   Redirect the fuzzer's extremely verbose stdout. The
+             relatively verbose stderr is not redirected by -o.
+
+Arguments after -- are passed as is to CMake (through west).
+When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
+the last 'VAL UE2' wins; previous values are silently ignored.
+
+Fuzzing happens to require stubbing which provides a great solution to
+compile-check many CONFIG_* at once. So you can stop after the build
+with the -b option.
+
+Simple wrapper around a libfuzzer test run, as much for
+documentation as direct use.  The idea here is really simple: build
+for the Zephyr "native_posix" board (which is a just a x86
+executable for the build host, not an emulated device) and run the
+resulting zephyr.exe file.  This specifies a "fuzz_corpus" directory
+to save the seeds that produce useful coverage output for use in
+repeated runs (these are not particularly large, we might consider
+curating and committing such a seed directory to the tree).
+
+The tool will run until it finds a failure condition.  You will see
+MANY errors on stdout from all the randomized input.  Don't try to
+capture this, either let it output to a terminal or arrange to keep
+only the last XXX lines after the tool exits.
+
+The only prerequisite to install is a clang compiler on the host.
+Versions 12+ have all been observed to work.
+
+You will need the kconfigs specified below for correct operation,
+but can add more at the end of this script's command line to
+duplicate configurations as needed.  Alternatively you can pass
+overlay files in kconfig syntax via:
+
+   fuzz.sh  -t 300 -- -DOVERLAY_CONFIG=... -DEXTRA_CFLAGS='-Wone -Wtwo' ...
+
 EOFHELP
 }
 
@@ -49,14 +71,14 @@ main()
 {
   setup
 
+  BUILD_ONLY=false
   # Parse "$@". getopts stops after '--'
-  while getopts "ho:t:c:b" opt; do
+  while getopts "ho:t:b" opt; do
       case "$opt" in
           h) print_help; exit 0;;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
-          b) BUILD_ONLY=1;;
-          c) OVERLAY="$OPTARG";;
+          b) BUILD_ONLY=true;;
           *) print_help; exit 1;;
       esac
   done
@@ -80,15 +102,15 @@ main()
     -DCONFIG_ASAN=y
   )
 
-  if [ ! -z $OVERLAY ]; then
-      overlay_config=$(xargs -a "$SOF_TOP/app/$OVERLAY" printf -- "-D%s ")
-  fi
-
+  (set -x
+   # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
+   # the last 'VAL UE2' wins. Previous ones are silently ignored.
   west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
-      "${fuzz_configs[@]}" "$overlay_config" "$@"
+      "${fuzz_configs[@]}" "$@"
+  )
 
-  if [ $BUILD_ONLY -eq 1 ]; then
-      exit
+  if $BUILD_ONLY; then
+      exit 0
   fi
 
   mkdir -p ./fuzz_corpus

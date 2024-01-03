@@ -8,6 +8,10 @@ config SAMPLES
 	help
 		Select to build sample code
 
+if SAMPLES
+
 rsource "audio/Kconfig"
+
+endif
 
 endmenu

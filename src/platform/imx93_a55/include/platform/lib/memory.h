@@ -49,7 +49,7 @@
 #define HEAPMEM_SIZE 0x00010000
 
 /* SOF uses A side of the WAKEUPMIX MU */
-#define MU_BASE 0x42430000
+#define MU_BASE 0x42430000ULL
 
 /* SOF uses EDMA2 (a.k.a EDMA4 in the TRM) */
 #define EDMA2_BASE 0x42010000

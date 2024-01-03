@@ -6,7 +6,6 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
@@ -37,6 +36,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "eq_fir.h"
+
 LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
 /* 43a90ce7-f3a5-41df-ac06-ba98651ae6a3 */
@@ -44,162 +45,6 @@ DECLARE_SOF_RT_UUID("eq-fir", eq_fir_uuid, 0x43a90ce7, 0xf3a5, 0x41df,
 		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3);
 
 DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
-
-/* src component private data */
-struct comp_data {
-	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct comp_data_blob_handler *model_handler;
-	struct sof_eq_fir_config *config;
-	int32_t *fir_delay;			/**< pointer to allocated RAM */
-	size_t fir_delay_size;			/**< allocated size */
-	void (*eq_fir_func)(struct fir_state_32x16 fir[],
-			    struct input_stream_buffer *bsource,
-			    struct output_stream_buffer *bsink,
-			    int frames);
-	int nch;
-};
-
-/*
- * The optimized FIR functions variants need to be updated into function
- * set_fir_func.
- */
-
-#if FIR_HIFI3 || FIR_HIFIEP
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s16;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s24;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s32;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-
-#else
-/* FIR_GENERIC */
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_s16;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_s24;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_s32;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-#endif
-
-#if CONFIG_IPC_MAJOR_3
-static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-
-	switch (fmt) {
-#if CONFIG_FORMAT_S16LE
-	case SOF_IPC_FRAME_S16_LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
-		set_s16_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	case SOF_IPC_FRAME_S24_4LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
-		set_s24_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	case SOF_IPC_FRAME_S32_LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
-		set_s32_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-	default:
-		comp_err(mod->dev, "set_fir_func(), invalid frame_fmt");
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif /* CONFIG_IPC_MAJOR_3 */
-
-#if CONFIG_IPC_MAJOR_4
-static inline int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
-
-	comp_dbg(mod->dev, "set_fir_func(): valid_bit_depth %d", valid_bit_depth);
-	switch (valid_bit_depth) {
-#if CONFIG_FORMAT_S16LE
-	case IPC4_DEPTH_16BIT:
-		set_s16_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	case IPC4_DEPTH_24BIT:
-		set_s24_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	case IPC4_DEPTH_32BIT:
-		set_s32_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-	default:
-		comp_err(mod->dev, "set_fir_func(), invalid valid_bith_depth");
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static int eq_fir_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct sof_ipc_stream_params comp_params;
-	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
-	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i, ret;
-
-	comp_dbg(dev, "eq_fir_params()");
-
-	comp_params = *params;
-	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
-	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
-	comp_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
-
-	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
-				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
-
-	comp_params.frame_fmt = valid_fmt;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	component_set_nearest_period_frames(dev, comp_params.rate);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ret = buffer_set_params(sinkb, &comp_params, true);
-	return ret;
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
 
 /* Pass-through functions to replace FIR core while not configured for
  * response.
@@ -417,7 +262,7 @@ static int eq_fir_init(struct processing_module *mod)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		comp_err(dev, "eq_fir_init(): coefficients blob size = %u > SOF_EQ_FIR_MAX_SIZE",
+		comp_err(dev, "eq_fir_init(): coefficients blob size = %zu > SOF_EQ_FIR_MAX_SIZE",
 			 bs);
 		return -EINVAL;
 	}
@@ -574,13 +419,11 @@ static int eq_fir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_fir_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
 	ret = eq_fir_params(mod);
 	if (ret < 0) {
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
-#endif
 
 	/* EQ component will only ever have 1 source and 1 sink buffer. */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

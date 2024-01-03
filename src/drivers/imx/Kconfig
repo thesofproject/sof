@@ -25,6 +25,7 @@ config IMX_MICFIL
 	bool "i.MX MICFIL PDM driver"
 	default n
 	depends on IMX
+	select HAVE_SDMA_FIRMWARE
 	help
 	  Select this to enable support for i.MX MICFIL PDM IP. This block implements
 	  the required digital interface to provide a 24-bits audio signal from a PDM
@@ -50,11 +51,3 @@ config HAVE_SDMA_FIRMWARE
 	help
 	  Select this to load SDMA firmware to enable additional functionality
           for SDMA controller.
-
-if HAVE_SDMA_FIRMWARE
-	config SDMA_SCRIPT_CODE
-		string "SDMA script code path"
-		help
-		  This option is a string and provides the path where to find the sdma script
-		  code header.
-endif

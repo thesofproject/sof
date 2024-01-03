@@ -15,7 +15,6 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/tdfb/tdfb_comp.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
@@ -34,20 +33,13 @@
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/ut.h>
-#include <user/tdfb.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* The driver assigns running numbers for control index. If there's single control of
- * type switch, enum, binary they all have index 0.
- */
-#define CTRL_INDEX_PROCESS		0	/* switch */
-#define CTRL_INDEX_DIRECTION		1	/* switch */
-#define CTRL_INDEX_AZIMUTH		0	/* enum */
-#define CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
-#define CTRL_INDEX_FILTERBANK		0	/* bytes */
+#include "tdfb.h"
+#include "tdfb_comp.h"
 
 LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
 
@@ -56,68 +48,6 @@ DECLARE_SOF_RT_UUID("tdfb", tdfb_uuid,  0xdd511749, 0xd9fa, 0x455c, 0xb3, 0xa7,
 		    0x13, 0x58, 0x56, 0x93, 0xf1, 0xaf);
 
 DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
-
-/* IPC */
-
-/* TODO: ALSA control update to user space need to be moved to module adapter */
-
-static int init_get_ctl_ipc(struct processing_module *mod)
-{
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-	int comp_id = dev_comp_id(mod->dev);
-
-	cd->ctrl_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, TDFB_GET_CTRL_DATA_SIZE);
-	if (!cd->ctrl_data)
-		return -ENOMEM;
-
-	cd->ctrl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_GET_VALUE | comp_id;
-	cd->ctrl_data->rhdr.hdr.size = TDFB_GET_CTRL_DATA_SIZE;
-	cd->msg = ipc_msg_init(cd->ctrl_data->rhdr.hdr.cmd, cd->ctrl_data->rhdr.hdr.size);
-
-	cd->ctrl_data->comp_id = comp_id;
-	cd->ctrl_data->type = SOF_CTRL_TYPE_VALUE_CHAN_GET;
-	cd->ctrl_data->cmd = SOF_CTRL_CMD_ENUM;
-	cd->ctrl_data->index = CTRL_INDEX_AZIMUTH_ESTIMATE;
-	cd->ctrl_data->num_elems = 0;
-	return 0;
-}
-
-static void send_get_ctl_ipc(struct processing_module *mod)
-{
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-
-#if TDFB_ADD_DIRECTION_TO_GET_CMD
-	cd->ctrl_data->chanv[0].channel = 0;
-	cd->ctrl_data->chanv[0].value = cd->az_value_estimate;
-	cd->ctrl_data->num_elems = 1;
-#endif
-
-	ipc_msg_send(cd->msg, cd->ctrl_data, false);
-}
-
-/*
- * The optimized FIR functions variants need to be updated into function
- * set_func.
- */
-
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s16;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s24;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s32;
-}
-#endif /* CONFIG_FORMAT_S32LE */
 
 static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
@@ -427,7 +357,7 @@ static int tdfb_init(struct processing_module *mod)
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_TDFB_MAX_SIZE) {
-		comp_err(dev, "tdfb_init() error: configuration blob size = %u > %d",
+		comp_err(dev, "tdfb_init() error: configuration blob size = %zu > %d",
 			 bs, SOF_TDFB_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -447,7 +377,7 @@ static int tdfb_init(struct processing_module *mod)
 	 */
 
 	/* Initialize IPC for direction of arrival estimate update */
-	ret = init_get_ctl_ipc(mod);
+	ret = tdfb_ipc_notification_init(mod);
 	if (ret)
 		goto err_free_cd;
 
@@ -476,7 +406,9 @@ static int tdfb_init(struct processing_module *mod)
 	return 0;
 
 err:
+	/* These are null if not used for IPC version */
 	rfree(cd->ctrl_data);
+	ipc_msg_free(cd->msg);
 
 err_free_cd:
 	rfree(cd);
@@ -499,155 +431,20 @@ static int tdfb_free(struct processing_module *mod)
 	return 0;
 }
 
-/*
- * Module commands handling
- */
-
-static int tdfb_cmd_switch_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
-{
-	int j;
-
-	/* Fail if wrong index in control, needed if several in same type */
-	if (cdata->index != CTRL_INDEX_PROCESS)
-		return -EINVAL;
-
-	for (j = 0; j < cdata->num_elems; j++)
-		cdata->chanv[j].value = cd->beam_on;
-
-	return 0;
-}
-
-static int tdfb_cmd_enum_get(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
-{
-	int j;
-
-	switch (cdata->index) {
-	case CTRL_INDEX_AZIMUTH:
-		for (j = 0; j < cdata->num_elems; j++)
-			cdata->chanv[j].value = cd->az_value;
-
-		break;
-	case CTRL_INDEX_AZIMUTH_ESTIMATE:
-		for (j = 0; j < cdata->num_elems; j++)
-			cdata->chanv[j].value = cd->az_value_estimate;
-
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int tdfb_cmd_get_value(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata)
-{
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_ENUM index=%d",
-			 cdata->index);
-		return tdfb_cmd_enum_get(cdata, cd);
-	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_SWITCH index=%d",
-			 cdata->index);
-		return tdfb_cmd_switch_get(cdata, cd);
-	}
-
-	comp_err(mod->dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
-	return -EINVAL;
-}
-
 static int tdfb_get_config(struct processing_module *mod,
-			   uint32_t config_id, uint32_t *data_offset_size,
+			   uint32_t param_id, uint32_t *data_offset_size,
 			   uint8_t *fragment, size_t fragment_size)
 {
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
-		return tdfb_cmd_get_value(mod, cdata);
-
-	comp_dbg(mod->dev, "tdfb_get_config(), binary");
-	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
+	return tdfb_get_ipc_config(mod, param_id, data_offset_size, fragment, fragment_size);
 }
 
-static int tdfb_cmd_enum_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
-{
-	if (cdata->num_elems != 1)
-		return -EINVAL;
-
-	if (cdata->chanv[0].value > SOF_TDFB_MAX_ANGLES)
-		return -EINVAL;
-
-	switch (cdata->index) {
-	case CTRL_INDEX_AZIMUTH:
-		cd->az_value = cdata->chanv[0].value;
-		cd->update = true;
-		break;
-	case CTRL_INDEX_AZIMUTH_ESTIMATE:
-		cd->az_value_estimate = cdata->chanv[0].value;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int tdfb_cmd_switch_set(struct sof_ipc_ctrl_data *cdata, struct tdfb_comp_data *cd)
-{
-	if (cdata->num_elems != 1)
-		return -EINVAL;
-
-	switch (cdata->index) {
-	case CTRL_INDEX_PROCESS:
-		cd->beam_on = cdata->chanv[0].value;
-		cd->update = true;
-		break;
-	case CTRL_INDEX_DIRECTION:
-		cd->direction_updates = cdata->chanv[0].value;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int tdfb_cmd_set_value(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata)
-{
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_ENUM index=%d",
-			 cdata->index);
-		return tdfb_cmd_enum_set(cdata, cd);
-	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_SWITCH index=%d",
-			 cdata->index);
-		return tdfb_cmd_switch_set(cdata, cd);
-	}
-
-	comp_err(mod->dev, "tdfb_cmd_set_value() error: invalid cdata->cmd");
-	return -EINVAL;
-}
-
-static int tdfb_set_config(struct processing_module *mod, uint32_t config_id,
+static int tdfb_set_config(struct processing_module *mod, uint32_t param_id,
 			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			   size_t response_size)
 {
-	struct tdfb_comp_data *cd = module_get_private_data(mod);
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-
-	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
-		return tdfb_cmd_set_value(mod, cdata);
-
-	comp_dbg(mod->dev, "tdfb_set_config(), binary");
-	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
-				  fragment, fragment_size);
+	return tdfb_set_ipc_config(mod, param_id, pos, data_offset_size, fragment,
+				   fragment_size, response, response_size);
 }
 
 /*
@@ -705,7 +502,7 @@ static int tdfb_process(struct processing_module *mod,
 			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
 
 		if (cd->direction_updates && cd->direction_change) {
-			send_get_ctl_ipc(mod);
+			tdfb_send_ipc_notification(mod);
 			cd->direction_change = false;
 			comp_dbg(dev, "tdfb_dupd %d %d",
 				 cd->az_value_estimate, cd->direction.az_slow);
@@ -739,6 +536,8 @@ static int tdfb_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "tdfb_prepare()");
+
+	tdfb_params(mod);
 
 	/* Find source and sink buffers */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
@@ -780,7 +579,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	/* Initialize tracking */
 	ret = tdfb_direction_init(cd, rate, source_channels);
 	if (!ret) {
-		comp_info(dev, "max_lag = %d, xcorr_size = %d",
+		comp_info(dev, "max_lag = %d, xcorr_size = %zu",
 			  cd->direction.max_lag, cd->direction.d_size);
 		comp_info(dev, "line_array = %d, a_step = %d, a_offs = %d",
 			  (int)cd->direction.line_array, cd->config->angle_enum_mult,

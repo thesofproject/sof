@@ -2,7 +2,7 @@
 //
 // Copyright(c) 2021 Intel Corporation. All rights reserved.
 
-#include <sof/audio/aria/aria.h>
+#include "aria.h"
 
 #ifdef ARIA_HIFI3
 #include <xtensa/config/defs.h>

@@ -15,7 +15,6 @@
 #include <rtos/string.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <rtos/kernel.h>
 
@@ -24,6 +23,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+
+#include "../audio/copier/copier.h"
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
@@ -45,6 +46,17 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	struct comp_dev *pipe_source = ppl_data->start->pipeline->source_comp;
+
+	/* In IPC3, FW propagates triggers to connected pipelines, so
+	 * it can have determistic logic to conclude no data is
+	 * available.
+	 * In IPC4, host controls state of each pipeline separately,
+	 * so FW cannot reliably detect case of no data based on
+	 * observing state of src->pipeline here.
+	 */
+#if CONFIG_IPC_MAJOR_4
+	return false;
+#endif
 
 	/* only applies to capture pipelines */
 	if (dir != SOF_IPC_STREAM_CAPTURE)
@@ -387,8 +399,13 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
+	 *
+	 * IPC4 has a SET_PIPELINE_STATE for each pipeline, so FW
+	 * should not propagate triggers on its own.
+	 * IPC3 has commands only for graph edges, so propagation is
+	 * needed in many cases.
 	 */
-	if (!is_single_ppl && !is_same_sched) {
+	if (!is_single_ppl && (!is_same_sched || IS_ENABLED(CONFIG_IPC_MAJOR_4))) {
 		pipe_dbg(current->pipeline,
 			 "pipeline_comp_trigger(), current is from another pipeline");
 

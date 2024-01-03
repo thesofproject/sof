@@ -6,9 +6,10 @@
 
 #include <sof/common.h>
 #include <sof/audio/audio_stream.h>
-#include <sof/audio/tdfb/tdfb_comp.h>
 #include <user/fir.h>
-#include <user/tdfb.h>
+
+#include "tdfb.h"
+#include "tdfb_comp.h"
 
 #if TDFB_GENERIC
 

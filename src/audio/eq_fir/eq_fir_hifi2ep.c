@@ -9,7 +9,6 @@
 #if FIR_HIFIEP
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/math/fir_hifi2ep.h>
@@ -18,6 +17,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "eq_fir.h"
 
 LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 

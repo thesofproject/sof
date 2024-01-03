@@ -93,7 +93,7 @@ static inline struct trace *trace_get(void)
 
 /* Silences compiler warnings about unused variables */
 #define trace_unused(class, ctx, id_1, id_2, format, ...) \
-	UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
+	SOF_TRACE_UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
 
 struct trace_filter {
 	uint32_t uuid_id;	/**< type id, or 0 when not important */

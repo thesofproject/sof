@@ -2,6 +2,9 @@
 
 menu "Audio components"
 
+rsource "volume/Kconfig"
+rsource "aria/Kconfig"
+
 config COMP_BASEFW_IPC4
         bool "BASEFW component"
         default y
@@ -9,18 +12,13 @@ config COMP_BASEFW_IPC4
         help
           Select for BASEFW component
 
-config COMP_COPIER
-        bool "COPIER component"
-        default y
-        depends on IPC_MAJOR_4
-        help
-          Select for COPIER component
+rsource "copier/Kconfig"
 
 config HOST_DMA_RELOAD_DELAY_ENABLE
 	bool "Delay reloading DMA for host interfaces"
 	default y
 	help
-	  When deep buffers are used the firmware doesn't need to have the
+	  When deep buffers are used the firmware does not need to have the
 	  buffer refilled every millisecond. Select this option to enable longer
 	  delays and to allow the memory controller to enter power saving modes.
 
@@ -41,26 +39,6 @@ config HOST_DMA_STREAM_SYNCHRONIZATION
 	  belonging to a group defined by the driver. The driver may also specify an update period
 	  for each group, different than the default one determined by the system tick frequency.
 	  This feature will allow host lower power consumption in scenarios with deep buffering.
-
-config COMP_DAI
-	bool "DAI component"
-	default y
-	help
-	  Select for DAI component
-
-config COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-	bool "Reverse the ordering of DMA and DAI triggers during STOP/PAUSE"
-	help
-	  Select if the ordering of DMA and DAI triggers during stop/pause should be reversed.
-	  The normal order during stop/pause is to stop DAI before stopping DMA. This option will
-	  allow reversing the order to do DMA stop before stopping DAI.
-
-config COMP_DAI_GROUP
-	bool "DAI Grouping support"
-	default y
-	help
-	  Select for grouping physical DAIs into a logical DAI that can be
-	  triggered atomically to synchronise stream start and stop operations.
 
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
@@ -85,30 +63,7 @@ config IPC4_GATEWAY
           host and DSP without using DMA: via memory window (audio payload) and
           IPC4 messages (set/get/flush commands).
 
-config COMP_ARIA
-        bool "ARIA component"
-        default n
-        depends on IPC_MAJOR_4
-        help
-          Select for Automatic Regressive Input Amplifier Module component
-	  ARIA applies variable gain into incoming signal.
-	  Applied gain is in range <1, 2 power attenuation>
-	  Currently ARIA introduces gain transition and algorithmic
-	  latency equal to 1 ms.
-
-config COMP_UP_DOWN_MIXER
-	bool "UP_DOWN_MIXER component"
-	default n
-        depends on IPC_MAJOR_4
-        help
-         Select for Up Down Mixer component Conversions supported:
-         Up/Downmixing for stereo output:
-         1, 2, 2.1, 3.0, 3.1, Quatro, 4.0, 5.0, 5.1, 7.1 -> 2
-         Upmixing for multichannel output:
-         1, 2 -> 5.1
-         2 -> 7.1
-         Downmixing for mono output:
-         4.0, Quatro, 3.1, 2 -> 1
+rsource "up_down_mixer/Kconfig"
 
 config COMP_BLOB
 	bool "Large IPC data as compound message blobs"
@@ -118,11 +73,7 @@ config COMP_BLOB
 	 multiple IPC messages. Not all components or modules need
 	 this. If unsure, say yes.
 
-config COMP_SRC
-	bool "SRC component"
-	default y
-	help
-	  Select for SRC component
+rsource "src/Kconfig"
 
 config COMP_STUBS
 	bool "Build all selected third-party (3P) components with stubs"
@@ -131,78 +82,9 @@ config COMP_STUBS
 	  Select to force all 3P blocks to link against stubs rather than their libraries. This
 	  should only be used in testing environments like fuzzers or CI.
 
-if COMP_SRC
+rsource "eq_fir/Kconfig"
 
-choice
-        prompt "SRC coefficient set"
-        default COMP_SRC_STD
-
-config COMP_SRC_STD
-	bool "Full conversions support and high quality"
-	help
-	  This coefficients set supports a large number of conversions
-	  with 8 - 192 kHz input and 8 - 48 kHz output. The coefficients
-	  are 32 bits for high conversion quality. The coefficients
-	  storage consume 79 kB. The runtime needs 8 kB. Use this if there
-	  is critical quality usage for SRC like music via headphones and
-	  need high sample rates.
-
-config COMP_SRC_SMALL
-	bool "Smaller conversions support and high quality"
-	help
-	  This coefficients set supports a small number of conversions
-	  with 8 - 48 kHz input and output. The coefficients are 32 bits
-	  for high conversion quality. The coefficients storage consumes
-	  30 kB RAM. Runtime needs 4 kB. Use this if there is critical
-	  quality usage for SRC like music via headphones.
-
-config COMP_SRC_TINY
-	bool "Reduced conversions support and reduced quality"
-	help
-	  This coefficients set supports a minimum number of conversions
-	  with 8 - 48 kHz input and output. The coefficients are 16 bits
-	  that restricts the possible stop-attenuation and could cause
-	  some audible aliasing. The bandwidth of the filters is restricted
-	  so the full 20 kHz band is not met even if sample rate would
-	  allow. The coefficients storage consumes 5 kB RAM. The runtime
-	  needs 6 kB. Use this to save RAM for other applications when SRC
-	  has no critical usage or when only need with lower quality
-	  endpoint like miniature speakers.
-
-config COMP_SRC_IPC4_FULL_MATRIX
-	bool "Full IPC4 conversions matrix support and high quality"
-	help
-	  This coefficients set supports a large number of conversions
-	  with 8 - 192 kHz input 8 - 192 kHz output. The 32 bits coefficients
-	  storate consumes 241 kB. The runtime needs 9 kB. Use this to
-	  make the full conversions set available for IPC4 build.
-
-endchoice
-
-endif # SRC
-
-config COMP_FIR
-	bool "FIR component"
-	select MATH_FIR
-	select COMP_BLOB
-	depends on COMP_MODULE_ADAPTER
-	default y
-	help
-	  Select for FIR component. FIR performance can differ between DSP
-	  ISA and compiler used. FIR will perform best when MAC instructions
-	  are available in ISA and are used by the compiler. i.e. xt-xcc on
-	  xtensa will generate MAC instructions but GCC on xtensa won't.
-	  Filter tap count can be severely restricted to reduce FIR cycles
-	  and FIR performance for DSP/compilers with no MAC support
-
-config COMP_IIR
-	bool "IIR component"
-	select COMP_BLOB
-	default y
-	depends on COMP_MODULE_ADAPTER
-	select MATH_IIR_DF1
-	help
-	  Select for IIR component
+rsource "eq_iir/Kconfig"
 
 config COMP_TONE
 	bool "Tone component"
@@ -212,19 +94,9 @@ config COMP_TONE
 	  Select for Tone component.
 	  Warning: This component is deprecated and will be removed from SOF v2.8.
 
-config COMP_MIXER
-	bool "Mixer component"
-	default y
-	help
-	  Select for Mixer component
+rsource "mixer/Kconfig"
 
-config COMP_MUX
-	bool "MUX component"
-	select COMP_BLOB
-	depends on COMP_MODULE_ADAPTER
-	default y
-	help
-	  Select for MUX component
+rsource "mux/Kconfig"
 
 config COMP_KPB
 	bool "KPB component"
@@ -244,228 +116,21 @@ endif # COMP_KPB
 
 rsource "google/Kconfig"
 
-config COMP_SEL
-	bool "Channel selector component"
-	default y
-	help
-	  Select for SEL component
+rsource "selector/Kconfig"
 
-config COMP_CROSSOVER
-	bool "Crossover Filter component"
-	select COMP_BLOB
-	select MATH_IIR_DF2T
-	default n
-	help
-	  Select for Crossover Filter component. A crossover can be used to
-	  split a signal into two or more frequency ranges, so that the outputs
-	  can be sent to drivers that are designed for those ranges.
+rsource "crossover/Kconfig"
 
-config COMP_DRC
-	bool "Dynamic Range Compressor component"
-	select CORDIC_FIXED
-	select NUMBERS_NORM
-	select MATH_DECIBELS
-	select COMP_BLOB
-	default n
-	help
-	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
-	  to reduce the volume of loud sounds and amplify silent sounds thus
-	  compressing an audio signal's dynamic range.
+rsource "drc/Kconfig"
 
-config DRC_MAX_PRE_DELAY_FRAMES
-	depends on COMP_DRC
-	int "DRC max number of pre-delay frames"
-	default 512
-	help
-	  Determines the length of pre-delay frame buffers which are allocated
-	  runtime on DRC setup. It requires to be a 2^N number. 512 is
-	  suggested by inference to avoid memory waste and provide reasonable
-	  length for pre-delay frames.
+rsource "multiband_drc/Kconfig"
 
-config COMP_MULTIBAND_DRC
-	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
-	bool "Multiband Dynamic Range Compressor component"
-	select CORDIC_FIXED
-	select COMP_BLOB
-	default n
-	help
-	  Select for Multiband Dynamic Range Compressor (DRC) component. It
-	  consists of Emphasis Equalizer, n-way Crossover Filter, per-band DRC,
-	  and Deemphasis Equalizer.
-
-config COMP_DCBLOCK
-	bool "DC Blocking Filter component"
-	default y
-	help
-	  Select for DC Blocking Filter component. This component filters out
-	  the DC offset which often originates from a microphone's output.
-
-config COMP_SMART_AMP
-	bool "Smart Amplifier component"
-	select COMP_BLOB
-	default n
-	help
-	  Select for Smart Amp component. This component protect the speaker
-	  from overheating and excursion violation. This consists of two parts
-	  which are feedforward processing block running on playback thread
-	  and feedback processing block running on capture thread with amp
-	  current and voltage feedback. The internal design of this component
-	  depends on the applied Amplifier HW solution, which should be provided
-	  by the solution supplier respectively.
+rsource "dcblock/Kconfig"
 
 rsource "smart_amp/Kconfig"
 
-config COMP_ASRC
-	bool "ASRC component"
-	default y
-	help
-	  Select for Asynchronous sample rate conversion (ASRC)
-	  component. The ASRC has the capabilities of (synchronous)
-	  SRC but can in addition track a slave DAI that is not in
-	  sync with firmware timer. The ASRC can be setup for
-	  synchronous operation without DAI tracking via topology
-	  though it has a bit higher computational load than SRC. The
-	  RAM footprint of ASRC is smaller than SRC because it does
-	  not have pre-computed filter coefficients for every
-	  conversion fraction that SRC does.
+rsource "asrc/Kconfig"
 
-if COMP_ASRC
-
-choice
-        prompt "ASRC down sampling conversions set"
-        default COMP_ASRC_DOWNSAMPLING_FULL
-
-config COMP_ASRC_DOWNSAMPLING_FULL
-	bool "Full downsampling conversions support"
-	select ASRC_SUPPORT_CONVERSION_24000_TO_08000
-	select ASRC_SUPPORT_CONVERSION_24000_TO_16000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_08000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_11025
-	select ASRC_SUPPORT_CONVERSION_48000_TO_12000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_16000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_22050
-	select ASRC_SUPPORT_CONVERSION_48000_TO_24000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_32000
-	select ASRC_SUPPORT_CONVERSION_48000_TO_44100
-	help
-	  This option enables all supported downsampling conversions
-	  for the asynchronous sample rate conversion. All the
-	  upsampling conversions use the same filter always enabled
-	  coefficients set so there is no configuration options for
-	  them. The enabled conversions consume about 18 kB of memory.
-
-config COMP_ASRC_DOWNSAMPLING_CUSTOM
-	bool "Custom downsampling conversions support"
-	help
-	  This option used to manually select each downsampling ratio.
-	  In order to optimize the text code size of the sample rate
-	  converter, non-required conversion ratios can be
-	  deactivated.  Disregarding these settings, the sample rate
-	  converter always supports all conversion ratios with fs_in
-	  less or equal to fs_out. Therefore, it is possible to
-	  deactivate all conversion ratios listed below, if we only
-	  need an (asynchronous) 1:1 sample rate conversion, e.g, from
-	  16 kHz to 16 kHz. This option allows to trim down the coefficient
-	  memory for conversion down from default 18 kB. Each conversion
-	  needs about 2 kB.
-
-endchoice
-
-menu "Supported downsampling conversions"
-	visible if COMP_ASRC_DOWNSAMPLING_CUSTOM
-
-config ASRC_SUPPORT_CONVERSION_24000_TO_08000
-	bool "Downsample 24 kHz to 8 kHz"
-	default n
-	help
-	  This option enables downsampling from 24 kHz to 8 kHz into
-	  the build. The consumption of memory is 2.1 kB.
-
-config ASRC_SUPPORT_CONVERSION_24000_TO_16000
-	bool "Downsample 24 kHz to 16 kHz"
-	default n
-	help
-	  This option enables downsampling from 24 kHz to 16 kHz into
-	  the build. The consumption of memory is 1.9 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_08000
-	bool "Downsample 48 kHz to 8 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 8 kHz into
-	  the build. The consumption of memory is 2.1 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_11025
-	bool "Downsample 48 kHz to 11.025 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 11.025 kHz
-	  into the build. The consumption of memory is 1.5 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_12000
-	bool "Downsample 48 kHz to 12 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 12 kHz into
-	  the build. The consumption of memory is 1.5 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_16000
-	bool "Downsample 48 kHz to 16 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 16 kHz into
-	  the build. The consumption of memory is 1.9 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_22050
-	bool "Downsample 48 kHz to 22.05 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 22.05 kHz into
-	  the build. The consumption of memory is 1.6 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_24000
-	bool "Downsample 48 kHz to 24 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 24 kHz into
-	  the build. The consumption of memory is 1.6 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_32000
-	bool "Downsample 48 kHz to 32 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 32 kHz into
-	  the build. The consumption of memory is 1.9 kB.
-
-config ASRC_SUPPORT_CONVERSION_48000_TO_44100
-	bool "Downsample 48 kHz to 44.1 kHz"
-	default n
-	help
-	  This option enables downsampling from 48 kHz to 44.1 kHz
-	  into the build. The consumption of memory is 1.8 kB.
-
-endmenu # "Downsampling ratios"
-
-endif # COMP_ASRC
-
-config COMP_TDFB
-	bool "TDFB component"
-	depends on COMP_MODULE_ADAPTER
-	select MATH_FIR
-	select MATH_IIR_DF1
-	select SQRT_FIXED
-	select CORDIC_FIXED
-	select COMP_BLOB
-	default y
-	help
-	  Select for time domain fixed beamformer (TDFB) component. The
-          beamformer component enhances microphone capture by spatial
-          suppression of noise and improvement of signal-to-noise ratio of
-          capture from beam direction. The component is essentially a generic
-          single rate FIR filter bank that performs microphone array
-          directivity enhancement when programmed with suitable configuration
-          for channels selection, channel filter coefficients, and output
-          streams mixing.
+rsource "tdfb/Kconfig"
 
 config COMP_MODULE_ADAPTER
 	bool "Module adapter"
@@ -480,70 +145,13 @@ config COMP_MODULE_ADAPTER
 
 rsource "module_adapter/Kconfig"
 
-config COMP_IGO_NR
-	bool "IGO NR component"
-	select COMP_BLOB
-	select COMP_IGO_NR_STUB if COMP_STUBS
-	default n
-	help
-	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
-	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
-	  info@intelli-go.com for any questions about the binary.
+rsource "igo_nr/Kconfig"
 
-config COMP_IGO_NR_STUB
-	bool "IGO NR component"
-	select COMP_BLOB
-	depends on COMP_IGO_NR
-	default n
-	help
-	  This option builds the IGO adapter with a stub library, it should only be used for
-	  testing or CI purposes.
+rsource "rtnr/Kconfig"
 
-config COMP_RTNR
-	bool "RTNR component"
-	select COMP_BLOB
-	select COMP_RTNR_STUB if COMP_STUBS
-	default n
-	help
-	  Select for Realtek noise reduction/suppression(NR/NS) component.
-	  Noise Suppression technology reduces stationary and transient noises in
-	  single-channel speech signals, which increases the signal-to-noise ratio,
-	  improves speech intelligibility and reduces listening fatigue. It estimates
-	  ambient noise and signal levels and then passes or attenuates the signals
-	  according to improve signal-to-noise ratios. The feature links to a
-	  proprietary binary libSOF_RTK_MA_API.a, libSuite_rename.a, libNet.a and libPreset.a.
-	  Please contact antz0525@realtek.com for any question about the binary.
+rsource "mfcc/Kconfig"
 
-config COMP_RTNR_STUB
-	bool "RTNR component stub"
-	select COMP_BLOB
-	depends on COMP_RTNR
-	default n
-	help
-	  Stub out the RTNR library for testing and CI purposes.
-
-config COMP_MFCC
-	bool "MFCC component"
-	depends on COMP_MODULE_ADAPTER
-	select CORDIC_FIXED
-	select MATH_16BIT_MEL_FILTERBANK
-	select MATH_AUDITORY
-	select MATH_DCT
-	select MATH_DECIBELS
-	select MATH_FFT
-	select MATH_MATRIX
-	select MATH_WINDOW
-	select NATURAL_LOGARITHM_FIXED
-	select NUMBERS_NORM
-	select SQRT_FIXED
-	default y
-	help
-	  This option enables build of a Mel-frequency cepstral coefficients
-	  (MFCC) audio features extractor component. It converts the input
-	  audio stream into encoded audio data for cepstral coefficients.
-	  The characteristic of the audio features are defined in the binary
-	  control blob. Directory tools/tune/mfcc contains a tool to create
-	  the configurations.
+rsource "codec/Kconfig"
 
 endmenu # "Audio components"
 
@@ -710,5 +318,20 @@ config COMP_MODULE_SHARED_LIBRARY_BUILD
 	help
 	  Select if you want to build modules as shared objects that can be used to run
 	  pipelines on the host with the testbench or the ALSA plugin.
+
+config DISABLE_DESCRIPTOR_SPLIT
+	bool "Disable descriptor split"
+	default n
+	help
+	  This option disbale the descriptor split for host p-table.
+
+config DAI_VERBOSE_GLITCH_WARNINGS
+	bool "Enable additional checks and warnings for DAI data flow"
+	default n
+	  help
+	  Select if you want to enable additional checks and warning logs for
+	  DAI data flow. If DAI copy is called with no data to process,
+	  always emit a warning. This option useful to debug issues with
+	  DAI DMA operation and issues with low-latency scheduling.
 
 endmenu

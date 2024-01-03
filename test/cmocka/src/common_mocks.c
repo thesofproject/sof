@@ -311,11 +311,12 @@ struct ipc_comp_dev *WEAK ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint3
 }
 
 struct ipc_comp_dev *WEAK ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
-						 uint32_t ppl_id)
+						 uint32_t ppl_id, uint32_t ignore_remote)
 {
 	(void)ipc;
 	(void)type;
 	(void)ppl_id;
+	(void)ignore_remote;
 
 	return NULL;
 }

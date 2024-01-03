@@ -4,7 +4,6 @@
 //
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
 
-#include <sof/audio/aria/aria.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -20,13 +19,15 @@
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
-#include <ipc4/aria.h>
 #include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "aria.h"
+
+#define ARIA_SET_ATTENUATION 1
 
 LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
 
@@ -46,11 +47,17 @@ static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
 	return ALIGN_UP(num_of_ms * chan_cnt * smpl_group_cnt, 2) * sizeof(int32_t);
 }
 
+static void aria_set_gains(struct aria_data *cd)
+{
+	int i;
+
+	for (i = 0; i < ARIA_MAX_GAIN_STATES; ++i)
+		cd->gains[i] = (1ULL << (32 - cd->att - 1)) - 1;
+}
+
 static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 			  size_t att, size_t chan_cnt, size_t smpl_group_cnt)
 {
-	size_t idx;
-
 	cd->chan_cnt = chan_cnt;
 	cd->smpl_group_cnt = smpl_group_cnt;
 	/* ensures buffer size is aligned to 8 bytes */
@@ -62,8 +69,7 @@ static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 	cd->data_end = cd->data_addr + cd->buff_size;
 	cd->buff_pos = 0;
 
-	for (idx = 0; idx < ARIA_MAX_GAIN_STATES; ++idx)
-		cd->gains[idx] = (1ULL << (32 - cd->att - 1)) - 1;
+	aria_set_gains(cd);
 
 	memset((void *)cd->data_addr, 0, sizeof(int32_t) * cd->buff_size);
 	cd->gain_state = 0;
@@ -249,12 +255,35 @@ static int aria_process(struct processing_module *mod,
 	return 0;
 }
 
+static int aria_set_config(struct processing_module *mod, uint32_t param_id,
+			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			   size_t response_size)
+{
+	struct aria_data *cd = module_get_private_data(mod);
+
+	if (param_id == ARIA_SET_ATTENUATION) {
+		if (fragment_size != sizeof(uint32_t)) {
+			comp_err(mod->dev, "Illegal fragment_size = %d", fragment_size);
+			return -EINVAL;
+		}
+		memcpy_s(&cd->att, sizeof(uint32_t), fragment, sizeof(uint32_t));
+		aria_set_gains(cd);
+	} else {
+		comp_err(mod->dev, "Illegal param_id = %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct module_interface aria_interface = {
 	.init = aria_init,
 	.prepare = aria_prepare,
 	.process_audio_stream = aria_process,
 	.reset = aria_reset,
-	.free = aria_free
+	.free = aria_free,
+	.set_configuration = aria_set_config,
 };
 
 DECLARE_MODULE_ADAPTER(aria_interface, aria_comp_uuid, aria_comp_tr);

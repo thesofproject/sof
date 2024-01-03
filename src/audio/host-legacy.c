@@ -5,7 +5,6 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/host_copier.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pcm_converter.h>
@@ -33,6 +32,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "copier/host_copier.h"
 
 static const struct comp_driver comp_host;
 
@@ -180,7 +180,7 @@ static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd, struct comp_d
 	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 
 	split_value = host_dma_get_split(hd, copy_bytes);
-	if (split_value)
+	if (!IS_ENABLED(CONFIG_DISABLE_DESCRIPTOR_SPLIT) && split_value)
 		copy_bytes -= split_value;
 
 	local_elem->size = copy_bytes;

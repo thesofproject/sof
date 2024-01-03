@@ -13,6 +13,8 @@ add_compile_options(-DUNIT_TEST)
 
 add_library(audio_for_eq_iir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_iir/eq_iir.c
+	${PROJECT_SOURCE_DIR}/src/audio/eq_iir/eq_iir_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/eq_iir/eq_iir_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_generic.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_hifi3.c
@@ -21,6 +23,7 @@ add_library(audio_for_eq_iir STATIC
 	${PROJECT_SOURCE_DIR}/src/math/iir_df2t_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c

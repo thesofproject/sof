@@ -48,7 +48,7 @@ DECLARE_SOF_UUID("dp-task", dp_task_uuid, 0xee755917, 0x96b9, 0x4130,
 /**
  * \brief a priority of the DP threads in the system.
  */
-#define ZEPHYR_DP_THREAD_PRIORITY (CONFIG_NUM_PREEMPT_PRIORITIES - 1)
+#define ZEPHYR_DP_THREAD_PRIORITY (CONFIG_NUM_PREEMPT_PRIORITIES - 2)
 
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 

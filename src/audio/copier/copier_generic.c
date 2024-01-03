@@ -5,8 +5,8 @@
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
 #include <ipc4/base-config.h>
-#include <ipc4/copier.h>
 #include <sof/audio/component_ext.h>
+#include "copier.h"
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -85,7 +85,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 
-		j = IPC4_SINK_QUEUE_ID(sink->id);
+		j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
 		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);
 	}
@@ -274,10 +274,45 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth, &out, &out_valid,
 				    out_fmt->s_type);
 
-	if (in_fmt->s_type == IPC4_TYPE_MSB_INTEGER && in_valid == SOF_IPC_FRAME_S24_4LE)
-		in_valid = SOF_IPC_FRAME_S24_4LE_MSB;
-	if (out_fmt->s_type == IPC4_TYPE_MSB_INTEGER && out_valid == SOF_IPC_FRAME_S24_4LE)
-		out_valid = SOF_IPC_FRAME_S24_4LE_MSB;
+	/* use MSB sample type to select conversion function if the data is enter or exit dsp.
+	 * In playback case, host input and dai output and in capture case, host output and
+	 * dai input.
+	 */
+	if (in_fmt->s_type == IPC4_TYPE_MSB_INTEGER && in_valid == SOF_IPC_FRAME_S24_4LE) {
+		switch (type) {
+		case ipc4_gtw_host:
+			if (dir == ipc4_playback)
+				in_valid = SOF_IPC_FRAME_S24_4LE_MSB;
+			break;
+		case ipc4_gtw_alh:
+		case ipc4_gtw_link:
+		case ipc4_gtw_ssp:
+		case ipc4_gtw_dmic:
+			if (dir == ipc4_capture)
+				in_valid = SOF_IPC_FRAME_S24_4LE_MSB;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (out_fmt->s_type == IPC4_TYPE_MSB_INTEGER && out_valid == SOF_IPC_FRAME_S24_4LE) {
+		switch (type) {
+		case ipc4_gtw_host:
+			if (dir == ipc4_capture)
+				out_valid = SOF_IPC_FRAME_S24_4LE_MSB;
+			break;
+		case ipc4_gtw_alh:
+		case ipc4_gtw_link:
+		case ipc4_gtw_ssp:
+		case ipc4_gtw_dmic:
+			if (dir == ipc4_playback)
+				out_valid = SOF_IPC_FRAME_S24_4LE_MSB;
+			break;
+		default:
+			break;
+		}
+	}
 
 	/* check container & sample size */
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))

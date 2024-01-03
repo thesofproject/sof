@@ -35,7 +35,6 @@
 #include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/user/manifest.h>
 #include <ipc4/base-config.h>
-#include <ipc4/copier.h>
 #include <ipc/header.h>
 #include <ipc4/notification.h>
 #include <ipc4/pipeline.h>
@@ -158,7 +157,9 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	return dev;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint32_t ppl_id)
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+					    uint32_t ppl_id,
+					    uint32_t ignore_remote)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -175,7 +176,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type, uint
 			if (icd->id == ppl_id)
 				return icd;
 		} else {
-			if (!cpu_is_me(icd->core))
+			if ((!cpu_is_me(icd->core)) && ignore_remote)
 				continue;
 			if (ipc_comp_pipe_id(icd) == ppl_id)
 				return icd;
@@ -246,13 +247,21 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return ipc4_create_pipeline(pipe_desc);
 }
 
+static inline int ipc_comp_free_remote(struct comp_dev *dev)
+{
+	struct idc_msg msg = { IDC_MSG_FREE, IDC_MSG_FREE_EXT(dev->ipc_config.id),
+		dev->ipc_config.core,};
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
 static int ipc_pipeline_module_free(uint32_t pipeline_id)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
 
-	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	while (icd) {
 		struct list_item *list, *_list;
 		struct comp_buffer *buffer;
@@ -283,11 +292,15 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 				buffer_free(buffer);
 		}
 
-		ret = ipc_comp_free(ipc, icd->id);
+		if (!cpu_is_me(icd->core))
+			ret = ipc_comp_free_remote(icd->cd);
+		else
+			ret = ipc_comp_free(ipc, icd->id);
+
 		if (ret)
 			return IPC4_INVALID_RESOURCE_STATE;
 
-		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	}
 
 	return IPC4_SUCCESS;
@@ -337,9 +350,77 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shar
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
-	ipc_buf.comp.core = src->ipc_config.core;
+	ipc_buf.comp.core = cpu_get_id();
 	return buffer_new(&ipc_buf, is_shared);
 }
+
+#if CONFIG_CROSS_CORE_STREAM
+/*
+ * Disabling interrupts to block next LL cycle works much faster comparing using
+ * of condition variable and mutex. Since same core binding is the most typical
+ * case, let's use slower cond_var blocking mechanism only for not so typical
+ * cross-core binding.
+ *
+ * Note, disabling interrupts to block LL for cross-core binding case will not work
+ * as .bind() handlers are called on corresponding cores using IDC tasks. IDC requires
+ * interrupts to be enabled. Only disabling timer interrupt instead of all interrupts
+ * might work. However, as CPU could go to some power down mode while waiting for
+ * blocking IDC call response, it's not clear how safe is to assume CPU can wakeup
+ * without timer interrupt. It depends on blocking IDC waiting implementation. That
+ * is why additional cond_var mechanism to block LL was introduced which does not
+ * disable any interrupts.
+ */
+
+#define ll_block(cross_core_bind) \
+	do { \
+		if (cross_core_bind) \
+			domain_block(sof_get()->platform_timer_domain); \
+		else \
+			irq_local_disable(flags); \
+	} while (0)
+
+#define ll_unblock(cross_core_bind) \
+	do { \
+		if (cross_core_bind) \
+			domain_unblock(sof_get()->platform_timer_domain); \
+		else \
+			irq_local_enable(flags); \
+	} while (0)
+
+/* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
+ * next cycle and its current cycle on specified core has finished.
+ */
+static int ll_wait_finished_on_core(struct comp_dev *dev)
+{
+	/* To make sure (blocked) LL has finished its current cycle, it is
+	 * enough to send any blocking IDC to the core. Since IDC task has lower
+	 * priority then LL thread and cannot preempt it, execution of IDC task
+	 * happens when LL thread is not active waiting for its next cycle.
+	 */
+
+	int ret;
+	struct ipc4_base_module_cfg dummy;
+
+	if (cpu_is_me(dev->ipc_config.core))
+		return 0;
+
+	/* Any blocking IDC that does not change component state could be utilized */
+	ret = comp_ipc4_get_attribute_remote(dev, COMP_ATTR_BASE_CONFIG, &dummy);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "comp_ipc4_get_attribute_remote() failed for module %#x",
+		       dev_comp_id(dev));
+		return ret;
+	}
+
+	return 0;
+}
+
+#else
+
+#define ll_block(cross_core_bind)	irq_local_disable(flags)
+#define ll_unblock(cross_core_bind)	irq_local_enable(flags)
+
+#endif
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
@@ -364,14 +445,15 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	bool is_shared = source->ipc_config.core != sink->ipc_config.core;
+	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
-	/* Pass IPC to target core if the buffer won't be shared and will be used
-	 * on different core
+	/* If both components are on same core -- process IPC on that core,
+	 * otherwise stay on core 0
 	 */
-	if (!cpu_is_me(source->ipc_config.core) && !is_shared)
+	if (!cpu_is_me(source->ipc_config.core) && !cross_core_bind)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
+	/* these might call comp_ipc4_get_attribute_remote() if necessary */
 	ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to get base config for module %#x", dev_comp_id(source));
@@ -397,7 +479,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	else
 		buf_size = sink_src_cfg.ibs * 2;
 
-	buffer = ipc4_create_buffer(source, is_shared, buf_size, bu->extension.r.src_queue,
+	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
@@ -418,12 +500,26 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	source_set_min_available(audio_stream_get_source(&buffer->stream), sink_src_cfg.ibs);
 
 	/*
-	 * Connect and bind the buffer to both source and sink components with the interrupts
-	 * disabled to prevent the IPC task getting preempted which could result in buffers being
-	 * only half connected when a pipeline task gets executed. A spinlock isn't required
-	 * because all connected pipelines need to be on the same core.
+	 * Connect and bind the buffer to both source and sink components with LL processing been
+	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which
+	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
-	irq_local_disable(flags);
+	ll_block(cross_core_bind);
+
+	if (cross_core_bind) {
+#if CONFIG_CROSS_CORE_STREAM
+		/* Make sure LL has finished on both cores */
+		if (!cpu_is_me(source->ipc_config.core))
+			if (ll_wait_finished_on_core(source) < 0)
+				goto free;
+		if (!cpu_is_me(sink->ipc_config.core))
+			if (ll_wait_finished_on_core(sink) < 0)
+				goto free;
+#else
+		tr_err(&ipc_tr, "Cross-core binding is disabled");
+		goto free;
+#endif
+	}
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -432,7 +528,6 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto free;
 	}
 
-
 	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
 	if (ret < 0) {
@@ -440,7 +535,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto e_sink_connect;
 	}
 
-
+	/* these might call comp_ipc4_bind_remote() if necessary */
 	ret = comp_bind(source, bu);
 	if (ret < 0)
 		goto e_src_bind;
@@ -461,7 +556,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
-	irq_local_enable(flags);
+	ll_unblock(cross_core_bind);
 
 	return IPC4_SUCCESS;
 
@@ -472,7 +567,7 @@ e_src_bind:
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	irq_local_enable(flags);
+	ll_unblock(cross_core_bind);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -491,6 +586,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t src_id, sink_id, buffer_id;
 	uint32_t flags;
 	int ret, ret1;
+	bool cross_core_unbind;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -507,14 +603,18 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return 0;
 	}
 
-	/* Pass IPC to target core if both modules has the same target core */
-	if (!cpu_is_me(src->ipc_config.core) && src->ipc_config.core == sink->ipc_config.core)
+	cross_core_unbind = src->ipc_config.core != sink->ipc_config.core;
+
+	/* Pass IPC to target core if both modules has the same target core,
+	 * otherwise stay on core 0
+	 */
+	if (!cpu_is_me(src->ipc_config.core) && !cross_core_unbind)
 		return ipc4_process_on_core(src->ipc_config.core, false);
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
 		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
-		bool found = buf->id == buffer_id;
+		bool found = buf_get_id(buf) == buffer_id;
 
 		if (found) {
 			buffer = buf;
@@ -527,17 +627,39 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	/*
 	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
-	 * even in case of errors. Disable interrupts during disconnect and unbinding to prevent
-	 * the IPC task getting preempted which could result in buffers being only half connected
-	 * when a pipeline task gets executed. A spinlock isn't required because all connected
-	 * pipelines need to be on the same core.
+	 * even in case of errors. Block LL processing during disconnect and unbinding to prevent
+	 * IPC or IDC task getting preempted which could result in buffers being only half connected
+	 * when a pipeline task gets executed.
 	 */
-	irq_local_disable(flags);
+	ll_block(cross_core_unbind);
+
+	if (cross_core_unbind) {
+#if CONFIG_CROSS_CORE_STREAM
+		/* Make sure LL has finished on both cores */
+		if (!cpu_is_me(src->ipc_config.core))
+			if (ll_wait_finished_on_core(src) < 0) {
+				ll_unblock(cross_core_unbind);
+				return IPC4_FAILURE;
+			}
+		if (!cpu_is_me(sink->ipc_config.core))
+			if (ll_wait_finished_on_core(sink) < 0) {
+				ll_unblock(cross_core_unbind);
+				return IPC4_FAILURE;
+			}
+#else
+		tr_err(&ipc_tr, "Cross-core binding is disabled");
+		ll_unblock(cross_core_unbind);
+		return IPC4_FAILURE;
+#endif
+	}
+
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+	/* these might call comp_ipc4_bind_remote() if necessary */
 	ret = comp_unbind(src, bu);
 	ret1 = comp_unbind(sink, bu);
-	irq_local_enable(flags);
+
+	ll_unblock(cross_core_unbind);
 
 	buffer_free(buffer);
 
@@ -930,4 +1052,38 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
 
 	buf_c->hw_params_configured = true;
+}
+
+void ipc4_update_source_format(struct sof_source *source,
+			       const struct ipc4_audio_format *fmt)
+{
+	enum sof_ipc_frame valid_fmt, frame_fmt;
+
+	source_set_channels(source, fmt->channels_count);
+	source_set_rate(source, fmt->sampling_frequency);
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    fmt->s_type);
+
+	source_set_frm_fmt(source, frame_fmt);
+	source_set_valid_fmt(source, valid_fmt);
+	source_set_buffer_fmt(source, fmt->interleaving_style);
+}
+
+void ipc4_update_sink_format(struct sof_sink *sink,
+			     const struct ipc4_audio_format *fmt)
+{
+	enum sof_ipc_frame valid_fmt, frame_fmt;
+
+	sink_set_channels(sink, fmt->channels_count);
+	sink_set_rate(sink, fmt->sampling_frequency);
+	audio_stream_fmt_conversion(fmt->depth,
+				    fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt,
+				    fmt->s_type);
+
+	sink_set_frm_fmt(sink, frame_fmt);
+	sink_set_valid_fmt(sink, valid_fmt);
+	sink_set_buffer_fmt(sink, fmt->interleaving_style);
 }

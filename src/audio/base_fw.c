@@ -13,6 +13,9 @@
 #include <sof/lib/cpu.h>
 #include <rtos/init.h>
 #include <platform/lib/clk.h>
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE)
+#include <intel_adsp_hda.h>
+#endif
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -110,6 +113,10 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	sche_cfg.sys_tick_multiplier = 1;
 	sche_cfg.sys_tick_source = SOF_SCHEDULE_LL_TIMER;
 	tlv_value_set(tuple, IPC4_SCHEDULER_CONFIGURATION, sizeof(sche_cfg), &sche_cfg);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_FW_CONTEXT_SAVE,
+			     IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE));
 
 	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
@@ -387,6 +394,42 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
+{
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE)
+	const uint32_t force = tlv->value[0];
+
+	if (force) {
+		tr_info(&basefw_comp_tr, "FW config set force dmi l0 state");
+		intel_adsp_force_dmi_l0_state();
+	} else {
+		tr_info(&basefw_comp_tr, "FW config set allow dmi l1 state");
+		intel_adsp_allow_dmi_l1_state();
+	}
+
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int basefw_set_fw_config(bool first_block,
+				bool last_block,
+				uint32_t data_offset,
+				const char *data)
+{
+	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
+
+	switch (tlv->type) {
+	case IPC4_DMI_FORCE_L1_EXIT:
+		return fw_config_set_force_l1_exit(tlv);
+	default:
+		break;
+	}
+	tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
+	return 0;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -453,8 +496,7 @@ static int basefw_set_large_config(struct comp_dev *dev,
 {
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
-		tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
-		return 0;
+		return basefw_set_fw_config(first_block, last_block, data_offset, data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);

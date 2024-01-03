@@ -6,7 +6,7 @@ name: Build test all components
 # 'Actions' tab
 
 # yamllint disable-line rule:truthy
-on: [pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch, workflow_call]
 
 jobs:
 
@@ -56,9 +56,13 @@ jobs:
           west init -l
           west update --narrow --fetch-opt=--filter=tree:0
 
-      - name: build
+      # This is not fuzzing. Fuzzing just happens to require stubbing
+      # which provides be a great solution to compile-check many CONFIG_*
+      # at once.
+      - name: stubs build
         run: |
           cd workspace
           clang --verbose
           set -x
-          sof/scripts/fuzz.sh -b -c stub_build_all_${{ matrix.IPC }}.conf -- "$cmake_arg"
+          sof/scripts/fuzz.sh -b -- -DEXTRA_CFLAGS='-Werror' -DEXTRA_CXXFLAGS='-Werror' \
+              -DOVERLAY_CONFIG=stub_build_all_${{ matrix.IPC }}.conf

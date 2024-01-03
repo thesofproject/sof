@@ -212,27 +212,40 @@ int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 				 uint32_t *avail, uint32_t *free)
 {
-	uint64_t tx_low, curr_tx_pos, tx_high;
-	uint64_t rx_low, curr_rx_pos, rx_high;
-
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t tx_low, curr_tx_pos, tx_high;
 		tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_I2S_TX_LINEARPOSITIONCNTR_LOW);
 		tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_I2S_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+		*free = (curr_tx_pos - prev_tx_pos) > sp_buff_size ?
+			(curr_tx_pos - prev_tx_pos) % sp_buff_size :
+			(curr_tx_pos - prev_tx_pos);
+		*avail = sp_buff_size - *free;
 		prev_tx_pos = curr_tx_pos;
+#else
 		*free = (sp_buff_size >> 1);
 		*avail = (sp_buff_size >> 1);
+#endif
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t rx_low, curr_rx_pos, rx_high;
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_I2S_RX_LINEARPOSITIONCNTR_LOW);
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_I2S_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+		*free = (curr_rx_pos - prev_rx_pos) > sp_buff_size ?
+			(curr_rx_pos - prev_rx_pos) % sp_buff_size :
+			(curr_rx_pos - prev_rx_pos);
+		*avail = sp_buff_size - *free;
 		prev_rx_pos = curr_rx_pos;
+#else
 		*free = (sp_buff_size >> 1);
 		*avail = (sp_buff_size >> 1);
+#endif
 	} else {
 		tr_err(&acp_sp_rmb_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;

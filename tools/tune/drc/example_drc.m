@@ -31,6 +31,14 @@ drc_coefs_and_config_export(params, 'passthrough');
 params.enabled = 1;
 drc_coefs_and_config_export(params, 'enabled');
 
+% Export experimental configuration for a small speaker
+params.enabled = 1;
+params.threshold = -25;
+params.knee = 15;
+params.ratio = 10;
+params.post_gain = 3;
+drc_coefs_and_config_export(params, 'generic_notebook_speaker');
+
 rmpath ../common
 
 end
@@ -60,8 +68,11 @@ blob8 = drc_build_blob(config, endian);
 blob8_ipc4 = drc_build_blob(config, endian, 4);
 
 % Generate output files
-tplg_write(tplg1_fn, blob8, "DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", 'Exported Control Bytes');
+my_name = mfilename();
+drc_note = sprintf("Exported with script %s.m", my_name);
+drc_howto = sprintf("cd tools/tune/drc; octave --no-window-system %s.m", my_name);
+tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
+tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
 blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 blob_write(blob4_fn, blob8_ipc4);

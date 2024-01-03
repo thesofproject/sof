@@ -96,9 +96,13 @@ static int acp_dai_hs_dma_start(struct dma_chan_data *channel)
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
 
 	if (!hs_iter.bits.hstdm_txen && !hs_irer.bits.hstdm_rx_en && !acp_pdm_en) {
-		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
 		/* Request SMU to set aclk to 600 Mhz */
 		acp_change_clock_notify(600000000);
+		io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_ACLK_CLK_SEL);
+#ifdef CONFIG_ACP_6_3
+		if (!io_reg_read(PU_REGISTER_BASE + ACP_I2S_196MHZ_CLK_SEL))
+			io_reg_write((PU_REGISTER_BASE + ACP_I2S_196MHZ_CLK_SEL), 0x1);
+#endif
 	}
 
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
@@ -180,8 +184,12 @@ static int acp_dai_hs_dma_stop(struct dma_chan_data *channel)
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IER), HS_IER_DISABLE);
 		/* Request SMU to scale down aclk to minimum clk */
 		if (!acp_pdm_en) {
-			acp_change_clock_notify(0);
 			io_reg_write((PU_REGISTER_BASE + ACP_CLKMUX_SEL), ACP_INTERNAL_CLK_SEL);
+			acp_change_clock_notify(0);
+#ifdef CONFIG_ACP_6_3
+			if (io_reg_read(PU_REGISTER_BASE + ACP_I2S_196MHZ_CLK_SEL))
+				io_reg_write((PU_REGISTER_BASE + ACP_I2S_196MHZ_CLK_SEL), 0x0);
+#endif
 		}
 	}
 	return 0;
@@ -319,27 +327,40 @@ static int acp_dai_hs_dma_remove(struct dma *dma)
 static int acp_dai_hs_dma_get_data_size(struct dma_chan_data *channel,
 				   uint32_t *avail, uint32_t *free)
 {
-	uint64_t tx_low, curr_tx_pos, tx_high;
-	uint64_t rx_low, curr_rx_pos, rx_high;
-
 	if (channel->direction == DMA_DIR_MEM_TO_DEV) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t tx_low, curr_tx_pos, tx_high;
 		tx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_TX_LINEARPOSITIONCNTR_LOW);
 		tx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_TX_LINEARPOSITIONCNTR_HIGH);
 		curr_tx_pos = (uint64_t)((tx_high<<32) | tx_low);
+		*free = (curr_tx_pos - prev_tx_pos) > hs_buff_size_playback ?
+			(curr_tx_pos - prev_tx_pos) % hs_buff_size_playback :
+			(curr_tx_pos - prev_tx_pos);
+		*avail = hs_buff_size_playback - *free;
 		prev_tx_pos = curr_tx_pos;
+#else
 		*free = (hs_buff_size_playback >> 1);
 		*avail = (hs_buff_size_playback >> 1);
+#endif
 	} else if (channel->direction == DMA_DIR_DEV_TO_MEM) {
+#if CONFIG_DISABLE_DESCRIPTOR_SPLIT
+		uint64_t rx_low, curr_rx_pos, rx_high;
 		rx_low = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_RX_LINEARPOSITIONCNTR_LOW);
 		rx_high = (uint32_t)io_reg_read(PU_REGISTER_BASE +
 				ACP_P1_HS_RX_LINEARPOSITIONCNTR_HIGH);
 		curr_rx_pos = (uint64_t)((rx_high<<32) | rx_low);
+		*free = (curr_rx_pos - prev_rx_pos) > hs_buff_size_capture ?
+			(curr_rx_pos - prev_rx_pos) % hs_buff_size_capture :
+			(curr_rx_pos - prev_rx_pos);
+		*avail = hs_buff_size_capture - *free;
 		prev_rx_pos = curr_rx_pos;
+#else
 		*free = (hs_buff_size_capture >> 1);
 		*avail = (hs_buff_size_capture >> 1);
+#endif
 	} else {
 		tr_err(&acp_hs_tr, "Channel direction not defined %d", channel->direction);
 		return -EINVAL;

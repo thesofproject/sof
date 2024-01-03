@@ -10,7 +10,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
-#include <sof/audio/mux.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
@@ -32,27 +31,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MUX_BLOB_STREAMS_SIZE	(MUX_MAX_STREAMS * sizeof(struct mux_stream_data))
-#define MUX_BLOB_MAX_SIZE	(sizeof(struct sof_mux_config) + MUX_BLOB_STREAMS_SIZE)
+#include "mux.h"
 
 LOG_MODULE_REGISTER(muxdemux, CONFIG_SOF_LOG_LEVEL);
-
-#if CONFIG_IPC_MAJOR_3
-/* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
-DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
-		     0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
-#else
-/* 64ce6e35-857a-4878-ace8-e2a2f42e3069 */
-DECLARE_SOF_RT_UUID("mux", mux_uuid, 0x64ce6e35, 0x857a, 0x4878,
-		    0xac, 0xe8, 0xe2, 0xa2, 0xf4, 0x2e, 0x30, 0x69);
-#endif
-DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
-
-/* c4b26868-1430-470e-a089-15d1c77f851a */
-DECLARE_SOF_RT_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
-		    0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
-
-DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
 /*
  * Check that we are not configuring routing matrix for mixing.
@@ -61,7 +42,7 @@ DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
  * have 1's in corresponding matrix indices. Also single stream matrix can't
  * have 1's in same column as that corresponds to mixing also.
  */
-static bool mux_mix_check(struct sof_mux_config *cfg)
+bool mux_mix_check(struct sof_mux_config *cfg)
 {
 	bool channel_set;
 	int i;
@@ -101,109 +82,6 @@ static bool mux_mix_check(struct sof_mux_config *cfg)
 	return false;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int mux_set_values(struct processing_module *mod)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	struct sof_mux_config *cfg = &cd->config;
-	unsigned int i;
-	unsigned int j;
-
-	comp_dbg(dev, "mux_set_values()");
-
-	/* check if number of streams configured doesn't exceed maximum */
-	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		comp_err(dev, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
-			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
-		return -EINVAL;
-	}
-
-	/* check if all streams configured have distinct IDs */
-	for (i = 0; i < cfg->num_streams; i++) {
-		for (j = i + 1; j < cfg->num_streams; j++) {
-			if (cfg->streams[i].pipeline_id ==
-				cfg->streams[j].pipeline_id) {
-				comp_err(dev, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
-					 cfg->streams[i].pipeline_id);
-				return -EINVAL;
-			}
-		}
-	}
-
-	for (i = 0; i < cfg->num_streams; i++) {
-		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
-			if (popcount(cfg->streams[i].mask[j]) > 1) {
-				comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
-				return -EINVAL;
-			}
-		}
-	}
-
-	if (dev->ipc_config.type == SOF_COMP_MUX) {
-		if (mux_mix_check(cfg))
-			comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
-	}
-
-	for (i = 0; i < cfg->num_streams; i++) {
-		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
-			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
-	}
-
-	cd->config.num_streams = cfg->num_streams;
-
-	if (dev->ipc_config.type == SOF_COMP_MUX)
-		mux_prepare_look_up_table(mod);
-	else
-		demux_prepare_look_up_table(mod);
-
-	if (dev->state > COMP_STATE_INIT) {
-		if (dev->ipc_config.type == SOF_COMP_MUX)
-			cd->mux = mux_get_processing_function(mod);
-		else
-			cd->demux = demux_get_processing_function(mod);
-	}
-
-	return 0;
-}
-#endif /* CONFIG_IPC_MAJOR_3 */
-
-#if CONFIG_IPC_MAJOR_4
-static int build_config(struct processing_module *mod)
-{
-	struct comp_dev *dev = mod->dev;
-	struct comp_data *cd = module_get_private_data(mod);
-	int mask = 1;
-	int i;
-
-	dev->ipc_config.type = SOF_COMP_MUX;
-	cd->config.num_streams = MUX_MAX_STREAMS;
-
-	/* clear masks */
-	for (i = 0; i < cd->config.num_streams; i++)
-		memset(cd->config.streams[i].mask, 0, sizeof(cd->config.streams[i].mask));
-
-	/* Setting masks for streams */
-	for (i = 0; i < cd->md.base_cfg.audio_fmt.channels_count; i++) {
-		cd->config.streams[0].mask[i] = mask;
-		mask <<= 1;
-	}
-
-	for (i = 0; i < cd->md.reference_format.channels_count; i++) {
-		cd->config.streams[1].mask[i] = mask;
-		mask <<= 1;
-	}
-
-	/* validation of matrix mixing */
-	if (mux_mix_check(&cd->config)) {
-		comp_err(dev, "build_config(): mux component is not able to mix channels");
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif
-
 static int mux_demux_common_init(struct processing_module *mod)
 {
 	struct module_data *module_data = &mod->priv;
@@ -215,7 +93,8 @@ static int mux_demux_common_init(struct processing_module *mod)
 	comp_dbg(dev, "mux_init()");
 
 	if (cfg->size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_init(): blob size %d exceeds %d", cfg->size, MUX_BLOB_MAX_SIZE);
+		comp_err(dev, "mux_init(): blob size %zu exceeds %zu",
+			 cfg->size, MUX_BLOB_MAX_SIZE);
 		return -EINVAL;
 	}
 
@@ -263,73 +142,6 @@ static int demux_init(struct processing_module *mod)
 
 	return mux_demux_common_init(mod);
 }
-#if CONFIG_IPC_MAJOR_4
-/* In ipc4 case param is figured out by module config so we need to first
- * set up param then verify param. BTW for IPC3 path, the param is sent by
- * host driver.
- */
-static void set_mux_params(struct processing_module *mod)
-{
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sink, *source;
-	struct list_item *source_list;
-	int j;
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
-
-	params->direction = dev->direction;
-	params->channels =  cd->md.base_cfg.audio_fmt.channels_count;
-	params->rate = cd->md.base_cfg.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->md.base_cfg.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->md.base_cfg.audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
-	params->buffer.size = cd->md.base_cfg.ibs;
-	params->no_stream_position = 1;
-
-	/* There are two input pins and one output pin in the mux.
-	 * For the first input we assign parameters from base_cfg,
-	 * for the second from reference_format
-	 * and for sink output_format.
-	 */
-
-	/* update sink format */
-	if (!list_is_empty(&dev->bsink_list)) {
-		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		audio_stream_init_alignment_constants(byte_align, frame_align_req,
-						      &sink->stream);
-
-		if (!sink->hw_params_configured) {
-			ipc4_update_buffer_format(sink, &cd->md.output_format);
-			params->frame_fmt = audio_stream_get_frm_fmt(&sink->stream);
-		}
-	}
-
-	/* update each source format */
-	if (!list_is_empty(&dev->bsource_list)) {
-		struct ipc4_audio_format *audio_fmt;
-
-		list_for_item(source_list, &dev->bsource_list)
-		{
-			source = container_of(source_list, struct comp_buffer, sink_list);
-			audio_stream_init_alignment_constants(byte_align, frame_align_req,
-							      &source->stream);
-			j = source->id;
-			cd->config.streams[j].pipeline_id = source->pipeline_id;
-			if (j == BASE_CFG_QUEUED_ID)
-				audio_fmt = &cd->md.base_cfg.audio_fmt;
-			else
-				audio_fmt = &cd->md.reference_format;
-
-			ipc4_update_buffer_format(source, audio_fmt);
-		}
-	}
-
-	mux_prepare_look_up_table(mod);
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
 
 static int mux_free(struct processing_module *mod)
 {
@@ -458,9 +270,12 @@ static int demux_process(struct processing_module *mod,
 
 	/* produce output, one sink at a time */
 	for (i = 0; i < num_output_buffers; i++) {
-		demux_prepare_active_look_up(cd, sinks_stream[i],
-					     input_buffers[0].data, look_ups[i]);
-		cd->demux(dev, sinks_stream[i], input_buffers[0].data, frames, &cd->active_lookup);
+		if (sinks_stream[i]) {
+			demux_prepare_active_look_up(cd, sinks_stream[i],
+						     input_buffers[0].data, look_ups[i]);
+			cd->demux(dev, sinks_stream[i], input_buffers[0].data,
+				  frames, &cd->active_lookup);
+		}
 		mod->output_buffers[i].size = sink_bytes;
 	}
 
@@ -575,23 +390,15 @@ static int mux_prepare(struct processing_module *mod,
 
 	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
 	if (blob_size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_prepare(): illegal blob size %d", blob_size);
+		comp_err(dev, "mux_prepare(): illegal blob size %zu", blob_size);
 		return -EINVAL;
 	}
 
 	memcpy_s(&cd->config, MUX_BLOB_MAX_SIZE, config, blob_size);
 
-#if CONFIG_IPC_MAJOR_4
-	ret = build_config(mod);
-#else
-	ret = mux_set_values(mod);
-#endif
+	ret = mux_params(mod);
 	if (ret < 0)
 		return ret;
-
-#if CONFIG_IPC_MAJOR_4
-	set_mux_params(mod);
-#endif
 
 	if (dev->ipc_config.type == SOF_COMP_MUX)
 		cd->mux = mux_get_processing_function(mod);
@@ -649,6 +456,31 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 				  fragment, fragment_size);
 }
 
+static int demux_trigger(struct processing_module *mod, int cmd)
+{
+	struct list_item *li;
+	struct comp_buffer *b;
+
+	/* Check for cross-pipeline sinks: in general foreign
+	 * pipelines won't be started synchronously with ours (it's
+	 * under control of host software), so output can't be
+	 * guaranteed not to overflow.  Always set the
+	 * overrun_permitted flag.  These sink components are assumed
+	 * responsible for flushing/synchronizing the stream
+	 * themselves.
+	 */
+	if (cmd == COMP_TRIGGER_PRE_START) {
+		list_for_item(li, &mod->dev->bsink_list) {
+			b = container_of(li, struct comp_buffer, source_list);
+			if (b->sink->pipeline != mod->dev->pipeline)
+				audio_stream_set_overrun(&b->stream, true);
+		}
+
+	}
+
+	return module_adapter_set_state(mod, mod->dev, cmd);
+}
+
 static const struct module_interface mux_interface = {
 	.init = mux_init,
 	.set_configuration = mux_set_config,
@@ -668,6 +500,7 @@ static const struct module_interface demux_interface = {
 	.get_configuration = mux_get_config,
 	.prepare = mux_prepare,
 	.process_audio_stream = demux_process,
+	.trigger = demux_trigger,
 	.reset = mux_reset,
 	.free = mux_free,
 };

@@ -10,9 +10,10 @@
 #include <utilities/array.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
+#include <api_version.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
-#include <module_api_ver.h>
+#include <module/module/api_ver.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
@@ -101,17 +102,22 @@ static int modules_init(struct processing_module *mod)
 
 	void *mod_adp;
 
-	/* Check if module is FDK*/
-	if (mod_buildinfo->api_version_number.fields.major < SOF_MODULE_API_MAJOR_VERSION) {
+	/* Check if module is FDK */
+	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
+	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
 		mod_adp = system_agent_start(md->module_entry_point, module_id,
 					     instance_id, 0, log_handle, &mod_cfg);
-	} else {
-		/* If not start agent for sof loadable */
+	} else
+	/* Check if module is native */
+	if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
+	    mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
+		/* If start agent for sof loadable */
 		mod->is_native_sof = true;
 		mod_adp = native_system_agent_start(mod->sys_service, md->module_entry_point,
 						    module_id, instance_id, 0, log_handle,
 						    &mod_cfg);
-	}
+	} else
+		return -ENOEXEC;
 
 	md->module_adapter = mod_adp;
 
@@ -136,10 +142,22 @@ static int modules_init(struct processing_module *mod)
 		struct module_interface *mod_in =
 					(struct module_interface *)md->module_adapter;
 
+		/* The order of preference */
+		if (mod_in->process)
+			mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
+		else if (mod_in->process_audio_stream)
+			mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
+		else if (mod_in->process_raw_data)
+			mod->proc_type = MODULE_PROCESS_TYPE_RAW;
+		else
+			return -EINVAL;
+
 		ret = mod_in->init(mod);
 	} else {
+		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
 		ret = iadk_wrapper_init(md->module_adapter);
 	}
+
 	return ret;
 }
 
@@ -168,7 +186,7 @@ static int modules_prepare(struct processing_module *mod,
 		struct module_interface *mod_in =
 					(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->prepare(mod, NULL, 0, NULL, 0);
+		ret = mod_in->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	} else {
 		ret = iadk_wrapper_prepare(mod->priv.module_adapter);
 	}
@@ -189,46 +207,61 @@ static int modules_init_process(struct processing_module *mod)
 	return 0;
 }
 
+static int modules_process(struct processing_module *mod,
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks)
+{
+	if (!mod->is_native_sof)
+		return iadk_wrapper_process(mod->priv.module_adapter, sources,
+					    num_of_sources, sinks, num_of_sinks);
+
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+
+	return mod_in->process(mod, sources, num_of_sources, sinks, num_of_sinks);
+}
+
+static int modules_process_audio_stream(struct processing_module *mod,
+					struct input_stream_buffer *input_buffers,
+					int num_input_buffers,
+					struct output_stream_buffer *output_buffers,
+					int num_output_buffers)
+{
+	if (!mod->is_native_sof)
+		return -EOPNOTSUPP;
+
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+
+	return mod_in->process_audio_stream(mod, input_buffers, num_input_buffers,
+					    output_buffers, num_output_buffers);
+}
+
 /*
- * \brief modules_process.
+ * \brief modules_process_raw.
  * \param[in] mod - processing module pointer.
  *
  * \return: zero on success
  *          error code on failure
  */
-static int modules_process(struct processing_module *mod,
-			   struct input_stream_buffer *input_buffers,
-			   int num_input_buffers,
-			   struct output_stream_buffer *output_buffers,
-			   int num_output_buffers)
+static int modules_process_raw(struct processing_module *mod,
+			       struct input_stream_buffer *input_buffers,
+			       int num_input_buffers,
+			       struct output_stream_buffer *output_buffers,
+			       int num_output_buffers)
 {
-	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
-	struct list_item *blist;
-	int ret;
-	int i = 0;
+
+	if (!mod->is_native_sof)
+		return -EOPNOTSUPP;
 
 	if (!md->mpd.init_done)
 		modules_init_process(mod);
 
-	/* IADK modules require output buffer size to set to its real size. */
-	list_for_item(blist, &dev->bsource_list) {
-		mod->output_buffers[i].size = md->mpd.out_buff_size;
-		i++;
-	}
 	/* Call module specific process function. */
-	if (mod->is_native_sof) {
-		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+	struct module_interface *mod_in =
+				(struct module_interface *)mod->priv.module_adapter;
 
-		ret = mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
-					       output_buffers, num_output_buffers);
-	} else {
-		ret = iadk_wrapper_process(mod->priv.module_adapter, input_buffers,
-					   num_input_buffers, output_buffers,
-					   num_output_buffers);
-	}
-	return ret;
+	return mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
+					output_buffers, num_output_buffers);
 }
 
 /**
@@ -378,7 +411,9 @@ static int modules_reset(struct processing_module *mod)
 static const struct module_interface interface = {
 	.init = modules_init,
 	.prepare = modules_prepare,
-	.process_raw_data = modules_process,
+	.process_raw_data = modules_process_raw,
+	.process = modules_process,
+	.process_audio_stream = modules_process_audio_stream,
 	.set_processing_mode = modules_set_processing_mode,
 	.get_processing_mode = modules_get_processing_mode,
 	.set_configuration = modules_set_configuration,

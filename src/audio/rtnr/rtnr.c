@@ -549,6 +549,7 @@ static int rtnr_set_config_bytes(struct comp_dev *dev,
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int rtnr_set_bin_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -707,6 +708,7 @@ static int rtnr_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
+#endif
 
 static int rtnr_trigger(struct comp_dev *dev, int cmd)
 {
@@ -780,7 +782,8 @@ static int rtnr_copy(struct comp_dev *dev)
 		/* Process integer multiple of RTNR internal block length */
 		frames = frames & ~RTNR_BLK_LENGTH_MASK;
 
-		comp_dbg(dev, "rtnr_copy() source->id: %d, frames = %d", source->id, frames);
+		comp_dbg(dev, "rtnr_copy() source_id: %d, frames = %d", buf_get_id(source),
+			 frames);
 
 		if (frames) {
 			source_bytes = frames * audio_stream_frame_bytes(&source->stream);
@@ -909,7 +912,9 @@ static const struct comp_driver comp_rtnr = {
 		.create = rtnr_new,
 		.free = rtnr_free,
 		.params = rtnr_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd = rtnr_cmd,
+#endif
 		.trigger = rtnr_trigger,
 		.copy = rtnr_copy,
 		.prepare = rtnr_prepare,

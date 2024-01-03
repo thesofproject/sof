@@ -6,10 +6,10 @@
 
 #include <sof/trace/trace.h>
 #include <sof/audio/component_ext.h>
-#include <ipc4/copier.h>
-#include <sof/audio/dai_copier.h>
 #include <ipc/dai.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "copier.h"
+#include "dai_copier.h"
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -172,7 +172,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_ssp;
-		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
+		ret = ipc4_find_dma_config(&dai, (uint8_t *)cd->gtw_cfg,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
 			comp_err(dev, "No ssp dma_config found in blob!");
@@ -231,8 +231,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_dmic;
-
-		ret = ipc4_find_dma_config(&dai, (uint8_t *)copier->gtw_cfg.config_data,
+		ret = ipc4_find_dma_config(&dai, (uint8_t *)cd->gtw_cfg,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
 			comp_err(dev, "No dmic dma_config found in blob!");

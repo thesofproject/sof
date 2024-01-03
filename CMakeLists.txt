@@ -43,6 +43,8 @@ project(SOF C ASM)
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 
+set(RIMAGE_TOP "${PROJECT_SOURCE_DIR}/tools/rimage")
+
 # check git hooks
 include(scripts/cmake/git-hooks.cmake)
 
@@ -159,8 +161,8 @@ install(
 		${PROJECT_SOURCE_DIR}/src/include/ipc
 		${PROJECT_SOURCE_DIR}/src/include/kernel
 		${PROJECT_SOURCE_DIR}/src/include/user
-		${PROJECT_SOURCE_DIR}/rimage/src/include/sof/kernel
-		${PROJECT_SOURCE_DIR}/rimage/src/include/sof/user
+		${RIMAGE_TOP}/src/include/sof/kernel
+		${RIMAGE_TOP}/src/include/sof/user
 	DESTINATION include/sof
 	PATTERN "*.h"
 )

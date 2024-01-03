@@ -7,7 +7,6 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
-#include <sof/audio/dai_copier.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/drivers/alh.h>
@@ -21,13 +20,15 @@
 #include <ipc/header.h>
 #include <ipc4/alh.h>
 #include <ipc4/ssp.h>
-#include <ipc4/copier.h>
 #include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../audio/copier/copier.h"
+#include "../audio/copier/dai_copier.h"
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 

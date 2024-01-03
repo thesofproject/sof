@@ -121,7 +121,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 		sw_intr_stat = (acp_dsp_sw_intr_stat_t)
 				io_reg_read(PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT);
 		status =  sw_intr_stat.bits.dsp0_to_host_intr_stat;
-		return ret;
+		return -EBUSY;
 	}
 	lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
 	while (lock)

@@ -57,6 +57,8 @@ static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 static void zephyr_ll_task_done(struct zephyr_ll *sch,
 				struct task *task)
 {
+	struct zephyr_ll_pdata *pdata = task->priv_data;
+
 	list_item_del(&task->list);
 
 	if (!sch->n_tasks) {
@@ -65,6 +67,13 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	}
 
 	task->state = SOF_TASK_STATE_FREE;
+
+	if (pdata->freeing)
+		/*
+		 * zephyr_ll_task_free() is trying to free this task. Complete
+		 * it and signal the semaphore to let the function proceed
+		 */
+		k_sem_give(&pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -87,9 +96,10 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 	task->state = SOF_TASK_STATE_QUEUED;
 
 	/*
-	 * Tasks are added into the list from highest to lowest priority. This
-	 * way they can then be run in the same order. Tasks with the same
-	 * priority are served on a first-come-first-serve basis
+	 * Tasks are added into the list in priority order. List order
+	 * defines schedule order. Priority 0 indicates highest
+	 * priority and is run first. Tasks with the same priority are
+	 * served on a first-come-first-served basis.
 	 */
 	list_for_item(list, &sch->tasks) {
 		task_iter = container_of(list, struct task, list);
@@ -212,15 +222,7 @@ static void zephyr_ll_run(void *data)
 
 		zephyr_ll_lock(sch, &flags);
 
-		if (pdata->freeing) {
-			/*
-			 * zephyr_ll_task_free() is trying to free this task.
-			 * complete it and signal the semaphore to let the
-			 * function proceed
-			 */
-			zephyr_ll_task_done(sch, task);
-			k_sem_give(&pdata->sem);
-		} else if (state == SOF_TASK_STATE_COMPLETED) {
+		if (pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
 			zephyr_ll_task_done(sch, task);
 		} else {
 			/*

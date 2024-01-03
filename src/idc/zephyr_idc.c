@@ -30,6 +30,16 @@
 #include <rtos/alloc.h>
 #include <rtos/spinlock.h>
 #include <ipc/topology.h>
+#include <sof/trace/trace.h>
+#include <sof/lib/uuid.h>
+
+LOG_MODULE_REGISTER(zephyr_idc, CONFIG_SOF_LOG_LEVEL);
+
+/* 5f1ec3f8-faaf-4099-903c-cee98351f169 */
+DECLARE_SOF_UUID("zephyr-idc", zephyr_idc_uuid, 0x5f1ec3f8, 0xfaaf, 0x4099,
+		 0x90, 0x3c, 0xce, 0xe9, 0x83, 0x51, 0xf1, 0x69);
+
+DECLARE_TR_CTX(zephyr_idc_tr, SOF_UUID(zephyr_idc_uuid), LOG_LEVEL_INFO);
 
 /*
  * Inter-CPU communication is only used in
@@ -119,6 +129,10 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->handler = idc_handler;
 	work->sync = mode == IDC_BLOCKING;
 
+	if (!cpu_is_core_enabled(target_cpu)) {
+		tr_err(&zephyr_idc_tr, "Core %u is down, cannot sent IDC message", target_cpu);
+		return -EACCES;
+	}
 	if (msg->payload) {
 		idc_send_memcpy_err = memcpy_s(payload->data, sizeof(payload->data),
 					       msg->payload, msg->size);
@@ -138,6 +152,9 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	switch (mode) {
 	case IDC_BLOCKING:
 		ret = k_p4wq_wait(work, K_FOREVER);
+		if (!ret)
+			/* message was sent and executed successfully, get status code */
+			ret = idc_msg_status_get(msg->core);
 		break;
 	case IDC_POWER_UP:
 	case IDC_NON_BLOCKING:

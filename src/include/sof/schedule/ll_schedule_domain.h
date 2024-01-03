@@ -44,6 +44,17 @@ struct ll_schedule_domain_ops {
 				 struct task *task, uint32_t num_tasks);
 	void (*domain_enable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_disable)(struct ll_schedule_domain *domain, int core);
+#if CONFIG_CROSS_CORE_STREAM
+	/*
+	 * Unlike domain_disable(), these are intended to temporary block LL from
+	 * starting its next cycle. Triggering (e.g., by means of timer interrupt)
+	 * is still enabled and registered but execution of next cycle is blocked.
+	 * Once unblocked, if triggering were previously registered in a blocked
+	 * state -- next cycle execution could start immediately.
+	 */
+	void (*domain_block)(struct ll_schedule_domain *domain);
+	void (*domain_unblock)(struct ll_schedule_domain *domain);
+#endif
 	void (*domain_set)(struct ll_schedule_domain *domain, uint64_t start);
 	void (*domain_clear)(struct ll_schedule_domain *domain);
 	bool (*domain_is_pending)(struct ll_schedule_domain *domain,
@@ -191,6 +202,20 @@ static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 		atomic_sub(&domain->enabled_cores, 1);
 	}
 }
+
+#if CONFIG_CROSS_CORE_STREAM
+static inline void domain_block(struct ll_schedule_domain *domain)
+{
+	if (domain->ops->domain_block)
+		domain->ops->domain_block(domain);
+}
+
+static inline void domain_unblock(struct ll_schedule_domain *domain)
+{
+	if (domain->ops->domain_unblock)
+		domain->ops->domain_unblock(domain);
+}
+#endif
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 				     struct task *task, struct comp_dev **comp)

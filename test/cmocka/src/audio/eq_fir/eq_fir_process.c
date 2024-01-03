@@ -9,7 +9,7 @@
 #include <cmocka.h>
 #include <kernel/header.h>
 #include <sof/audio/component_ext.h>
-#include <sof/audio/eq_fir/eq_fir.h>
+#include <eq_fir/eq_fir.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
 #include "../../util.h"

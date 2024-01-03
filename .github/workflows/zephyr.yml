@@ -82,13 +82,13 @@ jobs:
       - name: Download docker image && ls /opt/toolchains/
         run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
 
-      - name: build with many warnings, work in progress
+      - name: 64 bits build
         run: |
-          # One of the main problems: the old sof-logger is hardcoded to
-          # four 32bits parameters.
           cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
              'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
-              west build --board mimx93_evk_a55 sof/app'
+              west build --board mimx93_evk_a55 sof/app              \
+              -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror     \
+              -DEXTRA_AFLAGS=-Werror'
 
 
   build-linux:
@@ -106,7 +106,7 @@ jobs:
         # many lines. Pay attention to COMMAS.
         IPC_platforms: [
           # - IPC3 default
-          imx8 imx8x imx8m,
+          imx8 imx8x imx8m imx8ulp,
           # - IPC4 default
           mtl, lnl,
           # Temporary testbed for Zephyr development.
@@ -133,7 +133,7 @@ jobs:
       - name: west clones
 
         run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--filter=tree:0
+               time west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
         run: |
@@ -149,7 +149,7 @@ jobs:
                sed -e "s#=sof_zephyr_revision_override=#${rem_rev}#" \
                  sof-ci-jenkins/zephyr-override-template.yml > test-zephyr-main.yml
              )
-             west update --narrow  --fetch-opt=--filter=tree:0
+             time west update --narrow  --fetch-opt=--filter=tree:0
           fi
 
           # Because we used git tricks to speed things up, we now have two git
@@ -167,7 +167,7 @@ jobs:
           #     both issues in no time.
 
           cd zephyr
-          git fetch --filter=tree:0 zephyrproject "$rem_rev":_branch_placeholder
+          time git fetch --filter=tree:0 "$(git remote |head -n1)" "$rem_rev":_branch_placeholder
           git branch -D _branch_placeholder
 
           set -x
@@ -211,7 +211,7 @@ jobs:
         # many lines. Pay attention to COMMAS.
         platforms: [
           # - IPC3 default
-          imx8 imx8x imx8m,
+          imx8 imx8x imx8m imx8ulp,
           # - IPC4 default
           mtl,
           tgl tgl-h,
@@ -248,12 +248,12 @@ jobs:
 
       # Keep this SDK version identical to the one in
       # sof/zephyr/docker-run.sh
-      - name: Cache Zephyr SDK 0.16.1
+      - name: Cache Zephyr SDK 0.16.4
         id: cache-zephyr-sdk
         uses: actions/cache@v3.0.11
         with:
-          path: zephyr-sdk-0.16.1_windows-x86_64.7z
-          key: ${{ runner.os }}-cache-zephyr-sdk-0-16-1
+          path: zephyr-sdk-0.16.4_windows-x86_64.7z
+          key: ${{ runner.os }}-cache-zephyr-sdk-0-16-4
 
       # Wget is needed by Zephyr SDK setup.cmd installation script
       - name: Download wget
@@ -261,11 +261,11 @@ jobs:
         run: |
           curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
 
-      - name: Download Zephyr SDK 0.16.1
+      - name: Download Zephyr SDK 0.16.4
         if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
         run: |  # yamllint disable-line rule:line-length
           curl -L -O `
-          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.1/zephyr-sdk-0.16.1_windows-x86_64.7z
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.4/zephyr-sdk-0.16.4_windows-x86_64.7z
 
       # Unzips every .zip package to directory matching its name without extension
       - name: Unzip downloaded packages
@@ -288,7 +288,7 @@ jobs:
       # setup.cmd may not be called in from msys shell as it does not parse
       # forward slash script input arguments correctly.
       - name: Install Zephyr SDK
-        run: zephyr-sdk-0.16.1_windows-x86_64/zephyr-sdk-0.16.1/setup.cmd /t all /h /c
+        run: zephyr-sdk-0.16.4_windows-x86_64/zephyr-sdk-0.16.4/setup.cmd /t all /h /c
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -308,7 +308,7 @@ jobs:
           # Get some tags to fix `git describe`, see build-linux comments above.
           cd zephyr
           $_rev = "$(git rev-parse HEAD)"
-          git fetch --filter=tree:0 zephyrproject "${_rev}:_branch_placeholder"
+          git fetch --filter=tree:0 "$(west list -f '{url}' zephyr)" "${_rev}:_branch_placeholder"
           git branch -D _branch_placeholder
 
 

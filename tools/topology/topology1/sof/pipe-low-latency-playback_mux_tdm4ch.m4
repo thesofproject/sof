@@ -73,8 +73,8 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 
 #DAI_CONFIG(ACPSP1, 1, 1, acp-amp-codec,
 #	   ACPSP1_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-#                ACP_CLOCK(bclk, 3072000, codec_slave),
-#                ACP_CLOCK(fsync, 48000, codec_slave),
+#                ACP_CLOCK(bclk, 3072000, codec_consumer),
+#                ACP_CLOCK(fsync, 48000, codec_consumer),
 #                ACP_TDM(4, 32, 3, 3),ACPSP1_CONFIG_DATA(ACPSP1, 1, 48000, 4)))
 
 #

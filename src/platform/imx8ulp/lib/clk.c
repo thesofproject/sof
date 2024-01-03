@@ -6,10 +6,13 @@
 
 #include <sof/common.h>
 #include <rtos/clk.h>
-#include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/sof.h>
+
+#ifdef __ZEPHYR__
+#include <zephyr/sys/util.h>
+#endif
 
 const struct freq_table platform_cpu_freq[] = {
 	{ 528000000, 528000 },

@@ -26,7 +26,6 @@
 #include <sof/trace/trace.h>
 #include <ipc4/alh.h>
 #include <ipc4/base-config.h>
-#include <ipc4/copier.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
 #include <ipc4/gateway.h>
@@ -36,10 +35,11 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sof/audio/host_copier.h>
-#include <sof/audio/dai_copier.h>
-#include <sof/audio/ipcgtw_copier.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "copier.h"
+#include "host_copier.h"
+#include "dai_copier.h"
+#include "ipcgtw_copier.h"
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -64,6 +64,8 @@ static int copier_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct ipc4_copier_module_cfg *copier = (struct ipc4_copier_module_cfg *)md->cfg.init_data;
 	struct comp_ipc_config *config = &dev->ipc_config;
+	void *gtw_cfg = NULL;
+	size_t gtw_cfg_size;
 	int i, ret = 0;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -78,13 +80,39 @@ static int copier_init(struct processing_module *mod)
 	 */
 	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0) {
 		ret = -EINVAL;
-		goto error;
+		goto error_cd;
+	}
+
+	/* Allocate memory and store gateway_cfg in runtime. Gateway cfg has to
+	 * be kept even after copier is created e.g. during SET_PIPELINE_STATE
+	 * IPC when dai_config_dma_channel() is called second time and DMA
+	 * config is used to assign dma_channel_id value.
+	 */
+	if (copier->gtw_cfg.config_length) {
+		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
+		gtw_cfg = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				  gtw_cfg_size);
+		if (!gtw_cfg) {
+			ret = -ENOMEM;
+			goto error_cd;
+		}
+
+		ret = memcpy_s(gtw_cfg, gtw_cfg_size, &copier->gtw_cfg.config_data,
+			       gtw_cfg_size);
+		if (ret) {
+			comp_err(dev, "Unable to copy gateway config from copier blob");
+			goto error;
+		}
+
+		cd->gtw_cfg = gtw_cfg;
 	}
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
 
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id);
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					  config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
 	if (!ipc_pipe) {
 		comp_err(dev, "pipeline %d is not existed", config->pipeline_id);
 		ret = -EPIPE;
@@ -146,6 +174,8 @@ static int copier_init(struct processing_module *mod)
 	dev->state = COMP_STATE_READY;
 	return 0;
 error:
+	rfree(gtw_cfg);
+error_cd:
 	rfree(cd);
 	return ret;
 }
@@ -170,6 +200,8 @@ static int copier_free(struct processing_module *mod)
 		break;
 	}
 
+	if (cd)
+		rfree(cd->gtw_cfg);
 	rfree(cd);
 
 	return 0;
@@ -403,7 +435,7 @@ static int do_conversion_copy(struct comp_dev *dev,
 
 	comp_get_copy_limits(src, sink, processed_data);
 
-	i = IPC4_SINK_QUEUE_ID(sink->id);
+	i = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 	if (i >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
@@ -481,7 +513,7 @@ static int copier_module_copy(struct processing_module *mod,
 			uint32_t samples;
 			int sink_queue_id;
 
-			sink_queue_id = IPC4_SINK_QUEUE_ID(sink_c->id);
+			sink_queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink_c));
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
 
@@ -666,7 +698,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 
-		sink_id = IPC4_SINK_QUEUE_ID(sink->id);
+		sink_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 		if (sink_id == sink_fmt->sink_id) {
 			ipc4_update_buffer_format(sink, &sink_fmt->sink_fmt);
 			break;
@@ -727,7 +759,7 @@ static int copier_set_configuration(struct processing_module *mod,
 	case IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT:
 		return copier_set_sink_fmt(dev, fragment, fragment_size);
 	case IPC4_COPIER_MODULE_CFG_ATTENUATION:
-		return set_attenuation(dev, fragment_size, fragment);
+		return set_attenuation(dev, fragment_size, (const char *)fragment);
 	default:
 		return -EINVAL;
 	}

@@ -17,7 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/cpu.h>
 
-#define __coherent __attribute__((packed, aligned(DCACHE_LINE_SIZE)))
+#define __coherent __aligned(DCACHE_LINE_SIZE)
 
 /*
  * The coherent API allows optimized access to memory by multiple cores, using
@@ -68,6 +68,14 @@ struct coherent {
 	uint16_t core;		/* owner core if not shared */
 	struct list_item list;	/* coherent list iteration */
 } __coherent;
+
+#if CONFIG_INCOHERENT
+#  ifdef __ZEPHYR__
+BUILD_ASSERT(sizeof(struct coherent)  <= DCACHE_LINE_SIZE, "DCACHE_LINE_SIZE too small");
+#  else
+STATIC_ASSERT(sizeof(struct coherent) <= DCACHE_LINE_SIZE,  DCACHE_LINE_SIZE_too_small);
+#  endif
+#endif
 
 /* debug address aliases */
 #ifdef COHERENT_CHECK_ALIAS

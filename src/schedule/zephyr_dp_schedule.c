@@ -30,15 +30,17 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
-	struct task task;		/* LL task - source of DP tick */
+	struct task ll_tick_src;	/* LL task - source of DP tick */
 };
 
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
-	uint32_t period_clock_ticks;	/* period the task should be scheduled in Zephyr ticks */
+	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
+	uint32_t deadline_ll_cycles;	/* dp module deadline in LL cycles */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
 	struct k_sem sem;		/* semaphore for task scheduling */
 	struct processing_module *mod;	/* the module to be scheduled */
+	uint32_t ll_cycles_to_deadline;  /* current number of LL cycles till deadline */
 };
 
 /* Single CPU-wide lock
@@ -227,11 +229,20 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	lock_key = scheduler_dp_lock();
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
+		pdata = curr_task->priv_data;
+		struct processing_module *mod = pdata->mod;
 
-		/* step 1 - check if the module is ready for processing */
+		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
+		if (pdata->ll_cycles_to_deadline) {
+			pdata->ll_cycles_to_deadline--;
+			if (!pdata->ll_cycles_to_deadline)
+				/* deadline reached, clear startup delay flag.
+				 * see dp_startup_delay comment for details
+				 */
+				mod->dp_startup_delay = false;
+		}
+
 		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
-			pdata = curr_task->priv_data;
-			struct processing_module *mod = pdata->mod;
 			bool mod_ready;
 
 			mod_ready = module_is_ready_to_process(mod, mod->sources,
@@ -240,7 +251,9 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 							       mod->num_of_sinks);
 			if (mod_ready) {
 				/* set a deadline for given num of ticks, starting now */
-				k_thread_deadline_set(pdata->thread_id, pdata->period_clock_ticks);
+				k_thread_deadline_set(pdata->thread_id,
+						      pdata->deadline_clock_ticks);
+				pdata->ll_cycles_to_deadline = pdata->deadline_ll_cycles;
 
 				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
@@ -254,12 +267,17 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 static int scheduler_dp_task_cancel(void *data, struct task *task)
 {
 	unsigned int lock_key;
+	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
 	lock_key = scheduler_dp_lock();
 
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
+
+	/* if there're no more  DP task, stop LL tick source */
+	if (list_is_empty(&dp_sch->tasks))
+		schedule_task_cancel(&dp_sch->ll_tick_src);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -268,18 +286,12 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 
 static int scheduler_dp_task_free(void *data, struct task *task)
 {
-	unsigned int lock_key;
 	struct task_dp_pdata *pdata = task->priv_data;
+
+	scheduler_dp_task_cancel(data, task);
 
 	/* abort the execution of the thread */
 	k_thread_abort(pdata->thread_id);
-
-	lock_key = scheduler_dp_lock();
-	list_item_del(&task->list);
-	task->priv_data = NULL;
-	task->state = SOF_TASK_STATE_FREE;
-	scheduler_dp_unlock(lock_key);
-
 	/* free task stack */
 	rfree((__sparse_force void *)pdata->p_stack);
 
@@ -353,7 +365,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
-	uint64_t period_clock_ticks;
+	uint64_t deadline_clock_ticks;
 
 	lock_key = scheduler_dp_lock();
 
@@ -364,21 +376,25 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		return -EINVAL;
 	}
 
+	/* if there's no DP tasks scheduled yet, run ll tick source task */
+	if (list_is_empty(&dp_sch->tasks))
+		schedule_task(&dp_sch->ll_tick_src, 0, 0);
+
 	/* add a task to DP scheduler list */
 	task->state = SOF_TASK_STATE_QUEUED;
 	list_item_prepend(&task->list, &dp_sch->tasks);
 
-	period_clock_ticks = period * CONFIG_SYS_CLOCK_TICKS_PER_SEC;
-	/* period is in us - convert to seconds in next step
-	 * or it always will be zero because of fixed point calculation
+	deadline_clock_ticks = period * CONFIG_SYS_CLOCK_TICKS_PER_SEC;
+	/* period/deadline is in us - convert to seconds in next step
+	 * or it always will be zero because of integer calculation
 	 */
-	period_clock_ticks /= 1000000;
+	deadline_clock_ticks /= 1000000;
 
-	pdata->period_clock_ticks = period_clock_ticks;
+	pdata->deadline_clock_ticks = deadline_clock_ticks;
+	pdata->deadline_ll_cycles = period / LL_TIMER_PERIOD_US;
+	pdata->ll_cycles_to_deadline = 0;
+	pdata->mod->dp_startup_delay = true;
 	scheduler_dp_unlock(lock_key);
-
-	/* start LL task - run DP tick start and period are irrelevant for LL (that's bad)*/
-	schedule_task(&dp_sch->task, 0, 0);
 
 	tr_dbg(&dp_tr, "DP task scheduled with period %u [us]", (uint32_t)period);
 	return 0;
@@ -403,7 +419,7 @@ int scheduler_dp_init(void)
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
 
 	/* init src of DP tick */
-	ret = schedule_task_init_ll(&dp_sch->task,
+	ret = schedule_task_init_ll(&dp_sch->ll_tick_src,
 				    SOF_UUID(dp_sched_uuid),
 				    SOF_SCHEDULE_LL_TIMER,
 				    0, scheduler_dp_ll_tick_dummy, dp_sch,

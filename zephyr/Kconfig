@@ -56,4 +56,25 @@ config ZEPHYR_DP_SCHEDULER
 	  DP modules can be located in dieffrent cores than LL pipeline modules, may have
 	  different tick (i.e. 300ms for speech reccognition, etc.)
 
+config CROSS_CORE_STREAM
+	bool "Enable cross-core connected pipelines"
+	default y if IPC_MAJOR_4
+	help
+	  Enables support for pipelines from different cores to be
+	  connected together cross-core. So stream can travel from one
+	  core to another. Note, this is different from "multicore"
+	  support. In SOF "multicore" support means different streams
+	  can be processed on different cores, however, each stream
+	  is processed entirely on single core.
+
+config SOF_BOOT_TEST
+	bool "enable SOF run-time testing"
+	depends on ZTEST
+	help
+	  Run tests during boot. This enables an SOF boot-time self-test. When
+	  enabled, the resulting image will run a number of self-tests when the
+	  first global IPC command is received, i.e. when SOF is completely
+	  initialized. After that SOF will continue running and be usable as
+	  usual.
+
 endif

@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_ASRC
+	bool "ASRC component"
+	default y
+	help
+	  Select for Asynchronous sample rate conversion (ASRC)
+	  component. The ASRC has the capabilities of (synchronous)
+	  SRC but can in addition track a slave DAI that is not in
+	  sync with firmware timer. The ASRC can be setup for
+	  synchronous operation without DAI tracking via topology
+	  though it has a bit higher computational load than SRC. The
+	  RAM footprint of ASRC is smaller than SRC because it does
+	  not have pre-computed filter coefficients for every
+	  conversion fraction that SRC does.
+
+if COMP_ASRC
+
+choice
+        prompt "ASRC down sampling conversions set"
+        default COMP_ASRC_DOWNSAMPLING_FULL
+
+config COMP_ASRC_DOWNSAMPLING_FULL
+	bool "Full downsampling conversions support"
+	select ASRC_SUPPORT_CONVERSION_24000_TO_08000
+	select ASRC_SUPPORT_CONVERSION_24000_TO_16000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_08000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_11025
+	select ASRC_SUPPORT_CONVERSION_48000_TO_12000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_16000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_22050
+	select ASRC_SUPPORT_CONVERSION_48000_TO_24000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_32000
+	select ASRC_SUPPORT_CONVERSION_48000_TO_44100
+	help
+	  This option enables all supported downsampling conversions
+	  for the asynchronous sample rate conversion. All the
+	  upsampling conversions use the same filter always enabled
+	  coefficients set so there is no configuration options for
+	  them. The enabled conversions consume about 18 kB of memory.
+
+config COMP_ASRC_DOWNSAMPLING_CUSTOM
+	bool "Custom downsampling conversions support"
+	help
+	  This option used to manually select each downsampling ratio.
+	  In order to optimize the text code size of the sample rate
+	  converter, non-required conversion ratios can be
+	  deactivated.  Disregarding these settings, the sample rate
+	  converter always supports all conversion ratios with fs_in
+	  less or equal to fs_out. Therefore, it is possible to
+	  deactivate all conversion ratios listed below, if we only
+	  need an (asynchronous) 1:1 sample rate conversion, e.g, from
+	  16 kHz to 16 kHz. This option allows to trim down the coefficient
+	  memory for conversion down from default 18 kB. Each conversion
+	  needs about 2 kB.
+
+endchoice
+
+menu "Supported downsampling conversions"
+	visible if COMP_ASRC_DOWNSAMPLING_CUSTOM
+
+config ASRC_SUPPORT_CONVERSION_24000_TO_08000
+	bool "Downsample 24 kHz to 8 kHz"
+	default n
+	help
+	  This option enables downsampling from 24 kHz to 8 kHz into
+	  the build. The consumption of memory is 2.1 kB.
+
+config ASRC_SUPPORT_CONVERSION_24000_TO_16000
+	bool "Downsample 24 kHz to 16 kHz"
+	default n
+	help
+	  This option enables downsampling from 24 kHz to 16 kHz into
+	  the build. The consumption of memory is 1.9 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_08000
+	bool "Downsample 48 kHz to 8 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 8 kHz into
+	  the build. The consumption of memory is 2.1 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_11025
+	bool "Downsample 48 kHz to 11.025 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 11.025 kHz
+	  into the build. The consumption of memory is 1.5 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_12000
+	bool "Downsample 48 kHz to 12 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 12 kHz into
+	  the build. The consumption of memory is 1.5 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_16000
+	bool "Downsample 48 kHz to 16 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 16 kHz into
+	  the build. The consumption of memory is 1.9 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_22050
+	bool "Downsample 48 kHz to 22.05 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 22.05 kHz into
+	  the build. The consumption of memory is 1.6 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_24000
+	bool "Downsample 48 kHz to 24 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 24 kHz into
+	  the build. The consumption of memory is 1.6 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_32000
+	bool "Downsample 48 kHz to 32 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 32 kHz into
+	  the build. The consumption of memory is 1.9 kB.
+
+config ASRC_SUPPORT_CONVERSION_48000_TO_44100
+	bool "Downsample 48 kHz to 44.1 kHz"
+	default n
+	help
+	  This option enables downsampling from 48 kHz to 44.1 kHz
+	  into the build. The consumption of memory is 1.8 kB.
+
+endmenu # "Downsampling ratios"
+
+endif # COMP_ASRC

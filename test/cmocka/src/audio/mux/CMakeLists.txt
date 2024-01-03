@@ -10,6 +10,7 @@ add_library(
 	audio_mux
 	STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux.c
+	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
@@ -18,11 +19,14 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
 	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 )
 sof_append_relative_path_definitions(audio_mux)
@@ -45,3 +49,8 @@ cmocka_test(
 	demux_copy
 	demux_copy.c
 )
+
+target_include_directories(audio_mux PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(mux_get_processing_function PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(mux_copy PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(demux_copy PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)

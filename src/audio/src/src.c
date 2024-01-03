@@ -41,7 +41,10 @@
 #include "src.h"
 #include "src_config.h"
 
-#if SRC_SHORT || CONFIG_COMP_SRC_TINY
+#ifdef SRC_LITE
+#include "coef/src_lite_ipc4_int32_define.h"
+#include "coef/src_lite_ipc4_int32_table.h"
+#elif SRC_SHORT || CONFIG_COMP_SRC_TINY
 #include "coef/src_tiny_int16_define.h"
 #include "coef/src_tiny_int16_table.h"
 #elif CONFIG_COMP_SRC_SMALL
@@ -63,34 +66,9 @@
 
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
-/* Calculates the needed FIR delay line length */
-static int src_fir_delay_length(struct src_stage *s)
-{
-	return s->subfilter_length + (s->num_of_subfilters - 1) * s->idm
-		+ s->blk_in;
-}
-
-/* Calculates the FIR output delay line length */
-static int src_out_delay_length(struct src_stage *s)
-{
-	return 1 + (s->num_of_subfilters - 1) * s->odm;
-}
-
-/* Returns index of a matching sample rate */
-static int src_find_fs(int fs_list[], int list_length, int fs)
-{
-	int i;
-
-	for (i = 0; i < list_length; i++) {
-		if (fs_list[i] == fs)
-			return i;
-	}
-	return -EINVAL;
-}
-
 /* Calculates buffers to allocate for a SRC mode */
-static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
-			      int nch)
+int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
+		       int nch)
 {
 	struct src_stage *stage1;
 	struct src_stage *stage2;
@@ -172,15 +150,9 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
-static void src_state_reset(struct src_state *state)
-{
-	state->fir_delay_size = 0;
-	state->out_delay_size = 0;
-}
-
-static int init_stages(struct src_stage *stage1, struct src_stage *stage2,
-		       struct polyphase_src *src, struct src_param *p,
-		       int n, int32_t *delay_lines_start)
+int init_stages(struct src_stage *stage1, struct src_stage *stage2,
+		struct polyphase_src *src, struct src_param *p,
+		int n, int32_t *delay_lines_start)
 {
 	/* Clear FIR state */
 	src_state_reset(&src->state1);
@@ -244,15 +216,6 @@ static int init_stages(struct src_stage *stage1, struct src_stage *stage2,
 	return 0;
 }
 
-void src_polyphase_reset(struct polyphase_src *src)
-{
-	src->number_of_stages = 0;
-	src->stage1 = NULL;
-	src->stage2 = NULL;
-	src_state_reset(&src->state1);
-	src_state_reset(&src->state2);
-}
-
 int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 		       int32_t *delay_lines_start)
 {
@@ -291,16 +254,9 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 	return n_stages;
 }
 
-/* Fallback function */
-int src_fallback(struct comp_data *cd, struct sof_source *source,
-		 struct sof_sink *sink)
-{
-	return 0;
-}
-
 /* Normal 2 stage SRC */
-static int src_2s(struct comp_data *cd,
-		  struct sof_source *source, struct sof_sink *sink)
+int src_2s(struct comp_data *cd,
+	   struct sof_source *source, struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -401,8 +357,8 @@ static int src_2s(struct comp_data *cd,
 }
 
 /* 1 stage SRC for simple conversions */
-static int src_1s(struct comp_data *cd, struct sof_source *source,
-		  struct sof_sink *sink)
+int src_1s(struct comp_data *cd, struct sof_source *source,
+	   struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	int ret;
@@ -441,8 +397,8 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 }
 
 /* A fast copy function for same in and out rate */
-static int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
-			struct sof_sink *sink)
+int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
+		 struct sof_sink *sink)
 {
 	int frames = cd->param.blk_in;
 
@@ -468,7 +424,7 @@ void src_set_alignment(struct sof_source *source, struct sof_sink *sink)
 	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
-static int src_verify_params(struct processing_module *mod)
+int src_verify_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -505,9 +461,9 @@ static int src_verify_params(struct processing_module *mod)
 	return ret;
 }
 
-static bool src_get_copy_limits(struct comp_data *cd,
-				struct sof_source *source,
-				struct sof_sink *sink)
+bool src_get_copy_limits(struct comp_data *cd,
+			 struct sof_source *source,
+			 struct sof_sink *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
@@ -549,9 +505,9 @@ static bool src_get_copy_limits(struct comp_data *cd,
 	return true;
 }
 
-static int src_params_general(struct processing_module *mod,
-			      struct sof_source *source,
-			      struct sof_sink *sink)
+int src_params_general(struct processing_module *mod,
+		       struct sof_source *source,
+		       struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -612,7 +568,7 @@ static int src_params_general(struct processing_module *mod,
 
 	cd->delay_lines = rballoc(0, SOF_MEM_CAPS_RAM, delay_lines_size);
 	if (!cd->delay_lines) {
-		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %u",
+		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
 		return  -EINVAL;
 	}
@@ -652,9 +608,9 @@ static int src_params_general(struct processing_module *mod,
 	return 0;
 }
 
-static int src_prepare(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
+int src_prepare(struct processing_module *mod,
+		struct sof_source **sources, int num_of_sources,
+		struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 
@@ -671,18 +627,18 @@ static int src_prepare(struct processing_module *mod,
 }
 
 
-static bool src_is_ready_to_process(struct processing_module *mod,
-				    struct sof_source **sources, int num_of_sources,
-				    struct sof_sink **sinks, int num_of_sinks)
+bool src_is_ready_to_process(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
 	return src_get_copy_limits(cd, sources[0], sinks[0]);
 }
 
-static int src_process(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
+int src_process(struct processing_module *mod,
+		struct sof_source **sources, int num_of_sources,
+		struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
@@ -697,21 +653,21 @@ static int src_process(struct processing_module *mod,
 	return cd->src_func(cd, sources[0], sinks[0]);
 }
 
-static int src_set_config(struct processing_module *mod, uint32_t config_id,
-			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			  size_t response_size)
+int src_set_config(struct processing_module *mod, uint32_t config_id,
+		   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+		   size_t response_size)
 {
 	return -EINVAL;
 }
 
-static int src_get_config(struct processing_module *mod, uint32_t config_id,
-			  uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
+int src_get_config(struct processing_module *mod, uint32_t config_id,
+		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
 {
 	return -EINVAL;
 }
 
-static int src_reset(struct processing_module *mod)
+int src_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
@@ -723,7 +679,7 @@ static int src_reset(struct processing_module *mod)
 	return 0;
 }
 
-static int src_free(struct processing_module *mod)
+int src_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 

@@ -30,8 +30,8 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	comp_dbg(dev, "module_load_config() start");
 
 	if (!cfg || !size) {
-		comp_err(dev, "module_load_config(): wrong input params! dev %x, cfg %x size %d",
-			 (uint32_t)dev, (uint32_t)cfg, size);
+		comp_err(dev, "module_load_config(): wrong input params! dev %zx, cfg %zx size %zu",
+			 (size_t)dev, (size_t)cfg, size);
 		return -EINVAL;
 	}
 
@@ -95,11 +95,10 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 		return -EIO;
 	}
 
-	/*check interface, there must be one and only one of processing procedure */
-	if (!interface->init || !interface->prepare ||
-	    !interface->reset || !interface->free ||
+	/* check interface, there must be one and only one of processing procedure */
+	if (!interface->init ||
 	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data != 1)) {
+	     !!interface->process_raw_data < 1)) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
@@ -123,7 +122,7 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 	md->state = MODULE_INITIALIZED;
 #endif
 
-	return ret;
+	return 0;
 }
 
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
@@ -199,7 +198,7 @@ int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks)
 {
-	int ret;
+	int ret = 0;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 
@@ -211,11 +210,13 @@ int module_prepare(struct processing_module *mod,
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 #endif
-	ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
-	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-			 ret, dev_comp_id(dev));
-		return ret;
+	if (md->ops->prepare) {
+		ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		if (ret) {
+			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
+				 ret, dev_comp_id(dev));
+			return ret;
+		}
 	}
 
 	/* After prepare is done we no longer need runtime configuration
@@ -257,10 +258,10 @@ int module_process_legacy(struct processing_module *mod,
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 #endif
-	if (md->ops->process_audio_stream)
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		ret = md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
 						    output_buffers, num_output_buffers);
-	else if (md->ops->process_raw_data)
+	else if (IS_PROCESSING_MODE_RAW_DATA(mod))
 		ret = md->ops->process_raw_data(mod, input_buffers, num_input_buffers,
 						output_buffers, num_output_buffers);
 	else
@@ -331,14 +332,15 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
-
-	ret = md->ops->reset(mod);
-	if (ret) {
-		if (ret != PPL_STATUS_PATH_STOP)
-			comp_err(mod->dev,
-				 "module_reset() error %d: module specific reset() failed for comp %d",
-				 ret, dev_comp_id(mod->dev));
-		return ret;
+	if (md->ops->reset) {
+		ret = md->ops->reset(mod);
+		if (ret) {
+			if (ret != PPL_STATUS_PATH_STOP)
+				comp_err(mod->dev,
+					 "module_reset() error %d: module specific reset() failed for comp %d",
+					 ret, dev_comp_id(mod->dev));
+			return ret;
+		}
 	}
 
 	md->cfg.avail = false;
@@ -373,13 +375,15 @@ void module_free_all_memory(struct processing_module *mod)
 
 int module_free(struct processing_module *mod)
 {
-	int ret;
+	int ret = 0;
 	struct module_data *md = &mod->priv;
 
-	ret = md->ops->free(mod);
-	if (ret)
-		comp_warn(mod->dev, "module_free(): error: %d for %d",
-			  ret, dev_comp_id(mod->dev));
+	if (md->ops->free) {
+		ret = md->ops->free(mod);
+		if (ret)
+			comp_warn(mod->dev, "module_free(): error: %d for %d",
+				  ret, dev_comp_id(mod->dev));
+	}
 
 	/* Free all memory shared by module_adapter & module */
 	md->cfg.avail = false;
@@ -448,7 +452,7 @@ int module_set_configuration(struct processing_module *mod,
 			return 0;
 
 		if (md->new_cfg_size > MAX_BLOB_SIZE) {
-			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %d, allowed %d",
+			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %zu, allowed %d",
 				 md->new_cfg_size, MAX_BLOB_SIZE);
 			return -EINVAL;
 		}
@@ -518,4 +522,15 @@ int module_unbind(struct processing_module *mod, void *data)
 	if (md->ops->unbind)
 		return md->ops->unbind(mod, data);
 	return 0;
+}
+
+void module_update_buffer_position(struct input_stream_buffer *input_buffers,
+				   struct output_stream_buffer *output_buffers,
+				   uint32_t frames)
+{
+	struct audio_stream *source = input_buffers->data;
+	struct audio_stream *sink = output_buffers->data;
+
+	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
+	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
 }

@@ -66,7 +66,6 @@ static void idc_msg_status_set(int status, uint32_t core)
 	struct idc_payload *payload = idc_payload_get(idc, core);
 
 	*(uint32_t *)payload->data = status;
-
 }
 
 /**
@@ -78,12 +77,8 @@ int idc_msg_status_get(uint32_t core)
 {
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, core);
-	int status;
 
-	status = *(uint32_t *)payload->data;
-
-
-	return status;
+	return *(uint32_t *)payload->data;
 }
 
 /**
@@ -97,7 +92,6 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
 
 	while (!cond(target_core)) {
-
 		/* spin here so other core can access IO and timers freely */
 		idelay(8192);
 
@@ -316,6 +310,25 @@ static int idc_reset(uint32_t comp_id)
 }
 
 /**
+ * \brief Executes IDC component reset message.
+ * \param[in] comp_id Component id to be reset.
+ * \return Error code.
+ */
+static int idc_comp_free(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	int ret;
+
+	icd = ipc_get_comp_by_id(ipc, comp_id);
+	if (!icd)
+		return -ENODEV;
+
+	ret = ipc_comp_free(ipc, comp_id);
+	return ret;
+}
+
+/**
  * \brief Executes IDC pipeline set state message.
  * \param[in] ppl_id Pipeline id to be triggered.
  * \return Error code.
@@ -329,7 +342,7 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 	struct ipc_comp_dev *ppl_icd;
 	uint32_t cmd = *(uint32_t *)payload;
 
-	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id);
+	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id, IPC_COMP_IGNORE_REMOTE);
 	if (!ppl_icd) {
 		tr_err(&idc_tr, "idc: comp %d not found", ppl_id);
 		return IPC4_INVALID_RESOURCE_ID;
@@ -428,6 +441,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_GET_ATTRIBUTE):
 		ret = idc_get_attribute(msg->extension);
+		break;
+	case iTS(IDC_MSG_FREE):
+		ret = idc_comp_free(msg->extension);
 		break;
 #endif
 	case iTS(IDC_MSG_PARAMS):

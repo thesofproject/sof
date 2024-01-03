@@ -453,6 +453,7 @@ static int tone_params(struct comp_dev *dev,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int tone_cmd_get_value(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata, int max_size)
 {
@@ -615,6 +616,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
+#endif
 
 static int tone_trigger(struct comp_dev *dev, int cmd)
 {
@@ -717,7 +719,9 @@ static const struct comp_driver comp_tone = {
 		.create = tone_new,
 		.free = tone_free,
 		.params = tone_params,
+#if CONFIG_IPC_MAJOR_3
 		.cmd = tone_cmd,
+#endif
 		.trigger = tone_trigger,
 		.copy = tone_copy,
 		.prepare = tone_prepare,

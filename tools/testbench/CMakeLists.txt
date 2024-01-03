@@ -41,7 +41,7 @@ if (supports_implicit_fallthrough)
     set(implicit_fallthrough -Wimplicit-fallthrough)
 endif()
 
-target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
+target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
   ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
 
 target_link_libraries(testbench PRIVATE -lm)
@@ -50,6 +50,8 @@ install(TARGETS testbench DESTINATION bin)
 
 include(ExternalProject)
 
+# Should we do this? Only for sof_ep, not for parser_ep?
+# https://stackoverflow.com/questions/12021448/how-can-cmake-arguments-be-forwarded-to-externalproject
 ExternalProject_Add(sof_ep
 	DOWNLOAD_COMMAND ""
 	SOURCE_DIR "${sof_source_directory}"

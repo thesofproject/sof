@@ -158,6 +158,9 @@ static int hsdai_get_fifo(struct dai *dai, int direction, int stream_id)
 
 static int hsdai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
+	int handshake = dai->plat_data.fifo[direction].handshake;
+
+	interrupt_get_irq(handshake, "irqsteer1");
 	return dai->plat_data.fifo[direction].handshake;
 }
 

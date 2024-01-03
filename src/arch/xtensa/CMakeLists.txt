@@ -16,6 +16,8 @@ elseif(CONFIG_REMBRANDT)
 	set(platform_folder amd/rembrandt)
 elseif(CONFIG_VANGOGH)
 	set(platform_folder amd/vangogh)
+elseif(CONFIG_ACP_6_3)
+        set(platform_folder amd/acp_6_3)
 elseif(CONFIG_MT8186)
         set(platform_folder mt8186)
 elseif(CONFIG_MT8188)
@@ -330,7 +332,7 @@ add_custom_target(
 
 ExternalProject_Add(rimage_ep
 	DEPENDS check_version_h
-	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
+	SOURCE_DIR "${RIMAGE_TOP}"
 	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
 	EXCLUDE_FROM_ALL TRUE
@@ -386,7 +388,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
+			-c "${RIMAGE_TOP}/config/${fw_name}.toml"
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
@@ -427,7 +429,7 @@ else() # sign with rimage
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
+			-c "${RIMAGE_TOP}/config/${fw_name}.toml"
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
 			-f ${SOF_MAJOR}.${SOF_MINOR}.${SOF_MICRO}
@@ -472,7 +474,7 @@ add_custom_target(
 # NXP
 set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
-list(APPEND UNSIGNED_RI rn rmb vangogh)
+list(APPEND UNSIGNED_RI rn rmb vangogh acp_6_3)
 # MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 

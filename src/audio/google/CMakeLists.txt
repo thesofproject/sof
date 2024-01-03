@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-
-if(NOT CONFIG_LIBRARY)
+if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_GOOGLE_HOTWORD_DETECT)
 		add_local_sources(sof
 			google_hotword_detect.c
