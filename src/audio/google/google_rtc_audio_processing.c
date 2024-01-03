@@ -78,10 +78,6 @@ static __aligned(PLATFORM_DCACHE_ALIGN)
 float micbuf[CHAN_MAX][NUM_FRAMES];
 
 struct google_rtc_audio_processing_comp_data {
-#ifdef CONFIG_IPC_MAJOR_4
-	struct ipc4_audio_format in_fmts[2];
-	struct ipc4_audio_format out_fmt;
-#endif
 	uint32_t num_frames;
 	int num_aec_reference_channels;
 	int num_capture_channels;
@@ -111,110 +107,6 @@ void GoogleRtcFree(void *ptr)
 {
 	return rfree(ptr);
 }
-
-#ifdef CONFIG_IPC_MAJOR_4
-/* Workaround: IPC4 fails to set up stream metadata on the buffer
- * objects at pipeline creation time, and traditionally components
- * have been responsible for doing this.  The way this works is that
- * during the init() call, we cache the relevant ipc4_audio_format
- * records from the module "extended config" (which is untyped
- * byte-packed data, I think it's raw bytes from the host?) that
- * correspond to our connected streams.  This config struct gets freed
- * after initialization, so it has to be done then.
- *
- * Then at prepare time, we must use ipc4_update_source/sink_format()
- * to set values on the (incompletely initialized) streams.
- * Similarly, we have to call audio_stream_init_alignment_constants(),
- * otherwise needed values on the audio stream remain uninitialized.
- *
- * It's not really documented what happens if our settings disagree
- * with the component on the other side of the buffer!  Presumably
- * that would be a fatal topology bug, but nothing is set up to detect
- * it.  In fact in practice most other components DON'T do this, so
- * our settings win (and thus we must do this, or else the rest of the
- * stream sees garbage and misbehaves, generally with buffer overruns
- * or short reads).
- *
- * Finally, there is somewhat... unique handling needed to get correct
- * IBS/OBS buffer sizing.  We have two inputs with different stream
- * formats, and thus different minimum block sizes.  The "base" module
- * config only has space for one IBS value.  So the pipeline code has
- * an "extended" config with separate IBS per pin, but it will only
- * use it if it knows about it, which it doesn't by default because
- * module initialization throws away the data!  So it falls to us to
- * duplicate a copy and store it ourselves, in a separate field from
- * where we found it.
- */
-static int init_ipc4_fmts(struct processing_module *mod)
-{
-	int i;
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	const struct ipc4_base_module_extended_cfg *bmec = mod->priv.cfg.init_data;
-	const struct ipc4_input_pin_format *ipf;
-	const struct ipc4_output_pin_format *opf;
-	const struct ipc4_base_module_cfg_ext *bce;
-
-	if (!bmec)
-		return -EINVAL;
-
-	bce = &bmec->base_cfg_ext;
-	if (bce->nb_input_pins != 2 && bce->nb_output_pins != 1) {
-		comp_err(mod->dev, "Must have 2 input, 1 output pins");
-		return -EINVAL;
-	}
-
-	ipf = (void *)&bce->pin_formats[0];
-	for (i = 0; i < bce->nb_input_pins; i++, ipf++) {
-		if (ipf->pin_index < 0 || ipf->pin_index >= 2) {
-			comp_err(mod->dev, "Incorrect input pin index %d", ipf->pin_index);
-			return -EINVAL;
-		}
-		cd->in_fmts[ipf->pin_index] = ipf->audio_fmt;
-	}
-
-	opf = (void *)ipf;
-	if (opf->pin_index != 0) {
-		comp_err(mod->dev, "Incorrect output pin index %d\n", opf->pin_index);
-		return -EINVAL;
-	}
-	cd->out_fmt = opf->audio_fmt;
-
-	size_t bcesz = sizeof(*bce) + (bce->nb_input_pins * sizeof(*ipf)
-				       + bce->nb_output_pins * sizeof(*opf));
-	void *bcedup = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bcesz);
-
-	if (!bcedup)
-		return -ENOMEM;
-	memcpy(bcedup, bce, bcesz);
-	mod->priv.cfg.basecfg_ext = bcedup;
-
-	return 0;
-}
-
-static void prepare_ipc4_fmts(struct processing_module *mod,
-			      struct sof_source **sources,
-			      struct sof_sink **sinks)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-
-	/* FIXME: The "pin" index (the value of the pin_index field of
-	 * the ipc4_in/output_pin_format structs seen in module config
-	 * at init() time) and the "source" index (the ordering of the
-	 * sources[] argument to prepare()/process()) ARE PRESENTED
-	 * BACKWARDS!  And I don't see any API to tell me which is
-	 * which (note that the ordering of the connected buffers in
-	 * the comp_dev sink/source lists is a THIRD convention, and
-	 * matches sources[]/sinks[]).
-	 */
-	ipc4_update_source_format(sources[0], &cd->in_fmts[1]);
-	ipc4_update_source_format(sources[1], &cd->in_fmts[0]);
-	ipc4_update_sink_format(sinks[0], &cd->out_fmt);
-
-	source_set_alignment_constants(sources[0], 1, 1);
-	source_set_alignment_constants(sources[1], 1, 1);
-	sink_set_alignment_constants(sinks[0], 1, 1);
-}
-#endif
 
 static ALWAYS_INLINE float s16_to_float(const char *ptr)
 {
@@ -623,12 +515,6 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 
 	md->private = cd;
 
-#ifdef CONFIG_IPC_MAJOR_4
-	ret = init_ipc4_fmts(mod); /* workaround, see above */
-	if (ret < 0)
-		goto fail;
-#endif
-
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
 	if (!cd->tuning_handler) {
 		ret = -ENOMEM;
@@ -743,7 +629,7 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	}
 
 #ifdef CONFIG_IPC_MAJOR_4
-	prepare_ipc4_fmts(mod, sources, sinks); /* Workaround, see above */
+	ipc4_update_source_format(sources[0], &mod->priv.cfg.input_pins[1].audio_fmt);
 #endif
 
 	/* searching for stream and feedback source buffers */
