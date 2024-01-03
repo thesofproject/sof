@@ -8,6 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
@@ -424,6 +425,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
+	struct ipc4_base_module_cfg_ext *src_basecfg_ext, *sink_basecfg_ext;
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
@@ -431,8 +433,12 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct ipc4_base_module_cfg source_src_cfg;
 	struct ipc4_base_module_cfg sink_src_cfg;
 	uint32_t flags;
+	uint32_t ibs = 0;
+	uint32_t obs = 0;
+	uint32_t buf_size;
 	int src_id, sink_id;
 	int ret;
+	size_t size;
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -453,17 +459,42 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!cpu_is_me(source->ipc_config.core) && !cross_core_bind)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
-	/* these might call comp_ipc4_get_attribute_remote() if necessary */
-	ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to get base config for module %#x", dev_comp_id(source));
-		return IPC4_FAILURE;
+	struct processing_module *srcmod = comp_get_drvdata(source);
+	struct processing_module *dstmod = comp_get_drvdata(sink);
+	struct module_config *dstcfg = &dstmod->priv.cfg;
+	struct module_config *srccfg = &srcmod->priv.cfg;
+
+	/* get obs from the base config extension if the src queue ID is non-zero */
+	if (bu->extension.r.src_queue && bu->extension.r.src_queue < srccfg->nb_output_pins)
+		obs = srccfg->output_pins[bu->extension.r.src_queue].obs;
+
+	/* get obs from base config if src queue ID is 0 or if base config extn is missing */
+	if (!obs) {
+		/* these might call comp_ipc4_get_attribute_remote() if necessary */
+		ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
+
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to get base config for src module %#x",
+			       dev_comp_id(source));
+			return IPC4_FAILURE;
+		}
+		obs = source_src_cfg.obs;
 	}
 
-	ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG, &sink_src_cfg);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to get base config for module %#x", dev_comp_id(sink));
-		return IPC4_FAILURE;
+	/* get ibs from the base config extension if the sink queue ID is non-zero */
+	if (bu->extension.r.dst_queue && bu->extension.r.dst_queue < dstcfg->nb_input_pins)
+		ibs = dstcfg->input_pins[bu->extension.r.dst_queue].ibs;
+
+	/* get ibs from base config if sink queue ID is 0 or if base config extn is missing */
+	if (!ibs) {
+		ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG, &sink_src_cfg);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to get base config for sink module %#x",
+			       dev_comp_id(sink));
+			return IPC4_FAILURE;
+		}
+
+		ibs = sink_src_cfg.ibs;
 	}
 
 	/* create a buffer
@@ -472,12 +503,11 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * in case of DP -> LL
 	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
 	 */
-	uint32_t buf_size;
-
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 		buf_size = source_src_cfg.obs * 2;
 	else
 		buf_size = sink_src_cfg.ibs * 2;
+
 
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
@@ -496,8 +526,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 *	sink_module needs to set its IBS (input buffer size)
 	 *		as min_available in buffer's source ifc
 	 */
-	sink_set_min_free_space(audio_stream_get_sink(&buffer->stream), source_src_cfg.obs);
-	source_set_min_available(audio_stream_get_source(&buffer->stream), sink_src_cfg.ibs);
+	sink_set_min_free_space(audio_stream_get_sink(&buffer->stream), obs);
+	source_set_min_available(audio_stream_get_source(&buffer->stream), ibs);
 
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been
