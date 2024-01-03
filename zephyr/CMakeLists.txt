@@ -717,6 +717,7 @@ zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
 
 zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 	${SOF_AUDIO_PATH}/aria/aria.c
+	${SOF_AUDIO_PATH}/aria/aria_hifi5.c
 	${SOF_AUDIO_PATH}/aria/aria_hifi3.c
 	${SOF_AUDIO_PATH}/aria/aria_generic.c
 )
