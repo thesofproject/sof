@@ -232,6 +232,50 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
+void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+		  void *dst_addr, void *dst_end, size_t byte_size)
+{
+	size_t bytes = byte_size;
+	size_t bytes_src;
+	size_t bytes_dst;
+	size_t bytes_copied;
+	size_t short_copied;
+	int left, m, i;
+	ae_int16x4 in_sample1, in_sample2;
+	ae_valignx2 inu;
+	ae_valignx2 outu = AE_ZALIGN128();
+	ae_int16x8 *in = (ae_int16x8 *)src;
+	ae_int16x8 *out = (ae_int16x8 *)dst;
+
+	while (bytes) {
+		bytes_src = cir_buf_bytes_without_wrap(in, src_end);
+		bytes_dst = cir_buf_bytes_without_wrap(out, dst_end);
+		bytes_copied = MIN(bytes_src, bytes_dst);
+		bytes_copied = MIN(bytes, bytes_copied);
+		short_copied = bytes_copied >> 1;
+
+		m = short_copied >> 3;
+		left = short_copied & 0x07;
+		inu = AE_LA128_PP(in);
+		/* copy 2 * 4 * 16bit(16 bytes)per loop */
+		for (i = 0; i < m; i++) {
+			AE_LA16X4X2_IP(in_sample1, in_sample2, inu, in);
+			AE_SA16X4X2_IP(in_sample1, in_sample2, outu, out);
+		}
+		AE_SA128POS_FP(outu, out);
+
+		/* process the left bits that less than 2 * 4 * 16 */
+		for (i = 0; i < left ; i++) {
+			AE_L16_IP(in_sample1, (ae_int16 *)in, sizeof(ae_int16));
+			AE_S16_0_IP(in_sample1, (ae_int16 *)out, sizeof(ae_int16));
+		}
+
+		bytes -= bytes_copied;
+		in = cir_buf_wrap(in, src_addr, src_end);
+		out = cir_buf_wrap(out, dst_addr, dst_end);
+	}
+}
+
 #elif defined(STREAMCOPY_HIFI3)
 
 #include <xtensa/tie/xt_hifi3.h>
@@ -279,6 +323,50 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
+void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+		  void *dst_addr, void *dst_end, size_t byte_size)
+{
+	size_t bytes = byte_size;
+	size_t bytes_src;
+	size_t bytes_dst;
+	size_t bytes_copied;
+	size_t short_copied;
+
+	int left, m, i;
+	ae_int16x4 in_sample = AE_ZERO16();
+	ae_valign inu = AE_ZALIGN64();
+	ae_valign outu = AE_ZALIGN64();
+	ae_int16x4 *in = (ae_int16x4 *)src;
+	ae_int16x4 *out = (ae_int16x4 *)dst;
+
+	while (bytes) {
+		bytes_src = cir_buf_bytes_without_wrap(in, src_end);
+		bytes_dst = cir_buf_bytes_without_wrap(out, dst_end);
+		bytes_copied = MIN(bytes_src, bytes_dst);
+		bytes_copied = MIN(bytes, bytes_copied);
+		short_copied = bytes_copied >> 1;
+		m = short_copied >> 2;
+		left = short_copied & 0x03;
+		inu = AE_LA64_PP(in);
+		/* copy 4 * 16bit(8 bytes)per loop */
+		for (i = 0; i < m; i++) {
+			AE_LA16X4_IP(in_sample, inu, in);
+			AE_SA16X4_IP(in_sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
+
+		/* process the left bits that less than 4 * 16 */
+		for (i = 0; i < left ; i++) {
+			AE_L16_IP(in_sample, (ae_int16 *)in, sizeof(ae_int16));
+			AE_S16_0_IP(in_sample, (ae_int16 *)out, sizeof(ae_int16));
+		}
+
+		bytes -= bytes_copied;
+		in = cir_buf_wrap(in, src_addr, src_end);
+		out = cir_buf_wrap(out, dst_addr, dst_end);
+	}
+}
+
 #else
 
 int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
@@ -308,8 +396,6 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
-#endif
-
 void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 		  void *dst_addr, void *dst_end, size_t byte_size)
 {
@@ -331,6 +417,8 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 		out = cir_buf_wrap(out + bytes_copied, dst_addr, dst_end);
 	}
 }
+
+#endif
 
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 				   struct audio_stream *sink, int ooffset,
