@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-include(tplg-targets.cmake)
+include(tplg-targets-hda-generic.cmake)
+include(tplg-targets-cavs25.cmake)
+include(tplg-targets-ace1.cmake)
+include(tplg-targets-ace2.cmake)
 
-add_custom_target(topology2_ace)
+add_custom_target(topology2_prod)
 
 foreach(tplg ${TPLGS})
 	set(defines "")
@@ -22,6 +25,6 @@ foreach(tplg ${TPLGS})
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../${input}" "${output}"
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../" "${defines}")
 
-	add_custom_target(topology2_ace_${output} DEPENDS ${output}.tplg)
-	add_dependencies(topology2_ace topology2_ace_${output})
+	add_custom_target(topology2_${output} DEPENDS ${output}.tplg)
+	add_dependencies(topology2_prod topology2_${output})
 endforeach()

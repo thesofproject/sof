@@ -1,19 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
-set(TPLGS
-# CAVS HDMI only topology with passthrough pipelines
-"sof-hda-generic\;sof-hda-generic-idisp\;"
-# CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix"
-# If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
-# topologies below.
-"sof-hda-generic\;sof-hda-generic-2ch\;\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin"
-"sof-hda-generic\;sof-hda-generic-4ch\;\
-HDA_CONFIG=mix,NUM_DMICS=4,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
-
+list(APPEND TPLGS
 # IPC4 topology for TGL rt711 Headset + rt1316 Amplifier + rt714 DMIC
 "cavs-sdw\;sof-tgl-rt711-rt1316-rt714\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt711-rt1316-rt714.bin"

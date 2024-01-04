@@ -3,7 +3,15 @@
 # 3.17 required: foreach(<loop_var>... IN ZIP_LISTS <lists>)
 cmake_minimum_required(VERSION 3.17)
 
-add_custom_target(topologies2)
+add_custom_target(topologies2 ALL
+    # Create directory structure to be provided for deployment
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg
+    COMMAND ${CMAKE_COMMAND} -E create_symlink sof-ipc4-tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ace-tplg
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/development
+    # copy the topology files only to target
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different production/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different development/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/development/
+)
 
 # Check alsatplg version and build topology2 if alsatplg version is
 # 1.2.7 or greater, see https://github.com/thesofproject/sof/issues/5323
@@ -29,7 +37,6 @@ add_custom_target(abi_target
 	DEPENDS abi.conf
 )
 
-add_dependencies(topologies2 topology2_cavs topology2_ace topology2_dev)
-add_subdirectory(avs-tplg)
+add_dependencies(topologies2 topology2_dev topology2_prod)
 add_subdirectory(development)
-add_subdirectory(sof-ace-tplg)
+add_subdirectory(production)
