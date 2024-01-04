@@ -24,8 +24,10 @@
 
 #if defined(__XCC__)
 #include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-#define STREAMCOPY_HIFI3
+# if XCHAL_HAVE_HIFI5
+#  define STREAMCOPY_HIFI5
+# elif XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#  define STREAMCOPY_HIFI3
 #endif
 #endif
 
@@ -182,7 +184,57 @@ void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
-#ifdef STREAMCOPY_HIFI3
+#if defined(STREAMCOPY_HIFI5)
+
+#include <xtensa/tie/xt_hifi5.h>
+
+int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
+		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
+{
+	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
+	ae_int16x8 *src = (ae_int16x8 *)((int8_t *)audio_stream_get_rptr(source) + ioffset * ssize);
+	ae_int16x8 *dst = (ae_int16x8 *)((int8_t *)audio_stream_get_wptr(sink) + ooffset * ssize);
+	int shorts = samples * ssize >> 1;
+	int shorts_src;
+	int shorts_dst;
+	int shorts_copied;
+	int left, m, i;
+	ae_int16x4 in_sample1;
+	ae_int16x4 in_sample2;
+	ae_valignx2 inu;
+	ae_valignx2 outu = AE_ZALIGN128();
+
+	/* copy with 16bit as the minimum unit since the minimum sample size is 16 bit*/
+	while (shorts > 0) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		shorts_src = audio_stream_samples_without_wrap_s16(source, src);
+		shorts_dst = audio_stream_samples_without_wrap_s16(sink, dst);
+		shorts_copied = AE_MIN32(shorts_src, shorts_dst);
+		shorts_copied = AE_MIN32(shorts, shorts_copied);
+		m = shorts_copied >> 3;
+		left = shorts_copied & 0x07;
+		inu = AE_LA128_PP(src);
+		/* copy 4 * 16bit(8 bytes)per loop */
+		for (i = 0; i < m; i++) {
+			AE_LA16X4X2_IP(in_sample1, in_sample2, inu, src);
+			AE_SA16X4X2_IP(in_sample1, in_sample2, outu, dst);
+		}
+		AE_SA128POS_FP(outu, dst);
+
+		/* process the left bits that less than 4 * 16 */
+		for (i = 0; i < left ; i++) {
+			AE_L16_IP(in_sample1, (ae_int16 *)src, sizeof(ae_int16));
+			AE_S16_0_IP(in_sample1, (ae_int16 *)dst, sizeof(ae_int16));
+		}
+		shorts -= shorts_copied;
+	}
+	return samples;
+}
+
+#elif defined(STREAMCOPY_HIFI3)
+
+#include <xtensa/tie/xt_hifi3.h>
 
 int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
