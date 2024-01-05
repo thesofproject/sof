@@ -14,8 +14,14 @@
 /* callers must check/use the return value */
 #define __must_check __attribute__((warn_unused_result))
 
+#ifdef __ZEPHYR__
+#include <zephyr/sys/util.h>
+#endif
+
 /* Align the number to the nearest alignment value */
+#ifndef IS_ALIGNED
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
+#endif
 
 /* Treat zero as a special case because it wraps around */
 #define is_power_of_2(x) ((x) && !((x) & ((x) - 1)))
