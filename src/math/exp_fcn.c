@@ -6,6 +6,7 @@
  *
  */
 
+#include <sof/audio/format.h>
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <sof/common.h>
@@ -212,4 +213,74 @@ int32_t sofm_exp_int32(int32_t x)
 	}
 	return ts;
 }
-#endif
+
+/* Fixed point exponent function for approximate range -11.5 .. 7.6
+ * that corresponds to decibels range -100 .. +66 dB.
+ *
+ * The functions uses rule exp(x) = exp(x/2) * exp(x/2) to reduce
+ * the input argument for private small value exp() function that is
+ * accurate with input range -2.0 .. +2.0. The number of possible
+ * divisions by 2 is computed into variable n. The returned value is
+ * exp()^(2^n).
+ *
+ * Input  is Q5.27, -16.0 .. +16.0, but note the input range limitation
+ * Output is Q12.20, 0.0 .. +2048.0
+ */
+
+int32_t sofm_exp_fixed(int32_t x)
+{
+	int32_t xs;
+	int32_t y;
+	int32_t y0;
+	int i;
+	int n = 0;
+
+	if (x < SOFM_EXP_FIXED_INPUT_MIN)
+		return 0;
+
+	if (x > SOFM_EXP_FIXED_INPUT_MAX)
+		return INT32_MAX;
+
+	/* x is Q5.27 */
+	xs = x;
+	while (xs >= SOFM_EXP_TWO_Q27 || xs <= SOFM_EXP_MINUS_TWO_Q27) {
+		xs >>= 1;
+		n++;
+	}
+
+	/* sofm_exp_int32() input is Q4.28, while x1 is Q5.27
+	 * sofm_exp_int32() output is Q9.23, while y0 is Q12.20
+	 */
+	y0 = Q_SHIFT_RND(sofm_exp_int32(Q_SHIFT_LEFT(xs, 27, 28)), 23, 20);
+	y = SOFM_EXP_ONE_Q20;
+	for (i = 0; i < (1 << n); i++)
+		y = (int32_t)Q_MULTSR_32X32((int64_t)y, y0, 20, 20, 20);
+
+	return y;
+}
+
+#endif /* EXPONENTIAL_GENERIC */
+
+/* Decibels to linear conversion: The function uses exp() to calculate
+ * the linear value. The argument is multiplied by log(10)/20 to
+ * calculate equivalent of 10^(db/20).
+ *
+ * The error in conversion is less than 0.1 dB for -89..+66 dB range. Do not
+ * use the code for argument less than -100 dB. The code simply returns zero
+ * as linear value for such very small value.
+ *
+ * Input is Q8.24 (max 128.0)
+ * output is Q12.20 (max 2048.0)
+ */
+
+int32_t sofm_db2lin_fixed(int32_t db)
+{
+	int32_t arg;
+
+	if (db < SOFM_EXP_MINUS_100_Q24)
+		return 0;
+
+	/* Q8.24 x Q5.27, result needs to be Q5.27 */
+	arg = (int32_t)Q_MULTSR_32X32((int64_t)db, SOFM_EXP_LOG10_DIV20_Q27, 24, 27, 27);
+	return sofm_exp_fixed(arg);
+}

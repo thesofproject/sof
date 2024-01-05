@@ -26,6 +26,9 @@
 #include <xtensa/tie/xt_hifi3.h>
 #endif
 
+#include <xtensa/tie/xt_hifi2.h>
+#include <xtensa/tie/xt_FP.h>
+
 #define SOFM_CONVERG_ERROR 28823037624320LL /* error smaller than 1e-4,1/2 ^ -44.7122876209085 */
 
 /*
@@ -275,4 +278,97 @@ int32_t sofm_exp_int32(int32_t x)
 
 	return AE_MOVAD32_L(AE_MOVINT32X2_FROMINT64(ts));
 }
+
+/* Fractional multiplication with shift and round
+ * Note that the parameters px and py must be cast to (int64_t) if other type.
+ */
+static inline int exp_hifi_q_multsr_32x32(int a, int b, int c, int d, int e)
+{
+	ae_int64 res;
+	int xt_o;
+	int shift;
+
+	res = AE_MUL32_LL(a, b);
+	shift = XT_SUB(XT_ADD(c, d), XT_ADD(e, 1));
+	res = AE_SRAA64(res, shift);
+	res = AE_ADD64(res, 1);
+	res = AE_SRAI64(res, 1);
+	xt_o = AE_MOVINT32_FROMINT64(res);
+
+	return xt_o;
+}
+
+/* A macro for Q-shifts */
+static inline int exp_hifi_q_shift_rnd(int a, int b, int c)
+{
+	ae_int32 res;
+	int shift;
+
+	shift = XT_SUB(b, XT_ADD(c, 1));
+	res = AE_SRAA32(a, shift);
+	res = AE_ADD32(res, 1);
+	res = AE_SRAI32(res, 1);
+
+	return res;
+}
+
+/* Alternative version since compiler does not allow (x >> -1) */
+static inline int exp_hifi_q_shift_left(int a, int b, int c)
+{
+	ae_int32 xt_o;
+	int shift;
+
+	shift = XT_SUB(c, b);
+	xt_o = AE_SLAA32(a, shift);
+
+	return xt_o;
+}
+
+#define q_mult(a, b, qa, qb, qy) ((int32_t)exp_hifi_q_multsr_32x32((int64_t)(a), b, qa, qb, qy))
+/* Fixed point exponent function for approximate range -11.5 .. 7.6
+ * that corresponds to decibels range -100 .. +66 dB.
+ *
+ * The functions uses rule exp(x) = exp(x/2) * exp(x/2) to reduce
+ * the input argument for private small value exp() function that is
+ * accurate with input range -2.0 .. +2.0. The number of possible
+ * divisions by 2 is computed into variable n. The returned value is
+ * exp()^(2^n).
+ *
+ * Input  is Q5.27, -16.0 .. +16.0, but note the input range limitation
+ * Output is Q12.20, 0.0 .. +2048.0
+ */
+
+int32_t sofm_exp_fixed(int32_t x)
+{
+	int32_t xs;
+	int32_t y;
+	int32_t y0;
+	int i;
+	int n = 0;
+
+	if (x < SOFM_EXP_FIXED_INPUT_MIN)
+		return 0;
+
+	if (x > SOFM_EXP_FIXED_INPUT_MAX)
+		return INT32_MAX;
+
+	/* x is Q5.27 */
+	xs = x;
+	while (xs >= SOFM_EXP_TWO_Q27 || xs <= SOFM_EXP_MINUS_TWO_Q27) {
+		xs >>= 1;
+		n++;
+	}
+
+	/* sofm_exp_int32() input is Q4.28, while x1 is Q5.27
+	 * sofm_exp_int32() output is Q9.23, while y0 is Q12.20
+	 */
+	y0 = exp_hifi_q_shift_rnd(sofm_exp_int32(exp_hifi_q_shift_left(xs, 27, 28)),
+				  23, 20);
+	y = SOFM_EXP_ONE_Q20;
+	for (i = 0; i < (1 << n); i++)
+		y = (int32_t)exp_hifi_q_multsr_32x32((int64_t)y, y0, 20, 20, 20);
+
+	return y;
+}
+
 #endif

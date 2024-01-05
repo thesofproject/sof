@@ -59,5 +59,7 @@
 #define SOFM_EXP_LSHIFT_BITS 0x2000
 
 int32_t sofm_exp_int32(int32_t x);
+int32_t sofm_exp_fixed(int32_t x);
+int32_t sofm_db2lin_fixed(int32_t db);
 
 #endif /* __SOFM_EXP_FCN_H__ */
