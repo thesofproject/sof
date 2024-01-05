@@ -3,17 +3,15 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 set(TPLGS
 # CAVS HDMI only topology with passthrough pipelines
-"sof-hda-generic\;sof-hda-generic-idisp\;DEEPBUFFER_FW_DMA_MS=100"
+"sof-hda-generic\;sof-hda-generic-idisp\;"
 # CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,DEEPBUFFER_FW_DMA_MS=100"
+"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
 "sof-hda-generic\;sof-hda-generic-2ch\;\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,\
-DEEPBUFFER_FW_DMA_MS=100"
+HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin"
 "sof-hda-generic\;sof-hda-generic-4ch\;\
 HDA_CONFIG=mix,NUM_DMICS=4,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,\
-DEEPBUFFER_FW_DMA_MS=100,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 
 # IPC4 topology for TGL rt711 Headset + rt1316 Amplifier + rt714 DMIC
@@ -46,7 +44,7 @@ SDW_JACK_IN_STREAM=SDW0-Capture-SimpleJack,SDW_SPK_STREAM=SDW0-Playback-SmartAmp
 SDW_DMIC_STREAM=SDW1-Capture-SmartMic,HDMI1_ID=5,HDMI2_ID=6,HDMI3_ID=7,\
 NUM_SDW_AMP_LINKS=1,SDW_AMP_FEEDBACK=false,SDW_DMIC=1,SDW_DMIC_STREAM=SDW1-Capture-SmartMic"
 
-"cavs-sdw\;sof-adl-rt711-4ch\;DEEPBUFFER_FW_DMA_MS=100,NUM_DMICS=4,DMIC0_ID=2,\
-DMIC1_ID=3,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\
+"cavs-sdw\;sof-adl-rt711-4ch\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\
 HDMI3_ID=6,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-rt711-4ch.bin"
 )
