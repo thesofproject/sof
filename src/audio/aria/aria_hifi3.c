@@ -53,8 +53,8 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 		samples -= n;
 	}
 	/*zero check for maxis not needed since att is in range <0;3>*/
-	if (max > (0x7fffffff >> att))
-		gain = (0x7fffffffULL << 32) / max;
+	if (max > (0x007fffff >> att))
+		gain = (0x007fffffULL << 32) / max;
 
 	/* normalization by attenuation factor to obtain fractional range <1 / (2 pow att), 1> */
 	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
@@ -74,7 +74,6 @@ void aria_algo_get_data_odd_channel(struct processing_module *mod,
 	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
 	size_t samples = frames * audio_stream_get_channels(sink);
 	ae_int32x2 *out = audio_stream_get_wptr(sink);
-	int32_t att = cd->att;
 	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
@@ -82,6 +81,8 @@ void aria_algo_get_data_odd_channel(struct processing_module *mod,
 	const int inc = sizeof(ae_int32);
 	ae_int32x2 gain;
 	const int ch_n = cd->chan_cnt;
+	const int shift_bits = 31 - cd->att - 24;
+	ae_int64 out1;
 
 	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
 		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
@@ -102,9 +103,9 @@ void aria_algo_get_data_odd_channel(struct processing_module *mod,
 			/*process data one by one if ch_n is odd*/
 			for (ch = 0; ch < ch_n; ch++) {
 				AE_L32_XP(in_sample, (ae_int32 *)in, inc);
-				out_sample = AE_MULFP32X2RS(in_sample, gain);
-
-				out_sample = AE_SLAA32S(out_sample, att);
+				out1 = AE_MUL32_HH(in_sample, gain);
+				out1 = AE_SRAA64(out1, shift_bits);
+				out_sample = AE_ROUND24X2F48SSYM(out1, out1);
 				AE_S32_L_XP(out_sample, (ae_int32 *)out, inc);
 			}
 			gain = AE_ADD32S(gain, step);
@@ -131,13 +132,14 @@ void aria_algo_get_data_even_channel(struct processing_module *mod,
 	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
 	size_t samples = frames * audio_stream_get_channels(sink);
 	ae_int32x2 *out = audio_stream_get_wptr(sink);
-	int32_t att = cd->att;
 	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
 	ae_int32x2 in_sample, out_sample;
 	ae_int32x2 gain;
 	const int ch_n = cd->chan_cnt;
+	const int shift_bits = 31 - cd->att - 24;
+	ae_int64 out1, out2;
 
 	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
 		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
@@ -158,9 +160,11 @@ void aria_algo_get_data_even_channel(struct processing_module *mod,
 			/*process 2 samples per time if ch_n is even*/
 			for (ch = 0; ch < ch_n; ch += 2) {
 				AE_LA32X2_IP(in_sample, inu, in);
-				out_sample = AE_MULFP32X2RS(in_sample, gain);
-
-				out_sample = AE_SLAA32S(out_sample, att);
+				out1 = AE_MUL32_HH(in_sample, gain);
+				out1 = AE_SRAA64(out1, shift_bits);
+				out2 = AE_MUL32_LL(in_sample, gain);
+				out2 = AE_SRAA64(out2, shift_bits);
+				out_sample = AE_ROUND24X2F48SSYM(out1, out2);
 				AE_SA32X2_IP(out_sample, outu, out);
 			}
 			gain = AE_ADD32S(gain, step);

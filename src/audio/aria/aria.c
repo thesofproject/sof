@@ -184,6 +184,12 @@ static int aria_prepare(struct processing_module *mod,
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	aria_set_stream_params(sink, mod);
 
+	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||
+	    audio_stream_get_valid_fmt(&sink->stream) != SOF_IPC_FRAME_S24_4LE) {
+		comp_err(dev, "aria_prepare(): format is not supported");
+		return -EINVAL;
+	}
+
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "aria_prepare(): Component is in active state.");
 		return 0;
