@@ -17,6 +17,7 @@ set(components
 	"gain"
 	"igo_nr"
 	"rtnr"
+	"src"
 )
 
 set(component_parameters
@@ -28,16 +29,15 @@ set(component_parameters
 	"BENCH_GAIN_PARAMS=default"
 	"BENCH_IGO_NR_PARAMS=default"
 	"BENCH_RTNR_PARAMS=default"
+	"BENCH_SRC_PARAMS=default"
 )
 
 set(components_s32
 	"aria"
-	"src"
 )
 
 set(component_parameters_s32
 	"BENCH_ARIA_PARAMS=default"
-	"BENCH_SRC_PARAMS=default"
 )
 
 foreach(p ${platforms})
