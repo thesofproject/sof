@@ -332,25 +332,6 @@ static inline uint32_t audio_stream_sample_bytes(const struct audio_stream *buf)
 }
 
 /**
- * Return the frames that meet the align requirement of both byte_align and
- * frame_align_req.
- * @param byte_align Processing byte alignment requirement.
- * @param frame_align_req Processing frames alignment requirement.
- * @param frame_size Size of the frame in bytes.
- * @return frame number.
- */
-static inline uint32_t audio_stream_frame_align_get(const uint32_t byte_align,
-						    const uint32_t frame_align_req,
-						    uint32_t frame_size)
-{
-	/* Figure out how many frames are needed to meet the byte_align alignment requirements */
-	uint32_t frame_num = byte_align / gcd(byte_align, frame_size);
-
-	/** return the lcm of frame_num and frame_align_req*/
-	return frame_align_req * frame_num / gcd(frame_num, frame_align_req);
-}
-
-/**
  * Set align_shift_idx and align_frame_cnt of stream according to byte_align and
  * frame_align_req alignment requirement. Once the channel number,frame size
  * are determined，the align_frame_cnt and align_shift_idx are determined too.
@@ -362,19 +343,9 @@ static inline uint32_t audio_stream_frame_align_get(const uint32_t byte_align,
  * @param frame_align_req Processing frames alignment requirement.
  * @param stream Sink or source stream structure which to be set.
  */
-static inline void audio_stream_init_alignment_constants(const uint32_t byte_align,
-							 const uint32_t frame_align_req,
-							 struct audio_stream *stream)
-{
-	uint32_t process_size;
-	uint32_t frame_size = audio_stream_frame_bytes(stream);
-
-	stream->runtime_stream_params.align_frame_cnt =
-			audio_stream_frame_align_get(byte_align, frame_align_req, frame_size);
-	process_size = stream->runtime_stream_params.align_frame_cnt * frame_size;
-	stream->runtime_stream_params.align_shift_idx	=
-			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
-}
+void audio_stream_init_alignment_constants(const uint32_t byte_align,
+					   const uint32_t frame_align_req,
+					   struct audio_stream *stream);
 
 /**
  * Applies parameters to the buffer.
