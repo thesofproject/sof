@@ -181,7 +181,9 @@ ifdef(`NO_AMP',,`
 ifdef(`SMART_AMP',,`
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
+PIPELINE_PCM_ADD(
+	ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
+	      sof/pipe-volume-demux-playback.m4),
 	1, 0, 2, s32le,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)')')
