@@ -163,7 +163,7 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 
 	ipc4_update_buffer_format(buffer, audio_fmt);
 #ifndef ARIA_GENERIC
-	audio_stream_init_alignment_constants(8, 1, &buffer->stream);
+	audio_stream_set_align(8, 1, &buffer->stream);
 #endif
 }
 

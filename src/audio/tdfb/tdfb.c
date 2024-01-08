@@ -518,8 +518,8 @@ static void tdfb_set_alignment(struct audio_stream *source,
 	const uint32_t byte_align = 1;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+	audio_stream_set_align(byte_align, frame_align_req, source);
+	audio_stream_set_align(byte_align, frame_align_req, sink);
 }
 
 static int tdfb_prepare(struct processing_module *mod,
