@@ -18,6 +18,7 @@ set(components
 	"igo_nr"
 	"rtnr"
 	"src"
+	"src_lite"
 )
 
 set(component_parameters
@@ -30,6 +31,7 @@ set(component_parameters
 	"BENCH_IGO_NR_PARAMS=default"
 	"BENCH_RTNR_PARAMS=default"
 	"BENCH_SRC_PARAMS=default"
+	"BENCH_SRC_LITE_PARAMS=default"
 )
 
 set(components_s32
