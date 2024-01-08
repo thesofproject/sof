@@ -93,7 +93,7 @@ void audio_stream_recalc_align(struct audio_stream *stream)
 			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
 }
 
-void audio_stream_init_alignment_constants(const uint32_t byte_align,
+void audio_stream_set_align(const uint32_t byte_align,
 					   const uint32_t frame_align_req,
 					   struct audio_stream *stream)
 {
@@ -139,7 +139,7 @@ static int audio_stream_source_set_alignment_constants(struct sof_source *source
 {
 	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
 
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, audio_stream);
+	audio_stream_set_align(byte_align, frame_align_req, audio_stream);
 
 	return 0;
 }
@@ -150,7 +150,7 @@ static int audio_stream_sink_set_alignment_constants(struct sof_sink *sink,
 {
 	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
 
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, audio_stream);
+	audio_stream_set_align(byte_align, frame_align_req, audio_stream);
 
 	return 0;
 }
@@ -195,7 +195,7 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 	audio_stream->addr = buff_addr;
 	audio_stream->end_addr = (char *)audio_stream->addr + size;
 
-	audio_stream_init_alignment_constants(1, 1, audio_stream);
+	audio_stream_set_align(1, 1, audio_stream);
 	source_init(audio_stream_get_source(audio_stream), &audio_stream_source_ops,
 		    &audio_stream->runtime_stream_params);
 	sink_init(audio_stream_get_sink(audio_stream), &audio_stream_sink_ops,

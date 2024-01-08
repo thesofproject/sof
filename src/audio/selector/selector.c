@@ -847,8 +847,8 @@ static int selector_prepare(struct processing_module *mod,
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-	audio_stream_init_alignment_constants(4, 1, &sourceb->stream);
-	audio_stream_init_alignment_constants(4, 1, &sinkb->stream);
+	audio_stream_set_align(4, 1, &sourceb->stream);
+	audio_stream_set_align(4, 1, &sinkb->stream);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

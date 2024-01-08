@@ -338,20 +338,20 @@ static inline uint32_t audio_stream_sample_bytes(const struct audio_stream *buf)
 }
 
 /**
- * Set align_shift_idx and align_frame_cnt of stream according to byte_align and
- * frame_align_req alignment requirement. Once the channel number,frame size
- * are determined，the align_frame_cnt and align_shift_idx are determined too.
- * these two feature will be used in audio_stream_get_avail_frames_aligned
- * to calculate the available frames. it should be called in component prepare
- * or param functions only once before stream copy. if someone forgets to call
- * this first, there would be unexampled error such as nothing is copied at all.
+ * @brief Set processing alignment requirements
+ *
+ * Sets the sample byte alignment and aligned frame count required for
+ * processing done on this stream.  This function may be called at any
+ * time, the internal constants are recalculated if the frame/sample
+ * size changes.  @see audio_stream_avail_frames_aligned().
+ *
  * @param byte_align Processing byte alignment requirement.
  * @param frame_align_req Processing frames alignment requirement.
  * @param stream Sink or source stream structure which to be set.
  */
-void audio_stream_init_alignment_constants(const uint32_t byte_align,
-					   const uint32_t frame_align_req,
-					   struct audio_stream *stream);
+void audio_stream_set_align(const uint32_t byte_align,
+			    const uint32_t frame_align_req,
+			    struct audio_stream *stream);
 
 /**
  * Applies parameters to the buffer.

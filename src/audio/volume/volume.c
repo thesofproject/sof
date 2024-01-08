@@ -632,8 +632,8 @@ static void volume_set_alignment(struct audio_stream *source,
 	/*There is no limit for frame number, so both source and sink set it to be 1*/
 	const uint32_t frame_align_req = 1;
 
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, source);
-	audio_stream_init_alignment_constants(byte_align, frame_align_req, sink);
+	audio_stream_set_align(byte_align, frame_align_req, source);
+	audio_stream_set_align(byte_align, frame_align_req, sink);
 #endif
 }
 
