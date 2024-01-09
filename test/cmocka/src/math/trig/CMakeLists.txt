@@ -40,3 +40,7 @@ cmocka_test(acos_16b_fixed
 	${PROJECT_SOURCE_DIR}/src/math/trig.c
 )
 
+cmocka_test(lut_sin_16b_fixed
+	lut_sin_16b_fixed.c
+	${PROJECT_SOURCE_DIR}/src/math/lut_trig.c
+)
