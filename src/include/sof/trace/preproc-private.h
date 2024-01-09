@@ -75,8 +75,6 @@
  * META_RECURSE(META_REPEAT
  */
 
-#define _META_NO_ARGS(...) 0
-
 /* _META_IS_PROBE(...) evaluates to 0 when __VA_ARGS__ is single token
  * _META_IS_PROBE(PROBE()) evaulates to 1, because it is equivalent to
  * _META_GET_ARG_2(~, 1, 0)
@@ -134,41 +132,8 @@
  */
 #define _META_EMPTY()
 
-/* These two will expand to:
- * _META_EMPTY _META_EMPTY ... _META_EMPTY
- * () () ... ()
- * Why '_META_EMPTY() _META_EMPTY' instead of '_META_EMPTY'?
- * Using simply '_META_EMPTY' would produce 
- * _META_EMPTY_META_EMPTY_META_EMPTY
- * and adding _META_EMPTY() introduces a " "(space) token. 
- */
-#define _META_EMPTY_GEN(i, rest) _META_EMPTY() _META_EMPTY
-#define _META_PAREN_GEN(i, rest) ()
-/* You cannot use here META_RECURSE
- * and must instead use _META_REQRS_{NUMBER}.
- * If META_RECURSE was used, things like
- * META_RECURSE(MAP_AGGREGATE
-* would break.
- */
-#define _META_DEFER_N(depth) \
-	META_RECURSE_N(8, META_REPEAT(depth, _META_EMPTY_GEN, ~)) \
-	META_RECURSE_N(8, META_REPEAT(depth, _META_PAREN_GEN, ~))
-
 /* Special, implicit defer implementation for META_REPEAT to work */
 #define _META_DEFER_2(m) m _META_EMPTY _META_EMPTY () ()
-
-/* helpers for consuming every single arg from __VA_ARGS__ */
-// expand and discard
-#define _META_EAT(...)
-// force expansion, reverse of META_DEFER
-#define _META_EXPAND(...) __VA_ARGS__
-#define _META_WHEN(c) META_IF(c)(_META_EXPAND, _META_EAT)
-
-/* while(count--!=0) do
- * uses DEC so count == N can only work if all following exist
- * DEC_0, DEC_1, ..., DEC_N-1, DEC_N
- */
-#define _META_REPEAT_INDIRECT() META_REPEAT
 
 /* map every group of arg_count arguments onto function m
  * i.e. arg_count=2;m=ADD;args=1,2,3,4,5,6,7...
@@ -220,12 +185,6 @@
 		_META_DEFER_2(_META_MAP_AGGREGATE)()\
 			(arg_count, m, aggr, __VA_ARGS__)\
 	)(aggr)
-
-/* META_CONCAT with parametrised delimeter between concatenised tokens
- * META_CONCAT_SEQ_DELIM_(A,B,C,D) tokenizes as A_B_C_D
- */
-#define _META_CONCAT_DELIM(delim, x, y) META_CONCAT(META_CONCAT(x, delim),y)
-#define _META_CONCAT_DELIM_(x, y) _META_CONCAT_DELIM(_, x, y)
 
 /* UNUSED private macros */
 #define _META_VOID(x) (void)(x)
