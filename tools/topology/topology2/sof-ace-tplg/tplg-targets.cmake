@@ -84,6 +84,10 @@ GOOGLE_RTC_AEC_SUPPORT=1,DEEP_BUF_SPK=true,PLAYBACK_PIPELINE_SRC=dts"
 NHLT_BIN=nhlt-sof-mtl-es83x6-ssp1-hdmi-ssp02.bin,HEADSET_SSP_DAI_INDEX=1,\
 HEADSET_CODEC_NAME=SSP1-Codec,HDMI_IN_CAPTURE=true"
 
+#Nocodec + HDMI-IN + HDMI
+"cavs-hdmi-in-ssp\;sof-mtl-hdmi-ssp02\;PLATFORM=mtl,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-mtl-hdmi-ssp02.bin,HDMI_IN_CAPTURE=true"
+
 # SDW + DMIC + HDMI
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
 PDM1_MIC_B_ENABLE=1,DMIC0_ID=3,DMIC1_ID=4,\
