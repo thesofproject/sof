@@ -10,7 +10,7 @@
 
 #include "dcblock.h"
 
-#ifdef DCBLOCK_HIFI3
+#if SOF_USE_HIFI(3, DCBLOCK)
 
 #include <xtensa/tie/xt_hifi3.h>
 LOG_MODULE_DECLARE(dcblock, CONFIG_SOF_LOG_LEVEL);
