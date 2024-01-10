@@ -254,7 +254,7 @@ struct dai_type_info {
 /* class (driver) level (no device object) tracing */
 
 #define dai_cl_err(drv_p, __e, ...)		\
-	trace_dev_err(trace_dai_dvr_get_tr_ctx,	\
+	trace_dev_err(trace_dai_drv_get_tr_ctx,	\
 		      trace_dai_drv_get_id,	\
 		      trace_dai_drv_get_subid,	\
 		      drv_p, __e, ##__VA_ARGS__)
