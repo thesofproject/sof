@@ -255,8 +255,6 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
 					 dd->process, bytes);
 	} else {
-		struct list_item *sink_list;
-
 		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
 		/*
 		 * The PCM converter functions used during DMA buffer copy can never fail,
@@ -265,6 +263,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		ret = dma_buffer_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
 						      dd->process, bytes);
 #if CONFIG_IPC_MAJOR_4
+		struct list_item *sink_list;
 		/* Skip in case of endpoint DAI devices created by the copier */
 		if (converter) {
 			/*
