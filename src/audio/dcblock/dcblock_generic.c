@@ -10,7 +10,7 @@
 
 #include "dcblock.h"
 
-#ifdef DCBLOCK_GENERIC
+#if SOF_USE_HIFI(SOF_NO_HIFI, DCBLOCK)
 
 LOG_MODULE_DECLARE(dcblock, CONFIG_SOF_LOG_LEVEL);
 

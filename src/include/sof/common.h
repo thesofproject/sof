@@ -177,6 +177,46 @@
 #define IS_ENABLED_STEP_3(ignore, value, ...) (!!(value))
 #endif
 
+#define SOF_AUTO_HIFI -1
+
+/* Generic, no HIFI. This could be anything but it is zero for
+ * user-friendliness. Unfortunately, an accidentally undefined
+ * CONFIG_${comp}_HIFI will silently be converted to 0 and will not be
+ * reported. To catch such issues, simply set this to -2 temporarily.
+ */
+#define SOF_NO_HIFI 0
+
+/* True if CONFIG_${comp}_HIFI has been explicitly configured to value 'v'.
+ *
+ * We unfortunately cannot used `defined()` here:
+ *  - https://bugs.webkit.org/show_bug.cgi?id=167643
+ *  - https://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20160118/147239.html
+ */
+#define SOF_CONFIG_HIFI(v, comp) ((v) == (CONFIG_ ## comp ## _HIFI))
+
+/* True if either explicitly specified in Kconfig as above, _or_
+ *   it is the max HIFI available in the HAL.
+ */
+#define SOF_USE_HIFI(v, comp) SOF_CONFIG_HIFI(v, comp) || \
+	(SOF_CONFIG_HIFI(SOF_AUTO_HIFI, comp) && SOF_MAX_XCHAL_HIFI == (v))
+
+#ifndef __XCC__ // Cadence toolchains
+#  define SOF_MAX_XCHAL_HIFI SOF_NO_HIFI
+#else
+#  include <xtensa/config/core-isa.h>
+// Maybe we could make this fully generic (and less readable!) using
+// IS_ENABLED() above.
+#  if XCHAL_HAVE_HIFI5
+#    define SOF_MAX_XCHAL_HIFI 5
+#  elif XCHAL_HAVE_HIFI4
+#    define SOF_MAX_XCHAL_HIFI 4
+#  elif XCHAL_HAVE_HIFI3
+#    define SOF_MAX_XCHAL_HIFI 3
+#  else
+#    define SOF_MAX_XCHAL_HIFI SOF_NO_HIFI
+#  endif
+#endif
+
 #ifndef __GLIBC_USE
 #define __GLIBC_USE(x) 0
 #endif

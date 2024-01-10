@@ -6,3 +6,10 @@ config COMP_DCBLOCK
 	help
 	  Select for DC Blocking Filter component. This component filters out
 	  the DC offset which often originates from a microphone's output.
+
+
+config DCBLOCK_HIFI
+	int "DC Blocking Filter HIFI level (-1 = max)"
+	default -1
+	help
+	  0: no HIFI, -1 (default): max available
