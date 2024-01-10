@@ -43,7 +43,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: d7af6f371034f31b9440b27c694b0be3c87491d3
+      # TEST hack https://github.com/zephyrproject-rtos/zephyr/pull/67513
+      revision: 512407edc9d8cffe80d7fb9a75cc923b49b2f2fb
       remote: zephyrproject
 
       # Import some projects listed in zephyr/west.yml@revision

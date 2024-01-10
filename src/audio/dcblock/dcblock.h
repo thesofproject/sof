@@ -15,20 +15,6 @@
 #include <module/module/base.h>
 #include <module/module/interface.h>
 
-/* __XCC__ is both for xt_xcc and xt_clang */
-#if defined(__XCC__)
-# include <xtensa/config/core-isa.h>
-# if XCHAL_HAVE_HIFI4
-#  define DCBLOCK_HIFI4
-# elif XCHAL_HAVE_HIFI3
-#  define DCBLOCK_HIFI3
-# else
-#  define DCBLOCK_GENERIC
-# endif
-#else
-# define DCBLOCK_GENERIC
-#endif
-
 struct audio_stream;
 struct comp_dev;
 

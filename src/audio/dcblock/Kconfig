@@ -6,3 +6,24 @@ config COMP_DCBLOCK
 	help
 	  Select for DC Blocking Filter component. This component filters out
 	  the DC offset which often originates from a microphone's output.
+
+choice
+	prompt "DC Blocking Filter HIFI level"
+	depends on COMP_DCBLOCK
+
+# The first valid one seems to be the default.
+# If not reliably, this can also be achieved with 3
+# explicit `default` lines above.
+config DCBLOCK_HIFI4
+       bool "HIFI4 DCBLOCK"
+       depends on XTENSA_ARCH_HAS_HIFI4
+
+config DCBLOCK_HIFI3
+       bool "HIFI3 DCBLOCK"
+       depends on XTENSA_ARCH_HAS_HIFI3
+
+config DCBLOCK_GENERIC
+       bool "Generic DCBLOCK, no HIFI"
+
+
+endchoice

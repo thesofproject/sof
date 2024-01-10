@@ -10,7 +10,7 @@
 
 #include "dcblock.h"
 
-#ifdef DCBLOCK_GENERIC
+#if CONFIG_DCBLOCK_GENERIC
 
 LOG_MODULE_DECLARE(dcblock, CONFIG_SOF_LOG_LEVEL);
 
