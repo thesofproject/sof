@@ -177,6 +177,33 @@
 #define IS_ENABLED_STEP_3(ignore, value, ...) (!!(value))
 #endif
 
+#define SOF_CONFIG_HIFI(level, component) (CONFIG_ ## component ## _HIFI_ ## level)
+
+/* True if:
+ *  (1) EITHER this particular level was manually forced in Kconfig,
+ *  (2) OR:  - this component defaulted to "MAX"
+ *           - AND this level is the max available in the XC HAL.
+ */
+#define SOF_USE_HIFI(level, component) (SOF_CONFIG_HIFI(level, component) || \
+	(SOF_CONFIG_HIFI(MAX, component) && level == SOF_MAX_XCHAL_HIFI))
+
+#ifndef __XCC__ // Cadence toolchains: either xt-xcc or xt-clang.
+#  define SOF_MAX_XCHAL_HIFI NONE
+#else
+#  include <xtensa/config/core-isa.h>
+// Maybe we could make this fully generic (and less readable!) using
+// IS_ENABLED() above.
+#  if XCHAL_HAVE_HIFI5
+#    define SOF_MAX_XCHAL_HIFI 5
+#  elif XCHAL_HAVE_HIFI4
+#    define SOF_MAX_XCHAL_HIFI 4
+#  elif XCHAL_HAVE_HIFI3
+#    define SOF_MAX_XCHAL_HIFI 3
+#  else
+#    define SOF_MAX_XCHAL_HIFI NONE
+#  endif
+#endif
+
 #ifndef __GLIBC_USE
 #define __GLIBC_USE(x) 0
 #endif
