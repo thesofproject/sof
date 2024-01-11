@@ -469,18 +469,6 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	return ret;
 }
 
-int set_pipeline_state(struct ipc_comp_dev *ppl_icd, uint32_t cmd,
-		       bool *delayed)
-{
-	int ret;
-
-	ret = ipc4_pipeline_prepare(ppl_icd, cmd);
-	if (ret)
-		return ret;
-
-	return ipc4_pipeline_trigger(ppl_icd, cmd, delayed);
-}
-
 static void ipc_compound_pre_start(int msg_id)
 {
 	/* ipc thread will wait for all scheduled tasks to be complete
@@ -587,6 +575,39 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 		}
 	}
 
+	/* Run the prepare phase on the pipelines */
+	for (i = 0; i < ppl_count; i++) {
+		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+						 ppl_id[i], IPC_COMP_IGNORE_REMOTE);
+		if (!ppl_icd) {
+			ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
+			return IPC4_INVALID_RESOURCE_ID;
+		}
+
+		/* Pass IPC to target core
+		 * or use idc if more than one core used
+		 */
+		if (!cpu_is_me(ppl_icd->core)) {
+			if (use_idc) {
+				struct idc_msg msg = { IDC_MSG_PPL_STATE,
+					IDC_MSG_PPL_STATE_EXT(ppl_id[i],
+							      IDC_PPL_STATE_PHASE_PREPARE),
+					ppl_icd->core,
+					sizeof(cmd), &cmd, };
+
+				ret = idc_send_msg(&msg, IDC_BLOCKING);
+			} else {
+				return ipc4_process_on_core(ppl_icd->core, false);
+			}
+		} else {
+			ret = ipc4_pipeline_prepare(ppl_icd, cmd);
+		}
+
+		if (ret != 0)
+			return ret;
+	}
+
+	/* Run the trigger phase on the pipelines */
 	for (i = 0; i < ppl_count; i++) {
 		bool delayed = false;
 
@@ -604,7 +625,7 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 			if (use_idc) {
 				struct idc_msg msg = { IDC_MSG_PPL_STATE,
 					IDC_MSG_PPL_STATE_EXT(ppl_id[i],
-							      IDC_PPL_STATE_PHASE_ONESHOT),
+							      IDC_PPL_STATE_PHASE_TRIGGER),
 					ppl_icd->core,
 					sizeof(cmd), &cmd, };
 
@@ -614,7 +635,7 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 			}
 		} else {
 			ipc_compound_pre_start(state.primary.r.type);
-			ret = set_pipeline_state(ppl_icd, cmd, &delayed);
+			ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 			ipc_compound_post_start(state.primary.r.type, ret, delayed);
 		}
 
