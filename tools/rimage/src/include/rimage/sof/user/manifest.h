@@ -121,6 +121,20 @@ struct sof_man_mod_config {
  * FW Manifest Header
  */
 
+union sof_man_fw_header_image_flags {
+	uint32_t raw;
+	struct {
+		uint32_t tp : 1;
+		uint32_t image_type : 2;
+		uint32_t relocatable_lib : 1;
+		uint32_t _rsvd0 : 28;
+	} fields;
+};
+
+#define SOF_MAN_FW_HDR_IMG_TYPE_ROM_EXT	0
+#define SOF_MAN_FW_HDR_IMG_TYPE_MAIN_FW	1
+#define SOF_MAN_FW_HDR_IMG_TYPE_LIB	2
+
 #define SOF_MAN_FW_HDR_FW_NAME_LEN	8
 #define SOF_MAN_FW_HDR_ID		{'$', 'A', 'M', '1'}
 #define SOF_MAN_FW_HDR_NAME		"ADSPFW"
@@ -139,7 +153,7 @@ struct sof_man_fw_header {
 	uint8_t name[SOF_MAN_FW_HDR_FW_NAME_LEN];
 	/* number of pages of preloaded image loaded by driver */
 	uint32_t preload_page_count;
-	uint32_t fw_image_flags;
+	union sof_man_fw_header_image_flags fw_image_flags;
 	uint32_t feature_mask;
 	uint16_t major_version;
 	uint16_t minor_version;

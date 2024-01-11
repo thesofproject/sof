@@ -1548,7 +1548,7 @@ static void dump_fw_desc(const struct sof_man_fw_desc *fw_desc)
 		 fw_desc->header.header_id[3]);
 	DUMP_PRINTABLE_BYTES("name", fw_desc->header.name);
 	DUMP_KEY("preload_page_count", "%d", fw_desc->header.preload_page_count);
-	DUMP_KEY("fw_image_flags", "0x%x", fw_desc->header.fw_image_flags);
+	DUMP_KEY("fw_image_flags", "0x%x", fw_desc->header.fw_image_flags.raw);
 	DUMP_KEY("feature_mask", "0x%x", fw_desc->header.feature_mask);
 	DUMP_KEY("hw_buf_base_addr", "0x%x", fw_desc->header.fw_compat);
 	DUMP_KEY("hw_buf_length", "0x%x", fw_desc->header.hw_buf_length);
@@ -1599,7 +1599,7 @@ static int parse_fw_desc(const toml_table_t *toml, struct parse_ctx *pctx,
 	if (ret < 0)
 		return err_key_parse("header", NULL);
 
-	out->header.fw_image_flags =
+	out->header.fw_image_flags.raw =
 		parse_uint32_hex_key(header, &ctx, "fw_image_flags", SOF_MAN_FW_HDR_FLAGS, &ret);
 	if (ret < 0)
 		return err_key_parse("header", NULL);
