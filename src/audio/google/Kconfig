@@ -24,6 +24,14 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	  This component takes raw microphones input and playback reference
 	  and outputs an echo-free microphone signal.
 
+config COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	bool "Use 32bit API in Google Audio processing"
+	default n
+	help
+	  Selects an API to be used in communication with the Google real-time
+	  communication audio processing: 32bit float or 16bit integer
+
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Sample rate for Google Real Time Communication Audio processing"
@@ -32,21 +40,26 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 	  Sets the sample rate for the memory buffer for the Google real-time
 	  communication audio processing.
 
-config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
-	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	int "Number of channels to process for Google Real Time Communication Audio processing"
-	default 1
-	help
-	  Sets the number of channels to process in the Google real-time
-	  communication audio processing.
-
-config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS
-	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	int "Number of AEC reference channels for Google Real Time Communication Audio processing"
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_CHANNEL_MAX
+	int "Max number of AEC channels"
 	default 2
 	help
-	  Sets the number AEC reference channels in the Google real-time
-	  communication audio processing.
+	  Sets the maximum number source/sink processing channels Google Real
+	  Time Communication Audio Processing will use for. This is a
+	  computation and memory budget tunable. Channel counts are
+	  retrieved at runtime, but channels higher than this number
+	  are ignored (on input) or cleared (output).
+
+
+config COMP_GOOGLE_RTC_AUDIO_REFERENCE_CHANNEL_MAX
+	int "Max number of AEC reference channels"
+	default 2
+	help
+	  Sets the maximum number source/sink reference channels Google Real
+	  Time Communication Audio Processing will use for. This is a
+	  computation and memory budget tunable. Channel counts are
+	  retrieved at runtime, but channels higher than this number
+	  are ignored
 
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING

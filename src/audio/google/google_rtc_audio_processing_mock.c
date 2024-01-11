@@ -12,6 +12,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/numbers.h>
+
 #include <rtos/alloc.h>
 #include "ipc/topology.h"
 
@@ -23,7 +24,11 @@ struct GoogleRtcAudioProcessingState {
 	int num_aec_reference_channels;
 	int num_output_channels;
 	int num_frames;
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+	float *aec_reference;
+#else
 	int16_t *aec_reference;
+#endif
 };
 
 static void SetFormats(GoogleRtcAudioProcessingState *const state,
@@ -140,34 +145,63 @@ int GoogleRtcAudioProcessingReconfigure(GoogleRtcAudioProcessingState *const sta
 	return 0;
 }
 
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState *const state,
+						   const float *const *src,
+						   float * const *dest)
+{
+	float *ref = state->aec_reference;
+	float **mic = (float **)src;
+	int n, chan;
+
+	for (chan = 0; chan < state->num_output_channels; chan++) {
+		for (n = 0; n < state->num_frames; ++n) {
+			float mic_save = mic[chan][n];	/* allow same in/out buffer */
+
+			if (chan < state->num_aec_reference_channels)
+				dest[chan][n] = mic_save + ref[n + (chan * state->num_frames)];
+			else
+				dest[chan][n] = mic_save;
+		}
+	}
+	return 0;
+}
+
+int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState *const state,
+						  const float *const *data)
+{
+	const size_t buffer_size =
+		sizeof(state->aec_reference[0])
+		* state->num_frames;
+	int channel;
+
+	for (channel = 0; channel < state->num_aec_reference_channels; channel++) {
+		memcpy_s(&state->aec_reference[channel * state->num_frames], buffer_size,
+			 data[channel], buffer_size);
+	}
+
+	return 0;
+}
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *const state,
 						 const int16_t *const src,
 						 int16_t *const dest)
 {
 	int16_t *ref = state->aec_reference;
-	int16_t *mic = (int16_t *) src;
-	int16_t *out = dest;
-	int n, io, im, ir;
+	int n, chan;
 
-	/* Mix input and reference channels to output. The matching channels numbers
-	 * are mixed. If e.g. microphone and output channels count is 4, and reference
-	 * has 2 channels, output channels 3 and 4 are copy of microphone channels 3 and 4,
-	 * and output channels 1 and 2 are sum of microphone and reference.
-	 */
-	memset(dest, 0, sizeof(int16_t) * state->num_output_channels * state->num_frames);
-	for (n = 0; n < state->num_frames; ++n) {
-		im = 0;
-		ir = 0;
-		for (io = 0; io < state->num_output_channels; io++) {
-			out[io] = sat_int16(
-				(im < state->num_capture_channels ? (int32_t)mic[im++] : 0) +
-				(ir < state->num_aec_reference_channels ? (int32_t)ref[ir++] : 0));
+	for (chan = 0; chan < state->num_output_channels; chan++) {
+		for (n = 0; n < state->num_frames; ++n) {
+			int16_t mic_save = src[(n * state->num_capture_channels) + chan];
+
+			if (chan < state->num_aec_reference_channels)
+				dest[(n * state->num_capture_channels) + chan] =
+				   mic_save + ref[(n * state->num_aec_reference_channels) + chan];
+			else
+				dest[(n * state->num_capture_channels) + chan] = mic_save;
 		}
-
-		ref += state->num_aec_reference_channels;
-		out += state->num_output_channels;
-		mic += state->num_capture_channels;
 	}
+
 	return 0;
 }
 
@@ -182,6 +216,8 @@ int GoogleRtcAudioProcessingAnalyzeRender_int16(GoogleRtcAudioProcessingState *c
 		 data, buffer_size);
 	return 0;
 }
+
+#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 void GoogleRtcAudioProcessingParseSofConfigMessage(uint8_t *message,
 						   size_t message_size,
