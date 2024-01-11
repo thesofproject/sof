@@ -1380,7 +1380,8 @@ int man_write_fw_ace_v1_5(struct image *image)
 	m->desc.header.build_version = image->fw_ver_build;
 
 	m->desc.header.feature_mask = 0x2; // -> should be feature mask - to fix
-	m->desc.header.fw_image_flags = 0x2; // -> should be feature mask - to fix
+	m->desc.header.fw_image_flags.fields.image_type = image->loadable_module ?
+		SOF_MAN_FW_HDR_IMG_TYPE_LIB : SOF_MAN_FW_HDR_IMG_TYPE_MAIN_FW;
 	m->desc.header.fw_compat = 0x100000; // -> PUT PROPER STRUCT
 
 	/* create each module */
