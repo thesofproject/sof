@@ -83,9 +83,9 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 	struct log_entry_header header;
 	int ret;
 
-	header.uid = (uintptr_t)uid;
-	header.id_0 = id_1 & TRACE_ID_MASK;
-	header.id_1 = id_2 & TRACE_ID_MASK;
+	header.uid = 0;
+	header.id_0 = 0;
+	header.id_1 = 0;
 	header.core_id = cpu_get_id();
 	header.timestamp = timestamp + delta;
 	header.log_entry_address = entry;
@@ -280,11 +280,6 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	if (!trace->enable) {
 		return;
 	}
-
-#if CONFIG_TRACE_FILTERING_VERBOSITY
-	if (!trace_filter_verbosity(lvl, ctx))
-		return;
-#endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {
