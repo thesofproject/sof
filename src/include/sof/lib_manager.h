@@ -64,6 +64,9 @@
 
 #include <stdint.h>
 #include <rimage/sof/user/manifest.h>
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+#include <sof/auth_api_iface.h>
+#endif
 
 #define LIB_MANAGER_MAX_LIBS				16
 #define LIB_MANAGER_LIB_ID_SHIFT			12
@@ -86,6 +89,10 @@ struct ext_library {
 	uint32_t lib_notif_count;
 
 	void *runtime_data;
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+	struct auth_api_ctx auth_ctx;
+	void *auth_buffer;
+#endif
 };
 
 /* lib manager context, used by lib_notification */
