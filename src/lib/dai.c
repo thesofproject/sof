@@ -208,8 +208,11 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	struct dai *d;
 
 	dev = dai_get_zephyr_device(type, index);
-	if (!dev)
+	if (!dev) {
+		tr_err(&dai_tr, "dai_get: failed to get dai with index %d type %d",
+		       index, type);
 		return NULL;
+	}
 
 	d = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(struct dai));
 	if (!d)
@@ -222,6 +225,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	dai_set_device_params(d);
 
 	if (dai_probe(d->dev)) {
+		tr_err(&dai_tr, "dai_get: failed to probe dai with index %d type %d",
+		       index, type);
 		rfree(d);
 		return NULL;
 	}
