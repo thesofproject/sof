@@ -14,7 +14,6 @@ config LIBRARY_MANAGER
 	  could be used if enabled.
 	  If unsure say N.
 
-
 config LIBCODE_MODULE_SUPPORT
 	bool "Add support for libcode modules"
 	default n
@@ -24,6 +23,14 @@ config LIBCODE_MODULE_SUPPORT
 	  as lib_code. This modules contains code shared by
 	  a multiple modules. This option adds support for modules
 	  of this type.
+
+config LIBRARY_AUTH_SUPPORT
+	bool "Library Authentication Support"
+	default n
+	help
+	  This is support for dynamic modules authentication.
+	  Externally developed modules both for SOF and Zephyr
+	  could be used if enabled.
 	  If unsure say N.
 
 endmenu
