@@ -137,36 +137,21 @@ static int llext_manager_unload_module(uint32_t module_id, struct sof_man_module
 	return llext_manager_align_unmap(va_base_rodata, st_rodata_size);
 }
 
-static void __sparse_cache *llext_manager_get_instance_bss_address(uint32_t module_id,
-								   uint32_t instance_id,
-								   struct sof_man_module *mod)
+static void __sparse_cache *llext_manager_get_bss_address(uint32_t module_id,
+							  struct sof_man_module *mod)
 {
-	uint32_t instance_bss_size =
-		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
-	uint32_t inst_offset = instance_bss_size * PAGE_SZ * instance_id;
-	void __sparse_cache *va_base =
-		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
-					inst_offset);
-
-	tr_dbg(&lib_manager_tr,
-	       "llext_manager_get_instance_bss_address(): instance_bss_size: %#x, pointer: %p",
-	       instance_bss_size, (__sparse_force void *)va_base);
-
-	return va_base;
+	return (void __sparse_cache *)mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr;
 }
 
-static int llext_manager_allocate_module_instance(uint32_t module_id, uint32_t instance_id,
-						  uint32_t is_pages, struct sof_man_module *mod)
+static int llext_manager_allocate_module_bss(uint32_t module_id,
+					     uint32_t is_pages, struct sof_man_module *mod)
 {
-	uint32_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = llext_manager_get_instance_bss_address(module_id,
-									      instance_id, mod);
+	size_t bss_size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length * PAGE_SZ;
+	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
 
-	if ((is_pages * PAGE_SZ) > bss_size) {
+	if (is_pages * PAGE_SZ > bss_size) {
 		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module_instance(): invalid is_pages: %u, required: %u",
+		       "llext_manager_allocate_module_bss(): invalid is_pages: %u, required: %u",
 		       is_pages, bss_size / PAGE_SZ);
 		return -ENOMEM;
 	}
@@ -180,14 +165,11 @@ static int llext_manager_allocate_module_instance(uint32_t module_id, uint32_t i
 	return 0;
 }
 
-static int llext_manager_free_module_instance(uint32_t module_id, uint32_t instance_id,
-					      struct sof_man_module *mod)
+static int llext_manager_free_module_bss(uint32_t module_id,
+					 struct sof_man_module *mod)
 {
-	size_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = llext_manager_get_instance_bss_address(module_id,
-									      instance_id, mod);
+	size_t bss_size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length * PAGE_SZ;
+	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
 
 	/* Unmap bss memory. */
 	return llext_manager_align_unmap(va_base, bss_size);
@@ -220,8 +202,7 @@ uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 	if (ret < 0)
 		return 0;
 
-	ret = llext_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
-						     base_cfg->is_pages, mod);
+	ret = llext_manager_allocate_module_bss(module_id, base_cfg->is_pages, mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_allocate_module(): module allocation failed: %d", ret);
@@ -248,10 +229,10 @@ int llext_manager_free_module(const struct comp_driver *drv,
 	if (ret < 0)
 		return ret;
 
-	ret = llext_manager_free_module_instance(module_id, IPC4_INST_ID(ipc_config->id), mod);
+	ret = llext_manager_free_module_bss(module_id, mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
-		       "llext_manager_free_module(): free module instance failed: %d", ret);
+		       "llext_manager_free_module(): free module bss failed: %d", ret);
 		return ret;
 	}
 	return 0;
