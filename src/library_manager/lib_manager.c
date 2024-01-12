@@ -25,6 +25,10 @@
 #include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
 
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+#include <sof/auth/auth_api.h>
+#endif
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -46,6 +50,74 @@ struct lib_manager_dma_ext {
 };
 
 static struct ext_library loader_ext_lib;
+
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+static int lib_manager_auth_init(void)
+{
+	struct ext_library *ext_lib = ext_lib_get();
+	int ret;
+
+	if (auth_api_version().major != AUTH_API_VERSION_MAJOR) {
+		return -EINVAL;
+	}
+
+	ext_lib->auth_buffer = rballoc_align(0, SOF_MEM_CAPS_RAM,
+					AUTH_SCRATCH_BUFF_SZ, CONFIG_MM_DRV_PAGE_SIZE);
+	if (!ext_lib->auth_buffer)
+		return -ENOMEM;
+
+
+	ret = auth_api_init(&ext_lib->auth_ctx, ext_lib->auth_buffer,
+				AUTH_SCRATCH_BUFF_SZ, IMG_TYPE_LIB);
+	if (ret != 0) {
+		tr_err(&lib_manager_tr, "lib_manager_auth_init() failed with error: %d", ret);
+		ret = -EACCES;
+	}
+
+	return ret;
+}
+
+static void lib_manager_auth_deinit(void)
+{
+	struct ext_library *ext_lib = ext_lib_get();
+
+	if (ext_lib->auth_buffer)
+		rfree(ext_lib->auth_buffer);
+	ext_lib->auth_buffer = NULL;
+	memset(&ext_lib->auth_ctx, 0, sizeof(struct auth_api_ctx));
+}
+
+static int lib_manager_auth_proc(const void *buffer_data,
+				size_t buffer_size, enum auth_phase phase)
+{
+	struct ext_library *ext_lib = ext_lib_get();
+	int ret;
+
+	ret = auth_api_init_auth_proc(&ext_lib->auth_ctx, buffer_data, buffer_size, phase);
+
+	if (ret != 0) {
+		tr_err(&lib_manager_tr, "lib_manager_auth_proc() failed with error: %d", ret);
+		return -EACCES;
+	}
+
+	/* The auth_api_busy() will timeouts internally in case of failure */
+	while(auth_api_busy(&ext_lib->auth_ctx));
+
+	ret = auth_api_result(&ext_lib->auth_ctx);
+
+	if (ret != AUTH_IMAGE_TRUSTED) {
+	  tr_err(&lib_manager_tr, "lib_manager_auth_proc() Untrasted library!");
+		return -ENOTSUP;
+	}
+
+	if (phase == AUTH_PHASE_LAST) {
+		auth_api_cleanup(&ext_lib->auth_ctx);
+	}
+
+	return 0;
+}
+#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
+
 
 #if IS_ENABLED(CONFIG_MM_DRV)
 
@@ -583,6 +655,13 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	tr_dbg(&lib_manager_tr, "lib_manager_store_library(): pointer: %p",
 	       (__sparse_force void *)library_base_address);
 
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+	ret = lib_manager_auth_proc(man_buffer,
+				MAN_MAX_SIZE_V1_8, AUTH_PHASE_FIRST);
+	if (ret < 0)
+		return ret;
+#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
+
 	/* Copy data from temp_mft_buf to destination memory (pointed by library_base_address) */
 	memcpy_s((__sparse_force void *)library_base_address, MAN_MAX_SIZE_V1_8,
 		 (__sparse_force void *)man_buffer, MAN_MAX_SIZE_V1_8);
@@ -594,6 +673,13 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 		rfree((__sparse_force void *)library_base_address);
 		return ret;
 	}
+
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+	ret = lib_manager_auth_proc((void *)library_base_address,
+				preload_size - MAN_MAX_SIZE_V1_8, AUTH_PHASE_LAST);
+	if (ret < 0)
+		return ret;
+#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
 
 	/* Now update sof context with new library */
 	lib_manager_update_sof_ctx((__sparse_force void *)library_base_address, lib_id);
@@ -704,7 +790,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 	/* allocate temporary manifest buffer */
 	man_tmp_buffer = (__sparse_force void __sparse_cache *)
 			rballoc_align(0, SOF_MEM_CAPS_DMA,
-				      MAN_MAX_SIZE_V1_8, dma_ext->addr_align);
+				      MAN_MAX_SIZE_V1_8, CONFIG_MM_DRV_PAGE_SIZE);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
 		goto cleanup;
@@ -715,7 +801,18 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 	if (ret < 0)
 		goto stop_dma;
 
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+	/* Initialize authentication support */
+	ret = lib_manager_auth_init();
+	if (ret < 0)
+		goto stop_dma;
+#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
+
 	ret = lib_manager_store_library(dma_ext, man_tmp_buffer, lib_id);
+
+#if CONFIG_LIBRARY_AUTH_SUPPORT
+	lib_manager_auth_deinit();
+#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
 
 stop_dma:
 	ret2 = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);

@@ -13,4 +13,16 @@ config LIBRARY_MANAGER
 	  Externally developed modules both for SOF and Zephyr
 	  could be used if enabled.
 	  If unsure say N.
+	  
+
+config LIBRARY_AUTH_SUPPORT
+	bool "Library Authentication Support"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  This is support for dynamic modules authentication.
+	  Externally developed modules both for SOF and Zephyr
+	  could be used if enabled.
+	  If unsure say N.
+
 endmenu
