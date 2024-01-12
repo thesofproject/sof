@@ -378,13 +378,17 @@ def show_installed_files():
 
 	for pre, _, node in RenderTree(graph_root, render.AsciiStyle):
 		fpath = STAGING_DIR / node.long_name
+
+		# pathLib.readlink() requires Python 3.9
+		symlink_trailer = f" -> {os.readlink(fpath)}" if fpath.is_symlink() else ""
+
 		stem = node.name[:-3] if node.name.endswith(".gz") else node.name
 
 		shasum_trailer = ""
 		if checksum_wanted(stem) and fpath.is_file() and not fpath.is_symlink():
 			shasum_trailer =  "\tsha256=" + checksum(fpath)
 
-		print(f"{pre}{node.name} {shasum_trailer}")
+		print(f"{pre}{node.name} {symlink_trailer} {shasum_trailer}")
 
 
 # TODO: among other things in this file it should be less SOF-specific;
