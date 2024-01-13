@@ -270,7 +270,11 @@ Otherwise, all firmware files are installed in the same staging directory by def
 This should be used with programmatic script invocations (eg. Continuous Integration).
 				""")
 
-	parser.add_argument("--deployable-build", default=False, action="store_true",
+	deploy_args = parser.add_mutually_exclusive_group()
+	# argparse.BooleanOptionalAction requires Python 3.9
+	parser.set_defaults(deployable_build=False)
+	deploy_args.add_argument("--no-deployable-build", dest='deployable_build', action='store_false')
+	deploy_args.add_argument("--deployable-build", dest='deployable_build', action='store_true',
 			    help="""Create a directory structure for the firmware files which can be deployed on target as it is.
 This option will cause the --fw-naming and --use-platform-subdir options to be ignored!
 The generic, default directory and file structure is IPC version dependent:
@@ -312,7 +316,7 @@ IPC4
 	if args.deployable_build:
 		if args.fw_naming == 'AVS' or args.use_platform_subdir:
 			sys.exit("Options '--fw-naming=AVS' and '--use-platform-subdir'"
-				 " are incompatible with --deployable-build.")
+				 " are incompatible with deployable builds, try --no-deployable-build?")
 
 	if args.fw_naming == 'AVS':
 		if not args.use_platform_subdir:
