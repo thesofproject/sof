@@ -310,12 +310,9 @@ IPC4
 		sys.exit(0)
 
 	if args.deployable_build:
-		if args.fw_naming == 'AVS':
-			args.fw_naming = 'SOF'
-			print("The option '--fw-naming AVS' is ignored for deployable builds.")
-		if args.use_platform_subdir:
-			args.use_platform_subdir = False
-			print("The option '--use-platform-subdir' is ignored for deployable builds.")
+		if args.fw_naming == 'AVS' or args.use_platform_subdir:
+			sys.exit("Options '--fw-naming=AVS' and '--use-platform-subdir'"
+				 " are incompatible with --deployable-build.")
 
 	if args.fw_naming == 'AVS':
 		if not args.use_platform_subdir:
