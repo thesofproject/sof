@@ -197,25 +197,32 @@ def parse_args():
     # the kernel 'ipc_type' expects CAVS IPC4. In this way, developers and CI can test
     # IPC4 on older platforms.
 	parser.add_argument("--fw-naming", required=False, choices=["AVS", "SOF"],
-						default="SOF", help="""
-Determine firmware naming conversion and folder structure
-For SOF:
-    /lib/firmware/intel/sof
-    └───────community
+						default="SOF",
+help="""Determine firmware naming conversion and folder structure.
+See also the newer and better '--deployable-build' for IPC4.
+With "SOF" (default):
+
+build-sof-staging (for /lib/firmware/intel/sof/)
+        ├───community
         │   └── sof-tgl.ri
         ├── dbgkey
         │   └── sof-tgl.ri
-        └── sof-tgl.ri
-For AVS(filename dsp_basefw.bin):
-Noted that with fw_naming set as 'AVS', there will be output subdirectories for each platform
-    /lib/firmware/intel/sof-ipc4
+        ├── sof-tgl.ri
+        └── sof-tgl.ldc
+
+With "AVS"; filename 'dsp_basefw.bin'.
+'AVS' automatically enables --use-platform-subdir which uses one subdirectory for each platform:
+
+build-sof-staging (for old, developer /lib/firmware/intel/sof-ipc4/)
     └── tgl
         ├── community
         │   └── dsp_basefw.bin
         ├── dbgkey
         │   └── dsp_basefw.bin
-        └── dsp_basefw.bin"""
-	)
+        ├── dsp_basefw.bin
+        └── sof-tgl.ldc
+
+""")
 	parser.add_argument("-j", "--jobs", required=False, type=int,
 						help="Number of concurrent jobs. Passed to west build and"
 						" to cmake (for rimage)")
