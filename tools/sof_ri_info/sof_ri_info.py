@@ -1461,7 +1461,7 @@ APL_MEMORY_SPACE = DspMemory('Intel Apollolake',
 
 CNL_MEMORY_SPACE = DspMemory('Intel Cannonlake',
     [
-        DspMemorySegment('imr', 0xb0000000, 8*0x1024*0x1024),
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
         DspMemorySegment('l2 hpsram', 0xbe000000, 48*64*1024),
         DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
     ])
