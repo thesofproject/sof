@@ -449,8 +449,20 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	comp_dbg(dev, "host_copy_normal()");
 
 	copy_bytes = host_get_copy_bytes_normal(hd, dev);
-	if (!copy_bytes)
+	if (!copy_bytes) {
+		if (hd->partial_size != 0) {
+			if (stream_sync(hd, dev)) {
+				ret = dma_reload(hd->chan->dma->z_dev, hd->chan->index, 0, 0,
+						 hd->partial_size);
+				if (ret < 0)
+					comp_err(dev, "dma_reload() failed, ret = %u", ret);
+
+				hd->partial_size = 0;
+			}
+		}
+
 		return 0;
+	}
 
 	cb(dev, copy_bytes);
 
