@@ -114,4 +114,11 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 # Topology to test RTC AEC
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
+
+"cavs-rt5682\;sof-mtl-max98357a-rt5682-nocodec\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,HEADSET_CODEC_NAME=NoCodec-0,\
+SPEAKER_CODEC_NAME=NoCodec-2,NHLT_BIN=nhlt-sof-mtl-max98357a-rt5682-nocodec.bin,SPK_ID=2,NUM_HDMIS=0,\
+DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,GOOGLE_RTC_AEC_SUPPORT=1,INCLUDE_BT_OFFLOAD=false,\
+GOOGLE_AEC_DP_CORE_ID=2,DMIC0_NAME=NoCodec-6,DMIC0_DAI_COPIER=dai-copier.DMIC.NoCodec-6.capture,\
+DMIC0_ID=6,DMIC1_ID=7,DMIC1_NAME=NoCodec-7"
 )
