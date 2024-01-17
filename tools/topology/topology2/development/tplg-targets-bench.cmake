@@ -9,6 +9,7 @@ set(platforms "TGL" "MTL")
 set(sampleformats "16" "24" "32")
 
 set(components
+	"asrc"
 	"dcblock"
 	"drc"
 	"drc_multiband"
@@ -22,6 +23,7 @@ set(components
 )
 
 set(component_parameters
+	"BENCH_ASRC_PARAMS=default"
 	"BENCH_DCBLOCK_PARAMS=default"
 	"BENCH_DRC_PARAMS=enabled"
 	"BENCH_DRC_MULTIBAND_PARAMS=default"
