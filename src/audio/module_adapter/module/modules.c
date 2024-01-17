@@ -99,26 +99,23 @@ static int modules_init(struct processing_module *mod)
 		(struct sof_module_api_build_info *)
 		(module_entry->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr);
 
-	void *mod_adp;
-
 	/* Check if module is FDK */
 	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
-		mod_adp = system_agent_start(md->module_entry_point, module_id,
-					     instance_id, 0, log_handle, &mod_cfg);
+		md->module_adapter = (void *)system_agent_start(md->module_entry_point, module_id,
+								instance_id, 0, log_handle,
+								&mod_cfg);
 	} else
 	/* Check if module is native */
 	if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
 	    mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
 		/* If start agent for sof loadable */
 		mod->is_native_sof = true;
-		mod_adp = native_system_agent_start(mod->sys_service, md->module_entry_point,
+		md->ops = native_system_agent_start(mod->sys_service, md->module_entry_point,
 						    module_id, instance_id, 0, log_handle,
 						    &mod_cfg);
 	} else
 		return -ENOEXEC;
-
-	md->module_adapter = mod_adp;
 
 	/* Allocate module buffers */
 	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
@@ -141,7 +138,7 @@ static int modules_init(struct processing_module *mod)
 	/* Call module specific init function if exists. */
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)md->module_adapter;
+					(struct module_interface *)md->ops;
 
 		/* The order of preference */
 		if (mod_in->process)
@@ -185,7 +182,7 @@ static int modules_prepare(struct processing_module *mod,
 	/* Call module specific prepare function if exists. */
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		ret = mod_in->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 	} else {
@@ -216,7 +213,7 @@ static int modules_process(struct processing_module *mod,
 		return iadk_wrapper_process(mod->priv.module_adapter, sources,
 					    num_of_sources, sinks, num_of_sinks);
 
-	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.ops;
 
 	return mod_in->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 }
@@ -230,7 +227,7 @@ static int modules_process_audio_stream(struct processing_module *mod,
 	if (!mod->is_native_sof)
 		return -EOPNOTSUPP;
 
-	struct module_interface *mod_in = (struct module_interface *)mod->priv.module_adapter;
+	struct module_interface *mod_in = (struct module_interface *)mod->priv.ops;
 
 	return mod_in->process_audio_stream(mod, input_buffers, num_input_buffers,
 					    output_buffers, num_output_buffers);
@@ -259,7 +256,7 @@ static int modules_process_raw(struct processing_module *mod,
 
 	/* Call module specific process function. */
 	struct module_interface *mod_in =
-				(struct module_interface *)mod->priv.module_adapter;
+				(struct module_interface *)mod->priv.ops;
 
 	return mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
 					output_buffers, num_output_buffers);
@@ -282,7 +279,7 @@ static int modules_free(struct processing_module *mod)
 	comp_info(dev, "modules_free()");
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		ret = mod_in->free(mod);
 	} else {
@@ -322,7 +319,7 @@ static int modules_set_configuration(struct processing_module *mod, uint32_t con
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		return mod_in->set_configuration(mod, config_id, pos, data_offset_size, fragment,
 						 fragment_size, response, response_size);
@@ -350,7 +347,7 @@ static int modules_get_configuration(struct processing_module *mod, uint32_t con
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		return mod_in->get_configuration(mod, config_id, data_offset_size,
 						 fragment, fragment_size);
@@ -372,7 +369,7 @@ static int modules_set_processing_mode(struct processing_module *mod,
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		return mod_in->set_processing_mode(mod, mode);
 	}
@@ -401,7 +398,7 @@ static int modules_reset(struct processing_module *mod)
 {
 	if (mod->is_native_sof) {
 		struct module_interface *mod_in =
-					(struct module_interface *)mod->priv.module_adapter;
+					(struct module_interface *)mod->priv.ops;
 
 		return mod_in->reset(mod);
 	}
