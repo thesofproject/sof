@@ -73,8 +73,7 @@ static void idc_handler(struct k_p4wq_work *work)
 	int payload = -1;
 	k_spinlock_key_t key;
 
-	/* A message is received from another core, invalidate local cache */
-	sys_cache_data_invd_range(msg, sizeof(*msg));
+	__ASSERT_NO_MSG(!is_cached(msg));
 
 	if (msg->size == sizeof(int)) {
 		const int idc_handler_memcpy_err __unused =
@@ -145,8 +144,8 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	/* Temporarily store sender core ID */
 	msg_cp->core = cpu_get_id();
 
-	/* Sending a message to another core, write back local message cache */
-	sys_cache_data_flush_range(msg_cp, sizeof(*msg_cp));
+	__ASSERT_NO_MSG(!is_cached(msg_cp));
+
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
 
 	switch (mode) {
