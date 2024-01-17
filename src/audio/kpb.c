@@ -1895,7 +1895,7 @@ static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 	int i = 0;
 	ae_int24x2 d24 = AE_ZERO24();
 
-	if (!IS_ALIGNED((uintptr_t)out_ptr, 8)) {
+	if (!SOF_IS_ALIGNED((uintptr_t)out_ptr, 8)) {
 		AE_LA24_IP(d24, align_in, in);
 		ae_int32x2 d320 = d24;
 		int higher = AE_MOVAD32_H(d320);
@@ -1996,7 +1996,7 @@ static void kpb_convert_32b_to_24b(const struct audio_stream *source, int ioffse
 	ae_f24x2 vs = AE_ZERO24();
 	ae_valign align_out = AE_ZALIGN64();
 
-	if (!IS_ALIGNED((uintptr_t)sin, 8)) {
+	if (!SOF_IS_ALIGNED((uintptr_t)sin, 8)) {
 		AE_L32F24_XC(vs, (const ae_f24 *)sin, 4);
 		AE_SA24_IP(vs, align_out, sout);
 		n_samples--;
@@ -2154,7 +2154,7 @@ static void kpb_copy_24b_in_32b(const struct audio_stream *source, uint32_t ioff
 	ae_int32x2 *sout = (ae_int32x2 *)out;
 	ae_int32x2 vs = AE_ZERO32();
 
-	if (!IS_ALIGNED((uintptr_t)sin, 8)) {
+	if (!SOF_IS_ALIGNED((uintptr_t)sin, 8)) {
 		AE_L32_IP(vs, (const ae_int32 *)sin, 4);
 		AE_S32_L_IP(vs, (ae_int32 *)sout, 4);
 		n_samples--;

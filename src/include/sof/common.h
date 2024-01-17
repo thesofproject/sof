@@ -15,7 +15,7 @@
 #define __must_check __attribute__((warn_unused_result))
 
 /* Align the number to the nearest alignment value */
-#define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
+#define SOF_IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 
 /* Treat zero as a special case because it wraps around */
 #define is_power_of_2(x) ((x) && !((x) & ((x) - 1)))

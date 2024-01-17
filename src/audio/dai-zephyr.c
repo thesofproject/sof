@@ -633,7 +633,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 				 period_count);
 			buf_size = period_count * period_bytes;
 			do {
-				if (IS_ALIGNED(buf_size, max_block_count)) {
+				if (SOF_IS_ALIGNED(buf_size, max_block_count)) {
 					period_count = max_block_count;
 					period_bytes = buf_size / period_count;
 					break;
