@@ -285,7 +285,7 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 
 	deploy_args = parser.add_mutually_exclusive_group()
 	# argparse.BooleanOptionalAction requires Python 3.9
-	parser.set_defaults(deployable_build=False)
+	parser.set_defaults(deployable_build=True)
 	deploy_args.add_argument("--no-deployable-build", dest='deployable_build', action='store_false')
 	deploy_args.add_argument("--deployable-build", dest='deployable_build', action='store_true',
 			    help="""Create a directory structure for the firmware files which can be deployed on target as it is.
