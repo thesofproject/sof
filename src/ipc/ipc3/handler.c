@@ -33,6 +33,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
+#include <rtos/string_macro.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
@@ -1018,7 +1019,7 @@ static inline int ipc_probe_dma_add(uint32_t header)
 
 	if (dmas_count > CONFIG_PROBE_DMA_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_add(): Invalid amount of injection DMAs specified = %d. Max is "
-			    META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    dmas_count);
 		return -EINVAL;
 	}
@@ -1041,7 +1042,7 @@ static inline int ipc_probe_dma_remove(uint32_t header)
 
 	if (tags_count > CONFIG_PROBE_DMA_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_remove(): Invalid amount of injection DMAs specified = %d. Max is "
-			    META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    tags_count);
 		return -EINVAL;
 	}
@@ -1064,7 +1065,7 @@ static inline int ipc_probe_point_add(uint32_t header)
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_point_add(): Invalid amount of Probe Points specified = %d. Max is "
-			    META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+			    STRINGIFY(CONFIG_PROBE_POINT_MAX) ".",
 			    probes_count);
 		return -EINVAL;
 	}
@@ -1087,7 +1088,7 @@ static inline int ipc_probe_point_remove(uint32_t header)
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_point_remove(): Invalid amount of Probe Points specified = %d. Max is "
-			    META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+			    STRINGIFY(CONFIG_PROBE_POINT_MAX) ".",
 			    probes_count);
 		return -EINVAL;
 	}

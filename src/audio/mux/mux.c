@@ -21,7 +21,6 @@
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
-#include <sof/trace/preproc.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <ipc/control.h>
