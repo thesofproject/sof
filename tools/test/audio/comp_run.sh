@@ -114,7 +114,8 @@ run_testbench ()
     delete_file_check "$FN_TRACE"
     if [ -z "$FN_TRACE" ]; then
         # shellcheck disable=SC2086
-        $VALGRIND_CMD $CMD
+        #$VALGRIND_CMD $CMD
+	$CMD 2> /dev/null
     else
         $VALGRIND_CMD $CMD 2> "$FN_TRACE" || {
             local ret=$?

@@ -64,7 +64,7 @@ endif()
 
 # TODO: add IPC4 option when it's ready.
 target_compile_options(sof_tplg_parser PRIVATE
-	-g -O -Wall -Werror -fPIC -DPIC
+	-g -Wall -Werror -fPIC -DPIC
 	-Wmissing-prototypes ${implicit_fallthrough}
 	-DCONFIG_LIBRARY -D${tplg_ipc})
 
