@@ -11,7 +11,7 @@
 #include <sof/audio/component.h>
 #include <module/module/base.h>
 #include <sof/trace/trace.h>
-#include <sof/trace/preproc.h>
+#include <rtos/string_macro.h>
 #include <sof/lib/uuid.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -47,7 +47,7 @@ static int mux_set_values(struct processing_module *mod)
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
 		comp_err(dev, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
-			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
+			    STRINGIFY(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
 

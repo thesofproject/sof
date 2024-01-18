@@ -20,7 +20,6 @@
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/dma-trace.h>
-#include <sof/trace/preproc.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>

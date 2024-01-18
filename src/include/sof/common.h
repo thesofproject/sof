@@ -108,7 +108,7 @@
 
 #if !defined(__ASSEMBLER__)
 
-#include <sof/trace/preproc.h>
+#include <rtos/string_macro.h>
 #include <sof/compiler_attributes.h>
 #include <stddef.h>
 
@@ -155,15 +155,9 @@
  * afraid that some assertions are being fooled by variables then
  * temporarily and locally switch to the second one.
  */
-#if 1
 #define STATIC_ASSERT(COND, MESSAGE)	\
 	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
-#else
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	static char  META_CONCAT(arr_assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
-#endif
+	typedef char _CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
 
 /* Allows checking preprocessor symbols in compile-time.
  * Returns true for config with value 1, false for undefined or any other value.

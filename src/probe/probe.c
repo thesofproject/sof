@@ -21,6 +21,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
+#include <rtos/string_macro.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/gateway.h>
 #include <ipc4/module.h>
@@ -498,7 +499,7 @@ int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 
 		if (first_free == CONFIG_PROBE_DMA_MAX) {
 			tr_err(&pr_tr, "probe_dma_add(): Exceeded maximum number of DMAs attached = "
-			       META_QUOTE(CONFIG_PROBE_DMA_MAX));
+			       STRINGIFY(CONFIG_PROBE_DMA_MAX));
 			return -EINVAL;
 		}
 
@@ -1216,7 +1217,7 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 
 		if (first_free == CONFIG_PROBE_POINTS_MAX) {
 			tr_err(&pr_tr, "probe_point_add(): Maximum number of probe points connected aleady: "
-			       META_QUOTE(CONFIG_PROBE_POINTS_MAX));
+			       STRINGIFY(CONFIG_PROBE_POINTS_MAX));
 
 			return -EINVAL;
 		}

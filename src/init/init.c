@@ -24,6 +24,7 @@
 #include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <rtos/idc.h>
+#include <rtos/string_macro.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
@@ -223,7 +224,7 @@ static void print_version_banner(void)
 	 * banner would be lost. With Zephyr logging subsystem in use,
 	 * we can simply print the banner at boot.
 	 *
-	 * META_QUOTE(SOF_SRC_HASH) is part of the format string so it
+	 * STRINGIFY(SOF_SRC_HASH) is part of the format string so it
 	 * is part of log dictionary meta data and does not go to
 	 * the firmware binary (in case dictionary logging is used).
 	 * The value printed to log will be different from
@@ -231,8 +232,8 @@ static void print_version_banner(void)
 	 */
 #ifdef CONFIG_ZEPHYR_LOG
 	LOG_INF("FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG " zephyr:" \
-		META_QUOTE(BUILD_VERSION) " src hash 0x%08x (ref hash " \
-		META_QUOTE(SOF_SRC_HASH) ")",
+		STRINGIFY(BUILD_VERSION) " src hash 0x%08x (ref hash " \
+		STRINGIFY(SOF_SRC_HASH) ")",
 		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 #endif
 }
