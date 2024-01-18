@@ -54,10 +54,6 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	cd->tvolume[channel] = target_volume;
 	/* init ramp start volume*/
 	cd->rvolume[channel] = 0;
-	/* init muted volume */
-	cd->mvolume[channel] = 0;
-	/* set muted as false*/
-	cd->muted[channel] = false;
 
 	/* ATM there is support for the same ramp for all channels */
 	cd->ramp_type = ipc4_curve_type_convert((enum ipc4_curve_type)curve_type);
@@ -164,6 +160,9 @@ int volume_init(struct processing_module *mod)
 				target_volume[channel_cfg],
 				vol->config[channel_cfg].curve_type,
 				vol->config[channel_cfg].curve_duration);
+
+		/* set muted as false*/
+		cd->muted[channel] = false;
 	}
 
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
@@ -224,21 +223,30 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 
 	if (cdata.channel_id == IPC4_ALL_CHANNELS_MASK) {
 		for (i = 0; i < channels_count; i++) {
-			set_volume_ipc4(cd, i, cdata.target_volume,
-					cdata.curve_type,
-					cdata.curve_duration);
+			if (cd->muted[i]) {
+				cd->mvolume[i] = cdata.target_volume;
+			} else {
+				set_volume_ipc4(cd, i, cdata.target_volume,
+						cdata.curve_type,
+						cdata.curve_duration);
 
-			volume_set_chan(mod, i, cd->tvolume[i], true);
+				volume_set_chan(mod, i, cd->tvolume[i], true);
+			}
 			if (cd->volume[i] != cd->tvolume[i])
 				cd->ramp_finished = false;
 		}
 	} else {
-		set_volume_ipc4(cd, cdata.channel_id, cdata.target_volume,
-				cdata.curve_type,
-				cdata.curve_duration);
+		if (cd->muted[cdata.channel_id]) {
+			cd->mvolume[cdata.channel_id] = cdata.target_volume;
+		} else {
+			set_volume_ipc4(cd, cdata.channel_id,
+					cdata.target_volume,
+					cdata.curve_type,
+					cdata.curve_duration);
 
-		volume_set_chan(mod, cdata.channel_id, cd->tvolume[cdata.channel_id],
-				true);
+			volume_set_chan(mod, cdata.channel_id,
+					cd->tvolume[cdata.channel_id], true);
+		}
 		if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
 			cd->ramp_finished = false;
 	}
@@ -297,6 +305,53 @@ static int volume_set_attenuation(struct processing_module *mod, const uint8_t *
 	return 0;
 }
 
+static int volume_set_switch(struct processing_module *mod, const uint8_t *data,
+			     int data_size)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct sof_ipc4_control_msg_payload *ctl;
+	unsigned int channels_count, num_elems;
+	unsigned int i, val;
+
+	if (data_size < sizeof(struct sof_ipc4_control_msg_payload)) {
+		comp_err(dev, "error: data_size %d should be bigger than %d", data_size,
+			 sizeof(struct sof_ipc4_control_msg_payload));
+		return -EINVAL;
+	}
+
+	ctl = (struct sof_ipc4_control_msg_payload *)data;
+
+	cd->ramp_finished = true;
+
+	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+	if (channels_count > SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "Invalid channels count %u", channels_count);
+		return -EINVAL;
+	}
+
+	num_elems = ctl->num_elems;
+	if (num_elems > channels_count) {
+		comp_warn(dev, "limit num_elems %d to %d", num_elems, channels_count);
+		num_elems = channels_count;
+	}
+
+	for (i = 0; i < num_elems; i++) {
+		val = ctl->chanv[i].value;
+		comp_dbg(dev, "channel %i, value %u", i, val);
+
+		if (val)
+			volume_set_chan_unmute(mod, i);
+		else
+			volume_set_chan_mute(mod, i);
+
+		if (cd->volume[i] != cd->tvolume[i])
+			cd->ramp_finished = false;
+	}
+
+	return 0;
+}
+
 int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 		      const uint8_t *fragment, size_t fragment_size, uint8_t *response,
@@ -321,6 +376,8 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		return volume_set_volume(mod, fragment, fragment_size);
 	case IPC4_SET_ATTENUATION:
 		return volume_set_attenuation(mod, fragment, fragment_size);
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		return volume_set_switch(mod, fragment, fragment_size);
 	default:
 		comp_err(dev, "unsupported param %d", config_id);
 		return -EINVAL;
