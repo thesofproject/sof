@@ -553,7 +553,7 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (hw_params.channels && hw_params.channels != params->channels) {
+	if (hw_params.channels && hw_params.channels < params->channels) {
 		comp_err(dev, "dai_verify_params(): pcm channels parameter %d does not match hardware channels %d",
 			 params->channels, hw_params.channels);
 		return -EINVAL;
