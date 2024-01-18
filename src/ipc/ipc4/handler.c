@@ -510,13 +510,12 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 	}
 }
 
-/* wait for IPCs to complete on other cores and be nice to any LL work */
 static int ipc_wait_for_compound_msg(void)
 {
-	int try_count = 30; /* timeout out is 30 x 10ms so 300ms for IPC */
+	int try_count = 30;
 
 	while (atomic_read(&msg_data.delayed_reply)) {
-		k_sleep(Z_TIMEOUT_MS(10));
+		k_sleep(Z_TIMEOUT_US(250));
 
 		if (!try_count--) {
 			atomic_set(&msg_data.delayed_reply, 0);
