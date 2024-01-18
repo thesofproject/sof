@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include "testbench/common_test.h"
 #include "testbench/file.h"
+#include "testbench/file_ipc4.h"
 
 SOF_DEFINE_REG_UUID(file);
 DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
@@ -528,12 +529,19 @@ static int file_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
-	const struct ipc_comp_file *ipc_file =
-		(const struct ipc_comp_file *)mod_data->cfg.init_data;
 	struct file_comp_data *cd;
 
-	debug_print("file_init()\n");
+#if CONFIG_IPC_MAJOR_4
+	const struct ipc4_file_module_cfg *module_cfg =
+		(const struct ipc4_file_module_cfg *)mod_data->cfg.init_data;
 
+	const struct ipc4_file_config *ipc_file = &module_cfg->config;
+#else
+	const struct ipc_comp_file *ipc_file =
+		(const struct ipc_comp_file *)mod_data->cfg.init_data;
+#endif
+
+	debug_print("file_init()\n");
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
@@ -556,6 +564,7 @@ static int file_init(struct processing_module *mod)
 	cd->channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
 	dev->direction = ipc_file->direction;
+	dev->direction_set = true;
 
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
@@ -595,6 +604,7 @@ static int file_init(struct processing_module *mod)
 
 	cd->fs.reached_eof = false;
 	cd->fs.write_failed = false;
+	cd->fs.copy_timeout = false;
 	cd->fs.n = 0;
 	cd->fs.copy_count = 0;
 	cd->fs.cycles_count = 0;
@@ -610,7 +620,7 @@ static int file_free(struct processing_module *mod)
 {
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_free()");
+	debug_print("file_free()\n");
 
 	if (cd->fs.mode == FILE_READ)
 		fclose(cd->fs.rfh);
@@ -671,10 +681,20 @@ static int file_process(struct processing_module *mod,
 	}
 
 	cd->fs.copy_count++;
+
 	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
-		cd->fs.reached_eof = 1;
-		debug_print("file_process(): reached EOF");
-		schedule_task_cancel(mod->dev->pipeline->pipe_task);
+		cd->fs.reached_eof = true;
+		debug_print("file_process(): reached EOF or max_copies\n");
+	}
+
+	if (samples) {
+		cd->copies_timeout = 0;
+	} else {
+		cd->copies_timeout++;
+		if (cd->copies_timeout == FILE_MAX_COPIES_TIMEOUT) {
+			debug_print("file_process(): copies_timeout reached\n");
+			cd->fs.copy_timeout = true;
+		}
 	}
 
 	tb_getcycles(&cycles1);
@@ -691,7 +711,7 @@ static int file_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_prepare()");
+	debug_print("file_prepare()\n");
 
 	/* file component sink/source buffer period count */
 	cd->max_frames = dev->frames;
@@ -731,15 +751,16 @@ static int file_prepare(struct processing_module *mod,
 
 static int file_reset(struct processing_module *mod)
 {
-	debug_print("file_reset()");
+	struct file_comp_data *cd = module_get_private_data(mod);
 
+	debug_print("file_reset()\n");
+	cd->copies_timeout = 0;
 	return 0;
 }
 
 static int file_trigger(struct comp_dev *dev, int cmd)
 {
-	debug_print("asrc_trigger()");
-
+	debug_print("file_trigger\n");
 	return comp_set_state(dev, cmd);
 }
 
@@ -749,7 +770,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_hw_params()");
+	debug_print("file_hw_params()\n");
 	params->direction = dir;
 	params->rate = cd->rate;
 	params->channels = cd->channels;

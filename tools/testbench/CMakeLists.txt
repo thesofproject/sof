@@ -14,7 +14,16 @@ add_executable(testbench
 	common_test.c
 	file.c
 	topology.c
+        topology_ipc4.c
 )
+
+# TODO
+#if(CONFIG_IPC_MAJOR_3)
+#	add_local_sources(testbench topology_ipc3.c)
+#elseif(CONFIG_IPC_MAJOR_4)
+#	add_local_sources(testbench topology_ipc4.c)
+#endif()
+
 
 sof_append_relative_path_definitions(testbench)
 

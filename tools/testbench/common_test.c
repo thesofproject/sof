@@ -2,6 +2,8 @@
 //
 // Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 
+#include <platform/lib/ll_schedule.h>
+#include <module/module/base.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/driver.h>
@@ -21,6 +23,7 @@
 #include <rtos/wait.h>
 #include <tplg_parser/topology.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,12 +31,17 @@
 #include <time.h>
 
 #include "testbench/common_test.h"
-#include "testbench/trace.h"
 #include "testbench/file.h"
+#include "testbench/trace.h"
+#include "testbench/topology.h"
 
 #if defined __XCC__
 #include <xtensa/tie/xt_timer.h>
 #endif
+
+/* 37c196ae-3532-4282-8a78-dd9d50cc7123 */
+DECLARE_SOF_RT_UUID("testbench", testbench_uuid, 0x37c196ae, 0x3532, 0x4282,
+		    0x8a, 0x78, 0xdd, 0x9d, 0x50, 0xcc, 0x71, 0x23);
 
 /* testbench helper functions for pipeline setup and trigger */
 
@@ -45,7 +53,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 
 	/* init components */
 	sys_comp_init(sof);
-	sys_comp_selector_init();
 
 	/* Module adapter components */
 	sys_comp_module_crossover_interface_init();
@@ -55,12 +62,14 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_eq_fir_interface_init();
 	sys_comp_module_eq_iir_interface_init();
 	sys_comp_module_file_interface_init();
+	sys_comp_module_gain_interface_init();
 	sys_comp_module_google_rtc_audio_processing_interface_init();
 	sys_comp_module_igo_nr_interface_init();
 	sys_comp_module_mfcc_interface_init();
 	sys_comp_module_multiband_drc_interface_init();
 	sys_comp_module_mux_interface_init();
 	sys_comp_module_rtnr_interface_init();
+	sys_comp_module_selector_interface_init();
 	sys_comp_module_src_interface_init();
 	sys_comp_module_asrc_interface_init();
 	sys_comp_module_tdfb_interface_init();
@@ -75,6 +84,10 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 		fprintf(stderr, "error: IPC init\n");
 		return -EINVAL;
 	}
+
+	/* Trace */
+	ipc_tr.level = LOG_LEVEL_INFO;
+	ipc_tr.uuid_p = SOF_UUID(testbench_uuid);
 
 	/* init LL scheduler */
 	if (scheduler_init_ll(&domain) < 0) {
@@ -124,149 +137,6 @@ void tb_free(struct sof *sof)
 	free(sof->ipc);
 }
 
-/* Get pipeline host component */
-static struct comp_dev *tb_get_pipeline_host(struct pipeline *p)
-{
-	struct comp_dev *cd;
-
-	cd = p->source_comp;
-	if (cd->direction == SOF_IPC_STREAM_CAPTURE)
-		cd = p->sink_comp;
-
-	return cd;
-}
-
-/* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_start(struct ipc *ipc, struct pipeline *p)
-{
-	struct comp_dev *cd;
-	int ret;
-
-	/* Get pipeline host component */
-	cd = tb_get_pipeline_host(p);
-
-	/* Component prepare */
-	ret = pipeline_prepare(p, cd);
-	if (ret < 0) {
-		fprintf(stderr, "error: Failed prepare pipeline command: %s\n",
-			strerror(ret));
-		return ret;
-	}
-
-	/* Start the pipeline */
-	ret = pipeline_trigger(cd->pipeline, cd, COMP_TRIGGER_PRE_START);
-	if (ret < 0) {
-		fprintf(stderr, "error: Failed to start pipeline command: %s\n",
-			strerror(ret));
-		return ret;
-	}
-
-	return ret;
-}
-
-/* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p)
-{
-	struct comp_dev *cd;
-	int ret;
-
-	/* Get pipeline host component */
-	cd = tb_get_pipeline_host(p);
-
-	ret = pipeline_trigger(cd->pipeline, cd, COMP_TRIGGER_STOP);
-	if (ret < 0) {
-		fprintf(stderr, "error: Failed to stop pipeline command: %s\n",
-			strerror(ret));
-	}
-
-	return ret;
-}
-
-/* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p)
-{
-	struct comp_dev *cd;
-	int ret;
-
-	/* Get pipeline host component */
-	cd = tb_get_pipeline_host(p);
-
-	ret = pipeline_reset(p, cd);
-	if (ret < 0)
-		fprintf(stderr, "error: pipeline reset\n");
-
-	return ret;
-}
-
-/* pipeline pcm params */
-int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipeline *p,
-		       struct tplg_context *ctx)
-{
-	struct comp_dev *cd;
-	struct sof_ipc_pcm_params params = {{0}};
-	char message[DEBUG_MSG_LEN];
-	int fs_period;
-	int period;
-	int ret = 0;
-
-	if (!p) {
-		fprintf(stderr, "error: pipeline is NULL\n");
-		return -EINVAL;
-	}
-
-	period = p->period;
-
-	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
-	sprintf(message, "period sample count %d\n", fs_period);
-	debug_print(message);
-
-	/* set pcm params */
-	params.comp_id = p->comp_id;
-	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = tp->frame_fmt;
-	params.params.rate = tp->fs_in;
-	params.params.channels = tp->channels_in;
-
-	switch (params.params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		params.params.sample_container_bytes = 2;
-		params.params.sample_valid_bytes = 2;
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-		params.params.sample_container_bytes = 4;
-		params.params.sample_valid_bytes = 3;
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-		params.params.sample_container_bytes = 4;
-		params.params.sample_valid_bytes = 4;
-		break;
-	default:
-		fprintf(stderr, "error: invalid frame format\n");
-		return -EINVAL;
-	}
-
-	params.params.host_period_bytes = fs_period * params.params.channels *
-		params.params.sample_container_bytes;
-
-	/* Get pipeline host component */
-	cd = tb_get_pipeline_host(p);
-
-	/* Set pipeline params direction from scheduling component */
-	params.params.direction = cd->direction;
-
-	printf("test params: rate %d channels %d format %d\n",
-	       params.params.rate, params.params.channels,
-	       params.params.frame_fmt);
-
-	/* pipeline params */
-	ret = pipeline_params(p, cd, &params);
-	if (ret < 0)
-		fprintf(stderr, "error: pipeline_params\n");
-
-	return ret;
-}
-
 /* print debug messages */
 void debug_print(char *message)
 {
@@ -301,4 +171,221 @@ void tb_getcycles(uint64_t *cycles)
 #else
 	*cycles = 0;
 #endif
+}
+
+#if DISABLED_CODE
+static int tb_get_pipeline_instance_id(struct testbench_prm *tp, int id)
+{
+	struct tplg_pipeline_info *pipe_info;
+	struct tplg_pipeline_list *pipeline_list;
+	int i;
+
+	pipeline_list = &tp->pcm_info->playback_pipeline_list;
+	for (i = 0; i < pipeline_list->count; i++) {
+		pipe_info = pipeline_list->pipelines[i];
+		if (pipe_info->id == id)
+			return pipe_info->instance_id;
+	}
+
+	pipeline_list = &tp->pcm_info->capture_pipeline_list;
+	for (i = 0; i < pipeline_list->count; i++) {
+		pipe_info = pipeline_list->pipelines[i];
+		if (pipe_info->id == id)
+			return pipe_info->instance_id;
+	}
+
+	return -EINVAL;
+}
+
+static struct pipeline *tb_get_pipeline_by_id(struct testbench_prm *tb, int pipeline_id)
+{
+	struct ipc_comp_dev *pipe_dev;
+	struct ipc *ipc = sof_get()->ipc;
+	int id = tb_get_pipeline_instance_id(tb, pipeline_id);
+
+	pipe_dev = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, id, IPC_COMP_IGNORE_REMOTE);
+	return pipe_dev->pipeline;
+}
+#endif
+
+void tb_show_file_stats(struct testbench_prm *tb, int pipeline_id)
+{
+	struct ipc_comp_dev *icd;
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct file_comp_data *fcd;
+	int i;
+
+	for (i = 0; i < tb->input_file_num; i++) {
+		if (tb->fr[i].id < 0 || tb->fr[i].pipeline_id != pipeline_id)
+			continue;
+
+		icd = ipc_get_comp_by_id(sof_get()->ipc, tb->fr[i].id);
+		if (!icd)
+			continue;
+
+		dev = icd->cd;
+		mod = comp_get_drvdata(dev);
+		fcd = module_get_private_data(mod);
+		printf("file %s: id %d: type %d: samples %d copies %d\n",
+		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
+		       fcd->fs.copy_count);
+	}
+
+	for (i = 0; i < tb->output_file_num; i++) {
+		if (tb->fw[i].id < 0 || tb->fw[i].pipeline_id != pipeline_id)
+			continue;
+
+		icd = ipc_get_comp_by_id(sof_get()->ipc, tb->fw[i].id);
+		if (!icd)
+			continue;
+
+		dev = icd->cd;
+		mod = comp_get_drvdata(dev);
+		fcd = module_get_private_data(mod);
+		printf("file %s: id %d: type %d: samples %d copies %d\n",
+		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
+		       fcd->fs.copy_count);
+	}
+
+}
+
+int tb_set_up_all_pipelines(struct testbench_prm *tb)
+{
+	int ret;
+
+	ret = tb_set_up_pipelines(tb, SOF_IPC_STREAM_PLAYBACK);
+	if (ret) {
+		fprintf(stderr, "error: Failed tb_set_up_pipelines for playback\n");
+		return ret;
+	}
+
+	ret = tb_set_up_pipelines(tb, SOF_IPC_STREAM_CAPTURE);
+	if (ret) {
+		fprintf(stderr, "error: Failed tb_set_up_pipelines for capture\n");
+		return ret;
+	}
+
+	fprintf(stdout, "pipelines set up complete\n");
+	return 0;
+}
+
+int tb_load_topology(struct testbench_prm *tb)
+{
+	struct tplg_context *ctx = &tb->tplg;
+	int ret;
+
+	/* setup the thread virtual core config */
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->comp_id = 1;
+	ctx->core_id = 0;
+	ctx->sof = sof_get();
+	ctx->tplg_file = tb->tplg_file;
+	if (tb->ipc_version < 3 || tb->ipc_version > 4) {
+		fprintf(stderr, "error: illegal ipc version\n");
+		return -EINVAL;
+	}
+
+	ctx->ipc_major = tb->ipc_version;
+
+	/* parse topology file and create pipeline */
+	ret = tb_parse_topology(tb);
+	if (ret < 0)
+		fprintf(stderr, "error: parsing topology\n");
+
+	debug_print("topology parsing complete\n");
+	return 0;
+}
+
+static bool tb_is_file_component_at_eof(struct testbench_prm *tp)
+{
+	int i;
+
+	for (i = 0; i < tp->input_file_num; i++) {
+		if (!tp->fr[i].state)
+			continue;
+
+		if (tp->fr[i].state->reached_eof || tp->fr[i].state->copy_timeout)
+			return true;
+	}
+
+	for (i = 0; i < tp->output_file_num; i++) {
+		if (!tp->fw[i].state)
+			continue;
+
+		if (tp->fw[i].state->reached_eof || tp->fw[i].state->copy_timeout ||
+		    tp->fw[i].state->write_failed)
+			return true;
+	}
+
+	return false;
+}
+
+bool tb_schedule_pipeline_check_state(struct testbench_prm *tp)
+{
+	uint64_t cycles0, cycles1;
+
+	tb_getcycles(&cycles0);
+
+	schedule_ll_run_tasks();
+
+	tb_getcycles(&cycles1);
+	tp->total_cycles += cycles1 - cycles0;
+
+	/* Check if all file components are running */
+	return tb_is_file_component_at_eof(tp);
+}
+
+bool tb_is_pipeline_enabled(struct testbench_prm *tb, int pipeline_id)
+{
+	int i;
+
+	for (i = 0; i < tb->pipeline_num; i++) {
+		if (tb->pipelines[i] == pipeline_id)
+			return true;
+	}
+
+	return false;
+}
+
+void tb_find_file_components(struct testbench_prm *tb)
+{
+	struct ipc_comp_dev *icd;
+	struct processing_module *mod;
+	struct file_comp_data *fcd;
+	int i;
+
+	for (i = 0; i < tb->input_file_num; i++) {
+		if (!tb_is_pipeline_enabled(tb, tb->fr[i].pipeline_id)) {
+			tb->fr[i].id = -1;
+			continue;
+		}
+
+		icd = ipc_get_comp_by_id(sof_get()->ipc, tb->fr[i].id);
+		if (!icd) {
+			tb->fr[i].state = NULL;
+			continue;
+		}
+
+		mod = comp_get_drvdata(icd->cd);
+		fcd = module_get_private_data(mod);
+		tb->fr[i].state = &fcd->fs;
+	}
+
+	for (i = 0; i < tb->output_file_num; i++) {
+		if (!tb_is_pipeline_enabled(tb, tb->fw[i].pipeline_id)) {
+			tb->fw[i].id = -1;
+			continue;
+		}
+
+		icd = ipc_get_comp_by_id(sof_get()->ipc, tb->fw[i].id);
+		if (!icd) {
+			tb->fr[i].state = NULL;
+			continue;
+		}
+
+		mod = comp_get_drvdata(icd->cd);
+		fcd = module_get_private_data(mod);
+		tb->fw[i].state = &fcd->fs;
+	}
 }
