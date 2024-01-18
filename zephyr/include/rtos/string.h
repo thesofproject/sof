@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 20222 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
 #ifndef __ZEPHYR_RTOS_STRING_H__
