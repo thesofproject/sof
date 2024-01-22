@@ -11,8 +11,13 @@ tests:
     tags: sof
     build_only: true
     platform_allow:
-      intel_adsp_cavs25 intel_adsp_ace15_mtpm intel_adsp_ace20_lnl
-      nxp_adsp_imx8 nxp_adsp_imx8x nxp_adsp_imx8m
+      - intel_adsp_cavs25
+      - intel_adsp_ace15_mtpm
+      - intel_adsp_ace20_lnl
+      - nxp_adsp_imx8
+      - nxp_adsp_imx8x
+      - nxp_adsp_imx8m
+      - nxp_adsp_imx8ulp
 
     integration_platforms:
       - intel_adsp_cavs25  # TGL
