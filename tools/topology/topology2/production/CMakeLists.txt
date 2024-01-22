@@ -25,6 +25,6 @@ foreach(tplg ${TPLGS})
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../${input}" "${output}"
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../" "${defines}")
 
-	add_custom_target(topology2_${output} DEPENDS ${output}.tplg)
-	add_dependencies(topology2_prod topology2_${output})
+	add_custom_target(topology2_prod_${output} DEPENDS ${output}.tplg)
+	add_dependencies(topology2_prod topology2_prod_${output})
 endforeach()
