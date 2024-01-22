@@ -24,7 +24,7 @@
 #include <sof/ut.h>
 #include <zephyr/pm/policy.h>
 #include <rtos/init.h>
-#if CONFIG_IPC4_XRUN_NOTIFICATIONS_ENABLE
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 #include <ipc4/notification.h>
 #include <sof/ipc/msg.h>
 #include <ipc/header.h>
@@ -52,7 +52,7 @@ struct chain_dma_data {
 	enum sof_ipc_stream_direction stream_direction;
 	/* container size in bytes */
 	uint8_t cs;
-#if CONFIG_IPC4_XRUN_NOTIFICATIONS_ENABLE
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	bool xrun_notification_sent;
 	struct ipc_msg *msg_xrun;
 #endif
@@ -140,7 +140,7 @@ static size_t chain_get_transferred_data_size(const uint32_t out_read_pos, const
 	return buff_size - in_read_pos + out_read_pos;
 }
 
-#if CONFIG_IPC4_XRUN_NOTIFICATIONS_ENABLE
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 static void handle_xrun(struct chain_dma_data *cd)
 {
 	int ret;
@@ -187,7 +187,7 @@ static enum task_state chain_task_run(void *data)
 	case -EPIPE:
 		tr_warn(&chain_dma_tr, "chain_task_run(): dma_get_status() link xrun occurred,"
 			" ret = %u", ret);
-#if CONFIG_IPC4_XRUN_NOTIFICATIONS_ENABLE
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 		handle_xrun(cd);
 #endif
 		break;
@@ -660,7 +660,7 @@ static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (ret)
 		goto error_cd;
 
-#if CONFIG_IPC4_XRUN_NOTIFICATIONS_ENABLE
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	cd->msg_xrun = ipc_msg_init(header.dat,
 				    sizeof(struct ipc4_resource_event_data_notification));
 	if (!cd->msg_xrun)
