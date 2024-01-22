@@ -69,10 +69,11 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		goto fail;
 
 	/* If no config was specified we will use default one */
-	if (!cfg) {
+	if (!cfg)
 		vmh_get_default_heap_config(new_heap->virtual_region, &new_config);
-		cfg = &new_config;
-	}
+	else
+		memcpy_s(&new_config, sizeof(struct vmh_heap_config),
+			cfg, sizeof(struct vmh_heap_config));
 
 	/* Check if configuration provided can fit into virtual regions memory
 	 * and if it is physical page aligned
@@ -80,12 +81,12 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 	size_t total_requested_size = 0;
 
 	for (i = 0; i < MAX_MEMORY_ALLOCATORS_COUNT; i++) {
-		if (cfg->block_bundles_table[i].block_size > 0) {
+		if (new_config.block_bundles_table[i].block_size > 0) {
 			/* Block sizes can only be powers of 2*/
-			if (!is_power_of_2(cfg->block_bundles_table[i].block_size))
+			if (!is_power_of_2(new_config.block_bundles_table[i].block_size))
 				goto fail;
-			total_requested_size += cfg->block_bundles_table[i].block_size *
-				cfg->block_bundles_table[i].number_of_blocks;
+			total_requested_size += new_config.block_bundles_table[i].block_size *
+				new_config.block_bundles_table[i].number_of_blocks;
 
 			if (total_requested_size > new_heap->virtual_region->size ||
 					total_requested_size % CONFIG_MM_DRV_PAGE_SIZE)
@@ -106,7 +107,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 	 */
 	for (i = 0; i < MAX_MEMORY_ALLOCATORS_COUNT; i++) {
 		/* Only run for sizes > 0 */
-		if (!cfg->block_bundles_table[i].block_size)
+		if (!new_config.block_bundles_table[i].block_size)
 			continue;
 
 		/* bitarray_size is number of bit bundles that bittaray needs
@@ -114,8 +115,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		 * by number of bits in byte
 		 */
 		size_t bitarray_size = SOF_DIV_ROUND_UP(
-			SOF_DIV_ROUND_UP((uint64_t)cfg->block_bundles_table[i].number_of_blocks, 8),
-			sizeof(uint32_t));
+			SOF_DIV_ROUND_UP((uint64_t)new_config.block_bundles_table[i].number_of_blocks,
+			8), sizeof(uint32_t));
 		size_t bitfield_size = sizeof(uint32_t) * bitarray_size;
 
 		/* Need to create structs that are components of mem_blocks and constantly keep
@@ -132,8 +133,9 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		new_heap->physical_blocks_allocators[i] = new_allocator;
 
 		/* Fill allocators data based on config and virtual region data */
-		new_allocator->info.num_blocks = cfg->block_bundles_table[i].number_of_blocks;
-		new_allocator->info.blk_sz_shift = ilog2(cfg->block_bundles_table[i].block_size);
+		new_allocator->info.num_blocks = new_config.block_bundles_table[i].number_of_blocks;
+		new_allocator->info.blk_sz_shift = ilog2(
+			new_config.block_bundles_table[i].block_size);
 		new_allocator->buffer =	(uint8_t *)new_heap->virtual_region->addr + offset;
 
 		/* Create bit array that is a part of mem_block kept as a ptr */
@@ -143,7 +145,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		if (!allocators_bitarray)
 			goto fail;
 
-		allocators_bitarray->num_bits =	cfg->block_bundles_table[i].number_of_blocks;
+		allocators_bitarray->num_bits =	new_config.block_bundles_table[i].number_of_blocks;
 		allocators_bitarray->num_bundles = bitarray_size;
 		new_allocator->bitmap = allocators_bitarray;
 
@@ -186,8 +188,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 		/* Update offset, note that offset is CONFIG_MM_DRV_PAGE_SIZE aligned
 		 * since every cfg size was checked against it earlier
 		 */
-		offset += cfg->block_bundles_table[i].number_of_blocks
-			* cfg->block_bundles_table[i].block_size;
+		offset += new_config.block_bundles_table[i].number_of_blocks
+			* new_config.block_bundles_table[i].block_size;
 	}
 
 	new_heap->allocating_continuously = allocating_continuously;
