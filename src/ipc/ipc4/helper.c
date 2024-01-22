@@ -749,6 +749,9 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 {
 	const bool allocate = cdma->primary.r.allocate;
 	const bool enable = cdma->primary.r.enable;
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	struct list_item *clist, *_tmp;
 	int ret;
 
 	if (!dev)
@@ -767,6 +770,15 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
 		if (ret < 0)
 			return ret;
+
+		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
+			icd = container_of(clist, struct ipc_comp_dev, list);
+			if (icd->cd != dev)
+				continue;
+			list_item_del(&icd->list);
+			rfree(icd);
+			break;
+		}
 		comp_free(dev);
 	}
 	return ret;
