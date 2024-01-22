@@ -681,6 +681,10 @@ static void chain_task_free(struct comp_dev *dev)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	ipc_msg_free(cd->msg_xrun);
+#endif
+
 	chain_release(dev);
 	rfree(cd);
 	rfree(dev);
