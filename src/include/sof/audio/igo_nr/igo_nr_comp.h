@@ -26,7 +26,6 @@ struct comp_data {
 	struct IgoStreamData igo_stream_data_ref;
 	struct IgoStreamData igo_stream_data_out;
 	struct comp_data_blob_handler *model_handler;
-	struct sof_igo_nr_config config;	    /**< blob data buffer */
 	int16_t in[IGO_NR_IN_BUF_LENGTH];	    /**< input samples buffer */
 	int16_t out[IGO_NR_IN_BUF_LENGTH];    /**< output samples mix buffer */
 	bool process_enable[SOF_IPC_MAX_CHANNELS];	/**< set if channel process is enabled */
@@ -39,6 +38,7 @@ struct comp_data {
 			   struct sof_source *source,
 			   struct sof_sink *sink,
 			   int32_t frames);
+	struct sof_igo_nr_config config;	    /**< blob data buffer */
 };
 
 #endif /* __SOF_AUDIO_IGO_NR_CONFIG_H__ */
