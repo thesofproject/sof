@@ -714,10 +714,6 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		return IPC4_SUCCESS;
 	}
 
-	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-	if (!cdma_comp)
-		return IPC4_FAILURE;
-
 	ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
 	if (ret < 0)
 		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
