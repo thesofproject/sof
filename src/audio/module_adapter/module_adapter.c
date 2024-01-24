@@ -1338,11 +1338,6 @@ int module_adapter_reset(struct comp_dev *dev)
 	rfree(mod->stream_params);
 	mod->stream_params = NULL;
 
-#if CONFIG_IPC_MAJOR_4
-	rfree(mod->priv.cfg.input_pins);
-	mod->priv.cfg.input_pins = NULL;
-#endif
-
 	comp_dbg(dev, "module_adapter_reset(): done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -1356,6 +1351,11 @@ void module_adapter_free(struct comp_dev *dev)
 	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "module_adapter_free(): start");
+
+#if CONFIG_IPC_MAJOR_4
+	rfree(mod->priv.cfg.input_pins);
+	mod->priv.cfg.input_pins = NULL;
+#endif
 
 	ret = module_free(mod);
 	if (ret)
