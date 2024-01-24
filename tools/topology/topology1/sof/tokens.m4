@@ -152,3 +152,8 @@ SectionVendorTokens."sof_micfil_tokens" {
         SOF_TKN_IMX_MICFIL_RATE                  "2000"
         SOF_TKN_IMX_MICFIL_CH                    "2001"
 }
+
+SectionVendorTokens."sof_acp_sdw_tokens" {
+	SOF_TKN_AMD_ACP_SDW_SAMPLERATE		"2100"
+	SOF_TKN_AMD_ACP_SDW_CH			"2101"
+}

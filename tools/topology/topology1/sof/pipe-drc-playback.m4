@@ -31,7 +31,7 @@ W_PCM_PLAYBACK(PCM_ID, DRC Playback, 2, 0, SCHEDULE_CORE)
 
 define(DRC_priv, concat(`drc_bytes_', PIPELINE_ID))
 define(MY_DRC_CTRL, concat(`drc_control_', PIPELINE_ID))
-include(`drc_coef_default.m4')
+include(`drc_coef_generic_notebook_speaker.m4')
 C_CONTROLBYTES(MY_DRC_CTRL, PIPELINE_ID,
       CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
       CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),

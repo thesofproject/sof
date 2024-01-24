@@ -78,6 +78,7 @@ set(TPLGS
 	"sof-mt8186-mt6366\;sof-mt8186-dts\;-DDTS=`DTS'"
 	"sof-mt8186-mt6366\;sof-mt8186-mt6366-rt1019-rt5682s-waves\;-DWAVES=1"
 	"sof-mt8188-mt6359\;sof-mt8188"
+	"sof-mt8188-mt6359\;sof-mt8188-waves\;-DWAVES=1"
 
 	"sof-acp-renoir\;sof-acp"
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019"
@@ -91,6 +92,7 @@ set(TPLGS
 	"sof-acp-rmb\;sof-rmb-rt5682s-rt1019"
 	"sof-acp-rmb\;sof-rmb-nau8825-max98360"
 	"sof-acp_6_3\;sof-acp_6_3"
+	"sof-acp_6_3_sdw\;sof-acp_6_3-rt715-rt711-rt1316"
 )
 
 # This empty 'production/' source subdirectory exists only to create the

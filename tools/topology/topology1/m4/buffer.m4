@@ -5,13 +5,16 @@ dnl Define the macro for buffer widget
 dnl N_BUFFER(name)
 define(`N_BUFFER', `BUF'PIPELINE_ID`.'$1)
 
-dnl W_BUFFER(name, size, capabilities)
+dnl W_BUFFER(name, size, capabilities, [core], [flags])
 define(`W_BUFFER',
 `SectionVendorTuples."'N_BUFFER($1)`_tuples" {'
 `	tokens "sof_buffer_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_BUF_SIZE'	STR($2)
 `		SOF_TKN_BUF_CAPS'	STR($3)
+`ifelse(`$#', `5',
+`		SOF_TKN_BUF_FLAGS'	STR($5)
+,` ')'
 `	}'
 `}'
 `SectionData."'N_BUFFER($1)`_data" {'
