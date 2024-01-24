@@ -45,7 +45,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	struct processing_module *mod;
 	struct module_config *dst;
 
-	comp_cl_dbg(drv, "module_adapter_new() start");
+	comp_cl_info(drv, "module_adapter_new() start");
 
 	if (!config) {
 		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %zx config = %zx",
@@ -297,7 +297,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	uint32_t buff_size; /* size of local buffer */
 	int i = 0;
 
-	comp_dbg(dev, "module_adapter_prepare() start");
+	comp_info(dev, "module_adapter_prepare() start");
 
 	/* Prepare module */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
@@ -1350,7 +1350,7 @@ void module_adapter_free(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct list_item *blist, *_blist;
 
-	comp_dbg(dev, "module_adapter_free(): start");
+	comp_info(dev, "module_adapter_free(): start");
 
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
