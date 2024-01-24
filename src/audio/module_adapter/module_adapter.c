@@ -1340,6 +1340,7 @@ int module_adapter_reset(struct comp_dev *dev)
 
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
+	mod->priv.cfg.input_pins = NULL;
 #endif
 
 	comp_dbg(dev, "module_adapter_reset(): done");
