@@ -768,8 +768,17 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 
 		/* remove chain part */
 		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
-		if (ret < 0)
+		if (ret < 0) {
+			if (ret == -EBUSY) {
+				int n;
+				printk("chain_dma pause fail EBUSY\n");
+				for(n = 0; ret < 0 && n < 100; n++) {
+					ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
+				}
+				printk("chain_dma_recover %d at %d\n", ret, n);
+			}
 			return ret;
+		}
 
 		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
 			icd = container_of(clist, struct ipc_comp_dev, list);
