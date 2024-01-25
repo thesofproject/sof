@@ -143,6 +143,7 @@ struct ipc_config_process {
 
 /* file IO ipc comp */
 struct ipc_comp_file {
+	struct ipc_config_process module_header; /* Needed for module_adapter_init_data() */
 	uint32_t rate;
 	uint32_t channels;
 	char *fn;

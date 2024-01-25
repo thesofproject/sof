@@ -1,27 +1,33 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 /* Topology loader to set up components and pipeline */
 
+#include <sof/audio/component.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/topology.h>
+#include <rtos/string.h>
+#include <sof/common.h>
+#include <sof/lib/uuid.h>
+#include <tplg_parser/tokens.h>
+#include <tplg_parser/topology.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sof/common.h>
-#include <rtos/string.h>
-#include <sof/audio/component.h>
-#include <sof/ipc/driver.h>
-#include <sof/ipc/topology.h>
-#include <tplg_parser/topology.h>
-#include <tplg_parser/tokens.h>
 #include "testbench/common_test.h"
 #include "testbench/file.h"
 
 #define MAX_TPLG_OBJECT_SIZE	4096
+
+/* bfc7488c-75aa-4ce8-9dbed8da08a698c2 */
+static const struct sof_uuid tb_file_uuid = {
+	0xbfc7488c, 0x75aa, 0x4ce8, {0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2}
+};
 
 /* load asrc dapm widget */
 static int tb_register_asrc(struct testbench_prm *tp, struct tplg_context *ctx)
@@ -286,11 +292,13 @@ static int tb_new_fileread(struct tplg_context *ctx,
 	fileread->comp.id = comp_id;
 
 	/* use fileread comp as scheduling comp */
+	fileread->size = sizeof(struct ipc_comp_file);
 	fileread->comp.core = ctx->core_id;
-	fileread->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
+	fileread->comp.hdr.size = sizeof(struct sof_ipc_comp_file) + UUID_SIZE;
 	fileread->comp.type = SOF_COMP_FILEREAD;
 	fileread->comp.pipeline_id = ctx->pipeline_id;
 	fileread->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	fileread->comp.ext_data_length = UUID_SIZE;
 	return 0;
 }
 
@@ -338,10 +346,12 @@ static int tb_new_filewrite(struct tplg_context *ctx,
 	filewrite->comp.core = ctx->core_id;
 	filewrite->comp.id = comp_id;
 	filewrite->mode = FILE_WRITE;
-	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
+	filewrite->size = sizeof(struct ipc_comp_file);
+	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file) + UUID_SIZE;
 	filewrite->comp.type = SOF_COMP_FILEWRITE;
 	filewrite->comp.pipeline_id = ctx->pipeline_id;
 	filewrite->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	filewrite->comp.ext_data_length = UUID_SIZE;
 	return 0;
 }
 
@@ -350,17 +360,22 @@ static int tb_register_fileread(struct testbench_prm *tp,
 				struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_comp_file fileread = {{{0}}};
+	struct sof_ipc_comp_file *fileread;
+	struct sof_uuid *file_uuid;
 	int ret;
 
-	fileread.config.frame_fmt = tplg_find_format(tp->bits_in);
+	fileread = calloc(MAX_TPLG_OBJECT_SIZE, 1);
+	if (!fileread)
+		return -ENOMEM;
 
-	ret = tb_new_fileread(ctx, &fileread);
+	fileread->config.frame_fmt = tplg_find_format(tp->bits_in);
+
+	ret = tb_new_fileread(ctx, fileread);
 	if (ret < 0)
 		return ret;
 
 	/* configure fileread */
-	fileread.fn = strdup(tp->input_file[tp->input_file_index]);
+	fileread->fn = strdup(tp->input_file[tp->input_file_index]);
 	if (tp->input_file_index == 0)
 		tp->fr_id = ctx->comp_id;
 
@@ -369,23 +384,23 @@ static int tb_register_fileread(struct testbench_prm *tp,
 	tp->input_file_index++;
 
 	/* Set format from testbench command line*/
-	fileread.rate = tp->fs_in;
-	fileread.channels = tp->channels_in;
-	fileread.frame_fmt = tp->frame_fmt;
-	fileread.direction = dir;
+	fileread->rate = tp->fs_in;
+	fileread->channels = tp->channels_in;
+	fileread->frame_fmt = tp->frame_fmt;
+	fileread->direction = dir;
 
-	/* Set type depending on direction */
-	fileread.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
-		SOF_COMP_HOST : SOF_COMP_DAI;
+	file_uuid = (struct sof_uuid *)((uint8_t *)fileread + sizeof(struct sof_ipc_comp_file));
+	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
 
 	/* create fileread component */
-	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&fileread)) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(fileread)) < 0) {
 		fprintf(stderr, "error: file read\n");
-		free(fileread.fn);
+		free(fileread->fn);
 		return -EINVAL;
 	}
 
-	free(fileread.fn);
+	free(fileread->fn);
+	free(fileread);
 	return 0;
 }
 
@@ -394,10 +409,15 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 				 struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_comp_file filewrite = {{{0}}};
+	struct sof_ipc_comp_file *filewrite;
+	struct sof_uuid *file_uuid;
 	int ret;
 
-	ret = tb_new_filewrite(ctx, &filewrite);
+	filewrite = calloc(MAX_TPLG_OBJECT_SIZE, 1);
+	if (!filewrite)
+		return -ENOMEM;
+
+	ret = tb_new_filewrite(ctx, filewrite);
 	if (ret < 0)
 		return ret;
 
@@ -407,29 +427,29 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 			tp->output_file_index);
 		return -EINVAL;
 	}
-	filewrite.fn = strdup(tp->output_file[tp->output_file_index]);
+	filewrite->fn = strdup(tp->output_file[tp->output_file_index]);
 	if (tp->output_file_index == 0)
 		tp->fw_id = ctx->comp_id;
 	tp->output_file_index++;
 
 	/* Set format from testbench command line*/
-	filewrite.rate = tp->fs_out;
-	filewrite.channels = tp->channels_out;
-	filewrite.frame_fmt = tp->frame_fmt;
-	filewrite.direction = dir;
+	filewrite->rate = tp->fs_out;
+	filewrite->channels = tp->channels_out;
+	filewrite->frame_fmt = tp->frame_fmt;
+	filewrite->direction = dir;
 
-	/* Set type depending on direction */
-	filewrite.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
-		SOF_COMP_DAI : SOF_COMP_HOST;
+	file_uuid = (struct sof_uuid *)((uint8_t *)filewrite + sizeof(struct sof_ipc_comp_file));
+	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
 
 	/* create filewrite component */
-	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&filewrite)) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(filewrite)) < 0) {
 		fprintf(stderr, "error: new file write\n");
-		free(filewrite.fn);
+		free(filewrite->fn);
 		return -EINVAL;
 	}
 
-	free(filewrite.fn);
+	free(filewrite->fn);
+	free(filewrite);
 	return 0;
 }
 

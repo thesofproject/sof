@@ -80,6 +80,8 @@ int module_adapter_init_data(struct comp_dev *dev,
 	case SOF_COMP_DCBLOCK:
 	case SOF_COMP_SMART_AMP:
 	case SOF_COMP_MODULE_ADAPTER:
+	case SOF_COMP_FILEREAD:
+	case SOF_COMP_FILEWRITE:
 	case SOF_COMP_NONE:
 	{
 		const struct ipc_config_process *ipc_module_adapter = spec;
