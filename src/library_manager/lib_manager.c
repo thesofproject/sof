@@ -19,6 +19,7 @@
 #include <rtos/spinlock.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
+#include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
 
@@ -265,6 +266,11 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
+static bool module_is_llext(struct sof_man_module *mod)
+{
+	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
+}
+
 uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 				     struct comp_ipc_config *ipc_config,
 				     const void *ipc_specific_config)
@@ -287,6 +293,9 @@ uint32_t lib_manager_allocate_module(const struct comp_driver *drv,
 	}
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+
+	if (module_is_llext(mod))
+		return llext_manager_allocate_module(drv, ipc_config, ipc_specific_config);
 
 	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
@@ -328,6 +337,9 @@ int lib_manager_free_module(const struct comp_driver *drv,
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+
+	if (module_is_llext(mod))
+		return llext_manager_free_module(drv, ipc_config);
 
 	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
