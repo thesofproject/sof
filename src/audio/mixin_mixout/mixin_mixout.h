@@ -31,18 +31,6 @@
 #include <sof/platform.h>
 #include <stddef.h>
 
-#define MIXIN_MIXOUT_GENERIC
-
-#if defined(__XCC__)
-
-#include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-#undef MIXIN_MIXOUT_GENERIC
-#define MIXIN_MIXOUT_HIFI3
-#endif
-
-#endif
-
 enum ipc4_mixin_config_param {
 	/* large_config_set param id for ipc4_mixer_mode_config */
 	IPC4_MIXER_MODE = 1

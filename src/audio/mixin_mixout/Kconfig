@@ -6,3 +6,40 @@ config COMP_MIXIN_MIXOUT
 	default y
 	help
 	  Select for Mixin_mixout component
+
+choice "MIXIN_MIXOUT_SIMD_LEVEL_SELECT"
+	prompt "choose which SIMD level used for MIXIN_MIXOUT module"
+	depends on COMP_MIXIN_MIXOUT
+	default MIXIN_MIXOUT_HIFI_MAX
+
+	config MIXIN_MIXOUT_HIFI_MAX
+		prompt "Max HiFi level available in the toolchain"
+		bool
+		help
+			When this was selected, optimization level will be determined
+			by toolchain.
+
+	config MIXIN_MIXOUT_HIFI_5
+		prompt "choose HIFI4 intrinsic optimized MIXIN_MIXOUT module"
+		bool
+		help
+			This option used to build HIFI4 optimized MIXIN_MIXOUT code
+
+	config MIXIN_MIXOUT_HIFI_4
+		prompt "choose HIFI4 intrinsic optimized MIXIN_MIXOUT module"
+		bool
+		help
+			This option used to build HIFI4 optimized MIXIN_MIXOUT code
+
+	config MIXIN_MIXOUT_HIFI_3
+		prompt "choose HIFI3 intrinsic optimized MIXIN_MIXOUT module"
+		bool
+		help
+			This option used to build HIFI3 intrinsic optimized MIXIN_MIXOUT code
+
+	config MIXIN_MIXOUT_HIFI_NONE
+		prompt "choose generic C MIXIN_MIXOUT module, no HIFI SIMD involved"
+		bool
+		help
+			This option used to build MIXIN_MIXOUT generic code.
+endchoice
