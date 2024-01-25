@@ -630,6 +630,12 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_notification.c
 )
 
+if (CONFIG_MM_DRV)
+zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
+	${SOF_SRC_PATH}/library_manager/llext_manager.c
+)
+endif()
+
 zephyr_include_directories_ifdef(CONFIG_INTEL_MODULES
 	${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
 	${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
