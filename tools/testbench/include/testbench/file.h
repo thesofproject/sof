@@ -8,8 +8,8 @@
  *         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
  */
 
-#ifndef _FILE_H
-#define _FILE_H
+#ifndef _TESTBENCH_FILE_H
+#define _TESTBENCH_FILE_H
 
 #include <stdint.h>
 
@@ -42,6 +42,8 @@ struct file_state {
 	bool write_failed;
 };
 
+struct file_comp_data;
+
 /* file comp data */
 struct file_comp_data {
 	struct file_state fs;
@@ -49,12 +51,15 @@ struct file_comp_data {
 	uint32_t channels;
 	uint32_t rate;
 	int sample_container_bytes;
-	int (*file_func)(struct comp_dev *dev, struct audio_stream *sink,
+	int (*file_func)(struct file_comp_data *cd, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);
 
 	/* maximum limits */
 	int max_samples;
 	int max_copies;
+	int max_frames;
 };
 
-#endif
+void sys_comp_module_file_interface_init(void);
+
+#endif /* _TESTBENCH_FILE */

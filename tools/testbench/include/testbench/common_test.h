@@ -87,10 +87,6 @@ int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx);
 
 int edf_scheduler_init(void);
 
-void sys_comp_file_init(void);
-
-void sys_comp_filewrite_init(void);
-
 int tb_setup(struct sof *sof, struct testbench_prm *tp);
 void tb_free(struct sof *sof);
 
