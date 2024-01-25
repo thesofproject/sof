@@ -561,6 +561,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MIXIN_MIXOUT
 	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
 	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
 	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
+	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi5.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
