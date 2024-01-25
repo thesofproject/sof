@@ -3,14 +3,13 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
 # SDW + DMIC topology with passthrough pipelines
-# We will change NUM_HDMIS to 3 once HDMI is enabled on MTL RVP
 "cavs-sdw\;sof-mtl-rt711-4ch\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 DMIC0_ID=2,DMIC1_ID=3,NUM_HDMIS=0,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-4ch.bin"
 
 "cavs-sdw\;sof-mtl-rt711-l0-rt1316-l23-rt714-l1\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-NUM_HDMIS=0,SDW_SPK_STREAM=SDW2-Playback,SDW_SPK_IN_STREAM=SDW2-Capture,SDW_DMIC_STREAM=SDW1-Capture"
+SDW_SPK_STREAM=SDW2-Playback,SDW_SPK_IN_STREAM=SDW2-Capture,SDW_DMIC_STREAM=SDW1-Capture"
 
-"cavs-sdw\;sof-mtl-rt712-l0-rt1712-l3\;PLATFORM=mtl,SDW_DMIC=1,NUM_HDMIS=0,NUM_SDW_AMP_LINKS=1,\
+"cavs-sdw\;sof-mtl-rt712-l0-rt1712-l3\;PLATFORM=mtl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
@@ -23,12 +22,12 @@ SDW_DMIC_STREAM=SDW0-Capture"
 # Jack codec + SmartAmp topology. No SDW_DMIC connection
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
 
-"cavs-sdw\;sof-mtl-rt722-l0\;PLATFORM=mtl,SDW_DMIC=1,NUM_HDMIS=0,NUM_SDW_AMP_LINKS=1,\
+"cavs-sdw\;sof-mtl-rt722-l0\;PLATFORM=mtl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 "cavs-sdw\;sof-mtl-cs42l43-l0-cs35l56-l12\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-NUM_HDMIS=0,SDW_SPK_STREAM=Playback-SmartAmp,SDW_SPK_IN_STREAM=Capture-SmartAmp,\
+SDW_SPK_STREAM=Playback-SmartAmp,SDW_SPK_IN_STREAM=Capture-SmartAmp,\
 SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
 SDW_JACK_IN_STREAM=Capture-SimpleJack,SDW_AMP_FMT_24=true,SDW_JACK_FMT_24=true"
 
