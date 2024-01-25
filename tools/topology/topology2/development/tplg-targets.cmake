@@ -66,6 +66,21 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
+# EFX topology for MTL
+"sof-hda-generic\;sof-mtl-hda-efx-generic\;PLATFORM=mtl,HDA_CONFIG=efx,\
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough"
+
+"sof-hda-generic\;sof-mtl-hda-efx-generic-2ch\;PLATFORM=mtl,\
+HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_PARAMS=passthrough"
+
+"sof-hda-generic\;sof-mtl-hda-efx-generic-4ch\;PLATFORM=mtl,\
+HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,\
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_PARAMS=passthrough"
+
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic\;HDA_CONFIG=efx,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
