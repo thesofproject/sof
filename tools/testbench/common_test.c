@@ -1,33 +1,35 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 
-#include <stdint.h>
-#include <stddef.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <rtos/string.h>
-#include <math.h>
-#include <rtos/sof.h>
-#include <rtos/task.h>
-#include <rtos/alloc.h>
-#include <sof/lib/notifier.h>
+#include <sof/audio/component_ext.h>
+#include <sof/audio/pipeline.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
+#include <rtos/alloc.h>
+#include <rtos/sof.h>
+#include <rtos/string.h>
+#include <rtos/task.h>
 #include <rtos/wait.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/component_ext.h>
+#include <tplg_parser/topology.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "testbench/common_test.h"
 #include "testbench/trace.h"
-#include <tplg_parser/topology.h>
+#include "testbench/file.h"
 
 #if defined __XCC__
 #include <xtensa/tie/xt_timer.h>
@@ -43,7 +45,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 
 	/* init components */
 	sys_comp_init(sof);
-	sys_comp_file_init();
 	sys_comp_selector_init();
 
 	/* Module adapter components */
@@ -53,6 +54,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_drc_interface_init();
 	sys_comp_module_eq_fir_interface_init();
 	sys_comp_module_eq_iir_interface_init();
+	sys_comp_module_file_interface_init();
 	sys_comp_module_google_rtc_audio_processing_interface_init();
 	sys_comp_module_igo_nr_interface_init();
 	sys_comp_module_mfcc_interface_init();
