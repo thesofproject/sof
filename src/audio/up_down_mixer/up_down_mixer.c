@@ -5,9 +5,9 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
 
+#ifndef MODULE_PRIVAT
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
-#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -25,6 +25,13 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#endif
+#include <sof/audio/module_adapter/module/generic.h>
+#include <module/module/base.h>
+#include <module/module/api_ver.h>
+#include <rimage/sof/user/manifest.h>
+#include <module/audio/source_api.h>
+#include <module/audio/sink_api.h>
 
 #include "up_down_mixer_coef.h"
 #include "up_down_mixer.h"
