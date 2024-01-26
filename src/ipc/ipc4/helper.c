@@ -1043,7 +1043,7 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	if (*dma_config_id != GTW_DMA_CONFIG_ID)
 		return IPC4_INVALID_REQUEST;
 
-	dai->host_dma_config = GET_IPC_DMA_CONFIG(data_buffer, size);
+	dai->host_dma_config[0] = GET_IPC_DMA_CONFIG(data_buffer, size);
 #endif
 	return IPC4_SUCCESS;
 }
