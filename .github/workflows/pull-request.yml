@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: apt get doxygen graphviz
         run: sudo apt-get -y install ninja-build doxygen graphviz
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-20.04  # sof-docs is still stuck to this for now
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: apt-get update
         run: sudo apt-get update
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with: {fetch-depth: 5, submodules: recursive}
 
       - name: docker
@@ -133,7 +133,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with: {fetch-depth: 0, submodules: recursive}
 
       - name: docker
@@ -168,7 +168,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with: {fetch-depth: 0, submodules: recursive}
 
       - name: turn off HAVE_AGENT

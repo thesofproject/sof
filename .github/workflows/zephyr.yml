@@ -19,7 +19,7 @@ jobs:
   manifest-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: ./workspace/sof
 
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: ./workspace/sof
 
@@ -122,7 +122,7 @@ jobs:
             IPC_platforms: mtl
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         # Download a full clone to fix `git describe`, sof_version.h and
         # build reproducibility. sof.git is still small.
         # This is especially useful for daily builds (but not just).
@@ -224,7 +224,7 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: ./workspace/sof
@@ -374,7 +374,7 @@ jobs:
     needs: [build-linux, build-windows]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         # we need only one script but it's simpler to get the (last
         # revision of the) whole repo and it takes seconds.
         with:
