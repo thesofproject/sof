@@ -19,9 +19,11 @@
 
 #include <sof/trace/trace.h>
 
+#ifdef CONFIG_CAVS
 /* to be removed once driver upstream in Zephyr */
 #define __SOF_DRIVERS_INTERRUPT_H__
 #include <platform/drivers/interrupt.h>
+#endif /* CONFIG_CAVS */
 
 extern struct tr_ctx zephyr_tr;
 
