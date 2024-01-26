@@ -60,7 +60,6 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd);
 int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size);
 int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd);
 int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed);
-
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif

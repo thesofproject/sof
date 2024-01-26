@@ -44,7 +44,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 	case SOF_DAI_INTEL_SSP:
 		link_cfg.full = 0;
 		link_cfg.part.dir = common_config->direction;
-		link_cfg.part.stream = common_config->host_dma_config->stream_id;
+		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		link_cfg.full = 0;
@@ -57,7 +57,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		} else {
 			link_cfg.part.hchan = out_fmt->channels_count - 1;
 		}
-		link_cfg.part.stream = common_config->host_dma_config->stream_id;
+		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
 		break;
 	default:
 		/* other types of DAIs not need link_config */
@@ -79,8 +79,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_INTEL_DMIC:
 		channel = 0;
 #if defined(CONFIG_ACE_VERSION_2_0)
-		if (dai->host_dma_config->pre_allocated_by_host)
-			channel = dai->host_dma_config->dma_channel_id;
+		if (dai->host_dma_config[0]->pre_allocated_by_host)
+			channel = dai->host_dma_config[0]->dma_channel_id;
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:

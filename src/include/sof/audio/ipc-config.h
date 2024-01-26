@@ -75,7 +75,8 @@ struct ipc_config_dai {
 	uint32_t feature_mask;		/**< copier feature mask (set directly from
 					  *  ipc4_copier_module_cfg on init)
 					  */
-	struct ipc_dma_config *host_dma_config; /**< DMA config - required for ACE 2.0 and newer */
+	/**< DMA configs - required for ACE 2.0 and newer */
+	struct ipc_dma_config *host_dma_config[GTW_DMA_DEVICE_MAX_COUNT];
 	const struct ipc4_audio_format *out_fmt;/**< audio format for output pin 0 - required
 						  * for ACE 2.0 and newer
 						  */
