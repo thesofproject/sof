@@ -60,7 +60,7 @@ jobs:
           sudo apt-get -y install
             clang llvm ninja-build device-tree-compiler python3-pyelftools
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: ./workspace/sof
 
