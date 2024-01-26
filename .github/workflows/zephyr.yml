@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: ./workspace/sof
+          filter: 'tree:0'
 
       - name: plain west update
         run: |
@@ -70,6 +71,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: ./workspace/sof
+          filter: 'tree:0'
 
       - name: west clones
         run: pip3 install west && cd workspace/sof/ && west init -l &&
@@ -128,6 +130,7 @@ jobs:
         # This is especially useful for daily builds (but not just).
         with:
           fetch-depth: 0
+          filter: 'tree:0'
           path: ./workspace/sof
 
       - name: west clones
@@ -227,6 +230,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          filter: 'tree:0'
           path: ./workspace/sof
 
       # Cache artifacts so we do not overload external servers with downloads
@@ -381,6 +385,7 @@ jobs:
           # Isolate the clone in a subdirectory to make sure globbing
           # does not catch random SOF files.
           path: ./sof
+          filter: 'tree:0'
 
       - name: Download Windows and Linux builds
         uses: actions/download-artifact@v3

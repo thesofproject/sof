@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 5}
+        with: {fetch-depth: 0, filter: 'tree:0'}
 
       - name: apt get
         run: sudo apt-get update &&

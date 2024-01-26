@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 2}
+        with: {fetch-depth: 2, filter: 'tree:0'}
 
       - name: build and run all defconfigs
         run: ./test/test-all-defconfigs.sh
