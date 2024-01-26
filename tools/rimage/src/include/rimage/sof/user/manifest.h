@@ -25,7 +25,7 @@
 /* module type load type */
 #define SOF_MAN_MOD_TYPE_BUILTIN	0
 #define SOF_MAN_MOD_TYPE_MODULE		1
-#define SOF_MAN_MOD_TYPE_LLEXT		2
+#define SOF_MAN_MOD_TYPE_LLEXT		2	/* Zephyr LLEXT-style dynamically linked */
 
 /* module init config */
 #define SOF_MAN_MOD_INIT_CONFIG_BASE_CFG               0 /* Base config only */
