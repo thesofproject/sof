@@ -6,7 +6,7 @@
 //         Pawel Dobrowolski<pawelx.dobrowolski@intel.com>
 
 /*
- * Dynamic module loading functions.
+ * Dynamic module loading functions using Zephyr Linkable Loadable Extensions (LLEXT) interface.
  */
 
 #include <sof/audio/buffer.h>
