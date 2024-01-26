@@ -38,6 +38,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: 'tree:0'
 
       - name: apt get doxygen graphviz
         run: sudo apt-get -y install ninja-build doxygen graphviz
@@ -72,6 +74,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: 'tree:0'
 
       - name: apt-get update
         run: sudo apt-get update
@@ -107,7 +111,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 5, submodules: recursive}
+        with: {fetch-depth: 0, submodules: recursive, filter: 'tree:0'}
 
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
@@ -134,7 +138,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0, submodules: recursive}
+        with: {fetch-depth: 0, submodules: recursive, filter: 'tree:0'}
 
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
@@ -169,7 +173,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0, submodules: recursive}
+        with: {fetch-depth: 0, submodules: recursive, filter: 'tree:0'}
 
       - name: turn off HAVE_AGENT
         run: echo CONFIG_HAVE_AGENT=n >

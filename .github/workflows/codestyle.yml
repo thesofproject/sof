@@ -57,6 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: 'tree:0'
 
       - name: run yamllint
         # Quoting to please all parsers is hard. This indirection helps.

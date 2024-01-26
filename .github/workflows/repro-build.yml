@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 5, submodules: recursive}
+        with: {fetch-depth: 0, submodules: recursive, filter: 'tree:0'}
 
       - name: docker pull
         run: docker pull thesofproject/sof &&  docker tag thesofproject/sof sof
