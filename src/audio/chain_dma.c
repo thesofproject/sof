@@ -121,8 +121,16 @@ static int chain_host_stop(struct comp_dev *dev)
 	int err;
 
 	err = dma_stop(cd->chan_host->dma->z_dev, cd->chan_host->index);
-	if (err < 0)
+	if (err < 0) {
+
+#if CONFIG_SOC_SERIES_INTEL_CAVS_V25
+		if (err == -EBUSY) {
+			comp_warn(dev, "-EBUSY on chain DMA stop. Ignoring error, bug SOF#8792");
+			return 0;
+		}
+#endif
 		return err;
+	}
 
 	comp_info(dev, "chain_host_stop(): dma_stop() host chan_index = %u",
 		  cd->chan_host->index);
