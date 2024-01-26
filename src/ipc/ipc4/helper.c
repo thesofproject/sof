@@ -44,6 +44,7 @@
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
 #include <sof/lib_manager.h>
+#include <sof/tlv.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -1046,6 +1047,35 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	dai->host_dma_config[0] = GET_IPC_DMA_CONFIG(data_buffer, size);
 #endif
 	return IPC4_SUCCESS;
+}
+
+int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
+				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
+{
+	uint32_t end_addr = (uint32_t)data_buffer + size;
+	struct ipc_dma_config *dma_cfg;
+	struct sof_tlv *tlvs;
+
+	for (tlvs = (struct sof_tlv *)data_buffer; (uint32_t)tlvs < end_addr;
+	     tlvs = tlv_next(tlvs)) {
+		dma_cfg = tlv_value_ptr_get(tlvs, GTW_DMA_CONFIG_ID);
+		if (!dma_cfg)
+			continue;
+
+		/* To be able to retrieve proper DMA config we need to check if
+		 * device_id value (which is alh_id) is equal to device_address.
+		 * They both contain SNDW master id and PDI. If they match then
+		 * proper config is found.
+		 */
+		for (uint32_t i = 0; i < dma_cfg->channel_map.device_count; i++) {
+			if (dma_cfg->channel_map.map[i].device_address == device_id) {
+				dai->host_dma_config[dma_cfg_idx] = dma_cfg;
+				return IPC4_SUCCESS;
+			}
+		}
+	}
+
+	return IPC4_INVALID_REQUEST;
 }
 
 void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
