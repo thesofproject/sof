@@ -11,7 +11,6 @@
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
-#include <platform/drivers/interrupt.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>

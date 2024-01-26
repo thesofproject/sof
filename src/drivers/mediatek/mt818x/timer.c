@@ -11,7 +11,6 @@
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <platform/drivers/timer.h>
-#include <platform/drivers/interrupt.h>
 #include <ipc/stream.h>
 #include <errno.h>
 #include <stdint.h>
