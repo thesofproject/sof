@@ -49,7 +49,8 @@ jobs:
              ./scripts/build-tools.sh -t
 
       - name: build testbench
-        run: ./scripts/rebuild-testbench.sh
+        run: ./scripts/rebuild-testbench.sh ||
+             ./scripts/rebuild-testbench.sh -j 1
 
       - name: run testbench
         run: ./scripts/host-testbench.sh
