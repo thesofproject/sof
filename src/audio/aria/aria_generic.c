@@ -4,7 +4,7 @@
 
 #include "aria.h"
 
-#ifdef ARIA_GENERIC
+#if SOF_USE_HIFI(NONE, ARIA)
 
 /**
  * \brief Aria gain index mapping table

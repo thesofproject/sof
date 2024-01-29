@@ -28,19 +28,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(__XCC__)
-# include <xtensa/config/core-isa.h>
-# if XCHAL_HAVE_HIFI5
-#  define ARIA_HIFI5
-# elif XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-#  define ARIA_HIFI3
-# else
-#  define ARIA_GENERIC
-# endif
-#else
-# define ARIA_GENERIC
-#endif
-
 /** \brief Aria max gain states */
 #define ARIA_MAX_GAIN_STATES 10
 
