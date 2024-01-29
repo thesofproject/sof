@@ -5,7 +5,17 @@
 
 #include <module/audio/sink_api.h>
 #include <module/audio/audio_stream.h>
+/*
+ * When building native system-service modules only exported module headers can
+ * be included, autoconf.h isn't included either. To identify such a build we
+ * need any symbol that is guaranteed to be defined with any SOF build.
+ * CONFIG_CORE_COUNT is such a symbol, it is always defined to an integer number
+ */
+#ifndef CONFIG_CORE_COUNT
+#define EXPORT_SYMBOL(...)
+#else
 #include <rtos/symbol.h>
+#endif
 
 /* This file contains public sink API functions that were too large to mark is as inline. */
 
