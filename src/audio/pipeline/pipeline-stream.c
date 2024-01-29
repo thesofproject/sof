@@ -486,6 +486,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 			 * Initialization delay is only used with SSP, where we
 			 * don't use more than one DAI per copier
 			 */
+#if !CONFIG_LIBRARY
 			struct dai_data *dd;
 #if CONFIG_IPC_MAJOR_3
 			dd = comp_get_drvdata(current);
@@ -498,6 +499,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 #error Unknown IPC major version
 #endif
 			ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
+#endif
 		}
 		break;
 	default:
