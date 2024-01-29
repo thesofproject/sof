@@ -162,8 +162,10 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 
 	ipc4_update_buffer_format(buffer, audio_fmt);
-#ifndef ARIA_GENERIC
+#ifdef ARIA_HIFI3
 	audio_stream_set_align(8, 1, &buffer->stream);
+#elif ARIA_HIFI5
+	audio_stream_set_align(16, 1, &buffer->stream);
 #endif
 }
 
