@@ -517,7 +517,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 			dma_log->core_id,
 			entry->header.level,
-			get_component_name(entry->header.component_class, dma_log->uid),
+			get_component_name(entry->header.component_class, 0),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
 
@@ -548,7 +548,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		/* component name and id */
 		fprintf(out_fd, "%s%-12s %-5s%s ",
 			use_colors ? KYEL : "",
-			get_component_name(entry->header.component_class, dma_log->uid),
+			get_component_name(entry->header.component_class, 0),
 			ids,
 			use_colors ? KNRM : "");
 

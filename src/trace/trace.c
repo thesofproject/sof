@@ -72,7 +72,7 @@ struct trace {
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(void *dst, const struct sof_uuid_entry *uid,
+static void put_header(void *dst,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
@@ -82,7 +82,6 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 	struct log_entry_header header;
 	int ret;
 
-	header.uid = (uintptr_t)uid;
 	header.id_0 = id_1 & TRACE_ID_MASK;
 	header.id_1 = id_2 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
@@ -231,7 +230,7 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 	int i;
 
 	/* fill log content. arg_count is in the dictionary. */
-	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, sof_cycle_get_64_safe());
+	put_header(data, id_1, id_2, log_entry, sof_cycle_get_64_safe());
 
 	for (i = 0; i < arg_count; ++i)
 		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
@@ -507,7 +506,7 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 	uint32_t *args = (uint32_t *)&packet[MESSAGE_SIZE(0)];
 	const uint64_t tstamp = sof_cycle_get_64_safe();
 
-	put_header(packet, dt_tr.uuid_p, _TRACE_INV_ID, _TRACE_INV_ID,
+	put_header(packet, _TRACE_INV_ID, _TRACE_INV_ID,
 		   dict_entry_address, tstamp);
 
 	for (i = 0; i < MIN(n_args, _TRACE_EVENT_MAX_ARGUMENT_COUNT); i++)
