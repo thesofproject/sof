@@ -41,16 +41,16 @@ Ex: "~/work/sof/sof/build_plugin/sof_ep/install/lib:~/work/sof/sof/build_plugin/
 And set the environment variable SOF_PLUGIN_TOPOLOGY_PATH to point to the directory containing the topology binary
 ```
 
-Code can then be run by starting sof-pipe with your desired topology
+Code can then be run by starting sof-pipe with your desired topology (Ex: sof-plugin.tplg)
 
 ```
- ./sof-pipe -T sof-tgl-nocodec.tplg
+ ./sof-pipe -T sof-plugin.tplg
 ```
 
 At this point the sof-pipe daemon is waiting for IPC. Audio applications can now invoke sof-pipe processing via
 
 ```
-aplay -Dsof:tgl-nocodec:1:default:default:48k2c16b -f dat some48kHz.wav
+aplay -Dsof:plugin:1:default:default:48k2c16b -f dat some48kHz.wav
 ```
 The command line is parsed as follows:
 - "sof" is the plugin name
@@ -66,9 +66,9 @@ The above example needs to be 48k as example pipe has no SRC/ASRC.
 Likewise
 
 ```
-arecord -Dsof:tgl-nocodec:1:default:default:48k2c16b -f dat file.wav
+arecord -Dsof:plugin:1:default:default:48k2c16b -f dat file.wav
 ```
-Will record audio using the tgl-nocodec topology and PCM ID 1.
+Will record audio using the plugin topology and PCM ID 1.
 
 Mixer settings can be adjusted for bdw-nocodec by (Not functional yet)
 
