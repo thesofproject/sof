@@ -232,15 +232,6 @@ struct dai_type_info {
 #define trace_dai_get_subid(dai_p) ((dai_p)->index)
 
 #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
-/* driver level tracing */
-#define dai_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
-
-#define dai_cl_warn(drv_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
-
-#define dai_cl_info(drv_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
-
-#define dai_cl_dbg(drv_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
-
 /* device level tracing */
 #define dai_err(dai_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
 
@@ -251,32 +242,6 @@ struct dai_type_info {
 #define dai_dbg(dai_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
 
 #else
-/* class (driver) level (no device object) tracing */
-
-#define dai_cl_err(drv_p, __e, ...)		\
-	trace_dev_err(trace_dai_drv_get_tr_ctx,	\
-		      trace_dai_drv_get_id,	\
-		      trace_dai_drv_get_subid,	\
-		      drv_p, __e, ##__VA_ARGS__)
-
-#define dai_cl_warn(drv_p, __e, ...)		\
-	trace_dev_warn(trace_dai_drv_get_tr_ctx,\
-		       trace_dai_drv_get_id,	\
-		       trace_dai_drv_get_subid,	\
-		       drv_p, __e, ##__VA_ARGS__)
-
-#define dai_cl_info(drv_p, __e, ...)		\
-	trace_dev_info(trace_dai_drv_get_tr_ctx,\
-		       trace_dai_drv_get_id,	\
-		       trace_dai_drv_get_subid,	\
-		       drv_p, __e, ##__VA_ARGS__)
-
-#define dai_cl_dbg(drv_p, __e, ...)		\
-	trace_dev_dbg(trace_dai_drv_get_tr_ctx,	\
-		      trace_dai_drv_get_id,	\
-		      trace_dai_drv_get_subid,	\
-		      drv_p, __e, ##__VA_ARGS__)
-
 /* device tracing */
 
 #define dai_err(dai_p, __e, ...)					\
