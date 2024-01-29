@@ -115,21 +115,6 @@ void mtrace_event(const char *data, uint32_t length)
 }
 #endif /* __ZEPHYR__ */
 
-#if CONFIG_TRACE_FILTERING_VERBOSITY
-/**
- * \brief Runtime trace filtering based on verbosity level
- * \param lvl log level (LOG_LEVEL_ ERROR, INFO, DEBUG ...)
- * \param uuid uuid address
- * \return false when trace is filtered out, otherwise true
- */
-static inline bool trace_filter_verbosity(uint32_t lvl, const struct tr_ctx *ctx)
-{
-	STATIC_ASSERT(LOG_LEVEL_CRITICAL < LOG_LEVEL_VERBOSE,
-		      LOG_LEVEL_CRITICAL_MUST_HAVE_LOWEST_VALUE);
-	return lvl <= ctx->level;
-}
-#endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
-
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 /** Report how many times an entry was suppressed and clear it. */
 static void emit_suppressed_entry(struct recent_log_entry *entry)
@@ -279,11 +264,6 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	if (!trace->enable) {
 		return;
 	}
-
-#if CONFIG_TRACE_FILTERING_VERBOSITY
-	if (!trace_filter_verbosity(lvl, ctx))
-		return;
-#endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {

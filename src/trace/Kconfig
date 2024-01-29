@@ -39,14 +39,6 @@ config TRACE_FILTERING
 	help
 		Filtering of trace messages based on their verbosity level and/or frequency.
 
-config TRACE_FILTERING_VERBOSITY
-	bool "Filter by verbosity"
-	depends on TRACE_FILTERING
-	default y
-	help
-		Filtering by log verbosity level, where maximum verbosity allowed is specified for each
-		context and may be adjusted in runtime. Most basic feature found in every logger.
-
 config TRACE_FILTERING_ADAPTIVE
 	bool "Adaptive rate limiting"
 	depends on TRACE_FILTERING
