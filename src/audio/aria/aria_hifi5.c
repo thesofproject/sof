@@ -4,7 +4,7 @@
 
 #include "aria.h"
 
-#ifdef ARIA_HIFI5
+#if SOF_USE_HIFI(5, ARIA)
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi5.h>
 

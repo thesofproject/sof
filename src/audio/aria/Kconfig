@@ -10,3 +10,22 @@ config COMP_ARIA
 	  Applied gain is in range <1, 2 power attenuation>
 	  Currently ARIA introduces gain transition and algorithmic
 	  latency equal to 1 ms.
+
+choice
+	prompt "ARIA HIFI level"
+	depends on COMP_ARIA
+	default ARIA_HIFI_MAX
+
+config ARIA_HIFI_MAX
+	bool "Max level available in the toolchain"
+
+config ARIA_HIFI_4
+	bool "HIFI4 ARIA"
+
+config ARIA_HIFI_3
+	bool "HIFI3 ARIA"
+
+config ARIA_HIFI_NONE
+	bool "Generic ARIA, no HIFI"
+
+endchoice
