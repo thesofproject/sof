@@ -96,6 +96,8 @@ config COMP_TONE
 
 rsource "mixer/Kconfig"
 
+rsource "mixin_mixout/Kconfig"
+
 rsource "mux/Kconfig"
 
 config COMP_KPB

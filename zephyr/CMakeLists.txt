@@ -551,19 +551,17 @@ zephyr_library_sources_ifdef(CONFIG_COMP_KPB
 	${SOF_AUDIO_PATH}/kpb.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-		${SOF_AUDIO_PATH}/mixer/mixer.c
-		${SOF_AUDIO_PATH}/mixer/mixer_generic.c
-		${SOF_AUDIO_PATH}/mixer/mixer_hifi3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
-	)
-endif()
+zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
+	${SOF_AUDIO_PATH}/mixer/mixer.c
+	${SOF_AUDIO_PATH}/mixer/mixer_generic.c
+	${SOF_AUDIO_PATH}/mixer/mixer_hifi3.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MIXIN_MIXOUT
+	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
+	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
+	${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
