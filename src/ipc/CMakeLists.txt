@@ -34,9 +34,4 @@ if (CONFIG_TRACE)
 		dma-copy.c)
 endif()
 
-if (CONFIG_LIBRARY)
-	return()
-endif()
-
-
 endif() # Zephyr
