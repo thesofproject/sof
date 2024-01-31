@@ -96,10 +96,16 @@ void cpu_notify_state_entry(enum pm_state state)
 		storage_buffer_size += LP_SRAM_SIZE;
 
 		/* allocate IMR buffer and store it in the global pointer */
-		global_imr_ram_storage = rmalloc(SOF_MEM_ZONE_SYS_RUNTIME,
-						 0,
-						 SOF_MEM_CAPS_L3,
-						 storage_buffer_size);
+		global_imr_ram_storage = rballoc_align(0, SOF_MEM_CAPS_L3,
+						       storage_buffer_size,
+						       PLATFORM_DCACHE_ALIGN);
+
+		/* If no IMR buffer we can not recover */
+		if (!global_imr_ram_storage) {
+			tr_err(&zephyr_tr, "failed to allocate global_imr_ram_storage");
+			k_panic();
+		}
+
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 	}
 }
