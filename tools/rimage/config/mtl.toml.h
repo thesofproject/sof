@@ -106,6 +106,10 @@
 #include <audio/google/google_rtc_audio_processing.toml>
 #endif
 
+#ifdef CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING
+#include <audio/google/google_ctc_audio_processing.toml>
+#endif
+
 #ifdef CONFIG_COMP_TDFB
 #include <audio/tdfb/tdfb.toml>
 #endif
