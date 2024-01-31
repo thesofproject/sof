@@ -115,7 +115,7 @@ static inline uintptr_t get_l3_heap_start(void)
 	 * - main_fw_load_offset
 	 * - main fw size in manifest
 	 */
-	return (uintptr_t)z_soc_uncached_ptr((__sparse_force void __sparse_cache *)
+	return (uintptr_t)arch_xtensa_uncached_ptr((__sparse_force void __sparse_cache *)
 					     ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
 }
 
@@ -145,7 +145,7 @@ static bool is_l3_heap_pointer(void *ptr)
 	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
 
 	if (is_cached(ptr))
-		ptr = z_soc_uncached_ptr((__sparse_force void __sparse_cache *)ptr);
+		ptr = arch_xtensa_uncached_ptr((__sparse_force void __sparse_cache *)ptr);
 
 	if ((POINTER_TO_UINT(ptr) >= l3_heap_start) && (POINTER_TO_UINT(ptr) < l3_heap_end))
 		return true;
@@ -198,7 +198,7 @@ static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h,
 
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	if (ptr)
-		ptr = z_soc_cached_ptr((__sparse_force void *)ptr);
+		ptr = arch_xtensa_cached_ptr((__sparse_force void *)ptr);
 #endif
 
 	return ptr;
@@ -211,7 +211,7 @@ static void heap_free(struct k_heap *h, void *mem)
 	void *mem_uncached;
 
 	if (is_cached(mem)) {
-		mem_uncached = z_soc_uncached_ptr((__sparse_force void __sparse_cache *)mem);
+		mem_uncached = arch_xtensa_uncached_ptr((__sparse_force void __sparse_cache *)mem);
 		sys_cache_data_flush_and_invd_range(mem,
 				sys_heap_usable_size(&h->heap, mem_uncached));
 
