@@ -671,16 +671,14 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	void __sparse_cache *local_add;
 #if CONFIG_L3_HEAP
 	uint32_t caps = SOF_MEM_CAPS_L3 | SOF_MEM_CAPS_DMA;
-
-	/* allocate new buffer: cached alias */
-	local_add = (__sparse_force void __sparse_cache *)rmalloc(SOF_MEM_ZONE_SYS, 0, caps, size);
 #else
-	uint32_t addr_align = PAGE_SZ;
 	uint32_t caps = SOF_MEM_CAPS_DMA;
+#endif
 
+	uint32_t addr_align = PAGE_SZ;
 	/* allocate new buffer: cached alias */
 	local_add = (__sparse_force void __sparse_cache *)rballoc_align(0, caps, size, addr_align);
-#endif
+
 	if (!local_add) {
 		tr_err(&lib_manager_tr, "lib_manager_allocate_store_mem(): alloc failed");
 		return NULL;
