@@ -523,7 +523,8 @@ def create_zephyr_sof_symlink():
 def west_update():
 	"""[summary] Clones all west manifest projects to specified revisions"""
 	global west_top
-	execute_command(["west", "update"], check=True, timeout=3000, cwd=west_top)
+	# --narrow to fetch SHA1s directly from forks
+	execute_command(["west", "update", "--narrow"], check=True, timeout=3000, cwd=west_top)
 
 
 def get_sof_version():
