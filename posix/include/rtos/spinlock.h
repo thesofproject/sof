@@ -88,9 +88,9 @@ extern struct tr_ctx sl_tr;
 				break;	/* lock acquired */ \
 		} \
 		if (__tries == 0) { \
-			tr_err_atomic(&sl_tr, "DED"); \
-			tr_err_atomic(&sl_tr, "line: %d", line); \
-			tr_err_atomic(&sl_tr, "user: %d", (lock)->user); \
+			tr_err_atomic("DED"); \
+			tr_err_atomic("line: %d", line); \
+			tr_err_atomic("user: %d", (lock)->user); \
 			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
 	} while (0)
@@ -102,11 +102,11 @@ extern struct tr_ctx sl_tr;
 			int __i = 0; \
 			int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
 				? DBG_LOCK_USERS : lock_dbg_atomic; \
-			tr_err_atomic(&sl_tr, "eal"); \
-			tr_err_atomic(&sl_tr, "line: %d", line); \
-			tr_err_atomic(&sl_tr, "dbg_atomic: %d", lock_dbg_atomic); \
+			tr_err_atomic("eal"); \
+			tr_err_atomic("line: %d", line); \
+			tr_err_atomic("dbg_atomic: %d", lock_dbg_atomic); \
 			for (__i = 0; __i < __count; __i++) { \
-				tr_err_atomic(&sl_tr, "value: %d", \
+				tr_err_atomic("value: %d", \
 					      (lock_dbg_atomic << 24) | \
 					      lock_dbg_user[__i]); \
 			} \

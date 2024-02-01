@@ -220,22 +220,22 @@ struct tr_ctx {
 
 /* tracing from infrastructure part */
 
-#define tr_err_atomic(ctx, fmt, ...) \
+#define tr_err_atomic(fmt, ...) \
 	trace_error_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
 
-#define tr_warn_atomic(ctx, fmt, ...) \
+#define tr_warn_atomic(fmt, ...) \
 	trace_warn_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				   _TRACE_INV_ID, _TRACE_INV_ID, \
 				   fmt, ##__VA_ARGS__)
 
-#define tr_info_atomic(ctx, fmt, ...) \
+#define tr_info_atomic(fmt, ...) \
 	trace_event_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
 
-#define tr_dbg_atomic(ctx, fmt, ...) \
+#define tr_dbg_atomic(fmt, ...) \
 	tracev_event_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				     _TRACE_INV_ID, _TRACE_INV_ID, \
 				     fmt, ##__VA_ARGS__)

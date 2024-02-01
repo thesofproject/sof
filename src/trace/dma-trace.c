@@ -491,7 +491,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
-		tr_err_atomic(&dt_tr, "dma_trace_enable(): not valid");
+		tr_err_atomic("dma_trace_enable(): not valid");
 		err = -ENODEV;
 		goto out;
 	}
