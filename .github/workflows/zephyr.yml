@@ -194,6 +194,7 @@ jobs:
              --cmake-args=-DEXTRA_CXXFLAGS=-Werror
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
              --cmake-args=--warn-uninitialized
+             --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY=y
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
@@ -357,7 +358,9 @@ jobs:
           --cmake-args=-DEXTRA_CFLAGS=-Werror
           --cmake-args=-DEXTRA_CXXFLAGS=-Werror
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
-          --cmake-args=--warn-uninitialized ${{ matrix.build_opts }} ${{ matrix.platforms }}
+          --cmake-args=--warn-uninitialized
+          --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY=y
+          ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
@@ -414,6 +417,10 @@ jobs:
             find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
               { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
           done
+
+          # The disassembly is one of the most important things in this
+          # context, so make sure CONFIG_OUTPUT_DISSASSEMBLY was on.
+          ls -l */build-sof-staging/sof-info/*/zephyr.lst*
 
           set -x
           for windir in windows-build*; do
