@@ -118,10 +118,11 @@ void mtrace_event(const char *data, uint32_t length)
 /** Report how many times an entry was suppressed and clear it. */
 static void emit_suppressed_entry(struct recent_log_entry *entry)
 {
-	_log_message(trace_log_unfiltered, false, LOG_LEVEL_INFO, _TRACE_INV_CLASS, &dt_tr,
-		     _TRACE_INV_ID, _TRACE_INV_ID, "Suppressed %u similar messages: %pQ",
-		     entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
-		     (void *)entry->entry_id);
+	_log_message_nonzephyr(trace_log_unfiltered_nonzephyr, false, LOG_LEVEL_INFO,
+			       _TRACE_INV_CLASS, _TRACE_INV_ID, _TRACE_INV_ID,
+			       "Suppressed %u similar messages: %pQ",
+			       entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
+			       (void *)entry->entry_id);
 
 	memset(entry, 0, sizeof(*entry));
 }
@@ -222,27 +223,6 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
  * not. Serializes events into trace messages and passes them to
  * dtrace_event()
  */
-static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
-{
-	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
-	const int message_size = MESSAGE_SIZE(arg_count);
-	int i;
-
-	/* fill log content. arg_count is in the dictionary. */
-	put_header(data, id_1, id_2, log_entry, sof_cycle_get_64_safe());
-
-	for (i = 0; i < arg_count; ++i)
-		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
-
-	/* send event by */
-	if (send_atomic)
-		dtrace_event_atomic((const char *)data, message_size);
-	else
-		dtrace_event((const char *)data, message_size);
-
-}
-
 static void dma_trace_log_nonzephyr(bool send_atomic, uint32_t log_entry,
 				    uint32_t lvl, uint32_t id_1, uint32_t id_2,
 				    int arg_count, va_list vargs)
@@ -262,41 +242,6 @@ static void dma_trace_log_nonzephyr(bool send_atomic, uint32_t log_entry,
 		dtrace_event_atomic((const char *)data, message_size);
 	else
 		dtrace_event((const char *)data, message_size);
-}
-
-void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
-{
-	struct trace *trace = trace_get();
-
-	if (!trace->enable) {
-		return;
-	}
-
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
-}
-
-void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
-{
-	struct trace *trace = trace_get();
-
-	if (!trace->enable) {
-		return;
-	}
-
-#if CONFIG_TRACE_FILTERING_ADAPTIVE
-	if (!trace->user_filter_override) {
-		const uint64_t current_ts = sof_cycle_get_64_safe();
-
-		emit_recent_entries(current_ts);
-
-		if (!trace_filter_flood(lvl, (uint32_t)log_entry, current_ts))
-			return;
-	}
-#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
-
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
 }
 
 void trace_log_unfiltered_nonzephyr(bool send_atomic, const void *log_entry,
@@ -586,25 +531,6 @@ void mtrace_dict_entry(bool atomic_context, uint32_t dict_entry_address, int n_a
 
 	va_start(ap, n_args);
 	mtrace_dict_entry_vl(atomic_context, dict_entry_address, n_args, ap);
-	va_end(ap);
-}
-
-void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		  const struct tr_ctx *ctx, const uint32_t lvl,
-		  uint32_t id_1, uint32_t id_2, int arg_count, ...)
-{
-	va_list ap;
-
-#ifndef __ZEPHYR__ /* for Zephyr see _log_nodict() in trace.h */
-	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
-		va_start(ap, arg_count);
-		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
-		va_end(ap);
-	}
-#endif
-
-	va_start(ap, arg_count);
-	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
 	va_end(ap);
 }
 

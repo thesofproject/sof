@@ -91,10 +91,6 @@ static inline struct trace *trace_get(void)
 	return sof_get()->trace;
 }
 
-/* Silences compiler warnings about unused variables */
-#define trace_unused(class, ctx, id_1, id_2, format, ...) \
-	SOF_TRACE_UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
-
 struct trace_filter {
 	uint32_t uuid_id;	/**< type id, or 0 when not important */
 	int32_t comp_id;	/**< component id or -1 when not important */
@@ -132,70 +128,15 @@ struct trace_filter {
 #include <stdarg.h>
 #include <user/trace.h> /* LOG_LEVEL_... */
 
-/*
- * trace_event macro definition
- *
- * trace_event() macro is used for logging events that occur at runtime.
- * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
- * above, it might also propagate log messages to mbox if desired.
- *
- * First argument is always class of event being logged, as defined in
- * user/trace.h - TRACE_CLASS_* (deprecated - do not use).
- * Second argument is string literal in printf format, followed by up to 4
- * parameters (uint32_t), that are used to expand into string fromat when
- * parsing log data.
- *
- * All compile-time accessible data (verbosity, class, source file name, line
- * index and string literal) are linked into .static_log_entries section
- * of binary and then extracted by smex, so they do not contribute to loadable
- * image size. This way more elaborate log messages are possible and encouraged,
- * for better debugging experience, without worrying about runtime performance.
- */
-
-/* Map the different trace_xxxx_with_ids(... ) levels to the
- * _trace_event_with_ids(level_xxxx, ...) macro shared across log
- * levels.
- */
-#define trace_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	_trace_event_with_ids(LOG_LEVEL_INFO, class, ctx, id_1, id_2,	\
-			      format, ##__VA_ARGS__)
-
-#define trace_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...)     \
-	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, ctx, id_1, id_2, \
-				     format, ##__VA_ARGS__)
-
-#define trace_warn_with_ids(class, ctx, id_1, id_2, format, ...)	 \
-	_trace_event_with_ids(LOG_LEVEL_WARNING, class, ctx, id_1, id_2, \
-			      format, ##__VA_ARGS__)
-
-#define trace_warn_atomic_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	_trace_event_atomic_with_ids(LOG_LEVEL_WARNING, class,		\
-				     ctx, id_1, id_2,			\
-				     format, ##__VA_ARGS__)
-
 void trace_flush_dma_to_mbox(void);
 void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 
-/* All tracing macros in this file end up calling these functions in the end. */
-typedef void (*log_func_t)(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			   uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
-
-void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
-void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter);
 int trace_filter_update(const struct trace_filter *elem);
-
-#define _trace_event_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
-	_log_message(trace_log_filtered, false, lvl, class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#define _trace_event_atomic_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
-	_log_message(trace_log_filtered, true, lvl, class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
 /**
  * Appends one SOF dictionary entry and log statement to the ring buffer
@@ -211,11 +152,6 @@ void mtrace_dict_entry(bool atomic_context, uint32_t log_entry_pointer, int n_ar
 /** Posts a fully prepared log header + log entry */
 void mtrace_event(const char *complete_packet, uint32_t length);
 
-/* This function is _not_ passed the format string to save space */
-void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		  const struct tr_ctx *ctx, const uint32_t lvl,
-		  uint32_t id_1, uint32_t id_2, int arg_count, ...);
-
 /* _log_message() */
 
 #ifdef CONFIG_LIBRARY
@@ -226,21 +162,6 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 extern int host_trace_level;
 
 char *get_trace_class(uint32_t trace_class);
-#define _log_message(ignored_log_func, atomic, level, comp_class, ctx, id_1, id_2, format, ...)	\
-do {								\
-	(void)ctx;						\
-	(void)id_1;						\
-	(void)id_2;						\
-	struct timeval tv;					\
-	char *msg = "(%s:%d) " format;				\
-	if (level >= host_trace_level) {			\
-		gettimeofday(&tv, NULL);				\
-		fprintf(stderr, "%ld.%6.6ld:", tv.tv_sec, tv.tv_usec);	\
-		fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,	\
-			__LINE__, ##__VA_ARGS__);			\
-		fprintf(stderr, "\n");					\
-	}							\
-} while (0)
 
 #define trace_point(x)  do {} while (0)
 
@@ -248,39 +169,9 @@ do {								\
 
 #define trace_point(x) platform_trace_point(x)
 
-/** _log_message is where the memory-saving dictionary magic described
- * above happens: the "format" string argument is moved to a special
- * linker section and replaced by a &log_entry pointer to it. This must
- * be a macro for the source location to be meaningful.
- */
-#define _log_message(log_func, atomic, lvl, comp_class, ctx, id_1, id_2, format, ...)	\
-do {											\
-	_DECLARE_LOG_ENTRY(lvl, format, comp_class,					\
-			   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));		\
-	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);						\
-	STATIC_ASSERT(_TRACE_EVENT_MAX_ARGUMENT_COUNT >=				\
-			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),			\
-		BASE_LOG_ASSERT_FAIL_MSG						\
-	);										\
-	_log_sofdict(log_func, atomic, &log_entry, ctx, lvl, id_1, id_2, \
-		     META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__); \
-	_log_nodict(atomic, META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
-		    lvl, format, ##__VA_ARGS__);			\
-} while (0)
-
 #endif /* CONFIG_LIBRARY */
 
 #else /* CONFIG_TRACE */
-
-#define trace_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#define trace_warn_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_warn_atomic_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
 #define trace_point(x)  do {} while (0)
 
@@ -292,50 +183,6 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 	{ return 0; }
 
 #endif /* CONFIG_TRACE */
-
-#if CONFIG_TRACEV
-/* Enable tr_dbg() statements by defining tracev_...() */
-#define tracev_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class,			\
-			      ctx, id_1, id_2,				\
-			      format, ##__VA_ARGS__)
-
-#define tracev_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	_trace_event_atomic_with_ids(LOG_LEVEL_VERBOSE, class,		  \
-				     ctx, id_1, id_2,			  \
-				     format, ##__VA_ARGS__)
-
-#else /* CONFIG_TRACEV */
-#define tracev_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define tracev_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#endif /* CONFIG_TRACEV */
-
-/* The _error_ level has 2, 1 or 0 backends depending on Kconfig */
-#if CONFIG_TRACEE
-/* LOG_LEVEL_CRITICAL messages are duplicated to the mail box */
-#define _trace_error_with_ids(class, ctx, id_1, id_2, format, ...)			\
-	_log_message(trace_log_filtered, true, LOG_LEVEL_CRITICAL, class, ctx, id_1,	\
-		     id_2, format, ##__VA_ARGS__)
-#define trace_error_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	_trace_error_with_ids(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
-
-#elif CONFIG_TRACE
-/* Goes to trace_log_filtered() too but with a downgraded, LOG_INFO level */
-#define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define trace_error_atomic_with_ids(...) \
-	trace_event_atomic_with_ids(__VA_ARGS__)
-
-#else /* CONFIG_TRACEE, CONFIG_TRACE */
-#define trace_error_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_error_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#endif /* CONFIG_TRACEE, CONFIG_TRACE */
 
 /** Default value when there is no specific pipeline, dev, dai, etc. */
 #define _TRACE_INV_ID		-1
@@ -370,40 +217,6 @@ struct tr_ctx {
 		.uuid_p = uuid,					\
 		.level = default_log_level,			\
 	}
-
-/* tracing from device (component, pipeline, dai, ...) */
-
-/** \brief Trace from a device on err level.
- *
- * @param get_ctx_m Macro that can retrieve trace context from dev
- * @param get_id_m Macro that can retrieve device's id0 from the dev
- * @param get_subid_m Macro that can retrieve device's id1 from the dev
- * @param dev Device
- * @param fmt Format followed by parameters
- * @param ... Parameters
- */
-#define trace_dev_err(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_error_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-
-/** \brief Trace from a device on warning level. */
-#define trace_dev_warn(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_warn_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			    get_id_m(dev), get_subid_m(dev),		\
-			    fmt, ##__VA_ARGS__)
-
-/** \brief Trace from a device on info level. */
-#define trace_dev_info(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-
-/** \brief Trace from a device on dbg level. */
-#define trace_dev_dbg(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	tracev_event_with_ids(_TRACE_INV_CLASS,				\
-			      get_ctx_m(dev), get_id_m(dev),		\
-			      get_subid_m(dev), fmt, ##__VA_ARGS__)
 
 /* tracing from infrastructure part */
 
