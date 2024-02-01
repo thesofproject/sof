@@ -21,7 +21,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -41,6 +40,12 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
 
+#define FAKE_DAI_BEGIN_IGNORE_GLITCHES_COUNT	100	/* Only warn # periods in start */
+#define FAKE_DAI_PRODUCE_GLITCHES		0	/* Force glitches to waveform */
+#define FAKE_DAI_PRODUCE_GLITCH_RATE		5000	/* Glitch every # periods */
+
+#define FAKE_DAI_MAX_BYTES_FREE_AVAIL	1152 /* emprical value seen in running system */
+
 static const struct comp_driver comp_dai;
 
 LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
@@ -50,6 +55,84 @@ DECLARE_SOF_RT_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
 		    0xa5, 0x1a, 0x24, 0x5c, 0x79, 0xc5, 0xe5, 0x4b);
 
 DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_comp_uuid), LOG_LEVEL_INFO);
+
+
+/*
+ * Fake DAI versions of library functions
+ */
+
+static void fake_dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
+{
+}
+
+static int fake_dai_trigger(const struct device *dev, int direction, int cmd)
+{
+	return 0;
+}
+
+#define FAKE_GET_DEVICE_LIST(node) DEVICE_DT_GET(node),
+
+const struct device *fake_zephyr_dev[] = {
+#if CONFIG_DAI_INTEL_SSP
+	DT_FOREACH_STATUS_OKAY(intel_ssp_dai, FAKE_GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_INTEL_DMIC
+	DT_FOREACH_STATUS_OKAY(intel_dai_dmic, FAKE_GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_INTEL_ALH
+	DT_FOREACH_STATUS_OKAY(intel_alh_dai, FAKE_GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_INTEL_HDA
+	DT_FOREACH_STATUS_OKAY(intel_hda_dai, FAKE_GET_DEVICE_LIST)
+#endif
+};
+
+static const struct device *fake_dai_get_zephyr_device(uint32_t type, uint32_t index)
+{
+	struct dai_config cfg;
+	int dir;
+	int i;
+
+	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
+
+	for (i = 0; i < ARRAY_SIZE(fake_zephyr_dev); i++) {
+		if (dai_config_get(fake_zephyr_dev[i], &cfg, dir))
+			continue;
+		if (cfg.type == type && cfg.dai_index == index)
+			return fake_zephyr_dev[i];
+	}
+
+	return NULL;
+}
+
+static struct dai *fake_dai_get(uint32_t type, uint32_t index, uint32_t flags)
+{
+	const struct device *dev;
+	struct dai *d;
+
+	dev = fake_dai_get_zephyr_device(type, index);
+	if (!dev) {
+		tr_err(&dai_tr, "dai_get: failed to get dai with index %d type %d",
+		       index, type);
+		return NULL;
+	}
+
+	d = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(struct dai));
+	if (!d)
+		return NULL;
+
+	d->index = index;
+	d->type = type;
+	d->dev = dev;
+
+	// dai_set_device_params(d);
+
+	return d;
+}
+
+/*
+ * Next is copy & remove of dai-zephyr.c
+ */
 
 #if CONFIG_COMP_DAI_GROUP
 
@@ -121,64 +204,20 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 		return -EINVAL;
 	}
 
-	return dai_trigger(dev, direction, zephyr_cmd);
+	return fake_dai_trigger(dev, direction, zephyr_cmd);
 }
 
 /* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
 int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		   const void *spec_config)
 {
-	const struct device *dev = dai->dev;
-	const struct sof_ipc_dai_config *sof_cfg = spec_config;
-	struct dai_config cfg;
-	const void *cfg_params;
-	bool is_blob;
-
-	cfg.dai_index = common_config->dai_index;
-	is_blob = common_config->is_config_blob;
-	cfg.format = sof_cfg->format;
-	cfg.options = sof_cfg->flags;
-	cfg.rate = common_config->sampling_frequency;
-
-	switch (common_config->type) {
-	case SOF_DAI_INTEL_SSP:
-		cfg.type = is_blob ? DAI_INTEL_SSP_NHLT : DAI_INTEL_SSP;
-		cfg_params = is_blob ? spec_config : &sof_cfg->ssp;
-		dai_set_link_hda_config(&cfg.link_config,
-					common_config, cfg_params);
-		break;
-	case SOF_DAI_INTEL_ALH:
-		cfg.type = is_blob ? DAI_INTEL_ALH_NHLT : DAI_INTEL_ALH;
-		cfg_params = is_blob ? spec_config : &sof_cfg->alh;
-		break;
-	case SOF_DAI_INTEL_DMIC:
-		cfg.type = is_blob ? DAI_INTEL_DMIC_NHLT : DAI_INTEL_DMIC;
-		cfg_params = is_blob ? spec_config : &sof_cfg->dmic;
-		dai_set_link_hda_config(&cfg.link_config,
-					common_config, cfg_params);
-		break;
-	case SOF_DAI_INTEL_HDA:
-		cfg.type = is_blob ? DAI_INTEL_HDA_NHLT : DAI_INTEL_HDA;
-		cfg_params = is_blob ? spec_config : &sof_cfg->hda;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return dai_config_set(dev, &cfg, cfg_params);
+	return 0;
 }
 
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int hs_id = props->dma_hs_id;
-
-	k_spin_unlock(&dai->lock, key);
-
-	return hs_id;
+	return 0;
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
@@ -210,16 +249,262 @@ int dai_get_stream_id(struct dai *dai, int direction)
 	return stream_id;
 }
 
-static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
+static void dai_init_glitch_check(struct dai_triangle_generator_state *tg,
+				  struct dai_glitch_detect_state *gd)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int fifo_address = props->fifo_address;
+	int i;
 
-	k_spin_unlock(&dai->lock, key);
+	/* Start PCM code for channels, 1, -1, 1001, -1001, ...
+	 * Channels 0, 2, ... count up
+	 * Channels 1, 3, ... count down
+	 * Count direction becomes opposite when max PCM code value is reached
+	 */
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+		if ((i & 1) == 0)
+			tg->pcm_increment[i] = 1;
+		else
+			tg->pcm_increment[i] = -1;
 
-	return fifo_address;
+		gd->prev_pcm_value[i] = 0;
+		gd->zeros_count[i] = 0;
+		gd->no_signal[i] = true;
+		tg->prev_pcm_value[i] = (i >> 1) * 1000 + tg->pcm_increment[i];
+	}
+
+	gd->first_value = true;
+	gd->zeros_count_reported = false;
+	gd->ignore_count = FAKE_DAI_BEGIN_IGNORE_GLITCHES_COUNT;
+	tg->countdown = FAKE_DAI_PRODUCE_GLITCH_RATE;
+	tg->first_copy = true;
+}
+
+static void dai_glitch_core(struct comp_dev *dev,
+			    struct dai_glitch_detect_state *gd,
+			    int *c,
+			    bool *glitch,
+			    int channels,
+			    int32_t value)
+{
+	int32_t delta;
+
+	delta = gd->prev_pcm_value[*c] - value;
+	if (!gd->first_value && ABS(delta) > 1) {
+		comp_dbg(dev, "dai_detect_glitch(), current %d, previous %d",
+			 value, gd->prev_pcm_value[*c]);
+		gd->glitch_count[*c]++;
+		*glitch = true;
+	}
+
+	if (value == 0 && gd->no_signal[*c])
+		gd->zeros_count[*c]++;
+	else
+		gd->no_signal[*c] = false;
+
+	gd->prev_pcm_value[*c] = value;
+	*c += 1;
+	if (*c == channels) {
+		gd->first_value = false;
+		*c = 0;
+	}
+}
+
+static int dai_detect_glitch(struct comp_dev *dev,
+			     struct dai_glitch_detect_state *gd,
+			     struct comp_buffer *source_buffer,
+			     struct comp_buffer *sink_buffer,
+			     uint32_t source_bytes)
+{
+	struct audio_stream *source = &source_buffer->stream;
+	int32_t *x32;
+	int16_t *x16;
+	int channels;
+	int frames;
+	int samples;
+	enum sof_ipc_frame source_format;
+	int i, n, nmax;
+	int processed = 0;
+	int c = 0;
+	bool glitch = false;
+	bool no_signal_yet = false;
+
+	source_format = audio_stream_get_frm_fmt(source);
+	switch (source_format) {
+	case SOF_IPC_FRAME_S16_LE:
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	frames = source_bytes / audio_stream_frame_bytes(source);
+	channels = audio_stream_get_channels(source);
+	samples = frames * channels;
+
+	comp_dbg(dev, "dai_detect_glitch() frames = %d, channels = %d, source_bytes = %d",
+		 frames, channels, source_bytes);
+
+	if (source_format == SOF_IPC_FRAME_S16_LE) {
+		x16 = audio_stream_get_rptr(source);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(source, x16) >> 1;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				dai_glitch_core(dev, gd, &c, &glitch, channels, (int32_t)(*x16));
+				x16++;
+			}
+			x16 = audio_stream_wrap(source, x16);
+			processed += n;
+		}
+	} else {
+		x32 = audio_stream_get_rptr(source);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(source, x32) >> 2;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				dai_glitch_core(dev, gd, &c, &glitch, channels, *x32);
+				x32++;
+			}
+			x32 = audio_stream_wrap(source, x32);
+			processed += n;
+		}
+	}
+
+	comp_update_buffer_consume(source_buffer, source_bytes);
+
+	if (gd->ignore_count > 0)
+		gd->ignore_count--;
+
+	if (glitch) {
+		if (gd->ignore_count)
+			comp_warn(dev, "dai_detect_glitch(): Glitches count for channels %d %d %d %d",
+				  gd->glitch_count[0], gd->glitch_count[1],
+				  gd->glitch_count[2], gd->glitch_count[3]);
+		else
+			comp_err(dev, "dai_detect_glitch(): Glitches count for channels %d %d %d %d",
+				 gd->glitch_count[0], gd->glitch_count[1],
+				 gd->glitch_count[2], gd->glitch_count[3]);
+	}
+
+	for (i = 0; i < channels; i++)
+		if (gd->no_signal[i])
+			no_signal_yet = true;
+
+	if (!no_signal_yet && !gd->zeros_count_reported) {
+		comp_info(dev, "dai_detect_glitch(): Zero PCM samples count for channels %d %d %d %d",
+			  gd->zeros_count[0], gd->zeros_count[1],
+			  gd->zeros_count[2], gd->zeros_count[3]);
+		gd->zeros_count_reported = true;
+	}
+
+	return 0;
+}
+
+static int32_t dai_triangle_core(struct dai_triangle_generator_state *tg,
+				 int *c, int channels, int32_t max_val)
+{
+	int32_t next;
+
+	next = tg->prev_pcm_value[*c] + tg->pcm_increment[*c];
+	tg->prev_pcm_value[*c] = next;
+	if (next == max_val || next == -max_val)
+		tg->pcm_increment[*c] = -tg->pcm_increment[*c];
+
+#if FAKE_DAI_PRODUCE_GLITCHES
+	if (!tg->countdown)
+		next = 0;
+#endif
+	*c += 1;
+	if (*c == channels)
+		*c = 0;
+
+	return next;
+}
+
+static int dai_produce_triangle(struct comp_dev *dev,
+				struct dai_triangle_generator_state *tg,
+				struct comp_buffer *source_buffer,
+				struct comp_buffer *sink_buffer,
+				uint32_t source_bytes)
+{
+	struct audio_stream *source = &source_buffer->stream;
+	struct audio_stream *sink = &sink_buffer->stream;
+	int32_t max_val;
+	int32_t *y32;
+	int16_t *y16;
+	int sink_bytes;
+	int channels;
+	int frames;
+	int samples;
+	enum sof_ipc_frame sink_format;
+	int i, n, nmax;
+	int processed = 0;
+	int c = 0;
+
+	sink_format = audio_stream_get_frm_fmt(sink);
+	switch (sink_format) {
+	case SOF_IPC_FRAME_S16_LE:
+		max_val = INT16_MAX;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		max_val = INT24_MAXVALUE;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		max_val = INT32_MAX;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	frames = source_bytes / audio_stream_frame_bytes(source);
+	channels = audio_stream_get_channels(sink);
+	samples = frames * channels;
+	sink_bytes = audio_stream_sample_bytes(sink) * samples;
+
+	comp_dbg(dev, "dai_produce_triangle() frames = %d, channels = %d, sink_bytes = %d",
+		 frames, channels, sink_bytes);
+
+#if FAKE_DAI_PRODUCE_GLITCHES
+	tg->countdown--;
+#endif
+	if (sink_format == SOF_IPC_FRAME_S16_LE) {
+		y16 = audio_stream_get_wptr(sink);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(sink, y16) >> 1;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				*y16 = (int16_t)dai_triangle_core(tg, &c, channels, max_val);
+				y16++;
+			}
+			y16 = audio_stream_wrap(sink, y16);
+			processed += n;
+		}
+	} else {
+		y32 = audio_stream_get_wptr(sink);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(sink, y32) >> 2;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				*y32 = dai_triangle_core(tg, &c, channels, max_val);
+				y32++;
+			}
+			y32 = audio_stream_wrap(sink, y32);
+			processed += n;
+		}
+	}
+
+#if FAKE_DAI_PRODUCE_GLITCHES
+	if (!tg->countdown)
+		tg->countdown = FAKE_DAI_PRODUCE_GLITCH_RATE;
+#endif
+
+	buffer_stream_writeback(sink_buffer, sink_bytes);
+	comp_update_buffer_produce(sink_buffer, sink_bytes);
+	return 0;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -228,7 +513,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	   pcm_converter_func *converter)
 {
 	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "dai_dma_cb()");
 
@@ -252,16 +537,19 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
-					 dd->process, bytes);
+		ret = dai_detect_glitch(dev, &dd->glitch,
+					dd->local_buffer, dd->dma_buffer, bytes);
 	} else {
 		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
-		/*
-		 * The PCM converter functions used during DMA buffer copy can never fail,
-		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
-		 */
-		ret = dma_buffer_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
-						      dd->process, bytes);
+
+		if (dd->triangle.first_copy) {
+			comp_info(dev, "dai_dma_cb(): First DAI copy for triangle wave");
+			dd->triangle.first_copy = false;
+		}
+
+		ret = dai_produce_triangle(dev, &dd->triangle,
+					   dd->dma_buffer, dd->local_buffer, bytes);
+
 #if CONFIG_IPC_MAJOR_4
 		struct list_item *sink_list;
 		/* Skip in case of endpoint DAI devices created by the copier */
@@ -297,11 +585,6 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 					ret = -EINVAL;
 					continue;
 				}
-
-				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE)
-					ret = dma_buffer_copy_from_no_consume(dd->dma_buffer,
-									      sink, converter[j],
-									      bytes);
 			}
 		}
 #endif
@@ -393,7 +676,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 {
 	uint32_t dir;
 
-	dd->dai = dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
+	dd->dai = fake_dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
 	if (!dd->dai) {
 		comp_err(dev, "dai_new(): dai_get() failed to create DAI.");
 		return -ENODEV;
@@ -405,16 +688,8 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	dir = dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
 
-	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, DMA_ACCESS_SHARED);
-	if (!dd->dma) {
-		dai_put(dd->dai);
-		comp_err(dev, "dai_new(): dma_get() failed to get shared access to DMA.");
-		return -ENODEV;
-	}
-
 	k_spinlock_init(&dd->dai->lock);
 
-	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
 	dd->chan = NULL;
 
@@ -430,7 +705,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct dai_data *dd;
 	int ret;
 
-	comp_cl_dbg(&comp_dai, "dai_new()");
+	comp_cl_warn(&comp_dai, "dai_new(): Simulated DAI, no real playback or capture happens");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -468,8 +743,6 @@ void dai_common_free(struct dai_data *dd)
 		dma_release_channel(dd->dma->z_dev, dd->chan->index);
 		dd->chan->dev_data = NULL;
 	}
-
-	dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
 
@@ -565,166 +838,6 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
-static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
-			     uint32_t period_count)
-{
-	struct dma_sg_config *config = &dd->config;
-	uint32_t local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
-	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
-	uint32_t fifo, max_block_count, buf_size;
-	int err = 0;
-
-	/* set up DMA configuration */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
-		config->direction = DMA_DIR_MEM_TO_DEV;
-		config->dest_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
-	} else {
-		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
-		config->direction = DMA_DIR_DEV_TO_MEM;
-		config->src_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
-	}
-
-	if (!dd->process) {
-		comp_err(dev, "dai_set_sg_config(): converter NULL: local fmt %d dma fmt %d\n",
-			 local_fmt, dma_fmt);
-		return -EINVAL;
-	}
-
-	if (dd->dai->type == SOF_DAI_INTEL_DMIC) {
-		/* For DMIC the DMA src and dest widths should always be 4 bytes
-		 * due to 32 bit FIFO packer. Setting width to 2 bytes for
-		 * 16 bit format would result in recording at double rate.
-		 */
-		config->src_width = 4;
-		config->dest_width = 4;
-	} else {
-		config->src_width = get_sample_bytes(dma_fmt);
-		config->dest_width = config->src_width;
-	}
-
-	config->cyclic = 1;
-	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->period;
-
-	comp_dbg(dev, "dai_set_sg_config(): dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
-		 config->dest_dev, dd->stream_id, config->src_width, config->dest_width);
-
-	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->direction, dd->stream_id);
-
-		comp_dbg(dev, "dai_set_sg_config(): fifo 0x%x", fifo);
-
-		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
-		if (err < 0) {
-			comp_err(dev, "dai_set_sg_config(): can't get max block count, err = %d",
-				 err);
-			goto out;
-		}
-
-		if (!max_block_count) {
-			comp_err(dev, "dai_set_sg_config(): invalid max-block-count of zero");
-			goto out;
-		}
-
-		if (max_block_count < period_count) {
-			comp_dbg(dev, "dai_set_sg_config(): unsupported period count %d",
-				 period_count);
-			buf_size = period_count * period_bytes;
-			do {
-				if (IS_ALIGNED(buf_size, max_block_count)) {
-					period_count = max_block_count;
-					period_bytes = buf_size / period_count;
-					break;
-				} else {
-					comp_warn(dev, "dai_set_sg_config() alignment error for buf_size = %d, block count = %d",
-						  buf_size, max_block_count);
-				}
-			} while (--max_block_count > 0);
-		}
-
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
-				   config->direction,
-				   period_count,
-				   period_bytes,
-				   (uintptr_t)audio_stream_get_addr(&dd->dma_buffer->stream),
-				   fifo);
-		if (err < 0) {
-			comp_err(dev, "dai_set_sg_config() sg alloc failed period_count %d period_bytes %d err = %d",
-				 period_count, period_bytes, err);
-			return err;
-		}
-	}
-out:
-	return err;
-}
-
-static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
-{
-	struct dma_sg_config *config = &dd->config;
-	struct dma_config *dma_cfg;
-	struct dma_block_config *dma_block_cfg;
-	struct dma_block_config *prev = NULL;
-	int i;
-
-	comp_dbg(dev, "dai_set_dma_config()");
-
-	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-			  sizeof(struct dma_config));
-	if (!dma_cfg) {
-		comp_err(dev, "dai_set_dma_config(): dma_cfg allocation failed");
-		return -ENOMEM;
-	}
-
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
-	else
-		dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
-
-	dma_cfg->source_data_size = config->src_width;
-	dma_cfg->dest_data_size = config->dest_width;
-
-	if (config->burst_elems)
-		dma_cfg->source_burst_length = config->burst_elems;
-	else
-		dma_cfg->source_burst_length = 8;
-
-	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
-	dma_cfg->cyclic = config->cyclic;
-	dma_cfg->user_data = NULL;
-	dma_cfg->dma_callback = NULL;
-	dma_cfg->block_count = config->elem_array.count;
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dma_cfg->dma_slot = config->dest_dev;
-	else
-		dma_cfg->dma_slot = config->src_dev;
-
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-				sizeof(struct dma_block_config) * dma_cfg->block_count);
-	if (!dma_block_cfg) {
-		rfree(dma_cfg);
-		comp_err(dev, "dai_set_dma_config: dma_block_config allocation failed");
-		return -ENOMEM;
-	}
-
-	dma_cfg->head_block = dma_block_cfg;
-	for (i = 0; i < dma_cfg->block_count; i++) {
-		dma_block_cfg->dest_scatter_en = config->scatter;
-		dma_block_cfg->block_size = config->elem_array.elems[i].size;
-		dma_block_cfg->source_address = config->elem_array.elems[i].src;
-		dma_block_cfg->dest_address = config->elem_array.elems[i].dest;
-		prev = dma_block_cfg;
-		prev->next_block = ++dma_block_cfg;
-	}
-	if (prev)
-		prev->next_block = dma_cfg->head_block;
-
-	dd->z_config = dma_cfg;
-
-	return 0;
-}
-
 static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params, uint32_t *pb, uint32_t *pc)
 {
@@ -759,19 +872,8 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
-	if (err < 0) {
-		comp_err(dev, "dai_set_dma_buffer(): can't get dma buffer addr align, err = %d",
-			 err);
-		return err;
-	}
-
-	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
-	if (err < 0 || !align) {
-		comp_err(dev, "dai_set_dma_buffer(): no valid dma align, err = %d, align = %u",
-			 err, align);
-		return -EINVAL;
-	}
+	addr_align = sizeof(int32_t);
+	align = sizeof(int32_t);
 
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt, params->channels);
@@ -787,13 +889,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	*pb = period_bytes;
 
 	/* calculate DMA buffer size */
-	period_count = dd->dma->plat_data.period_count;
-	if (!period_count) {
-		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
-		return -EINVAL;
-	}
-	period_count = MAX(period_count,
-			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+	period_count = SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes);
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 	*pc = period_count;
 
@@ -857,15 +953,6 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		goto out;
 	}
 
-	err = dai_set_sg_config(dd, dev, period_bytes, period_count);
-	if (err < 0) {
-		comp_err(dev, "dai_zephyr_params(): set sg config failed.");
-		goto out;
-	}
-
-	err = dai_set_dma_config(dd, dev);
-	if (err < 0)
-		comp_err(dev, "dai_zephyr_params(): set dma config failed.");
 out:
 	/*
 	 * Make sure to free all allocated items, all functions
@@ -893,8 +980,6 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 
 int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	int channel;
-
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "dai_common_config_prepare(): Component is in active state.");
@@ -912,49 +997,14 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return 0;
 	}
 
-	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
-	comp_dbg(dev, "dai_common_config_prepare(), channel = %d", channel);
-
-	/* do nothing for asking for channel free, for compatibility. */
-	if (channel == DMA_CHAN_INVALID) {
-		comp_err(dev, "dai_config is not set yet!");
-		return -EINVAL;
-	}
-
-	/* get DMA channel */
-	channel = dma_request_channel(dd->dma->z_dev, &channel);
-	if (channel < 0) {
-		comp_err(dev, "dai_common_config_prepare(): dma_request_channel() failed");
-		dd->chan = NULL;
-		return -EIO;
-	}
-
-	dd->chan = &dd->dma->chan[channel];
-	dd->chan->dev_data = dd;
-
-	comp_dbg(dev, "dai_common_config_prepare(): new configured dma channel index %d",
-		 dd->chan->index);
-
+	dai_init_glitch_check(&dd->triangle, &dd->glitch);
 	return 0;
 }
 
 int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
-	int ret;
 
 	dd->total_data_processed = 0;
-
-	if (!dd->chan) {
-		comp_err(dev, "dai_common_prepare(): Missing dd->chan.");
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
-	}
-
-	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_common_prepare(): Missing dd->config.elem_array.elems.");
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
-	}
 
 	/* clear dma buffer to avoid pop noise */
 	buffer_zero(dd->dma_buffer);
@@ -966,11 +1016,7 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return 0;
 	}
 
-	ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
-	if (ret < 0)
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	return ret;
+	return 0;
 }
 
 static int dai_prepare(struct comp_dev *dev)
@@ -978,7 +1024,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "dai_prepare()");
+	comp_warn(dev, "dai_prepare(): Simulated DAI, no real playback or capture happens");
 
 	ret = dai_common_config_prepare(dd, dev);
 	if (ret < 0)
@@ -1048,10 +1094,6 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
-			if (ret < 0)
-				return ret;
-
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
 		} else {
@@ -1070,26 +1112,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		}
 
 		/* only start the DAI if we are not XRUN handling */
-		if (dd->xrun == 0) {
-			/* recover valid start position */
-			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-			if (ret < 0)
-				return ret;
-
-			/* dma_config needed after stop */
-			ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
-			if (ret < 0)
-				return ret;
-
-			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
-			if (ret < 0)
-				return ret;
-
+		if (dd->xrun == 0)
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
-		} else {
+		else
 			dd->xrun = 0;
-		}
 
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
@@ -1109,25 +1136,17 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
  * as soon as possible.
  */
 #if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
-		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-		if (ret) {
-			comp_warn(dev, "dma was stopped earlier");
-			ret = 0;
-		}
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 #if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
-		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 #endif
 		break;
 	case COMP_TRIGGER_PRE_START:
@@ -1205,18 +1224,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return dai_common_trigger(dd, dev, cmd);
 }
 
-/* report xrun occurrence */
-static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
-{
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
-		comp_underrun(dev, dd->local_buffer, bytes);
-	} else {
-		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
-		comp_overrun(dev, dd->local_buffer, bytes);
-	}
-}
-
 /* process and copy stream data from multiple DMA source buffers to sink buffer */
 int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 				   struct comp_buffer *multi_endpoint_buffer,
@@ -1237,30 +1244,13 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 	direction = dev->direction;
 
-	/* calculate min available/free from all endpoint DMA buffers */
-	for (i = 0; i < num_endpoints; i++) {
-		struct dma_status stat;
-
-		/* get data sizes from DMA */
-		ret = dma_get_status(dd[i]->chan->dma->z_dev, dd[i]->chan->index, &stat);
-		switch (ret) {
-		case 0:
-			break;
-		case -EPIPE:
-			/* DMA status can return -EPIPE and current status content if xrun occurs */
-			if (direction == SOF_IPC_STREAM_PLAYBACK)
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() underrun occurred, endpoint: %d ret = %u",
-					 i, ret);
-			else
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() overrun occurred, enpdoint: %d ret = %u",
-					 i, ret);
-			break;
-		default:
-			return ret;
-		}
-
-		avail_bytes = MIN(avail_bytes, stat.pending_length);
-		free_bytes = MIN(free_bytes, stat.free);
+	/* Consume or produce everything free or available */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		free_bytes = audio_stream_get_free_bytes(&multi_endpoint_buffer->stream);
+		avail_bytes = FAKE_DAI_MAX_BYTES_FREE_AVAIL;
+	} else {
+		free_bytes = FAKE_DAI_MAX_BYTES_FREE_AVAIL;
+		avail_bytes = audio_stream_get_free_bytes(&multi_endpoint_buffer->stream);
 	}
 
 	/* calculate minimum size to copy */
@@ -1283,23 +1273,6 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(), dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
-	/* return if nothing to copy */
-	if (!frames) {
-#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
-		comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): nothing to copy");
-#endif
-
-		for (i = 0; i < num_endpoints; i++) {
-			ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, 0);
-			if (ret < 0) {
-				dai_report_xrun(dd[i], dev, 0);
-				return ret;
-			}
-		}
-
-		return 0;
-	}
-
 	if (direction == SOF_IPC_STREAM_PLAYBACK) {
 		frame_bytes = audio_stream_frame_bytes(&multi_endpoint_buffer->stream);
 		buffer_stream_invalidate(multi_endpoint_buffer, frames * frame_bytes);
@@ -1310,7 +1283,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		uint32_t copy_bytes;
 
 		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
-		ret = dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
+		ret = fake_dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
 		if (ret < 0)
 			comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): dai trigger copy failed");
 
@@ -1319,13 +1292,8 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 			dma_stop(dd[i]->chan->dma->z_dev, dd[i]->chan->index);
 
 		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
-		ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, copy_bytes);
-		if (ret < 0) {
-			dai_report_xrun(dd[i], dev, copy_bytes);
-			return ret;
-		}
 
-		dai_dma_position_update(dd[i], dev);
+		fake_dai_dma_position_update(dd[i], dev);
 	}
 
 	frame_bytes = audio_stream_frame_bytes(&multi_endpoint_buffer->stream);
@@ -1368,7 +1336,6 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
 	uint32_t sampling = dd->sampling;
-	struct dma_status stat;
 	uint32_t avail_bytes;
 	uint32_t free_bytes;
 	uint32_t copy_bytes;
@@ -1377,26 +1344,14 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	uint32_t samples = UINT32_MAX;
 	int ret;
 
-	/* get data sizes from DMA */
-	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
-	switch (ret) {
-	case 0:
-		break;
-	case -EPIPE:
-		/* DMA status can return -EPIPE and current status content if xrun occurs */
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			comp_dbg(dev, "dai_common_copy(): dma_get_status() underrun occurred, ret = %u",
-				 ret);
-		else
-			comp_dbg(dev, "dai_common_copy(): dma_get_status() overrun occurred, ret = %u",
-				 ret);
-		break;
-	default:
-		return ret;
+	/* Consume or produce everything free or available */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		free_bytes = audio_stream_get_avail_bytes(&dd->local_buffer->stream);
+		avail_bytes = FAKE_DAI_MAX_BYTES_FREE_AVAIL;
+	} else {
+		free_bytes = FAKE_DAI_MAX_BYTES_FREE_AVAIL;
+		avail_bytes = audio_stream_get_free_bytes(&dd->local_buffer->stream);
 	}
-
-	avail_bytes = stat.pending_length;
-	free_bytes = stat.free;
 
 	/* handle module runtime unbind */
 	if (!dd->local_buffer) {
@@ -1478,25 +1433,18 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 #if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
 #endif
-		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
 		return 0;
 	}
 
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
-	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
+	ret = fake_dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
 	if (ret < 0)
 		comp_warn(dev, "dai_common_copy(): dai trigger copy failed");
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
-	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
-	if (ret < 0) {
-		dai_report_xrun(dd, dev, copy_bytes);
-		return ret;
-	}
-
-	dai_dma_position_update(dd, dev);
+	fake_dai_dma_position_update(dd, dev);
 
 	return ret;
 }
@@ -1609,19 +1557,7 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	uint32_t init_delay;
-
-	if (!dai)
-		return 0;
-
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, 0, 0);
-	init_delay = props->reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
-
-	return init_delay;
+	return 0;
 }
 
 static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
