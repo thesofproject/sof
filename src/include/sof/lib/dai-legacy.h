@@ -227,7 +227,6 @@ struct dai_type_info {
 #define trace_dai_drv_get_id(drv_p) (-1)
 #define trace_dai_drv_get_subid(drv_p) (-1)
 
-#define trace_dai_get_tr_ctx(dai_p) ((dai_p)->drv->tctx)
 #define trace_dai_get_id(dai_p) ((dai_p)->drv->type)
 #define trace_dai_get_subid(dai_p) ((dai_p)->index)
 
@@ -245,24 +244,20 @@ struct dai_type_info {
 /* device tracing */
 
 #define dai_err(dai_p, __e, ...)					\
-	trace_dev_err(trace_dai_get_tr_ctx,				\
-		      trace_dai_get_id,					\
-		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+	trace_dev_err_nonzephyr(trace_dai_get_id,					\
+				trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_warn(dai_p, __e, ...)					\
-	trace_dev_warn(trace_dai_get_tr_ctx,				\
-		       trace_dai_get_id,				\
-		       trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+	trace_dev_warn_nonzephyr(trace_dai_get_id,				\
+				 trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_info(dai_p, __e, ...)					\
-	trace_dev_info(trace_dai_get_tr_ctx,				\
-		       trace_dai_get_id,				\
-		       trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+	trace_dev_info_nonzephyr(trace_dai_get_id,				\
+				 trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_dbg(dai_p, __e, ...)					\
-	trace_dev_dbg(trace_dai_get_tr_ctx,				\
-		      trace_dai_get_id,					\
-		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+	trace_dev_dbg_nonzephyr(trace_dai_get_id,					\
+				trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
 
