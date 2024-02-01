@@ -243,6 +243,27 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 
 }
 
+static void dma_trace_log_nonzephyr(bool send_atomic, uint32_t log_entry,
+				    uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				    int arg_count, va_list vargs)
+{
+	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
+	const int message_size = MESSAGE_SIZE(arg_count);
+	int i;
+
+	/* fill log content. arg_count is in the dictionary. */
+	put_header(data, id_1, id_2, log_entry, sof_cycle_get_64_safe());
+
+	for (i = 0; i < arg_count; ++i)
+		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
+
+	/* send event by */
+	if (send_atomic)
+		dtrace_event_atomic((const char *)data, message_size);
+	else
+		dtrace_event((const char *)data, message_size);
+}
+
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
 			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
 {
@@ -276,6 +297,41 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+}
+
+void trace_log_unfiltered_nonzephyr(bool send_atomic, const void *log_entry,
+				    uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				    int arg_count, va_list vl)
+{
+	struct trace *trace = trace_get();
+
+	if (!trace->enable)
+		return;
+
+	dma_trace_log_nonzephyr(send_atomic, (uint32_t)log_entry, lvl, id_1, id_2, arg_count, vl);
+}
+
+void trace_log_filtered_nonzephyr(bool send_atomic, const void *log_entry,
+				  uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				  int arg_count, va_list vl)
+{
+	struct trace *trace = trace_get();
+
+	if (!trace->enable)
+		return;
+
+#if CONFIG_TRACE_FILTERING_ADAPTIVE
+	if (!trace->user_filter_override) {
+		const uint64_t current_ts = sof_cycle_get_64_safe();
+
+		emit_recent_entries(current_ts);
+
+		if (!trace_filter_flood(lvl, (uint32_t)log_entry, current_ts))
+			return;
+	}
+#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
+
+	dma_trace_log_nonzephyr(send_atomic, (uint32_t)log_entry, lvl, id_1, id_2, arg_count, vl);
 }
 
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
@@ -549,5 +605,24 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 
 	va_start(ap, arg_count);
 	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
+	va_end(ap);
+}
+
+void _log_sofdict_nonzephyr(log_func_t_nonzephyr sofdict_logf, bool atomic, const void *log_entry,
+			    const uint32_t lvl,
+			    uint32_t id_1, uint32_t id_2, int arg_count, ...)
+{
+	va_list ap;
+
+#ifndef __ZEPHYR__ /* for Zephyr see _log_nodict() in trace.h */
+	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
+		va_start(ap, arg_count);
+		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
+		va_end(ap);
+	}
+#endif
+
+	va_start(ap, arg_count);
+	sofdict_logf(atomic, log_entry, lvl, id_1, id_2, arg_count, ap);
 	va_end(ap);
 }

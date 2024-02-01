@@ -35,6 +35,8 @@
 #include <zephyr/logging/log.h>
 #endif
 
+#include "trace_nonzephyr.h"
+
 struct sof;
 struct trace;
 struct tr_ctx;
@@ -83,8 +85,6 @@ struct tr_ctx;
 #define TRACE_BOOT_PLATFORM_SSP		(TRACE_BOOT_PLATFORM + 0x1F0)
 #define TRACE_BOOT_PLATFORM_SPI		(TRACE_BOOT_PLATFORM + 0x200)
 #define TRACE_BOOT_PLATFORM_DMA_TRACE	(TRACE_BOOT_PLATFORM + 0x210)
-
-#define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
 static inline struct trace *trace_get(void)
 {
@@ -211,19 +211,6 @@ void mtrace_dict_entry(bool atomic_context, uint32_t log_entry_pointer, int n_ar
 /** Posts a fully prepared log header + log entry */
 void mtrace_event(const char *complete_packet, uint32_t length);
 
-#ifdef CONFIG_TRACEM /* Send everything to shared memory too */
-#  ifdef __ZEPHYR__
-/* We don't use Zephyr's dictionary yet so there's not enough space for
- * DEBUG messages
- */
-#    define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_INFO
-#  else
-#    define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_DEBUG
-#  endif
-#else /* copy only ERRORS */
-#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
-#endif /* CONFIG_TRACEM */
-
 /* This function is _not_ passed the format string to save space */
 void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 		  const struct tr_ctx *ctx, const uint32_t lvl,
@@ -261,19 +248,6 @@ do {								\
 
 #define trace_point(x) platform_trace_point(x)
 
-#define BASE_LOG_ASSERT_FAIL_MSG \
-unsupported_amount_of_params_in_trace_event\
-_thrown_from_macro_BASE_LOG_in_trace_h
-
-#define CT_ASSERT(COND, MESSAGE) \
-	((void)sizeof(char[1 - 2 * !(COND)]))
-
-#define trace_check_size_uint32(a) \
-	CT_ASSERT(sizeof(a) <= sizeof(uint32_t), "error: trace argument is bigger than a uint32_t");
-
-#define STATIC_ASSERT_ARG_SIZE(...) \
-	META_MAP(1, trace_check_size_uint32, __VA_ARGS__)
-
 /** _log_message is where the memory-saving dictionary magic described
  * above happens: the "format" string argument is moved to a special
  * linker section and replaced by a &log_entry pointer to it. This must
@@ -293,20 +267,6 @@ do {											\
 	_log_nodict(atomic, META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
 		    lvl, format, ##__VA_ARGS__);			\
 } while (0)
-
-#ifdef __ZEPHYR__
-/* Just like XTOS, only the most urgent messages go to limited
- * shared memory.
- */
-#define _log_nodict(atomic, arg_count, lvl, format, ...)		\
-do {									\
-	if ((lvl) <= MTRACE_DUPLICATION_LEVEL)				\
-		printk("%llu " format "\n", k_cycle_get_64(),		\
-		       ##__VA_ARGS__);					\
-} while (0)
-#else
-#define _log_nodict(atomic, n_args, lvl, format, ...)
-#endif
 
 #endif /* CONFIG_LIBRARY */
 
