@@ -124,7 +124,7 @@ int cpu_enable_core(int id)
 		return 0;
 	}
 
-	k_smp_cpu_resume(id, secondary_init, NULL, true, false);
+	k_smp_cpu_resume(id, NULL, NULL, true, false);
 
 	return 0;
 }
@@ -215,7 +215,7 @@ int cpu_enable_secondary_core(int id)
 		return 0;
 	}
 
-	k_smp_cpu_resume(id, secondary_init, NULL, true, false);
+	k_smp_cpu_resume(id, NULL, NULL, true, false);
 
 	return 0;
 }
