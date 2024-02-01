@@ -108,7 +108,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 
 		if (++runs == 1 << CYCLES_WINDOW_SIZE) {
 			cycles_sum >>= CYCLES_WINDOW_SIZE;
-			tr_info(&ll_tr, "ll core %u timer avg %u, max %u, overruns %u",
+			tr_info("ll core %u timer avg %u, max %u, overruns %u",
 				core, cycles_sum, cycles_max, overruns);
 			cycles_sum = 0;
 			cycles_max = 0;
@@ -159,7 +159,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 	k_tid_t thread;
 	k_spinlock_key_t key;
 
-	tr_dbg(&ll_tr, "zephyr_domain_register()");
+	tr_dbg("zephyr_domain_register()");
 
 	/* domain work only needs registered once on each core */
 	if (dt->handler)
@@ -201,7 +201,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	k_spin_unlock(&domain->lock, key);
 
-	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+	tr_info("zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)LL_TIMER_PERIOD_US);
 
 	return 0;
@@ -214,7 +214,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	int core = cpu_get_id();
 	k_spinlock_key_t key;
 
-	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
+	tr_dbg("zephyr_domain_unregister()");
 
 	/* tasks still registered on this core */
 	if (num_tasks)
@@ -234,7 +234,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 
 	k_spin_unlock(&domain->lock, key);
 
-	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
+	tr_info("zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
 
 	/*
@@ -251,7 +251,7 @@ static void zephyr_domain_block(struct ll_schedule_domain *domain)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 
-	tr_dbg(&ll_tr, "Blocking LL scheduler");
+	tr_dbg("Blocking LL scheduler");
 
 	k_mutex_lock(&zephyr_domain->block_mutex, K_FOREVER);
 	atomic_set(&zephyr_domain->block, 1);
@@ -262,7 +262,7 @@ static void zephyr_domain_unblock(struct ll_schedule_domain *domain)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 
-	tr_dbg(&ll_tr, "Unblocking LL scheduler");
+	tr_dbg("Unblocking LL scheduler");
 
 	k_mutex_lock(&zephyr_domain->block_mutex, K_FOREVER);
 	atomic_set(&zephyr_domain->block, 0);

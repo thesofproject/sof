@@ -381,7 +381,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	dt = zephyr_dma_domain->domain_thread + core;
 	pipe_task = pipeline_task_get(task);
 
-	tr_info(&ll_tr, "zephyr_dma_domain_register()");
+	tr_info("zephyr_dma_domain_register()");
 
 	/* don't even bother trying to register DMA IRQ for
 	 * non-registrable tasks.
@@ -406,8 +406,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 			       core);
 
 	if (ret < 0) {
-		tr_err(&ll_tr,
-		       "failed to register DMA IRQ for pipe task %p on core %d",
+		tr_err("failed to register DMA IRQ for pipe task %p on core %d",
 		       pipe_task, core);
 
 		return ret;
@@ -471,8 +470,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 		ret = enable_dma_irq(irq_data);
 		irq_local_enable(flags);
 		if (ret < 0) {
-			tr_err(&ll_tr,
-			       "failed to enable DMA IRQ for pipe task %p on core %d",
+			tr_err("failed to enable DMA IRQ for pipe task %p on core %d",
 			       pipe_task,
 			       core);
 			return ret;
@@ -486,7 +484,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	 * already enabled even though the Zephyr thread wasn't started
 	 */
 
-	tr_err(&ll_tr, "failed to register pipeline task %p on core %d",
+	tr_err("failed to register pipeline task %p on core %d",
 	       pipe_task,
 	       core);
 
@@ -554,7 +552,7 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	core = cpu_get_id();
 	dt = zephyr_dma_domain->domain_thread + core;
 
-	tr_info(&ll_tr, "zephyr_dma_domain_unregister()");
+	tr_info("zephyr_dma_domain_unregister()");
 
 	/* unregister the DMA IRQ only for PPL tasks marked as "registrable"
 	 *
@@ -573,12 +571,12 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	chan_data = fetch_channel_by_ptask(zephyr_dma_domain, pipe_task);
 	if (!chan_data) {
 		irq_local_enable(flags);
-		tr_err(&ll_tr, "pipeline task %p doesn't have an associated channel.", pipe_task);
+		tr_err("pipeline task %p doesn't have an associated channel.", pipe_task);
 		return -EINVAL;
 	}
 
 	if (chan_data->channel->status == COMP_STATE_ACTIVE) {
-		tr_warn(&ll_tr, "trying to unregister ptask %p while channel still active.",
+		tr_warn("trying to unregister ptask %p while channel still active.",
 			pipe_task);
 	}
 

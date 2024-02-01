@@ -101,19 +101,19 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
-	tr_dbg(&edma_tr, "EDMA: channel_get(%d)", req_chan);
+	tr_dbg("EDMA: channel_get(%d)", req_chan);
 
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&edma_tr, "EDMA: Channel %d out of range", req_chan);
+		tr_err("EDMA: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&edma_tr, "EDMA: Cannot reuse channel %d", req_chan);
+		tr_err("EDMA: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
@@ -132,7 +132,7 @@ static void edma_channel_put(struct dma_chan_data *channel)
 	/* Assuming channel is stopped, we thus don't need hardware to
 	 * do anything right now
 	 */
-	tr_info(&edma_tr, "EDMA: channel_put(%d)", channel->index);
+	tr_info("EDMA: channel_put(%d)", channel->index);
 
 	notifier_unregister_all(NULL, channel);
 
@@ -144,7 +144,7 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 static int edma_start(struct dma_chan_data *channel)
 {
-	tr_info(&edma_tr, "EDMA: start(%d)", channel->index);
+	tr_info("EDMA: start(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
 	    channel->status != COMP_STATE_PAUSED)
@@ -160,7 +160,7 @@ static int edma_start(struct dma_chan_data *channel)
 static int edma_release(struct dma_chan_data *channel)
 {
 	/* TODO actually handle pause/release properly? */
-	tr_info(&edma_tr, "EDMA: release(%d)", channel->index);
+	tr_info("EDMA: release(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
@@ -172,7 +172,7 @@ static int edma_release(struct dma_chan_data *channel)
 static int edma_pause(struct dma_chan_data *channel)
 {
 	/* TODO actually handle pause/release properly? */
-	tr_info(&edma_tr, "EDMA: pause(%d)", channel->index);
+	tr_info("EDMA: pause(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		return -EINVAL;
@@ -187,7 +187,7 @@ static int edma_pause(struct dma_chan_data *channel)
 
 static int edma_stop(struct dma_chan_data *channel)
 {
-	tr_info(&edma_tr, "EDMA: stop(%d)", channel->index);
+	tr_info("EDMA: stop(%d)", channel->index);
 	/* Validate state */
 	// TODO: Should we?
 	switch (channel->status) {
@@ -378,7 +378,7 @@ static int edma_set_config(struct dma_chan_data *channel,
 	int16_t soff = 0;
 	int16_t doff = 0;
 
-	tr_info(&edma_tr, "EDMA: set config");
+	tr_info("EDMA: set config");
 
 	channel->is_scheduling_source = config->is_scheduling_source;
 	channel->direction = config->direction;
@@ -393,16 +393,16 @@ static int edma_set_config(struct dma_chan_data *channel,
 		doff = config->dest_width;
 		break;
 	default:
-		tr_err(&edma_tr, "edma_set_config() unsupported config direction");
+		tr_err("edma_set_config() unsupported config direction");
 		return -EINVAL;
 	}
 
 	if (!config->cyclic) {
-		tr_err(&edma_tr, "EDMA: Only cyclic configurations are supported!");
+		tr_err("EDMA: Only cyclic configurations are supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&edma_tr, "EDMA: scatter enabled, that is not supported for now!");
+		tr_err("EDMA: scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -417,16 +417,16 @@ static int edma_probe(struct dma *dma)
 	int channel;
 
 	if (dma->chan) {
-		tr_err(&edma_tr, "EDMA: Repeated probe");
+		tr_err("EDMA: Repeated probe");
 		return -EEXIST;
 	}
-	tr_info(&edma_tr, "EDMA: probe");
+	tr_info("EDMA: probe");
 
 	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&edma_tr, "EDMA: Probe failure, unable to allocate channel descriptors");
+		tr_err("EDMA: Probe failure, unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -441,7 +441,7 @@ static int edma_remove(struct dma *dma)
 	int channel;
 
 	if (!dma->chan) {
-		tr_err(&edma_tr, "EDMA: remove called without probe, it's a no-op");
+		tr_err("EDMA: remove called without probe, it's a no-op");
 		return 0;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -543,7 +543,7 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 		*avail = ABS(capture_data_size) / 2;
 		break;
 	default:
-		tr_err(&edma_tr, "edma_get_data_size() unsupported direction %d",
+		tr_err("edma_get_data_size() unsupported direction %d",
 		       channel->direction);
 		return -EINVAL;
 	}

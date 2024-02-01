@@ -34,20 +34,20 @@ DECLARE_TR_CTX(afedrv_tr, SOF_UUID(afedrv_uuid), LOG_LEVEL_INFO);
 static inline void afe_reg_read(struct mtk_base_afe *afe, uint32_t reg, uint32_t *value)
 {
 	*value = io_reg_read((uint32_t)((char *)afe->base + reg));
-	tr_dbg(&afedrv_tr, "r_reg:0x%x, value:0x%x\n", reg, *value);
+	tr_dbg("r_reg:0x%x, value:0x%x\n", reg, *value);
 }
 
 static inline void afe_reg_write(struct mtk_base_afe *afe, uint32_t reg, uint32_t value)
 {
 	io_reg_write((uint32_t)((char *)afe->base + reg), value);
-	tr_dbg(&afedrv_tr, "w_reg:0x%x, value:0x%x\n", reg, value);
+	tr_dbg("w_reg:0x%x, value:0x%x\n", reg, value);
 }
 
 static inline void afe_reg_update_bits(struct mtk_base_afe *afe, uint32_t reg, uint32_t mask,
 				       uint32_t value)
 {
 	io_reg_update_bits((uint32_t)((char *)afe->base + reg), mask, value);
-	tr_dbg(&afedrv_tr, "u_reg:0x%x, value:0x%x\n", reg, value);
+	tr_dbg("u_reg:0x%x, value:0x%x\n", reg, value);
 }
 
 static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int channel)
@@ -90,7 +90,7 @@ static int afe_memif_set_rate(struct mtk_base_afe *afe, int id, unsigned int rat
 
 	fs = afe->afe_fs(rate, memif->data->id);
 	if (fs < 0) {
-		tr_err(&afedrv_tr, "invalid fs:%d\n", fs);
+		tr_err("invalid fs:%d\n", fs);
 		return -EINVAL;
 	}
 
@@ -120,7 +120,7 @@ static int afe_memif_set_format(struct mtk_base_afe *afe, int id, unsigned int f
 			hd_audio = 1;
 		break;
 	default:
-		tr_err(&afedrv_tr, "not support format:%u\n", format);
+		tr_err("not support format:%u\n", format);
 		return -EINVAL;
 	}
 
@@ -166,7 +166,7 @@ int afe_memif_set_addr(struct mtk_base_afe *afe, int id, unsigned int dma_addr,
 
 	memif->afe_addr = phys_buf_addr;
 	memif->buffer_size = dma_bytes;
-	tr_dbg(&afedrv_tr, "dma_addr:0x%x, size:%u\n", dma_addr, dma_bytes);
+	tr_dbg("dma_addr:0x%x, size:%u\n", dma_addr, dma_bytes);
 	/* start */
 	afe_reg_write(afe, memif->data->reg_ofs_base, phys_buf_addr);
 	/* end */
@@ -251,14 +251,14 @@ int afe_dai_set_config(struct mtk_base_afe *afe, int id, unsigned int channel, u
 	if (id >= afe->dais_size)
 		return -EINVAL;
 
-	tr_info(&afedrv_tr, "afe_dai_set_config, id:%d\n", id);
+	tr_info("afe_dai_set_config, id:%d\n", id);
 
 	dai = &afe->dais[id];
 	dai->channel = channel;
 	dai->format = format;
 	dai->rate = rate;
 
-	tr_info(&afedrv_tr, "dai:%d set: format:%d, rate:%d, channel:%d\n", id, format, rate,
+	tr_info("dai:%d set: format:%d, rate:%d, channel:%d\n", id, format, rate,
 		channel);
 
 	return 0;
@@ -271,10 +271,10 @@ int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, 
 
 	/* TODO 1. if need use dai->id to search target dai */
 	/* TODO 1. if need a status to control the dai status */
-	tr_info(&afedrv_tr, "afe_dai_get_config, id:%d\n", id);
+	tr_info("afe_dai_get_config, id:%d\n", id);
 
 	if (id >= afe->dais_size || id < 0) {
-		tr_err(&afedrv_tr, "afe_dai_get_config , invalid id:%d\n", id);
+		tr_err("afe_dai_get_config , invalid id:%d\n", id);
 		return -EINVAL;
 	}
 	dai = &afe->dais[id];
@@ -283,7 +283,7 @@ int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, 
 	*rate = dai->rate;
 	*format = dai->format;
 
-	tr_info(&afedrv_tr, "dai:%d get: format:%d, rate:%d, channel:%d\n", id, *format, *rate,
+	tr_info("dai:%d get: format:%d, rate:%d, channel:%d\n", id, *format, *rate,
 		*channel);
 
 	return 0;
@@ -359,7 +359,7 @@ int afe_probe(struct mtk_base_afe *afe)
 	afe->irq_fs = platform->irq_fs;
 	if (!afe->afe_fs)
 		return -EINVAL;
-	tr_dbg(&afedrv_tr, "afe_base:0x%x\n", afe->base);
+	tr_dbg("afe_base:0x%x\n", afe->base);
 	/* TODO how to get the memif number, how to sync with dmac lib */
 	afe->memifs_size = platform->memif_size;
 	afe->memif = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
@@ -407,7 +407,7 @@ void afe_remove(struct mtk_base_afe *afe)
 
 	if (afe->ref_count < 0) {
 		afe->ref_count = 0;
-		tr_dbg(&afedrv_tr, "afe ref_count < 0, :%d\n", afe->ref_count);
+		tr_dbg("afe ref_count < 0, :%d\n", afe->ref_count);
 		return;
 	}
 

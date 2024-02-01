@@ -50,14 +50,14 @@ DECLARE_SOF_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
 #if CONFIG_PERFORMANCE_COUNTERS
 static void perf_sa_trace(struct perf_cnt_data *pcd, int ignored)
 {
-	tr_info(&sa_tr, "perf sys_load peak plat %u cpu %u",
+	tr_info("perf sys_load peak plat %u cpu %u",
 		(uint32_t)((pcd)->plat_delta_peak),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
 
 static void perf_avg_sa_trace(struct perf_cnt_data *pcd, int ignored)
 {
-	tr_info(&sa_tr, "perf sys_load cpu avg %u (current peak %u)",
+	tr_info("perf sys_load cpu avg %u (current peak %u)",
 		(uint32_t)((pcd)->cpu_delta_sum),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
@@ -85,9 +85,9 @@ static enum task_state validate(void *data)
 	/* warning timeout */
 	if (delta > sa->warn_timeout) {
 		if (delta > UINT_MAX)
-			tr_warn(&sa_tr, "validate(), ll drift detected, delta > %u", UINT_MAX);
+			tr_warn("validate(), ll drift detected, delta > %u", UINT_MAX);
 		else
-			tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
+			tr_warn("validate(), ll drift detected, delta = %u",
 				(unsigned int)delta);
 	}
 
@@ -102,9 +102,9 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	uint64_t ticks;
 
 	if (timeout > UINT_MAX)
-		tr_warn(&sa_tr, "sa_init(), timeout > %u", UINT_MAX);
+		tr_warn("sa_init(), timeout > %u", UINT_MAX);
 	else
-		tr_info(&sa_tr, "sa_init(), timeout = %u", (unsigned int)timeout);
+		tr_info("sa_init(), timeout = %u", (unsigned int)timeout);
 
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
@@ -120,11 +120,9 @@ void sa_init(struct sof *sof, uint64_t timeout)
 
 	if (ticks > UINT_MAX || sof->sa->warn_timeout > UINT_MAX ||
 	    sof->sa->panic_timeout > UINT_MAX)
-		tr_info(&sa_tr,
-			"sa_init(), some of the values are > %u", UINT_MAX);
+		tr_info("sa_init(), some of the values are > %u", UINT_MAX);
 	else
-		tr_info(&sa_tr,
-			"sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+		tr_info("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
 			(unsigned int)ticks, (unsigned int)sof->sa->warn_timeout,
 			(unsigned int)sof->sa->panic_timeout);
 

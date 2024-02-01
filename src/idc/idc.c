@@ -105,7 +105,7 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 	if (cond(target_core))
 		return 0;
 
-	tr_err(&idc_tr, "idc_wait_in_blocking_mode() error: timeout, target_core %u",
+	tr_err("idc_wait_in_blocking_mode() error: timeout, target_core %u",
 	       target_core);
 	return -ETIME;
 }
@@ -344,7 +344,7 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 
 	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id, IPC_COMP_IGNORE_REMOTE);
 	if (!ppl_icd) {
-		tr_err(&idc_tr, "idc: comp %d not found", ppl_id);
+		tr_err("idc: comp %d not found", ppl_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
@@ -385,7 +385,7 @@ static void idc_process_async_msg(uint32_t slot)
 #if CONFIG_AMS
 	process_incoming_message(slot);
 #else
-	tr_err(&idc_tr, "idc_cmd(): AMS not enabled");
+	tr_err("idc_cmd(): AMS not enabled");
 #endif
 }
 
@@ -472,7 +472,7 @@ void idc_cmd(struct idc_msg *msg)
 		idc_process_async_msg(IDC_HEADER_TO_AMS_SLOT_MASK(msg->header));
 		break;
 	default:
-		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",
+		tr_err("idc_cmd(): invalid msg->header = %u",
 		       msg->header);
 	}
 
@@ -512,7 +512,7 @@ int idc_init(void)
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 #endif
 
-	tr_dbg(&idc_tr, "idc_init()");
+	tr_dbg("idc_init()");
 
 	/* initialize idc data */
 	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
@@ -534,7 +534,7 @@ int idc_restore(void)
 {
 	struct idc **idc __unused = idc_get();
 
-	tr_info(&idc_tr, "idc_restore()");
+	tr_info("idc_restore()");
 
 	/* idc_restore() is invoked during D0->D0ix/D0ix->D0 flow. In that
 	 * case basic core structures e.g. idc struct should be already

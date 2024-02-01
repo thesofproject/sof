@@ -38,7 +38,7 @@ static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static void clk_dsppll_enable(uint32_t value)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_enable: %d\n", value);
+	tr_dbg("clk_dsppll_enable: %d\n", value);
 
 	switch (value) {
 	case ADSP_CLK_PLL_300M:
@@ -48,7 +48,7 @@ static void clk_dsppll_enable(uint32_t value)
 		io_reg_write(MTK_ADSPPLL_CON1, MTK_PLL_DIV_RATIO_400M);
 		break;
 	default:
-		tr_err(&clkdrv_tr, "invalid dsppll: %d\n", value);
+		tr_err("invalid dsppll: %d\n", value);
 		return;
 	}
 
@@ -62,7 +62,7 @@ static void clk_dsppll_enable(uint32_t value)
 
 static void clk_dsppll_disable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+	tr_dbg("clk_dsppll_disable\n");
 
 	io_reg_update_bits(MTK_ADSPPLL_CON0, MTK_PLL_BASE_EN, 0);
 	wait_delay_us(1);
@@ -77,7 +77,7 @@ static void set_mux_adsp_sel(uint32_t value)
 	io_reg_write(MTK_CLK_CFG_11_SET, value << MTK_CLK_ADSP_OFFSET);
 	io_reg_write(MTK_CLK_CFG_UPDATE, MTK_CLK_CFG_ADSP_UPDATE);
 
-	tr_dbg(&clkdrv_tr, "adsp_clk_mux=%x, CLK_CFG_11=0x%08x\n",
+	tr_dbg("adsp_clk_mux=%x, CLK_CFG_11=0x%08x\n",
 	       value, io_reg_read(MTK_CLK_CFG_11));
 }
 
@@ -87,7 +87,7 @@ static void set_mux_adsp_bus_src_sel(uint32_t value)
 	io_reg_write(MTK_ADSP_CLK_BUS_UPDATE, MTK_ADSP_CLK_BUS_UPDATE_BIT);
 	wait_delay_us(1);
 
-	tr_dbg(&clkdrv_tr, "adsp_bus_mux=%x, MTK_ADSP_BUS_SRC=0x%08x\n",
+	tr_dbg("adsp_bus_mux=%x, MTK_ADSP_BUS_SRC=0x%08x\n",
 	       value, io_reg_read(MTK_ADSP_BUS_SRC));
 }
 
@@ -97,7 +97,7 @@ static void set_mux_adsp_bus_sel(uint32_t value)
 	io_reg_write(MTK_CLK_CFG_15_SET, value << MTK_CLK_ADSP_BUS_OFFSET);
 	io_reg_write(MTK_CLK_CFG_UPDATE, MTK_CLK_CFG_ADSP_BUS_UPDATE);
 
-	tr_dbg(&clkdrv_tr, "adsp_bus_clk_mux=%x, CLK_CFG_15=0x%08x\n",
+	tr_dbg("adsp_bus_clk_mux=%x, CLK_CFG_15=0x%08x\n",
 	       value, io_reg_read(MTK_CLK_CFG_15));
 }
 
@@ -126,7 +126,7 @@ static int clock_platform_set_dsp_freq(int clock, int freq_idx)
 		break;
 	default:
 		clock_platform_set_dsp_freq(clock, ADSP_CLK_26M);
-		tr_err(&clkdrv_tr, "unknown freq index %x\n", freq_idx);
+		tr_err("unknown freq index %x\n", freq_idx);
 		break;
 	}
 

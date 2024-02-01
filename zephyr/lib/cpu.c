@@ -66,8 +66,6 @@ static FUNC_NORETURN void secondary_init(void *arg)
 
 LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 
-extern struct tr_ctx zephyr_tr;
-
 /* address where zephyr PM will save memory during D3 transition */
 #ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
 extern void *global_imr_ram_storage;
@@ -102,7 +100,7 @@ void cpu_notify_state_entry(enum pm_state state)
 
 		/* If no IMR buffer we can not recover */
 		if (!global_imr_ram_storage) {
-			tr_err(&zephyr_tr, "failed to allocate global_imr_ram_storage");
+			tr_err("failed to allocate global_imr_ram_storage");
 			k_panic();
 		}
 
@@ -178,13 +176,13 @@ void cpu_disable_core(int id)
 	__ASSERT_NO_MSG(cpu_is_primary(arch_proc_id()));
 
 	if (!arch_cpu_active(id)) {
-		tr_warn(&zephyr_tr, "core %d is already disabled", id);
+		tr_warn("core %d is already disabled", id);
 		return;
 	}
 #if defined(CONFIG_PM)
 	/* TODO: before requesting core shut down check if it's not actively used */
 	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
-		tr_err(&zephyr_tr, "failed to set PM_STATE_SOFT_OFF on core %d", id);
+		tr_err("failed to set PM_STATE_SOFT_OFF on core %d", id);
 		return;
 	}
 
@@ -203,12 +201,12 @@ void cpu_disable_core(int id)
 		idelay(PLATFORM_DEFAULT_DELAY);
 
 	if (arch_cpu_active(id)) {
-		tr_err(&zephyr_tr, "core %d did not enter idle state", id);
+		tr_err("core %d did not enter idle state", id);
 		return;
 	}
 
 	if (soc_adsp_halt_cpu(id) != 0)
-		tr_err(&zephyr_tr, "failed to disable core %d", id);
+		tr_err("failed to disable core %d", id);
 #endif /* CONFIG_PM */
 }
 

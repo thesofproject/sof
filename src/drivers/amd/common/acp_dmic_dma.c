@@ -51,14 +51,14 @@ static struct dma_chan_data *acp_dmic_dma_channel_get(struct dma *dma,
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_dmic_dma_tr, "Channel %d out of range",
+		tr_err("Channel %d out of range",
 		       req_chan);
 		return NULL;
 	}
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_dmic_dma_tr, "Cannot reuse channel %d",
+		tr_err("Cannot reuse channel %d",
 		       req_chan);
 		return NULL;
 	}
@@ -82,14 +82,14 @@ static void acp_dmic_dma_channel_put(struct dma_chan_data *channel)
 static int acp_dmic_dma_release(struct dma_chan_data *channel)
 {
 	/* nothing to do on rembrandt */
-	tr_dbg(&acp_dmic_dma_tr, "dmic dma release()");
+	tr_dbg("dmic dma release()");
 	return 0;
 }
 
 static int acp_dmic_dma_pause(struct dma_chan_data *channel)
 {
 	/* nothing to do on rembrandt */
-	tr_dbg(&acp_dmic_dma_tr, "dmic dma pause()");
+	tr_dbg("dmic dma pause()");
 	return 0;
 }
 
@@ -151,14 +151,14 @@ static int acp_dmic_dma_probe(struct dma *dma)
 	int channel;
 
 	if (dma->chan) {
-		tr_err(&acp_dmic_dma_tr, "Repeated probe");
+		tr_err("Repeated probe");
 		return -EEXIST;
 	}
 	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
 			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&acp_dmic_dma_tr, "unable to allocate channel descriptors");
+		tr_err("unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -173,7 +173,7 @@ static int acp_dmic_dma_probe(struct dma *dma)
 static int acp_dmic_dma_remove(struct dma *dma)
 {
 	if (!dma->chan) {
-		tr_err(&acp_dmic_dma_tr, "remove called without probe");
+		tr_err("remove called without probe");
 		return 0;
 	}
 	rfree(dma->chan);
@@ -188,11 +188,11 @@ static int acp_dmic_dma_get_data_size(struct dma_chan_data *channel,
 		*avail = dmic_rngbuff_size >> 1;
 		*free = dmic_rngbuff_size >> 1;
 	} else {
-		tr_err(&acp_dmic_dma_tr, "Channel direction Not defined %d",
+		tr_err("Channel direction Not defined %d",
 		       channel->direction);
 	}
 
-	tr_info(&acp_dmic_dma_tr, "avail %d and free %d",
+	tr_info("avail %d and free %d",
 		avail[0], free[0]);
 	return 0;
 }

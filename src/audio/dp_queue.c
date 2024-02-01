@@ -288,14 +288,14 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 		goto err;
 
 	dp_queue->audio_stream_params.id = id;
-	tr_info(&dp_queue_tr, "DpQueue created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
+	tr_info("DpQueue created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
 		id, dp_queue_is_shared(dp_queue), min_available, min_free_space,
 		dp_queue->data_buffer_size);
 
 	/* return a pointer to allocated structure */
 	return dp_queue;
 err:
-	tr_err(&dp_queue_tr, "DpQueue creation failure");
+	tr_err("DpQueue creation failure");
 	rfree(dp_queue);
 	return NULL;
 }

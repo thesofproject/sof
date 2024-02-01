@@ -100,7 +100,7 @@ static enum task_state trace_work(void *data)
 	size = dma_copy_to_host(&d->dc, config, d->posn.host_offset,
 				buffer->r_ptr, size);
 	if (size < 0) {
-		tr_err(&dt_tr, "trace_work(): dma_copy_to_host() failed");
+		tr_err("trace_work(): dma_copy_to_host() failed");
 		goto out;
 	}
 
@@ -185,7 +185,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 {
 	int ret = 0;
 
-	tr_info(&dt_tr, "dma_trace_init_complete()");
+	tr_info("dma_trace_init_complete()");
 
 	if (!d) {
 		mtrace_printf(LOG_LEVEL_ERROR,
@@ -355,8 +355,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 	/* Use a different, DMA: prefix to ease identification of log files */
-	tr_info(&dt_tr,
-		"DMA: " SOF_BANNER_COMMON,
+	tr_info("DMA: " SOF_BANNER_COMMON,
 		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 	return 0;
@@ -661,7 +660,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			 * so after it we have to recalculate margin and
 			 * overflow
 			 */
-			tr_err(&dt_tr, "dtrace_add_event(): number of dropped logs = %u",
+			tr_err("dtrace_add_event(): number of dropped logs = %u",
 			       tmp_dropped_entries);
 			margin = dtrace_calc_buf_margin(buffer);
 			overflow = dtrace_calc_buf_overflow(buffer, length);

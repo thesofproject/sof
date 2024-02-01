@@ -60,7 +60,7 @@ static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *
 	int ret = llext_manager_align_map(vma, size, flags);
 
 	if (ret < 0) {
-		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
+		tr_err("cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
 	}
 
@@ -144,8 +144,7 @@ static int llext_manager_allocate_module_bss(uint32_t module_id,
 	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
 
 	if (is_pages * PAGE_SZ > bss_size) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module_bss(): invalid is_pages: %u, required: %u",
+		tr_err("llext_manager_allocate_module_bss(): invalid is_pages: %u, required: %u",
 		       is_pages, bss_size / PAGE_SZ);
 		return -ENOMEM;
 	}
@@ -182,13 +181,12 @@ uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 
-	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
+	tr_dbg("llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): failed to get module descriptor");
+		tr_err("llext_manager_allocate_module(): failed to get module descriptor");
 		return 0;
 	}
 
@@ -203,8 +201,7 @@ uint32_t llext_manager_allocate_module(const struct comp_driver *drv,
 
 	ret = llext_manager_allocate_module_bss(module_id, base_cfg->is_pages, mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): module allocation failed: %d", ret);
+		tr_err("llext_manager_allocate_module(): module allocation failed: %d", ret);
 		return 0;
 	}
 	return mod->entry_point;
@@ -219,7 +216,7 @@ int llext_manager_free_module(const struct comp_driver *drv,
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	int ret;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", ipc_config->id);
+	tr_dbg("llext_manager_free_module(): mod_id: %#x", ipc_config->id);
 
 	desc = lib_manager_get_library_module_desc(module_id);
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
@@ -230,8 +227,7 @@ int llext_manager_free_module(const struct comp_driver *drv,
 
 	ret = llext_manager_free_module_bss(module_id, mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_free_module(): free module bss failed: %d", ret);
+		tr_err("llext_manager_free_module(): free module bss failed: %d", ret);
 		return ret;
 	}
 	return 0;

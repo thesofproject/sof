@@ -77,8 +77,6 @@ typedef uint32_t k_spinlock_key_t;
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
-extern struct tr_ctx sl_tr;
-
 /* panic on deadlock */
 #define spin_try_lock_dbg(lock, line) \
 	do { \
@@ -115,14 +113,14 @@ extern struct tr_ctx sl_tr;
 
 #define spin_lock_dbg(line) \
 	do { \
-		tr_info(&sl_tr, "LcE"); \
-		tr_info(&sl_tr, "line: %d", line); \
+		tr_info("LcE"); \
+		tr_info("line: %d", line); \
 	} while (0)
 
 #define spin_unlock_dbg(line) \
 	do { \
-		tr_info(&sl_tr, "LcX"); \
-		tr_info(&sl_tr, "line: %d", line); \
+		tr_info("LcX"); \
+		tr_info("line: %d", line); \
 	} while (0)
 
 #else  /* CONFIG_DEBUG_LOCKS_VERBOSE */

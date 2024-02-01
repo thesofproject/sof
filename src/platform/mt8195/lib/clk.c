@@ -78,7 +78,7 @@ static inline int dsp_clk_value_convert(int value)
 
 static void clk_dsppll_enable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_enable\n");
+	tr_dbg("clk_dsppll_enable\n");
 
 	io_reg_update_bits(AUDIODSP_CK_CG, 0x1 << RG_AUDIODSP_SW_CG, 0x0);
 	clk_setl(DSPPLL_CON4, PLL_PWR_ON);
@@ -92,7 +92,7 @@ static void clk_dsppll_enable(void)
 
 static void clk_dsppll_disable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+	tr_dbg("clk_dsppll_disable\n");
 
 	clk_clrl(DSPPLL_CON0, PLL_EN);
 	wait_delay_us(1);
@@ -104,7 +104,7 @@ static void clk_dsppll_disable(void)
 
 static int dsppll_get_enable(void)
 {
-	tr_dbg(&clkdrv_tr, "dsppll_enable=%d.\n", dsppll_enable);
+	tr_dbg("dsppll_enable=%d.\n", dsppll_enable);
 
 	return dsppll_enable;
 }
@@ -117,7 +117,7 @@ static int set_mux_sel(enum mux_id_t mux_id, uint32_t value)
 		io_reg_update_bits(CLK_CFG_22_SET, (0xF << 0), (value << 0));
 		io_reg_write(CLK_CFG_UPDATE2, 1 << CLK_UPDATE_ADSP_CK);
 
-		tr_dbg(&clkdrv_tr, "adspclk_mux=%x, CLK_CFG_22=0x%08x\n",
+		tr_dbg("adspclk_mux=%x, CLK_CFG_22=0x%08x\n",
 		       value, io_reg_read(CLK_CFG_22));
 		break;
 	case MUX_CLK_AUDIO_LOCAL_BUS_SEL:
@@ -125,11 +125,11 @@ static int set_mux_sel(enum mux_id_t mux_id, uint32_t value)
 		io_reg_update_bits(CLK_CFG_28_SET, (0xF << 16), (value << 16));
 		io_reg_write(CLK_CFG_UPDATE3, 1 << CLK_UPDATE_AUDIO_LOCAL_BUS_CK);
 
-		tr_dbg(&clkdrv_tr, "audio_local_bus_clk_mux=%x, CLK_CFG_28=0x%08x\n",
+		tr_dbg("audio_local_bus_clk_mux=%x, CLK_CFG_28=0x%08x\n",
 		       value, io_reg_read(CLK_CFG_28));
 		break;
 	default:
-		tr_dbg(&clkdrv_tr, "error: unknown mux_id (%d)\n", mux_id);
+		tr_dbg("error: unknown mux_id (%d)\n", mux_id);
 		break;
 	}
 
@@ -145,7 +145,7 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	if (adsp_clock == adsp_clk_req)
 		return 0;
 
-	tr_info(&clkdrv_tr, "clock_platform_set_cpu_freq %d\n", adsp_clk_req);
+	tr_info("clock_platform_set_cpu_freq %d\n", adsp_clk_req);
 
 	/* convert res manager value to driver map */
 	clk_mux = dsp_clk_value_convert(freq_idx);

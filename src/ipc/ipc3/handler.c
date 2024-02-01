@@ -83,12 +83,12 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
 			assert(!___ret);				\
 			bzero((char *)rx + tx->size, rx_size - tx->size);\
-			tr_dbg(&ipc_tr, "ipc: hdr 0x%x rx (%zu) > tx (%d)",\
+			tr_dbg("ipc: hdr 0x%x rx (%zu) > tx (%d)",\
 			       rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
-			tr_warn(&ipc_tr, "ipc: hdr 0x%x tx (%d) > rx (%zu)",\
+			tr_warn("ipc: hdr 0x%x tx (%d) > rx (%zu)",\
 				rx->cmd, tx->size, rx_size);		\
 		} else	{						\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
@@ -112,7 +112,7 @@ struct ipc_cmd_hdr *mailbox_validate(void)
 	/* validate component header */
 	if (hdr->size < sizeof(*hdr) || hdr->size > SOF_IPC_MSG_MAX_SIZE) {
 #ifndef CONFIG_ARCH_POSIX_LIBFUZZER
-		ipc_cmd_err(&ipc_tr, "ipc: invalid size 0x%x", hdr->size);
+		ipc_cmd_err("ipc: invalid size 0x%x", hdr->size);
 #endif
 		return NULL;
 	}
@@ -219,7 +219,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, pcm_params.comp_id);
 	if (!pcm_dev) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", pcm_params.comp_id);
+		ipc_cmd_err("ipc: comp %d not found", pcm_params.comp_id);
 		return -ENODEV;
 	}
 
@@ -227,11 +227,11 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> params", pcm_params.comp_id);
+	tr_dbg("ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		ipc_cmd_err("ipc: comp %d pipeline not found",
 			    pcm_params.comp_id);
 		return -EINVAL;
 	}
@@ -239,7 +239,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* sanity check for pcm_params size */
 	if (pcm_params.hdr.size !=
 	    sizeof(pcm_params) + pcm_params.params.ext_data_length) {
-		ipc_cmd_err(&ipc_tr, "pcm_params invalid size, hdr.size=%d, ext_data_len=%d",
+		ipc_cmd_err("pcm_params invalid size, hdr.size=%d, ext_data_len=%d",
 			    pcm_params.hdr.size, pcm_params.params.ext_data_length);
 		return -EINVAL;
 	}
@@ -247,13 +247,13 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* sanity check for pcm_params.params size */
 	if (pcm_params.params.hdr.size !=
 	    sizeof(pcm_params.params) + pcm_params.params.ext_data_length) {
-		ipc_cmd_err(&ipc_tr, "pcm_params.params invalid size, hdr.size=%d, ext_data_len=%d",
+		ipc_cmd_err("pcm_params.params invalid size, hdr.size=%d, ext_data_len=%d",
 			    pcm_params.params.hdr.size, pcm_params.params.ext_data_length);
 		return -EINVAL;
 	}
 
 	if (sizeof(pcm_params) + pcm_params.params.ext_data_length > SOF_IPC_MSG_MAX_SIZE) {
-		ipc_cmd_err(&ipc_tr, "pcm_params ext_data_length invalid size %d max allowed %zu",
+		ipc_cmd_err("pcm_params ext_data_length invalid size %d max allowed %zu",
 			    pcm_params.params.ext_data_length,
 			    SOF_IPC_MSG_MAX_SIZE - sizeof(pcm_params));
 		return -EINVAL;
@@ -294,7 +294,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	err = comp_set_attribute(cd, COMP_ATTR_HOST_BUFFER, &elem_array);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d host buffer failed %d",
+		ipc_cmd_err("ipc: comp %d host buffer failed %d",
 			    pcm_params.comp_id, err);
 		goto error;
 	}
@@ -302,7 +302,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* TODO: should be extracted to platform specific code */
 	err = comp_set_attribute(cd, COMP_ATTR_COPY_TYPE, &copy_type);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d setting copy type failed %d",
+		ipc_cmd_err("ipc: comp %d setting copy type failed %d",
 			    pcm_params.comp_id, err);
 		goto error;
 	}
@@ -314,7 +314,7 @@ pipe_params:
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd,
 			(struct sof_ipc_pcm_params *)ipc_get()->comp_data);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d comp %d params failed %d",
+		ipc_cmd_err("ipc: pipe %d comp %d params failed %d",
 			    pcm_dev->cd->pipeline->pipeline_id,
 			    pcm_params.comp_id, err);
 		goto error;
@@ -323,7 +323,7 @@ pipe_params:
 	/* prepare pipeline audio params */
 	err = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d comp %d prepare failed %d",
+		ipc_cmd_err("ipc: pipe %d comp %d prepare failed %d",
 			    pcm_dev->cd->pipeline->pipeline_id,
 			    pcm_params.comp_id, err);
 		goto error;
@@ -346,7 +346,7 @@ pipe_params:
 error:
 	reset_err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (reset_err < 0)
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
+		ipc_cmd_err("ipc: pipe %d comp %d reset failed %d",
 			    pcm_dev->cd->pipeline->pipeline_id,
 			    pcm_params.comp_id, reset_err);
 	return err;
@@ -366,7 +366,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, free_req.comp_id);
 	if (!pcm_dev) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", free_req.comp_id);
+		ipc_cmd_err("ipc: comp %d not found", free_req.comp_id);
 		return -ENODEV;
 	}
 
@@ -374,11 +374,11 @@ static int ipc_stream_pcm_free(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> free", free_req.comp_id);
+	tr_dbg("ipc: comp %d -> free", free_req.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		ipc_cmd_err("ipc: comp %d pipeline not found",
 			    free_req.comp_id);
 		return -EINVAL;
 	}
@@ -403,7 +403,7 @@ static int ipc_stream_position(uint32_t header)
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
 	if (!pcm_dev) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
+		ipc_cmd_err("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
 
@@ -411,7 +411,7 @@ static int ipc_stream_position(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_info(&ipc_tr, "ipc: comp %d -> position", stream.comp_id);
+	tr_info("ipc: comp %d -> position", stream.comp_id);
 
 	memset(&posn, 0, sizeof(posn));
 
@@ -422,7 +422,7 @@ static int ipc_stream_position(uint32_t header)
 	posn.comp_id = stream.comp_id;
 
 	if (!pcm_dev->cd->pipeline) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		ipc_cmd_err("ipc: comp %d pipeline not found",
 			    stream.comp_id);
 		return -EINVAL;
 	}
@@ -452,7 +452,7 @@ static int ipc_stream_trigger(uint32_t header)
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
 	if (!pcm_dev) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
+		ipc_cmd_err("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
 
@@ -460,7 +460,7 @@ static int ipc_stream_trigger(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
+	tr_dbg("ipc: comp %d -> trigger cmd 0x%x",
 	       stream.comp_id, ipc_command);
 
 	switch (ipc_command) {
@@ -480,18 +480,18 @@ static int ipc_stream_trigger(uint32_t header)
 	case SOF_IPC_STREAM_TRIG_XRUN:
 		return 0;
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_command);
+		ipc_cmd_err("ipc: invalid trigger cmd 0x%x", ipc_command);
 		return -ENODEV;
 	}
 
 	if (!pcm_dev->cd->pipeline) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		ipc_cmd_err("ipc: comp %d pipeline not found",
 			    stream.comp_id);
 		return -EINVAL;
 	}
 
 	if (pcm_dev->type != COMP_TYPE_COMPONENT) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not stream (type %d)",
+		ipc_cmd_err("ipc: comp %d not stream (type %d)",
 			    stream.comp_id, pcm_dev->type);
 		return -EINVAL;
 	}
@@ -520,7 +520,7 @@ static int ipc_stream_trigger(uint32_t header)
 	}
 
 	if (ret < 0)
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
+		ipc_cmd_err("ipc: comp %d trigger 0x%x failed %d",
 			    stream.comp_id, ipc_command, ret);
 
 
@@ -546,7 +546,7 @@ static int ipc_glb_stream_message(uint32_t header)
 	case SOF_IPC_STREAM_POSITION:
 		return ipc_stream_position(header);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown stream cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown stream cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -576,7 +576,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config,
 	/* get DAI */
 	dai = dai_get(config->type, config->dai_index, 0 /* existing only */);
 	if (!dai) {
-		ipc_cmd_err(&ipc_tr, "ipc: dai %d,%d not found", config->type,
+		ipc_cmd_err("ipc: dai %d,%d not found", config->type,
 			    config->dai_index);
 		return -ENODEV;
 	}
@@ -585,7 +585,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config,
 	ret = dai_set_config(dai, config_dai, config);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: dai %d,%d config failed %d", config->type,
+		ipc_cmd_err("ipc: dai %d,%d config failed %d", config->type,
 			    config->dai_index, ret);
 		return ret;
 	}
@@ -612,7 +612,7 @@ static int ipc_msg_dai_config(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(config, ipc->comp_data);
 
-	tr_info(&ipc_tr, "ipc: dai %d.%d -> config ", config.type,
+	tr_info("ipc: dai %d.%d -> config ", config.type,
 		config.dai_index);
 
 	/* set common configuration */
@@ -639,7 +639,7 @@ static int ipc_glb_dai_message(uint32_t header)
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown DAI cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown DAI cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -652,7 +652,7 @@ static int ipc_pm_context_size(uint32_t header)
 {
 	struct sof_ipc_pm_ctx pm_ctx;
 
-	tr_info(&ipc_tr, "ipc: pm -> size");
+	tr_info("ipc: pm -> size");
 
 	bzero(&pm_ctx, sizeof(pm_ctx));
 
@@ -668,7 +668,7 @@ static int ipc_pm_context_save(uint32_t header)
 {
 	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
-	tr_info(&ipc_tr, "ipc: pm -> save");
+	tr_info("ipc: pm -> save");
 
 	sa_exit(sof_get());
 
@@ -707,7 +707,7 @@ static int ipc_pm_context_restore(uint32_t header)
 {
 	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
-	tr_info(&ipc_tr, "ipc: pm -> restore");
+	tr_info("ipc: pm -> restore");
 
 	ipc_get()->pm_prepare_D3 = 0;
 
@@ -728,12 +728,12 @@ static int ipc_pm_core_enable(uint32_t header)
 
 	/* check if core enable mask is valid */
 	if (pm_core_config.enable_mask > MASK(CONFIG_CORE_COUNT - 1, 0)) {
-		ipc_cmd_err(&ipc_tr, "ipc: CONFIG_CORE_COUNT: %d < core enable mask: %d",
+		ipc_cmd_err("ipc: CONFIG_CORE_COUNT: %d < core enable mask: %d",
 			    CONFIG_CORE_COUNT, pm_core_config.enable_mask);
 		return -EINVAL;
 	}
 
-	tr_info(&ipc_tr, "ipc: pm core mask 0x%x -> enable",
+	tr_info("ipc: pm core mask 0x%x -> enable",
 		pm_core_config.enable_mask);
 
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
@@ -741,7 +741,7 @@ static int ipc_pm_core_enable(uint32_t header)
 			if (pm_core_config.enable_mask & (1 << i)) {
 				ret = cpu_enable_core(i);
 				if (ret < 0) {
-					ipc_cmd_err(&ipc_tr, "Failed to enable core %d", i);
+					ipc_cmd_err("Failed to enable core %d", i);
 					return ret;
 				}
 			} else {
@@ -759,7 +759,7 @@ static int ipc_pm_gate(uint32_t header)
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
 
-	tr_info(&ipc_tr, "ipc: pm gate flags 0x%x", pm_gate.flags);
+	tr_info("ipc: pm gate flags 0x%x", pm_gate.flags);
 
 	/* pause dma trace firstly if needed */
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
@@ -803,7 +803,7 @@ static int ipc_glb_pm_message(uint32_t header)
 	case SOF_IPC_PM_CLK_GET:
 	case SOF_IPC_PM_CLK_REQ:
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown pm cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown pm cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -859,7 +859,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: trace failed to set host buffers %d",
+		ipc_cmd_err("ipc: trace failed to set host buffers %d",
 			    err);
 		goto error;
 	}
@@ -873,7 +873,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	err = dma_trace_enable(dmat);
 	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: failed to enable trace %d", err);
+		ipc_cmd_err("ipc: failed to enable trace %d", err);
 		goto error;
 	}
 
@@ -906,12 +906,12 @@ static int ipc_trace_filter_update(uint32_t header)
 
 	/* validation, packet->hdr.size has already been compared with SOF_IPC_MSG_MAX_SIZE */
 	if (sizeof(*packet) + sizeof(*elem) * packet->elem_cnt != packet->hdr.size) {
-		ipc_cmd_err(&ipc_tr, "trace_filter_update failed, elem_cnt %d is inconsistent with hdr.size %d",
+		ipc_cmd_err("trace_filter_update failed, elem_cnt %d is inconsistent with hdr.size %d",
 			    packet->elem_cnt, packet->hdr.size);
 		return -EINVAL;
 	}
 
-	tr_info(&ipc_tr, "ipc: trace_filter_update received, size %d elems",
+	tr_info("ipc: trace_filter_update received, size %d elems",
 		packet->elem_cnt);
 
 	/* read each filter set and update selected components trace settings */
@@ -922,12 +922,12 @@ static int ipc_trace_filter_update(uint32_t header)
 
 		cnt = trace_filter_update(&filter);
 		if (cnt < 0) {
-			ipc_cmd_err(&ipc_tr, "trace_filter_update failed for UUID key 0x%X, comp %d.%d and log level %d",
+			ipc_cmd_err("trace_filter_update failed for UUID key 0x%X, comp %d.%d and log level %d",
 				    filter.uuid_id, filter.pipe_id, filter.comp_id,
 				    filter.log_level);
 			ret = cnt;
 		} else {
-			tr_info(&ipc_tr, "trace_filter_update for UUID key 0x%X, comp %d.%d affected %d components",
+			tr_info("trace_filter_update for UUID key 0x%X, comp %d.%d affected %d components",
 				filter.uuid_id, filter.pipe_id, filter.comp_id,
 				cnt);
 		}
@@ -942,7 +942,7 @@ static int ipc_glb_trace_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
 
-	tr_info(&ipc_tr, "ipc: debug cmd 0x%x", cmd);
+	tr_info("ipc: debug cmd 0x%x", cmd);
 
 	switch (cmd) {
 	case SOF_IPC_TRACE_DMA_PARAMS:
@@ -954,7 +954,7 @@ static int ipc_glb_trace_message(uint32_t header)
 	case SOF_IPC_TRACE_FILTER_UPDATE:
 		return ipc_trace_filter_update(header);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown debug cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown debug cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -992,10 +992,10 @@ static inline int ipc_probe_init(uint32_t header)
 	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
 	int dma_provided = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_init()");
+	tr_dbg("ipc_probe_init()");
 
 	if (dma_provided > 1 || dma_provided < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_init(): Invalid amount of extraction DMAs specified = %d",
+		ipc_cmd_err("ipc_probe_init(): Invalid amount of extraction DMAs specified = %d",
 			    dma_provided);
 		return -EINVAL;
 	}
@@ -1005,7 +1005,7 @@ static inline int ipc_probe_init(uint32_t header)
 
 static inline int ipc_probe_deinit(uint32_t header)
 {
-	tr_dbg(&ipc_tr, "ipc_probe_deinit()");
+	tr_dbg("ipc_probe_deinit()");
 
 	return probe_deinit();
 }
@@ -1015,17 +1015,17 @@ static inline int ipc_probe_dma_add(uint32_t header)
 	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
 	int dmas_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_dma_add()");
+	tr_dbg("ipc_probe_dma_add()");
 
 	if (dmas_count > CONFIG_PROBE_DMA_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_add(): Invalid amount of injection DMAs specified = %d. Max is "
+		ipc_cmd_err("ipc_probe_dma_add(): Invalid amount of injection DMAs specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    dmas_count);
 		return -EINVAL;
 	}
 
 	if (dmas_count <= 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_add(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		ipc_cmd_err("ipc_probe_dma_add(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 			    dmas_count);
 		return -EINVAL;
 	}
@@ -1038,17 +1038,17 @@ static inline int ipc_probe_dma_remove(uint32_t header)
 	struct sof_ipc_probe_dma_remove_params *params = ipc_get()->comp_data;
 	int tags_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_dma_remove()");
+	tr_dbg("ipc_probe_dma_remove()");
 
 	if (tags_count > CONFIG_PROBE_DMA_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_remove(): Invalid amount of injection DMAs specified = %d. Max is "
+		ipc_cmd_err("ipc_probe_dma_remove(): Invalid amount of injection DMAs specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    tags_count);
 		return -EINVAL;
 	}
 
 	if (tags_count <= 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_remove(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		ipc_cmd_err("ipc_probe_dma_remove(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 			    tags_count);
 		return -EINVAL;
 	}
@@ -1061,17 +1061,17 @@ static inline int ipc_probe_point_add(uint32_t header)
 	struct sof_ipc_probe_point_add_params *params = ipc_get()->comp_data;
 	int probes_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_point_add()");
+	tr_dbg("ipc_probe_point_add()");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_point_add(): Invalid amount of Probe Points specified = %d. Max is "
+		ipc_cmd_err("ipc_probe_point_add(): Invalid amount of Probe Points specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_POINT_MAX) ".",
 			    probes_count);
 		return -EINVAL;
 	}
 
 	if (probes_count <= 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_point_add(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		ipc_cmd_err("ipc_probe_point_add(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 			    probes_count);
 		return -EINVAL;
 	}
@@ -1084,17 +1084,17 @@ static inline int ipc_probe_point_remove(uint32_t header)
 	struct sof_ipc_probe_point_remove_params *params = ipc_get()->comp_data;
 	int probes_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_point_remove()");
+	tr_dbg("ipc_probe_point_remove()");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_point_remove(): Invalid amount of Probe Points specified = %d. Max is "
+		ipc_cmd_err("ipc_probe_point_remove(): Invalid amount of Probe Points specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_POINT_MAX) ".",
 			    probes_count);
 		return -EINVAL;
 	}
 
 	if (probes_count <= 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_point_remove(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		ipc_cmd_err("ipc_probe_point_remove(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 			    probes_count);
 		return -EINVAL;
 	}
@@ -1107,7 +1107,7 @@ static int ipc_probe_info(uint32_t header)
 	struct sof_ipc_probe_info_params *params = ipc_get()->comp_data;
 	int ret;
 
-	tr_dbg(&ipc_tr, "ipc_probe_get_data()");
+	tr_dbg("ipc_probe_get_data()");
 
 	switch (cmd) {
 	case SOF_IPC_PROBE_DMA_INFO:
@@ -1117,13 +1117,13 @@ static int ipc_probe_info(uint32_t header)
 		ret = probe_point_info(params, SOF_IPC_MSG_MAX_SIZE);
 		break;
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc_probe_info(): Invalid probe INFO command = %u",
+		ipc_cmd_err("ipc_probe_info(): Invalid probe INFO command = %u",
 			    cmd);
 		ret = -EINVAL;
 	}
 
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_info(): cmd %u failed", cmd);
+		ipc_cmd_err("ipc_probe_info(): cmd %u failed", cmd);
 		return ret;
 	}
 
@@ -1134,7 +1134,7 @@ static int ipc_probe_info(uint32_t header)
 		mailbox_hostbox_write(0, params, params->rhdr.hdr.size);
 		ret = 1;
 	} else {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_get_data(): probes module returned too much payload for cmd %u - returned %d bytes, max %d",
+		ipc_cmd_err("ipc_probe_get_data(): probes module returned too much payload for cmd %u - returned %d bytes, max %d",
 			    cmd, params->rhdr.hdr.size,
 			    MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
 		ret = -EINVAL;
@@ -1147,7 +1147,7 @@ static int ipc_glb_probe(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
 
-	tr_dbg(&ipc_tr, "ipc: probe cmd 0x%x", cmd);
+	tr_dbg("ipc: probe cmd 0x%x", cmd);
 
 	switch (cmd) {
 	case SOF_IPC_PROBE_INIT:
@@ -1166,14 +1166,14 @@ static int ipc_glb_probe(uint32_t header)
 	case SOF_IPC_PROBE_POINT_INFO:
 		return ipc_probe_info(header);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown probe cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown probe cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
 #else
 static inline int ipc_glb_probe(uint32_t header)
 {
-	ipc_cmd_err(&ipc_tr, "ipc_glb_probe(): Probes not enabled by Kconfig.");
+	ipc_cmd_err("ipc_glb_probe(): Probes not enabled by Kconfig.");
 
 	return -EINVAL;
 }
@@ -1194,7 +1194,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	/* get the component */
 	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
 	if (!comp_dev) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", data->comp_id);
+		ipc_cmd_err("ipc: comp %d not found", data->comp_id);
 		return -ENODEV;
 	}
 
@@ -1202,12 +1202,12 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	if (!cpu_is_me(comp_dev->core))
 		return ipc_process_on_core(comp_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
+	tr_dbg("ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
 	/* get component values */
 	ret = comp_cmd(comp_dev->cd, cmd, data, SOF_IPC_MSG_MAX_SIZE);
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d cmd %u failed %d", data->comp_id,
+		ipc_cmd_err("ipc: comp %d cmd %u failed %d", data->comp_id,
 			    data->cmd, ret);
 		return ret;
 	}
@@ -1218,7 +1218,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		mailbox_hostbox_write(0, data, data->rhdr.hdr.size);
 		ret = 1;
 	} else {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d cmd %u returned %d bytes max %d",
+		ipc_cmd_err("ipc: comp %d cmd %u returned %d bytes max %d",
 			    data->comp_id, data->cmd, data->rhdr.hdr.size,
 			    MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
 		ret = -EINVAL;
@@ -1241,7 +1241,7 @@ static int ipc_glb_comp_message(uint32_t header)
 	case SOF_IPC_COMP_GET_DATA:
 		return ipc_comp_value(header, COMP_CMD_GET_DATA);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown comp cmd 0x%x", cmd);
+		ipc_cmd_err("ipc: unknown comp cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -1262,13 +1262,13 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d comp %d -> new (type %d)",
+	tr_dbg("ipc: pipe %d comp %d -> new (type %d)",
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
 	ret = ipc_comp_new(ipc, ipc_to_comp_new(comp));
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d comp %d creation failed %d",
+		ipc_cmd_err("ipc: pipe %d comp %d creation failed %d",
 			    comp->pipeline_id, comp->id, ret);
 		return ret;
 	}
@@ -1298,13 +1298,13 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	if (!cpu_is_me(ipc_buffer.comp.core))
 		return ipc_process_on_core(ipc_buffer.comp.core, false);
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d buffer %d -> new (0x%x bytes)",
+	tr_dbg("ipc: pipe %d buffer %d -> new (0x%x bytes)",
 	       ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
 	       ipc_buffer.size);
 
 	ret = ipc_buffer_new(ipc, (struct sof_ipc_buffer *)ipc->comp_data);
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d buffer %d creation failed %d",
+		ipc_cmd_err("ipc: pipe %d buffer %d creation failed %d",
 			    ipc_buffer.comp.pipeline_id,
 			    ipc_buffer.comp.id, ret);
 		return ret;
@@ -1335,11 +1335,11 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	if (!cpu_is_me(ipc_pipeline.core))
 		return ipc_process_on_core(ipc_pipeline.core, false);
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
+	tr_dbg("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
 	ret = ipc_pipeline_new(ipc, ipc->comp_data);
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d creation failed %d",
+		ipc_cmd_err("ipc: pipe %d creation failed %d",
 			    ipc_pipeline.pipeline_id, ret);
 		return ret;
 	}
@@ -1382,13 +1382,13 @@ static int ipc_glb_tplg_free(uint32_t header,
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(ipc_free_msg, ipc->comp_data);
 
-	tr_info(&ipc_tr, "ipc: comp %d -> free", ipc_free_msg.id);
+	tr_info("ipc: comp %d -> free", ipc_free_msg.id);
 
 	/* free the object */
 	ret = free_func(ipc, ipc_free_msg.id);
 
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: comp %d free failed %d",
+		ipc_cmd_err("ipc: comp %d free failed %d",
 			    ipc_free_msg.id, ret);
 	}
 
@@ -1417,7 +1417,7 @@ static int ipc_glb_tplg_message(uint32_t header)
 	case SOF_IPC_TPLG_BUFFER_FREE:
 		return ipc_glb_tplg_free(header, ipc_buffer_free);
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown tplg header 0x%x", header);
+		ipc_cmd_err("ipc: unknown tplg header 0x%x", header);
 		return -EINVAL;
 	}
 }
@@ -1502,7 +1502,7 @@ static int ipc_glb_debug_message(uint32_t header)
 		return ipc_glb_test_mem_usage(header);
 #endif
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown debug header 0x%x", header);
+		ipc_cmd_err("ipc: unknown debug header 0x%x", header);
 		return -EINVAL;
 	}
 }
@@ -1516,7 +1516,7 @@ static int ipc_glb_test_message(uint32_t header)
 	case SOF_IPC_TEST_IPC_FLOOD:
 		return 0; /* just return so next IPC can be sent */
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown test header 0x%x", header);
+		ipc_cmd_err("ipc: unknown test header 0x%x", header);
 		return -EINVAL;
 	}
 }
@@ -1627,7 +1627,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	int ret;
 
 	if (!hdr) {
-		ipc_cmd_err(&ipc_tr, "ipc: invalid IPC header.");
+		ipc_cmd_err("ipc: invalid IPC header.");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1635,7 +1635,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	if (cpu_is_primary(cpu_get_id())) {
 		/* A new IPC from the host, delivered to the primary core */
 		ipc->core = PLATFORM_PRIMARY_CORE_ID;
-		tr_info(&ipc_tr, "ipc: new cmd 0x%x", hdr->cmd);
+		tr_info("ipc: new cmd 0x%x", hdr->cmd);
 	}
 
 	type = iGS(hdr->cmd);
@@ -1683,13 +1683,13 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		break;
 #endif
 	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown command type %u", type);
+		ipc_cmd_err("ipc: unknown command type %u", type);
 		ret = -EINVAL;
 		break;
 	}
 
 out:
-	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
+	tr_dbg("ipc: last request 0x%x returned %d", type, ret);
 
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {

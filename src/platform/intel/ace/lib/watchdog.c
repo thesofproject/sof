@@ -88,7 +88,7 @@ void watchdog_init(void)
 
 	ret = wdt_install_timeout(watchdog, &watchdog_config);
 	if (ret) {
-		tr_warn(&wdt_tr, "Watchdog install timeout error %d", ret);
+		tr_warn("Watchdog install timeout error %d", ret);
 		return;
 	}
 
@@ -97,7 +97,7 @@ void watchdog_init(void)
 
 	ret = wdt_setup(watchdog, 0);
 	if (ret)
-		tr_warn(&wdt_tr, "Watchdog setup error %d", ret);
+		tr_warn("Watchdog setup error %d", ret);
 }
 
 void watchdog_enable(int core)

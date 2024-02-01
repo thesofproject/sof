@@ -101,13 +101,13 @@ static struct dma_chan_data *acp_dai_sw_audio_dma_channel_get(struct dma *dma,
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sw_audio_tr, "Channel %d not in range", req_chan);
+		tr_err("Channel %d not in range", req_chan);
 		return NULL;
 	}
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acp_sw_audio_tr, "channel already in use %d", req_chan);
+		tr_err("channel already in use %d", req_chan);
 		return NULL;
 	}
 	atomic_add(&dma->num_channels_busy, 1);
@@ -157,7 +157,7 @@ static int acp_dai_sw_audio_dma_start(struct dma_chan_data *channel)
 					0x1, 0x1, 15);
 		break;
 	default:
-		tr_err(&acp_sw_audio_tr, "Start direction not defined %d",
+		tr_err("Start direction not defined %d",
 		       channel->direction);
 		return -EINVAL;
 	}
@@ -203,7 +203,7 @@ static int acp_dai_sw_audio_dma_stop(struct dma_chan_data *channel)
 					0x1, 0x0, 15);
 		break;
 	default:
-		tr_err(&acp_sw_audio_tr, "Stop direction not defined %d",
+		tr_err("Stop direction not defined %d",
 		       channel->direction);
 		return -EINVAL;
 	}
@@ -241,11 +241,11 @@ static int acp_dai_sw_audio_dma_set_config(struct dma_chan_data *channel,
 	uint32_t sw0_audio_fifo_addr;
 
 	if (!config->cyclic) {
-		tr_err(&acp_sw_audio_tr, "cyclic configurations only supported!");
+		tr_err("cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_sw_audio_tr, "scatter enabled, that is not supported for now!");
+		tr_err("scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -308,7 +308,7 @@ static int acp_dai_sw_audio_dma_set_config(struct dma_chan_data *channel,
 			     sw_audio_buff_size_capture >> 1);
 		break;
 	default:
-		tr_err(&acp_sw_audio_tr, "Config channel direction undefined %d",
+		tr_err("Config channel direction undefined %d",
 		       channel->direction);
 		return -EINVAL;
 	}
@@ -334,14 +334,14 @@ static int acp_dai_sw_audio_dma_probe(struct dma *dma)
 	int channel;
 
 	if (dma->chan) {
-		tr_err(&acp_sw_audio_tr, "Repeated probe");
+		tr_err("Repeated probe");
 		return -EEXIST;
 	}
 	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
 			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&acp_sw_audio_tr, "Probe failure,unable to allocate channel descriptors");
+		tr_err("Probe failure,unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -356,7 +356,7 @@ static int acp_dai_sw_audio_dma_probe(struct dma *dma)
 static int acp_dai_sw_audio_dma_remove(struct dma *dma)
 {
 	if (!dma->chan) {
-		tr_err(&acp_sw_audio_tr, "remove called without probe,it's a no-op");
+		tr_err("remove called without probe,it's a no-op");
 		return 0;
 	}
 
@@ -378,7 +378,7 @@ static int acp_dai_sw_audio_dma_get_data_size(struct dma_chan_data *channel,
 		*avail = sw_audio_buff_size_capture >> 1;
 
 	} else {
-		tr_err(&acp_sw_audio_tr, "Channel direction not defined %d", channel->direction);
+		tr_err("Channel direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 

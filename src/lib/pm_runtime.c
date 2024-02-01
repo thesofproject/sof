@@ -57,7 +57,7 @@ void pm_runtime_init(struct sof *sof)
  */
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_get() context %d index %d", context, index);
+	tr_dbg("pm_runtime_get() context %d index %d", context, index);
 
 	switch (context) {
 	default:
@@ -68,7 +68,7 @@ void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_get_sync() context %d index %d", context,
+	tr_dbg("pm_runtime_get_sync() context %d index %d", context,
 	       index);
 
 	switch (context) {
@@ -82,7 +82,7 @@ void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
  */
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_put() context %d index %d", context, index);
+	tr_dbg("pm_runtime_put() context %d index %d", context, index);
 
 	switch (context) {
 	default:
@@ -93,7 +93,7 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_put_sync() context %d index %d", context,
+	tr_dbg("pm_runtime_put_sync() context %d index %d", context,
 	       index);
 
 	switch (context) {
@@ -106,7 +106,7 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 /** Enables power _management_. The management, not the power. */
 void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_enable() context %d index %d", context,
+	tr_dbg("pm_runtime_enable() context %d index %d", context,
 	       index);
 
 	switch (context) {
@@ -119,7 +119,7 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 /** Disables power _management_. The management, not the power. */
 void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_disable() context %d index %d", context,
+	tr_dbg("pm_runtime_disable() context %d index %d", context,
 	       index);
 
 	switch (context) {
@@ -132,7 +132,7 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 /** Is the _power_ active. The power, not its management. */
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_is_active() context %d index %d", context,
+	tr_dbg("pm_runtime_is_active() context %d index %d", context,
 	       index);
 #if defined(__ZEPHYR__) && defined(CONFIG_PM)
 	return pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);

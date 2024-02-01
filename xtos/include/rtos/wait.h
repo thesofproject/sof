@@ -29,13 +29,13 @@ static inline void wait_for_interrupt(int level)
 {
 	LOG_MODULE_DECLARE(wait, CONFIG_SOF_LOG_LEVEL);
 
-	tr_dbg(&wait_tr, "WFE");
+	tr_dbg("WFE");
 #if CONFIG_DEBUG_LOCKS
 	if (lock_dbg_atomic)
 		tr_err_atomic("atm");
 #endif
 	platform_wait_for_interrupt(level);
-	tr_dbg(&wait_tr, "WFX");
+	tr_dbg("WFX");
 }
 
 /**

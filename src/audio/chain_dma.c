@@ -147,14 +147,14 @@ static void handle_xrun(struct chain_dma_data *cd)
 
 	if (cd->link_connector_node_id.f.dma_type == ipc4_hda_link_output_class &&
 	    !cd->xrun_notification_sent) {
-		tr_warn(&chain_dma_tr, "handle_xrun(): underrun detected");
+		tr_warn("handle_xrun(): underrun detected");
 		xrun_notif_msg_init(cd->msg_xrun, cd->link_connector_node_id.dw,
 				    SOF_IPC4_GATEWAY_UNDERRUN_DETECTED);
 		ipc_msg_send(cd->msg_xrun, NULL, true);
 		cd->xrun_notification_sent = true;
 	} else if (cd->link_connector_node_id.f.dma_type == ipc4_hda_link_input_class &&
 		   !cd->xrun_notification_sent) {
-		tr_warn(&chain_dma_tr, "handle_xrun(): overrun detected");
+		tr_warn("handle_xrun(): overrun detected");
 		xrun_notif_msg_init(cd->msg_xrun, cd->link_connector_node_id.dw,
 				    SOF_IPC4_GATEWAY_OVERRUN_DETECTED);
 		ipc_msg_send(cd->msg_xrun, NULL, true);
@@ -185,14 +185,14 @@ static enum task_state chain_task_run(void *data)
 	case 0:
 		break;
 	case -EPIPE:
-		tr_warn(&chain_dma_tr, "chain_task_run(): dma_get_status() link xrun occurred,"
+		tr_warn("chain_task_run(): dma_get_status() link xrun occurred,"
 			" ret = %u", ret);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 		handle_xrun(cd);
 #endif
 		break;
 	default:
-		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %u", ret);
+		tr_err("chain_task_run(): dma_get_status() error, ret = %u", ret);
 		return SOF_TASK_STATE_COMPLETED;
 	}
 
@@ -203,7 +203,7 @@ static enum task_state chain_task_run(void *data)
 	/* Host DMA does not report xruns. All error values will be treated as critical. */
 	ret = dma_get_status(cd->chan_host->dma->z_dev, cd->chan_host->index, &stat);
 	if (ret < 0) {
-		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %u", ret);
+		tr_err("chain_task_run(): dma_get_status() error, ret = %u", ret);
 		return SOF_TASK_STATE_COMPLETED;
 	}
 
@@ -221,15 +221,13 @@ static enum task_state chain_task_run(void *data)
 
 		ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index, 0, 0, increment);
 		if (ret < 0) {
-			tr_err(&chain_dma_tr,
-			       "chain_task_run(): dma_reload() host error, ret = %u", ret);
+			tr_err("chain_task_run(): dma_reload() host error, ret = %u", ret);
 			return SOF_TASK_STATE_COMPLETED;
 		}
 
 		ret = dma_reload(cd->chan_link->dma->z_dev, cd->chan_link->index, 0, 0, increment);
 		if (ret < 0) {
-			tr_err(&chain_dma_tr,
-			       "chain_task_run(): dma_reload() link error, ret = %u", ret);
+			tr_err("chain_task_run(): dma_reload() link error, ret = %u", ret);
 			return SOF_TASK_STATE_COMPLETED;
 		}
 	} else {
@@ -246,9 +244,8 @@ static enum task_state chain_task_run(void *data)
 					 cd->chan_link->index, 0, 0,
 					 half_buff_size);
 			if (ret < 0) {
-				tr_err(&chain_dma_tr,
-				       "chain_task_run(): dma_reload() link error, ret = %u",
-					ret);
+				tr_err("chain_task_run(): dma_reload() link error, ret = %u",
+				       ret);
 				return SOF_TASK_STATE_COMPLETED;
 			}
 			cd->first_data_received = true;
@@ -262,8 +259,7 @@ static enum task_state chain_task_run(void *data)
 			ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index,
 					 0, 0, transferred);
 			if (ret < 0) {
-				tr_err(&chain_dma_tr,
-				       "chain_task_run(): dma_reload() host error, ret = %u", ret);
+				tr_err("chain_task_run(): dma_reload() host error, ret = %u", ret);
 				return SOF_TASK_STATE_COMPLETED;
 			}
 
@@ -272,7 +268,7 @@ static enum task_state chain_task_run(void *data)
 				ret = dma_reload(cd->chan_link->dma->z_dev, cd->chan_link->index,
 						 0, 0, half_buff_size);
 				if (ret < 0) {
-					tr_err(&chain_dma_tr, "chain_task_run(): dma_reload() "
+					tr_err("chain_task_run(): dma_reload() "
 					       "link error, ret = %u", ret);
 					return SOF_TASK_STATE_COMPLETED;
 				}

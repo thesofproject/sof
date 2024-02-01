@@ -156,9 +156,9 @@ static uint32_t mt8186_sinegen_timing(uint32_t rate)
 		break;
 	default:
 		sinegen_timing = SGEN_CH_TIMING_48K;
-		tr_err(&sgen_tr, "invalid rate %d, set default 48k ", rate);
+		tr_err("invalid rate %d, set default 48k ", rate);
 	}
-	tr_dbg(&sgen_tr, "rate %d, sinegen_timing %d ", rate, sinegen_timing);
+	tr_dbg("rate %d, sinegen_timing %d ", rate, sinegen_timing);
 	return sinegen_timing;
 }
 
@@ -176,7 +176,7 @@ static void mt8186_afe_sinegen_enable(uint32_t sgen_id, uint32_t rate, int enabl
 {
 	uint32_t loopback_mode, reg_1, reg_2, sinegen_timing;
 
-	tr_dbg(&sgen_tr, "sgen_id %d, enable %d", sgen_id, enable);
+	tr_dbg("sgen_id %d, enable %d", sgen_id, enable);
 
 	sinegen_timing = mt8186_sinegen_timing(rate);
 
@@ -196,7 +196,7 @@ static void mt8186_afe_sinegen_enable(uint32_t sgen_id, uint32_t rate, int enabl
 			loopback_mode = MT8186_SGEN_DL2;
 			break;
 		default:
-			tr_err(&sgen_tr, "invalid sgen_id %d", sgen_id);
+			tr_err("invalid sgen_id %d", sgen_id);
 			return;
 		}
 		/* enable sinegen clock*/
@@ -237,7 +237,7 @@ static void mt8186_afe_sinegen_enable(uint32_t sgen_id, uint32_t rate, int enabl
 
 	reg_1 = mtk_afe_reg_read(AFE_SINEGEN_CON0);
 	reg_2 = mtk_afe_reg_read(AFE_SINEGEN_CON2);
-	tr_dbg(&sgen_tr, "AFE_SINEGEN_CON0 0x%x, AFE_SINEGEN_CON2 0x%x", reg_1, reg_2);
+	tr_dbg("AFE_SINEGEN_CON0 0x%x, AFE_SINEGEN_CON2 0x%x", reg_1, reg_2);
 }
 
 void afe_sinegen_enable(void)

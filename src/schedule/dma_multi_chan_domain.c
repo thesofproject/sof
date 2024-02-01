@@ -86,7 +86,7 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
 {
 	int ret;
 
-	tr_info(&ll_tr, "dma_multi_chan_domain_irq_register()");
+	tr_info("dma_multi_chan_domain_irq_register()");
 
 	/* always go through dma_multi_chan_domain_irq_handler,
 	 * so we have different arg registered for every channel
@@ -125,7 +125,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 	int i;
 	int j;
 
-	tr_info(&ll_tr, "dma_multi_chan_domain_register()");
+	tr_info("dma_multi_chan_domain_register()");
 
 	/* check if task should be registered */
 	if (!pipe_task->registrable)
@@ -192,7 +192,7 @@ out:
  */
 static void dma_multi_chan_domain_irq_unregister(struct dma_domain_data *data)
 {
-	tr_info(&ll_tr, "dma_multi_chan_domain_irq_unregister()");
+	tr_info("dma_multi_chan_domain_irq_unregister()");
 
 	interrupt_disable(data->irq, data);
 
@@ -217,7 +217,7 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 	int i;
 	int j;
 
-	tr_info(&ll_tr, "dma_multi_chan_domain_unregister()");
+	tr_info("dma_multi_chan_domain_unregister()");
 
 	/* check if task should be unregistered */
 	if (!task || !pipe_task->registrable)
@@ -365,7 +365,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	int i;
 	int j;
 
-	tr_info(&ll_tr, "dma_multi_chan_domain_init(): num_dma %d, clk %d, aggregated_irq %d",
+	tr_info("dma_multi_chan_domain_init(): num_dma %d, clk %d, aggregated_irq %d",
 		num_dma, clk, aggregated_irq);
 
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, true,

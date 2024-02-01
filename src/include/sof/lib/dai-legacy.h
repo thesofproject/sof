@@ -223,7 +223,6 @@ struct dai_type_info {
 };
 
 /* dai tracing */
-#define trace_dai_drv_get_tr_ctx(drv_p) ((drv_p)->tctx)
 #define trace_dai_drv_get_id(drv_p) (-1)
 #define trace_dai_drv_get_subid(drv_p) (-1)
 

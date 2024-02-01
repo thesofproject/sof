@@ -65,10 +65,10 @@ static void validate_memory(void *ptr, size_t size)
 	}
 
 	if (not_matching) {
-		tr_info(&mem_tr, "validate_memory() pointer: %p freed pattern not detected",
+		tr_info("validate_memory() pointer: %p freed pattern not detected",
 			ptr);
 	} else {
-		tr_err(&mem_tr, "validate_memory() freeing pointer: %p double free detected",
+		tr_err("validate_memory() freeing pointer: %p double free detected",
 		       ptr);
 	}
 }
@@ -158,7 +158,7 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 
 	/* always succeeds or panics */
 	if (alignment + bytes > heap->info.free) {
-		tr_err(&mem_tr, "rmalloc_sys(): core = %d, bytes = %d",
+		tr_err("rmalloc_sys(): core = %d, bytes = %d",
 		       cpu_get_id(), bytes);
 		sof_panic(SOF_IPC_PANIC_MEM);
 	}
@@ -301,7 +301,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	if (found < total_bytes) {
-		tr_err(&mem_tr, "failed to allocate %u", total_bytes);
+		tr_err("failed to allocate %u", total_bytes);
 		goto out;
 	}
 
@@ -468,7 +468,7 @@ static void free_block(void *ptr)
 	if (!heap) {
 		heap = get_heap_from_ptr(uncached_ptr);
 		if (!heap) {
-			tr_err(&mem_tr, "free_block(): invalid heap, ptr = %p, cpu = %d",
+			tr_err("free_block(): invalid heap, ptr = %p, cpu = %d",
 			       ptr, cpu_get_id());
 			return;
 		}
@@ -491,7 +491,7 @@ static void free_block(void *ptr)
 	if (i == heap->blocks) {
 
 		/* not found */
-		tr_err(&mem_tr, "free_block(): invalid free_ptr = %p cpu = %d",
+		tr_err("free_block(): invalid free_ptr = %p cpu = %d",
 		       free_ptr, cpu_get_id());
 		return;
 	}
@@ -564,19 +564,19 @@ void heap_trace(struct mm_heap *heap, int size)
 	int j;
 
 	for (i = 0; i < size; i++) {
-		tr_info(&mem_tr, " heap: 0x%x size %d blocks %d caps 0x%x",
+		tr_info(" heap: 0x%x size %d blocks %d caps 0x%x",
 			heap->heap, heap->size, heap->blocks,
 			heap->caps);
-		tr_info(&mem_tr, "  (In Bytes) used %d free %d", heap->info.used,
+		tr_info("  (In Bytes) used %d free %d", heap->info.used,
 			heap->info.free);
 
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 0; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
 
-			tr_info(&mem_tr, " %d Bytes blocks ID:%d base 0x%x",
+			tr_info(" %d Bytes blocks ID:%d base 0x%x",
 				current_map->block_size, j, current_map->base);
-			tr_info(&mem_tr, "   Number of Blocks: total %d used %d free %d",
+			tr_info("   Number of Blocks: total %d used %d free %d",
 				current_map->count,
 				(current_map->count - current_map->free_count),
 				current_map->free_count);
@@ -592,18 +592,18 @@ void heap_trace_all(int force)
 
 	/* has heap changed since last shown */
 	if (memmap->heap_trace_updated || force) {
-		tr_info(&mem_tr, "heap: system status");
+		tr_info("heap: system status");
 		heap_trace(memmap->system, PLATFORM_HEAP_SYSTEM);
-		tr_info(&mem_tr, "heap: system runtime status");
+		tr_info("heap: system runtime status");
 		heap_trace(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
-		tr_info(&mem_tr, "heap: buffer status");
+		tr_info("heap: buffer status");
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
-		tr_info(&mem_tr, "heap: runtime status");
+		tr_info("heap: runtime status");
 		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
 #if CONFIG_CORE_COUNT > 1
-		tr_info(&mem_tr, "heap: runtime shared status");
+		tr_info("heap: runtime shared status");
 		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
-		tr_info(&mem_tr, "heap: system shared status");
+		tr_info("heap: system shared status");
 		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
 #endif
 	}
@@ -617,8 +617,7 @@ void heap_trace(struct mm_heap *heap, int size) { }
 #endif
 
 #define _ALLOC_FAILURE(bytes, zone, caps, flags) \
-	tr_err(&mem_tr, \
-	       "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+	tr_err("failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
 	       bytes, zone, caps, flags)
 
 #if CONFIG_DEBUG_HEAP
@@ -673,7 +672,7 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 					  caps);
 		if (!heap) {
 
-			tr_err(&mem_tr, "rmalloc_runtime(): caps = %x, bytes = %d",
+			tr_err("rmalloc_runtime(): caps = %x, bytes = %d",
 			       caps, bytes);
 
 			return NULL;
@@ -694,7 +693,7 @@ static void *rmalloc_runtime_shared(uint32_t flags, uint32_t caps, size_t bytes)
 	/* check shared heap for capabilities */
 	heap = get_heap_from_caps(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED, caps);
 	if (!heap) {
-		tr_err(&mem_tr, "rmalloc_runtime_shared(): caps = %x, bytes = %d", caps, bytes);
+		tr_err("rmalloc_runtime_shared(): caps = %x, bytes = %d", caps, bytes);
 		return NULL;
 	}
 
@@ -735,7 +734,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 #endif
 
 	default:
-		tr_err(&mem_tr, "rmalloc(): invalid zone");
+		tr_err("rmalloc(): invalid zone");
 		sof_panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
 		break;
 	}
@@ -983,7 +982,7 @@ static void _rfree_unlocked(void *ptr)
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)heap->heap &&
 	    (char *)ptr < (char *)heap->heap + heap->size) {
-		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
+		tr_err("rfree(): attempt to free system heap = %p, cpu = %d",
 		       ptr, cpu_get_id());
 		sof_panic(SOF_IPC_PANIC_MEM);
 	}
@@ -1047,7 +1046,7 @@ void free_heap(enum mem_zone zone)
 	 */
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID ||
 	    zone != SOF_MEM_ZONE_SYS) {
-		tr_err(&mem_tr, "free_heap(): critical flow issue");
+		tr_err("free_heap(): critical flow issue");
 		sof_panic(SOF_IPC_PANIC_MEM);
 	}
 
@@ -1142,7 +1141,7 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 	k_spin_unlock(&memmap->lock, key);
 	return 0;
 error:
-	tr_err(&mem_tr, "heap_info(): failed for zone 0x%x index %d out ptr 0x%x", zone, index,
+	tr_err("heap_info(): failed for zone 0x%x index %d out ptr 0x%x", zone, index,
 	       (uint32_t)out);
 	return -EINVAL;
 }

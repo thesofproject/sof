@@ -48,7 +48,7 @@ static void mtk_irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 			io_reg_update_bits(MTK_ADSP_IRQ_EN, BIT(desc->irq), 0);
 			break;
 		default:
-			tr_err(&int_tr, "Invalid interrupt %d", desc->irq);
+			tr_err("Invalid interrupt %d", desc->irq);
 			return;
 		}
 	}
@@ -64,7 +64,7 @@ static void mtk_irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int cor
 			io_reg_update_bits(MTK_ADSP_IRQ_EN, BIT(desc->irq), BIT(desc->irq));
 			break;
 		default:
-			tr_err(&int_tr, "Invalid interrupt %d", desc->irq);
+			tr_err("Invalid interrupt %d", desc->irq);
 			return;
 		}
 	}
@@ -125,7 +125,7 @@ static inline void mtk_handle_group_pending_irq(struct irq_cascade_desc *cascade
 		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
-			tr_err(&int_tr, "Not handle irq %u in group %u",
+			tr_err("Not handle irq %u in group %u",
 			       idx, line_index);
 		}
 
@@ -144,7 +144,7 @@ static inline void mtk_irq_group_handler(void *data, uint32_t line_index)
 	if (status)
 		mtk_handle_group_pending_irq(cascade, line_index, status);
 	else
-		tr_err(&int_tr, "No pending irq in group %d", line_index);
+		tr_err("No pending irq in group %d", line_index);
 }
 
 #define DEFINE_IRQ_HANDLER(n) \

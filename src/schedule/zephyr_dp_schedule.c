@@ -393,7 +393,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	pdata->mod->dp_startup_delay = true;
 	scheduler_dp_unlock(lock_key);
 
-	tr_dbg(&dp_tr, "DP task scheduled with period %u [us]", (uint32_t)period);
+	tr_dbg("DP task scheduled with period %u [us]", (uint32_t)period);
 	return 0;
 }
 
@@ -463,7 +463,7 @@ int scheduler_dp_task_init(struct task **task,
 	task_memory = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			      sizeof(*task_memory));
 	if (!task_memory) {
-		tr_err(&dp_tr, "zephyr_dp_task_init(): memory alloc failed");
+		tr_err("zephyr_dp_task_init(): memory alloc failed");
 		return -ENOMEM;
 	}
 
@@ -472,7 +472,7 @@ int scheduler_dp_task_init(struct task **task,
 	p_stack = (__sparse_force void __sparse_cache *)
 		rballoc_align(0, SOF_MEM_CAPS_RAM, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
 	if (!p_stack) {
-		tr_err(&dp_tr, "zephyr_dp_task_init(): stack alloc failed");
+		tr_err("zephyr_dp_task_init(): stack alloc failed");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -483,14 +483,14 @@ int scheduler_dp_task_init(struct task **task,
 				    task_priority, K_USER, K_FOREVER);
 	if (!thread_id)	{
 		ret = -EFAULT;
-		tr_err(&dp_tr, "zephyr_dp_task_init(): zephyr thread create failed");
+		tr_err("zephyr_dp_task_init(): zephyr thread create failed");
 		goto err;
 	}
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(thread_id, core);
 	if (ret < 0) {
 		ret = -EFAULT;
-		tr_err(&dp_tr, "zephyr_dp_task_init(): zephyr task pin to core failed");
+		tr_err("zephyr_dp_task_init(): zephyr task pin to core failed");
 		goto err;
 	}
 
@@ -498,7 +498,7 @@ int scheduler_dp_task_init(struct task **task,
 	ret = schedule_task_init(&task_memory->task, uid, SOF_SCHEDULE_DP, 0, ops->run,
 				 mod, core, 0);
 	if (ret < 0) {
-		tr_err(&dp_tr, "zephyr_dp_task_init(): schedule_task_init failed");
+		tr_err("zephyr_dp_task_init(): schedule_task_init failed");
 		goto err;
 	}
 

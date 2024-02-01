@@ -59,7 +59,7 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
 			 * to handle case with enabled PG andf disabled CG.
 			 */
-			tr_dbg(&power_tr, "transition to state %x (min_residency = %u, exit_latency = %u)",
+			tr_dbg("transition to state %x (min_residency = %u, exit_latency = %u)",
 			       state->state, min_residency, exit_latency);
 			return state;
 		}
@@ -74,7 +74,7 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 	switch (context) {
 	case PM_RUNTIME_DSP:
 		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-		tr_dbg(&power_tr, "removing prevent on d0i3 (lock is active=%d)",
+		tr_dbg("removing prevent on d0i3 (lock is active=%d)",
 		       pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES));
 		break;
 	default:
@@ -86,7 +86,7 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 {
 	switch (context) {
 	case PM_RUNTIME_DSP:
-		tr_dbg(&power_tr, "putting prevent on d0i3");
+		tr_dbg("putting prevent on d0i3");
 		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 		break;
 	default:

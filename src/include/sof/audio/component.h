@@ -132,9 +132,6 @@ enum {
 /** \brief Retrieves subid (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_subid(drv_p) (-1)
 
-/** \brief Retrieves trace context from the component device */
-#define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
-
 /** \brief Retrieves id (pipe id) from the component device */
 #define trace_comp_get_id(comp_p) ((comp_p)->ipc_config.pipeline_id)
 

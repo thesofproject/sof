@@ -89,7 +89,7 @@ int acp_dmic_dma_start(struct dma_chan_data *channel)
 				/* safe check in case we've got preempted after read */
 				if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
 					return 0;
-				tr_err(&acp_dmic_dma_rn_tr, "DMICDMA: timed out for dma start");
+				tr_err("DMICDMA: timed out for dma start");
 				return -ETIME;
 			}
 			pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
@@ -130,7 +130,7 @@ int acp_dmic_dma_stop(struct dma_chan_data *channel)
 			/* safe check in case we've got preempted after read */
 			if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
 				return 0;
-			tr_err(&acp_dmic_dma_rn_tr, "DMIC-DMA: timed out for dma stop");
+			tr_err("DMIC-DMA: timed out for dma stop");
 			return -ETIME;
 		}
 		pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
@@ -193,18 +193,15 @@ int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 		acp_initsilence.numfilterbuffers = DMIC_SMOOTH_TIME_MS / timeperiod_ms;
 		break;
 	default:
-		tr_err(&acp_dmic_dma_rn_tr,
-		       "dmic dma_set_config() unsupported config direction");
+		tr_err("dmic dma_set_config() unsupported config direction");
 		return -EINVAL;
 	}
 	if (!config->cyclic) {
-		tr_err(&acp_dmic_dma_rn_tr,
-		       "DMIC DMA: cyclic configurations only supported!");
+		tr_err("DMIC DMA: cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_dmic_dma_rn_tr,
-		       "DMIC DMA: scatter enabled, not supported for now!");
+		tr_err("DMIC DMA: scatter enabled, not supported for now!");
 		return -EINVAL;
 	}
 	return 0;

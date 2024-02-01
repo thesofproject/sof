@@ -40,9 +40,6 @@ struct comp_dev;
 /* buffer tracing */
 extern struct tr_ctx buffer_tr;
 
-/** \brief Retrieves trace context from the buffer */
-#define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
-
 /** \brief Retrieves id (pipe id) from the buffer */
 #define trace_buf_get_id(buf_ptr) ((buf_ptr)->pipeline_id)
 

@@ -62,7 +62,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	list_item_del(&task->list);
 
 	if (!sch->n_tasks) {
-		tr_info(&ll_tr, "task count underrun!");
+		tr_info("task count underrun!");
 		k_panic();
 	}
 
@@ -75,8 +75,8 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 */
 		k_sem_give(&pdata->sem);
 
-	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
-	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
+	tr_info("task complete %p %pU", task, task->uid);
+	tr_info("num_tasks %d total_num_tasks %ld",
 		sch->n_tasks, atomic_read(&sch->ll_domain->total_num_tasks));
 
 	/*
@@ -214,8 +214,7 @@ static void zephyr_ll_run(void *data)
 		state = do_task_run(task);
 		if (state != SOF_TASK_STATE_COMPLETED &&
 		    state != SOF_TASK_STATE_RESCHEDULE) {
-			tr_err(&ll_tr,
-			       "zephyr_ll_run: invalid return state %u",
+			tr_err("zephyr_ll_run: invalid return state %u",
 			       state);
 			state = SOF_TASK_STATE_RESCHEDULE;
 		}
@@ -271,7 +270,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	zephyr_ll_assert_core(sch);
 
-	tr_info(&ll_tr, "task add %p %pU priority %d flags 0x%x", task, task->uid,
+	tr_info("task add %p %pU priority %d flags 0x%x", task, task->uid,
 		task->priority, task->flags);
 
 	zephyr_ll_lock(sch, &flags);
@@ -302,7 +301,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 			 * Remove after verification
 			 */
 			zephyr_ll_unlock(sch, &flags);
-			tr_warn(&ll_tr, "task %p (%pU) already scheduled",
+			tr_warn("task %p (%pU) already scheduled",
 				task, task->uid);
 			return 0;
 		}
@@ -328,7 +327,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	ret = domain_register(sch->ll_domain, task, &zephyr_ll_run, sch);
 	if (ret < 0)
-		tr_err(&ll_tr, "zephyr_ll_task_schedule: cannot register domain %d",
+		tr_err("zephyr_ll_task_schedule: cannot register domain %d",
 		       ret);
 
 	return 0;
@@ -372,8 +371,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	zephyr_ll_assert_core(sch);
 
 	if (k_is_in_isr()) {
-		tr_err(&ll_tr,
-		       "zephyr_ll_task_free: cannot free tasks from interrupt context!");
+		tr_err("zephyr_ll_task_free: cannot free tasks from interrupt context!");
 		return -EDEADLK;
 	}
 
@@ -467,7 +465,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 	zephyr_ll_assert_core(sch);
 
 	if (sch->n_tasks)
-		tr_err(&ll_tr, "zephyr_ll_scheduler_free: %u tasks are still active!",
+		tr_err("zephyr_ll_scheduler_free: %u tasks are still active!",
 		       sch->n_tasks);
 }
 
@@ -499,7 +497,7 @@ int zephyr_ll_task_init(struct task *task,
 	pdata = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
 			sizeof(*pdata));
 	if (!pdata) {
-		tr_err(&ll_tr, "zephyr_ll_task_init(): alloc failed");
+		tr_err("zephyr_ll_task_init(): alloc failed");
 		return -ENOMEM;
 	}
 

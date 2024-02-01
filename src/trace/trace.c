@@ -303,7 +303,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 			filter->pipe_id = elem->value;
 			break;
 		default:
-			tr_err(&ipc_tr, "Invalid SOF_IPC_TRACE_FILTER_ELEM 0x%x",
+			tr_err("Invalid SOF_IPC_TRACE_FILTER_ELEM 0x%x",
 			       elem->key);
 			return NULL;
 		}
@@ -311,7 +311,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 		/* each filter set must be terminated with FIN flag and have new log level */
 		if (elem->key & SOF_IPC_TRACE_FILTER_ELEM_FIN) {
 			if (filter->log_level < 0) {
-				tr_err(&ipc_tr, "Each trace filter set must specify new log level");
+				tr_err("Each trace filter set must specify new log level");
 				return NULL;
 			} else {
 				return elem + 1;
@@ -321,7 +321,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 		++elem;
 	}
 
-	tr_err(&ipc_tr, "Trace filter elements set is not properly terminated");
+	tr_err("Trace filter elements set is not properly terminated");
 	return NULL;
 }
 
@@ -370,7 +370,7 @@ static struct tr_ctx *trace_filter_ipc_comp_context(struct ipc_comp_dev *icd)
 		return &icd->pipeline->tctx;
 	/* each COMP_TYPE must be specified */
 	default:
-		tr_err(&ipc_tr, "Unknown trace context for ipc component type 0x%X",
+		tr_err("Unknown trace context for ipc component type 0x%X",
 		       icd->type);
 		return NULL;
 	}
@@ -413,7 +413,7 @@ int trace_filter_update(const struct trace_filter *filter)
 
 	if (!trace->user_filter_override) {
 		trace->user_filter_override = true;
-		tr_info(&ipc_tr, "Adaptive filtering disabled by user");
+		tr_info("Adaptive filtering disabled by user");
 	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 

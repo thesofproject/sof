@@ -60,7 +60,7 @@ static void acp_irq_mask_int(uint32_t irq)
 	uint32_t mask;
 
 	if (irq < RESERVED_IRQS_NUM || irq >= IRQS_NUM) {
-		tr_err(&acp_irq_tr, "Invalid interrupt");
+		tr_err("Invalid interrupt");
 		return;
 	}
 	mask = IRQ_INT_MASK(irq);
@@ -72,7 +72,7 @@ static void acp_irq_unmask_int(uint32_t irq)
 	uint32_t mask;
 
 	if (irq < RESERVED_IRQS_NUM || irq >= IRQS_NUM) {
-		tr_err(&acp_irq_tr, "Invalid interrupt");
+		tr_err("Invalid interrupt");
 		return;
 	}
 	mask = IRQ_INT_MASK(irq);
@@ -121,7 +121,7 @@ static inline void acp_handle_irq_5(struct irq_cascade_desc *cascade,
 		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
-			tr_err(&acp_irq_tr, "irq_handler(): not handled, bit %d",
+			tr_err("irq_handler(): not handled, bit %d",
 			       bit);
 			acp_irq_mask_int(line_index * IRQS_PER_LINE + bit);
 		}
@@ -157,7 +157,7 @@ static inline void acp_handle_irq(struct irq_cascade_desc *cascade,
 		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
-			tr_err(&acp_irq_tr, "irq_handler(): not handled, bit %d", bit);
+			tr_err("irq_handler(): not handled, bit %d", bit);
 			acp_irq_mask_int(line_index * IRQS_PER_LINE + bit);
 		}
 	}
@@ -178,7 +178,7 @@ static void irqhandler_5(void *data)
 		/* Handle current interrupts */
 		acp_handle_irq_5(cascade, line_index, status);
 	else
-		tr_err(&acp_irq_tr, "invalid interrupt status");
+		tr_err("invalid interrupt status");
 }
 
 static inline void irq_handler(void *data, uint32_t line_index)
@@ -193,7 +193,7 @@ static inline void irq_handler(void *data, uint32_t line_index)
 		/* Handle current interrupts */
 		acp_handle_irq(cascade, line_index, status);
 	else
-		tr_err(&acp_irq_tr, "invalid interrupt status");
+		tr_err("invalid interrupt status");
 }
 
 #define DEFINE_IRQ_HANDLER(n) \

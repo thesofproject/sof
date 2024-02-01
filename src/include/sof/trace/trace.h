@@ -242,13 +242,13 @@ struct tr_ctx {
 
 #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
 
-#define tr_err(ctx, fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+#define tr_err(fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
 
-#define tr_warn(ctx, fmt, ...) LOG_WRN(fmt, ##__VA_ARGS__)
+#define tr_warn(fmt, ...) LOG_WRN(fmt, ##__VA_ARGS__)
 
-#define tr_info(ctx, fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
+#define tr_info(fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
 
-#define tr_dbg(ctx, fmt, ...) LOG_DBG(fmt, ##__VA_ARGS__)
+#define tr_dbg(fmt, ...) LOG_DBG(fmt, ##__VA_ARGS__)
 
 #else
 
@@ -260,20 +260,20 @@ struct tr_ctx {
 #define LOG_MODULE_DECLARE(ctx, level)
 #endif
 
-#define tr_err(ctx, fmt, ...) \
+#define tr_err(fmt, ...) \
 	trace_error_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
-#define tr_warn(ctx, fmt, ...) \
+#define tr_warn(fmt, ...) \
 	trace_warn_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			    _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
-#define tr_info(ctx, fmt, ...) \
+#define tr_info(fmt, ...) \
 	trace_event_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 /* tracev_ output depends on CONFIG_TRACEV=y */
-#define tr_dbg(ctx, fmt, ...) \
+#define tr_dbg(fmt, ...) \
 	tracev_event_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			      _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 

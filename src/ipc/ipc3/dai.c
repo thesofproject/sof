@@ -206,7 +206,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	int ret = -ENODEV;
 	int i;
 
-	tr_info(&ipc_tr, "ipc_comp_dai_config() dai type = %d index = %d",
+	tr_info("ipc_comp_dai_config() dai type = %d index = %d",
 		config->type, config->dai_index);
 
 	/* for each component */
@@ -232,7 +232,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	}
 
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_comp_dai_config(): comp_dai_config() failed");
+		tr_err("ipc_comp_dai_config(): comp_dai_config() failed");
 		return ret;
 	}
 

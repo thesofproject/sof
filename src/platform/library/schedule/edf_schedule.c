@@ -111,7 +111,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 /* initialize scheduler */
 int scheduler_init_edf(void)
 {
-	tr_info(&edf_tr, "edf_scheduler_init()");
+	tr_info("edf_scheduler_init()");
 	sch = malloc(sizeof(*sch));
 	list_init(&sch->list);
 

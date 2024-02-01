@@ -62,7 +62,7 @@ void amd_irq_handler(void *arg)
 				delay_cnt--;
 			}
 			if (lock_fail) {
-				tr_err(&ipc_tr, "ACP fail to acquire the lock");
+				tr_err("ACP fail to acquire the lock");
 				return;
 			}
 			/* Check if it is response from host */
@@ -89,7 +89,7 @@ void amd_irq_handler(void *arg)
 			}
 			io_reg_write((PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0), lock);
 		} else {
-			tr_err(&ipc_tr, "IPC:interrupt without setting flags host status 0x%x",
+			tr_err("IPC:interrupt without setting flags host status 0x%x",
 			       sof_ipc_host_status());
 		}
 	}
