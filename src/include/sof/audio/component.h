@@ -176,57 +176,53 @@ enum {
 
 /** \brief Trace error message from component driver (no comp instance) */
 #define comp_cl_err(drv_p, __e, ...)			\
-	trace_dev_err(trace_comp_drv_get_tr_ctx,	\
-		      trace_comp_drv_get_id,		\
-		      trace_comp_drv_get_subid,		\
-		      drv_p,				\
-		      __e, ##__VA_ARGS__)
+	trace_dev_err_nonzephyr(trace_comp_drv_get_id,		\
+				trace_comp_drv_get_subid,		\
+				drv_p,				\
+				__e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from component driver (no comp instance) */
 #define comp_cl_warn(drv_p, __e, ...)			\
-	trace_dev_warn(trace_comp_drv_get_tr_ctx,	\
-		       trace_comp_drv_get_id,		\
-		       trace_comp_drv_get_subid,	\
-		       drv_p,				\
-		       __e, ##__VA_ARGS__)
+	trace_dev_warn_nonzephyr(trace_comp_drv_get_id,		\
+				 trace_comp_drv_get_subid,	\
+				 drv_p,				\
+				 __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from component driver (no comp instance) */
 #define comp_cl_info(drv_p, __e, ...)			\
-	trace_dev_info(trace_comp_drv_get_tr_ctx,	\
-		       trace_comp_drv_get_id,		\
-		       trace_comp_drv_get_subid,	\
-		       drv_p,				\
-		       __e, ##__VA_ARGS__)
+	trace_dev_info_nonzephyr(trace_comp_drv_get_id,		\
+				 trace_comp_drv_get_subid,	\
+				 drv_p,				\
+				 __e, ##__VA_ARGS__)
 
 /** \brief Trace debug message from component driver (no comp instance) */
 #define comp_cl_dbg(drv_p, __e, ...)			\
-	trace_dev_dbg(trace_comp_drv_get_tr_ctx,	\
-		      trace_comp_drv_get_id,		\
-		      trace_comp_drv_get_subid,		\
-		      drv_p,				\
-		      __e, ##__VA_ARGS__)
+	trace_dev_dbg_nonzephyr(trace_comp_drv_get_id,		\
+				trace_comp_drv_get_subid,		\
+				drv_p,				\
+				__e, ##__VA_ARGS__)
 
 /* device tracing */
 
 /** \brief Trace error message from component device */
 #define comp_err(comp_p, __e, ...)					\
-	trace_dev_err(trace_comp_get_tr_ctx, trace_comp_get_id,		\
-		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+	trace_dev_err_nonzephyr(trace_comp_get_id,		\
+				trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from component device */
 #define comp_warn(comp_p, __e, ...)					\
-	trace_dev_warn(trace_comp_get_tr_ctx, trace_comp_get_id,	\
-		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+	trace_dev_warn_nonzephyr(trace_comp_get_id,	\
+				 trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from component device */
 #define comp_info(comp_p, __e, ...)					\
-	trace_dev_info(trace_comp_get_tr_ctx, trace_comp_get_id,	\
-		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+	trace_dev_info_nonzephyr(trace_comp_get_id,	\
+				 trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace debug message from component device */
 #define comp_dbg(comp_p, __e, ...)					\
-	trace_dev_dbg(trace_comp_get_tr_ctx, trace_comp_get_id,		\
-		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+	trace_dev_dbg_nonzephyr(trace_comp_get_id,		\
+				trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 #endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
 
