@@ -408,22 +408,22 @@ struct tr_ctx {
 /* tracing from infrastructure part */
 
 #define tr_err_atomic(ctx, fmt, ...) \
-	trace_error_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_error_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
 
 #define tr_warn_atomic(ctx, fmt, ...) \
-	trace_warn_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_warn_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				   _TRACE_INV_ID, _TRACE_INV_ID, \
 				   fmt, ##__VA_ARGS__)
 
 #define tr_info_atomic(ctx, fmt, ...) \
-	trace_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_event_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
 
 #define tr_dbg_atomic(ctx, fmt, ...) \
-	tracev_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
+	tracev_event_atomic_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 				     _TRACE_INV_ID, _TRACE_INV_ID, \
 				     fmt, ##__VA_ARGS__)
 
@@ -448,20 +448,20 @@ struct tr_ctx {
 #endif
 
 #define tr_err(ctx, fmt, ...) \
-	trace_error_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_error_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 #define tr_warn(ctx, fmt, ...) \
-	trace_warn_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_warn_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			    _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 #define tr_info(ctx, fmt, ...) \
-	trace_event_with_ids(_TRACE_INV_CLASS, ctx, \
+	trace_event_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 /* tracev_ output depends on CONFIG_TRACEV=y */
 #define tr_dbg(ctx, fmt, ...) \
-	tracev_event_with_ids(_TRACE_INV_CLASS, ctx, \
+	tracev_event_with_ids_nonzephyr(_TRACE_INV_CLASS,	\
 			      _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
 #endif
