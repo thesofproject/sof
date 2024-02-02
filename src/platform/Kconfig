@@ -381,6 +381,7 @@ config CAVS_USE_LPRO_IN_WAITI
 config L3_HEAP
 	bool "Use L3 memory heap"
 	default n
+	depends on ACE
 	help
 	  Select this if L3 memory is supported on the platform and
 	  it is intended to be used for dynamic allocations.
