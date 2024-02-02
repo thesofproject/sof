@@ -107,6 +107,6 @@ const int16_t src_int16_6_1_1814_5000_fir[96] = {
 
 };
 
-struct src_stage src_int16_6_1_1814_5000 = {
+const struct src_stage src_int16_6_1_1814_5000 = {
 	0, 1, 6, 16, 96, 1, 6, 0, 0,
 	src_int16_6_1_1814_5000_fir};

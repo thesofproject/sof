@@ -70,8 +70,8 @@ LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 		       int nch)
 {
-	struct src_stage *stage1;
-	struct src_stage *stage2;
+	const struct src_stage *stage1;
+	const struct src_stage *stage2;
 	struct src_param *a;
 	int fs_in, fs_out;
 	int source_frames;
@@ -150,7 +150,7 @@ int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
-int init_stages(struct src_stage *stage1, struct src_stage *stage2,
+int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
 		struct polyphase_src *src, struct src_param *p,
 		int n, int32_t *delay_lines_start)
 {
@@ -219,8 +219,8 @@ int init_stages(struct src_stage *stage1, struct src_stage *stage2,
 int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 		       int32_t *delay_lines_start)
 {
-	struct src_stage *stage1;
-	struct src_stage *stage2;
+	const struct src_stage *stage1;
+	const struct src_stage *stage2;
 	int n_stages;
 	int ret;
 
@@ -466,8 +466,8 @@ bool src_get_copy_limits(struct comp_data *cd,
 			 struct sof_sink *sink)
 {
 	struct src_param *sp;
-	struct src_stage *s1;
-	struct src_stage *s2;
+	const struct src_stage *s1;
+	const struct src_stage *s2;
 	int frames_src;
 	int frames_snk;
 
