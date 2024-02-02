@@ -7,10 +7,10 @@ print_help()
 
 Usage:
 
-      $0 -b      -- -DOVERLAY_CONFIG=stub_build_all_ipc4.conf -DEXTRA_CFLAGS=...
+      $0 -b      -- -DOVERLAY_CONFIG=stub_build_all_ipc4.conf -DEXTRA_CFLAGS="-O0 -g3" ...
       $0 -t 500  -- -DOVERLAY_CONFIG=stub_build_all_ipc3.conf ...
 
-
+  -p         Delete build-fuzz/ first ("pristine")
   -b         Do not run/fuzz: stop after the build.
   -t n       Fuzz for n seconds.
   -o ofile   Redirect the fuzzer's extremely verbose stdout. The
@@ -71,11 +71,13 @@ main()
 {
   setup
 
-  BUILD_ONLY=false
+  local BUILD_ONLY=false
+  local PRISTINE=false
   # Parse "$@". getopts stops after '--'
-  while getopts "ho:t:b" opt; do
+  while getopts "hpo:t:b" opt; do
       case "$opt" in
           h) print_help; exit 0;;
+          p) PRISTINE=true;;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
           b) BUILD_ONLY=true;;
@@ -101,6 +103,11 @@ main()
     -DCONFIG_ARCH_POSIX_FUZZ_TICKS=100
     -DCONFIG_ASAN=y
   )
+
+  # Note there's never any reason to delete fuzz_corpus/.
+  # Don't trust `west build -p` because it is not 100% unreliable,
+  # especially not when doing unusual toolchain things.
+  if $PRISTINE; then rm -rf build-fuzz/; fi
 
   (set -x
    # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
