@@ -57,8 +57,8 @@ struct src_state {
 
 struct polyphase_src {
 	int number_of_stages;
-	struct src_stage *stage1;
-	struct src_stage *stage2;
+	const struct src_stage *stage1;
+	const struct src_stage *stage2;
 	struct src_state state1;
 	struct src_state state2;
 };
@@ -75,7 +75,7 @@ struct src_stage_prm {
 	size_t y_size;
 	int shift;
 	struct src_state *state;
-	struct src_stage *stage;
+	const struct src_stage *stage;
 };
 
 static inline void src_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
@@ -187,20 +187,20 @@ int src_stream_pcm_source_rate_check(struct ipc_config_src cfg,
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 /* Calculates the needed FIR delay line length */
-static inline int src_fir_delay_length(struct src_stage *s)
+static inline int src_fir_delay_length(const struct src_stage *s)
 {
 	return s->subfilter_length + (s->num_of_subfilters - 1) * s->idm
 		+ s->blk_in;
 }
 
 /* Calculates the FIR output delay line length */
-static inline int src_out_delay_length(struct src_stage *s)
+static inline int src_out_delay_length(const struct src_stage *s)
 {
 	return 1 + (s->num_of_subfilters - 1) * s->odm;
 }
 
 /* Returns index of a matching sample rate */
-static inline int src_find_fs(int fs_list[], int list_length, int fs)
+static inline int src_find_fs(const int *fs_list, int list_length, int fs)
 {
 	int i;
 
@@ -231,7 +231,7 @@ int src_init(struct processing_module *mod);
 
 int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 		       int nch);
-int init_stages(struct src_stage *stage1, struct src_stage *stage2,
+int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
 		struct polyphase_src *src, struct src_param *p,
 		int n, int32_t *delay_lines_start);
 int src_1s(struct comp_data *cd, struct sof_source *source,

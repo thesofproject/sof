@@ -972,7 +972,7 @@ const int32_t src_int32_40_21_2381_5000_fir[960] = {
 
 };
 
-struct src_stage src_int32_40_21_2381_5000 = {
+const struct src_stage src_int32_40_21_2381_5000 = {
 	11, 21, 40, 24, 960, 21, 40, 0, 0,
 	src_int32_40_21_2381_5000_fir};
 /** \endcond */

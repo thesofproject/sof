@@ -324,7 +324,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int n_wrap_buf;
 	int n_min;
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
 	const void *cp; /* Can be int32_t or int16_t */
@@ -446,7 +446,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	int n_min;
 
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
 	const void *cp; /* Can be int32_t or int16_t */

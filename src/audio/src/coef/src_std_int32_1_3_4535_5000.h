@@ -279,6 +279,6 @@ const int32_t src_int32_1_3_4535_5000_fir[268] = {
 
 };
 
-struct src_stage src_int32_1_3_4535_5000 = {
+const struct src_stage src_int32_1_3_4535_5000 = {
 	1, 0, 1, 268, 268, 3, 1, 0, 1,
 	src_int32_1_3_4535_5000_fir};

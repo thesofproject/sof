@@ -52,7 +52,7 @@ const int32_t src_int32_2_1_2500_5000_fir[40] = {
 
 };
 
-struct src_stage src_int32_2_1_2500_5000 = {
+const struct src_stage src_int32_2_1_2500_5000 = {
 	0, 1, 2, 20, 40, 1, 2, 0, 0,
 	src_int32_2_1_2500_5000_fir};
 /** \endcond */
