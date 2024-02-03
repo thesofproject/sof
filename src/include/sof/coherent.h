@@ -69,7 +69,7 @@ struct coherent {
 	struct list_item list;	/* coherent list iteration */
 } __coherent;
 
-#if CONFIG_INCOHERENT
+#if CONFIG_INCOHERENT_HACK
 #  ifdef __ZEPHYR__
 BUILD_ASSERT(sizeof(struct coherent)  <= DCACHE_LINE_SIZE, "DCACHE_LINE_SIZE too small");
 #  else
