@@ -25,7 +25,8 @@ include(`platform/imx/imx8.m4')
 # PCM0 <----> volume <-----> SAI5 (connect to BT)
 #
 
-define(`CHANNELS_MIN', 1)
+# SAI5 is connected to BT which supports only 1 channel for playback and record
+ifdef(`CHANNELS_MIN', `', `define(CHANNELS_MIN, 1)')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -40,14 +41,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	`RATE', `RATE', `RATE')
 
-undefine(`CHANNELS_MIN')
-
 # Low Latency capture pipeline 2 on PCM 0 using max 1 channels of s16le.
 # Set 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 1, s16le,
 	1000, 0, 0,
 	`RATE', `RATE', `RATE')
+
 #
 # DAIs configuration
 #
