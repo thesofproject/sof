@@ -1108,7 +1108,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
  * drain the FIFO in order to stop the channel
  * as soon as possible.
  */
-#if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
+#if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
 		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
@@ -1122,7 +1122,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
-#if CONFIG_COMP_DAI_TRIGGER_ORDER_REVERSE
+#if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
 		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
