@@ -318,7 +318,7 @@ static double to_usecs(uint64_t time)
 }
 
 /** Justified timestamp width for printf format string */
-static uint8_t timestamp_width(uint8_t precision)
+static int8_t timestamp_width(int8_t precision)
 {
 	/* 64bits yields less than 20 digits precision. As reported by
 	 * gcc 9.3, this avoids a very long precision causing snprintf()
@@ -352,7 +352,7 @@ static inline void print_table_header(void)
 	}
 
 	if (global_config->time_precision >= 0) {
-		const uint8_t ts_width = timestamp_width(global_config->time_precision);
+		const int8_t ts_width = timestamp_width(global_config->time_precision);
 
 		fprintf(out_fd, "%*s(us)%*s  ", -ts_width, " TIMESTAMP", ts_width, "DELTA");
 	}
@@ -532,7 +532,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				entry->header.line_idx);
 	} else {
 		if (time_precision >= 0) {
-			const unsigned int ts_width = timestamp_width(time_precision);
+			const int8_t ts_width = timestamp_width(time_precision);
 
 			fprintf(out_fd, "%s[%*.*f] (%*.*f)%s ",
 				use_colors ? KGRN : "",
