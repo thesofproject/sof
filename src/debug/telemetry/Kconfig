@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config SOF_TELEMETRY
+	bool "enable telemetry"
+	default n
+	help
+	  Enables telemetry. Enables performance measurements and debug utilities
+	  that use memory window 2 (debug window) as interface. Measurements include
+	  systick_info measurement which measures scheduler task performance and may
+	  slightly affect overall performance.
+
