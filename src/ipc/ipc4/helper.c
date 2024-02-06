@@ -425,7 +425,6 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
-	struct ipc4_base_module_cfg_ext *src_basecfg_ext, *sink_basecfg_ext;
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
@@ -466,9 +465,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (bu->extension.r.src_queue) {
 		struct ipc4_output_pin_format *out_fmt;
 		size_t output_fmt_offset;
+		struct ipc4_base_module_cfg_ext *src_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME,
+								0, SOF_MEM_CAPS_RAM,
+								sizeof(*src_basecfg_ext) + size);
 
-		src_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					  sizeof(*src_basecfg_ext) + size);
 		if (!src_basecfg_ext)
 			return IPC4_OUT_OF_MEMORY;
 
@@ -484,7 +484,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 			output_fmt_offset =
 				src_basecfg_ext->nb_input_pins * in_fmt_size +
 				bu->extension.r.src_queue * out_fmt_size;
-			out_fmt = (struct ipc4_output_pin_format *)&sink_basecfg_ext->pin_formats[output_fmt_offset];
+			out_fmt = (struct ipc4_output_pin_format *)&src_basecfg_ext->pin_formats[output_fmt_offset];
 			obs = out_fmt->obs;
 		}
 		rfree(src_basecfg_ext);
@@ -507,9 +507,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (bu->extension.r.dst_queue) {
 		struct ipc4_input_pin_format *in_fmt;
 		size_t input_fmt_offset;
+		struct ipc4_base_module_cfg_ext *sink_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME,
+								0, SOF_MEM_CAPS_RAM,
+								sizeof(*sink_basecfg_ext) + size);
 
-		sink_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					   sizeof(*sink_basecfg_ext) + size);
 		if (!sink_basecfg_ext)
 			return IPC4_OUT_OF_MEMORY;
 
