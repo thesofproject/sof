@@ -532,7 +532,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				entry->header.line_idx);
 	} else {
 		if (time_precision >= 0) {
-			const unsigned int ts_width = timestamp_width(time_precision);
+			const uint8_t ts_width = timestamp_width(time_precision);
 
 			fprintf(out_fd, "%s[%*.*f] (%*.*f)%s ",
 				use_colors ? KGRN : "",
