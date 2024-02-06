@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/format.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
@@ -34,6 +35,10 @@
 
 #include "copier/copier.h"
 #include "copier/host_copier.h"
+
+#define FAKE_HOST_BEGIN_IGNORE_GLITCHES_COUNT	100	/* Only warn in first # periods */
+#define FAKE_HOST_PRODUCE_GLITCHES	0		/* Force glitches to waveform */
+#define FAKE_HOST_PRODUCE_GLITCH_RATE	5000		/* Glitch every # periods */
 
 static const struct comp_driver comp_host;
 
@@ -230,6 +235,292 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 }
 #endif
 
+static void host_init_glitch_detect(struct host_triangle_generator_state *tg,
+				    struct host_glitch_detect_state *gd)
+{
+	int i;
+
+	/* Start PCM code for channels, 1, -1, 1001, -1000, ...
+	 * Channels 0, 2, ... count up
+	 * Channels 1, 3, ... count down
+	 * Count direction becomes opposite when max PCM code value is reached
+	 */
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+		if ((i & 1) == 0)
+			tg->pcm_increment[i] = 1;
+		else
+			tg->pcm_increment[i] = -1;
+
+		gd->prev_pcm_value[i] = 0;
+		gd->zeros_count[i] = 0;
+		gd->no_signal[i] = true;
+		tg->prev_pcm_value[i] = (i >> 1) * 1000 + tg->pcm_increment[i];
+	}
+
+	gd->first_value = true;
+	gd->zeros_count_reported = false;
+	gd->ignore_count = FAKE_HOST_BEGIN_IGNORE_GLITCHES_COUNT;
+	tg->countdown = FAKE_HOST_PRODUCE_GLITCH_RATE;
+	tg->first_copy = true;
+}
+
+static void host_glitch_core(struct comp_dev *dev,
+			     struct host_glitch_detect_state *gd,
+			     int *c,
+			     bool *glitch,
+			     int channels,
+			     int32_t value)
+{
+	int32_t delta;
+
+	delta = gd->prev_pcm_value[*c] - value;
+	if (!gd->first_value && ABS(delta) > 1) {
+		comp_dbg(dev, "host_detect_glitch(), current %d, previous %d",
+			 value, gd->prev_pcm_value[*c]);
+		gd->glitch_count[*c]++;
+		*glitch = true;
+	}
+
+	if (value == 0 && gd->no_signal[*c])
+		gd->zeros_count[*c]++;
+	else
+		gd->no_signal[*c] = false;
+
+	gd->prev_pcm_value[*c] = value;
+	*c += 1;
+	if (*c == channels) {
+		gd->first_value = false;
+		*c = 0;
+	}
+}
+
+static int host_detect_glitch(struct comp_dev *dev,
+			      struct host_glitch_detect_state *gd,
+			      struct comp_buffer *source_buffer,
+			      struct comp_buffer *sink_buffer,
+			      dma_process_func process,
+			      uint32_t sink_bytes)
+{
+	struct audio_stream *source = &source_buffer->stream;
+	struct audio_stream *sink = &sink_buffer->stream;
+	int32_t *x32;
+	int16_t *x16;
+	int source_bytes;
+	int channels;
+	int frames;
+	int samples;
+	enum sof_ipc_frame source_format;
+	int i, n, nmax, ret;
+	int processed = 0;
+	int c = 0;
+	bool glitch = false;
+	bool no_signal_yet = false;
+
+	source_format = audio_stream_get_frm_fmt(source);
+	switch (source_format) {
+	case SOF_IPC_FRAME_S16_LE:
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	frames = sink_bytes / audio_stream_frame_bytes(sink);
+	channels = audio_stream_get_channels(source);
+	samples = frames * channels;
+	source_bytes = audio_stream_sample_bytes(source) * samples;
+
+	comp_dbg(dev, "host_detect_glitch() frames = %d, channels = %d, source_bytes = %d",
+		 frames, channels, source_bytes);
+
+	buffer_stream_invalidate(source_buffer, source_bytes);
+
+	if (source_format == SOF_IPC_FRAME_S16_LE) {
+		x16 = audio_stream_get_rptr(source);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(source, x16) >> 1;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				host_glitch_core(dev, gd, &c, &glitch, channels, (int32_t)(*x16));
+				x16++;
+			}
+			x16 = audio_stream_wrap(source, x16);
+			processed += n;
+		}
+	} else {
+		x32 = audio_stream_get_rptr(source);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(source, x32) >> 2;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				host_glitch_core(dev, gd, &c, &glitch, channels, *x32);
+				x32++;
+			}
+			x32 = audio_stream_wrap(source, x32);
+			processed += n;
+		}
+	}
+
+	/* Then same as dma_buffer_copy_to get to user "real" capture data */
+
+	/* process data */
+	ret = process(source, 0, sink, 0, samples);
+
+	/* sink buffer contains data meant to copied to DMA */
+	audio_stream_writeback(sink, sink_bytes);
+
+	/*
+	 * produce to sink using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source_buffer, source_bytes);
+
+	if (gd->ignore_count > 0)
+		gd->ignore_count--;
+
+	if (glitch) {
+		if (gd->ignore_count)
+			comp_warn(dev, "host_detect_glitch(): Glitches count for channels %d %d %d %d",
+				  gd->glitch_count[0], gd->glitch_count[1],
+				  gd->glitch_count[2], gd->glitch_count[3]);
+		else
+			comp_err(dev, "host_detect_glitch(): Glitches count for channels %d %d %d %d",
+				 gd->glitch_count[0], gd->glitch_count[1],
+				 gd->glitch_count[2], gd->glitch_count[3]);
+	}
+
+	for (i = 0; i < channels; i++)
+		if (gd->no_signal[i])
+			no_signal_yet = true;
+
+	if (!no_signal_yet && !gd->zeros_count_reported) {
+		comp_info(dev, "host_detect_glitch(): Zero PCM samples count for channels %d %d %d %d",
+			  gd->zeros_count[0], gd->zeros_count[1],
+			  gd->zeros_count[2], gd->zeros_count[3]);
+		gd->zeros_count_reported = true;
+	}
+
+	return ret;
+}
+
+static int32_t host_triangle_core(struct host_triangle_generator_state *tg,
+				  int *c, int channels, int32_t max_val)
+{
+	int32_t next;
+
+	next = tg->prev_pcm_value[*c] + tg->pcm_increment[*c];
+	tg->prev_pcm_value[*c] = next;
+	if (next == max_val || next == -max_val)
+		tg->pcm_increment[*c] = -tg->pcm_increment[*c];
+
+#if FAKE_HOST_PRODUCE_GLITCHES
+	if (!tg->countdown)
+		next = 0;
+#endif
+	*c += 1;
+	if (*c == channels)
+		*c = 0;
+
+	return next;
+}
+
+static int host_generate_triangle(struct comp_dev *dev,
+				  struct host_triangle_generator_state *tg,
+				  struct comp_buffer *source_buffer,
+				  struct comp_buffer *sink_buffer,
+				  uint32_t source_bytes)
+{
+	struct audio_stream *source = &source_buffer->stream;
+	struct audio_stream *sink = &sink_buffer->stream;
+	int32_t max_val;
+	int32_t *y32;
+	int16_t *y16;
+	int sink_bytes;
+	int channels;
+	int frames;
+	int samples;
+	enum sof_ipc_frame sink_format;
+	int i, n, nmax;
+	int c = 0;
+	int processed = 0;
+
+	sink_format = audio_stream_get_frm_fmt(sink);
+	switch (sink_format) {
+	case SOF_IPC_FRAME_S16_LE:
+		max_val = INT16_MAX;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		max_val = INT24_MAXVALUE;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		max_val = INT32_MAX;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	frames = source_bytes / audio_stream_frame_bytes(source);
+	channels = audio_stream_get_channels(sink);
+	samples = frames * channels;
+	sink_bytes = audio_stream_sample_bytes(sink) * samples;
+
+	comp_dbg(dev, "host_produce_triangle() frames = %d, channels = %d, sink_bytes = %d",
+		 frames, channels, sink_bytes);
+
+	/* source buffer contains data copied by DMA, discard it */
+	audio_stream_invalidate(source, source_bytes);
+
+#if FAKE_HOST_PRODUCE_GLITCHES
+	tg->countdown--;
+#endif
+	if (sink_format == SOF_IPC_FRAME_S16_LE) {
+		y16 = audio_stream_get_wptr(sink);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(sink, y16) >> 1;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				*y16 = (int16_t)host_triangle_core(tg, &c, channels, max_val);
+				y16++;
+			}
+			y16 = audio_stream_wrap(sink, y16);
+			processed += n;
+		}
+	} else {
+		y32 = audio_stream_get_wptr(sink);
+		while (processed < samples) {
+			nmax = samples - processed;
+			n = audio_stream_bytes_without_wrap(sink, y32) >> 2;
+			n = MIN(n, nmax);
+			for (i = 0; i < n; i++) {
+				*y32 = host_triangle_core(tg, &c, channels, max_val);
+				y32++;
+			}
+			y32 = audio_stream_wrap(sink, y32);
+			processed += n;
+		}
+	}
+
+#if FAKE_HOST_PRODUCE_GLITCHES
+	if (!tg->countdown)
+		tg->countdown = FAKE_HOST_PRODUCE_GLITCH_RATE;
+#endif
+
+	buffer_stream_writeback(sink_buffer, sink_bytes);
+
+	/*
+	 * consume source using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_consume(source, source_bytes);
+	comp_update_buffer_produce(sink_buffer, sink_bytes);
+	return 0;
+}
+
 void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t bytes)
 {
 	struct comp_buffer *source;
@@ -241,11 +532,16 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		source = hd->dma_buffer;
 		sink = hd->local_buffer;
-		ret = dma_buffer_copy_from(source, sink, hd->process, bytes);
+		if (hd->triangle.first_copy) {
+			comp_info(dev, "host_common_update(): First host copy for triangle wave");
+			hd->triangle.first_copy = false;
+		}
+
+		ret = host_generate_triangle(dev, &hd->triangle, source, sink, bytes);
 	} else {
 		source = hd->local_buffer;
 		sink = hd->dma_buffer;
-		ret = dma_buffer_copy_to(source, sink, hd->process, bytes);
+		ret = host_detect_glitch(dev, &hd->glitch, source, sink, hd->process, bytes);
 	}
 
 	if (ret < 0) {
@@ -634,7 +930,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	const struct ipc_config_host *ipc_host = spec;
 	int ret;
 
-	comp_cl_dbg(&comp_host, "host_new()");
+	comp_cl_warn(&comp_host, "host_new(), Simulated host, no real playback or capture happens");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -973,6 +1269,7 @@ static int host_params(struct comp_dev *dev,
 
 int host_common_prepare(struct host_data *hd)
 {
+	host_init_glitch_detect(&hd->triangle, &hd->glitch);
 	buffer_zero(hd->dma_buffer);
 	return 0;
 }
@@ -982,7 +1279,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "host_prepare()");
+	comp_warn(dev, "host_prepare(), Simulated host, no real playback or capture happens");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)

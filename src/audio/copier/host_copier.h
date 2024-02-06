@@ -37,6 +37,23 @@ struct hc_buf {
 	uint32_t current_end;
 };
 
+struct host_triangle_generator_state {
+	int32_t prev_pcm_value[SOF_IPC_MAX_CHANNELS];
+	int32_t pcm_increment[SOF_IPC_MAX_CHANNELS];
+	int32_t countdown;
+	bool first_copy;
+};
+
+struct host_glitch_detect_state {
+	int32_t prev_pcm_value[SOF_IPC_MAX_CHANNELS];
+	int32_t glitch_count[SOF_IPC_MAX_CHANNELS];
+	int32_t zeros_count[SOF_IPC_MAX_CHANNELS];
+	int32_t ignore_count;
+	bool no_signal[SOF_IPC_MAX_CHANNELS];
+	bool first_value;
+	bool zeros_count_reported;
+};
+
 /**
  * \brief Host component data.
  *
@@ -47,6 +64,10 @@ struct hc_buf {
  * host_size is the host buffer size (in bytes) specified in the IPC parameters.
  */
 struct host_data {
+#if CONFIG_ZEPHYR_SIMULATED_HOST_DRIVER
+	struct host_triangle_generator_state triangle;
+	struct host_glitch_detect_state glitch;
+#endif
 	/* local DMA config */
 	struct dma *dma;
 	struct dma_chan_data *chan;
