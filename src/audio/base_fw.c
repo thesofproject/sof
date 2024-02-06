@@ -19,6 +19,8 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
+#include "adsp_debug_window.h"
+#include "mem_window.h"
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -569,6 +571,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
+	case IPC4_PERF_MEASUREMENTS_STATE:
+		return 0;
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);
