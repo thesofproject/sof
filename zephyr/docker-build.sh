@@ -26,15 +26,26 @@ command -V sparse  || true
 # TODO: move all code to a function
 # https://github.com/thesofproject/sof-test/issues/740
 
-# As of container version 0.18.4,
-# https://github.com/zephyrproject-rtos/docker-image/blob/master/Dockerfile
-# installs two SDKs: ZSDK_VERSION=0.12.4 and ZSDK_ALT_VERSION=0.13.1
-# ZEPHYR_SDK_INSTALL_DIR points at ZSDK_VERSION but we want the latest.
-unset ZEPHYR_SDK_INSTALL_DIR
 
-# Zephyr's CMake does not look in /opt but it searches $HOME
+# Zephyr's CI has complex use cases and considers FindZephyr-sdk.cmake
+# autodetection to be too unpredictable and risky. So in these docker images,
+# they install the SDK in /opt/toolchains/ to *avoid autodetection on
+# purpose*. By design, this forces Zephyr CI to hardcode ZEPHYR_SDK_INSTALL_DIR
+# everywhere (see for instance
+# https://github.com/zephyrproject-rtos/zephyr/commit/d6329386e9). But we
+# already hardcode the docker image version (currently in
+# zephyr/docker-run.sh). Our use case is simple, immutable and safe and we
+# don't need to version _twice_ what is for us the same thing. Creating these
+# symlinks restores the convenient autodetection so this script can be easily
+# re-used with any docker image version.
 ls -ld /opt/toolchains/zephyr-sdk-*
 ln -s  /opt/toolchains/zephyr-sdk-*  ~/ || true
+
+# Make sure FindZephyr-sdk.cmake returns the highest version.  For instance,
+# the old container version 0.18.4 had two SDKs installed: ZSDK_VERSION=0.12.4
+# and ZSDK_ALT_VERSION=0.13.1. Back then, ZEPHYR_SDK_INSTALL_DIR pointed at the
+# older one!
+unset ZEPHYR_SDK_INSTALL_DIR
 
 # CMake v3.21 changed the order object files are passed to the linker.
 # This makes builds before that version not reproducible.
