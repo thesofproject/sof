@@ -1046,8 +1046,10 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 				       source_get_data_available(data_src));
 
 		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
-		if (err)
+		if (err) {
+			comp_err(dev, "LL to DP copy error status: %d", err);
 			return err;
+		}
 
 		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
@@ -1080,8 +1082,10 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 				       source_get_data_available(data_src));
 
 		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
-		if (err)
+		if (err) {
+			comp_err(dev, "DP to LL copy error status: %d", err);
 			return err;
+		}
 
 		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
