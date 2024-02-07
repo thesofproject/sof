@@ -14,6 +14,12 @@ choice "VOLUME_SIMD_LEVEL_SELECT"
 			When this was selected, optimization level will be determined
 			by toolchain pre-defined macros in core isa header file.
 
+	config VOLUME_HIFI_5
+		prompt "choose HIFI5 intrinsic optimized volume module"
+		bool
+		help
+			This option used to build HIFI5 optimized volume code
+
 	config VOLUME_HIFI_4
 		prompt "choose HIFI4 intrinsic optimized volume module"
 		bool
