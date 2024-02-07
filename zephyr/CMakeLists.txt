@@ -775,9 +775,11 @@ if(CONFIG_COMP_VOLUME STREQUAL "m")
 	add_dependencies(app volume)
 elseif(CONFIG_COMP_VOLUME)
 	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/volume/volume_hifi5.c
 		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
 		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
 		${SOF_AUDIO_PATH}/volume/volume_generic.c
+		${SOF_AUDIO_PATH}/volume/volume_hifi5_with_peakvol.c
 		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
 		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
 		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c

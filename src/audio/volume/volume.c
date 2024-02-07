@@ -646,19 +646,25 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
 static void volume_set_alignment(struct audio_stream *source,
 				 struct audio_stream *sink)
 {
-#if SOF_USE_HIFI(3, VOLUME) || SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
-	/* Both source and sink buffer in HiFi 3 or HiFi4 processing version,
+	/* Both source and sink buffer in HiFi5  processing version,
+	 * xtensa intrinsics ask for 16-byte aligned.
+	 *
+	 * Both source and sink buffer in HiFi3 or HiFi4 processing version,
 	 * xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
 	 * requires 16-byte aligned.
 	 */
-	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ? 16 : 8;
+#if SOF_USE_HIFI(3, VOLUME) || SOF_USE_HIFI(4, VOLUME)
+	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ?
+		VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
+#else
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
+#endif
 
 	/*There is no limit for frame number, so both source and sink set it to be 1*/
 	const uint32_t frame_align_req = 1;
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
 	audio_stream_set_align(byte_align, frame_align_req, sink);
-#endif
 }
 
 /**
