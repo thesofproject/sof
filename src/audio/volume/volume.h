@@ -113,6 +113,12 @@ struct sof_ipc_ctrl_value_chan;
 #define VOL_S32_SAMPLES_TO_BYTES(s)	((s) << 2)
 
 /**
+ * \brief Bytes align requirement for 6ch PCM frame on HiFi3 and Hifi4
+ * platforms for volume component.
+ */
+#define VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH	16
+
+/**
  * \brief volume processing function interface
  */
 typedef void (*vol_scale_func)(struct processing_module *mod, struct input_stream_buffer *source,

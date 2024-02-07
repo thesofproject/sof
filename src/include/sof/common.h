@@ -206,13 +206,21 @@
 // IS_ENABLED() above.
 #  if XCHAL_HAVE_HIFI5
 #    define SOF_MAX_XCHAL_HIFI 5
+#    define SOF_FRAME_BYTE_ALIGN	16
 #  elif XCHAL_HAVE_HIFI4
 #    define SOF_MAX_XCHAL_HIFI 4
+#    define SOF_FRAME_BYTE_ALIGN	8
 #  elif XCHAL_HAVE_HIFI3
 #    define SOF_MAX_XCHAL_HIFI 3
+#    define SOF_FRAME_BYTE_ALIGN	8
 #  else
 #    define SOF_MAX_XCHAL_HIFI NONE
 #  endif
+#endif
+
+/* Keep this last after all platform specific align defaults */
+#ifndef SOF_FRAME_BYTE_ALIGN
+#  define SOF_FRAME_BYTE_ALIGN	4
 #endif
 
 #ifndef __GLIBC_USE
