@@ -36,11 +36,10 @@ struct scheduler_dp_data {
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
 	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
-	uint32_t deadline_ll_cycles;	/* dp module deadline in LL cycles */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
 	struct k_sem sem;		/* semaphore for task scheduling */
 	struct processing_module *mod;	/* the module to be scheduled */
-	uint32_t ll_cycles_to_deadline;  /* current number of LL cycles till deadline */
+	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 };
 
 /* Single CPU-wide lock
@@ -233,9 +232,9 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 		struct processing_module *mod = pdata->mod;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
-		if (pdata->ll_cycles_to_deadline) {
-			pdata->ll_cycles_to_deadline--;
-			if (!pdata->ll_cycles_to_deadline)
+		if (pdata->ll_cycles_to_start) {
+			pdata->ll_cycles_to_start--;
+			if (!pdata->ll_cycles_to_start)
 				/* deadline reached, clear startup delay flag.
 				 * see dp_startup_delay comment for details
 				 */
@@ -253,7 +252,6 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 				/* set a deadline for given num of ticks, starting now */
 				k_thread_deadline_set(pdata->thread_id,
 						      pdata->deadline_clock_ticks);
-				pdata->ll_cycles_to_deadline = pdata->deadline_ll_cycles;
 
 				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
@@ -391,8 +389,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	deadline_clock_ticks /= 1000000;
 
 	pdata->deadline_clock_ticks = deadline_clock_ticks;
-	pdata->deadline_ll_cycles = period / LL_TIMER_PERIOD_US;
-	pdata->ll_cycles_to_deadline = 0;
+	pdata->ll_cycles_to_start = period / LL_TIMER_PERIOD_US;
 	pdata->mod->dp_startup_delay = true;
 	scheduler_dp_unlock(lock_key);
 
