@@ -365,7 +365,7 @@ static inline int audio_stream_set_params(struct audio_stream *buffer,
 	if (!params)
 		return -EINVAL;
 
-	buffer->runtime_stream_params.frame_fmt = params->frame_fmt;
+	buffer->runtime_stream_params.frame_fmt = (enum sof_ipc_frame)params->frame_fmt;
 	buffer->runtime_stream_params.rate = params->rate;
 	buffer->runtime_stream_params.channels = params->channels;
 
@@ -990,8 +990,8 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 	 * IPC4_DEPTH_24BIT (24) <---> SOF_IPC_FRAME_S24_4LE (1)
 	 * IPC4_DEPTH_32BIT (32) <---> SOF_IPC_FRAME_S32_LE (2)
 	 */
-	*frame_fmt = (depth >> 3) - 2;
-	*valid_fmt = (valid >> 3) - 2;
+	*frame_fmt = (enum sof_ipc_frame)((depth >> 3) - 2);
+	*valid_fmt = (enum sof_ipc_frame)((valid >> 3) - 2);
 
 #ifdef CONFIG_FORMAT_U8
 	if (depth == 8)
