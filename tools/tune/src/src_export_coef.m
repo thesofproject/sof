@@ -50,7 +50,6 @@ else
 	fprintf(fh, ' */\n');
 	fprintf(fh, '\n');
 	fprintf(fh, '/** \\cond GENERATED_BY_TOOLS_TUNE_SRC */\n');
-	fprintf(fh, '#include <sof/audio/src/src.h>\n');
 	fprintf(fh, '#include <stdint.h>\n');
 	fprintf(fh, '\n');
 
@@ -77,14 +76,14 @@ else
         fprintf(fh, '\n');
         switch ctype
                 case 'float'
-                        fprintf(fh, 'struct src_stage %s = {\n', sfn);
+                        fprintf(fh, 'const struct src_stage %s = {\n', sfn);
 			fprintf(fh, '\t%d, %d, %d, %d, %d, %d, %d, %d, %f,\n\t%s};\n', ...
                                 src.idm, src.odm, src.num_of_subfilters, ...
                                 src.subfilter_length, src.filter_length, ...
                                 src.blk_in, src.blk_out, src.halfband, ...
                                 src.gain, vfn);
                 case { 'int16' 'int24' 'int32' }
-                        fprintf(fh, 'struct src_stage %s = {\n', sfn);
+                        fprintf(fh, 'const struct src_stage %s = {\n', sfn);
 			fprintf(fh, '\t%d, %d, %d, %d, %d, %d, %d, %d, %d,\n\t%s};\n', ...
                                 src.idm, src.odm, src.num_of_subfilters, ...
                                 src.subfilter_length, src.filter_length, ...
