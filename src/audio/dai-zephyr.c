@@ -569,6 +569,37 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
+static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t *slot)
+{
+	struct dai_config cfg;
+	int ret;
+	int hs;
+
+	ret = dai_config_get(dd->dai->dev, &cfg, dev->direction);
+	if (ret < 0) {
+		comp_err(dev, "failed to fetch DAI configuration");
+		return ret;
+	}
+
+	hs = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
+	if (ret < 0) {
+		comp_err(dev, "failed to fetch DAI handshake");
+		return ret;
+	}
+
+	switch (cfg.type) {
+	case DAI_IMX_SAI:
+	case DAI_IMX_ESAI:
+		*slot = (hs & GENMASK(15, 8)) >> 8;
+		break;
+	default:
+		*slot = hs;
+		break;
+	}
+
+	return 0;
+}
+
 static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
 			     uint32_t period_count)
 {
@@ -582,11 +613,15 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 		config->direction = DMA_DIR_MEM_TO_DEV;
-		config->dest_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
+		err = dai_get_dma_slot(dd, dev, &config->dest_dev);
+		if (err < 0)
+			return err;
 	} else {
 		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
 		config->direction = DMA_DIR_DEV_TO_MEM;
-		config->src_dev = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
+		err = dai_get_dma_slot(dd, dev, &config->src_dev);
+		if (err < 0)
+			return err;
 	}
 
 	if (!dd->process) {
