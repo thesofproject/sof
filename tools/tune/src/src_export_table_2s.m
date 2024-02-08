@@ -82,8 +82,8 @@ for i=1:sm(1)
         um_tmp = unique_modes(i,:);
         if isequal(um_tmp(1:2),[1 1]) || isequal(um_tmp(1:2),[0 0])
         else
-                fprintf(fh, '#include <%ssrc_%s_%d_%d_%d_%d.h>\n', ...
-                        ppath, prof_ctype, um_tmp(1:4));
+                fprintf(fh, '#include \"src_%s_%d_%d_%d_%d.h\"\n', ...
+                        prof_ctype, um_tmp(1:4));
 
                 n = all_modes(ia(i), 5);
                 a = all_modes(ia(i), 6);
@@ -91,36 +91,35 @@ for i=1:sm(1)
                 sfl = sfl +taps_2s(n, a, b); % Count sum of filter lengths
         end
 end
-fprintf(fh, '#include <sof/audio/src/src.h>\n');
 fprintf(fh, '#include <stdint.h>\n');
 fprintf(fh,'\n');
 
 fprintf(fh, '/* SRC table */\n');
 switch ctype
         case 'float'
-                fprintf(fh, '%s fir_one = 1.0;\n', vtype);
-                fprintf(fh, 'struct src_stage src_double_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, 1.0, &fir_one };\n');
-                fprintf(fh, 'struct src_stage src_double_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0, 0.0, &fir_one };\n');
+                fprintf(fh, 'const %s fir_one = 1.0;\n', vtype);
+                fprintf(fh, 'const struct src_stage src_double_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, 1.0, &fir_one };\n');
+                fprintf(fh, 'const struct src_stage src_double_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0, 0.0, &fir_one };\n');
         case 'int16'
                 scale16 = 2^15;
-                fprintf(fh, '%s fir_one = %d;\n', vtype, round(scale16*0.5));
-                fprintf(fh, 'struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale16*0.5));
+                fprintf(fh, 'const struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'const struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         case 'int24'
                 scale24 = 2^23;
-                fprintf(fh, '%s fir_one = %d;\n', vtype, round(scale24*0.5));
-                fprintf(fh, 'struct src_stage src_int24_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'struct src_stage src_int24_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale24*0.5));
+                fprintf(fh, 'const struct src_stage src_int24_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'const struct src_stage src_int24_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         case 'int32'
                 scale32 = 2^31;
-                fprintf(fh, '%s fir_one = %d;\n', vtype, round(scale32*0.5));
-                fprintf(fh, 'struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale32*0.5));
+                fprintf(fh, 'const struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'const struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         otherwise
                 error('Unknown coefficient type!');
 end
 
-fprintf(fh, 'int src_in_fs[%d] = {', n_in);
+fprintf(fh, 'const int src_in_fs[%d] = {', n_in);
 j = 1;
 for i=1:n_in
         fprintf(fh, ' %d', fs_in(i));
@@ -135,7 +134,7 @@ for i=1:n_in
 end
 fprintf(fh, '};\n');
 
-fprintf(fh, 'int src_out_fs[%d] = {', n_out);
+fprintf(fh, 'const int src_out_fs[%d] = {', n_out);
 j = 1;
 for i=1:n_out
         fprintf(fh, ' %d', fs_out(i));
@@ -151,7 +150,7 @@ end
 fprintf(fh, '};\n');
 
 for n = 1:2
-        fprintf(fh, 'struct src_stage *src_table%d[%d][%d] = {\n', ...
+        fprintf(fh, 'const struct src_stage * const src_table%d[%d][%d] = {\n', ...
                 n, n_out, n_in);
 	i = 1;
         for b = 1:n_out
