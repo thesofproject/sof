@@ -702,6 +702,8 @@ static int plug_pcm_hw_free(snd_pcm_ioplug_t *io)
 		sem_close(pcm->ready[pipe_info->instance_id].sem);
 		sem_close(pcm->done[pipe_info->instance_id].sem);
 	}
+
+	return 0;
 }
 
 static const snd_pcm_ioplug_callback_t sof_playback_callback = {
