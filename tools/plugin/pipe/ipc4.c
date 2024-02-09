@@ -63,6 +63,7 @@ static const struct sof_pipe_module_library_map library_map[] = {
 	{0x6, "libsof_volume.so"},
 	{0x2, "libsof_mixer.so"},
 	{0x3, "libsof_mixer.so"},
+	{0x95, "libsof_ns.so"},
 	/*FIXME: hack for now to set up ALSA and SHM components */
 	{0x96, "libsof_mod_shm.so"}, /* host playback */
 	{0x97, "libsof_mod_alsa.so"}, /* dai playback */
