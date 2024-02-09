@@ -292,31 +292,27 @@ static int plug_new_process(snd_sof_plug_t *plug)
 {
 	struct tplg_context *ctx = &plug->tplg;
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
-	struct sof_ipc_comp_process *process;
+	struct ipc4_base_module_cfg basecfg;
 	struct snd_soc_tplg_ctl_hdr *tplg_ctl;
 	int ret;
 
-	process = calloc(MAX_TPLG_OBJECT_SIZE, 1);
-	if (!process)
+	ret = tplg_parse_widget_audio_formats(ctx);
+	if (ret < 0)
+		return ret;
+
+	/* only base config supported for now. extn support will be added later */
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
+	if (!comp_info->ipc_payload)
 		return -ENOMEM;
 
-	comp_info->ipc_payload = process;
+	/* FIXME: move this to when the widget is actually set up */
+	comp_info->instance_id = plug->instance_ids[SND_SOC_TPLG_DAPM_EFFECT]++;
+	comp_info->module_id = 0x95;
 
-	tplg_ctl = calloc(ctx->hdr->payload_size, 1);
-	if (!tplg_ctl) {
-		free(process);
-		return -ENOMEM;
-	}
+	plug_setup_widget_ipc_msg(comp_info);
 
-	ret = tplg_new_process(ctx, process, MAX_TPLG_OBJECT_SIZE,
-			       tplg_ctl, ctx->hdr->payload_size);
-	if (ret < 0) {
-		SNDERR("error: failed to create PGA\n");
-		goto out;
-	}
-out:
-	free(tplg_ctl);
-	return ret;
+	return 0;
 }
 
 static int plug_new_pipeline(snd_sof_plug_t *plug)
