@@ -1015,7 +1015,7 @@ static int plug_prepare_widgets_capture(snd_sof_plug_t *plug, struct tplg_pcm_in
 	struct list_item *item;
 	int ret;
 
-	/* for playback */
+	/* for capture */
 	list_for_item(item, &plug->route_list) {
 		struct tplg_route_info *route_info = container_of(item, struct tplg_route_info,
 								  item);
@@ -1038,8 +1038,8 @@ static int plug_prepare_widgets_capture(snd_sof_plug_t *plug, struct tplg_pcm_in
 		/* and then continue up the path */
 		if (route_info->source->type != SND_SOC_TPLG_DAPM_DAI_IN &&
 		    route_info->source->type != SND_SOC_TPLG_DAPM_DAI_OUT) {
-			ret = plug_prepare_widgets(plug, pcm_info, starting_comp_info,
-						   route_info->source);
+			ret = plug_prepare_widgets_capture(plug, pcm_info, starting_comp_info,
+							   route_info->source);
 			if (ret < 0)
 				return ret;
 		}
@@ -1192,7 +1192,8 @@ static int plug_set_up_widgets_capture(snd_sof_plug_t *plug,
 		/* and then continue down the path */
 		if (route_info->source->type != SND_SOC_TPLG_DAPM_DAI_IN &&
 		    route_info->source->type != SND_SOC_TPLG_DAPM_DAI_OUT) {
-			ret = plug_set_up_widgets(plug, starting_comp_info, route_info->source);
+			ret = plug_set_up_widgets_capture(plug, starting_comp_info,
+							  route_info->source);
 			if (ret < 0)
 				return ret;
 		}
@@ -1382,7 +1383,8 @@ static int plug_free_widgets_capture(snd_sof_plug_t *plug,
 		/* and then continue down the path */
 		if (route_info->sink->type != SND_SOC_TPLG_DAPM_DAI_IN &&
 		    route_info->sink->type != SND_SOC_TPLG_DAPM_DAI_OUT) {
-			ret = plug_free_widgets(plug, starting_comp_info, route_info->source);
+			ret = plug_free_widgets_capture(plug, starting_comp_info,
+							route_info->source);
 			if (ret < 0)
 				return ret;
 		}
@@ -1402,7 +1404,10 @@ int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipelin
 		pcm_info = container_of(item, struct tplg_pcm_info, item);
 
 		if (pcm_info->id == plug->pcm_id) {
-			host = pcm_info->playback_host; /* FIXME */
+			if (dir)
+				host = pcm_info->capture_host;
+			else
+				host = pcm_info->playback_host;
 			break;
 		}
 	}
@@ -1413,6 +1418,11 @@ int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipelin
 	}
 
 	if (dir) {
+		ret = plug_free_widgets_capture(plug, host, host);
+		if (ret < 0) {
+			SNDERR("failed to free widgets for capture PCM %d\n", plug->pcm_id);
+			return ret;
+		}
 	} else {
 		ret = plug_free_widgets(plug, host, host);
 		if (ret < 0) {
