@@ -15,10 +15,18 @@ Usage:
   -t n       Fuzz for n seconds.
   -o ofile   Redirect the fuzzer's extremely verbose stdout. The
              relatively verbose stderr is not redirected by -o.
+  -j n       Number of concurrent -jobs=n. Defaults to 1.
+             The value 0 uses the output of the 'nproc' command.
 
 Arguments after -- are passed as is to CMake (through west).
 When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
 the last 'VAL UE2' wins; previous values are silently ignored.
+
+The number of jobs defaults to 1 for (at least) two reasons:
+- Other workers do not stop immediately after one worker fails.
+- When higher than 1, this script has to unfortunately disable the
+  (very verbose) stdout because libFuzzer mixes it with the (terse and
+  useful) stderr.
 
 Fuzzing happens to require stubbing which provides a great solution to
 compile-check many CONFIG_* at once. So you can stop after the build
@@ -35,8 +43,8 @@ curating and committing such a seed directory to the tree).
 
 The tool will run until it finds a failure condition.  You will see
 MANY errors on stdout from all the randomized input.  Don't try to
-capture this, either let it output to a terminal or arrange to keep
-only the last XXX lines after the tool exits.
+capture this, either redirect to a file with '-o fuzz.out' or arrange
+to keep only the last XXX lines after the tool exits.
 
 The only prerequisite to install is a clang compiler on the host.
 Versions 12+ have all been observed to work.
@@ -71,12 +79,18 @@ main()
 {
   setup
 
-  local BUILD_ONLY=false
+  # Default values
+  local JOBS=1
   local PRISTINE=false
+  local BUILD_ONLY=false
+  local FUZZER_STDOUT=/dev/stdout # bashism
+  local TEST_DURATION=3
+
   # Parse "$@". getopts stops after '--'
-  while getopts "hpo:t:b" opt; do
+  while getopts "hj:po:t:b" opt; do
       case "$opt" in
           h) print_help; exit 0;;
+          j) if [ "$OPTARG" -eq 0 ]; then JOBS=$(nproc); else JOBS="$OPTARG"; fi;;
           p) PRISTINE=true;;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
@@ -88,10 +102,6 @@ main()
   # Pass all "$@" arguments remaining after '--' to cmake.
   # This also drops _leading_ '--'.
   shift $((OPTIND-1))
-
-  # Default values
-  : "${TEST_DURATION:=3}"
-  : "${FUZZER_STDOUT:=/dev/stdout}" # bashism
 
   # Move this to a new fuzz.conf overlay file if it grows bigger
   local fuzz_configs=(
@@ -124,21 +134,27 @@ main()
 
   mkdir -p ./fuzz_corpus
 
-  timeoutret=0
-  date
-  timeout -k 10 "$TEST_DURATION" >"$FUZZER_STDOUT" build-fuzz/zephyr/zephyr.exe ./fuzz_corpus ||
-      timeoutret=$?
-  if [ $timeoutret -eq 124 ]; then
-      # The current ASAN seems overly sensitive: it frequently (but not always) complains
-      # loudly that it has been aborted with a so-called DEADLYSIGNAL when the timeout
-      # command above actually delivers just a gentle TERM by default. Counteracts the
-      # wrong impression this unpredictable whining can give with a proud "successfully"
-      # message.
-      printf '\n\nSuccessfully aborted fuzzer after %d seconds test duration with DEADLYSIGNAL\n' \
-             "$TEST_DURATION"
-  else
-      die 'zephyr.exe fuzzer stopped before timing out: %d\n' $timeoutret
+  local jobs_opts=( )
+  # Do not use '-jobs=1' because it ignores FUZZER_STDOUT too
+  if [ "$JOBS" -gt 1 ]; then
+      # stdout and stderr get mixed and can't be separated anymore, so
+      # kiss stdout goodbye.
+      [ "$FUZZER_STDOUT" = /dev/stdout ] ||
+          >&2 printf 'WARN: redirection to %s EMPTY when jobs > 1\n' "$FUZZER_STDOUT"
+      jobs_opts+=( -jobs="$JOBS" -close_fd_mask=1 )
   fi
+
+  date
+  # Help is at: -help=1
+  ( set -x
+    >"$FUZZER_STDOUT" build-fuzz/zephyr/zephyr.exe -max_total_time="$TEST_DURATION" \
+     -verbosity=0 "${jobs_opts[@]}" ./fuzz_corpus ) || {
+      ret=$?
+      >&2 printf 'zephyr.exe returned: %d\n' $ret
+      date
+      die "FAIL. To debug, run: gdb -tui ./build-fuzz/zephyr/zephyr.exe -ex 'run > _ ./crash-...'"
+  }
+
   date
 }
 
