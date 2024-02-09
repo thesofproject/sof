@@ -263,15 +263,16 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 		if (!heap->physical_blocks_allocators[mem_block_iterator])
 			continue;
 
-		/* If we do not span alloc and block is smaller than alloc we try next mem_block */
-		if (block_size < alloc_size && !heap->allocating_continuously)
-			continue;
 		/* calculate block count needed to allocate for current
 		 * mem_block.
 		 */
 		block_size =
 		    1 << heap->physical_blocks_allocators[mem_block_iterator]->info.blk_sz_shift;
 		block_count = SOF_DIV_ROUND_UP((uint64_t)alloc_size, (uint64_t)block_size);
+
+		/* If we do not span alloc and block is smaller than alloc we try next mem_block */
+		if (block_size < alloc_size && !heap->allocating_continuously)
+			continue;
 
 		if (block_count >
 		    heap->physical_blocks_allocators[mem_block_iterator]->info.num_blocks)
