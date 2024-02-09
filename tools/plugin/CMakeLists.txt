@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-project(SOF_PLUGIN C)
+project(SOF_PLUGIN C CXX)
 
 include(../../scripts/cmake/misc.cmake)
 include(CheckCCompilerFlag)

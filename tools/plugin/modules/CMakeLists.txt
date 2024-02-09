@@ -55,3 +55,5 @@ set_target_properties(sof_mod_alsa
 	INSTALL_RPATH "${sof_install_directory}/alsa-lib"
 	INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+
+add_subdirectory(ov_noise_suppression)
