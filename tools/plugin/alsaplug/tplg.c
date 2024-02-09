@@ -695,13 +695,10 @@ out:
 		(fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
 	base_cfg->audio_fmt.s_type =
 		(fmt->audio_fmt.fmt_cfg & MASK(23, 16)) >> 16;
-	base_cfg->ibs = fmt->buffer_size;
 
-	/*
-	 * FIXME: is this correct? Choose ALSA period size for obs so that the buffer sizes
-	 * will set accodingly. Need to get channel count and format from output format
-	 */
-	base_cfg->obs = plug->period_size * 2 * 2;
+	/* Choose ALSA period size for ibs/obs so that the buffer sizes will be set accordingly */
+	base_cfg->ibs = plug->period_size * 2;
+	base_cfg->obs = plug->period_size * 2;
 
 	return 0;
 }
