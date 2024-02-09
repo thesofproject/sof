@@ -7,7 +7,7 @@
 #include <rtos/panic.h>
 #include <stdlib.h>
 
-void __panic(uint32_t p, char *filename, uint32_t linenum)
+void __panic(uint32_t p, const char *filename, uint32_t linenum)
 {
 	abort();
 }
