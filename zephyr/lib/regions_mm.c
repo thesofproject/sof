@@ -284,7 +284,7 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 			allocation_error_code = sys_mem_blocks_alloc_contiguous(
 				heap->physical_blocks_allocators[mem_block_iterator], block_count,
 				&ptr);
-		} else if (block_size > alloc_size) {
+		} else if (block_size >= alloc_size) {
 			allocation_error_code = sys_mem_blocks_alloc(
 				heap->physical_blocks_allocators[mem_block_iterator], block_count,
 				&ptr);
