@@ -116,5 +116,5 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
 # Topology for SOF plugin
-"development/sof-plugin\;sof-plugin"
+"development/sof-plugin\;sof-plugin\;NOISE_SUPPRESSION=false"
 )
