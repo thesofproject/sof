@@ -112,7 +112,7 @@ int WEAK rstrlen(const char *s)
 	return strlen(s);
 }
 
-void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
+void WEAK __panic(uint32_t p, const char *filename, uint32_t linenum)
 {
 	fail_msg("panic: %s:%d (code 0x%x)\n", filename, linenum, p);
 	exit(EXIT_FAILURE);

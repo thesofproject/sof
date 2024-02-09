@@ -112,7 +112,7 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		;
 }
 
-void __panic(uint32_t panic_code, char *filename, uint32_t linenum)
+void __panic(uint32_t panic_code, const char *filename, uint32_t linenum)
 {
 	struct sof_ipc_panic_info panicinfo = { .linenum = linenum };
 	const unsigned int length_max = sizeof(panicinfo.filename);
