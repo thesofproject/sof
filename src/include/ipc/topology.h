@@ -86,6 +86,8 @@ struct sof_ipc_comp {
 #define SOF_MEM_CAPS_CACHE		BIT(6) /**< cacheable */
 #define SOF_MEM_CAPS_EXEC		BIT(7) /**< executable */
 #define SOF_MEM_CAPS_L3			BIT(8) /**< L3 memory */
+/* Don't forget to update when adding a new bit to the ABI. */
+#define SOF_MEM_CAPS_LOWEST_INVALID	BIT(9) /**< Used for input validation */
 
 /*
  * overrun will cause ring buffer overwrite, instead of XRUN.

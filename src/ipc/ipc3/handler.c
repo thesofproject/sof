@@ -76,6 +76,9 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
 
+/* FIXME: assert() is most likely turned off in production builds
+ * https://open-std.org/jtc1/sc22/wg14/www/docs/n1967.htm
+ */
 #define _IPC_COPY_CMD(rx, tx, rx_size)					\
 	do {								\
 		int ___ret;						\
