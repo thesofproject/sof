@@ -83,7 +83,8 @@ jobs:
           esac
           duration="${{inputs.fuzzing_duration_s}}"
           duration="${duration:-301}"  # pull_request has not 'inputs.' :-(
-          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t "$duration" -- "$cmake_arg"
+          # Note libFuzzer makes a difference between -jobs and -workers (capped at nproc/2)
+          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t "$duration" -j"$(nproc)" -- "$cmake_arg"
 
       - name: Upload stdout
         uses: actions/upload-artifact@v3
