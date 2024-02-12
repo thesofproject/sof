@@ -388,7 +388,8 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		heap = &l3_heap;
 		return (__sparse_force void *)l3_heap_alloc_aligned(heap, align, bytes);
 #else
-		k_panic();
+		tr_err(&zephyr_tr, "L3_HEAP not available.");
+		return NULL;
 #endif
 	} else {
 		heap = &sof_heap;
