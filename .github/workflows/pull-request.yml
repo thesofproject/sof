@@ -167,7 +167,7 @@ jobs:
         # The main reason for these groups is to avoid the matrix
         # swarming the Github web interface and burying other checks.
         # See longer example above.
-        platform: [imx8 imx8x imx8m,
+        platform: [imx8m,
         ]
 
     steps:
