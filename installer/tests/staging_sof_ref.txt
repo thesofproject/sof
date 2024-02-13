@@ -1,5 +1,5 @@
 .
-├── sof-imx8.ldc
-└── sof-imx8.ri
+├── sof-imx8m.ldc
+└── sof-imx8m.ri
 
 0 directories, 2 files

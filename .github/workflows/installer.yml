@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:  # just a vector in this case
         make_env: [
-          IPC_VERSION= UNSIGNED_list='imx8' SIGNED_list=,  # default version
+          IPC_VERSION= UNSIGNED_list='imx8m' SIGNED_list=,  # default version
         ]
 
     steps:
