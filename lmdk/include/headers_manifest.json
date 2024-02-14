@@ -1,0 +1,23 @@
+[
+  ["src", "include", "ipc4", "header.h"],
+  ["src", "include", "module","audio","audio_stream.h"],
+  ["src","include","module","audio","format.h"],
+  ["src","include","module","audio","sink_api.h"],
+  ["src","include","module","audio","source_api.h"],
+  ["src","include","module","iadk","adsp_error_code.h"],
+  ["src","include","module","ipc","stream.h"],
+  ["src","include","module","ipc4","base-config.h"],
+  ["src","include","module","module","api_ver.h"],
+  ["src","include","module","module","base.h"],
+  ["src","include","module","module","interface.h"],
+  ["src","include","sof","audio","ipc-config.h"],
+  ["src","include","sof","audio","module_adapter","library","native_system_service.h"],
+  ["src","include","sof","audio","module_adapter","module","generic.h"],
+  ["src","include","sof","audio","module_adapter","iadk","adsp_stddef.h"],
+  ["posix","include","sof","compiler_attributes.h"],
+  ["posix","include","sof","list.h"],
+  ["posix","include","rtos","string.h"],
+  ["src","include","user","trace.h"],
+  ["src","module","audio","sink_api.c"],
+  ["src","module","audio","source_api.c"]
+]
