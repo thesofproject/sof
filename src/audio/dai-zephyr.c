@@ -173,6 +173,10 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_SAI;
 		cfg_params = &sof_cfg->sai;
 		break;
+	case SOF_DAI_IMX_ESAI:
+		cfg.type = DAI_IMX_ESAI;
+		cfg_params = &sof_cfg->esai;
+		break;
 	default:
 		return -EINVAL;
 	}
