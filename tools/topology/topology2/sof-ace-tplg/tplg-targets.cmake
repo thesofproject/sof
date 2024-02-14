@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
-set(TPLGS
+list(APPEND TPLGS
 # HDMI only topology with passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;DEEPBUFFER_FW_DMA_MS=100,\
 DEEPBUFFER_D0I3_COMPATIBLE=true"
@@ -10,12 +10,12 @@ DEEPBUFFER_D0I3_COMPATIBLE=true"
 DEEPBUFFER_D0I3_COMPATIBLE=true"
 # If the alsatplg plugins for NHLT are not available, the NHLT blobs will not be added to the
 # topologies below.
-"sof-hda-generic\;sof-hda-generic-4ch\;PLATFORM=mtl,\
+"sof-hda-generic\;sof-hda-generic-ace1-4ch\;PLATFORM=mtl,\
 HDA_CONFIG=mix,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-hda-generic-4ch.bin,DEEPBUFFER_FW_DMA_MS=100,\
+NHLT_BIN=nhlt-sof-hda-generic-ace1-4ch.bin,DEEPBUFFER_FW_DMA_MS=100,\
 DEEPBUFFER_D0I3_COMPATIBLE=true"
-"sof-hda-generic\;sof-hda-generic-2ch\;PLATFORM=mtl,\
-HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-2ch.bin,\
+"sof-hda-generic\;sof-hda-generic-ace1-2ch\;PLATFORM=mtl,\
+HDA_CONFIG=mix,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-2ch.bin,\
 DEEPBUFFER_FW_DMA_MS=100,DEEPBUFFER_D0I3_COMPATIBLE=true"
 
 # SDW + DMIC topology with passthrough pipelines
