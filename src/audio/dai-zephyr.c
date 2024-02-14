@@ -1069,6 +1069,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 			buffer_zero(dd->dma_buffer);
 		}
 
+		/* DMA driver and SOF's view of the DMA buffer's
+		 * read and write cursors must be the same to
+		 * avoid scenarios in which the DMA driver
+		 * reports false "free" and "pending" values, thus
+		 * leading to the DMA copying stale data due to
+		 * dma_status() stopping dai_common_copy() from
+		 * updating the data.
+		 */
+		audio_stream_reset(&dd->dma_buffer->stream);
+
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
