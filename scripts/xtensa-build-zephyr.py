@@ -743,8 +743,8 @@ def build_platforms():
 			xtensa_tools_root_dir = pathlib.Path(xtensa_tools_root_dir)
 			if not xtensa_tools_root_dir.is_dir():
 				raise RuntimeError(f"Platform {platform} uses Xtensa toolchain."
-					"\nVariable XTENSA_TOOLS_VERSION points path that does not exist\n"
-					"or is not a directory")
+					f"\nVariable XTENSA_TOOLS_ROOT={xtensa_tools_root_dir} points "
+					"to a path that does not exist or is not a directory")
 
 			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
 			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
