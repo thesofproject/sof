@@ -59,14 +59,14 @@ dnl     period, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, ESAI, 0, esai0-cs42888,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ESAI0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ESAI, 0, esai0-cs42888,
 	PIPELINE_SINK_2, 2, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
 

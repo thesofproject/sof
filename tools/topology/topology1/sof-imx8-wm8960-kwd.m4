@@ -56,7 +56,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1, SAI, 1, sai1-wm8960-hifi,
 	PIPELINE_SINK_1, 2, s32le,
 	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # keyword detector pipe
 dnl PIPELINE_PCM_ADD(pipeline,
