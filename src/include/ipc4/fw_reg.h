@@ -138,7 +138,10 @@ union ipc4_rom_info {
 #define IPC4_MAX_LLP_SNDW_READING_SLOTS 16
 
 /* Current ABI version of the FwRegisters layout. */
-#define IPC4_FW_REGS_ABI_VER 1
+/* NOTE: Set ABI_VER to 0 to disable delay reporting until
+ *       https://github.com/thesofproject/linux/issues/4781 is fixed
+ */
+#define IPC4_FW_REGS_ABI_VER 0
 
 /* FW Registers exposes additional DSP / FW state information to the driver. */
 struct ipc4_fw_registers {
