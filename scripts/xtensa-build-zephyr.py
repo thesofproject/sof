@@ -167,24 +167,29 @@ def parse_args():
 	global args
 	global west_top
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
-			epilog=("This script supports XtensaTools but only when installed in a specific\n" +
-				"directory structure, example:\n" +
-				"myXtensa/\n" +
-				"└── install/\n" +
-				"       ├── builds/\n" +
-				"       │   ├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
-				"       │   │   └── Intel_HiFiEP/\n" +
-				"       │   └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
-				"       │       ├── LX4_langwell_audio_17_8/\n" +
-				"       │       └── X4H3I16w2D48w3a_2017_8/\n" +
-				"       └── tools/\n" +
-				"               ├── RD-2012.5{}/\n".format(xtensa_tools_version_postfix) +
-				"               │   └── XtensaTools/\n" +
-				"               └── RG-2017.8{}/\n".format(xtensa_tools_version_postfix) +
-				"                   └── XtensaTools/\n" +
-			"$XTENSA_TOOLS_ROOT=/path/to/myXtensa ...\n" +
+			epilog=(
 
-			f"\nSupported platforms: {list(platform_configs)}"), add_help=False)
+f"""This script supports XtensaTools but only when installed in a specific
+directory structure, example:
+myXtensa/
+└── install/
+       ├── builds/
+       │   ├── RD-2012.5{xtensa_tools_version_postfix}
+       │   │   └── Intel_HiFiEP/
+       │   └── RG-2017.8{xtensa_tools_version_postfix}
+       │       ├── LX4_langwell_audio_17_8/
+       │       └── X4H3I16w2D48w3a_2017_8/
+       └── tools/
+               ├── RD-2012.5{xtensa_tools_version_postfix}
+               │   └── XtensaTools
+               └── RG-2017.8{xtensa_tools_version_postfix}
+                   └── XtensaTools/
+
+$XTENSA_TOOLS_ROOT=/path/to/myXtensa ...
+
+Supported platforms: {list(platform_configs)}"""
+
+			), add_help=False)
 
 	parser.add_argument('-h', '--help', action='store_true', help='show help')
 	parser.add_argument("-a", "--all", required=False, action="store_true",
