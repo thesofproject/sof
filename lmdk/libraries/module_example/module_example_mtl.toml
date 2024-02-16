@@ -60,7 +60,7 @@ count = 1
 
 	[[module.entry]]
 	name = "UPDWMIX"
-	uuid = "42F8060C-832F-4DBF-B247-51E961997B34"
+	uuid = "ffffffff-832F-4DBF-B247-51E961997B34"
 	affinity_mask = "0x1"
 	instance_count = "15"
 	domain_types = "0"

@@ -8,7 +8,7 @@
 #define __SOF_IPC4_UP_DOWN_MIXER_H__
 
 #include <ipc4/base-config.h>
-
+#include <sof/compiler_attributes.h>
 /**
  *  \brief bits field map which helps to describe each channel location a the data stream buffer
  */
