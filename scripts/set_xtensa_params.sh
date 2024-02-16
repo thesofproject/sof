@@ -11,6 +11,9 @@
 #
 # Not all variables are used in all use cases. Some are.
 #
+# Find some information about XTENSA_SYSTEM and XTENSA_CORE in
+# ./scripts/xtensa-build-zephyr.py --help
+#
 # The variables used by Zephyr are duplicated in
 # xtensa-build-zephyr.py, please keep in sync!
 

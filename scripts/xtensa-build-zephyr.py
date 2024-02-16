@@ -169,19 +169,27 @@ def parse_args():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
 			epilog=(
 
-f"""This script supports XtensaTools but only when installed in a specific
-directory structure, example:
+f"""This script supports XtensaTools but only when installed in a specific directory
+structure where a single --xtensa-core is registered per --xtensa-system registry, example
+below. Different layouts may or may not work.
+
 myXtensa/
 └── install/
        ├── builds/
-       │   ├── RD-2012.5{xtensa_tools_version_postfix}
-       │   │   └── Intel_HiFiEP/
-       │   └── RG-2017.8{xtensa_tools_version_postfix}
-       │       ├── LX4_langwell_audio_17_8/
-       │       └── X4H3I16w2D48w3a_2017_8/
+       │   ├── RD-2012.5{xtensa_tools_version_postfix}
+       │   │   └── Intel_HiFiEP/config/        # XTENSA_SYSTEM registry
+       │   │        ├── default-params
+       │   │        └── Intel_HiFiEP-params    # single, default XTENSA_CORE per registry
+       │   └── RG-2017.8{xtensa_tools_version_postfix}
+       │       ├── LX4_langwell_audio_17_8/config/
+       │       │    ├── default-params
+       │       │    └── LX4_langwell_audio_17_8-params
+       │       └── X4H3I16w2D48w3a_2017_8/config/
+       │           ├── default-params
+       │           └── X4H3I16w2D48w3a_2017_8-params
        └── tools/
                ├── RD-2012.5{xtensa_tools_version_postfix}
-               │   └── XtensaTools
+               │   └── XtensaTools
                └── RG-2017.8{xtensa_tools_version_postfix}
                    └── XtensaTools/
 
