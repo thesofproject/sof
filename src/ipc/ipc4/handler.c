@@ -534,6 +534,17 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 	}
 }
 
+#if CONFIG_LIBRARY
+/* There is no parallel execution in testbench for scheduler and pipelines, so the result would
+ * be always IPC4_FAILURE. Therefore the compound messages handling is simplified. The pipeline
+ * triggers will require an explicit scheduler call to get the components to desired state.
+ */
+static int ipc_wait_for_compound_msg(void)
+{
+	atomic_set(&msg_data.delayed_reply, 0);
+	return IPC4_SUCCESS;
+}
+#else
 static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
@@ -550,6 +561,7 @@ static int ipc_wait_for_compound_msg(void)
 
 	return IPC4_SUCCESS;
 }
+#endif
 
 const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
 {
