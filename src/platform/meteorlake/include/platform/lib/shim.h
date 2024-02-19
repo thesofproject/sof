@@ -47,7 +47,8 @@
 #define L2HSBPM(x)			(0x17A800 + 0x0008 * (x))
 #define SHIM_HSPGCTL(x)			(L2HSBPM(x) + 0x0000)
 
-#define LSPGCTL				0x71D80
+#define LSPGCTL0		0x71D80
+#define SHIM_LSPGCTL(x)		(LSPGCTL0 + 0x0008 * (x))
 
 #endif /* __PLATFORM_LIB_SHIM_H__ */
 
