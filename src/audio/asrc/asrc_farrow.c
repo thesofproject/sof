@@ -12,7 +12,6 @@
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>
 #include <user/trace.h>
-#include "asrc_config.h"
 #include "asrc_farrow.h"
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);

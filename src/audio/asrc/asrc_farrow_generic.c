@@ -2,9 +2,9 @@
 //
 // Copyright(c) 2012-2019 Intel Corporation. All rights reserved.
 
-#include "asrc_config.h"
+#include <sof/common.h>
 
-#if ASRC_GENERIC == 1
+#if SOF_USE_HIFI(NONE, ASRC)
 
 #include "asrc_farrow.h"
 #include <sof/audio/format.h>
@@ -360,4 +360,4 @@ void asrc_calc_impulse_response_n7(struct asrc_farrow *src_obj)
 	}
 }
 
-#endif /* ASRC_GENERIC */
+#endif /* ASRC_HIFI_NONE */
