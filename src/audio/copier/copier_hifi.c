@@ -4,15 +4,15 @@
 //
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 #include "copier.h"
+#include <sof/common.h>
 
-#if __XCC__ && (XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4)
+#if SOF_USE_HIFI(3, COPIER) || SOF_USE_HIFI(4, COPIER) || SOF_USE_HIFI(5, COPIER)
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
-#include <sof/common.h>
 #include <stddef.h>
 #include <errno.h>
 #include <stdint.h>

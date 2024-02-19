@@ -7,16 +7,16 @@
 #include <ipc4/base-config.h>
 #include <sof/audio/component_ext.h>
 #include "copier.h"
+#include <sof/common.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
-#ifdef COPIER_GENERIC
+#if SOF_USE_HIFI(NONE, COPIER)
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
-#include <sof/common.h>
 #include <stddef.h>
 #include <errno.h>
 #include <stdint.h>

@@ -33,17 +33,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/pcm_converter.h>
 
-#define COPIER_GENERIC
-
-#if defined(__XCC__)
-#include <xtensa/config/core-isa.h>
-
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
-#undef COPIER_GENERIC
-#endif
-
-#endif
-
 static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
 
 /* copier Module Configuration & Interface
