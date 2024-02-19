@@ -406,25 +406,6 @@ static const char *get_level_name(uint32_t level)
 	}
 }
 
-static const char *get_component_name(uint32_t trace_class, uint32_t uid_ptr)
-{
-	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
-	const struct sof_uuid_entry *uid_entry;
-
-	/* if uid_ptr is non-zero, find name in the ldc file */
-	if (uid_ptr) {
-		if (uid_ptr < uids_dict->base_address ||
-		    uid_ptr >= uids_dict->base_address +
-		    uids_dict->data_length)
-			return "<uid?>";
-		uid_entry = get_uuid_entry(uid_ptr);
-		return uid_entry->name;
-	}
-
-	/* do not resolve legacy (deprecated) trace class name */
-	return "unknown";
-}
-
 /* remove superfluous leading file path and shrink to last 20 chars */
 static char *format_file_name(char *file_name_raw, int full_name)
 {
@@ -512,12 +493,11 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		ids[0] = '\0';
 
 	if (raw_output) { /* "raw" means script-friendly (not all hex) */
-		fprintf(out_fd, "%s%u %u %s%s%s ",
+		fprintf(out_fd, "%s%u %u %s%s ",
 			entry->header.level == use_colors ?
 				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 			dma_log->core_id,
 			entry->header.level,
-			get_component_name(entry->header.component_class, 0),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
 
@@ -546,9 +526,8 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		fprintf(out_fd, "c%d ", dma_log->core_id);
 
 		/* component name and id */
-		fprintf(out_fd, "%s%-12s %-5s%s ",
+		fprintf(out_fd, "%s %-5s%s ",
 			use_colors ? KYEL : "",
-			get_component_name(entry->header.component_class, 0),
 			ids,
 			use_colors ? KNRM : "");
 
