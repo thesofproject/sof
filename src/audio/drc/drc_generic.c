@@ -8,13 +8,14 @@
 #include <sof/audio/format.h>
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 #include <stdint.h>
 
 #include "drc.h"
 #include "drc_algorithm.h"
 #include "drc_math.h"
 
-#if DRC_GENERIC
+#if SOF_USE_HIFI(NONE, DRC)
 
 #define ONE_Q20        Q_CONVERT_FLOAT(1.0f, 20)                /* Q12.20 */
 #define ONE_Q21        Q_CONVERT_FLOAT(1.0f, 21)                /* Q11.21 */
@@ -450,9 +451,9 @@ void drc_compress_output(struct drc_state *state,
 	}
 }
 
-#endif /* DRC_GENERIC */
+#endif /* DRC_HIFI_NONE */
 
-#if DRC_GENERIC || DRC_HIFI3
+#if SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC)
 /* After one complete division of samples have been received (and one division of
  * samples have been output), we calculate shaped power average
  * (detector_average) from the input division, update envelope parameters from

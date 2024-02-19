@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+comment "DRC optimization level select"
+
+choice "DRC_SIMD_LEVEL_SELECT"
+	prompt "choose which SIMD level used for DRC module"
+	depends on COMP_DRC
+	default DRC_HIFI_MAX
+
+	config DRC_HIFI_MAX
+		prompt "SIMD will selected by toolchain pre-defined header"
+		bool
+		help
+			When this was selected, optimization level will be determined
+			by toolchain pre-defined macros in core isa header file.
+
+	config DRC_HIFI_5
+		prompt "choose HIFI5 intrinsic optimized DRC module"
+		bool
+		help
+			This option used to build HIFI5 optimized DRC code
+
+	config DRC_HIFI_4
+		prompt "choose HIFI4 intrinsic optimized DRC module"
+		bool
+		help
+			This option used to build HIFI4 optimized DRC code
+
+	config DRC_HIFI_3
+		prompt "choose HIFI3 intrinsic optimized DRC module"
+		bool
+		help
+			This option used to build HIFI3 intrinsic optimized DRC code
+
+	config DRC_HIFI_NONE
+		prompt "choose generic C DRC module, no HIFI SIMD involved"
+		bool
+		help
+			This option used to build DRC generic code.
+endchoice

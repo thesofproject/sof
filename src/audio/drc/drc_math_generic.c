@@ -9,13 +9,14 @@
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <sof/math/trig.h>
+#include <sof/common.h>
 
 #include "drc_math.h"
 
 #define q_mult(a, b, qa, qb, qy) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, qa, qb, qy))
 #define q_multq(a, b, q) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, q, q, q))
 
-#if DRC_GENERIC
+#if SOF_USE_HIFI(NONE, DRC)
 
 /*
  * Input depends on precision_x
@@ -221,7 +222,7 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 #undef qc
 }
 
-#endif /* DRC_GENERIC */
+#endif /* DRC_HIFI_NONE */
 
 /*
  * Input x is Q6.26; valid range: (0.0, 32.0); x <= 0 is not supported

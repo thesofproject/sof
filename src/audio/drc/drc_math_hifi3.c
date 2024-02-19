@@ -5,9 +5,10 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 #include "drc_math.h"
 
-#if DRC_HIFI3 || DRC_HIFI4
+#if SOF_USE_HIFI(4, DRC) || SOF_USE_HIFI(3, DRC)
 
 #include <xtensa/tie/xt_hifi3.h>
 
@@ -225,4 +226,4 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 	return acc;
 }
 
-#endif /* DRC_HIFI3 */
+#endif /* DRC_HIFI_3/4 */

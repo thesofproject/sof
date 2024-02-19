@@ -12,7 +12,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/platform.h>
 
-#include "drc_plat_conf.h"
 #include "drc_user.h"
 
 struct audio_stream;

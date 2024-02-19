@@ -8,13 +8,14 @@
 #include <sof/audio/format.h>
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 #include <stdint.h>
 
 #include "drc.h"
 #include "drc_algorithm.h"
 #include "drc_math.h"
 
-#if DRC_HIFI4
+#if SOF_USE_HIFI(4, DRC)
 
 #include <xtensa/tie/xt_hifi4.h>
 
@@ -910,4 +911,4 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 
 const size_t drc_proc_fncount = ARRAY_SIZE(drc_proc_fnmap);
 
-#endif /* DRC_HIFI4 */
+#endif /* DRC_HIFI_4 */
