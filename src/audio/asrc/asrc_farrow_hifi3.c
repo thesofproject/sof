@@ -2,11 +2,11 @@
 //
 // Copyright(c) 2012-2019 Intel Corporation. All rights reserved.
 
-#include "asrc_config.h"
+#include <sof/common.h>
+
+#if SOF_USE_HIFI(3, ASRC) || SOF_USE_HIFI(4, ASRC) || SOF_USE_HIFI(5, ASRC)
+
 #include "asrc_farrow.h"
-
-#if ASRC_HIFI3 == 1
-
 #include <xtensa/tie/xt_hifi3.h>
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
@@ -401,4 +401,4 @@ void asrc_calc_impulse_response_n7(struct asrc_farrow *src_obj)
 	AE_SA64POS_FP(align_out, result_P);
 }
 
-#endif /* ASRC Hifi3 */
+#endif /* ASRC_HIFI_3 */

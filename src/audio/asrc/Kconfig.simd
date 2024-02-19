@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+comment "ASRC optimization level select"
+
+choice "ASRC_SIMD_LEVEL_SELECT"
+	prompt "choose which SIMD level used for ASRC module"
+	depends on COMP_ASRC
+	default ASRC_HIFI_MAX
+
+	config ASRC_HIFI_MAX
+		prompt "SIMD will selected by toolchain pre-defined header"
+		bool
+		help
+			When this was selected, optimization level will be determined
+			by toolchain pre-defined macros in core isa header file.
+
+	config ASRC_HIFI_5
+		prompt "choose HIFI5 intrinsic optimized ASRC module"
+		bool
+		help
+			This option used to build HIFI5 optimized ASRC code
+
+	config ASRC_HIFI_4
+		prompt "choose HIFI4 intrinsic optimized ASRC module"
+		bool
+		help
+			This option used to build HIFI4 optimized ASRC code
+
+	config ASRC_HIFI_3
+		prompt "choose HIFI3 intrinsic optimized ASRC module"
+		bool
+		help
+			This option used to build HIFI3 intrinsic optimized ASRC code
+
+	config ASRC_HIFI_NONE
+		prompt "choose generic C ASRC module, no HIFI SIMD involved"
+		bool
+		help
+			This option used to build ASRC generic code.
+endchoice

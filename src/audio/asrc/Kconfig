@@ -16,6 +16,8 @@ config COMP_ASRC
 
 if COMP_ASRC
 
+rsource "Kconfig.simd"
+
 choice
         prompt "ASRC down sampling conversions set"
         default COMP_ASRC_DOWNSAMPLING_FULL
