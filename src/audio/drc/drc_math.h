@@ -13,13 +13,12 @@
 #include <sof/math/numbers.h>
 #include <sof/math/lut_trig.h>
 #include <sof/math/trig.h>
-
-#include "drc_plat_conf.h"
+#include <sof/common.h>
 
 /* Unmark this define to use cordic arc sine implementation. */
 /* #define DRC_USE_CORDIC_ASIN */
 
-#if DRC_HIFI3 || DRC_HIFI4
+#if SOF_USE_HIFI(4, DRC) || SOF_USE_HIFI(3, DRC)
 
 #include <xtensa/tie/xt_hifi3.h>
 
@@ -106,7 +105,7 @@ static inline int32_t drc_asin_fixed(int32_t x)
 }
 #endif /* DRC_USE_CORDIC_ASIN */
 
-#endif /* DRC_HIFI3 */
+#endif /* DRC_HIFI_3/4 */
 
 int32_t drc_lin2db_fixed(int32_t linear); /* Input:Q6.26 Output:Q11.21 */
 int32_t drc_log_fixed(int32_t x); /* Input:Q6.26 Output:Q6.26 */

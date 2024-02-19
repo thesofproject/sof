@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+rsource "Kconfig.simd"
+
 config COMP_DRC
 	bool "Dynamic Range Compressor component"
 	select CORDIC_FIXED

@@ -8,13 +8,14 @@
 #include <sof/audio/format.h>
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 #include <stdint.h>
 
 #include "drc.h"
 #include "drc_algorithm.h"
 #include "drc_math.h"
 
-#if DRC_HIFI3
+#if SOF_USE_HIFI(3, DRC)
 
 #include <xtensa/tie/xt_hifi3.h>
 
@@ -494,4 +495,4 @@ void drc_compress_output(struct drc_state *state,
 	}
 }
 
-#endif /* DRC_HIFI3 */
+#endif /* DRC_HIFI_3 */
