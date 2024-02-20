@@ -6,6 +6,7 @@
 #ifndef __LIBRARY_INCLUDE_LIB_SCHEDULE_H__
 #define __LIBRARY_INCLUDE_LIB_SCHEDULE_H__
 
+#include <rtos/task.h>
 #include <stdint.h>
 
 struct task;
