@@ -25,7 +25,7 @@ PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch.bin"
 "sof-hda-generic\;sof-hda-generic-cavs25-4ch\;HDA_CONFIG=mix,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI_USE_CHAIN_DMA=false,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-4ch.bin"
 
 # Topologies for ACE1 and ACE2 architectures
