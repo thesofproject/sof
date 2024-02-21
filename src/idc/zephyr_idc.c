@@ -120,32 +120,6 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	int ret;
 	int idc_send_memcpy_err __unused;
 
-	if (!cpu_is_core_enabled(target_cpu)) {
-		tr_err(&zephyr_idc_tr, "Core %u is down, cannot sent IDC message", target_cpu);
-		return -EACCES;
-	}
-
-	/*
-	 * Handler is NULL when work object has never been submitted.
-	 * In all other cases, we must use k_p4wq_wait() before reuse
-	 * of the object.
-	 */
-	if (work->handler) {
-		/*
-		 * If new request is in blocking mode, we must call
-		 * k_p4wq in blocking mode. This is workaround for
-		 * k_p4wq_wait() interface.
-		 */
-		work->sync = (mode == IDC_BLOCKING);
-
-		ret = k_p4wq_wait(work, K_USEC(IDC_TIMEOUT));
-		if (ret < 0) {
-			tr_err(&zephyr_idc_tr, "idc_send_msg error %d, target core %u",
-			       ret, target_cpu);
-			return ret;
-		}
-	}
-
 	idc_send_memcpy_err = memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg));
 	assert(!idc_send_memcpy_err);
 	/* Same priority as the IPC thread which is an EDF task and under Zephyr */
@@ -154,6 +128,10 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->handler = idc_handler;
 	work->sync = mode == IDC_BLOCKING;
 
+	if (!cpu_is_core_enabled(target_cpu)) {
+		tr_err(&zephyr_idc_tr, "Core %u is down, cannot sent IDC message", target_cpu);
+		return -EACCES;
+	}
 	if (msg->payload) {
 		idc_send_memcpy_err = memcpy_s(payload->data, sizeof(payload->data),
 					       msg->payload, msg->size);
