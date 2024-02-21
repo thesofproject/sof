@@ -9,8 +9,9 @@
 #define __SOF_MATH_FIR_HIFI2EP_H__
 
 #include <sof/math/fir_config.h>
+#include <sof/common.h>
 
-#if FIR_HIFIEP
+#if SOF_USE_HIFI(2, FILTER)
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>

@@ -10,23 +10,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/common.h>
 
 #define IIR_DF1_NUM_STATE 4
-
-#if defined __XCC__
-#include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3
-#define IIR_DF1_GENERIC	0
-#define IIR_DF1_HIFI3	1
-#else
-#define IIR_DF1_GENERIC	1
-#define IIR_DF1_HIFI3	0
-#endif /* XCHAL_HAVE_HIFI3 */
-#else
-/* GCC */
-#define IIR_DF1_GENERIC	1
-#define IIR_DF1_HIFI3	0
-#endif
 
 struct iir_state_df1 {
 	unsigned int biquads; /* Number of IIR 2nd order sections total */
@@ -51,7 +37,7 @@ void iir_reset_df1(struct iir_state_df1 *iir);
 int32_t iir_df1(struct iir_state_df1 *iir, int32_t x);
 
 /* Inline functions */
-#if IIR_DF1_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #include "iir_df1_hifi3.h"
 #else
 #include "iir_df1_generic.h"

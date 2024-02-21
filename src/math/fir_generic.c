@@ -7,10 +7,10 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/math/fir_config.h>
-
-#if FIR_GENERIC
-
 #include <sof/common.h>
+
+#if SOF_USE_HIFI(NONE, FILTER)
+
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/math/fir_generic.h>

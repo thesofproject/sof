@@ -13,7 +13,7 @@
 #include <sof/math/iir_df2t.h>
 #include <user/eq.h>
 
-#if IIR_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 
 #include <xtensa/tie/xt_hifi3.h>
 

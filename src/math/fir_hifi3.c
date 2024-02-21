@@ -5,8 +5,9 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 #include <sof/math/fir_config.h>
+#include <sof/common.h>
 
-#if FIR_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 
 #include <sof/audio/buffer.h>
 #include <sof/math/fir_hifi3.h>

@@ -11,8 +11,9 @@
 #define __SOF_MATH_FIR_GENERIC_H__
 
 #include <sof/math/fir_config.h>
+#include <sof/common.h>
 
-#if FIR_GENERIC
+#if SOF_USE_HIFI(NONE, FILTER)
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/format.h>

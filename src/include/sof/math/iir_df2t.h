@@ -12,35 +12,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-/* Define SOFM_IIR_DF2T_FORCEARCH 0/3 in build command line or temporarily in
- * this file to override the default auto detection.
- */
-#ifdef SOFM_IIR_DF2T_FORCEARCH
-#  if SOFM_IIR_DF2T_FORCEARCH == 3
-#    define IIR_GENERIC	0
-#    define IIR_HIFI3	1
-#  elif SOFM_IIR_DF2T_FORCEARCH == 0
-#    define IIR_GENERIC	1
-#    define IIR_HIFI3	0
-#  else
-#    error "Unsupported SOFM_IIR_DF2T_FORCEARCH value."
-#  endif
-#else
-#  if defined __XCC__
-#    include <xtensa/config/core-isa.h>
-#    if XCHAL_HAVE_HIFI3 == 1 || XCHAL_HAVE_HIFI4 == 1
-#      define IIR_GENERIC	0
-#      define IIR_HIFI3		1
-#    else
-#      define IIR_GENERIC	1
-#      define IIR_HIFI3		0
-#    endif /* XCHAL_HAVE_HIFIn */
-#  else
-#    define IIR_GENERIC		1
-#    define IIR_HIFI3		0
-#  endif /* __XCC__ */
-#endif /* SOFM_IIR_DF2T_FORCEARCH */
+#include <sof/common.h>
 
 #define IIR_DF2T_NUM_DELAYS 2
 
@@ -71,7 +43,7 @@ void iir_reset_df2t(struct iir_state_df2t *iir);
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 
 /* Inline functions with or without HiFi3 intrinsics */
-#if IIR_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #include "iir_df2t_hifi3.h"
 #else
 #include "iir_df2t_generic.h"
