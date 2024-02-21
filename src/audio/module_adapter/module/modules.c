@@ -199,34 +199,11 @@ static int modules_prepare(struct processing_module *mod,
 			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
-	const struct comp_driver *const drv = dev->drv;
-	int ret = 0;
 
 	comp_info(dev, "modules_prepare()");
 
-	/* Call module specific prepare function if exists. */
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = drv->adapter_ops;
+	return iadk_wrapper_prepare(mod->priv.module_adapter);
 
-		ret = mod_in->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
-	} else {
-		ret = iadk_wrapper_prepare(mod->priv.module_adapter);
-	}
-	return ret;
-}
-
-static int modules_init_process(struct processing_module *mod)
-{
-	struct module_data *codec = &mod->priv;
-	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "modules_init_process()");
-
-	codec->mpd.produced = 0;
-	codec->mpd.consumed = 0;
-	codec->mpd.init_done = 1;
-
-	return 0;
 }
 
 static int modules_process(struct processing_module *mod,
@@ -237,7 +214,7 @@ static int modules_process(struct processing_module *mod,
 		return iadk_wrapper_process(mod->priv.module_adapter, sources,
 					    num_of_sources, sinks, num_of_sinks);
 
-	const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+	const struct module_interface *mod_in = mod->priv.ops;
 
 	return mod_in->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 }
@@ -251,7 +228,7 @@ static int modules_process_audio_stream(struct processing_module *mod,
 	if (!mod->is_native_sof)
 		return -EOPNOTSUPP;
 
-	const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+	const struct module_interface *mod_in = mod->priv.ops;
 
 	return mod_in->process_audio_stream(mod, input_buffers, num_input_buffers,
 					    output_buffers, num_output_buffers);
@@ -279,7 +256,7 @@ static int modules_process_raw(struct processing_module *mod,
 		modules_init_process(mod);
 
 	/* Call module specific process function. */
-	const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+	const struct module_interface *mod_in = mod->priv.ops;
 
 	return mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
 					output_buffers, num_output_buffers);
@@ -301,15 +278,12 @@ static int modules_free(struct processing_module *mod)
 
 	comp_info(dev, "modules_free()");
 	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = drv->adapter_ops;
+		const struct module_interface *mod_in = mod->priv.ops;
 
 		ret = mod_in->free(mod);
 	} else {
 		ret = iadk_wrapper_free(mod->priv.module_adapter);
 	}
-
-	if (ret < 0)
-		comp_err(dev, "Failed to free a module: %d", ret);
 
 	rfree(md->mpd.in_buff);
 	rfree(md->mpd.out_buff);
@@ -346,7 +320,7 @@ static int modules_set_configuration(struct processing_module *mod, uint32_t con
 				     size_t response_size)
 {
 	if (mod->is_native_sof) {
-		const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+		const struct module_interface *mod_in = mod->priv.ops;
 
 		return mod_in->set_configuration(mod, config_id, pos, data_offset_size, fragment,
 						 fragment_size, response, response_size);
@@ -373,7 +347,7 @@ static int modules_get_configuration(struct processing_module *mod, uint32_t con
 				     size_t fragment_size)
 {
 	if (mod->is_native_sof) {
-		const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+		const struct module_interface *mod_in = mod->priv.ops;
 
 		return mod_in->get_configuration(mod, config_id, data_offset_size,
 						 fragment, fragment_size);
@@ -394,7 +368,7 @@ static int modules_set_processing_mode(struct processing_module *mod,
 				       enum module_processing_mode mode)
 {
 	if (mod->is_native_sof) {
-		const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+		const struct module_interface *mod_in = mod->priv.ops;
 
 		return mod_in->set_processing_mode(mod, mode);
 	}
@@ -422,7 +396,7 @@ static enum module_processing_mode modules_get_processing_mode(struct processing
 static int modules_reset(struct processing_module *mod)
 {
 	if (mod->is_native_sof) {
-		const struct module_interface *const mod_in = mod->dev->drv->adapter_ops;
+		const struct module_interface *mod_in = mod->priv.ops;
 
 		return mod_in->reset(mod);
 	}
@@ -433,9 +407,7 @@ static int modules_reset(struct processing_module *mod)
 const struct module_interface processing_module_adapter_interface = {
 	.init = modules_init,
 	.prepare = modules_prepare,
-	.process_raw_data = modules_process_raw,
 	.process = modules_process,
-	.process_audio_stream = modules_process_audio_stream,
 	.set_processing_mode = modules_set_processing_mode,
 	.get_processing_mode = modules_get_processing_mode,
 	.set_configuration = modules_set_configuration,
