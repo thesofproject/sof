@@ -150,34 +150,61 @@ int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState
 						   const float *const *src,
 						   float * const *dest)
 {
+	// Check if the input pointers are NULL
+	if (!state || !src || !dest)
+		return -1;  // Return an error code
+
+	// Check if the num_output_channels, num_aec_reference_channels,
+	// and num_frames values are positive
+	if (state->num_output_channels <= 0 ||
+	    state->num_aec_reference_channels <= 0 ||
+	    state->num_frames <= 0) {
+		return -2;  // Return an error code
+	}
+
 	float *ref = state->aec_reference;
 	float **mic = (float **)src;
 	int n, chan;
+	int num_frames = state->num_frames;
+	int num_output_channels = state->num_output_channels;
+	int num_aec_reference_channels = state->num_aec_reference_channels;
 
-	for (chan = 0; chan < state->num_output_channels; chan++) {
-		for (n = 0; n < state->num_frames; ++n) {
-			float mic_save = mic[chan][n];	/* allow same in/out buffer */
+	for (chan = 0; chan < num_output_channels; chan++) {
+		float *mic_chan = mic[chan];
+		float *dest_chan = dest[chan];
+		float *ref_chan = ref + chan * num_frames;
 
-			if (chan < state->num_aec_reference_channels)
-				dest[chan][n] = mic_save + ref[n + (chan * state->num_frames)];
+		if (chan < num_aec_reference_channels)
+			for (n = 0; n < num_frames; ++n)
+				dest_chan[n] = mic_chan[n] + ref_chan[n];
+		else
+			if (mic_chan != dest_chan)
+				memcpy_s(dest_chan,
+					 num_frames * sizeof(float),
+					 mic_chan,
+					 num_frames * sizeof(float));
 			else
-				dest[chan][n] = mic_save;
-		}
+				memmove(dest_chan, mic_chan, num_frames * sizeof(float));
 	}
 	return 0;
 }
 
-int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState *const state,
-						  const float *const *data)
+inline int GoogleRtcAudioProcessingAnalyzeRender_float32
+	   (GoogleRtcAudioProcessingState * const restrict state,
+	   const float * const *restrict data)
 {
 	const size_t buffer_size =
 		sizeof(state->aec_reference[0])
 		* state->num_frames;
 	int channel;
+	int num_aec_reference_channels = state->num_aec_reference_channels;
+	int num_frames = state->num_frames;
 
-	for (channel = 0; channel < state->num_aec_reference_channels; channel++) {
-		memcpy_s(&state->aec_reference[channel * state->num_frames], buffer_size,
-			 data[channel], buffer_size);
+	if (buffer_size > 0) {
+		for (channel = 0; channel < num_aec_reference_channels; channel++) {
+			memcpy_s(&state->aec_reference[channel * num_frames], buffer_size,
+				 data[channel], buffer_size);
+		}
 	}
 
 	return 0;
@@ -187,18 +214,37 @@ int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *
 						 const int16_t *const src,
 						 int16_t *const dest)
 {
+	if (!state || !src || !dest || !state->aec_reference)
+		return -1; // Return an error code if any of the pointers are null
+
 	int16_t *ref = state->aec_reference;
 	int n, chan;
 
-	for (chan = 0; chan < state->num_output_channels; chan++) {
-		for (n = 0; n < state->num_frames; ++n) {
-			int16_t mic_save = src[(n * state->num_capture_channels) + chan];
+	int num_capture_channels = state->num_capture_channels;
+	int num_aec_reference_channels = state->num_aec_reference_channels;
 
-			if (chan < state->num_aec_reference_channels)
-				dest[(n * state->num_capture_channels) + chan] =
-				   mic_save + ref[(n * state->num_aec_reference_channels) + chan];
+	for (chan = 0; chan < state->num_output_channels; chan++) {
+		int capture_index = chan;
+		int reference_index = chan;
+
+		for (n = 0; n < state->num_frames; ++n) {
+			if (capture_index >= num_capture_channels ||
+			    reference_index >= num_aec_reference_channels) {
+			// Return an error code if the indices are out of bounds
+				return -1;
+			}
+
+			int16_t mic_save = src[capture_index];
+
+			// Use the local variables instead of fetching the values from memory
+			// each time
+			if (chan < num_aec_reference_channels)
+				dest[capture_index] = mic_save + ref[reference_index];
 			else
-				dest[(n * state->num_capture_channels) + chan] = mic_save;
+				dest[capture_index] = mic_save;
+
+			capture_index += num_capture_channels;
+			reference_index += num_aec_reference_channels;
 		}
 	}
 
@@ -212,8 +258,10 @@ int GoogleRtcAudioProcessingAnalyzeRender_int16(GoogleRtcAudioProcessingState *c
 		sizeof(state->aec_reference[0])
 		* state->num_frames
 		* state->num_aec_reference_channels;
-	memcpy_s(state->aec_reference, buffer_size,
-		 data, buffer_size);
+
+	if (memcmp(state->aec_reference, data, buffer_size) != 0)
+		memcpy_s(state->aec_reference, buffer_size, data, buffer_size);
+
 	return 0;
 }
 

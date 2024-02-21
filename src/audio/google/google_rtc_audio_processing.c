@@ -63,6 +63,7 @@ struct google_rtc_audio_processing_comp_data {
 	float *process_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
 #else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 	int16_t *aec_reference_buffer;
+	size_t aec_reference_buffer_size;  /* Add this field to store the buffer size */
 	int16_t *process_buffer;
 #endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
@@ -86,6 +87,39 @@ struct google_rtc_audio_processing_comp_data {
 	int aec_reference_source;
 	int raw_microphone_source;
 };
+
+/* Function prototype for google_rtc_safe_memcpy */
+int google_rtc_safe_memcpy(struct google_rtc_audio_processing_comp_data *cd, int16_t *dst,
+			   int16_t *src, size_t num_bytes, size_t buffer_size,
+			   size_t frame_index);
+
+/* Helper function to perform error checking and memcpy operation */
+int google_rtc_safe_memcpy(struct google_rtc_audio_processing_comp_data *cd, int16_t *dst,
+			   int16_t *src, size_t num_bytes, size_t buffer_size,
+			   size_t frame_index)
+{
+	/* Check if the source or destination pointers are null */
+	if (!dst || !src)
+		return -EINVAL;
+
+	/* Calculate the used and remaining space in the buffer */
+	size_t buffer_used = frame_index * sizeof(int16_t);
+	size_t buffer_remaining = buffer_size - buffer_used;
+
+	/* Check if the source data can fit in the destination buffer */
+	if (num_bytes <= buffer_remaining) {
+		int16_t *buffer_start = dst;
+		size_t offset = frame_index * cd->num_capture_channels;
+
+		/* Copy the source data to the destination buffer */
+		buffer_start += offset;
+		memcpy(buffer_start, src, num_bytes);
+		return 0;
+	}
+
+	/* The source data is too big to fit in the destination buffer */
+	return -EINVAL;
+}
 
 void *GoogleRtcMalloc(size_t size)
 {
@@ -790,14 +824,33 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	int8_t *dst_buf_end;
 	size_t dst_buf_size;
 
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+
+	/* Determine the number of elements needed */
+	size_t number_of_elements = cd->num_frames * cd->num_aec_reference_channels;
+
+	/* Free the old buffer if it exists */
+	if (cd->aec_reference_buffer) {
+		free(cd->aec_reference_buffer);
+		cd->aec_reference_buffer = NULL;
+	}
+
+	/* Allocate the new buffer */
+	cd->aec_reference_buffer = malloc(number_of_elements * sizeof(int16_t));
+
+	/* Check if the allocation was successful */
+	if (!cd->aec_reference_buffer) {
+		/* Handle the error */
+		return -ENOMEM;
+	}
+
+	/* Update the buffer size */
+	cd->aec_reference_buffer_size = number_of_elements * sizeof(int16_t);
+
 	size_t num_of_bytes_to_process;
-	size_t channel;
-	size_t buffer_offset;
 
 	struct sof_source *ref_stream, *src_stream;
 	struct sof_sink *dst_stream;
-
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
 	if (cd->reconfigure) {
 		ret = google_rtc_audio_processing_reconfigure(mod);
@@ -822,22 +875,56 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	/* 32float: de-interlace ref buffer, convert it to float, skip channels if > Max
 	 * 16int: linearize buffer, skip channels if > Max
 	 */
-	buffer_offset = 0;
-	for (int i = 0; i < cd->num_frames; i++) {
-		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
-			cd->aec_reference_buffer_ptrs[channel][i] =
-					convert_int16_to_float(ref[channel]);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-			cd->aec_reference_buffer[buffer_offset++] = ref[channel];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	/* Reduce cycle waste by streamlining the inner loop,
+	 * converting from array indexing to pointer arithmetic,
+	 * and putting data copy verification outside the loop.
+	 */
+	const int16_t *ref_data_end = ref + cd->num_frames * cd->num_aec_reference_channels;
 
-		}
-
-		ref += cd->num_aec_reference_channels;
-		if ((void *)ref >= (void *)ref_buf_end)
-			ref = (void *)ref_buf_start;
+	/* Check that ref is within the valid range of the ref_buf buffer */
+	if (!ref || ref < (int16_t *)ref_buf_start || ref >= (int16_t *)ref_buf_end) {
+		/* ref does not point to valid int16_t data,
+		 * return -EINVAL immediately to indicate an invalid argument was passed
+		 */
+		return -EINVAL;
 	}
+
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+	float **ref_ptr = cd->aec_reference_buffer_ptrs;
+	int s_chan;
+	int i;
+
+	/* Loop over frames and channels, converting data from int16 to float */
+	for (i = 0; i < cd->num_frames; ++i) {
+		for (s_chan = 0; s_chan < cd->num_aec_reference_channels; ++s_chan) {
+			(*ref_ptr)[s_chan] = convert_int16_to_float(*ref++);
+		ref_ptr++;
+		}
+	}
+
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	int16_t *ref_buf = cd->aec_reference_buffer;
+
+	/* Use memcpy to copy the data from ref buffer to ref_buf buffer until it reaches
+	 * ref_data_end
+	 * This assumes that the data in the ref buffer is contiguous
+	 */
+	size_t num_bytes = (ref_data_end - ref) * sizeof(*ref);
+
+	if (num_bytes > cd->aec_reference_buffer_size) {
+		/* Handle the error: the source data is too large to fit in the
+		 * destination buffer
+		 */
+		return -EINVAL;
+	}
+
+	memcpy(cd->aec_reference_buffer, ref, num_bytes);
+
+	/*  Update the ref and ref_buf pointers */
+	ref = ref_data_end;
+	ref_buf += (ref_data_end - ref);
+
+#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 #if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	GoogleRtcAudioProcessingAnalyzeRender_float32(cd->state,
@@ -856,22 +943,61 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	assert(!ret);
 	src_buf_end = src_buf_start + src_buf_size;
 
-	buffer_offset = 0;
-	for (int i = 0; i < cd->num_frames; i++) {
-		for (channel = 0; channel < cd->num_capture_channels; channel++)
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
-		cd->process_buffer_ptrs[channel][i] = convert_int16_to_float(src[channel]);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-		cd->process_buffer[buffer_offset++] = src[channel];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	/* The second optimization eliminates the inner loop
+	 * and replaces it with pointer arithmetic for speedier access.
+	 * To reduce cycle waste, the data copy check is moved outside of the loop.
+	 */
+	const int16_t *src_end = src + cd->num_frames * cd->config.output_fmt.channels_count;
+	/* Check if the calculated end of the source buffer exceeds the actual end of the buffer */
+	src_end = cir_buf_wrap_const(src_end, src_buf_start, src_buf_end);
 
-		/* move pointer to next frame
-		 * number of incoming channels may be < cd->num_capture_channels
+#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+	/* Declare a pointer to the process buffer */
+	float **proc_ptr = cd->process_buffer_ptrs;
+
+	/* Check for null pointers and buffer overflows */
+	if (!src || !proc_ptr || src >= (const int16_t *)src_end) {
+		/* If there's an error, return -EINVAL immediately to indicate an
+		 * invalid argument was passed
 		 */
-		src += cd->config.output_fmt.channels_count;
-		if ((void *)src >= (void *)src_buf_end)
-			src = (void *)src_buf_start;
+		return -EINVAL;
 	}
+
+	/* If there's no error, continue processing */
+	while (src != (const int16_t *)src_end) {
+		/* If the source pointer has reached or exceeded the end of the source
+		 * buffer, wrap it back to the start
+		 */
+		src = cir_buf_wrap_const(src, src_buf_start, src_buf_end);
+		/* Convert the source data from int16_t to float and store it in the
+		 * process buffer
+		 */
+		*proc_ptr++ = convert_int16_to_float(src++);
+	}
+
+#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
+	/* Declare a pointer to the process buffer */
+	int16_t *proc_buf = cd->process_buffer;
+
+	/* Check for null pointers and buffer overflows */
+	if (!src || !proc_buf || src >= (int16_t *)src_end) {
+		/* If there's an error, return -EINVAL immediately to indicate an
+		 * invalid argument was passed
+		 */
+		return -EINVAL;
+	}
+
+	/* If there's no error, continue processing */
+	while (src != (int16_t *)src_end) {
+		/* If the source pointer has reached or exceeded the end of the source
+		 * buffer, wrap it back to the start
+		 */
+		src = cir_buf_wrap_const(src, src_buf_start, src_buf_end);
+		/* Copy the source data to the process buffer */
+		*proc_buf++ = *src++;
+	}
+
+#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 	source_release_data(src_stream, num_of_bytes_to_process);
 
@@ -893,41 +1019,64 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	dst_buf_end = dst_buf_start + dst_buf_size;
 
 	/* process all channels in output stream */
-	buffer_offset = 0;
-	for (int i = 0; i < cd->num_frames; i++) {
-		for (channel = 0; channel < cd->config.output_fmt.channels_count; channel++) {
-			/* set data in processed channels, zeroize not processed */
-			if (channel < cd->num_capture_channels)
+	/* Calculate the end of the destination buffer based on the number of frames and
+	 * channels
+	 */
+	int16_t *dst_end = dst + cd->num_frames * cd->config.output_fmt.channels_count;
+	/* Check if the calculated end of the destination buffer exceeds the actual end
+	 * of the buffer
+	 */
+	dst_end = cir_buf_wrap_const(dst_end, dst_buf_start, dst_buf_end);
+
 #if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
-				dst[channel] = convert_float_to_int16(
-						   cd->process_buffer_ptrs[channel][i]);
+	float **proc_ptr = cd->process_buffer_ptrs;
+
+	/* Check for null pointers and buffer overflows */
+	if (!dst || !proc_ptr || dst >= dst_end || *proc_ptr >= *proc_ptr + cd->num_frames)
+		/*if there's an error, return -EINVAL immediately to indicate an
+		 * invalid argument was passed
+		 */
+		return -EINVAL;
+
+	/* Convert data from float to int16_t and store it in the destination buffer */
+	for (; dst != dst_end; ++dst, ++proc_ptr)
+		*dst = convert_float_to_int16(*proc_ptr);
+
 #else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-				dst[channel] = cd->process_buffer[buffer_offset++];
+	int16_t *process_buffer = cd->process_buffer;
+
+	/* Check for null pointers and buffer overflows */
+	if (!dst || !process_buffer || dst >= dst_end ||
+	    process_buffer >= process_buffer + cd->num_frames)
+		/* if there's an error, return -EINVAL immediately to indicate an
+		 * invalid argument was passed
+		 */
+		return -EINVAL;
+
+	/* Copy the data from the process buffer to the destination buffer */
+	for (; dst != dst_end; ++dst, ++process_buffer)
+		*dst = *process_buffer;
+
 #endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-			else
-				dst[channel] = 0;
-		}
-
-		dst += cd->config.output_fmt.channels_count;
-		if ((void *)dst >= (void *)dst_buf_end)
-			dst = (void *)dst_buf_start;
-	}
-
 	sink_commit_buffer(dst_stream, num_of_bytes_to_process);
 
 	return 0;
 }
 #else /* CONFIG_IPC_MAJOR_4 */
-static int google_rtc_audio_processing_process(struct processing_module *mod,
-					       struct input_stream_buffer *input_buffers,
-					       int num_input_buffers,
-					       struct output_stream_buffer *output_buffers,
-					       int num_output_buffers)
+static int google_rtc_audio_processing_process(
+	struct processing_module *mod,
+	struct input_stream_buffer *input_buffers,
+	int num_input_buffers,
+	struct output_stream_buffer *output_buffers,
+	int num_output_buffers)
 {
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+	struct google_rtc_audio_processing_comp_data *cd =
+		module_get_private_data(mod);
 	int16_t *src, *dst, *ref;
 	uint32_t num_aec_reference_frames;
 	uint32_t num_aec_reference_bytes;
+	int ref_channels;
+	int aec_ref_product;
 	int num_samples_remaining;
 	int num_frames_remaining;
 	int channel;
@@ -936,9 +1085,9 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	int ret;
 	int i, j, n;
 
+	struct audio_stream *ref_stream, *mic_stream = NULL, *out_stream;
 	struct input_stream_buffer *ref_streamb, *mic_streamb;
 	struct output_stream_buffer *out_streamb;
-	struct audio_stream *ref_stream, *mic_stream, *out_stream;
 
 	if (cd->reconfigure) {
 		ret = google_rtc_audio_processing_reconfigure(mod);
@@ -950,25 +1099,43 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	ref_stream = ref_streamb->data;
 	ref = audio_stream_get_rptr(ref_stream);
 
+	/* Pre-calculate the number of channels in the reference stream for efficiency */
+	ref_channels = audio_stream_get_channels(ref_stream);
+
+	/*  Pre-calculate the product of the number of AEC reference channels and the AEC
+	 *  reference frame index
+	 */
+	aec_ref_product = cd->num_aec_reference_channels * cd->aec_reference_frame_index;
 	num_aec_reference_frames = input_buffers[cd->aec_reference_source].size;
 	num_aec_reference_bytes = audio_stream_frame_bytes(ref_stream) * num_aec_reference_frames;
+	num_samples_remaining = num_aec_reference_frames * ref_channels;
 
-	num_samples_remaining = num_aec_reference_frames * audio_stream_get_channels(ref_stream);
+	/* Move out of loop */
+	int mic_stream_channels = audio_stream_get_channels(mic_stream);
+	size_t num_bytes = sizeof(int16_t) * cd->num_capture_channels;
+	size_t num_frames = cd->num_frames;
+	size_t num_capture_channels = cd->num_capture_channels;
+	size_t size_of_buffer_element = sizeof(int16_t);
+	size_t buffer_size = num_frames * num_capture_channels;
+
+	buffer_size *= size_of_buffer_element;
+
 	while (num_samples_remaining) {
 		nmax = audio_stream_samples_without_wrap_s16(ref_stream, ref);
 		n = MIN(num_samples_remaining, nmax);
 		for (i = 0; i < n; i += cd->num_aec_reference_channels) {
-			j = cd->num_aec_reference_channels * cd->aec_reference_frame_index;
+			j = aec_ref_product;
 			for (channel = 0; channel < cd->num_aec_reference_channels; ++channel)
 				cd->aec_reference_buffer[j++] = ref[channel];
-
-			ref += audio_stream_get_channels(ref_stream);
+			ref += ref_channels;
 			++cd->aec_reference_frame_index;
-
 			if (cd->aec_reference_frame_index == cd->num_frames) {
-				GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-									    cd->aec_reference_buffer);
+				GoogleRtcAudioProcessingAnalyzeRender_int16(
+					cd->state,
+					cd->aec_reference_buffer);
 				cd->aec_reference_frame_index = 0;
+				/* Reset the product as the frame index is reset */
+				aec_ref_product = 0;
 			}
 		}
 		num_samples_remaining -= n;
@@ -993,34 +1160,40 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 		nmax = audio_stream_frames_without_wrap(out_stream, dst);
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			memcpy_s(&(cd->raw_mic_buffer[cd->raw_mic_buffer_frame_index *
-						      cd->num_capture_channels]),
-				 cd->num_frames * cd->num_capture_channels *
-				 sizeof(cd->raw_mic_buffer[0]), src,
-				 sizeof(int16_t) * cd->num_capture_channels);
-			++cd->raw_mic_buffer_frame_index;
-
-			memcpy_s(dst, cd->num_frames * cd->num_capture_channels *
-				 sizeof(cd->output_buffer[0]),
-				 &(cd->output_buffer[cd->output_buffer_frame_index *
-						     cd->num_capture_channels]),
-				 sizeof(int16_t) * cd->num_capture_channels);
-			++cd->output_buffer_frame_index;
-
-			if (cd->raw_mic_buffer_frame_index == cd->num_frames) {
-				GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
-									     cd->raw_mic_buffer,
-									     cd->output_buffer);
-				cd->output_buffer_frame_index = 0;
-				cd->raw_mic_buffer_frame_index = 0;
+			/* If we haven't filled the buffer yet, copy the data */
+			if (cd->raw_mic_buffer_frame_index < cd->num_frames) {
+				int ret = google_rtc_safe_memcpy(cd, cd->raw_mic_buffer, src,
+								 num_bytes, buffer_size,
+								 cd->raw_mic_buffer_frame_index);
+				if (ret < 0)
+					return ret;
+				++cd->raw_mic_buffer_frame_index;
+			}
+			if (cd->output_buffer_frame_index < cd->num_frames) {
+				int ret = google_rtc_safe_memcpy(cd, dst, cd->output_buffer,
+								 num_bytes, buffer_size,
+								 cd->output_buffer_frame_index);
+				if (ret < 0)
+					return ret;
+				++cd->output_buffer_frame_index;
 			}
 
-			src += audio_stream_get_channels(mic_stream);
-			dst += audio_stream_get_channels(out_stream);
+			/* Move to the next set of channels in the microphone and output streams */
+			src += mic_stream_channels;
+			dst += mic_stream_channels;
 		}
 		num_frames_remaining -= n;
 		src = audio_stream_wrap(mic_stream, src);
 		dst = audio_stream_wrap(out_stream, dst);
+
+		/* If we've filled the buffer, process the data */
+		if (cd->raw_mic_buffer_frame_index == cd->num_frames) {
+			GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
+								     cd->raw_mic_buffer,
+								     cd->output_buffer);
+			cd->output_buffer_frame_index = 0;
+			cd->raw_mic_buffer_frame_index = 0;
+		}
 	}
 
 	module_update_buffer_position(&input_buffers[cd->raw_microphone_source],
@@ -1028,6 +1201,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 
 	return 0;
 }
+
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static struct module_interface google_rtc_audio_processing_interface = {
