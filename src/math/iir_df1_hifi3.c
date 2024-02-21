@@ -10,8 +10,9 @@
 #include <sof/audio/format.h>
 #include <sof/math/iir_df1.h>
 #include <user/eq.h>
+#include <sof/common.h>
 
-#if IIR_DF1_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 
 /*
  * Direct form I second order filter block (biquad)

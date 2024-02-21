@@ -7,8 +7,9 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/math/fir_config.h>
+#include <sof/common.h>
 
-#if FIR_GENERIC
+#if SOF_USE_HIFI(NONE, FILTER)
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/fir_generic.h>
@@ -132,4 +133,4 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsourc
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-#endif /* FIR_GENERIC */
+#endif /* FILTER_HIFI_NONE */

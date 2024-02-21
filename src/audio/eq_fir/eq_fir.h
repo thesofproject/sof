@@ -12,13 +12,15 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/format.h>
 #include <sof/math/fir_config.h>
-#if FIR_GENERIC
+#include <sof/common.h>
+
+#if SOF_USE_HIFI(NONE, FILTER)
 #include <sof/math/fir_generic.h>
 #endif
-#if FIR_HIFIEP
+#if SOF_USE_HIFI(2, FILTER)
 #include <sof/math/fir_hifi2ep.h>
 #endif
-#if FIR_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #include <sof/math/fir_hifi3.h>
 #endif
 #include <user/fir.h>
@@ -75,7 +77,7 @@ int eq_fir_params(struct processing_module *mod);
  * set_fir_func.
  */
 
-#if FIR_HIFI3 || FIR_HIFIEP
+#if SOF_USE_HIFI(2, FILTER) || SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {

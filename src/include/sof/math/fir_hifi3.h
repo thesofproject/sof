@@ -9,8 +9,9 @@
 #define __SOF_MATH_FIR_HIFI3_H__
 
 #include <sof/math/fir_config.h>
+#include <sof/common.h>
 
-#if FIR_HIFI3
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>

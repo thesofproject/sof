@@ -8,12 +8,13 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/iir_df2t.h>
+#include <sof/common.h>
 #include <user/eq.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if IIR_GENERIC
+#if SOF_USE_HIFI(NONE, FILTER)
 
 /*
  * Direct form II transposed second order filter block (biquad)

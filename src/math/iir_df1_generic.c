@@ -11,7 +11,7 @@
 #include <sof/math/iir_df1.h>
 #include <user/eq.h>
 
-#if IIR_DF1_GENERIC
+#if SOF_USE_HIFI(NONE, FILTER)
 
 /*
  * Direct form I second order filter block (biquad)

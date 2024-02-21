@@ -15,26 +15,17 @@
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
 #include <sof/platform.h>
+#include <sof/common.h>
 
-/* Select optimized code variant when xt-xcc compiler is used */
-#if defined __XCC__
-#include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI2EP == 1
-#define TDFB_GENERIC	0
-#define TDFB_HIFIEP	1
-#define TDFB_HIFI3	0
-#elif XCHAL_HAVE_HIFI3 == 1 || XCHAL_HAVE_HIFI4 == 1
+/* TDFB and EQFIR depend on math FIR.
+ * so align TDFB, math FIR, and EQFIR use same selection.
+ */
+#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #define TDFB_HIFI3	1
-#define TDFB_HIFIEP	0
-#define TDFB_GENERIC	0
+#elif SOF_USE_HIFI(2, FILTER)
+#define TDFB_HIFI2	1
 #else
-#error "No HIFIEP or HIFI3 found. Cannot build TDFB module."
-#endif
-#else
-/* GCC */
 #define TDFB_GENERIC	1
-#define TDFB_HIFIEP	0
-#define TDFB_HIFI3	0
 #endif
 
 #define TDFB_IN_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
