@@ -86,20 +86,7 @@ static int modules_init(struct processing_module *mod)
 
 	md->module_entry_point = module_entry_point;
 
-	/* Allocate module buffers */
-	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
-	if (!md->mpd.in_buff) {
-		comp_err(dev, "modules_init(): Failed to alloc in_buff");
-		return -ENOMEM;
-	}
 	md->mpd.in_buff_size = src_cfg->ibs;
-
-	md->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->obs);
-	if (!md->mpd.out_buff) {
-		comp_err(dev, "modules_init(): Failed to alloc out_buff");
-		rfree(md->mpd.in_buff);
-		return -ENOMEM;
-	}
 	md->mpd.out_buff_size = src_cfg->obs;
 
 	mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
@@ -147,16 +134,12 @@ static int modules_process(struct processing_module *mod,
 static int modules_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-	struct module_data *md = &mod->priv;
 	int ret;
 
 	comp_info(dev, "modules_free()");
 	ret = iadk_wrapper_free(mod->priv.module_adapter);
 	if (ret)
 		comp_err(dev, "modules_free(): iadk_wrapper_free failed with error: %d", ret);
-
-	rfree(md->mpd.in_buff);
-	rfree(md->mpd.out_buff);
 
 	/* Free module resources allocated in L2 memory. */
 	ret = lib_manager_free_module(dev->ipc_config.id);
