@@ -495,7 +495,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 
 	size_t mem_block_iter, i, size_to_free, block_size, ptr_bit_array_offset,
 		ptr_bit_array_position, physical_block_count,
-		check_offset, check_position, check_size;
+		check_offset, check_position, check_size, blocks_to_free;
 	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
 	bool ptr_range_found;
 
@@ -581,10 +581,13 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 			 */
 			size_to_free = block_size;
 		}
-
+		blocks_to_free = size_to_free / block_size;
 		retval = sys_mem_blocks_free_contiguous(
 			heap->physical_blocks_allocators[mem_block_iter], ptr,
-			size_to_free / block_size);
+			blocks_to_free);
+		if (!retval)
+			sys_bitarray_clear_region(heap->allocation_sizes[mem_block_iter],
+				blocks_to_free, ptr_bit_array_position);
 	} else {
 		retval = sys_mem_blocks_free(heap->physical_blocks_allocators[mem_block_iter],
 			1, &ptr);
