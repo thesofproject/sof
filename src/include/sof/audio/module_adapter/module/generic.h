@@ -47,19 +47,12 @@
 #endif
 
 #define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
-static struct comp_dev *module_##adapter##_shim_new(const struct comp_driver *drv, \
-					 const struct comp_ipc_config *config, \
-					 const void *spec) \
-{ \
-	return module_adapter_new(drv, config, &(adapter), spec);\
-} \
-\
 static const struct comp_driver comp_##adapter##_module = { \
 	.type = SOF_COMP_MODULE_ADAPTER, \
 	.uid = SOF_RT_UUID(uuid), \
 	.tctx = &(tr), \
 	.ops = { \
-		.create = module_##adapter##_shim_new, \
+		.create = module_adapter_new, \
 		.prepare = module_adapter_prepare, \
 		.params = module_adapter_params, \
 		.copy = module_adapter_copy, \
@@ -80,6 +73,7 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.dai_ts_stop = module_adapter_ts_stop_op,\
 		.dai_ts_get = module_adapter_ts_get_op,\
 	}, \
+	.adapter_ops = &(adapter), \
 }; \
 \
 static SHARED_DATA struct comp_driver_info comp_module_##adapter##_info = { \
@@ -160,7 +154,7 @@ struct module_processing_data {
 /* Module generic interfaces						     */
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
-int module_init(struct processing_module *mod, const struct module_interface *interface);
+int module_init(struct processing_module *mod);
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment);
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
@@ -175,15 +169,14 @@ bool module_is_ready_to_process(struct processing_module *mod,
 				struct sof_sink **sinks,
 				int num_of_sinks)
 {
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	/* LL module has to be always ready for processing */
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 		return true;
 
-	if (md->ops->is_ready_to_process)
-		return md->ops->is_ready_to_process(mod, sources, num_of_sources,
-						    sinks, num_of_sinks);
+	if (ops->is_ready_to_process)
+		return ops->is_ready_to_process(mod, sources, num_of_sources, sinks, num_of_sinks);
 	/* default action - the module is ready if there's enough data for processing and enough
 	 * space to store result. IBS/OBS as declared in init_instance
 	 */
@@ -216,8 +209,7 @@ int module_bind(struct processing_module *mod, void *data);
 int module_unbind(struct processing_module *mod, void *data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
-				    const struct comp_ipc_config *config,
-				    const struct module_interface *interface, const void *spec);
+				    const struct comp_ipc_config *config, const void *spec);
 int module_adapter_prepare(struct comp_dev *dev);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int module_adapter_copy(struct comp_dev *dev);
@@ -293,10 +285,10 @@ static inline int module_process_endpoint(struct processing_module *mod,
 					  struct output_stream_buffer *output_buffers,
 					  int num_output_buffers)
 {
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
-	return md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
-					     output_buffers, num_output_buffers);
+	return ops->process_audio_stream(mod, input_buffers, num_input_buffers,
+					 output_buffers, num_output_buffers);
 }
 
 #endif
