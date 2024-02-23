@@ -48,7 +48,6 @@ static FUNC_NORETURN void secondary_init(void *arg)
 		k_busy_wait(100);
 
 	z_smp_thread_init(arg, &dummy_thread);
-	smp_timer_init();
 
 	secondary_core_init(sof_get());
 
