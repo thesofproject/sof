@@ -45,7 +45,6 @@ static FUNC_NORETURN void secondary_init(void *arg)
 
 	atomic_set(&ready_flag, 1);
 	z_smp_thread_init(arg, &dummy_thread);
-	smp_timer_init();
 
 	secondary_core_init(sof_get());
 
