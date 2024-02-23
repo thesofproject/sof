@@ -552,20 +552,14 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 			return -EINVAL;
 
 		if (bit_value) {
-			/* We know we have more than one block was allocated so
-			 * we need to find the size
-			 */
-			size_t bits_to_check =
-				heap->physical_blocks_allocators
-					[mem_block_iter]->info.num_blocks - ptr_bit_array_position;
-
 			/* Neeeeeeeds optimization - thinking how to do it properly
 			 * each set bit in order after another means one allocated block.
 			 * When we get to 0 in such range we know that is last allocated block.
 			 * Testing bundles looks promising - need to investigate.
 			 */
 			for (i = ptr_bit_array_position;
-				i < bits_to_check;
+				i < heap->physical_blocks_allocators
+					[mem_block_iter]->info.num_blocks;
 				i++) {
 
 				sys_bitarray_test_bit(heap->allocation_sizes[mem_block_iter], i,
