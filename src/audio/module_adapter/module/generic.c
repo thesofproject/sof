@@ -75,11 +75,12 @@ err:
 	return ret;
 }
 
-int module_init(struct processing_module *mod, const struct module_interface *interface)
+int module_init(struct processing_module *mod)
 {
 	int ret;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
+	const struct module_interface *const interface = dev->drv->adapter_ops;
 
 	comp_dbg(dev, "module_init() start");
 
@@ -90,7 +91,7 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 		return -EPERM;
 #endif
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for comp id %d",
+		comp_err(dev, "module_init(): module interface not defined for comp id %d",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -104,13 +105,11 @@ int module_init(struct processing_module *mod, const struct module_interface *in
 		return -EIO;
 	}
 
-	/* Assign interface */
-	md->ops = interface;
 	/* Init memory list */
 	list_init(&md->memory.mem_list);
 
 	/* Now we can proceed with module specific initialization */
-	ret = md->ops->init(mod);
+	ret = interface->init(mod);
 	if (ret) {
 		comp_err(dev, "module_init() error %d: module specific init failed, comp id %d",
 			 ret, dev_comp_id(dev));
@@ -201,6 +200,7 @@ int module_prepare(struct processing_module *mod,
 	int ret = 0;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
+	const struct module_interface *const ops = dev->drv->adapter_ops;
 
 	comp_dbg(dev, "module_prepare() start");
 
@@ -210,8 +210,8 @@ int module_prepare(struct processing_module *mod,
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 #endif
-	if (md->ops->prepare) {
-		ret = md->ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+	if (ops->prepare) {
+		ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 		if (ret) {
 			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
 				 ret, dev_comp_id(dev));
@@ -242,13 +242,14 @@ int module_process_legacy(struct processing_module *mod,
 			  int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
+	const struct module_interface *const ops = dev->drv->adapter_ops;
 	int ret;
-
-	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_process_legacy() start");
 
 #if CONFIG_IPC_MAJOR_3
+	struct module_data *md = &mod->priv;
+
 	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
@@ -259,11 +260,11 @@ int module_process_legacy(struct processing_module *mod,
 	md->state = MODULE_PROCESSING;
 #endif
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
-		ret = md->ops->process_audio_stream(mod, input_buffers, num_input_buffers,
-						    output_buffers, num_output_buffers);
+		ret = ops->process_audio_stream(mod, input_buffers, num_input_buffers,
+							     output_buffers, num_output_buffers);
 	else if (IS_PROCESSING_MODE_RAW_DATA(mod))
-		ret = md->ops->process_raw_data(mod, input_buffers, num_input_buffers,
-						output_buffers, num_output_buffers);
+		ret = ops->process_raw_data(mod, input_buffers, num_input_buffers,
+							 output_buffers, num_output_buffers);
 	else
 		ret = -EOPNOTSUPP;
 
@@ -288,13 +289,13 @@ int module_process_sink_src(struct processing_module *mod,
 
 {
 	struct comp_dev *dev = mod->dev;
+	const struct module_interface *const ops = dev->drv->adapter_ops;
 	int ret;
-
-	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_process sink src() start");
 
 #if CONFIG_IPC_MAJOR_3
+	struct module_data *md = &mod->priv;
 	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
@@ -304,8 +305,8 @@ int module_process_sink_src(struct processing_module *mod,
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 #endif
-	assert(md->ops->process);
-	ret = md->ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
+	assert(ops->process);
+	ret = ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
 		comp_err(dev, "module_process() error %d: for comp %d",
@@ -325,6 +326,7 @@ int module_process_sink_src(struct processing_module *mod,
 int module_reset(struct processing_module *mod)
 {
 	int ret;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 
 #if CONFIG_IPC_MAJOR_3
@@ -332,8 +334,8 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
-	if (md->ops->reset) {
-		ret = md->ops->reset(mod);
+	if (ops->reset) {
+		ret = ops->reset(mod);
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
@@ -375,11 +377,12 @@ void module_free_all_memory(struct processing_module *mod)
 
 int module_free(struct processing_module *mod)
 {
-	int ret = 0;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
+	int ret = 0;
 
-	if (md->ops->free) {
-		ret = md->ops->free(mod);
+	if (ops->free) {
+		ret = ops->free(mod);
 		if (ret)
 			comp_warn(mod->dev, "module_free(): error: %d for %d",
 				  ret, dev_comp_id(mod->dev));
@@ -508,19 +511,19 @@ int module_set_configuration(struct processing_module *mod,
 
 int module_bind(struct processing_module *mod, void *data)
 {
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
-	if (md->ops->bind)
-		return md->ops->bind(mod, data);
+	if (ops->bind)
+		return ops->bind(mod, data);
 	return 0;
 }
 
 int module_unbind(struct processing_module *mod, void *data)
 {
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
-	if (md->ops->unbind)
-		return md->ops->unbind(mod, data);
+	if (ops->unbind)
+		return ops->unbind(mod, data);
 	return 0;
 }
 
