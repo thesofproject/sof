@@ -40,10 +40,8 @@
  * with version read from elf file.
  */
 
-
-struct comp_dev *modules_shim_new(const struct comp_driver *drv,
-				  const struct comp_ipc_config *config,
-				  const void *spec);
+/* Processing Module Adapter API */
+extern const struct module_interface processing_module_adapter_interface;
 
 static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
 						  enum sof_comp_type mtype,
@@ -53,7 +51,7 @@ static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
 	drv->type = mtype;
 	drv->uid = uuid;
 	drv->tctx = tr;
-	drv->ops.create = modules_shim_new;
+	drv->ops.create = module_adapter_new;
 	drv->ops.prepare = module_adapter_prepare;
 	drv->ops.params = module_adapter_params;
 	drv->ops.copy = module_adapter_copy;
@@ -75,6 +73,7 @@ static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
 	drv->ops.dai_ts_start = module_adapter_ts_start_op;
 	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
 	drv->ops.dai_ts_get = module_adapter_ts_get_op;
+	drv->adapter_ops = &processing_module_adapter_interface;
 }
 
 #endif /* __SOF_AUDIO_MODULES__ */

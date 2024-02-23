@@ -58,7 +58,6 @@ struct module_data {
 	enum module_state state;
 	size_t new_cfg_size; /**< size of new module config data */
 	void *runtime_params;
-	const struct module_interface *ops; /**< module specific operations */
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 	void *module_adapter; /**<loadable module interface handle */
