@@ -1332,8 +1332,11 @@ struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
 
 	/* free memory for get config function */
-	if (msg == &msg_reply && msg_reply.tx_size > 0)
+	if (msg == &msg_reply && msg_reply.tx_size > 0) {
 		rfree(msg_reply.tx_data);
+		msg_reply.tx_data = NULL;
+		msg_reply.tx_size = 0;
+	}
 
 	return &msg_data.msg_out;
 }
