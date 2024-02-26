@@ -129,7 +129,7 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 {
 	/* Region must be first mapped as writable in order to initialize its contents. */
 	int ret = sys_mm_drv_map_region((__sparse_force void *)vma, POINTER_TO_UINT(NULL), size,
-					flags | SYS_MM_MEM_PERM_RW);
+					SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		return ret;
 
@@ -139,11 +139,7 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 
 	dcache_writeback_region(vma, size);
 
-	/* TODO: Change attributes for memory to FLAGS. Implementation of required function in tlb
-	 * driver is in progress.
-	 * sys_mm_drv_update_region_flags(vma, size, flags);
-	 */
-	return 0;
+	return sys_mm_drv_update_region_flags((__sparse_force void *)vma, size, flags);
 }
 
 static int lib_manager_load_module(const uint32_t module_id,
