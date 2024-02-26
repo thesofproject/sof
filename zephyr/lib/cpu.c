@@ -164,8 +164,13 @@ int cpu_enable_core(int id)
 	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
 
-	while (!atomic_get(&ready_flag))
+	unsigned int retry;
+
+	for (retry = 100; !atomic_get(&ready_flag) && retry; retry--)
 		k_busy_wait(100);
+
+	if (!retry)
+		return -ETIMEDOUT;
 
 	atomic_set(&start_flag, 1);
 
@@ -264,8 +269,13 @@ int cpu_enable_secondary_core(int id)
 	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
 
-	while (!atomic_get(&ready_flag))
+	unsigned int retry;
+
+	for (retry = 100; !atomic_get(&ready_flag) && retry; retry--)
 		k_busy_wait(100);
+
+	if (!retry)
+		return -ETIMEDOUT;
 
 	atomic_set(&start_flag, 1);
 
