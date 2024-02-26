@@ -146,7 +146,7 @@ void ipc_send_queued_msg(void)
 
 	key = k_spin_lock(&ipc->lock);
 
-	if (ipc_get()->pm_prepare_D3)
+	if (ipc->pm_prepare_D3)
 		goto out;
 
 	/* any messages to send ? */
