@@ -112,4 +112,43 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
 # Topology for SOF plugin
 "development/sof-plugin\;sof-plugin\;NOISE_SUPPRESSION=false"
+
+# With 16 kHz and 16 bit DMIC0 and DMIC1
+"sof-hda-generic\;sof-hda-generic-lnl-4ch-16k-16k-16bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-4ch-16k-16k-16bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_RATE=16000,DMIC0_BITS=16,DMIC1_RATE=16000,DMIC1_BITS=16,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
+
+"sof-hda-generic\;sof-hda-generic-lnl-fpga-4ch-16k-16k-16bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-fpga-4ch-16k-16k-16bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC_IO_CLK=19200000,\
+DMIC0_RATE=16000,DMIC0_BITS=16,DMIC1_RATE=16000,DMIC1_BITS=16,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
+
+# With 48 kHz and 16 bit DMIC0 and 16 kHz and 16 bit DMIC1
+"sof-hda-generic\;sof-hda-generic-lnl-4ch-48k-16k-16bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-4ch-48k-16k-16bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_RATE=48000,DMIC0_BITS=16,DMIC1_RATE=16000,DMIC1_BITS=16,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
+
+"sof-hda-generic\;sof-hda-generic-lnl-fpga-4ch-48k-16k-16bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-fpga-4ch-48k-16k-16bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC_IO_CLK=19200000,\
+DMIC0_RATE=48000,DMIC0_BITS=16,DMIC1_RATE=16000,DMIC1_BITS=16,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
+
+# With 48 kHz and 32 bit DMIC0 and 16 kHz and 32 bit DMIC1
+"sof-hda-generic\;sof-hda-generic-lnl-4ch-48k-16k-32bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-4ch-48k-16k-32bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_RATE=48000,DMIC0_BITS=32,DMIC1_RATE=16000,DMIC1_BITS=32,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
+
+"sof-hda-generic\;sof-hda-generic-lnl-fpga-4ch-48k-16k-32bit\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-lnl-fpga-4ch-48k-16k-32bit.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC_IO_CLK=19200000,\
+DMIC0_RATE=48000,DMIC0_BITS=32,DMIC1_RATE=16000,DMIC1_BITS=32,\
+PASSTHROUGH=true,DMIC1_ENABLE=passthrough,PLATFORM=lnl"
 )
