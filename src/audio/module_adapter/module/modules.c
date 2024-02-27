@@ -63,6 +63,7 @@ static int modules_new(struct processing_module *mod, const void *buildinfo,
 	/* Connect loadable module interfaces with module adapter entity. */
 	/* Check if native Zephyr lib is loaded */
 	struct sof_man_fw_desc *desc = lib_manager_get_library_module_desc(module_id);
+	void *system_agent;
 
 	if (!desc) {
 		comp_err(dev, "modules_init(): Failed to load manifest");
@@ -91,9 +92,10 @@ static int modules_new(struct processing_module *mod, const void *buildinfo,
 	/* Check if module is FDK */
 	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
-		md->module_adapter = (void *)system_agent_start(module_entry_point,
-								module_id, instance_id,
-								0, log_handle, &mod_cfg);
+		system_agent = system_agent_start(module_entry_point, module_id, instance_id, 0,
+						  log_handle, &mod_cfg);
+
+		module_set_private_data(mod, system_agent);
 	} else if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
 		   mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
 		/* The module is native: start agent for sof loadable */
@@ -106,7 +108,6 @@ static int modules_new(struct processing_module *mod, const void *buildinfo,
 	}
 
 	md->module_entry_point = module_entry_point;
-	md->private = mod;
 
 	return 0;
 }
@@ -137,7 +138,8 @@ static int modules_init(struct processing_module *mod)
 	}
 	comp_info(dev, "modules_init() start");
 
-	if (!md->module_adapter && drv->adapter_ops == &processing_module_adapter_interface) {
+	if (!module_get_private_data(mod) &&
+	    drv->adapter_ops == &processing_module_adapter_interface) {
 		/* First load */
 		ret = modules_new(mod, buildinfo, module_entry_point);
 		if (ret < 0)
@@ -164,7 +166,7 @@ static int modules_init(struct processing_module *mod)
 		ret = mod_in->init(mod);
 	} else {
 		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
-		ret = iadk_wrapper_init(md->module_adapter);
+		ret = iadk_wrapper_init(module_get_private_data(mod));
 	}
 
 	return ret;
@@ -189,64 +191,15 @@ static int modules_prepare(struct processing_module *mod,
 
 	comp_info(dev, "modules_prepare()");
 
-	return iadk_wrapper_prepare(mod->priv.module_adapter);
-
+	return iadk_wrapper_prepare(module_get_private_data(mod));
 }
 
 static int modules_process(struct processing_module *mod,
 			   struct sof_source **sources, int num_of_sources,
 			   struct sof_sink **sinks, int num_of_sinks)
 {
-	if (!mod->is_native_sof)
-		return iadk_wrapper_process(mod->priv.module_adapter, sources,
-					    num_of_sources, sinks, num_of_sinks);
-
-	const struct module_interface *mod_in = mod->priv.ops;
-
-	return mod_in->process(mod, sources, num_of_sources, sinks, num_of_sinks);
-}
-
-static int modules_process_audio_stream(struct processing_module *mod,
-					struct input_stream_buffer *input_buffers,
-					int num_input_buffers,
-					struct output_stream_buffer *output_buffers,
-					int num_output_buffers)
-{
-	if (!mod->is_native_sof)
-		return -EOPNOTSUPP;
-
-	const struct module_interface *mod_in = mod->priv.ops;
-
-	return mod_in->process_audio_stream(mod, input_buffers, num_input_buffers,
-					    output_buffers, num_output_buffers);
-}
-
-/*
- * \brief modules_process_raw.
- * \param[in] mod - processing module pointer.
- *
- * \return: zero on success
- *          error code on failure
- */
-static int modules_process_raw(struct processing_module *mod,
-			       struct input_stream_buffer *input_buffers,
-			       int num_input_buffers,
-			       struct output_stream_buffer *output_buffers,
-			       int num_output_buffers)
-{
-	struct module_data *md = &mod->priv;
-
-	if (!mod->is_native_sof)
-		return -EOPNOTSUPP;
-
-	if (!md->mpd.init_done)
-		modules_init_process(mod);
-
-	/* Call module specific process function. */
-	const struct module_interface *mod_in = mod->priv.ops;
-
-	return mod_in->process_raw_data(mod, input_buffers, num_input_buffers,
-					output_buffers, num_output_buffers);
+	return iadk_wrapper_process(module_get_private_data(mod), sources,
+				    num_of_sources, sinks, num_of_sinks);
 }
 
 /**
@@ -260,17 +213,12 @@ static int modules_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
-	const struct comp_driver *const drv = dev->drv;
 	int ret;
 
 	comp_info(dev, "modules_free()");
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = mod->priv.ops;
-
-		ret = mod_in->free(mod);
-	} else {
-		ret = iadk_wrapper_free(mod->priv.module_adapter);
-	}
+	ret = iadk_wrapper_free(module_get_private_data(mod));
+	if (ret)
+		comp_err(dev, "modules_free(): iadk_wrapper_free failed with error: %d", ret);
 
 
 	if (!md->llext || !llext_unload(&md->llext)) {
@@ -304,13 +252,7 @@ static int modules_set_configuration(struct processing_module *mod, uint32_t con
 				     size_t fragment_size, uint8_t *response,
 				     size_t response_size)
 {
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = mod->priv.ops;
-
-		return mod_in->set_configuration(mod, config_id, pos, data_offset_size, fragment,
-						 fragment_size, response, response_size);
-	}
-	return iadk_wrapper_set_configuration(mod->priv.module_adapter, config_id, pos,
+	return iadk_wrapper_set_configuration(module_get_private_data(mod), config_id, pos,
 					      data_offset_size, fragment, fragment_size,
 					      response, response_size);
 }
@@ -331,13 +273,7 @@ static int modules_get_configuration(struct processing_module *mod, uint32_t con
 				     uint32_t *data_offset_size, uint8_t *fragment,
 				     size_t fragment_size)
 {
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = mod->priv.ops;
-
-		return mod_in->get_configuration(mod, config_id, data_offset_size,
-						 fragment, fragment_size);
-	}
-	return iadk_wrapper_get_configuration(mod->priv.module_adapter, config_id,
+	return iadk_wrapper_get_configuration(module_get_private_data(mod), config_id,
 					      MODULE_CFG_FRAGMENT_SINGLE, *data_offset_size,
 					      fragment, fragment_size);
 }
@@ -352,12 +288,7 @@ static int modules_get_configuration(struct processing_module *mod, uint32_t con
 static int modules_set_processing_mode(struct processing_module *mod,
 				       enum module_processing_mode mode)
 {
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = mod->priv.ops;
-
-		return mod_in->set_processing_mode(mod, mode);
-	}
-	return iadk_wrapper_set_processing_mode(mod->priv.module_adapter, mode);
+	return iadk_wrapper_set_processing_mode(module_get_private_data(mod), mode);
 }
 
 /**
@@ -368,7 +299,7 @@ static int modules_set_processing_mode(struct processing_module *mod,
  */
 static enum module_processing_mode modules_get_processing_mode(struct processing_module *mod)
 {
-	return iadk_wrapper_get_processing_mode(mod->priv.module_adapter);
+	return iadk_wrapper_get_processing_mode(module_get_private_data(mod));
 }
 
 /**
@@ -380,12 +311,7 @@ static enum module_processing_mode modules_get_processing_mode(struct processing
  */
 static int modules_reset(struct processing_module *mod)
 {
-	if (mod->is_native_sof) {
-		const struct module_interface *mod_in = mod->priv.ops;
-
-		return mod_in->reset(mod);
-	}
-	return iadk_wrapper_reset(mod->priv.module_adapter);
+	return iadk_wrapper_reset(module_get_private_data(mod));
 }
 
 /* Processing Module Adapter API*/
