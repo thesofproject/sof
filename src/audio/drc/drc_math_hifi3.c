@@ -39,19 +39,12 @@
 #define INV_FUNC_A2_Q25 1126492160 /* Q_CONVERT_FLOAT(33.57208251953125f, 25) */
 #define INV_FUNC_A1_Q25 -713042175 /* Q_CONVERT_FLOAT(-21.25031280517578125f, 25) */
 #define INV_FUNC_A0_Q25 239989712 /* Q_CONVERT_FLOAT(7.152250766754150390625f, 25) */
-
-/*
- * Input depends on precision_x
- * Output range [0.5, 1); regulated to Q2.30
- */
-static inline ae_f32 rexp_fixed(ae_f32 x, int32_t precision_x, int32_t *e)
-{
-	int32_t bit = 31 - AE_NSAZ32_L(x);
-
-	*e = bit - precision_x;
-
-	return AE_SRAA32(x, bit - 30);
-}
+#define SHIFT_IDX_QX30_QY30_QZ30 1 /* drc_get_lshift(30, 30, 30) */
+#define SHIFT_IDX_QX26_QY30_QZ26 1 /* drc_get_lshift(26, 30, 26) */
+#define SHIFT_IDX_QX25_QY30_QZ25 1 /* drc_get_lshift(25, 30, 25) */
+#define SHIFT_IDX_QX29_QY26_QZ26 2 /* drc_get_lshift(29, 26, 26) */
+#define SHIFT_IDX_QX25_QY26_QZ26 6 /* drc_get_lshift(25, 26, 26) */
+#define DRC_TWENTY_Q26 1342177280   /* Q_CONVERT_FLOAT(20, 26) */
 
 /*
  * Input is Q6.26: max 32.0
@@ -63,35 +56,47 @@ static inline ae_f32 log10_fixed(ae_f32 x)
 	 * fpminimax(log10(x), 5, [|SG...|], [1/2;sqrt(2)/2], absolute);
 	 * max err ~= 6.088e-8
 	 */
-	int32_t e;
-	int32_t lshift;
+	int bit = 31 - AE_NSAZ32_L(x);
+	int32_t e = bit - 26;
 	ae_f32 exp; /* Q7.25 */
 	ae_f32 acc; /* Q6.26 */
 	ae_f32 tmp; /* Q6.26 */
+	ae_f64 tmp64;
 
-	x = rexp_fixed(x, 26, &e); /* Q2.30 */
+	/*Output range [0.5, 1); regulated to Q2.30 */
+	x = AE_SRAA32(x, bit - 30);
 	exp = e << 25; /* Q_CONVERT_FLOAT(e, 25) */
 
 	if ((int32_t)x > (int32_t)ONE_OVER_SQRT2_Q30) {
-		lshift = drc_get_lshift(30, 30, 30);
-		x = drc_mult_lshift(x, ONE_OVER_SQRT2_Q30, lshift);
+		tmp64 = AE_MULF32R_LL(x, ONE_OVER_SQRT2_Q30);
+		tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX30_QY30_QZ30);
+		x = AE_ROUND32F48SSYM(tmp64);
 		exp = AE_ADD32(exp, HALF_Q25);
 	}
 
-	lshift = drc_get_lshift(26, 30, 26);
-	acc = drc_mult_lshift(LOG10_FUNC_A5_Q26, x, lshift);
+	tmp64 = AE_MULF32R_LL(LOG10_FUNC_A5_Q26, x);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX26_QY30_QZ26);
+	acc = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, LOG10_FUNC_A4_Q26);
-	acc = drc_mult_lshift(acc, x, lshift);
+	tmp64 = AE_MULF32R_LL(acc, x);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX26_QY30_QZ26);
+	acc = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, LOG10_FUNC_A3_Q26);
-	acc = drc_mult_lshift(acc, x, lshift);
+	tmp64 = AE_MULF32R_LL(acc, x);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX26_QY30_QZ26);
+	acc = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, LOG10_FUNC_A2_Q26);
-	acc = drc_mult_lshift(acc, x, lshift);
+	tmp64 = AE_MULF32R_LL(acc, x);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX26_QY30_QZ26);
+	acc = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, LOG10_FUNC_A1_Q26);
-	acc = drc_mult_lshift(acc, x, lshift);
+	tmp64 = AE_MULF32R_LL(acc, x);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX26_QY30_QZ26);
+	acc = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, LOG10_FUNC_A0_Q26);
-
-	lshift = drc_get_lshift(25, 26, 26);
-	tmp = drc_mult_lshift(exp, LOG10_2_Q26, lshift);
+	tmp64 = AE_MULF32R_LL(exp, LOG10_2_Q26);
+	tmp64 = AE_SLAI64S(tmp64, SHIFT_IDX_QX25_QY26_QZ26);
+	tmp = AE_ROUND32F48SSYM(tmp64);
 	acc = AE_ADD32(acc, tmp);
 
 	return acc;
@@ -104,13 +109,19 @@ static inline ae_f32 log10_fixed(ae_f32 x)
 inline int32_t drc_lin2db_fixed(int32_t linear)
 {
 	ae_f32 log10_linear;
+	ae_f64 tmp;
+	ae_f32 y;
 
 	/* For negative or zero, just return a very small dB value. */
 	if (linear <= 0)
 		return NEG_1K_Q21;
 
 	log10_linear = log10_fixed(linear); /* Q6.26 */
-	return drc_mult_lshift(20 << 26, log10_linear, drc_get_lshift(26, 26, 21));
+
+	tmp = AE_MULF32R_LL(DRC_TWENTY_Q26, log10_linear);
+	/*Don't need to do AE_SLAA64S since drc_get_lshift(26, 26, 21) = 0 */
+	y = AE_ROUND32F48SSYM(tmp);
+	return AE_MOVAD32_L(y);
 }
 
 /*
@@ -120,14 +131,19 @@ inline int32_t drc_lin2db_fixed(int32_t linear)
 inline int32_t drc_log_fixed(int32_t x)
 {
 	ae_f32 log10_x;
+	ae_f64 tmp;
+	ae_f32 y;
 
 	if (x <= 0)
 		return NEG_30_Q26;
 
 	/* log(x) = log(10) * log10(x) */
 	log10_x = log10_fixed(x); /* Q6.26 */
-	return drc_mult_lshift(LOG_10_Q29, log10_x, drc_get_lshift(29, 26, 26));
-}
+	tmp = AE_MULF32R_LL(LOG_10_Q29, log10_x);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX29_QY26_QZ26);
+	y = AE_ROUND32F48SSYM(tmp);
+	return AE_MOVAD32_L(y);
+	}
 
 #ifndef DRC_USE_CORDIC_ASIN
 /*
@@ -145,16 +161,18 @@ inline int32_t drc_asin_fixed(int32_t x)
 	 *   max err ~= 3.085226e-2
 	 */
 	int32_t lshift;
-	ae_f32 in = x; /* Q2.30 */
+	int32_t x_abs = AE_MOVAD32_L(AE_ABS32S(x));
 	ae_f32 in2; /* Q2.30 */
 	ae_f32 A7, A5, A3, A1;
 	int32_t qc;
 	ae_f32 acc;
+	ae_f64 tmp;
 
-	lshift = drc_get_lshift(30, 30, 30);
-	in2 = drc_mult_lshift(in, in, lshift);
+	tmp = AE_MULF32R_LL(x, x);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX30_QY30_QZ30);
+	in2 = AE_ROUND32F48SSYM(tmp);
 
-	if (ABS((int32_t)in) <= ONE_OVER_SQRT2_Q30) {
+	if (x_abs <= ONE_OVER_SQRT2_Q30) {
 		A7 = ASIN_FUNC_A7L_Q30;
 		A5 = ASIN_FUNC_A5L_Q30;
 		A3 = ASIN_FUNC_A3L_Q30;
@@ -169,15 +187,26 @@ inline int32_t drc_asin_fixed(int32_t x)
 	}
 
 	lshift = drc_get_lshift(qc, 30, qc);
-	acc = drc_mult_lshift(A7, in2, lshift);
+	tmp = AE_MULF32R_LL(A7, in2);
+	tmp = AE_SLAA64S(tmp, lshift);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, A5);
-	acc = drc_mult_lshift(acc, in2, lshift);
+	tmp = AE_MULF32R_LL(acc, in2);
+	tmp = AE_SLAA64S(tmp, lshift);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, A3);
-	acc = drc_mult_lshift(acc, in2, lshift);
+	tmp = AE_MULF32R_LL(acc, in2);
+	tmp = AE_SLAA64S(tmp, lshift);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, A1);
-	acc = drc_mult_lshift(acc, in, lshift);
+	tmp = AE_MULF32R_LL(acc, x);
+	tmp = AE_SLAA64S(tmp, lshift);
+	acc = AE_ROUND32F48SSYM(tmp);
 	lshift = drc_get_lshift(qc, 30, 30);
-	return drc_mult_lshift(acc, TWO_OVER_PI_Q30, lshift);
+	tmp = AE_MULF32R_LL(acc, TWO_OVER_PI_Q30);
+	tmp = AE_SLAA64S(tmp, lshift);
+	acc = AE_ROUND32F48SSYM(tmp);
+	return AE_MOVAD32_L(acc);
 }
 #endif /* !DRC_USE_CORDIC_ASIN */
 
@@ -192,38 +221,55 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 	 * max err ~= 1.00388e-6
 	 */
 	ae_f32 in;
-	int32_t lshift;
-	int32_t e;
+	int32_t in_abs;
+	int32_t bit = 31 - AE_NSAZ32_L(x);
+	int32_t e = bit - precision_x;
 	int32_t precision_inv;
 	int32_t sqrt2_extracted = 0;
 	ae_f32 acc;
+	ae_f64 tmp;
 
-	in = rexp_fixed(x, precision_x, &e); /* Q2.30 */
+	/*Output range [0.5, 1); regulated to Q2.30 */
+	in = AE_SRAA32(x, bit - 30);
+	in_abs = AE_MOVAD32_L(AE_ABS32S(in));
 
-	if (ABS((int32_t)in) < ONE_OVER_SQRT2_Q30) {
-		lshift = drc_get_lshift(30, 30, 30);
-		in = drc_mult_lshift(in, SQRT2_Q30, lshift);
+	if (in_abs < ONE_OVER_SQRT2_Q30) {
+		tmp = AE_MULF32R_LL(in, SQRT2_Q30);
+		tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX30_QY30_QZ30);
+		in = AE_ROUND32F48SSYM(tmp);
 		sqrt2_extracted = 1;
 	}
 
-	lshift = drc_get_lshift(25, 30, 25);
-	acc = drc_mult_lshift(INV_FUNC_A5_Q25, in, lshift);
+	tmp = AE_MULF32R_LL(in, INV_FUNC_A5_Q25);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, INV_FUNC_A4_Q25);
-	acc = drc_mult_lshift(acc, in, lshift);
+	tmp = AE_MULF32R_LL(in, acc);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, INV_FUNC_A3_Q25);
-	acc = drc_mult_lshift(acc, in, lshift);
+	tmp = AE_MULF32R_LL(in, acc);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, INV_FUNC_A2_Q25);
-	acc = drc_mult_lshift(acc, in, lshift);
+	tmp = AE_MULF32R_LL(in, acc);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, INV_FUNC_A1_Q25);
-	acc = drc_mult_lshift(acc, in, lshift);
+	tmp = AE_MULF32R_LL(in, acc);
+	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+	acc = AE_ROUND32F48SSYM(tmp);
 	acc = AE_ADD32(acc, INV_FUNC_A0_Q25);
 
-	if (sqrt2_extracted)
-		acc = drc_mult_lshift(acc, SQRT2_Q30, lshift);
+	if (sqrt2_extracted) {
+		tmp = AE_MULF32R_LL(SQRT2_Q30, acc);
+		tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
+		acc = AE_ROUND32F48SSYM(tmp);
+	}
 
 	precision_inv = e + 25;
 	acc = AE_SLAA32S(acc, precision_y - precision_inv);
-	return acc;
+	return AE_MOVAD32_L(acc);
 }
 
 #endif /* DRC_HIFI_3/4 */
