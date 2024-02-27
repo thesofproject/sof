@@ -326,14 +326,32 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 	return 0;
 }
 
+/* Mutable, volatile and not static to escape optimizers and static
+ * analyzers.
+ */
+volatile int *_sof_fatal_null = NULL;
+
 void k_sys_fatal_error_handler(unsigned int reason,
 			       const z_arch_esf_t *esf)
 {
 	ARG_UNUSED(esf);
+
+	/* flush and switch to immediate mode */
 	LOG_PANIC();
 
 	ipc_send_panic_notification();
 
+#if defined(CONFIG_ARCH_POSIX) || defined(CONFIG_ZEPHYR_POSIX)
+	LOG_ERR("Halting emulation");
+
+	/* In emulation we want to stop _immediately_ and print a useful stack
+	 * trace; not a useless pointer to some signal handler or Zephyr
+	 * cleanup routine. See Zephyr POSIX limitations discussed in:
+	 * https://github.com/zephyrproject-rtos/zephyr/pull/68494
+	 */
+	*_sof_fatal_null = 42;
+#else
 	LOG_ERR("Halting system");
+#endif
 	k_fatal_halt(reason);
 }
