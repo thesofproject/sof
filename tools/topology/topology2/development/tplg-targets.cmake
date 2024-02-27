@@ -100,12 +100,7 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 
 # CAVS HDA topology for benchmarking performance
 # Copier - peak volume - mixin - mixout - aria - peak volume - mixin - mixout - copier
-"sof-hda-generic\;sof-hda-benchmark-generic-tgl\;PLATFORM=TGL,HDA_CONFIG=benchmark,\
-BENCH_CONFIG=benchmark"
-"sof-hda-generic\;sof-hda-benchmark-generic-mtl\;PLATFORM=MTL,HDA_CONFIG=benchmark,\
-BENCH_CONFIG=benchmark"
-"sof-hda-generic\;sof-hda-benchmark-generic-lnl\;PLATFORM=LNL,HDA_CONFIG=benchmark,\
-BENCH_CONFIG=benchmark"
+"sof-hda-generic\;sof-hda-benchmark-generic\;HDA_CONFIG=benchmark,BENCH_CONFIG=benchmark"
 
 # Topology to test IPC4 Crossover
 "development/cavs-nocodec-crossover\;sof-tgl-nocodec-crossover-2way\;PLATFORM=tgl,\
