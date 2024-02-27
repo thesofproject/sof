@@ -92,4 +92,6 @@ jobs:
         with:
           name: ${{ matrix.IPC }} logs
           path: |
+            workspace/crash-*
             workspace/fuzz-stdout.txt
+            workspace/fuzz-*.log
