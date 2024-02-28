@@ -55,6 +55,19 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 
 "cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
 
+# SSP topology for PTL
+"cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin"
+
+# SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 2ch PDM0 enabled
+"cavs-nocodec\;sof-ptl-nocodec-fpga-2ch-pdm0\;PLATFORM=ptl,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-2ch-pdm0.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
+# SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 4ch both PDM0 and PDM1 enabled
+"cavs-nocodec\;sof-ptl-nocodec-fpga-4ch\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
 # CAVS HDA topology with mixer-based efx eq pipelines for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough"
