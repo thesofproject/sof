@@ -279,7 +279,7 @@ static int lib_manager_unload_libcode_modules(const uint32_t module_id,
 
 static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
 								 uint32_t instance_id,
-								 struct sof_man_module *mod)
+								 const struct sof_man_module *mod)
 {
 	uint32_t instance_bss_size =
 		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
@@ -296,7 +296,7 @@ static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module
 }
 
 static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t instance_id,
-						uint32_t is_pages, struct sof_man_module *mod)
+						uint32_t is_pages, const struct sof_man_module *mod)
 {
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
@@ -324,7 +324,7 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 }
 
 static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instance_id,
-					    struct sof_man_module *mod)
+					    const struct sof_man_module *mod)
 {
 	uint32_t bss_size =
 			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
@@ -337,7 +337,7 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
-static bool module_is_llext(struct sof_man_module *mod)
+static inline bool module_is_llext(const struct sof_man_module *mod)
 {
 	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
 }
@@ -347,7 +347,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
-	struct sof_man_module *mod;
+	const struct sof_man_module *mod;
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
@@ -399,7 +399,7 @@ err:
 int lib_manager_free_module(const uint32_t component_id)
 {
 	struct sof_man_fw_desc *desc;
-	struct sof_man_module *mod;
+	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	int ret;
