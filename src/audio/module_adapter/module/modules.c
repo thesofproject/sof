@@ -62,21 +62,20 @@ static int modules_new(struct processing_module *mod, const void *buildinfo,
 	uint32_t log_handle = (uint32_t) dev->drv->tctx;
 	/* Connect loadable module interfaces with module adapter entity. */
 	/* Check if native Zephyr lib is loaded */
-	struct sof_man_fw_desc *desc = lib_manager_get_library_module_desc(module_id);
 	void *system_agent;
-
-	if (!desc) {
-		comp_err(dev, "modules_init(): Failed to load manifest");
-		return -ENOMEM;
-	}
 
 	const struct sof_module_api_build_info *mod_buildinfo;
 
 	if (buildinfo) {
 		mod_buildinfo = buildinfo;
 	} else {
-		struct sof_man_module *module_entry =
-			(struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+		const struct sof_man_module *const module_entry =
+			lib_manager_get_module_manifest(module_id);
+
+		if (!module_entry) {
+			comp_err(dev, "modules_new(): Failed to load manifest");
+			return -ENODATA;
+		}
 
 		mod_buildinfo =
 			(struct sof_module_api_build_info *)
