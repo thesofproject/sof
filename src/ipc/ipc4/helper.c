@@ -947,9 +947,9 @@ static const struct comp_driver *ipc4_library_get_drv(int module_id)
 
 const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
-	struct sof_man_fw_desc *desc = NULL;
+	const struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
-	struct sof_man_module *mod;
+	const struct sof_man_module *mod;
 	uint32_t entry_index;
 
 #if CONFIG_LIBRARY
@@ -957,10 +957,10 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 #endif
 
 #ifdef RIMAGE_MANIFEST
-	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 #else
-	/* Non-rimage platforms have no component facility yet.  This
-	 * needs to move to the platform layer.
+	/* Non-rimage platforms have no component facility yet.
+	 * This needs to move to the platform layer.
 	 */
 	return NULL;
 #endif
@@ -973,13 +973,26 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 			entry_index = 1;
 		else
 			entry_index = module_id;
+
+		if (entry_index >= desc->header.num_module_entries) {
+			tr_err(&comp_tr, "Error: entry index %d out of bounds.", entry_index);
+			return NULL;
+		}
+
+		mod = (const struct sof_man_module *)((const char *)desc +
+						      SOF_MAN_MODULE_OFFSET(entry_index));
 	} else {
 		/* Library index greater than 0 possible only when LIBRARY_MANAGER
 		 * support enabled.
 		 */
 #if CONFIG_LIBRARY_MANAGER
-		desc = lib_manager_get_library_module_desc(module_id);
-		entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+		mod = lib_manager_get_module_manifest(module_id);
+
+		if (!mod) {
+			tr_err(&comp_tr, "Error: Couldn't find loadable module with id %d.",
+			       module_id);
+			return NULL;
+		}
 #else
 		tr_err(&comp_tr, "Error: lib index:%d, while loadable libraries are not supported!!!",
 		       lib_idx);
@@ -987,7 +1000,6 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 #endif
 	}
 	/* Check already registered components */
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	drv = ipc4_get_drv(mod->uuid);
 
 #if CONFIG_LIBRARY_MANAGER
