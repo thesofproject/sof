@@ -272,16 +272,13 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 int llext_manager_free_module(const uint32_t component_id)
 {
-	struct sof_man_fw_desc *desc;
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	int ret;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
 
-	desc = lib_manager_get_library_module_desc(module_id);
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+	mod = lib_manager_get_module_manifest(module_id);
 
 	ret = llext_manager_unload_module(module_id, mod);
 	if (ret < 0)
