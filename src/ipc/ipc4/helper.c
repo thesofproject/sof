@@ -728,7 +728,7 @@ int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 
-	drv = ipc4_get_drv((uint8_t *)&uuid);
+	drv = ipc4_get_drv((const uint8_t *)&uuid);
 	if (!drv)
 		return -EINVAL;
 
@@ -864,7 +864,7 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 	return IPC4_SUCCESS;
 }
 
-const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
+const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
@@ -934,7 +934,7 @@ static const struct comp_driver *ipc4_library_get_drv(int module_id)
 		mod_uuid = &uuid_map[i];
 
 		if (mod_uuid->module_id == module_id)
-			return ipc4_get_drv((uint8_t *)&mod_uuid->uuid);
+			return ipc4_get_drv((const uint8_t *)&mod_uuid->uuid);
 	}
 
 	tr_err(&comp_tr, "ipc4_library_get_drv(): Unsupported module ID %#x\n", module_id);
