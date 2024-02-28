@@ -117,6 +117,15 @@ static inline struct lib_manager_mod_ctx *lib_manager_get_mod_ctx(int module_id)
 
 	return _ext_lib->desc[lib_id];
 }
+
+/*
+ * \brief Get module manifest for given module id
+ *
+ * param[in] module_id - used to get library manifest
+ *
+ * Gets library manifest descriptor using module_id to locate it
+ */
+const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t module_id);
 #endif
 
 /*

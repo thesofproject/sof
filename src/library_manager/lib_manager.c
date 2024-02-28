@@ -212,9 +212,9 @@ static int lib_manager_unload_module(const struct sof_man_module *const mod)
 /* There are modules marked as lib_code. This is code shared between several modules inside
  * the library. Load all lib_code modules with first none lib_code module load.
  */
-static int lib_manager_load_libcode_modules(const uint32_t module_id,
-					    const struct sof_man_fw_desc *const desc)
+static int lib_manager_load_libcode_modules(const uint32_t module_id)
 {
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_module_desc(module_id);
 	struct ext_library *const ext_lib = ext_lib_get();
 	const struct sof_man_module *module_entry = (struct sof_man_module *)
 		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
@@ -250,12 +250,12 @@ err:
 /* There are modules marked as lib_code. This is code shared between several modules inside
  * the library. Unload all lib_code modules with last none lib_code module unload.
  */
-static int lib_manager_unload_libcode_modules(const uint32_t module_id,
-					      const struct sof_man_fw_desc *const desc)
+static int lib_manager_unload_libcode_modules(const uint32_t module_id)
 {
-	struct ext_library *const ext_lib = ext_lib_get();
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_module_desc(module_id);
 	const struct sof_man_module *module_entry = (struct sof_man_module *)
 		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	struct ext_library *const ext_lib = ext_lib_get();
 	int ret, idx;
 
 	if (--ext_lib->mods_exec_load_cnt > 0)
@@ -342,24 +342,20 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
-	struct sof_man_fw_desc *desc;
 	const struct sof_man_module *mod;
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 
 	tr_dbg(&lib_manager_tr, "lib_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
 
-	desc = lib_manager_get_library_module_desc(module_id);
-	if (!desc) {
+	mod = lib_manager_get_module_manifest(module_id);
+	if (!mod) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_allocate_module(): failed to get module descriptor");
 		return 0;
 	}
-
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
 	if (module_is_llext(mod))
 		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config,
@@ -370,7 +366,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 		return 0;
 
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
-	ret = lib_manager_load_libcode_modules(module_id, desc);
+	ret = lib_manager_load_libcode_modules(module_id);
 	if (ret < 0)
 		goto err;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
@@ -381,7 +377,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 		tr_err(&lib_manager_tr,
 		       "lib_manager_allocate_module(): module allocation failed: %d", ret);
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
-		lib_manager_unload_libcode_modules(module_id, desc);
+		lib_manager_unload_libcode_modules(module_id);
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 		goto err;
 	}
@@ -394,16 +390,13 @@ err:
 
 int lib_manager_free_module(const uint32_t component_id)
 {
-	struct sof_man_fw_desc *desc;
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	int ret;
 
 	tr_dbg(&lib_manager_tr, "lib_manager_free_module(): mod_id: %#x", component_id);
 
-	desc = lib_manager_get_library_module_desc(module_id);
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+	mod = lib_manager_get_module_manifest(module_id);
 
 	if (module_is_llext(mod))
 		return llext_manager_free_module(component_id);
@@ -413,7 +406,7 @@ int lib_manager_free_module(const uint32_t component_id)
 		return ret;
 
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
-	ret = lib_manager_unload_libcode_modules(module_id, desc);
+	ret = lib_manager_unload_libcode_modules(module_id);
 	if (ret < 0)
 		return ret;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
@@ -478,6 +471,27 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 
 	_ext_lib->desc[lib_id] = ctx;
 	/* TODO: maybe need to call dcache_writeback here? */
+}
+
+const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t module_id)
+{
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+	const struct sof_man_fw_desc *desc;
+
+	if (!ctx || !ctx->base_addr)
+		return NULL;
+
+	desc = (const struct sof_man_fw_desc *)((const char *)ctx->base_addr +
+							      SOF_MAN_ELF_TEXT_OFFSET);
+
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Entry index %d out of bounds.", entry_index);
+		return NULL;
+	}
+
+	return (const struct sof_man_module *)((const char *)desc +
+					       SOF_MAN_MODULE_OFFSET(entry_index));
 }
 
 #if CONFIG_INTEL_MODULES
