@@ -343,7 +343,7 @@ static inline bool module_is_llext(const struct sof_man_module *mod)
 }
 
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      struct comp_ipc_config *ipc_config,
+				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
 	struct sof_man_fw_desc *desc;
@@ -436,7 +436,7 @@ int lib_manager_free_module(const uint32_t component_id)
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      struct comp_ipc_config *ipc_config,
+				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr,

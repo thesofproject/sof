@@ -156,7 +156,7 @@ struct processing_module;
  * (WIP) These feature will contain module validation and proper memory management.
  */
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      struct comp_ipc_config *ipc_config,
+				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo);
 
 /*
