@@ -183,9 +183,6 @@ struct processing_module {
 	/* flag to insure that module is loadable */
 	bool is_native_sof;
 
-	/* pointer to system services for loadable modules */
-	uint32_t *sys_service;
-
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;
 	uint64_t total_data_produced;
