@@ -577,7 +577,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	/* Intel modules expects DW size here */
 	mod_cfg.size = args->size >> 2;
 
-	((struct comp_driver *)drv)->adapter_ops = native_system_agent_start(NULL, module_entry_point,
+	((struct comp_driver *)drv)->adapter_ops = native_system_agent_start(module_entry_point,
 									     module_id,	instance_id,
 									     0, log_handle,
 									     &mod_cfg);
