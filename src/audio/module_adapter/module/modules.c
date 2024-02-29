@@ -85,7 +85,6 @@ static int modules_init(struct processing_module *mod)
 	system_agent = system_agent_start(module_entry_point, module_id, instance_id, 0, log_handle,
 					  &mod_cfg);
 	module_set_private_data(mod, system_agent);
-	md->module_entry_point = module_entry_point;
 
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
