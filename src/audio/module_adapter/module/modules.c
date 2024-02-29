@@ -69,7 +69,7 @@ static int modules_init(struct processing_module *mod)
 	mod_cfg.size = md->cfg.size >> 2;
 	md->private = mod;
 
-	struct comp_ipc_config *config = &(mod->dev->ipc_config);
+	struct comp_ipc_config *config = &(dev->ipc_config);
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	module_entry_point = lib_manager_allocate_module(dev->drv, config, src_cfg);
@@ -78,11 +78,11 @@ static int modules_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 	md->module_entry_point = module_entry_point;
-	comp_info(mod->dev, "modules_init() start");
+	comp_info(dev, "modules_init() start");
 
-	uint32_t module_id = IPC4_MOD_ID(mod->dev->ipc_config.id);
-	uint32_t instance_id = IPC4_INST_ID(mod->dev->ipc_config.id);
-	uint32_t log_handle = (uint32_t) mod->dev->drv->tctx;
+	uint32_t module_id = IPC4_MOD_ID(dev->ipc_config.id);
+	uint32_t instance_id = IPC4_INST_ID(dev->ipc_config.id);
+	uint32_t log_handle = (uint32_t) dev->drv->tctx;
 	/* Connect loadable module interfaces with module adapter entity. */
 	/* Check if native Zephyr lib is loaded */
 	struct sof_man_fw_desc *desc;
