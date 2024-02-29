@@ -746,22 +746,33 @@ def build_platforms():
 					f"\nVariable XTENSA_TOOLS_ROOT={xtensa_tools_root_dir} points "
 					"to a path that does not exist or is not a directory")
 
-			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
+			# Set environment variables expected by
+			# zephyr/cmake/toolchain/x*/*.cmake.  Note CMake cannot set (evil)
+			# build-time environment variables at configure time:
+			# https://gitlab.kitware.com/cmake/community/-/wikis/FAQ#how-can-i-get-or-set-environment-variables
+
+			# Top-level "switch". When undefined, the Zephyr build system
+			# automatically searches for the Zephyr SDK and ignores all the
+			# following variables.
 			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
 				platform_dict["DEFAULT_TOOLCHAIN_VARIANT"])
-			XTENSA_TOOLCHAIN_PATH = str(pathlib.Path(xtensa_tools_root_dir, "install",
-				"tools").absolute())
-			platf_build_environ["XTENSA_TOOLCHAIN_PATH"] = XTENSA_TOOLCHAIN_PATH
+			platf_build_environ["XTENSA_TOOLCHAIN_PATH"] = str(
+				xtensa_tools_root_dir / "install" / "tools"
+			)
+			# Toolchain sub-directory
 			TOOLCHAIN_VER = platform_dict["XTENSA_TOOLS_VERSION"]
-			XTENSA_CORE = platform_dict["XTENSA_CORE"]
 			platf_build_environ["TOOLCHAIN_VER"] = TOOLCHAIN_VER
 
-			# Set variables expected by xcc toolchain. CMake cannot set (evil) build-time
-			# environment variables at configure time:
-			# https://gitlab.kitware.com/cmake/community/-/wikis/FAQ#how-can-i-get-or-set-environment-variables
-			XTENSA_BUILDS_DIR=str(pathlib.Path(xtensa_tools_root_dir, "install", "builds",
-				TOOLCHAIN_VER).absolute())
-			XTENSA_SYSTEM = str(pathlib.Path(XTENSA_BUILDS_DIR, XTENSA_CORE, "config").absolute())
+			# This XTENSA_SYSTEM variable was copied as is from XTOS
+			# scripts/xtensa-build-all.sh but it is not required by (recent?)
+			# toolchains when installed exactly as described in the --help (= a
+			# single --xtensa-core installed per --xtensa-system registry and maybe
+			# other constraints). Let's keep exporting it in case some build
+			# systems have their toolchains installed differently which might
+			# require it.  Note: "not needed" is different from "ignored"! The
+			# compiler fails when the value is incorrect.
+			builds_toolchainver = xtensa_tools_root_dir / "install" / "builds" / TOOLCHAIN_VER
+			XTENSA_SYSTEM = str(builds_toolchainver / platform_dict["XTENSA_CORE"] / "config")
 			platf_build_environ["XTENSA_SYSTEM"] = XTENSA_SYSTEM
 
 		platform_build_dir_name = f"build-{platform}"
