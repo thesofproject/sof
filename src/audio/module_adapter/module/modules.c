@@ -106,8 +106,6 @@ static int modules_new(struct processing_module *mod, const void *buildinfo,
 		return -ENOEXEC;
 	}
 
-	md->module_entry_point = module_entry_point;
-
 	return 0;
 }
 
