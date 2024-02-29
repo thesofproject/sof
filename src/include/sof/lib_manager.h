@@ -162,14 +162,12 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 /*
  * \brief Free module
  *
- * param[in] drv - component driver
- * param[in] ipc_config - audio component base configuration from IPC at creation
- * param[in] ipc_specific_config - ipc4 base configuration
+ * param[in] component_id - component id coming from ipc config. This function reguires valid
+ * lib_id and module_id fields of component id.
  *
  * Function is responsible to free module resources in HP memory.
  */
-int lib_manager_free_module(struct processing_module *proc,
-			    struct comp_ipc_config *ipc_config);
+int lib_manager_free_module(const uint32_t component_id);
 /*
  * \brief Load library
  *

@@ -294,7 +294,6 @@ static int modules_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
-	struct comp_ipc_config *config = &(mod->dev->ipc_config);
 	int ret;
 
 	comp_info(dev, "modules_free()");
@@ -314,7 +313,7 @@ static int modules_free(struct processing_module *mod)
 
 	if (!md->llext || !llext_unload(&md->llext)) {
 		/* Free module resources allocated in L2 memory. */
-		ret = lib_manager_free_module(mod, config);
+		ret = lib_manager_free_module(dev->ipc_config.id);
 		if (ret < 0)
 			comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
 	}

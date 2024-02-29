@@ -14,7 +14,7 @@ struct comp_ipc_config;
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config, const void **buildinfo);
-int llext_manager_free_module(struct processing_module *proc,
-			      struct comp_ipc_config *ipc_config);
+
+int llext_manager_free_module(const uint32_t component_id);
 
 #endif
