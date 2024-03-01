@@ -1139,8 +1139,8 @@ class Abytes(Attribute):
         if length <= 16:
             out += ' '.join(['{:02x}'.format(b) for b in self.val])
         elif Attribute.full_bytes:
-            """ n is num pre row
-                print 8 num pre line, useful for add more KEY
+            """ n is bytes per line
+                8 bytes per line is useful for adding more KEYs at the top
             """
             n = 8
             out += '\n'
