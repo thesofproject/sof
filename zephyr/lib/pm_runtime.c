@@ -56,9 +56,6 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 
 		if (ticks == K_TICKS_FOREVER ||
 		    (ticks >= (min_residency + exit_latency))) {
-			/* TODO: PM_STATE_RUNTIME_IDLE requires substates to be defined
-			 * to handle case with enabled PG andf disabled CG.
-			 */
 			tr_dbg(&power_tr, "transition to state %x (min_residency = %u, exit_latency = %u)",
 			       state->state, min_residency, exit_latency);
 			return state;
