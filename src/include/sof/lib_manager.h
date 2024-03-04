@@ -127,13 +127,13 @@ void lib_manager_init(void);
 /*
  * \brief Register module on driver list
  *
- * param[in] desc - library manifest descriptor
- * param[in] module_id - used to get manifest offset for module
+ * param[in] component_id - component id coming from ipc config. This function reguires valid
+ * lib_id and module_id fields of component id.
  *
  * Creates new comp_driver_info and initialize it for module from library
  * Adds new module to sof_get()->comp_drivers list
  */
-int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id);
+int lib_manager_register_module(const uint32_t component_id);
 
 /*
  * \brief Get library module manifest descriptor
