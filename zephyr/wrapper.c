@@ -62,8 +62,7 @@ int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
 					arg, 0);
 #else
-	tr_err(&zephyr_tr, "Cannot register handler for IRQ %u: dynamic IRQs are disabled",
-		irq);
+	tr_err("Cannot register handler for IRQ %u: dynamic IRQs are disabled", irq);
 	return -EOPNOTSUPP;
 #endif
 }

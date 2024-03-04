@@ -87,7 +87,7 @@ struct sdma_pdata {
 static void sdma_set_overrides(struct dma_chan_data *channel,
 			       bool event_override, bool host_override)
 {
-	tr_dbg(&sdma_tr, "sdma_set_overrides(%d, %d)", event_override,
+	tr_dbg("sdma_set_overrides(%d, %d)", event_override,
 	       host_override);
 	dma_reg_update_bits(channel->dma, SDMA_EVTOVR, BIT(channel->index),
 			    event_override ? BIT(channel->index) : 0);
@@ -112,7 +112,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 	struct sdma_chan *c0data = dma_chan_get_data(c0);
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_run_c0 cmd %d buf_addr 0x%08x sdma_addr 0x%04x count %d",
+	tr_dbg("sdma_run_c0 cmd %d buf_addr 0x%08x sdma_addr 0x%04x count %d",
 	       cmd, buf_addr, sdma_addr, count);
 
 	c0data->desc[0].config = SDMA_BD_CMD(cmd) | SDMA_BD_COUNT(count)
@@ -144,7 +144,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		ret = 0;
 
 	if (ret < 0)
-		tr_err(&sdma_tr, "SDMA channel 0 timed out");
+		tr_err("SDMA channel 0 timed out");
 
 	/* Switch to dynamic context switch mode if needed. This saves power. */
 	if ((dma_reg_read(dma, SDMA_CONFIG) & SDMA_CONFIG_CSM_MSK) ==
@@ -152,7 +152,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		dma_reg_update_bits(dma, SDMA_CONFIG, SDMA_CONFIG_CSM_MSK,
 				    SDMA_CONFIG_CSM_DYN);
 
-	tr_dbg(&sdma_tr, "sdma_run_c0 done, ret = %d", ret);
+	tr_dbg("sdma_run_c0 done, ret = %d", ret);
 
 	return ret;
 }
@@ -163,12 +163,12 @@ static int sdma_register_init(struct dma *dma)
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
 	int i;
 
-	tr_dbg(&sdma_tr, "sdma_register_init");
+	tr_dbg("sdma_register_init");
 	dma_reg_write(dma, SDMA_RESET, 1);
 	/* Wait for 10us */
 	ret = poll_for_register_delay(dma_base(dma) + SDMA_RESET, 1, 0, 1000);
 	if (ret < 0) {
-		tr_err(&sdma_tr, "SDMA reset error, base address %p",
+		tr_err("SDMA reset error, base address %p",
 		       (void *)dma_base(dma));
 		return ret;
 	}
@@ -218,7 +218,7 @@ static void sdma_init_c0(struct dma *dma)
 	struct sdma_pdata *sdma_pdata = dma_get_drvdata(dma);
 	struct sdma_chan *pdata = &sdma_pdata->chan_pdata[0];
 
-	tr_dbg(&sdma_tr, "sdma_init_c0");
+	tr_dbg("sdma_init_c0");
 	c0->status = COMP_STATE_READY;
 
 	/* Reset channel 0 private data */
@@ -235,14 +235,14 @@ static int sdma_boot(struct dma *dma)
 {
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_boot");
+	tr_dbg("sdma_boot");
 	ret = sdma_register_init(dma);
 	if (ret < 0)
 		return ret;
 
 	sdma_init_c0(dma);
 
-	tr_dbg(&sdma_tr, "sdma_boot done");
+	tr_dbg("sdma_boot done");
 	return 0;
 }
 
@@ -253,7 +253,7 @@ static int sdma_upload_context(struct dma_chan_data *chan)
 	/* Ensure context is ready for upload */
 	dcache_writeback_region(pdata->ctx, sizeof(*pdata->ctx));
 
-	tr_dbg(&sdma_tr, "sdma_upload_context for channel %d", chan->index);
+	tr_dbg("sdma_upload_context for channel %d", chan->index);
 
 	/* Last parameters are unneeded for this command and are ignored;
 	 * set to 0.
@@ -285,17 +285,17 @@ static int sdma_probe(struct dma *dma)
 	struct sdma_pdata *pdata;
 
 	if (dma->chan) {
-		tr_err(&sdma_tr, "SDMA: Repeated probe");
+		tr_err("SDMA: Repeated probe");
 		return -EEXIST;
 	}
 
-	tr_info(&sdma_tr, "SDMA: probe");
+	tr_info("SDMA: probe");
 
 	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&sdma_tr, "SDMA: Probe failure, unable to allocate channel descriptors");
+		tr_err("SDMA: Probe failure, unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 
@@ -304,7 +304,7 @@ static int sdma_probe(struct dma *dma)
 	if (!pdata) {
 		rfree(dma->chan);
 		dma->chan = NULL;
-		tr_err(&sdma_tr, "SDMA: Probe failure, unable to allocate private data");
+		tr_err("SDMA: Probe failure, unable to allocate private data");
 		return -ENOMEM;
 	}
 	dma_set_drvdata(dma, pdata);
@@ -319,7 +319,7 @@ static int sdma_probe(struct dma *dma)
 				    sizeof(struct sdma_chan));
 	if (!pdata->chan_pdata) {
 		ret = -ENOMEM;
-		tr_err(&sdma_tr, "SDMA: probe: out of memory");
+		tr_err("SDMA: probe: out of memory");
 		goto err;
 	}
 
@@ -328,7 +328,7 @@ static int sdma_probe(struct dma *dma)
 				  sizeof(struct sdma_context));
 	if (!pdata->contexts) {
 		ret = -ENOMEM;
-		tr_err(&sdma_tr, "SDMA: probe: unable to allocate contexts");
+		tr_err("SDMA: probe: unable to allocate contexts");
 		goto err;
 	}
 
@@ -337,13 +337,13 @@ static int sdma_probe(struct dma *dma)
 				   sizeof(struct sdma_ccb));
 	if (!pdata->ccb_array) {
 		ret = -ENOMEM;
-		tr_err(&sdma_tr, "SDMA: probe: unable to allocate CCBs");
+		tr_err("SDMA: probe: unable to allocate CCBs");
 		goto err;
 	}
 
 	ret = sdma_boot(dma);
 	if (ret < 0) {
-		tr_err(&sdma_tr, "SDMA: Unable to boot");
+		tr_err("SDMA: Unable to boot");
 		goto err;
 	}
 
@@ -352,7 +352,7 @@ static int sdma_probe(struct dma *dma)
 				 RAM_CODE_START_ADDR,
 				 RAM_CODE_SIZE * sizeof(short));
 	if (ret < 0) {
-		tr_err(&sdma_tr, "SDMA: Failed to load firmware");
+		tr_err("SDMA: Failed to load firmware");
 		goto err;
 	}
 #endif
@@ -379,11 +379,11 @@ static int sdma_remove(struct dma *dma)
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
 
 	if (!dma->chan) {
-		tr_err(&sdma_tr, "SDMA: Remove called without probe, that's a noop");
+		tr_err("SDMA: Remove called without probe, that's a noop");
 		return 0;
 	}
 
-	tr_dbg(&sdma_tr, "sdma_remove");
+	tr_dbg("sdma_remove");
 
 	/* Prevent all channels except channel 0 from running */
 	dma_reg_write(dma, SDMA_HOSTOVR, 1);
@@ -414,7 +414,7 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 	int i;
 	/* Ignoring channel 0; let's just allocate a free channel */
 
-	tr_dbg(&sdma_tr, "sdma_channel_get");
+	tr_dbg("sdma_channel_get");
 	for (i = 1; i < dma->plat_data.channels; i++) {
 		channel = &dma->chan[i];
 		if (channel->status != COMP_STATE_INIT)
@@ -435,7 +435,7 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 		sdma_set_overrides(channel, false, false);
 		return channel;
 	}
-	tr_err(&sdma_tr, "sdma no channel free");
+	tr_err("sdma no channel free");
 	return NULL;
 }
 
@@ -443,7 +443,7 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	tr_dbg(&sdma_tr, "sdma_enable_event(%d, %d)", channel->index, eventnum);
+	tr_dbg("sdma_enable_event(%d, %d)", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
@@ -461,7 +461,7 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 
 static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
 {
-	tr_dbg(&sdma_tr, "sdma_disable_event(%d, %d)", channel->index, eventnum);
+	tr_dbg("sdma_disable_event(%d, %d)", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
@@ -476,7 +476,7 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 
 	if (channel->status == COMP_STATE_INIT)
 		return; /* Channel was already free */
-	tr_dbg(&sdma_tr, "sdma_channel_put(%d)", channel->index);
+	tr_dbg("sdma_channel_put(%d)", channel->index);
 
 	dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
 	sdma_disable_event(channel, pdata->hw_event);
@@ -486,7 +486,7 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 
 static int sdma_start(struct dma_chan_data *channel)
 {
-	tr_dbg(&sdma_tr, "sdma_start(%d)", channel->index);
+	tr_dbg("sdma_start(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
 	    channel->status != COMP_STATE_PAUSED)
@@ -508,7 +508,7 @@ static int sdma_stop(struct dma_chan_data *channel)
 
 	channel->status = COMP_STATE_READY;
 
-	tr_dbg(&sdma_tr, "sdma_stop(%d)", channel->index);
+	tr_dbg("sdma_stop(%d)", channel->index);
 
 	sdma_disable_channel(channel->dma, channel->index);
 
@@ -554,7 +554,7 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 	};
 	int idx;
 
-	tr_dbg(&sdma_tr, "sdma_copy");
+	tr_dbg("sdma_copy");
 
 	idx = (pdata->next_bd + 1) % 2;
 	pdata->next_bd = idx;
@@ -582,7 +582,7 @@ static int sdma_status(struct dma_chan_data *channel,
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	struct sdma_bd *bd;
 
-	tr_dbg(&sdma_tr, "sdma_status");
+	tr_dbg("sdma_status");
 	if (channel->status == COMP_STATE_INIT)
 		return -EINVAL;
 	status->state = channel->status;
@@ -682,7 +682,7 @@ static int sdma_read_config(struct dma_chan_data *channel,
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_AP2AP;
 		/* Fallthrough, TODO: implement to support m2m */
 	default:
-		tr_err(&sdma_tr, "sdma_set_config: Unsupported direction %d",
+		tr_err("sdma_set_config: Unsupported direction %d",
 		       config->direction);
 		return -EINVAL;
 	}
@@ -690,13 +690,13 @@ static int sdma_read_config(struct dma_chan_data *channel,
 	for (i = 0; i < config->elem_array.count; i++) {
 		if (config->direction == DMA_DIR_MEM_TO_DEV &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].dest) {
-			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
+			tr_err("sdma_read_config: FIFO changes address!");
 			return -EINVAL;
 		}
 
 		if (config->direction == DMA_DIR_DEV_TO_MEM &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].src) {
-			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
+			tr_err("sdma_read_config: FIFO changes address!");
 			return -EINVAL;
 		}
 
@@ -704,7 +704,7 @@ static int sdma_read_config(struct dma_chan_data *channel,
 			/* Future improvement: Create multiple BDs so as to
 			 * support this situation
 			 */
-			tr_err(&sdma_tr, "sdma_set_config: elem transfers too much: %d bytes",
+			tr_err("sdma_set_config: elem transfers too much: %d bytes",
 			       config->elem_array.elems[i].size);
 			return -EINVAL;
 		}
@@ -741,12 +741,12 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 
 	/* Validate requested configuration */
 	if (config->elem_array.count > SDMA_MAX_BDS) {
-		tr_err(&sdma_tr, "sdma_set_config: Unable to handle %d descriptors",
+		tr_err("sdma_set_config: Unable to handle %d descriptors",
 		       config->elem_array.count);
 		return -EINVAL;
 	}
 	if (config->elem_array.count <= 0) {
-		tr_err(&sdma_tr, "sdma_set_config: Invalid descriptor count: %d",
+		tr_err("sdma_set_config: Invalid descriptor count: %d",
 		       config->elem_array.count);
 		return -EINVAL;
 	}
@@ -826,7 +826,7 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		/* This case doesn't happen; we need to assign the other cases
 		 * for AP2MCU and MCU2AP
 		 */
-		tr_err(&sdma_tr, "Unexpected SDMA error");
+		tr_err("Unexpected SDMA error");
 		return -EINVAL;
 	}
 
@@ -869,7 +869,7 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_set_config channel %d", channel->index);
+	tr_dbg("sdma_set_config channel %d", channel->index);
 
 	ret = sdma_read_config(channel, config);
 	if (ret < 0)
@@ -888,11 +888,11 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	/* Upload context */
 	ret = sdma_upload_context(channel);
 	if (ret < 0) {
-		tr_err(&sdma_tr, "Unable to upload context, bailing");
+		tr_err("Unable to upload context, bailing");
 		return ret;
 	}
 
-	tr_dbg(&sdma_tr, "SDMA context uploaded");
+	tr_dbg("SDMA context uploaded");
 	/* Context uploaded, we can set up events now */
 	sdma_enable_event(channel, pdata->hw_event);
 
@@ -926,7 +926,7 @@ static int sdma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 		 */
 		return 0;
 	default:
-		tr_err(&sdma_tr, "sdma_interrupt unknown cmd %d", cmd);
+		tr_err("sdma_interrupt unknown cmd %d", cmd);
 		return -EINVAL;
 	}
 }
@@ -967,10 +967,10 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 	uint32_t result_data = 0;
 	int i;
 
-	tr_dbg(&sdma_tr, "sdma_get_data_size(%d)", channel->index);
+	tr_dbg("sdma_get_data_size(%d)", channel->index);
 	if (channel->index == 0) {
 		/* Channel 0 shouldn't have this called anyway */
-		tr_err(&sdma_tr, "Please do not call get_data_size on SDMA channel 0!");
+		tr_err("Please do not call get_data_size on SDMA channel 0!");
 		*avail = *free = 0;
 		return -EINVAL;
 	}
@@ -993,7 +993,7 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 		*avail = result_data;
 		break;
 	default:
-		tr_err(&sdma_tr, "sdma_get_data_size channel invalid direction");
+		tr_err("sdma_get_data_size channel invalid direction");
 		return -EINVAL;
 	}
 	return 0;

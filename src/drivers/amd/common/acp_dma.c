@@ -60,13 +60,13 @@ static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acpdma_tr, "DMA: Channel %d not in range", req_chan);
+		tr_err("DMA: Channel %d not in range", req_chan);
 		return NULL;
 	}
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&acpdma_tr, "DMA: channel already in use %d", req_chan);
+		tr_err("DMA: channel already in use %d", req_chan);
 		return NULL;
 	}
 	atomic_add(&dma->num_channels_busy, 1);
@@ -199,14 +199,14 @@ static int acp_dma_start(struct dma_chan_data *channel)
 			return 0;
 	} while (platform_timer_get(timer) <= deadline);
 
-	tr_err(&acpdma_tr, "acp-dma: timed out for dma start");
+	tr_err("acp-dma: timed out for dma start");
 
 	return -ETIME;
 }
 
 static int acp_dma_release(struct dma_chan_data *channel)
 {
-	tr_info(&acpdma_tr, "DMA: release(%d)", channel->index);
+	tr_info("DMA: release(%d)", channel->index);
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 	channel->status = COMP_STATE_ACTIVE;
@@ -215,7 +215,7 @@ static int acp_dma_release(struct dma_chan_data *channel)
 
 static int acp_dma_pause(struct dma_chan_data *channel)
 {
-	tr_info(&acpdma_tr, "h/w pause is not supported, changing the status of(%d) channel",
+	tr_info("h/w pause is not supported, changing the status of(%d) channel",
 		channel->index);
 	if (channel->status != COMP_STATE_ACTIVE)
 		return -EINVAL;
@@ -285,14 +285,14 @@ static int acp_dma_probe(struct dma *dma)
 	int channel;
 
 	if (dma->chan) {
-		tr_err(&acpdma_tr, "DMA: Already probe");
+		tr_err("DMA: Already probe");
 		return -EEXIST;
 	}
 	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&acpdma_tr, "DMA: unable to allocate channel context");
+		tr_err("DMA: unable to allocate channel context");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -304,7 +304,7 @@ static int acp_dma_probe(struct dma *dma)
 				   sizeof(struct acp_dma_chan_data));
 		if (!acp_dma_chan) {
 			rfree(dma->chan);
-			tr_err(&acpdma_tr, "acp-dma: %d channel %d private data alloc failed",
+			tr_err("acp-dma: %d channel %d private data alloc failed",
 			       dma->plat_data.id, channel);
 			return -ENOMEM;
 		}
@@ -318,7 +318,7 @@ static int acp_dma_remove(struct dma *dma)
 	int channel;
 
 	if (!dma->chan) {
-		tr_err(&acpdma_tr, "DMA: Invalid remove call");
+		tr_err("DMA: Invalid remove call");
 		return 0;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++)
@@ -379,7 +379,7 @@ static int acp_dma_get_data_size(struct dma_chan_data *channel,
 		*free = ABS(data_size) / 2;
 		break;
 	default:
-		tr_err(&acpdma_tr, "dma_get_data_size() Invalid direction %d",
+		tr_err("dma_get_data_size() Invalid direction %d",
 		       channel->direction);
 		return -EINVAL;
 	}

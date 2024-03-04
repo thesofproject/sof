@@ -425,10 +425,10 @@ static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 	const uint32_t force = tlv->value[0];
 
 	if (force) {
-		tr_info(&basefw_comp_tr, "FW config set force dmi l0 state");
+		tr_info("FW config set force dmi l0 state");
 		intel_adsp_force_dmi_l0_state();
 	} else {
-		tr_info(&basefw_comp_tr, "FW config set allow dmi l1 state");
+		tr_info("FW config set allow dmi l1 state");
 		intel_adsp_allow_dmi_l1_state();
 	}
 
@@ -451,7 +451,7 @@ static int basefw_set_fw_config(bool first_block,
 	default:
 		break;
 	}
-	tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
+	tr_warn("returning success for Set FW_CONFIG without handling it");
 	return 0;
 }
 
@@ -485,7 +485,7 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	case IPC4_EXTENDED_SYSTEM_TIME:
 		ret = basefw_get_ext_system_time(data_offset, data);
 		if (ret == IPC4_UNAVAILABLE) {
-			tr_warn(&basefw_comp_tr, "returning success for get host EXTENDED_SYSTEM_TIME without handling it");
+			tr_warn("returning success for get host EXTENDED_SYSTEM_TIME without handling it");
 			return 0;
 		} else {
 			return ret;

@@ -33,10 +33,10 @@ static void timer_report_delay(int id, uint64_t delay)
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
 	if (delay <= UINT_MAX)
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
+		tr_err("timer_report_delay(): timer %d delayed by %d uS %d ticks",
 		       id, ll_delay_us, (unsigned int)delay);
 	else
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
+		tr_err("timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
 		       id, ll_delay_us, UINT_MAX);
 
 	/* Fix compile error when traces are disabled */
@@ -50,7 +50,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
-	tr_dbg(&ll_tr, "timer_domain_register()");
+	tr_dbg("timer_domain_register()");
 
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
@@ -58,7 +58,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 
 	timer_domain->arg[core] = arg;
 
-	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d",
+	tr_info("timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d",
 		domain->type, domain->clk, domain->ticks_per_ms);
 
 	return timer_register(timer_domain->timer, handler, arg);
@@ -73,13 +73,13 @@ static int timer_domain_unregister(struct ll_schedule_domain *domain,
 	if (task)
 		return 0;
 
-	tr_dbg(&ll_tr, "timer_domain_unregister()");
+	tr_dbg("timer_domain_unregister()");
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
 		return 0;
 
-	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
+	tr_info("timer_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
 
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
@@ -113,7 +113,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 
-	tr_dbg(&ll_tr, "timer_domain_set(): ticks_set %u ticks_req %u current %u",
+	tr_dbg("timer_domain_set(): ticks_set %u ticks_req %u current %u",
 	       (unsigned int)ticks_set, (unsigned int)ticks_req,
 	       (unsigned int)platform_timer_get_atomic(timer_get()));
 

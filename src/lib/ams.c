@@ -70,7 +70,7 @@ static struct uuid_idx __sparse_cache *ams_find_uuid_entry_by_uuid(struct ams_sh
 					  sizeof(uuid_table[index].message_uuid),
 					  uuid, UUID_SIZE);
 			if (ec != 0) {
-				tr_err(&ams_tr, "Failed to create UUID entry: %u", index);
+				tr_err("Failed to create UUID entry: %u", index);
 				return NULL;
 			}
 
@@ -79,7 +79,7 @@ static struct uuid_idx __sparse_cache *ams_find_uuid_entry_by_uuid(struct ams_sh
 		}
 	}
 
-	tr_err(&ams_tr, "No space to create UUID entry");
+	tr_err("No space to create UUID entry");
 	return NULL;
 }
 
@@ -453,7 +453,7 @@ static int ams_message_send_internal(struct async_message_service *ams,
 	ams_release(shared_c);
 
 	if (!found_any)
-		tr_err(&ams_tr, "No entries found!");
+		tr_err("No entries found!");
 
 	return err;
 }
@@ -496,7 +496,7 @@ static int ams_process_slot(struct async_message_service *ams, uint32_t slot)
 	instance_id = shared_c->slots[slot].instance_id;
 
 	ams_release(shared_c);
-	tr_info(&ams_tr, "ams_process_slot slot %d msg %d from 0x%08x",
+	tr_info("ams_process_slot slot %d msg %d from 0x%08x",
 		slot, msg.message_type_id,
 		msg.producer_module_id << 16 | msg.producer_instance_id);
 
@@ -535,7 +535,7 @@ static enum task_state process_message(void *arg)
 	int flags;
 
 	if (ams_task->pending_slots == 0) {
-		tr_err(&ams_tr, "Could not process message! Skipping.");
+		tr_err("Could not process message! Skipping.");
 		return SOF_TASK_STATE_COMPLETED;
 	}
 
@@ -563,7 +563,7 @@ static int ams_task_init(void)
 	ret = schedule_task_init_ll(&task->ams_task, SOF_UUID(ams_uuid), SOF_SCHEDULE_LL_TIMER,
 				    SOF_TASK_PRI_MED, process_message, &ams->ams_task, cpu_get_id(), 0);
 	if (ret)
-		tr_err(&ams_tr, "Could not init AMS task!");
+		tr_err("Could not init AMS task!");
 
 	return ret;
 }

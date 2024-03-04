@@ -51,8 +51,6 @@
 /* ID for RTNR data */
 #define RTNR_DATA_ID_PRESET 12345678
 
-static const struct comp_driver comp_rtnr;
-
 /** \brief RTNR processing functions map item. */
 struct rtnr_func_map {
 	enum sof_ipc_frame fmt; /**< source frame format */
@@ -78,27 +76,27 @@ void rtnr_printf(int a, int b, int c, int d, int e)
 {
 	switch (a) {
 	case 0xa:
-		comp_cl_info(&comp_rtnr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		comp_cl_info(NULL, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			     b, c, d, e);
 		break;
 
 	case 0xb:
-		comp_cl_info(&comp_rtnr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		comp_cl_info(NULL, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			     b, c, d, e);
 		break;
 
 	case 0xc:
-		comp_cl_warn(&comp_rtnr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		comp_cl_warn(NULL, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			     b, c, d, e);
 		break;
 
 	case 0xd:
-		comp_cl_dbg(&comp_rtnr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		comp_cl_dbg(NULL, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			    b, c, d, e);
 		break;
 
 	case 0xe:
-		comp_cl_err(&comp_rtnr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		comp_cl_err(NULL, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			    b, c, d, e);
 		break;
 

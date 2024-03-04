@@ -102,14 +102,13 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 	int ret = 0;
 
 	if (!(ipc->task_mask & IPC_TASK_POWERDOWN)) {
-		tr_err(&ipc_tr,
-		       "ipc task mask not set to IPC_TASK_POWERDOWN. Current value: %u",
+		tr_err("ipc task mask not set to IPC_TASK_POWERDOWN. Current value: %u",
 		       ipc->task_mask);
 		ret = -ENOMSG;
 	}
 
 	if (!ipc->pm_prepare_D3) {
-		tr_err(&ipc_tr, "power state D3 not requested");
+		tr_err("power state D3 not requested");
 		ret = -EBADMSG;
 	}
 
@@ -130,9 +129,9 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 		}
 
 		if (only_buff_status) {
-			tr_warn(&ipc_tr, "continuing D3 procedure with the msg in the queue");
+			tr_warn("continuing D3 procedure with the msg in the queue");
 		} else {
-			tr_err(&ipc_tr, "there are queued IPC messages to be sent");
+			tr_err("there are queued IPC messages to be sent");
 			ret = -EINPROGRESS;
 		}
 	}

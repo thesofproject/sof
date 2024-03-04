@@ -107,12 +107,12 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 		return NULL;
 
 	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp %d exists", comp_id);
+		tr_err("comp %d exists", comp_id);
 		return NULL;
 	}
 
 	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
+		tr_err("ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
 		return NULL;
 	}
 
@@ -129,7 +129,7 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
 #else /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	if (module_init->extension.r.proc_domain) {
-		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp %d", comp_id);
+		tr_err("ipc: DP scheduling is disabled, cannot create comp %d", comp_id);
 		return NULL;
 	}
 	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
@@ -198,7 +198,7 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
 	if (ipc_pipe) {
-		tr_err(&ipc_tr, "ipc: comp id is already taken, pipe_desc->instance_id = %u",
+		tr_err("ipc: comp id is already taken, pipe_desc->instance_id = %u",
 		       (uint32_t)pipe_desc->primary.r.instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
@@ -206,7 +206,7 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	/* create the pipeline */
 	pipe = pipeline_new(pipe_desc->primary.r.instance_id, pipe_desc->primary.r.ppl_priority, 0);
 	if (!pipe) {
-		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
+		tr_err("ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
 	}
 
@@ -242,7 +242,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
 
-	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
+	tr_dbg("ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
 	/* pass IPC to target core */
 	if (!cpu_is_me(pipe_desc->extension.r.core_id))
@@ -326,14 +326,14 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret != IPC4_SUCCESS) {
-		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
+		tr_err("ipc_pipeline_free(): module free () failed");
 		return ret;
 	}
 
 	/* free buffer, delete all tasks and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");
+		tr_err("ipc_pipeline_free(): pipeline_free() failed");
 		return IPC4_INVALID_RESOURCE_STATE;
 	}
 
@@ -411,7 +411,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 	/* Any blocking IDC that does not change component state could be utilized */
 	ret = comp_ipc4_get_attribute_remote(dev, COMP_ATTR_BASE_CONFIG, &dummy);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "comp_ipc4_get_attribute_remote() failed for module %#x",
+		tr_err("comp_ipc4_get_attribute_remote() failed for module %#x",
 		       dev_comp_id(dev));
 		return ret;
 	}
@@ -448,7 +448,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	sink = ipc4_get_comp_dev(sink_id);
 
 	if (!source || !sink) {
-		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
+		tr_err("failed to find src %x, or dst %x", src_id, sink_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
@@ -475,7 +475,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG, &source_src_cfg);
 
 		if (ret < 0) {
-			tr_err(&ipc_tr, "failed to get base config for src module %#x",
+			tr_err("failed to get base config for src module %#x",
 			       dev_comp_id(source));
 			return IPC4_FAILURE;
 		}
@@ -490,7 +490,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!ibs) {
 		ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG, &sink_src_cfg);
 		if (ret < 0) {
-			tr_err(&ipc_tr, "failed to get base config for sink module %#x",
+			tr_err("failed to get base config for sink module %#x",
 			       dev_comp_id(sink));
 			return IPC4_FAILURE;
 		}
@@ -512,7 +512,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
-		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
+		tr_err("failed to allocate buffer to bind %d to %d", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
 
@@ -546,7 +546,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 			if (ll_wait_finished_on_core(sink) < 0)
 				goto free;
 #else
-		tr_err(&ipc_tr, "Cross-core binding is disabled");
+		tr_err("Cross-core binding is disabled");
 		goto free;
 #endif
 	}
@@ -554,14 +554,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to connect src %d to internal buffer", src_id);
+		tr_err("failed to connect src %d to internal buffer", src_id);
 		goto free;
 	}
 
 	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
+		tr_err("failed to connect internal buffer to sink %d", sink_id);
 		goto e_sink_connect;
 	}
 
@@ -624,12 +624,12 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	src = ipc4_get_comp_dev(src_id);
 	sink = ipc4_get_comp_dev(sink_id);
 	if (!src || !sink) {
-		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
+		tr_err("failed to find src %x, or dst %x", src_id, sink_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
 	if (src->pipeline == sink->pipeline) {
-		tr_warn(&ipc_tr, "ignoring unbinding of src %x and dst %x", src_id, sink_id);
+		tr_warn("ignoring unbinding of src %x and dst %x", src_id, sink_id);
 		return 0;
 	}
 
@@ -677,7 +677,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 				return IPC4_FAILURE;
 			}
 #else
-		tr_err(&ipc_tr, "Cross-core binding is disabled");
+		tr_err("Cross-core binding is disabled");
 		ll_unblock(cross_core_unbind);
 		return IPC4_FAILURE;
 #endif
@@ -705,7 +705,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *chan)
 {
 	if (dma_id > DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN) {
-		tr_err(&ipc_tr, "dma id %d is out of range", dma_id);
+		tr_err("dma id %d is out of range", dma_id);
 		return IPC4_INVALID_NODE_ID;
 	}
 
@@ -879,8 +879,7 @@ const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
 		info = container_of(clist, struct comp_driver_info,
 				    list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			tr_dbg(&comp_tr,
-			       "found type %d, uuid %pU",
+			tr_dbg("found type %d, uuid %pU",
 			       info->drv->type,
 			       info->drv->tctx->uuid_p);
 			drv = info->drv;
@@ -888,7 +887,7 @@ const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
 		}
 	}
 
-	tr_err(&comp_tr, "get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
+	tr_err("get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
 	       *(uint32_t *)(&uuid[0]),
 	       *(uint32_t *)(&uuid[4]),
 	       *(uint32_t *)(&uuid[8]),
@@ -937,7 +936,7 @@ static const struct comp_driver *ipc4_library_get_drv(int module_id)
 			return ipc4_get_drv((uint8_t *)&mod_uuid->uuid);
 	}
 
-	tr_err(&comp_tr, "ipc4_library_get_drv(): Unsupported module ID %#x\n", module_id);
+	tr_err("ipc4_library_get_drv(): Unsupported module ID %#x\n", module_id);
 	return NULL;
 }
 #endif
@@ -978,7 +977,7 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 		desc = lib_manager_get_library_module_desc(module_id);
 		entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 #else
-		tr_err(&comp_tr, "Error: lib index:%d, while loadable libraries are not supported!!!",
+		tr_err("Error: lib index:%d, while loadable libraries are not supported!!!",
 		       lib_idx);
 		return NULL;
 #endif
@@ -1013,7 +1012,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	/* check id for duplicates */
 	icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);
 	if (icd) {
-		tr_err(&ipc_tr, "ipc: duplicate component ID");
+		tr_err("ipc: duplicate component ID");
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
@@ -1021,7 +1020,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
+		tr_err("ipc_comp_new(): alloc failed");
 		rfree(icd);
 		return IPC4_OUT_OF_MEMORY;
 	}
@@ -1031,7 +1030,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	icd->core = dev->ipc_config.core;
 	icd->id = dev->ipc_config.id;
 
-	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp %x", icd->id);
+	tr_dbg("ipc4_add_comp_dev add comp %x", icd->id);
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 

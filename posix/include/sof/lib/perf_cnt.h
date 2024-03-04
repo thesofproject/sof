@@ -30,7 +30,7 @@ struct perf_cnt_data {
 #if CONFIG_PERFORMANCE_COUNTERS
 
 #define perf_cnt_trace(ctx, pcd) \
-		tr_info(ctx, "perf plat last %u peak %u cpu last %u, peak %u", \
+		tr_info("perf plat last %u peak %u cpu last %u, peak %u", \
 			(uint32_t)((pcd)->plat_delta_last),	\
 			(uint32_t)((pcd)->plat_delta_peak),	\
 			(uint32_t)((pcd)->cpu_delta_last),	\
@@ -78,7 +78,7 @@ struct perf_cnt_data {
 /* perf measurement windows size 2^x */
 #define PERF_CNT_CHECK_WINDOW_SIZE 10
 #define task_perf_avg_info(pcd, task_p, class)					\
-	tr_info(task_p, "perf_cycle task %p, %pU cpu avg %u peak %u",\
+	tr_info("perf_cycle task %p, %pU cpu avg %u peak %u",\
 		  class, (class)->uid, \
 		  (uint32_t)((pcd)->cpu_delta_sum),			\
 		  (uint32_t)((pcd)->cpu_delta_peak))

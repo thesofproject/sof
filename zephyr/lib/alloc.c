@@ -33,8 +33,6 @@
 
 LOG_MODULE_REGISTER(mem_allocator, CONFIG_SOF_LOG_LEVEL);
 
-extern struct tr_ctx zephyr_tr;
-
 /*
  * Memory - Create Zephyr HEAP for SOF.
  *
@@ -157,7 +155,7 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 	struct sys_memory_stats stats;
 #endif
 	if (!cpu_is_primary(arch_proc_id())) {
-		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
+		tr_err("L3_HEAP available only for primary core!");
 		return NULL;
 	}
 
@@ -167,7 +165,7 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
-	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+	tr_info("heap allocated: %u free: %u max allocated: %u",
 		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
 #endif
 
@@ -177,7 +175,7 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 static void l3_heap_free(struct k_heap *h, void *mem)
 {
 	if (!cpu_is_primary(arch_proc_id())) {
-		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
+		tr_err("L3_HEAP available only for primary core!");
 		return;
 	}
 
@@ -203,7 +201,7 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
-	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+	tr_info("heap allocated: %u free: %u max allocated: %u",
 		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
 #endif
 
@@ -287,7 +285,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		heap = &l3_heap;
 		/* Uncached L3_HEAP should be not used */
 		if (!zone_is_cached(zone)) {
-			tr_err(&zephyr_tr, "L3_HEAP available for cached zones only!");
+			tr_err("L3_HEAP available for cached zones only!");
 			return NULL;
 		}
 		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, 0, bytes);
@@ -334,7 +332,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	/* Original version returns NULL without freeing this memory */
 	if (!bytes) {
 		/* TODO: Should we call rfree(ptr); */
-		tr_err(&zephyr_tr, "realloc failed for 0 bytes");
+		tr_err("realloc failed for 0 bytes");
 		return NULL;
 	}
 
@@ -347,7 +345,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	rfree(ptr);
 
-	tr_info(&zephyr_tr, "rbealloc: new ptr %p", new_ptr);
+	tr_info("rbealloc: new ptr %p", new_ptr);
 
 	return new_ptr;
 }
@@ -388,7 +386,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		heap = &l3_heap;
 		return (__sparse_force void *)l3_heap_alloc_aligned(heap, align, bytes);
 #else
-		tr_err(&zephyr_tr, "L3_HEAP not available.");
+		tr_err("L3_HEAP not available.");
 		return NULL;
 #endif
 	} else {

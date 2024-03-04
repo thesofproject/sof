@@ -59,7 +59,7 @@ static void irq_handler(void *arg)
 	/* Interrupt arrived, check src */
 	status = imx_mu_read(IMX_MU_xSR(IMX_MU_VERSION, IMX_MU_GSR));
 
-	tr_dbg(&ipc_tr, "ipc: irq isr 0x%x", status);
+	tr_dbg("ipc: irq isr 0x%x", status);
 
 	/* reply message(done) from host */
 	if (status & IMX_MU_xSR_GIPn(IMX_MU_VERSION, 1)) {
@@ -116,7 +116,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 					0,
 					100);
 	if (ret < 0)
-		tr_err(&ipc_tr, "failed poll for GIR0");
+		tr_err("failed poll for GIR0");
 
 
 	ret = poll_for_register_delay(MU_BASE + IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR),
@@ -124,7 +124,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 					0,
 					100);
 	if (ret < 0)
-		tr_err(&ipc_tr, "failed poll for GIR1");
+		tr_err("failed poll for GIR1");
 
 	/* request GP interrupt #0 - notify host that reply is ready */
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 0), 0);
@@ -160,7 +160,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 
-	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
+	tr_dbg("ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 
@@ -190,7 +190,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	iipc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*iipc));
 	if (!iipc) {
-		tr_err(&ipc_tr, "Unable to allocate IPC private data");
+		tr_err("Unable to allocate IPC private data");
 		return -ENOMEM;
 	}
 	ipc_set_drvdata(ipc, iipc);
@@ -212,7 +212,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
 				       DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {
-		tr_err(&ipc_tr, "Unable to find DMA for host page table");
+		tr_err("Unable to find DMA for host page table");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 #endif

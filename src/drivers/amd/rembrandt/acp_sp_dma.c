@@ -85,7 +85,7 @@ int acp_dai_sp_dma_start(struct dma_chan_data *channel)
 		sp_irer.bits.i2stdm_rx_samplen = 2;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_rmb_tr, "Start direction not defined %d", channel->direction);
+		tr_err("Start direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 
@@ -118,7 +118,7 @@ int acp_dai_sp_dma_stop(struct dma_chan_data *channel)
 		sp_irer.bits.i2stdm_rx_en = 0;
 		io_reg_write((PU_REGISTER_BASE + ACP_I2STDM_IRER), sp_irer.u32all);
 	} else {
-		tr_err(&acp_sp_rmb_tr, "Stop direction not defined %d", channel->direction);
+		tr_err("Stop direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	sp_iter = (acp_i2stdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_I2STDM_ITER));
@@ -145,11 +145,11 @@ int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 	uint32_t sp_fifo_addr;
 
 	if (!config->cyclic) {
-		tr_err(&acp_sp_rmb_tr, "cyclic configurations only supported!");
+		tr_err("cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_sp_rmb_tr, "scatter enabled, that is not supported for now!");
+		tr_err("scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -201,7 +201,7 @@ int acp_dai_sp_dma_set_config(struct dma_chan_data *channel,
 			     (sp_buff_size >> 1));
 
 	} else {
-		tr_err(&acp_sp_rmb_tr, "DMA Config channel direction undefined %d",
+		tr_err("DMA Config channel direction undefined %d",
 		       channel->direction);
 		return -EINVAL;
 	}
@@ -247,7 +247,7 @@ int acp_dai_sp_dma_get_data_size(struct dma_chan_data *channel,
 		*avail = (sp_buff_size >> 1);
 #endif
 	} else {
-		tr_err(&acp_sp_rmb_tr, "Channel direction not defined %d", channel->direction);
+		tr_err("Channel direction not defined %d", channel->direction);
 		return -EINVAL;
 	}
 	return 0;

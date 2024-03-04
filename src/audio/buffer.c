@@ -33,11 +33,11 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	struct comp_buffer *buffer;
 	void *stream_addr;
 
-	tr_dbg(&buffer_tr, "buffer_alloc()");
+	tr_dbg("buffer_alloc()");
 
 	/* validate request */
 	if (size == 0) {
-		tr_err(&buffer_tr, "buffer_alloc(): new size = %u is invalid",
+		tr_err("buffer_alloc(): new size = %u is invalid",
 		       size);
 		return NULL;
 	}
@@ -48,7 +48,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	buffer = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
 
 	if (!buffer) {
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
+		tr_err("buffer_alloc(): could not alloc structure");
 		return NULL;
 	}
 
@@ -58,7 +58,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	stream_addr = rballoc_align(0, caps, size, align);
 	if (!stream_addr) {
 		rfree(buffer);
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
+		tr_err("buffer_alloc(): could not alloc size = %u bytes of type = %u",
 		       size, caps);
 		return NULL;
 	}

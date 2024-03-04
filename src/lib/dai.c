@@ -89,7 +89,7 @@ struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags)
 	struct dai_group *group;
 
 	if (!group_id) {
-		tr_err(&dai_tr, "dai_group_get(): invalid group_id %u",
+		tr_err("dai_group_get(): invalid group_id %u",
 		       group_id);
 		return NULL;
 	}
@@ -112,7 +112,7 @@ struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags)
 
 		group->num_dais++;
 	} else {
-		tr_err(&dai_tr, "dai_group_get(): failed to get group_id %u",
+		tr_err("dai_group_get(): failed to get group_id %u",
 		       group_id);
 	}
 
@@ -209,7 +209,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 	dev = dai_get_zephyr_device(type, index);
 	if (!dev) {
-		tr_err(&dai_tr, "dai_get: failed to get dai with index %d type %d",
+		tr_err("dai_get: failed to get dai with index %d type %d",
 		       index, type);
 		return NULL;
 	}
@@ -225,7 +225,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	dai_set_device_params(d);
 
 	if (dai_probe(d->dev)) {
-		tr_err(&dai_tr, "dai_get: failed to probe dai with index %d type %d",
+		tr_err("dai_get: failed to probe dai with index %d type %d",
 		       index, type);
 		rfree(d);
 		return NULL;
@@ -241,7 +241,7 @@ void dai_put(struct dai *dai)
 
 	ret = dai_remove(dai->dev);
 	if (ret < 0) {
-		tr_err(&dai_tr, "dai_put_zephyr: index %d failed ret = %d",
+		tr_err("dai_put_zephyr: index %d failed ret = %d",
 		       dai->index, ret);
 	}
 
@@ -287,14 +287,14 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		if (!ret)
 			d->sref++;
 
-		tr_info(&dai_tr, "dai_get type %d index %d new sref %d",
+		tr_info("dai_get type %d index %d new sref %d",
 			type, index, d->sref);
 
 		k_spin_unlock(&d->lock, key);
 
 		return !ret ? d : NULL;
 	}
-	tr_err(&dai_tr, "dai_get: type %d index %d not found", type, index);
+	tr_err("dai_get: type %d index %d not found", type, index);
 	return NULL;
 }
 
@@ -307,11 +307,11 @@ void dai_put(struct dai *dai)
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
-			tr_err(&dai_tr, "dai_put: type %d index %d dai_remove() failed ret = %d",
+			tr_err("dai_put: type %d index %d dai_remove() failed ret = %d",
 			       dai->drv->type, dai->index, ret);
 		}
 	}
-	tr_info(&dai_tr, "dai_put type %d index %d new sref %d",
+	tr_info("dai_put type %d index %d new sref %d",
 		dai->drv->type, dai->index, dai->sref);
 	k_spin_unlock(&dai->lock, key);
 }

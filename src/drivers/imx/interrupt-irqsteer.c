@@ -315,7 +315,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
-			tr_err(&irq_i_tr, "irq_handler(): nobody cared, bit %d",
+			tr_err("irq_handler(): nobody cared, bit %d",
 			       bit);
 			/* Mask this interrupt so it won't happen again */
 			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
@@ -350,7 +350,7 @@ static inline void irq_handler(void *data, uint32_t line_index)
 
 		if (!--tries) {
 			tries = IRQ_MAX_TRIES;
-			tr_err(&irq_i_tr, "irq_handler(): IRQ storm, status 0x%08x%08x",
+			tr_err("irq_handler(): IRQ storm, status 0x%08x%08x",
 			       (uint32_t)(status >> 32), (uint32_t)status);
 		}
 	}

@@ -81,14 +81,14 @@ static const struct scheduler_ops schedule_ll_ops;
 #if CONFIG_PERFORMANCE_COUNTERS
 static void perf_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 {
-	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",
+	tr_info("perf ll_work peak plat %u cpu %u",
 		(uint32_t)((pcd)->plat_delta_peak),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
 
 static void perf_avg_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 {
-	tr_info(&ll_tr, "perf ll_work cpu avg %u (current peak %u)",
+	tr_info("perf ll_work cpu avg %u (current peak %u)",
 		(uint32_t)((pcd)->cpu_delta_sum),
 		(uint32_t)((pcd)->cpu_delta_peak));
 }
@@ -154,8 +154,8 @@ static void schedule_ll_task_done(struct ll_schedule_data *sch,
 	/* unregister the task */
 	domain_unregister(sch->domain, task, atomic_sub(&sch->num_tasks, 1) - 1);
 
-	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
-	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
+	tr_info("task complete %p %pU", task, task->uid);
+	tr_info("num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
 }
@@ -180,7 +180,7 @@ static inline void dsp_load_check(struct task *task, uint32_t cycles0, uint32_t 
 
 	if (++task->cycles_cnt == 1 << CHECKS_WINDOW_SIZE) {
 		task->cycles_sum >>= CHECKS_WINDOW_SIZE;
-		tr_info(&ll_tr, "task %p %pU avg %u, max %u", task, task->uid,
+		tr_info("task %p %pU avg %u, max %u", task, task->uid,
 			task->cycles_sum, task->cycles_max);
 		task->cycles_sum = 0;
 		task->cycles_max = 0;
@@ -215,7 +215,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 			continue;
 		}
 
-		tr_dbg(&ll_tr, "task %p %pU being started...", task, task->uid);
+		tr_dbg("task %p %pU being started...", task, task->uid);
 
 #ifdef CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS
 		cycles0 = (uint32_t)sof_cycle_get_64();
@@ -238,7 +238,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 		} else {
 			/* update task's start time */
 			schedule_ll_task_update_start(sch, task);
-			tr_dbg(&ll_tr, "task %p uid %pU finished, next period ticks %u, domain->next_tick %u",
+			tr_dbg("task %p uid %pU finished, next period ticks %u, domain->next_tick %u",
 			       task, task->uid, (uint32_t)task->start,
 			       (uint32_t)domain->next_tick);
 		}
@@ -276,8 +276,7 @@ static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 			}
 		}
 
-		tr_dbg(&ll_tr,
-		       "schedule_ll_clients_reschedule next_tick %u task_take %p",
+		tr_dbg("schedule_ll_clients_reschedule next_tick %u task_take %p",
 		       (unsigned int)next_tick, task_take);
 
 		/* update the target_tick */
@@ -295,7 +294,7 @@ static void schedule_ll_tasks_run(void *data)
 	uint32_t flags;
 	uint32_t core = cpu_get_id();
 
-	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
+	tr_dbg("timer interrupt on core %d, at %u, previous next_tick %u",
 	       core,
 	       (unsigned int)sof_cycle_get_64_atomic(),
 	       (unsigned int)domain->next_tick);
@@ -337,7 +336,7 @@ static void schedule_ll_tasks_run(void *data)
 	/* set the next interrupt according to the new_target_tick */
 	if (domain->new_target_tick < domain->next_tick) {
 		domain_set(domain, domain->new_target_tick);
-		tr_dbg(&ll_tr, "tasks on core %d done, new_target_tick %u set",
+		tr_dbg("tasks on core %d done, new_target_tick %u set",
 		       core, (unsigned int)domain->new_target_tick);
 	}
 
@@ -367,12 +366,12 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	ret = domain_register(domain, task, &schedule_ll_tasks_run, sch);
 	if (ret < 0) {
-		tr_err(&ll_tr, "schedule_ll_domain_set: cannot register domain %d",
+		tr_err("schedule_ll_domain_set: cannot register domain %d",
 		       ret);
 		goto done;
 	}
 
-	tr_dbg(&ll_tr, "task->start %u next_tick %u",
+	tr_dbg("task->start %u next_tick %u",
 	       (unsigned int)task->start,
 	       (unsigned int)domain->next_tick);
 
@@ -411,10 +410,10 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	/* make sure enable domain on the core */
 	domain_enable(domain, core);
 
-	tr_info(&ll_tr, "new added task->start %u at %u",
+	tr_info("new added task->start %u at %u",
 		(unsigned int)task->start,
 		(unsigned int)sof_cycle_get_64_atomic());
-	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
+	tr_info("num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
 
@@ -442,7 +441,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 	/* unregister the task */
 	domain_unregister(domain, task, atomic_read(&sch->num_tasks));
 
-	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
+	tr_info("num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
 
@@ -508,13 +507,13 @@ static int schedule_ll_task_common(struct ll_schedule_data *sch, struct task *ta
 
 	pdata = ll_sch_get_pdata(task);
 
-	tr_info(&ll_tr, "task add %p %pU", task, task->uid);
+	tr_info("task add %p %pU", task, task->uid);
 	if (start <= UINT_MAX && period <= UINT_MAX)
-		tr_info(&ll_tr, "task params pri %d flags %d start %u period %u",
+		tr_info("task params pri %d flags %d start %u period %u",
 			task->priority, task->flags,
 			(unsigned int)start, (unsigned int)period);
 	else
-		tr_info(&ll_tr, "task params pri %d flags %d start or period > %u",
+		tr_info("task params pri %d flags %d start or period > %u",
 			task->priority, task->flags, UINT_MAX);
 
 	pdata->period = period;
@@ -549,8 +548,7 @@ static int schedule_ll_task_common(struct ll_schedule_data *sch, struct task *ta
 				 * task has the smallest period
 				 */
 				if (pdata->period < reg_pdata->period) {
-					tr_err(&ll_tr,
-					       "schedule_ll_task(): registrable task has a period longer than current task");
+					tr_err("schedule_ll_task(): registrable task has a period longer than current task");
 					ret = -EINVAL;
 					goto out;
 				}
@@ -627,7 +625,7 @@ int schedule_task_init_ll(struct task *task,
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		tr_err(&ll_tr, "schedule_task_init_ll(): alloc failed");
+		tr_err("schedule_task_init_ll(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -663,7 +661,7 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
-	tr_info(&ll_tr, "task cancel %p %pU", task, task->uid);
+	tr_info("task cancel %p %pU", task, task->uid);
 
 	/* check to see if we are scheduled */
 	list_for_item(tlist, &sch->tasks) {
@@ -711,7 +709,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 		}
 	}
 
-	tr_err(&ll_tr, "reschedule_ll_task(): task not found");
+	tr_err("reschedule_ll_task(): task not found");
 
 out:
 

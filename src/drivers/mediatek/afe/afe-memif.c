@@ -58,19 +58,19 @@ static struct dma_chan_data *memif_channel_get(struct dma *dma, unsigned int req
 	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
-	tr_dbg(&memif_tr, "MEMIF: channel_get(%d)", req_chan);
+	tr_dbg("MEMIF: channel_get(%d)", req_chan);
 
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&memif_tr, "MEMIF: Channel %d out of range", req_chan);
+		tr_err("MEMIF: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
 		k_spin_unlock(&dma->lock, key);
-		tr_err(&memif_tr, "MEMIF: Cannot reuse channel %d", req_chan);
+		tr_err("MEMIF: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
@@ -89,7 +89,7 @@ static void memif_channel_put(struct dma_chan_data *channel)
 	/* Assuming channel is stopped, we thus don't need hardware to
 	 * do anything right now
 	 */
-	tr_info(&memif_tr, "MEMIF: channel_put(%d)", channel->index);
+	tr_info("MEMIF: channel_put(%d)", channel->index);
 
 	notifier_unregister_all(NULL, channel);
 
@@ -103,7 +103,7 @@ static int memif_start(struct dma_chan_data *channel)
 {
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
 
-	tr_info(&memif_tr, "MEMIF:%d start(%d), channel_status:%d", memif->memif_id, channel->index,
+	tr_info("MEMIF:%d start(%d), channel_status:%d", memif->memif_id, channel->index,
 		channel->status);
 
 	if (channel->status != COMP_STATE_PREPARE && channel->status != COMP_STATE_SUSPEND)
@@ -123,7 +123,7 @@ static int memif_release(struct dma_chan_data *channel)
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
 
 	/* TODO actually handle pause/release properly? */
-	tr_info(&memif_tr, "MEMIF: release(%d)", channel->index);
+	tr_info("MEMIF: release(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
@@ -144,7 +144,7 @@ static int memif_pause(struct dma_chan_data *channel)
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
 
 	/* TODO actually handle pause/release properly? */
-	tr_info(&memif_tr, "MEMIF: pause(%d)", channel->index);
+	tr_info("MEMIF: pause(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		return -EINVAL;
@@ -159,7 +159,7 @@ static int memif_stop(struct dma_chan_data *channel)
 {
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
 
-	tr_info(&memif_tr, "MEMIF: stop(%d)", channel->index);
+	tr_info("MEMIF: stop(%d)", channel->index);
 	/* Validate state */
 	/* TODO: Should we? */
 	switch (channel->status) {
@@ -193,7 +193,7 @@ static int memif_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 		memif->wptr = (memif->wptr + bytes) % memif->dma_size;
 	else
 		memif->rptr = (memif->rptr + bytes) % memif->dma_size;
-	tr_dbg(&memif_tr, "memif_copy: wptr:%u, rptr:%u", memif->wptr, memif->rptr);
+	tr_dbg("memif_copy: wptr:%u, rptr:%u", memif->wptr, memif->rptr);
 
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY, NOTIFIER_TARGET_CORE_LOCAL, &next,
 		       sizeof(next));
@@ -242,7 +242,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 	channel->direction = config->direction;
 
 	direction = afe_memif_get_direction(memif->afe, memif->memif_id);
-	tr_info(&memif_tr, "memif_set_config, direction:%d, afe_dir:%d", config->direction,
+	tr_info("memif_set_config, direction:%d, afe_dir:%d", config->direction,
 		direction);
 
 	switch (config->direction) {
@@ -261,10 +261,10 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		dai_id = (int)AFE_HS_GET_DAI(config->src_dev);
 		irq_id = (int)AFE_HS_GET_IRQ(config->src_dev);
 		dma_addr = (int)config->elem_array.elems[0].dest;
-		tr_dbg(&memif_tr, "capture: dai_id:%d, dma_addr:%u\n", dai_id, dma_addr);
+		tr_dbg("capture: dai_id:%d, dma_addr:%u\n", dai_id, dma_addr);
 		break;
 	default:
-		tr_err(&memif_tr, "afe_memif_set_config() unsupported config direction");
+		tr_err("afe_memif_set_config() unsupported config direction");
 		return -EINVAL;
 	}
 
@@ -272,11 +272,11 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		dma_size += (int)config->elem_array.elems[i].size;
 
 	if (!config->cyclic) {
-		tr_err(&memif_tr, "afe-memif: Only cyclic configurations are supported!");
+		tr_err("afe-memif: Only cyclic configurations are supported!");
 		return -ENOTSUP;
 	}
 	if (config->scatter) {
-		tr_err(&memif_tr, "afe-memif: scatter enabled, that is not supported for now!");
+		tr_err("afe-memif: scatter enabled, that is not supported for now!");
 		return -ENOTSUP;
 	}
 
@@ -304,7 +304,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		memif->format = SOF_IPC_FRAME_S32_LE;
 		break;
 	default:
-		tr_err(&memif_tr, "afe-memif: not support bitwidth %u!", config->src_width);
+		tr_err("afe-memif: not support bitwidth %u!", config->src_width);
 		return -ENOTSUP;
 	}
 
@@ -327,7 +327,7 @@ static int memif_remove(struct dma *dma)
 	struct mtk_base_afe *afe = afe_get();
 
 	if (!dma->chan) {
-		tr_err(&memif_tr, "MEMIF: remove called without probe, it's a no-op");
+		tr_err("MEMIF: remove called without probe, it's a no-op");
 		return 0;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -350,21 +350,21 @@ static int memif_probe(struct dma *dma)
 	struct afe_memif_dma *memif;
 
 	if (!dma || dma->chan) {
-		tr_err(&memif_tr, "MEMIF: Repeated probe");
+		tr_err("MEMIF: Repeated probe");
 		return -EEXIST;
 	}
 
 	/* do afe driver probe */
 	ret = afe_probe(afe);
 	if (ret < 0) {
-		tr_err(&memif_tr, "MEMIF: afe_probe fail:%d", ret);
+		tr_err("MEMIF: afe_probe fail:%d", ret);
 		return ret;
 	}
 
 	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels * sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		tr_err(&memif_tr, "MEMIF: Probe failure, unable to allocate channel descriptors");
+		tr_err("MEMIF: Probe failure, unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 
@@ -376,7 +376,7 @@ static int memif_probe(struct dma *dma)
 		memif = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				sizeof(struct afe_memif_dma));
 		if (!memif) {
-			tr_err(&memif_tr, "afe-memif: %d channel %d private data alloc failed",
+			tr_err("afe-memif: %d channel %d private data alloc failed",
 			       dma->plat_data.id, channel);
 			goto out;
 		}
@@ -455,9 +455,9 @@ static int memif_get_data_size(struct dma_chan_data *channel, uint32_t *avail, u
 
 	/* update hw pointer from afe memif */
 	hw_ptr = afe_memif_get_cur_position(memif->afe, memif->memif_id);
-	tr_dbg(&memif_tr, "get_pos:0x%x, base:0x%x, dir:%d", hw_ptr, memif->dma_base,
+	tr_dbg("get_pos:0x%x, base:0x%x, dir:%d", hw_ptr, memif->dma_base,
 	       memif->direction);
-	tr_dbg(&memif_tr, "dma_size:%u, period_size:%d", memif->dma_size, memif->period_size);
+	tr_dbg("dma_size:%u, period_size:%d", memif->dma_size, memif->period_size);
 	if (!hw_ptr)
 		return -EINVAL;
 
@@ -476,7 +476,7 @@ static int memif_get_data_size(struct dma_chan_data *channel, uint32_t *avail, u
 		*avail = *avail / memif->period_size * memif->period_size;
 
 	*free = memif->dma_size - *avail;
-	tr_dbg(&memif_tr, "r:0x%x, w:0x%x, avail:%u, free:%u ",
+	tr_dbg("r:0x%x, w:0x%x, avail:%u, free:%u ",
 	       memif->rptr, memif->wptr, *avail, *free);
 
 	return 0;

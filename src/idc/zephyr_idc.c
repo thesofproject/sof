@@ -130,7 +130,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->sync = mode == IDC_BLOCKING;
 
 	if (!cpu_is_core_enabled(target_cpu)) {
-		tr_err(&zephyr_idc_tr, "Core %u is down, cannot sent IDC message", target_cpu);
+		tr_err("Core %u is down, cannot sent IDC message", target_cpu);
 		return -EACCES;
 	}
 	if (msg->payload) {

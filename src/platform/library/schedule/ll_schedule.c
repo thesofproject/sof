@@ -113,7 +113,7 @@ int schedule_task_init_ll(struct task *task,
 /* initialize scheduler */
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
-	tr_info(&ll_tr, "ll_scheduler_init()");
+	tr_info("ll_scheduler_init()");
 
 	list_init(&sched_list);
 	scheduler_init(SOF_SCHEDULE_LL_TIMER, &schedule_ll_ops, NULL);

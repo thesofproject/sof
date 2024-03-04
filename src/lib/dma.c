@@ -40,7 +40,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	k_spinlock_key_t key;
 
 	if (!info->num_dmas) {
-		tr_err(&dma_tr, "dma_get(): No DMACs installed");
+		tr_err("dma_get(): No DMACs installed");
 		return NULL;
 	}
 
@@ -79,16 +79,16 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	if (!dmin) {
-		tr_err(&dma_tr, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+		tr_err("No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
 		       dir, cap, dev, flags);
 
 		for (d = info->dma_array;
 		     d < info->dma_array + info->num_dmas;
 		     d++) {
-			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %ld",
+			tr_err(" DMAC ID %d users %d busy channels %ld",
 			       d->plat_data.id, d->sref,
 			       atomic_read(&d->num_channels_busy));
-			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
+			tr_err("  caps 0x%x dev 0x%x",
 			       d->plat_data.caps, d->plat_data.devs);
 		}
 
@@ -96,7 +96,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	/* return DMAC */
-	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
+	tr_dbg("dma_get(), dma-probe id = %d",
 	       dmin->plat_data.id);
 
 	/* Shared DMA controllers with multiple channels
@@ -108,7 +108,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	if (!dmin->sref) {
 		ret = dma_init(dmin);
 		if (ret < 0) {
-			tr_err(&dma_tr, "dma_get(): dma-probe failed id = %d, ret = %d",
+			tr_err("dma_get(): dma-probe failed id = %d, ret = %d",
 			       dmin->plat_data.id, ret);
 			goto out;
 		}
@@ -116,7 +116,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 	dmin->sref++;
 
-	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %ld",
+	tr_info("dma_get() ID %d sref = %d busy channels %ld",
 		dmin->plat_data.id, dmin->sref,
 		atomic_read(&dmin->num_channels_busy));
 out:
@@ -134,7 +134,7 @@ void dma_put(struct dma *dma)
 		dma->chan = NULL;
 	}
 
-	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+	tr_info("dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
 	k_spin_unlock(&dma->lock, key);
 }
@@ -149,7 +149,7 @@ static int dma_init(struct dma *dma)
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
 
 	if (!dma->chan) {
-		tr_err(&dma_tr, "dma_probe_sof(): dma %d allocaction of channels failed",
+		tr_err("dma_probe_sof(): dma %d allocaction of channels failed",
 		       dma->plat_data.id);
 		return -ENOMEM;
 	}
@@ -173,7 +173,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	k_spinlock_key_t key;
 
 	if (!info->num_dmas) {
-		tr_err(&dma_tr, "dma_get(): No DMACs installed");
+		tr_err("dma_get(): No DMACs installed");
 		return NULL;
 	}
 
@@ -217,16 +217,16 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	if (!dmin) {
-		tr_err(&dma_tr, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+		tr_err("No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
 		       dir, cap, dev, flags);
 
 		for (d = info->dma_array;
 		     d < info->dma_array + info->num_dmas;
 		     d++) {
-			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %ld",
+			tr_err(" DMAC ID %d users %d busy channels %ld",
 			       d->plat_data.id, d->sref,
 			       atomic_read(&d->num_channels_busy));
-			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
+			tr_err("  caps 0x%x dev 0x%x",
 			       d->plat_data.caps, d->plat_data.devs);
 		}
 
@@ -234,7 +234,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	/* return DMAC */
-	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
+	tr_dbg("dma_get(), dma-probe id = %d",
 	       dmin->plat_data.id);
 
 	/* Shared DMA controllers with multiple channels
@@ -247,14 +247,14 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	if (!dmin->sref) {
 		ret = dma_probe_legacy(dmin);
 		if (ret < 0) {
-			tr_err(&dma_tr, "dma_get(): dma-probe failed id = %d, ret = %d",
+			tr_err("dma_get(): dma-probe failed id = %d, ret = %d",
 			       dmin->plat_data.id, ret);
 		}
 	}
 	if (!ret)
 		dmin->sref++;
 
-	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %ld",
+	tr_info("dma_get() ID %d sref = %d busy channels %ld",
 		dmin->plat_data.id, dmin->sref,
 		atomic_read(&dmin->num_channels_busy));
 
@@ -271,11 +271,11 @@ void dma_put(struct dma *dma)
 	if (--dma->sref == 0) {
 		ret = dma_remove_legacy(dma);
 		if (ret < 0) {
-			tr_err(&dma_tr, "dma_put(): dma_remove() failed id  = %d, ret = %d",
+			tr_err("dma_put(): dma_remove() failed id  = %d, ret = %d",
 			       dma->plat_data.id, ret);
 		}
 	}
-	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+	tr_info("dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
 	k_spin_unlock(&dma->lock, key);
 }

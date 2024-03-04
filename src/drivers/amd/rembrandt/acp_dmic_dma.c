@@ -88,7 +88,7 @@ int acp_dmic_dma_start(struct dma_chan_data *channel)
 				/* safe check in case we've got preempted after read */
 				if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
 					return 0;
-				tr_err(&acp_dmic_dma_rmb_tr, "timed out for dma start");
+				tr_err("timed out for dma start");
 				return -ETIME;
 			}
 			pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
@@ -129,7 +129,7 @@ int acp_dmic_dma_stop(struct dma_chan_data *channel)
 			/* safe check in case we've got preempted after read */
 			if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
 				return 0;
-			tr_err(&acp_dmic_dma_rmb_tr, "timed out for dma stop");
+			tr_err("timed out for dma stop");
 			return -ETIME;
 		}
 		pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
@@ -191,15 +191,15 @@ int acp_dmic_dma_set_config(struct dma_chan_data *channel,
 
 		break;
 	default:
-		tr_err(&acp_dmic_dma_rmb_tr, "unsupported config direction");
+		tr_err("unsupported config direction");
 		return -EINVAL;
 	}
 	if (!config->cyclic) {
-		tr_err(&acp_dmic_dma_rmb_tr, "cyclic configurations only supported!");
+		tr_err("cyclic configurations only supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		tr_err(&acp_dmic_dma_rmb_tr, "scatter enabled, not supported for now!");
+		tr_err("scatter enabled, not supported for now!");
 		return -EINVAL;
 	}
 	return 0;

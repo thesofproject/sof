@@ -65,7 +65,7 @@ static void edf_scheduler_run(void *data)
 	uint64_t deadline;
 	uint32_t flags;
 
-	tr_dbg(&edf_tr, "edf_scheduler_run()");
+	tr_dbg("edf_scheduler_run()");
 
 	irq_local_disable(flags);
 
@@ -112,7 +112,7 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 	/* not enough MCPS to complete */
 	if (task->state == SOF_TASK_STATE_QUEUED ||
 	    task->state == SOF_TASK_STATE_RUNNING) {
-		tr_err(&edf_tr, "schedule_edf_task(), task already queued or running %d",
+		tr_err("schedule_edf_task(), task already queued or running %d",
 		       task->state);
 		irq_local_enable(flags);
 		return -EALREADY;
@@ -148,7 +148,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 	edf_pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
-		tr_err(&edf_tr, "schedule_task_init_edf(): alloc failed");
+		tr_err("schedule_task_init_edf(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -171,7 +171,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 	return 0;
 
 error:
-	tr_err(&edf_tr, "schedule_task_init_edf(): init context failed");
+	tr_err("schedule_task_init_edf(): init context failed");
 	if (edf_pdata->ctx)
 		task_context_free(edf_pdata->ctx);
 	rfree(edf_pdata);
@@ -184,7 +184,7 @@ static int schedule_edf_task_running(void *data, struct task *task)
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	uint32_t flags;
 
-	tr_dbg(&edf_tr, "schedule_edf_task_running()");
+	tr_dbg("schedule_edf_task_running()");
 
 	irq_local_disable(flags);
 
@@ -200,7 +200,7 @@ static int schedule_edf_task_complete(void *data, struct task *task)
 {
 	uint32_t flags;
 
-	tr_dbg(&edf_tr, "schedule_edf_task_complete()");
+	tr_dbg("schedule_edf_task_complete()");
 
 	irq_local_disable(flags);
 
@@ -218,7 +218,7 @@ static int schedule_edf_task_cancel(void *data, struct task *task)
 {
 	uint32_t flags;
 
-	tr_dbg(&edf_tr, "schedule_edf_task_cancel()");
+	tr_dbg("schedule_edf_task_cancel()");
 
 	irq_local_disable(flags);
 
@@ -256,7 +256,7 @@ int scheduler_init_edf(void)
 {
 	struct edf_schedule_data *edf_sch;
 
-	tr_info(&edf_tr, "edf_scheduler_init()");
+	tr_info("edf_scheduler_init()");
 
 	edf_sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(*edf_sch));
@@ -309,7 +309,7 @@ static int scheduler_restore_edf(void *data)
 					 PLATFORM_SCHEDULE_IRQ_NAME);
 
 	if (edf_sch->irq < 0) {
-		tr_err(&edf_tr, "scheduler_restore_edf(): getting irq failed.");
+		tr_err("scheduler_restore_edf(): getting irq failed.");
 		return edf_sch->irq;
 	}
 

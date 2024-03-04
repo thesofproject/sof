@@ -72,7 +72,7 @@ struct trace {
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(void *dst, const struct sof_uuid_entry *uid,
+static void put_header(void *dst,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
@@ -82,7 +82,6 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 	struct log_entry_header header;
 	int ret;
 
-	header.uid = (uintptr_t)uid;
 	header.id_0 = id_1 & TRACE_ID_MASK;
 	header.id_1 = id_2 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
@@ -115,29 +114,15 @@ void mtrace_event(const char *data, uint32_t length)
 }
 #endif /* __ZEPHYR__ */
 
-#if CONFIG_TRACE_FILTERING_VERBOSITY
-/**
- * \brief Runtime trace filtering based on verbosity level
- * \param lvl log level (LOG_LEVEL_ ERROR, INFO, DEBUG ...)
- * \param uuid uuid address
- * \return false when trace is filtered out, otherwise true
- */
-static inline bool trace_filter_verbosity(uint32_t lvl, const struct tr_ctx *ctx)
-{
-	STATIC_ASSERT(LOG_LEVEL_CRITICAL < LOG_LEVEL_VERBOSE,
-		      LOG_LEVEL_CRITICAL_MUST_HAVE_LOWEST_VALUE);
-	return lvl <= ctx->level;
-}
-#endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
-
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 /** Report how many times an entry was suppressed and clear it. */
 static void emit_suppressed_entry(struct recent_log_entry *entry)
 {
-	_log_message(trace_log_unfiltered, false, LOG_LEVEL_INFO, _TRACE_INV_CLASS, &dt_tr,
-		     _TRACE_INV_ID, _TRACE_INV_ID, "Suppressed %u similar messages: %pQ",
-		     entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
-		     (void *)entry->entry_id);
+	_log_message_nonzephyr(trace_log_unfiltered_nonzephyr, false, LOG_LEVEL_INFO,
+			       _TRACE_INV_CLASS, _TRACE_INV_ID, _TRACE_INV_ID,
+			       "Suppressed %u similar messages: %pQ",
+			       entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
+			       (void *)entry->entry_id);
 
 	memset(entry, 0, sizeof(*entry));
 }
@@ -238,15 +223,16 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
  * not. Serializes events into trace messages and passes them to
  * dtrace_event()
  */
-static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
+static void dma_trace_log_nonzephyr(bool send_atomic, uint32_t log_entry,
+				    uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				    int arg_count, va_list vargs)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	const int message_size = MESSAGE_SIZE(arg_count);
 	int i;
 
 	/* fill log content. arg_count is in the dictionary. */
-	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, sof_cycle_get_64_safe());
+	put_header(data, id_1, id_2, log_entry, sof_cycle_get_64_safe());
 
 	for (i = 0; i < arg_count; ++i)
 		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
@@ -256,34 +242,28 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 		dtrace_event_atomic((const char *)data, message_size);
 	else
 		dtrace_event((const char *)data, message_size);
-
 }
 
-void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
+void trace_log_unfiltered_nonzephyr(bool send_atomic, const void *log_entry,
+				    uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				    int arg_count, va_list vl)
 {
 	struct trace *trace = trace_get();
 
-	if (!trace->enable) {
+	if (!trace->enable)
 		return;
-	}
 
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	dma_trace_log_nonzephyr(send_atomic, (uint32_t)log_entry, lvl, id_1, id_2, arg_count, vl);
 }
 
-void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
+void trace_log_filtered_nonzephyr(bool send_atomic, const void *log_entry,
+				  uint32_t lvl, uint32_t id_1, uint32_t id_2,
+				  int arg_count, va_list vl)
 {
 	struct trace *trace = trace_get();
 
-	if (!trace->enable) {
+	if (!trace->enable)
 		return;
-	}
-
-#if CONFIG_TRACE_FILTERING_VERBOSITY
-	if (!trace_filter_verbosity(lvl, ctx))
-		return;
-#endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {
@@ -296,7 +276,7 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	dma_trace_log_nonzephyr(send_atomic, (uint32_t)log_entry, lvl, id_1, id_2, arg_count, vl);
 }
 
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
@@ -323,7 +303,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 			filter->pipe_id = elem->value;
 			break;
 		default:
-			tr_err(&ipc_tr, "Invalid SOF_IPC_TRACE_FILTER_ELEM 0x%x",
+			tr_err("Invalid SOF_IPC_TRACE_FILTER_ELEM 0x%x",
 			       elem->key);
 			return NULL;
 		}
@@ -331,7 +311,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 		/* each filter set must be terminated with FIN flag and have new log level */
 		if (elem->key & SOF_IPC_TRACE_FILTER_ELEM_FIN) {
 			if (filter->log_level < 0) {
-				tr_err(&ipc_tr, "Each trace filter set must specify new log level");
+				tr_err("Each trace filter set must specify new log level");
 				return NULL;
 			} else {
 				return elem + 1;
@@ -341,7 +321,7 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 		++elem;
 	}
 
-	tr_err(&ipc_tr, "Trace filter elements set is not properly terminated");
+	tr_err("Trace filter elements set is not properly terminated");
 	return NULL;
 }
 
@@ -390,7 +370,7 @@ static struct tr_ctx *trace_filter_ipc_comp_context(struct ipc_comp_dev *icd)
 		return &icd->pipeline->tctx;
 	/* each COMP_TYPE must be specified */
 	default:
-		tr_err(&ipc_tr, "Unknown trace context for ipc component type 0x%X",
+		tr_err("Unknown trace context for ipc component type 0x%X",
 		       icd->type);
 		return NULL;
 	}
@@ -433,7 +413,7 @@ int trace_filter_update(const struct trace_filter *filter)
 
 	if (!trace->user_filter_override) {
 		trace->user_filter_override = true;
-		tr_info(&ipc_tr, "Adaptive filtering disabled by user");
+		tr_info("Adaptive filtering disabled by user");
 	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
@@ -527,7 +507,7 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 	uint32_t *args = (uint32_t *)&packet[MESSAGE_SIZE(0)];
 	const uint64_t tstamp = sof_cycle_get_64_safe();
 
-	put_header(packet, dt_tr.uuid_p, _TRACE_INV_ID, _TRACE_INV_ID,
+	put_header(packet, _TRACE_INV_ID, _TRACE_INV_ID,
 		   dict_entry_address, tstamp);
 
 	for (i = 0; i < MIN(n_args, _TRACE_EVENT_MAX_ARGUMENT_COUNT); i++)
@@ -554,9 +534,9 @@ void mtrace_dict_entry(bool atomic_context, uint32_t dict_entry_address, int n_a
 	va_end(ap);
 }
 
-void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		  const struct tr_ctx *ctx, const uint32_t lvl,
-		  uint32_t id_1, uint32_t id_2, int arg_count, ...)
+void _log_sofdict_nonzephyr(log_func_t_nonzephyr sofdict_logf, bool atomic, const void *log_entry,
+			    const uint32_t lvl,
+			    uint32_t id_1, uint32_t id_2, int arg_count, ...)
 {
 	va_list ap;
 
@@ -569,6 +549,6 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 #endif
 
 	va_start(ap, arg_count);
-	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
+	sofdict_logf(atomic, log_entry, lvl, id_1, id_2, arg_count, ap);
 	va_end(ap);
 }

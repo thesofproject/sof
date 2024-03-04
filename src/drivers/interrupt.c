@@ -68,7 +68,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	     cascade = &(*cascade)->next) {
 		if (!rstrcmp((*cascade)->name, tmpl->name)) {
 			ret = -EEXIST;
-			tr_err(&irq_tr, "cascading IRQ controller name duplication!");
+			tr_err("cascading IRQ controller name duplication!");
 			goto unlock;
 		}
 
@@ -114,7 +114,7 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	/* If a name is specified, irq must be <= PLATFORM_IRQ_CHILDREN */
 	if (irq >= PLATFORM_IRQ_CHILDREN) {
-		tr_err(&irq_tr, "IRQ %d invalid as a child interrupt!",
+		tr_err("IRQ %d invalid as a child interrupt!",
 		       irq);
 		return -EINVAL;
 	}
@@ -194,7 +194,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (child->handler_arg == arg) {
 
-			tr_err(&irq_tr, "IRQ 0x%x handler argument re-used!",
+			tr_err("IRQ 0x%x handler argument re-used!",
 			       irq);
 			ret = -EEXIST;
 			goto out;
@@ -345,7 +345,7 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	}
 
 	if (!child->enable_count[child_idx]) {
-		tr_err(&irq_tr, "IRQ %x unbalanced interrupt_disable()",
+		tr_err("IRQ %x unbalanced interrupt_disable()",
 		       irq);
 	} else if (!--child->enable_count[child_idx]) {
 		/* disable the child interrupt */

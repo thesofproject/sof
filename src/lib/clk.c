@@ -72,7 +72,7 @@ void clock_set_freq(int clock, uint32_t hz)
 					 hz);
 	clk_notify_data.freq = clk_info->freqs[idx].freq;
 
-	tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d",
+	tr_info("clock %d set freq %dHz freq_idx %d",
 		clock, hz, idx);
 
 	/* tell anyone interested we are about to change freq */

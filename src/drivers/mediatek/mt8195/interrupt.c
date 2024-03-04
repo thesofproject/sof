@@ -45,7 +45,7 @@ static void mtk_irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 		level = GET_INTLEVEL(irq);
 		in_irq = GET_INTERRUPT_ID(irq);
 		if (level > MAX_IRQ_NUM) {
-			tr_err(&int_tr, "Invalid interrupt %d", irq);
+			tr_err("Invalid interrupt %d", irq);
 			return;
 		}
 
@@ -59,7 +59,7 @@ static void mtk_irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 			io_reg_update_bits(DSP_IRQ_EN, BIT(irq), 0x0);
 			break;
 		default:
-			tr_err(&int_tr, "Invalid interrupt %d", desc->irq);
+			tr_err("Invalid interrupt %d", desc->irq);
 			return;
 		}
 	}
@@ -73,7 +73,7 @@ static void mtk_irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int cor
 		level = GET_INTLEVEL(irq);
 		in_irq = GET_INTERRUPT_ID(irq);
 		if (level > MAX_IRQ_NUM) {
-			tr_err(&int_tr, "Invalid interrupt %d", irq);
+			tr_err("Invalid interrupt %d", irq);
 			return;
 		}
 
@@ -88,7 +88,7 @@ static void mtk_irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int cor
 			io_reg_update_bits(DSP_IRQ_EN, BIT(irq), BIT(irq));
 			break;
 		default:
-			tr_err(&int_tr, "Invalid interrupt %d", desc->irq);
+			tr_err("Invalid interrupt %d", desc->irq);
 			return;
 		}
 	}
@@ -145,7 +145,7 @@ static inline void mtk_handle_irq(struct irq_cascade_desc *cascade,
 		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
-			tr_err(&int_tr, "irq_handler(): not handled, bit %d", bit);
+			tr_err("irq_handler(): not handled, bit %d", bit);
 			if (line_index == IRQ_NUM_EXT_LEVEL23)
 				io_reg_update_bits(DSP_IRQ_EN, BIT(bit), 0x0);
 			else
@@ -167,7 +167,7 @@ static inline void irq_handler(void *data, uint32_t line_index)
 		/* Handle current interrupts */
 		mtk_handle_irq(cascade, line_index, status);
 	else
-		tr_err(&int_tr, "invalid interrupt status");
+		tr_err("invalid interrupt status");
 }
 
 #define DEFINE_IRQ_HANDLER(n) \
