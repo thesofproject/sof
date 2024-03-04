@@ -699,6 +699,16 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	int ret;
 
 	/*
+	 * The module manifest structure always has its maximum size regardless of
+	 * the actual size of the manifest.
+	 */
+	if (preload_size < MAN_MAX_SIZE_V1_8) {
+		tr_err(&lib_manager_tr, "Invalid preload_size value %x.", preload_size);
+		return -EINVAL;
+	}
+
+	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
+	/*
 	 * Prepare storage memory, note: it is never freed, it is assumed, that this
 	 * memory is abundant, so we store all loaded modules there permanently
 	 */
