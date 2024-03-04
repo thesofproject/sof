@@ -990,7 +990,7 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 #if CONFIG_LIBRARY_MANAGER
 	if (!drv) {
 		/* New module not registered yet. */
-		lib_manager_register_module(desc, module_id);
+		lib_manager_register_module(module_id);
 		drv = ipc4_get_drv(mod->uuid);
 	}
 #endif

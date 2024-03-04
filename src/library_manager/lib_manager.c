@@ -487,15 +487,28 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 }
 
 #if CONFIG_INTEL_MODULES
-int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
+int lib_manager_register_module(const uint32_t component_id)
 {
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	/* allocate new  comp_driver_info */
+	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(component_id);
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(component_id);
+	const struct sof_man_fw_desc *desc;
 	struct comp_driver_info *new_drv_info;
 	struct comp_driver *drv = NULL;
 	struct sof_man_module *mod;
 	int ret;
 
+	/* Get library manifest based on component_id */
+	if (!ctx || !ctx->base_addr)
+		return -ENOENT;
+
+	desc = (const struct sof_man_fw_desc *)((const char *)ctx->base_addr +
+							      SOF_MAN_ELF_TEXT_OFFSET);
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Entry index %d out of bounds.", entry_index);
+		return -ENOENT;
+	}
+
+	/* allocate new comp_driver_info */
 	new_drv_info = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
 			       SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
 			       sizeof(struct comp_driver_info));
@@ -520,7 +533,7 @@ int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
 	/* Fill the new_drv_info structure with already known parameters */
 	/* Check already registered components */
 	mod = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
-	struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
+	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
 	declare_dynamic_module_adapter(drv, SOF_COMP_MODULE_ADAPTER, uid, &lib_manager_tr);
 
@@ -539,7 +552,7 @@ cleanup:
 }
 
 #else /* CONFIG_INTEL_MODULES */
-int lib_manager_register_module(struct sof_man_fw_desc *desc, int module_id)
+int lib_manager_register_module(const uint32_t component_id)
 {
 	tr_err(&lib_manager_tr,
 	       "lib_manager_register_module(): Dynamic module loading is not supported");
