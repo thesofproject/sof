@@ -242,7 +242,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
 
-	desc = lib_manager_get_library_module_desc(module_id);
+	desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	if (!ctx || !desc) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_allocate_module(): failed to get module descriptor");
