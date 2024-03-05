@@ -30,13 +30,15 @@
 # UNSIGNED_list += hsw sue
 # SIGNED_list += kbl skl
 
+# Sample way to create a symbolic link in /lib/firmware/sof/
+# This requires adl-s to be listed in some ALIAS_some_list above.
+# target_of_adl-s := tgl-h
+
 ALIAS_list := ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
 $(info ALIAS_list    = ${ALIAS_list}    )
-
-target_of_imx := imx8
 
 ifeq (,${TOOLCHAIN})
   ifeq (,${XTENSA_TOOLS_ROOT})
