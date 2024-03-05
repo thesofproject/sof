@@ -3,8 +3,8 @@
 // Copyright(c) 2021 Google LLC.
 //
 // Author: Lionel Koenig <lionelk@google.com>
-#include "google_rtc_audio_processing.h"
-#include "google_rtc_audio_processing_sof_message_reader.h"
+#include <google_rtc_audio_processing.h>
+#include <google_rtc_audio_processing_sof_message_reader.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +14,7 @@
 #include <sof/math/numbers.h>
 
 #include <rtos/alloc.h>
-#include "ipc/topology.h"
+#include <ipc/topology.h>
 
 #define GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES 100
 #define GOOGLE_RTC_AUDIO_PROCESSING_MS_PER_SECOND 1000
