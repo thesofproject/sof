@@ -75,6 +75,7 @@ STAGING_SOF_TPLG ?= staging/sof-tplg
 STAGING_TOOLS ?= staging/tools
 
 stage: signed unsigned ldicts aliases topologies tools
+	test -n "${UNSIGNED_list}${SIGNED_list}" # is there any FW to stage?
 ifneq (${STAGING_SOF_VERSION},${STAGING_SOF})
 	ln -sfT sof${VERSION_SUFFIX} ${STAGING_SOF}
 	test -e ${STAGING_SOF}
