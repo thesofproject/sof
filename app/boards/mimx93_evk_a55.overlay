@@ -5,7 +5,7 @@
  */
 
 / {
-	/delete-node/ memory@c0000000;
+	/delete-node/ memory@d0000000;
 	/* Inmate memory, reserved through "mem=1248MB" boot argument,
 	 * starts at 0xce000000.
 	 */
