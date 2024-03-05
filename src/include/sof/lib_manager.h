@@ -151,7 +151,7 @@ int lib_manager_register_module(const uint32_t component_id);
  *
  * Gets firmware manifest descriptor using module_id to locate it
  */
-struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id);
+const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
 
 struct processing_module;
 /*
