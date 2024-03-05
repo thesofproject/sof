@@ -214,7 +214,7 @@ static int lib_manager_unload_module(const struct sof_man_module *const mod)
  */
 static int lib_manager_load_libcode_modules(const uint32_t module_id)
 {
-	const struct sof_man_fw_desc *const desc = lib_manager_get_library_module_desc(module_id);
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(module_id);
 	struct ext_library *const ext_lib = ext_lib_get();
 	const struct sof_man_module *module_entry = (struct sof_man_module *)
 		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
@@ -252,7 +252,7 @@ err:
  */
 static int lib_manager_unload_libcode_modules(const uint32_t module_id)
 {
-	const struct sof_man_fw_desc *const desc = lib_manager_get_library_module_desc(module_id);
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(module_id);
 	const struct sof_man_module *module_entry = (struct sof_man_module *)
 		((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 	struct ext_library *const ext_lib = ext_lib_get();
@@ -450,7 +450,7 @@ void lib_manager_init(void)
 		sof->ext_library = &loader_ext_lib;
 }
 
-struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id)
+const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint8_t *buffptr = ctx ? ctx->base_addr : NULL;
