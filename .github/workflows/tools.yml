@@ -43,7 +43,7 @@ jobs:
 
       # One space character is enough to detect most quoting issues
       - name: configure
-        run: cmake  -B 'build plugin' -S tools/plugin
+        run: cmake -GNinja -B 'build plugin' -S tools/plugin
           -GNinja -Wdev -Werror=dev --warn-uninitialized
 
       # Retry with -j1 in case of error because parallel builds drown error
