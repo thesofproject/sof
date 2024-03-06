@@ -121,9 +121,28 @@ static int chain_host_stop(struct comp_dev *dev)
 	int err;
 
 	err = dma_stop(cd->chan_host->dma->z_dev, cd->chan_host->index);
-	if (err < 0)
-		return err;
+	if (err < 0) {
+		if (err == -EBUSY) {
+			int retries = 100;
 
+			comp_warn(dev, "dma_stop() fail chan_index = %u, retrying...",
+				  cd->chan_link->index);
+
+			/*
+			 * FIXME: ugly workaround for
+			 * https://github.com/thesofproject/sof/issues/8686
+			 */
+			while (err == -EBUSY && --retries) {
+				k_busy_wait(10);
+				err = dma_stop(cd->chan_link->dma->z_dev, cd->chan_link->index);
+				if (!err)
+					goto out;
+			}
+		}
+		return err;
+}
+
+out:
 	comp_info(dev, "chain_host_stop(): dma_stop() host chan_index = %u",
 		  cd->chan_host->index);
 
