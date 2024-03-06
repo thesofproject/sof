@@ -8,6 +8,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
 #include <utilities/array.h>
+#include <iadk_module_adapter.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
 #include <api_version.h>
