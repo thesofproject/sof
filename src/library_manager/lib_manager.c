@@ -481,6 +481,36 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 }
 
 #if CONFIG_INTEL_MODULES
+static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const struct sof_uuid *uuid)
+{
+	drv->type = SOF_COMP_MODULE_ADAPTER;
+	drv->uid = uuid;
+	drv->tctx = &lib_manager_tr;
+	drv->ops.create = module_adapter_new;
+	drv->ops.prepare = module_adapter_prepare;
+	drv->ops.params = module_adapter_params;
+	drv->ops.copy = module_adapter_copy;
+#if CONFIG_IPC_MAJOR_3
+	drv->ops.cmd = module_adapter_cmd;
+#endif
+	drv->ops.trigger = module_adapter_trigger;
+	drv->ops.reset = module_adapter_reset;
+	drv->ops.free = module_adapter_free;
+	drv->ops.set_large_config = module_set_large_config;
+	drv->ops.get_large_config = module_get_large_config;
+	drv->ops.get_attribute = module_adapter_get_attribute;
+	drv->ops.bind = module_adapter_bind;
+	drv->ops.unbind = module_adapter_unbind;
+	drv->ops.get_total_data_processed = module_adapter_get_total_data_processed;
+	drv->ops.dai_get_hw_params = module_adapter_get_hw_params;
+	drv->ops.position = module_adapter_position;
+	drv->ops.dai_ts_config = module_adapter_ts_config_op;
+	drv->ops.dai_ts_start = module_adapter_ts_start_op;
+	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
+	drv->ops.dai_ts_get = module_adapter_ts_get_op;
+	drv->adapter_ops = &processing_module_adapter_interface;
+}
+
 int lib_manager_register_module(const uint32_t component_id)
 {
 	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(component_id);
@@ -529,7 +559,7 @@ int lib_manager_register_module(const uint32_t component_id)
 	mod = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
-	declare_dynamic_module_adapter(drv, SOF_COMP_MODULE_ADAPTER, uid, &lib_manager_tr);
+	lib_manager_prepare_module_adapter(drv, uid);
 
 	new_drv_info->drv = drv;
 
