@@ -198,10 +198,11 @@ jobs:
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ matrix.zephyr_revision == 'mnfst' }}
         with:
           name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
+          if-no-files-found: error
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
@@ -363,9 +364,10 @@ jobs:
           ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-build ${{ matrix.build_opts }} ${{ matrix.platforms }}
+          if-no-files-found: error
           path: |
             ${{ github.workspace }}/workspace/build-sof-staging
             ${{ github.workspace }}/workspace/**/compile_commands.json
@@ -391,7 +393,7 @@ jobs:
           filter: 'tree:0'
 
       - name: Download Windows and Linux builds
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: apt-get dos2unix
         run: sudo apt-get update; sudo apt-get -y install dos2unix
