@@ -49,38 +49,18 @@ DECLARE_SOF_RT_UUID("modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
 		    0x90, 0xab, 0x42, 0x24, 0xe0, 0x0c, 0x3e, 0x84);
 DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
 
-/**
- * \brief modules_init.
- * \param[in] mod - processing module pointer.
- *
- * \return: zero on success
- *          error code on failure
- */
-static int modules_init(struct processing_module *mod)
+static int modules_new(struct processing_module *mod, const void *buildinfo,
+		       uintptr_t module_entry_point)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
-	struct comp_ipc_config *config = &(dev->ipc_config);
-	/* At this point module resources are allocated and it is moved to L2 memory. */
-	const void *buildinfo = NULL;
-	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg,
-								   &buildinfo);
-
-	if (module_entry_point == 0) {
-		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
-		return -EINVAL;
-	}
-	comp_info(dev, "modules_init() start");
-
 	uint32_t module_id = IPC4_MOD_ID(dev->ipc_config.id);
 	uint32_t instance_id = IPC4_INST_ID(dev->ipc_config.id);
 	uint32_t log_handle = (uint32_t) dev->drv->tctx;
 	/* Connect loadable module interfaces with module adapter entity. */
 	/* Check if native Zephyr lib is loaded */
-	struct sof_man_fw_desc *desc;
+	struct sof_man_fw_desc *desc = lib_manager_get_library_module_desc(module_id);
 
-	desc = lib_manager_get_library_module_desc(module_id);
 	if (!desc) {
 		comp_err(dev, "modules_init(): Failed to load manifest");
 		return -ENOMEM;
@@ -108,23 +88,54 @@ static int modules_init(struct processing_module *mod)
 	/* Check if module is FDK */
 	if (mod_buildinfo->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 	    mod_buildinfo->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
-		md->module_adapter = (void *)system_agent_start(module_entry_point, module_id,
-								instance_id, 0, log_handle,
-								&mod_cfg);
-	} else
-	/* Check if module is native */
-	if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
-	    mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
-		/* If start agent for sof loadable */
+		md->module_adapter = (void *)system_agent_start(module_entry_point,
+								module_id, instance_id,
+								0, log_handle, &mod_cfg);
+	} else if (mod_buildinfo->format == SOF_MODULE_API_BUILD_INFO_FORMAT &&
+		   mod_buildinfo->api_version_number.full == SOF_MODULE_API_CURRENT_VERSION) {
+		/* The module is native: start agent for sof loadable */
 		mod->is_native_sof = true;
 		md->ops = native_system_agent_start(mod->sys_service, module_entry_point,
-						    module_id, instance_id, 0, log_handle,
-						    &mod_cfg);
-	} else
+						    module_id, instance_id,
+						    0, log_handle, &mod_cfg);
+	} else {
 		return -ENOEXEC;
+	}
 
 	md->module_entry_point = module_entry_point;
 	md->private = mod;
+
+	return 0;
+}
+
+/**
+ * \brief modules_init.
+ * \param[in] mod - processing module pointer.
+ *
+ * \return: zero on success
+ *          error code on failure
+ */
+static int modules_init(struct processing_module *mod)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
+	struct comp_ipc_config *config = &(dev->ipc_config);
+	/* At this point module resources are allocated and it is moved to L2 memory. */
+	const void *buildinfo = NULL;
+	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg,
+								   &buildinfo);
+
+	if (module_entry_point == 0) {
+		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
+		return -EINVAL;
+	}
+	comp_info(dev, "modules_init() start");
+
+	int ret = modules_new(mod, buildinfo, module_entry_point);
+
+	if (ret < 0)
+		return ret;
 
 	/* Allocate module buffers */
 	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
@@ -141,8 +152,6 @@ static int modules_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 	md->mpd.out_buff_size = src_cfg->obs;
-
-	int ret;
 
 	/* Call module specific init function if exists. */
 	if (mod->is_native_sof) {
