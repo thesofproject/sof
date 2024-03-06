@@ -12,6 +12,12 @@
 #include <zephyr/pm/policy.h>
 #include <sof/ipc/driver.h>
 
+#if CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING
+#include <pm_data.h>
+
+static struct intel_adsp_ace_pm_data pr_runtime_data;
+#endif /* CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING */
+
 LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
 
 /* 76cc9773-440c-4df9-95a8-72defe7796fc */
@@ -74,6 +80,12 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 		tr_dbg(&power_tr, "removing prevent on d0i3 (lock is active=%d)",
 		       pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES));
 		break;
+#if CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING
+	case CORE_HP_CLK:
+		tr_info(&power_tr, "removing lock on clock switching");
+		intel_adsp_release_clock_switch_lock(pm_state_custom_data_get(PM_STATE_ACTIVE, 0));
+		break;
+#endif /* CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING */
 	default:
 		break;
 	}
@@ -86,13 +98,25 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 		tr_dbg(&power_tr, "putting prevent on d0i3");
 		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 		break;
+#if CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING
+	case CORE_HP_CLK:
+		tr_info(&power_tr, "putting lock on clock switching");
+		intel_adsp_acquire_clock_switch_lock(pm_state_custom_data_get(PM_STATE_ACTIVE, 0));
+		break;
+#endif /* CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING */
 	default:
 		break;
 	}
 }
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{ }
+{
+#if CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING
+	tr_info(&power_tr, "setting PM runtime data");
+	pm_state_custom_data_set(PM_STATE_ACTIVE, 0, &pr_runtime_data);
+	prd->platform_data = &pr_runtime_data;
+#endif /* CONFIG_ADSP_DYNAMIC_CLOCK_SWITCHING */
+}
 
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 			     uint32_t flags)
