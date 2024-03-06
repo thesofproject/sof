@@ -87,7 +87,7 @@ jobs:
           sof/scripts/fuzz.sh -o fuzz-stdout.txt -t "$duration" -j"$(nproc)" -- "$cmake_arg"
 
       - name: Upload stdout
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ${{ matrix.IPC }} logs
