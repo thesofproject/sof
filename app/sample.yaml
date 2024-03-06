@@ -11,19 +11,19 @@ tests:
     tags: sof
     build_only: true
     platform_allow:
-      - intel_adsp_cavs25
-      - intel_adsp_ace15_mtpm
-      - intel_adsp_ace20_lnl
-      - nxp_adsp_imx8
-      - nxp_adsp_imx8x
-      - nxp_adsp_imx8m
-      - nxp_adsp_imx8ulp
+      - intel_adsp/cavs25
+      - intel_adsp/ace15_mtpm
+      - intel_adsp/ace20_lnl
+      - imx8qm_mek/mimx8qm6/adsp
+      - imx8qxp_mek/mimx8qx6/adsp
+      - imx8mp_evk/mimx8ml8/adsp
+      - imx8ulp_evk/imx8ulp/adsp
 
     integration_platforms:
-      - intel_adsp_cavs25  # TGL
-      - intel_adsp_ace15_mtpm  # MTL
-      - intel_adsp_ace20_lnl
-      - nxp_adsp_imx8
-      - nxp_adsp_imx8x
-      - nxp_adsp_imx8m
-      - nxp_adsp_imx8ulp
+      - intel_adsp/cavs25  # TGL
+      - intel_adsp/ace15_mtpm  # MTL
+      - intel_adsp/ace20_lnl
+      - imx8qm_mek/mimx8qm6/adsp
+      - imx8qxp_mek/mimx8qx6/adsp
+      - imx8mp_evk/mimx8ml8/adsp
+      - imx8ulp_evk/imx8ulp/adsp

@@ -43,9 +43,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      # commit in sof/main-rebase-20240305
-      revision: f26f0bc09893616ccda461c815f083c4ce8cfcec
-      remote: thesofproject
+      revision: 0d5a670f4f073ff2185221b76afc1998a08a4074
+      remote: zephyrproject
 
       # Import some projects listed in zephyr/west.yml@revision
       #

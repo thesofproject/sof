@@ -25,7 +25,7 @@
 #include <rtos/wait.h>
 
 /* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
-#if defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
 #define RIMAGE_MANIFEST 1
 #endif
 
