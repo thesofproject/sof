@@ -11,8 +11,24 @@
 # Override ?= variables in config.mk
 -include config.mk
 
-# List of /lib/firmware/sof/ images and symbolic links currently
-# released by Intel.
+# The default values of UNSIGNED_list and SIGNED_list used to be the
+# list of /lib/firmware/sof/ images and symbolic links officially
+# released by Intel at https://github.com/thesofproject/sof-bin
+#
+# All Intel firmware in this branch is now Zephyr-based. So this
+# Makefile is NOT used anymore for sof-bin releases. However it is still
+# useful as a single command, fully parallelized and much faster
+# alternative to build: (1) all XTOS platforms currently supported by
+# scripts/xtensa-build-zephyr.sh -a (2) all user space tools (3) all
+# topologies.
+#
+# Using this script still builds a pseudo /lib/firmware/sof/ tree
+# structure in the staging directory - ignore that.
+
+# Keep this line in sync with the DEFAULT_PLATFORMS in
+# xtensa-build-zephyr.sh -a
+UNSIGNED_list ?= imx8m rn rmb vangogh mt8186 mt8195
+
 
 # To find aliases, try in a Linux kernel git clone:
 #
