@@ -240,14 +240,14 @@ jobs:
       # or delete cache manually in Github Actions tab
       - name: Cache unzip
         id: cache-unzip
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v4
         with:
           path: unzip-5.51-1-bin.zip
           key: ${{ runner.os }}-cache-unzip-5-51-1
 
       - name: Cache wget
         id: cache-wget
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v4
         with:
           path: wget-1.11.4-1-bin.zip
           key: ${{ runner.os }}-cache-wget-1-11-4-1
@@ -256,7 +256,7 @@ jobs:
       # sof/zephyr/docker-run.sh
       - name: Cache Zephyr SDK 0.16.4
         id: cache-zephyr-sdk
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v4
         with:
           path: zephyr-sdk-0.16.4_windows-x86_64.7z
           key: ${{ runner.os }}-cache-zephyr-sdk-0-16-4
