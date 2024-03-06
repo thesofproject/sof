@@ -14,6 +14,7 @@
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <module/module/api_ver.h>
+#include <zephyr/llext/llext.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit) Framework. IADK modules uses uniform
@@ -48,6 +49,8 @@ LOG_MODULE_REGISTER(sof_modules, CONFIG_SOF_LOG_LEVEL);
 DECLARE_SOF_RT_UUID("modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
 		    0x90, 0xab, 0x42, 0x24, 0xe0, 0x0c, 0x3e, 0x84);
 DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
+
+static const struct module_interface interface;
 
 static int modules_new(struct processing_module *mod, const void *buildinfo,
 		       uintptr_t module_entry_point)
@@ -123,6 +126,7 @@ static int modules_init(struct processing_module *mod)
 	struct comp_ipc_config *config = &(dev->ipc_config);
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	const void *buildinfo = NULL;
+	int ret;
 	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg,
 								   &buildinfo);
 
@@ -132,10 +136,12 @@ static int modules_init(struct processing_module *mod)
 	}
 	comp_info(dev, "modules_init() start");
 
-	int ret = modules_new(mod, buildinfo, module_entry_point);
-
-	if (ret < 0)
-		return ret;
+	if (!md->module_adapter && md->ops == &interface) {
+		/* First load */
+		ret = modules_new(mod, buildinfo, module_entry_point);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* Allocate module buffers */
 	md->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, src_cfg->ibs);
@@ -289,7 +295,7 @@ static int modules_free(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct comp_ipc_config *config = &(mod->dev->ipc_config);
-	int ret = 0;
+	int ret;
 
 	comp_info(dev, "modules_free()");
 	if (mod->is_native_sof) {
@@ -299,13 +305,19 @@ static int modules_free(struct processing_module *mod)
 	} else {
 		ret = iadk_wrapper_free(mod->priv.module_adapter);
 	}
+
+	if (ret < 0)
+		comp_err(dev, "Failed to free a module: %d", ret);
+
 	rfree(md->mpd.in_buff);
 	rfree(md->mpd.out_buff);
 
-	/* Free module resources allocated in L2 memory. */
-	ret = lib_manager_free_module(mod, config);
-	if (ret < 0)
-		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
+	if (!md->llext || !llext_unload(&md->llext)) {
+		/* Free module resources allocated in L2 memory. */
+		ret = lib_manager_free_module(mod, config);
+		if (ret < 0)
+			comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
+	}
 
 	return ret;
 }
