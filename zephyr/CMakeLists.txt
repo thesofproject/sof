@@ -318,7 +318,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8ULP)
 	set(PLATFORM "imx8ulp")
 endif()
 
-if (CONFIG_SOC_SERIES_MIMX9_A55)
+if (CONFIG_SOC_MIMX9352_A55)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx93_a55/platform.c
