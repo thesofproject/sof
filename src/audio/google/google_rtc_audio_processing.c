@@ -627,6 +627,26 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	return 0;
 }
 
+static int trigger_handler(struct processing_module *mod, int cmd)
+{
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+
+	/* Ignore and halt propagation if we get a trigger from the
+	 * playback pipeline: not for us.
+	 */
+	if (cd->ref_comp_buffer->walking)
+		return PPL_STATUS_PATH_STOP;
+
+	/* Note: not module_adapter_set_state().  With IPC4 those are
+	 * identical, but IPC3 has some odd-looking logic that
+	 * validates that no sources are active when receiving a
+	 * PRE_START command, which obviously breaks for our reference
+	 * stream if playback was already running when our pipeline
+	 * started
+	 */
+	return comp_set_state(mod->dev, cmd);
+}
+
 static int google_rtc_audio_processing_reset(struct processing_module *mod)
 {
 	comp_dbg(mod->dev, "google_rtc_audio_processing_reset()");
@@ -798,6 +818,7 @@ static struct module_interface google_rtc_audio_processing_interface = {
 	.prepare = google_rtc_audio_processing_prepare,
 	.set_configuration = google_rtc_audio_processing_set_config,
 	.get_configuration = google_rtc_audio_processing_get_config,
+	.trigger = trigger_handler,
 	.reset = google_rtc_audio_processing_reset,
 };
 
