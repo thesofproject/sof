@@ -399,9 +399,6 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd->config.output_fmt = mod->priv.cfg.input_pins[SOF_AEC_DMIC_QUEUE_ID].audio_fmt;
-	cd->config.reference_fmt = mod->priv.cfg.input_pins[SOF_AEC_FEEDBACK_QUEUE_ID].audio_fmt;
-
 	cd->num_aec_reference_channels = cd->config.reference_fmt.channels_count;
 	cd->num_capture_channels = cd->config.output_fmt.channels_count;
 	if (cd->num_capture_channels > CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_CHANNEL_MAX)
@@ -571,6 +568,11 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 	return 0;
 }
 
+static bool is_ref_buffer(struct comp_dev *dev, struct comp_buffer *b)
+{
+	return b->source->pipeline->pipeline_id != dev->pipeline->pipeline_id;
+}
+
 static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 					       struct sof_source **sources,
 					       int num_of_sources,
@@ -590,7 +592,7 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	int i = 0;
 
 	comp_info(dev, "google_rtc_audio_processing_prepare()");
-#if CONFIG_IPC_MAJOR_4
+
 	if (num_of_sources != GOOGLE_RTC_NUM_INPUT_PINS) {
 		comp_err(dev, "Expecting %u sources, got %u",
 			 GOOGLE_RTC_NUM_INPUT_PINS, num_of_sources);
@@ -602,18 +604,16 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+	struct comp_buffer *b0 = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	struct comp_buffer *b1 = list_next_item(b0, sink_list);
+
+	cd->aec_reference_source = (is_ref_buffer(dev, b0) ? 0 : 1);
+	cd->raw_microphone_source = (cd->aec_reference_source == 1) ? 0 : 1;
+	aec_channels = source_get_channels(sources[cd->aec_reference_source]);
+
+#if CONFIG_IPC_MAJOR_4
 	/* searching for stream and feedback source buffers */
 	for (i = 0; i < num_of_sources; i++) {
-		if (IPC4_SINK_QUEUE_ID(source_get_id(sources[i])) == SOF_AEC_FEEDBACK_QUEUE_ID) {
-			cd->aec_reference_source = i;
-			aec_channels = source_get_channels(sources[i]);
-			comp_dbg(dev, "reference index = %d, channels = %d", i, aec_channels);
-		} else {
-			cd->raw_microphone_source = i;
-			microphone_stream_channels = source_get_channels(sources[i]);
-			comp_dbg(dev, "microphone index = %d, channels = %d", i,
-				 microphone_stream_channels);
-		}
 		source_set_alignment_constants(sources[i], 1, 1);
 	}
 
@@ -622,24 +622,6 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	ipc4_update_source_format(sources[cd->raw_microphone_source], &cd->config.output_fmt);
 	ipc4_update_sink_format(sinks[0], &cd->config.output_fmt);
 #else /* CONFIG_IPC_MAJOR_4 */
-	/* searching for stream and feedback source buffers */
-	list_for_item(source_buffer_list_item, &dev->bsource_list) {
-		struct comp_buffer *source = container_of(source_buffer_list_item,
-							  struct comp_buffer, sink_list);
-		if (source->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
-			cd->aec_reference_source = i;
-			aec_channels = audio_stream_get_channels(&source->stream);
-			comp_dbg(dev, "reference index = %d, channels = %d", i, aec_channels);
-		} else {
-			cd->raw_microphone_source = i;
-			microphone_stream_channels = audio_stream_get_channels(&source->stream);
-			comp_dbg(dev, "microphone index = %d, channels = %d", i,
-				 microphone_stream_channels);
-		}
-
-		i++;
-	}
-
 	output = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 #endif /* CONFIG_IPC_MAJOR_4 */
 
