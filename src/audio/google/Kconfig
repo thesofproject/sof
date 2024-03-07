@@ -24,14 +24,6 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	  This component takes raw microphones input and playback reference
 	  and outputs an echo-free microphone signal.
 
-config COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
-	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	bool "Use 32bit API in Google Audio processing"
-	default n
-	help
-	  Selects an API to be used in communication with the Google real-time
-	  communication audio processing: 32bit float or 16bit integer
-
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Sample rate for Google Real Time Communication Audio processing"

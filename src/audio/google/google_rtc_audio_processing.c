@@ -67,17 +67,10 @@ uint8_t aec_mem_blob[CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_
 struct google_rtc_audio_processing_comp_data {
 #if CONFIG_IPC_MAJOR_4
 	struct sof_ipc4_aec_config config;
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	float *aec_reference_buffer;
 	float *process_buffer;
 	float *aec_reference_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
 	float *process_buffer_ptrs[SOF_IPC_MAX_CHANNELS];
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-	int16_t *aec_reference_buffer;
-	int16_t *process_buffer;
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-
-
 #else
 	int16_t *aec_reference_buffer;
 	int aec_reference_frame_index;
@@ -468,14 +461,13 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 		goto fail;
 	}
 	bzero(cd->aec_reference_buffer, buf_size);
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
+
 	for (size_t channel = 0; channel < cd->num_capture_channels; channel++)
 		cd->process_buffer_ptrs[channel] = &cd->process_buffer[channel * cd->num_frames];
 
 	for (size_t channel = 0; channel < cd->num_aec_reference_channels; channel++)
 		cd->aec_reference_buffer_ptrs[channel] =
 			&cd->aec_reference_buffer[channel * cd->num_frames];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 #else
 	cd->raw_mic_buffer = rballoc(
 		0, SOF_MEM_CAPS_RAM,
@@ -709,7 +701,6 @@ static int google_rtc_audio_processing_reset(struct processing_module *mod)
 }
 
 #if CONFIG_IPC_MAJOR_4
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 static inline int16_t convert_float_to_int16(float data)
 {
 #if XCHAL_HAVE_HIFI3
@@ -741,7 +732,6 @@ static inline float convert_int16_to_float(int16_t data)
 	return Q_CONVERT_QTOF(data, 15);
 #endif /* XCHAL_HAVE_HIFI3 */
 }
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 /* todo CONFIG_FORMAT_S32LE */
 static int google_rtc_audio_processing_process(struct processing_module *mod,
@@ -799,13 +789,8 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	buffer_offset = 0;
 	for (int i = 0; i < cd->num_frames; i++) {
 		for (channel = 0; channel < cd->num_aec_reference_channels; ++channel) {
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 			cd->aec_reference_buffer_ptrs[channel][i] =
 					convert_int16_to_float(ref[channel]);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-			cd->aec_reference_buffer[buffer_offset++] = ref[channel];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-
 		}
 
 		ref += cd->num_aec_reference_channels;
@@ -813,14 +798,9 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 			ref = (void *)ref_buf_start;
 	}
 
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	GoogleRtcAudioProcessingAnalyzeRender_float32(cd->state,
 						      (const float **)
 							cd->aec_reference_buffer_ptrs);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-	GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-						    (const int16_t *)cd->aec_reference_buffer);
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 	source_release_data(ref_stream, num_of_bytes_to_process);
 
 	/* process main stream - same as reference */
@@ -833,11 +813,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	buffer_offset = 0;
 	for (int i = 0; i < cd->num_frames; i++) {
 		for (channel = 0; channel < cd->num_capture_channels; channel++)
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 		cd->process_buffer_ptrs[channel][i] = convert_int16_to_float(src[channel]);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-		cd->process_buffer[buffer_offset++] = src[channel];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 		/* move pointer to next frame
 		 * number of incoming channels may be < cd->num_capture_channels
@@ -850,15 +826,9 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	source_release_data(src_stream, num_of_bytes_to_process);
 
 	/* call the library, use same in/out buffers */
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	GoogleRtcAudioProcessingProcessCapture_float32(cd->state,
 						       (const float **)cd->process_buffer_ptrs,
 						       cd->process_buffer_ptrs);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-	GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
-						     (const int16_t *)cd->process_buffer,
-						     cd->process_buffer);
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 	/* same number of bytes to process for output stream as for mic stream */
 	ret = sink_get_buffer(dst_stream, num_of_bytes_to_process, (void **)&dst,
@@ -872,12 +842,8 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 		for (channel = 0; channel < cd->config.output_fmt.channels_count; channel++) {
 			/* set data in processed channels, zeroize not processed */
 			if (channel < cd->num_capture_channels)
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 				dst[channel] = convert_float_to_int16(
 						   cd->process_buffer_ptrs[channel][i]);
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-				dst[channel] = cd->process_buffer[buffer_offset++];
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 			else
 				dst[channel] = 0;
 		}

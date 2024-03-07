@@ -24,11 +24,7 @@ struct GoogleRtcAudioProcessingState {
 	int num_aec_reference_channels;
 	int num_output_channels;
 	int num_frames;
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 	float *aec_reference;
-#else
-	int16_t *aec_reference;
-#endif
 };
 
 static void SetFormats(GoogleRtcAudioProcessingState *const state,
@@ -145,7 +141,6 @@ int GoogleRtcAudioProcessingReconfigure(GoogleRtcAudioProcessingState *const sta
 	return 0;
 }
 
-#if CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API
 int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState *const state,
 						   const float *const *src,
 						   float * const *dest)
@@ -182,42 +177,6 @@ int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState 
 
 	return 0;
 }
-#else /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
-int GoogleRtcAudioProcessingProcessCapture_int16(GoogleRtcAudioProcessingState *const state,
-						 const int16_t *const src,
-						 int16_t *const dest)
-{
-	int16_t *ref = state->aec_reference;
-	int n, chan;
-
-	for (chan = 0; chan < state->num_output_channels; chan++) {
-		for (n = 0; n < state->num_frames; ++n) {
-			int16_t mic_save = src[(n * state->num_capture_channels) + chan];
-
-			if (chan < state->num_aec_reference_channels)
-				dest[(n * state->num_capture_channels) + chan] =
-				   mic_save + ref[(n * state->num_aec_reference_channels) + chan];
-			else
-				dest[(n * state->num_capture_channels) + chan] = mic_save;
-		}
-	}
-
-	return 0;
-}
-
-int GoogleRtcAudioProcessingAnalyzeRender_int16(GoogleRtcAudioProcessingState *const state,
-						const int16_t *const data)
-{
-	const size_t buffer_size =
-		sizeof(state->aec_reference[0])
-		* state->num_frames
-		* state->num_aec_reference_channels;
-	memcpy_s(state->aec_reference, buffer_size,
-		 data, buffer_size);
-	return 0;
-}
-
-#endif /* CONFIG_COMP_GOOGLE_RTC_USE_32_BIT_FLOAT_API */
 
 void GoogleRtcAudioProcessingParseSofConfigMessage(uint8_t *message,
 						   size_t message_size,
