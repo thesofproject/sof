@@ -15,7 +15,6 @@ config COMP_GOOGLE_HOTWORD_DETECT
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	bool "Google Real Time Communication Audio processing"
 	select COMP_BLOB
-	select GOOGLE_RTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
 	default n
 	help
 	  Select for Google real-time communication audio processing. It
@@ -23,6 +22,8 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	  echo-cancelling and other processing.
 	  This component takes raw microphones input and playback reference
 	  and outputs an echo-free microphone signal.
+
+if COMP_GOOGLE_RTC_AUDIO_PROCESSING
 
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
@@ -79,10 +80,12 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MIC_HEADROOM_LINEAR
 
 config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	bool "Google Real Time Communication Audio processing mock"
-	default n
+	default y if COMP_STUBS
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	help
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
+
+endif # COMP_GOOGLE_RTC_AUDIO_PROCESSING
 
 endmenu
