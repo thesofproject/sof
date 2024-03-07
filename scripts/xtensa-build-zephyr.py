@@ -203,7 +203,7 @@ Supported platforms: {list(platform_configs)}"""
 	parser.add_argument("-a", "--all", required=False, action="store_true",
 						help="Build all currently supported platforms")
 	parser.add_argument("platforms", nargs="*", action=validate_platforms_arguments,
-						help="List of platforms to build")
+			    help="List of platforms to build. Zero platform + any flag (-p) still creates 'tools/'")
 	parser.add_argument("-d", "--debug", required=False, action="store_true",
 						help="Shortcut for: -o sof/app/debug_overlay.conf")
     # NO SOF release will ever user the option --fw-naming.
@@ -727,6 +727,8 @@ def build_platforms():
 	# smex does not use 'install -D'
 	sof_output_dir = pathlib.Path(STAGING_DIR, "sof")
 	sof_output_dir.mkdir(parents=True, exist_ok=True)
+
+	platform_build_dir_name = None
 	for platform in args.platforms:
 		platf_build_environ = os.environ.copy()
 
@@ -870,19 +872,20 @@ def build_platforms():
 		install_platform(platform, sof_platform_output_dir, platf_build_environ)
 
 	src_dest_list = []
-
-	# Install sof-logger
-	sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
-		"sof-logger_ep", "build", "logger")
-	sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
-	sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
 
-	src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
+	# Install sof-logger from the last platform built (requires building at least one platform).
+	if platform_build_dir_name:
+		sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
+					      "sof-logger_ep", "build", "logger")
+		sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
+		sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
+
+		src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
 
 	src_dest_list += [(pathlib.Path(SOF_TOP) /
 		"tools" / "mtrace"/ "mtrace-reader.py",
-		tools_output_dir)]
+		tools_output_dir / "mtrace-reader.py")]
 
 	# Append future files to `src_dest_list` here (but prefer
 	# copying entire directories; more flexible)
@@ -1104,10 +1107,9 @@ def main():
 		west_update()
 		create_zephyr_sof_symlink()
 
-	if args.platforms:
-		build_rimage()
-		build_platforms()
-		show_installed_files()
+	build_rimage()
+	build_platforms()
+	show_installed_files()
 
 if __name__ == "__main__":
 	main()
