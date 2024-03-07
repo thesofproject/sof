@@ -61,10 +61,10 @@ config COMP_GOOGLE_RTC_AUDIO_REFERENCE_CHANNEL_MAX
 	  retrieved at runtime, but channels higher than this number
 	  are ignored
 
-config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_KB
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Memory buffer size for Google Real Time Communication Audio processing"
-	default 200000
+	default 200
 	help
 	  Sets the size of the memory buffer for the Google real-time
 	  communication audio processing.
