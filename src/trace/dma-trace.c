@@ -30,7 +30,11 @@
 #include <sof_versions.h>
 
 #ifdef __ZEPHYR__
+#ifdef CONFIG_SOF_COMPAT_INCLUDES
 #include <version.h>
+#else
+#include <zephyr/version.h>
+#endif
 #endif
 
 #include <errno.h>

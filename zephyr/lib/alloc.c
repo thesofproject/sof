@@ -23,7 +23,11 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/pm/policy.h>
+#ifdef CONFIG_SOF_COMPAT_INCLUDES
 #include <version.h>
+#else
+#include <zephyr/version.h>
+#endif
 #include <zephyr/sys/__assert.h>
 #include <zephyr/cache.h>
 
