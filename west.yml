@@ -43,7 +43,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: f9f44b6dcdd4b80765df8922e8d12fdb9213e13a
+      # "soc: intel_adsp: hwmv2" commit in collab-hwm branch
+      revision: 608ba1d5d7b374706f5d961d18729b9236587895
       remote: zephyrproject
 
       # Import some projects listed in zephyr/west.yml@revision
