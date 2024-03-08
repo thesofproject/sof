@@ -19,7 +19,7 @@ zephyr_library_sources(
 	dma-copy.c
 )
 
-if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ACE)
 	zephyr_library_sources(
 		ipc-zephyr.c
 	)

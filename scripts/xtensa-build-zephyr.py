@@ -90,7 +90,7 @@ class PlatformConfig:
 platform_configs_all = {
 	#  Intel platforms
 	"tgl" : PlatformConfig(
-		"intel", "intel_adsp/cavs25",
+		"intel", "intel_adsp_cavs25",
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
@@ -98,7 +98,7 @@ platform_configs_all = {
 		ipc4 = True
 	),
 	"tgl-h" : PlatformConfig(
-		"intel", "intel_adsp/cavs25/tgph",
+		"intel", "intel_adsp_cavs25_tgph",
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
@@ -106,14 +106,14 @@ platform_configs_all = {
 		ipc4 = True
 	),
 	"mtl" : PlatformConfig(
-		"intel", "intel_adsp/ace15_mtpm",
+		"intel", "intel_adsp_ace15_mtpm",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
 		aliases = ['arl', 'arl-s'],
 		ipc4 = True
 	),
 	"lnl" : PlatformConfig(
-		"intel", "intel_adsp/ace20_lnl",
+		"intel", "intel_adsp_ace20_lnl",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
 		"ace10_LX7HiFi4_2022_10",
 		ipc4 = True
@@ -121,25 +121,25 @@ platform_configs_all = {
 
 	#  NXP platforms
 	"imx8" : PlatformConfig(
-		"imx", "imx8qm_mek/mimx8qm6/adsp",
+		"imx", "nxp_adsp_imx8",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8",
 	),
 	"imx8x" : PlatformConfig(
-		"imx", "imx8qxp_mek/mimx8qx6/adsp",
+		"imx", "nxp_adsp_imx8x",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8x"
 	),
 	"imx8m" : PlatformConfig(
-		"imx", "imx8mp_evk/mimx8ml8/adsp",
+		"imx", "nxp_adsp_imx8m",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
 	"imx8ulp" : PlatformConfig(
-		"imx", "imx8ulp_evk/imx8ulp/adsp",
+		"imx", "nxp_adsp_imx8ulp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp2_s7_v2_1a_prod",
 		RIMAGE_KEY = "key param ignored by imx8ulp"
@@ -894,7 +894,7 @@ def build_platforms():
 
 	# cavstool and friends
 	shutil.copytree(pathlib.Path(west_top) /
-			  "zephyr" / "soc" / "intel" / "intel_adsp" / "tools",
+			  "zephyr" / "soc" / "xtensa" / "intel_adsp" / "tools",
 			tools_output_dir,
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 

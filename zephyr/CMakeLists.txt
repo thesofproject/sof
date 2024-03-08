@@ -178,7 +178,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 endif()
 
 # Intel ACE 1.5 and newer platforms
-if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+if (CONFIG_SOC_SERIES_INTEL_ACE)
 
 	# Platform sources
 	zephyr_library_sources(
@@ -232,7 +232,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 endif()
 
 # NXP IMX8 platforms
-if (CONFIG_SOC_MIMX8QM_ADSP OR CONFIG_SOC_MIMX8QXP_ADSP)
+if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/edma.c
@@ -261,7 +261,7 @@ if (CONFIG_SOC_MIMX8QM_ADSP OR CONFIG_SOC_MIMX8QXP_ADSP)
 	set(PLATFORM "imx8")
 endif()
 
-if (CONFIG_SOC_MIMX8MP_ADSP)
+if (CONFIG_SOC_SERIES_NXP_IMX8M)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/sdma.c
@@ -290,7 +290,7 @@ if (CONFIG_SOC_MIMX8MP_ADSP)
 	set(PLATFORM "imx8m")
 endif()
 
-if (CONFIG_SOC_MIMX8ULP_ADSP)
+if (CONFIG_SOC_SERIES_NXP_IMX8ULP)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/edma.c
@@ -318,7 +318,7 @@ if (CONFIG_SOC_MIMX8ULP_ADSP)
 	set(PLATFORM "imx8ulp")
 endif()
 
-if (CONFIG_SOC_MIMX9352_A55)
+if (CONFIG_SOC_SERIES_MIMX9_A55)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx93_a55/platform.c

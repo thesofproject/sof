@@ -13,7 +13,7 @@
 #include <sof/lib/cpu.h>
 #include <rtos/init.h>
 #include <platform/lib/clk.h>
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE)
 #include <intel_adsp_hda.h>
 #endif
 
@@ -24,7 +24,7 @@
 #include <zephyr/logging/log_ctrl.h>
 
 /* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
 # define INTEL_ADSP 1
 #endif
 
@@ -421,7 +421,7 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 
 static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 {
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE)
 	const uint32_t force = tlv->value[0];
 
 	if (force) {
