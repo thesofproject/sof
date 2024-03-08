@@ -129,9 +129,14 @@ jobs:
         # build reproducibility. sof.git is still small.
         # This is especially useful for daily builds (but not just).
         with:
-          fetch-depth: 0
+          fetch-depth: 5
           filter: 'tree:0'
           path: ./workspace/sof
+
+      # pull/1234/merge is tested by default. This time we want
+      # pull/1234/head instead.
+      # https://github.com/actions/checkout
+      - run: git -C workspace/sof checkout HEAD^2
 
       - name: west clones
 
@@ -230,9 +235,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 5
           filter: 'tree:0'
           path: ./workspace/sof
+
+      # pull/1234/merge is tested by default. This time we want
+      # pull/1234/head instead.
+      # https://github.com/actions/checkout
+      - run: git -C workspace/sof checkout HEAD^2
 
       # Cache artifacts so we do not overload external servers with downloads
       # Remember to change step key if you change the tools so old cache is not restored,
