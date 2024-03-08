@@ -10,10 +10,10 @@
 #include <sof/audio/multiband_drc/multiband_drc.h>
 #include <sof/math/iir_df2t.h>
 
-static void multiband_drc_default_pass(const struct comp_dev *dev,
-				       const struct audio_stream *source,
-				       struct audio_stream *sink,
-				       uint32_t frames)
+void multiband_drc_default_pass(const struct comp_dev *dev,
+				const struct audio_stream *source,
+				struct audio_stream *sink,
+				uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, source->channels * frames);
 }
