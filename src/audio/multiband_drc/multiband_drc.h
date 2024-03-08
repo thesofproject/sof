@@ -54,6 +54,11 @@ extern const struct multiband_drc_proc_fnmap multiband_drc_proc_fnmap[];
 extern const struct multiband_drc_proc_fnmap multiband_drc_proc_fnmap_pass[];
 extern const size_t multiband_drc_proc_fncount;
 
+void multiband_drc_default_pass(const struct processing_module *mod,
+                                const struct audio_stream *source,
+                                struct audio_stream *sink,
+                                uint32_t frames);
+
 /**
  * \brief Returns Multiband DRC processing function.
  */
