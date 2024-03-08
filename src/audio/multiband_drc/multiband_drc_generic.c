@@ -11,10 +11,10 @@
 #include "multiband_drc.h"
 #include "../drc/drc_algorithm.h"
 
-static void multiband_drc_default_pass(const struct processing_module *mod,
-				       const struct audio_stream *source,
-				       struct audio_stream *sink,
-				       uint32_t frames)
+void multiband_drc_default_pass(const struct processing_module *mod,
+				const struct audio_stream *source,
+				struct audio_stream *sink,
+				uint32_t frames)
 {
 	audio_stream_copy(source, 0, sink, 0, audio_stream_get_channels(source) * frames);
 }
