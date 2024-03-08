@@ -252,13 +252,13 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	ae_valign outu = AE_ZALIGN64();
 
 	/* copy with 16bit as the minimum unit since the minimum sample size is 16 bit*/
-	while (shorts) {
+	while (shorts > 0) {
 		src = audio_stream_wrap(source, src);
 		dst = audio_stream_wrap(sink, dst);
 		shorts_src = audio_stream_samples_without_wrap_s16(source, src);
 		shorts_dst = audio_stream_samples_without_wrap_s16(sink, dst);
-		shorts_copied = AE_MIN_32_signed(shorts_src, shorts_dst);
-		shorts_copied = AE_MIN_32_signed(shorts, shorts_copied);
+		shorts_copied = AE_MIN32(shorts_src, shorts_dst);
+		shorts_copied = AE_MIN32(shorts, shorts_copied);
 		m = shorts_copied >> 2;
 		left = shorts_copied & 0x03;
 		inu = AE_LA64_PP(src);
