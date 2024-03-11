@@ -4,6 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/ {
+	host_dma: dma {
+		compatible = "nxp,sof-host-dma";
+		dma-channels = <32>;
+		#dma-cells = <0>;
+	};
+};
+
 &lpuart2 {
 	/* note for developers: this is disabled
 	 * because the firmware running on one of the M4
@@ -16,4 +24,33 @@
 	 *	images.
 	 */
 	status = "disabled";
+};
+
+&sai1 {
+	rx-fifo-watermark = <48>;
+	tx-fifo-watermark = <2>;
+	fifo-depth = <48>;
+	rx-sync-mode = <1>;
+	status = "okay";
+};
+
+&esai0 {
+	fifo-depth = <96>;
+	/* note: not the same semantic as SAI TX watermark. For ESAI
+	 * the DMA requests are generated when number of empty slots
+	 * in the transmit FIFO reaches the chosen watermark value.
+	 * In this case, DMA requests will be generated when transmit
+	 * FIFO has 128 empty slots (equivalent to the FIFO having
+	 * 2 words since the FIFO depth is 128 words).
+	 */
+	tx-fifo-watermark = <126>;
+	rx-fifo-watermark = <96>;
+	/* needed for internal CS42888 workaround. Remove when possible */
+	esai-clock-configuration = <ESAI_CLOCK_SCKR ESAI_CLOCK_INPUT>,
+				<ESAI_CLOCK_FSR ESAI_CLOCK_INPUT>;
+	status = "okay";
+};
+
+&edma0 {
+	status = "okay";
 };
