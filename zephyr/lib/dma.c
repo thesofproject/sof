@@ -107,7 +107,7 @@ SHARED_DATA struct dma dma[] = {
 	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(hda_link_out)),
 },
 #endif
-#ifdef CONFIG_SOC_SERIES_MIMX9_A55
+#ifdef CONFIG_SOC_MIMX9352_A55
 {
 	.plat_data = {
 		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
@@ -129,7 +129,7 @@ SHARED_DATA struct dma dma[] = {
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
-#endif /* CONFIG_SOC_SERIES_MIMX9_A55 */
+#endif /* CONFIG_SOC_MIMX9352_A55 */
 };
 
 const struct dma_info lib_dma = {
