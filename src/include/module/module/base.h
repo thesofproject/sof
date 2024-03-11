@@ -179,9 +179,6 @@ struct processing_module {
 	 */
 	bool stream_copy_single_to_single;
 
-	/* flag to insure that module is loadable */
-	bool is_native_sof;
-
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;
 	uint64_t total_data_produced;

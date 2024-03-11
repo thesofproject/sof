@@ -30,6 +30,7 @@
 #include <zephyr/llext/llext.h>
 
 #include <rimage/sof/user/manifest.h>
+#include <module/module/api_ver.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -181,7 +182,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	struct llext_load_param ldr_parm = {!ctx->segment_size[SOF_MAN_SEGMENT_TEXT]};
 	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
@@ -230,7 +231,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					const struct comp_ipc_config *ipc_config,
-					const void *ipc_specific_config, const void **buildinfo)
+					const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
@@ -238,7 +239,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const struct sof_man_module_manifest *mod_manifest;
+	const struct sof_module_api_build_info *buildinfo;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
@@ -252,23 +253,35 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = llext_manager_link(desc, mod, module_id, &proc->priv, buildinfo, &mod_manifest);
+	ret = llext_manager_link(desc, mod, module_id, &proc->priv, (const void **)&buildinfo,
+				 &ctx->mod_manifest);
 	if (ret < 0)
 		return 0;
 
-	/* Map .text and the rest as .data */
-	ret = llext_manager_load_module(module_id, mod);
-	if (ret < 0)
-		return 0;
+	if (!ret) {
+		/* First instance: check that the module is native */
+		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
+		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
+			tr_err(&lib_manager_tr,
+			       "llext_manager_allocate_module(): Unsupported module API version");
+			return -ENOEXEC;
+		}
 
-	ret = llext_manager_allocate_module_bss(module_id, mod);
-	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): module allocation failed: %d", ret);
-		return 0;
+		/* Map .text and the rest as .data */
+		ret = llext_manager_load_module(module_id, mod);
+		if (ret < 0)
+			return 0;
+
+		ret = llext_manager_allocate_module_bss(module_id, mod);
+		if (ret < 0) {
+			tr_err(&lib_manager_tr,
+			       "llext_manager_allocate_module(): module allocation failed: %d",
+			       ret);
+			return 0;
+		}
 	}
 
-	return mod_manifest->module.entry_point;
+	return ctx->mod_manifest->module.entry_point;
 }
 
 int llext_manager_free_module(const uint32_t component_id)
