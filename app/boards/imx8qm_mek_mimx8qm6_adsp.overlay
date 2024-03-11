@@ -4,15 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* TODO: this is a temporary workaround the fact that
- * currently the Linux kernel doesn't enable MU2's power.
- * As such, CCM (and all IPs that depend on Zephyr's
- * clock management) are not usable.
- */
 &lpuart2 {
-	status = "disabled";
-};
-
-&ccm {
+	/* note for developers: this is disabled
+	 * because the firmware running on one of the M4
+	 * cores uses the same LPUART instance. As such,
+	 * to debug you need to make sure that:
+	 *	1) Your SOF DTS doesn't include the RPMSG
+	 *	DTS but instead the base DTS (which is
+	 *	"imx8qm-mek.dts")
+	 *	2) Your u-boot doesn't include the M4 firmware
+	 *	images.
+	 */
 	status = "disabled";
 };
