@@ -30,6 +30,7 @@
 #include <zephyr/llext/llext.h>
 
 #include <rimage/sof/user/manifest.h>
+#include <module/module/api_ver.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -229,7 +230,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					const struct comp_ipc_config *ipc_config,
-					const void *ipc_specific_config, const void **buildinfo)
+					const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod;
@@ -238,6 +239,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const struct sof_man_module_manifest *mod_manifest;
+	const struct sof_module_api_build_info *buildinfo;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
@@ -251,9 +253,18 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = llext_manager_link(desc, mod, module_id, &proc->priv, buildinfo, &mod_manifest);
+	ret = llext_manager_link(desc, mod, module_id, &proc->priv, (const void **)&buildinfo,
+				 &mod_manifest);
 	if (ret < 0)
 		return 0;
+
+	/* Check if module is NOT native */
+	if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
+	    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
+		tr_err(&lib_manager_tr,
+		       "llext_manager_allocate_module(): Unsupported module API version");
+		return -ENOEXEC;
+	}
 
 	/* Map .text and the rest as .data */
 	ret = llext_manager_load_module(module_id, mod);

@@ -33,6 +33,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
+ * \param[in] spec - passdowned data from driver.
  *
  * \return: a pointer to newly created module adapter component on success. NULL on error.
  */
