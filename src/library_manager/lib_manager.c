@@ -22,9 +22,14 @@
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
+#include <utilities/array.h>
+#include <native_system_agent.h>
+#include <api_version.h>
+#include <module/module/api_ver.h>
 
 #include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
+#include <zephyr/llext/llext.h>
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <auth/intel_auth_api.h>
@@ -340,7 +345,7 @@ static inline bool module_is_llext(const struct sof_man_module *mod)
 
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config, const void **buildinfo)
+				      const void *ipc_specific_config)
 {
 	const struct sof_man_module *mod;
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
@@ -358,8 +363,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 	}
 
 	if (module_is_llext(mod))
-		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config,
-						     buildinfo);
+		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config);
 
 	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
@@ -495,12 +499,93 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
 }
 
 #if CONFIG_INTEL_MODULES
+/*
+ * \brief Load module code, allocate its instance and create a module adapter component.
+ * \param[in] drv - component driver pointer.
+ * \param[in] config - component ipc descriptor pointer.
+ * \param[in] spec - passdowned data from driver.
+ *
+ * \return: a pointer to newly created module adapter component on success. NULL on error.
+ */
+static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
+						  const struct comp_ipc_config *config,
+						  const void *spec)
+{
+	const struct ipc_config_process *args = (struct ipc_config_process *)spec;
+	const uint32_t module_id = IPC4_MOD_ID(config->id);
+	const uint32_t instance_id = IPC4_INST_ID(config->id);
+	const uint32_t log_handle = (uint32_t)drv->tctx;
+	byte_array_t mod_cfg;
+
+	/*
+	 * Variable used by llext_manager to temporary store llext handle before creation
+	 * a instance of processing_module.
+	 */
+	struct processing_module tmp_proc;
+	struct comp_dev *dev;
+
+	/* At this point module resources are allocated and it is moved to L2 memory. */
+	tmp_proc.priv.llext = NULL;
+	const uint32_t module_entry_point = lib_manager_allocate_module(&tmp_proc, config,
+									args->data);
+
+	if (!module_entry_point) {
+		tr_err(&lib_manager_tr,
+		       "lib_manager_module_create(), lib_manager_allocate_module() failed!");
+		return NULL;
+	}
+	tr_info(&lib_manager_tr, "lib_manager_module_create() start");
+
+	mod_cfg.data = (uint8_t *)args->data;
+	/* Intel modules expects DW size here */
+	mod_cfg.size = args->size >> 2;
+
+	((struct comp_driver *)drv)->adapter_ops = native_system_agent_start(module_entry_point,
+									     module_id,	instance_id,
+									     0, log_handle,
+									     &mod_cfg);
+
+	if (!drv->adapter_ops) {
+		lib_manager_free_module(module_id);
+		tr_err(&lib_manager_tr,
+		       "lib_manager_module_create(), native_system_agent_start failed!");
+		return NULL;
+	}
+
+	dev = module_adapter_new(drv, config, spec);
+	if (dev) {
+		struct processing_module *mod = comp_get_drvdata(dev);
+
+		mod->priv.llext = tmp_proc.priv.llext;
+	}
+	return dev;
+}
+
+static void lib_manager_module_free(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct llext *llext = mod->priv.llext;
+	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
+	const uint32_t module_id = config->id;
+	int ret;
+
+	/* This call invalidates dev, mod and config pointers! */
+	module_adapter_free(dev);
+
+	if (!llext || !llext_unload(&llext)) {
+		/* Free module resources allocated in L2 memory. */
+		ret = lib_manager_free_module(module_id);
+		if (ret < 0)
+			comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
+	}
+}
+
 static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const struct sof_uuid *uuid)
 {
 	drv->type = SOF_COMP_MODULE_ADAPTER;
 	drv->uid = uuid;
 	drv->tctx = &lib_manager_tr;
-	drv->ops.create = module_adapter_new;
+	drv->ops.create = lib_manager_module_create;
 	drv->ops.prepare = module_adapter_prepare;
 	drv->ops.params = module_adapter_params;
 	drv->ops.copy = module_adapter_copy;
@@ -509,7 +594,7 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 #endif
 	drv->ops.trigger = module_adapter_trigger;
 	drv->ops.reset = module_adapter_reset;
-	drv->ops.free = module_adapter_free;
+	drv->ops.free = lib_manager_module_free;
 	drv->ops.set_large_config = module_set_large_config;
 	drv->ops.get_large_config = module_get_large_config;
 	drv->ops.get_attribute = module_adapter_get_attribute;
@@ -527,22 +612,22 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 
 int lib_manager_register_module(const uint32_t component_id)
 {
-	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(component_id);
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(component_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(component_id);
-	const struct sof_man_fw_desc *desc;
+	const struct sof_module_api_build_info *build_info;
 	struct comp_driver_info *new_drv_info;
 	struct comp_driver *drv = NULL;
-	struct sof_man_module *mod;
+	const struct sof_man_module *mod;
 	int ret;
 
-	/* Get library manifest based on component_id */
-	if (!ctx || !ctx->base_addr)
+	if (!desc) {
+		tr_err(&lib_manager_tr, "Error: Couldn't find loadable module with id %u.",
+		       component_id);
 		return -ENOENT;
+	}
 
-	desc = (const struct sof_man_fw_desc *)((const char *)ctx->base_addr +
-							      SOF_MAN_ELF_TEXT_OFFSET);
 	if (entry_index >= desc->header.num_module_entries) {
-		tr_err(&lib_manager_tr, "Entry index %d out of bounds.", entry_index);
+		tr_err(&lib_manager_tr, "Entry index %u out of bounds.", entry_index);
 		return -ENOENT;
 	}
 
@@ -568,13 +653,44 @@ int lib_manager_register_module(const uint32_t component_id)
 		goto cleanup;
 	}
 
-	/* Fill the new_drv_info structure with already known parameters */
-	/* Check already registered components */
-	mod = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+	mod = (struct sof_man_module *)((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
 
 	lib_manager_prepare_module_adapter(drv, uid);
 
+	/*
+	 * llext modules store build info structure in separate section which is not accessible now.
+	 */
+	if (!module_is_llext(mod)) {
+		build_info = (const struct sof_module_api_build_info *)((const char *)desc -
+			     SOF_MAN_ELF_TEXT_OFFSET +
+			     mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
+
+		tr_info(&lib_manager_tr,
+			"lib_manager_register_module(): Module API version: %u.%u.%u, format: 0x%x",
+			build_info->api_version_number.fields.major,
+			build_info->api_version_number.fields.middle,
+			build_info->api_version_number.fields.minor,
+			build_info->format);
+
+		/* Check if module is IADK */
+		if (build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
+		    build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
+			/* Use module_adapter functions */
+			drv->ops.create = module_adapter_new;
+			drv->ops.prepare = module_adapter_prepare;
+		} else {
+			/* Check if module is NOT native */
+			if (build_info->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
+			    build_info->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
+				tr_err(&lib_manager_tr,
+				       "lib_manager_register_module(): Unsupported module API version");
+				return -ENOEXEC;
+			}
+		}
+	}
+
+	/* Fill the new_drv_info structure with already known parameters */
 	new_drv_info->drv = drv;
 
 	/* Register new driver in the list */

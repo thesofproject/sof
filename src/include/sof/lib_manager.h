@@ -81,8 +81,11 @@ struct ipc_lib_msg {
 	struct list_item list;
 };
 
+struct sof_man_module_manifest;
+
 struct lib_manager_mod_ctx {
 	void *base_addr;
+	const struct sof_man_module_manifest *mod_manifest;
 	size_t segment_size[3];
 };
 
@@ -166,7 +169,7 @@ struct processing_module;
  */
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config, const void **buildinfo);
+				      const void *ipc_specific_config);
 
 /*
  * \brief Free module
