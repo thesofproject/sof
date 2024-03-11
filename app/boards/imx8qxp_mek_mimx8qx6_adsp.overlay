@@ -3,16 +3,3 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-/* TODO: this is a temporary workaround the fact that
- * currently the Linux kernel doesn't enable MU2's power.
- * As such, CCM (and all IPs that depend on Zephyr's
- * clock management) are not usable.
- */
-&lpuart2 {
-	status = "disabled";
-};
-
-&ccm {
-	status = "disabled";
-};
