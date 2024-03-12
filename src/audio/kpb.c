@@ -1742,12 +1742,23 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	size_t period_copy_start = sof_cycle_get_64();
+	size_t period_copy_start;
 	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
 	bool pm_is_active;
+
+	/*
+	 * WORKAROUND: The code below accesses KPB sink buffer and calls comp_copy() on
+	 * component connected to sink. EDF task thread has preemptible low priority and
+	 * so can be preempted by LL thread. This could result in broken state of sink buffer
+	 * or component connected to sink.
+	 * Hence k_sched_lock() is used temporary to block LL from preempting EDF task thread.
+	 */
+#ifdef __ZEPHYR__
+	k_sched_lock();
+#endif
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1760,8 +1771,19 @@ static enum task_state kpb_draining_task(void *arg)
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
 	draining_time_start = sof_cycle_get_64();
+	period_copy_start = draining_time_start;
 
 	while (drain_req > 0) {
+		/*
+		 * Draining task usually runs for quite a lot of time (could be few seconds).
+		 * LL should not be blocked for such a long time.
+		 */
+#ifdef __ZEPHYR__
+		k_sched_unlock();
+		k_yield();
+		k_sched_lock();
+#endif
+
 		/* Have we received reset request? */
 		if (kpb->state == KPB_STATE_RESETTING) {
 			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
@@ -1867,6 +1889,11 @@ out:
 	else
 		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
 			     drained, UINT_MAX);
+
+	/* Restore original EDF thread priority */
+#ifdef __ZEPHYR__
+	k_sched_unlock();
+#endif
 
 	return SOF_TASK_STATE_COMPLETED;
 }
