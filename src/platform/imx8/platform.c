@@ -160,11 +160,6 @@ int platform_init(struct sof *sof)
 	sof->cpu_timers = sof->platform_timer;
 #endif
 
-#ifdef __ZEPHYR__
-	/* initialize cascade interrupts before any usage */
-	interrupt_init(sof);
-#endif
-
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
@@ -186,15 +181,6 @@ int platform_init(struct sof *sof)
 	ret = dmac_init(sof);
 	if (ret < 0)
 		return -ENODEV;
-
-	/* Init EDMA platform domain */
-	sof->platform_dma_domain = dma_multi_chan_domain_init
-			(&sof->dma_info->dma_array[0], 1,
-			 PLATFORM_DEFAULT_CLOCK, false);
-
-	/* i.MX platform DMA domain will be full synchronous, no time dependent */
-	sof->platform_dma_domain->full_sync = true;
-	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* initialize the host IPC mechanims */
 	ipc_init(sof);

@@ -67,7 +67,6 @@ config IMX8
 	select IMX
 	select IMX_EDMA
 	select IMX_ESAI
-	select SCHEDULE_DMA_MULTI_CHANNEL
 	select IMX_INTERRUPT_IRQSTEER
 	help
 	  Select if your target platform is imx8-compatible
@@ -84,7 +83,6 @@ config IMX8X
 	select IMX
 	select IMX_EDMA
 	select IMX_ESAI
-	select SCHEDULE_DMA_MULTI_CHANNEL
 	select IMX_INTERRUPT_IRQSTEER
 	help
 	  Select if your target platform is imx8x-compatible
