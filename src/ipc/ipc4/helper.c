@@ -945,12 +945,12 @@ static const struct comp_driver *ipc4_library_get_drv(int module_id)
 }
 #endif
 
-const struct comp_driver *ipc4_get_comp_drv(int module_id)
+const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
 	struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
 	struct sof_man_module *mod;
-	int entry_index;
+	uint32_t entry_index;
 
 #if CONFIG_LIBRARY
 	return ipc4_library_get_drv(module_id);
