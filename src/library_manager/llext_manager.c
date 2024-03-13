@@ -251,7 +251,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	ret = llext_manager_link(desc, mod, module_id, &proc->priv.llext, buildinfo, &mod_manifest);
+	ret = llext_manager_link(desc, mod, module_id, &ctx->llext, buildinfo, &mod_manifest);
 	if (ret < 0)
 		return 0;
 
@@ -276,6 +276,7 @@ int llext_manager_free_module(const uint32_t component_id)
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	int ret;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
@@ -293,5 +294,12 @@ int llext_manager_free_module(const uint32_t component_id)
 		       "llext_manager_free_module(): free module bss failed: %d", ret);
 		return ret;
 	}
+
+	/*
+	 * FIXME: I'm not sure where to place it. Call to the lib_manager_free_module for llext
+	 * modules was skipped by the modules_free function. I belive it was a bug.
+	 */
+	llext_unload(&ctx->llext);
+
 	return 0;
 }

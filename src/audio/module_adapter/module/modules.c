@@ -311,12 +311,10 @@ static int modules_free(struct processing_module *mod)
 	rfree(md->mpd.in_buff);
 	rfree(md->mpd.out_buff);
 
-	if (!md->llext || !llext_unload(&md->llext)) {
-		/* Free module resources allocated in L2 memory. */
-		ret = lib_manager_free_module(dev->ipc_config.id);
-		if (ret < 0)
-			comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
-	}
+	/* Free module resources allocated in L2 memory. */
+	ret = lib_manager_free_module(dev->ipc_config.id);
+	if (ret < 0)
+		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
 
 	return ret;
 }
