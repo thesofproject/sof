@@ -41,6 +41,14 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
 
+/* note: if this macro is not defined
+ * then that means the HOST and the DSP
+ * have the same view of the address space.
+ */
+#ifndef local_to_host
+#define local_to_host(addr) (addr)
+#endif /* local_to_host */
+
 static const struct comp_driver comp_dai;
 
 LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
@@ -751,12 +759,18 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	for (i = 0; i < dma_cfg->block_count; i++) {
 		dma_block_cfg->dest_scatter_en = config->scatter;
 		dma_block_cfg->block_size = config->elem_array.elems[i].size;
-		dma_block_cfg->source_address = config->elem_array.elems[i].src;
-		dma_block_cfg->dest_address = config->elem_array.elems[i].dest;
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+			dma_block_cfg->source_address =
+				local_to_host(config->elem_array.elems[i].src);
+			dma_block_cfg->dest_address =
+				config->elem_array.elems[i].dest;
 			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
 			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
 		} else {
+			dma_block_cfg->source_address =
+				config->elem_array.elems[i].src;
+			dma_block_cfg->dest_address =
+				local_to_host(config->elem_array.elems[i].dest);
 			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
 			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
 		}
