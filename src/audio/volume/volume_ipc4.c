@@ -79,6 +79,8 @@ static uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
 
 static void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t target_volume)
 {
+	cd->ramp_finished = false;
+
 	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
 	 * converted into ms value required by firmware
 	 */
@@ -213,8 +215,6 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 	}
 
 	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
-	cd->ramp_finished = true;
-
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS) {
 		comp_err(dev, "Invalid channels count %u", channels_count);
@@ -232,8 +232,6 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 
 				volume_set_chan(mod, i, cd->tvolume[i], true);
 			}
-			if (cd->volume[i] != cd->tvolume[i])
-				cd->ramp_finished = false;
 		}
 	} else {
 		if (cd->muted[cdata.channel_id]) {
@@ -247,25 +245,12 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 			volume_set_chan(mod, cdata.channel_id,
 					cd->tvolume[cdata.channel_id], true);
 		}
-		if (cd->volume[cdata.channel_id] != cd->tvolume[cdata.channel_id])
-			cd->ramp_finished = false;
 	}
 
-	cd->is_passthrough = cd->ramp_finished;
-
-	for (i = 0; i < channels_count; i++) {
-		if (cd->volume[i] != VOL_ZERO_DB) {
-			cd->is_passthrough = false;
-			break;
-		}
-	}
-
+	cd->is_passthrough = false;
 	volume_set_ramp_channel_counter(cd, channels_count);
-
 	cd->scale_vol = vol_get_processing_function(dev, cd);
-
 	volume_prepare_ramp(dev, cd);
-
 	return 0;
 }
 
@@ -322,8 +307,6 @@ static int volume_set_switch(struct processing_module *mod, const uint8_t *data,
 
 	ctl = (struct sof_ipc4_control_msg_payload *)data;
 
-	cd->ramp_finished = true;
-
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS) {
 		comp_err(dev, "Invalid channels count %u", channels_count);
@@ -344,11 +327,13 @@ static int volume_set_switch(struct processing_module *mod, const uint8_t *data,
 			volume_set_chan_unmute(mod, i);
 		else
 			volume_set_chan_mute(mod, i);
-
-		if (cd->volume[i] != cd->tvolume[i])
-			cd->ramp_finished = false;
 	}
 
+	cd->ramp_finished = false;
+	cd->is_passthrough = false;
+	volume_set_ramp_channel_counter(cd, channels_count);
+	cd->scale_vol = vol_get_processing_function(dev, cd);
+	volume_prepare_ramp(dev, cd);
 	return 0;
 }
 
