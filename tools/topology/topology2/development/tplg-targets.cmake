@@ -12,11 +12,15 @@ set(TPLGS
 "cavs-sdw\;cavs-sdw-hdmi\;"
 
 # CAVS SSP topology for TGL
+# multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-tgl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec.bin,\
+SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
+# multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-nocodec.bin,PLATFORM=adl"
 
 # SDW topology for MTL
