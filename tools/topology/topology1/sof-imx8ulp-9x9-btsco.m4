@@ -75,10 +75,21 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
+# BCLK frequency is computed using the following formula:
+#	Freq(BCLK) = Freq(FSYNC) * TDM_SLOTS * TDM_SLOT_WIDTH
+#
+# For 8ULP this yields the following frequencies
+# (based on supported BT HFP configurations):
+#
+#	1) NBS (Freq(FSYNC) = 8k)
+#		Freq(BCLK) = 8k * 16 * 1 = 128000
+#
+#	2) WBS (Freq(FSYNC) = 16k)
+#		Freq(BCLK) = 16k * 16 * 1 = 256000
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
 DAI_CONFIG(SAI, 6, 0, sai6-bt-sco-pcm-wb,
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_out),
-		SAI_CLOCK(bclk, 256000, codec_consumer),
+		SAI_CLOCK(bclk, `eval(FSYNC_RATE * 16)', codec_consumer),
 		SAI_CLOCK(fsync, `FSYNC_RATE', codec_consumer),
 		SAI_TDM(1, 16, 1, 1),
 		SAI_CONFIG_DATA(SAI, 6, 0)))
