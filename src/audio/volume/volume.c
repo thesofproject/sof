@@ -252,7 +252,7 @@ void volume_set_ramp_channel_counter(struct vol_data *cd, uint32_t channels_coun
 	bool is_same_volume = true;
 
 	for (i = 1; i < channels_count; i++) {
-		if (cd->tvolume[0] != cd->tvolume[i]) {
+		if (cd->tvolume[0] != cd->tvolume[i] || cd->volume[0] != cd->volume[i]) {
 			is_same_volume = false;
 			break;
 		}
