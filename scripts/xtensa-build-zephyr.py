@@ -961,7 +961,7 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 	installed_files = [
 		# Fail if one of these is missing
 		InstFile(".config", "config", txt=True),
-		InstFile("misc/generated/configs.c", "generated_configs.c", txt=True),
+		InstFile("include/generated/autoconf.h", "generated_autoconf.h", txt=True),
 		InstFile("include/generated/version.h", "zephyr_version.h",
 			 gzip=False, txt=True),
 		InstFile("include/generated/sof_versions.h", "sof_versions.h",
@@ -1042,7 +1042,7 @@ CHECKSUM_WANTED = [
 	'dsp_basefw.bin',
 
 	'*version*.h',
-	'*configs.c', # deterministic unlike .config
+	'*autoconf.h', # .config has absolute paths in comments, this has not.
 	'*.toml', # rimage
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
 	'boot.mod', # no debug section -> no need to strip this ELF
