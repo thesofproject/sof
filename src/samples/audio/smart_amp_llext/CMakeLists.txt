@@ -20,8 +20,8 @@ sof_append_relative_path_definitions(${MODULE})
 
 target_include_directories(${MODULE} PRIVATE
 	"${ZEPHYR_BASE}/include"
-	"${ZEPHYR_BASE}/soc/xtensa/intel_adsp/common/include"
-	"${ZEPHYR_BASE}/soc/xtensa/intel_adsp/ace/include/intel_ace15_mtpm"
+	"${ZEPHYR_BASE}/soc/intel/intel_adsp/common/include"
+	"${ZEPHYR_BASE}/soc/intel/intel_adsp/ace/include/ace15_mtpm"
 	"${ZEPHYR_BASE}/../modules/hal/xtensa/include"
 	"${ZEPHYR_BASE}/../modules/hal/xtensa/zephyr/soc/intel_ace15_mtpm"
 	"${SOF_BASE}/src/include"
