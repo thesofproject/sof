@@ -1,0 +1,41 @@
+---
+
+name: Zephyr LLEXT
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [mtl, lnl]
+
+    steps:
+      - name: git clone sof
+        uses: actions/checkout@v4
+        with:
+          path: ./workspace/sof
+          fetch-depth: 0  # fix git describe
+          filter: 'tree:0'
+
+      - name: west clones
+        run: pip3 install west && cd workspace/sof/ && west init -l &&
+               west update --narrow --fetch-opt=--depth=5
+
+      - name: Download docker image && ls /opt/toolchains/
+        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+
+      - name: llext build
+        run: |
+          cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
+             'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
+              west build --board intel_adsp_ace15_mtpm sof/app              \
+              -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror     \
+              -DEXTRA_AFLAGS=-Werror \
+              -DOVERLAY_CONFIG=overlays/mtl/module_overlay.conf'
