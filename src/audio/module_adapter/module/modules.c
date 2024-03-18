@@ -136,7 +136,7 @@ static int modules_init(struct processing_module *mod)
 	}
 	comp_info(dev, "modules_init() start");
 
-	if (!md->module_adapter && md->ops == &interface) {
+	if (!md->llext || md->ops == &interface) {
 		/* First load */
 		ret = modules_new(mod, buildinfo, module_entry_point);
 		if (ret < 0)
