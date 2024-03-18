@@ -1078,8 +1078,9 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		struct sof_source *following_mod_data_source =
 				audio_stream_get_source(&buffer->stream);
 		struct sof_source *data_src = dp_queue_get_source(dp_queue);
-		uint32_t to_copy = MIN(source_get_min_available(following_mod_data_source),
-				       source_get_data_available(data_src));
+		uint32_t to_copy = MIN(MIN(source_get_min_available(following_mod_data_source),
+				       source_get_data_available(data_src)),
+				       sink_get_free_size(data_sink));
 
 		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
 		if (err) {
