@@ -100,6 +100,7 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			    bool last_block, uint32_t data_offset_size, const char *data)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	const struct comp_driver *const drv = mod->dev->drv;
 	struct module_data *md = &mod->priv;
 	enum module_cfg_fragment_position pos;
 	size_t fragment_size;
@@ -126,10 +127,10 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		return -EINVAL;
 	}
 
-	if (md->ops->set_configuration)
-		return md->ops->set_configuration(mod, param_id, pos, data_offset_size,
-						  (const uint8_t *)data,
-						  fragment_size, NULL, 0);
+	if (drv->adapter_ops->set_configuration)
+		return drv->adapter_ops->set_configuration(mod, param_id, pos, data_offset_size,
+							   (const uint8_t *)data, fragment_size,
+							   NULL, 0);
 	return 0;
 }
 EXPORT_SYMBOL(module_set_large_config);
@@ -138,6 +139,7 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			    bool last_block, uint32_t *data_offset_size, char *data)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
+	const struct comp_driver *const drv = mod->dev->drv;
 	struct module_data *md = &mod->priv;
 	size_t fragment_size;
 
@@ -154,9 +156,9 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 			fragment_size = md->cfg.size - *data_offset_size;
 	}
 
-	if (md->ops->get_configuration)
-		return md->ops->get_configuration(mod, param_id, data_offset_size,
-						  (uint8_t *)data, fragment_size);
+	if (drv->adapter_ops->get_configuration)
+		return drv->adapter_ops->get_configuration(mod, param_id, data_offset_size,
+							  (uint8_t *)data, fragment_size);
 	return 0;
 }
 EXPORT_SYMBOL(module_get_large_config);
@@ -251,10 +253,12 @@ uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
+	const struct comp_driver *const drv = mod->dev->drv;
 
-	if (md->ops->endpoint_ops && md->ops->endpoint_ops->get_total_data_processed)
-		return md->ops->endpoint_ops->get_total_data_processed(dev, stream_no, input);
+	if (drv->adapter_ops->endpoint_ops &&
+	    drv->adapter_ops->endpoint_ops->get_total_data_processed)
+		return drv->adapter_ops->endpoint_ops->get_total_data_processed(dev, stream_no,
+										input);
 
 	if (input)
 		return mod->total_data_produced;

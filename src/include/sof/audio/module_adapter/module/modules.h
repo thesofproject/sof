@@ -9,7 +9,6 @@
 #define __SOF_AUDIO_MODULES__
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <iadk_module_adapter.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
  * modules developed under IADK (Intel Audio Development Kit)
@@ -40,41 +39,7 @@
  * with version read from elf file.
  */
 
-
-struct comp_dev *modules_shim_new(const struct comp_driver *drv,
-				  const struct comp_ipc_config *config,
-				  const void *spec);
-
-static inline void declare_dynamic_module_adapter(struct comp_driver *drv,
-						  enum sof_comp_type mtype,
-						  const struct sof_uuid *uuid,
-						  struct tr_ctx *tr)
-{
-	drv->type = mtype;
-	drv->uid = uuid;
-	drv->tctx = tr;
-	drv->ops.create = modules_shim_new;
-	drv->ops.prepare = module_adapter_prepare;
-	drv->ops.params = module_adapter_params;
-	drv->ops.copy = module_adapter_copy;
-#if CONFIG_IPC_MAJOR_3
-	drv->ops.cmd = module_adapter_cmd;
-#endif
-	drv->ops.trigger = module_adapter_trigger;
-	drv->ops.reset = module_adapter_reset;
-	drv->ops.free = module_adapter_free;
-	drv->ops.set_large_config = module_set_large_config;
-	drv->ops.get_large_config = module_get_large_config;
-	drv->ops.get_attribute = module_adapter_get_attribute;
-	drv->ops.bind = module_adapter_bind;
-	drv->ops.unbind = module_adapter_unbind;
-	drv->ops.get_total_data_processed = module_adapter_get_total_data_processed;
-	drv->ops.dai_get_hw_params = module_adapter_get_hw_params;
-	drv->ops.position = module_adapter_position;
-	drv->ops.dai_ts_config = module_adapter_ts_config_op;
-	drv->ops.dai_ts_start = module_adapter_ts_start_op;
-	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
-	drv->ops.dai_ts_get = module_adapter_ts_get_op;
-}
+/* Processing Module Adapter API */
+extern const struct module_interface processing_module_adapter_interface;
 
 #endif /* __SOF_AUDIO_MODULES__ */

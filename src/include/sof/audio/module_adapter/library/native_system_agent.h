@@ -20,8 +20,7 @@ struct native_system_agent {
 	uint32_t module_size;
 };
 
-void *native_system_agent_start(uint32_t *sys_service,
-				uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
+void *native_system_agent_start(uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
 				uint32_t core_id, uint32_t log_handle, void *mod_cfg);
 
 #endif /* __NATIVE_SYSTEM_AGENT_H__ */

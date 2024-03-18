@@ -117,8 +117,17 @@ static inline struct lib_manager_mod_ctx *lib_manager_get_mod_ctx(int module_id)
 
 	return _ext_lib->desc[lib_id];
 }
-#endif
 
+/*
+ * \brief Get module manifest for given module id
+ *
+ * param[in] module_id - used to get library manifest
+ *
+ * Gets library manifest descriptor using module_id to locate it
+ */
+const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t module_id);
+#endif
+ 
 /*
  * \brief Initialize library manager
  */
@@ -142,7 +151,7 @@ int lib_manager_register_module(const uint32_t component_id);
  *
  * Gets firmware manifest descriptor using module_id to locate it
  */
-struct sof_man_fw_desc *lib_manager_get_library_module_desc(int module_id);
+const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
 
 struct processing_module;
 /*
@@ -157,7 +166,7 @@ struct processing_module;
  */
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config, const void **buildinfo);
+				      const void *ipc_specific_config);
 
 /*
  * \brief Free module
