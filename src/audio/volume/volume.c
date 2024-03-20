@@ -347,7 +347,8 @@ static inline void volume_ramp(struct processing_module *mod)
 		}
 	}
 
-	set_volume_process(cd, dev, true);
+	if (cd->is_passthrough)
+		set_volume_process(cd, dev, true);
 }
 
 /**
