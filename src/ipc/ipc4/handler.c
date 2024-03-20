@@ -251,6 +251,28 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 	struct ipc *ipc = ipc_get();
 	int host_id;
 
+	/* If the source component's direction is not set but the sink's direction is,
+	 * this block will copy the direction from the sink to the source component and
+	 * mark the source's direction as set.
+	 */
+	if (!ppl_icd->pipeline->source_comp->direction_set &&
+	    ppl_icd->pipeline->sink_comp->direction_set) {
+		ppl_icd->pipeline->source_comp->direction =
+			ppl_icd->pipeline->sink_comp->direction;
+		ppl_icd->pipeline->source_comp->direction_set = true;
+	}
+
+	/* If the sink component's direction is not set but the source's direction is,
+	 * this block will copy the direction from the source to the sink component and
+	 * mark the sink's direction as set.
+	 */
+	if (!ppl_icd->pipeline->sink_comp->direction_set &&
+	    ppl_icd->pipeline->source_comp->direction_set) {
+		ppl_icd->pipeline->sink_comp->direction =
+			ppl_icd->pipeline->source_comp->direction;
+		ppl_icd->pipeline->sink_comp->direction_set = true;
+	}
+
 	if (ppl_icd->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
 		host_id = ppl_icd->pipeline->source_comp->ipc_config.id;
 	else
