@@ -513,6 +513,9 @@ int volume_set_chan(struct processing_module *mod, int chan,
 	if (cd->ramp_type == SOF_VOLUME_LINEAR || cd->ramp_type == SOF_VOLUME_LINEAR_ZC)
 		set_linear_ramp_coef(cd, chan, constant_rate_ramp);
 
+	if (!cd->initial_ramp || cd->ramp_type == SOF_VOLUME_WINDOWS_NO_FADE)
+		cd->volume[chan] = v;
+
 	return 0;
 }
 
