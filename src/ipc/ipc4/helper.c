@@ -107,7 +107,7 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 		return NULL;
 
 	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp %d exists", comp_id);
+		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
 		return NULL;
 	}
 
@@ -129,7 +129,7 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
 #else /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	if (module_init->extension.r.proc_domain) {
-		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp %d", comp_id);
+		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
 		return NULL;
 	}
 	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
@@ -1031,7 +1031,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	icd->core = dev->ipc_config.core;
 	icd->id = dev->ipc_config.id;
 
-	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp %x", icd->id);
+	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp 0x%x", icd->id);
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 
