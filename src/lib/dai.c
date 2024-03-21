@@ -157,7 +157,7 @@ const struct device *dai_get_device(uint32_t type, uint32_t index)
 	int dir;
 	int i;
 
-	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
+	dir = (type == DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
 
 	for (i = 0; i < ARRAY_SIZE(zephyr_dev); i++) {
 		if (dai_config_get(zephyr_dev[i], &cfg, dir))
@@ -210,8 +210,44 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	const struct device *dev;
 	struct dai *d;
+	uint32_t z_type;
 
-	dev = dai_get_device(type, index);
+	switch (type) {
+	case SOF_DAI_INTEL_SSP:
+		z_type = DAI_INTEL_SSP;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		z_type = DAI_INTEL_DMIC;
+		break;
+	case SOF_DAI_INTEL_HDA:
+		z_type = DAI_INTEL_HDA;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		z_type = DAI_INTEL_ALH;
+		break;
+	case SOF_DAI_IMX_SAI:
+		z_type = DAI_IMX_SAI;
+		break;
+	case SOF_DAI_IMX_ESAI:
+		z_type = DAI_IMX_ESAI;
+		break;
+	case SOF_DAI_AMD_BT:
+		z_type = DAI_AMD_BT;
+		break;
+	case SOF_DAI_AMD_SP:
+		z_type = DAI_AMD_SP;
+		break;
+	case SOF_DAI_AMD_DMIC:
+		z_type = DAI_AMD_DMIC;
+		break;
+	case SOF_DAI_MEDIATEK_AFE:
+		z_type = DAI_MEDIATEK_AFE;
+		break;
+	default:
+		return NULL;
+	}
+
+	dev = dai_get_device(z_type, index);
 	if (!dev) {
 		tr_err(&dai_tr, "dai_get: failed to get dai with index %d type %d",
 		       index, type);
