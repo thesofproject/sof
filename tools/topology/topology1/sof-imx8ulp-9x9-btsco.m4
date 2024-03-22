@@ -88,8 +88,8 @@ PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #		Freq(BCLK) = 16k * 16 * 1 = 256000
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
 DAI_CONFIG(SAI, 6, 0, sai6-bt-sco-pcm-wb,
-	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_out),
-		SAI_CLOCK(bclk, `eval(FSYNC_RATE * 16)', codec_consumer),
+	SAI_CONFIG(DSP_A, SAI_CLOCK(mclk, 12288000, codec_mclk_out),
+		SAI_CLOCK(bclk, `eval(FSYNC_RATE * 16)', codec_consumer, inverted),
 		SAI_CLOCK(fsync, `FSYNC_RATE', codec_consumer),
 		SAI_TDM(1, 16, 1, 1),
 		SAI_CONFIG_DATA(SAI, 6, 0)))
