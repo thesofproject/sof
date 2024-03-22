@@ -59,10 +59,10 @@ set(TPLGS
 	## end i.MX8MP topologies
 
 	## i.MX8ULP topologies
-	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco\;-DRATE=8000"
-	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco-16k\;-DRATE=16000"
-	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco\;-DRATE=8000"
-	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco-16k\;-DRATE=16000"
+	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco\;-DFSYNC_RATE=8000"
+	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco-16k\;-DFSYNC_RATE=16000"
+	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco\;-DFSYNC_RATE=8000"
+	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco-16k\;-DFSYNC_RATE=16000"
 	## end i.MX8ULP topologies
 
 	## i.MX93 topologies
