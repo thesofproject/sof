@@ -38,7 +38,4 @@ enum sof_ipc4_aec_config_params {
 	IPC4_AEC_SET_EXT_FMT,
 };
 
-#define SOF_AEC_DMIC_QUEUE_ID 0
-#define SOF_AEC_FEEDBACK_QUEUE_ID 1
-
 #endif
