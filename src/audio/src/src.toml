@@ -2,18 +2,18 @@
 	name = "SRC"
 	uuid = "E61BB28D-149A-4C1F-B709-46823EF5F5AE"
 	affinity_mask = "0x1"
-	//instance_count = "10"
+	REM #instance_count = "10"
 	domain_types = "0"
 	load_type = "0"
 	module_type = "7"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
-	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
 	pin = [0, 0, 0xffff, 0xc, 0x8, 0x05ff,
 			1, 0, 0xf6c9, 0xc, 0x8, 0x05ff]
 
-	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [1, 0, 0, 0, 12832, 15976000, 128, 512, 0, 15976, 0,
 			2, 0, 0, 0, 12832, 15340000, 64, 256, 0, 15340, 0,
 			3, 0, 0, 0, 12832, 21880000, 96, 512, 0, 21880, 0,

@@ -1,6 +1,6 @@
-	// Crossover module config
-	// Note: Crossover has init_config set to 1 to let kernel know that the base_cfg_ext needs to
-	// be appended to the IPC payload. The Extension is needed to know the output pin indices.
+	REM # Crossover module config
+	REM # Note: Crossover has init_config set to 1 to let kernel know that the base_cfg_ext needs to
+	REM # be appended to the IPC payload. The Extension is needed to know the output pin indices.
 	[[module.entry]]
 	name = "XOVER"
 	uuid = "948C9AD1-806A-4131-AD6C-B2BDA9E35A9F"
@@ -12,9 +12,9 @@
 	init_config = "1"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
-	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
 	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
-	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
 
 	index = __COUNTER__

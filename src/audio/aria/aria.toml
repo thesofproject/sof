@@ -1,4 +1,4 @@
-	// Aria module config
+	REM # Aria module config
 	[[module.entry]]
 	name = "ARIA"
 	uuid = "99F7166D-372C-43EF-81F6-22007AA15F03"
@@ -11,11 +11,11 @@
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
-	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
 	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
 			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
 
-	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 260, 1063000, 16, 21, 0, 0, 0,
 				1, 0, 0, 0, 260, 1873500, 192, 256, 0, 0, 0,
 				2, 0, 0, 0, 260, 2680000, 32, 42, 0, 0, 0,

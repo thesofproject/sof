@@ -1,5 +1,5 @@
 
-	// IGO_NR module config
+	REM # IGO_NR module config
 	[[module.entry]]
 	name = "IGO_NR"
 	uuid = "696AE2BC-2877-11EB-ADC1-0242AC120002"
@@ -10,9 +10,9 @@
 	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
-	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
 	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
-	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
 
 	index = __COUNTER__

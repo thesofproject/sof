@@ -9,11 +9,11 @@
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 
-	// pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
 	pin = [0, 0, 0xffff, 0xc, 0x8, 0x05ff,
 			1, 0, 0xffff, 0xc, 0x8, 0x45ff]
 
-	// mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
 	mod_cfg = [1, 0, 0, 0, 216, 5044000, 384, 192, 0, 5044, 0,
 			2, 0, 0, 0, 216, 2660000, 384, 384, 0, 2660, 0,
 			3, 0, 0, 0, 216, 3164000, 576, 384, 0, 3164, 0,
