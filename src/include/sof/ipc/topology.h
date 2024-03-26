@@ -47,7 +47,7 @@ typedef uint32_t ipc_comp;
 #define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
 
 struct ipc_comp_dev;
-const struct comp_driver *ipc4_get_comp_drv(int module_id);
+const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id);
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);
 int ipc4_add_comp_dev(struct comp_dev *dev);
 const struct comp_driver *ipc4_get_drv(const uint8_t *uuid);
