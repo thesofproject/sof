@@ -848,12 +848,38 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 
 	/* calculate DMA buffer size */
 	period_count = dd->dma->plat_data.period_count;
+
+#if CONFIG_IPC_MAJOR_4
+	/* Use ibs/obs from copier gtw config to calculate DMA buffer length in ms.
+	 * This is used to calculate correct period count value.
+	 * It is especially important for FW aggregation use case, when Copier
+	 * receives whole DMA buffer size in GTW config but should be able to
+	 * allocate multiple DMA's implicitly.
+	 * E.g. if dma_buffer_size received in Copier GTW config is 7680 bytes and FW
+	 * should aggregate two streams 1ch/24_32bit/48kHz and 3ch/24_32bit/48kHz into one
+	 * 4ch/24_32bit/48kHz stream, then FW will have to allocate two DMA's with sizes
+	 * 1920 and 5760 bytes respectively and same 10 ms length (period_count) for both
+	 * to avoid glitches.
+	 */
+	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
+	uint32_t dma_buff_length_ms;
+
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		dma_buff_length_ms = dd->ipc_config.dma_buffer_size / copier_cfg->base.ibs;
+	else
+		dma_buff_length_ms = dd->ipc_config.dma_buffer_size / copier_cfg->base.obs;
+
+	period_count = MAX(period_count, dma_buff_length_ms);
+#else
+	period_count = MAX(period_count,
+			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 	if (!period_count) {
 		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
 		return -EINVAL;
 	}
-	period_count = MAX(period_count,
-			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 	*pc = period_count;
 
