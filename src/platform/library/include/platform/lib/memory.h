@@ -49,8 +49,8 @@ static inline void *platform_rfree_prepare(void *ptr)
 	return ptr;
 }
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
+#define platform_uncache_to_cache(addr)	((__sparse_force void __sparse_cache *)addr)
+#define platform_cache_to_uncache(addr)	((__sparse_force void *)addr)
 #define is_uncached(address)		1
 #define cache_to_uncache_init(address)	address
 

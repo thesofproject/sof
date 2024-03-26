@@ -206,8 +206,8 @@ struct sof;
 
 void platform_init_memmap(struct sof *sof);
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
+#define platform_uncache_to_cache(addr)	((__sparse_force void __sparse_cache *)addr)
+#define platform_cache_to_uncache(addr)	((__sparse_force void *)addr)
 #define cache_to_uncache_init(address)	address
 #define is_uncached(address)		0
 

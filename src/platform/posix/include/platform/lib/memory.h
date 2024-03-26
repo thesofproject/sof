@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 #define PLATFORM_DCACHE_ALIGN 64
-#define uncache_to_cache(addr) (addr)
-#define cache_to_uncache(addr) (addr)
+#define platform_uncache_to_cache(addr)	((__sparse_force void __sparse_cache *)addr)
+#define platform_cache_to_uncache(addr)	((__sparse_force void *)addr)
 
 extern uint8_t posix_hostbox[];
 #define MAILBOX_HOSTBOX_SIZE 1024

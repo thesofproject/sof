@@ -140,9 +140,9 @@
 
 #define SOF_MEM_RO_SIZE			0x8
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)			0
+#define platform_uncache_to_cache(addr)	((__sparse_force void __sparse_cache *)addr)
+#define platform_cache_to_uncache(addr)	((__sparse_force void *)addr)
+#define is_uncached(address)		0
 
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
