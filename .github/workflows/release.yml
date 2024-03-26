@@ -1,0 +1,25 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches-ignore:
+      - main
+
+name: Validate
+
+# this job runs the following script
+# https://github.com/cujomalainey/cherry-pick-check/blob/main/entrypoint.sh
+
+jobs:
+  check:
+    name: Check Cherry Picks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check all commits exist in main
+        uses: cujomalainey/cherry-pick-check@v1
+        with:
+          require_ref: true
+          main_branch: main
