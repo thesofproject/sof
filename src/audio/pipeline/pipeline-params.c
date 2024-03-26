@@ -32,7 +32,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int err = 0;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	/* check if 'current' is already configured */
@@ -82,7 +82,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 	int stream_direction = ppl_data->params->params.direction;
 	int err;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_params(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "pipeline_comp_params(), current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	/* Don't propagate to pipelines in the opposite direction */
@@ -132,7 +132,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int ret;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	ret = pipeline_for_each_comp(current, ctx, dir);
@@ -227,14 +227,14 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = %u",
+		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 		return ret;
 	}
 
 	ret = buf_param_ctx.comp_func(host, NULL, &buf_param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = %u",
+		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 		return ret;
 	}
@@ -245,7 +245,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = param_ctx.comp_func(host, NULL, &param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, host->comp.id = %u",
+		pipe_err(p, "pipeline_params(): ret = %d, host->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 	}
 
@@ -263,7 +263,7 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int err;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "pipeline_comp_prepare(), current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
@@ -308,7 +308,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ret = walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
+		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}

@@ -205,7 +205,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id %d failed",
+		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id 0x%x failed",
 		       comp_id);
 		return -EINVAL;
 	}
@@ -233,14 +233,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	/* find the scheduling component */
 	icd = ipc_get_comp_by_id(ipc, p->sched_id);
 	if (!icd) {
-		tr_warn(&ipc_tr, "ipc_pipeline_complete(): no scheduling component specified, use comp %d",
+		tr_warn(&ipc_tr, "ipc_pipeline_complete(): no scheduling component specified, use comp 0x%x",
 			ipc_ppl_sink->id);
 
 		icd = ipc_ppl_sink;
 	}
 
 	if (icd->core != ipc_pipe->core) {
-		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->core (%d) != ipc_pipe->core (%d) for pipeline scheduling component icd->id %d",
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->core (%d) != ipc_pipe->core (%d) for pipeline scheduling component icd->id 0x%x",
 		       icd->core, ipc_pipe->core, icd->id);
 		return -EINVAL;
 	}
@@ -249,7 +249,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	pipeline_id = ipc_pipe->pipeline->pipeline_id;
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
+	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp 0x%x", pipeline_id,
 	       comp_id);
 
 	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
@@ -265,7 +265,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
 	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not found",
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: 0x%x is not found",
 		       comp_id);
 		return -ENODEV;
 	}
@@ -276,7 +276,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check state */
 	if (icd->cd->state != COMP_STATE_READY) {
-		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d state is %d cannot be freed",
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: 0x%x state is %d cannot be freed",
 		       comp_id, icd->cd->state);
 		return -EINVAL;
 	}
@@ -291,7 +291,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		 * leak on error.  Bug-free host drivers won't do
 		 * this, this was found via fuzzing.
 		 */
-		tr_err(&ipc_tr, "ipc_comp_free(): uninitialized buffer lists on comp %d\n",
+		tr_err(&ipc_tr, "ipc_comp_free(): uninitialized buffer lists on comp 0x%x\n",
 		       icd->id);
 		return -EINVAL;
 	}
