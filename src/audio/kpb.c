@@ -2562,6 +2562,69 @@ static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_t
 }
 #endif
 
+#include "adsp_debug_window.h"
+
+struct adsp_telemetry_window{
+	uint8_t data;
+};
+
+#define ADSP_TW ((volatile struct adsp_telemetry_window *) \
+		 (z_soc_uncached_ptr((__sparse_force void __sparse_cache *) \
+				     (WIN0_MBASE + WIN0_OFFSET))))
+
+struct adsp_debug_slot {
+	uint32_t host_ptr;
+	uint32_t dsp_ptr;
+	uint8_t data[ADSP_DW_SLOT_SIZE - sizeof(uint32_t) * 2];
+} __packed;
+
+ void letrace()
+{
+	struct adsp_debug_slot *slot = (struct adsp_debug_slot *)(ADSP_DW->slots[0]);
+	uint8_t *data = slot->data;
+	uint32_t r = slot->host_ptr;
+	uint32_t w = slot->dsp_ptr;
+	size_t avail, out;
+
+	memcpy(data + sizeof(uint32_t) * 2, "XXXX", 4);
+
+//	if (w > r) {
+//		avail = MTRACE_LOG_BUF_SIZE - w + r - 1;
+//	} else if (w == r) {
+//		avail = MTRACE_LOG_BUF_SIZE - 1;
+//	} else {
+//		avail = r - w - 1;
+//	}
+//
+//	if (len == 0) {
+//		out = 0;
+//		goto out;
+//	}
+//
+//	/* data that does not fit is dropped */
+//	out = MIN(avail, len);
+//
+//	if (w + out >= MTRACE_LOG_BUF_SIZE) {
+//		size_t tail = MTRACE_LOG_BUF_SIZE - w;
+//		size_t head = out - tail;
+//
+//		memcpy(data + w, str, tail);
+//		memcpy(data, str + tail, head);
+//		w = head;
+//	} else {
+//		memcpy(data + w, str, out);
+//		w += out;
+//	}
+//
+//	slot->dsp_ptr = w;
+//
+//out:
+//	if (space_left) {
+//		*space_left = avail > len ? avail - len : 0;
+//	}
+
+}
+
 static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
 				bool last_block,
@@ -2574,6 +2637,27 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	comp_info(dev, "kpb_set_large_config()");
 
 	extended_param_id.full = param_id;
+
+		//uint32_t * addr = ADSP_DW_SLOT_TELEMETRY;
+		//uint32_t * addr = 0x4c455400;
+
+	//uint32_t * addr = 0x00025000;
+	volatile uint32_t * addr;
+
+
+//	addr = (uint32_t *)0xa0024000; // from macros
+//	*addr = 0x69696969; //search for "iiii"
+//	addr = (uint32_t *)0x00025000; // 24000 was found as beginning of window0 in register
+//	*addr = 0x69696969; //search for "iiii"
+//	addr = (uint32_t *)0x71a00; //found in defines as window0
+//	*addr = 0x69696969; //search for "iiii"
+	letrace();
+	volatile int kek = 1;
+	while(kek){
+
+	}
+
+
 
 	switch (extended_param_id.part.parameter_type) {
 #ifdef CONFIG_IPC_MAJOR_4
