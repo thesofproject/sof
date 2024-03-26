@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <ipc4/base_fw.h>
 
 /** \addtogroup schedule_api Schedule API
  *  @{
@@ -398,6 +399,15 @@ int schedule_task_init(struct task *task,
  * @param data Scheduler's private data.
  */
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data);
+
+/**
+ * Extract scheduler's task information from tasks
+ * @param scheduler_props Structure to be filled
+ * @param data_off_size Pointer to the current size of the scheduler_props, to be updated
+ * @param tasks Scheduler's task list
+ */
+void scheduler_get_task_info(struct scheduler_props *scheduler_props,
+			     uint32_t *data_off_size, struct list_item *tasks);
 
 /** @}*/
 

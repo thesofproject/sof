@@ -16,6 +16,18 @@
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 #include <intel_adsp_hda.h>
 #endif
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/debug/telemetry/telemetry.h>
+/* FIXME:
+ * Builds for dome platforms like tgl fail because their defines related to memory windows are
+ * already defined somewhere else. Remove this ifdef after it's cleaned up
+ */
+#ifdef CONFIG_SOF_TELEMETRY
+#include "mem_window.h"
+#include "adsp_debug_window.h"
+#endif
 
 #if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
 #include <zephyr/device.h>
@@ -455,6 +467,70 @@ static int basefw_set_fw_config(bool first_block,
 	return 0;
 }
 
+int schedulers_info_get(uint32_t *data_off_size,
+			char *data,
+			uint32_t core_id)
+{
+	/* TODO
+	 * Core id parameter is not yet used. For now we only get scheduler info from current core
+	 * Other cores info can be added by implementing idc request for this data.
+	 * Do this if Schedulers info get ipc has uses for accurate info per core
+	 */
+
+	struct scheduler_props *scheduler_props;
+	/* the internal structs have irregular sizes so we cannot use indexing, and have to just
+	 *  to reassign pointers for each element
+	 */
+	struct schedulers_info *schedulers_info = (struct schedulers_info *)data;
+
+	schedulers_info->scheduler_count = 0;
+
+	/* smallest response possible is just zero schedulers count
+	 * here we replace max_len from data_off_size to serve as output size
+	 */
+	*data_off_size = sizeof(struct schedulers_info);
+
+	/* ===================== LL_TIMER SCHEDULER INFO ============================ */
+	schedulers_info->scheduler_count++;
+	scheduler_props = (struct scheduler_props *)(data + *data_off_size);
+	scheduler_get_task_info_ll(scheduler_props, data_off_size);
+
+	/* ===================== DP SCHEDULER INFO ============================ */
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	schedulers_info->scheduler_count++;
+	scheduler_props = (struct scheduler_props *)(data + *data_off_size);
+	scheduler_get_task_info_dp(scheduler_props, data_off_size);
+#endif
+	return 0;
+}
+
+int set_perf_meas_state(const char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY
+	enum ipc4_perf_measurements_state_set state = *data;
+
+	struct telemetry_wnd_data *wnd_data =
+			(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
+	struct system_tick_info *systick_info =
+			(struct system_tick_info *)wnd_data->system_tick_info;
+
+	switch (state) {
+	case IPC4_PERF_MEASUREMENTS_DISABLED:
+		break;
+	case IPC4_PERF_MEASUREMENTS_STOPPED:
+		for (int i = 0; i < CONFIG_MAX_CORE_COUNT; i++)
+			systick_info[i].peak_utilization = 0;
+		break;
+	case IPC4_PERF_MEASUREMENTS_STARTED:
+	case IPC4_PERF_MEASUREMENTS_PAUSED:
+		break;
+	default:
+		return -EINVAL;
+	}
+#endif
+	return IPC4_SUCCESS;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -462,9 +538,14 @@ static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t *data_offset,
 				   char *data)
 {
+	/* We can use extended param id for both extended and standard param id */
+	union ipc4_extended_param_id extended_param_id;
+
+	extended_param_id.full = param_id;
+
 	uint32_t ret = -EINVAL;
 
-	switch (param_id) {
+	switch (extended_param_id.part.parameter_type) {
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
 		break;
@@ -473,7 +554,7 @@ static int basefw_get_large_config(struct comp_dev *dev,
 			return -EINVAL;
 	}
 
-	switch (param_id) {
+	switch (extended_param_id.part.parameter_type) {
 	case IPC4_FW_CONFIG:
 		return basefw_config(data_offset, data);
 	case IPC4_HW_CONFIG_GET:
@@ -493,13 +574,15 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	break;
 	case IPC4_POWER_STATE_INFO_GET:
 		return basefw_power_state_info_get(data_offset, data);
+	case IPC4_SCHEDULERS_INFO_GET:
+		return schedulers_info_get(data_offset, data,
+					 extended_param_id.part.parameter_instance);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
 	case IPC4_MODULES_INFO_GET:
 	case IPC4_PIPELINE_LIST_INFO_GET:
 	case IPC4_PIPELINE_PROPS_GET:
-	case IPC4_SCHEDULERS_INFO_GET:
 	case IPC4_GATEWAYS_INFO_GET:
 	case IPC4_LIBRARIES_INFO_GET:
 	case IPC4_PERF_MEASUREMENTS_STATE:
@@ -522,6 +605,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
+	case IPC4_PERF_MEASUREMENTS_STATE:
+		return set_perf_meas_state(data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);

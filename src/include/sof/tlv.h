@@ -25,6 +25,11 @@ struct sof_tlv {
 	char value[];
 } __packed __aligned(4);
 
+struct sof_tl {
+	uint32_t type;
+	uint32_t max_length;
+} __packed __aligned(4);
+
 /**
  * @brief Allows to step through successive values in a sequence of TLV structures.
  *

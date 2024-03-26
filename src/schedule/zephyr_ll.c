@@ -14,6 +14,8 @@
 #include <rtos/task.h>
 #include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
+#include <ipc4/base_fw.h>
+#include <sof/debug/telemetry/telemetry.h>
 
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -251,6 +253,19 @@ static void zephyr_ll_run(void *data)
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 }
 
+static void schedule_ll_callback(void *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY
+	const uint32_t begin_count = (uint32_t)sof_cycle_get_64();
+#endif
+	zephyr_ll_run(data);
+#ifdef CONFIG_SOF_TELEMETRY
+	const uint32_t current_count = (uint32_t)sof_cycle_get_64();
+
+	telemetry_update(begin_count, current_count);
+#endif
+}
+
 /*
  * Called once for periodic tasks or multiple times for one-shot tasks
  * TODO: start should be ignored in Zephyr LL scheduler implementation. Tasks
@@ -326,7 +341,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	zephyr_ll_unlock(sch, &flags);
 
-	ret = domain_register(sch->ll_domain, task, &zephyr_ll_run, sch);
+	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
 	if (ret < 0)
 		tr_err(&ll_tr, "zephyr_ll_task_schedule: cannot register domain %d",
 		       ret);
@@ -526,4 +541,18 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);
 
 	return 0;
+}
+
+void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
+				uint32_t *data_off_size)
+{
+	uint32_t flags;
+
+	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_LL;
+	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	zephyr_ll_lock(ll_sch, &flags);
+	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
+	zephyr_ll_unlock(ll_sch, &flags);
+
 }

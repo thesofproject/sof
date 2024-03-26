@@ -17,6 +17,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
+#include <ipc4/base_fw.h>
 
 struct ll_schedule_domain;
 
@@ -53,5 +54,14 @@ int zephyr_ll_task_init(struct task *task,
 #define schedule_task_init_ll zephyr_ll_task_init
 
 #endif
+
+/**
+ * \brief Extract information about scheduler's tasks
+ *
+ * \param scheduler_props Structure to be filled
+ * \param data_off_size Pointer to the current size of the scheduler_props, to be updated
+ */
+void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
+				uint32_t *data_off_size);
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */
