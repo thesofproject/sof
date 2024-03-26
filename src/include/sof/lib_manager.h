@@ -84,6 +84,7 @@ struct ipc_lib_msg {
 struct lib_manager_mod_ctx {
 	void *base_addr;
 	size_t segment_size[3];
+	struct llext *llext;
 };
 
 struct ext_library {
