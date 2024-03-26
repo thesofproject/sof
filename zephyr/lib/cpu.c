@@ -17,7 +17,7 @@
 #include <rtos/alloc.h>
 
 /* Zephyr includes */
-#include <version.h>
+#include <zephyr/version.h>
 #include <zephyr/kernel.h>
 #include <zephyr/kernel/smp.h>
 #include <zephyr/device.h>
