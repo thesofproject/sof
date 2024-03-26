@@ -192,13 +192,16 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 void init_system_notify(struct sof *sof)
 {
 	struct notify **notify = arch_notify_get();
+	struct list_item *list;
 	int i;
 	*notify = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
 			  sizeof(**notify));
 
 	k_spinlock_init(&(*notify)->lock);
-	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
-		list_init(&(*notify)->list[i]);
+	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++) {
+		list = &(*notify)->list[i];
+		list_init(list);
+	}
 
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
 		sof->notify_data = platform_shared_get(notify_data_shared,
