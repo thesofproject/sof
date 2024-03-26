@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>
 #include <platform/lib/ll_schedule.h>
@@ -533,8 +534,8 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 {
 	int count = 1;
 	struct ipc_comp_dev *icd;
-	struct comp_dev *cd;
-	struct dai_data *dd;
+	struct comp_dev *file_dev;
+	struct processing_module *file_mod;
 	struct pipeline *p;
 	struct file_comp_data *frcd, *fwcd;
 	long long file_cycles, pipeline_cycles;
@@ -548,9 +549,9 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 		fprintf(stderr, "error: failed to get pointers to filewrite\n");
 		exit(EXIT_FAILURE);
 	}
-	cd = icd->cd;
-	dd = comp_get_drvdata(cd);
-	fwcd = comp_get_drvdata(dd->dai);
+	file_dev = icd->cd;
+	file_mod = comp_get_drvdata(file_dev);
+	fwcd = module_get_private_data(file_mod);
 
 	/* Get pointer to fileread */
 	icd = ipc_get_comp_by_id(sof_get()->ipc, tp->fr_id);
@@ -558,9 +559,9 @@ static void test_pipeline_stats(struct testbench_prm *tp,
 		fprintf(stderr, "error: failed to get pointers to fileread\n");
 		exit(EXIT_FAILURE);
 	}
-	cd = icd->cd;
-	dd = comp_get_drvdata(cd);
-	frcd = comp_get_drvdata(dd->dai);
+	file_dev = icd->cd;
+	file_mod = comp_get_drvdata(file_dev);
+	frcd = module_get_private_data(file_mod);
 
 	/* Run pipeline until EOF from fileread */
 	icd = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
