@@ -9,8 +9,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <user/trace.h>
+#ifndef SOF_MODULE_API_PRIVATE
 #include <rtos/string.h>
-
+#endif /* SOF_MODULE_API_PRIVATE */
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
 #endif /* __ZEPHYR__ */

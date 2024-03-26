@@ -12,7 +12,9 @@
 
 #ifndef __SOF_AUDIO_MODULE_GENERIC__
 #define __SOF_AUDIO_MODULE_GENERIC__
-
+#include <stdint.h>
+#include <sof/list.h>
+#ifndef SOF_MODULE_API_PRIVATE
 #include <sof/audio/component.h>
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
@@ -30,8 +32,9 @@
 #define IS_PROCESSING_MODE_SINK_SOURCE(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_SOURCE_SINK)
 
 #define MAX_BLOB_SIZE 8192
+#endif /* SOF_MODULE_API_PRIVATE */
 #define MODULE_MAX_SOURCES 8
-
+#ifndef SOF_MODULE_API_PRIVATE
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
 		ret = (cd)->api((cd)->self, \
@@ -87,7 +90,7 @@ UT_STATIC void sys_comp_module_##adapter##_init(void) \
 } \
 \
 DECLARE_MODULE(sys_comp_module_##adapter##_init)
-
+#endif /* SOF_MODULE_API_PRIVATE */
 /**
  * \enum module_state
  * \brief Module-specific states
@@ -141,6 +144,7 @@ struct module_processing_data {
 	void *out_buff; /**< A pointer to module output buffer. */
 };
 
+#ifndef SOF_MODULE_API_PRIVATE
 /*
  * Definition used to extend structure definitions to include fields for exclusive use by SOF.
  * This is a temporary solution used until work on separating a common interface for loadable
@@ -320,4 +324,5 @@ void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_str
 int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev,
 			     int cmd);
 int module_adapter_sink_src_prepare(struct comp_dev *dev);
+#endif /* SOF_MODULE_API_PRIVATE */
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */

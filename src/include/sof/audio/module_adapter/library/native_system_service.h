@@ -7,8 +7,9 @@
 #define NATIVE_SYSTEM_SERVICE_H
 
 #include <stdint.h>
-
+#ifndef SOF_MODULE_API_PRIVATE
 #include "logger.h"
+#endif
 #include "adsp_stddef.h"
 #include <module/iadk/adsp_error_code.h>
 
