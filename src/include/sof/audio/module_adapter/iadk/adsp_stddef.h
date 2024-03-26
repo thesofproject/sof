@@ -9,8 +9,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <user/trace.h>
+#ifndef MODULE_PRIVAT
 #include <rtos/string.h>
-
+#endif /* MODULE_PRIVAT */
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
 #endif /* __ZEPHYR__ */
