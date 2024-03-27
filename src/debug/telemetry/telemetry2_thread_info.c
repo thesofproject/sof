@@ -65,6 +65,7 @@ static struct previous_counters { // Cached data from previous round
  * k_thread_foreach_current_cpu().
  */
 struct user_data {
+	int core;
 	struct thread_info_core *core_data;
 	int thread_count;
 #ifdef CONFIG_THREAD_RUNTIME_STATS
@@ -88,23 +89,24 @@ static uint32_t get_cycles(void *tid, k_thread_runtime_stats_t *thread_stats,
 {
 	int i;
 
-	ud->active_threads[ud->thread_count] = tid; // Mark the thread as active
-	// look for cached value from previous round for 'tid'-thread
+	/* Mark the thread as active */
+	ud->active_threads[ud->thread_count] = tid;
+	/* look for cached value from previous round for 'tid'-thread */
 	for (i = 0; i < ARRAY_SIZE(ud->previous->threads); i++) {
 		if (ud->previous->threads[i].tid == tid) {
-			// Calculate number cycles since previous round
+			/* Calculate number cycles since previous round */
 			uint32_t cycles = (uint32_t) (thread_stats->execution_cycles -
 						      ud->previous->threads[i].cycles);
 
 			LOG_DBG("%p found at %d (%s %llu)", tid, i,
 				name, thread_stats->execution_cycles);
-			// updare cached value
+			/* update cached value */
 			ud->previous->threads[i].cycles = thread_stats->execution_cycles;
 			return cycles;
 		}
 	}
 
-	// If no cached value was found, look for an empty slot to store the recent value
+	/* If no cached value was found, look for an empty slot to store the recent value */
 	for (i = 0; i < ARRAY_SIZE(ud->previous->threads); i++) {
 		if (ud->previous->threads[i].tid == NULL) {
 			ud->previous->threads[i].tid = tid;
@@ -115,11 +117,11 @@ static uint32_t get_cycles(void *tid, k_thread_runtime_stats_t *thread_stats,
 		}
 	}
 
-	// If there is more than THREAD_INFO_MAX_THREADS threads in the system
+	/* If there is more than THREAD_INFO_MAX_THREADS threads in the system */
 	if (i == ARRAY_SIZE(ud->previous->threads))
 		LOG_INF("No place found for %s %p", name, tid);
 
-	// If there was no previous counter value to compare, return 0 cycles.
+	/* If there was no previous counter value to compare, return 0 cycles. */
 	return 0;
 }
 
@@ -144,7 +146,7 @@ static uint8_t thread_info_cpu_utilization(struct k_thread *thread,
 }
 #else
 static uint8_t thread_info_cpu_utilization(struct k_thread *thread,
-					   struct user_data *ud)
+					   struct user_data *ud, const char *name)
 {
 	return 0;
 }
@@ -220,18 +222,18 @@ static void cleanup_old_thread_cycles(struct user_data *ud)
 	for (i = 0; i < ARRAY_SIZE(ud->previous->threads); i++) {
 		bool found = false;
 
-		// This entry is already free, continue
+		/* This entry is already free, continue */
 		if (ud->previous->threads[i].tid == NULL)
 			continue;
 
-		// Check if the thread is any more active
+		/* Check if the thread was seen on previous round */
 		for (j = 0; j < ud->thread_count; j++) {
 			if (ud->active_threads[j] == ud->previous->threads[i].tid) {
 				found = true;
 				break;
 			}
 		}
-		// If the thead is not any more active, mark the entry free
+		/* If the thead is not any more active, mark the entry free */
 		if (!found) {
 			ud->previous->threads[i].tid = NULL;
 			ud->previous->threads[i].cycles = 0;
@@ -242,20 +244,21 @@ static void cleanup_old_thread_cycles(struct user_data *ud)
 static void cleanup_old_thread_cycles(struct user_data *ud) { }
 #endif
 
-static void thread_info_get(struct thread_info_core *core_data)
+static void thread_info_get(int core, struct thread_info_core *core_data)
 {
 	k_thread_runtime_stats_t core_stats;
 	struct user_data ud = {
+		.core = core,
 		.core_data = core_data,
 		.thread_count = 0,
 #ifdef CONFIG_THREAD_RUNTIME_STATS
-		.previous = &previous[arch_curr_cpu()->id],
+		.previous = &previous[core],
 		.active_threads = { NULL },
 #endif
 	};
 	uint8_t load = 0;
 #ifdef CONFIG_THREAD_RUNTIME_STATS
-	int ret = k_thread_runtime_stats_current_cpu_get(&core_stats);
+	int ret = k_thread_runtime_stats_cpu_get(core, &core_stats);
 
 	if (ret == 0) {
 		uint32_t active_cycles = (uint32_t) (core_stats.total_cycles -
@@ -265,7 +268,7 @@ static void thread_info_get(struct thread_info_core *core_data)
 
 		ud.stats_valid = true;
 		load = (uint8_t) ((255LLU * active_cycles) / all_cycles);
-		LOG_DBG("Core %u load %u / %u total %llu / %llu", arch_curr_cpu()->id,
+		LOG_DBG("Core %u load %u / %u total %llu / %llu", core,
 			active_cycles, all_cycles,
 			core_stats.total_cycles, core_stats.execution_cycles);
 		ud.previous->active = core_stats.total_cycles;
@@ -276,7 +279,8 @@ static void thread_info_get(struct thread_info_core *core_data)
 	core_data->state = THREAD_INFO_STATE_BEING_UPDATED;
 
 	core_data->load = load;
-	k_thread_foreach_current_cpu(thread_info_cb, &ud);
+	/* This is best effort debug tool. Unlocked version should be fine. */
+	k_thread_foreach_unlocked_filter_by_cpu(core, thread_info_cb, &ud);
 
 	cleanup_old_thread_cycles(&ud);
 
@@ -292,7 +296,7 @@ static void thread_info_run(void *data, void *cnum, void *a)
 	struct thread_info_core *core_data = &chunk->core[core];
 
 	for (;;) {
-		thread_info_get(core_data);
+		thread_info_get(core, core_data);
 		k_sleep(K_SECONDS(CONFIG_SOF_TELEMETRY2_THREAD_INFO_INTERVAL));
 	}
 }
