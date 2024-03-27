@@ -53,7 +53,16 @@ target_compile_options(${MODULE} PRIVATE
 	-save-temps -O2
 )
 
+if("${ZEPHYR_TOOLCHAIN_VARIANT}" STREQUAL "zephyr")
 set(MODULE_LINKER_PARAMS -nostdlib -nodefaultlibs)
+set(EXTRA_LINKED_PARAMS -shared)
+set(COPY_CMD ${CMAKE_STRIP} -R .xt.* -o ${MODULE}_out.so ${MODULE}_llext.so)
+else()
+set(MODULE_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
+set(EXTRA_LINKED_PARAMS)
+set(COPY_CMD ${CMAKE_OBJCOPY} -R .xt.* ${MODULE}_llext.so ${MODULE}_out.so)
+endif()
+
 target_link_options(${MODULE} PRIVATE
 	${MODULE_LINKER_PARAMS}
 )
@@ -62,9 +71,9 @@ add_custom_command(OUTPUT lib${MODULE}_out.so
 	DEPENDS ${MODULE}
 	COMMAND ${SOF_BASE}scripts/llext_link_helper.py
 		-f lib${MODULE}.so -t "0xa06ca000" ${CMAKE_C_COMPILER} --
-		${MODULE_LINKER_PARAMS} -shared -fPIC
-		-o lib${MODULE}_llext.so $<TARGET_OBJECTS:${MODULE}>
-	COMMAND ${CMAKE_STRIP} -R .xt.* -o lib${MODULE}_out.so lib${MODULE}_llext.so
+		${MODULE_LINKER_PARAMS} ${EXTRA_LINKED_PARAMS} -fPIC
+		-o ${MODULE}_llext.so $<TARGET_OBJECTS:${MODULE}>
+	COMMAND ${COPY_CMD}
 	COMMAND_EXPAND_LISTS
 )
 

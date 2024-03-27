@@ -142,6 +142,7 @@ static void __sparse_cache *llext_manager_get_bss_address(uint32_t module_id,
 static int llext_manager_allocate_module_bss(uint32_t module_id,
 					     const struct sof_man_module *mod)
 {
+	/* FIXME: just map .bss together with .data and simply memset(.bss, 0) */
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
 	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
@@ -170,13 +171,14 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 			      uint32_t module_id, struct module_data *md, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
-	size_t mod_size = desc->header.preload_page_count * PAGE_SZ;
+	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - 0x8000;
 	/* FIXME: where does the module begin?? */
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
 						       SOF_MAN_ELF_TEXT_OFFSET + 0x8000,
 						       mod_size);
-	struct llext_load_param ldr_parm = {false};
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	/* Identify if this is the first time loading this module */
+	struct llext_load_param ldr_parm = {!ctx->segment_size[SOF_MAN_SEGMENT_TEXT]};
 	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
 	if (ret < 0)
@@ -199,8 +201,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
 		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] -
 		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
-	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = mod_size -
-		ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = ebl.loader.prog_data_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#x size %#x offset %#x",
 	       mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr,

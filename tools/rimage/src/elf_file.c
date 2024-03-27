@@ -132,15 +132,6 @@ static int elf_header_read(struct elf_file *elf)
 	if (elf->header.ehsize < sizeof(Elf32_Ehdr))
 		return elf_error(elf, "Invalid file header size.", EINVAL);
 
-	if (elf->header.phoff >= elf->file_size)
-		return elf_error(elf, "Invalid program header file offset.", EINVAL);
-
-	if (elf->header.phentsize < sizeof(Elf32_Phdr))
-		return elf_error(elf, "Invalid program header size.", EINVAL);
-
-	if (elf->header.phoff + elf->header.phnum * sizeof(Elf32_Phdr) > elf->file_size)
-		return elf_error(elf, "Invalid number of program header entries.", EINVAL);
-
 	if (elf->header.shoff >= elf->file_size)
 		return elf_error(elf, "Invalid section header file offset.", EINVAL);
 
@@ -249,6 +240,12 @@ static int elf_program_headers_read(struct elf_file *elf)
 {
 	int i, ret;
 	size_t offset, count;
+
+	if (!elf->header.phnum) {
+		elf->programs = NULL;
+		elf->programs_count = 0;
+		return 0;
+	}
 
 	elf->programs = calloc(elf->header.phnum, sizeof(Elf32_Phdr));
 	if (!elf->programs)
