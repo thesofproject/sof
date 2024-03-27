@@ -82,4 +82,12 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 	  Do not use SOF clk.h interface to set the DSP clock frequency.
 	  Requires implementation of platform/lib/clk.h.
 
+config VIRTUAL_HEAP
+	bool "Use virtual memory heap to allocate a buffers"
+	default y if ACE
+	default n
+	depends on ACE
+	help
+	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
+	  It is based on a set of buffers whose size is predetermined.
 endif
