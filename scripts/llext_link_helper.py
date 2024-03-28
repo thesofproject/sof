@@ -7,9 +7,11 @@
 # portable way to do that. Therefore we pass the linker path and all the command
 # line parameters to this script and call the linker directly.
 
+import os
 import argparse
 import subprocess
 from elftools.elf.elffile import ELFFile
+import re
 
 args = None
 def parse_args():
@@ -33,21 +35,53 @@ def main():
 	elf = ELFFile(open(args.file, 'rb'))
 
 	text_addr = int(args.text_addr, 0)
+	p = re.compile('(^lib|\.so$)')
+	module = p.sub('', args.file)
 
-	text_offset = elf.get_section_by_name('.text').header.sh_offset
-	rodata_offset = elf.get_section_by_name('.rodata').header.sh_offset
-	data_offset = elf.get_section_by_name('.data').header.sh_offset
+	if elf.get_section_by_name('.rodata') != None:
+		# A shared object type image, it contains segments
+		sections = ['.text', '.rodata', '.data', '.bss']
+		alignment = [0x1000, 0x1000, 0x10, 0x1000]
+	else:
+		# A relocatable object, need to handle all sections separately
+		sections = ['.text',
+			    f'._log_const.static.log_const_{module}_',
+			    '.static_uuids', '.z_init_APPLICATION90_0_', '.module',
+			    '.mod_buildinfo', '.data', '.trace_ctx', '.bss']
+		alignment = [0x1000, 0x1000, 0x0, 0x0, 0x0, 0x0, 0x10, 0x0, 0x1000]
 
-	upper = rodata_offset - text_offset + text_addr + 0xfff
-	rodata_addr = upper - (upper % 0x1000)
+	last_increment = 0
 
-	upper = data_offset - rodata_offset + rodata_addr + 0xf
-	data_addr = upper - (upper % 0x10)
+	command = [args.command]
 
-	command = [args.command,
-		   f'-Wl,-Ttext=0x{text_addr:x}',
-		   f'-Wl,--section-start=.rodata=0x{rodata_addr:x}',
-		   f'-Wl,-Tdata=0x{data_addr:x}']
+	for i in range(len(sections)):
+		try:
+			offset = elf.get_section_by_name(sections[i]).header.sh_offset
+			size = elf.get_section_by_name(sections[i]).header.sh_size
+		except:
+			continue
+
+		if last_increment == 0:
+			# first section must be .text and it must be successful
+			if i != 0 or sections[i] != '.text':
+                                break
+
+			addresse = text_addr
+		elif alignment[i] != 0:
+			upper = offset + last_increment + alignment[i] - 1
+			addresse = upper - (upper % alignment[i])
+		else:
+			addresse = offset + last_increment
+
+		last_increment = addresse - offset
+
+		if sections[i] == '.text':
+			command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+		elif sections[i] == '.data':
+			command.append(f'-Wl,-Tdata=0x{addresse:x}')
+		else:
+			command.append(f'-Wl,--section-start={sections[i]}=0x{addresse:x}')
+
 	command.extend(args.params)
 
 	subprocess.run(command)
