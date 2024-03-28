@@ -1141,8 +1141,12 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		 * leading to the DMA copying stale data due to
 		 * dma_status() stopping dai_common_copy() from
 		 * updating the data.
+		 *
+		 * Only applies to non HD-DMA links as HD-DMA read/write pointer
+		 * is not reset during stop/config/start
 		 */
-		audio_stream_reset(&dd->dma_buffer->stream);
+		if (!(dd->dai->dma_caps & DMA_CAP_HDA))
+			audio_stream_reset(&dd->dma_buffer->stream);
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
