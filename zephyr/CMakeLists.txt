@@ -290,7 +290,7 @@ if (CONFIG_SOC_MIMX8MP_ADSP)
 	set(PLATFORM "imx8m")
 endif()
 
-if (CONFIG_SOC_MIMX8ULP_ADSP)
+if (CONFIG_SOC_MIMX8UD7_ADSP)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/edma.c
