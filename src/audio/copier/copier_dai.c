@@ -259,7 +259,6 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
-		dai_index[dai_count - 1] = (dai_index[dai_count - 1] >> 4) & 0xF;
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_ssp;
