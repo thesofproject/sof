@@ -90,8 +90,8 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	int32_t up_slope;
 	int32_t down_slope;
 	int32_t slope;
-	int32_t scale;
-	int32_t scale_inv;
+	int32_t scale = ONE_Q16;
+	int32_t scale_inv = ONE_Q16;
 	int16_t *mel;
 	int16_t mel_start;
 	int16_t mel_end;
@@ -137,6 +137,8 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	if (fb->scratch_length1 < fb->half_fft_bins)
 		return -ENOMEM;
 
+	fb->scale_log2 = 0;
+
 	mel = fb->scratch_data1;
 	for (i = 0; i < fb->half_fft_bins; i++) {
 		f = fb->samplerate * i / fb->fft_bins;
@@ -164,10 +166,6 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 			}
 
 			scale = Q_MULTSR_32X32((int64_t)scale, scale_inv, 16, 16, 16);
-		} else {
-			scale = ONE_Q16;
-			scale_inv = ONE_Q16;
-			fb->scale_log2 = 0;
 		}
 		for (j = 0; j < fb->half_fft_bins; j++) {
 			up_slope = (((int32_t)mel[j] - left_mel) << 15) / delta_cl; /* Q17.15 */
