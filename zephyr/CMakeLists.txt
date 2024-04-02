@@ -232,7 +232,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 endif()
 
 # NXP IMX8 platforms
-if (CONFIG_SOC_MIMX8QM_ADSP OR CONFIG_SOC_MIMX8QXP_ADSP)
+if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/edma.c
@@ -261,7 +261,7 @@ if (CONFIG_SOC_MIMX8QM_ADSP OR CONFIG_SOC_MIMX8QXP_ADSP)
 	set(PLATFORM "imx8")
 endif()
 
-if (CONFIG_SOC_MIMX8MP_ADSP)
+if (CONFIG_SOC_MIMX8ML8_ADSP)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/sdma.c
