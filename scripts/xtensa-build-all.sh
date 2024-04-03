@@ -8,7 +8,7 @@ set -e
 # Platforms built and tested by default in CI using the `-a` option.
 # They must have a toolchain available in the latest Docker image.
 DEFAULT_PLATFORMS=(
-    imx8m imx8ulp
+    imx8m
     rn rmb vangogh
     mt8186 mt8195
 )

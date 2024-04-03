@@ -803,8 +803,11 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 		if (icd->cd->direction_set)
 			continue;
 
+		if (list_is_empty(&icd->cd->bsource_list))
+			continue;
+
 		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, sink_list);
-		if (src_buf && src_buf->source->direction_set) {
+		if (src_buf->source->direction_set) {
 			icd->cd->direction = src_buf->source->direction;
 			icd->cd->direction_set = true;
 			continue;

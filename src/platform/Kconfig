@@ -128,7 +128,6 @@ config IMX93_A55
 	select BUILD_OUTPUT_BIN
 	select ZEPHYR_LOG
 	select HOST_PTABLE
-	select DMA_DOMAIN
 	help
 	 Select if your target platform is imx93-compatible.
 

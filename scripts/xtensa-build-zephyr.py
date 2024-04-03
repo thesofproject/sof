@@ -139,7 +139,7 @@ platform_configs_all = {
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
 	"imx8ulp" : PlatformConfig(
-		"imx", "imx8ulp_evk/imx8ulp/adsp",
+		"imx", "imx8ulp_evk/mimx8ud7/adsp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp2_s7_v2_1a_prod",
 		RIMAGE_KEY = "key param ignored by imx8ulp"
@@ -285,7 +285,7 @@ This should be used with programmatic script invocations (eg. Continuous Integra
 
 	deploy_args = parser.add_mutually_exclusive_group()
 	# argparse.BooleanOptionalAction requires Python 3.9
-	parser.set_defaults(deployable_build=False)
+	parser.set_defaults(deployable_build=True)
 	deploy_args.add_argument("--no-deployable-build", dest='deployable_build', action='store_false')
 	deploy_args.add_argument("--deployable-build", dest='deployable_build', action='store_true',
 			    help="""Create a directory structure for the firmware files which can be deployed on target as it is.
@@ -961,7 +961,7 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 	installed_files = [
 		# Fail if one of these is missing
 		InstFile(".config", "config", txt=True),
-		InstFile("misc/generated/configs.c", "generated_configs.c", txt=True),
+		InstFile("include/generated/autoconf.h", "generated_autoconf.h", txt=True),
 		InstFile("include/generated/version.h", "zephyr_version.h",
 			 gzip=False, txt=True),
 		InstFile("include/generated/sof_versions.h", "sof_versions.h",
@@ -1042,7 +1042,7 @@ CHECKSUM_WANTED = [
 	'dsp_basefw.bin',
 
 	'*version*.h',
-	'*configs.c', # deterministic unlike .config
+	'*autoconf.h', # .config has absolute paths in comments, this has not.
 	'*.toml', # rimage
 	'*.strip', '*stripped*', # stripped ELF files are reproducible
 	'boot.mod', # no debug section -> no need to strip this ELF

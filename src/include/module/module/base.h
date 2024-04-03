@@ -58,11 +58,8 @@ struct module_data {
 	enum module_state state;
 	size_t new_cfg_size; /**< size of new module config data */
 	void *runtime_params;
-	const struct module_interface *ops; /**< module specific operations */
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
-	void *module_adapter; /**<loadable module interface handle */
-	uintptr_t module_entry_point; /**<loadable module entry point address */
 	struct llext *llext; /**< Zephyr loadable extension context */
 #endif /* SOF_MODULE_PRIVATE */
 };
@@ -184,9 +181,6 @@ struct processing_module {
 
 	/* flag to insure that module is loadable */
 	bool is_native_sof;
-
-	/* pointer to system services for loadable modules */
-	uint32_t *sys_service;
 
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;

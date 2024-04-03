@@ -169,7 +169,7 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 					 bool set)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	enum module_cfg_fragment_position pos;
 	uint32_t data_offset_size;
 	static uint32_t size;
@@ -197,13 +197,13 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 	 * The type member in struct sof_abi_hdr is used for component's specific blob type
 	 * for IPC3, just like it is used for component's specific blob param_id for IPC4.
 	 */
-	if (set && md->ops->set_configuration)
-		return md->ops->set_configuration(mod, cdata->data[0].type, pos, data_offset_size,
-						  (const uint8_t *)cdata, cdata->num_elems,
-						  NULL, 0);
-	else if (!set && md->ops->get_configuration)
-		return md->ops->get_configuration(mod, pos, &data_offset_size,
-						  (uint8_t *)cdata, cdata->num_elems);
+	if (set && interface->set_configuration)
+		return interface->set_configuration(mod, cdata->data[0].type, pos,
+						    data_offset_size, (const uint8_t *)cdata,
+						    cdata->num_elems, NULL, 0);
+	else if (!set && interface->get_configuration)
+		return interface->get_configuration(mod, pos, &data_offset_size,
+						    (uint8_t *)cdata, cdata->num_elems);
 
 	comp_warn(dev, "module_adapter_get_set_params(): no configuration op set for %d",
 		  dev_comp_id(dev));
@@ -247,7 +247,7 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
+	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	int ret = 0;
 
 	comp_dbg(dev, "module_adapter_cmd() %d start", cmd);
@@ -265,9 +265,11 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 		 * anyway. Also, pass the 0 as the fragment size as it is not relevant for the
 		 * SET_VALUE command.
 		 */
-		if (md->ops->set_configuration)
-			ret = md->ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE, 0,
-							  (const uint8_t *)cdata, 0, NULL, 0);
+		if (interface->set_configuration)
+			ret = interface->set_configuration(mod, 0,
+							   MODULE_CFG_FRAGMENT_SINGLE, 0,
+							   (const uint8_t *)cdata, 0, NULL,
+							   0);
 		break;
 	case COMP_CMD_GET_VALUE:
 		/*
@@ -275,8 +277,8 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 		 * anyway. Also, pass the 0 as the fragment size and data offset as they are not
 		 * relevant for the GET_VALUE command.
 		 */
-		if (md->ops->get_configuration)
-			ret = md->ops->get_configuration(mod, 0, 0, (uint8_t *)cdata, 0);
+		if (interface->get_configuration)
+			ret = interface->get_configuration(mod, 0, 0, (uint8_t *)cdata, 0);
 		break;
 	default:
 		comp_err(dev, "module_adapter_cmd() error: unknown command");

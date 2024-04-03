@@ -130,8 +130,7 @@ jobs:
         # Use groups to avoid spamming the web interface. Pay attention
         # to COMMAS. Don't use a single big group so a single failure
         # does not block all other builds.
-        platform: [imx8ulp,
-                   rn rmb,
+        platform: [rn rmb,
                    mt8186 mt8195,
         ]
 
