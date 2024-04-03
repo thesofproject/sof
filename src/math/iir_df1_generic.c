@@ -11,6 +11,8 @@
 #include <sof/math/iir_df1.h>
 #include <user/eq.h>
 
+#include <rtos/symbol.h>
+
 #if SOF_USE_HIFI(NONE, FILTER)
 
 /*
@@ -105,5 +107,6 @@ int32_t iir_df1(struct iir_state_df1 *iir, int32_t x)
 	}
 	return sat_int32(out);
 }
+EXPORT_SYMBOL(iir_df1);
 
 #endif

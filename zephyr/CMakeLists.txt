@@ -530,11 +530,17 @@ elseif(CONFIG_IPC_MAJOR_4)
 		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc4.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
-		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
-		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc4.c
-		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
-	)
+	if(CONFIG_COMP_IIR STREQUAL "m")
+		add_subdirectory(${SOF_AUDIO_PATH}/eq_iir/llext
+				 ${PROJECT_BINARY_DIR}/eq_iir_llext)
+		add_dependencies(app eq_iir)
+	elseif(CONFIG_COMP_IIR)
+		zephyr_library_sources(
+			${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
+			${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc4.c
+			${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
+		)
+	endif()
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_MATH_FIR
