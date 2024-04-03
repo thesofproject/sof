@@ -102,6 +102,7 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 
 	return blob_handler->data;
 }
+EXPORT_SYMBOL(comp_get_data_blob);
 
 bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 					*blob_handler)
@@ -119,6 +120,7 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 
 	return false;
 }
+EXPORT_SYMBOL(comp_is_new_data_blob_available);
 
 bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
 				     *blob_handler)
@@ -162,6 +164,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 
 	return 0;
 }
+EXPORT_SYMBOL(comp_init_data_blob);
 
 int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
@@ -615,6 +618,7 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 
 	return ret;
 }
+EXPORT_SYMBOL(comp_data_blob_get_cmd);
 
 static void *default_alloc(size_t size)
 {

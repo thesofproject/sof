@@ -11,6 +11,8 @@
  *
  */
 
+#include <rtos/symbol.h>
+
 #include <sof/audio/module_adapter/module/generic.h>
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
@@ -537,3 +539,4 @@ void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
 }
+EXPORT_SYMBOL(module_update_buffer_position);

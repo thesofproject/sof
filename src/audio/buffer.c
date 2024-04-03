@@ -19,6 +19,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
@@ -227,6 +228,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 
 	return 0;
 }
+EXPORT_SYMBOL(buffer_set_params);
 
 bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)

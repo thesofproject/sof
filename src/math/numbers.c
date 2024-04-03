@@ -175,3 +175,6 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
 
 	return ~crc;
 }
+
+uint64_t __udivdi3(uint64_t a, uint64_t b);
+EXPORT_SYMBOL(__udivdi3);
