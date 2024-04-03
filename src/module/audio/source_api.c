@@ -62,6 +62,7 @@ size_t source_get_frame_bytes(struct sof_source *source)
 	return get_frame_bytes(source_get_frm_fmt(source),
 				source_get_channels(source));
 }
+EXPORT_SYMBOL(source_get_frame_bytes);
 
 size_t source_get_data_frames_available(struct sof_source *source)
 {
@@ -72,3 +73,4 @@ size_t source_get_data_frames_available(struct sof_source *source)
 	else
 		return 0;
 }
+EXPORT_SYMBOL(source_get_data_frames_available);

@@ -67,16 +67,19 @@ int sink_set_frm_fmt(struct sof_sink *sink, enum sof_ipc_frame frame_fmt)
 		return sink->ops->on_audio_format_set(sink);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_frm_fmt);
 
 size_t sink_get_frame_bytes(struct sof_sink *sink)
 {
 	return get_frame_bytes(sink_get_frm_fmt(sink), sink_get_channels(sink));
 }
+EXPORT_SYMBOL(sink_get_frame_bytes);
 
 size_t sink_get_free_frames(struct sof_sink *sink)
 {
 	return sink_get_free_size(sink) / sink_get_frame_bytes(sink);
 }
+EXPORT_SYMBOL(sink_get_free_frames);
 
 int sink_set_valid_fmt(struct sof_sink *sink, enum sof_ipc_frame valid_sample_fmt)
 {
@@ -85,6 +88,7 @@ int sink_set_valid_fmt(struct sof_sink *sink, enum sof_ipc_frame valid_sample_fm
 		return sink->ops->on_audio_format_set(sink);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_valid_fmt);
 
 int sink_set_rate(struct sof_sink *sink, unsigned int rate)
 {
@@ -101,6 +105,7 @@ int sink_set_channels(struct sof_sink *sink, unsigned int channels)
 		return sink->ops->on_audio_format_set(sink);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_channels);
 
 int sink_set_buffer_fmt(struct sof_sink *sink, uint32_t buffer_fmt)
 {

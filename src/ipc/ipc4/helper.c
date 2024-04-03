@@ -1019,6 +1019,7 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 
 	return icd ? icd->cd : NULL;
 }
+EXPORT_SYMBOL(ipc4_get_comp_dev);
 
 int ipc4_add_comp_dev(struct comp_dev *dev)
 {

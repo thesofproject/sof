@@ -153,6 +153,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	return 0;
 }
+EXPORT_SYMBOL(comp_set_state);
 
 void sys_comp_init(struct sof *sof)
 {
@@ -419,6 +420,7 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 }
 
 #endif
+EXPORT_SYMBOL(audio_stream_copy);
 
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 				   struct audio_stream *sink, int ooffset,

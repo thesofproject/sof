@@ -3,6 +3,8 @@
 // Copyright(c) 2023 Intel Corporation. All rights reserved.
 //
 
+#include <rtos/symbol.h>
+
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 
@@ -101,7 +103,7 @@ void audio_stream_set_align(const uint32_t byte_align,
 	stream->frame_align_req = frame_align_req;
 	audio_stream_recalc_align(stream);
 }
-
+EXPORT_SYMBOL(audio_stream_set_align);
 
 static int audio_stream_release_data(struct sof_source *source, size_t free_size)
 {
