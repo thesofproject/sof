@@ -6,11 +6,10 @@
  */
 
 #include <zephyr/init.h>
-
 #include <sof/lib/regions_mm.h>
 
 /* list of vmh_heap objects created */
-static struct list_item vmh_list;
+static struct list_item vmh_list = LIST_INIT(vmh_list);
 
 /**
  * @brief Initialize new heap
@@ -676,23 +675,6 @@ void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		cfg->block_bundles_table[i].number_of_blocks = block_count;
 	}
 }
-
-/**
- * @brief Initialization of static objects in virtual heaps API
- *
- * This will initialize lists of allocations and physical mappings.
- *
- * @param unused Variable is unused - needed by arch to clear warning.
- *
- * @retval Returns 0 on success
- */
-static int virtual_heaps_init(void)
-{
-	list_init(&vmh_list);
-	return 0;
-}
-
-SYS_INIT(virtual_heaps_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 /**
  * @brief Gets pointer to already created heap identified by
