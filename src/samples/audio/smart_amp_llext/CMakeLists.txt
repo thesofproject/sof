@@ -10,6 +10,16 @@ SET_PROPERTY(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
 set(MODULE "smart_amp_test")
 cmake_path(SET SOF_BASE NORMALIZE ${PROJECT_SOURCE_DIR}/../../../..)
 
+file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${MODULE}.toml uuids REGEX "^[ \t]*uuid *=")
+
+file(WRITE ${PROJECT_BINARY_DIR}/llext.uuid "")
+
+foreach(line IN LISTS uuids)
+	# extract UUID value - drop the 'uuid = ' part of the assignment line
+	string(REGEX REPLACE "^[ \t]*uuid *= \"([0-9A-F\-]*)\"" "\\1" uuid ${line})
+	file(APPEND ${PROJECT_BINARY_DIR}/llext.uuid "${uuid}\n")
+endforeach()
+
 add_library(${MODULE} SHARED)
 
 target_sources(${MODULE} PRIVATE
