@@ -24,7 +24,9 @@
 
 	index = __COUNTER__
 
+#ifdef CONFIG_COMP_MIXIN_MIXOUT
 #include <audio/mixin_mixout/mixin_mixout.toml>
+#endif
 
 #ifdef CONFIG_COMP_COPIER
 #include <audio/copier/copier.toml>

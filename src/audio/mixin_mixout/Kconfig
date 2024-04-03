@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_MIXIN_MIXOUT
-	bool "Mixin_mixout component"
+	tristate "Mixin_mixout component"
 	depends on IPC_MAJOR_4
 	default y
 	help

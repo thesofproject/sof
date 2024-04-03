@@ -31,7 +31,7 @@
 
 #include "mixin_mixout.h"
 
-LOG_MODULE_REGISTER(mixer, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(mixin_mixout, CONFIG_SOF_LOG_LEVEL);
 
 /* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
 DECLARE_SOF_RT_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
@@ -964,3 +964,29 @@ static const struct module_interface mixout_interface = {
 
 DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
 SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
+
+#if CONFIG_COMP_MIXIN_MIXOUT_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <rimage/sof/user/manifest.h>
+
+#include <module/module/llext.h>
+
+#define UUID_MIXIN 0xB2, 0x6E, 0x65, 0x39, 0x71, 0x3B, 0x49, 0x40, \
+		0x8D, 0x3F, 0xF9, 0x2C, 0xD5, 0xC4, 0x3C, 0x09
+#define UUID_MIXOUT 0x5A, 0x50, 0x56, 0x3C, 0xD7, 0x24, 0x8F, 0x41, \
+		0xBD, 0xDC, 0xC1, 0xF5, 0xA3, 0xAC, 0x2A, 0xE0
+
+SOF_LLEXT_MOD_ENTRY(mixin, &mixin_interface);
+SOF_LLEXT_MOD_ENTRY(mixout, &mixout_interface);
+
+static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used =
+{
+	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, UUID_MIXIN),
+	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, UUID_MIXOUT),
+};
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
