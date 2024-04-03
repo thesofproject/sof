@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_IIR
-	bool "IIR component"
+	tristate "IIR component"
 	select COMP_BLOB
 	default y
 	depends on COMP_MODULE_ADAPTER

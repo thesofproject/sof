@@ -12,6 +12,8 @@
 #include <user/eq.h>
 #include <sof/common.h>
 
+#include <rtos/symbol.h>
+
 #if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 
 /*
@@ -122,5 +124,6 @@ int32_t iir_df1(struct iir_state_df1 *iir, int32_t x)
 	}
 	return out;
 }
+EXPORT_SYMBOL(iir_df1);
 
 #endif

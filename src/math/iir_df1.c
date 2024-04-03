@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <rtos/symbol.h>
+
 int iir_delay_size_df1(struct sof_eq_iir_header *config)
 {
 	int n = config->num_sections; /* One section uses two unit delays */
@@ -21,6 +23,7 @@ int iir_delay_size_df1(struct sof_eq_iir_header *config)
 
 	return 4 * n * sizeof(int32_t);
 }
+EXPORT_SYMBOL(iir_delay_size_df1);
 
 int iir_init_coef_df1(struct iir_state_df1 *iir,
 		      struct sof_eq_iir_header *config)
@@ -31,6 +34,7 @@ int iir_init_coef_df1(struct iir_state_df1 *iir,
 
 	return 0;
 }
+EXPORT_SYMBOL(iir_init_coef_df1);
 
 void iir_init_delay_df1(struct iir_state_df1 *iir, int32_t **delay)
 {
@@ -40,6 +44,7 @@ void iir_init_delay_df1(struct iir_state_df1 *iir, int32_t **delay)
 	/* Point to next IIR delay line start. */
 	*delay += 4 * iir->biquads;
 }
+EXPORT_SYMBOL(iir_init_delay_df1);
 
 void iir_reset_df1(struct iir_state_df1 *iir)
 {
@@ -50,3 +55,4 @@ void iir_reset_df1(struct iir_state_df1 *iir)
 	 * omitting setting iir->delay to NULL.
 	 */
 }
+EXPORT_SYMBOL(iir_reset_df1);
