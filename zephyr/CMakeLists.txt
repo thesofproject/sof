@@ -794,8 +794,8 @@ if(CONFIG_IPC_MAJOR_3)
 	)
 elseif(CONFIG_IPC_MAJOR_4)
 	if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
-		add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_llext
-				 ${PROJECT_BINARY_DIR}/smart_amp_llext)
+		add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
+				 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
 		add_dependencies(app smart_amp_test_llext)
 	elseif(CONFIG_SAMPLE_SMART_AMP)
 		zephyr_library_sources(
