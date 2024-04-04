@@ -30,9 +30,9 @@ fir.txt = 'eq_fir_spk.txt';
 fir.bin = 'eq_fir_spk.bin';
 fir.tplg1 = 'eq_fir_coef_spk.m4';
 fir.tplg2 = 'example_speaker.conf';
-iir.txt = 'eq_fir_spk.txt';
-iir.bin = 'eq_fir_spk.bin';
-iir.tplg1 = 'eq_fir_coef_spk.m4';
+iir.txt = 'eq_iir_spk.txt';
+iir.bin = 'eq_iir_spk.bin';
+iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 
 %% Get defaults for equalizer design
