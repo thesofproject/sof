@@ -87,7 +87,24 @@ static inline void lp_sram_unpack(void)
 
 #if CONFIG_MULTICORE
 
-#ifndef __ZEPHYR__
+#ifdef __ZEPHYR__
+
+static bool check_restore(void)
+{
+	struct idc *idc = *idc_get();
+	struct notify *notifier = *arch_notify_get();
+	struct schedulers *schedulers = *arch_schedulers_get();
+
+	/* check whether basic core structures has been already allocated. If they
+	 * are available in memory, it means that this is not cold boot and memory
+	 * has not been powered off.
+	 */
+	return !!idc && !!notifier && !!schedulers;
+}
+
+static inline int secondary_core_restore(void) { return 0; };
+
+#else
 
 static bool check_restore(void)
 {
@@ -155,7 +172,7 @@ int secondary_core_init(struct sof *sof)
 	err = arch_init();
 	if (err < 0)
 		sof_panic(SOF_IPC_PANIC_ARCH);
-
+#endif
 	/* check whether we are in a cold boot process or not (e.g. D0->D0ix
 	 * flow when primary core disables all secondary cores). If not, we do
 	 * not have allocate basic structures like e.g. schedulers, notifier,
@@ -164,7 +181,6 @@ int secondary_core_init(struct sof *sof)
 	 */
 	if (check_restore())
 		return secondary_core_restore();
-#endif
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
