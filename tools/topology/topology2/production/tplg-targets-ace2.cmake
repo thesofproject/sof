@@ -17,4 +17,7 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+# No SDW Jack. SDW DMIC+SPK
+"cavs-sdw\;sof-lnl-rt1318-l12-rt714-l0\;PLATFORM=lnl,SDW_JACK=false,SDW_DMIC=1,\
+NUM_SDW_AMP_LINKS=2,SDW_DMIC_STREAM=SDW0-Capture"
 )
