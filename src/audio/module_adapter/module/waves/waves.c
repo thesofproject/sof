@@ -601,6 +601,7 @@ static int waves_effect_apply_config(struct processing_module *mod)
 	/* incoming data in cfg->data is arranged according to struct module_param
 	 * there migh be more than one struct module_param inside cfg->data, glued back to back
 	 */
+	const uint32_t header_size = sizeof(param->size) + sizeof(param->id);
 	for (index = 0; index < cfg->size && (!ret); param_number++) {
 		uint32_t param_data_size;
 
@@ -609,6 +610,18 @@ static int waves_effect_apply_config(struct processing_module *mod)
 
 		comp_info(dev, "waves_effect_apply_config() param num %d id %d size %d",
 			  param_number, param->id, param->size);
+
+		if ((param->size <= header_size) || (param->size > MAX_CONFIG_SIZE_BYTES)) {
+			comp_err(dev, "waves_effect_apply_config() invalid module_param size: %d",
+				param->size);
+			return -EINVAL;
+		}
+
+		if ((index + param->size) > cfg->size) {
+			comp_err(dev, "waves_effect_apply_config() module_param size: %d exceeds cfg buffer size: %d",
+				param->size, cfg->size);
+			return -EINVAL;
+		}
 
 		switch (param->id) {
 		case PARAM_NOP:
@@ -653,6 +666,7 @@ static int waves_codec_init(struct processing_module *mod)
 			 sizeof(struct waves_codec_data));
 		ret = -ENOMEM;
 	} else {
+		memset(waves_codec, 0, sizeof(struct waves_codec_data));
 		codec->private = waves_codec;
 		ret = waves_effect_allocate(mod);
 		if (ret) {
