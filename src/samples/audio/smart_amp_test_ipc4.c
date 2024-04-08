@@ -319,18 +319,35 @@ static int smart_amp_reset(struct processing_module *mod)
 	return 0;
 }
 
-static smart_amp_proc get_smart_amp_process(struct sof_sink *sink)
+static smart_amp_proc get_smart_amp_process(struct sof_source **sources, int num_of_sources,
+					    struct sof_sink **sinks, int num_of_sinks)
 {
-	switch (sink_get_frm_fmt(sink)) {
-	case SOF_IPC_FRAME_S16_LE:
-		return process_s16;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		return process_s32;
-	default:
-		LOG_ERR("smart_amp_process() error: not supported frame format");
-		return NULL;
+	/* Find if any of the sources/sinks needs 16bit process, else use 32bit */
+	for (int i = 0; i < num_of_sources; i++) {
+		switch (source_get_frm_fmt(sources[i])) {
+		case SOF_IPC_FRAME_S16_LE:
+			return process_s16;
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S32_LE:
+			break;
+		default:
+			LOG_ERR("smart_amp_process() error: not supported frame format");
+			return NULL;
+		}
 	}
+	for (int i = 0; i < num_of_sinks; i++) {
+		switch (sink_get_frm_fmt(sinks[i])) {
+		case SOF_IPC_FRAME_S16_LE:
+			return process_s16;
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S32_LE:
+			break;
+		default:
+			LOG_ERR("smart_amp_process() error: not supported frame format");
+			return NULL;
+		}
+	}
+	return process_s32;
 }
 
 static int smart_amp_prepare(struct processing_module *mod,
@@ -341,7 +358,7 @@ static int smart_amp_prepare(struct processing_module *mod,
 
 	LOG_DBG("smart_amp_prepare()");
 
-	sad->process = get_smart_amp_process(sinks[0]);
+	sad->process = get_smart_amp_process(sources, num_of_sources, sinks, num_of_sinks);
 	if (!sad->process) {
 		LOG_ERR("smart_amp_prepare(): get_smart_amp_process failed");
 		return -EINVAL;
