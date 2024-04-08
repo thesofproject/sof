@@ -162,6 +162,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/base_fw_platform.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
 		lib/pm_runtime.c
 		lib/clk.c
@@ -183,6 +184,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/ace/platform.c
+		${SOF_PLATFORM_PATH}/intel/ace/lib/base_fw_platform.c
 		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
@@ -345,6 +347,7 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_PLATFORM_PATH}/posix/dai.c
 	${SOF_PLATFORM_PATH}/posix/ipc.c
 	${SOF_PLATFORM_PATH}/posix/posix.c
+	${SOF_PLATFORM_PATH}/posix/base_fw_platform.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY

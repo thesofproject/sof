@@ -6,6 +6,7 @@
 #include <sof/ut.h>
 #include <sof/tlv.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/base_fw_platform.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
 #include <sof_versions.h>
@@ -129,6 +130,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 static int basefw_hw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
+	uint32_t plat_data_offset = 0;
 	uint32_t value;
 
 	tlv_value_uint32_set(tuple, IPC4_CAVS_VER_HW_CFG, HW_CFG_VERSION);
@@ -147,19 +149,11 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	tlv_value_uint32_set(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
 
 	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
 
-	tuple = tlv_next(tuple);
-	/* 2 DMIC dais */
-	value =  DAI_NUM_SSP_BASE + DAI_NUM_HDA_IN + DAI_NUM_HDA_OUT +
-			DAI_NUM_ALH_BI_DIR_LINKS + 2;
-	tlv_value_uint32_set(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
+	/* add platform specific tuples */
+	platform_basefw_hw_config(&plat_data_offset, (char *)tuple);
 
-	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
-
-	tuple = tlv_next(tuple);
-	*data_offset = (int)((char *)tuple - data);
+	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
 	return 0;
 }
