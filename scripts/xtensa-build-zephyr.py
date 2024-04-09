@@ -63,6 +63,8 @@ west_top = pathlib.Path(SOF_TOP, "..").resolve()
 
 sof_fw_version = None
 
+signing_key = None
+
 if py_platform.system() == "Windows":
 	xtensa_tools_version_postfix = "-win32"
 elif py_platform.system() == "Linux":
@@ -601,7 +603,7 @@ RIMAGE_SOURCE_DIR = west_top / "sof" / "tools" / "rimage"
 def rimage_west_configuration(platform_dict, dest_dir):
 	"""Configure rimage in a new file `dest_dir/westconfig.ini`, starting
 	from the workspace .west/config.
-	Returns the pathlib.Path to the new file.
+	Returns a tuple (west ConfigFile, pathlib.Path to that new file).
 	"""
 
 	saved_local_var = os.environ.get('WEST_CONFIG_LOCAL')
@@ -641,7 +643,7 @@ def rimage_west_configuration(platform_dict, dest_dir):
 
 	platform_wconfig.set("rimage.extra-args", shlex.join(extra_args))
 
-	return platform_west_config_path
+	return platform_wconfig, platform_west_config_path
 
 
 def build_rimage():
@@ -671,12 +673,12 @@ def rimage_options(platform_dict):
 	example: [ (-f, 2.5.0), (-b, 1), (-k, key.pem),... ]
 
 	"""
+	global signing_key
 	opts = []
 
 	if args.verbose > 0:
 		opts.append(("-v",) * args.verbose)
 
-	signing_key = None
 	if args.key:
 		key_path = pathlib.Path(args.key)
 		assert key_path.exists(), f"{key_path} not found"
@@ -831,10 +833,11 @@ def build_platforms():
 	see https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
 	Try "west config build.cmake-args -- ..." instead.""")
 
-		platf_build_environ['WEST_CONFIG_LOCAL'] = str(rimage_west_configuration(
+		platform_wcfg, wcfg_path = rimage_west_configuration(
 			platform_dict,
 			STAGING_DIR / "sof-info" / platform
-		))
+		)
+		platf_build_environ['WEST_CONFIG_LOCAL'] = str(wcfg_path)
 
 		# Make sure the build logs don't leave anything hidden
 		execute_command(['west', 'config', '-l'], cwd=west_top,
@@ -869,7 +872,7 @@ def build_platforms():
 		if platform not in RI_INFO_UNSUPPORTED:
 			reproducible_checksum(platform, west_top / platform_build_dir_name / "zephyr" / "zephyr.ri")
 
-		install_platform(platform, sof_platform_output_dir, platf_build_environ)
+		install_platform(platform, sof_platform_output_dir, platf_build_environ, platform_wcfg)
 
 	src_dest_list = []
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
@@ -902,7 +905,69 @@ def build_platforms():
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 
 
-def install_platform(platform, sof_output_dir, platf_build_environ):
+def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
+	"""[summary] Sign loadable llext modules, if any, copy them to the
+	deployment tree and create UUID links for the kernel to find and load
+	them."""
+
+	global signing_key
+
+	with os.scandir(str(abs_build_dir)) as iter:
+		if args.key_type_subdir != "none":
+			sof_lib_dir = sof_lib_dir / args.key_type_subdir
+
+		sof_lib_dir.mkdir(parents=True, exist_ok=True)
+
+		for entry in iter:
+			if (not entry.is_dir or
+			    not entry.name.endswith('_llext')):
+				continue
+
+			entry_path = pathlib.Path(entry.path)
+
+			uuids = entry_path / 'llext.uuid'
+			if not os.path.exists(uuids):
+				print(f"Directory {entry.name} has no llext.uuid file. Skipping.")
+				continue
+
+			# replace '_llext' with '.llext', e.g.
+			# eq_iir_llext/eq_iir.llext
+			llext_base = entry.name[:-6]
+			llext_file = llext_base + '.llext'
+
+			dst = sof_lib_dir / llext_file
+
+			rimage_cfg = entry_path / 'rimage_config.toml'
+			llext_input = entry_path / (llext_base + '.so')
+			llext_output = entry_path / llext_file
+
+			sign_cmd = [str(platform_wconfig.get("rimage.path")), "-o", str(llext_output),
+				    "-e", "-c", str(rimage_cfg),
+				    "-k", str(signing_key), "-l", "-r",
+				    str(llext_input)]
+			execute_command(sign_cmd, cwd=west_top)
+
+			# An intuitive way to make this multiline would be
+			# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
+			#	open(llext_output.with_suffix('.llext.xman'), 'rb') as fman):
+			# but a Python version, used on Windows errored out on this.
+			# Thus we're left with a choice between a 150-character
+			# long line and an illogical split like this
+			with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
+				  llext_output.with_suffix('.llext.xman'), 'rb') as fman:
+				# Concatenate the manifest and the llext
+				shutil.copyfileobj(fman, fdst)
+				shutil.copyfileobj(fllext, fdst)
+
+			# Create symbolic links for all UUIDs
+			with open(uuids, 'r') as uuids_f:
+				for uuid in uuids_f:
+					linkname = uuid.strip() + '.bin'
+					symlink_or_copy(sof_lib_dir, llext_file,
+							sof_lib_dir, linkname)
+
+
+def install_platform(platform, sof_output_dir, platf_build_environ, platform_wconfig):
 
 	# Keep in sync with caller
 	platform_build_dir_name = f"build-{platform}"
@@ -947,6 +1012,10 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 		if args.key_type_subdir != "none" and args.fw_naming != "AVS":
 			for p_alias in platform_configs[platform].aliases:
 				symlink_or_copy(install_key_dir, output_fwname, install_key_dir, f"sof-{p_alias}.ri")
+
+	if args.deployable_build and platform_configs[platform].ipc4:
+		install_lib(sof_output_dir / '..' / 'sof-ipc4-lib' / platform, abs_build_dir,
+			    platform_wconfig)
 
 
 	# sof-info/ directory
@@ -1032,7 +1101,6 @@ def install_platform(platform, sof_output_dir, platf_build_environ):
 	for gzip_res in concurrent.as_completed(gzip_futures):
 		gzip_res.result() # throws exception if gzip unexpectedly failed
 	gzip_threads.shutdown()
-
 
 # Zephyr's CONFIG_KERNEL_BIN_NAME default value
 BIN_NAME = 'zephyr'
