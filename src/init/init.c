@@ -89,7 +89,7 @@ static inline void lp_sram_unpack(void)
 
 #ifndef __ZEPHYR__
 
-static int check_restore(void)
+static bool check_restore(void)
 {
 	struct idc *idc = *idc_get();
 	struct task *task = *task_main_get();
@@ -100,10 +100,7 @@ static int check_restore(void)
 	 * are available in memory, it means that this is not cold boot and memory
 	 * has not been powered off.
 	 */
-	if (!idc || !task || !notifier || !schedulers)
-		return 0;
-
-	return 1;
+	return !!idc && !!task && !!notifier && !!schedulers;
 }
 
 static int secondary_core_restore(void)
