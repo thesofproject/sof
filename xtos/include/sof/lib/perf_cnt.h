@@ -55,8 +55,9 @@ struct perf_cnt_data {
  * "cpu" timestamps to be equal.
  */
 #ifdef __ZEPHYR__
+	#include <zephyr/timing/timing.h>
 	#ifdef CONFIG_TIMING_FUNCTIONS
-		#define perf_cnt_get_cpu_ts arch_timing_counter_get
+		#define perf_cnt_get_cpu_ts timing_counter_get
 	#else
 		#define perf_cnt_get_cpu_ts sof_cycle_get_64
 	#endif	/* CONFIG_TIMING_FUNCTIONS */
