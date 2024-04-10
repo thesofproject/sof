@@ -471,7 +471,7 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	/* Never freed, will panic if fails */
-	struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 						  sizeof(*ctx));
 
 	ctx->base_addr = base_addr;
