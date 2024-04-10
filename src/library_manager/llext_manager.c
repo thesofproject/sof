@@ -176,8 +176,9 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
 						       SOF_MAN_ELF_TEXT_OFFSET + 0x8000,
 						       mod_size);
-	struct llext_load_param ldr_parm = {false};
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	/* Identify if this is the first time loading this module */
+	struct llext_load_param ldr_parm = {!ctx->segment_size[SOF_MAN_SEGMENT_TEXT]};
 	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
 	if (ret < 0)
