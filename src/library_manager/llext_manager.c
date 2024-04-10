@@ -200,8 +200,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
 		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] -
 		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
-	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = mod_size -
-		ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = ebl.loader.prog_data_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#x size %#x offset %#x",
 	       mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr,
