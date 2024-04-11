@@ -20,6 +20,12 @@
 #endif
 
 #include <ipc4/base_fw.h>
+#include <rimage/sof/user/manifest.h>
+
+struct ipc4_modules_info {
+	uint32_t modules_count;
+	struct sof_man_module modules[0];
+} __packed __aligned(4);
 
 LOG_MODULE_REGISTER(basefw_platform, CONFIG_SOF_LOG_LEVEL);
 
@@ -70,6 +76,28 @@ struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
 	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 
 	return desc;
+}
+
+int platform_basefw_modules_info_get(uint32_t *data_offset, char *data)
+{
+	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
+	struct sof_man_fw_desc *desc = platform_base_fw_get_manifest();
+
+	if (!desc)
+		return -EINVAL;
+
+	module_info->modules_count = desc->header.num_module_entries;
+
+	for (int idx = 0; idx < module_info->modules_count; ++idx) {
+		struct sof_man_module *module_entry =
+			(struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(idx));
+		memcpy_s(&module_info->modules[idx], sizeof(module_info->modules[idx]),
+			 module_entry, sizeof(struct sof_man_module));
+	}
+
+	*data_offset = sizeof(*module_info) +
+				module_info->modules_count * sizeof(module_info->modules[0]);
+	return 0;
 }
 
 /* There are two types of sram memory : high power mode sram and

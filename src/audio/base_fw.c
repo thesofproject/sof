@@ -334,6 +334,11 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static int basefw_modules_info_get(uint32_t *data_offset, char *data)
+{
+	return platform_basefw_modules_info_get(data_offset, data);
+}
+
 int schedulers_info_get(uint32_t *data_off_size,
 			char *data,
 			uint32_t core_id)
@@ -458,15 +463,15 @@ static int basefw_get_large_config(struct comp_dev *dev,
 					 extended_param_id.part.parameter_instance);
 	case IPC4_PIPELINE_LIST_INFO_GET:
 		return basefw_pipeline_list_info_get(data_offset, data);
+	case IPC4_MODULES_INFO_GET:
+		return basefw_modules_info_get(data_offset, data);
+	case IPC4_LIBRARIES_INFO_GET:
+		return basefw_libraries_info_get(data_offset, data);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
-	case IPC4_MODULES_INFO_GET:
 	case IPC4_PIPELINE_PROPS_GET:
 	case IPC4_GATEWAYS_INFO_GET:
-		break;
-	case IPC4_LIBRARIES_INFO_GET:
-		return basefw_libraries_info_get(data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
 		COMPILER_FALLTHROUGH;
