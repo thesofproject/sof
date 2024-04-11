@@ -45,6 +45,15 @@ int platform_basefw_hw_config(uint32_t *data_offset, char *data);
 struct sof_man_fw_desc *platform_base_fw_get_manifest(void);
 
 /**
+ * \brief Platform specific routine to get information about modules.
+ * Function add information and sent to host via IPC.
+ * \param[out] data_offset data offset after structure added
+ * \param[in] data pointer where to add new entries
+ * \return 0 if successful, error code otherwise.
+ */
+int platform_basefw_modules_info_get(uint32_t *data_offset, char *data);
+
+/**
  * \brief Implement platform specific parameter for basefw module.
  * This function is called for parameters not handled by
  * generic base_fw code.

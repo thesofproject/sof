@@ -30,6 +30,13 @@ struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
 	return desc;
 }
 
+int platform_basefw_modules_info_get(uint32_t *data_offset, char *data)
+{
+	*data_offset = 0;
+
+	return 0;
+}
+
 int platform_basefw_get_large_config(struct comp_dev *dev,
 				     uint32_t param_id,
 				     bool first_block,
