@@ -216,6 +216,9 @@ static const struct comp_zc_func_map zc_func_map[] = {
  */
 static inline int32_t volume_linear_ramp(struct vol_data *cd, int32_t ramp_time, int channel)
 {
+	if (!cd->initial_ramp)
+		return cd->tvolume[channel];
+
 	return cd->rvolume[channel] + ramp_time * cd->ramp_coef[channel];
 }
 #endif
@@ -249,7 +252,7 @@ void volume_set_ramp_channel_counter(struct vol_data *cd, uint32_t channels_coun
 	bool is_same_volume = true;
 
 	for (i = 1; i < channels_count; i++) {
-		if (cd->tvolume[0] != cd->tvolume[i]) {
+		if (cd->tvolume[0] != cd->tvolume[i] || cd->volume[0] != cd->volume[i]) {
 			is_same_volume = false;
 			break;
 		}
@@ -344,7 +347,8 @@ static inline void volume_ramp(struct processing_module *mod)
 		}
 	}
 
-	set_volume_process(cd, dev, true);
+	if (cd->is_passthrough)
+		set_volume_process(cd, dev, true);
 }
 
 /**
@@ -415,6 +419,59 @@ static int volume_free(struct processing_module *mod)
 	return 0;
 }
 
+static void set_linear_ramp_coef(struct vol_data *cd, int chan, bool constant_rate_ramp)
+{
+	int32_t delta;
+	int32_t delta_abs;
+	int32_t coef;
+
+	if (!cd->initial_ramp)
+		return;
+
+	/* Get volume transition delta and absolute value */
+	delta = cd->tvolume[chan] - cd->volume[chan];
+	if (!delta) {
+		cd->ramp_coef[chan] = 0;
+		return;
+	}
+
+	delta_abs = ABS(delta);
+
+	/* The ramp length (initial_ramp [ms]) describes time of mute
+	 * to vol_max unmuting. Normally the volume ramp has a
+	 * constant linear slope defined this way and variable
+	 * completion time. However in streaming start it is feasible
+	 * to apply the entire topology defined ramp time to unmute to
+	 * any used volume. In this case the ramp rate is not constant.
+	 * Note also the legacy mode without known vol_ramp_range where
+	 * the volume transition always uses the topology defined time.
+	 */
+	if (constant_rate_ramp && cd->vol_ramp_range > 0)
+		coef = cd->vol_ramp_range;
+	else
+		coef = delta_abs;
+
+	/* Divide and round to nearest. Note that there will
+	 * be some accumulated error in ramp time the longer
+	 * the ramp and the smaller the transition is.
+	 */
+	coef = (2 * coef / cd->initial_ramp + 1) >> 1;
+
+	/* Scale coefficient by 1/8, round */
+	coef = ((coef >> 2) + 1) >> 1;
+
+	/* Ensure ramp coefficient is at least min. non-zero
+	 * fractional value.
+	 */
+	coef = MAX(coef, 1);
+
+	/* Invert sign for volume down ramp step */
+	if (delta < 0)
+		coef = -coef;
+
+	cd->ramp_coef[chan] = coef;
+}
+
 /**
  * \brief Sets channel target volume.
  * \param[in,out] mod Volume processing module handle
@@ -429,9 +486,6 @@ int volume_set_chan(struct processing_module *mod, int chan,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	int32_t v = vol;
-	int32_t delta;
-	int32_t delta_abs;
-	int32_t coef;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
 	 * MAX is needed for now for the generic C gain arithmetic to prevent
@@ -456,52 +510,12 @@ int volume_set_chan(struct processing_module *mod, int chan,
 	cd->rvolume[chan] = cd->volume[chan];
 	cd->vol_ramp_elapsed_frames = 0;
 
-	/* Check ramp type */
-	if (cd->ramp_type == SOF_VOLUME_LINEAR ||
-	    cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
-		/* Get volume transition delta and absolute value */
-		delta = cd->tvolume[chan] - cd->volume[chan];
-		delta_abs = ABS(delta);
+	/* Ramp type specific initialize */
+	if (cd->ramp_type == SOF_VOLUME_LINEAR || cd->ramp_type == SOF_VOLUME_LINEAR_ZC)
+		set_linear_ramp_coef(cd, chan, constant_rate_ramp);
 
-		/* The ramp length (initial_ramp [ms]) describes time of mute
-		 * to vol_max unmuting. Normally the volume ramp has a
-		 * constant linear slope defined this way and variable
-		 * completion time. However in streaming start it is feasible
-		 * to apply the entire topology defined ramp time to unmute to
-		 * any used volume. In this case the ramp rate is not constant.
-		 * Note also the legacy mode without known vol_ramp_range where
-		 * the volume transition always uses the topology defined time.
-		 */
-		if (cd->initial_ramp > 0) {
-			if (constant_rate_ramp && cd->vol_ramp_range > 0)
-				coef = cd->vol_ramp_range;
-			else
-				coef = delta_abs;
-
-			/* Divide and round to nearest. Note that there will
-			 * be some accumulated error in ramp time the longer
-			 * the ramp and the smaller the transition is.
-			 */
-			coef = (2 * coef / cd->initial_ramp + 1) >> 1;
-		} else {
-			coef = delta_abs;
-		}
-
-		/* Scale coefficient by 1/8, round */
-		coef = ((coef >> 2) + 1) >> 1;
-
-		/* Ensure ramp coefficient is at least min. non-zero
-		 * fractional value.
-		 */
-		coef = MAX(coef, 1);
-
-		/* Invert sign for volume down ramp step */
-		if (delta < 0)
-			coef = -coef;
-
-		cd->ramp_coef[chan] = coef;
-		comp_dbg(mod->dev, "cd->ramp_coef[%d] = %d", chan, cd->ramp_coef[chan]);
-	}
+	if (!cd->initial_ramp || cd->ramp_type == SOF_VOLUME_WINDOWS_NO_FADE)
+		cd->volume[chan] = v;
 
 	return 0;
 }

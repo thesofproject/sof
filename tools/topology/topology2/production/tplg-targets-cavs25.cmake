@@ -30,10 +30,10 @@ SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
 SDW_JACK_IN_STREAM=Capture-SimpleJack,SDW_AMP_FMT_24=true,SDW_JACK_FMT_24=true"
 
 # IPC4 topology for TGL rt712 Headset, Amp and DMIC
-"cavs-sdw\;sof-tgl-rt712\;SDW_JACK_OUT_STREAM=SDW0-Playback-SimpleJack,\
-SDW_JACK_IN_STREAM=SDW0-Capture-SimpleJack,SDW_SPK_STREAM=SDW0-Playback-SmartAmp,\
-SDW_DMIC_STREAM=SDW1-Capture-SmartMic,HDMI1_ID=5,HDMI2_ID=6,HDMI3_ID=7,\
-NUM_SDW_AMP_LINKS=1,SDW_AMP_FEEDBACK=false,SDW_DMIC=1,SDW_DMIC_STREAM=SDW1-Capture-SmartMic"
+"cavs-sdw\;sof-tgl-rt712\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,SDW_SPK_STREAM=Playback-SmartAmp,\
+SDW_DMIC_STREAM=Capture-SmartMic,HDMI1_ID=5,HDMI2_ID=6,HDMI3_ID=7,\
+NUM_SDW_AMP_LINKS=1,SDW_AMP_FEEDBACK=false,SDW_DMIC=1,SDW_DMIC_STREAM=Capture-SmartMic"
 
 "cavs-sdw\;sof-adl-rt711-4ch\;NUM_DMICS=4,DMIC0_ID=2,DMIC1_ID=3,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,HDMI1_ID=4,HDMI2_ID=5,\

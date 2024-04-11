@@ -848,12 +848,28 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 
 	/* calculate DMA buffer size */
 	period_count = dd->dma->plat_data.period_count;
+
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
+	uint32_t dma_buff_length_periods;
+
+	/* copier ibs/obs is set to size of one period */
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		dma_buff_length_periods = dd->ipc_config.dma_buffer_size / copier_cfg->base.ibs;
+	else
+		dma_buff_length_periods = dd->ipc_config.dma_buffer_size / copier_cfg->base.obs;
+
+	period_count = MAX(period_count, dma_buff_length_periods);
+#else
+	period_count = MAX(period_count,
+			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 	if (!period_count) {
 		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
 		return -EINVAL;
 	}
-	period_count = MAX(period_count,
-			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 	*pc = period_count;
 
