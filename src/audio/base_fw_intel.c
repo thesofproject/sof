@@ -128,10 +128,8 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	index = 0;
 	tuple_data[index++] = info.free_phys_mem_pages;
 	tuple_data[index++] = info.ebb_state_dword_count;
-	for (i = 0; i < info.ebb_state_dword_count; i++) {
-		tuple_data[index + i] = io_reg_read(SHIM_HSPGCTL(i));
-	}
-	index += info.ebb_state_dword_count;
+	for (i = 0; i < info.ebb_state_dword_count; i++)
+		tuple_data[index++] = HPSRAM_REGS(i)->HSxPGCTL;
 
 	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
 	/* TLB is not supported now, so all pages are marked as occupied
@@ -154,7 +152,9 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	index = 0;
 	tuple_data[index++] = info.free_phys_mem_pages;
 	tuple_data[index++] = info.ebb_state_dword_count;
-	tuple_data[index++] = io_reg_read(LSPGCTL);
+	for (i = 0; i < info.ebb_state_dword_count; i++)
+		tuple_data[index++] = LPSRAM_REGS(i)->USxPGCTL;
+
 	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
 	ptr = (uint16_t *)(tuple_data + index);
 	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
