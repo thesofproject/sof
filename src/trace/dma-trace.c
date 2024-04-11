@@ -656,15 +656,9 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			uint32_t tmp_dropped_entries =
 				trace_data->dropped_entries;
 			trace_data->dropped_entries = 0;
-			/*
-			 * this trace_error invocation causes recursion,
-			 * so after it we have to recalculate margin and
-			 * overflow
-			 */
-			tr_err(&dt_tr, "dtrace_add_event(): number of dropped logs = %u",
-			       tmp_dropped_entries);
-			margin = dtrace_calc_buf_margin(buffer);
-			overflow = dtrace_calc_buf_overflow(buffer, length);
+			mtrace_printf(LOG_LEVEL_WARNING,
+				      "dtrace_add_event(): number of dropped logs = %u",
+				      tmp_dropped_entries);
 		}
 	}
 
