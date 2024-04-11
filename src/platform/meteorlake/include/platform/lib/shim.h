@@ -44,11 +44,6 @@
 /** \brief LP RING Oscillator Clock Status */
 #define SHIM_CLKSTS_LROSCCS		BIT(29)
 
-#define L2HSBPM(x)			(0x17A800 + 0x0008 * (x))
-#define SHIM_HSPGCTL(x)			(L2HSBPM(x) + 0x0000)
-
-#define LSPGCTL				0x71D80
-
 #endif /* __PLATFORM_LIB_SHIM_H__ */
 
 #else
