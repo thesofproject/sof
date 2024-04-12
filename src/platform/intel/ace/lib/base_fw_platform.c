@@ -9,6 +9,24 @@
 #include <sof/lib/dai.h>
 #include <ipc4/base_fw.h>
 
+int platform_basefw_fw_config(uint32_t *data_offset, char *data)
+{
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
+
+	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 0);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
+
+	tuple = tlv_next(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	return 0;
+}
+
 int platform_basefw_hw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
