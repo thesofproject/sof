@@ -75,6 +75,7 @@ struct mixin_sink_config {
 /* mixin component private data */
 struct mixin_data {
 	mix_func mix;
+	mix_func gain_mix;
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
 };
 
@@ -205,8 +206,13 @@ static int mix(struct comp_dev *dev, const struct mixin_data *mixin_data,
 
 	sink_config = &mixin_data->sink_config[sink_index];
 
-	mixin_data->mix(sink, start_sample, mixed_samples,
+	if (sink_config->gain == IPC4_MIXIN_UNITY_GAIN) {
+		mixin_data->mix(sink, start_sample, mixed_samples,
 			source, sample_count, sink_config->gain);
+	} else {
+		mixin_data->gain_mix(sink, start_sample, mixed_samples,
+			     source, sample_count, sink_config->gain);
+	}
 
 	return 0;
 }
@@ -555,6 +561,7 @@ static int mixin_reset(struct processing_module *mod)
 	comp_dbg(dev, "mixin_reset()");
 
 	mixin_data->mix = NULL;
+	mixin_data->gain_mix = NULL;
 
 	return 0;
 }
@@ -685,15 +692,15 @@ static int mixin_prepare(struct processing_module *mod,
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		md->mix = mixin_get_processing_function(fmt);
+		mixin_get_processing_functions(fmt, &md->mix, &md->gain_mix);
 		break;
 	default:
 		comp_err(dev, "unsupported data format %d", fmt);
 		return -EINVAL;
 	}
 
-	if (!md->mix) {
-		comp_err(dev, "have not found the suitable processing function");
+	if (!md->mix || !md->gain_mix) {
+		comp_err(dev, "have not found suitable processing functions");
 		return -EINVAL;
 	}
 
