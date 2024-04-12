@@ -14,6 +14,15 @@
 #define __SOF_IPC4_BASE_FW_PLATFORM_H__
 
 /**
+ * \brief Platform specific routine to add data tuples to FW_CONFIG
+ * structure sent to host via IPC.
+ * \param[out] data_offset data offset after tuples added
+ * \param[in] data pointer where to add new entries
+ * \return 0 if successful, error code otherwise.
+ */
+int platform_basefw_fw_config(uint32_t *data_offset, char *data);
+
+/**
  * \brief Platform specific routine to add data tuples to HW_CONFIG
  * structure sent to host via IPC.
  * \param[out] data_offset data offset after tuples added
