@@ -268,15 +268,16 @@ static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 
 #endif	/* CONFIG_FORMAT_S32LE */
 
+/* TODO: implement mixing functions with gain support!*/
 const struct mix_func_map mix_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, mix_s16 },
+	{ SOF_IPC_FRAME_S16_LE, mix_s16, mix_s16 },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, mix_s24 },
+	{ SOF_IPC_FRAME_S24_4LE, mix_s24, mix_s24 },
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, mix_s32 }
+	{ SOF_IPC_FRAME_S32_LE, mix_s32, mix_s32 }
 #endif
 };
 
