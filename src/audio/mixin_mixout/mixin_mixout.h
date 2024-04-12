@@ -110,7 +110,8 @@ typedef void (*mix_func)(struct cir_buf_ptr *sink, int32_t start_sample,
  */
 struct mix_func_map {
 	uint16_t frame_fmt;	/* frame format */
-	mix_func func;		/* mixin processing function */
+	mix_func mix;		/* faster mixing func without gain support */
+	mix_func gain_mix;	/* slower mixing func with gain support */
 };
 
 extern const struct mix_func_map mix_func_map[];
@@ -119,17 +120,23 @@ extern const size_t mix_count;
  * \brief Retrievies mixin processing function.
  * \param[in] fmt  stream PCM frame format
  */
-static inline mix_func mixin_get_processing_function(int fmt)
+static inline bool mixin_get_processing_functions(int fmt, mix_func *mix, mix_func *gain_mix)
 {
 	int i;
 
+	*mix = NULL;
+	*gain_mix = NULL;
+
 	/* map mixin processing function for source and sink buffers */
 	for (i = 0; i < mix_count; i++) {
-		if (fmt == mix_func_map[i].frame_fmt)
-			return mix_func_map[i].func;
+		if (fmt == mix_func_map[i].frame_fmt) {
+			*mix = mix_func_map[i].mix;
+			*gain_mix = mix_func_map[i].gain_mix;
+			return true;
+		}
 	}
 
-	return NULL;
+	return false;
 }
 
 #endif	/* __SOF_IPC4_MIXIN_MIXOUT_H__ */
