@@ -59,6 +59,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	struct ipc4_scheduler_config sche_cfg;
+	uint32_t plat_data_offset = 0;
 	uint32_t log_bytes_size = 0;
 
 	tlv_value_set(tuple, IPC4_FW_VERSION_FW_CFG, sizeof(version), version);
@@ -73,15 +74,6 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tlv_value_uint32_set(tuple,
 			     IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG,
 			     clock_get_freq(CPU_LOWEST_FREQ_IDX));
-
-	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
-
-	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 0);
-
-	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
 
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_DL_MAILBOX_BYTES_FW_CFG, MAILBOX_HOSTBOX_SIZE);
@@ -137,7 +129,11 @@ static int basefw_config(uint32_t *data_offset, char *data)
 			     IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE));
 
 	tuple = tlv_next(tuple);
-	*data_offset = (int)((char *)tuple - data);
+
+	/* add platform specific tuples */
+	platform_basefw_fw_config(&plat_data_offset, (char *)tuple);
+
+	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
 	return 0;
 }
