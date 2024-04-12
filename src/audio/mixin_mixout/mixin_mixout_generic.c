@@ -37,7 +37,9 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			*dst = sat_int16(*dst + *src++);
+			*dst = sat_int16((int32_t)*dst +
+				q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
+			src++;
 			dst++;
 		}
 	}
@@ -49,9 +51,12 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		n = MIN(left_samples, nmax);
 		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
-		memcpy_s(dst, n * sizeof(int16_t), src, n * sizeof(int16_t));
-		dst += n;
-		src += n;
+
+		for (i = 0; i < n; i++) {
+			*dst = q_mults_16x16(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+			src++;
+			dst++;
+		}
 	}
 }
 #endif	/* CONFIG_FORMAT_S16LE */
@@ -81,7 +86,10 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			*dst = sat_int24(sign_extend_s24(*dst) + sign_extend_s24(*src++));
+			*dst = sat_int24(sign_extend_s24(*dst) +
+				(int32_t)q_mults_32x32(sign_extend_s24(*src),
+						       gain, IPC4_MIXIN_GAIN_SHIFT));
+			src++;
 			dst++;
 		}
 	}
@@ -93,9 +101,11 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
-		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
-		dst += n;
-		src += n;
+		for (i = 0; i < n; i++) {
+			*dst = q_mults_32x32(sign_extend_s24(*src), gain, IPC4_MIXIN_GAIN_SHIFT);
+			src++;
+			dst++;
+		}
 	}
 }
 
@@ -125,7 +135,9 @@ static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
-			*dst = sat_int32((int64_t)*dst + (int64_t)*src++);
+			*dst = sat_int32((int64_t)*dst +
+				q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT));
+			src++;
 			dst++;
 		}
 	}
@@ -137,9 +149,11 @@ static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
-		memcpy_s(dst, n * sizeof(int32_t), src, n * sizeof(int32_t));
-		dst += n;
-		src += n;
+		for (i = 0; i < n; i++) {
+			*dst = q_mults_32x32(*src, gain, IPC4_MIXIN_GAIN_SHIFT);
+			src++;
+			dst++;
+		}
 	}
 }
 
