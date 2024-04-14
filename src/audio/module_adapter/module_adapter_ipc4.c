@@ -136,7 +136,11 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 	if (md->ops->get_configuration)
 		return md->ops->get_configuration(mod, param_id, data_offset_size,
 						  (uint8_t *)data, fragment_size);
-	return 0;
+	/*
+	 * Return error if getter is not implemented. Otherwise, the host will suppose
+	 * the GET_VALUE command is successful, but the received cdata is not filled.
+	 */
+	return -EIO;
 }
 
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)

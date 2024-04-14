@@ -1277,21 +1277,29 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 			pos = MODULE_CFG_FRAGMENT_LAST;
 	}
 
-	/*
-	 * The type member in struct sof_abi_hdr is used for component's specific blob type
-	 * for IPC3, just like it is used for component's specific blob param_id for IPC4.
-	 */
-	if (set && md->ops->set_configuration)
-		return md->ops->set_configuration(mod, cdata->data[0].type, pos, data_offset_size,
-						  (const uint8_t *)cdata, cdata->num_elems,
-						  NULL, 0);
-	else if (!set && md->ops->get_configuration)
+	if (set) {
+		/*
+		 * The type member in struct sof_abi_hdr is used for component's specific blob type
+		 * for IPC3, just like it is used for component's specific blob param_id for IPC4.
+		 */
+		if (md->ops->set_configuration)
+			return md->ops->set_configuration(mod, cdata->data[0].type, pos,
+							  data_offset_size,
+							  (const uint8_t *)cdata,
+							  cdata->num_elems, NULL, 0);
+
+		comp_warn(dev, "module_adapter_get_set_params(): no configuration op set for %d",
+			  dev_comp_id(dev));
+		return 0;
+	}
+
+	if (md->ops->get_configuration)
 		return md->ops->get_configuration(mod, pos, &data_offset_size,
 						  (uint8_t *)cdata, cdata->num_elems);
 
-	comp_warn(dev, "module_adapter_get_set_params(): no configuration op set for %d",
-		  dev_comp_id(dev));
-	return 0;
+	comp_err(dev, "module_adapter_get_set_params(): no configuration op get for %d",
+		 dev_comp_id(dev));
+	return -EIO; /* non-implemented error */
 }
 
 static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
@@ -1354,6 +1362,12 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 							  (const uint8_t *)cdata, 0, NULL, 0);
 		break;
 	case COMP_CMD_GET_VALUE:
+		/*
+		 * Return error if getter is not implemented. Otherwise, the host will suppose
+		 * the GET_VALUE command is successful, but the received cdata is not filled.
+		 */
+		ret = -EIO;
+
 		/*
 		 * IPC3 does not use config_id, so pass 0 for config ID as it will be ignored
 		 * anyway. Also, pass the 0 as the fragment size and data offset as they are not
