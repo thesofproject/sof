@@ -14,7 +14,6 @@
 #ifndef __ZEPHYR_RTOS_IDC_H__
 #define __ZEPHYR_RTOS_IDC_H__
 
-#include <platform/drivers/idc.h>
 #include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -199,7 +198,11 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int));
 
 int idc_msg_status_get(uint32_t core);
 
+int idc_init(void);
+
 void idc_init_thread(void);
+
+int idc_send_msg(struct idc_msg *msg, uint32_t mode);
 
 struct idc **idc_get(void);
 
