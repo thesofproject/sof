@@ -54,6 +54,11 @@ void idc_init_thread(void)
 {
 }
 
+int idc_send_msg(struct idc_msg *msg, uint32_t mode)
+{
+	return -ENOTSUP;
+}
+
 #else
 
 K_P4WQ_ARRAY_DEFINE(q_zephyr_idc, CONFIG_CORE_COUNT, SOF_STACK_SIZE,
