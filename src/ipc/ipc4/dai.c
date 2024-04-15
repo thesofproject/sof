@@ -9,7 +9,6 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
-#include <sof/drivers/alh.h>
 #include <rtos/idc.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>
