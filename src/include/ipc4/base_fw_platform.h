@@ -22,4 +22,11 @@
  */
 int platform_basefw_hw_config(uint32_t *data_offset, char *data);
 
-#endif
+/**
+ * \brief Platform specific routine which return the pointer to
+ * the boot base manifest.
+ * \return pointer to struct if successful, null otherwise.
+ */
+struct sof_man_fw_desc *platform_base_fw_get_manifest(void);
+
+#endif /* __SOF_IPC4_BASE_FW_PLATFORM_H__ */

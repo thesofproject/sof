@@ -30,3 +30,12 @@ int platform_basefw_hw_config(uint32_t *data_offset, char *data)
 
 	return 0;
 }
+
+struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
+{
+	struct sof_man_fw_desc *desc;
+
+	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+
+	return desc;
+}

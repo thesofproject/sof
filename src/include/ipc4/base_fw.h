@@ -637,6 +637,31 @@ enum ipc4_alh_version {
 	IPC4_ALH_CAVS_1_8 = 0x10000,
 };
 
+struct ipc4_library_props {
+	/* Library run-time identifier, depends on order of loading. */
+    /* Base FW is always reported with id 0. */
+	uint32_t id;
+	/* Name of the library. */
+	uint8_t name[8];
+	/* Major version of the library. */
+	uint16_t major_version;
+	/* Minor version of the library. */
+	uint16_t minor_version;
+	/* Hotfix version of the library. */
+	uint16_t hotfix_version;
+	/* Build version of the library. */
+	uint16_t build_version;
+	/* Number of modules packed into the library. */
+	uint32_t num_module_entries;
+} __packed __aligned(4);
+
+struct ipc4_libraries_info {
+	/* Specifies number of items in libraries array. */
+	uint32_t library_count;
+	/* Array of libraries properties. */
+	struct ipc4_library_props libraries[0];
+} __packed __aligned(4);
+
 struct ipc4_log_state_info {
 	/*
 	 * Specifies how frequently FW sends Log Buffer Status
