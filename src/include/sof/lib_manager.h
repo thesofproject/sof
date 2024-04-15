@@ -118,6 +118,9 @@ static inline struct lib_manager_mod_ctx *lib_manager_get_mod_ctx(int module_id)
 	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
 	struct ext_library *_ext_lib = ext_lib_get();
 
+	if (!_ext_lib)
+		return NULL;
+
 	return _ext_lib->desc[lib_id];
 }
 

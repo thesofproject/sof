@@ -13,6 +13,8 @@
 #include <sof_versions.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
+#include <sof/platform.h>
+#include <sof/lib_manager.h>
 #include <rtos/init.h>
 #include <platform/lib/clk.h>
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
@@ -426,6 +428,57 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
+{
+	if (sizeof(struct ipc4_libraries_info) +
+		    LIB_MANAGER_MAX_LIBS * sizeof(struct ipc4_library_props) >
+	    SOF_IPC_MSG_MAX_SIZE) {
+		tr_err(&basefw_comp_tr, "Error with message size");
+		return -ENOMEM;
+	}
+
+	struct ipc4_libraries_info *const libs_info = (struct ipc4_libraries_info *)data;
+	const struct sof_man_fw_desc *desc;
+	int lib_counter = 0;
+
+	for (int lib_id = 0; lib_id < LIB_MANAGER_MAX_LIBS; ++lib_id) {
+		if (lib_id == 0) {
+			desc = platform_base_fw_get_manifest();
+		} else {
+#if CONFIG_LIBRARY_MANAGER
+			desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(lib_id);
+#else
+			desc = NULL;
+#endif
+		}
+
+		if (!desc)
+			continue;
+
+		libs_info->libraries[lib_id].id = lib_id;
+		memcpy_s(libs_info->libraries[lib_counter].name,
+			 SOF_MAN_FW_HDR_FW_NAME_LEN, desc->header.name, sizeof(desc->header.name));
+		libs_info->libraries[lib_counter].major_version =
+			desc->header.major_version;
+		libs_info->libraries[lib_counter].minor_version =
+			desc->header.minor_version;
+		libs_info->libraries[lib_counter].hotfix_version =
+			desc->header.hotfix_version;
+		libs_info->libraries[lib_counter].build_version =
+			desc->header.build_version;
+		libs_info->libraries[lib_counter].num_module_entries =
+			desc->header.num_module_entries;
+
+		lib_counter++;
+	}
+
+	libs_info->library_count = lib_counter;
+	*data_offset =
+		sizeof(libs_info) + libs_info->library_count * sizeof(libs_info->libraries[0]);
+
+	return 0;
+}
+
 static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 {
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
@@ -605,7 +658,9 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	case IPC4_MODULES_INFO_GET:
 	case IPC4_PIPELINE_PROPS_GET:
 	case IPC4_GATEWAYS_INFO_GET:
+		break;
 	case IPC4_LIBRARIES_INFO_GET:
+		return basefw_libraries_info_get(data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
 	case IPC4_GLOBAL_PERF_DATA:
 		COMPILER_FALLTHROUGH;
