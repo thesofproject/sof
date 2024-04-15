@@ -608,10 +608,22 @@ static int cadence_codec_init_process(struct processing_module *mod)
 	}
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_PROCESS, NULL, ret);
-	if (ret != LIB_NO_ERROR) {
+	if (LIB_IS_FATAL_ERROR(ret)) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to initialize codec",
 			 ret);
 		return ret;
+	} else if (ret != LIB_NO_ERROR) {
+		/* for SOF with native Zephyr, the first chunk of data will be
+		 * 0s since data is first transferred from host to the next
+		 * component and **then** from Linux to host. Because of this, the
+		 * above API call will return `...NONFATAL_NEXT_SYNC_NOT_FOUND`
+		 * since the API seems to expect useful data in the first chunk.
+		 * To avoid this, print a warning if the above call returns
+		 * a non-fatal error and let the init process continue. Next
+		 * chunk will contain the useful data.
+		 */
+		comp_warn(dev, "cadence_codec_init_process() returned non-fatal error: 0x%x",
+			  ret);
 	}
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
