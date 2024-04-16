@@ -19,7 +19,7 @@
  */
 
 /** \brief Number of 'base' SSP ports available */
-#define DAI_NUM_SSP_BASE	6
+#define DAI_NUM_SSP_BASE	3
 
 /* HD/A */
 
