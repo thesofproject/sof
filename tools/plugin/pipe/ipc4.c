@@ -123,11 +123,13 @@ static int pipe_sof_ipc_cmd_before(struct sof_pipe *sp, void *mailbox, size_t by
 
 		switch (type) {
 		case SOF_IPC4_MOD_INIT_INSTANCE:
+		{
 			struct ipc4_module_init_instance *module_init =
 				(struct ipc4_module_init_instance *)in;
 
 			ret = pipe_register_comp(sp, module_init->primary.r.module_id);
 			break;
+		}
 		default:
 			break;
 		}
