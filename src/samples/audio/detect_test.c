@@ -836,18 +836,24 @@ static int test_keyword_params(struct comp_dev *dev,
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
 	}
 
-	err = test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
-	if (err < 0) {
-		comp_err(dev, "test_keyword_params(): unsupported sample width %u",
-			 params->sample_valid_bytes * 8);
-		return err;
+	/*
+	 * Threshold might be already set via IPC4_DETECT_TEST_SET_CONFIG,
+	 * otherwise apply default value.
+	 */
+	if (!cd->config.activation_threshold) {
+		err = test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
+		if (err < 0) {
+			comp_err(dev, "test_keyword_params(): unsupported sample width %u",
+				 params->sample_valid_bytes * 8);
+			return err;
+		}
+
+		cd->config.activation_threshold = err;
 	}
 
 #if CONFIG_AMS
 	cd->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif /* CONFIG_AMS */
-
-	cd->config.activation_threshold = err;
 
 	return 0;
 }
