@@ -1445,6 +1445,7 @@ int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipelin
 
 void plug_free_topology(snd_sof_plug_t *plug)
 {
+	struct tplg_context *ctx = &plug->tplg;
 	struct list_item *item, *_item;
 
 	list_for_item_safe(item, _item, &plug->pcm_list) {
@@ -1456,7 +1457,10 @@ void plug_free_topology(snd_sof_plug_t *plug)
 
 	list_for_item_safe(item, _item, &plug->widget_list) {
 		struct tplg_comp_info *comp_info = container_of(item, struct tplg_comp_info, item);
+		struct sof_ipc4_available_audio_format *available_fmts = &comp_info->available_fmt;
 
+		free(available_fmts->output_pin_fmts);
+		free(available_fmts->input_pin_fmts);
 		free(comp_info->name);
 		free(comp_info->stream_name);
 		free(comp_info->ipc_payload);
@@ -1478,5 +1482,6 @@ void plug_free_topology(snd_sof_plug_t *plug)
 		free(pipe_info);
 	}
 
+	free(ctx->tplg_base);
 	tplg_debug("freed all pipelines, widgets, routes and pcms\n");
 }
