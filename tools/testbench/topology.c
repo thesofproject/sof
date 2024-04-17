@@ -504,7 +504,9 @@ int tb_parse_topology(struct testbench_prm *tb)
 
 out:
 	/* free all data */
-	free(ctx->tplg_base);
+
+	// TODO: Check this
+	// free(ctx->tplg_base);
 	return ret;
 }
 
@@ -917,6 +919,8 @@ void tb_free_topology(struct testbench_prm *tb)
 	struct tplg_comp_info *comp_info;
 	struct tplg_route_info *route_info;
 	struct tplg_pipeline_info *pipe_info;
+	struct tplg_context *ctx = &tb->tplg;
+	struct sof_ipc4_available_audio_format *available_fmts;
 	struct list_item *item, *_item;
 
 	list_for_item_safe(item, _item, &tb->pcm_list) {
@@ -927,6 +931,9 @@ void tb_free_topology(struct testbench_prm *tb)
 
 	list_for_item_safe(item, _item, &tb->widget_list) {
 		comp_info = container_of(item, struct tplg_comp_info, item);
+		available_fmts = &comp_info->available_fmt;
+		free(available_fmts->output_pin_fmts);
+		free(available_fmts->input_pin_fmts);
 		free(comp_info->name);
 		free(comp_info->stream_name);
 		free(comp_info->ipc_payload);
@@ -944,5 +951,7 @@ void tb_free_topology(struct testbench_prm *tb)
 		free(pipe_info);
 	}
 
+	// TODO: Do here or earlier?
+	free(ctx->tplg_base);
 	tplg_debug("freed all pipelines, widgets, routes and pcms\n");
 }
