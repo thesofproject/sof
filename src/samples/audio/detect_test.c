@@ -231,14 +231,22 @@ static void default_detect_test(struct comp_dev *dev,
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
-		src = (valid_bits == 16U) ?
-		      audio_stream_read_frag_s16(source, sample) :
-		      audio_stream_read_frag_s32(source, sample);
-		if (valid_bits > 16U) {
+		switch (valid_bits) {
+		case 16:
+			src = audio_stream_read_frag_s16(source, sample);
+			diff = abs(*(int16_t *)src) - abs((int16_t)cd->activation);
+			break;
+		case 24:
+			src = audio_stream_read_frag_s32(source, sample);
+			diff = abs(sign_extend_s24(*(int32_t *)src)) - abs(cd->activation);
+			break;
+		case 32:
+			src = audio_stream_read_frag_s32(source, sample);
 			diff = abs(*(int32_t *)src) - abs(cd->activation);
-		} else {
-			diff = abs(*(int16_t *)src) -
-			       abs((int16_t)cd->activation);
+			break;
+		default:
+			comp_err(dev, "Unsupported format");
+			return;
 		}
 
 		diff >>= cd->config.activation_shift;
@@ -295,7 +303,7 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 	assert(!ret);
 
 #if CONFIG_IPC_MAJOR_4
-	sample_width = cd->base_cfg.audio_fmt.depth;
+	sample_width = cd->base_cfg.audio_fmt.valid_bit_depth;
 #else
 	sample_width = cd->config.sample_width;
 #endif /* CONFIG_IPC_MAJOR_4 */
@@ -928,13 +936,17 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	int ret;
 
 #if CONFIG_IPC_MAJOR_4
-	sample_width = cd->base_cfg.audio_fmt.depth;
+	sample_width = cd->base_cfg.audio_fmt.valid_bit_depth;
 #else
 	sample_width = cd->config.sample_width;
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	comp_info(dev, "test_keyword_prepare()");
 
+	/*
+	 * FIXME: this condition is always "false" for IPC4 as audio format cannot be changed
+	 * without component re-creation. Does this "if" makes sense for IPC3?
+	 */
 	if (valid_bits != sample_width) {
 		/* Default threshold value has to be changed
 		 * according to host new format.
