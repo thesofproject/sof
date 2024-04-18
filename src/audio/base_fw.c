@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
+// Copyright(c) 2024 Intel Corporation.
+//
 
 #include <sof/audio/component.h>
 #include <sof/lib/memory.h>
