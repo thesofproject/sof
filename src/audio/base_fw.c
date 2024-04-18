@@ -17,9 +17,6 @@
 #include <sof/lib_manager.h>
 #include <rtos/init.h>
 #include <platform/lib/clk.h>
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
-#include <intel_adsp_hda.h>
-#endif
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -475,42 +472,6 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 	return 0;
 }
 
-static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
-{
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
-	const uint32_t force = tlv->value[0];
-
-	if (force) {
-		tr_info(&basefw_comp_tr, "FW config set force dmi l0 state");
-		intel_adsp_force_dmi_l0_state();
-	} else {
-		tr_info(&basefw_comp_tr, "FW config set allow dmi l1 state");
-		intel_adsp_allow_dmi_l1_state();
-	}
-
-	return 0;
-#else
-	return IPC4_UNAVAILABLE;
-#endif
-}
-
-static int basefw_set_fw_config(bool first_block,
-				bool last_block,
-				uint32_t data_offset,
-				const char *data)
-{
-	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
-
-	switch (tlv->type) {
-	case IPC4_DMI_FORCE_L1_EXIT:
-		return fw_config_set_force_l1_exit(tlv);
-	default:
-		break;
-	}
-	tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
-	return 0;
-}
-
 int schedulers_info_get(uint32_t *data_off_size,
 			char *data,
 			uint32_t core_id)
@@ -676,8 +637,6 @@ static int basefw_set_large_config(struct comp_dev *dev,
 				   const char *data)
 {
 	switch (param_id) {
-	case IPC4_FW_CONFIG:
-		return basefw_set_fw_config(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
 		return set_perf_meas_state(data);
 	case IPC4_SYSTEM_TIME:
