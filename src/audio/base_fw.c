@@ -9,6 +9,7 @@
 #include <ipc4/base_fw_platform.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
+#include <ipc/topology.h>
 #include <sof_versions.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
@@ -498,6 +499,31 @@ int schedulers_info_get(uint32_t *data_off_size,
 	return 0;
 }
 
+static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
+{
+	struct ipc4_pipeline_set_state_data *ppl_data = (struct ipc4_pipeline_set_state_data *)data;
+
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_pipe;
+	const struct ipc4_pipeline_set_state_data *pipeline_data;
+
+	pipeline_data = ipc4_get_pipeline_data_wrapper();
+	ppl_data->pipelines_count = 0;
+
+	for (int ppl = 0; ppl < pipeline_data->pipelines_count; ppl++) {
+		ipc_pipe = ipc_get_pipeline_by_id(ipc, ppl);
+		if (!ipc_pipe)
+			tr_err(&ipc_tr, "No pipeline with instance_id = %d", ppl);
+		else
+			ppl_data->ppl_id[ppl_data->pipelines_count++] =
+				ipc_pipe->pipeline->pipeline_id;
+	}
+
+	*data_offset = sizeof(ppl_data->pipelines_count) +
+		       ppl_data->pipelines_count * sizeof(ppl_data->ppl_id[0]);
+	return 0;
+}
+
 int set_perf_meas_state(const char *data)
 {
 #ifdef CONFIG_SOF_TELEMETRY
@@ -571,11 +597,12 @@ static int basefw_get_large_config(struct comp_dev *dev,
 	case IPC4_SCHEDULERS_INFO_GET:
 		return schedulers_info_get(data_offset, data,
 					 extended_param_id.part.parameter_instance);
+	case IPC4_PIPELINE_LIST_INFO_GET:
+		return basefw_pipeline_list_info_get(data_offset, data);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
 	case IPC4_MODULES_INFO_GET:
-	case IPC4_PIPELINE_LIST_INFO_GET:
 	case IPC4_PIPELINE_PROPS_GET:
 	case IPC4_GATEWAYS_INFO_GET:
 	case IPC4_LIBRARIES_INFO_GET:
