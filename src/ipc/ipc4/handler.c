@@ -549,6 +549,15 @@ static int ipc_wait_for_compound_msg(void)
 	return IPC4_SUCCESS;
 }
 
+const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
+{
+	const struct ipc4_pipeline_set_state_data *ppl_data;
+
+	ppl_data = ipc4_get_pipeline_data();
+
+	return ppl_data;
+}
+
 static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
