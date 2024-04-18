@@ -217,6 +217,123 @@ fail:
 }
 
 /**
+ * @brief Checks if region of a sys_mem_blocks have any allocated block
+ *
+ * @param blocks Pointer to the sys_mem_blocks allocator
+ * @param ptr Pointer to the memory region to be checked
+ * @param size Size of memory region
+ *
+ * @retval true if there is any allocation in the queried region
+ */
+static inline bool vmh_is_region_used(struct sys_mem_blocks *blocks, const uintptr_t ptr,
+				      const size_t size)
+{
+	__ASSERT_NO_MSG(IS_ALIGNED(size, 1 << blocks->info.blk_sz_shift));
+	return !sys_mem_blocks_is_region_free(blocks, UINT_TO_POINTER(ptr),
+					      size >> blocks->info.blk_sz_shift);
+}
+
+/**
+ * @brief Checks whether the memory region is located on memory pages unused by other allocations
+ *
+ * @param allocator Pointer to the sys_mem_blocks allocator
+ * @param ptr Pointer to the memory region to be checked
+ * @param size Size of memory region
+ * @param begin Address to a variable where address of the first unused memory page will be placed
+ * @param out_size Address to a variable where size of unused memory pages will be placed
+ *
+ * @retval true if there is any unused memory page
+ */
+static bool vmh_get_map_region_boundaries(struct sys_mem_blocks *blocks, const void *ptr,
+					  const size_t size, uintptr_t *begin, size_t *out_size)
+{
+	__ASSERT_NO_MSG(blocks);
+	__ASSERT_NO_MSG(begin);
+	__ASSERT_NO_MSG(out_size);
+
+	const size_t block_size = 1 << blocks->info.blk_sz_shift;
+	const size_t size_aligned = ALIGN_UP(size, block_size);
+	uintptr_t addr = ALIGN_DOWN((uintptr_t)ptr, CONFIG_MM_DRV_PAGE_SIZE);
+	uintptr_t addr_end = ALIGN_UP((uintptr_t)ptr + size, CONFIG_MM_DRV_PAGE_SIZE);
+	const uintptr_t size_before = (uintptr_t)ptr - addr;
+	const uintptr_t size_after = addr_end - (uintptr_t)ptr - size_aligned;
+
+	__ASSERT_NO_MSG(IS_ALIGNED(size_before, block_size));
+
+	if (size_before && vmh_is_region_used(blocks, addr, size_before))
+		/* skip first page */
+		addr += CONFIG_MM_DRV_PAGE_SIZE;
+
+	if (size_after && vmh_is_region_used(blocks, POINTER_TO_UINT(ptr) + size_aligned,
+					     size_after))
+		/* skip last page */
+		addr_end -= CONFIG_MM_DRV_PAGE_SIZE;
+
+	if (addr >= addr_end)
+		return false;
+
+	*begin = addr;
+	*out_size = addr_end - addr;
+	return true;
+}
+
+/**
+ * @brief Maps memory pages for a memory region if they have not been previously mapped for other
+ *	  allocations.
+ *
+ * @param allocator Pointer to the sys_mem_blocks allocator
+ * @param ptr Pointer to the memory region
+ * @param size Size of memory region
+ *
+ * @retval 0 on success, error code otherwise.
+ */
+static int vmh_map_region(struct sys_mem_blocks *region, void *ptr, size_t size)
+{
+	const size_t block_size = 1 << region->info.blk_sz_shift;
+	uintptr_t begin;
+	int ret;
+
+	if (block_size >= CONFIG_MM_DRV_PAGE_SIZE) {
+		begin = POINTER_TO_UINT(ptr);
+		size = ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE);
+	} else {
+		if (!vmh_get_map_region_boundaries(region, ptr, size, &begin, &size))
+			return 0;
+	}
+
+	ret = sys_mm_drv_map_region(UINT_TO_POINTER(begin), 0, size, SYS_MM_MEM_PERM_RW);
+
+	/* In case of an error, the pages that were successfully mapped must be manually released */
+	if (ret)
+		sys_mm_drv_unmap_region(UINT_TO_POINTER(begin), size);
+
+	return ret;
+}
+
+/**
+ * @brief Unmaps memory pages for a memory region if they are not used by other allocations.
+ *
+ * @param allocator Pointer to the sys_mem_blocks allocator
+ * @param ptr Pointer to the memory region
+ * @param size Size of memory region
+ *
+ * @retval 0 on success, error code otherwise.
+ */
+static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t size)
+{
+	const size_t block_size = 1 << region->info.blk_sz_shift;
+	uintptr_t begin;
+
+	if (block_size >= CONFIG_MM_DRV_PAGE_SIZE)
+		return sys_mm_drv_unmap_region(ptr, ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE));
+
+	if (vmh_get_map_region_boundaries(region, ptr, size, &begin, &size))
+		return sys_mm_drv_unmap_region((void *)begin, size);
+
+	return 0;
+}
+
+/**
  * @brief Alloc function
  *
  * Allocates memory on heap from provided heap pointer.
@@ -237,12 +354,9 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 		return NULL;
 
 	void *ptr = NULL;
-	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
-	int allocation_error_code = -ENOMEM;
-	size_t i, mem_block_iterator, allocation_bitarray_offset,
-		check_offset, check_size, check_position, physical_block_count,
-		block_count = 0, block_size = 0, allocation_bitarray_position = 0;
-	uintptr_t *ptrs_to_map = NULL;
+	int mem_block_iterator, allocation_error_code = -ENOMEM;
+	size_t allocation_bitarray_offset, block_count = 0, block_size = 0,
+		allocation_bitarray_position = 0;
 
 	/* We will gather error code when allocating on physical block
 	 * allocators.
@@ -341,101 +455,15 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 	if (!ptr)
 		return NULL;
 
-	/* Now we need to check if have mapped physical page already
-	 * We can do it by working out if there was any other allocation
-	 * done in the allocator section that is in CONFIG_MM_DRV_PAGE_SIZE chunk.
-	 * Start by getting start of allocation
-	 * ptr aligned to physical pages boundary
-	 */
-	phys_aligned_ptr = ALIGN_DOWN((uintptr_t)ptr, CONFIG_MM_DRV_PAGE_SIZE);
-	phys_aligned_alloc_end = ALIGN_UP((uintptr_t)ptr
-		+ alloc_size, CONFIG_MM_DRV_PAGE_SIZE);
-
-	/* To check if there was any allocation done before on block we need
-	 * to perform check operations however
-	 * we just made allocation there. We will clear it
-	 * from bit array of allocator for ease of operation.
-	 * RFC if someone knows a better way to handle it in bit array API.
-	 */
-
-	/* Clear bits of the allocation that was done */
-	sys_bitarray_clear_region(heap->physical_blocks_allocators[mem_block_iterator]->bitmap,
-		block_count, allocation_bitarray_position);
-
-	/* Now that we cleared the allocation we just made we can check
-	 * if there was any other allocation in the space that would need to be
-	 * mapped. Since this API is only one that uses mapping in specified address
-	 * ranges we can assume that we made mapping for the space if it has any previous
-	 * allocations. We check that iterating over all physical allocation blocks
-	 */
-	physical_block_count = (phys_aligned_alloc_end
-		- phys_aligned_ptr) / CONFIG_MM_DRV_PAGE_SIZE;
-
-	for (i = 0; i < physical_block_count; i++) {
-
-		phys_block_ptr = phys_aligned_ptr + i * CONFIG_MM_DRV_PAGE_SIZE;
-
-		check_offset = phys_block_ptr
-			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iterator]->buffer;
-		check_position = check_offset / block_size;
-
-		check_size = CONFIG_MM_DRV_PAGE_SIZE / block_size;
-
-		/* We are now sure that if the allocation bit array between
-		 * block_realigned_ptr and block_realigned_alloc_end shows us if we already had
-		 * any allocations there and by our logic if it needs mapping or not and
-		 * we calculated position in bit array and size to check in bit array
-		 */
-		if (!sys_bitarray_is_region_cleared(
-				heap->physical_blocks_allocators[mem_block_iterator]->bitmap,
-				check_size, check_position))
-			continue;
-
-		/* needed in case of mid mapping failure
-		 * Rewrite of the concept is needed. Instead of failure handling we
-		 * need to check if there is enough physical memory available.
-		 */
-		if (!ptrs_to_map) {
-			ptrs_to_map = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-				0, SOF_MEM_CAPS_RAM, sizeof(uintptr_t) * physical_block_count);
-			if (!ptrs_to_map)
-				goto fail;
-		}
-
-		ptrs_to_map[i] = phys_block_ptr;
-
-		if (sys_mm_drv_map_region((void *)phys_block_ptr, (uintptr_t)NULL,
-					CONFIG_MM_DRV_PAGE_SIZE, SYS_MM_MEM_PERM_RW) != 0) {
-			ptrs_to_map[i] = (uintptr_t)NULL;
-			goto fail;
-		}
+	allocation_error_code = vmh_map_region(heap->physical_blocks_allocators[mem_block_iterator],
+					       ptr, alloc_size);
+	if (allocation_error_code) {
+		sys_mem_blocks_free_contiguous(heap->physical_blocks_allocators[mem_block_iterator],
+					       ptr, block_count);
+		return NULL;
 	}
 
-	/* Set back allocation bits */
-	sys_bitarray_set_region(heap->physical_blocks_allocators[mem_block_iterator]->bitmap,
-		block_count, allocation_bitarray_position);
-	rfree(ptrs_to_map);
 	return ptr;
-
-fail:
-	if (heap->allocating_continuously)
-		sys_mem_blocks_free_contiguous(
-		    heap->physical_blocks_allocators[mem_block_iterator], ptr, block_count);
-	else
-		sys_mem_blocks_free(heap->physical_blocks_allocators[mem_block_iterator],
-				    block_count, &ptr);
-	if (ptrs_to_map) {
-		/* If by any chance we mapped one page and couldn't map rest we need to
-		 * free up those physical spaces.
-		 */
-		for (i = 0; i < physical_block_count; i++) {
-			if (ptrs_to_map[i])
-				sys_mm_drv_unmap_region((void *)ptrs_to_map[i],
-					CONFIG_MM_DRV_PAGE_SIZE);
-		}
-		rfree(ptrs_to_map);
-	}
-	return NULL;
 }
 
 /**
@@ -493,9 +521,7 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 		return -EINVAL;
 
 	size_t mem_block_iter, i, size_to_free, block_size, ptr_bit_array_offset,
-		ptr_bit_array_position, physical_block_count,
-		check_offset, check_position, check_size, blocks_to_free;
-	uintptr_t phys_aligned_ptr, phys_aligned_alloc_end, phys_block_ptr;
+		ptr_bit_array_position, blocks_to_free;
 	bool ptr_range_found;
 
 	/* Get allocator from which ptr was allocated */
@@ -589,37 +615,8 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	if (retval)
 		return retval;
 
-	/* Go similar route to the allocation one but
-	 * this time marking phys pages that can be unmapped
-	 */
-	phys_aligned_ptr = ALIGN_DOWN((uintptr_t)ptr, CONFIG_MM_DRV_PAGE_SIZE);
-	phys_aligned_alloc_end = ALIGN_UP((uintptr_t)ptr + size_to_free, CONFIG_MM_DRV_PAGE_SIZE);
-
-	/* Calculate how many blocks we need to check */
-	physical_block_count = (phys_aligned_alloc_end
-		- phys_aligned_alloc_end) / CONFIG_MM_DRV_PAGE_SIZE;
-
-	/* Unmap physical blocks that are not currently used
-	 * we check that by looking for allocations on mem_block
-	 * bitarrays
-	 */
-	for (i = 0; i < physical_block_count; i++) {
-		phys_block_ptr = phys_aligned_ptr + i * CONFIG_MM_DRV_PAGE_SIZE;
-
-		check_offset = phys_block_ptr
-			- (uintptr_t)heap->physical_blocks_allocators[mem_block_iter]->buffer;
-		check_position = check_offset / block_size;
-
-		check_size = CONFIG_MM_DRV_PAGE_SIZE / block_size;
-
-		if (sys_bitarray_is_region_cleared(
-				heap->physical_blocks_allocators[mem_block_iter]->bitmap,
-				check_size, check_offset))
-			sys_mm_drv_unmap_region((void *)phys_block_ptr,
-					CONFIG_MM_DRV_PAGE_SIZE);
-	}
-
-	return 0;
+	return vmh_unmap_region(heap->physical_blocks_allocators[mem_block_iter], ptr,
+				size_to_free);
 }
 
 /**
