@@ -214,7 +214,6 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 		return -EINVAL;
 	}
 
-	init_ramp(cd, cdata.curve_duration, cdata.target_volume);
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS) {
 		comp_err(dev, "Invalid channels count %u", channels_count);
@@ -229,7 +228,7 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 				set_volume_ipc4(cd, i, cdata.target_volume,
 						cdata.curve_type,
 						cdata.curve_duration);
-
+				init_ramp(cd, cdata.curve_duration, cdata.target_volume);
 				volume_set_chan(mod, i, cd->tvolume[i], true);
 			}
 		}
@@ -241,7 +240,7 @@ static int volume_set_volume(struct processing_module *mod, const uint8_t *data,
 					cdata.target_volume,
 					cdata.curve_type,
 					cdata.curve_duration);
-
+			init_ramp(cd, cdata.curve_duration, cdata.target_volume);
 			volume_set_chan(mod, cdata.channel_id,
 					cd->tvolume[cdata.channel_id], true);
 		}
