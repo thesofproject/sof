@@ -664,7 +664,8 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		break;
 	}
 
-	return -EINVAL;
+	return platform_basefw_get_large_config(dev, param_id, first_block, last_block,
+						data_offset, data);
 };
 
 static int basefw_set_large_config(struct comp_dev *dev,
@@ -693,7 +694,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 		break;
 	}
 
-	return IPC4_UNKNOWN_MESSAGE_TYPE;
+	return platform_basefw_set_large_config(dev, param_id, first_block, last_block,
+						data_offset, data);
 };
 
 static const struct comp_driver comp_basefw = {
