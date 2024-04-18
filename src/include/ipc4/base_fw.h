@@ -726,4 +726,6 @@ struct schedulers_info {
 	struct scheduler_props  scheduler_info[];
 } __packed __aligned(4);
 
+struct ipc4_system_time_info *basefw_get_system_time_info(void);
+
 #endif /* __SOF_IPC4_BASE_FW_H__ */
