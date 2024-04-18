@@ -67,6 +67,77 @@ struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
 	return desc;
 }
 
+/* There are two types of sram memory : high power mode sram and
+ * low power mode sram. This function retures memory size in page
+ * , memory bank power and usage status of each sram to host driver
+ */
+static int basefw_mem_state_info(uint32_t *data_offset, char *data)
+{
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
+	struct ipc4_sram_state_info info;
+	uint32_t *tuple_data;
+	uint32_t index;
+	uint32_t size;
+	uint16_t *ptr;
+	int i;
+
+	/* set hpsram */
+	info.free_phys_mem_pages = SRAM_BANK_SIZE * PLATFORM_HPSRAM_EBB_COUNT / HOST_PAGE_SIZE;
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_HPSRAM_EBB_COUNT, 32);
+	info.page_alloc_struct.page_alloc_count = PLATFORM_HPSRAM_EBB_COUNT;
+	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
+		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
+	size = ALIGN(size, 4);
+	/* size is also saved as tuple length */
+	tuple_data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	/* save memory info in data array since info length is variable */
+	index = 0;
+	tuple_data[index++] = info.free_phys_mem_pages;
+	tuple_data[index++] = info.ebb_state_dword_count;
+	for (i = 0; i < info.ebb_state_dword_count; i++) {
+		tuple_data[index + i] = io_reg_read(SHIM_HSPGCTL(i));
+	}
+	index += info.ebb_state_dword_count;
+
+	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
+	/* TLB is not supported now, so all pages are marked as occupied
+	 * TODO: add page-size allocator and TLB support
+	 */
+	ptr = (uint16_t *)(tuple_data + index);
+	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
+		ptr[i] = 0xfff;
+
+	tlv_value_set(tuple, IPC4_HPSRAM_STATE, size, tuple_data);
+
+	/* set lpsram */
+	info.free_phys_mem_pages = 0;
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_LPSRAM_EBB_COUNT, 32);
+	info.page_alloc_struct.page_alloc_count = PLATFORM_LPSRAM_EBB_COUNT;
+	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
+		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
+	size = ALIGN(size, 4);
+
+	index = 0;
+	tuple_data[index++] = info.free_phys_mem_pages;
+	tuple_data[index++] = info.ebb_state_dword_count;
+	tuple_data[index++] = io_reg_read(LSPGCTL);
+	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
+	ptr = (uint16_t *)(tuple_data + index);
+	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
+		ptr[i] = 0xfff;
+
+	tuple = tlv_next(tuple);
+	tlv_value_set(tuple, IPC4_LPSRAM_STATE, size, tuple_data);
+
+	/* calculate total tuple size */
+	tuple = tlv_next(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	rfree(tuple_data);
+	return 0;
+}
+
 int platform_basefw_get_large_config(struct comp_dev *dev,
 				     uint32_t param_id,
 				     bool first_block,
@@ -74,6 +145,18 @@ int platform_basefw_get_large_config(struct comp_dev *dev,
 				     uint32_t *data_offset,
 				     char *data)
 {
+	/* We can use extended param id for both extended and standard param id */
+	union ipc4_extended_param_id extended_param_id;
+
+	extended_param_id.full = param_id;
+
+	switch (extended_param_id.part.parameter_type) {
+	case IPC4_MEMORY_STATE_INFO_GET:
+		return basefw_mem_state_info(data_offset, data);
+	default:
+		break;
+	}
+
 	return -EINVAL;
 }
 
