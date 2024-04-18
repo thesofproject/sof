@@ -14,6 +14,11 @@
 #include <intel_adsp_hda.h>
 #endif
 
+#if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
+#include <zephyr/device.h>
+#include <zephyr/drivers/counter.h>
+#endif
+
 #include <ipc4/base_fw.h>
 
 LOG_MODULE_REGISTER(basefw_platform, CONFIG_SOF_LOG_LEVEL);
@@ -138,6 +143,63 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
+{
+#if CONFIG_ACE_V1X_ART_COUNTER && CONFIG_ACE_V1X_RTC_COUNTER
+	struct ipc4_ext_system_time *ext_system_time = (struct ipc4_ext_system_time *)(data);
+	struct ipc4_ext_system_time ext_system_time_data = {0};
+	struct ipc4_system_time_info *time_info = basefw_get_system_time_info();
+	uint64_t host_time = ((uint64_t)time_info->host_time.val_u << 32)
+				| (uint64_t)time_info->host_time.val_l;
+	uint64_t dsp_time = ((uint64_t)time_info->dsp_time.val_u << 32)
+				| (uint64_t)time_info->dsp_time.val_l;
+
+	if (host_time == 0 || dsp_time == 0)
+		return IPC4_INVALID_RESOURCE_STATE;
+
+	uint64_t art = 0;
+	uint64_t wallclk = 0;
+	uint64_t rtc = 0;
+
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(ace_art_counter));
+
+	if (!dev) {
+		LOG_DBG("board: ART counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &art);
+
+	wallclk = sof_cycle_get_64();
+	ext_system_time_data.art_l = (uint32_t)art;
+	ext_system_time_data.art_u = (uint32_t)(art >> 32);
+	uint64_t delta = (wallclk - dsp_time) / (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000000);
+
+	uint64_t new_host_time = (host_time + delta);
+
+	ext_system_time_data.utc_l = (uint32_t)new_host_time;
+	ext_system_time_data.utc_u = (uint32_t)(new_host_time >> 32);
+
+	dev = DEVICE_DT_GET(DT_NODELABEL(ace_rtc_counter));
+
+	if (!dev) {
+		LOG_DBG("board: RTC counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &rtc);
+	ext_system_time_data.rtc_l = (uint32_t)rtc;
+	ext_system_time_data.rtc_u = (uint32_t)(rtc >> 32);
+
+	memcpy_s(ext_system_time, sizeof(ext_system_time), &ext_system_time_data,
+		 sizeof(ext_system_time));
+	*data_offset = sizeof(struct ipc4_ext_system_time);
+
+	return IPC4_SUCCESS;
+#endif
+	return IPC4_UNAVAILABLE;
+}
+
 int platform_basefw_get_large_config(struct comp_dev *dev,
 				     uint32_t param_id,
 				     bool first_block,
@@ -150,14 +212,26 @@ int platform_basefw_get_large_config(struct comp_dev *dev,
 
 	extended_param_id.full = param_id;
 
+	uint32_t ret = -EINVAL;
+
 	switch (extended_param_id.part.parameter_type) {
 	case IPC4_MEMORY_STATE_INFO_GET:
 		return basefw_mem_state_info(data_offset, data);
+	case IPC4_EXTENDED_SYSTEM_TIME:
+		ret = basefw_get_ext_system_time(data_offset, data);
+		if (ret == IPC4_UNAVAILABLE) {
+			tr_warn(&basefw_comp_tr,
+				"returning success for get host EXTENDED_SYSTEM_TIME without handling it");
+			return 0;
+		} else {
+			return ret;
+		}
+		break;
 	default:
 		break;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
