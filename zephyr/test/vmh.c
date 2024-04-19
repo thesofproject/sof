@@ -26,11 +26,9 @@ static void test_vmh_init_and_free_heap(int memory_region_attribute,
 					bool expect_success)
 {
 	struct vmh_heap *heap = vmh_init_heap(config, memory_region_attribute,
-		core_id, allocating_continuously);
-	if (expect_success) {
-		zassert_not_null(heap,
-		"Heap initialization expected to succeed but failed");
-		}
+					      core_id, allocating_continuously);
+	if (expect_success)
+		zassert_not_null(heap, "Heap initialization expected to succeed but failed");
 	else
 		zassert_is_null(heap, "Heap initialization expected to fail but succeeded");
 
@@ -43,8 +41,8 @@ static void test_vmh_init_and_free_heap(int memory_region_attribute,
 
 /* Test for vmh_alloc and vmh_free */
 static void test_vmh_alloc_free_no_check(struct vmh_heap *heap,
-					uint32_t alloc_size,
-					bool expect_success)
+					 uint32_t alloc_size,
+					 bool expect_success)
 {
 	void *ptr = vmh_alloc(heap, alloc_size);
 
@@ -62,7 +60,6 @@ static void test_vmh_alloc_free_no_check(struct vmh_heap *heap,
 
 static void verify_memory_content(void *ptr, uint32_t alloc_size)
 {
-
 	/* Calculate check positions end and middle if applicable */
 	uint8_t *end_ptr = (uint8_t *)ptr + alloc_size - sizeof(uint32_t);
 	uint8_t *middle_ptr = (uint8_t *)ptr + (alloc_size / 2);
@@ -85,8 +82,8 @@ static void verify_memory_content(void *ptr, uint32_t alloc_size)
 
 /* Test function for vmh_alloc and vmh_free with memory read/write */
 static void test_vmh_alloc_free_check(struct vmh_heap *heap,
-					uint32_t alloc_size,
-					bool expect_success)
+				      uint32_t alloc_size,
+				      bool expect_success)
 {
 	void *ptr = vmh_alloc(heap, alloc_size);
 
@@ -107,8 +104,8 @@ static void test_vmh_alloc_free_check(struct vmh_heap *heap,
 
 /* Test function for multiple allocations on the same heap with read/write */
 static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
-					uint32_t min_alloc_size,
-					uint32_t max_alloc_size)
+				     uint32_t min_alloc_size,
+				     uint32_t max_alloc_size)
 {
 	void *ptrs[num_allocs];
 	uint32_t alloc_size;
@@ -127,8 +124,8 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 			LOG_INF("Test allocation failed for size: %d", alloc_size);
 
 		zassert_true(ptrs[i] != NULL,
-			"Allocation of size %u expected to succeed but failed",
-			alloc_size);
+			     "Allocation of size %u expected to succeed but failed",
+			     alloc_size);
 
 		if (ptrs[i])
 			verify_memory_content(ptrs[i], alloc_size);
@@ -145,8 +142,8 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 /* Test case for multiple allocations */
 static void test_vmh_alloc_multiple_times(bool allocating_continuously)
 {
-	struct vmh_heap *heap =
-	vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	struct vmh_heap *heap = vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0,
+					      allocating_continuously);
 
 	zassert_not_null(heap, "Heap initialization failed");
 
@@ -169,8 +166,8 @@ static void test_vmh_alloc_multiple_times(bool allocating_continuously)
 /* Test case for vmh_alloc and vmh_free */
 static void test_vmh_alloc_free(bool allocating_continuously)
 {
-	struct vmh_heap *heap =
-	vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	struct vmh_heap *heap = vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0,
+					      allocating_continuously);
 
 	zassert_not_null(heap, "Heap initialization failed");
 
@@ -200,11 +197,9 @@ static void test_heap_creation(void)
 	struct vmh_heap_config config = {0};
 
 	config.block_bundles_table[0].block_size = 8;
-
 	config.block_bundles_table[0].number_of_blocks = 1024;
 
 	config.block_bundles_table[1].block_size = 16;
-
 	config.block_bundles_table[1].number_of_blocks = 512;
 
 	test_vmh_init_and_free_heap(MEM_REG_ATTR_CORE_HEAP, &config, 0, false, true);
@@ -213,17 +208,15 @@ static void test_heap_creation(void)
 /* Test case for alloc/free on configured heap */
 static void test_alloc_on_configured_heap(bool allocating_continuously)
 {
-
 	/* Try to setup with pre defined heap config */
 	struct vmh_heap_config config = {0};
 
 	config.block_bundles_table[0].block_size = 32;
-
 	config.block_bundles_table[0].number_of_blocks = 256;
 
 	/* Create continuous allocation heap for success test */
-	struct vmh_heap *heap =
-	vmh_init_heap(&config, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	struct vmh_heap *heap = vmh_init_heap(&config, MEM_REG_ATTR_CORE_HEAP, 0,
+					      allocating_continuously);
 
 	/* Will succeed on continuous and fail with single block alloc */
 	test_vmh_alloc_free_check(heap, 512, allocating_continuously);
@@ -243,19 +236,16 @@ static void test_vmh_init_all_heaps(void)
 
 	/* Test initializing all types of heaps */
 	for (i = 0; i < num_regions; i++) {
-
 		/* Zeroed size symbolizes end of regions table */
 		if (!virtual_memory_region[i].size)
 			break;
 
-		struct vmh_heap *heap = vmh_init_heap(NULL, virtual_memory_region[i].attr,
-		i, true);
+		struct vmh_heap *heap = vmh_init_heap(NULL, virtual_memory_region[i].attr, i, true);
 
 		zassert_not_null(heap, "Heap initialization expected to succeed but failed");
 
 		/* Test if it fails when heap already exists */
-		test_vmh_init_and_free_heap(virtual_memory_region[i].attr, NULL, i, true,
-		false);
+		test_vmh_init_and_free_heap(virtual_memory_region[i].attr, NULL, i, true, false);
 
 		if (heap) {
 			int ret = vmh_free_heap(heap);
