@@ -9,3 +9,23 @@ config SOF_TELEMETRY
 	  systick_info measurement which measures scheduler task performance and may
 	  slightly affect overall performance.
 
+config SOF_TELEMETRY2_SLOT
+	bool "Enable SOF telemetry2 slot in debug window"
+	help
+	  TELEMETRY2 is a generic memory structure for passing real-time debug
+	  information from the SOF system. It only provides the framework for
+	  passing pieces of abstract data from DSP side to host side debugging
+	  tools. The option enables TELEMETRY2 debug window slot for transferring
+	  telemetry2 data.
+
+if SOF_TELEMETRY2_SLOT
+
+config SOF_TELEMETRY2_SLOT_NUMBER
+	int "Debug window slot where to put telemetry2 slot"
+	default 3
+	range 0 14
+	help
+	  Which debug slot to reserve for telemetry2. Remember to map
+	  the slot with MEMORY_WIN_2_SIZE in soc/xtensa/intel_adsp.
+
+endif
