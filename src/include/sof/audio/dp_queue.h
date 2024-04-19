@@ -177,18 +177,6 @@ struct sof_source *dp_queue_get_source(struct dp_queue *dp_queue)
 }
 
 /**
- * @brief this is a backdoor to get complete audio params structure from dp_queue
- *	  it is needed till pipeline 2.0 is ready
- *
- */
-static inline
-struct sof_audio_stream_params *dp_queue_get_audio_params(struct dp_queue *dp_queue)
-{
-	CORE_CHECK_STRUCT(dp_queue);
-	return &dp_queue->audio_stream_params;
-}
-
-/**
  * @brief return true if the queue is shared between 2 cores
  */
 static inline
