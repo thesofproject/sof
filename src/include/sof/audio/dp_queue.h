@@ -111,7 +111,15 @@ struct dp_queue {
 	struct list_item list;	/**< fields for connection queues in a list */
 
 	/* public: read only */
-	struct sof_audio_stream_params audio_stream_params;
+
+	/* note!
+	 * as dpQueue is currently used as a shadow for comp_buffer only for DP components,
+	 * the audio_stream_params vector must be shared between comp_buffer and dp_queue
+	 * the audio_stream_params pointer should point to the proper comp_buffer structure
+	 *
+	 * to be changed to the structure itself when pipeline2.0 is introduced
+	 */
+	struct sof_audio_stream_params *audio_stream_params;
 	size_t data_buffer_size;
 
 	/* private: */
@@ -138,9 +146,12 @@ struct dp_queue {
  *
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
  *
+ * @param audio_stream_params pointer to audio params vector, shared between dp_queue and
+ *			      comp_buffer for dp modules
+ *
  */
 struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				 uint32_t id);
+				 uint32_t id, struct sof_audio_stream_params *audio_stream_params);
 
 /**
  * @brief remove the queue from the list, free dp queue memory

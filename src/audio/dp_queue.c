@@ -201,10 +201,10 @@ static int dp_queue_set_ipc_params(struct dp_queue *dp_queue,
 	if (dp_queue->_hw_params_configured && !force_update)
 		return 0;
 
-	dp_queue->audio_stream_params.frame_fmt = params->frame_fmt;
-	dp_queue->audio_stream_params.rate = params->rate;
-	dp_queue->audio_stream_params.channels = params->channels;
-	dp_queue->audio_stream_params.buffer_fmt = params->buffer_fmt;
+	dp_queue->audio_stream_params->frame_fmt = params->frame_fmt;
+	dp_queue->audio_stream_params->rate = params->rate;
+	dp_queue->audio_stream_params->channels = params->channels;
+	dp_queue->audio_stream_params->buffer_fmt = params->buffer_fmt;
 
 	dp_queue->_hw_params_configured = true;
 
@@ -246,7 +246,7 @@ static const struct sink_ops dp_queue_sink_ops = {
 };
 
 struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				 uint32_t id)
+				 uint32_t id, struct sof_audio_stream_params *audio_stream_params)
 {
 	struct dp_queue *dp_queue;
 
@@ -260,14 +260,15 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 		return NULL;
 
 	dp_queue->_flags = flags;
+	dp_queue->audio_stream_params = audio_stream_params;
 
 	CORE_CHECK_STRUCT_INIT(dp_queue, flags & DP_QUEUE_MODE_SHARED);
 
 	/* initiate structures */
 	source_init(dp_queue_get_source(dp_queue), &dp_queue_source_ops,
-		    &dp_queue->audio_stream_params);
+		    dp_queue->audio_stream_params);
 	sink_init(dp_queue_get_sink(dp_queue), &dp_queue_sink_ops,
-		  &dp_queue->audio_stream_params);
+		  dp_queue->audio_stream_params);
 
 	list_init(&dp_queue->list);
 
@@ -287,7 +288,7 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 	if (!dp_queue->_data_buffer)
 		goto err;
 
-	dp_queue->audio_stream_params.id = id;
+	dp_queue->audio_stream_params->id = id;
 	tr_info(&dp_queue_tr, "DpQueue created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
 		id, dp_queue_is_shared(dp_queue), min_available, min_free_space,
 		dp_queue->data_buffer_size);
