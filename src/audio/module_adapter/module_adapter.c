@@ -170,9 +170,12 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		size_t min_free_space =
 			sink_get_min_free_space(audio_stream_get_sink(&source_buffer->stream));
 
-		/* create a shadow dp queue */
+		/* create a shadow dp queue
+		 * shadow queue must share runtime_stream_params with the source_buffer
+		 */
 		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
-					   buf_get_id(source_buffer));
+					   buf_get_id(source_buffer),
+					   &source_buffer->stream.runtime_stream_params);
 
 		if (!dp_queue)
 			goto err;
@@ -183,11 +186,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		 */
 		mod->sources[i] = dp_queue_get_source(dp_queue);
 
-		/* copy parameters from buffer to be shadowed */
-		memcpy_s(&dp_queue->audio_stream_params,
-			 sizeof(dp_queue->audio_stream_params),
-			 &source_buffer->stream.runtime_stream_params,
-			 sizeof(source_buffer->stream.runtime_stream_params));
 		i++;
 	}
 	mod->num_of_sources = i;
@@ -204,9 +202,12 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		size_t min_free_space =
 			sink_get_min_free_space(audio_stream_get_sink(&sink_buffer->stream));
 
-		/* create a shadow dp queue */
+		/* create a shadow dp queue
+		 * shadow queue must share runtime_stream_params with the sink_buffer
+		 */
 		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
-					   buf_get_id(sink_buffer));
+					   buf_get_id(sink_buffer),
+					   &sink_buffer->stream.runtime_stream_params);
 
 		if (!dp_queue)
 			goto err;
@@ -217,11 +218,6 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		 */
 		mod->sinks[i] = dp_queue_get_sink(dp_queue);
 
-		/* copy parameters from buffer to be shadowed */
-		memcpy_s(&dp_queue->audio_stream_params,
-			 sizeof(dp_queue->audio_stream_params),
-			 &sink_buffer->stream.runtime_stream_params,
-			 sizeof(sink_buffer->stream.runtime_stream_params));
 		/* calculate time required the module to provide OBS data portion - a period */
 		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
