@@ -28,4 +28,27 @@ config SOF_TELEMETRY2_SLOT_NUMBER
 	  Which debug slot to reserve for telemetry2. Remember to map
 	  the slot with MEMORY_WIN_2_SIZE in soc/xtensa/intel_adsp.
 
+config SOF_TELEMETRY2_THREAD_INFO
+	bool "Enable thread info chunk in telemetry2 slot"
+	select INIT_STACKS
+	select THREAD_MONITOR
+	select THREAD_STACK_INFO
+	select THREAD_RUNTIME_STATS
+	help
+	  This activates Zephyr thread info in telemetry2 slot. For
+	  the thread names to be any more than hex numbers its suggested
+	  to select THREAD_NAME=y too.
+
+if SOF_TELEMETRY2_THREAD_INFO
+
+config SOF_TELEMETRY2_THREAD_INFO_INTERVAL
+	int "Thread information collection interval in seconds"
+	default 2
+	range 1 10
+	help
+	  Decides how often thread info runs and checks execution cycle
+	  statistics and stack usage.
+
+endif
+
 endif
