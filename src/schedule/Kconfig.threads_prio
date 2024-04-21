@@ -8,6 +8,22 @@ config LL_THREAD_PRIORITY
 	  Should be in cooperative range:
 	  -NUM_COOP_PRIORITIES to -1
 
+config TWB_THREAD_MEDIUM_PRIORITY
+	int "TWB thread preemptible medium priority"
+	default 1
+	help
+	  TWB thread configured priority in the system.
+	  Should be in preemptible range:
+	  0 to NUM_PREEMPT_PRIORITIES-1
+
+config TWB_THREAD_LOW_PRIORITY
+	int "TWB thread preemptible low priority"
+	default 12
+	help
+	  TWB thread configured priority in the system.
+	  Should be in preemptible range:
+	  0 to NUM_PREEMPT_PRIORITIES-1
+
 config DP_THREAD_PRIORITY
 	int "DP thread preemptible low priority"
 	default 12
