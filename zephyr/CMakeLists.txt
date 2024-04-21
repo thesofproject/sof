@@ -275,6 +275,10 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_SRC_PATH}/schedule/zephyr_dp_schedule.c
 	)
 
+	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
+		${SOF_SRC_PATH}/schedule/zephyr_twb_schedule.c
+	)
+
 	# Sources for virtual heap management
 	zephyr_library_sources(
 		lib/regions_mm.c

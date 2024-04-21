@@ -18,6 +18,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/twb_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
@@ -114,6 +115,12 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+#if CONFIG_ZEPHYR_TWB_SCHEDULER
+	ret = scheduler_twb_init();
+	if (ret < 0)
+		return ret;
+#endif
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

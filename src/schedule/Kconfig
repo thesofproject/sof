@@ -51,3 +51,15 @@ config SCHEDULE_LL_NO_RESCHEDULE_TASK
 	  scheduler_ops::reschedule_task will set to NULL instead, tasks with
 	  the attempt to reschedule (e.g. DMA trace works) will be relinguished
 	  directly and return no error.
+
+config ZEPHYR_TWB_SCHEDULER
+	bool "use Zephyr thread based TWB scheduler"
+	default n
+	depends on ZEPHYR_SOF_MODULE
+	depends on TIMESLICE_PER_THREAD
+	depends on THREAD_RUNTIME_STATS
+	depends on SCHED_THREAD_USAGE
+	help
+	  Enable Tasks with Budget preemptive scheduler based on
+	  Zephyr preemptive threads for each SOF task that has pre-allocated
+	  MCPS budget renewed with every system tick.
