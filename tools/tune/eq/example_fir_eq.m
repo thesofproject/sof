@@ -10,8 +10,8 @@ function example_fir_eq()
 
 %% Common definitions
 fs = 48e3;
-fn.cpath3 = '../../ctl/ipc3';
-fn.cpath4 = '../../ctl/ipc4';
+fn.cpath3 = '../../ctl/ipc3/eq_fir';
+fn.cpath4 = '../../ctl/ipc4/eq_fir';
 fn.tpath1 =  '../../topology/topology1/m4';
 fn.tpath2 =  '../../topology/topology2/include/components/eqfir';
 fn.priv = 'DEF_EQFIR_PRIV';
@@ -21,8 +21,8 @@ addpath ../common
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'eq_fir_loudness.blob';
-fn.txt = 'eq_fir_loudness.txt';
+fn.bin = 'loudness.blob';
+fn.txt = 'loudness.txt';
 fn.tplg1 = 'eq_fir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
 comment = 'Loudness effect, created with example_fir_eq.m';
@@ -52,8 +52,8 @@ eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-fn.bin = 'eq_fir_mid.blob';
-fn.txt = 'eq_fir_mid.txt';
+fn.bin = 'mid.blob';
+fn.txt = 'mid.txt';
 fn.tplg1 = 'eq_fir_coef_mid.m4';
 fn.tplg2 = 'midboost.conf';
 comment = 'Mid boost, created with example_fir_eq.m';
@@ -79,8 +79,8 @@ eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-fn.bin = 'eq_fir_flat.blob';
-fn.txt = 'eq_fir_flat.txt';
+fn.bin = 'flat.blob';
+fn.txt = 'flat.txt';
 fn.tplg1 = 'eq_fir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
 comment = 'Flat response, created with example_fir_eq.m';
@@ -106,8 +106,8 @@ eq_pack_export(bm, fn, comment);
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-fn.bin = 'eq_fir_pass.blob';
-fn.txt = 'eq_fir_pass.txt';
+fn.bin = 'pass.blob';
+fn.txt = 'pass.txt';
 fn.tplg1 = 'eq_fir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';
 comment = 'Pass-through response, created with example_fir_eq.m';

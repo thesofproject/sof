@@ -15,8 +15,10 @@ function example_spk_eq()
 
 %% Defaults
 fs = 48e3;
-fn.cpath3 = '../../ctl/ipc3';
-fn.cpath4 = '../../ctl/ipc4';
+iir.cpath3 = '../../ctl/ipc3/eq_iir';
+iir.cpath4 = '../../ctl/ipc4/eq_iir';
+fir.cpath3 = '../../ctl/ipc3/eq_fir';
+fir.cpath4 = '../../ctl/ipc4/eq_fir';
 fn.tpath1 =  '../../topology/topology1/m4';
 fir.tpath2 =  '../../topology/topology2/include/components/eqfir';
 iir.tpath2 =  '../../topology/topology2/include/components/eqiir';
@@ -26,12 +28,12 @@ iir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
 fir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
 
 %% File names
-fir.txt = 'eq_fir_spk.txt';
-fir.bin = 'eq_fir_spk.blob';
+fir.txt = 'spk.txt';
+fir.bin = 'spk.blob';
 fir.tplg1 = 'eq_fir_coef_spk.m4';
 fir.tplg2 = 'example_speaker.conf';
-iir.txt = 'eq_iir_spk.txt';
-iir.bin = 'eq_iir_spk.blob';
+iir.txt = 'spk.txt';
+iir.bin = 'spk.blob';
 iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 
@@ -134,12 +136,12 @@ if eq.enable_fir
                 assign_response, ...
                 [ bq_fir ]);
         bp_fir = eq_fir_blob_pack(bm_fir, 3); % IPC3
-        eq_alsactl_write(fullfile(fn.cpath3, fir.txt), bp_fir);
-        sof_ucm_blob_write(fullfile(fn.cpath3, fir.bin), bp_fir);
+        eq_alsactl_write(fullfile(fir.cpath3, fir.txt), bp_fir);
+        sof_ucm_blob_write(fullfile(fir.cpath3, fir.bin), bp_fir);
 	eq_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
         bp_fir = eq_fir_blob_pack(bm_fir, 4); % IPC4
-        eq_alsactl_write(fullfile(fn.cpath4, fir.txt), bp_fir);
-        sof_ucm_blob_write(fullfile(fn.cpath4, fir.bin), bp_fir);
+        eq_alsactl_write(fullfile(fir.cpath4, fir.txt), bp_fir);
+        sof_ucm_blob_write(fullfile(fir.cpath4, fir.bin), bp_fir);
 	eq_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
 end
 
@@ -151,12 +153,12 @@ if eq.enable_iir
                 assign_response, ...
                 [ bq_iir ]);
         bp_iir = eq_iir_blob_pack(bm_iir, 3); % IPC3
-        eq_alsactl_write(fullfile(fn.cpath3, iir.txt), bp_iir);
-        sof_ucm_blob_write(fullfile(fn.cpath3, iir.bin), bp_iir);
+        eq_alsactl_write(fullfile(iir.cpath3, iir.txt), bp_iir);
+        sof_ucm_blob_write(fullfile(iir.cpath3, iir.bin), bp_iir);
 	eq_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
         bp_iir = eq_iir_blob_pack(bm_iir, 4); % IPC4
-        eq_alsactl_write(fullfile(fn.cpath4, iir.txt), bp_iir);
-        sof_ucm_blob_write(fullfile(fn.cpath4, iir.bin), bp_iir);
+        eq_alsactl_write(fullfile(iir.cpath4, iir.txt), bp_iir);
+        sof_ucm_blob_write(fullfile(iir.cpath4, iir.bin), bp_iir);
 	eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
 end
 
