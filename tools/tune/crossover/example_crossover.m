@@ -39,7 +39,8 @@ function export_crossover(cr)
 endian = "little";
 tpath1 = '../../topology/topology1/m4/crossover';
 tpath2 = '../../topology/topology2/include/components/crossover';
-ctlpath = '../../ctl/ipc3';
+ctlpath3 = '../../ctl/ipc3/crossover';
+ctlpath4 = '../../ctl/ipc4/crossover';
 
 str_way = sprintf('%dway', cr.num_sinks);
 str_freq = get_str_freq(cr);
@@ -49,8 +50,10 @@ str_pid = get_str_pid(cr);
 tplg1_fn = sprintf('%s/coef_%s_%s_%s.m4', tpath1, str_way, str_freq, str_pid); % Control Bytes File
 tplg2_fn = sprintf('%s/coef_%s_%s_%s.conf', tpath2, str_way, str_freq, str_pid);
 % Use those files with sof-ctl to update the component's configuration
-blob_fn = sprintf('%s/crossover_coef_%dway.blob', ctlpath, cr.num_sinks); % Blob binary file
-alsa_fn = sprintf('%s/crossover_coef_%dway.txt', ctlpath, cr.num_sinks); % ALSA CSV format file
+blob3_fn = sprintf('%s/coef_%dway.blob', ctlpath3, cr.num_sinks); % Blob binary file
+alsa3_fn = sprintf('%s/coef_%dway.txt', ctlpath3, cr.num_sinks); % ALSA CSV format file
+blob4_fn = sprintf('%s/coef_%dway.blob', ctlpath4, cr.num_sinks); % Blob binary file
+alsa4_fn = sprintf('%s/coef_%dway.txt', ctlpath4, cr.num_sinks); % ALSA CSV format file
 
 % This array is an example on how to assign a buffer from pipeline 1 to output 0,
 % buffer from pipeline 2 to output 1, etc...
@@ -85,11 +88,14 @@ blob8_ipc4 = crossover_build_blob(config, endian, 4);
 
 mkdir_check(tpath1);
 mkdir_check(tpath2);
-mkdir_check(ctlpath);
+mkdir_check(ctlpath3);
+mkdir_check(ctlpath4);
 tplg_write(tplg1_fn, blob8, "CROSSOVER");
 tplg2_write(tplg2_fn, blob8_ipc4, "crossover_config", 'Exported Control Bytes');
-sof_ucm_blob_write(blob_fn, blob8);
-alsactl_write(alsa_fn, blob8);
+sof_ucm_blob_write(blob3_fn, blob8);
+sof_ucm_blob_write(blob4_fn, blob8_ipc4);
+alsactl_write(alsa3_fn, blob8);
+alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Magnitude and Phase Response of each sink
 crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
