@@ -35,6 +35,8 @@ iir.bin = 'eq_iir_spk.bin';
 iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 
+addpath ../common
+
 %% Get defaults for equalizer design
 eq = eq_defaults();
 
@@ -133,11 +135,11 @@ if eq.enable_fir
                 [ bq_fir ]);
         bp_fir = eq_fir_blob_pack(bm_fir, 3); % IPC3
         eq_alsactl_write(fullfile(fn.cpath3, fir.txt), bp_fir);
-        eq_blob_write(fullfile(fn.cpath3, fir.bin), bp_fir);
+        sof_ucm_blob_write(fullfile(fn.cpath3, fir.bin), bp_fir);
 	eq_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
         bp_fir = eq_fir_blob_pack(bm_fir, 4); % IPC4
         eq_alsactl_write(fullfile(fn.cpath4, fir.txt), bp_fir);
-        eq_blob_write(fullfile(fn.cpath4, fir.bin), bp_fir);
+        sof_ucm_blob_write(fullfile(fn.cpath4, fir.bin), bp_fir);
 	eq_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
 end
 
@@ -150,12 +152,14 @@ if eq.enable_iir
                 [ bq_iir ]);
         bp_iir = eq_iir_blob_pack(bm_iir, 3); % IPC3
         eq_alsactl_write(fullfile(fn.cpath3, iir.txt), bp_iir);
-        eq_blob_write(fullfile(fn.cpath3, iir.bin), bp_iir);
+        sof_ucm_blob_write(fullfile(fn.cpath3, iir.bin), bp_iir);
 	eq_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
         bp_iir = eq_iir_blob_pack(bm_iir, 4); % IPC4
         eq_alsactl_write(fullfile(fn.cpath4, iir.txt), bp_iir);
-        eq_blob_write(fullfile(fn.cpath4, iir.bin), bp_iir);
+        sof_ucm_blob_write(fullfile(fn.cpath4, iir.bin), bp_iir);
 	eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
 end
+
+rmpath ../common
 
 end

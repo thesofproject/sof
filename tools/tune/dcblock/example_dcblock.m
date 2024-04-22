@@ -58,13 +58,13 @@ blob8_ipc4 = dcblock_build_blob(R_coeffs, endian, 4);
 tplg_write(tplg1_fn, blob8, "DCBLOCK", ...
 	   "Exported with script example_dcblock.m", ...
 	   "cd tools/tune/dcblock; octave example_dcblock.m");
-blob_write(blob3_fn, blob8);
+sof_ucm_blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 
 tplg2_write(tplg2_fn, blob8_ipc4, "dcblock_config", ...
 	    "Exported with script example_dcblock.m" , ...
 	    "cd tools/tune/dcblock; octave example_dcblock.m");
-blob_write(blob4_fn, blob8_ipc4);
+sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Filter's Transfer Function and Step Response

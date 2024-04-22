@@ -14,6 +14,8 @@ tpath =  '../../topology/topology1/m4';
 cpath = '../../ctl';
 priv = 'DEF_EQIIR_PRIV';
 
+addpath ../common
+
 %% --------------------------------------------------
 %% Example: Band-split 2ch to 4ch low and high bands
 %% --------------------------------------------------
@@ -47,6 +49,7 @@ eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 %% Done.
 %% ------------------------------------
 
+rmpath ../common
 end
 
 %% -------------------
@@ -126,7 +129,7 @@ function eq_pack_export(bm, bin_fn, ascii_fn, tplg_fn, priv, note)
 bp = eq_iir_blob_pack(bm);
 
 if ~isempty(bin_fn)
-	eq_blob_write(bin_fn, bp);
+	sof_ucm_blob_write(bin_fn, bp);
 end
 
 if ~isempty(ascii_fn)

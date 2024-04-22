@@ -88,7 +88,7 @@ mkdir_check(tpath2);
 mkdir_check(ctlpath);
 tplg_write(tplg1_fn, blob8, "CROSSOVER");
 tplg2_write(tplg2_fn, blob8_ipc4, "crossover_config", 'Exported Control Bytes');
-blob_write(blob_fn, blob8);
+sof_ucm_blob_write(blob_fn, blob8);
 alsactl_write(alsa_fn, blob8);
 
 % Plot Magnitude and Phase Response of each sink
