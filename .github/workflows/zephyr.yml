@@ -195,6 +195,7 @@ jobs:
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
              --cmake-args=--warn-uninitialized
              --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY=y
+             --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY_WITH_SOURCE=n
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
@@ -361,6 +362,7 @@ jobs:
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
           --cmake-args=--warn-uninitialized
           --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY=y
+          --cmake-args=-DCONFIG_OUTPUT_DISASSEMBLY_WITH_SOURCE=n
           ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
