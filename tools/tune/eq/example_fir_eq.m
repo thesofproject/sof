@@ -21,7 +21,7 @@ addpath ../common
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'eq_fir_loudness.bin';
+fn.bin = 'eq_fir_loudness.blob';
 fn.txt = 'eq_fir_loudness.txt';
 fn.tplg1 = 'eq_fir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
@@ -52,7 +52,7 @@ eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-fn.bin = 'eq_fir_mid.bin';
+fn.bin = 'eq_fir_mid.blob';
 fn.txt = 'eq_fir_mid.txt';
 fn.tplg1 = 'eq_fir_coef_mid.m4';
 fn.tplg2 = 'midboost.conf';
@@ -79,7 +79,7 @@ eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-fn.bin = 'eq_fir_flat.bin';
+fn.bin = 'eq_fir_flat.blob';
 fn.txt = 'eq_fir_flat.txt';
 fn.tplg1 = 'eq_fir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
@@ -106,7 +106,7 @@ eq_pack_export(bm, fn, comment);
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-fn.bin = 'eq_fir_pass.bin';
+fn.bin = 'eq_fir_pass.blob';
 fn.txt = 'eq_fir_pass.txt';
 fn.tplg1 = 'eq_fir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';

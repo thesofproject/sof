@@ -19,7 +19,7 @@ addpath ../common
 %% --------------------------------------------------
 %% Example: Band-split 2ch to 4ch low and high bands
 %% --------------------------------------------------
-blob_fn = fullfile(cpath, 'eq_iir_bandsplit.bin');
+blob_fn = fullfile(cpath, 'eq_iir_bandsplit.blob');
 alsa_fn = fullfile(cpath, 'eq_iir_bandsplit.txt');
 tplg_fn = fullfile(tpath, 'eq_iir_bandsplit.m4');
 comment = 'Bandsplit, created with example_iir_bandsplit.m';
