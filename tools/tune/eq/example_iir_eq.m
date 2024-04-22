@@ -10,8 +10,8 @@ function example_iir_eq()
 
 %% Common definitions
 fs = 48e3;
-fn.cpath3 = '../../ctl/ipc3';
-fn.cpath4 = '../../ctl/ipc4';
+fn.cpath3 = '../../ctl/ipc3/eq_iir';
+fn.cpath4 = '../../ctl/ipc4/eq_iir';
 fn.tpath1 =  '../../topology/topology1/m4';
 fn.tpath2 =  '../../topology/topology2/include/components/eqiir';
 fn.priv = 'DEF_EQIIR_PRIV';
@@ -21,8 +21,8 @@ addpath ../common
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'eq_iir_loudness.blob';
-fn.txt = 'eq_iir_loudness.txt';
+fn.bin = 'loudness.blob';
+fn.txt = 'loudness.txt';
 fn.tplg1 = 'eq_iir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
 comment = 'Loudness effect, created with example_iir_eq.m';
@@ -52,8 +52,8 @@ eq_pack_export(bm, fn, comment)
 %% ------------------------------------
 %% Example 2: Bass boost
 %% ------------------------------------
-fn.bin = 'eq_iir_bassboost.blob';
-fn.txt = 'eq_iir_bassboost.txt';
+fn.bin = 'bassboost.blob';
+fn.txt = 'bassboost.txt';
 fn.tplg1 = 'eq_iir_coef_bassboost.m4';
 fn.tplg2 = 'bassboost.conf';
 comment = 'Bass boost, created with example_iir_eq.m';
@@ -79,8 +79,8 @@ eq_pack_export(bm, fn, comment)
 %% ------------------------------------
 %% Example 3: Band-pass
 %% ------------------------------------
-fn.bin = 'eq_iir_bandpass.blob';
-fn.txt = 'eq_iir_bandpass.txt';
+fn.bin = 'bandpass.blob';
+fn.txt = 'bandpass.txt';
 fn.tplg1 = 'eq_iir_coef_bandpass.m4';
 fn.tplg2 = 'bandpass.conf';
 comment = 'Band-pass, created with example_iir_eq.m';
@@ -106,8 +106,8 @@ eq_pack_export(bm, fn, comment)
 %% -------------------
 %% Example 4: Flat IIR
 %% -------------------
-fn.bin = 'eq_iir_flat.blob';
-fn.txt = 'eq_iir_flat.txt';
+fn.bin = 'flat.blob';
+fn.txt = 'flat.txt';
 fn.tplg1 = 'eq_iir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
 comment = 'Flat response, created with example_iir_eq.m';
@@ -133,8 +133,8 @@ eq_pack_export(bm, fn, comment)
 %% ---------------------------
 %% Example 5: Pass-through IIR
 %% ---------------------------
-fn.bin = 'eq_iir_pass.blob';
-fn.txt = 'eq_iir_pass.txt';
+fn.bin = 'pass.blob';
+fn.txt = 'pass.txt';
 fn.tplg1 = 'eq_iir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';
 comment = 'Pass-through, created with example_iir_eq.m';
@@ -174,11 +174,10 @@ for i = 1:length(fs_list)
 			fn.tplg1 = sprintf('eq_iir_coef_highpass_%dhz_%ddb_%dkhz.m4', ...
 				           fc, g, fsk);
 			fn.tplg2 = sprintf('highpass_%dhz_%ddb_%dkhz.conf', fc, g, fsk);
-			fn.txt = sprintf('eq_iir_highpass_%dhz_%ddb_%dkhz.txt', ...
-					 fc, g, fsk);
+			fn.txt = sprintf('highpass_%dhz_%ddb_%dkhz.txt', fc, g, fsk);
 			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with example_iir_eq.m', ...
 					  fc, g);
-			fn.bin = sprintf('eq_iir_highpass_%dhz_%ddb_%dkhz.blob', fc, g, fsk);
+			fn.bin = sprintf('highpass_%dhz_%ddb_%dkhz.blob', fc, g, fsk);
 
 			%% Design IIR high-pass
 			eq_hp = hp_iir_eq(fs, fc, g);
@@ -205,8 +204,8 @@ end
 %% Example 7: Merge previous desigs to single blob for use as presets
 %% ------------------------------------------------------------------
 
-fn.bin = 'eq_iir_bundle.blob';
-fn.txt = 'eq_iir_bundle.txt';
+fn.bin = 'bundle.blob';
+fn.txt = 'bundle.txt';
 fn.tplg1 = 'eq_iir_bundle.m4';
 fn.tplg2 = 'bundle.conf';
 comment = 'Bundle of responses flat/loud/bass/band/high, created with example_iir_eq.m';

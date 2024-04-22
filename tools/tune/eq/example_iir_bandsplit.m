@@ -11,7 +11,7 @@ function example_iir_bandsplit()
 %% Common definitions
 fs = 48e3;
 tpath =  '../../topology/topology1/m4';
-cpath = '../../ctl';
+cpath = '../../ctl/ipc3/eq_iir';
 priv = 'DEF_EQIIR_PRIV';
 
 addpath ../common
@@ -19,8 +19,8 @@ addpath ../common
 %% --------------------------------------------------
 %% Example: Band-split 2ch to 4ch low and high bands
 %% --------------------------------------------------
-blob_fn = fullfile(cpath, 'eq_iir_bandsplit.blob');
-alsa_fn = fullfile(cpath, 'eq_iir_bandsplit.txt');
+blob_fn = fullfile(cpath, 'bandsplit.blob');
+alsa_fn = fullfile(cpath, 'bandsplit.txt');
 tplg_fn = fullfile(tpath, 'eq_iir_bandsplit.m4');
 comment = 'Bandsplit, created with example_iir_bandsplit.m';
 
@@ -43,7 +43,6 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 
 %% Pack and write file
 eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
-
 
 %% ------------------------------------
 %% Done.
