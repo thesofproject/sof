@@ -16,6 +16,8 @@ fn.tpath1 =  '../../topology/topology1/m4';
 fn.tpath2 =  '../../topology/topology2/include/components/eqiir';
 fn.priv = 'DEF_EQIIR_PRIV';
 
+addpath ../common
+
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
@@ -225,6 +227,8 @@ eq_pack_export(bm, fn, comment)
 %% Done.
 %% ------------------------------------
 
+rmpath ../common
+
 end
 
 %% -------------------
@@ -349,8 +353,8 @@ end
 function eq_pack_export(bm, fn, note)
 
 bp = eq_iir_blob_pack(bm, 3); % IPC3
-if ~isempty(fn. bin)
-	eq_blob_write(fullfile(fn.cpath3, fn.bin), bp);
+if ~isempty(fn.bin)
+	sof_ucm_blob_write(fullfile(fn.cpath3, fn.bin), bp);
 end
 if ~isempty(fn.txt)
 	eq_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
@@ -361,7 +365,7 @@ end
 
 bp = eq_iir_blob_pack(bm, 4); % IPC4
 if ~isempty(fn.bin)
-	eq_blob_write(fullfile(fn.cpath4, fn.bin), bp);
+	sof_ucm_blob_write(fullfile(fn.cpath4, fn.bin), bp);
 end
 if ~isempty(fn.txt)
 	eq_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
