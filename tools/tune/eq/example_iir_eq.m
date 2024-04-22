@@ -161,9 +161,8 @@ eq_pack_export(bm, fn, comment)
 %% Example 6: 20/30/40/50 Hz high-pass
 %% ------------------------------------
 
-fn.bin = ''; % Don't create
 fs_list = [16e3 48e3];
-fc_list = [20 30 40 50];
+fc_list = [20 30 40 50 100];
 g_list = [0 20];
 for i = 1:length(fs_list)
 	for j = 1:length(fc_list);
@@ -179,6 +178,7 @@ for i = 1:length(fs_list)
 					 fc, g, fsk);
 			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with example_iir_eq.m', ...
 					  fc, g);
+			fn.bin = sprintf('eq_iir_highpass_%dhz_%ddb_%dkhz.bin', fc, g, fsk);
 
 			%% Design IIR high-pass
 			eq_hp = hp_iir_eq(fs, fc, g);
