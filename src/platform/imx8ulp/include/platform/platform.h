@@ -24,7 +24,7 @@ struct timer;
 #define LPSRAM_SIZE 16384
 
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERRUPT		IRQ_NUM_MU3
+#define PLATFORM_IPC_INTERRUPT		15
 #define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
