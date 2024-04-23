@@ -116,7 +116,6 @@ config IMX8ULP
 	select IMX
 	select IMX_EDMA
 	select IMX_INTERRUPT_GENERIC
-	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is imx8ulp-compatible.
 	 imx.8ulp support dsp.

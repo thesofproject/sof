@@ -30,7 +30,7 @@ config SOF_ZEPHYR_STRICT_HEADERS
 
 config DMA_DOMAIN
 	bool "Enable the usage of DMA domain."
-	default y if IMX8M || IMX8ULP
+	default y if IMX8M
 	help
 	  This enables the usage of the DMA domain in scheduling.
 

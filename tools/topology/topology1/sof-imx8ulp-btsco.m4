@@ -62,14 +62,14 @@ dnl     period, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SAI, 5, sai5-bt-sco-pcm-wb,
 	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SAI5 using 2 periods
 # Buffers use s16le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SAI, 5, sai5-bt-sco-pcm-wb,
 	PIPELINE_SINK_2, 2, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
 
