@@ -150,6 +150,26 @@ SHARED_DATA struct dma dma[] = {
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
 #endif
+#ifdef CONFIG_SOC_MIMX8UD7_ADSP
+{
+	.plat_data = {
+		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.devs = DMA_DEV_SAI,
+		.channels = 32,
+		.period_count = 2,
+	},
+	.z_dev = DEVICE_DT_GET(DT_NODELABEL(edma2)),
+},
+{
+	.plat_data = {
+		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.devs = DMA_DEV_HOST,
+		.channels = DT_PROP(DT_NODELABEL(host_dma), dma_channels),
+		.period_count = 2,
+	},
+	.z_dev = DEVICE_DT_GET(DT_NODELABEL(host_dma)),
+},
+#endif /* CONFIG_SOC_MIMX8UD7_ADSP */
 };
 
 const struct dma_info lib_dma = {
