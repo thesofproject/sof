@@ -11,7 +11,7 @@
 /* TODO: to be removed completely when the following platforms are switched
  * to native drivers.
  */
-#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX8ULP)
+#if defined(CONFIG_IMX8M)
 /* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
 #include "../../../xtos/include/rtos/interrupt.h"
 #else
@@ -50,7 +50,7 @@ static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
 #if defined(CONFIG_LIBRARY) || defined(CONFIG_ACE) || defined(CONFIG_CAVS) || \
 	defined(CONFIG_ZEPHYR_POSIX) || defined(CONFIG_ARM64) || \
-	defined(CONFIG_IMX8) || defined(CONFIG_IMX8X)
+	defined(CONFIG_IMX8) || defined(CONFIG_IMX8X) || defined(CONFIG_IMX8ULP)
 	return irq;
 #else
 	if (cascade == irq_name_level2)

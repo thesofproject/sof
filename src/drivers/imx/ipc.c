@@ -33,7 +33,7 @@
 
 LOG_MODULE_REGISTER(ipc_task, CONFIG_SOF_LOG_LEVEL);
 
-#if defined(CONFIG_ARM64) || defined(CONFIG_IMX8) || defined(CONFIG_IMX8X)
+#ifndef CONFIG_IMX8M
 /* thanks to the fact that ARM's GIC is supported
  * by Zephyr there's no need to clear interrupts
  * explicitly. This should already be done by Zephyr
@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(ipc_task, CONFIG_SOF_LOG_LEVEL);
  * linkage purposes on ARM64-based platforms.
  */
 #define interrupt_clear(irq)
-#endif /* CONFIG_ARM64 */
+#endif /* CONFIG_IMX8M */
 
 /* 389c9186-5a7d-4ad1-a02c-a02ecdadfb33 */
 DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x389c9186, 0x5a7d, 0x4ad1,
