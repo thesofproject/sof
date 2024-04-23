@@ -4,36 +4,15 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
-#include <sof/drivers/edma.h>
-#include <rtos/interrupt.h>
-#include <sof/ipc/driver.h>
-#include <sof/drivers/mu.h>
-#include <rtos/timer.h>
-#include <sof/fw-ready-metadata.h>
-#include <sof/lib/agent.h>
-#include <rtos/clk.h>
-#include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
-#include <sof/lib/mm_heap.h>
-#include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
-#include <rtos/sof.h>
-#include <sof/trace/dma-trace.h>
-#include <ipc/dai.h>
-#include <ipc/header.h>
-#include <ipc/info.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
 #include <sof_versions.h>
-#include <errno.h>
-#include <stdint.h>
 
 struct sof;
 
