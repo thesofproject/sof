@@ -128,13 +128,6 @@ const struct ext_man_windows xsram_window
 	}
 };
 
-#ifndef __ZEPHYR__
-static SHARED_DATA struct timer timer_shared = {
-	.id = TIMER0, /* internal timer */
-	.irq = IRQ_NUM_TIMER0,
-};
-#endif
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
