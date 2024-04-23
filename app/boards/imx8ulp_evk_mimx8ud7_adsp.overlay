@@ -1,0 +1,42 @@
+/*
+ * Copyright 2024 NXP
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	host_dma: dma {
+		compatible = "nxp,sof-host-dma";
+		dma-channels = <32>;
+		#dma-cells = <0>;
+	};
+};
+
+&edma2 {
+	status = "okay";
+};
+
+&sai5 {
+	rx-fifo-watermark = <8>;
+	tx-fifo-watermark = <1>;
+	fifo-depth = <8>;
+	rx-sync-mode = <1>;
+	status = "okay";
+};
+
+/*
+ * TODO: this node shouldn't be here. For now, we only support
+ * the EVK board in Zephyr, while in SOF we support the EVK and
+ * the EVK9 boards. This is an issue because the two boards use
+ * different SAI instances for BT communication (SAI5 - EVK,
+ * SAI6 - EVK9). Ideally, we should have two boards in Zephyr
+ * and SOF but for now this workaround will suffice.
+ */
+&sai6 {
+	rx-fifo-watermark = <8>;
+	tx-fifo-watermark = <1>;
+	fifo-depth = <8>;
+	rx-sync-mode = <1>;
+	tx-dataline = <2>;
+	status = "okay";
+};
