@@ -221,6 +221,9 @@ static void test_heap_creation(void)
 	config.block_bundles_table[1].block_size = 16;
 	config.block_bundles_table[1].number_of_blocks = 512;
 
+	config.block_bundles_table[2].block_size = 4096;
+	config.block_bundles_table[2].number_of_blocks = 2;
+
 	test_vmh_init_and_free_heap(MEM_REG_ATTR_CORE_HEAP, &config, 0, false, true);
 }
 
@@ -274,6 +277,62 @@ static void test_vmh_init_all_heaps(void)
 	}
 }
 
+/* Test allocation of all available buffers */
+static void test_vmh_full_alloc(void)
+{
+	const struct vmh_heap_config config = { {
+		{ 512,	8 },
+		{ 1024,	4 },
+		{ 4096,	2 },
+		{ 8192,	2 }
+	} };
+	void *ptrs[32] = {0};
+	int ret, counter = 0;
+	struct vmh_heap *heap = vmh_init_heap(&config, MEM_REG_ATTR_CORE_HEAP, 0, false);
+
+	zassert_not_null(heap, "Failed to init heap");
+
+	/* Allocate all buffers */
+	for (int bundle = 0; bundle < MAX_MEMORY_ALLOCATORS_COUNT; bundle++) {
+		if (!config.block_bundles_table[bundle].block_size)
+			break;
+
+		for (int i = 0; i < config.block_bundles_table[bundle].number_of_blocks &&
+		     counter < ARRAY_SIZE(ptrs); i++, counter++) {
+			ptrs[counter] = vmh_alloc(heap,
+						  config.block_bundles_table[bundle].block_size);
+			zassert_not_null(ptrs[counter], "Failed to alloc buffer");
+
+			verify_memory_content(ptrs[counter],
+					      config.block_bundles_table[bundle].block_size, true);
+		}
+	}
+
+	/* Check buffers content */
+	counter = 0;
+	for (int bundle = 0; bundle < MAX_MEMORY_ALLOCATORS_COUNT; bundle++) {
+		if (!config.block_bundles_table[bundle].block_size)
+			break;
+
+		for (int i = 0; i < config.block_bundles_table[bundle].number_of_blocks &&
+		     counter < ARRAY_SIZE(ptrs); i++, counter++) {
+			verify_memory_content(ptrs[counter],
+					      config.block_bundles_table[bundle].block_size, false);
+		}
+	}
+
+	/* Free all buffers */
+	ARRAY_FOR_EACH(ptrs, i) {
+		if (ptrs[i]) {
+			ret = vmh_free(heap, ptrs[i]);
+			zassert_equal(ret, 0, "Failed to free buffer");
+		}
+	}
+
+	ret = vmh_free_heap(heap);
+	zassert_equal(ret, 0, "Failed to free heap");
+}
+
 ZTEST(sof_boot, virtual_memory_heap)
 {
 	test_heap_creation();
@@ -284,6 +343,7 @@ ZTEST(sof_boot, virtual_memory_heap)
 	test_vmh_alloc_free(false);
 	test_vmh_alloc_multiple_times(true);
 	test_vmh_alloc_multiple_times(false);
+	test_vmh_full_alloc();
 
 	TEST_CHECK_RET(true, "virtual_memory_heap");
 }
