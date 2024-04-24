@@ -450,7 +450,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 				 dt,
 				 NULL,
 				 NULL,
-				 -CONFIG_NUM_COOP_PRIORITIES,
+				 CONFIG_LL_THREAD_PRIORITY,
 				 0,
 				 K_FOREVER);
 

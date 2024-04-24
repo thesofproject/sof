@@ -107,7 +107,7 @@ int scheduler_init_edf(void)
 	k_work_queue_start(&edf_workq,
 		       edf_workq_stack,
 		       K_THREAD_STACK_SIZEOF(edf_workq_stack),
-		       EDF_ZEPHYR_PRIORITY, NULL);
+		       CONFIG_EDF_THREAD_PRIORITY, NULL);
 
 	k_thread_suspend(thread);
 
