@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config LL_THREAD_PRIORITY
+	int "LL thread cooperative high priority"
+	default -16
+	help
+	  LL thread configured priority in the system.
+	  Should be in cooperative range:
+	  -NUM_COOP_PRIORITIES to -1
+
+config DP_THREAD_PRIORITY
+	int "DP thread preemptible low priority"
+	default 12
+	help
+	  DP thread configured priority in the system.
+	  Should be in preemptible range:
+	  0 to NUM_PREEMPT_PRIORITIES-1
+
+config EDF_THREAD_PRIORITY
+	int "EDF thread preemptible low priority"
+	default 1
+	help
+	  EDF thread configured priority in the system.
+	  Should be in preemptible range:
+	  0 to NUM_PREEMPT_PRIORITIES-1
