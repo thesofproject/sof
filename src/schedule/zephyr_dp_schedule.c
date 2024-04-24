@@ -27,11 +27,6 @@ SOF_DEFINE_REG_UUID(dp_sched);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
-/**
- * \brief a priority of the DP threads in the system.
- */
-#define ZEPHYR_DP_THREAD_PRIORITY (CONFIG_NUM_PREEMPT_PRIORITIES - 2)
-
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
 	struct task ll_tick_src;	/* LL task - source of DP tick */
@@ -399,7 +394,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(&pdata->thread, (__sparse_force void *)pdata->p_stack,
 					   pdata->stack_size, dp_thread_fn, task, NULL, NULL,
-					   ZEPHYR_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
+					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
 
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, task->core);

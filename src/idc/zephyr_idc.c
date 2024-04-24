@@ -133,7 +133,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	idc_send_memcpy_err = memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg));
 	assert(!idc_send_memcpy_err);
 	/* Same priority as the IPC thread which is an EDF task and under Zephyr */
-	work->priority = EDF_ZEPHYR_PRIORITY;
+	work->priority = CONFIG_EDF_THREAD_PRIORITY;
 	work->deadline = 0;
 	work->handler = idc_handler;
 	work->sync = mode == IDC_BLOCKING;
