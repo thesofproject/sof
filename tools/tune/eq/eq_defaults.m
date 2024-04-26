@@ -109,7 +109,9 @@ p.fir_compensate_iir = 1;
 p.p_fmin = 10;
 p.p_fmax = 30e3;
 p.name = '';
-p.norm_type = 'loudness'; % loudness/peak/1k
-p.norm_offs_db = 0;
+p.iir_norm_type = 'loudness'; % loudness/peak/1k
+p.iir_norm_offs_db = 0;
+p.fir_norm_type = 'loudness'; % loudness/peak/1k
+p.fir_norm_offs_db = 0;
 
 end

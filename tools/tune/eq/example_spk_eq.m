@@ -46,8 +46,10 @@ eq = eq_defaults();
 eq.fs = fs;                 % Default sample rate in SOF
 eq.enable_fir = 1;          % Try enabling and disabling FIR part
 eq.enable_iir = 1;          % Try enabling and disabling IIR part
-eq.norm_type = 'peak';      % Scale filters to have peak at 0 dB
-eq.norm_offs_db = 0;        % Can be used to control gain
+eq.iir_norm_type = 'peak';  % Scale filters to have peak at 0 dB
+eq.iir_norm_offs_db = 0;    % Can be used to control gain
+eq.fir_norm_type = 'peak';  % Scale filters to have peak at 0 dB
+eq.fir_norm_offs_db = 0;    % Can be used to control gain
 eq.p_fmin = 100;            % With this data start plots from 100 Hz
 eq.p_fmax = 20e3;           % and end to 20 kHz.
 

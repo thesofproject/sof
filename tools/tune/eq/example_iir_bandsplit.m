@@ -62,8 +62,8 @@ function eq = lo_band_iir(fs)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = 'peak';
-eq.norm_offs_db = 0;
+eq.iir_norm_type = 'peak';
+eq.iir_norm_offs_db = 0;
 
 %% Manually setup low-shelf and high shelf parametric equalizers
 %
@@ -95,8 +95,8 @@ function eq = hi_band_iir(fs)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = 'peak';
-eq.norm_offs_db = 0;
+eq.iir_norm_type = 'peak';
+eq.iir_norm_offs_db = 0;
 
 %% Manually setup low-shelf and high shelf parametric equalizers
 %

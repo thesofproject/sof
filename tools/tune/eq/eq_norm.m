@@ -40,34 +40,37 @@ m_max_fir = max(eq.fir_eq_db);
 m_max_iir = max(eq.iir_eq_db);
 sens_fir = sum(m_lin_fir.*w_lin)/sum(w_lin);
 sens_iir = sum(m_lin_iir.*w_lin)/sum(w_lin);
-g_offs = 10^(eq.norm_offs_db/20);
+g_offs_iir = 10^(eq.iir_norm_offs_db/20);
+g_offs_fir = 10^(eq.fir_norm_offs_db/20);
 
 %% Determine scaling gain
-switch lower(eq.norm_type)
+switch lower(eq.iir_norm_type)
         case 'loudness'
-                g_fir = 1/sens_fir;
                 g_iir = 1/sens_iir;
         case '1k'
-                g_fir = 1/m_lin_fir(i1k);
                 g_iir = 1/m_lin_iir(i1k);
-
         case 'peak'
-                g_fir = 10^(-m_max_fir/20);
                 g_iir = 10^(-m_max_iir/20);
         otherwise
-                error('Requested normalization is not supported');
+                error('Requested IIR normalization is not supported');
+end
+switch lower(eq.fir_norm_type)
+        case 'loudness'
+                g_fir = 1/sens_fir;
+        case '1k'
+                g_fir = 1/m_lin_fir(i1k);
+        case 'peak'
+                g_fir = 10^(-m_max_fir/20);
+        otherwise
+                error('Requested FIR normalization is not supported');
 end
 
 %% Adjust FIR and IIR gains if enabled
-if eq.enable_fir && eq.enable_iir
-        eq.b_fir = eq.b_fir * g_fir * g_offs;
-        eq.p_k = eq.p_k * g_iir * g_offs;
+if eq.enable_fir
+        eq.b_fir = eq.b_fir * g_fir * g_offs_fir;
 end
-if eq.enable_fir && eq.enable_iir == 0
-        eq.b_fir = eq.b_fir * g_fir * g_offs;
-end
-if eq.enable_fir == 0 && eq.enable_iir
-        eq.p_k = eq.p_k * g_iir * g_offs;
+if eq.enable_iir
+        eq.p_k = eq.p_k * g_iir * g_offs_iir;
 end
 
 %% Re-compute response after adjusting gain
