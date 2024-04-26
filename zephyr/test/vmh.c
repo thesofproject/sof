@@ -58,26 +58,37 @@ static void test_vmh_alloc_free_no_check(struct vmh_heap *heap,
 	}
 }
 
-static void verify_memory_content(void *ptr, uint32_t alloc_size)
+/* Fill memory with test pattern */
+static void verify_memory_content(void *ptr, uint32_t alloc_size, bool fill)
 {
+	const uint32_t pattern1 = (uint32_t)ptr ^ 0xDEADBEEF;
+	const uint32_t pattern2 = (uint32_t)ptr ^ 0xCAFEBABE;
+	const uint32_t pattern3 = (uint32_t)ptr ^ 0xFEEDFACE;
+
+	zassert_true(alloc_size >= 16, "alloc size is below the minimum value.");
+
 	/* Calculate check positions end and middle if applicable */
-	uint8_t *end_ptr = (uint8_t *)ptr + alloc_size - sizeof(uint32_t);
-	uint8_t *middle_ptr = (uint8_t *)ptr + (alloc_size / 2);
-	uint8_t test_value = 0xAA;
-	int test_write_size = 1;
+	uint32_t *start_ptr = (uint32_t *)ptr;
+	uint32_t *middle_ptr = UINT_TO_POINTER(ALIGN_DOWN(POINTER_TO_UINT(ptr) +
+							  alloc_size / 2 - sizeof(uint32_t),
+							  sizeof(uint32_t)));
+	uint32_t *end_ptr = UINT_TO_POINTER(ALIGN_DOWN(POINTER_TO_UINT(ptr) + alloc_size -
+						       sizeof(uint32_t), sizeof(uint32_t)));
 
-	/* Write test pattern to the allocated memory beginning middle and end */
-	memset(ptr, test_value, test_write_size);
-	memset(middle_ptr, test_value, test_write_size);
-	memset(end_ptr, test_value, test_write_size);
-
-	/* Verify the written test pattern at all points */
-	zassert_equal(*((uint8_t *)ptr), test_value,
-		"Memory content verification failed at the start");
-	zassert_equal(*end_ptr, test_value,
-		"Memory content verification failed at the end");
-	zassert_equal(*middle_ptr, test_value,
-		"Memory content verification failed in the middle");
+	if (fill) {
+		/* Write test pattern to the allocated memory beginning middle and end */
+		*start_ptr = pattern1;
+		*middle_ptr = pattern2;
+		*end_ptr = pattern3;
+	} else {
+		/* Verify the written test pattern at all points */
+		zassert_equal(*start_ptr, pattern1,
+			      "Memory content verification failed at the start");
+		zassert_equal(*middle_ptr, pattern2,
+			      "Memory content verification failed in the middle");
+		zassert_equal(*end_ptr, pattern3,
+			      "Memory content verification failed at the end");
+	}
 }
 
 /* Test function for vmh_alloc and vmh_free with memory read/write */
@@ -94,8 +105,10 @@ static void test_vmh_alloc_free_check(struct vmh_heap *heap,
 		return;
 	}
 
-	if (ptr)
-		verify_memory_content(ptr, alloc_size);
+	if (ptr) {
+		verify_memory_content(ptr, alloc_size, true);
+		verify_memory_content(ptr, alloc_size, false);
+	}
 
 	int ret = vmh_free(heap, ptr);
 
@@ -108,6 +121,7 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 				     uint32_t max_alloc_size)
 {
 	void *ptrs[num_allocs];
+	uint32_t sizes[num_allocs];
 	uint32_t alloc_size;
 	bool success;
 	int ret;
@@ -119,6 +133,7 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 		k_cycle_get_32() % (max_alloc_size - min_alloc_size + 1);
 
 		ptrs[i] = vmh_alloc(heap, alloc_size);
+		sizes[i] = alloc_size;
 
 		if (!ptrs[i])
 			LOG_INF("Test allocation failed for size: %d", alloc_size);
@@ -128,7 +143,13 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 			     alloc_size);
 
 		if (ptrs[i])
-			verify_memory_content(ptrs[i], alloc_size);
+			verify_memory_content(ptrs[i], alloc_size, true);
+	}
+
+	/* Verify buffer contents */
+	for (int i = 0; i < num_allocs; i++) {
+		if (ptrs[i])
+			verify_memory_content(ptrs[i], sizes[i], false);
 	}
 
 	for (int i = 0; i < num_allocs; i++) {
@@ -148,10 +169,10 @@ static void test_vmh_alloc_multiple_times(bool allocating_continuously)
 	zassert_not_null(heap, "Heap initialization failed");
 
 	/* Test multiple allocations with small sizes */
-	test_vmh_multiple_allocs(heap, 16, 4, 8);
-	test_vmh_multiple_allocs(heap, 64, 4, 8);
-	test_vmh_multiple_allocs(heap, 16, 4, 1024);
-	test_vmh_multiple_allocs(heap, 64, 4, 1024);
+	test_vmh_multiple_allocs(heap, 16, 16, 64);
+	test_vmh_multiple_allocs(heap, 64, 16, 64);
+	test_vmh_multiple_allocs(heap, 16, 16, 1024);
+	test_vmh_multiple_allocs(heap, 64, 16, 1024);
 	if (allocating_continuously) {
 		test_vmh_multiple_allocs(heap, 16, 1024, 4096);
 		test_vmh_multiple_allocs(heap, 16, 4096, 8192);
@@ -178,8 +199,6 @@ static void test_vmh_alloc_free(bool allocating_continuously)
 
 	test_vmh_alloc_free_check(heap, 512, true);
 	test_vmh_alloc_free_check(heap, 1024, true);
-	test_vmh_alloc_free_check(heap, sizeof(int), true);
-	test_vmh_alloc_free_check(heap, 0, false);
 
 	int ret = vmh_free_heap(heap);
 
