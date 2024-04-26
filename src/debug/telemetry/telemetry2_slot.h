@@ -54,6 +54,9 @@
 
 #include <stdint.h>
 
+// HACK: This should be in zephyr/soc/intel/intel_adsp/common/include/adsp_debug_window.h
+#define ADSP_DW_SLOT_TELEMETRY2 0x4c455500
+
 #define TELEMETRY2_PAYLOAD_MAGIC 0x1ED15EED
 
 #define TELEMETRY2_PAYLOAD_V0_0 0
