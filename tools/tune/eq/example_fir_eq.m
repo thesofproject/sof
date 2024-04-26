@@ -169,10 +169,10 @@ m = [ 0.00,-0.13,-0.27,-0.39,-0.52,-0.64,-0.77,-0.89,-1.02,-1.16,  ...
 %% Design EQ
 eq = eq_defaults();
 eq.fs = fs;
-eq.target_f = f;            % Set EQ frequency response target: frequencies Hz
-eq.target_m_db = m;         % Set EQ frequency response target: magnitudues dB
-eq.norm_type = 'loudness';  % Normalize criteria can be loudness/peak/1k
-eq.norm_offs_db = 0;        % Offset in dB to normalize
+eq.target_f = f;               % Set EQ frequency response target: frequencies Hz
+eq.target_m_db = m;            % Set EQ frequency response target: magnitudues dB
+eq.fir_norm_type = 'loudness'; % Normalize criteria can be loudness/peak/1k
+eq.fir_norm_offs_db = 0;       % Offset in dB to normalize
 
 eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 4.0;          % Use with care, low value can corrupt
@@ -199,8 +199,8 @@ eq.parametric_target_response = [ ...
 
 %% Design EQ
 eq.fs = fs;
-eq.norm_type = 'peak'; % Can be loudness/peak/1k to select normalize criteria
-eq.norm_offs_db = 0;   % E.g. -1 would leave 1 dB headroom if used with peak
+eq.fir_norm_type = 'peak'; % Can be loudness/peak/1k to select normalize criteria
+eq.fir_norm_offs_db = 0;   % E.g. -1 would leave 1 dB headroom if used with peak
 
 eq.enable_fir = 1;     % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 3.5;     % Use with care, low value can corrupt

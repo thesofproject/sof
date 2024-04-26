@@ -87,8 +87,8 @@ function eq = test_response(fn, vn, fs)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = 'peak';
-eq.norm_offs_db = 1;
+eq.iir_norm_type = 'peak';
+eq.iir_norm_offs_db = 1;
 
 %% Parametric EQ
 eq.peq = [ ...

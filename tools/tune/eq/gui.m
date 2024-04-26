@@ -464,15 +464,15 @@ function push_config(h, evnt)
 	eq_left = eq_defaults();
 	eq_left.enable_iir = 1;
 	eq_left.peq = build_peq(1, EQ);
-	eq_left.norm_type = 'peak';
-	eq_left.norm_offs_db = 0;
+	eq_left.iir_norm_type = 'peak';
+	eq_left.iir_norm_offs_db = 0;
 	eq_left.fs = get_config().Fs;
 
 	eq_right = eq_defaults();
 	eq_right.enable_iir = 1;
 	eq_right.peq = build_peq(2, EQ);
-	eq_right.norm_type = 'peak';
-	eq_right.norm_offs_db = 0;
+	eq_right.iir_norm_type = 'peak';
+	eq_right.iir_norm_offs_db = 0;
 	eq_right.fs = get_config().Fs;
 
 	eq_left  = eq_compute(eq_left);
@@ -504,4 +504,3 @@ function update_control_elements(section, EQ)
 	set_udata_field(section.type.dropdown, "EQ", EQ);
 	set_udata_field(section.enable_switch, "EQ", EQ);
 end
-

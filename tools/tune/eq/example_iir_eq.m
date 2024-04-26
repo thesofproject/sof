@@ -264,8 +264,8 @@ eq.fs = fs;
 eq.target_f = f;
 eq.target_m_db = m;
 eq.enable_iir = 1;
-eq.norm_type = 'loudness';
-eq.norm_offs_db = 0;
+eq.iir_norm_type = 'loudness';
+eq.iir_norm_offs_db = 0;
 
 %% Manually setup low-shelf and high shelf parametric equalizers
 %
@@ -297,8 +297,8 @@ function eq = hp_iir_eq(fs, fc, gain_db)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = '1k';
-eq.norm_offs_db = gain_db;
+eq.iir_norm_type = '1k';
+eq.iir_norm_offs_db = gain_db;
 
 % Design
 eq.peq = [ eq.PEQ_HP2 fc NaN NaN ];
@@ -313,8 +313,8 @@ function eq = bassboost_iir_eq(fs)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = 'loudness';
-eq.norm_offs_db = 0;
+eq.iir_norm_type = 'loudness';
+eq.iir_norm_offs_db = 0;
 
 % Design
 eq.peq = [ ...
@@ -332,8 +332,8 @@ function eq = bandpass_iir_eq(fs)
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
-eq.norm_type = 'loudness';
-eq.norm_offs_db = 0;
+eq.iir_norm_type = 'loudness';
+eq.iir_norm_offs_db = 0;
 
 % Design EQ
 eq.peq = [ ...
