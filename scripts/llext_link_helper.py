@@ -58,7 +58,8 @@ def main():
 		try:
 			offset = elf.get_section_by_name(sections[i]).header.sh_offset
 			size = elf.get_section_by_name(sections[i]).header.sh_size
-		except:
+		except AttributeError:
+			print("section " + sections[i] + " not found in " + args.file)
 			continue
 
 		if last_increment == 0:
