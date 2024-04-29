@@ -37,6 +37,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*
+ * FIXME: this definition is copied from tools/rimage/src/include/rimage/manifest.h
+ * which we cannot easily include here, because it also pulls in
+ * tools/rimage/src/include/rimage/elf.h which then conflicts with
+ * zephyr/include/zephyr/llext/elf.h
+ */
+#define FILE_TEXT_OFFSET_V1_8		0x8000
+
 LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx lib_manager_tr;
@@ -172,11 +180,10 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 			      uint32_t module_id, struct module_data *md, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
-	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - 0x8000;
-	/* FIXME: where does the module begin?? */
+	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
-						       SOF_MAN_ELF_TEXT_OFFSET + 0x8000,
-						       mod_size);
+						SOF_MAN_ELF_TEXT_OFFSET + FILE_TEXT_OFFSET_V1_8,
+						mod_size);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {!ctx->segment_size[SOF_MAN_SEGMENT_TEXT]};
