@@ -304,7 +304,7 @@ static int mixin_process(struct processing_module *mod,
 		 * TODO: find out a solution to reach mixout without knowledge of mixin
 		 * sof_sink implementation.
 		 */
-		stream = container_of(sinks[i], struct audio_stream, sink_api);
+		stream = container_of(sinks[i], struct audio_stream, _sink_api);
 		/* unused buffer between mixin and mixout */
 		unused_in_between_buf = container_of(stream, struct comp_buffer, stream);
 		mixout = unused_in_between_buf->sink;
@@ -492,7 +492,7 @@ static int mixout_process(struct processing_module *mod,
 		 * TODO: find out a solution to reach mixin without knowledge of mixout
 		 * sof_source implementation.
 		 */
-		source_stream = container_of(sources[i], struct audio_stream, source_api);
+		source_stream = container_of(sources[i], struct audio_stream, _source_api);
 		unused_in_between_buf = container_of(source_stream, struct comp_buffer,
 						     stream);
 		mixin = unused_in_between_buf->source;
@@ -511,7 +511,7 @@ static int mixout_process(struct processing_module *mod,
 			struct comp_buffer *unused_in_between_buf;
 			struct comp_dev *mixin;
 
-			source_stream = container_of(sources[i], struct audio_stream, source_api);
+			source_stream = container_of(sources[i], struct audio_stream, _source_api);
 			unused_in_between_buf = container_of(source_stream,
 							     struct comp_buffer, stream);
 			mixin = unused_in_between_buf->source;
@@ -588,7 +588,7 @@ static int mixout_reset(struct processing_module *mod)
 			 * sof_source implementation.
 			 */
 			source_stream = container_of(mod->sources[i],
-						     struct audio_stream, source_api);
+						     struct audio_stream, _source_api);
 			source_buf = container_of(source_stream, struct comp_buffer,
 						  stream);
 

@@ -50,8 +50,8 @@
  * Audio stream implements pipeline2.0 sink and source API
  */
 struct audio_stream {
-	struct sof_source source_api;	/**< source API, don't modify, use helper functions only */
-	struct sof_sink sink_api;	/**< sink API, don't modify, use helper functions only  */
+	struct sof_source _source_api;	/**< source API, don't modify, use helper functions only */
+	struct sof_sink _sink_api;	/**< sink API, don't modify, use helper functions only  */
 
 	/* runtime data */
 	uint32_t size;	/**< Runtime buffer size in bytes (period multiple) */
@@ -1021,13 +1021,13 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 static inline struct sof_source *
 audio_stream_get_source(struct audio_stream *audio_stream)
 {
-	return &audio_stream->source_api;
+	return &audio_stream->_source_api;
 }
 
 static inline struct sof_sink *
 audio_stream_get_sink(struct audio_stream *audio_stream)
 {
-	return &audio_stream->sink_api;
+	return &audio_stream->_sink_api;
 }
 
 /** @}*/
