@@ -8,7 +8,7 @@
 
 static size_t audio_stream_get_free_size(struct sof_sink *sink)
 {
-	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, _sink_api);
 
 	return audio_stream_get_free_bytes(audio_stream);
 }
@@ -16,7 +16,7 @@ static size_t audio_stream_get_free_size(struct sof_sink *sink)
 static int audio_stream_get_buffer(struct sof_sink *sink, size_t req_size,
 				   void **data_ptr, void **buffer_start, size_t *buffer_size)
 {
-	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, _sink_api);
 
 	if (req_size > audio_stream_get_free_size(sink))
 		return -ENODATA;
@@ -30,7 +30,7 @@ static int audio_stream_get_buffer(struct sof_sink *sink, size_t req_size,
 
 static int audio_stream_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
-	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, _sink_api);
 	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	if (commit_size) {
@@ -43,7 +43,7 @@ static int audio_stream_commit_buffer(struct sof_sink *sink, size_t commit_size)
 
 static size_t audio_stream_get_data_available(struct sof_source *source)
 {
-	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *audio_stream = container_of(source, struct audio_stream, _source_api);
 
 	return audio_stream_get_avail_bytes(audio_stream);
 }
@@ -52,7 +52,7 @@ static int audio_stream_get_data(struct sof_source *source, size_t req_size,
 				 void const **data_ptr, void const **buffer_start,
 				 size_t *buffer_size)
 {
-	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *audio_stream = container_of(source, struct audio_stream, _source_api);
 	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	if (req_size > audio_stream_get_data_available(source))
@@ -105,7 +105,7 @@ void audio_stream_set_align(const uint32_t byte_align,
 
 static int audio_stream_release_data(struct sof_source *source, size_t free_size)
 {
-	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *audio_stream = container_of(source, struct audio_stream, _source_api);
 
 	if (free_size)
 		audio_stream_consume(audio_stream, free_size);
@@ -117,7 +117,7 @@ static int audio_stream_set_ipc_params_source(struct sof_source *source,
 					      struct sof_ipc_stream_params *params,
 					      bool force_update)
 {
-	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *audio_stream = container_of(source, struct audio_stream, _source_api);
 	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	return buffer_set_params(buffer, params, force_update);
@@ -127,7 +127,7 @@ static int audio_stream_set_ipc_params_sink(struct sof_sink *sink,
 					    struct sof_ipc_stream_params *params,
 					    bool force_update)
 {
-	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, _sink_api);
 	struct comp_buffer *buffer = container_of(audio_stream, struct comp_buffer, stream);
 
 	return buffer_set_params(buffer, params, force_update);
@@ -137,7 +137,7 @@ static int audio_stream_source_set_alignment_constants(struct sof_source *source
 						       const uint32_t byte_align,
 						       const uint32_t frame_align_req)
 {
-	struct audio_stream *audio_stream = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *audio_stream = container_of(source, struct audio_stream, _source_api);
 
 	audio_stream_set_align(byte_align, frame_align_req, audio_stream);
 
@@ -148,7 +148,7 @@ static int audio_stream_sink_set_alignment_constants(struct sof_sink *sink,
 						     const uint32_t byte_align,
 						     const uint32_t frame_align_req)
 {
-	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *audio_stream = container_of(sink, struct audio_stream, _sink_api);
 
 	audio_stream_set_align(byte_align, frame_align_req, audio_stream);
 
@@ -157,7 +157,7 @@ static int audio_stream_sink_set_alignment_constants(struct sof_sink *sink,
 
 static int source_format_set(struct sof_source *source)
 {
-	struct audio_stream *s = container_of(source, struct audio_stream, source_api);
+	struct audio_stream *s = container_of(source, struct audio_stream, _source_api);
 
 	audio_stream_recalc_align(s);
 	return 0;
@@ -165,7 +165,7 @@ static int source_format_set(struct sof_source *source)
 
 static int sink_format_set(struct sof_sink *sink)
 {
-	struct audio_stream *s = container_of(sink, struct audio_stream, sink_api);
+	struct audio_stream *s = container_of(sink, struct audio_stream, _sink_api);
 
 	audio_stream_recalc_align(s);
 	return 0;
