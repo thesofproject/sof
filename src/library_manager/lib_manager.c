@@ -557,6 +557,8 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		struct processing_module *mod = comp_get_drvdata(dev);
 
 		mod->priv.llext = tmp_proc.priv.llext;
+	} else {
+		lib_manager_free_module(module_id);
 	}
 	return dev;
 }
