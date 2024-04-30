@@ -241,12 +241,13 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
-	struct sof_man_module *mod;
+	struct sof_man_module *mod, *mod_array;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const struct sof_module_api_build_info *buildinfo;
+	const struct sof_man_module_manifest *mod_manifest;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
@@ -258,10 +259,12 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		return 0;
 	}
 
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	mod = mod_array + entry_index;
 
-	ret = llext_manager_link(desc, mod, module_id, &proc->priv, (const void **)&buildinfo,
-				 &ctx->mod_manifest);
+	/* LLEXT linking is only needed once for all the modules in the library */
+	ret = llext_manager_link(desc, mod_array, module_id, &proc->priv, (const void **)&buildinfo,
+				 &mod_manifest);
 	if (ret < 0)
 		return 0;
 
@@ -273,6 +276,9 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 			       "llext_manager_allocate_module(): Unsupported module API version");
 			return -ENOEXEC;
 		}
+
+		/* ctx->mod_manifest points to the array of module manifests */
+		ctx->mod_manifest = mod_manifest;
 
 		/* Map .text and the rest as .data */
 		ret = llext_manager_load_module(module_id, mod);
@@ -288,24 +294,26 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 	}
 
-	return ctx->mod_manifest->module.entry_point;
+	return ctx->mod_manifest[entry_index].module.entry_point;
 }
 
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
+		LIB_MANAGER_LIB_ID_SHIFT;
 	int ret;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
 
-	mod = lib_manager_get_module_manifest(module_id);
+	mod = lib_manager_get_module_manifest(base_module_id);
 
-	ret = llext_manager_unload_module(module_id, mod);
+	ret = llext_manager_unload_module(base_module_id, mod);
 	if (ret < 0)
 		return ret;
 
-	ret = llext_manager_free_module_bss(module_id, mod);
+	ret = llext_manager_free_module_bss(base_module_id, mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_free_module(): free module bss failed: %d", ret);
