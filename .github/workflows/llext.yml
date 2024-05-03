@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [mtl, lnl]
+        platform: [mtl]
 
     steps:
       - name: git clone sof
@@ -34,8 +34,10 @@ jobs:
       - name: llext build
         run: |
           cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
-             'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
-              west build --board intel_adsp_ace15_mtpm sof/app              \
-              -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror     \
-              -DEXTRA_AFLAGS=-Werror \
-              -DOVERLAY_CONFIG=overlays/mtl/module_overlay.conf'
+             "ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
+              python sof/scripts/xtensa-build-zephyr.py \
+              --cmake-args=-DEXTRA_CFLAGS=-Werror \
+              --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
+              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
+              --cmake-args=--warn-uninitialized \
+              --overlay=sof/app/overlays/mtl/module_overlay.conf ${{ matrix.platform }}"
