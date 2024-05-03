@@ -35,6 +35,66 @@ function(sof_append_relative_path_definitions target)
 	endforeach()
 endfunction()
 
+# Used by LLEXT modules to create a file with module UUIDs
+function(sof_llext_write_uuids module)
+	file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${module}.toml uuids REGEX "^[ \t]*uuid *=")
+
+	foreach(line IN LISTS uuids)
+		# extract UUID value - drop the 'uuid = ' part of the assignment line
+		string(REGEX REPLACE "^[ \t]*uuid *= \"([0-9A-F\-]*)\"" "\\1" uuid ${line})
+		file(APPEND ${ZEPHYR_BINARY_DIR}/${module}_llext/llext.uuid "${uuid}\n")
+	endforeach()
+endfunction()
+
+# Build an LLEXT module. Provice a module name, a list of sources and an address
+# of the .text section as arguments.
+function(sof_llext_build module)
+	set(single_args TEXT_ADDR)
+	set(multi_args SOURCES)
+	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
+
+	cmake_path(SET SOF_BASE NORMALIZE ${APPLICATION_SOURCE_DIR}/..)
+
+	sof_llext_write_uuids(${module})
+
+	add_llext_target(${module}
+		OUTPUT  ${PROJECT_BINARY_DIR}/${module}_llext/${module}.llext
+		SOURCES ${SOF_LLEXT_SOURCES}
+	)
+
+	target_include_directories(${module}_llext_lib PRIVATE
+		"${SOF_BASE}/xtos/include"
+		"${SOF_BASE}/src/include"
+		"${SOF_BASE}/tools/rimage/src/include"
+	)
+
+	sof_append_relative_path_definitions(${module}_llext_lib)
+
+	add_llext_command(TARGET ${module}
+		PRE_BUILD
+		COMMAND ${CMAKE_C_COMPILER} -E ${CMAKE_CURRENT_LIST_DIR}/llext.toml.h -P -DREM=
+			-I${SOF_BASE} -I${SOF_BASE}src
+			-imacros ../include/generated/autoconf.h
+			-o rimage_config.toml
+	)
+
+	if("${ZEPHYR_TOOLCHAIN_VARIANT}" STREQUAL "zephyr")
+		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
+	else()
+		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
+	endif()
+
+	get_target_property(proc_in_file ${module} lib_output)
+	get_target_property(proc_out_file ${module} pkg_input)
+	add_llext_command(TARGET ${module}
+		POST_BUILD
+		COMMAND ${SOF_BASE}scripts/llext_link_helper.py
+			--text-addr="${SOF_LLEXT_TEXT_ADDR}" -f ${proc_in_file} ${CMAKE_C_COMPILER} --
+			-o ${proc_out_file} ${EXTRA_LINKER_PARAMS}
+	                $<TARGET_OBJECTS:${module}_llext_lib>
+	)
+endfunction()
+
 # Initial SOF module will contain
 #
 # 1. Application logic - pipeline, audio components, IPC processing, topology
@@ -802,7 +862,7 @@ elseif(CONFIG_IPC_MAJOR_4)
 	if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
 		add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
 				 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
-		add_dependencies(app smart_amp_test_llext)
+		add_dependencies(app smart_amp_test)
 	elseif(CONFIG_SAMPLE_SMART_AMP)
 		zephyr_library_sources(
 			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c

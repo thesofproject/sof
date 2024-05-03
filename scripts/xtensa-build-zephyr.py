@@ -931,8 +931,8 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			dst = sof_lib_dir / llext_file
 
 			rimage_cfg = entry_path / 'rimage_config.toml'
-			llext_input = entry_path / (llext_base + '.so')
-			llext_output = entry_path / llext_file
+			llext_input = entry_path / (llext_base + '.llext')
+			llext_output = entry_path / (llext_file + '.ri')
 
 			sign_cmd = [str(platform_wconfig.get("rimage.path")), "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
@@ -947,7 +947,7 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			# Thus we're left with a choice between a 150-character
 			# long line and an illogical split like this
 			with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
-				  llext_output.with_suffix('.llext.xman'), 'rb') as fman:
+				  llext_output.with_suffix('.ri.xman'), 'rb') as fman:
 				# Concatenate the manifest and the llext
 				shutil.copyfileobj(fman, fdst)
 				shutil.copyfileobj(fllext, fdst)

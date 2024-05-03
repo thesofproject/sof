@@ -404,7 +404,7 @@ SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
 
 #endif
 
-#ifdef MAJOR_IADSP_API_VERSION
+#if defined(MAJOR_IADSP_API_VERSION) || defined(CONFIG_SAMPLE_SMART_AMP_MODULE)
 /* modular: system-services or dynamic link */
 
 #include <module/module/llext.h>
