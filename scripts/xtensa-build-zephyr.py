@@ -588,13 +588,6 @@ def clean_staging(platform):
 			rmtree_if_exists(sof_platform_output_dir / p_alias)
 
 RIMAGE_BUILD_DIR  = west_top / "build-rimage"
-
-# Paths in `west.yml` must be "static", we cannot have something like a
-# variable "$my_sof_path/rimage/" checkout.  In the future "rimage/" will
-# be moved one level up and it won't be nested inside "sof/" anymore. But
-# for now we must stick to `sof/rimage/[tomlc99]` for
-# backwards-compatibility with XTOS platforms and git submodules, see more
-# detailed comments in west.yml
 RIMAGE_SOURCE_DIR = west_top / "sof" / "tools" / "rimage"
 
 
