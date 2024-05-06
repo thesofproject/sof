@@ -16,7 +16,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/sink_source_utils.h>
 #include <sof/audio/dp_queue.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -133,91 +132,12 @@ err:
 EXPORT_SYMBOL(module_adapter_new);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
+static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 {
-	int dp_mode = dev->is_shared ? DP_QUEUE_MODE_SHARED : DP_QUEUE_MODE_LOCAL;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct dp_queue *dp_queue;
-	struct list_item *blist;
-	int ret;
-	int i;
-
-	/* for DP processing we need to create a DP QUEUE for each module input/output
-	 * till pipeline2.0 is ready, DP processing requires double buffering
-	 *
-	 * first, set all parameters by calling "module prepare" with pointers to
-	 * "main" audio_stream buffers
-	 */
-	list_init(&mod->dp_queue_ll_to_dp_list);
-	list_init(&mod->dp_queue_dp_to_ll_list);
-
-	ret = module_adapter_sink_src_prepare(dev);
-	if (ret)
-		return ret;
-
-	 /*
-	  * second step - create a "shadow" cross-core DpQueue for existing buffers
-	  * and copy stream parameters to shadow buffers
-	  */
-	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source_buffer =
-			container_of(blist, struct comp_buffer, sink_list);
-
-		/* copy IBS & OBS from buffer to be shadowed */
-		size_t min_available =
-			source_get_min_available(audio_stream_get_source(&source_buffer->stream));
-		size_t min_free_space =
-			sink_get_min_free_space(audio_stream_get_sink(&source_buffer->stream));
-
-		/* create a shadow dp queue
-		 * shadow queue must share runtime_stream_params with the source_buffer
-		 */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
-					   buf_get_id(source_buffer),
-					   &source_buffer->stream.runtime_stream_params);
-
-		if (!dp_queue)
-			goto err;
-		dp_queue_append_to_list(dp_queue, &mod->dp_queue_ll_to_dp_list);
-
-		/* it will override source pointers set by module_adapter_sink_src_prepare
-		 * module will use shadow dpQueue for processing
-		 */
-		mod->sources[i] = dp_queue_get_source(dp_queue);
-
-		i++;
-	}
-	mod->num_of_sources = i;
 	unsigned int period = UINT32_MAX;
 
-	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink_buffer =
-			container_of(blist, struct comp_buffer, source_list);
-
-		/* copy IBS & OBS from buffer to be shadowed */
-		size_t min_available =
-			source_get_min_available(audio_stream_get_source(&sink_buffer->stream));
-		size_t min_free_space =
-			sink_get_min_free_space(audio_stream_get_sink(&sink_buffer->stream));
-
-		/* create a shadow dp queue
-		 * shadow queue must share runtime_stream_params with the sink_buffer
-		 */
-		dp_queue = dp_queue_create(min_available, min_free_space, dp_mode,
-					   buf_get_id(sink_buffer),
-					   &sink_buffer->stream.runtime_stream_params);
-
-		if (!dp_queue)
-			goto err;
-
-		dp_queue_append_to_list(dp_queue, &mod->dp_queue_dp_to_ll_list);
-		/* it will override sink pointers set by module_adapter_sink_src_prepare
-		 * module will use shadow dpQueue for processing
-		 */
-		mod->sinks[i] = dp_queue_get_sink(dp_queue);
-
+	for (int i = 0; i < mod->num_of_sinks; i++) {
 		/* calculate time required the module to provide OBS data portion - a period */
 		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
@@ -226,53 +146,9 @@ static int module_adapter_dp_queue_prepare(struct comp_dev *dev)
 		if (period > sink_period)
 			period = sink_period;
 
-		i++;
-	}
-	mod->num_of_sinks = i;
-	/* set the period for the module unless it has already been calculated by the
-	 * module itself during prepare
-	 * It may happen i.e. for modules like phrase detect that do not produce audio data
-	 * but events and therefore don't have any deadline for processing
-	 * Second example is a module with variable data rate on output (like MPEG encoder)
-	 */
-	if (!dev->period) {
-		comp_info(dev, "DP Module period set to %u", period);
-		dev->period = period;
 	}
 
-	return 0;
-
-err:;
-	struct list_item *dp_queue_list_item;
-	struct list_item *tmp;
-
-	i = 0;
-	list_for_item_safe(dp_queue_list_item, tmp, &mod->dp_queue_dp_to_ll_list) {
-		struct dp_queue *dp_queue =
-			container_of(dp_queue_list_item, struct dp_queue, list);
-
-		/* dp free will also remove the queue from a list */
-		dp_queue_free(dp_queue);
-		mod->sources[i++] = NULL;
-	}
-	mod->num_of_sources = 0;
-
-	i = 0;
-	list_for_item_safe(dp_queue_list_item, tmp, &mod->dp_queue_ll_to_dp_list) {
-		struct dp_queue *dp_queue =
-			container_of(dp_queue_list_item, struct dp_queue, list);
-
-		dp_queue_free(dp_queue);
-		mod->sinks[i++] = NULL;
-	}
-	mod->num_of_sinks = 0;
-
-	return -ENOMEM;
-}
-#else
-static inline int module_adapter_dp_queue_prepare(struct comp_dev *dev)
-{
-	return -EINVAL;
+	dev->period = period;
 }
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
@@ -298,12 +174,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_prepare() start");
 
 	/* Prepare module */
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
-	    mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		ret = module_adapter_dp_queue_prepare(dev);
-
-	else if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
-		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		ret = module_adapter_sink_src_prepare(dev);
 
 	else if ((IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) &&
@@ -319,6 +190,19 @@ int module_adapter_prepare(struct comp_dev *dev)
 				 ret);
 		return ret;
 	}
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	/* set the period for the DP module unless it has already been calculated by the
+	 * module itself during prepare
+	 * It may happen i.e. for modules like phrase detect that do not produce audio data
+	 * but events and therefore don't have any deadline for processing
+	 * Second example is a module with variable data rate on output (like MPEG encoder)
+	 */
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && !dev->period) {
+		module_adapter_calculate_dp_period(dev);
+		comp_info(dev, "DP Module period set to %u", dev->period);
+	}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	/*
 	 * check if the component is already active. This could happen in the case of mixer when
@@ -1026,36 +910,26 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 	 * This is an adapter, to be removed when pipeline2.0 is ready
 	 */
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct dp_queue *dp_queue;
 	struct list_item *blist;
 	int err;
 
-	dp_queue = dp_queue_get_first_item(&mod->dp_queue_ll_to_dp_list);
 	list_for_item(blist, &dev->bsource_list) {
 		/* input - we need to copy data from audio_stream (as source)
 		 * to dp_queue (as sink)
 		 */
-		assert(dp_queue);
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, sink_list);
-		struct sof_source *data_src = audio_stream_get_source(&buffer->stream);
-		struct sof_sink *data_sink = dp_queue_get_sink(dp_queue);
-		uint32_t to_copy = MIN(sink_get_free_size(data_sink),
-				       source_get_data_available(data_src));
+		err = buffer_sync_shadow_dp_queue(buffer, UINT_MAX);
 
-		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
 			return err;
 		}
-
-		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
 
 	if (mod->dp_startup_delay)
 		return 0;
 
-	dp_queue = dp_queue_get_first_item(&mod->dp_queue_dp_to_ll_list);
 	list_for_item(blist, &dev->bsink_list) {
 		/* output - we need to copy data from dp_queue (as source)
 		 * to audio_stream (as sink)
@@ -1069,24 +943,19 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		 *
 		 * FIX: copy only the following module's IBS in each LL cycle
 		 */
-		assert(dp_queue);
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, source_list);
-		struct sof_sink *data_sink = audio_stream_get_sink(&buffer->stream);
 		struct sof_source *following_mod_data_source =
 				audio_stream_get_source(&buffer->stream);
-		struct sof_source *data_src = dp_queue_get_source(dp_queue);
-		uint32_t to_copy = MIN(MIN(source_get_min_available(following_mod_data_source),
-				       source_get_data_available(data_src)),
-				       sink_get_free_size(data_sink));
 
-		err = source_to_sink_copy(data_src, data_sink, true, to_copy);
+		err = buffer_sync_shadow_dp_queue
+			(buffer,
+			 source_get_min_available(following_mod_data_source));
+
 		if (err) {
 			comp_err(dev, "DP to LL copy error status: %d", err);
 			return err;
 		}
-
-		dp_queue = dp_queue_get_next_item(dp_queue);
 	}
 	return 0;
 }
@@ -1306,28 +1175,6 @@ int module_adapter_reset(struct comp_dev *dev)
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
 	}
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod) &&
-	    mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-		/* for DP processing - free DP Queues */
-		struct list_item *dp_queue_list_item;
-		struct list_item *tmp;
-
-		list_for_item_safe(dp_queue_list_item, tmp, &mod->dp_queue_dp_to_ll_list) {
-			struct dp_queue *dp_queue =
-					container_of(dp_queue_list_item, struct dp_queue, list);
-
-			/* dp free will also remove the queue from a list */
-			dp_queue_free(dp_queue);
-		}
-		list_for_item_safe(dp_queue_list_item, tmp, &mod->dp_queue_ll_to_dp_list) {
-			struct dp_queue *dp_queue =
-					container_of(dp_queue_list_item, struct dp_queue, list);
-
-			dp_queue_free(dp_queue);
-		}
-	}
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
