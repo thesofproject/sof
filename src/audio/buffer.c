@@ -7,6 +7,10 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/dp_queue.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
@@ -75,6 +79,73 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 
 	return buffer;
 }
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input)
+{
+	if (buffer->stream.dp_queue_sink || buffer->stream.dp_queue_source) {
+		buf_err(buffer, "Only one shadow dp_queue may be attached to a buffer");
+		return -EINVAL;
+	}
+
+	struct dp_queue *dp_queue =
+		dp_queue_create(source_get_min_available(&buffer->stream._source_api),
+				sink_get_min_free_space(&buffer->stream._sink_api),
+				buffer->is_shared ? DP_QUEUE_MODE_SHARED : DP_QUEUE_MODE_LOCAL,
+				buf_get_id(buffer), &buffer->stream.runtime_stream_params);
+
+	if (!dp_queue)
+		return -ENOMEM;
+
+	if (at_input)
+		buffer->stream.dp_queue_sink = dp_queue;
+	else
+		buffer->stream.dp_queue_source = dp_queue;
+
+	buf_info(buffer, "dp_queue attached to buffer as a shadow, at_input: %u", at_input);
+	return 0;
+}
+
+int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit)
+{
+	int err;
+
+	struct sof_source *data_src;
+	struct sof_sink *data_dst;
+
+	if (buffer->stream.dp_queue_sink) {
+		/*
+		 * comp_buffer sink API is shadowed, that means there's a dp_queue at data input
+		 * get data from dp_queue_sink (use source API)
+		 * copy to comp_buffer (use sink API)
+		 */
+		data_src = dp_queue_get_source(buffer->stream.dp_queue_sink);
+		data_dst = &buffer->stream._sink_api;
+	} else if (buffer->stream.dp_queue_source) {
+		/*
+		 * comp_buffer source API is shadowed, that means there's a dp_queue at data output
+		 * get data from comp_buffer (use source API)
+		 * copy to dp_queue_source (use sink API)
+		 */
+		data_src = &buffer->stream._source_api;
+		data_dst = dp_queue_get_sink(buffer->stream.dp_queue_source);
+
+	} else {
+		return -EINVAL;
+	}
+
+	/*
+	 * keep data_available and free_size in local variables to avoid check_time/use_time
+	 * race in MIN macro
+	 */
+	size_t data_available = source_get_data_available(data_src);
+	size_t free_size = sink_get_free_size(data_dst);
+	size_t to_copy = MIN(MIN(data_available, free_size), limit);
+
+	err = source_to_sink_copy(data_src, data_dst, true, to_copy);
+	return err;
+}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 void buffer_zero(struct comp_buffer *buffer)
 {
@@ -197,7 +268,10 @@ void buffer_free(struct comp_buffer *buffer)
 
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
-
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	dp_queue_free(buffer->stream.dp_queue_sink);
+	dp_queue_free(buffer->stream.dp_queue_source);
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	rfree(buffer->stream.addr);
 	rfree(buffer);
 }

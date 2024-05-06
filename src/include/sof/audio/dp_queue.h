@@ -159,6 +159,8 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 static inline
 void dp_queue_free(struct dp_queue *dp_queue)
 {
+	if (!dp_queue)
+		return;
 	CORE_CHECK_STRUCT(dp_queue);
 	list_item_del(&dp_queue->list);
 	rfree((__sparse_force void *)dp_queue->_data_buffer);

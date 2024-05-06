@@ -191,6 +191,40 @@ struct buffer_cb_free {
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align,
 				 bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+/*
+ * create a shadow dp_queue buffer before buffer (when at_input == true) or behind a buffer
+ *
+ * before buffer (at_input == true):
+ *  DP mod ==> (sink_API) shadow dp_queue ==> comp_buffer (audio_stream or source API) ==> LL mod
+ *
+ * after buffer (at_input == false):
+ *  LL mod ==> (audio_stream or sink API) ==> comp_buffer ==> shadow dp_queue (source API) == DP mod
+ *
+ * If a shadow buffer is created, it replaces source or sink interface of audio_stream
+ * allowing the module connected to it using all properties of dp_queue (like
+ * lockless cross-core connection) keeping legacy interface to other modules
+ *
+ * buffer_sync_shadow_dp_queue must be called every 1 ms to move data to/from
+ * shadow dp_queue to comp_buffer
+ *
+ * @param buffer pointer to a buffer
+ * @param at_input true indicates that a shadow buffer is located at data input, replacing
+ *			sink API of audio_stream
+ *		   false indicates that a shadow buffer is located at data output, replacing
+ *			source API of audio_stream
+ */
+int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input);
+
+/*
+ * move data from/to shadow buffer, must be called periodically as described above
+ *
+ * @param buffer pointer to a buffer
+ * @param limit data copy limit. Indicates maximum amount of data that will be moved from/to shadow
+ *		buffer in an operation
+ */
+int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit);
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
 void buffer_free(struct comp_buffer *buffer);
 void buffer_zero(struct comp_buffer *buffer);
