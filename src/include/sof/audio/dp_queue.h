@@ -107,9 +107,6 @@ struct sof_audio_stream_params;
 struct dp_queue {
 	CORE_CHECK_STRUCT_FIELD;
 
-	/* public */
-	struct list_item list;	/**< fields for connection queues in a list */
-
 	/* public: read only */
 
 	/* note!
@@ -162,7 +159,6 @@ void dp_queue_free(struct dp_queue *dp_queue)
 	if (!dp_queue)
 		return;
 	CORE_CHECK_STRUCT(dp_queue);
-	list_item_del(&dp_queue->list);
 	rfree((__sparse_force void *)dp_queue->_data_buffer);
 	rfree(dp_queue);
 }
@@ -197,30 +193,6 @@ bool dp_queue_is_shared(struct dp_queue *dp_queue)
 {
 	CORE_CHECK_STRUCT(dp_queue);
 	return !!(dp_queue->_flags & DP_QUEUE_MODE_SHARED);
-}
-
-/**
- * @brief append a dp_queue to the list
- */
-static inline void dp_queue_append_to_list(struct dp_queue *item, struct list_item *list)
-{
-	list_item_append(&item->list, list);
-}
-
-/**
- * @brief return a pointer to the first dp_queue on the list
- */
-static inline struct dp_queue *dp_queue_get_first_item(struct list_item *list)
-{
-	return list_first_item(list, struct dp_queue, list);
-}
-
-/**
- * @brief return a pointer to the next dp_queue on the list
- */
-static inline struct dp_queue *dp_queue_get_next_item(struct dp_queue *item)
-{
-	return list_next_item(item, list);
 }
 
 #endif /* __SOF_DP_QUEUE_H__ */
