@@ -63,6 +63,10 @@ struct audio_stream {
 	void *end_addr;	/**< Buffer end address */
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	struct dp_queue *dp_queue_sink; /**< sink API shadow, an additional dp_queue at data in */
+	struct dp_queue *dp_queue_source; /**< source API shadow, an additional dp_queue at out */
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	/* runtime stream params */
 	struct sof_audio_stream_params runtime_stream_params;
@@ -1018,17 +1022,11 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 
 /** get a handler to source API
  */
-static inline struct sof_source *
-audio_stream_get_source(struct audio_stream *audio_stream)
-{
-	return &audio_stream->_source_api;
-}
+struct sof_source *
+audio_stream_get_source(struct audio_stream *audio_stream);
 
-static inline struct sof_sink *
-audio_stream_get_sink(struct audio_stream *audio_stream)
-{
-	return &audio_stream->_sink_api;
-}
+struct sof_sink *
+audio_stream_get_sink(struct audio_stream *audio_stream);
 
 /** @}*/
 
