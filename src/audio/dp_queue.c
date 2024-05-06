@@ -270,8 +270,6 @@ struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, ui
 	sink_init(dp_queue_get_sink(dp_queue), &dp_queue_sink_ops,
 		  dp_queue->audio_stream_params);
 
-	list_init(&dp_queue->list);
-
 	/* set obs/ibs in sink/source interfaces */
 	sink_set_min_free_space(&dp_queue->_sink_api, min_free_space);
 	source_set_min_available(&dp_queue->_source_api, min_available);
