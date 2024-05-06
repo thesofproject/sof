@@ -452,6 +452,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+	    sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		tr_err(&ipc_tr, "DP to DP binding is not supported: can't bind %x to %x",
+		       src_id, sink_id);
+		return IPC4_INVALID_REQUEST;
+	}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
 	/* If both components are on same core -- process IPC on that core,
@@ -529,6 +537,17 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	sink_set_min_free_space(audio_stream_get_sink(&buffer->stream), obs);
 	source_set_min_available(audio_stream_get_source(&buffer->stream), ibs);
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	/* mod->dev may be null in case of a module not using module adapter */
+	if (dstmod->dev &&
+	    dstmod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		/* data destination module needs to use dp_queue */
+		buffer_create_shadow_dp_queue(buffer, false /* at_input = false */);
+	else if (srcmod->dev &&
+		 srcmod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		/* data source module needs to use dp_queue */
+		buffer_create_shadow_dp_queue(buffer, true /* at_input = true */);
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been
 	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which

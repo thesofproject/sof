@@ -104,24 +104,13 @@ struct processing_module {
 	struct sof_sink *sinks[MODULE_MAX_SOURCES];
 	struct sof_source *sources[MODULE_MAX_SOURCES];
 
-	union {
-		struct {
-			/* this is used in case of raw data or audio_stream mode
-			 * number of buffers described by fields:
-			 * input_buffers  - num_of_sources
-			 * output_buffers - num_of_sinks
-			 */
-			struct input_stream_buffer *input_buffers;
-			struct output_stream_buffer *output_buffers;
-		};
-		struct {
-			/* this is used in case of DP processing
-			 * dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP
-			 */
-			struct list_item dp_queue_ll_to_dp_list;
-			struct list_item dp_queue_dp_to_ll_list;
-		};
-	};
+	/* this is used in case of raw data or audio_stream mode
+	 * number of buffers described by fields:
+	 * input_buffers  - num_of_sources
+	 * output_buffers - num_of_sinks
+	 */
+	struct input_stream_buffer *input_buffers;
+	struct output_stream_buffer *output_buffers;
 	struct comp_buffer *source_comp_buffer; /**< single source component buffer */
 	struct comp_buffer *sink_comp_buffer; /**< single sink compoonent buffer */
 
