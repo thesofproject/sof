@@ -117,7 +117,7 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 #define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
+	({const __typeof__(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
 /*
  * typeof() doesn't preserve __attribute__((address_space(x))) sparse
@@ -127,7 +127,7 @@
  * re-inforce the address space onto the new pointer.
  */
 #define attr_container_of(ptr, type, member, attr) \
-	({const typeof(((type *)0)->member) attr *__memberptr = (ptr); \
+	({const __typeof__(((type *)0)->member) attr *__memberptr = (ptr); \
 	(type *)((char attr *)__memberptr - offsetof(type, member)); })
 
 #define ffs(i) __builtin_ffs(i)
@@ -219,7 +219,7 @@
  * alignment. This compiler builtin may not be available on all compilers so
  * this macro can be defined as NULL if needed.
  */
-#define ASSUME_ALIGNED(x, a) ((typeof(x))__builtin_assume_aligned((x), a))
+#define ASSUME_ALIGNED(x, a) ((__typeof__(x))__builtin_assume_aligned((x), a))
 #endif /* __XCC__ */
 
 #endif /* __ASSEMBLER__ */
