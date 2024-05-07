@@ -934,7 +934,7 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			llext_input = entry_path / (llext_base + '.llext')
 			llext_output = entry_path / (llext_file + '.ri')
 
-			sign_cmd = [str(platform_wconfig.get("rimage.path")), "-o", str(llext_output),
+			sign_cmd = [platform_wconfig.get("rimage.path"), "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
 				    "-k", str(signing_key), "-l", "-r",
 				    str(llext_input)]
