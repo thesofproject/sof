@@ -40,4 +40,5 @@ jobs:
               --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
               --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
               --cmake-args=--warn-uninitialized \
-              --overlay=sof/app/overlays/mtl/module_overlay.conf ${{ matrix.platform }}"
+              --overlay=sof/app/overlays/${{ matrix.platform }}/module_overlay.conf \
+              ${{ matrix.platform }}"
