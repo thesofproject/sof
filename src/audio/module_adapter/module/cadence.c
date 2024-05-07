@@ -600,6 +600,18 @@ static int cadence_codec_get_samples(struct processing_module *mod)
 	return 0;
 }
 
+static int cadence_codec_deep_buff_allowed(struct processing_module *mod)
+{
+	struct cadence_codec_data *cd = module_get_private_data(mod);
+
+	switch (cd->api_id) {
+	case CADENCE_CODEC_MP3_ENC_ID:
+		return 0;
+	default:
+		return 1;
+	}
+}
+
 static int cadence_codec_init_process(struct processing_module *mod)
 {
 	int ret;
@@ -743,6 +755,10 @@ cadence_codec_process(struct processing_module *mod,
 				mod->stream_params->channels;
 	uint32_t remaining = input_buffers[0].size;
 	int ret;
+
+	if (!cadence_codec_deep_buff_allowed(mod)) {
+		mod->deep_buff_bytes = 0;
+	}
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
