@@ -27,6 +27,7 @@ extern xa_codec_func_t xa_bsac_dec;
 extern xa_codec_func_t xa_dabplus_dec;
 extern xa_codec_func_t xa_drm_dec;
 extern xa_codec_func_t xa_mp3_dec;
+extern xa_codec_func_t xa_mp3_enc;
 extern xa_codec_func_t xa_sbc_dec;
 extern xa_codec_func_t xa_vorbis_dec;
 extern xa_codec_func_t xa_src_pp;
