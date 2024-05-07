@@ -6,11 +6,11 @@ rsource "volume/Kconfig"
 rsource "aria/Kconfig"
 
 config COMP_BASEFW_IPC4
-        bool "BASEFW component"
-        default y
-        depends on IPC_MAJOR_4
-        help
-          Select for BASEFW component
+	bool "BASEFW component"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Select for BASEFW component
 
 config IPC4_BASE_FW_INTEL
 	bool "BASEFW component Intel vendor extensions"
@@ -63,13 +63,13 @@ config XRUN_NOTIFICATIONS_ENABLE
 	  Enable xrun notifications sending to host
 
 config IPC4_GATEWAY
-        bool "IPC4 Gateway"
-        default y
-        depends on IPC_MAJOR_4
-        help
-          Select for IPC4 Gateway. IPC4 Gateway is used to transfer audio between
-          host and DSP without using DMA: via memory window (audio payload) and
-          IPC4 messages (set/get/flush commands).
+	bool "IPC4 Gateway"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Select for IPC4 Gateway. IPC4 Gateway is used to transfer audio between
+	  host and DSP without using DMA: via memory window (audio payload) and
+	  IPC4 messages (set/get/flush commands).
 
 rsource "up_down_mixer/Kconfig"
 
