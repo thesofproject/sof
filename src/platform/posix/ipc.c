@@ -43,7 +43,7 @@ static uint8_t fuzz_in_sz;
 // synchronously as another message after receipt of "complete_cmd()"
 // from the SOF engine, etc...  Eventually we'll receive another fuzz
 // input after some amount of simulated time has passed (c.f.
-// CONFIG_ARCH_POSIX_FUZZ_TICKS)
+// CONFIG_ZEPHYR_POSIX_FUZZ_TICKS)
 static void fuzz_isr(const void *arg)
 {
 	size_t rem, i, n = MIN(posix_fuzz_sz, sizeof(fuzz_in) - fuzz_in_sz);
@@ -179,7 +179,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 	if (fuzz_in_sz > 0) {
 		posix_fuzz_sz = 0;
-		posix_sw_set_pending_IRQ(CONFIG_ARCH_POSIX_FUZZ_IRQ);
+		posix_sw_set_pending_IRQ(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
 	}
 }
 
@@ -203,8 +203,8 @@ void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	IRQ_CONNECT(CONFIG_ARCH_POSIX_FUZZ_IRQ, 0, fuzz_isr, NULL, 0);
-	irq_enable(CONFIG_ARCH_POSIX_FUZZ_IRQ);
+	IRQ_CONNECT(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ, 0, fuzz_isr, NULL, 0);
+	irq_enable(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
 
 	global_ipc = ipc;
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
