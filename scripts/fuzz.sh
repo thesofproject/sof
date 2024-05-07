@@ -166,7 +166,7 @@ setup()
 
     export ZEPHYR_TOOLCHAIN_VARIANT=llvm
 
-    # ZEPHYR_BASE. Does not seem required.
+    # Define ZEPHYR_BASE so this can be invoked even outside the west workspace.
     local WS_TOP
     WS_TOP=$(cd "$SOF_TOP"; west topdir)
     # The manifest itself is not a west project
