@@ -102,6 +102,21 @@ if CADENCE_CODEC
 		  This option is a string and takes the full name of the MP3 library binary.
 	endif
 
+	config CADENCE_CODEC_MP3_ENC
+		bool "Cadence MP3 encoder"
+		default n
+		help
+		  Select for Cadence MP3 encoder support.
+		  This will cause Cadence codec to include Cadence MP3 library
+		  api symbol.
+
+	if CADENCE_CODEC_MP3_ENC
+		config CADENCE_CODEC_MP3_ENC_LIB
+		string "Cadence MP3 encoder library name"
+		help
+		  This option is a string and takes the full name of the MP3 library binary.
+	endif
+
 	config CADENCE_CODEC_SBC_DEC
 		bool "Cadence SBC decoder"
 		default n

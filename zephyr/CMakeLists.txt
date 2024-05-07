@@ -643,6 +643,10 @@ if (CONFIG_CADENCE_CODEC_MP3_DEC)
 zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
 endif()
 
+if (CONFIG_CADENCE_CODEC_MP3_ENC)
+zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
+endif()
+
 if (CONFIG_CADENCE_CODEC_AAC_DEC)
 zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
 endif()
