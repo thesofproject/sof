@@ -1102,10 +1102,10 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 BIN_NAME = 'zephyr'
 
 CHECKSUM_WANTED = [
-	# Some .ri files have a deterministic signature, others use
-	# a cryptographic salt. Even for the latter a checksum is still
-	# useful to match an artefact with a specific build log.
-	'*.ri',
+	# Rimage now uses a cryptographic salt and produces a non-deterministic
+	# signature; but the ability to match some release with the corresponding
+	# build log is still useful.
+	'*.ri', '*.llext',
 	'dsp_basefw.bin',
 
 	'*version*.h',
