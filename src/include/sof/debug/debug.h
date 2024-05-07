@@ -140,7 +140,7 @@
 
 /* swap an endianness of 32-bit word */
 #define bswap32(N) ({ \
-	typeof(N) n = (N); \
+	__typeof__(N) n = (N); \
 	((n & 0x000000FF) << 24) | \
 	((n & 0x0000FF00) << 8) | \
 	((n & 0x00FF0000) >> 8) | \
@@ -153,10 +153,10 @@
  */
 #define dump_hex(ptr, idx, len) \
 	do { \
-		typeof(idx) __i = (idx); \
-		typeof(ptr) __p = (ptr) + __i; \
-		typeof(idx) __l = (len) - __i; \
-		typeof(idx) __n = __l > 4 ? 4 : __l; \
+		__typeof__(idx) __i = (idx); \
+		__typeof__(ptr) __p = (ptr) + __i; \
+		__typeof__(idx) __l = (len) - __i; \
+		__typeof__(idx) __n = __l > 4 ? 4 : __l; \
 		if (__n == 4) { \
 			comp_info(dev, "%08x%08x%08x%08x", bswap32(__p[0]), bswap32(__p[1]), \
 				  bswap32(__p[2]), bswap32(__p[3])); \

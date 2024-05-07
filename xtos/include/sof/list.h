@@ -86,7 +86,7 @@ static inline int list_item_is_last(struct list_item *item,
 
 /* get the next container object in the list */
 #define list_next_item(object, member) \
-	list_item((object)->member.next, typeof(*(object)), member)
+	list_item((object)->member.next, __typeof__(*(object)), member)
 
 /* list iterator */
 #define list_for_item(item, list) \

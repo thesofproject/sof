@@ -20,18 +20,18 @@
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 
 #define ROUND_DOWN(size, alignment) ({			\
-	typeof(size) __size = (size);			\
-	typeof(alignment) __alignment = (alignment);	\
+	__typeof__(size) __size = (size);			\
+	__typeof__(alignment) __alignment = (alignment);	\
 	__size - (__size % __alignment);		\
 })
 #endif /* ! __ZEPHYR__ */
 
 #define ABS(a) ({		\
-	typeof(a) __a = (a);	\
+	__typeof__(a) __a = (a);	\
 	__a < 0 ? -__a : __a;	\
 })
 #define SGN(a) ({		\
-	typeof(a) __a = (a);	\
+	__typeof__(a) __a = (a);	\
 	__a < 0 ? -1 :		\
 	__a > 0 ? 1 : 0;	\
 })
