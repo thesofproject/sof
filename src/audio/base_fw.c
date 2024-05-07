@@ -8,7 +8,7 @@
 #include <sof/ut.h>
 #include <sof/tlv.h>
 #include <ipc4/base_fw.h>
-#include <ipc4/base_fw_platform.h>
+#include <ipc4/base_fw_vendor.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
 #include <ipc/topology.h>
@@ -121,7 +121,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 
 	/* add platform specific tuples */
-	platform_basefw_fw_config(&plat_data_offset, (char *)tuple);
+	basefw_vendor_fw_config(&plat_data_offset, (char *)tuple);
 
 	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
@@ -152,7 +152,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 
 	/* add platform specific tuples */
-	platform_basefw_hw_config(&plat_data_offset, (char *)tuple);
+	basefw_vendor_hw_config(&plat_data_offset, (char *)tuple);
 
 	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
@@ -298,7 +298,7 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 
 	for (int lib_id = 0; lib_id < LIB_MANAGER_MAX_LIBS; ++lib_id) {
 		if (lib_id == 0) {
-			desc = platform_base_fw_get_manifest();
+			desc = basefw_vendor_get_manifest();
 		} else {
 #if CONFIG_LIBRARY_MANAGER
 			desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(lib_id);
@@ -336,7 +336,7 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 
 static int basefw_modules_info_get(uint32_t *data_offset, char *data)
 {
-	return platform_basefw_modules_info_get(data_offset, data);
+	return basefw_vendor_modules_info_get(data_offset, data);
 }
 
 int schedulers_info_get(uint32_t *data_off_size,
@@ -479,7 +479,7 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		break;
 	}
 
-	return platform_basefw_get_large_config(dev, param_id, first_block, last_block,
+	return basefw_vendor_get_large_config(dev, param_id, first_block, last_block,
 						data_offset, data);
 };
 
@@ -507,8 +507,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 		break;
 	}
 
-	return platform_basefw_set_large_config(dev, param_id, first_block, last_block,
-						data_offset, data);
+	return basefw_vendor_set_large_config(dev, param_id, first_block, last_block,
+					      data_offset, data);
 };
 
 static const struct comp_driver comp_basefw = {
