@@ -333,6 +333,7 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_PLATFORM_PATH}/posix/dai.c
 	${SOF_PLATFORM_PATH}/posix/ipc.c
 	${SOF_PLATFORM_PATH}/posix/posix.c
+	${SOF_PLATFORM_PATH}/posix/fuzz.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY
