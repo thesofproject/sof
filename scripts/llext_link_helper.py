@@ -35,7 +35,7 @@ def main():
 	elf = ELFFile(open(args.file, 'rb'))
 
 	text_addr = int(args.text_addr, 0)
-	p = re.compile('(^lib|\.so$)')
+	p = re.compile(r'(^lib|\.so$)')
 	module = p.sub('', args.file)
 
 	if elf.num_segments() != 0:
