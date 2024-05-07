@@ -27,9 +27,9 @@ struct ipc4_modules_info {
 	struct sof_man_module modules[0];
 } __packed __aligned(4);
 
-LOG_MODULE_REGISTER(basefw_platform, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(basefw_intel, CONFIG_SOF_LOG_LEVEL);
 
-int platform_basefw_fw_config(uint32_t *data_offset, char *data)
+int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 
@@ -47,7 +47,7 @@ int platform_basefw_fw_config(uint32_t *data_offset, char *data)
 	return 0;
 }
 
-int platform_basefw_hw_config(uint32_t *data_offset, char *data)
+int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t value;
@@ -69,7 +69,7 @@ int platform_basefw_hw_config(uint32_t *data_offset, char *data)
 	return 0;
 }
 
-struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
+struct sof_man_fw_desc *basefw_vendor_get_manifest(void)
 {
 	struct sof_man_fw_desc *desc;
 
@@ -78,10 +78,10 @@ struct sof_man_fw_desc *platform_base_fw_get_manifest(void)
 	return desc;
 }
 
-int platform_basefw_modules_info_get(uint32_t *data_offset, char *data)
+int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 {
 	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
-	struct sof_man_fw_desc *desc = platform_base_fw_get_manifest();
+	struct sof_man_fw_desc *desc = basefw_vendor_get_manifest();
 
 	if (!desc)
 		return -EINVAL;
@@ -228,12 +228,12 @@ static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 	return IPC4_UNAVAILABLE;
 }
 
-int platform_basefw_get_large_config(struct comp_dev *dev,
-				     uint32_t param_id,
-				     bool first_block,
-				     bool last_block,
-				     uint32_t *data_offset,
-				     char *data)
+int basefw_vendor_get_large_config(struct comp_dev *dev,
+				   uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t *data_offset,
+				   char *data)
 {
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
@@ -298,12 +298,12 @@ static int basefw_set_fw_config(bool first_block,
 	return 0;
 }
 
-int platform_basefw_set_large_config(struct comp_dev *dev,
-				     uint32_t param_id,
-				     bool first_block,
-				     bool last_block,
-				     uint32_t data_offset,
-				     const char *data)
+int basefw_vendor_set_large_config(struct comp_dev *dev,
+				   uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t data_offset,
+				   const char *data)
 {
 	switch (param_id) {
 	case IPC4_FW_CONFIG:

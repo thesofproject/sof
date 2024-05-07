@@ -12,6 +12,14 @@ config COMP_BASEFW_IPC4
         help
           Select for BASEFW component
 
+config IPC4_BASE_FW_INTEL
+	bool "BASEFW component Intel vendor extensions"
+	depends on COMP_BASEFW_IPC4
+	help
+	  Enable Intel vendor extensions for base firmware module.
+	  This implements a set of additional IPC4 properties that
+	  extend the base spec.
+
 rsource "copier/Kconfig"
 
 config HOST_DMA_RELOAD_DELAY_ENABLE
