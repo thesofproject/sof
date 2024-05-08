@@ -4,6 +4,10 @@
 list(APPEND TPLGS
 # HDMI only topology with passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;"
+# HDMI only topology with passthrough pipelines and
+# 2 or 4 DMIC, no NHLT blob included in topology
+"sof-hda-generic\;sof-hda-generic-idisp-2ch\;NUM_DMICS=2"
+"sof-hda-generic\;sof-hda-generic-idisp-4ch\;NUM_DMICS=4"
 # HDA topology with mixer-based pipelines for HDA and
 # passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix"
@@ -22,6 +26,13 @@ PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 # not be added to the topologies below.
 
 # Topologies for CAVS2.5 architecture
+# HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-cavs25-idisp-2ch\;NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-idisp-2ch.bin"
+"sof-hda-generic\;sof-hda-generic-cavs25-idisp-4ch\;NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-idisp-4ch.bin"
+# HDA + HDMI + DMICs
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch.bin"
 "sof-hda-generic\;sof-hda-generic-cavs25-4ch\;HDA_CONFIG=mix,NUM_DMICS=4,\
@@ -29,6 +40,13 @@ PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-4ch.bin"
 
 # Topologies for ACE1 and ACE2 architectures
+# HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-ace1-idisp-2ch\;PLATFORM=mtl,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-idisp-2ch.bin"
+"sof-hda-generic\;sof-hda-generic-ace1-idisp-4ch\;PLATFORM=mtl,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-idisp-4ch.bin"
+# HDA + HDMI + DMICs
 "sof-hda-generic\;sof-hda-generic-ace1-2ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-2ch.bin"
 "sof-hda-generic\;sof-hda-generic-ace1-4ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=4,\
