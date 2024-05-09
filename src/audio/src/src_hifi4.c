@@ -248,10 +248,7 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 		/* Scale FIR output with right shifts, round/saturate
 		 * to Q1.31, and store 32 bit output.
 		 */
-		AE_S32_L_XP(AE_ROUND32F48SSYM(AE_SRAA64(a0, shift)), wp,
-			    sizeof(int32_t));
-		AE_S32_L_XP(AE_ROUND32F48SSYM(AE_SRAA64(a1, shift)), wp,
-			    sizeof(int32_t));
+		AE_S24X2RA64S_IP(a0, a1, (ae_f24x2 *)wp);
 
 		return;
 	}
@@ -300,8 +297,7 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 		 * to Q1.31, and store 32 bit output. Advance write
 		 * pointer to next sample.
 		 */
-		AE_S32_L_XP(AE_ROUND32F48SSYM(AE_SRAA64(a0, shift)), wp,
-			    sizeof(int32_t));
+		AE_S24RA64S_XP(a0, (ae_f24 *)wp, sizeof(ae_f24));
 	}
 }
 
