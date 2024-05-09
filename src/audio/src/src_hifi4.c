@@ -231,18 +231,18 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 			 * Q1.23 values.
 			 */
 			data2 = AE_SELP24_LL(d0, d1);
-			AE_MULAAFP24S_HH_LL(a0, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a0, data2, coef2);
 			data2 = AE_SELP24_HH(d0, d1);
-			AE_MULAAFP24S_HH_LL(a1, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a1, data2, coef2);
 
 			/* Repeat for next two taps */
 			AE_L32X2F24_IP(coef2, coefp, sizeof(ae_f24x2));
 			AE_L32X2F24_XC(d0, dp, inc); /* r2, l2 */
 			AE_L32X2F24_XC(d1, dp, inc); /* r3, l3 */
 			data2 = AE_SELP24_LL(d0, d1);
-			AE_MULAAFP24S_HH_LL(a0, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a0, data2, coef2);
 			data2 = AE_SELP24_HH(d0, d1);
-			AE_MULAAFP24S_HH_LL(a1, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a1, data2, coef2);
 		}
 
 		/* Scale FIR output with right shifts, round/saturate
@@ -286,14 +286,14 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 			 * as Q1.23 from MSB side bits of the 32 bit
 			 * word. The accumulator m is Q17.47.
 			 */
-			AE_MULAAFD24_HH_LL(a0, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a0, data2, coef2);
 
 			/* Repeat the same for next two filter taps */
 			coef2 = *coefp++;
 			AE_L32F24_XC(d0, dp0, inc);
 			AE_L32F24_XC(d1, dp0, inc);
 			data2 = AE_SELP24_LL(d0, d1);
-			AE_MULAAFD24_HH_LL(a0, data2, coef2);
+			AE_MULAAFD32S_HH_LL(a0, data2, coef2);
 		}
 
 		/* Scale FIR output with right shifts, round/saturate Q17.47
