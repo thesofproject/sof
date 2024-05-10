@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [mtl]
+        platform: [mtl, lnl]
 
     steps:
       - name: git clone sof
