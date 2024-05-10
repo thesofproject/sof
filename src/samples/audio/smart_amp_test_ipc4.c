@@ -407,19 +407,16 @@ SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
 #ifdef MAJOR_IADSP_API_VERSION
 /* modular: system-services or dynamic link */
 
-static const struct module_interface *loadable_module_main(void *mod_cfg,
-							   void *parent_ppl,
-							   void **mod_ptr)
-{
-	return &smart_amp_test_interface;
-}
+#include <module/module/llext.h>
+
+SOF_LLEXT_MOD_ENTRY(smart_amp_test, &smart_amp_test_interface);
 
 static const struct sof_man_module_manifest main_manifest __section(".module") __attribute__((used)) = {
 	.module = {
 		.name = "SMATEST",
 		.uuid = {0x1E, 0x96, 0x7A, 0x16, 0xE4, 0x8A, 0xEA, 0x11,
 			 0x89, 0xF1, 0x00, 0x0C, 0x29, 0xCE, 0x16, 0x35},
-		.entry_point = (uint32_t)loadable_module_main,
+		.entry_point = (uint32_t)smart_amp_test_llext_entry,
 		.type = {
 #ifdef __SOF_MODULE_SERVICE_BUILD__
 			.load_type = SOF_MAN_MOD_TYPE_MODULE,
@@ -440,10 +437,7 @@ DECLARE_LOADABLE_MODULE_API_VERSION(smart_amp_test);
 #else
 /* dynamic link */
 
-static const struct sof_module_api_build_info buildinfo __section(".mod_buildinfo") __attribute__((used)) = {
-	.format = SOF_MODULE_API_BUILD_INFO_FORMAT,
-	.api_version_number.full = SOF_MODULE_API_CURRENT_VERSION,
-};
+SOF_LLEXT_BUILDINFO;
 
 #endif
 
