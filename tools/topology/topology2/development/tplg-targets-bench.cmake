@@ -19,6 +19,7 @@ set(components
 	"rtnr"
 	"src"
 	"src_lite"
+	"tdfb"
 )
 
 set(component_parameters
@@ -33,6 +34,7 @@ set(component_parameters
 	"BENCH_RTNR_PARAMS=default"
 	"BENCH_SRC_PARAMS=default"
 	"BENCH_SRC_LITE_PARAMS=default"
+	"BENCH_TDFB_PARAMS=default"
 )
 
 set(components_s32
