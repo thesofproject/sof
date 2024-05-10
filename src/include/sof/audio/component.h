@@ -598,6 +598,15 @@ struct comp_dev {
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
+	/* Input Buffer Size for pin 0, add array for other pins if needed */
+	size_t ibs;
+	/* Output Buffers Size for pin 0, add array for other pins if needed */
+	size_t obs;
+	/* max dsp cycles per chunk */
+	size_t cpc;
+	/* size of 1ms for input format in bytes */
+	size_t ll_chunk_size : 16;
+
 	/* private data - core does not touch this */
 	void *priv_data;	/**< private data */
 
@@ -924,5 +933,12 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
 
 /** @}*/
+
+/**
+ * Update ibs, obs, cpc, ll chunk size for component.
+ *
+ * @param dev Component to update.
+ */
+void comp_update_ibs_obs_cpc(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_COMPONENT_H__ */
