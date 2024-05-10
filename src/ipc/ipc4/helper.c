@@ -158,6 +158,8 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 
 	ipc4_add_comp_dev(dev);
 
+	comp_update_ibs_obs_cpc(dev);
+
 	return dev;
 }
 
