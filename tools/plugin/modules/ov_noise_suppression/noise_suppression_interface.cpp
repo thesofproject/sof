@@ -28,6 +28,7 @@ extern "C" {
 		ov::Core core;
 		size_t state_size = 0;
 		const char* model_name = std::getenv("NOISE_SUPPRESSION_MODEL_NAME");
+		const char* device_name = std::getenv("NOISE_SUPPRESSION_DEVICE_NAME");
 		int i;
 
 		nd = new ns_data();
@@ -38,6 +39,13 @@ extern "C" {
 		nd->model = core.read_model(model_name);
 		inputs = nd->model->inputs();
 		outputs = nd->model->outputs();
+
+		/*
+		 * Specify the target device to infer on, for example: CPU, GPU or NPU, the default
+		 * OpenVINO device will be selected by AUTO plugin when not specified.
+		 */
+		if (!device_name)
+			device_name = "CPU";
 
 		/* get state name pairs */
 		for (size_t i = 0; i < inputs.size(); i++) {
@@ -67,10 +75,10 @@ extern "C" {
 			return -EINVAL;
 
 		/*
-		 * compile the model for the CPU and save the infer_request objects for each
+		 * compile the model for the target device and save the infer_request objects for each
 		 * channel separately
 		 */
-		ov::CompiledModel compiled_model = core.compile_model(nd->model, "CPU", {});
+		ov::CompiledModel compiled_model = core.compile_model(nd->model, device_name, {});
 		for (i = 0; i < NS_MAX_SOURCE_CHANNELS; i++)
 			nd->infer_request[i] = compiled_model.create_infer_request();
 
