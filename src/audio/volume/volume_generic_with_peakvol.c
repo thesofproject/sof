@@ -290,7 +290,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	int remaining_samples = frames * nch;
 	uint32_t tmp;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
+	x = audio_stream_wrap(source,
+					 (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 
 	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
@@ -338,14 +339,15 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	int32_t *x, *x0;
-	int32_t *y, *y0;
+	int16_t *x, *x0;
+	int16_t *y, *y0;
 	int nmax, n, i, j;
 	const int nch = audio_stream_get_channels(source);
 	int remaining_samples = frames * nch;
 	uint32_t tmp;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
+	x = audio_stream_wrap(source,
+					 (char *)audio_stream_get_rptr(source) + bsource->consumed);
 	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
 
 	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
