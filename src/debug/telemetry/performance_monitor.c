@@ -4,7 +4,12 @@
 //
 // Author: Tobiasz Dryjanski <tobiaszx.dryjanski@intel.com>
 
+#include <sof/audio/component.h>
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/debug/telemetry/telemetry.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib_manager.h>
+
 #include <zephyr/sys/bitarray.h>
 
 #include <errno.h>
@@ -15,7 +20,12 @@
 
 #include <adsp_debug_window.h>
 
+#include <ipc/trace.h>
+#include <ipc4/logging.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/base_fw_vendor.h>
+
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 #define PERFORMANCE_DATA_ENTRIES_COUNT \
 	(CONFIG_MEMORY_WIN_3_SIZE / sizeof(struct perf_data_item_comp))
@@ -186,6 +196,49 @@ enum ipc4_perf_measurements_state_set perf_meas_get_state(void)
 void perf_meas_set_state(enum ipc4_perf_measurements_state_set state)
 {
 	perf_measurements_state = state;
+}
+
+int get_performance_data(struct global_perf_data * const global_perf_data)
+{
+	if (!global_perf_data) {
+		tr_err(&ipc_tr, "IPC data is NULL");
+		return -EINVAL;
+	}
+
+	size_t slots_count;
+	size_t slot_idx = 0;
+	struct telemetry_wnd_data *wnd_data =
+		(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
+	struct system_tick_info *systick_info =
+		(struct system_tick_info *)wnd_data->system_tick_info;
+
+	/* Fill one performance record with performance stats per core */
+	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
+		if (!(cpu_enabled_cores() & BIT(core_id)))
+			continue;
+		memset(&global_perf_data->perf_items[slot_idx], 0, sizeof(struct perf_data_item));
+
+		global_perf_data->perf_items[slot_idx].resource_id = core_id;
+		global_perf_data->perf_items[slot_idx].avg_kcps =
+			systick_info[core_id].avg_utilization;
+		global_perf_data->perf_items[slot_idx].peak_kcps =
+			systick_info[core_id].peak_utilization;
+		++slot_idx;
+	}
+	slots_count = perf_bitmap_get_occupied(&performance_data_bitmap) + slot_idx;
+	global_perf_data->perf_item_count = slots_count;
+
+	/* fill the rest of the IPC records with data from
+	 * components registered in MW3 for performance measurement
+	 */
+	for (int idx = 0; idx < perf_bitmap_get_size(&performance_data_bitmap) &&
+	     slot_idx < slots_count; ++idx) {
+		if (perf_bitmap_is_bit_clear(&performance_data_bitmap, idx))
+			continue;
+		global_perf_data->perf_items[slot_idx] = perf_data[idx].item;
+		++slot_idx;
+	}
+	return 0;
 }
 
 int performance_monitor_init(void)

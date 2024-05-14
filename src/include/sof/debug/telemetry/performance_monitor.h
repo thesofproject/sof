@@ -52,4 +52,12 @@ void perf_meas_set_state(enum ipc4_perf_measurements_state_set state);
  */
 enum ipc4_perf_measurements_state_set perf_meas_get_state(void);
 
+/**
+ * Get global performance data entries.
+ *
+ * @param[out] global_perf_data Struct to be filled with data
+ * @return 0 if succeeded, error code otherwise.
+ */
+int get_performance_data(struct global_perf_data * const global_perf_data);
+
 #endif

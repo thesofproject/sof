@@ -758,4 +758,12 @@ struct perf_data_item_comp {
 
 } __packed __aligned(4);
 
+struct global_perf_data {
+	/* Specifies number of items in perf_items array. */
+	uint32_t      perf_item_count;
+	/* Array of global performance measurements. */
+	struct perf_data_item  perf_items[0];
+
+} __packed __aligned(4);
+
 #endif /* __SOF_IPC4_BASE_FW_H__ */
