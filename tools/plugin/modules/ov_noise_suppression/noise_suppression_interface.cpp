@@ -28,6 +28,7 @@ extern "C" {
 		ov::Core core;
 		size_t state_size = 0;
 		const char* model_name = std::getenv("NOISE_SUPPRESSION_MODEL_NAME");
+		std::string device("CPU");
 		int i;
 
 		nd = new ns_data();
@@ -67,10 +68,19 @@ extern "C" {
 			return -EINVAL;
 
 		/*
-		 * compile the model for the CPU and save the infer_request objects for each
-		 * channel separately
+		 * query the list of available devices and use NPU if available, otherwise use
+		 * CPU by default
 		 */
-		ov::CompiledModel compiled_model = core.compile_model(nd->model, "CPU", {});
+		std::vector<std::string> available_devices = core.get_available_devices();
+		for (auto &s: available_devices) {
+			if (!s.compare("NPU")) {
+				device.assign("NPU");
+				break;
+			}
+		}
+
+		/* save the infer_request objects for each channel separately */
+		ov::CompiledModel compiled_model = core.compile_model(nd->model, device, {});
 		for (i = 0; i < NS_MAX_SOURCE_CHANNELS; i++)
 			nd->infer_request[i] = compiled_model.create_infer_request();
 
