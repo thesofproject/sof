@@ -489,6 +489,7 @@ count = 24
 	instance_count = "40"
 	domain_types = "0"
 	load_type = "0"
+	init_config = "1"
 	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]

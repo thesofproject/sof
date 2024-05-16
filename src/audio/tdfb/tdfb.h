@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 
+#define SOF_TDFB_NUM_INPUT_PINS 1	/* One source */
+#define SOF_TDFB_NUM_OUTPUT_PINS 1	/* One sink */
 #define SOF_TDFB_MAX_SIZE 4096		/* Max size for coef data in bytes */
 #define SOF_TDFB_FIR_MAX_LENGTH 256	/* Max length for individual filter */
 #define SOF_TDFB_FIR_MAX_COUNT 16	/* A blob can define max 16 FIR EQs */

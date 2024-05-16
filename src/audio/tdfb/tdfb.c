@@ -537,7 +537,11 @@ static int tdfb_prepare(struct processing_module *mod,
 
 	comp_info(dev, "tdfb_prepare()");
 
-	tdfb_params(mod);
+	ret = tdfb_params(mod);
+	if (ret) {
+		comp_err(dev, "Failed tdfb_params()");
+		return ret;
+	}
 
 	/* Find source and sink buffers */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

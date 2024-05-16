@@ -168,7 +168,7 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 			enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			size_t response_size);
-void tdfb_params(struct processing_module *mod);
+int tdfb_params(struct processing_module *mod);
 
 #ifdef UNIT_TEST
 void sys_comp_module_tdfb_interface_init(void);
