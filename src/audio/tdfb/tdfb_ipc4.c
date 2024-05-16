@@ -180,19 +180,29 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 	}
 }
 
-void tdfb_params(struct processing_module *mod)
+int tdfb_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
+	if (mod->priv.cfg.nb_input_pins != SOF_TDFB_NUM_INPUT_PINS) {
+		comp_err(dev, "Illegal input pins count %d", mod->priv.cfg.nb_input_pins);
+		return -EINVAL;
+	}
+
+	if (mod->priv.cfg.nb_output_pins != SOF_TDFB_NUM_OUTPUT_PINS) {
+		comp_err(dev, "Illegal output pins count %d", mod->priv.cfg.nb_output_pins);
+		return -EINVAL;
+	}
+
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
-	/* TODO: will fix with source not same with sink case. */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.input_pins[0].audio_fmt);
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.output_pins[0].audio_fmt);
+	return 0;
 }
 
