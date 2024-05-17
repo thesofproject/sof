@@ -10,15 +10,12 @@ set -e
 DEFAULT_PLATFORMS=(
     imx8m
     rn rmb vangogh
-    mt8186 mt8195
+    mt8186 mt8195 mt8188
 )
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
-
-# Waiting for container work in progress
-SUPPORTED_PLATFORMS+=( mt8188 )
 
 # Container work is in progress
 SUPPORTED_PLATFORMS+=( acp_6_3 )
