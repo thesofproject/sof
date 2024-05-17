@@ -93,7 +93,7 @@ RUN cd "$HOME" && \
 	git clone $CLONE_DEFAULTS --branch sof-gcc10x $CT_NG_REPO && \
 	cd crosstool-ng && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195; do \
+	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195 mt8188; do \
 		echo "$arch: ct-ng build start..." && \
 		cp config-${arch}-gcc10.2-gdb9 .config && \
 		# replace the build dist to save space
@@ -116,12 +116,13 @@ ENV PATH="/home/sof/work/xtensa-imx8m-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx8ulp-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8186-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8195-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-mt8188-elf/bin:${PATH}"
 
 ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
 RUN cd "$HOME" && \
 	git clone $CLONE_DEFAULTS --branch xtensa $NEWLIB_REPO && \
 	cd newlib-xtensa && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195; do \
+	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195 mt8188; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
 		make && make install && \
