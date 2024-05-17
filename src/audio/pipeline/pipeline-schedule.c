@@ -45,11 +45,6 @@ DECLARE_SOF_UUID("dp-task", dp_task_uuid, 0xee755917, 0x96b9, 0x4130,
  */
 #define TASK_DP_STACK_SIZE 8192
 
-/**
- * \brief a priority of the DP threads in the system.
- */
-#define ZEPHYR_DP_THREAD_PRIORITY (CONFIG_NUM_PREEMPT_PRIORITIES - 2)
-
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 static void pipeline_schedule_cancel(struct pipeline *p)
@@ -404,8 +399,7 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp)
 					     &ops,
 					     mod,
 					     comp->ipc_config.core,
-					     TASK_DP_STACK_SIZE,
-					     ZEPHYR_DP_THREAD_PRIORITY);
+					     TASK_DP_STACK_SIZE);
 		if (ret < 0)
 			return ret;
 	}
