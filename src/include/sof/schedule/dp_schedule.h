@@ -67,15 +67,13 @@ int scheduler_dp_init(void);
  * \param[in] mod pointer to the module to be run
  * \param[in] core CPU the thread should run on
  * \param[in] stack_size size of stack for a zephyr task
- * \param[in] task_priority priority of the zephyr task
  */
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,
 			   struct processing_module *mod,
 			   uint16_t core,
-			   size_t stack_size,
-			   uint32_t task_priority);
+			   size_t stack_size);
 
 /**
  * \brief Extract information about scheduler's tasks
