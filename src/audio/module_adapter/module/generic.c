@@ -336,6 +336,9 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
+	/* cancel task if DP task*/
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task)
+		schedule_task_cancel(mod->dev->task);
 	if (ops->reset) {
 		ret = ops->reset(mod);
 		if (ret) {
