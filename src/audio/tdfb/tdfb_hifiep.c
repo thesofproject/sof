@@ -80,7 +80,9 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			/* Read two frames from all input channels */
 			for (i = 0; i < 2 * in_nch; i++) {
 				cd->in[i] = *x << 16;
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 16);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 16);
+
 				x++;
 			}
 
@@ -126,7 +128,9 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			/* Read two frames from all input channels */
 			for (i = 0; i < 2 * in_nch; i++) {
 				cd->in[i] = *x << 8;
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 8);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 8);
+
 				x++;
 			}
 
@@ -175,7 +179,9 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			/* Read two frames from all input channels */
 			for (i = 0; i < 2 * in_nch; i++) {
 				cd->in[i] = *x;
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x);
+
 				x++;
 			}
 
