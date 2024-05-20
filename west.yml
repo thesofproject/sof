@@ -10,7 +10,7 @@ manifest:
     - name: thesofproject
       url-base: https://github.com/thesofproject
     - name: zephyrproject
-      url-base: https://github.com/zephyrproject-rtos
+      url-base: https://github.com/nxp-upstream
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -43,7 +43,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 799a456c25868521024e5104b5fc927faea7b41c
+      revision: 9d8059b6e5541f7f6b4eb1697dccd475f2c1b39b
       remote: zephyrproject
 
       # Import some projects listed in zephyr/west.yml@revision
