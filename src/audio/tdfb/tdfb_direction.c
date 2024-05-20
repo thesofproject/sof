@@ -87,9 +87,6 @@ void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int ch_count, int *
 {
 	int32_t y;
 
-	if (!cd->direction_updates)
-		return;
-
 	y = iir_df1(&cd->direction.emphasis[*ch], x);
 	*cd->direction.wp = sat_int16(Q_SHIFT_RND(y, 31, 18)); /* 18 dB boost after high-pass */
 	cd->direction.wp++;

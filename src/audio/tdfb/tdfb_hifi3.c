@@ -59,7 +59,9 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			for (i = 0; i < 2 * in_nch; i++) {
 				AE_L16_XP(d, x, inc);
 				cd->in[i] = (ae_int32)AE_CVT32X2F16_32(d);
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch,
+								     cd->in[i]);
 			}
 
 			/* Run and mix all filters to their output channel */
@@ -148,7 +150,9 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			for (i = 0; i < 2 * in_nch; i++) {
 				AE_L32_XP(d, x, inc);
 				cd->in[i] = AE_SLAI32(d, 8);
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch,
+								     cd->in[i]);
 			}
 
 			/* Run and mix all filters to their output channel */
@@ -237,7 +241,9 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			for (i = 0; i < 2 * in_nch; i++) {
 				AE_L32_XC(d, x, inc);
 				cd->in[i] = d;
-				tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
+				if (cd->direction_updates)
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch,
+								     cd->in[i]);
 			}
 
 			for (i = 0; i < cfg->num_filters; i++) {
