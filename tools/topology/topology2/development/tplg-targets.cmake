@@ -60,13 +60,12 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-generic-2ch\;\
-HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
+HDA_CONFIG=efx,NUM_DMICS=2,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_PARAMS=passthrough"
 
@@ -75,13 +74,12 @@ EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-2ch\;\
-HDA_CONFIG=efx,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-fir-generic-2ch.bin,\
+HDA_CONFIG=efx,NUM_DMICS=2,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-efx-generic-4ch.bin,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
 EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
 
