@@ -68,4 +68,23 @@ int get_performance_data(struct global_perf_data * const global_perf_data);
  */
 int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data);
 
+/**
+ * Reset performance data values for all records.
+ *
+ * @return 0 if succeeded, error code otherwise.
+ */
+int reset_performance_counters(void);
+
+/**
+ * Reinitialize performance data values for all created components;
+ *
+ * @return 0 if succeeded, error code otherwise.
+ */
+int enable_performance_counters(void);
+
+/**
+ * Unregister performance data records marked for removal.
+ */
+void disable_performance_counters(void);
+
 #endif

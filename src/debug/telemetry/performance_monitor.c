@@ -308,6 +308,82 @@ int get_extended_performance_data(struct extended_global_perf_data * const ext_g
 	return 0;
 }
 
+void disable_performance_counters(void)
+{
+	for (int idx = 0; idx < perf_bitmap_get_size(&performance_data_bitmap); ++idx) {
+		if (perf_bitmap_is_bit_clear(&performance_data_bitmap, idx))
+			continue;
+		if (perf_data[idx].item.is_removed)
+			perf_data_free(&perf_data[idx]);
+	}
+}
+
+int enable_performance_counters(void)
+{
+	struct sof_man_module *man_module;
+	struct comp_dev *dev;
+	uint32_t comp_id;
+	const struct sof_man_fw_desc *desc;
+
+	if (perf_measurements_state != IPC4_PERF_MEASUREMENTS_DISABLED)
+		return -EINVAL;
+
+	for (int lib_id = 0; lib_id < LIB_MANAGER_MAX_LIBS; ++lib_id) {
+		if (lib_id == 0) {
+			desc = basefw_vendor_get_manifest();
+		} else {
+#if CONFIG_LIBRARY_MANAGER
+			desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(lib_id);
+#else
+			desc = NULL;
+#endif
+		}
+		if (!desc)
+			continue;
+
+		/* Reinitialize performance data for all created components */
+		for (int mod_id = 0 ; mod_id < desc->header.num_module_entries; mod_id++) {
+			man_module =
+				(struct sof_man_module *)(desc + SOF_MAN_MODULE_OFFSET(mod_id));
+
+			for (int inst_id = 0; inst_id < man_module->instance_max_count; inst_id++) {
+				comp_id = IPC4_COMP_ID(mod_id, inst_id);
+				dev = ipc4_get_comp_dev(comp_id);
+
+				if (dev)
+					comp_init_performance_data(dev);
+			}
+		}
+	}
+
+	/* TODO clear total_dsp_ycles here once implemented */
+	return 0;
+}
+
+int reset_performance_counters(void)
+{
+	if (perf_measurements_state == IPC4_PERF_MEASUREMENTS_DISABLED)
+		return -EINVAL;
+
+	struct telemetry_wnd_data *wnd_data =
+			(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
+	struct system_tick_info *systick_info =
+			(struct system_tick_info *)wnd_data->system_tick_info;
+
+	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
+		if (!(cpu_enabled_cores() & BIT(core_id)))
+			continue;
+		systick_info[core_id].peak_utilization = 0;
+	}
+	for (int idx = 0; idx < perf_bitmap_get_size(&performance_data_bitmap); ++idx) {
+		if (!perf_bitmap_is_bit_clear(&performance_data_bitmap, idx))
+			perf_data_item_comp_reset(&perf_data[idx]);
+	}
+	/* TODO clear totaldspcycles here once implemented */
+
+	return 0;
+}
+
 int performance_monitor_init(void)
 {
 	/* init global performance measurement */
@@ -320,3 +396,4 @@ int performance_monitor_init(void)
 
 /* init performance monitor using Zephyr */
 SYS_INIT(performance_monitor_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
