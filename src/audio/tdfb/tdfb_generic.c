@@ -170,9 +170,6 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 		fmax = audio_stream_frames_without_wrap(sink, y);
 		f = MIN(f, fmax);
 		for (j = 0; j < f; j += 2) {
-			/* Clear output mix*/
-			memset(cd->out, 0, 2 * out_nch * sizeof(int32_t));
-
 			/* Read two frames from all input channels */
 			for (i = 0; i < 2 * in_nch; i++) {
 				cd->in[i] = *x;
