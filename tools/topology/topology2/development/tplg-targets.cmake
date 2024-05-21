@@ -61,13 +61,13 @@ EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough
 
 "sof-hda-generic\;sof-hda-efx-generic-2ch\;\
 HDA_CONFIG=efx,NUM_DMICS=2,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_PARAMS=passthrough"
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "sof-hda-generic\;sof-hda-efx-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_PARAMS=passthrough"
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic\;HDA_CONFIG=efx,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
