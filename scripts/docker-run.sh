@@ -33,8 +33,6 @@ test "$(id -u)" = 1000 ||
   >&2 printf "Warning: this script should be run as user ID 1000 to match the container's account\n"
 
 set -x
-# FIXME: During the transition to sudo-cwd.sh, the tag will be "latest_ubuntu22.04".
-#       Later it will be back to latest
 docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	-v "${SOF_TOP}":/home/sof/work/sof-bind-mount-DO-NOT-DELETE \
 	--env CMAKE_BUILD_TYPE \
@@ -45,4 +43,4 @@ docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	--env http_proxy="$http_proxy" \
 	--env https_proxy="$https_proxy" \
 	$SOF_DOCKER_RUN \
-	thesofproject/sof:latest_ubuntu22.04 ./scripts/sudo-cwd.sh "$@"
+	thesofproject/sof:latest ./scripts/sudo-cwd.sh "$@"
