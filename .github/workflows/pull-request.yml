@@ -131,7 +131,7 @@ jobs:
         # to COMMAS. Don't use a single big group so a single failure
         # does not block all other builds.
         platform: [rn rmb,
-                   mt8186 mt8195,
+                   mt8186 mt8195 mt8188,
         ]
 
     steps:
