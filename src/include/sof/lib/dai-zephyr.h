@@ -290,6 +290,11 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev);
  * \brief release llp slot
  */
 void dai_release_llp_slot(struct dai_data *dd);
+
+/**
+ * \brief Retrieve a pointer to the Zephyr device structure for a DAI of a given type and index.
+ */
+const struct device *dai_get_device(uint32_t type, uint32_t index);
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */
