@@ -62,27 +62,41 @@ EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-generic-2ch\;\
 HDA_CONFIG=efx,NUM_DMICS=2,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_PARAMS=passthrough"
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "sof-hda-generic\;sof-hda-efx-generic-4ch\;\
 HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_PARAMS=passthrough"
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+DMIC0_PCM_CHANNELS=4"
+
+"sof-hda-generic\;sof-hda-efx-generic-4to2ch\;\
+HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_generic_pm10deg,\
+EFX_DMIC0_DRC_PARAMS=dmic_default,DMIC0_PCM_CHANNELS=2"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic\;HDA_CONFIG=efx,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_COMPONENT=multiband,\
 EFX_MBDRC_PARAMS=passthrough,EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-2ch\;\
-HDA_CONFIG=efx,NUM_DMICS=2,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
+HDA_CONFIG=efx,NUM_DMICS=2,EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
+EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "sof-hda-generic\;sof-hda-efx-mbdrc-generic-4ch\;\
-HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,\
-EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough"
+HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,EFX_FIR_PARAMS=passthrough,\
+EFX_IIR_PARAMS=passthrough,EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+DMIC0_PCM_CHANNELS=4"
+
+"sof-hda-generic\;sof-hda-efx-mbdrc-generic-4to2ch\;\
+HDA_CONFIG=efx,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,EFX_FIR_PARAMS=passthrough,\
+EFX_IIR_PARAMS=passthrough,EFX_DRC_COMPONENT=multiband,EFX_MBDRC_PARAMS=passthrough,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_generic_pm10deg,\
+EFX_DMIC0_DRC_PARAMS=dmic_default,DMIC0_PCM_CHANNELS=2"
 
 # With 16 kHz DMIC1
 "sof-hda-generic\;sof-hda-generic-cavs25-4ch-48k-16k\;HDA_CONFIG=mix,\
