@@ -165,13 +165,13 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 
 	switch (param_id) {
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
-		comp_info(mod->dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID id = %d, num_elems = %d",
-			  ctl->id, ctl->num_elems);
+		comp_dbg(mod->dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID id = %d, num_elems = %d",
+			 ctl->id, ctl->num_elems);
 		return tdfb_cmd_switch_set(ctl, cd);
 
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_info(mod->dev, "SOF_IPC4_ENUM_CONTROL_PARAM_ID id = %d, num_elems = %d",
-			  ctl->id, ctl->num_elems);
+		comp_dbg(mod->dev, "SOF_IPC4_ENUM_CONTROL_PARAM_ID id = %d, num_elems = %d",
+			 ctl->id, ctl->num_elems);
 		return tdfb_cmd_enum_set(ctl, cd);
 	default:
 		comp_info(mod->dev, "tdfb_set_ipc_config(), binary");
