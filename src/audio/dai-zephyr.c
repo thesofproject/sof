@@ -797,6 +797,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
+	uint32_t buffer_size_preferred;
 	uint32_t addr_align;
 	uint32_t align;
 	int err;
@@ -873,21 +874,23 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
 		return -EINVAL;
 	}
-
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
-	*pc = period_count;
+	period_count = MAX(period_count,
+			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+	buffer_size_preferred = ALIGN_UP(period_count * period_bytes, align);
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
-		err = buffer_set_size(dd->dma_buffer, buffer_size, addr_align);
+		err = buffer_set_size_range(dd->dma_buffer, buffer_size_preferred, buffer_size,
+					    addr_align);
 
 		if (err < 0) {
 			comp_err(dev, "dai_set_dma_buffer(): buffer_size = %u failed", buffer_size);
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
-					      addr_align, false);
+		dd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
+						    SOF_MEM_CAPS_DMA, 0, addr_align, false);
 		if (!dd->dma_buffer) {
 			comp_err(dev, "dai_set_dma_buffer(): failed to alloc dma buffer");
 			return -ENOMEM;
@@ -904,6 +907,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		dd->sampling = get_sample_bytes(hw_params.frame_fmt);
 	}
 
+	*pc = audio_stream_get_size(&dd->dma_buffer->stream) / period_bytes;
 	dd->fast_mode = dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE);
 	return 0;
 }
