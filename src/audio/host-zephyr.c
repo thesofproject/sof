@@ -748,6 +748,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
+	uint32_t buffer_size_preferred;
 	uint32_t addr_align;
 	uint32_t align;
 	int i, channel, err;
@@ -821,8 +822,9 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	/* calculate DMA buffer size */
 	round_up_size = (params->frame_fmt == SOF_IPC_FRAME_S24_3LE) ? (3 * align) : align;
 	buffer_size = ROUND_UP(period_bytes, round_up_size) * period_count;
+	buffer_size_preferred = buffer_size;
 	if (hd->ipc_host.dma_buffer_size != 0)
-		buffer_size = ROUND_UP(hd->ipc_host.dma_buffer_size, buffer_size);
+		buffer_size_preferred = ROUND_UP(hd->ipc_host.dma_buffer_size, buffer_size);
 
 	/* alloc DMA buffer or change its size if exists */
 	/*
@@ -830,7 +832,8 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	 * but we have to write back caches after we finish anywae
 	 */
 	if (hd->dma_buffer) {
-		err = buffer_set_size(hd->dma_buffer, buffer_size, addr_align);
+		err = buffer_set_size_range(hd->dma_buffer, buffer_size_preferred, buffer_size,
+					    addr_align);
 		if (err < 0) {
 			comp_err(dev, "host_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
@@ -838,8 +841,8 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
-					      addr_align, false);
+		hd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
+						    SOF_MEM_CAPS_DMA, 0, addr_align, false);
 		if (!hd->dma_buffer) {
 			comp_err(dev, "host_params(): failed to alloc dma buffer");
 			return -ENOMEM;
@@ -861,6 +864,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		config->dest_width = config->src_width;
 		hd->dma_buffer_size = audio_stream_get_size(&hd->dma_buffer->stream);
 	}
+	buffer_size = audio_stream_get_size(&hd->dma_buffer->stream);
 
 	/* create SG DMA elems for local DMA buffer */
 	err = create_local_elems(hd, dev, period_count, buffer_size / period_count,
