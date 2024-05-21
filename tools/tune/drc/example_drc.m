@@ -31,13 +31,21 @@ drc_coefs_and_config_export(params, 'passthrough');
 params.enabled = 1;
 drc_coefs_and_config_export(params, 'enabled');
 
-% Export experimental configuration for a small speaker
+% Export example configuration for a small speaker
 params.enabled = 1;
-params.threshold = -25;
-params.knee = 15;
+params.threshold = -30;
+params.knee = 20;
 params.ratio = 10;
 params.post_gain = 3;
-drc_coefs_and_config_export(params, 'generic_notebook_speaker');
+drc_coefs_and_config_export(params, 'speaker_default');
+
+% Export example configuration for DMIC capture
+params.enabled = 1;
+params.threshold = -35;
+params.knee = 25;
+params.ratio = 10;
+params.post_gain = 0;
+drc_coefs_and_config_export(params, 'dmic_default');
 
 rmpath ../common
 
