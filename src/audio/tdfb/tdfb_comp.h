@@ -135,30 +135,6 @@ static inline void tdfb_cdec_s16(int16_t **ptr, int16_t *start, size_t size)
 		*ptr = (int16_t *)((uint8_t *)*ptr + size);
 }
 
-/*
- * The optimized FIR functions variants need to be updated into function
- * set_func.
- */
-
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s16;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s24;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct tdfb_comp_data *cd)
-{
-	cd->tdfb_func = tdfb_fir_s32;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-
 int tdfb_ipc_notification_init(struct processing_module *mod);
 void tdfb_send_ipc_notification(struct processing_module *mod);
 int tdfb_get_ipc_config(struct processing_module *mod,
