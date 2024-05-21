@@ -6,11 +6,14 @@
 
 #include <zephyr/debug/sparse.h>
 
+#include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/telemetry/telemetry.h>
+#include <sof/lib_manager.h>
 
 #include <ipc/trace.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/base_fw_vendor.h>
 
 #include <adsp_debug_window.h>
 #include <errno.h>
