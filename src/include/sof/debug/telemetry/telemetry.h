@@ -15,6 +15,12 @@
 /* disables calculating systick_averages */
 #define SOF_PERFORMANCE_MEASUREMENTS
 
+/* to be moved to Zephyr */
+#define WIN3_MBASE DT_REG_ADDR(DT_PHANDLE(DT_NODELABEL(mem_window3), memory))
+#define ADSP_PMW ((volatile uint32_t *) \
+		 (sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *) \
+				     (WIN3_MBASE + WIN3_OFFSET))))
+
 /* Systick here is not to be confused with neither Zephyr tick nor SOF scheduler tick,
  * it's a legacy name for counting execution time
  */
