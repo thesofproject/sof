@@ -517,7 +517,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	ae_f32x2 temp;
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
-	/* Set peakvol(which stores the peak volume data 4 times) as circular buffer */
+	/* Set peakvol (which stores the peak volume data 4 times) as circular buffer */
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
@@ -527,7 +527,10 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
-		for (i = 0; i < n; i += 4) {
+		m = n >> 2;
+		int left = n & 0x03;
+		/* Process samples in blocks of 4*/
+			for(i =0; i<m; i++) {
 			/* Load the input sample */
 			AE_LA16X4_IP(in_sample, inu, in);
 			/* calculate the peak volume*/
@@ -541,13 +544,27 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 			/* store the output */
 			AE_SA16X4_IP(in_sample, outu, out);
 		}
+
+		/* Process remaining samples if n is not a multiple of 4*/
+		in_sample = AE_ZERO16();
+		for (i = 0; i < left; i++) {
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(int16_t));
+			/* store the output */
+			AE_S16_0_IP(in_sample, (ae_f16 *)out, sizeof(int16_t));
+			/* calculate the peak volume*/
+			temp = AE_MAXABS32S(AE_SEXT32X2D16_10(in_sample), temp);
+		}
+		AE_S32X2_XC1(temp, peakvol, inc);
+
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = (ae_f16x4 *)audio_stream_wrap(source, in);
+		out = (ae_f16x4 *)audio_stream_wrap(sink, out);
 		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
 		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
 	}
+
 	for (i = 0; i < channels_count; i++) {
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
