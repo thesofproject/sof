@@ -11,7 +11,9 @@ import os
 import argparse
 import subprocess
 from elftools.elf.elffile import ELFFile
+from elftools.elf.constants import SH_FLAGS
 import re
+import pathlib
 
 args = None
 def parse_args():
@@ -29,59 +31,110 @@ def parse_args():
 
 	args = parser.parse_args()
 
+def align_up(addr, align):
+	upper = addr + align - 1
+	return upper - (upper % align)
+
+def max_alignment(addr, align1, align2):
+	if align2 > align1:
+		align1 = align2
+
+	upper = addr + align1 - 1
+	return upper - (upper % align1)
+
 def main():
 	parse_args()
 
 	elf = ELFFile(open(args.file, 'rb'))
 
 	text_addr = int(args.text_addr, 0)
-	p = re.compile(r'(^lib|\.so$)')
-	module = p.sub('', args.file)
+	text_size = 0
 
-	if elf.num_segments() != 0:
-		# A shared object type image, it contains segments
-		sections = ['.text', '.rodata', '.data', '.bss']
-		alignment = [0x1000, 0x1000, 0x10, 0x1000]
+	# File names differ when building shared or relocatable objects
+	if args.file[:-3] == '.so':
+		p = re.compile(r'(^lib|\.so$)')
+		fname = args.file
 	else:
-		# A relocatable object, need to handle all sections separately
-		sections = ['.text',
-			    f'._log_const.static.log_const_{module}_',
-			    '.static_uuids', '.z_init_APPLICATION90_0_', '.module',
-			    '.mod_buildinfo', '.data', '.trace_ctx', '.bss']
-		alignment = [0x1000, 0x1000, 0x0, 0x0, 0x0, 0x0, 0x10, 0x0, 0x1000]
-
-	last_increment = 0
+		fpath = pathlib.Path(args.file)
+		fname = fpath.name
+		p = re.compile(r'(^lib|_llext_lib\.obj$)')
+	module = p.sub('', fname)
 
 	command = [args.command]
 
-	for i in range(len(sections)):
-		try:
-			offset = elf.get_section_by_name(sections[i]).header.sh_offset
-			size = elf.get_section_by_name(sections[i]).header.sh_size
-		except AttributeError:
-			print("section " + sections[i] + " not found in " + args.file)
+	writable = []
+	readonly = []
+
+	# Create an object file with sections grouped by their properties,
+	# similar to how program segments are created: all executable sections,
+	# then all read-only data sections, and eventually all writable data
+	# sections like .data and .bss. Each group is aligned on a page boundary
+	# (0x1000) to make dynamic memory mapping possible. The resulting object
+	# file will either be a shared library or a relocatable (partially
+	# linked) object, depending on the build configuration.
+	for section in elf.iter_sections():
+		s_flags = section.header['sh_flags']
+		s_type = section.header['sh_type']
+		s_name = section.name
+		s_size = section.header['sh_size']
+		s_alignment = section.header['sh_addralign']
+
+		if not s_flags & SH_FLAGS.SHF_ALLOC:
 			continue
 
-		if last_increment == 0:
-			# first section must be .text and it must be successful
-			if i != 0 or sections[i] != '.text':
-                                break
+		if (s_flags & (SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_EXECINSTR) ==
+                    SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_EXECINSTR and
+		    s_type == 'SHT_PROGBITS'):
+			# An executable section, currently only a single .text is supported.
+			# In general additional executable sections are possible, e.g.
+			# .init. In the future support for arbitrary such sections can be
+			# added, similar to writable and read-only data below.
+			if s_name != '.text':
+				print(f"Warning! Non-standard executable section {s_name}")
 
-			address = text_addr
-		elif alignment[i] != 0:
-			upper = offset + last_increment + alignment[i] - 1
-			address = upper - (upper % alignment[i])
-		else:
-			address = offset + last_increment
+			text_addr = max_alignment(text_addr, 0x1000, s_alignment)
+			text_size = s_size
 
-		last_increment = address - offset
-
-		if sections[i] == '.text':
 			command.append(f'-Wl,-Ttext=0x{text_addr:x}')
-		elif sections[i] == '.data':
-			command.append(f'-Wl,-Tdata=0x{address:x}')
+
+			continue
+
+		if (s_flags & (SH_FLAGS.SHF_WRITE | SH_FLAGS.SHF_ALLOC) ==
+                    SH_FLAGS.SHF_WRITE | SH_FLAGS.SHF_ALLOC):
+			# .data, .bss or other writable sections
+			writable.append(section)
+			continue
+
+		if s_type == 'SHT_PROGBITS' and s_flags & SH_FLAGS.SHF_ALLOC:
+			# .rodata or other read-only sections
+			readonly.append(section)
+
+	start_addr = align_up(text_addr + text_size, 0x1000)
+
+	for section in readonly:
+		s_alignment = section.header['sh_addralign']
+		s_name = section.name
+
+		start_addr = align_up(start_addr, s_alignment)
+
+		command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+
+		start_addr += section.header['sh_size']
+
+	start_addr = align_up(start_addr, 0x1000)
+
+	for section in writable:
+		s_alignment = section.header['sh_addralign']
+		s_name = section.name
+
+		start_addr = align_up(start_addr, s_alignment)
+
+		if s_name == '.data':
+			command.append(f'-Wl,-Tdata=0x{start_addr:x}')
 		else:
-			command.append(f'-Wl,--section-start={sections[i]}=0x{address:x}')
+			command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+
+		start_addr += section.header['sh_size']
 
 	command.extend(args.params)
 
