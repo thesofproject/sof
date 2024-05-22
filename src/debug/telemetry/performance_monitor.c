@@ -241,6 +241,73 @@ int get_performance_data(struct global_perf_data * const global_perf_data)
 	return 0;
 }
 
+int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+{
+	if (!ext_global_perf_data) {
+		tr_err(&ipc_tr, "IPC data is NULL");
+		return -EINVAL;
+	}
+
+	size_t slots_count;
+	size_t slot_idx = 0;
+	uint64_t total_dsp_cycles[CONFIG_MAX_CORE_COUNT];
+
+	/* TODO
+	 * Setting temporary values here.
+	 * Replace this with actual total dsp cycles info once it is available.
+	 */
+	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id)
+		total_dsp_cycles[core_id] = 1;
+
+	/* Fill one performance record per core with total dsp cycles */
+	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
+		if (!(cpu_enabled_cores() & BIT(core_id)))
+			continue;
+
+		memset(&ext_global_perf_data->perf_items[slot_idx], 0,
+		       sizeof(struct ext_perf_data_item));
+
+		ext_global_perf_data->perf_items[slot_idx].resource_id = core_id;
+		ext_global_perf_data->perf_items[slot_idx].module_total_dsp_cycles_consumed =
+			total_dsp_cycles[core_id];
+		++slot_idx;
+	}
+
+	slots_count = perf_bitmap_get_occupied(&performance_data_bitmap) + slot_idx;
+	ext_global_perf_data->perf_item_count = slots_count;
+
+	/* fill the rest of the IPC records with data from
+	 * components registered in MW3 for performance measurement
+	 */
+	for (int idx = 0; idx < perf_bitmap_get_size(&performance_data_bitmap) &&
+	     slot_idx < slots_count; ++idx) {
+		if (perf_bitmap_is_bit_clear(&performance_data_bitmap, idx))
+			continue;
+
+		ext_global_perf_data->perf_items[slot_idx].resource_id =
+			perf_data[idx].item.resource_id;
+		ext_global_perf_data->perf_items[slot_idx].power_mode =
+			perf_data[idx].item.power_mode;
+		ext_global_perf_data->perf_items[slot_idx].is_removed =
+			perf_data[idx].item.is_removed;
+		ext_global_perf_data->perf_items[slot_idx].module_total_dsp_iterations =
+			perf_data[idx].total_iteration_count;
+		ext_global_perf_data->perf_items[slot_idx].module_total_dsp_cycles_consumed =
+			perf_data[idx].total_cycles_consumed;
+		ext_global_perf_data->perf_items[slot_idx].module_peak_dsp_cycles =
+			perf_data[idx].item.peak_kcps * 1000;
+		ext_global_perf_data->perf_items[slot_idx].module_peak_restricted_cycles =
+			perf_data[idx].restricted_peak_cycles;
+		ext_global_perf_data->perf_items[slot_idx].module_total_restricted_cycles_consumed =
+			perf_data[idx].restricted_total_cycles;
+		ext_global_perf_data->perf_items[slot_idx].module_total_restricted_iterations =
+			perf_data[idx].restricted_total_iterations;
+		ext_global_perf_data->perf_items[slot_idx].rsvd = 0;
+		++slot_idx;
+	}
+	return 0;
+}
+
 int performance_monitor_init(void)
 {
 	/* init global performance measurement */
