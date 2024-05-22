@@ -9,6 +9,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/debug/telemetry/performance_monitor.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/topology.h>
@@ -280,6 +281,10 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		       comp_id, icd->cd->state);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	free_performance_data(icd->cd->perf_data.perf_data_item);
+#endif
 
 	if (!icd->cd->bsource_list.next || !icd->cd->bsink_list.next) {
 		/* Unfortunate: the buffer list node gets initialized

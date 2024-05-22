@@ -23,6 +23,7 @@
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/debug/telemetry/telemetry.h>
+#include <sof/debug/telemetry/performance_monitor.h>
 /* FIXME:
  * Builds for some platforms like tgl fail because their defines related to memory windows are
  * already defined somewhere else. Remove this ifdef after it's cleaned up

@@ -10,6 +10,7 @@
 #include <sof/debug/telemetry/telemetry.h>
 
 #include <ipc/trace.h>
+#include <ipc4/base_fw.h>
 
 #include <adsp_debug_window.h>
 #include <errno.h>
@@ -90,6 +91,7 @@ int telemetry_init(void)
 		systick_info[i].peak_utilization_4k = 0;
 		systick_info[i].peak_utilization_8k = 0;
 	}
+
 	return 0;
 }
 

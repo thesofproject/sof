@@ -53,6 +53,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sof/debug/telemetry/telemetry.h>
+#include <sof/debug/telemetry/performance_monitor.h>
+
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx comp_tr;
@@ -157,6 +160,17 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	/* init global performance measurement */
+	dev->perf_data.perf_data_item = perf_data_getnext();
+	/* this can be null, just no performance measurements in this case */
+	if (dev->perf_data.perf_data_item) {
+		dev->perf_data.perf_data_item->item.resource_id = comp_id;
+		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
+			comp_init_performance_data(dev);
+	}
+#endif
 
 	ipc4_add_comp_dev(dev);
 
