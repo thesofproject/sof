@@ -18,6 +18,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/counter.h>
 #endif
+#include <zephyr/pm/device_runtime.h>
 
 #include <ipc4/base_fw.h>
 #include <rimage/sof/user/manifest.h>
@@ -318,4 +319,53 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 	}
 
 	return IPC4_UNKNOWN_MESSAGE_TYPE;
+}
+
+int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
+{
+	union ipc4_connector_node_id node = (union ipc4_connector_node_id)node_id;
+	int ret, result;
+	enum dai_type type;
+
+	tr_info(&basefw_comp_tr, "node_id 0x%x, config_data 0x%x, data_size %u",
+		node_id, (uint32_t)config_data, data_size);
+	switch (node.f.dma_type) {
+	case ipc4_i2s_link_output_class:
+	case ipc4_i2s_link_input_class:
+		type = DAI_INTEL_SSP;
+		break;
+	default:
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	const struct device *dev = dai_get_device(type, node.f.v_index);
+
+	if (!dev) {
+		tr_err(&basefw_comp_tr,
+		       "Failed to find the DAI device for node_id: 0x%x",
+		       node_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	ret = pm_device_runtime_get(dev);
+	if (ret < 0) {
+		tr_err(&basefw_comp_tr, "Failed to get resume device, error: %d",
+		       ret);
+		return IPC4_FAILURE;
+	}
+
+	result = dai_config_update(dev, config_data, data_size);
+	if (result < 0) {
+		tr_err(&basefw_comp_tr,
+		       "Failed to set DMA control for DAI, error: %d",
+		       result);
+		result = IPC4_FAILURE;
+	}
+
+	ret = pm_device_runtime_put(dev);
+	if (ret < 0)
+		tr_err(&basefw_comp_tr, "Failed to suspend device, error: %d",
+		       ret);
+
+	return result;
 }
