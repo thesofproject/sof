@@ -428,6 +428,24 @@ int set_perf_meas_state(const char *data)
 	return IPC4_SUCCESS;
 }
 
+static int extended_global_perf_data_get(uint32_t *data_off_size, char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	int ret;
+	struct extended_global_perf_data *perf_data = (struct extended_global_perf_data *)data;
+
+	ret = get_extended_performance_data(perf_data);
+	if (ret < 0)
+		return IPC4_ERROR_INVALID_PARAM;
+	*data_off_size = sizeof(*perf_data)
+			+ perf_data->perf_item_count * sizeof(*perf_data->perf_items);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 static int global_perf_data_get(uint32_t *data_off_size, char *data)
 {
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
@@ -485,6 +503,8 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		return basefw_modules_info_get(data_offset, data);
 	case IPC4_LIBRARIES_INFO_GET:
 		return basefw_libraries_info_get(data_offset, data);
+	case IPC4_EXTENDED_GLOBAL_PERF_DATA:
+		return extended_global_perf_data_get(data_offset, data);
 	case IPC4_GLOBAL_PERF_DATA:
 		return global_perf_data_get(data_offset, data);
 	/* TODO: add more support */
