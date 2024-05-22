@@ -6,18 +6,14 @@
 #ifndef __SOF_TELEMETRY_H__
 #define __SOF_TELEMETRY_H__
 
+#include <ipc4/base_fw.h>
+
 /* Slot in memory window 2 (Debug Window) to be used as telemetry slot */
 #define SOF_DW_TELEMETRY_SLOT 1
 /* Memory of average algorithm of performance queue */
 #define SOF_AVG_PERF_MEAS_DEPTH 64
 /* Number of runs taken to calculate average (algorithm resolution) */
 #define SOF_AVG_PERF_MEAS_PERIOD 16
-
-/* to be moved to Zephyr */
-#define WIN3_MBASE DT_REG_ADDR(DT_PHANDLE(DT_NODELABEL(mem_window3), memory))
-#define ADSP_PMW ((volatile uint32_t *) \
-		 (sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *) \
-				     (WIN3_MBASE + WIN3_OFFSET))))
 
 /* Systick here is not to be confused with neither Zephyr tick nor SOF scheduler tick,
  * it's a legacy name for counting execution time
