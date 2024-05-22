@@ -78,10 +78,10 @@ function(sof_llext_build module)
 			-o rimage_config.toml
 	)
 
-	if("${ZEPHYR_TOOLCHAIN_VARIANT}" STREQUAL "zephyr")
-		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
-	else()
+	if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
+	else()
+		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
 	endif()
 
 	get_target_property(proc_in_file ${module} lib_output)
