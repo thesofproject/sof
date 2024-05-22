@@ -812,6 +812,12 @@ def build_platforms():
 		if args.debug:
 			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
+		# The xt-cland Cadence toolchain currently cannot link shared
+		# libraries for Xtensa. Therefore when it's used we switch to
+		# building relocatable ELF objects.
+		if platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT") == 'xt-clang':
+			overlays.append(str(pathlib.Path(SOF_TOP, "app", "llext_relocatable.conf")))
+
 		if overlays:
 			overlays = ";".join(overlays)
 			build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
