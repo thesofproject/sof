@@ -21,9 +21,7 @@ LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
-// Hifi4 is disabled, see bug https://github.com/thesofproject/sof/issues/9213
-// Hifi5 is not there yet.
-#if SOF_USE_HIFI(3, VOLUME) || SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
+#if SOF_USE_HIFI(3, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
 

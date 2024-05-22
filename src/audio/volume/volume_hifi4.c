@@ -346,7 +346,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 out_sample1 = AE_ZERO32();
 	ae_f16x4 in_sample = AE_ZERO16();
 	ae_f16x4 out_sample = AE_ZERO16();
-	int i, n, m;
+	int i, n, m, left;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
@@ -381,7 +381,10 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
-		for (i = 0; i < n; i += 4) {
+		m = n >> 2;
+		left = n & 0x03;
+		/* Process samples in blocks of 4*/
+		for (i = 0; i < m; i++) {
 			/* load first two volume gain */
 			AE_L32X2_XC(volume0, vol, inc);
 
@@ -410,10 +413,29 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 
 			/* store the output */
 			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
-			// AE_SA16X4_IC(out_sample, outu, out);
 			AE_SA16X4_IP(out_sample, outu, out);
 		}
 		AE_SA64POS_FP(outu, out);
+
+		/* Process remaining samples if n is not a multiple of 4*/
+		for (i = 0; i < left; i++) {
+			/* load volume gain */
+			AE_L32_XC(volume0, (ae_f32 *)vol, sizeof(ae_f32));
+#if COMP_VOLUME_Q8_16
+			/* Q8.16 to Q9.23 */
+			volume0 = AE_SLAI32S(volume0, 7);
+#endif
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
+			/* Multiply the input sample */
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+			/* Q9.23 to Q1.31 */
+			out_sample0 = AE_SLAI32S(out_sample0, 8);
+			/* store the output */
+			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample0);
+			AE_S16_0_IP(out_sample, (ae_f16 *)out, sizeof(ae_f16));
+		}
+
 		samples -= n;
 		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
 		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
@@ -438,7 +460,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
 	ae_f16x4 in_sample = AE_ZERO16();
-	int i, n, m;
+	int i, n, m, left;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
@@ -456,12 +478,23 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
-		for (i = 0; i < n; i += 4) {
+		m = n >> 2;
+		left = n & 0x03;
+		for (i = 0; i < m; i++) {
 			/* Load the input sample */
 			AE_LA16X4_IP(in_sample, inu, in);
 			AE_SA16X4_IP(in_sample, outu, out);
 		}
 		AE_SA64POS_FP(outu, out);
+
+		/* Process remaining samples if n is not a multiple of 4*/
+		for (i = 0; i < left; i++) {
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
+			/* store the output */
+			AE_S16_0_IP(in_sample, (ae_f16 *)out, sizeof(ae_f16));
+		}
+
 		samples -= n;
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);

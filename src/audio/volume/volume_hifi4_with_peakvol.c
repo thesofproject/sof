@@ -21,8 +21,7 @@ LOG_MODULE_DECLARE(volume_hifi4, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
-// disabled and replaced by HIFI3, see issue https://github.com/thesofproject/sof/issues/9213
-#if 0 // SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
+#if SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
 #include <xtensa/tie/xt_hifi4.h>
@@ -394,7 +393,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 out_sample1 = AE_ZERO32();
 	ae_f16x4 in_sample = AE_ZERO16();
 	ae_f16x4 out_sample = AE_ZERO16();
-	int i, n, m;
+	int i, n, m, left;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
@@ -404,6 +403,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 						     + bsource->consumed);
 	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
 						      + bsink->size);
+	ae_f16 *in1;
+	ae_f16 *out1;
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
@@ -435,7 +436,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
-		for (i = 0; i < n; i += 4) {
+		m = n >> 2;
+		left = n & 0x03;
+		for (i = 0; i < m; i++) {
 			/* load first two volume gain */
 			AE_L32X2_XC(volume0, vol, inc);
 
@@ -474,6 +477,30 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			AE_SA16X4_IP(out_sample, outu, out);
 		}
 		AE_SA64POS_FP(outu, out);
+
+		/* Process remaining samples if n is not a multiple of 4*/
+		for (i = 0; i < left; i++) {
+			/* load first volume gain */
+			AE_L32_XC(volume0, (ae_f32 *)vol, sizeof(ae_f32));
+#if COMP_VOLUME_Q8_16
+			/* Q8.16 to Q9.23 */
+			volume0 = AE_SLAI32S(volume0, 7);
+#endif
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
+			/* calculate the peak volume*/
+			AE_L32_XC1(temp, (ae_f32 *)peakvol, 0);
+			temp = AE_MAXABS32S(AE_SEXT32X2D16_32(in_sample), temp);
+			AE_S32_L_XC1(temp, (ae_f32 *)peakvol, sizeof(ae_f32));
+			/* Multiply the input sample */
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+			/* Q9.23 to Q1.31 */
+			out_sample0 = AE_SLAI32S(out_sample0, 8);
+			/* store the output */
+			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample0);
+			AE_S16_0_IP(out_sample, (ae_f16 *)out, sizeof(ae_f16));
+		}
+
 		samples -= n;
 		in = audio_stream_wrap(source, in);
 		out = audio_stream_wrap(sink, out);
@@ -505,7 +532,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
 	ae_f16x4 in_sample = AE_ZERO16();
-	int i, n, m;
+	int i, n, m, left;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
@@ -518,7 +545,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	ae_f32x2 temp;
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
-	/* Set peakvol(which stores the peak volume data 4 times) as circular buffer */
+	/* Set peakvol (which stores the peak volume data 4 times) as circular buffer */
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
@@ -528,7 +555,10 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		m = audio_stream_samples_without_wrap_s16(sink, out);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
-		for (i = 0; i < n; i += 4) {
+		m = n >> 2;
+		left = n & 0x03;
+		/* Process samples in blocks of 4*/
+		for (i = 0; i < m; i++) {
 			/* Load the input sample */
 			AE_LA16X4_IP(in_sample, inu, in);
 			/* calculate the peak volume*/
@@ -543,12 +573,26 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 			AE_SA16X4_IP(in_sample, outu, out);
 		}
 		AE_SA64POS_FP(outu, out);
+
+		/* Process remaining samples if n is not a multiple of 4*/
+		for (i = 0; i < left; i++) {
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
+			/* store the output */
+			AE_S16_0_IP(in_sample, (ae_f16 *)out, sizeof(ae_f16));
+			/* calculate the peak volume*/
+			AE_L32_XC1(temp, (ae_f32 *)peakvol, 0);
+			temp = AE_MAXABS32S(AE_SEXT32X2D16_10(in_sample), temp);
+			AE_S32_L_XC1(temp, (ae_f32 *)peakvol, sizeof(ae_f32));
+		}
+
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = (ae_f16x4 *)audio_stream_wrap(source, in);
+		out = (ae_f16x4 *)audio_stream_wrap(sink, out);
 		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
 		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
 	}
+
 	for (i = 0; i < channels_count; i++) {
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
 		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
