@@ -6,6 +6,8 @@
 #ifndef __SOF_TELEMETRY_H__
 #define __SOF_TELEMETRY_H__
 
+#include <ipc4/base_fw.h>
+
 /* Slot in memory window 2 (Debug Window) to be used as telemetry slot */
 #define SOF_DW_TELEMETRY_SLOT 1
 /* Memory of average algorithm of performance queue */
@@ -88,5 +90,43 @@ struct telemetry_perf_queue {
 };
 
 void telemetry_update(uint32_t begin_ccount, uint32_t current_ccount);
+
+/**
+ * Initializer for struct perf_data_item_comp
+ *
+ * @param[out] perf Struct to be initialized
+ * @param[in] resource_id
+ * @param[in] power_mode
+ */
+void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
+			      uint32_t power_mode);
+
+/**
+ * Get next free performance data slot from Memory Window 3
+ *
+ * @return performance data record
+ */
+struct perf_data_item_comp *perf_data_getnext(void);
+
+/**
+ * Free a performance data slot in Memory Window 3
+ *
+ * @return 0 if succeeded, in other case the slot is already free
+ */
+int free_performance_data(struct perf_data_item_comp *item);
+
+/**
+ * Set performance measurements state
+ *
+ * @param[in] state Value to be set.
+ */
+void perf_meas_set_state(enum ipc4_perf_measurements_state_set state);
+
+/**
+ * Get performance measurements state
+ *
+ * @return performance measurements state
+ */
+enum ipc4_perf_measurements_state_set perf_meas_get_state(void);
 
 #endif /*__SOF_TELEMETRY_H__ */

@@ -19,6 +19,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <rtos/idc.h>
 #include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
@@ -554,6 +555,18 @@ struct comp_ipc_config {
 #endif
 };
 
+struct comp_perf_data {
+	/* maximum measured cpc on run-time.
+	 *
+	 * if current measured cpc exceeds peak_of_measured_cpc_ then
+	 * ResoruceEvent(BUDGET_VIOLATION) notification must be send.
+	 * Otherwise there is no new information for host to care about
+	 */
+	size_t peak_of_measured_cpc;
+	/* Pointer to performance data structure. */
+	struct perf_data_item_comp *perf_data_item;
+};
+
 /**
  * Audio component base device "class"
  * - used by other component types.
@@ -598,6 +611,8 @@ struct comp_dev {
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
+	/* performance data*/
+	struct comp_perf_data perf_data;
 	/* Input Buffer Size for pin 0, add array for other pins if needed */
 	size_t ibs;
 	/* Output Buffers Size for pin 0, add array for other pins if needed */
@@ -940,5 +955,21 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
  * @param dev Component to update.
  */
 void comp_update_ibs_obs_cpc(struct comp_dev *dev);
+
+/**
+ * If component has assigned slot in performance measurement window,
+ * initialize its fields.
+ * @param dev Component to init.
+ */
+void comp_init_performance_data(struct comp_dev *dev);
+
+/**
+ * Update performance data entry for component. Also checks for budget violation.
+ *
+ * @param dev Component to update.
+ * @param cycles_used Execution time.
+ * @return true if budget violation occurred
+ */
+bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used);
 
 #endif /* __SOF_AUDIO_COMPONENT_H__ */
