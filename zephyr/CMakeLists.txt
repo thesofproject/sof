@@ -39,10 +39,12 @@ endfunction()
 function(sof_llext_write_uuids module)
 	file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${module}.toml uuids REGEX "^[ \t]*uuid *=")
 
+	set(UUIDS_LIST_FILE ${ZEPHYR_BINARY_DIR}/${module}_llext/llext.uuid)
+	file(REMOVE ${UUIDS_LIST_FILE})
 	foreach(line IN LISTS uuids)
 		# extract UUID value - drop the 'uuid = ' part of the assignment line
 		string(REGEX REPLACE "^[ \t]*uuid *= \"([0-9A-F\-]*)\"" "\\1" uuid ${line})
-		file(APPEND ${ZEPHYR_BINARY_DIR}/${module}_llext/llext.uuid "${uuid}\n")
+		file(APPEND ${UUIDS_LIST_FILE} "${uuid}\n")
 	endforeach()
 endfunction()
 
