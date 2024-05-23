@@ -403,8 +403,11 @@ static void theoretical_time_differences(struct tdfb_comp_data *cd, int16_t az)
 
 	for (i = 0; i < n_mic - 1; i++) {
 		delta_d = d[i + 1] - d[0]; /* Meters Q4.12 */
+		/*  Multiply delta_d (Q4.12) by RECIPROCAL_SPEED_OF_SOUND_Q31 (Q1.31) and
+		 * right-shift the result by 12 bits to preserve the Q1.31 format.
+		 */
 		cd->direction.timediff_iter[i] =
-			(int32_t)((((int64_t)delta_d) << 19) / SPEED_OF_SOUND);
+			Q_MULTS_32X32((int64_t)delta_d, RECIPROCAL_SPEED_OF_SOUND_Q31, 12, 31, 31);
 	}
 }
 
