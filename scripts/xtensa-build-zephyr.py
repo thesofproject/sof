@@ -584,10 +584,13 @@ def clean_staging(platform):
 
 	# remove IPC4 deployable build directories
 	if platform_configs[platform].ipc4:
-		sof_platform_output_dir = sof_output_dir / platform_configs[platform].vendor / "sof-ipc4"
-		rmtree_if_exists(sof_platform_output_dir / platform)
+		# e.g.: "build-sof-staging/sof/intel/sof-ipc4/mtl/"
+		sof_vendor_dir = sof_output_dir / platform_configs[platform].vendor
+		rmtree_if_exists(sof_vendor_dir / "sof-ipc4" / platform)
+		rmtree_if_exists(sof_vendor_dir / "sof-ipc4-lib" / platform)
 		for p_alias in platform_configs[platform].aliases:
-			rmtree_if_exists(sof_platform_output_dir / p_alias)
+			rmtree_if_exists(sof_vendor_dir / "sof-ipc4" / p_alias)
+			rmtree_if_exists(sof_vendor_dir / "sof-ipc4-lib" / p_alias)
 
 RIMAGE_BUILD_DIR  = west_top / "build-rimage"
 RIMAGE_SOURCE_DIR = west_top / "sof" / "tools" / "rimage"
