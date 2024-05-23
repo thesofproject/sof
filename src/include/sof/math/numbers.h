@@ -117,5 +117,6 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes);
 
 /* Speed of sound (m/s) in 20 C temperature at standard atmospheric pressure */
 #define SPEED_OF_SOUND		343
+#define RECIPROCAL_SPEED_OF_SOUND_Q8 24280 /* Precomputed inverse in Q8 */
 
 #endif /* __SOF_MATH_NUMBERS_H__ */
