@@ -92,7 +92,6 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	int32_t slope;
 	int32_t scale = ONE_Q16;
 	int32_t scale_inv = ONE_Q16;
-	int16_t *mel;
 	int16_t mel_start;
 	int16_t mel_end;
 	int16_t mel_step;
@@ -139,7 +138,8 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 
 	fb->scale_log2 = 0;
 
-	mel = fb->scratch_data1;
+	/* Precompute all mel values outside of the inner loop */
+	int16_t *mel = fb->scratch_data1;
 	for (i = 0; i < fb->half_fft_bins; i++) {
 		f = fb->samplerate * i / fb->fft_bins;
 		mel[i] = psy_hz_to_mel(f);
