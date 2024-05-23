@@ -56,6 +56,8 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+ifdef(`DMA_DOMAIN', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_DMA)', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_TIMER)')
+
 #
 # DAI configuration
 #
@@ -78,7 +80,7 @@ define(`DAI_BE_NAME', concat(concat(`sai', SAI_INDEX), STREAM_NAME))
 DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, SAI, SAI_INDEX, DAI_BE_NAME,
 	NOT_USED_IGNORED, 2, s32le,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_TIMER,
+	1000, 1, 0, SCHEDULE_DOMAIN,
 	2, 48000)
 
 # PCM Playback pipeline 3 on PCM 0 using max 2 channels of s32le.
@@ -88,7 +90,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	3, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
+	SCHEDULE_DOMAIN,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Compress Playback pipeline 4 on Compr 1 using max 2 channels of s32le.
@@ -98,7 +100,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-codec-adapter-playback.m4,
 	4, 1, 2, s32le,
 	5000, 0, 0,
 	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
+	SCHEDULE_DOMAIN,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
@@ -120,7 +122,7 @@ SectionGraph."PIPE_NAME" {
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SINK_2, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_DOMAIN)
 
 
 # PCM definitions
