@@ -27,6 +27,8 @@ include(`platform/imx/imx8.m4')
 # PCM0 <----> `PPROC' <-----> `SAI_INDEX' (`CODEC')
 #
 
+ifdef(`DMA_DOMAIN', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_DMA)', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_TIMER)')
+
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
@@ -70,14 +72,14 @@ dnl     period, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SOURCE_1, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_DOMAIN)
 
 # capture DAI is SAI_SAI_INDEX using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SINK_2, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_DOMAIN)
 
 
 # PCM Low Latency, id 0
