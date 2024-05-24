@@ -54,13 +54,13 @@ aplay -Dsof:plugin:1:default:default:48k2c16b -f dat some48kHz.wav
 ```
 The command line is parsed as follows:
 - "sof" is the plugin name
-- "tgl-nocodec" is the topology name. The "sof-" prefix and ".tplg" suffix will be appended by the plugin
+- "sof-plugin" is the topology name. The "sof-" prefix and ".tplg" suffix will be appended by the plugin
 - "1" is the PCM ID for render/capture
 - "default": The first default is the card name
 - "default": The second default is the device name
 - "48k2c16b" is the config name for 48K, stereo, 16bit
 
-This renders audio to the sof-pipe daemon using the tgl-nocodec topology playback PCM ID 1.
+This renders audio to the sof-pipe daemon using the sof-plugin topology playback PCM ID 1.
 The above example needs to be 48k as example pipe has no SRC/ASRC.
 
 Likewise
@@ -70,10 +70,10 @@ arecord -Dsof:plugin:1:default:default:48k2c16b -f dat file.wav
 ```
 Will record audio using the plugin topology and PCM ID 1.
 
-Mixer settings can be adjusted for bdw-nocodec by (Not functional yet)
+Mixer settings can be adjusted for sof-plugin by (Not functional yet)
 
 ```
-alsamixer -Dsof:tgl-nocodec:1
+alsamixer -Dsof:sof-plugin:1
 ```
 
 # Instructions for testing OpenVino noise suppression model with the SOF plugin:
