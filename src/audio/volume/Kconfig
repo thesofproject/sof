@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-	config COMP_VOLUME
-		bool "Volume component"
-		default y
-		help
-		  Select for Volume component
+config COMP_VOLUME
+	tristate "Volume component"
+	default m if LIBRARY_DEFAULT_MODULAR
+	default y
+	help
+	  Select for Volume component
 
 if COMP_VOLUME
 
