@@ -51,6 +51,15 @@ extern struct tr_ctx lib_manager_tr;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
+static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
+{
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	return sys_mm_drv_update_region_flags(aligned_vma,
+					      ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+}
+
 static int llext_manager_align_map(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
@@ -71,15 +80,28 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr,
 						size_t size, uint32_t flags)
 {
-	int ret = llext_manager_align_map(vma, size, flags);
+	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
 
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
 	}
 
-	/* TODO: Change attributes for memory to FLAGS  */
-	return memcpy_s((__sparse_force void *)vma, size, s_addr, size);
+	ret = memcpy_s((__sparse_force void *)vma, size, s_addr, size);
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * We don't know what flags we're changing to, maybe the buffer will be
+	 * executable or read-only. Need to write back caches now
+	 */
+	dcache_writeback_region(vma, size);
+
+	ret = llext_manager_update_flags(vma, size, flags);
+	if (!ret && (flags & SYS_MM_MEM_PERM_EXEC))
+		icache_invalidate_region(vma, size);
+
+	return ret;
 }
 
 static int llext_manager_load_module(uint32_t module_id, const struct sof_man_module *mod)
@@ -103,23 +125,11 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 	if (ret < 0)
 		return ret;
 
-	/* .text contains instructions and it also often contains local data */
-	dcache_writeback_region(va_base_text, st_text_size);
-	icache_invalidate_region(va_base_text, st_text_size);
-
 	/* Copy RODATA */
 	ret = llext_manager_load_data_from_storage(va_base_rodata, src_rodata,
 						   st_rodata_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
-		goto e_text;
-
-	/* Some data can be accessed as uncached, in fact that's the default */
-	dcache_writeback_region(va_base_rodata, st_rodata_size);
-
-	return 0;
-
-e_text:
-	llext_manager_align_unmap(va_base_text, st_text_size);
+		llext_manager_align_unmap(va_base_text, st_text_size);
 
 	return ret;
 }
