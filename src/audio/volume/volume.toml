@@ -1,0 +1,71 @@
+#if CONFIG_COMP_PEAK_VOL
+	[[module.entry]]
+	name = "PEAKVOL"
+	uuid = "8A171323-94A3-4E1D-AFE9-FE5DBAA4C393"
+	affinity_mask = "0x1"
+	instance_count = "10"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "4"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xa, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
+
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+#if CONFIG_METEORLAKE
+	mod_cfg = [1, 0, 0, 0, 480, 11667000, 384, 384, 0, 11667, 0,
+			2, 0, 0, 0, 480, 5943000, 192, 192, 0, 5943, 0,
+			3, 0, 0, 0, 480, 12567000, 720, 720, 0, 12567, 0,
+			4, 0, 0, 0, 480, 7360000, 768, 768, 0, 7360, 0,
+			5, 0, 0, 0, 480, 12236000, 1536, 1536, 0, 12236, 0]
+#elif CONFIG_LUNARLAKE || CONFIG_PANTHERLAKE
+	mod_cfg = [0, 0, 0, 0, 480, 1114000, 48, 64, 0, 0, 0,
+			1, 0, 0, 0, 480, 3321600, 192, 256, 0, 0, 0,
+			2, 0, 0, 0, 480, 3786000, 192, 256, 0, 0, 0,
+			3, 0, 0, 0, 480, 4333000, 48, 64, 0, 0, 0,
+			4, 0, 0, 0, 480, 4910000, 192, 256, 0, 0, 0,
+			5, 0, 0, 0, 480, 5441000, 192, 256, 0, 0, 0,
+			6, 0, 0, 0, 480, 6265000, 192, 256, 0, 0, 0]
+#endif
+
+	index = __COUNTER__
+#endif
+
+#if CONFIG_COMP_GAIN
+	[[module.entry]]
+	name = "GAIN"
+	uuid = "61BCA9A8-18D0-4A18-8E7B-2639219804B7"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+#if CONFIG_METEORLAKE
+	mod_cfg = [1, 0, 0, 0, 416, 12100000, 1536, 1536, 0, 12100, 0,
+			2, 0, 0, 0, 416, 10183000, 384, 384, 0, 10183, 0,
+			3, 0, 0, 0, 416, 8192000, 512, 512, 0, 8192, 0,
+			4, 0, 0, 0, 416, 10091000, 128, 128, 0, 10091, 0,
+			5, 0, 0, 0, 416, 5908000, 768, 768, 0, 5908, 0]
+#elif CONFIG_LUNARLAKE || CONFIG_PANTHERLAKE
+	mod_cfg = [0, 0, 0, 0, 416, 914000, 48, 64, 0, 0, 0,
+			1, 0, 0, 0, 416, 1321600, 192, 256, 0, 0, 0,
+			2, 0, 0, 0, 416, 1786000, 192, 256, 0, 0, 0,
+			3, 0, 0, 0, 416, 2333000, 48, 64, 0, 0, 0,
+			4, 0, 0, 0, 416, 2910000, 192, 256, 0, 0, 0,
+			5, 0, 0, 0, 416, 3441000, 192, 256, 0, 0, 0,
+			6, 0, 0, 0, 416, 4265000, 192, 256, 0, 0, 0]
+#endif
+
+	index = __COUNTER__
+#endif
