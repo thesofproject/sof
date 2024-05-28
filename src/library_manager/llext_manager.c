@@ -108,28 +108,69 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint8_t *load_base = (uint8_t *)ctx->base_addr;
+
+	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	void *src_txt = (void *)(load_base + mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
-	size_t st_text_size = ctx->segment_size[SOF_MAN_SEGMENT_TEXT];
+		ctx->segment[LIB_MANAGER_TEXT].addr;
+	void *src_txt = (void *)(load_base + ctx->segment[LIB_MANAGER_TEXT].file_offset);
+	size_t text_size = ctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata and others) */
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
+		ctx->segment[LIB_MANAGER_RODATA].addr;
 	void *src_rodata = (void *)(load_base +
-				    mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset);
-	size_t st_rodata_size = ctx->segment_size[SOF_MAN_SEGMENT_RODATA];
+				    ctx->segment[LIB_MANAGER_RODATA].file_offset);
+	size_t rodata_size = ctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss and others) */
+	void __sparse_cache *va_base_data = (void __sparse_cache *)
+		ctx->segment[LIB_MANAGER_DATA].addr;
+	void *src_data = (void *)(load_base +
+				  ctx->segment[LIB_MANAGER_DATA].file_offset);
+	size_t data_size = ctx->segment[LIB_MANAGER_DATA].size;
+
+	/* .bss, should be within writable data above */
+	void __sparse_cache *bss_addr = (void __sparse_cache *)
+		ctx->segment[LIB_MANAGER_BSS].addr;
+	size_t bss_size = ctx->segment[LIB_MANAGER_BSS].size;
 	int ret;
 
+	/* Check, that .bss is within .data */
+	if (bss_size &&
+	    ((uintptr_t)bss_addr + bss_size < (uintptr_t)va_base_data ||
+	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
+		tr_err(&lib_manager_tr, ".bss %#x @ %p isn't within writable data %#x @ %p!",
+		       bss_size, bss_addr, data_size, (void *)va_base_data);
+		return -EPROTO;
+	}
+
 	/* Copy Code */
-	ret = llext_manager_load_data_from_storage(va_base_text, src_txt, st_text_size,
-						   SYS_MM_MEM_PERM_RW | SYS_MM_MEM_PERM_EXEC);
+	ret = llext_manager_load_data_from_storage(va_base_text, src_txt, text_size,
+						   SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		return ret;
 
-	/* Copy RODATA */
+	/* Copy read-only data */
 	ret = llext_manager_load_data_from_storage(va_base_rodata, src_rodata,
-						   st_rodata_size, SYS_MM_MEM_PERM_RW);
+						   rodata_size, 0);
 	if (ret < 0)
-		llext_manager_align_unmap(va_base_text, st_text_size);
+		goto e_text;
+
+	/* Copy writable data */
+	ret = llext_manager_load_data_from_storage(va_base_data, src_data,
+						   data_size, SYS_MM_MEM_PERM_RW);
+	if (ret < 0)
+		goto e_rodata;
+
+	memset((__sparse_force void *)ctx->segment[LIB_MANAGER_BSS].addr, 0,
+	       ctx->segment[LIB_MANAGER_BSS].size);
+
+	return 0;
+
+e_rodata:
+	llext_manager_align_unmap(va_base_rodata, rodata_size);
+e_text:
+	llext_manager_align_unmap(va_base_text, text_size);
 
 	return ret;
 }
@@ -137,53 +178,35 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_module *mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr;
-	size_t st_text_size = ctx->segment_size[SOF_MAN_SEGMENT_TEXT];
+		ctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = ctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata, etc.) */
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr;
-	size_t st_rodata_size = ctx->segment_size[SOF_MAN_SEGMENT_RODATA];
-	int ret;
+		ctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = ctx->segment[LIB_MANAGER_RODATA].size;
 
-	ret = llext_manager_align_unmap(va_base_text, st_text_size);
+	/* Writable data (.data, .bss, etc.) */
+	void __sparse_cache *va_base_data = (void __sparse_cache *)
+		ctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = ctx->segment[LIB_MANAGER_DATA].size;
+	int err = 0, ret;
+
+	ret = llext_manager_align_unmap(va_base_text, text_size);
 	if (ret < 0)
-		return ret;
+		err = ret;
 
-	return llext_manager_align_unmap(va_base_rodata, st_rodata_size);
-}
+	ret = llext_manager_align_unmap(va_base_data, data_size);
+	if (ret < 0 && !err)
+		err = ret;
 
-static void __sparse_cache *llext_manager_get_bss_address(uint32_t module_id,
-							  const struct sof_man_module *mod)
-{
-	return (void __sparse_cache *)mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr;
-}
+	ret = llext_manager_align_unmap(va_base_rodata, rodata_size);
+	if (ret < 0 && !err)
+		err = ret;
 
-static int llext_manager_allocate_module_bss(uint32_t module_id,
-					     const struct sof_man_module *mod)
-{
-	/* FIXME: just map .bss together with .data and simply memset(.bss, 0) */
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
-	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
-
-	/* Map bss memory and clear it. */
-	if (llext_manager_align_map(va_base, bss_size, SYS_MM_MEM_PERM_RW) < 0)
-		return -ENOMEM;
-
-	memset((__sparse_force void *)va_base, 0, bss_size);
-
-	return 0;
-}
-
-static int llext_manager_free_module_bss(uint32_t module_id,
-					 const struct sof_man_module *mod)
-{
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	size_t bss_size = ctx->segment_size[SOF_MAN_SEGMENT_BSS];
-	void __sparse_cache *va_base = llext_manager_get_bss_address(module_id, mod);
-
-	/* Unmap bss memory. */
-	return llext_manager_align_unmap(va_base, bss_size);
+	return err;
 }
 
 static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
@@ -191,47 +214,59 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)desc -
-						SOF_MAN_ELF_TEXT_OFFSET + FILE_TEXT_OFFSET_V1_8,
-						mod_size);
+	uintptr_t imr_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)imr_base + FILE_TEXT_OFFSET_V1_8,
+						       mod_size);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
-	struct llext_load_param ldr_parm = {!ctx->segment_size[SOF_MAN_SEGMENT_TEXT]};
+	struct llext_load_param ldr_parm = {
+		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
+		.pre_located = true,
+	};
 	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
 	if (ret)
 		return ret;
 
-	mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] -
-		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
-	ctx->segment_size[SOF_MAN_SEGMENT_TEXT] = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+	ctx->segment[LIB_MANAGER_TEXT].addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
+	ctx->segment[LIB_MANAGER_TEXT].file_offset =
+		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - imr_base;
+	ctx->segment[LIB_MANAGER_TEXT].size = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".text: start: %#x size %#x offset %#x",
-	       mod->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr,
-	       ctx->segment_size[SOF_MAN_SEGMENT_TEXT],
-	       mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
+	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x offset %#x",
+	       ctx->segment[LIB_MANAGER_TEXT].addr,
+	       ctx->segment[LIB_MANAGER_TEXT].size,
+	       ctx->segment[LIB_MANAGER_TEXT].file_offset);
 
 	/* This contains all other sections, except .text, it might contain .bss too */
-	mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
+	ctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] -
-		(uintptr_t)desc + SOF_MAN_ELF_TEXT_OFFSET;
-	ctx->segment_size[SOF_MAN_SEGMENT_RODATA] = ebl.loader.prog_data_size;
+	ctx->segment[LIB_MANAGER_RODATA].file_offset =
+		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - imr_base;
+	ctx->segment[LIB_MANAGER_RODATA].size = ebl.loader.sects[LLEXT_MEM_RODATA].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".data: start: %#x size %#x offset %#x",
-	       mod->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr,
-	       ctx->segment_size[SOF_MAN_SEGMENT_RODATA],
-	       mod->segment[SOF_MAN_SEGMENT_RODATA].file_offset);
+	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x offset %#x",
+	       ctx->segment[LIB_MANAGER_RODATA].addr,
+	       ctx->segment[LIB_MANAGER_RODATA].size,
+	       ctx->segment[LIB_MANAGER_RODATA].file_offset);
 
-	mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = ebl.loader.sects[LLEXT_MEM_BSS].sh_addr;
-	ctx->segment_size[SOF_MAN_SEGMENT_BSS] = ebl.loader.sects[LLEXT_MEM_BSS].sh_size;
+	ctx->segment[LIB_MANAGER_DATA].addr =
+		ebl.loader.sects[LLEXT_MEM_DATA].sh_addr;
+	ctx->segment[LIB_MANAGER_DATA].file_offset =
+		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - imr_base;
+	ctx->segment[LIB_MANAGER_DATA].size = ebl.loader.sects[LLEXT_MEM_DATA].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".bss: start: %#x size %#x",
-	       mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr,
-	       ctx->segment_size[SOF_MAN_SEGMENT_BSS]);
+	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x offset %#x",
+	       ctx->segment[LIB_MANAGER_DATA].addr,
+	       ctx->segment[LIB_MANAGER_DATA].size,
+	       ctx->segment[LIB_MANAGER_DATA].file_offset);
+
+	ctx->segment[LIB_MANAGER_BSS].addr = ebl.loader.sects[LLEXT_MEM_BSS].sh_addr;
+	ctx->segment[LIB_MANAGER_BSS].size = ebl.loader.sects[LLEXT_MEM_BSS].sh_size;
+
+	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
+	       ctx->segment[LIB_MANAGER_BSS].addr,
+	       ctx->segment[LIB_MANAGER_BSS].size);
 
 	ssize_t binfo_o = llext_find_section(&ebl.loader, ".mod_buildinfo");
 
@@ -243,7 +278,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	if (mod_o >= 0)
 		*mod_manifest = llext_peek(&ebl.loader, mod_o);
 
-	return 0;
+	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
 }
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
@@ -286,21 +321,20 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 			return -ENOEXEC;
 		}
 
-		/* ctx->mod_manifest points to the array of module manifests */
-		ctx->mod_manifest = mod_manifest;
-
-		/* Map .text and the rest as .data */
+		/* Map executable code and data */
 		ret = llext_manager_load_module(module_id, mod_array);
 		if (ret < 0)
 			return 0;
 
-		ret = llext_manager_allocate_module_bss(module_id, mod_array);
-		if (ret < 0) {
-			tr_err(&lib_manager_tr,
-			       "llext_manager_allocate_module(): module allocation failed: %d",
-			       ret);
-			return 0;
-		}
+		/* Manifest is in read-only data */
+		uintptr_t imr_rodata = (uintptr_t)ctx->base_addr +
+			ctx->segment[LIB_MANAGER_RODATA].file_offset;
+		uintptr_t va_rodata_base = ctx->segment[LIB_MANAGER_RODATA].addr;
+		size_t offset = (uintptr_t)mod_manifest - imr_rodata;
+
+		/* ctx->mod_manifest points to an array of module manifests */
+		ctx->mod_manifest = (const struct sof_man_module_manifest *)(va_rodata_base +
+									     offset);
 	}
 
 	return ctx->mod_manifest[entry_index].module.entry_point;
@@ -312,21 +346,10 @@ int llext_manager_free_module(const uint32_t component_id)
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
-	int ret;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
 
 	mod = lib_manager_get_module_manifest(base_module_id);
 
-	ret = llext_manager_unload_module(base_module_id, mod);
-	if (ret < 0)
-		return ret;
-
-	ret = llext_manager_free_module_bss(base_module_id, mod);
-	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_free_module(): free module bss failed: %d", ret);
-		return ret;
-	}
-	return 0;
+	return llext_manager_unload_module(base_module_id, mod);
 }
