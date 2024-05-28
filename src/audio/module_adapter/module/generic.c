@@ -491,6 +491,7 @@ int module_set_configuration(struct processing_module *mod,
 
 	return ret;
 }
+EXPORT_SYMBOL(module_set_configuration);
 
 int module_bind(struct processing_module *mod, void *data)
 {
