@@ -262,9 +262,8 @@ SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 /* modular: llext dynamic link */
 
 #include <module/module/api_ver.h>
-#include <rimage/sof/user/manifest.h>
-
 #include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
 
 #define UUID_EQIIR 0xE6, 0xC0, 0x50, 0x51, 0xF9, 0x27, 0xC8, 0x4E, \
 		0x83, 0x51, 0xC7, 0x05, 0xB6, 0x42, 0xD1, 0x2F
