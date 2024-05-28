@@ -251,7 +251,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
-	struct sof_man_module *mod, *mod_array;
+	struct sof_man_module *mod_array;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
@@ -270,7 +270,6 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	}
 
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
-	mod = mod_array + entry_index;
 
 	/* LLEXT linking is only needed once for all the modules in the library */
 	ret = llext_manager_link(desc, mod_array, module_id, &proc->priv, (const void **)&buildinfo,
@@ -291,11 +290,11 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		ctx->mod_manifest = mod_manifest;
 
 		/* Map .text and the rest as .data */
-		ret = llext_manager_load_module(module_id, mod);
+		ret = llext_manager_load_module(module_id, mod_array);
 		if (ret < 0)
 			return 0;
 
-		ret = llext_manager_allocate_module_bss(module_id, mod);
+		ret = llext_manager_allocate_module_bss(module_id, mod_array);
 		if (ret < 0) {
 			tr_err(&lib_manager_tr,
 			       "llext_manager_allocate_module(): module allocation failed: %d",
