@@ -72,6 +72,8 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&dt->sem, K_FOREVER);
 
+		cycles0 = k_cycle_get_32();
+
 #if CONFIG_CROSS_CORE_STREAM
 		/*
 		 * If zephyr_domain->block is set -- block LL scheduler from starting its
@@ -92,7 +94,6 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		}
 #endif
 
-		cycles0 = k_cycle_get_32();
 		dt->handler(dt->arg);
 		cycles1 = k_cycle_get_32();
 
