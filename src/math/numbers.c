@@ -179,4 +179,7 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
 #if !CONFIG_64BIT
 uint64_t __udivdi3(uint64_t a, uint64_t b);
 EXPORT_SYMBOL(__udivdi3);
+
+int64_t __divdi3(int64_t a, int64_t b);
+EXPORT_SYMBOL(__divdi3);
 #endif
