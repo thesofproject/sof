@@ -38,6 +38,13 @@ function(sof_append_relative_path_definitions target)
 	endforeach()
 endfunction()
 
+define_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET
+  BRIEF_DOCS "Last LLEXT target"
+  FULL_DOCS "\
+Building LLEXT targets must be serialized. This property contains the \
+previously added LLEXT module for the establishment of a dependency chain."
+)
+
 # Used by LLEXT modules to create a file with module UUIDs
 function(sof_llext_write_uuids module)
 	file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${module}.toml uuids REGEX "^[ \t]*uuid *=")
@@ -54,7 +61,6 @@ endfunction()
 # Build an LLEXT module. Provice a module name, a list of sources and an address
 # of the .text section as arguments.
 function(sof_llext_build module)
-	set(single_args TEXT_ADDR)
 	set(multi_args SOURCES)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
@@ -91,12 +97,28 @@ function(sof_llext_build module)
 
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
+	get_target_property(proc_pkg_file ${module} pkg_output)
+	set(size_file ${PROJECT_BINARY_DIR}/module_size)
+
+	get_property(last_target GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET)
+	if(NOT "${last_target}" STREQUAL "")
+		add_dependencies(${module}_llext_proc ${last_target})
+	endif()
+	set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
+
 	add_llext_command(TARGET ${module}
 		POST_BUILD
-		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py
-			--text-addr="${SOF_LLEXT_TEXT_ADDR}" -f ${proc_in_file} ${CMAKE_C_COMPILER} --
+		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
+			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
+			-f ${proc_in_file} ${CMAKE_C_COMPILER} --
 			-o ${proc_out_file} ${EXTRA_LINKER_PARAMS}
 	                $<TARGET_OBJECTS:${module}_llext_lib>
+	)
+
+	add_llext_command(TARGET ${module}
+		POST_PKG
+		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_offset_calc.py
+			-i ${proc_pkg_file} -s ${size_file}
 	)
 endfunction()
 

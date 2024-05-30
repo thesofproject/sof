@@ -41,4 +41,13 @@ config LIBRARY_DEFAULT_MODULAR
 	  code has tristate Kconfig entries, they will default to "m" if this
 	  option is selected.
 
+config LIBRARY_BASE_ADDRESS
+	hex "Base address for memory, dedicated to loadable modules"
+	default 0
+	help
+	  When initializing modules SOF will allocate memory for them and map
+	  it to a predefined per-module address. Those addresses are calculated
+	  automatically but the beginning of that area is platform-specific and
+	  should be set by this option.
+
 endmenu
