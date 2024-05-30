@@ -198,17 +198,12 @@ err:
 static int multiband_drc_setup(struct processing_module *mod, int16_t channels, uint32_t rate)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-	int ret;
 
 	/* Reset any previous state */
 	multiband_drc_reset_state(&cd->state);
 
 	/* Setup Crossover, Emphasis EQ, Deemphasis EQ, and DRC */
-	ret = multiband_drc_init_coef(mod, channels, rate);
-	if (ret < 0)
-		return ret;
-
-	return 0;
+	return multiband_drc_init_coef(mod, channels, rate);
 }
 
 /*
