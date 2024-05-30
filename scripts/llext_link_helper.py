@@ -28,6 +28,8 @@ def parse_args():
 						help='Object file name')
 	parser.add_argument("-t", "--text-addr", required=True, type=str,
 						help='.text section address')
+	parser.add_argument("-s", "--size-file", required=True, type=str,
+						help='File with stored accumulated size')
 
 	args = parser.parse_args()
 
@@ -43,11 +45,20 @@ def max_alignment(addr, align1, align2):
 	return upper - (upper % align1)
 
 def main():
+	global args
+
 	parse_args()
 
-	elf = ELFFile(open(args.file, 'rb'))
+	# Get the size of the previous module, if this isn't the first one.
+	# It is used to automatically calculate starting address of the current
+	# module.
+	try:
+		with open(args.size_file, 'r') as f_size:
+			size = int(f_size.read().strip(), base = 0)
+	except OSError:
+		size = 0
 
-	text_addr = int(args.text_addr, 0)
+	text_addr = int(args.text_addr, 0) + size
 	text_size = 0
 
 	# File names differ when building shared or relocatable objects
@@ -64,6 +75,8 @@ def main():
 
 	writable = []
 	readonly = []
+
+	elf = ELFFile(open(args.file, 'rb'))
 
 	# Create an object file with sections grouped by their properties,
 	# similar to how program segments are created: all executable sections,
