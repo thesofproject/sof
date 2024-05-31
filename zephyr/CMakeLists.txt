@@ -510,39 +510,30 @@ zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
 
 # Optional SOF sources - depends on Kconfig - WIP
 
+if(CONFIG_IPC_MAJOR_3)
+set(ipc_suffix ipc3)
+elseif(CONFIG_IPC_MAJOR_4)
+set(ipc_suffix ipc4)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi3.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir_${ipc_suffix}.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
-		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc3.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_IIR
+if(CONFIG_COMP_IIR STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/eq_iir/llext
+			 ${PROJECT_BINARY_DIR}/eq_iir_llext)
+	add_dependencies(app eq_iir)
+elseif(CONFIG_COMP_IIR)
+	zephyr_library_sources(
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
-		${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc3.c
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_${ipc_suffix}.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
 	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_FIR
-		${SOF_AUDIO_PATH}/eq_fir/eq_fir_ipc4.c
-	)
-
-	if(CONFIG_COMP_IIR STREQUAL "m")
-		add_subdirectory(${SOF_AUDIO_PATH}/eq_iir/llext
-				 ${PROJECT_BINARY_DIR}/eq_iir_llext)
-		add_dependencies(app eq_iir)
-	elseif(CONFIG_COMP_IIR)
-		zephyr_library_sources(
-			${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
-			${SOF_AUDIO_PATH}/eq_iir/eq_iir_ipc4.c
-			${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
-		)
-	endif()
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_MATH_FIR
@@ -571,11 +562,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
 )
 
 if(CONFIG_COMP_ASRC)
-	if(CONFIG_IPC_MAJOR_3)
-		zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_ipc3.c)
-	elseif(CONFIG_IPC_MAJOR_4)
-		zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_ipc4.c)
-	endif()
+	zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c)
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
@@ -585,15 +572,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
-		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
-		${SOF_AUDIO_PATH}/dcblock/dcblock_ipc4.c
-	)
-endif()
+zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+	${SOF_AUDIO_PATH}/dcblock/dcblock_${ipc_suffix}.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_SEL
 	${SOF_AUDIO_PATH}/selector/selector_generic.c
@@ -645,43 +626,22 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
-		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-		${SOF_AUDIO_PATH}/volume/volume_generic.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume.c
-		${SOF_AUDIO_PATH}/volume/volume_ipc3.c
+zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
+	${SOF_AUDIO_PATH}/volume/volume_hifi4.c
+	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
+	${SOF_AUDIO_PATH}/volume/volume_generic.c
+	${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
+	${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
+	${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
+	${SOF_AUDIO_PATH}/volume/volume.c
+	${SOF_AUDIO_PATH}/volume/volume_${ipc_suffix}.c
 )
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
-		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-		${SOF_AUDIO_PATH}/volume/volume_generic.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume.c
-		${SOF_AUDIO_PATH}/volume/volume_ipc4.c
-)
-endif()
 
-if(CONFIG_IPC_MAJOR_3)
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc3.c
+	${SOF_AUDIO_PATH}/module_adapter/module_adapter_${ipc_suffix}.c
 	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
 )
-elseif(CONFIG_IPC_MAJOR_4)
-zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter_ipc4.c
-	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
-)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c
@@ -734,25 +694,14 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
 	${SOF_AUDIO_PATH}/chain_dma.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_SRC
-		${SOF_AUDIO_PATH}/src/src_hifi2ep.c
-		${SOF_AUDIO_PATH}/src/src_generic.c
-		${SOF_AUDIO_PATH}/src/src_hifi3.c
-		${SOF_AUDIO_PATH}/src/src_hifi4.c
-		${SOF_AUDIO_PATH}/src/src.c
-		${SOF_AUDIO_PATH}/src/src_ipc3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_SRC
-		${SOF_AUDIO_PATH}/src/src_hifi2ep.c
-		${SOF_AUDIO_PATH}/src/src_generic.c
-		${SOF_AUDIO_PATH}/src/src_hifi3.c
-		${SOF_AUDIO_PATH}/src/src_hifi4.c
-		${SOF_AUDIO_PATH}/src/src.c
-		${SOF_AUDIO_PATH}/src/src_ipc4.c
-	)
-endif()
+zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+	${SOF_AUDIO_PATH}/src/src_generic.c
+	${SOF_AUDIO_PATH}/src/src_hifi3.c
+	${SOF_AUDIO_PATH}/src/src_hifi4.c
+	${SOF_AUDIO_PATH}/src/src.c
+	${SOF_AUDIO_PATH}/src/src_${ipc_suffix}.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_SRC_LITE
 	${SOF_AUDIO_PATH}/src/src_lite.c
@@ -799,15 +748,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
-		${SOF_AUDIO_PATH}//crossover/crossover_ipc3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
-		${SOF_AUDIO_PATH}//crossover/crossover_ipc4.c
-	)
-endif()
+zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
+	${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
+)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_DRC
 	${SOF_AUDIO_PATH}/drc/drc.c
@@ -823,15 +766,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc3.c
+zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
 )
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_ipc4.c
-)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
@@ -864,27 +801,13 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
 	${SOF_AUDIO_PATH}/rtnr/rtnr.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
-		${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc3.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
-	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc3.c
-	)
-elseif(CONFIG_IPC_MAJOR_4)
-	if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
-		add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
-				 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
-		add_dependencies(app smart_amp_test)
-	elseif(CONFIG_SAMPLE_SMART_AMP)
-		zephyr_library_sources(
-			${SOF_SAMPLES_PATH}/audio/smart_amp_test_ipc4.c
-		)
-	endif()
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
-	${SOF_AUDIO_PATH}/tdfb/tdfb_ipc4.c
+if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
+	add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
+			 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
+	add_dependencies(app smart_amp_test)
+elseif(CONFIG_SAMPLE_SMART_AMP)
+	zephyr_library_sources(
+		${SOF_SAMPLES_PATH}/audio/smart_amp_test_${ipc_suffix}.c
 	)
 endif()
 
@@ -898,6 +821,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
 	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
 	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
 	${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
+	${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
@@ -919,15 +843,9 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
 )
 
-if(CONFIG_IPC_MAJOR_3)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
-		${SOF_AUDIO_PATH}/mux/mux_ipc3.c
+zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+	${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
 )
-elseif(CONFIG_IPC_MAJOR_4)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
-		${SOF_AUDIO_PATH}/mux/mux_ipc4.c
-)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
