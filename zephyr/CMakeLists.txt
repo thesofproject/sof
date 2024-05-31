@@ -76,7 +76,7 @@ function(sof_llext_build module)
 		PRE_BUILD
 		COMMAND ${CMAKE_C_COMPILER} -E ${CMAKE_CURRENT_LIST_DIR}/llext.toml.h -P -DREM=
 			-I${SOF_BASE} -I${SOF_BASE}src
-			-imacros ../include/generated/autoconf.h
+			-imacros ../include/generated/zephyr/autoconf.h
 			-o rimage_config.toml
 	)
 
