@@ -1029,8 +1029,8 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 	installed_files = [
 		# Fail if one of these is missing
 		InstFile(".config", "config", txt=True),
-		InstFile("include/generated/autoconf.h", "generated_autoconf.h", txt=True),
-		InstFile("include/generated/version.h", "zephyr_version.h",
+		InstFile("include/generated/zephyr/autoconf.h", "generated_autoconf.h", txt=True),
+		InstFile("include/generated/zephyr/version.h", "zephyr_version.h",
 			 gzip=False, txt=True),
 		InstFile("include/generated/sof_versions.h", "sof_versions.h",
 			 gzip=False, txt=True),
