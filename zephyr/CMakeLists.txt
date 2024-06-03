@@ -612,15 +612,18 @@ zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
 	${SOF_MATH_PATH}/iir_df2t.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
-	${SOF_AUDIO_PATH}/asrc/asrc.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
-)
-
-if(CONFIG_COMP_ASRC)
-	zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c)
+if(CONFIG_COMP_ASRC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
+			 ${PROJECT_BINARY_DIR}/asrc_llext)
+	add_dependencies(app asrc)
+elseif(CONFIG_COMP_ASRC)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/asrc/asrc.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
+		${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c
+	)
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK

@@ -318,7 +318,7 @@ static int asrc_free(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "asrc_free()");
+	comp_dbg(dev, "asrc_free()");
 
 	rfree(cd->buf);
 	asrc_release_buffers(cd->asrc_obj);
@@ -850,8 +850,7 @@ static int asrc_reset(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "asrc_reset(), skew_min=%d, skew_max=%d", cd->skew_min, cd->skew_max);
-
+	comp_dbg(dev, "asrc_reset(), skew_min=%d, skew_max=%d", cd->skew_min, cd->skew_max);
 
 	/* If any resources feasible to stop */
 	if (cd->track_drift)
@@ -879,3 +878,21 @@ static const struct module_interface asrc_interface = {
 
 DECLARE_MODULE_ADAPTER(asrc_interface, ASRC_UUID, asrc_tr);
 SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
+
+#if CONFIG_COMP_ASRC_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_ASRC 0x2d, 0x40, 0xb4, 0x66, 0x68, 0xb4, 0xf2, 0x42, \
+		  0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4
+SOF_LLEXT_MOD_ENTRY(asrc, &asrc_interface);
+
+static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
+	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, UUID_ASRC, 2),
+};
+
+SOF_LLEXT_BUILDINFO;
+#endif

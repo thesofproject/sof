@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_ASRC
-	bool "ASRC component"
+	tristate "ASRC component"
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  Select for Asynchronous sample rate conversion (ASRC)
@@ -14,7 +15,7 @@ config COMP_ASRC
 	  not have pre-computed filter coefficients for every
 	  conversion fraction that SRC does.
 
-if COMP_ASRC
+if COMP_ASRC != n
 
 rsource "Kconfig.simd"
 
