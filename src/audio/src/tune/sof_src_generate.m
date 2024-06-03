@@ -1,8 +1,8 @@
-function src_generate(fs_in, fs_out, fs_inout, cfg);
+function sof_src_generate(fs_in, fs_out, fs_inout, cfg);
 
-% src_generate - export src conversions for given fs_in and fs_out
+% sof_src_generate - export src conversions for given fs_in and fs_out
 %
-% src_generate(fs_in, fs_out <, fs_inout, <cfg>>)
+% sof_src_generate(fs_in, fs_out <, fs_inout, <cfg>>)
 %
 % fs_in     - vector of input sample rates (M)
 % fs_out    - vector of output sample rates (N)

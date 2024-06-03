@@ -8,14 +8,14 @@ of objective audio quality parameters.
 The tools need GNU Octave version 4.0.0 or later with octave-signal
 package.
 
-src_std_int32.m
----------------
+sof_src_std_int32.m
+-------------------
 
 This script creates the default coefficient set and contains nothing
 else but call for src_generate.
 
-src_tiny_int16.m
-----------------
+sof_src_tiny_int16.m
+--------------------
 
 This script creates the tiny coefficient set. The script contains an
 example how to customize the input/output rates matrix and in a simple
@@ -24,8 +24,8 @@ be done by editing file src_param.m directly. Note that int16
 presentation for SRC coefficients will degrade even the default
 quality.
 
-src_generate.m
---------------
+sof_src_generate.m
+------------------
 
 Creates the header files to include to C into directory "include". A
 report of create modes is written to directory "reports". The
