@@ -10,11 +10,12 @@ function example_iir_bandsplit()
 
 %% Common definitions
 fs = 48e3;
-tpath =  '../../topology/topology1/m4';
-cpath = '../../ctl/ipc3/eq_iir';
+sof_tools = '../../../../tools';
+tpath = fullfile(sof_tools, 'topology/topology1/m4');
+cpath = fullfile(sof_tools, 'ctl/ipc3/eq_iir');
 priv = 'DEF_EQIIR_PRIV';
 
-addpath ../common
+sof_eq_paths(1);
 
 %% --------------------------------------------------
 %% Example: Band-split 2ch to 4ch low and high bands
@@ -48,7 +49,7 @@ eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 %% Done.
 %% ------------------------------------
 
-rmpath ../common
+sof_eq_paths(0);
 end
 
 %% -------------------

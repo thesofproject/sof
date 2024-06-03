@@ -10,13 +10,16 @@ function example_fir_eq()
 
 %% Common definitions
 fs = 48e3;
-fn.cpath3 = '../../ctl/ipc3/eq_fir';
-fn.cpath4 = '../../ctl/ipc4/eq_fir';
-fn.tpath1 =  '../../topology/topology1/m4';
-fn.tpath2 =  '../../topology/topology2/include/components/eqfir';
+sof_tools = '../../../../tools';
+sof_ctl = fullfile(sof_tools, 'ctl');
+sof_tplg = fullfile(sof_tools, 'topology');
+fn.cpath3 = fullfile(sof_ctl, 'ipc3/eq_fir');
+fn.cpath4 = fullfile(sof_ctl, 'ipc4/eq_fir');
+fn.tpath1 =  fullfile(sof_tplg, 'topology1/m4');
+fn.tpath2 =  fullfile(sof_tplg, 'topology2/include/components/eqfir');
 fn.priv = 'DEF_EQFIR_PRIV';
 
-addpath ../common
+sof_eq_paths(1);
 
 %% -------------------
 %% Example 1: Loudness
@@ -135,7 +138,7 @@ eq_pack_export(bm, fn, comment);
 %% Done.
 %% --------------------------
 
-rmpath ../common
+sof_eq_paths(0);
 
 end
 
