@@ -45,4 +45,4 @@ cfg.thdn = -90;
 cfg.speed = 1;
 cfg.gain = 0;
 
-src_generate(fs1, fs2, fsm, cfg);
+sof_src_generate(fs1, fs2, fsm, cfg);

@@ -34,4 +34,4 @@ cfg.thdn = -92;
 cfg.speed = 0;
 cfg.gain = 0; % Make gain 0 dB
 
-src_generate(fs1, fs2, fs_matrix, cfg);
+sof_src_generate(fs1, fs2, fs_matrix, cfg);
