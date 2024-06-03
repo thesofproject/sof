@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_ARIA
-        bool "ARIA component"
-        default n
-        depends on IPC_MAJOR_4
-        help
-          Select for Automatic Regressive Input Amplifier Module component
+	tristate "ARIA component"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  Select for Automatic Regressive Input Amplifier Module component
 	  ARIA applies variable gain into incoming signal.
 	  Applied gain is in range <1, 2 power attenuation>
 	  Currently ARIA introduces gain transition and algorithmic
