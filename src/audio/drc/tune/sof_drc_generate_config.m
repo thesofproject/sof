@@ -1,6 +1,4 @@
-function config = drc_generate_config(coefs);
-
-addpath ./../eq
+function config = sof_drc_generate_config(coefs);
 
 config.enabled = coefs.enabled;
 config.db_threshold = eq_coef_quant(coefs.db_threshold, 32, 24); % Q8.24
@@ -28,5 +26,4 @@ config.kE = eq_coef_quant(coefs.kE, 32, 12); % Q20.12
 % Print out config
 config
 
-rmpath ./../eq
 end

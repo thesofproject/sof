@@ -1,4 +1,4 @@
-function coefs = drc_gen_coefs(params, sample_rate)
+function coefs = sof_drc_gen_coefs(params, sample_rate)
 
 if exist('OCTAVE_VERSION', 'builtin')
 	pkg load control;

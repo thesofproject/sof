@@ -1,4 +1,4 @@
-function blob8 = drc_build_blob(blob_struct, endian, ipc_ver)
+function blob8 = sof_drc_build_blob(blob_struct, endian, ipc_ver)
 
 if nargin < 2
         endian = 'little'
