@@ -23,12 +23,11 @@ function src_generate(fs_in, fs_out, fs_inout, cfg);
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2016-2022, Intel Corporation. All rights reserved.
+% Copyright (c) 2016-2024, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-addpath('../../test/audio/std_utils');
-addpath('../../test/audio/test_utils');
+src_paths(1);
 
 if (nargin < 2) || (nargin > 4)
 	error('Incorrect arguments for function!');
@@ -281,6 +280,8 @@ fprintf(fh,'Max. data RAM %.1f kB\n', ...
 fprintf(fh,'\n');
 fclose(fh);
 type(fn);
+
+src_paths(0);
 
 end
 
