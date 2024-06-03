@@ -137,11 +137,22 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 
 	/* Check, that .bss is within .data */
 	if (bss_size &&
-	    ((uintptr_t)bss_addr + bss_size < (uintptr_t)va_base_data ||
+	    ((uintptr_t)bss_addr + bss_size <= (uintptr_t)va_base_data ||
 	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
-		tr_err(&lib_manager_tr, ".bss %#x @ %p isn't within writable data %#x @ %p!",
-		       bss_size, bss_addr, data_size, (void *)va_base_data);
-		return -EPROTO;
+		if ((uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data &&
+		    !((uintptr_t)bss_addr & (PAGE_SZ - 1))) {
+			/* .bss directly in front of writable data and properly aligned, prepend */
+			va_base_data = bss_addr;
+			data_size += bss_size;
+		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data + data_size) {
+			/* .bss directly behind writable data, append */
+			data_size += bss_size;
+		} else {
+			tr_err(&lib_manager_tr, ".bss %#x @%p isn't within writable data %#x @%p!",
+			       bss_size, (__sparse_force void *)bss_addr,
+			       data_size, (__sparse_force void *)va_base_data);
+			return -EPROTO;
+		}
 	}
 
 	/* Copy Code */
@@ -162,8 +173,7 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 	if (ret < 0)
 		goto e_rodata;
 
-	memset((__sparse_force void *)ctx->segment[LIB_MANAGER_BSS].addr, 0,
-	       ctx->segment[LIB_MANAGER_BSS].size);
+	memset((__sparse_force void *)bss_addr, 0, bss_size);
 
 	return 0;
 
