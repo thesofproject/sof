@@ -4,6 +4,11 @@ function blob_write(fn, blob8)
 %% Write blob
 check_create_dir(fn);
 fh = fopen(fn, 'wb');
+if fh < 0
+	fprintf(1, 'Error: Could not open file %s\n', fn);
+	error("Failed.");
+end
+
 fwrite(fh, blob8, 'uint8');
 fclose(fh);
 
