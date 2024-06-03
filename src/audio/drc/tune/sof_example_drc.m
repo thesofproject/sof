@@ -1,6 +1,6 @@
-function example_drc()
+function sof_example_drc()
 
-addpath ../common
+sof_drc_paths(1);
 
 % The parameters of the DRC compressor
 % enabled: 1 to enable the compressor, 0 to disable it
@@ -47,33 +47,36 @@ params.ratio = 10;
 params.post_gain = 0;
 drc_coefs_and_config_export(params, 'dmic_default');
 
-rmpath ../common
+sof_drc_paths(0);
 
 end
 
 function drc_coefs_and_config_export(params, id)
 
 % Set the parameters here
-tplg1_fn = sprintf("../../topology/topology1/m4/drc_coef_%s.m4", id); % Control Bytes File
-tplg2_fn = sprintf("../../topology/topology2/include/components/drc/%s.conf", id); % Control Bytes File
+sof_tools = '../../../../tools';
+sof_tplg = fullfile(sof_tools, 'topology');
+sof_ctl = fullfile(sof_tools, 'ctl');
+tplg1_fn = sprintf("%s/topology1/m4/drc_coef_%s.m4", sof_tplg, id); % Control Bytes File
+tplg2_fn = sprintf("%s/topology2/include/components/drc/%s.conf", sof_tplg, id); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("../../ctl/ipc3/drc_coef_%s.blob", id); % Blob binary file
-alsa3_fn = sprintf("../../ctl/ipc3/drc_coef_%s.txt", id); % ALSA CSV format file
-blob4_fn = sprintf("../../ctl/ipc4/drc/%s.blob", id); % Blob binary file
-alsa4_fn = sprintf("../../ctl/ipc4/drc/%s.txt", id); % ALSA CSV format file
+blob3_fn = sprintf("%s/ipc3/drc_coef_%s.blob", sof_ctl, id); % Blob binary file
+alsa3_fn = sprintf("%s/ipc3/drc_coef_%s.txt", sof_ctl, id); % ALSA CSV format file
+blob4_fn = sprintf("%s/ipc4/drc/%s.blob", sof_ctl, id); % Blob binary file
+alsa4_fn = sprintf("%s/ipc4/drc/%s.txt", sof_ctl, id); % ALSA CSV format file
 
 endian = "little";
 sample_rate = 48000;
 
 % Generate coefficients for DRC with the given parameters
-coefs = drc_gen_coefs(params, sample_rate);
+coefs = sof_drc_gen_coefs(params, sample_rate);
 
 % Convert coefficients to sof_drc_config struct
-config = drc_generate_config(coefs);
+config = sof_drc_generate_config(coefs);
 
 % Convert struct to binary blob
-blob8 = drc_build_blob(config, endian);
-blob8_ipc4 = drc_build_blob(config, endian, 4);
+blob8 = sof_drc_build_blob(config, endian);
+blob8_ipc4 = sof_drc_build_blob(config, endian, 4);
 
 % Generate output files
 my_name = mfilename();
@@ -87,6 +90,6 @@ sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot x-y response in dB
-drc_plot_db_curve(coefs);
+sof_drc_plot_db_curve(coefs);
 
 end
