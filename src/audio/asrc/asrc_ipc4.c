@@ -16,10 +16,6 @@
 #include <errno.h>
 #include "asrc.h"
 
-SOF_DEFINE_REG_UUID(asrc4);
-
-DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc4_uuid), LOG_LEVEL_INFO);
-
 int asrc_dai_configure_timestamp(struct comp_data *cd)
 {
 	if (!cd->dai_dev)
