@@ -49,7 +49,7 @@ else
 	R_coeffs = R * ones(1, channels);
 end
 
-addpath ./../common
+dcblock_paths(true);
 
 blob8 = dcblock_build_blob(R_coeffs, endian);
 blob8_ipc4 = dcblock_build_blob(R_coeffs, endian, 4);
@@ -74,7 +74,7 @@ dcblock_plot_transferfn(R_coeffs(1), fs);
 figure
 dcblock_plot_stepfn(R_coeffs(1), fs);
 
-rmpath ./../common
+dcblock_paths(false);
 
 end
 
