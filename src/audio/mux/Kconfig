@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_MUX
-	bool "MUX component"
+	tristate "MUX component"
 	select COMP_BLOB
 	depends on COMP_MODULE_ADAPTER
 	default y

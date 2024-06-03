@@ -1,10 +1,14 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
  	[[module.entry]]
 	name = "MUX"
-	uuid = "64ce6e35-857a-4878-ace8-e2a2f42e3069"
+	uuid = "64CE6E35-857A-4878-ACE8-E2A2F42E3069"
 	affinity_mask = "0x1"
 	instance_count = "15"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	module_type = "6"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]

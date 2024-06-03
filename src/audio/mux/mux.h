@@ -14,8 +14,6 @@
 #ifndef __SOF_AUDIO_MUX_H__
 #define __SOF_AUDIO_MUX_H__
 
-#if CONFIG_COMP_MUX
-
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -229,7 +227,5 @@ int mux_params(struct processing_module *mod);
 #define MUX_UUID mux_uuid
 #endif
 extern const struct sof_uuid MUX_UUID;
-
-#endif /* CONFIG_COMP_MUX */
 
 #endif /* __SOF_AUDIO_MUX_H__ */

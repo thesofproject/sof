@@ -1005,11 +1005,17 @@ zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
 	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MUX
-	${SOF_AUDIO_PATH}/mux/mux.c
-	${SOF_AUDIO_PATH}/mux/mux_generic.c
-	${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
-)
+if(CONFIG_COMP_MUX STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/mux/llext
+			 ${PROJECT_BINARY_DIR}/mux_llext)
+	add_dependencies(app mux)
+elseif(CONFIG_COMP_MUX)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+		${SOF_AUDIO_PATH}/mux/mux.c
+		${SOF_AUDIO_PATH}/mux/mux_generic.c
+		${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
+	)
+endif()
 
 if(CONFIG_COMP_MFCC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/mfcc/llext
