@@ -1,4 +1,4 @@
-function blob8 = dcblock_build_blob(R_coeffs, endian, ipc_ver)
+function blob8 = sof_dcblock_build_blob(R_coeffs, endian, ipc_ver)
 
 %% Settings
 qy_R = 30;
