@@ -1,4 +1,4 @@
-function dcblock_plot_transferfn(R, fs)
+function sof_dcblock_plot_transferfn(R, fs)
 % Plot the transfer function.
 % For a DC Blocking filter: H(z) = (1-1/z)/(1 - R/z)
 % Therefore the coefficients are b = [1 -1], a = [1 -R]
