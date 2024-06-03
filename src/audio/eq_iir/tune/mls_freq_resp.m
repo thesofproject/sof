@@ -61,7 +61,7 @@ measfn = sprintf('mls-%s.wav', id);
 csvfn = sprintf('mls-%s.txt', id);
 
 %% Paths
-addpath('../../test/audio/test_utils');
+addpath('../../../../tools/test/audio/test_utils');
 
 %% MLS
 n_mls = round(fs*t_mls_s);
@@ -220,6 +220,8 @@ if selftest
         end
         fprintf('Response RMS error is %4.1f dB.\n', e_db);
 end
+
+rmpath('../../../../tools/test/audio/test_utils');
 
 end
 

@@ -15,13 +15,17 @@ function example_spk_eq()
 
 %% Defaults
 fs = 48e3;
-iir.cpath3 = '../../ctl/ipc3/eq_iir';
-iir.cpath4 = '../../ctl/ipc4/eq_iir';
-fir.cpath3 = '../../ctl/ipc3/eq_fir';
-fir.cpath4 = '../../ctl/ipc4/eq_fir';
-fn.tpath1 =  '../../topology/topology1/m4';
-fir.tpath2 =  '../../topology/topology2/include/components/eqfir';
-iir.tpath2 =  '../../topology/topology2/include/components/eqiir';
+sof_tools = '../../../../tools';
+sof_ctl = fullfile(sof_tools, 'ctl');
+sof_tplg = fullfile(sof_tools, 'topology');
+
+iir.cpath3 = fullfile(sof_ctl, 'ipc3/eq_iir');
+iir.cpath4 = fullfile(sof_ctl, 'ipc4/eq_iir');
+fir.cpath3 = fullfile(sof_ctl, 'ipc3/eq_fir');
+fir.cpath4 = fullfile(sof_ctl, 'ipc4/eq_fir');
+fn.tpath1 =  fullfile(sof_tplg, 'topology1/m4');
+fir.tpath2 =  fullfile(sof_tplg, 'topology2/include/components/eqfir');
+iir.tpath2 =  fullfile(sof_tplg, 'topology2/include/components/eqiir');
 iir.priv = 'DEF_EQIIR_PRIV';
 fir.priv = 'DEF_EQFIR_PRIV';
 iir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
@@ -37,7 +41,7 @@ iir.bin = 'spk.blob';
 iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 
-addpath ../common
+sof_eq_paths(1);
 
 %% Get defaults for equalizer design
 eq = eq_defaults();
@@ -164,6 +168,6 @@ if eq.enable_iir
 	eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
 end
 
-rmpath ../common
+sof_eq_paths(0);
 
 end
