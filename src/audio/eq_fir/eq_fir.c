@@ -38,11 +38,10 @@
 
 #include "eq_fir.h"
 
-LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
-SOF_DEFINE_REG_UUID(eq_fir);
-
-DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
+extern const struct sof_uuid eq_fir_uuid;
+extern struct tr_ctx eq_fir_tr;
 
 /* Pass-through functions to replace FIR core while not configured for
  * response.
@@ -309,7 +308,7 @@ static int eq_fir_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "eq_fir_free()");
+	comp_dbg(mod->dev, "eq_fir_free()");
 
 	eq_fir_free_delaylines(cd);
 	comp_data_blob_handler_free(cd->model_handler);
@@ -456,7 +455,7 @@ static int eq_fir_reset(struct processing_module *mod)
 	int i;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "eq_fir_reset()");
+	comp_dbg(mod->dev, "eq_fir_reset()");
 
 	comp_data_blob_set_validator(cd->model_handler, NULL);
 
@@ -481,3 +480,22 @@ static const struct module_interface eq_fir_interface = {
 
 DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
 SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
+
+#if CONFIG_COMP_FIR_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_EQFIR 0xe7, 0x0c, 0xa9, 0x43, 0xa5, 0xf3, 0xdf, 0x41, \
+		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3
+
+SOF_LLEXT_MOD_ENTRY(eq_fir, &eq_fir_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("EQFIR", eq_fir_llext_entry, 1, UUID_EQFIR, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
