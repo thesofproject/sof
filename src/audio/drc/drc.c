@@ -203,8 +203,6 @@ static int drc_free(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "drc_free()");
-
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	return 0;
@@ -370,8 +368,6 @@ static int drc_reset(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "drc_reset()");
-
 	drc_reset_state(&cd->state);
 
 	return 0;
@@ -389,3 +385,22 @@ static const struct module_interface drc_interface = {
 
 DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
 SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
+
+#if CONFIG_COMP_DRC_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_DRC 0xda, 0xe4, 0x6e, 0xb3, 0x6f, 0x00, 0xf9, 0x47, \
+		 0xa0, 0x6d, 0xfe, 0xcb, 0xe2, 0xd8, 0xb6, 0xce
+
+SOF_LLEXT_MOD_ENTRY(drc, &drc_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("DRC", drc_llext_entry, 1, UUID_DRC, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif

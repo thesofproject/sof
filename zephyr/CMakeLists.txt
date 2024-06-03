@@ -755,14 +755,20 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 	${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_DRC
-	${SOF_AUDIO_PATH}/drc/drc.c
-	${SOF_AUDIO_PATH}/drc/drc_generic.c
-	${SOF_AUDIO_PATH}/drc/drc_math_generic.c
-	${SOF_AUDIO_PATH}/drc/drc_hifi3.c
-	${SOF_AUDIO_PATH}/drc/drc_hifi4.c
-	${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
-)
+if(CONFIG_COMP_DRC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/drc/llext
+			 ${PROJECT_BINARY_DIR}/drc_llext)
+	add_dependencies(app drc)
+elseif(CONFIG_COMP_DRC)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/drc/drc.c
+		${SOF_AUDIO_PATH}/drc/drc_generic.c
+		${SOF_AUDIO_PATH}/drc/drc_math_generic.c
+		${SOF_AUDIO_PATH}/drc/drc_hifi3.c
+		${SOF_AUDIO_PATH}/drc/drc_hifi4.c
+		${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
