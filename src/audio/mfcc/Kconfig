@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_MFCC
-	bool "MFCC component"
+	tristate "MFCC component"
 	depends on COMP_MODULE_ADAPTER
 	select CORDIC_FIXED
 	select MATH_16BIT_MEL_FILTERBANK
