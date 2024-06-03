@@ -754,9 +754,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SRC_LITE
-	${SOF_AUDIO_PATH}/src/src_lite.c
-)
 zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 	${SOF_AUDIO_PATH}/base_fw.c
 )

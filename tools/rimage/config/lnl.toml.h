@@ -44,7 +44,9 @@
 #include <audio/asrc/asrc.toml>
 #endif
 
-#ifdef CONFIG_COMP_SRC
+#ifdef CONFIG_COMP_SRC_LITE
+#include <audio/src/src_lite.toml>
+#else
 #include <audio/src/src.toml>
 #endif
 
@@ -118,10 +120,6 @@
 
 #ifdef CONFIG_COMP_IGO_NR
 #include <audio/igo_nr/igo_nr.toml>
-#endif
-
-#ifdef CONFIG_COMP_SRC_LITE
-#include <audio/src/src_lite.toml>
 #endif
 
 [module]

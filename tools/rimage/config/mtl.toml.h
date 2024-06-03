@@ -44,7 +44,9 @@
 #include <audio/asrc/asrc.toml>
 #endif
 
-#ifdef CONFIG_COMP_SRC
+#ifdef CONFIG_COMP_SRC_LITE
+#include <audio/src/src_lite.toml>
+#else
 #include <audio/src/src.toml>
 #endif
 
@@ -114,10 +116,6 @@
 
 #ifdef CONFIG_DTS_CODEC
 #include <audio/codec/dts/dts.toml>
-#endif
-
-#ifdef CONFIG_COMP_SRC_LITE
-#include <audio/src/src_lite.toml>
 #endif
 
 #ifdef CONFIG_CADENCE_CODEC

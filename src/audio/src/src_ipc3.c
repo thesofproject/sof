@@ -41,9 +41,11 @@
 #include "src.h"
 #include "src_config.h"
 
+#if !CONFIG_COMP_SRC_LITE
 /* c1c5326d-8390-46b4-aa47-95c3beca6550 */
 DECLARE_SOF_RT_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
 		    0xaa, 0x47, 0x95, 0xc3, 0xbe, 0xca, 0x65, 0x50);
+#endif
 
 DECLARE_TR_CTX(src_tr, SOF_UUID(src_uuid), LOG_LEVEL_INFO);
 

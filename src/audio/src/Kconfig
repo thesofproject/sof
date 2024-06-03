@@ -6,17 +6,6 @@ config COMP_SRC
 	help
 	  Select for SRC component
 
-config COMP_SRC_LITE
-	bool "SRC_LITE component"
-	default y
-	help
-	  Select for SRC_LITE component
-	  which only supports a subset of conversions
-	  supported by the SRC module:
-	  48 -> 16kHz
-	  44.1 -> 16 kHz
-	  32 -> 16 kHz
-	  44.1 -> 48
 if COMP_SRC
 
 choice
@@ -62,6 +51,17 @@ config COMP_SRC_IPC4_FULL_MATRIX
 	  with 8 - 192 kHz input 8 - 192 kHz output. The 32 bits coefficients
 	  storate consumes 241 kB. The runtime needs 9 kB. Use this to
 	  make the full conversions set available for IPC4 build.
+
+config COMP_SRC_LITE
+	bool "SRC_LITE component"
+	help
+	  Select for SRC_LITE component
+	  which only supports a subset of conversions
+	  supported by the SRC module:
+	  48 -> 16kHz
+	  44.1 -> 16 kHz
+	  32 -> 16 kHz
+	  44.1 -> 48
 
 endchoice
 

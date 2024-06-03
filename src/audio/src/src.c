@@ -41,7 +41,7 @@
 #include "src.h"
 #include "src_config.h"
 
-#ifdef SRC_LITE
+#if CONFIG_COMP_SRC_LITE
 #include "coef/src_lite_ipc4_int32_define.h"
 #include "coef/src_lite_ipc4_int32_table.h"
 #elif SRC_SHORT || CONFIG_COMP_SRC_TINY
@@ -702,6 +702,11 @@ static const struct module_interface src_interface = {
 	.reset = src_reset,
 	.free = src_free,
 };
+
+#if CONFIG_COMP_SRC_LITE
+DECLARE_SOF_RT_UUID("src_lite", src_uuid, 0x33441051, 0x44CD, 0x466A,
+		    0x83, 0xA3, 0x17, 0x84, 0x78, 0x70, 0x8A, 0xEA);
+#endif
 
 DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
 SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
