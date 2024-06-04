@@ -5,8 +5,8 @@
 
 set -e
 
-CONFIG_LIST=( example_pass_config example_line_array
-	      example_line_0mm36mm146mm182mm example_circular_array example_two_beams )
+CONFIG_LIST=( sof_example_pass_config sof_example_line_array
+	      sof_example_line_0mm36mm146mm182mm sof_example_circular_array sof_example_two_beams )
 OCTAVE_CMD=( octave --no-window-system )
 MATLAB_CMD=( matlab -nodisplay -batch )
 

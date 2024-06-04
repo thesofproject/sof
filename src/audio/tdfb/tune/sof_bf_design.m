@@ -1,4 +1,4 @@
-% bf = bf_design(bf)
+% bf = sof_bf_design(bf)
 %
 % This script calculates beamformer filters with superdirective design
 % criteria.
@@ -9,10 +9,9 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_design(bf)
+function bf = sof_bf_design(bf)
 
-addpath('../../test/audio/test_utils');
-addpath('../../test/audio/std_utils');
+sof_bf_paths(true);
 mkdir_check('plots');
 mkdir_check('data');
 
@@ -30,15 +29,15 @@ end
 
 switch lower(bf.array)
 	case 'line'
-		bf = bf_array_line(bf);
+		bf = sof_bf_array_line(bf);
 	case 'circular'
-		bf = bf_array_circ(bf);
+		bf = sof_bf_array_circ(bf);
 	case 'rectangle'
-		bf = bf_array_rect(bf);
+		bf = sof_bf_array_rect(bf);
 	case 'lshape'
-		bf = bf_array_lshape(bf);
+		bf = sof_bf_array_lshape(bf);
 	case 'xyz'
-		bf = bf_array_xyz(bf);
+		bf = sof_bf_array_xyz(bf);
 	otherwise
 		error('Invalid array type')
 end
@@ -51,7 +50,7 @@ if isempty(bf.num_filters)
 	end
 end
 
-bf = bf_array_rot(bf);
+bf = sof_bf_array_rot(bf);
 
 % The design function handles only single (az, el) value, so need to
 % loop every steer angle.
@@ -88,10 +87,10 @@ bf.random_fn = all_random_fn;
 bf.mat_fn = all_mat_fn;
 bf.w = w_all;
 
+sof_bf_paths(false);
 end
 
 function bf = bf_one_design(bf)
-
 
 %% Defaults
 j = complex(0,-1);

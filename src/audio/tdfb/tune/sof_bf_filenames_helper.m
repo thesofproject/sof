@@ -1,4 +1,4 @@
-% bf = bf_filenames_helper(bf, id)
+% bf = sof_bf_filenames_helper(bf, id)
 %
 % Automatically defines output files names based on array geometry
 % and steer angle.
@@ -9,7 +9,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_filenames_helper(bf, id)
+function bf = sof_bf_filenames_helper(bf, id)
 
 switch lower(bf.array)
 	case {'rectangle' 'lshape'}
