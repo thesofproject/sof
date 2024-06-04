@@ -245,23 +245,3 @@ const struct module_interface processing_module_adapter_interface = {
 	.reset = modules_reset,
 	.free = modules_free,
 };
-
-/**
- * \brief Create a module adapter component.
- * \param[in] drv - component driver pointer.
- * \param[in] config - component ipc descriptor pointer.
- * \param[in] spec - pointer to module configuration data
- *
- * \return: a pointer to newly created module adapter component on success. NULL on error.
- *
- * \note: For dynamically loaded module the spec size is not known by base FW, since this is
- *        loaded module specific information. Therefore configuration size is required here.
- *        New module details are discovered during its loading, therefore comp_driver initialisation
- *        happens at this point.
- */
-struct comp_dev *modules_shim_new(const struct comp_driver *drv,
-				  const struct comp_ipc_config *config,
-				  const void *spec)
-{
-	return module_adapter_new(drv, config, spec);
-}
