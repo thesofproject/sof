@@ -1,4 +1,4 @@
-function blob8 = bf_blob_pack(bf, ipc_version)
+function blob8 = sof_bf_blob_pack(bf, ipc_version)
 
 %% Pack TDFB struct to bytes
 %
