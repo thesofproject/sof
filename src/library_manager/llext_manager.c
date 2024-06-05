@@ -235,12 +235,12 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 
 	ssize_t binfo_o = llext_find_section(&ebl.loader, ".mod_buildinfo");
 
-	if (binfo_o)
+	if (binfo_o >= 0)
 		*buildinfo = llext_peek(&ebl.loader, binfo_o);
 
 	ssize_t mod_o = llext_find_section(&ebl.loader, ".module");
 
-	if (mod_o)
+	if (mod_o >= 0)
 		*mod_manifest = llext_peek(&ebl.loader, mod_o);
 
 	return 0;
