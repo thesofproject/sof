@@ -64,7 +64,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 			      is_shared);
 	if (buffer) {
 		buffer->stream.runtime_stream_params.id = desc->comp.id;
-		buffer->pipeline_id = desc->comp.pipeline_id;
+		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
@@ -80,7 +80,7 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 	case COMP_TYPE_COMPONENT:
 		return dev_comp_pipe_id(icd->cd);
 	case COMP_TYPE_BUFFER:
-		return icd->cb->pipeline_id;
+		return buffer_pipeline_id(icd->cb);
 	case COMP_TYPE_PIPELINE:
 		return icd->pipeline->pipeline_id;
 	default:

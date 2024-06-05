@@ -114,7 +114,7 @@ static void set_mux_params(struct processing_module *mod)
 		{
 			source = container_of(source_list, struct comp_buffer, sink_list);
 			j = buf_get_id(source);
-			cd->config.streams[j].pipeline_id = source->pipeline_id;
+			cd->config.streams[j].pipeline_id = buffer_pipeline_id(source);
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cd->md.base_cfg.audio_fmt;
 			else

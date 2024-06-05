@@ -248,13 +248,13 @@ static int demux_process(struct processing_module *mod,
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
 		if (sink->sink->state == dev->state) {
-			i = get_stream_index(dev, cd, sink->pipeline_id);
+			i = get_stream_index(dev, cd, buffer_pipeline_id(sink));
 			/* return if index wrong */
 			if (i < 0) {
 				return i;
 			}
 
-			look_ups[i] = get_lookup_table(dev, cd, sink->pipeline_id);
+			look_ups[i] = get_lookup_table(dev, cd, buffer_pipeline_id(sink));
 			sinks_stream[i] = &sink->stream;
 		}
 	}
@@ -310,7 +310,7 @@ static int mux_process(struct processing_module *mod,
 			else
 				frames = input_buffers[j].size;
 
-			i = get_stream_index(dev, cd, source->pipeline_id);
+			i = get_stream_index(dev, cd, buffer_pipeline_id(source));
 			/* return if index wrong */
 			if (i < 0) {
 				return i;

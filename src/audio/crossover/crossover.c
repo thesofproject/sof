@@ -111,7 +111,7 @@ static int crossover_assign_sinks(struct processing_module *mod,
 		unsigned int sink_id, state;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_id = crossover_get_sink_id(cd, sink->pipeline_id, j);
+		sink_id = crossover_get_sink_id(cd, buffer_pipeline_id(sink), j);
 		state = sink->sink->state;
 		if (state != dev->state) {
 			j++;

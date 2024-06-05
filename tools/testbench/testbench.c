@@ -163,7 +163,7 @@ static void test_pipeline_free_comps(int pipeline_id)
 					icd->id);
 			break;
 		case COMP_TYPE_BUFFER:
-			if (icd->cb->pipeline_id != pipeline_id)
+			if (buffer_pipeline_id(icd->cb) != pipeline_id)
 				break;
 			err = ipc_buffer_free(sof_get()->ipc, icd->id);
 			if (err)
