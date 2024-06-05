@@ -43,9 +43,6 @@ extern struct tr_ctx buffer_tr;
 /** \brief Retrieves trace context from the buffer */
 #define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
 
-/** \brief Retrieves id (pipe id) from the buffer */
-#define trace_buf_get_id(buf_ptr) ((buf_ptr)->pipeline_id)
-
 /** \brief Retrieves subid (comp id) from the buffer */
 #define buf_get_id(buf_ptr) ((buf_ptr)->stream.runtime_stream_params.id)
 
@@ -57,36 +54,36 @@ extern struct tr_ctx buffer_tr;
 #define __BUF_FMT "buf:%u.%u "
 #endif
 
-#define buf_err(buf_ptr, __e, ...) LOG_ERR(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+#define buf_err(buf_ptr, __e, ...) LOG_ERR(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
 					   buf_get_id(buf_ptr), ##__VA_ARGS__)
 
-#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
 					    buf_get_id(buf_ptr), ##__VA_ARGS__)
 
-#define buf_info(buf_ptr, __e, ...) LOG_INF(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+#define buf_info(buf_ptr, __e, ...) LOG_INF(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
 					    buf_get_id(buf_ptr), ##__VA_ARGS__)
 
-#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__BUF_FMT __e, trace_buf_get_id(buf_ptr), \
+#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
 					   buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #else
 /** \brief Trace error message from buffer */
 #define buf_err(buf_ptr, __e, ...)						\
-	trace_dev_err(trace_buf_get_tr_ctx, trace_buf_get_id,			\
+	trace_dev_err(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
 		      buf_get_id,					\
 		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		      __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from buffer */
 #define buf_warn(buf_ptr, __e, ...)						\
-	trace_dev_warn(trace_buf_get_tr_ctx, trace_buf_get_id,			\
+	trace_dev_warn(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
 		       buf_get_id,					\
 		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		        __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from buffer */
 #define buf_info(buf_ptr, __e, ...)						\
-	trace_dev_info(trace_buf_get_tr_ctx, trace_buf_get_id,			\
+	trace_dev_info(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
 		       buf_get_id,					\
 		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		       __e, ##__VA_ARGS__)
@@ -96,7 +93,7 @@ extern struct tr_ctx buffer_tr;
 #define buf_dbg(buf_ptr, __e, ...)
 #else
 #define buf_dbg(buf_ptr, __e, ...)						\
-	trace_dev_dbg(trace_buf_get_tr_ctx, trace_buf_get_id,			\
+	trace_dev_dbg(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
 		      buf_get_id,					\
 		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
 		      __e, ##__VA_ARGS__)
@@ -139,7 +136,6 @@ struct comp_buffer {
 	struct audio_stream stream;
 
 	/* configuration */
-	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
 	struct tr_ctx tctx;			/* trace settings */
@@ -274,6 +270,11 @@ static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int d
 {
 	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer->sink : buffer->source;
 	return comp;
+}
+
+static inline uint32_t buffer_pipeline_id(const struct comp_buffer *buffer)
+{
+	return buffer->stream.runtime_stream_params.pipeline_id;
 }
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
