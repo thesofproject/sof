@@ -26,7 +26,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_load_config() start");

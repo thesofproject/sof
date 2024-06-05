@@ -78,9 +78,10 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	}
 
 	dst = &mod->priv.cfg;
-	mod->dev = dev;
 
-	comp_set_drvdata(dev, mod);
+	mod->dev = dev;
+	dev->mod = mod;
+
 	list_init(&mod->sink_buffer_list);
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
@@ -134,7 +135,7 @@ EXPORT_SYMBOL(module_adapter_new);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
@@ -163,7 +164,7 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 int module_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *sink;
 	struct list_item *blist, *_blist;
@@ -440,7 +441,7 @@ EXPORT_SYMBOL(module_adapter_prepare);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	module_adapter_set_params(mod, params);
 
@@ -560,7 +561,7 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_buffer,
 				struct comp_buffer *sink_buffer, uint32_t produced)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct comp_copy_limits cl;
 	uint32_t copy_bytes;
 
@@ -597,7 +598,7 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 
 static void module_adapter_process_output(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct comp_buffer *sink;
 	struct list_item *blist;
 	int i = 0;
@@ -651,7 +652,7 @@ module_single_sink_setup(struct comp_dev *dev,
 			 struct comp_buffer **source,
 			 struct comp_buffer **sinks)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	uint32_t num_input_buffers;
 	uint32_t frames;
@@ -692,7 +693,7 @@ module_single_source_setup(struct comp_dev *dev,
 			   struct comp_buffer **source,
 			   struct comp_buffer **sinks)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	uint32_t min_frames = UINT32_MAX;
 	uint32_t num_output_buffers;
@@ -732,7 +733,7 @@ module_single_source_setup(struct comp_dev *dev,
 
 static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	uint32_t num_output_buffers = 0;
 	uint32_t frames;
 	int ret;
@@ -783,7 +784,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
 	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	uint32_t num_input_buffers, num_output_buffers;
 	int ret, i = 0;
@@ -909,7 +910,7 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 	 * DP module processing itself will take place in DP thread
 	 * This is an adapter, to be removed when pipeline2.0 is ready
 	 */
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	int err;
 
@@ -968,7 +969,7 @@ static inline int module_adapter_copy_dp_queues(struct comp_dev *dev)
 
 static int module_adapter_sink_source_copy(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	int ret;
 	int i = 0;
 
@@ -1003,7 +1004,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 
 static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *source, *sink;
 	struct list_item *blist;
@@ -1099,7 +1100,7 @@ int module_adapter_copy(struct comp_dev *dev)
 {
 	comp_dbg(dev, "module_adapter_copy(): start");
 
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		return module_adapter_audio_stream_type_copy(dev);
@@ -1122,7 +1123,7 @@ EXPORT_SYMBOL(module_adapter_copy);
 
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
@@ -1149,7 +1150,7 @@ EXPORT_SYMBOL(module_adapter_trigger);
 int module_adapter_reset(struct comp_dev *dev)
 {
 	int ret, i;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 
 	comp_dbg(dev, "module_adapter_reset(): resetting");
@@ -1197,7 +1198,7 @@ EXPORT_SYMBOL(module_adapter_reset);
 void module_adapter_free(struct comp_dev *dev)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "module_adapter_free(): start");
@@ -1239,7 +1240,7 @@ EXPORT_SYMBOL(module_adapter_free);
 int module_adapter_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
 				 int dir)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->dai_get_hw_params)
@@ -1260,7 +1261,7 @@ EXPORT_SYMBOL(module_adapter_get_hw_params);
  */
 int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->position)
@@ -1280,7 +1281,7 @@ EXPORT_SYMBOL(module_adapter_position);
  */
 int module_adapter_ts_config_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->dai_ts_config)
@@ -1300,7 +1301,7 @@ EXPORT_SYMBOL(module_adapter_ts_config_op);
  */
 int module_adapter_ts_start_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->dai_ts_start)
@@ -1320,7 +1321,7 @@ EXPORT_SYMBOL(module_adapter_ts_start_op);
  */
 int module_adapter_ts_stop_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->dai_ts_stop)
@@ -1345,7 +1346,7 @@ int module_adapter_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
 int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 #endif
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->dai_ts_get)

@@ -168,7 +168,7 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 					 bool set)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	enum module_cfg_fragment_position pos;
 	uint32_t data_offset_size;
@@ -222,7 +222,7 @@ static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc
 					    bool set)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	comp_dbg(dev, "module_adapter_ctrl_set_data() start, state %d, cmd %d",
 		 mod->priv.state, cdata->cmd);
@@ -254,7 +254,7 @@ static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc
 int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	int ret = 0;
 
@@ -306,7 +306,7 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 
 int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	int ret;
 	int i;

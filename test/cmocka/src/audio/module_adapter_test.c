@@ -28,7 +28,7 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	dev = test_malloc(sizeof(struct comp_dev));
 	dev->frames = parameters->frames;
 	mod->dev = dev;
-	comp_set_drvdata(dev, mod);
+	dev->mod = mod;
 
 	test_data->sinks = test_calloc(test_data->num_sinks, sizeof(struct comp_buffer *));
 	test_data->sources = test_calloc(test_data->num_sources, sizeof(struct comp_buffer *));

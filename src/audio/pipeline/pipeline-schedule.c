@@ -390,7 +390,7 @@ static enum task_state dp_task_run(void *data)
 int pipeline_comp_dp_task_init(struct comp_dev *comp)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(comp);
+	struct processing_module *mod = comp_mod(comp);
 	struct task_ops ops  = {
 		.run		= dp_task_run,
 		.get_deadline	= NULL,

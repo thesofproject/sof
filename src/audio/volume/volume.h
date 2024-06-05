@@ -221,7 +221,7 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 							 struct vol_data *cd)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	if (cd->is_passthrough) {
 		switch (mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth) {

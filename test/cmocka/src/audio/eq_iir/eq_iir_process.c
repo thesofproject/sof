@@ -156,7 +156,7 @@ static int setup(void **state)
 
 	td->dev = dev;
 	dev->frames = params->frames;
-	mod = comp_get_drvdata(dev);
+	mod = comp_mod(dev);
 
 	prepare_sink(td, mod);
 	prepare_source(td, mod);
@@ -183,7 +183,7 @@ static int setup(void **state)
 static int teardown(void **state)
 {
 	struct test_data *td = *state;
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 
 	test_free(mod->input_buffers);
 	test_free(mod->output_buffers);
@@ -199,7 +199,7 @@ static int teardown(void **state)
 #if CONFIG_FORMAT_S16LE
 static void fill_source_s16(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -234,7 +234,7 @@ static void fill_source_s16(struct test_data *td, int frames_max)
 
 static void verify_sink_s16(struct test_data *td)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -262,7 +262,7 @@ static void verify_sink_s16(struct test_data *td)
 #if CONFIG_FORMAT_S24LE
 static void fill_source_s24(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -297,7 +297,7 @@ static void fill_source_s24(struct test_data *td, int frames_max)
 
 static void verify_sink_s24(struct test_data *td)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -325,7 +325,7 @@ static void verify_sink_s24(struct test_data *td)
 #if CONFIG_FORMAT_S32LE
 static void fill_source_s32(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -360,7 +360,7 @@ static void fill_source_s32(struct test_data *td, int frames_max)
 
 static void verify_sink_s32(struct test_data *td)
 {
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -400,7 +400,7 @@ static int frames_jitter(int frames)
 static void test_audio_eq_iir(void **state)
 {
 	struct test_data *td = *state;
-	struct processing_module *mod = comp_get_drvdata(td->dev);
+	struct processing_module *mod = comp_mod(td->dev);
 
 	struct comp_buffer *source = td->source;
 	struct comp_buffer *sink = td->sink;
