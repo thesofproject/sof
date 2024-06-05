@@ -94,7 +94,7 @@ void delete_from_fpi_sync_group(struct host_data *hd)
 /* Playback only */
 static int init_pipeline_reg(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
 	uint32_t gateway_id;
@@ -126,7 +126,7 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       struct pipeline *pipeline)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
@@ -244,7 +244,7 @@ void copier_host_free(struct copier_data *cd)
  */
 void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	int ret, frames;
 

@@ -87,7 +87,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 #if defined(CONFIG_ACE_VERSION_2_0)
 		if (copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_output_class ||
 		    copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_input_class) {
-			struct processing_module *mod = comp_get_drvdata(dev);
+			struct processing_module *mod = comp_mod(dev);
 			struct copier_data *cd = module_get_private_data(mod);
 
 			if (!cd->gtw_cfg) {

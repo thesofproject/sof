@@ -556,7 +556,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 	dev = module_adapter_new(drv, config, spec);
 	if (dev) {
-		struct processing_module *mod = comp_get_drvdata(dev);
+		struct processing_module *mod = comp_mod(dev);
 
 		mod->priv.llext = tmp_proc.priv.llext;
 	} else {
@@ -567,7 +567,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 static void lib_manager_module_free(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct llext *llext = mod->priv.llext;
 	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
 	const uint32_t module_id = config->id;

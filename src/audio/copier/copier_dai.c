@@ -35,7 +35,7 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 						const struct ipc4_copier_module_cfg *copier_cfg,
 						int index)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	const struct sof_alh_configuration_blob *alh_blob;
 	uint8_t chan_bitmask;
@@ -71,7 +71,7 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 				       int *dai_index,
 				       int *dai_count)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	const struct sof_alh_configuration_blob *alh_blob = gtw_cfg_data;
 	uint8_t *dma_config;
@@ -162,7 +162,7 @@ static int copier_dai_init(struct comp_dev *dev,
 			   enum ipc4_gateway_type type,
 			   int index, int dai_count)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd;
 	int ret;
@@ -230,7 +230,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct comp_ipc_config *config = &dev->ipc_config;
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;

@@ -99,7 +99,7 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t data_offset_size, const char *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	enum module_cfg_fragment_position pos;
@@ -138,7 +138,7 @@ EXPORT_SYMBOL(module_set_large_config);
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset_size, char *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	size_t fragment_size;
@@ -169,7 +169,7 @@ EXPORT_SYMBOL(module_get_large_config);
 
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
@@ -186,7 +186,7 @@ EXPORT_SYMBOL(module_adapter_get_attribute);
 
 static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 	int i;
 
@@ -225,7 +225,7 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 
 int module_adapter_bind(struct comp_dev *dev, void *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	int ret;
 
 	ret = module_bind(mod, data);
@@ -240,7 +240,7 @@ EXPORT_SYMBOL(module_adapter_bind);
 
 int module_adapter_unbind(struct comp_dev *dev, void *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	int ret;
 
 	ret = module_unbind(mod, data);
@@ -256,7 +256,7 @@ EXPORT_SYMBOL(module_adapter_unbind);
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	if (interface->endpoint_ops && interface->endpoint_ops->get_total_data_processed)
@@ -271,7 +271,7 @@ EXPORT_SYMBOL(module_adapter_get_total_data_processed);
 
 int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 
 	/* Prepare module */
 	return module_prepare(mod, mod->sources, mod->num_of_sources,

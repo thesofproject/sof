@@ -318,7 +318,7 @@ static int mixin_process(struct processing_module *mod,
 			continue;
 		}
 
-		mixout_mod = comp_get_drvdata(mixout);
+		mixout_mod = comp_mod(mixout);
 		active_mixouts[i] = mixout_mod;
 		mixout_sink = mixout_mod->sinks[0];
 

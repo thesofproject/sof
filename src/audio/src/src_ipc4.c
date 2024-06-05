@@ -122,7 +122,7 @@ int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *source,
 				struct sof_sink *sink)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct comp_data *cd = module_get_private_data(mod);
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 

@@ -96,7 +96,7 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		/* Called from validate(), we shall find nch and assign it accordingly,
 		 * as the parameter is not valid
 		 */
-		struct processing_module *mod = comp_get_drvdata(dev);
+		struct processing_module *mod = comp_mod(dev);
 		struct comp_data *cd = module_get_private_data(mod);
 
 		nch = cd->nch;

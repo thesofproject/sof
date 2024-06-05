@@ -468,8 +468,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!cpu_is_me(source->ipc_config.core) && !cross_core_bind)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
-	struct processing_module *srcmod = comp_get_drvdata(source);
-	struct processing_module *dstmod = comp_get_drvdata(sink);
+	struct processing_module *srcmod = comp_mod(source);
+	struct processing_module *dstmod = comp_mod(sink);
 	struct module_config *dstcfg = &dstmod->priv.cfg;
 	struct module_config *srccfg = &srcmod->priv.cfg;
 

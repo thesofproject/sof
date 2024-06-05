@@ -27,7 +27,7 @@ int asrc_dai_configure_timestamp(struct comp_data *cd)
 	if (!cd->dai_dev)
 		return -ENODEV;
 
-	struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+	struct processing_module *mod = comp_mod(cd->dai_dev);
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	return ops->endpoint_ops->dai_ts_config(cd->dai_dev);
@@ -38,7 +38,7 @@ int asrc_dai_start_timestamp(struct comp_data *cd)
 	if (!cd->dai_dev)
 		return -ENODEV;
 
-	struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+	struct processing_module *mod = comp_mod(cd->dai_dev);
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	return ops->endpoint_ops->dai_ts_start(cd->dai_dev);
@@ -49,7 +49,7 @@ int asrc_dai_stop_timestamp(struct comp_data *cd)
 	if (!cd->dai_dev)
 		return -ENODEV;
 
-	struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+	struct processing_module *mod = comp_mod(cd->dai_dev);
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	return ops->endpoint_ops->dai_ts_stop(cd->dai_dev);
@@ -64,7 +64,7 @@ int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
 	if (!cd->dai_dev)
 		return -ENODEV;
 
-	struct processing_module *mod = comp_get_drvdata(cd->dai_dev);
+	struct processing_module *mod = comp_mod(cd->dai_dev);
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	return ops->endpoint_ops->dai_ts_get(cd->dai_dev, tsd);

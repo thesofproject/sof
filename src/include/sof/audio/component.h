@@ -590,6 +590,8 @@ struct comp_dev {
 
 	const struct comp_driver *drv;	/**< driver */
 
+	struct processing_module *mod; /**< self->mod->dev == self, always */
+
 	/* lists */
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
@@ -676,6 +678,15 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 
 	return dev;
+}
+
+/**
+ * \brief Module adapter associated with a component
+ * @param dev Component device
+ */
+static inline struct processing_module *comp_mod(const struct comp_dev *dev)
+{
+	return dev->mod;
 }
 
 /**

@@ -167,7 +167,7 @@ static int setup_test_case(void **state)
 	if (!dev)
 		return -EINVAL;
 
-	mod = comp_get_drvdata(dev);
+	mod = comp_mod(dev);
 	td->dev = dev;
 	td->mod = mod;
 	td->cd = module_get_private_data(mod);

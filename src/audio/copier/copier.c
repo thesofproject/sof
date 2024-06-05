@@ -293,7 +293,7 @@ static int copier_reset(struct processing_module *mod)
 
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct sof_ipc_stream_posn posn;
 	struct comp_dev *dai_copier;
@@ -660,7 +660,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 			       int max_data_size)
 {
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
@@ -711,7 +711,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 
 static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	uint32_t attenuation;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
@@ -860,7 +860,7 @@ static int copier_get_configuration(struct processing_module *mod,
 
 static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	uint64_t ret = 0;
 	bool source;
@@ -905,7 +905,7 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 
 static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	int ret = 0;
 
@@ -933,7 +933,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 
 static int copier_dai_ts_config_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
@@ -942,7 +942,7 @@ static int copier_dai_ts_config_op(struct comp_dev *dev)
 
 static int copier_dai_ts_start_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
@@ -957,7 +957,7 @@ static int copier_dai_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 #endif
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
@@ -968,7 +968,7 @@ static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd
 
 static int copier_dai_ts_stop_op(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
@@ -980,7 +980,7 @@ static int copier_dai_ts_stop_op(struct comp_dev *dev)
 static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
 				int dir)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
 
