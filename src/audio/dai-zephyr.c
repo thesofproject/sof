@@ -268,16 +268,55 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+#if CONFIG_IPC_MAJOR_4
+		struct list_item *sink_list;
+		/*
+		 * copy from local buffer to all sinks that are not gateway buffers
+		 * using the right PCM converter function.
+		 */
+		list_for_item(sink_list, &dev->bsink_list) {
+			struct comp_dev *sink_dev;
+			struct comp_buffer *sink;
+			int j;
+
+			sink = container_of(sink_list, struct comp_buffer, source_list);
+
+			if (sink == dd->dma_buffer)
+				continue;
+
+			sink_dev = sink->sink;
+
+			j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+
+			if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+				comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
+					 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
+				ret = -EINVAL;
+				continue;
+			}
+
+			if (!converter[j]) {
+				comp_err(dev, "No PCM converter for sink queue %d\n", j);
+				ret = -EINVAL;
+				continue;
+			}
+
+			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE) {
+				ret = stream_copy_from_no_consume(dd->local_buffer, sink,
+								  converter[j], bytes);
+			}
+		}
+#endif
 		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
 					 dd->process, bytes);
 	} else {
 		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
 		/*
 		 * The PCM converter functions used during DMA buffer copy can never fail,
-		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
+		 * so no need to check the return value of stream_copy_from_no_consume().
 		 */
-		ret = dma_buffer_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
-						      dd->process, bytes);
+		ret = stream_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
+						  dd->process, bytes);
 #if CONFIG_IPC_MAJOR_4
 		struct list_item *sink_list;
 		/* Skip in case of endpoint DAI devices created by the copier */
@@ -315,9 +354,9 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				}
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE)
-					ret = dma_buffer_copy_from_no_consume(dd->dma_buffer,
-									      sink, converter[j],
-									      bytes);
+					ret = stream_copy_from_no_consume(dd->dma_buffer,
+									  sink, converter[j],
+									  bytes);
 			}
 		}
 #endif
