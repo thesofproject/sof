@@ -94,18 +94,36 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	return 0;
 }
 
+/**
+ * @brief Initialize coefficients for multiband DRC processing.
+ *
+ * Allocates and initializes filter coefficients for the multiband DRC module.
+ * Each coefficient array (crossover, emphasis, and de-emphasis) is embedded
+ * and initialized in the component data structure.
+ *
+ * The function checks for configuration validity and adheres to predefined
+ * channel and band count limits.
+ *
+ * The memory layout for the coefficients is optimized for performance.
+ *
+ * @param mod Pointer to the processing module containing multiband DRC data.
+ * @param nch Number of channels to process, up to PLATFORM_MAX_CHANNELS.
+ * @param rate Sampling rate, not used in the current implementation.
+ *
+ * @return 0 on success, or a negative error code on failure (e.g., invalid configuration,
+ *         memory allocation failure).
+ */
 static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, uint32_t rate)
 {
 	struct comp_dev *dev = mod->dev;
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-	struct sof_eq_iir_biquad *crossover;
-	struct sof_eq_iir_biquad *emphasis;
-	struct sof_eq_iir_biquad *deemphasis;
 	struct sof_multiband_drc_config *config = cd->config;
 	struct multiband_drc_state *state = &cd->state;
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
+	struct sof_eq_iir_biquad *crossover, *emphasis, *deemphasis;
 	int i, ch, ret, num_bands;
 
+	/* Check for valid configuration */
 	if (!config) {
 		comp_err(dev, "multiband_drc_init_coef(), no config is set");
 		return -EINVAL;
@@ -113,75 +131,51 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 
 	num_bands = config->num_bands;
 
-	/* Sanity checks */
-	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_err(dev,
-			 "multiband_drc_init_coef(), invalid channels count(%i)", nch);
-		return -EINVAL;
-	}
-	if (config->num_bands > SOF_MULTIBAND_DRC_MAX_BANDS) {
-		comp_err(dev, "multiband_drc_init_coef(), invalid bands count(%i)",
-			 config->num_bands);
+	if (nch > PLATFORM_MAX_CHANNELS || num_bands > SOF_MULTIBAND_DRC_MAX_BANDS) {
+		comp_err(dev, "Invalid ch count(%i) or band count(%i)", nch, num_bands);
 		return -EINVAL;
 	}
 
-	comp_info(dev, "multiband_drc_init_coef(), initializing %i-way crossover",
-		  config->num_bands);
+	comp_info(dev, "multiband_drc_init_coef(), initializing %i-way crossover", num_bands);
 
-	/* Crossover: collect the coef array and assign it to every channel */
+	/* Initialize constants for shared coefficients */
 	crossover = config->crossover_coef;
-	for (ch = 0; ch < nch; ch++) {
-		ret = crossover_init_coef_ch(crossover, &state->crossover[ch],
-					     config->num_bands);
-		/* Free all previously allocated blocks in case of an error */
-		if (ret < 0) {
-			comp_err(dev,
-				 "multiband_drc_init_coef(), could not assign coeffs to ch %d", ch);
-			goto err;
-		}
-	}
-
-	comp_info(dev, "multiband_drc_init_coef(), initializing emphasis_eq");
-
-	/* Emphasis: collect the coef array and assign it to every channel */
 	emphasis = config->emp_coef;
-	for (ch = 0; ch < nch; ch++) {
-		ret = multiband_drc_eq_init_coef_ch(emphasis, &state->emphasis[ch]);
-		/* Free all previously allocated blocks in case of an error */
-		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
-				 ch);
-			goto err;
-		}
-	}
-
-	comp_info(dev, "multiband_drc_init_coef(), initializing deemphasis_eq");
-
-	/* Deemphasis: collect the coef array and assign it to every channel */
 	deemphasis = config->deemp_coef;
+
+	/* Apply shared coefficients to each channel */
 	for (ch = 0; ch < nch; ch++) {
-		ret = multiband_drc_eq_init_coef_ch(deemphasis, &state->deemphasis[ch]);
-		/* Free all previously allocated blocks in case of an error */
+		ret = crossover_init_coef_ch(crossover, &state->crossover[ch], num_bands);
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
-				 ch);
+			comp_err(dev, "Can't assign xover coeffs to ch %d", ch);
+			goto err;
+		}
+
+		ret = multiband_drc_eq_init_coef_ch(emphasis, &state->emphasis[ch]);
+		if (ret < 0) {
+			comp_err(dev, "Can't assign emp coeffs to ch %d", ch);
+			goto err;
+		}
+
+		ret = multiband_drc_eq_init_coef_ch(deemphasis, &state->deemphasis[ch]);
+		if (ret < 0) {
+			comp_err(dev, "Can't assign deemp coeffs to ch %d", ch);
 			goto err;
 		}
 	}
 
-	/* Allocate all DRC pre-delay buffers and set delay time with band number */
+	/* Initialize DRC bands */
 	for (i = 0; i < num_bands; i++) {
 		comp_info(dev, "multiband_drc_init_coef(), initializing drc band %d", i);
 
-		ret = drc_init_pre_delay_buffers(&state->drc[i], (size_t)sample_bytes, (int)nch);
+		ret = drc_init_pre_delay_buffers(&state->drc[i], sample_bytes, nch);
 		if (ret < 0) {
-			comp_err(dev,
-				 "multiband_drc_init_coef(), could not init pre delay buffers");
+			comp_err(dev, "multiband_drc_init_coef(), can't init pre delay buffers");
 			goto err;
 		}
 
-		ret = drc_set_pre_delay_time(&state->drc[i],
-					     cd->config->drc_coef[i].pre_delay_time, rate);
+		ret = drc_set_pre_delay_time(&state->drc[i], config->drc_coef[i].pre_delay_time,
+					     rate);
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_init_coef(), could not set pre delay time");
 			goto err;
@@ -215,6 +209,21 @@ static int multiband_drc_setup(struct processing_module *mod, int16_t channels, 
  * End of Multiband DRC setup code. Next the standard component methods.
  */
 
+/**
+ * Initialize Multiband Dynamic Range Control (DRC) component.
+ *
+ * Allocates and initializes memory for the multiband DRC component data,
+ * including state structure, coefficient blocks, and module interface.
+ *
+ * The function checks and ensures that the provided configuration blob size
+ * is within expected limits. If successful, the component state is reset and
+ * multiband DRC processing is enabled by default.
+ *
+ * @parameters mod Pointer to the processing module to be initialized.
+ *
+ * @return 0 on success, -EINVAL if configuration blob size is too large,
+ *         -ENOMEM if memory allocation fails for component data.
+ */
 static int multiband_drc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
@@ -242,14 +251,7 @@ static int multiband_drc_init(struct processing_module *mod)
 	md->private = cd;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
-	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
-	 * before where the processing is never enabled via switch control. New
-	 * kernel sends the IPC4 switch control and sets this to desired state
-	 * before prepare.
-	 */
-	multiband_drc_process_enable(&cd->process_enabled);
 
-	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_err(dev, "multiband_drc_init(): comp_data_blob_handler_new() failed.");
@@ -257,31 +259,64 @@ static int multiband_drc_init(struct processing_module *mod)
 		goto cd_fail;
 	}
 
-	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "multiband_drc_init(): comp_init_data_blob() failed.");
-		goto cd_fail;
+		goto cd_model_fail;
 	}
+
 	multiband_drc_reset_state(&cd->state);
+	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
+	 * before where the processing is never enabled via switch control. New
+	 * kernel sends the IPC4 switch control and sets this to desired state
+	 * before prepare.
+	 */
+	multiband_drc_process_enable(&cd->process_enabled);
 
 	return 0;
 
-cd_fail:
+cd_model_fail:
 	comp_data_blob_handler_free(cd->model_handler);
+cd_fail:
 	rfree(cd);
 	return ret;
 }
 
+/**
+ * Free resources allocated by Multiband DRC processing component.
+ *
+ * This function releases all memory and resources associated with the
+ * multiband DRC component's operation. This includes dynamically allocated
+ * filter state instances as well as freeing up the model handler.
+ *
+ * @parameters "mod" Pointer to the processing module to be freed.
+ *
+ * @return 0 indicating success.
+ */
 static int multiband_drc_free(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "multiband_drc_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
+	if (cd) {
+		struct multiband_drc_state *state = &cd->state;
 
-	rfree(cd);
+		/* Free emphasis/deemphasis IIR filter states for all channels */
+		for (int i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			multiband_drc_iir_reset_state_ch(&state->emphasis[i]);
+			multiband_drc_iir_reset_state_ch(&state->deemphasis[i]);
+		}
+
+		/* Freeing other resources as part of the component data */
+		comp_data_blob_handler_free(cd->model_handler);
+
+		/* Reset the rest of the component data */
+		multiband_drc_reset_state(state);
+		rfree(cd);
+		module_set_private_data(mod, NULL);
+	}
+
 	return 0;
 }
 
