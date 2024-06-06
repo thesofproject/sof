@@ -648,7 +648,7 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_notification.c
 )
 
-if (CONFIG_MM_DRV)
+if (CONFIG_MM_DRV AND CONFIG_LLEXT)
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/llext_manager.c
 )

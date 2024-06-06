@@ -29,7 +29,9 @@
 
 #include <zephyr/cache.h>
 #include <zephyr/drivers/mm/system_mm.h>
+#if CONFIG_LLEXT
 #include <zephyr/llext/llext.h>
+#endif
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <auth/intel_auth_api.h>
