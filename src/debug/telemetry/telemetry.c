@@ -23,11 +23,14 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 /* Systic variables, one set per core */
 static int telemetry_systick_counter[CONFIG_MAX_CORE_COUNT];
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 static int telemetry_prev_ccount[CONFIG_MAX_CORE_COUNT];
 static int telemetry_perf_period_sum[CONFIG_MAX_CORE_COUNT];
 static int telemetry_perf_period_cnt[CONFIG_MAX_CORE_COUNT];
 static struct telemetry_perf_queue telemetry_perf_queue[CONFIG_MAX_CORE_COUNT];
+#endif
 
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 static void telemetry_perf_queue_append(struct telemetry_perf_queue *q, size_t element)
 {
 	if (!q->full) {
@@ -59,6 +62,7 @@ static size_t telemetry_perf_queue_avg(struct telemetry_perf_queue *q)
 		return 0;
 	return q->sum / q->size;
 }
+#endif
 
 int telemetry_init(void)
 {
@@ -107,7 +111,7 @@ void telemetry_update(uint32_t begin_stamp, uint32_t current_stamp)
 			    systick_info[prid].max_time_elapsed);
 	systick_info[prid].last_ccount = current_stamp;
 
-#ifdef SOF_PERFORMANCE_MEASUREMENTS
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	const size_t measured_systick = begin_stamp - telemetry_prev_ccount[prid];
 
 	telemetry_prev_ccount[prid] = begin_stamp;
