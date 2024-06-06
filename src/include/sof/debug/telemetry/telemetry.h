@@ -12,8 +12,6 @@
 #define SOF_AVG_PERF_MEAS_DEPTH 64
 /* Number of runs taken to calculate average (algorithm resolution) */
 #define SOF_AVG_PERF_MEAS_PERIOD 16
-/* disables calculating systick_averages */
-#define SOF_PERFORMANCE_MEASUREMENTS
 
 /* to be moved to Zephyr */
 #define WIN3_MBASE DT_REG_ADDR(DT_PHANDLE(DT_NODELABEL(mem_window3), memory))

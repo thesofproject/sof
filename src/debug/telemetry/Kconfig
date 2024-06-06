@@ -9,3 +9,12 @@ config SOF_TELEMETRY
 	  systick_info measurement which measures scheduler task performance and may
 	  slightly affect overall performance.
 
+config SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	bool "enable performance measurements"
+	default n
+	help
+	  Enables performance measurements. Requires ADSP_MW interface. Each created component
+	  can have its performance checked by measuring execution time of copy function.
+	  Performance records are stored in the limited number of slots in Memory Window 3,
+	  so only a certain number (PERFORMANCE_DATA_ENTRIES_COUNT) of components can be measured.
+
