@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_SRC
-	bool "SRC component"
+	tristate "SRC component"
 	default y
 	help
 	  Select for SRC component
+
+if COMP_SRC
 
 config COMP_SRC_LITE
 	bool "SRC_LITE component"
@@ -17,7 +19,6 @@ config COMP_SRC_LITE
 	  44.1 -> 16 kHz
 	  32 -> 16 kHz
 	  44.1 -> 48
-if COMP_SRC
 
 choice
         prompt "SRC coefficient set"

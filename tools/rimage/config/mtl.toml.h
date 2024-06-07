@@ -116,10 +116,6 @@
 #include <audio/codec/dts/dts.toml>
 #endif
 
-#ifdef CONFIG_COMP_SRC_LITE
-#include <audio/src/src_lite.toml>
-#endif
-
 #ifdef CONFIG_CADENCE_CODEC
 #include <audio/module_adapter/module/cadence.toml>
 #endif

@@ -120,9 +120,5 @@
 #include <audio/igo_nr/igo_nr.toml>
 #endif
 
-#ifdef CONFIG_COMP_SRC_LITE
-#include <audio/src/src_lite.toml>
-#endif
-
 [module]
 count = __COUNTER__
