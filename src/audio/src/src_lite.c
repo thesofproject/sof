@@ -5,16 +5,53 @@
 // Author: Fabiola Jasinska <fabiola.jasinska@intel.com>
 
 #include <rtos/init.h>
+
 #include "src.h"
 #include "src_config.h"
 
-#define SRC_LITE 1
+#include "coef/src_lite_ipc4_int32_define.h"
+#include "coef/src_lite_ipc4_int32_table.h"
 
 LOG_MODULE_REGISTER(src_lite, CONFIG_SOF_LOG_LEVEL);
 
+/*
+ * This function is 100% identical to src_prepare(), but it's
+ * assigning different coefficient arrays because it's including
+ * different headers.
+ */
+static int src_lite_prepare(struct processing_module *mod,
+			    struct sof_source **sources, int num_of_sources,
+			    struct sof_sink **sinks, int num_of_sinks)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct src_param *a = &cd->param;
+	int ret;
+
+	comp_info(mod->dev, "src_prepare()");
+
+	if (num_of_sources != 1 || num_of_sinks != 1)
+		return -EINVAL;
+
+	a->in_fs = src_in_fs;
+	a->out_fs = src_out_fs;
+
+	ret = src_param_set(mod->dev, cd);
+	if (ret < 0)
+		return ret;
+
+	a->stage1 = src_table1[a->idx_out][a->idx_in];
+	a->stage2 = src_table2[a->idx_out][a->idx_in];
+
+	ret = src_params_general(mod, sources[0], sinks[0]);
+	if (ret < 0)
+		return ret;
+
+	return src_prepare_general(mod, sources[0], sinks[0]);
+}
+
 static const struct module_interface src_lite_interface = {
 	.init = src_init,
-	.prepare = src_prepare,
+	.prepare = src_lite_prepare,
 	.process = src_process,
 	.is_ready_to_process = src_is_ready_to_process,
 	.set_configuration = src_set_config,

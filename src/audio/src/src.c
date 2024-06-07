@@ -41,10 +41,7 @@
 #include "src.h"
 #include "src_config.h"
 
-#ifdef SRC_LITE
-#include "coef/src_lite_ipc4_int32_define.h"
-#include "coef/src_lite_ipc4_int32_table.h"
-#elif SRC_SHORT || CONFIG_COMP_SRC_TINY
+#if SRC_SHORT || CONFIG_COMP_SRC_TINY
 #include "coef/src_tiny_int16_define.h"
 #include "coef/src_tiny_int16_table.h"
 #elif CONFIG_COMP_SRC_SMALL
@@ -89,18 +86,9 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nc
 	}
 
 	a->nch = nch;
-	a->idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
-	a->idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
 
-	/* Check that both in and out rates are supported */
-	if (a->idx_in < 0 || a->idx_out < 0) {
-		comp_err(dev, "src_buffer_lengths(): rates not supported, fs_in: %u, fs_out: %u",
-			 fs_in, fs_out);
-		return -EINVAL;
-	}
-
-	stage1 = src_table1[a->idx_out][a->idx_in];
-	stage2 = src_table2[a->idx_out][a->idx_in];
+	stage1 = a->stage1;
+	stage2 = a->stage2;
 
 	/* Check from stage1 parameter for a deleted in/out rate combination.*/
 	if (stage1->filter_length < 1) {
@@ -227,8 +215,8 @@ static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 		return -EINVAL;
 
 	/* Get setup for 2 stage conversion */
-	stage1 = src_table1[p->idx_out][p->idx_in];
-	stage2 = src_table2[p->idx_out][p->idx_in];
+	stage1 = p->stage1;
+	stage2 = p->stage2;
 	ret = init_stages(stage1, stage2, src, p, 2, delay_lines_start);
 	if (ret < 0)
 		return -EINVAL;
@@ -529,8 +517,6 @@ int src_params_general(struct processing_module *mod,
 		return err;
 	}
 
-	src_get_source_sink_params(dev, source, sink);
-
 	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
 		  cd->source_rate, cd->sink_rate);
 	comp_dbg(dev, "src_params(), sample_container_bytes = %d, channels = %u, dev->frames = %u",
@@ -607,16 +593,49 @@ int src_params_general(struct processing_module *mod,
 	return 0;
 }
 
-int src_prepare(struct processing_module *mod,
-		struct sof_source **sources, int num_of_sources,
-		struct sof_sink **sinks, int num_of_sinks)
+int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 {
+	struct src_param *a = &cd->param;
+	int fs_in = cd->source_rate;
+	int fs_out = cd->sink_rate;
+
+	a->idx_in = src_find_fs(a->in_fs, NUM_IN_FS, fs_in);
+	a->idx_out = src_find_fs(a->out_fs, NUM_OUT_FS, fs_out);
+
+	/* Check that both in and out rates are supported */
+	if (a->idx_in < 0 || a->idx_out < 0) {
+		comp_err(dev, "src_buffer_lengths(): rates not supported, fs_in: %u, fs_out: %u",
+			 fs_in, fs_out);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int src_prepare(struct processing_module *mod,
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct src_param *a = &cd->param;
 	int ret;
 
 	comp_info(mod->dev, "src_prepare()");
 
 	if (num_of_sources != 1 || num_of_sinks != 1)
 		return -EINVAL;
+
+	a->in_fs = src_in_fs;
+	a->out_fs = src_out_fs;
+
+	src_get_source_sink_params(mod->dev, sources[0], sinks[0]);
+
+	ret = src_param_set(mod->dev, cd);
+	if (ret < 0)
+		return ret;
+
+	a->stage1 = src_table1[a->idx_out][a->idx_in];
+	a->stage2 = src_table2[a->idx_out][a->idx_in];
 
 	ret = src_params_general(mod, sources[0], sinks[0]);
 	if (ret < 0)
