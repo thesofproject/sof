@@ -119,9 +119,6 @@ static inline void src_polyphase_reset(struct polyphase_src *src)
 	src_state_reset(&src->state2);
 }
 
-int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
-		       int32_t *delay_lines_start);
-
 int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
 		  int n_in);
 
@@ -229,28 +226,14 @@ int src_prepare_general(struct processing_module *mod,
 			struct sof_sink *sink);
 int src_init(struct processing_module *mod);
 
-int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
-		       int nch);
-int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
-		struct polyphase_src *src, struct src_param *p,
-		int n, int32_t *delay_lines_start);
-int src_1s(struct comp_data *cd, struct sof_source *source,
-	   struct sof_sink *sink);
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink);
-int src_verify_params(struct processing_module *mod);
-
-bool src_get_copy_limits(struct comp_data *cd,
-			 struct sof_source *source,
-			 struct sof_sink *sink);
 int src_params_general(struct processing_module *mod,
 		       struct sof_source *source,
 		       struct sof_sink *sink);
 int src_prepare(struct processing_module *mod,
 		struct sof_source **sources, int num_of_sources,
 		struct sof_sink **sinks, int num_of_sinks);
-int src_2s(struct comp_data *cd,
-	   struct sof_source *source, struct sof_sink *sink);
 
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,

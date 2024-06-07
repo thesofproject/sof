@@ -67,8 +67,7 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
-		       int nch)
+static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -150,9 +149,9 @@ int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
-int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
-		struct polyphase_src *src, struct src_param *p,
-		int n, int32_t *delay_lines_start)
+static int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
+		       struct polyphase_src *src, struct src_param *p,
+		       int n, int32_t *delay_lines_start)
 {
 	/* Clear FIR state */
 	src_state_reset(&src->state1);
@@ -216,8 +215,8 @@ int init_stages(const struct src_stage *stage1, const struct src_stage *stage2,
 	return 0;
 }
 
-int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
-		       int32_t *delay_lines_start)
+static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
+			      int32_t *delay_lines_start)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -255,8 +254,8 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 }
 
 /* Normal 2 stage SRC */
-int src_2s(struct comp_data *cd,
-	   struct sof_source *source, struct sof_sink *sink)
+static int src_2s(struct comp_data *cd,
+		  struct sof_source *source, struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -357,8 +356,8 @@ int src_2s(struct comp_data *cd,
 }
 
 /* 1 stage SRC for simple conversions */
-int src_1s(struct comp_data *cd, struct sof_source *source,
-	   struct sof_sink *sink)
+static int src_1s(struct comp_data *cd, struct sof_source *source,
+		  struct sof_sink *sink)
 {
 	struct src_stage_prm s1;
 	int ret;
@@ -424,7 +423,7 @@ void src_set_alignment(struct sof_source *source, struct sof_sink *sink)
 	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
-int src_verify_params(struct processing_module *mod)
+static int src_verify_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -461,9 +460,9 @@ int src_verify_params(struct processing_module *mod)
 	return ret;
 }
 
-bool src_get_copy_limits(struct comp_data *cd,
-			 struct sof_source *source,
-			 struct sof_sink *sink)
+static bool src_get_copy_limits(struct comp_data *cd,
+				struct sof_source *source,
+				struct sof_sink *sink)
 {
 	struct src_param *sp;
 	const struct src_stage *s1;

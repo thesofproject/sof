@@ -7,7 +7,7 @@
 /** \cond GENERATED_BY_TOOLS_TUNE_SRC */
 #include <stdint.h>
 
-const int32_t src_int32_1_2_2268_5000_fir[36] = {
+static const int32_t src_int32_1_2_2268_5000_fir[36] = {
 	1065827,
 	-37924,
 	-4976218,
@@ -47,7 +47,7 @@ const int32_t src_int32_1_2_2268_5000_fir[36] = {
 
 };
 
-const struct src_stage src_int32_1_2_2268_5000 = {
+static const struct src_stage src_int32_1_2_2268_5000 = {
 	1, 0, 1, 36, 36, 2, 1, 0, 1,
 	src_int32_1_2_2268_5000_fir};
 /** \endcond */
