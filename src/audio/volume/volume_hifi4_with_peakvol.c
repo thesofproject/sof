@@ -21,7 +21,8 @@ LOG_MODULE_DECLARE(volume_hifi4, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
-#if SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
+// disabled and replaced by HIFI3, see issue https://github.com/thesofproject/sof/issues/9213
+#if 0 // SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
 #include <xtensa/tie/xt_hifi4.h>
