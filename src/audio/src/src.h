@@ -16,6 +16,19 @@
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 
+struct src_stage {
+	const int idm;
+	const int odm;
+	const int num_of_subfilters;
+	const int subfilter_length;
+	const int filter_length;
+	const int blk_in;
+	const int blk_out;
+	const int halfband;
+	const int shift;
+	const void *coefs; /* Can be int16_t or int32_t depending on config */
+};
+
 struct src_param {
 	int fir_s1;
 	int fir_s2;
@@ -31,19 +44,10 @@ struct src_param {
 	int idx_in;
 	int idx_out;
 	int nch;
-};
-
-struct src_stage {
-	const int idm;
-	const int odm;
-	const int num_of_subfilters;
-	const int subfilter_length;
-	const int filter_length;
-	const int blk_in;
-	const int blk_out;
-	const int halfband;
-	const int shift;
-	const void *coefs; /* Can be int16_t or int32_t depending on config */
+	const struct src_stage *stage1;
+	const struct src_stage *stage2;
+	const int *in_fs;
+	const int *out_fs;
 };
 
 struct src_state {
@@ -231,9 +235,7 @@ int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 int src_params_general(struct processing_module *mod,
 		       struct sof_source *source,
 		       struct sof_sink *sink);
-int src_prepare(struct processing_module *mod,
-		struct sof_source **sources, int num_of_sources,
-		struct sof_sink **sinks, int num_of_sinks);
+int src_param_set(struct comp_dev *dev, struct comp_data *cd);
 
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
