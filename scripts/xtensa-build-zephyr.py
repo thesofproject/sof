@@ -39,6 +39,7 @@ import json
 import gzip
 import dataclasses
 import concurrent.futures as concurrent
+import re
 
 from west import configuration as west_config
 
@@ -955,7 +956,8 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			llext_input = entry_path / (llext_base + '.llext')
 			llext_output = entry_path / (llext_file + '.ri')
 
-			sign_cmd = [platform_wconfig.get("rimage.path"), "-o", str(llext_output),
+			rimage_cmd = re.sub(r"[\"']", "", platform_wconfig.get("rimage.path"))
+			sign_cmd = [rimage_cmd, "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
 				    "-k", str(signing_key), "-l", "-r",
 				    str(llext_input)]
