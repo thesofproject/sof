@@ -945,7 +945,11 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			llext_input = entry_path / (llext_base + '.llext')
 			llext_output = entry_path / (llext_file + '.ri')
 
-			sign_cmd = [platform_wconfig.get("rimage.path"), "-o", str(llext_output),
+			# See why the shlex() parsing step is required at
+			# https://docs.zephyrproject.org/latest/develop/west/sign.html#rimage
+			# and in Zephyr commit 030b740bd1ec
+			rimage_cmd = shlex.split(platform_wconfig.get('rimage.path'))[0]
+			sign_cmd = [rimage_cmd, "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
 				    "-k", str(signing_key), "-l", "-r",
 				    str(llext_input)]
