@@ -39,6 +39,7 @@ import json
 import gzip
 import dataclasses
 import concurrent.futures as concurrent
+import re
 
 from west import configuration as west_config
 
@@ -945,7 +946,18 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			llext_input = entry_path / (llext_base + '.llext')
 			llext_output = entry_path / (llext_file + '.ri')
 
-			sign_cmd = [platform_wconfig.get("rimage.path"), "-o", str(llext_output),
+			# on Windows platform_wconfig.get("rimage.path") returns a string
+			# with multiple nested single and double quotes, which then break
+			# execution:
+			# In dir: D:\a\sof\sof\workspace; running command:
+			# ''"'"'D:\a\sof\sof\workspace\build-rimage\rimage.EXE'"'"'' -o
+			# 'D:\a\sof\sof\workspace\build-mtl\zephyr\eq_iir_llext\eq_iir.llext.ri' -e
+			# -c 'D:\a\sof\sof\workspace\build-mtl\zephyr\eq_iir_llext\rimage_config.toml'
+			# -k 'D:\a\sof\sof\workspace\sof\keys\otc_private_key_3k.pem' -l
+			# -r 'D:\a\sof\sof\workspace\build-mtl\zephyr\eq_iir_llext\eq_iir.llext'
+			# The regex below cleans them up
+			rimage_cmd = re.sub(r"[\"']", "", platform_wconfig.get("rimage.path"))
+			sign_cmd = [rimage_cmd, "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
 				    "-k", str(signing_key), "-l", "-r",
 				    str(llext_input)]
