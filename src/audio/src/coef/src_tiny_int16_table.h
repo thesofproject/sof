@@ -26,12 +26,12 @@
 #include <stdint.h>
 
 /* SRC table */
-const int16_t fir_one = 16384;
-const struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };
-const struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };
-const int src_in_fs[7] = { 8000, 16000, 32000, 44100, 48000, 50000, 96000};
-const int src_out_fs[7] = { 8000, 16000, 32000, 44100, 48000, 50000, 96000};
-const struct src_stage * const src_table1[7][7] = {
+static const int16_t fir_one = 16384;
+static const struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };
+static const struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };
+static const int src_in_fs[7] = { 8000, 16000, 32000, 44100, 48000, 50000, 96000};
+static const int src_out_fs[7] = { 8000, 16000, 32000, 44100, 48000, 50000, 96000};
+static const struct src_stage * const src_table1[7][7] = {
 	{ &src_int16_1_1_0_0, &src_int16_0_0_0_0,
 	 &src_int16_0_0_0_0, &src_int16_0_0_0_0,
 	 &src_int16_1_6_1814_5000, &src_int16_0_0_0_0,
@@ -65,7 +65,7 @@ const struct src_stage * const src_table1[7][7] = {
 	 &src_int16_1_1_0_0}
 };
 
-const struct src_stage * const src_table2[7][7] = {
+static const struct src_stage * const src_table2[7][7] = {
 	{ &src_int16_1_1_0_0, &src_int16_0_0_0_0,
 	 &src_int16_0_0_0_0, &src_int16_0_0_0_0,
 	 &src_int16_1_1_0_0, &src_int16_0_0_0_0,

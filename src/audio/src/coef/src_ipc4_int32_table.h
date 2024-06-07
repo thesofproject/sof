@@ -100,15 +100,15 @@
 #include <stdint.h>
 
 /* SRC table */
-const int32_t fir_one = 1073741824;
-const struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };
-const struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };
-const int src_in_fs[16] = { 8000, 11025, 12000, 16000, 18900, 22050, 24000, 32000,
+static const int32_t fir_one = 1073741824;
+static const struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };
+static const struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };
+static const int src_in_fs[16] = { 8000, 11025, 12000, 16000, 18900, 22050, 24000, 32000,
 	 37800, 44100, 48000, 64000, 88200, 96000, 176400, 192000
 	};
-const int src_out_fs[10] = { 8000, 16000, 24000, 32000, 44100, 48000, 88200, 96000,
+static const int src_out_fs[10] = { 8000, 16000, 24000, 32000, 44100, 48000, 88200, 96000,
 	 176400, 192000};
-const struct src_stage * const src_table1[10][16] = {
+static const struct src_stage * const src_table1[10][16] = {
 	{ &src_int32_1_1_0_0, &src_int32_16_21_4319_5000,
 	 &src_int32_2_3_4535_5000, &src_int32_1_2_4535_5000,
 	 &src_int32_0_0_0_0, &src_int32_10_21_3455_5000,
@@ -201,7 +201,7 @@ const struct src_stage * const src_table1[10][16] = {
 	}
 };
 
-const struct src_stage * const src_table2[10][16] = {
+static const struct src_stage * const src_table2[10][16] = {
 	{ &src_int32_1_1_0_0, &src_int32_20_21_4535_5000,
 	 &src_int32_1_1_0_0, &src_int32_1_1_0_0,
 	 &src_int32_0_0_0_0, &src_int32_16_21_4535_5000,

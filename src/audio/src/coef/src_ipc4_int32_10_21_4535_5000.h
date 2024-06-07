@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-const int32_t src_int32_10_21_4535_5000_fir[2320] = {
+static const int32_t src_int32_10_21_4535_5000_fir[2320] = {
 	26554,
 	22041,
 	-35569,
@@ -2332,7 +2332,7 @@ const int32_t src_int32_10_21_4535_5000_fir[2320] = {
 
 };
 
-const struct src_stage src_int32_10_21_4535_5000 = {
+static const struct src_stage src_int32_10_21_4535_5000 = {
 	2, 1, 10, 232, 2320, 21, 10, 0, 1,
 	src_int32_10_21_4535_5000_fir};
 /** \endcond */
