@@ -251,17 +251,13 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		lib/dma.c
 	)
 
-	if (CONFIG_SOC_INTEL_ACE15_MTPM)
-		zephyr_library_sources(
+	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE15_MTPM
 			${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
 		)
-	endif()
 
-	if (CONFIG_SOC_INTEL_ACE20_LNL)
-		zephyr_library_sources(
+	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE20_LNL
 			${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
 		)
-	endif()
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
