@@ -76,8 +76,6 @@ qf_iir = 30;
 bits_gain = 16; % Q2.14
 qf_gain = 14;
 
-addpath ../eq
-
 quant_coefs = cell(1, 2);
 for i = 1:length(coefs)
 	coef = cell2mat(coefs(i));
@@ -87,8 +85,6 @@ for i = 1:length(coefs)
 end
 
 quant_coefs = cell2mat(quant_coefs);
-
-rmpath ../eq
 
 end
 
