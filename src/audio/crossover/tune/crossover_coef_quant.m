@@ -3,8 +3,6 @@ function crossover_quant = crossover_coef_quant(lowpass, highpass);
 bits_iir = 32; % Q2.30
 qf_iir = 30;
 
-addpath ./../eq
-
 if length(lowpass) ~= length(highpass)
 	error("length of lowpass and highpass array do not match");
 end
@@ -27,5 +25,4 @@ end
 crossover_quant.lp_coef = cell2mat(crossover_quant.lp_coef);
 crossover_quant.hp_coef = cell2mat(crossover_quant.hp_coef);
 
-rmpath ./../eq
 end

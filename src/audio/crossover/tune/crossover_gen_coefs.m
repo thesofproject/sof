@@ -1,13 +1,12 @@
 function crossover = crossover_gen_coefs(fs, fc_low, fc_mid, fc_high)
 
-addpath ./../eq/
 switch nargin
 	case 2, crossover = crossover_generate_2way(fs, fc_low);
 	case 3, crossover = crossover_generate_3way(fs, fc_low, fc_mid);
 	case 4, crossover = crossover_generate_4way(fs, fc_low, fc_mid, fc_high);
 	otherwise, error("Invalid number of arguments");
 end
-rmpath ./../eq
+
 end
 
 function crossover_2way = crossover_generate_2way(fs, fc)
