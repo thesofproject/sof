@@ -1,4 +1,4 @@
-% export_twiddle(bits, fn, fft_size_max)
+% sof_export_twiddle(bits, fn, fft_size_max)
 %
 % Input
 %   bits - Number of bits for data, 16 or 32
@@ -9,7 +9,7 @@
 %
 % Copyright (c) 2022, Intel Corporation. All rights reserved.
 
-function export_twiddle(bits, fn, fft_size_max)
+function sof_export_twiddle(bits, fn, fft_size_max)
 
 if nargin < 2
 	fn = 'twiddle.h';
