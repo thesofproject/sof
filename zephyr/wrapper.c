@@ -332,7 +332,7 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 volatile int *_sof_fatal_null = NULL;
 
 void k_sys_fatal_error_handler(unsigned int reason,
-			       const z_arch_esf_t *esf)
+			       const struct arch_esf *esf)
 {
 	ARG_UNUSED(esf);
 
