@@ -1,6 +1,6 @@
-function crossover_paths(enable)
+function sof_crossover_paths(enable)
 
-% crossover_paths(enable)
+% sof_crossover_paths(enable)
 % enable - set to true to enable needed search path
 %          set to false to disable the search paths
 %

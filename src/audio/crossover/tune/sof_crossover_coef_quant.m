@@ -1,4 +1,4 @@
-function crossover_quant = crossover_coef_quant(lowpass, highpass);
+function crossover_quant = sof_crossover_coef_quant(lowpass, highpass);
 
 bits_iir = 32; % Q2.30
 qf_iir = 30;
