@@ -1,4 +1,4 @@
-function crossover = crossover_gen_coefs(fs, fc_low, fc_mid, fc_high)
+function crossover = sof_crossover_gen_coefs(fs, fc_low, fc_mid, fc_high)
 
 switch nargin
 	case 2, crossover = crossover_generate_2way(fs, fc_low);

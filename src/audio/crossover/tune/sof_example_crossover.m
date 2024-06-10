@@ -1,4 +1,4 @@
-function example_crossover()
+function sof_example_crossover()
 
 % Sampling Frequency and Frequency cut-offs for crossover
 cr.fs = 48e3;
@@ -32,7 +32,7 @@ end
 
 function export_crossover(cr)
 
-crossover_paths(true);
+sof_crossover_paths(true);
 
 endian = "little";
 sof_tools = '../../../../tools';
@@ -64,24 +64,24 @@ assign_sinks(1:cr.num_sinks) = cr.sinks;
 % Generate zeros, poles and gain for crossover with the given frequencies
 switch cr.num_sinks
 	case 2
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low); % 2 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low); % 2 way crossover
 	case 3
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med); % 3 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med); % 3 way crossover
 	case 4
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med, cr.fc_high); % 4 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med, cr.fc_high); % 4 way crossover
 	otherwise
 		error('Illegal number of sinks %d\n', num_sinks);
 end
 
 % Convert the [a,b] coefficients to values usable with SOF
-crossover_bqs = crossover_coef_quant(crossover.lp, crossover.hp);
+crossover_bqs = sof_crossover_coef_quant(crossover.lp, crossover.hp);
 
 % Convert coefficients to sof_crossover_config struct
-config = crossover_generate_config(crossover_bqs, cr.num_sinks, assign_sinks);
+config = sof_crossover_generate_config(crossover_bqs, cr.num_sinks, assign_sinks);
 
 % Convert struct to binary blob
-blob8 = crossover_build_blob(config, endian, 3);
-blob8_ipc4 = crossover_build_blob(config, endian, 4);
+blob8 = sof_crossover_build_blob(config, endian, 3);
+blob8_ipc4 = sof_crossover_build_blob(config, endian, 4);
 
 % Generate output files
 
@@ -97,9 +97,9 @@ alsactl_write(alsa3_fn, blob8);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Magnitude and Phase Response of each sink
-crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
+sof_crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
 
-crossover_paths(false);
+sof_crossover_paths(false);
 end
 
 % Frequencies part for filename
