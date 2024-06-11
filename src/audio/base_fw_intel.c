@@ -63,6 +63,11 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
 
+#ifdef CONFIG_SOC_INTEL_ACE30_PTL
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
+#endif
+
 	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 

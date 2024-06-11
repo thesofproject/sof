@@ -728,4 +728,7 @@ struct schedulers_info {
 
 struct ipc4_system_time_info *basefw_get_system_time_info(void);
 
+/* Specifies I2S IPC4 version for PTL platform */
+static const uint32_t I2S_VER_30_PTL       = 0x40000;
+
 #endif /* __SOF_IPC4_BASE_FW_H__ */
