@@ -154,6 +154,8 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg_params = is_blob ? spec_config : &sof_cfg->ssp;
 		dai_set_link_hda_config(&cfg.link_config,
 					common_config, cfg_params);
+		/* Store tdm slot group index*/
+		cfg.tdm_slot_group = common_config->dai_index & 0xF;
 		break;
 	case SOF_DAI_INTEL_ALH:
 		cfg.type = is_blob ? DAI_INTEL_ALH_NHLT : DAI_INTEL_ALH;
