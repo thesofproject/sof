@@ -106,6 +106,10 @@ struct llp_slot_info {
 	uint32_t reg_offset;
 };
 
+typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int src_channel,
+				 struct audio_stream *dst, unsigned int dst_channel,
+				 unsigned int frames);
+
 /**
  * \brief DAI runtime data
  */
@@ -125,6 +129,11 @@ struct dai_data {
 	int xrun;				/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;		/* processing function */
+
+	channel_copy_func channel_copy;		/* channel copy func used by multi-endpoint
+						 * gateway to mux/demux stream from/to multiple
+						 * DMA buffers
+						 */
 
 	uint32_t period_bytes;			/* number of bytes per one period */
 	uint64_t total_data_processed;
