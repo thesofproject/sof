@@ -248,4 +248,9 @@ static inline uint32_t sink_get_id(struct sof_sink *sink)
 	return sink->audio_stream_params->id;
 }
 
+static inline uint32_t sink_get_pipeline_id(struct sof_sink *sink)
+{
+	return sink->audio_stream_params->pipeline_id;
+}
+
 #endif /* __MODULE_AUDIO_SINK_API_H__ */

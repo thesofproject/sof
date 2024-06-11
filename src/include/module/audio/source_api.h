@@ -226,4 +226,9 @@ static inline uint32_t source_get_id(struct sof_source *source)
 	return source->audio_stream_params->id;
 }
 
+static inline uint32_t source_get_pipeline_id(struct sof_source *source)
+{
+	return source->audio_stream_params->pipeline_id;
+}
+
 #endif /* __MODULE_AUDIO_SOURCE_API_H__ */
