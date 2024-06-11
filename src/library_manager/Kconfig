@@ -7,6 +7,7 @@ menu "Library Manager"
 config LIBRARY_MANAGER
 	bool "Library Manager Support"
 	default n
+	depends on CONFIG_LLEXT
 	depends on IPC_MAJOR_4
 	help
 	  This is support for dynamic modules loading.
