@@ -502,10 +502,10 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 
 	switch (container_size) {
 	case 2:
-		cd->dd[dai_index]->process = copy_single_channel_c16;
+		cd->dd[dai_index]->channel_copy = copy_single_channel_c16;
 		break;
 	case 4:
-		cd->dd[dai_index]->process = copy_single_channel_c32;
+		cd->dd[dai_index]->channel_copy = copy_single_channel_c32;
 		break;
 	default:
 		comp_err(dev, "Unexpected container size: %d", container_size);
