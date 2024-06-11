@@ -31,6 +31,12 @@
 #include <ipc4/fw_reg.h>
 #endif
 
+/* Disable HIFI4, see issue https://github.com/thesofproject/sof/issues/9213 */
+#if defined(CONFIG_ACE_VERSION_1_5) && defined(__XCC__)
+#  undef  SOF_MAX_XCHAL_HIFI
+#  define SOF_MAX_XCHAL_HIFI 3
+#endif
+
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
 
