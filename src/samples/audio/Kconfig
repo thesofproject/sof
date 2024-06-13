@@ -4,6 +4,7 @@ menu "Audio component samples"
 
 	config SAMPLE_SMART_AMP
 		tristate "Smart amplifier test component"
+		default m if LIBRARY_DEFAULT_MODULAR
 		default y
 		help
 		  Select for test smart amplifier component
