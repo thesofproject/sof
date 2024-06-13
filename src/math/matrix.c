@@ -27,6 +27,10 @@
  */
 int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_matrix_16b *c)
 {
+	/* Validate matrix dimensions are compatible for multiplication */
+	if (a->columns != b->rows || a->rows != c->rows || b->columns != c->columns)
+		return -EINVAL;
+
 	int64_t s;
 	int16_t *x;
 	int16_t *y;
@@ -35,8 +39,9 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 	int y_inc = b->columns;
 	const int shift_minus_one = a->fractions + b->fractions - c->fractions - 1;
 
-	if (a->columns != b->rows || a->rows != c->rows || b->columns != c->columns)
-		return -EINVAL;
+	/* Check shift to ensure no integer overflow occurs during shifting */
+	if (shift_minus_one < -1 || shift_minus_one > 31)
+		return -ERANGE;
 
 	/* If all data is Q0 */
 	if (shift_minus_one == -1) {
@@ -93,17 +98,20 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
  */
 int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 			     struct mat_matrix_16b *c)
-{	int64_t p;
+{
+	/* Validate matrix dimensions and non-null pointers */
+	if (!a || !b || !c ||
+	    a->columns != b->columns || a->rows != b->rows ||
+	    c->columns != a->columns || c->rows != a->rows) {
+		return -EINVAL;
+	}
+
 	int16_t *x = a->data;
 	int16_t *y = b->data;
 	int16_t *z = c->data;
+	int64_t p;
 	int i;
 	const int shift_minus_one = a->fractions + b->fractions - c->fractions - 1;
-
-	if (a->columns != b->columns || b->columns != c->columns ||
-	    a->rows != b->rows || b->rows != c->rows) {
-		return -EINVAL;
-	}
 
 	/* If all data is Q0 */
 	if (shift_minus_one == -1) {
