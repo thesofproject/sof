@@ -2,27 +2,27 @@
 
 menu "Audio component samples"
 
-        config SAMPLE_SMART_AMP
-	        tristate "Smart amplifier test component"
-	        default y
-	        help
-	                Select for test smart amplifier component
+	config SAMPLE_SMART_AMP
+		tristate "Smart amplifier test component"
+		default y
+		help
+		  Select for test smart amplifier component
 
-        config SAMPLE_KEYPHRASE
+	config SAMPLE_KEYPHRASE
 		depends on CAVS || IMX || ACE
-	        bool "Keyphrase test component"
-	        default y
-	        help
-	                Select for Keyphrase test component.
-	                Provides basic functionality for use in testing of keyphrase detection pipelines.
+		bool "Keyphrase test component"
+		default y
+		help
+		  Select for Keyphrase test component.
+		  Provides basic functionality for use in testing of keyphrase detection pipelines.
 
 	config KWD_NN_SAMPLE_KEYPHRASE
-                depends on IMX
-                bool "KWD NN Keyphrase test component"
-                default n
-                help
-			Select for KWD NN Keyphrase test component based on neural network.
-			Provides ML functionality for use in testing of keyphrase detection pipelines.
-			Use KWD based on NN as alternative to the default KWD component.
-			Provides neural network as a library.
+		depends on IMX
+		bool "KWD NN Keyphrase test component"
+		default n
+		help
+		  Select for KWD NN Keyphrase test component based on neural network.
+		  Provides ML functionality for use in testing of keyphrase detection pipelines.
+		  Use KWD based on NN as alternative to the default KWD component.
+		  Provides neural network as a library.
 endmenu
