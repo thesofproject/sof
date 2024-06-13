@@ -3,11 +3,28 @@
 // Copyright(c) 2022 Intel Corporation. All rights reserved.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+//	   Shriram Shastry <malladi.sastry@linux.intel.com>
+//
 
 #include <sof/math/matrix.h>
 #include <errno.h>
 #include <stdint.h>
 
+/**
+ * Description: Performs matrix multiplication of two fixed-point 16-bit integer matrices,
+ *	 storing the result in a third matrix. It accounts for fractional bits for
+ *	 fixed-point arithmetic, adjusting the result accordingly.
+ *
+ * Arguments:
+ *   a: pointer to the first input matrix
+ *   b: pointer to the second input matrix
+ *   c: pointer to the output matrix to store result
+ *
+ * Return:
+ *   0 on successful multiplication.
+ *   -EINVAL if input dimensions do not allow for multiplication.
+ *   -ERANGE if the shift operation might cause integer overflow.
+ */
 int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_matrix_16b *c)
 {
 	int64_t s;
@@ -58,6 +75,22 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 	return 0;
 }
 
+/**
+ * Description: Performs element-wise multiplication of two matrices with 16-bit integer elements
+ *		and stores the result in a third matrix. Checks that all matrices have the same
+ *		dimensions and adjusts for fractional bits appropriately. This operation handles
+ *		the manipulation of fixed-point precision based on the fractional bits present in
+ *		the matrices.
+ *
+ * Arguments:
+ *   a - pointer to the first input matrix
+ *   b - pointer to the second input matrix
+ *   c - pointer to the output matrix where the result will be stored
+ *
+ * Returns:
+ *   0 on successful multiplication,
+ *  -EINVAL if input pointers are NULL or matrix dimensions do not match.
+ */
 int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 			     struct mat_matrix_16b *c)
 {	int64_t p;
