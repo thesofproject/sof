@@ -412,9 +412,6 @@ zephyr_library_sources(
 
 	# SOF mandatory audio processing
 	${SOF_AUDIO_PATH}/channel_map.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/source_api_helper.c
 	${SOF_AUDIO_PATH}/sink_api_helper.c
@@ -702,6 +699,15 @@ zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
 	${SOF_AUDIO_PATH}/copier/copier.c
 	${SOF_AUDIO_PATH}/copier/copier_host.c
 	${SOF_AUDIO_PATH}/copier/copier_dai.c
+)
+
+zephyr_library_sources(
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
+)
+zephyr_library_sources_ifdef(CONFIG_PCM_REMAPPING_CONVERTERS
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_remap.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM

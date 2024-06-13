@@ -251,6 +251,13 @@ config PCM_CONVERTER_FORMAT_S32LE
 	help
 	  Support 32 bit processing data format with sign and in little endian format
 
+config PCM_CONVERTER_FORMAT_S16_4LE
+	bool "Support S16_4LE"
+	default y
+	help
+	  Support the format of signed 16-bit little-endian in the 2 lower bytes
+	  of a 32-bit container. This format is used, for example, by the SSP gateway.
+
 config PCM_CONVERTER_FORMAT_FLOAT
 	bool "Support float"
 	default y
@@ -304,6 +311,14 @@ config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
 	default y
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
+
+config PCM_REMAPPING_CONVERTERS
+	bool "Channel remapping conversions"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Enable conversion functions that perform both format conversion
+	  and channel remapping simultaneously.
 
 config TRACE_CHANNEL
 	int "TRACE DMA Channel configuration"
