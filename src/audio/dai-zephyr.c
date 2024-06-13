@@ -192,6 +192,18 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+	case SOF_DAI_INTEL_UAOL:
+		cfg.type = DAI_INTEL_UAOL;
+		cfg.channels = common_config->gtw_fmt->channels_count;
+		/*
+		 * FIXME: The spec says HW expects container size here, not valid_bit_depth.
+		 * However, tests fail if container size is used and work fine with
+		 * valid_bit_depth. Needs investigation. Perhaps tests have a bug?
+		 */
+		cfg.word_size = common_config->gtw_fmt->valid_bit_depth;
+		cfg_params = spec_config;
+		dai_set_link_hda_config(&cfg.link_config, common_config, spec_config);
+		break;
 	default:
 		return -EINVAL;
 	}
