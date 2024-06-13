@@ -1055,6 +1055,18 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
 {
 #if ACE_VERSION > ACE_VERSION_1_5
+	if (dai->type == SOF_DAI_INTEL_UAOL) {
+		void *value_ptr = NULL;
+		uint32_t value_size;
+
+		tlv_value_get(data_buffer, size, GTW_DMA_CONFIG_ID, &value_ptr, &value_size);
+		if (!value_ptr)
+			return IPC4_INVALID_REQUEST;
+
+		dai->host_dma_config[0] = (struct ipc_dma_config *)value_ptr;
+		return IPC4_SUCCESS;
+	}
+
 	uint32_t *dma_config_id = GET_IPC_DMA_CONFIG_ID(data_buffer, size);
 
 	if (*dma_config_id != GTW_DMA_CONFIG_ID)

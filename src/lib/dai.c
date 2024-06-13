@@ -149,6 +149,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_ESAI
 	DT_FOREACH_STATUS_OKAY(nxp_dai_esai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_INTEL_UAOL
+	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
+#endif
 };
 
 const struct device *dai_get_device(uint32_t type, uint32_t index)
@@ -197,6 +200,7 @@ static void dai_set_device_params(struct dai *d)
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
+	case SOF_DAI_INTEL_UAOL:
 		d->dma_dev = SOF_DMA_DEV_HDA;
 		d->dma_caps = SOF_DMA_CAP_HDA;
 		break;
@@ -242,6 +246,9 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		z_type = DAI_MEDIATEK_AFE;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+		z_type = DAI_INTEL_UAOL;
 		break;
 	default:
 		return NULL;
