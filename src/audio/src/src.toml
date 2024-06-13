@@ -1,10 +1,14 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
 	[[module.entry]]
 	name = "SRC"
 	uuid = "E61BB28D-149A-4C1F-B709-46823EF5F5AE"
 	affinity_mask = "0x1"
 	REM #instance_count = "10"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	module_type = "7"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
@@ -77,7 +81,7 @@
 	affinity_mask = "0x1"
 	REM #instance_count = "10"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	module_type = "0x1F"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
