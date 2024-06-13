@@ -33,4 +33,12 @@ config LIBRARY_AUTH_SUPPORT
 	  could be used if enabled.
 	  If unsure say N.
 
+config LIBRARY_DEFAULT_MODULAR
+	bool "Build LLEXT modules by default"
+	depends on LLEXT
+	help
+	  Build code, that can be built as LLEXT modules as such. Usually such
+	  code has tristate Kconfig entries, they will default to "m" if this
+	  option is selected.
+
 endmenu
