@@ -3,6 +3,7 @@
 config COMP_MIXIN_MIXOUT
 	tristate "Mixin_mixout component"
 	depends on IPC_MAJOR_4
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  Select for Mixin_mixout component
