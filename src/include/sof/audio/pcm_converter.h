@@ -72,6 +72,12 @@ extern const struct pcm_func_map pcm_func_map[];
 /** \brief Number of conversion functions. */
 extern const size_t pcm_func_count;
 
+/** \brief Map of formats with dedicated remap with convertion functions. */
+extern const struct pcm_func_map pcm_remap_func_map[];
+
+/** \brief Number of remap with convertion functions. */
+extern const size_t pcm_remap_func_count;
+
 /**
  * \brief Retrieves PCM conversion function.
  * \param[in] in Source frame format.
@@ -93,6 +99,28 @@ pcm_get_conversion_function(enum sof_ipc_frame in,
 	}
 
 	return NULL;
+}
+
+/**
+ * \brief Retrieves PCM remap with conversion function.
+ * \param[in] in Source frame format.
+ * \param[in] out Sink frame format.
+ */
+static inline pcm_converter_func
+pcm_get_remap_function(enum sof_ipc_frame in, enum sof_ipc_frame out)
+{
+        int i;
+
+        for (i = 0; i < pcm_remap_func_count; i++) {
+                if (in != pcm_remap_func_map[i].source)
+                        continue;
+                if (out != pcm_remap_func_map[i].sink)
+                        continue;
+
+                return pcm_remap_func_map[i].func;
+        }
+
+        return NULL;
 }
 
 /** \brief PCM conversion functions mapfor different size of valid bit and container. */
