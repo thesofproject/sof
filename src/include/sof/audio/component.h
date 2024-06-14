@@ -590,7 +590,9 @@ struct comp_dev {
 
 	const struct comp_driver *drv;	/**< driver */
 
-	struct processing_module *mod; /**< self->mod->dev == self, always */
+	struct processing_module *mod; /**< self->mod->dev == self, NULL if component is not using
+					 *  module adapter
+					 */
 
 	/* lists */
 	struct list_item bsource_list;	/**< list of source buffers */
