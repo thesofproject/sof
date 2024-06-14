@@ -26,6 +26,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
+	/* loadable module must use module adapter */
 	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
 

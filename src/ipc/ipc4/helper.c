@@ -468,14 +468,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!cpu_is_me(source->ipc_config.core) && !cross_core_bind)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
-	struct processing_module *srcmod = comp_mod(source);
-	struct processing_module *dstmod = comp_mod(sink);
-	struct module_config *dstcfg = &dstmod->priv.cfg;
-	struct module_config *srccfg = &srcmod->priv.cfg;
+	if (source->drv->type == SOF_COMP_MODULE_ADAPTER) {
+		struct processing_module *srcmod = comp_mod(source);
+		struct module_config *srccfg = &srcmod->priv.cfg;
 
-	/* get obs from the base config extension if the src queue ID is non-zero */
-	if (bu->extension.r.src_queue && bu->extension.r.src_queue < srccfg->nb_output_pins)
-		obs = srccfg->output_pins[bu->extension.r.src_queue].obs;
+		/* get obs from the base config extension if the src queue ID is non-zero */
+		if (bu->extension.r.src_queue && bu->extension.r.src_queue < srccfg->nb_output_pins)
+			obs = srccfg->output_pins[bu->extension.r.src_queue].obs;
+	}
 
 	/* get obs from base config if src queue ID is 0 or if base config extn is missing */
 	if (!obs) {
@@ -490,10 +490,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		obs = source_src_cfg.obs;
 	}
 
-	/* get ibs from the base config extension if the sink queue ID is non-zero */
-	if (bu->extension.r.dst_queue && bu->extension.r.dst_queue < dstcfg->nb_input_pins)
-		ibs = dstcfg->input_pins[bu->extension.r.dst_queue].ibs;
+	if (sink->drv->type == SOF_COMP_MODULE_ADAPTER) {
+		struct processing_module *dstmod = comp_mod(sink);
+		struct module_config *dstcfg = &dstmod->priv.cfg;
 
+		/* get ibs from the base config extension if the sink queue ID is non-zero */
+		if (bu->extension.r.dst_queue && bu->extension.r.dst_queue < dstcfg->nb_input_pins)
+			ibs = dstcfg->input_pins[bu->extension.r.dst_queue].ibs;
+	}
 	/* get ibs from base config if sink queue ID is 0 or if base config extn is missing */
 	if (!ibs) {
 		ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG, &sink_src_cfg);
@@ -538,13 +542,10 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	source_set_min_available(audio_stream_get_source(&buffer->stream), ibs);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	/* mod->dev may be null in case of a module not using module adapter */
-	if (dstmod->dev &&
-	    dstmod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
 		/* data destination module needs to use dp_queue */
 		buffer_create_shadow_dp_queue(buffer, false /* at_input = false */);
-	else if (srcmod->dev &&
-		 srcmod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
 		/* data source module needs to use dp_queue */
 		buffer_create_shadow_dp_queue(buffer, true /* at_input = true */);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
