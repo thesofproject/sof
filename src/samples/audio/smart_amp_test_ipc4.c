@@ -417,6 +417,7 @@ static const struct sof_man_module_manifest main_manifest __section(".module") _
 		.uuid = {0x1E, 0x96, 0x7A, 0x16, 0xE4, 0x8A, 0xEA, 0x11,
 			 0x89, 0xF1, 0x00, 0x0C, 0x29, 0xCE, 0x16, 0x35},
 		.entry_point = (uint32_t)smart_amp_test_llext_entry,
+		.instance_max_count = 1,
 		.type = {
 #ifdef __SOF_MODULE_SERVICE_BUILD__
 			.load_type = SOF_MAN_MOD_TYPE_MODULE,
