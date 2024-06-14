@@ -225,6 +225,7 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	memcpy(man_module->name, sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
 	memcpy(man_module->uuid, sof_mod->module.uuid, 16);
 	man_module->affinity_mask = sof_mod->module.affinity_mask;
+	man_module->instance_max_count = sof_mod->module.instance_max_count;
 	man_module->type.auto_start = sof_mod->module.type.auto_start;
 	man_module->type.domain_dp = sof_mod->module.type.domain_dp;
 	man_module->type.domain_ll = sof_mod->module.type.domain_ll;
@@ -463,9 +464,6 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	/* stack size ??? convert sizes to PAGES */
 	man_module->instance_bss_size = 1;
-
-	/* max number of instances of this module ?? */
-	man_module->instance_max_count = 1;
 
 	module_print_zones(&module->file);
 
