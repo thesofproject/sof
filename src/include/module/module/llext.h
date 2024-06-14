@@ -6,12 +6,13 @@
 #ifndef MODULE_LLEXT_H
 #define MODULE_LLEXT_H
 
-#define SOF_LLEXT_MODULE_MANIFEST(manifest_name, entry, affinity, mod_uuid) \
+#define SOF_LLEXT_MODULE_MANIFEST(manifest_name, entry, affinity, mod_uuid, instances) \
 { \
 	.module = { \
 		.name = manifest_name, \
 		.uuid = {mod_uuid},			  \
 		.entry_point = (uint32_t)(entry), \
+		.instance_max_count = instances, \
 		.type = { \
 			.load_type = SOF_MAN_MOD_TYPE_LLEXT, \
 			.domain_ll = 1, \
