@@ -193,11 +193,7 @@
 #  include <xtensa/config/core-isa.h>
 // Maybe we could make this fully generic (and less readable!) using
 // IS_ENABLED() above.
-#  if XCHAL_HAVE_HIFI5
-#    define SOF_MAX_XCHAL_HIFI 5
-#  elif XCHAL_HAVE_HIFI4
-#    define SOF_MAX_XCHAL_HIFI 4
-#  elif XCHAL_HAVE_HIFI3
+#if XCHAL_HAVE_HIFI3
 #    define SOF_MAX_XCHAL_HIFI 3
 #  else
 #    define SOF_MAX_XCHAL_HIFI NONE
