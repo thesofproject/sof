@@ -269,7 +269,7 @@ SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 SOF_LLEXT_MOD_ENTRY(eq_iir, &eq_iir_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("EQIIR", eq_iir_llext_entry, 1, UUID_EQIIR);
+	SOF_LLEXT_MODULE_MANIFEST("EQIIR", eq_iir_llext_entry, 1, UUID_EQIIR, 40);
 
 SOF_LLEXT_BUILDINFO;
 
