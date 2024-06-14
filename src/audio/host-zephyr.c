@@ -409,6 +409,14 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 
 	/* dma_copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
+	 *
+	 * FIXME: WARNING: For some frame sizes, this can lead to a split first and/or last frame:
+	 * one part of the frame is processed during one LL cycle, while the remaining portion
+	 * is processed in the subsequent LL cycle. This could be a problem for components
+	 * that assume the first sample in the buffer belongs to the first channel. Even
+	 * if such components consume full frames, they could be bound on a fly as additional
+	 * copier sinks or additional mixin sources or sinks, causing them to start processing
+	 * from the wrong channel.
 	 */
 	return ALIGN_DOWN(dma_copy_bytes, hd->dma_copy_align);
 }
