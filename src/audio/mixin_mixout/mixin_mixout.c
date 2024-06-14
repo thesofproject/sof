@@ -982,8 +982,8 @@ SOF_LLEXT_MOD_ENTRY(mixout, &mixout_interface);
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used =
 {
-	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, UUID_MIXIN),
-	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, UUID_MIXOUT),
+	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, UUID_MIXIN, 30),
+	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, UUID_MIXOUT, 30),
 };
 
 SOF_LLEXT_BUILDINFO;
