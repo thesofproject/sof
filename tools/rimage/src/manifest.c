@@ -464,9 +464,6 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	/* stack size ??? convert sizes to PAGES */
 	man_module->instance_bss_size = 1;
 
-	/* max number of instances of this module ?? */
-	man_module->instance_max_count = 1;
-
 	module_print_zones(&module->file);
 
 	/* main module */
