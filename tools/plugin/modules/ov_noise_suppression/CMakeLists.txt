@@ -4,6 +4,8 @@
 find_package(OpenVINO COMPONENTS Runtime)
 
 if(OpenVINO_FOUND)
+set(CMAKE_CXX_STANDARD 17)
+
 add_library(sof_ns_interface STATIC noise_suppression_interface.cpp)
 target_link_libraries(sof_ns_interface PRIVATE -Wl,--export-dynamic)
 target_link_libraries(sof_ns_interface PRIVATE openvino::runtime)
