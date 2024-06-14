@@ -908,7 +908,6 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		 */
 		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
 		buffer_set_params(dd->dma_buffer, &hw_params, BUFFER_UPDATE_FORCE);
-		dd->sampling = get_sample_bytes(hw_params.frame_fmt);
 	}
 
 	*pc = audio_stream_get_size(&dd->dma_buffer->stream) / period_bytes;
@@ -1393,11 +1392,10 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	frames = MIN(src_frames, sink_frames);
 
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
-	 * spike if FAST_MODE is enabled, then one period limitation is omitted. All dd's have the
-	 * same period_bytes, so use the period_bytes from dd[0]
+	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
 	 */
 	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
-		frames = MIN(frames, dd[0]->period_bytes / frame_bytes);
+		frames = MIN(frames, dev->frames);
 	comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(), dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
@@ -1485,14 +1483,13 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
 {
-	uint32_t sampling = dd->sampling;
 	struct dma_status stat;
 	uint32_t avail_bytes;
 	uint32_t free_bytes;
 	uint32_t copy_bytes;
-	uint32_t src_samples;
-	uint32_t sink_samples;
-	uint32_t samples = UINT32_MAX;
+	uint32_t src_frames;
+	uint32_t sink_frames;
+	uint32_t frames = UINT32_MAX;
 	int ret;
 
 	/* get data sizes from DMA */
@@ -1526,23 +1523,26 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		}
 	}
 
+	assert(audio_stream_get_channels(&dd->dma_buffer->stream));
+	assert(audio_stream_get_channels(&dd->local_buffer->stream));
+
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		src_samples = audio_stream_get_avail_samples(&dd->local_buffer->stream);
-		sink_samples = free_bytes / sampling;
-		samples = MIN(src_samples, sink_samples);
+		src_frames = audio_stream_get_avail_frames(&dd->local_buffer->stream);
+		sink_frames = free_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
+		frames = MIN(src_frames, sink_frames);
 	} else {
 		struct list_item *sink_list;
 
-		src_samples = avail_bytes / sampling;
+		src_frames = avail_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
 
 		/*
 		 * there's only one sink buffer in the case of endpoint DAI devices created by
 		 * a DAI copier and it is chosen as the dd->local buffer
 		 */
 		if (!converter) {
-			sink_samples = audio_stream_get_free_samples(&dd->local_buffer->stream);
-			samples = MIN(samples, sink_samples);
+			sink_frames = audio_stream_get_free_frames(&dd->local_buffer->stream);
+			frames = sink_frames;
 		} else {
 			/*
 			 * In the case of capture DAI's with multiple sink buffers, compute the
@@ -1558,14 +1558,14 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 				    sink->hw_params_configured) {
-					sink_samples =
-						audio_stream_get_free_samples(&sink->stream);
-					samples = MIN(samples, sink_samples);
+					sink_frames =
+						audio_stream_get_free_frames(&sink->stream);
+					frames = MIN(frames, sink_frames);
 				}
 			}
 		}
 
-		samples = MIN(samples, src_samples);
+		frames = MIN(frames, src_frames);
 	}
 
 	/* limit bytes per copy to one period for the whole pipeline
@@ -1573,9 +1573,9 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
 	if (!dd->fast_mode)
-		samples = MIN(samples, dd->period_bytes / sampling);
+		frames = MIN(frames, dev->frames);
 
-	copy_bytes = samples * sampling;
+	copy_bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
 
 	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x",
 		 dev->direction, copy_bytes);
