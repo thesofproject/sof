@@ -795,7 +795,8 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 }
 
 static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params, uint32_t *pb, uint32_t *pc)
+			      const struct sof_ipc_stream_params *params,
+			      uint32_t *pb, uint32_t *pc)
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	uint32_t frame_size;
@@ -918,8 +919,10 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 }
 
 int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
-		      struct sof_ipc_stream_params *params)
+		      struct sof_ipc_stream_params *base_cfg_params)
 {
+	struct sof_ipc_stream_params params = *base_cfg_params;
+	struct sof_ipc_stream_params hw_params;
 	struct dma_sg_config *config = &dd->config;
 	uint32_t period_bytes = 0;
 	uint32_t period_count = 0;
@@ -934,13 +937,26 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		return err;
 	}
 
-	err = dai_verify_params(dd, dev, params);
+	/* !!! ADD COMMENT !!! */
+	memset(&hw_params, 0, sizeof(hw_params));
+	err = dai_common_get_hw_params(dd, dev, &hw_params, params.direction);
+	if (err < 0) {
+		comp_err(dev, "dai_common_params(): dai_common_get_hw_params() failed: %d", err);
+		return err;
+	}
+
+	if (hw_params.channels != 0 && hw_params.channels != params.channels) {
+		params.channels = hw_params.channels;
+		comp_info(dev, "!!!!!!!!!!!!!!! %d %d", base_cfg_params->channels, params.channels);
+	}
+
+	err = dai_verify_params(dd, dev, &params);
 	if (err < 0) {
 		comp_err(dev, "dai_zephyr_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
 
-	err = dai_set_dma_buffer(dd, dev, params, &period_bytes, &period_count);
+	err = dai_set_dma_buffer(dd, dev, &params, &period_bytes, &period_count);
 	if (err < 0) {
 		comp_err(dev, "dai_zephyr_params(): alloc dma buffer failed.");
 		goto out;
