@@ -19,14 +19,17 @@ end
 
 function export_multiband_drc(prm)
 
+multiband_drc_paths(true);
+
 % Set the parameters here
-tplg1_fn = sprintf("../../topology/topology1/m4/multiband_drc_coef_%s.m4", prm.name); % Control Bytes File
-tplg2_fn = sprintf("../../topology/topology2/include/components/multiband_drc/%s.conf", prm.name); % Control Bytes File
+sof_tools = '../../../../tools';
+tplg1_fn = sprintf("%s/topology/topology1/m4/multiband_drc_coef_%s.m4", sof_tools, prm.name); % Control Bytes File
+tplg2_fn = sprintf("%s/topology/topology2/include/components/multiband_drc/%s.conf", sof_tools, prm.name); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("../../ctl/ipc3/multiband_drc/%s.blob", prm.name); % Blob binary file
-alsa3_fn = sprintf("../../ctl/ipc3/multiband_drc/%s.txt", prm.name); % ALSA CSV format file
-blob4_fn = sprintf("../../ctl/ipc4/multiband_drc/%s.blob", prm.name); % Blob binary file
-alsa4_fn = sprintf("../../ctl/ipc4/multiband_drc/%s.txt", prm.name); % ALSA CSV format file
+blob3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+alsa3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
+blob4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+alsa4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
 
 endian = "little";
 
@@ -116,6 +119,8 @@ drc_params(4).post_gain = 0;
 drc_params(4).band_lower_freq = prm.band_lower_freq(4) / nyquist;
 
 % Generate Emphasis/Deemphasis IIR filter quantized coefs struct from parameters
+
+
 [emp_coefs, deemp_coefs] = iir_gen_quant_coefs(iir_params);
 
 % Generate Crossover quantized coefs struct from parameters
@@ -128,7 +133,6 @@ crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate, ...
 drc_coefs = drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
 
 % Generate output files
-addpath ../common
 
 % Convert quantized coefs structs to binary blob
 blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
@@ -145,6 +149,6 @@ alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
-rmpath ../common
+multiband_drc_paths(false);
 
 end
