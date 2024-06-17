@@ -763,9 +763,12 @@ static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
 	struct ipc4_audio_format in_fmt = cd->config.base.audio_fmt;
 	struct ipc4_audio_format out_fmt = cd->config.out_fmt;
 	int dma_buf_channels;
-	uint32_t irq_flags;
-
+	pcm_converter_func process;
+	pcm_converter_func converters[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
+	int i;
 ///	struct list_item *sink_list;
+///	struct comp_buffer *sink;
+	uint32_t irq_flags;
 
 	if (cd->endpoint_num == 0) {
 		comp_err(dev, "Non-gateway copier!");
@@ -796,24 +799,34 @@ static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
 		dir = ipc4_capture;
 	}
 
-	pcm_converter_func process =
-		get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, chmap_cfg->channel_map);
+	process = get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, chmap_cfg->channel_map);
 
 	if (!process) {
 		comp_err(dev, "No converter func found!");
 		return -EINVAL;
 	}
 
+///!!! REMAPPING IS SAME FOR ALL (REMAPPING IS FOR INPUT), however,
+/// as sinks could have different formats, re-apply new remap functions
+/// to each sink separately !!!
+//
+	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++) {
+		if (cd->converter[i])
+			converters[i] = get_converter_func(&in_fmt, &cd->out_fmt[i], ipc4_gtw_none,
+							   ipc4_bidirection,
+							   chmap_cfg->channel_map);
+		else
+			converters[i] = NULL;
+	}
+
 	irq_local_disable(irq_flags);
 
-	cd->dd[0]->process = process;
 	cd->dd[0]->chmap = chmap_cfg->channel_map;
+	cd->dd[0]->process = process;
+	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
+		cd->converter[i] = converters[i];
 
 	irq_local_enable(irq_flags);
-
-///!!! REMAPPING IS SAME FOR ALL (REMAPPING IS FOR INPUT), however,
-/// as sinks could have different formats, re-apply new remap_and_convert functions
-/// to each sink separately !!!
 
 	return 0;
 }
