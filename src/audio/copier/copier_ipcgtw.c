@@ -229,6 +229,7 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	 * IPC gateway should be handled similarly as host gateway.
 	 */
 	config->type = SOF_COMP_HOST;
+	cd->gtw_type = ipc4_gtw_host;
 
 	ret = create_endpoint_buffer(dev, cd, copier, false);
 	if (ret < 0)
@@ -255,7 +256,7 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
 		get_converter_func(&copier->base.audio_fmt,
 				   &copier->out_fmt,
-				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction));
+				   ipc4_gtw_host, IPC4_DIRECTION(cd->direction), DUMMY_CHMAP);
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(dev, "failed to get converter for IPC gateway, dir %d",
 			 cd->direction);

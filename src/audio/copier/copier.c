@@ -164,6 +164,8 @@ static int copier_init(struct processing_module *mod)
 
 		dev->direction_set = true;
 	} else {
+		cd->gtw_type = ipc4_gtw_none;
+
 		/* set max sink count for module copier */
 		mod->max_sinks = IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT;
 	}
@@ -244,7 +246,7 @@ static int copier_prepare(struct processing_module *mod,
 		 */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
 							      &cd->config.out_fmt, ipc4_gtw_none,
-							      ipc4_bidirection);
+							      ipc4_bidirection, DUMMY_CHMAP);
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
@@ -686,7 +688,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	cd->out_fmt[sink_fmt->sink_id] = sink_fmt->sink_fmt;
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
 							      &sink_fmt->sink_fmt, ipc4_gtw_none,
-							      ipc4_bidirection);
+							      ipc4_bidirection, DUMMY_CHMAP);
 
 	return 0;
 }

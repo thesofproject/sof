@@ -249,10 +249,26 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 	return false;
 }
 
+static bool is_remapping_chmap(uint32_t chmap, size_t out_channel_count)
+{
+	size_t i;
+
+	assert(out_channel_count <= 8);
+
+	for (i = 0; i < out_channel_count; i++) {
+		if ((chmap & 0xf) != i)
+			return true;
+		chmap >>= 4;
+	}
+
+	return false;
+}
+
 pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      const struct ipc4_audio_format *out_fmt,
 				      enum ipc4_gateway_type type,
-				      enum ipc4_direction_type dir)
+				      enum ipc4_direction_type dir,
+				      uint32_t chmap)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
@@ -299,6 +315,16 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 		default:
 			break;
 		}
+	}
+
+	if (in_fmt->channels_count != out_fmt->channels_count ||
+	    is_remapping_chmap(chmap, out_fmt->channels_count)) {
+		if (in_valid == SOF_IPC_FRAME_S16_LE && in == SOF_IPC_FRAME_S32_LE)
+			in = SOF_IPC_FRAME_S16_4LE;
+		if (out_valid == SOF_IPC_FRAME_S16_LE && out == SOF_IPC_FRAME_S32_LE)
+			out = SOF_IPC_FRAME_S16_4LE;
+
+		return pcm_get_remap_function(in, out);
 	}
 
 	/* check container & sample size */
