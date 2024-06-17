@@ -100,7 +100,7 @@ static int eq_iir_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "eq_iir_free()");
+	comp_dbg(mod->dev, "eq_iir_free()");
 
 	eq_iir_free_delaylines(cd);
 	comp_data_blob_handler_free(cd->model_handler);
@@ -234,7 +234,7 @@ static int eq_iir_reset(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	int i;
 
-	comp_info(mod->dev, "eq_iir_reset()");
+	comp_dbg(mod->dev, "eq_iir_reset()");
 
 	eq_iir_free_delaylines(cd);
 
