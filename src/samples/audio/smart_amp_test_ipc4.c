@@ -157,8 +157,6 @@ static inline int smart_amp_get_config(struct processing_module *mod,
 
 static int smart_amp_free(struct processing_module *mod)
 {
-	LOG_DBG("smart_amp_free()");
-
 #ifndef __SOF_MODULE_SERVICE_BUILD__
 	struct smart_amp_data *sad = module_get_private_data(mod);
 
@@ -320,8 +318,6 @@ static int smart_amp_process(struct processing_module *mod,
 
 static int smart_amp_reset(struct processing_module *mod)
 {
-	LOG_DBG("smart_amp_reset()");
-
 	return 0;
 }
 
