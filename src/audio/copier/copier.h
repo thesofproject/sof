@@ -180,7 +180,12 @@ enum ipc4_copier_module_config_params {
 	 * uint32_t. Config is only allowed when output pin is set up for 32bit and
 	 * source is connected to Gateway
 	 */
-	IPC4_COPIER_MODULE_CFG_ATTENUATION = 6
+	IPC4_COPIER_MODULE_CFG_ATTENUATION = 6,
+	/* Use LARGE_CONFIG_SET to setup new channel map, which allows to map channels
+	 * from gateway buffer to copier with any order.
+	 * Same mapping will be applied for all copier sinks.
+	 */
+	IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP = 7
 };
 
 struct ipc4_copier_config_timestamp_init_data {
@@ -199,6 +204,13 @@ struct ipc4_copier_config_set_sink_format {
 	struct ipc4_audio_format source_fmt;
 	/* Output format used by the sink */
 	struct ipc4_audio_format sink_fmt;
+} __attribute__((packed, aligned(4)));
+
+struct ipc4_copier_config_channel_map {
+	/* Each half-byte of the channel map is an index of the DMA stream channel that
+	 * should be copied to the position determined by this half-byte index.
+	 */
+	uint32_t channel_map;
 } __attribute__((packed, aligned(4)));
 
 #define IPC4_COPIER_DATA_SEGMENT_DISABLE	(0 << 0)

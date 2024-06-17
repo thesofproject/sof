@@ -269,7 +269,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
-					 dd->process, bytes, DUMMY_CHMAP);
+					 dd->process, bytes, dd->chmap);
 	} else {
 		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
 		/*
@@ -277,7 +277,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
 		 */
 		ret = dma_buffer_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
-						      dd->process, bytes, DUMMY_CHMAP);
+						      dd->process, bytes, dd->chmap);
 #if CONFIG_IPC_MAJOR_4
 		struct list_item *sink_list;
 		/* Skip in case of endpoint DAI devices created by the copier */
@@ -318,7 +318,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				    sink->hw_params_configured)
 					ret = dma_buffer_copy_from_no_consume(dd->dma_buffer,
 									      sink, converter[j],
-									      bytes, DUMMY_CHMAP);
+									      bytes, dd->chmap);
 			}
 		}
 #endif
@@ -467,6 +467,8 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	ret = dai_common_new(dd, dev, dai_cfg);
 	if (ret < 0)
 		goto error;
+
+	dd->chmap = DUMMY_CHMAP;
 
 	dev->state = COMP_STATE_READY;
 
