@@ -234,6 +234,28 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
+# Add MFCC to 16 kHz DMIC1, 2ch with NHLT - cAVS
+"sof-hda-generic\;sof-hda-generic-cavs25-2ch-mfcc\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch-mfcc.bin,\
+NUM_DMICS=2,DMIC1_RATE=16000,DMIC1_ENABLE=MFCC,DMIC1_MFCC_PARAMS=default"
+
+# Add MFCC to 16 kHz DMIC1, 2ch with NHLT - ACE1
+"sof-hda-generic\;sof-hda-generic-ace1-2ch-mfcc\;PLATFORM=mtl,HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-2ch-mfcc.bin,\
+NUM_DMICS=2,DMIC1_RATE=16000,DMIC1_ENABLE=MFCC,DMIC1_MFCC_PARAMS=default"
+
+# Add MFCC to 16 kHz DMIC1, 4ch with NHLT - cAVS
+"sof-hda-generic\;sof-hda-generic-cavs25-4ch-mfcc\;HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-4ch-mfcc.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC1_RATE=16000,\
+DMIC1_ENABLE=MFCC,DMIC1_MFCC_PARAMS=default"
+
+# Add MFCC to 16 kHz DMIC1, 4ch with NHLT - ACE1
+"sof-hda-generic\;sof-hda-generic-ace1-4ch-mfcc\;PLATFORM=mtl,HDA_CONFIG=mix,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-4ch-mfcc.bin,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC1_RATE=16000,\
+DMIC1_ENABLE=MFCC,DMIC1_MFCC_PARAMS=default"
+
 # Topology for SOF plugin
 "development/sof-plugin\;sof-plugin\;NOISE_SUPPRESSION=false"
 
