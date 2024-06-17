@@ -232,6 +232,7 @@ struct copier_data {
 	 */
 	struct ipc4_copier_module_cfg config;
 	void *gtw_cfg;
+	enum ipc4_gateway_type gtw_type;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
@@ -267,7 +268,8 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      const struct ipc4_audio_format *out_fmt,
 				      enum ipc4_gateway_type type,
-				      enum ipc4_direction_type dir);
+				      enum ipc4_direction_type dir,
+				      uint32_t chmap);
 
 struct comp_ipc_config;
 int create_endpoint_buffer(struct comp_dev *dev,
