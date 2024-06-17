@@ -129,6 +129,7 @@ struct dai_data {
 	int xrun;				/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;		/* processing function */
+	uint32_t chmap;
 
 	channel_copy_func channel_copy;		/* !!! ADD COMMENT !!! */
 

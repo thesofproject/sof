@@ -667,6 +667,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	struct copier_data *cd = module_get_private_data(mod);
 	struct list_item *sink_list;
 	struct comp_buffer *sink;
+	uint32_t chmap;
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -692,9 +693,15 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	}
 
 	cd->out_fmt[sink_fmt->sink_id] = sink_fmt->sink_fmt;
+
+	if (cd->endpoint_num > 0 && dev->ipc_config.type == SOF_COMP_DAI)
+		chmap = cd->dd[0]->chmap;
+	else
+		chmap = 0x76543210;
+
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
 							      &sink_fmt->sink_fmt, ipc4_gtw_none,
-							      ipc4_bidirection, 0x76543210);
+							      ipc4_bidirection, chmap);
 
 	/* update corresponding sink format */
 	list_for_item(sink_list, &dev->bsink_list) {
@@ -747,6 +754,70 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 	return 0;
 }
 
+static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
+{
+	const struct ipc4_copier_config_channel_map *chmap_cfg = data;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct copier_data *cd = module_get_private_data(mod);
+	enum ipc4_direction_type dir;
+	struct ipc4_audio_format in_fmt = cd->config.base.audio_fmt;
+	struct ipc4_audio_format out_fmt = cd->config.out_fmt;
+	int dma_buf_channels;
+	uint32_t irq_flags;
+
+///	struct list_item *sink_list;
+
+	if (cd->endpoint_num == 0) {
+		comp_err(dev, "Non-gateway copier!");
+		return -EINVAL;
+	}
+
+	if (data_size < sizeof(*chmap_cfg)) {
+		comp_err(dev, "Wrong payload size: %d", data_size);
+		return -EINVAL;
+	}
+
+	comp_info(dev, "New chmap requested: %x", chmap_cfg->channel_map);
+
+	if (dev->ipc_config.type != SOF_COMP_DAI) {
+		comp_err(dev, "Only DAI gateway supports changing chmap!");
+		return -EINVAL;
+	}
+
+	/// !!! ADD COMMENT !!!
+	assert(cd->dd[0]->dma_buffer);
+	dma_buf_channels = audio_stream_get_channels(&cd->dd[0]->dma_buffer->stream);
+
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		out_fmt.channels_count = dma_buf_channels;
+		dir = ipc4_playback;
+	} else {
+		in_fmt.channels_count = dma_buf_channels;
+		dir = ipc4_capture;
+	}
+
+	pcm_converter_func process =
+		get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, chmap_cfg->channel_map);
+
+	if (!process) {
+		comp_err(dev, "No converter func found!");
+		return -EINVAL;
+	}
+
+	irq_local_disable(irq_flags);
+
+	cd->dd[0]->process = process;
+	cd->dd[0]->chmap = chmap_cfg->channel_map;
+
+	irq_local_enable(irq_flags);
+
+///!!! REMAPPING IS SAME FOR ALL (REMAPPING IS FOR INPUT), however,
+/// as sinks could have different formats, re-apply new remap_and_convert functions
+/// to each sink separately !!!
+
+	return 0;
+}
+
 static int copier_set_configuration(struct processing_module *mod,
 				    uint32_t config_id,
 				    enum module_cfg_fragment_position pos,
@@ -764,6 +835,8 @@ static int copier_set_configuration(struct processing_module *mod,
 		return copier_set_sink_fmt(dev, fragment, fragment_size);
 	case IPC4_COPIER_MODULE_CFG_ATTENUATION:
 		return set_attenuation(dev, fragment_size, (const char *)fragment);
+	case IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP:
+		return set_chmap(dev, fragment, fragment_size);
 	default:
 		return -EINVAL;
 	}
