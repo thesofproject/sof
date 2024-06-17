@@ -175,9 +175,7 @@ static int mixout_init(struct processing_module *mod)
 static int mixin_free(struct processing_module *mod)
 {
 	struct mixin_data *md = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "mixin_free()");
 	rfree(md);
 
 	return 0;
@@ -185,7 +183,6 @@ static int mixin_free(struct processing_module *mod)
 
 static int mixout_free(struct processing_module *mod)
 {
-	comp_dbg(mod->dev, "mixout_free()");
 	rfree(module_get_private_data(mod));
 
 	return 0;
@@ -556,9 +553,6 @@ static int mixout_process(struct processing_module *mod,
 static int mixin_reset(struct processing_module *mod)
 {
 	struct mixin_data *mixin_data = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "mixin_reset()");
 
 	mixin_data->mix = NULL;
 	mixin_data->gain_mix = NULL;
@@ -569,8 +563,6 @@ static int mixin_reset(struct processing_module *mod)
 static int mixout_reset(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
-
-	comp_dbg(dev, "mixout_reset()");
 
 	/* FIXME: move this to module_adapter_reset() */
 	if (dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
