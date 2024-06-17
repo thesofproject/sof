@@ -164,6 +164,7 @@ static int copier_dai_init(struct comp_dev *dev,
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	uint32_t chmap;
 	struct dai_data *dd;
 	int ret;
 
@@ -178,6 +179,7 @@ static int copier_dai_init(struct comp_dev *dev,
 		config->frame_fmt = out_frame_fmt;
 		pipeline->sink_comp = dev;
 		cd->bsource_buffer = true;
+		chmap = copier->base.audio_fmt.ch_map;
 	} else {
 		enum sof_ipc_frame in_frame_fmt, in_valid_fmt;
 
@@ -187,6 +189,7 @@ static int copier_dai_init(struct comp_dev *dev,
 					    copier->base.audio_fmt.s_type);
 		config->frame_fmt = in_frame_fmt;
 		pipeline->source_comp = dev;
+		chmap = copier->out_fmt.ch_map;
 	}
 
 	/* save the channel map and count for ALH multi-gateway */
@@ -204,6 +207,8 @@ static int copier_dai_init(struct comp_dev *dev,
 	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)
 		goto free_dd;
+
+	dd->chmap = chmap;
 
 	pipeline->sched_id = config->id;
 
@@ -449,9 +454,9 @@ static int copy_single_channel_c32(const struct audio_stream *src,
 	return 0;
 }
 
-static void copier_dai_adjust_params(const struct copier_data *cd,
-				     struct ipc4_audio_format *in_fmt,
-				     struct ipc4_audio_format *out_fmt)
+void copier_dai_adjust_params(const struct copier_data *cd,
+			      struct ipc4_audio_format *in_fmt,
+			      struct ipc4_audio_format *out_fmt)
 {
 	struct comp_buffer *dma_buf;
 	int dma_buf_channels;
@@ -519,7 +524,7 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 			ipc4_playback : ipc4_capture;
 
 		cd->dd[0]->process =
-			get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, DUMMY_CHMAP);
+			get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, cd->dd[0]->chmap);
 
 		return ret;
 	}
