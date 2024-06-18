@@ -77,4 +77,12 @@ config SOF_BOOT_TEST
 	  initialized. After that SOF will continue running and be usable as
 	  usual.
 
+config VIRTUAL_HEAP
+	bool "Use virtual memory heap to allocate a buffers"
+	default y if ACE
+	default n
+	depends on ACE
+	help
+	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
+	  It is based on a set of buffers whose size is predetermined.
 endif
