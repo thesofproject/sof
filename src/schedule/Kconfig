@@ -63,3 +63,10 @@ config ZEPHYR_TWB_SCHEDULER
 	  Enable Tasks with Budget preemptive scheduler based on
 	  Zephyr preemptive threads for each SOF task that has pre-allocated
 	  MCPS budget renewed with every system tick.
+
+config TWB_IPC_TASK
+	bool "use TWB scheduler for IPC task"
+	default n
+	depends on ZEPHYR_TWB_SCHEDULER
+	help
+	  Switch IPC task to TWB scheduler.
