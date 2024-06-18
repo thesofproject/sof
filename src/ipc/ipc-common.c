@@ -273,7 +273,11 @@ static void ipc_work_handler(struct k_work *work)
 
 void ipc_schedule_process(struct ipc *ipc)
 {
+#if CONFIG_TWB_IPC_TASK
+	schedule_task(ipc->ipc_task, 0, IPC_PERIOD_USEC);
+#else
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
+#endif
 }
 
 int ipc_init(struct sof *sof)
