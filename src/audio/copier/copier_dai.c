@@ -480,13 +480,17 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 
 		if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 			out_fmt.channels_count = dma_buf_channels;
+if (!(dma_buf_container_bits == out_fmt.depth && out_fmt.depth != out_fmt.valid_bit_depth)) {
 			out_fmt.depth = dma_buf_container_bits;
 			out_fmt.valid_bit_depth = dma_buf_valid_bits;
+}
 			dir = ipc4_playback;
 		} else {
 			in_fmt.channels_count = dma_buf_channels;
+if (!(dma_buf_container_bits == in_fmt.depth && in_fmt.depth != in_fmt.valid_bit_depth)) {
 			in_fmt.depth = dma_buf_container_bits;
 			in_fmt.valid_bit_depth = dma_buf_valid_bits;
+}
 			dir = ipc4_capture;
 		}
 
