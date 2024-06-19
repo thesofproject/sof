@@ -461,27 +461,41 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 	int container_size;
 	int j, ret;
 
+///comp_info(dev, "@@@ copier_dai_params()");
+
 	if (cd->endpoint_num == 1) {
 		int dma_buf_channels;
-		enum ipc4_direction_type dir;
+		int dma_buf_container_bits, dma_buf_valid_bits;
 		struct ipc4_audio_format in_fmt = cd->config.base.audio_fmt;
 		struct ipc4_audio_format out_fmt = cd->config.out_fmt;
+		enum ipc4_direction_type dir;
 
 		ret = dai_common_params(cd->dd[0], dev, params);
 
 		/// !!! ADD COMMENT !!!
 		dma_buf_channels = audio_stream_get_channels(&cd->dd[0]->dma_buffer->stream);
+		dma_buf_container_bits = audio_stream_sample_bytes(&cd->dd[0]->dma_buffer->stream) * 8;
+		///!!! ACHTUNG: nobody seems using valid_fmt !!!
+		dma_buf_valid_bits = get_sample_bitdepth(audio_stream_get_frm_fmt(&cd->dd[0]->dma_buffer->stream));
 
 		if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 			out_fmt.channels_count = dma_buf_channels;
+			out_fmt.depth = dma_buf_container_bits;
+			out_fmt.valid_bit_depth = dma_buf_valid_bits;
 			dir = ipc4_playback;
 		} else {
 			in_fmt.channels_count = dma_buf_channels;
+			in_fmt.depth = dma_buf_container_bits;
+			in_fmt.valid_bit_depth = dma_buf_valid_bits;
 			dir = ipc4_capture;
 		}
 
+///comp_err(dev, "@@@ %d %d %x", in_fmt.channels_count, out_fmt.channels_count, cd->dd[0]->chmap);
+
 		cd->dd[0]->process =
-			get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, 0x76543210);
+			get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, cd->dd[0]->chmap);
+
+///comp_err(dev, "@@@ p %x", cd->dd[0]->process);
 
 		return ret;
 	}
