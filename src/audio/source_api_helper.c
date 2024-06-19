@@ -3,6 +3,8 @@
  * Copyright(c) 2023 Intel Corporation. All rights reserved.
  */
 
+#include <rtos/symbol.h>
+
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_stream.h>
@@ -97,6 +99,7 @@ int source_set_alignment_constants(struct sof_source *source,
 		return source->ops->set_alignment_constants(source, byte_align, frame_align_req);
 	return 0;
 }
+EXPORT_SYMBOL(source_set_alignment_constants);
 
 void source_set_min_available(struct sof_source *source, size_t min_available)
 {

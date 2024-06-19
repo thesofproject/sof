@@ -14,6 +14,7 @@
 #include <user/fir.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
+#include <rtos/symbol.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -32,6 +33,7 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 * reset so omitting setting also fir->delay to NULL.
 	 */
 }
+EXPORT_SYMBOL(fir_reset);
 
 int fir_delay_size(struct sof_fir_coef_data *config)
 {
@@ -47,6 +49,7 @@ int fir_delay_size(struct sof_fir_coef_data *config)
 	 */
 	return (config->length + 2) * sizeof(int32_t);
 }
+EXPORT_SYMBOL(fir_delay_size);
 
 int fir_init_coef(struct fir_state_32x16 *fir,
 		  struct sof_fir_coef_data *config)
@@ -62,6 +65,7 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 	fir->coef = (ae_p16x2s *)&config->coef[0];
 	return 0;
 }
+EXPORT_SYMBOL(fir_init_coef);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
@@ -70,6 +74,7 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 	fir->rwp = (ae_p24x2f *)(fir->delay + fir->length - 1);
 	*data += fir->length; /* Point to next delay line start */
 }
+EXPORT_SYMBOL(fir_init_delay);
 
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 		      int *rshift)
@@ -77,6 +82,7 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 	*lshift = (fir->out_shift < 0) ? -fir->out_shift : 0;
 	*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
 }
+EXPORT_SYMBOL(fir_get_lrshifts);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
