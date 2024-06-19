@@ -15,6 +15,7 @@
 #include <sof/audio/format.h>
 #include <sof/math/fir_generic.h>
 #include <user/fir.h>
+#include <rtos/symbol.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -33,6 +34,7 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 * reset so omitting setting also fir->delay to NULL.
 	 */
 }
+EXPORT_SYMBOL(fir_reset);
 
 int fir_delay_size(struct sof_fir_coef_data *config)
 {
@@ -49,6 +51,7 @@ int fir_delay_size(struct sof_fir_coef_data *config)
 	 */
 	return (config->length + 4) * sizeof(int32_t);
 }
+EXPORT_SYMBOL(fir_delay_size);
 
 int fir_init_coef(struct fir_state_32x16 *fir,
 		  struct sof_fir_coef_data *config)
@@ -60,12 +63,14 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 	fir->coef = ASSUME_ALIGNED(&config->coef[0], 4);
 	return 0;
 }
+EXPORT_SYMBOL(fir_init_coef);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
 	fir->delay = *data;
 	*data += fir->length; /* Point to next delay line start */
 }
+EXPORT_SYMBOL(fir_init_delay);
 
 int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 {
