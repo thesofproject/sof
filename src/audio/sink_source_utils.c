@@ -9,6 +9,7 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
+#include <rtos/symbol.h>
 #include <sof/math/numbers.h>
 #include <limits.h>
 
@@ -71,3 +72,4 @@ int source_to_sink_copy(struct sof_source *source,
 	sink_commit_buffer(sink, INT_MAX);
 	return 0;
 }
+EXPORT_SYMBOL(source_to_sink_copy);
