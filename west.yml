@@ -44,7 +44,7 @@ manifest:
     - name: zephyr
       repo-path: zephyr
       # commit in https://github.com/thesofproject/zephyr/tree/sof/stable-v2.10
-      revision: 0f7a01d360ed5b0801f5a3033996ef7d0f4dd9d3
+      revision: 64ee60cf3a6a532861e722c9446864b95d28b1ba
       remote: thesofproject
 
       # Import some projects listed in zephyr/west.yml@revision
