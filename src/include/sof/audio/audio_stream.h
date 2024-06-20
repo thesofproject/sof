@@ -28,6 +28,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /** \addtogroup audio_stream_api Audio Stream API
  *  @{
@@ -406,7 +408,6 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer, void *p
 
 	return ptr;
 }
-
 /**
  * Verifies the pointer and performs rollover when reached the end of
  * the circular buffer.
@@ -426,6 +427,46 @@ static inline void *cir_buf_wrap(void *ptr, void *buf_addr, void *buf_end)
 	return ptr;
 }
 
+/**
+ * @brief Wraps a circular buffer with const pointers.
+ *
+ * This function is a wrapper for the cir_buf_wrap function that accepts const pointers.
+ * It makes a copy of the data pointed to by the input pointers, then calls cir_buf_wrap
+ * with the copies. This ensures that the original data is not modified, which would be
+ * undefined behavior if the input pointers are const.
+ *
+ * @param ptr A const pointer to the current position in the buffer.
+ * @param buf_addr A const pointer to the start of the buffer.
+ * @param buf_end A const pointer to the end of the buffer.
+ * @return A pointer to the new position in the buffer after wrapping, or NULL if memory
+ *         allocation failed.
+ */
+static inline void *cir_buf_wrap_const(const void *ptr, const void *buf_addr, const void *buf_end)
+{
+	void *ptr_copy = malloc(sizeof(int16_t));
+	void *buf_addr_copy = malloc(sizeof(int8_t));
+	void *buf_end_copy = malloc(sizeof(int8_t));
+
+	if (!ptr_copy || !buf_addr_copy || !buf_end_copy) {
+		fprintf(stderr, "Memory allocation failed!\n");
+		free(ptr_copy);
+		free(buf_addr_copy);
+		free(buf_end_copy);
+		return NULL;
+	}
+
+	memcpy(ptr_copy, ptr, sizeof(int16_t));
+	memcpy(buf_addr_copy, buf_addr, sizeof(int8_t));
+	memcpy(buf_end_copy, buf_end, sizeof(int8_t));
+
+	void *result = cir_buf_wrap(ptr_copy, buf_addr_copy, buf_end_copy);
+
+	free(ptr_copy);
+	free(buf_addr_copy);
+	free(buf_end_copy);
+
+	return result;
+}
 /**
  * Verifies the pointer and performs rollover when reached the end of
  * the buffer.
