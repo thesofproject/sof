@@ -400,6 +400,12 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn)
 {
+#if CONFIG_ZEPHYR_SIMULATED_DAI_DRIVER
+	posn->dai_posn = dd->total_data_processed;
+
+	platform_dai_wallclock(dev, &dd->wallclock);
+	posn->wallclock = dd->wallclock;
+#else
 	struct dma_status status;
 	int ret;
 
@@ -414,6 +420,7 @@ int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 		return ret;
 
 	posn->comp_posn = status.total_copied;
+#endif
 
 	return 0;
 }

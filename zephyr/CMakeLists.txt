@@ -490,7 +490,11 @@ if(CONFIG_COMP_BLOB)
 	)
 endif()
 
-if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
+if(CONFIG_ZEPHYR_SIMULATED_HOST_DRIVER)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/simulated-host-zephyr.c
+)
+elseif(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
 		${SOF_AUDIO_PATH}/host-zephyr.c
 	)
@@ -608,7 +612,11 @@ zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
 )
 
-if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
+if(CONFIG_ZEPHYR_SIMULATED_DAI_DRIVER)
+	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
+		${SOF_AUDIO_PATH}/simulated-dai-zephyr.c
+)
+elseif(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
 		${SOF_AUDIO_PATH}/dai-zephyr.c
 )
