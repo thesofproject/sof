@@ -65,3 +65,5 @@ build*/
 cscope.*
 ncscope.*
 
+# headers pack
+header_pack.zip
