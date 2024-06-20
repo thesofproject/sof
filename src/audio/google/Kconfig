@@ -93,4 +93,61 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
 
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	bool "Google Crosstalk Cancellation Audio processing"
+	select COMP_BLOB
+	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
+	default n
+	help
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING_NUM_FRAMES
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	int "Number of frames to process for Google Crosstalk Cancellation Audio processing"
+	default 48
+	help
+	  Sets the number of frames to process in the Google crosstalk
+	  cancellation audio processing.
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING_MAX_NUM_CHANNELS
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	int "Max number of channels to process for Google Crosstalk Cancellation Audio processing"
+	default 2
+	help
+	  Sets the max number of channels to process in the Google crosstalk
+	  cancellation audio processing.
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING_PARTITION_SIZE
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	int "Partition size to process for Google Crosstalk Cancellation Audio processing"
+	default 64
+	help
+	  Sets the partition size to process in the Google crosstalk
+	  cancellation audio processing.
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING_IMPULSE_SIZE
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	int "Impulse size to process for Google Crosstalk Cancellation Audio processing"
+	default 256
+	help
+	  Sets the impulse size to process in the Google crosstalk
+	  cancellation audio processing.
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING_SAMPLE_RATE
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	int "Sample rate to process for Google Crosstalk Cancellation Audio processing"
+	default 48000
+	help
+	  Sets the sample rate to process in the Google crosstalk
+	  cancellation audio processing.
+
+config GOOGLE_CTC_AUDIO_PROCESSING_MOCK
+	bool "Google Crosstalk Cancellation Audio processing mock"
+	default n
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	help
+	  Mock Google crosstalk cancellation audio processing.
+	  It allows for compilation check and basic audio flow checking.
 endmenu
