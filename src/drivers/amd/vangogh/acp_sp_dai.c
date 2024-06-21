@@ -19,7 +19,7 @@
 #include <platform/chip_offset_byte.h>
 
 /* 4abd71ba-8619-458a-b33f-160fc0cf809b */
-DECLARE_SOF_UUID("spdai", spdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
+SOF_DEFINE_UUID("spdai", spdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
 		 0xb3, 0x3f, 0x16, 0x0f, 0xc0, 0xcf, 0x80, 0x9b);
 DECLARE_TR_CTX(spdai_tr, SOF_UUID(spdai_uuid), LOG_LEVEL_INFO);
 

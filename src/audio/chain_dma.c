@@ -36,7 +36,7 @@ static const uint32_t max_chain_number = DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN;
 LOG_MODULE_REGISTER(chain_dma, CONFIG_SOF_LOG_LEVEL);
 
 /* 6a0a274f-27cc-4afb-a3e7-3444723f432e */
-DECLARE_SOF_RT_UUID("chain_dma", chain_dma_uuid, 0x6a0a274f, 0x27cc, 0x4afb,
+SOF_DEFINE_UUID("chain_dma", chain_dma_uuid, 0x6a0a274f, 0x27cc, 0x4afb,
 		    0xa3, 0xe7, 0x34, 0x44, 0x72, 0x3f, 0x43, 0x2e);
 DECLARE_TR_CTX(chain_dma_tr, SOF_UUID(chain_dma_uuid), LOG_LEVEL_INFO);
 

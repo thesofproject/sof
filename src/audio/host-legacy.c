@@ -39,7 +39,7 @@ static const struct comp_driver comp_host;
 LOG_MODULE_REGISTER(host, CONFIG_SOF_LOG_LEVEL);
 
 /* 8b9d100c-6d78-418f-90a3-e0e805d0852b */
-DECLARE_SOF_RT_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
+SOF_DEFINE_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
 		 0x90, 0xa3, 0xe0, 0xe8, 0x05, 0xd0, 0x85, 0x2b);
 
 DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);

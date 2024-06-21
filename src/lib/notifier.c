@@ -22,7 +22,7 @@
 LOG_MODULE_REGISTER(notifier, CONFIG_SOF_LOG_LEVEL);
 
 /* 1fb15a7a-83cd-4c2e-8b32-4da1b2adeeaf */
-DECLARE_SOF_UUID("notifier", notifier_uuid, 0x1fb15a7a, 0x83cd, 0x4c2e,
+SOF_DEFINE_UUID("notifier", notifier_uuid, 0x1fb15a7a, 0x83cd, 0x4c2e,
 		 0x8b, 0x32, 0x4d, 0xa1, 0xb2, 0xad, 0xee, 0xaf);
 
 DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);

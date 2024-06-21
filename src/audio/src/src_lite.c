@@ -60,7 +60,7 @@ static const struct module_interface src_lite_interface = {
 	.free = src_free,
 };
 
-DECLARE_SOF_RT_UUID("src_lite", src_lite_uuid, 0x33441051, 0x44CD, 0x466A,
+SOF_DEFINE_UUID("src_lite", src_lite_uuid, 0x33441051, 0x44CD, 0x466A,
 		    0x83, 0xA3, 0x17, 0x84, 0x78, 0x70, 0x8A, 0xEA);
 
 DECLARE_TR_CTX(src_lite_tr, SOF_UUID(src_lite_uuid), LOG_LEVEL_INFO);

@@ -30,13 +30,13 @@
 #include <sof/ut.h>
 
 /* 7CAD0808-AB10-CD23-EF45-12AB34CD56EF */
-DECLARE_SOF_RT_UUID("probe", probe_uuid, 0x7CAD0808, 0xAB10, 0xCD23,
+SOF_DEFINE_UUID("probe", probe_uuid, 0x7CAD0808, 0xAB10, 0xCD23,
 		    0xEF, 0x45, 0x12, 0xAB, 0x34, 0xCD, 0x56, 0xEF);
 
 static const struct comp_driver comp_probe;
 #elif CONFIG_IPC_MAJOR_3
 /* 9d1fb66e-4ffb-497f-994b-17719686596e */
-DECLARE_SOF_RT_UUID("probe", probe_uuid, 0x9d1fb66e, 0x4ffb, 0x497f,
+SOF_DEFINE_UUID("probe", probe_uuid, 0x9d1fb66e, 0x4ffb, 0x497f,
 		    0x99, 0x4b, 0x17, 0x71, 0x96, 0x86, 0x59, 0x6e);
 #else
 #error "No or invalid IPC MAJOR version selected."
@@ -45,7 +45,7 @@ DECLARE_SOF_RT_UUID("probe", probe_uuid, 0x9d1fb66e, 0x4ffb, 0x497f,
 DECLARE_TR_CTX(pr_tr, SOF_UUID(probe_uuid), LOG_LEVEL_INFO);
 
 /* 2f0b1901-cac0-4b87-812f-f2d5e4f19e4a */
-DECLARE_SOF_UUID("probe-task", probe_task_uuid, 0x2f0b1901, 0xcac0, 0x4b87,
+SOF_DEFINE_UUID("probe-task", probe_task_uuid, 0x2f0b1901, 0xcac0, 0x4b87,
 		 0x81, 0x2f, 0xf2, 0xd5, 0xe4, 0xf1, 0x9e, 0x4a);
 
 LOG_MODULE_REGISTER(probe, CONFIG_SOF_LOG_LEVEL);

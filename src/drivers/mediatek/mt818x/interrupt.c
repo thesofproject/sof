@@ -24,7 +24,7 @@
 #define PENDING_IRQ_INDEX_MAX 32
 
 /* d2e3f730-df39-42ee-81a8-39bfb4d024c2 */
-DECLARE_SOF_UUID("irq-818x", irq_mt818x_uuid, 0xd2e3f730, 0xdf39, 0x42ee,
+SOF_DEFINE_UUID("irq-818x", irq_mt818x_uuid, 0xd2e3f730, 0xdf39, 0x42ee,
 		 0x81, 0xa8, 0x39, 0xbf, 0xb4, 0xd0, 0x24, 0xc2);
 
 DECLARE_TR_CTX(int_tr, SOF_UUID(irq_mt818x_uuid), LOG_LEVEL_INFO);

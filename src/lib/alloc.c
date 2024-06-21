@@ -27,7 +27,7 @@
 LOG_MODULE_REGISTER(memory, CONFIG_SOF_LOG_LEVEL);
 
 /* 425d6e68-145c-4455-b0b2-c7260b0600a5 */
-DECLARE_SOF_UUID("memory", mem_uuid, 0x425d6e68, 0x145c, 0x4455,
+SOF_DEFINE_UUID("memory", mem_uuid, 0x425d6e68, 0x145c, 0x4455,
 		 0xb0, 0xb2, 0xc7, 0x26, 0x0b, 0x06, 0x00, 0xa5);
 
 DECLARE_TR_CTX(mem_tr, SOF_UUID(mem_uuid), LOG_LEVEL_INFO);
