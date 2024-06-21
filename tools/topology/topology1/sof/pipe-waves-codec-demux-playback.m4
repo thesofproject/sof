@@ -31,7 +31,9 @@ include(`codec_adapter.m4')
 
 ifdef(`ENDPOINT_NAME',`',`fatal_error(`Pipe requires ENDPOINT_NAME to be defined: Speakers, Headphones, etc.')')
 
-define(`SETUP_PARAMS_NAME', `Waves' `ENDPOINT_NAME' `Setup' PIPELINE_ID)
+ifelse(PLATFORM, `tgl', `
+	define(SETUP_PARAMS_NAME, `MaxxChrome Setup' PIPELINE_ID)', `
+	define(SETUP_PARAMS_NAME, `Waves' `ENDPOINT_NAME' `Setup' PIPELINE_ID)')
 
 CONTROLBYTES_PRIV(PP_SETUP_CONFIG,
 `       bytes "0x53,0x4f,0x46,0x00,'
