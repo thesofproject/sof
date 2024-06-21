@@ -35,6 +35,14 @@
  *
  * UUID for a new component may be generated with uuidgen Linux tool, part
  * of the util-linux package.
+ *
+ * FIXME: this struct scheme has an endianness bug.  On BE systems,
+ * the same initialier for the a/b/c fields will produce different
+ * memory layout than on LE systems.  Within C code, that's fine, but
+ * when compared with external representations (c.f. topology) that
+ * pass UUIDs as a linear array of bytes, only one endianness will
+ * work.  If SOF ever ships on a BE system all use of sof_uuid will
+ * need to be modified to byte swap the a/b/c values.
  */
 struct sof_uuid {
 	uint32_t a;
@@ -81,7 +89,7 @@ struct sof_uuid_entry {
 	static const struct sof_uuid_entry uuid_name ## _ldc = {	\
 		{.a = va, .b = vb, .c = vc,				\
 		 .d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}},	\
-		entity_name "\0"					\
+		entity_name						\
 	}
 
 /** \brief Declares runtime UUID (aaaaaaaa-bbbb-cccc-d0d1-d2d3d4d5d6d7) and name.
