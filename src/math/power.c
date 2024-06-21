@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 /* d23cf8d0-8dfe-497c-8202-5f909cf72735 */
-DECLARE_SOF_UUID("math_power", math_power_uuid, 0xd23cf8d0, 0x8dfe, 0x497c,
+SOF_DEFINE_UUID("math_power", math_power_uuid, 0xd23cf8d0, 0x8dfe, 0x497c,
 		 0x82, 0x02, 0x5f, 0x90, 0x9c, 0xf7, 0x27, 0x35);
 
 DECLARE_TR_CTX(math_power_tr, SOF_UUID(math_power_uuid), LOG_LEVEL_INFO);

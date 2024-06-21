@@ -34,12 +34,12 @@
 LOG_MODULE_REGISTER(mixin_mixout, CONFIG_SOF_LOG_LEVEL);
 
 /* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
-DECLARE_SOF_RT_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
+SOF_DEFINE_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
 		    0x8d, 0x3f, 0xf9, 0x2c, 0xd5, 0xc4, 0x3c, 0x09);
 DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 
 /* mixout 3c56505a-24d7-418f-bddc-c1f5a3ac2ae0 */
-DECLARE_SOF_RT_UUID("mix_out", mixout_uuid, 0x3c56505a, 0x24d7, 0x418f,
+SOF_DEFINE_UUID("mix_out", mixout_uuid, 0x3c56505a, 0x24d7, 0x418f,
 		    0xbd, 0xdc, 0xc1, 0xf5, 0xa3, 0xac, 0x2a, 0xe0);
 DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 

@@ -19,7 +19,7 @@
 #include <sof/trace/trace.h>
 
 /* 19d4e680-4479-48cc-af86-9f63d8b0098b */
-DECLARE_SOF_UUID("clkdrv", clkdrv_uuid, 0x19d4e680, 0x4479, 0x48cc,
+SOF_DEFINE_UUID("clkdrv", clkdrv_uuid, 0x19d4e680, 0x4479, 0x48cc,
 		 0xaf, 0x86, 0x9f, 0x63, 0xd8, 0xb0, 0x09, 0x8b);
 
 DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_uuid), LOG_LEVEL_INFO);

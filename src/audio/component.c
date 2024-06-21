@@ -36,7 +36,7 @@ LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
 static SHARED_DATA struct comp_driver_list cd;
 
 /* 7c42ce8b-0108-43d0-9137-56d660478c5f */
-DECLARE_SOF_UUID("component", comp_uuid, 0x7c42ce8b, 0x0108, 0x43d0,
+SOF_DEFINE_UUID("component", comp_uuid, 0x7c42ce8b, 0x0108, 0x43d0,
 		 0x91, 0x37, 0x56, 0xd6, 0x60, 0x47, 0x8c, 0x5f);
 
 DECLARE_TR_CTX(comp_tr, SOF_UUID(comp_uuid), LOG_LEVEL_INFO);

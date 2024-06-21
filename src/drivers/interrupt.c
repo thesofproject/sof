@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(irq, CONFIG_SOF_LOG_LEVEL);
 
 /* 1862d39a-3a84-4d64-8c91-dce1dfc122db */
 
-DECLARE_SOF_UUID("irq", irq_uuid, 0x1862d39a, 0x3a84, 0x4d64,
+SOF_DEFINE_UUID("irq", irq_uuid, 0x1862d39a, 0x3a84, 0x4d64,
 		 0x8c, 0x91, 0xdc, 0xe1, 0xdf, 0xc1, 0x22, 0xdb);
 
 DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);

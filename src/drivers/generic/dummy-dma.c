@@ -49,7 +49,7 @@
 LOG_MODULE_REGISTER(dummy_dma, CONFIG_SOF_LOG_LEVEL);
 
 /* f6d15ad3-b122-458c-ae9b-0ab0b5867aa0 */
-DECLARE_SOF_UUID("dummy-dma", dummy_dma_uuid, 0xf6d15ad3, 0xb122, 0x458c,
+SOF_DEFINE_UUID("dummy-dma", dummy_dma_uuid, 0xf6d15ad3, 0xb122, 0x458c,
 		 0xae, 0x9b, 0x0a, 0xb0, 0xb5, 0x86, 0x7a, 0xa0);
 
 DECLARE_TR_CTX(ddma_tr, SOF_UUID(dummy_dma_uuid), LOG_LEVEL_INFO);

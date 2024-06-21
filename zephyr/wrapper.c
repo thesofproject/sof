@@ -39,7 +39,7 @@ extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_MAX_NUM_CPUS,
 				   CONFIG_ISR_STACK_SIZE);
 
 /* 300aaad4-45d2-8313-25d0-5e1d6086cdd1 */
-DECLARE_SOF_RT_UUID("zephyr", zephyr_uuid, 0x300aaad4, 0x45d2, 0x8313,
+SOF_DEFINE_UUID("zephyr", zephyr_uuid, 0x300aaad4, 0x45d2, 0x8313,
 		 0x25, 0xd0, 0x5e, 0x1d, 0x60, 0x86, 0xcd, 0xd1);
 
 DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);

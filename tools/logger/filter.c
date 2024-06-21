@@ -135,7 +135,7 @@ static char *filter_parse_component_name(char *input_str, struct filter_element 
  *   `*`
  * Whitespace is possible at the begin, end and after `name`.
  * `name` must refer to values from given UUID dictionary,
- *        (so name comes from DECLARE_SOF_UUID macro usage)
+ *        (so name comes from SOF_DEFINE_UUID macro usage)
 
  * @param input_str formatted component definition
  * @param out element where component definition should be saved
