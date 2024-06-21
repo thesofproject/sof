@@ -10,6 +10,10 @@
 
 #include <sof/common.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/sys/iterable_sections.h>
+#endif
+
 /** \addtogroup uuid_api UUID API
  *  UUID API specification.
  *  @{
@@ -51,6 +55,9 @@ struct sof_uuid {
 	uint8_t  d[8];
 };
 
+#define _UUID_INIT(va, vb, vc, d0, d1, d2, d3, d4, d5, d6, d7) \
+	{ va, vb, vc, { d0, d1, d2, d3, d4, d5, d6, d7 } }
+
 /**
  * \brief Connects UUID with component description
  *
@@ -62,6 +69,35 @@ struct sof_uuid_entry {
 	struct sof_uuid id;
 	const char name[UUID_NAME_MAX_LEN];
 };
+
+#ifdef __ZEPHYR__
+/* Zephyr puts all the UUID structs into the firmware .rodata as an
+ * ITERABLE array.  Note the alias emitted to get the typing correct,
+ * Zephyr defines the full suf_uuid_entry struct, where the API
+ * demands that the symbol name refer to a struct sof_uuid.
+ */
+#define _UUID(uuid_name)    (&_##uuid_name)
+#define _RT_UUID(uuid_name) (&uuid_name)
+#define _DEF_UUID(entity_name, uuid_name, initializer)			\
+	const STRUCT_SECTION_ITERABLE(sof_uuid_entry, _##uuid_name) =	\
+		{ .id = initializer, .name = entity_name };		\
+	extern const struct sof_uuid					\
+		__attribute__((alias("_" #uuid_name))) uuid_name
+
+#else
+/* XTOS SOF emits two definitions, one into the runtime (which may not
+ * be linked if unreferenced) and a separate one that goes into a
+ * special section via handling in the linker script.
+ */
+#define _UUID(uuid_name)    (&(uuid_name ## _ldc))
+#define _RT_UUID(uuid_name) (&(uuid_name))
+#define _DEF_UUID(entity_name, uuid_name, initializer)		\
+	__section(".static_uuids")				\
+	static const struct sof_uuid_entry uuid_name ## _ldc	\
+		= { .id = initializer, .name = entity_name };	\
+	const struct sof_uuid uuid_name = initializer
+
+#endif /* __ZEPHYR__ */
 
 /** \brief Declares runtime UUID (aaaaaaaa-bbbb-cccc-d0d1-d2d3d4d5d6d7) and name.
  *
@@ -82,32 +118,27 @@ struct sof_uuid_entry {
  * \param vd6 d6 value.
  * \param vd7 d7 value.
  */
-#define SOF_DEFINE_UUID(entity_name, uuid_name,				\
-			va, vb, vc,					\
-			vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)		\
-	__section(".static_uuids")					\
-	static const struct sof_uuid_entry uuid_name ## _ldc = {	\
-		{.a = va, .b = vb, .c = vc,				\
-		 .d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}},	\
-		entity_name						\
-	};								\
-	const struct sof_uuid uuid_name = {				\
-		.a = va, .b = vb, .c = vc,				\
-		.d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}		\
-	}
+#define SOF_DEFINE_UUID(entity_name, uuid_name, va, vb, vc,	\
+			vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
+	_DEF_UUID(entity_name, uuid_name,			\
+		  _UUID_INIT(va, vb, vc, vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7))
 
 /** \brief Creates local unique 32-bit representation of UUID structure.
+ *
+ * In Zephyr builds, this has the same address as the result of
+ * SOF_RT_UUID, but has type of "struct sof_uuid *" and not "struct
+ * sof_uid_record *"
  *
  * \param uuid_name UUID symbol name declared with DECLARE_SOF_UUID() or
  *                 DECLARE_SOF_RT_UUID().
  */
-#define SOF_UUID(uuid_name) (&(uuid_name ## _ldc))
+#define SOF_UUID(uuid_name) _UUID(uuid_name)
 
 /** \brief Dereference unique 32-bit representation of UUID structure in runtime.
  *
  * \param uuid_name UUID symbol name declared with DECLARE_SOF_RT_UUID().
  */
-#define SOF_RT_UUID(uuid_name) (&(uuid_name))
+#define SOF_RT_UUID(uuid_name) _RT_UUID(uuid_name)
 
 /** @}*/
 
