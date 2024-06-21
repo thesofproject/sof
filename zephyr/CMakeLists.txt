@@ -891,6 +891,9 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
+# Linker snippet for the UUID table
+zephyr_linker_sources("ROM_SECTIONS" uuid-snippet.ld)
+
 # Setup SOF directories
 set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
