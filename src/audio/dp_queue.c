@@ -15,7 +15,7 @@
 LOG_MODULE_REGISTER(dp_queue, CONFIG_SOF_LOG_LEVEL);
 
 /* 393608d8-4188-11ee-be56-0242ac120002 */
-DECLARE_SOF_RT_UUID("dp_queue", dp_queue_uuid, 0x393608d8, 0x4188, 0x11ee,
+SOF_DEFINE_UUID("dp_queue", dp_queue_uuid, 0x393608d8, 0x4188, 0x11ee,
 		    0xbe, 0x56, 0x02, 0x42, 0xac, 0x12, 0x20, 0x02);
 DECLARE_TR_CTX(dp_queue_tr, SOF_UUID(dp_queue_uuid), LOG_LEVEL_INFO);
 

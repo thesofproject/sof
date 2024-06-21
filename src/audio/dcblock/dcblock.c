@@ -36,7 +36,7 @@
 LOG_MODULE_REGISTER(dcblock, CONFIG_SOF_LOG_LEVEL);
 
 /* b809efaf-5681-42b1-9ed6-04bb012dd384 */
-DECLARE_SOF_RT_UUID("dcblock", dcblock_uuid, 0xb809efaf, 0x5681, 0x42b1,
+SOF_DEFINE_UUID("dcblock", dcblock_uuid, 0xb809efaf, 0x5681, 0x42b1,
 		 0x9e, 0xd6, 0x04, 0xbb, 0x01, 0x2d, 0xd3, 0x84);
 
 DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);

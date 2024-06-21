@@ -17,7 +17,7 @@
 LOG_MODULE_REGISTER(channel_map, CONFIG_SOF_LOG_LEVEL);
 
 /* ec290e95-4a20-47eb-bbff-d9c888431831 */
-DECLARE_SOF_UUID("channel-map", chmap_uuid, 0xec290e95, 0x4a20, 0x47eb,
+SOF_DEFINE_UUID("channel-map", chmap_uuid, 0xec290e95, 0x4a20, 0x47eb,
 		 0xbb, 0xff, 0xd9, 0xc8, 0x88, 0x43, 0x18, 0x31);
 
 DECLARE_TR_CTX(chmap_tr, SOF_UUID(chmap_uuid), LOG_LEVEL_INFO);

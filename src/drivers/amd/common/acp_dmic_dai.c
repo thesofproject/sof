@@ -22,7 +22,7 @@
 extern struct acp_dmic_silence acp_initsilence;
 
 /*0ae40946-dfd2-4140-91-52-0d-d5-a3-ea-ae-81*/
-DECLARE_SOF_UUID("acp_dmic_dai", acp_dmic_dai_uuid, 0x0ae40946, 0xdfd2, 0x4140,
+SOF_DEFINE_UUID("acp_dmic_dai", acp_dmic_dai_uuid, 0x0ae40946, 0xdfd2, 0x4140,
 		0x91, 0x52, 0x0d, 0xd5, 0xa3, 0xea, 0xae, 0x81);
 
 DECLARE_TR_CTX(acp_dmic_dai_tr, SOF_UUID(acp_dmic_dai_uuid), LOG_LEVEL_INFO);

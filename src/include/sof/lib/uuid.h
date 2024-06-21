@@ -82,9 +82,9 @@ struct sof_uuid_entry {
  * \param vd6 d6 value.
  * \param vd7 d7 value.
  */
-#define DECLARE_SOF_RT_UUID(entity_name, uuid_name,			\
-			 va, vb, vc,					\
-			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
+#define SOF_DEFINE_UUID(entity_name, uuid_name,				\
+			va, vb, vc,					\
+			vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)		\
 	__section(".static_uuids")					\
 	static const struct sof_uuid_entry uuid_name ## _ldc = {	\
 		{.a = va, .b = vb, .c = vc,				\
@@ -108,9 +108,6 @@ struct sof_uuid_entry {
  * \param uuid_name UUID symbol name declared with DECLARE_SOF_RT_UUID().
  */
 #define SOF_RT_UUID(uuid_name) (&(uuid_name))
-
-#define DECLARE_SOF_UUID(...) DECLARE_SOF_RT_UUID(__VA_ARGS__)
-#define SOF_UUID(uuid_name) (&(uuid_name ## _ldc))
 
 /** @}*/
 

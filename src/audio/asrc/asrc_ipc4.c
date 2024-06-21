@@ -17,7 +17,7 @@
 #include "asrc.h"
 
 /* 66b4402d-b468-42f2-81a7-b37121863dd4 */
-DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0x66b4402d, 0xb468, 0x42f2,
+SOF_DEFINE_UUID("asrc", asrc_uuid, 0x66b4402d, 0xb468, 0x42f2,
 		    0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4);
 
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);

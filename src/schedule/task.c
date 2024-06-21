@@ -31,7 +31,7 @@
 typedef enum task_state (*task_main)(void *);
 
 /* 37f1d41f-252d-448d-b9c4-1e2bee8e1bf1 */
-DECLARE_SOF_UUID("main-task", main_task_uuid, 0x37f1d41f, 0x252d, 0x448d,
+SOF_DEFINE_UUID("main-task", main_task_uuid, 0x37f1d41f, 0x252d, 0x448d,
 		 0xb9, 0xc4, 0x1e, 0x2b, 0xee, 0x8e, 0x1b, 0xf1);
 
 static void sys_module_init(void)

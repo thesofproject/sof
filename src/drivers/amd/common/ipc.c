@@ -34,7 +34,7 @@
 #include <platform/ipc.h>
 
 /* 49be8ff3-71a3-4456-bb7e-4723f2e5730c */
-DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x49be8ff3, 0x71a3, 0x4456,
+SOF_DEFINE_UUID("ipc-task", ipc_task_uuid, 0x49be8ff3, 0x71a3, 0x4456,
 		 0xbb, 0x7e, 0x47, 0x23, 0xf2, 0xe5, 0x73, 0x0c);
 
 extern volatile acp_scratch_mem_config_t *pscratch_mem_cfg;

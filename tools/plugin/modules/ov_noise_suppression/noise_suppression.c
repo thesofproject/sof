@@ -30,7 +30,7 @@
 LOG_MODULE_REGISTER(ns, CONFIG_SOF_LOG_LEVEL);
 
 /* 7ae671a7-4617-4a09-bf6d-9d29c998dbc1 */
-DECLARE_SOF_RT_UUID("ns", ns_comp_uuid, 0x7ae671a7, 0x4617,
+SOF_DEFINE_UUID("ns", ns_comp_uuid, 0x7ae671a7, 0x4617,
 		    0x4a09, 0xbf, 0x6d, 0x9d, 0x29, 0xc9, 0x98, 0xdb, 0xc1);
 
 DECLARE_TR_CTX(ns_comp_tr, SOF_UUID(ns_comp_uuid), LOG_LEVEL_INFO);

@@ -33,7 +33,7 @@
 #include <platform/chip_registers.h>
 #include <platform/acp_dmic_dma.h>
 
-DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
+SOF_DEFINE_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
 		 0xb9, 0x42, 0x59, 0xe2, 0x0a, 0x66, 0x11, 0xbe);
 DECLARE_TR_CTX(acp_dmic_dma_vgh_tr, SOF_UUID(acp_dmic_dma_uuid), LOG_LEVEL_INFO);
 

@@ -34,7 +34,7 @@
 #include <platform/acp_dmic_dma.h>
 
 /* 109c7aba-a7ba-43c3-b9-42-59-e2-0a-66-11-be */
-DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
+SOF_DEFINE_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0x109c7aba, 0xa7ba, 0x43c3,
 		0xb9, 0x42, 0x59, 0xe2, 0x0a, 0x66, 0x11, 0xbe);
 DECLARE_TR_CTX(acp_dmic_dma_rmb_tr, SOF_UUID(acp_dmic_dma_uuid), LOG_LEVEL_INFO);
 

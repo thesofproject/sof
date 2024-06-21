@@ -45,7 +45,7 @@ enum IGO_NR_ENUM {
 LOG_MODULE_REGISTER(igo_nr, CONFIG_SOF_LOG_LEVEL);
 
 /* 696ae2bc-2877-11eb-adc1-0242ac120002 */
-DECLARE_SOF_RT_UUID("igo-nr", igo_nr_uuid,  0x696ae2bc, 0x2877, 0x11eb, 0xad, 0xc1,
+SOF_DEFINE_UUID("igo-nr", igo_nr_uuid,  0x696ae2bc, 0x2877, 0x11eb, 0xad, 0xc1,
 		    0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
 
 DECLARE_TR_CTX(igo_nr_tr, SOF_UUID(igo_nr_uuid), LOG_LEVEL_INFO);

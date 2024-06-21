@@ -35,7 +35,7 @@
 LOG_MODULE_REGISTER(mfcc, CONFIG_SOF_LOG_LEVEL);
 
 /* db10a773-1aa4-4cea-a21f-2d57a5c982eb */
-DECLARE_SOF_RT_UUID("mfcc", mfcc_uuid, 0xdb10a773, 0x1aa4, 0x4cea,
+SOF_DEFINE_UUID("mfcc", mfcc_uuid, 0xdb10a773, 0x1aa4, 0x4cea,
 		    0xa2, 0x1f, 0x2d, 0x57, 0xa5, 0xc9, 0x82, 0xeb);
 
 DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);

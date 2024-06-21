@@ -25,7 +25,7 @@
 LOG_MODULE_REGISTER(dai, CONFIG_SOF_LOG_LEVEL);
 
 /* 06711c94-d37d-4a76-b302-bbf6944fdd2b */
-DECLARE_SOF_UUID("dai", dai_uuid, 0x06711c94, 0xd37d, 0x4a76,
+SOF_DEFINE_UUID("dai", dai_uuid, 0x06711c94, 0xd37d, 0x4a76,
 		 0xb3, 0x02, 0xbb, 0xf6, 0x94, 0x4f, 0xdd, 0x2b);
 
 DECLARE_TR_CTX(dai_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);

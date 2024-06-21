@@ -43,7 +43,7 @@
 
 LOG_MODULE_REGISTER(sof_modules, CONFIG_SOF_LOG_LEVEL);
 /* ee2585f2-e7d8-43dc-90ab-4224e00c3e84 */
-DECLARE_SOF_RT_UUID("modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
+SOF_DEFINE_UUID("modules", intel_uuid, 0xee2585f2, 0xe7d8, 0x43dc,
 		    0x90, 0xab, 0x42, 0x24, 0xe0, 0x0c, 0x3e, 0x84);
 DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(intel_uuid), LOG_LEVEL_INFO);
 

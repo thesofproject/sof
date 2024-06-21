@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 /* df5e94d7-fd93-42e9-bb94-ab40becc7151 */
-DECLARE_SOF_UUID("memif", memif_uuid, 0xdf5e94d7, 0xfd93, 0x42e9,
+SOF_DEFINE_UUID("memif", memif_uuid, 0xdf5e94d7, 0xfd93, 0x42e9,
 		 0xbb, 0x94, 0xab, 0x40, 0xbe, 0xcc, 0x71, 0x51);
 
 DECLARE_TR_CTX(memif_tr, SOF_UUID(memif_uuid), LOG_LEVEL_INFO);

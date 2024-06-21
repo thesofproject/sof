@@ -54,7 +54,7 @@ static const struct comp_driver comp_dai;
 LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
 
 /* c2b00d27-ffbc-4150-a51a-245c79c5e54b */
-DECLARE_SOF_RT_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
+SOF_DEFINE_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
 		    0xa5, 0x1a, 0x24, 0x5c, 0x79, 0xc5, 0xe5, 0x4b);
 
 DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_comp_uuid), LOG_LEVEL_INFO);

@@ -15,7 +15,7 @@
 #include <mt8186-afe-common.h>
 
 /* cf90d851-68a2-4987-a2de-85aed0c8531c */
-DECLARE_SOF_UUID("sgen", sgen_uuid, 0xcf90d851, 0x68a2, 0x4987,
+SOF_DEFINE_UUID("sgen", sgen_uuid, 0xcf90d851, 0x68a2, 0x4987,
 		 0xa2, 0xde, 0x85, 0xae, 0xd0, 0xc8, 0x53, 0x1c);
 
 DECLARE_TR_CTX(sgen_tr, SOF_UUID(sgen_uuid), LOG_LEVEL_INFO);

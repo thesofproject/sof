@@ -21,7 +21,7 @@
 LOG_MODULE_REGISTER(micfil_dai, CONFIG_SOF_LOG_LEVEL);
 
 /* dd400475-35d7-4045-ab03-0c34957d7a08 */
-DECLARE_SOF_UUID("micfil-dai", micfil_uuid, 0xdd400475, 0x35d7, 0x4045,
+SOF_DEFINE_UUID("micfil-dai", micfil_uuid, 0xdd400475, 0x35d7, 0x4045,
 		 0xab, 0x03, 0x0c, 0x34, 0x95, 0x7d, 0x7a, 0x08);
 
 DECLARE_TR_CTX(micfil_tr, SOF_UUID(micfil_uuid), LOG_LEVEL_INFO);
