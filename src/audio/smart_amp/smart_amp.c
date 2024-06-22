@@ -20,18 +20,23 @@
 
 static const struct comp_driver comp_smart_amp;
 
+/* NOTE: this code builds itself with one of two distinct UUIDs
+ * depending on configuration!
+ */
 #if CONFIG_MAXIM_DSM
 /* 0cd84e80-ebd3-11ea-adc1-0242ac120002 */
-SOF_DEFINE_UUID("Maxim DSM", smart_amp_comp_uuid, 0x0cd84e80, 0xebd3,
+SOF_DEFINE_UUID("maxim_dsm", maxim_dsm_uuid, 0x0cd84e80, 0xebd3,
 		    0x11ea, 0xad, 0xc1, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
+#define UUID_SYM maxim_dsm_uuid
 
 #else /* Passthrough */
 /* 64a794f0-55d3-4bca-9d5b-7b588badd037 */
-SOF_DEFINE_UUID("Passthru Amp", smart_amp_comp_uuid, 0x64a794f0, 0x55d3,
+SOF_DEFINE_UUID("passthru_smart_amp", passthru_smart_amp_uuid, 0x64a794f0, 0x55d3,
 		    0x4bca, 0x9d, 0x5b, 0x7b, 0x58, 0x8b, 0xad, 0xd0, 0x37);
+#define UUID_SYM passthru_smart_amp
 
 #endif
-DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
+DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(UUID_SYM),
 	       LOG_LEVEL_INFO);
 
 /* Amp configuration & model calibration data for tuning/debug */
@@ -808,7 +813,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_smart_amp = {
 	.type = SOF_COMP_SMART_AMP,
-	.uid = SOF_RT_UUID(smart_amp_comp_uuid),
+	.uid = SOF_RT_UUID(UUID_SYM),
 	.tctx = &smart_amp_comp_tr,
 	.ops = {
 		.create = smart_amp_new,

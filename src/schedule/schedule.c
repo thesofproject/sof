@@ -19,10 +19,10 @@
 LOG_MODULE_REGISTER(schedule, CONFIG_SOF_LOG_LEVEL);
 
 /* 3dee06de-f25a-4e10-ae1f-abc9573873ea */
-SOF_DEFINE_UUID("schedule", sch_uuid, 0x3dee06de, 0xf25a, 0x4e10,
+SOF_DEFINE_UUID("schedule", schedule_uuid, 0x3dee06de, 0xf25a, 0x4e10,
 		 0xae, 0x1f, 0xab, 0xc9, 0x57, 0x38, 0x73, 0xea);
 
-DECLARE_TR_CTX(sch_tr, SOF_UUID(sch_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(sch_tr, SOF_UUID(schedule_uuid), LOG_LEVEL_INFO);
 
 int schedule_task_init(struct task *task,
 		       const struct sof_uuid_entry *uid, uint16_t type,

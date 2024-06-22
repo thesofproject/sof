@@ -43,7 +43,7 @@
 #include <stdint.h>
 
 /* 8fa1d42f-bc6f-464b-867f-547af08834da */
-SOF_DEFINE_UUID("ipc-task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
+SOF_DEFINE_UUID("ipc_task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
 		 0x86, 0x7f, 0x54, 0x7a, 0xf0, 0x88, 0x34, 0xda);
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
