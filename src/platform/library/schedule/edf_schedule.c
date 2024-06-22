@@ -14,7 +14,7 @@
  /* scheduler testbench definition */
 
 /* 77de2074-828c-4044-a40b-420b72749e8b */
-SOF_DEFINE_UUID("edf-schedule", edf_sched_uuid, 0x77de2074, 0x828c, 0x4044,
+SOF_DEFINE_UUID("edf_sched", edf_sched_uuid, 0x77de2074, 0x828c, 0x4044,
 		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
 
 DECLARE_TR_CTX(edf_tr, SOF_UUID(edf_sched_uuid), LOG_LEVEL_INFO);

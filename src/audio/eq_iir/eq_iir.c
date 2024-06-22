@@ -38,7 +38,7 @@
 LOG_MODULE_REGISTER(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
 /* 5150c0e6-27f9-4ec8-8351-c705b642d12f */
-SOF_DEFINE_UUID("eq-iir", eq_iir_uuid, 0x5150c0e6, 0x27f9, 0x4ec8,
+SOF_DEFINE_UUID("eq_iir", eq_iir_uuid, 0x5150c0e6, 0x27f9, 0x4ec8,
 		 0x83, 0x51, 0xc7, 0x05, 0xb6, 0x42, 0xd1, 0x2f);
 
 DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);

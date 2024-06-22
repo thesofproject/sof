@@ -46,12 +46,12 @@ SOF_DEFINE_UUID("idc", idc_uuid, 0x379a60ae, 0xcedb, 0x4777,
 DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
 
 /* b90f5a4e-5537-4375-a1df-95485472ff9e */
-SOF_DEFINE_UUID("comp-task", idc_comp_task_uuid, 0xb90f5a4e, 0x5537, 0x4375,
+SOF_DEFINE_UUID("idc_task", idc_task_uuid, 0xb90f5a4e, 0x5537, 0x4375,
 		 0xa1, 0xdf, 0x95, 0x48, 0x54, 0x72, 0xff, 0x9e);
 
 #ifndef __ZEPHYR__
 /* a5dacb0e-88dc-415c-a1b5-3e8df77f1976 */
-SOF_DEFINE_UUID("idc-cmd-task", idc_cmd_task_uuid, 0xa5dacb0e, 0x88dc, 0x415c,
+SOF_DEFINE_UUID("idc_cmd_task", idc_cmd_task_uuid, 0xa5dacb0e, 0x88dc, 0x415c,
 		 0xa1, 0xb5, 0x3e, 0x8d, 0xf7, 0x7f, 0x19, 0x76);
 #endif
 
@@ -232,7 +232,7 @@ static int idc_prepare(uint32_t comp_id)
 		}
 
 		ret = schedule_task_init_ll(dev->task,
-					    SOF_UUID(idc_comp_task_uuid),
+					    SOF_UUID(idc_task_uuid),
 					    SOF_SCHEDULE_LL_TIMER,
 					    dev->priority, comp_task, dev,
 					    dev->ipc_config.core, 0);

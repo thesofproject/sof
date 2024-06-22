@@ -37,9 +37,9 @@
 LOG_MODULE_REGISTER(basefw, CONFIG_SOF_LOG_LEVEL);
 
 /* 0e398c32-5ade-ba4b-93b1-c50432280ee4 */
-SOF_DEFINE_UUID("basefw", basefw_comp_uuid, 0xe398c32, 0x5ade, 0xba4b,
+SOF_DEFINE_UUID("basefw", basefw_uuid, 0xe398c32, 0x5ade, 0xba4b,
 		    0x93, 0xb1, 0xc5, 0x04, 0x32, 0x28, 0x0e, 0xe4);
-DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_comp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_uuid), LOG_LEVEL_INFO);
 
 static struct ipc4_system_time_info global_system_time_info;
 static uint64_t global_cycle_delta;
@@ -512,7 +512,7 @@ static int basefw_set_large_config(struct comp_dev *dev,
 };
 
 static const struct comp_driver comp_basefw = {
-	.uid	= SOF_RT_UUID(basefw_comp_uuid),
+	.uid	= SOF_RT_UUID(basefw_uuid),
 	.tctx	= &basefw_comp_tr,
 	.ops	= {
 		.get_large_config = basefw_get_large_config,

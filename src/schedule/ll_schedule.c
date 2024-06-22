@@ -36,7 +36,7 @@
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 /* 4f9c3ec7-7b55-400c-86b3-502b4420e625 */
-SOF_DEFINE_UUID("ll-schedule", ll_sched_uuid, 0x4f9c3ec7, 0x7b55, 0x400c,
+SOF_DEFINE_UUID("ll_sched", ll_sched_uuid, 0x4f9c3ec7, 0x7b55, 0x400c,
 		 0x86, 0xb3, 0x50, 0x2b, 0x44, 0x20, 0xe6, 0x25);
 
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);

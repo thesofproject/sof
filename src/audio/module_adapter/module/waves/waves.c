@@ -19,7 +19,7 @@
 #define NUM_IO_STREAMS (1)
 
 /* d944281a-afe9-4695-a043-d7f62b89538e*/
-SOF_DEFINE_UUID("waves_codec", waves_uuid, 0xd944281a, 0xafe9, 0x4695,
+SOF_DEFINE_UUID("waves", waves_uuid, 0xd944281a, 0xafe9, 0x4695,
 		    0xa0, 0x43, 0xd7, 0xf6, 0x2b, 0x89, 0x53, 0x8e);
 DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
 

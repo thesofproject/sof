@@ -45,7 +45,7 @@ static const struct comp_driver ghd_driver;
 LOG_MODULE_REGISTER(google_hotword_detect, CONFIG_SOF_LOG_LEVEL);
 
 /* c3c74249-058e-414f-8240-4da5f3fc2389 */
-SOF_DEFINE_UUID("google-hotword-detect", ghd_uuid,
+SOF_DEFINE_UUID("google_hotword", google_hotword_uuid,
 		    0xc3c74249, 0x058e, 0x414f,
 		    0x82, 0x40, 0x4d, 0xa5, 0xf3, 0xfc, 0x23, 0x89);
 DECLARE_TR_CTX(ghd_tr, SOF_UUID(ghd_uuid), LOG_LEVEL_INFO);

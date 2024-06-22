@@ -44,7 +44,7 @@ SOF_DEFINE_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
 DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
 
 /* c63c4e75-8f61-4420-9319-1395932efa9e */
-SOF_DEFINE_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
+SOF_DEFINE_UUID("agent_work", agent_work_uuid, 0xc63c4e75, 0x8f61, 0x4420,
 		 0x93, 0x19, 0x13, 0x95, 0x93, 0x2e, 0xfa, 0x9e);
 
 #if CONFIG_PERFORMANCE_COUNTERS
@@ -128,7 +128,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 			(unsigned int)ticks, (unsigned int)sof->sa->warn_timeout,
 			(unsigned int)sof->sa->panic_timeout);
 
-	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_task_uuid),
+	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_uuid),
 			      SOF_SCHEDULE_LL_TIMER,
 			      SOF_TASK_PRI_HIGH, validate, sof->sa, 0, 0);
 

@@ -24,7 +24,7 @@
 
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 /* 87858bc2-baa9-40b6-8e4c-2c95ba8b1545 */
-SOF_DEFINE_UUID("dp-schedule", dp_sched_uuid, 0x87858bc2, 0xbaa9, 0x40b6,
+SOF_DEFINE_UUID("dp_sched", dp_sched_uuid, 0x87858bc2, 0xbaa9, 0x40b6,
 		 0x8e, 0x4c, 0x2c, 0x95, 0xba, 0x8b, 0x15, 0x45);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);

@@ -49,10 +49,10 @@ LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 
 /* this id aligns windows driver requirement to support windows driver */
 /* 9ba00c83-ca12-4a83-943c-1fa2e82f9dda */
-SOF_DEFINE_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
+SOF_DEFINE_UUID("copier", copier_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 		    0x94, 0x3c, 0x1f, 0xa2, 0xe8, 0x2f, 0x9d, 0xda);
 
-DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
 
 static int copier_init(struct processing_module *mod)
 {
@@ -1027,5 +1027,5 @@ static const struct module_interface copier_interface = {
 	.endpoint_ops = &copier_endpoint_ops,
 };
 
-DECLARE_MODULE_ADAPTER(copier_interface, copier_comp_uuid, copier_comp_tr);
+DECLARE_MODULE_ADAPTER(copier_interface, copier_uuid, copier_comp_tr);
 SOF_MODULE_INIT(copier, sys_comp_module_copier_interface_init);

@@ -33,10 +33,10 @@ LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
 
 /* these ids aligns windows driver requirement to support windows driver */
 /* 99f7166d-372c-43ef-81f6-22007aa15f03 */
-SOF_DEFINE_UUID("aria", aria_comp_uuid, 0x99f7166d, 0x372c, 0x43ef,
+SOF_DEFINE_UUID("aria", aria_uuid, 0x99f7166d, 0x372c, 0x43ef,
 		    0x81, 0xf6, 0x22, 0x00, 0x7a, 0xa1, 0x5f, 0x03);
 
-DECLARE_TR_CTX(aria_comp_tr, SOF_UUID(aria_comp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(aria_comp_tr, SOF_UUID(aria_uuid), LOG_LEVEL_INFO);
 
 static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
 {
@@ -292,5 +292,5 @@ static const struct module_interface aria_interface = {
 	.set_configuration = aria_set_config,
 };
 
-DECLARE_MODULE_ADAPTER(aria_interface, aria_comp_uuid, aria_comp_tr);
+DECLARE_MODULE_ADAPTER(aria_interface, aria_uuid, aria_comp_tr);
 SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);
