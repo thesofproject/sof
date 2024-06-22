@@ -31,7 +31,7 @@
 #include <stdint.h>
 
 /* a417b6fb-459d-4cf9-be65-d38dc9057b80 */
-SOF_DEFINE_UUID("spi-completion", spi_compl_task_uuid, 0xa417b6fb,
+SOF_DEFINE_UUID("spi_completion", spi_completion_uuid, 0xa417b6fb,
 		 0x459d, 0x4cf9,
 		 0xbe, 0x65, 0xd3, 0x8d, 0xc9, 0x05, 0x7b, 0x80);
 
