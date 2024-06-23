@@ -125,10 +125,8 @@ static int16_t max_mic_distance(struct tdfb_comp_data *cd)
 
 	/* Max lag based on largest array dimension. Microphone coordinates are Q4.12 meters */
 	for (i = 0; i < cd->config->num_mic_locations; i++) {
-		for (j = 0; i < cd->config->num_mic_locations; i++) {
-			if (j == i)
-				continue;
-
+		/* Start from i+1 halves the amount of iteration & to eliminate redundant checks */
+		for (j = i + 1; j < cd->config->num_mic_locations; j++) {
 			dx = cd->mic_locations[i].x - cd->mic_locations[j].x;
 			dy = cd->mic_locations[i].y - cd->mic_locations[j].y;
 			dz = cd->mic_locations[i].z - cd->mic_locations[j].z;
