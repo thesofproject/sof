@@ -157,7 +157,7 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 	 * Form vector AB(a,b,c) from x(i+1) - x(i), y(i+1) - y(i), z(i+1) - z(i)
 	 * Form vector AC(d,e,f) from x(i+2) - x(i), y(i+2) - y(1), z(i+2) - z(i)
 	 */
-	for (i = 0; i < num_mic_locations - 3; i++) {
+	for (i = 0; i < num_mic_locations - 2; i++) {
 		a = cd->mic_locations[i + 1].x - cd->mic_locations[i].x;
 		b = cd->mic_locations[i + 1].y - cd->mic_locations[i].y;
 		c = cd->mic_locations[i + 1].z - cd->mic_locations[i].z;
