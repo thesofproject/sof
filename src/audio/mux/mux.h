@@ -216,13 +216,19 @@ void sys_comp_module_demux_interface_init(void);
 #define MUX_BLOB_STREAMS_SIZE	(MUX_MAX_STREAMS * sizeof(struct mux_stream_data))
 #define MUX_BLOB_MAX_SIZE	(sizeof(struct sof_mux_config) + MUX_BLOB_STREAMS_SIZE)
 
-extern const struct sof_uuid mux_uuid;
 extern const struct sof_uuid demux_uuid;
 extern struct tr_ctx mux_tr;
 extern struct tr_ctx demux_tr;
 
 bool mux_mix_check(struct sof_mux_config *cfg);
 int mux_params(struct processing_module *mod);
+
+#ifdef CONFIG_IPC_MAJOR_4
+#define MUX_UUID mux4_uuid
+#else
+#define MUX_UUID mux_uuid
+#endif
+extern const struct sof_uuid MUX_UUID;
 
 #endif /* CONFIG_COMP_MUX */
 
