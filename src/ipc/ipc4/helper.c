@@ -543,11 +543,11 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data destination module needs to use dp_queue */
-		buffer_create_shadow_dp_queue(buffer, false /* at_input = false */);
+		/* data destination module needs to use ring_buffer */
+		buffer_create_shadow_ring_buffer(buffer, false /* at_input = false */);
 	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data source module needs to use dp_queue */
-		buffer_create_shadow_dp_queue(buffer, true /* at_input = true */);
+		/* data source module needs to use ring_buffer */
+		buffer_create_shadow_ring_buffer(buffer, true /* at_input = true */);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been

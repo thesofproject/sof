@@ -7,7 +7,7 @@
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
-#include <sof/audio/dp_queue.h>
+#include <sof/audio/ring_buffer.h>
 
 static size_t audio_stream_get_free_size(struct sof_sink *sink)
 {
@@ -210,15 +210,15 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 struct sof_source *audio_stream_get_source(struct audio_stream *audio_stream)
 {
-	return audio_stream->dp_queue_source ?
-			dp_queue_get_source(audio_stream->dp_queue_source) :
+	return audio_stream->ring_buffer_source ?
+			ring_buffer_get_source(audio_stream->ring_buffer_source) :
 			&audio_stream->_source_api;
 }
 
 struct sof_sink *audio_stream_get_sink(struct audio_stream *audio_stream)
 {
-	return audio_stream->dp_queue_sink ?
-			dp_queue_get_sink(audio_stream->dp_queue_sink) :
+	return audio_stream->ring_buffer_sink ?
+			ring_buffer_get_sink(audio_stream->ring_buffer_sink) :
 			&audio_stream->_sink_api;
 }
 
