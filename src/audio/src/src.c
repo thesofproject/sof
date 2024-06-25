@@ -721,5 +721,5 @@ static const struct module_interface src_interface = {
 	.free = src_free,
 };
 
-DECLARE_MODULE_ADAPTER(src_interface, src_uuid, src_tr);
+DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
 SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);

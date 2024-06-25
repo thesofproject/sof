@@ -36,7 +36,7 @@
 #define IPC_DSPMBOX_DSP_REQ 1
 
 /* a3fe3bf2-39a4-4fc3-b341-8a96e0a26759 */
-SOF_DEFINE_UUID("ipc_task", ipc_task_uuid, 0xa3fe3bf2, 0x39a4, 0x4fc3,
+SOF_DEFINE_UUID("ipc_task_mt818x", ipc_task_mt818x_uuid, 0xa3fe3bf2, 0x39a4, 0x4fc3,
 		 0xb3, 0x41, 0x8a, 0x96, 0xe0, 0xa2, 0x67, 0x59);
 
 static struct ipc *local_ipc;
@@ -138,7 +138,8 @@ int platform_ipc_init(struct ipc *ipc)
 	local_ipc = ipc;
 
 	/* schedule */
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid), &ipc_task_ops, ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_mt818x_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
