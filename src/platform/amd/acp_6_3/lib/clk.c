@@ -40,9 +40,10 @@
 #include <platform/fw_scratch_mem.h>
 #include <platform/chip_registers.h>
 
-/*b414df09-9e31-4c59-8657-7afc8deba70c*/
-SOF_DEFINE_UUID("acp_clk", acp_clk_uuid, 0xb414df09, 0x9e31, 0x4c59,
-		 0x86, 0x57, 0x7a, 0xfc, 0x8d, 0xeb, 0xa7, 0x0c);
+/* f8a7091c-7d2d-4410-9bb5-55278378d59f */
+SOF_DEFINE_UUID("acp_clk", acp_clk_uuid, 0xf8a7091c, 0x7d2d, 0x4410,
+		0x9b, 0xb5, 0x55, 0x27, 0x83, 0x78, 0xd5, 0x9f);
+
 DECLARE_TR_CTX(acp_clk_tr, SOF_UUID(acp_clk_uuid), LOG_LEVEL_INFO);
 
 const struct freq_table platform_cpu_freq[] = {
