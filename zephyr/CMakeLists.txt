@@ -921,6 +921,8 @@ add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_
 # create version information
 include(../scripts/cmake/version.cmake)
 
+include(../scripts/cmake/uuid-registry.cmake)
+
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
 

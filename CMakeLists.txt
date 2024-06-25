@@ -114,6 +114,8 @@ set_property(DIRECTORY APPEND
 add_dependencies(sof_public_headers genconfig check_version_h)
 target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/include)
 
+include(scripts/cmake/uuid-registry.cmake)
+
 if(CONFIG_LIBRARY)
 	if (CONFIG_LIBRARY_STATIC)
 		add_library(sof STATIC "")
