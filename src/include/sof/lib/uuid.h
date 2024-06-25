@@ -9,6 +9,7 @@
 #define __SOF_LIB_UUID_H__
 
 #include <sof/common.h>
+#include <uuid-registry.h>
 
 #ifdef __ZEPHYR__
 #include <zephyr/sys/iterable_sections.h>
@@ -122,6 +123,18 @@ struct sof_uuid_entry {
 			vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
 	_DEF_UUID(entity_name, uuid_name,			\
 		  _UUID_INIT(va, vb, vc, vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7))
+
+/** \brief Defines UUID sourced from the fixed SOF registry
+ *
+ * As for SOF_DEFINE_UUID(), but the ID value is sourced by name from
+ * the uuid-registry.txt file distributed with the source tree. The
+ * string name field will be identical with the name passed (which is
+ * passed as a symbol!), runtime symbol (e.g. the "uuid_name" argument
+ * to SOF_DEFINE_UUID()) will be the same, postfixed with a "_uuid".
+ *
+ * \param name Name of the UUID, must match an entry in uuid-registry.txt
+ */
+#define SOF_DEFINE_REG_UUID(name) _DEF_UUID(#name, name##_uuid, _UUIDREG_##name)
 
 /** \brief Creates local unique 32-bit representation of UUID structure.
  *

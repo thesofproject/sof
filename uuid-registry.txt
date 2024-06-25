@@ -1,0 +1,158 @@
+#
+# Global UUID/name registry for SOF components.  All IDs used in
+# shipped binary artifacts must appear in this list.  All names must
+# be unique.  All names must be legal C identifiers of at most 31
+# characters.  No change to a previously distributed mapping is
+# allowed, ever.
+#
+# Simple format: "#" indicates a comment to end of line.  Remaining
+# lines must be entirely empty/whitespace, or two whitespace-separated
+# fields of: <UUID> <name>
+#
+# NOTE: the UUID is in a SOF-unique format to match the (nonstandard
+# and endian-ambiguous) representation in struct sof_uuid: the first
+# three entries are specified as little endian dword/word values, the
+# last as an ordered array of 8 bytes.  If you have a value from
+# e.g. an RFC-4122 compliant tool, swap the order of the two bytes in
+# the fourth cluster and prepend it to the last.  Most of the time you
+# are just using random values and won't care about the byte swap.
+#
+
+ab01db67-84b0-4d2d-93d30e619680576e acp_bt_dma
+f8a7091c-7d2d-4410-9bb555278378d59f acp_clk
+70f2d3f2-cbb6-4984-a2d80dd514b80bc2 acpdma
+0ae40946-dfd2-4140-91520dd5a3eaae81 acp_dmic_dai
+109c7aba-a7ba-43c3-b94259e20a6611be acp_dmic_dma
+dc2199ea-cdae-4d23-a413ffe442f785f2 acp_dmic_dma_common
+b414df09-9e31-4c59-86577afc8deba70c acp_hs
+3ac07334-41ce-4447-a2c5dff0d1fa1392 acp_sp
+2ef92c66-78a4-41f7-b52f5539707a9382 acp_sp_common
+5871f3ca-dd92-4edb-8a94d651dd208b1e acp_sw_audio
+30290c76-6a05-4784-8464c21f09cee87e afe_dai
+4e8f16d1-e935-41f4-b99e42c57e745784 afedrv
+c63c4e75-8f61-4420-93191395932efa9e agent_work
+ea9c4bca-5b7d-48c6-9586553e27235beb ams
+72cee996-39f2-11ed-a08f97fcc42eaaeb aplay
+66def9f0-39f2-11ed-f789af98a6440cc4 arecord
+99f7166d-372c-43ef-81f622007aa15f03 aria
+c8ec72f6-8526-4faf-9d39a23d0b541de2 asrc
+66b4402d-b468-42f2-81a7b37121863dd4 asrc4
+0e398c32-5ade-ba4b-93b1c50432280ee4 basefw
+20865bfe-b833-4ff9-b22a0482c3477497 btdai
+42544c92-8e92-4e41-b67934519f1c1d28 buffer
+d8218443-5ff3-4a4c-b3886cfe07b956aa cadence_codec
+6a0a274f-27cc-4afb-a3e73444723f432e chain_dma
+ec290e95-4a20-47eb-bbffd9c888431831 chmap
+53863428-9a72-44df-af0ffe45ea2348ba clkdrv_mt8186
+19d4e680-4479-48cc-af869f63d8b0098b clkdrv_mt8188
+23b12fd5-c2a9-41a8-a2b3231ab7dcdc70 clkdrv_mt8195
+8890ea76-0df9-44ae-87e6994f4c15e9fa clock
+7c42ce8b-0108-43d0-913756d660478c5f component
+9ba00c83-ca12-4a83-943c1fa2e82f9dda copier
+948c9ad1-806a-4131-ad6cb2bda9e35a9f crossover
+c2b00d27-ffbc-4150-a51a245c79c5e54b dai
+06711c94-d37d-4a76-b302bbf6944fdd2b dai_lib
+b809efaf-5681-42b1-9ed604bb012dd384 dcblock
+c4b26868-1430-470e-a08915d1c77f851a demux
+bc3526a7-9b86-4ab4-84a52e02ae70cc10 dma
+729bf8b5-e873-4bf5-96908e2a3fd33911 dma_copy
+58782c63-1326-4185-845922272e12d1f1 dma_trace
+2b972272-c5b1-4b7e-926f0fc5cb4c4690 dma_trace_task
+393608d8-4188-11ee-be560242ac122002 dp_queue
+87858bc2-baa9-40b6-8e4c2c95ba8b1545 dp_sched
+ee755917-96b9-4130-b49e37b9d0501993 dp_task
+b36ee4da-006f-47f9-a06dfecbe2d8b6ce drc
+d95fc34f-370f-4ac7-bc86bfdc5be241e6 dts
+f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
+298873bc-d532-4d93-a54095ee6bcf3456 dw_dma
+77de2074-828c-4044-a40b420b72749e8b edf_sched
+5dbc3672-e290-43d8-91f881aafe453d5b edf_sched_lib
+3d73a110-0930-457f-be5134453e56287b edma
+43a90ce7-f3a5-41df-ac06ba98651ae6a3 eq_fir
+5150c0e6-27f9-4ec8-8351c705b642d12f eq_iir
+889f6dcd-ddcd-4e05-aa5b0d39f8bca961 esai
+bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
+61bca9a8-18d0-4a18-8e7b2639219804b7 gain
+c3c74249-058e-414f-82404da5f3fc2389 google_hotword
+b780a0a6-269f-466f-b47723dfa05af758 google_rtc_audio_processing
+8b9d100c-6d78-418f-90a3e0e805d0852b host
+8f00c3bb-e835-4767-9a34b8ec1041e56b hsdai
+379a60ae-cedb-4777-aaf25659b0a85735 idc
+a5dacb0e-88dc-415c-a1b53e8df77f1976 idc_cmd_task
+b90f5a4e-5537-4375-a1df95485472ff9e idc_task
+696ae2bc-2877-11eb-adc10242ac120002 igo_nr
+fa00558c-d653-4851-a03ab21f125a9524 interrupt
+be60f97d-78df-4796-a0ee435cb56b720a ipc
+a814a1ca-0b83-466c-95872f35ff8d12e8 ipcgw
+389c9186-5a7d-4ad1-a02ca02ecdadfb33 ipc_task
+49be8ff3-71a3-4456-bb7e4723f2e5730c ipc_task_amd
+a3fe3bf2-39a4-4fc3-b3418a96e0a26759 ipc_task_mt818x
+6c8f0d53-ff77-4ca1-b825c0c4e1b0d322 ipc_task_posix
+1862d39a-3a84-4d64-8c91dce1dfc122db irq
+6533d0eb-b785-4709-84f5347c81720189 irq_acp
+d2e3f730-df39-42ee-81a839bfb4d024c2 irq_mt818x
+eba8d51f-7827-47b5-82eede6e7743af67 keyword
+d8218443-5ff3-4a4c-b3886cfe07b9562e kpb
+a8a0cb32-4a77-4db1-85c753d7ee07bce6 kpb4
+e50057a5-8b27-4db4-bd799a639cee5f50 kpb_task
+54cf5598-8b29-11ec-a8a30242ac120002 lib_manager
+4f9c3ec7-7b55-400c-86b3502b4420e625 ll_sched
+9f130ed8-2bbf-421c-836ad5269147c9e7 ll_sched_lib
+37f1d41f-252d-448d-b9c41e2bee8e1bf1 main_task
+d23cf8d0-8dfe-497c-82025f909cf72735 math_power
+0cd84e80-ebd3-11ea-adc10242ac120002 maxim_dsm
+425d6e68-145c-4455-b0b2c7260b0600a5 mem
+df5e94d7-fd93-42e9-bb94ab40becc7151 memif
+db10a773-1aa4-4cea-a21f2d57a5c982eb mfcc
+dd400475-35d7-4045-ab030c34957d7a08 micfil
+bc06c037-12aa-417c-9a9789282e321a76 mixer
+39656eb2-3b71-4049-8d3ff92cd5c43c09 mixin
+3c56505a-24d7-418f-bddcc1f5a3ac2ae0 mixout
+ee2585f2-e7d8-43dc-90ab4224e00c3e84 modules
+bb2aa22e-1ab6-4650-85016e67fcc04f4e mtrace_task
+0d9f2256-8e4f-47b3-8448239a334f1191 multiband_drc
+c607ff4d-9cb6-49dc-b6787da3c63ea557 mux
+64ce6e35-857a-4878-ace8e2a2f42e3069 mux4
+1fb15a7a-83cd-4c2e-8b324da1b2adeeaf notifier
+7ae671a7-4617-4a09-bf6d9d29c998dbc1 ns
+376b5e44-9c82-4ec2-bc8310ea101af88f passthrough
+64a794f0-55d3-4bca-9d5b7b588badd037 passthru_smart_amp
+4e934adb-b0ec-4d33-a086c1022f921321 pipe
+f11818eb-e92e-4082-82a3dc54c604ebb3 pipe_task
+d7f6712d-131c-45a7-82ed6aa9dc2291ea pm_runtime
+76cc9773-440c-4df9-95a872defe7796fc power
+9d1fb66e-4ffb-497f-994b17719686596e probe
+7cad0808-ab10-cd23-ef4512ab34cd56ef probe4
+2f0b1901-cac0-4b87-812ff2d5e4f19e4a probe_task
+5c7ca334-e15d-11eb-ba800242ac130004 rtnr
+5276b491-5b64-464e-8984dc228ef9e6a1 sa
+9302adf5-88be-4234-a0a7dca538ef81f4 sai
+3dee06de-f25a-4e10-ae1fabc9573873ea schedule
+70d223ef-2b91-4aac-b444d89a0db2793a sdma
+55a88ed5-3d18-46ca-88f10ee6eae9930f selector
+32fe92c1-1e17-4fc2-9758c7f3542e980a selector4
+cf90d851-68a2-4987-a2de85aed0c8531c sgen_mt8186
+99316bd9-07b9-4665-81796e048d67cb45 sgen_mt8188
+9eb1a55b-fc20-4442-96131ff1023be493 sgen_mt8195
+dabe8814-47e8-11ed-a58bb309974fecce shmread
+e2b6031c-47e8-11ed-07a97f801b6efa6c shmwrite
+167a961e-8ae4-11ea-89f1000c29ce1635 smart_amp_test
+4abd71ba-8619-458a-b33f160fc0cf809b spdai
+a417b6fb-459d-4cf9-be65d38dc9057b80 spi_completion
+9d346d98-203d-4791-baee1770a03d4a71 spinlock
+c1c5326d-8390-46b4-aa4795c3beca6550 src
+e61bb28d-149a-4c1f-b70946823ef5f5ae src4
+33441051-44cd-466a-83a3178478708aea src_lite
+eb0bd14b-7d5e-4dfa-bbe27762adb279f0 swaudiodai
+dd511749-d9fa-455c-b3a713585693f1af tdfb
+04e3f894-2c5c-4f2e-8dc1694eeaab53fa tone
+42f8060c-832f-4dbf-b24751e961997b34 up_down_mixer
+b77e677e-5ff4-4188-af14fba8bdbf8682 volume
+8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
+1028070e-04e8-46ab-8d8110a0116ce738 wait
+d944281a-afe9-4695-a043d7f62b89538e waves
+13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
+300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr
+5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
+8fa1d42f-bc6f-464b-867f547af08834da zipc_task
+1547fe68-de0c-11eb-84613158a1294853 zll_sched

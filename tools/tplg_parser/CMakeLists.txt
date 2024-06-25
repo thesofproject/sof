@@ -70,6 +70,8 @@ target_compile_options(sof_tplg_parser PRIVATE
 
 target_link_libraries(sof_tplg_parser PRIVATE -lm)
 
+include(../../scripts/cmake/uuid-registry.cmake)
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/tplg_parser
 	DESTINATION include
 	PATTERN "*.h"

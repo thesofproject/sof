@@ -15,6 +15,9 @@ add_executable(sof-logger
 	misc.c
 )
 
+include(../../scripts/cmake/misc.cmake)
+include(../../scripts/cmake/uuid-registry.cmake)
+
 if(${CMAKE_HOST_WIN32})
 	cmake_minimum_required(VERSION 3.20)
 	if(DEFINED ENV{MSYS_INSTALL_DIR})
