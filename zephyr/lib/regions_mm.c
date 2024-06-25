@@ -617,8 +617,10 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	if (retval)
 		return retval;
 
+	sys_cache_data_flush_and_invd_range(ptr, size_to_free);
 	return vmh_unmap_region(heap->physical_blocks_allocators[mem_block_iter], ptr,
 				size_to_free);
+
 }
 
 /**
