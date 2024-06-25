@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 /* fa00558c-d653-4851-a03a-b21f125a9524 */
-SOF_DEFINE_UUID("irq_mt8195", irq_mt8195_uuid, 0xfa00558c, 0xd653, 0x4851,
+SOF_DEFINE_UUID("interrupt", interrupt_uuid, 0xfa00558c, 0xd653, 0x4851,
 		 0xa0, 0x3a, 0xb2, 0x1f, 0x12, 0x5a, 0x95, 0x24);
 
-DECLARE_TR_CTX(int_tr, SOF_UUID(irq_mt8195_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(int_tr, SOF_UUID(interrupt_uuid), LOG_LEVEL_INFO);
 
 /* os timer reg value * 77ns 13M os timer
  * 1  ms: 12987* 1.5ms: 19436
