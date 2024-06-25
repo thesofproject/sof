@@ -9,9 +9,10 @@
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 
-/* 8f00c3bb-e835-4767-9a34-b8ec1041e56b */
-SOF_DEFINE_UUID("swaudiodai", swaudiodai_uuid, 0x8f00c3bb, 0xe835, 0x4767,
-		 0x9a, 0x34, 0xb8, 0xec, 0x10, 0x41, 0xe5, 0x6b);
+/* eb0bd14b-7d5e-4dfa-bbe2-7762adb279f0 */
+SOF_DEFINE_UUID("swaudiodai", swaudiodai_uuid, 0xeb0bd14b, 0x7d5e, 0x4dfa,
+		0xbb, 0xe2, 0x77, 0x62, 0xad, 0xb2, 0x79, 0xf0);
+
 DECLARE_TR_CTX(swaudiodai_tr, SOF_UUID(swaudiodai_uuid), LOG_LEVEL_INFO);
 
 static inline int swaudiodai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
