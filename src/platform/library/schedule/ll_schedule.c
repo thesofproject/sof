@@ -20,9 +20,9 @@
 
  /* scheduler testbench definition */
 
-/* 77de2074-828c-4044-a40b-420b72749e8b */
-SOF_DEFINE_UUID("ll_sched_lib", ll_sched_lib_uuid, 0x77de2074, 0x828c, 0x4044,
-		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
+/* 9f130ed8-2bbf-421c-836a-d5269147c9e7 */
+SOF_DEFINE_UUID("ll_sched_lib", ll_sched_lib_uuid, 0x9f130ed8, 0x2bbf, 0x421c,
+		0x83, 0x6a, 0xd5, 0x26, 0x91, 0x47, 0xc9, 0xe7);
 
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_lib_uuid), LOG_LEVEL_INFO);
 

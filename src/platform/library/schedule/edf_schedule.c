@@ -13,11 +13,11 @@
 
  /* scheduler testbench definition */
 
-/* 77de2074-828c-4044-a40b-420b72749e8b */
-SOF_DEFINE_UUID("edf_sched", edf_sched_uuid, 0x77de2074, 0x828c, 0x4044,
-		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
+/* 5dbc3672-e290-43d8-91f8-81aafe453d5b */
+SOF_DEFINE_UUID("edf_sched_lib", edf_sched_lib_uuid, 0x5dbc3672, 0xe290, 0x43d8,
+		0x91, 0xf8, 0x81, 0xaa, 0xfe, 0x45, 0x3d, 0x5b);
 
-DECLARE_TR_CTX(edf_tr, SOF_UUID(edf_sched_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(edf_tr, SOF_UUID(edf_sched_lib_uuid), LOG_LEVEL_INFO);
 
 struct edf_schedule_data {
 	struct list_item list; /* list of tasks in priority queue */
