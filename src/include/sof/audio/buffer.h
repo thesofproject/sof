@@ -187,7 +187,7 @@ struct buffer_cb_free {
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, uint32_t align,
 				 bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 /*
  * create a shadow ring_buffer buffer before buffer (when at_input == true) or behind a buffer
  *
@@ -221,7 +221,7 @@ int buffer_create_shadow_ring_buffer(struct comp_buffer *buffer, bool at_input);
  *		buffer in an operation
  */
 int buffer_sync_shadow_ring_buffer(struct comp_buffer *buffer, size_t limit);
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
 void buffer_free(struct comp_buffer *buffer);
 void buffer_zero(struct comp_buffer *buffer);

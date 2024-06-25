@@ -81,7 +81,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t flags, u
 	return buffer;
 }
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 int buffer_create_shadow_ring_buffer(struct comp_buffer *buffer, bool at_input)
 {
 	if (buffer->stream.ring_buffer_sink || buffer->stream.ring_buffer_source) {
@@ -147,7 +147,7 @@ int buffer_sync_shadow_ring_buffer(struct comp_buffer *buffer, size_t limit)
 	err = source_to_sink_copy(data_src, data_dst, true, to_copy);
 	return err;
 }
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 
 void buffer_zero(struct comp_buffer *buffer)
 {
@@ -271,10 +271,10 @@ void buffer_free(struct comp_buffer *buffer)
 
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 	ring_buffer_free(buffer->stream.ring_buffer_sink);
 	ring_buffer_free(buffer->stream.ring_buffer_source);
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 	rfree(buffer->stream.addr);
 	rfree(buffer);
 }

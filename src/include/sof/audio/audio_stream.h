@@ -63,14 +63,14 @@ struct audio_stream {
 	void *end_addr;	/**< Buffer end address */
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 	struct ring_buffer *ring_buffer_sink; /**< sink API shadow, an additional ring_buffer
 						* at data in
 						*/
 	struct ring_buffer *ring_buffer_source; /**< source API shadow, an additional ring_buffer
 						  * at data out
 						  */
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 
 	/* runtime stream params */
 	struct sof_audio_stream_params runtime_stream_params;
