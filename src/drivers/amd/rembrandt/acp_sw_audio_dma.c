@@ -13,9 +13,11 @@
 #include <sof/trace/trace.h>
 
 #ifdef CONFIG_ACP_6_3
-/*b414df09-9e31-4c59-8657-7afc8deba70c*/
-SOF_DEFINE_UUID("acp_sw_audio", acp_sw_audio_uuid, 0xb414df09, 0x9e31, 0x4c59,
-		 0x86, 0x57, 0x7a, 0xfc, 0x8d, 0xeb, 0xa7, 0x0c);
+
+/* 5871f3ca-dd92-4edb-8a94-d651dd208b1e */
+SOF_DEFINE_UUID("acp_sw_audio", acp_sw_audio_uuid, 0x5871f3ca, 0xdd92, 0x4edb,
+		0x8a, 0x94, 0xd6, 0x51, 0xdd, 0x20, 0x8b, 0x1e);
+
 DECLARE_TR_CTX(acp_sw_audio_tr, SOF_UUID(acp_sw_audio_uuid), LOG_LEVEL_INFO);
 
 //initialization of soundwire-0 fifos(Audio, BT and HS)
