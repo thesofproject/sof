@@ -22,10 +22,10 @@
 LOG_MODULE_REGISTER(irq_imx, CONFIG_SOF_LOG_LEVEL);
 
 /* fa00558c-d653-4851-a03a-b21f125a9524 */
-SOF_DEFINE_UUID("irq_imx", irq_imx_uuid, 0xfa00558c, 0xd653, 0x4851,
+SOF_DEFINE_UUID("interrupt", interrupt_uuid, 0xfa00558c, 0xd653, 0x4851,
 		 0xa0, 0x3a, 0xb2, 0x1f, 0x12, 0x5a, 0x95, 0x24);
 
-DECLARE_TR_CTX(irq_i_tr, SOF_UUID(irq_imx_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(irq_i_tr, SOF_UUID(interrupt_uuid), LOG_LEVEL_INFO);
 
 /*
  * The IRQ_STEER module takes 512 shared interrupts and delivers them
