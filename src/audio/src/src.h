@@ -252,6 +252,12 @@ int src_get_config(struct processing_module *mod, uint32_t config_id,
 		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size);
 int src_free(struct processing_module *mod);
 int src_reset(struct processing_module *mod);
-extern const struct sof_uuid src_uuid;
 extern struct tr_ctx src_tr;
+
+#ifdef CONFIG_IPC_MAJOR_4
+#define SRC_UUID src4_uuid
+#else
+#define SRC_UUID src_uuid
+#endif
+extern const struct sof_uuid SRC_UUID;
 

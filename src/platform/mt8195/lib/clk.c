@@ -14,10 +14,10 @@
 #include <rtos/wait.h>
 #include <rtos/sof.h>
 
-SOF_DEFINE_UUID("clkdrv", clkdrv_uuid, 0x23b12fd5, 0xc2a9, 0x41a8,
+SOF_DEFINE_UUID("clkdrv_mt8195", clkdrv_mt8195_uuid, 0x23b12fd5, 0xc2a9, 0x41a8,
 		 0xa2, 0xb3, 0x23, 0x1a, 0xb7, 0xdc, 0xdc, 0x70);
 
-DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_mt8195_uuid), LOG_LEVEL_INFO);
 
 static int dsppll_enable; /* default no adsp clock*/
 static int adsp_clock;

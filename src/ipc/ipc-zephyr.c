@@ -43,7 +43,7 @@
 #include <stdint.h>
 
 /* 8fa1d42f-bc6f-464b-867f-547af08834da */
-SOF_DEFINE_UUID("ipc_task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
+SOF_DEFINE_UUID("zipc_task", zipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
 		 0x86, 0x7f, 0x54, 0x7a, 0xf0, 0x88, 0x34, 0xda);
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
@@ -162,7 +162,7 @@ static int ipc_device_resume_handler(const struct device *dev, void *arg)
 	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);
 
 	/* schedule task */
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
 	return 0;
@@ -280,7 +280,7 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(ipc, NULL);
 
 	/* schedule task */
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
 	/* configure interrupt - work is done internally by Zephyr API */

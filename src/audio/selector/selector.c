@@ -45,14 +45,15 @@ static const struct comp_driver comp_selector;
 /* 55a88ed5-3d18-46ca-88f1-0ee6eae9930f */
 SOF_DEFINE_UUID("selector", selector_uuid, 0x55a88ed5, 0x3d18, 0x46ca,
 		    0x88, 0xf1, 0x0e, 0xe6, 0xea, 0xe9, 0x93, 0x0f);
+#define SELECTOR_UUID selector_uuid
 #else
 /* 32fe92c1-1e17-4fc2-9758-c7f3542e980a */
-SOF_DEFINE_UUID("selector", selector_uuid, 0x32fe92c1, 0x1e17, 0x4fc2,
+SOF_DEFINE_UUID("selector4", selector4_uuid, 0x32fe92c1, 0x1e17, 0x4fc2,
 		    0x97, 0x58, 0xc7, 0xf3, 0x54, 0x2e, 0x98, 0x0a);
-
+#define SELECTOR_UUID selector4_uuid
 #endif
 
-DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(selector_tr, SOF_UUID(SELECTOR_UUID), LOG_LEVEL_INFO);
 
 #if CONFIG_IPC_MAJOR_3
 static int selector_verify_params(struct comp_dev *dev,
@@ -521,7 +522,7 @@ static int selector_reset(struct comp_dev *dev)
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
-	.uid	= SOF_RT_UUID(selector_uuid),
+	.uid	= SOF_RT_UUID(SELECTOR_UUID),
 	.tctx	= &selector_tr,
 	.ops	= {
 		.create		= selector_new,
@@ -930,6 +931,6 @@ static const struct module_interface selector_interface = {
 	.free			= selector_free
 };
 
-DECLARE_MODULE_ADAPTER(selector_interface, selector_uuid, selector_tr);
+DECLARE_MODULE_ADAPTER(selector_interface, SELECTOR_UUID, selector_tr);
 SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #endif

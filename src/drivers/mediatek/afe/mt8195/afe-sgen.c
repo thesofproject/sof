@@ -16,10 +16,10 @@
 #include <mt8195-afe-common.h>
 
 /* 9eb1a55b-fc20-4442-9613-1ff1023be493 */
-SOF_DEFINE_UUID("sgen", sgen_uuid, 0x9eb1a55b, 0xfc20, 0x4442,
+SOF_DEFINE_UUID("sgen_mt8195", sgen_mt8195_uuid, 0x9eb1a55b, 0xfc20, 0x4442,
 		 0x96, 0x13, 0x1f, 0xf1, 0x02, 0x3b, 0xe4, 0x93);
 
-DECLARE_TR_CTX(sgen_tr, SOF_UUID(sgen_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(sgen_tr, SOF_UUID(sgen_mt8195_uuid), LOG_LEVEL_INFO);
 
 /*
  * Note: TEST_SGEN for test only
