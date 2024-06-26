@@ -343,8 +343,8 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		size_t offset = (uintptr_t)mod_manifest - imr_rodata;
 
 		/* ctx->mod_manifest points to an array of module manifests */
-		ctx->mod_manifest = (const struct sof_man_module_manifest *)(va_rodata_base +
-									     offset);
+		ctx->mod_manifest = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
+							       (va_rodata_base + offset));
 	}
 
 	return ctx->mod_manifest[entry_index].module.entry_point;
