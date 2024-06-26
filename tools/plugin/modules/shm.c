@@ -29,14 +29,10 @@
 
 #include "pipe.h"
 
-/* 1488beda-e847-ed11-b309-a58b974fecce */
-SOF_DEFINE_UUID("shmread", shmread_uuid, 0xdabe8814, 0x47e8, 0x11ed,
-		    0xa5, 0x8b, 0xb3, 0x09, 0x97, 0x4f, 0xec, 0xce);
+SOF_DEFINE_REG_UUID(shmread);
 DECLARE_TR_CTX(shmread_tr, SOF_UUID(shmread_uuid), LOG_LEVEL_INFO);
 
-/* 1c03b6e2-e847-ed11-7f80-07a91b6efa6c */
-SOF_DEFINE_UUID("shmwrite", shmwrite_uuid, 0xe2b6031c, 0x47e8, 0x11ed,
-		    0x07, 0xa9, 0x7f, 0x80, 0x1b, 0x6e, 0xfa, 0x6c);
+SOF_DEFINE_REG_UUID(shmwrite);
 DECLARE_TR_CTX(shmwrite_tr, SOF_UUID(shmwrite_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_shmread;

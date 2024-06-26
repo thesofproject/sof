@@ -11,9 +11,7 @@
 
 LOG_MODULE_REGISTER(dts, CONFIG_SOF_LOG_LEVEL);
 
-/* d95fc34f-370f-4ac7-bc86-bfdc5be241e6 */
-SOF_DEFINE_UUID("dts", dts_uuid, 0xd95fc34f, 0x370f, 0x4ac7,
-			0xbc, 0x86, 0xbf, 0xdc, 0x5b, 0xe2, 0x41, 0xe6);
+SOF_DEFINE_REG_UUID(dts);
 DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 
 #define MAX_EXPECTED_DTS_CONFIG_DATA_SIZE 8192

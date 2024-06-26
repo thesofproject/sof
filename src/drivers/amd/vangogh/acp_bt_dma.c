@@ -32,9 +32,7 @@
 #include <platform/fw_scratch_mem.h>
 #include <platform/chip_registers.h>
 
-/* ee12fa71-4579-45d7-bde2-b32c6893a122 */
-SOF_DEFINE_UUID("acp_bt_dma", acp_bt_dma_uuid, 0xab01db67, 0x84b0, 0x4d2d,
-		 0x93, 0xd3, 0x0e, 0x61, 0x96, 0x80, 0x57, 0x6e);
+SOF_DEFINE_REG_UUID(acp_bt_dma);
 
 DECLARE_TR_CTX(acp_bt_dma_tr, SOF_UUID(acp_bt_dma_uuid), LOG_LEVEL_INFO);
 

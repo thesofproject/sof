@@ -18,9 +18,7 @@
 #include <sof/lib/io.h>
 #include <platform/chip_offset_byte.h>
 
-/* 4abd71ba-8619-458a-b33f-160fc0cf809b */
-SOF_DEFINE_UUID("spdai", spdai_uuid, 0x4abd71ba, 0x8619, 0x458a,
-		0xb3, 0x3f, 0x16, 0x0f, 0xc0, 0xcf, 0x80, 0x9b);
+SOF_DEFINE_REG_UUID(spdai);
 DECLARE_TR_CTX(spdai_tr, SOF_UUID(spdai_uuid), LOG_LEVEL_INFO);
 
 static inline int spdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,

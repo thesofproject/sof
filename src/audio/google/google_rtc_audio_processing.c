@@ -55,10 +55,7 @@
 
 LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
-/* b780a0a6-269f-466f-b477-23dfa05af758 */
-SOF_DEFINE_UUID("google_rtc_audio_processing", google_rtc_audio_processing_uuid,
-					0xb780a0a6, 0x269f, 0x466f, 0xb4, 0x77, 0x23, 0xdf, 0xa0,
-					0x5a, 0xf7, 0x58);
+SOF_DEFINE_REG_UUID(google_rtc_audio_processing);
 
 DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
 			   LOG_LEVEL_INFO);

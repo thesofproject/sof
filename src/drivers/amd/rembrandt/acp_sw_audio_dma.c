@@ -14,9 +14,7 @@
 
 #ifdef CONFIG_ACP_6_3
 
-/* 5871f3ca-dd92-4edb-8a94-d651dd208b1e */
-SOF_DEFINE_UUID("acp_sw_audio", acp_sw_audio_uuid, 0x5871f3ca, 0xdd92, 0x4edb,
-		0x8a, 0x94, 0xd6, 0x51, 0xdd, 0x20, 0x8b, 0x1e);
+SOF_DEFINE_REG_UUID(acp_sw_audio);
 
 DECLARE_TR_CTX(acp_sw_audio_tr, SOF_UUID(acp_sw_audio_uuid), LOG_LEVEL_INFO);
 

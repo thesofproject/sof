@@ -14,9 +14,7 @@
 
 LOG_MODULE_REGISTER(dp_queue, CONFIG_SOF_LOG_LEVEL);
 
-/* 393608d8-4188-11ee-be56-0242ac120002 */
-SOF_DEFINE_UUID("dp_queue", dp_queue_uuid, 0x393608d8, 0x4188, 0x11ee,
-		    0xbe, 0x56, 0x02, 0x42, 0xac, 0x12, 0x20, 0x02);
+SOF_DEFINE_REG_UUID(dp_queue);
 DECLARE_TR_CTX(dp_queue_tr, SOF_UUID(dp_queue_uuid), LOG_LEVEL_INFO);
 
 static inline uint8_t __sparse_cache *dp_queue_buffer_end(struct dp_queue *dp_queue)

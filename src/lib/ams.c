@@ -26,8 +26,7 @@
 
 LOG_MODULE_REGISTER(ams, CONFIG_SOF_LOG_LEVEL);
 
-SOF_DEFINE_UUID("ams", ams_uuid, 0xea9c4bca, 0x5b7d, 0x48c6,
-		 0x95, 0x86, 0x55, 0x3e, 0x27, 0x23, 0x5b, 0xeb);
+SOF_DEFINE_REG_UUID(ams);
 
 DECLARE_TR_CTX(ams_tr, SOF_UUID(ams_uuid), LOG_LEVEL_INFO);
 

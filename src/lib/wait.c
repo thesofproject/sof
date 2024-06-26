@@ -22,9 +22,7 @@
 
 LOG_MODULE_REGISTER(wait, CONFIG_SOF_LOG_LEVEL);
 
-/* 1028070e-04e8-46ab-8d81-10a0116ce738 */
-SOF_DEFINE_UUID("wait", wait_uuid, 0x1028070e, 0x04e8, 0x46ab,
-		 0x8d, 0x81, 0x10, 0xa0, 0x11, 0x6c, 0xe7, 0x38);
+SOF_DEFINE_REG_UUID(wait);
 
 DECLARE_TR_CTX(wait_tr, SOF_UUID(wait_uuid), LOG_LEVEL_INFO);
 

@@ -51,9 +51,7 @@ LOG_MODULE_REGISTER(mtrace, CONFIG_SOF_LOG_LEVEL);
  */
 #define IPC4_MTRACE_AGING_TIMER_MIN_MS 100
 
-/* bb2aa22e-1ab6-4650-8501-6e67fcc04f4e */
-SOF_DEFINE_UUID("mtrace_task", mtrace_task_uuid, 0xbb2aa22e, 0x1ab6, 0x4650,
-		 0x85, 0x01, 0x6e, 0x67, 0xfc, 0xc0, 0x4f, 0x4e);
+SOF_DEFINE_REG_UUID(mtrace_task);
 
 static uint64_t mtrace_notify_last_sent;
 
