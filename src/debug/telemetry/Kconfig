@@ -18,3 +18,11 @@ config SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	  Performance records are stored in the limited number of slots in Memory Window 3,
 	  so only a certain number (PERFORMANCE_DATA_ENTRIES_COUNT) of components can be measured.
 
+config SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	bool "enable I/O performance measurements"
+	help
+	  Enables IO performance measurements. Each data interface will have its data throughput
+	  measured (IPC/IDC and GPIO will measure number of messages/state changes).
+	  Disabled by default and enabled with IPC. Measurements can be extracted also by IPC.
+	  Interfaces measured: IPC, IDC, DMIC, I2S, SNDW, HDA, USB, GPIO, I2c, I3C, UART, SPI, CSI_2, DTF.
+
