@@ -256,8 +256,15 @@ build-sof-staging (for old, developer /lib/firmware/intel/sof-ipc4/)
 						" to cmake (for rimage)")
 	parser.add_argument("-k", "--key", type=pathlib.Path, required=False,
 						help="Path to a non-default rimage signing key.")
+
+	# https://docs.zephyrproject.org/latest/build/kconfig/setting.html#initial-conf
+	# https://docs.zephyrproject.org/latest/develop/application/index.html#important-build-system-variables
 	parser.add_argument("-o", "--overlay", type=pathlib.Path, required=False, action='append',
-						default=[], help="Paths to overlays")
+			default=[], help=
+"""All '-o arg1 -o arg2 ...' arguments are combined into a single -DEXTRA_CONF_FILE='arg1;arg2;...'
+list. Files latter in the list seem to have precedence. Direct -C=-DCONFIG_xxx=.. options seem to
+have precedence over -DEXTRA_CONF_FILE=... Rely on precedence as little as possible.""")
+
 	parser.add_argument("-p", "--pristine", required=False, action="store_true",
 						help="Perform pristine build removing build directory.")
 	parser.add_argument("-u", "--update", required=False, action="store_true",
@@ -832,7 +839,7 @@ def build_platforms():
 
 		if overlays:
 			overlays = ";".join(overlays)
-			build_cmd.append(f"-DOVERLAY_CONFIG={overlays}")
+			build_cmd.append(f"-DEXTRA_CONF_FILE={overlays}")
 
 		abs_build_dir = pathlib.Path(west_top, platform_build_dir_name)
 
