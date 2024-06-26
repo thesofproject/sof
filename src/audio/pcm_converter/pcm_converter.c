@@ -58,3 +58,9 @@ int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 
 	return samples;
 }
+
+int just_copy(const struct audio_stream *source, uint32_t ioffset,
+	      struct audio_stream *sink, uint32_t ooffset, uint32_t samples, uint32_t chmap)
+{
+	return audio_stream_copy(source, ioffset, sink, ooffset, samples);
+}

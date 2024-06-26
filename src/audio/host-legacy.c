@@ -233,11 +233,11 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		source = hd->dma_buffer;
 		sink = hd->local_buffer;
-		ret = dma_buffer_copy_from(source, sink, hd->process, bytes);
+		ret = dma_buffer_copy_from(source, sink, hd->process, bytes, DUMMY_CHMAP);
 	} else {
 		source = hd->local_buffer;
 		sink = hd->dma_buffer;
-		ret = dma_buffer_copy_to(source, sink, hd->process, bytes);
+		ret = dma_buffer_copy_to(source, sink, hd->process, bytes, DUMMY_CHMAP);
 	}
 
 	/* assert dma_buffer_copy succeed */

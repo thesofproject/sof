@@ -440,7 +440,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
-			 processed_data->frames * audio_stream_get_channels(&sink->stream));
+			 processed_data->frames * audio_stream_get_channels(&src->stream),
+			 DUMMY_CHMAP);
 
 	buffer_stream_writeback(sink, processed_data->sink_bytes);
 	comp_update_buffer_produce(sink, processed_data->sink_bytes);
@@ -509,7 +510,7 @@ static int copier_module_copy(struct processing_module *mod,
 		sink_dev = sink_c->sink;
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
-			uint32_t samples;
+			uint32_t source_samples;
 			int sink_queue_id;
 
 			sink_queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink_c));
@@ -518,10 +519,11 @@ static int copier_module_copy(struct processing_module *mod,
 
 			comp_get_copy_limits(src_c, sink_c, &processed_data);
 
-			samples = processed_data.frames *
-					audio_stream_get_channels(output_buffers[i].data);
+			source_samples = processed_data.frames *
+					audio_stream_get_channels(input_buffers[0].data);
 			cd->converter[sink_queue_id](input_buffers[0].data, 0,
-						     output_buffers[i].data, 0, samples);
+						     output_buffers[i].data, 0,
+						     source_samples, DUMMY_CHMAP);
 
 			output_buffers[i].size = processed_data.sink_bytes;
 			cd->output_total_data_processed += processed_data.sink_bytes;
