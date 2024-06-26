@@ -25,6 +25,11 @@ ublob8(9:end) = blob8;
 %% Write blob
 check_create_dir(fn);
 fh = fopen(fn, 'wb');
+if fh < 0
+	fprintf(1, 'Error: Could not open file %s\n', fn);
+	error("Failed.");
+end
+
 fwrite(fh, ublob8, 'uint8');
 fclose(fh);
 

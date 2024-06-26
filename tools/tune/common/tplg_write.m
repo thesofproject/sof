@@ -15,6 +15,10 @@ blob8_new(1:n_orig) = blob8;
 
 %% Write blob
 fh = fopen(fn, 'w');
+if fh < 0
+	fprintf(1, 'Error: Could not open file %s\n', fn);
+	error("Failed.");
+end
 nl = 8;
 fprintf(fh, '# %s %s\n', comment, date());
 if ~isempty(howto)

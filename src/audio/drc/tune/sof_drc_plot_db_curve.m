@@ -1,4 +1,4 @@
-function drc_plot_db_curve(coefs)
+function sof_drc_plot_db_curve(coefs)
 
 if exist('OCTAVE_VERSION', 'builtin')
 	pkg load control;
