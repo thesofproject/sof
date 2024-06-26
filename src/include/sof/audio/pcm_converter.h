@@ -42,12 +42,13 @@ struct audio_stream;
  * \param ioffset offset to first sample in source stream
  * \param sink output buffer, write pointer is not modified
  * \param ooffset offset to first sample in sink stream
- * \param samples number of samples to convert
- * \return error code or number of processed samples.
+ * \param source_samples number of source samples to convert
+ * \chmap channel map for remapping
+ * \return error code or number of processed source samples.
  */
 typedef int (*pcm_converter_func)(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
-				  uint32_t ooffset, uint32_t samples);
+				  uint32_t ooffset, uint32_t source_samples, uint32_t chmap);
 
 /**
  * \brief PCM conversion function interface for data in linear buffer
