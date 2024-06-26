@@ -628,6 +628,10 @@ struct comp_dev {
 #if CONFIG_PERFORMANCE_COUNTERS
 	struct perf_cnt_data pcd;
 #endif
+
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	int32_t kcps_inc[CONFIG_CORE_COUNT];
+#endif
 };
 
 /** @}*/

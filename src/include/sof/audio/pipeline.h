@@ -123,7 +123,7 @@ struct pipeline_data {
 	int cmd;
 	uint32_t delay_ms;		/* between PRE_{START,RELEASE} and {START,RELEASE} */
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	uint32_t kcps[CONFIG_CORE_COUNT]; /**< the max count of KCPS */
+	int32_t kcps[CONFIG_CORE_COUNT]; /**< the max count of KCPS */
 #endif
 };
 
