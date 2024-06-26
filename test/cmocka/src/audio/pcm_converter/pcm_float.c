@@ -99,7 +99,7 @@ static struct comp_buffer *_test_pcm_convert(enum sof_ipc_frame frm_in, enum sof
 	/* run conversion */
 	fun = pcm_get_conversion_function(frm_in, frm_out);
 	assert_non_null(fun);
-	fun(&source->stream, 0, &sink->stream, 0, samples);
+	fun(&source->stream, 0, &sink->stream, 0, samples, DUMMY_CHMAP);
 
 	/* assert last value in sink is untouched */
 	assert_int_equal(((uint8_t *)sink->stream.w_ptr)[outbytes - 1], fillval);

@@ -321,20 +321,55 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 
 int dma_buffer_copy_from(struct comp_buffer *source,
 			 struct comp_buffer *sink,
-			 dma_process_func process, uint32_t source_bytes)
+			 dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
 	struct audio_stream *istream = &source->stream;
-	uint32_t samples = source_bytes /
-			   audio_stream_sample_bytes(istream);
-	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
-			      samples;
 	int ret;
+
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate sink_bytes for writeback/produce.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		int frames;
+
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
 
 	/* source buffer contains data copied by DMA */
 	audio_stream_invalidate(istream, source_bytes);
 
 	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, samples);
+	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
 
 	buffer_stream_writeback(sink, sink_bytes);
 
@@ -350,19 +385,54 @@ int dma_buffer_copy_from(struct comp_buffer *source,
 
 int dma_buffer_copy_to(struct comp_buffer *source,
 		       struct comp_buffer *sink,
-		       dma_process_func process, uint32_t sink_bytes)
+		       dma_process_func process, uint32_t sink_bytes, uint32_t chmap)
 {
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int source_bytes;
 	struct audio_stream *ostream = &sink->stream;
-	uint32_t samples = sink_bytes /
-			   audio_stream_sample_bytes(ostream);
-	uint32_t source_bytes = audio_stream_sample_bytes(&source->stream) *
-			      samples;
 	int ret;
+
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate source_bytes for invalidate/consume.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = sink_bytes / audio_stream_sample_bytes(ostream);
+		source_bytes = source_samples * audio_stream_sample_bytes(&source->stream);
+	} else {
+		int frames;
+
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = sink_bytes / audio_stream_frame_bytes(ostream);
+		source_bytes = audio_stream_frame_bytes(&source->stream) * frames;
+		source_samples = frames * source_channels;
+	}
 
 	buffer_stream_invalidate(source, source_bytes);
 
 	/* process data */
-	ret = process(&source->stream, 0, ostream, 0, samples);
+	ret = process(&source->stream, 0, ostream, 0, source_samples, chmap);
 
 	/* sink buffer contains data meant to copied to DMA */
 	audio_stream_writeback(ostream, sink_bytes);
@@ -379,17 +449,52 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 
 int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
 				    struct comp_buffer *sink,
-				    dma_process_func process, uint32_t source_bytes)
+				    dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
 	struct audio_stream *istream = &source->stream;
-	uint32_t samples = source_bytes /
-			   audio_stream_sample_bytes(istream);
-	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
-			      samples;
 	int ret;
 
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate sink_bytes for writeback/produce.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		int frames;
+
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
+
 	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, samples);
+	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
 
 	buffer_stream_writeback(sink, sink_bytes);
 

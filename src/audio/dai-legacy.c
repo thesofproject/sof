@@ -122,10 +122,10 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
-					 dd->process, bytes);
+					 dd->process, bytes, DUMMY_CHMAP);
 	} else {
 		ret = dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
-					   dd->process, bytes);
+					   dd->process, bytes, DUMMY_CHMAP);
 	}
 
 	/* assert dma_buffer_copy succeed */

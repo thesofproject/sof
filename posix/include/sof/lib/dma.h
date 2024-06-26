@@ -254,7 +254,7 @@ struct dma_info {
 struct audio_stream;
 typedef int (*dma_process_func)(const struct audio_stream __sparse_cache *source,
 				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
-				uint32_t ooffset, uint32_t frames);
+				uint32_t ooffset, uint32_t source_samples, uint32_t chmap);
 
 /**
  * \brief API to initialize a platform DMA controllers.
@@ -523,19 +523,15 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 	return size;
 }
 
-struct audio_stream;
-typedef void (*dma_process)(const struct audio_stream *,
-			    struct audio_stream *, uint32_t);
-
 /* copies data from DMA buffer using provided processing function */
 int dma_buffer_copy_from(struct comp_buffer __sparse_cache *source,
 			 struct comp_buffer __sparse_cache *sink,
-			 dma_process_func process, uint32_t source_bytes);
+			 dma_process_func process, uint32_t source_bytes, uint32_t chmap);
 
 /* copies data to DMA buffer using provided processing function */
 int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
 		       struct comp_buffer __sparse_cache *sink,
-		       dma_process_func process, uint32_t sink_bytes);
+		       dma_process_func process, uint32_t sink_bytes, uint32_t chmap);
 
 /*
  * Used when copying DMA buffer bytes into multiple sink buffers, one at a time using the provided
@@ -544,7 +540,8 @@ int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
  */
 int dma_buffer_copy_from_no_consume(struct comp_buffer __sparse_cache *source,
 				    struct comp_buffer __sparse_cache *sink,
-				    dma_process_func process, uint32_t source_bytes);
+				    dma_process_func process,
+				    uint32_t source_bytes, uint32_t chmap);
 
 /* generic DMA DSP <-> Host copier */
 
