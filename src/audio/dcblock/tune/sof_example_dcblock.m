@@ -1,4 +1,4 @@
-function example_dcblock()
+function sof_example_dcblock()
 
 % Default blob, about 150 Hz cut-off @ 48 kHz
 prm.fc = [];
@@ -31,13 +31,16 @@ end
 function dcblock_blob_calculate(prm)
 
 % Set the parameters here
-tplg1_fn = sprintf("../../topology/topology1/m4/dcblock_coef_%s.m4", prm.id); % Control Bytes File
-tplg2_fn = sprintf("../../topology/topology2/include/components/dcblock/%s.conf", prm.id);
+sof_tools = '../../../../tools';
+sof_tplg = fullfile(sof_tools, 'topology');
+sof_ctl = fullfile(sof_tools, 'ctl');
+tplg1_fn = sprintf("%s/topology1/m4/dcblock_coef_%s.m4", sof_tplg, prm.id); % Control Bytes File
+tplg2_fn = sprintf("%s/topology2/include/components/dcblock/%s.conf", sof_tplg, prm.id);
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("../../ctl/ipc3/dcblock/coef_%s.blob", prm.id); % Blob binary file
-alsa3_fn = sprintf("../../ctl/ipc3/dcblock/coef_%s.txt", prm.id); % ALSA CSV format file
-blob4_fn = sprintf("../../ctl/ipc4/dcblock/coef_%s.blob", prm.id); % Blob binary file
-alsa4_fn = sprintf("../../ctl/ipc4/dcblock/coef_%s.txt", prm.id); % ALSA CSV format file
+blob3_fn = sprintf("%s/ipc3/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+alsa3_fn = sprintf("%s/ipc3/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
+blob4_fn = sprintf("%s/ipc4/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+alsa4_fn = sprintf("%s/ipc4/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
 
 endian = "little";
 
@@ -49,32 +52,32 @@ else
 	R_coeffs = R * ones(1, channels);
 end
 
-addpath ./../common
+sof_dcblock_paths(1);
 
-blob8 = dcblock_build_blob(R_coeffs, endian);
-blob8_ipc4 = dcblock_build_blob(R_coeffs, endian, 4);
+blob8 = sof_dcblock_build_blob(R_coeffs, endian);
+blob8_ipc4 = sof_dcblock_build_blob(R_coeffs, endian, 4);
 
 % Generate output files
 tplg_write(tplg1_fn, blob8, "DCBLOCK", ...
-	   "Exported with script example_dcblock.m", ...
-	   "cd tools/tune/dcblock; octave example_dcblock.m");
+	   "Exported with script sof_example_dcblock.m", ...
+	   "cd tools/tune/dcblock; octave sof_example_dcblock.m");
 sof_ucm_blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 
 tplg2_write(tplg2_fn, blob8_ipc4, "dcblock_config", ...
-	    "Exported with script example_dcblock.m" , ...
-	    "cd tools/tune/dcblock; octave example_dcblock.m");
+	    "Exported with script sof_example_dcblock.m" , ...
+	    "cd tools/tune/dcblock; octave sof_example_dcblock.m");
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Filter's Transfer Function and Step Response
 % As an example, plot the graphs of the first coefficient
 fs = 48e3;
-dcblock_plot_transferfn(R_coeffs(1), fs);
+sof_dcblock_plot_transferfn(R_coeffs(1), fs);
 figure
-dcblock_plot_stepfn(R_coeffs(1), fs);
+sof_dcblock_plot_stepfn(R_coeffs(1), fs);
 
-rmpath ./../common
+sof_dcblock_paths(0);
 
 end
 
