@@ -303,6 +303,11 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_POWER);
 	pm_runtime_init(sof);
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* init I/O performance before any I/O interfaces */
+	io_perf_monitor_init();
+#endif
+
 	/* init the platform */
 	if (platform_init(sof) < 0)
 		sof_panic(SOF_IPC_PANIC_PLATFORM);
