@@ -30,14 +30,10 @@
 
 #include "pipe.h"
 
-/* 66def9f0-39f2-11ed-89f7-af98a6440cc4 */
-SOF_DEFINE_UUID("arecord", arecord_uuid, 0x66def9f0, 0x39f2, 0x11ed,
-		    0xf7, 0x89, 0xaf, 0x98, 0xa6, 0x44, 0x0c, 0xc4);
+SOF_DEFINE_REG_UUID(arecord);
 DECLARE_TR_CTX(arecord_tr, SOF_UUID(arecord_uuid), LOG_LEVEL_INFO);
 
-/* 72cee996-39f2-11ed-a08f-97fcc42eaaeb */
-SOF_DEFINE_UUID("aplay", aplay_uuid, 0x72cee996, 0x39f2, 0x11ed,
-		    0xa0, 0x8f, 0x97, 0xfc, 0xc4, 0x2e, 0xaa, 0xeb);
+SOF_DEFINE_REG_UUID(aplay);
 DECLARE_TR_CTX(aplay_tr, SOF_UUID(aplay_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_arecord;

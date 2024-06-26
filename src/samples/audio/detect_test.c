@@ -69,9 +69,7 @@ static const struct comp_driver comp_keyword;
 
 LOG_MODULE_REGISTER(kd_test, CONFIG_SOF_LOG_LEVEL);
 
-/* eba8d51f-7827-47b5-82ee-de6e7743af67 */
-SOF_DEFINE_UUID("keyword", keyword_uuid, 0xeba8d51f, 0x7827, 0x47b5,
-		 0x82, 0xee, 0xde, 0x6e, 0x77, 0x43, 0xaf, 0x67);
+SOF_DEFINE_REG_UUID(keyword);
 
 DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
 

@@ -27,9 +27,7 @@
 
 LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 
-/* 42544c92-8e92-4e41-b679-34519f1c1d28 */
-SOF_DEFINE_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
-		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
+SOF_DEFINE_REG_UUID(buffer);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
 static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,

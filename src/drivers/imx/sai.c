@@ -20,9 +20,7 @@
 
 LOG_MODULE_REGISTER(sai, CONFIG_SOF_LOG_LEVEL);
 
-/* 9302adf5-88be-4234-a0a7-dca538ef81f4 */
-SOF_DEFINE_UUID("sai", sai_uuid, 0x9302adf5, 0x88be, 0x4234,
-		 0xa0, 0xa7, 0xdc, 0xa5, 0x38, 0xef, 0x81, 0xf4);
+SOF_DEFINE_REG_UUID(sai);
 
 DECLARE_TR_CTX(sai_tr, SOF_UUID(sai_uuid), LOG_LEVEL_INFO);
 

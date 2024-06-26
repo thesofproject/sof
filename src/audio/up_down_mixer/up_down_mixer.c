@@ -32,9 +32,7 @@
 LOG_MODULE_REGISTER(up_down_mixer, CONFIG_SOF_LOG_LEVEL);
 
 /* these ids aligns windows driver requirement to support windows driver */
-/* 42f8060c-832f-4dbf-b247-51e961997b34 */
-SOF_DEFINE_UUID("up_down_mixer", up_down_mixer_uuid, 0x42f8060c, 0x832f,
-		    0x4dbf, 0xb2, 0x47, 0x51, 0xe9, 0x61, 0x99, 0x7b, 0x34);
+SOF_DEFINE_REG_UUID(up_down_mixer);
 
 DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_uuid),
 	       LOG_LEVEL_INFO);

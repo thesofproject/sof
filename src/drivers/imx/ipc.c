@@ -43,9 +43,7 @@ LOG_MODULE_REGISTER(ipc_task, CONFIG_SOF_LOG_LEVEL);
 #define interrupt_clear(irq)
 #endif /* CONFIG_IMX8M */
 
-/* 389c9186-5a7d-4ad1-a02c-a02ecdadfb33 */
-SOF_DEFINE_UUID("ipc_task", ipc_task_uuid, 0x389c9186, 0x5a7d, 0x4ad1,
-		 0xa0, 0x2c, 0xa0, 0x2e, 0xcd, 0xad, 0xfb, 0x33);
+SOF_DEFINE_REG_UUID(ipc_task);
 
 struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;

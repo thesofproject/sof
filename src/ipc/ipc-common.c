@@ -34,9 +34,7 @@
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
-/* be60f97d-78df-4796-a0ee-435cb56b720a */
-SOF_DEFINE_UUID("ipc", ipc_uuid, 0xbe60f97d, 0x78df, 0x4796,
-		 0xa0, 0xee, 0x43, 0x5c, 0xb5, 0x6b, 0x72, 0x0a);
+SOF_DEFINE_REG_UUID(ipc);
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 

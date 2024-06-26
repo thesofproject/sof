@@ -24,8 +24,7 @@
 #include <platform/acp_dma.h>
 #include <sof/probe/probe.h>
 
-SOF_DEFINE_UUID("acpdma", acpdma_uuid, 0x70f2d3f2, 0xcbb6, 0x4984,
-		 0xa2, 0xd8, 0x0d, 0xd5, 0x14, 0xb8, 0x0b, 0xc2);
+SOF_DEFINE_REG_UUID(acpdma);
 DECLARE_TR_CTX(acpdma_tr, SOF_UUID(acpdma_uuid), LOG_LEVEL_INFO);
 #define PROBE_UPDATE_POS_MASK	0x80000000
 #define PROBE_BUFFER_WATERMARK	(16 * 1024)

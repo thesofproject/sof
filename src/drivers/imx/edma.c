@@ -21,9 +21,7 @@
 
 LOG_MODULE_REGISTER(edma, CONFIG_SOF_LOG_LEVEL);
 
-/* 3d73a110-0930-457f-be51-34453e56287b */
-SOF_DEFINE_UUID("edma", edma_uuid, 0x3d73a110, 0x0930, 0x457f,
-		 0xbe, 0x51, 0x34, 0x45, 0x3e, 0x56, 0x28, 0x7b);
+SOF_DEFINE_REG_UUID(edma);
 
 DECLARE_TR_CTX(edma_tr, SOF_UUID(edma_uuid), LOG_LEVEL_INFO);
 

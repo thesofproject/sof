@@ -37,15 +37,11 @@
 
 LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
 
-/* 5276b491-5b64-464e-8984-dc228ef9e6a1 */
-SOF_DEFINE_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
-		 0x89, 0x84, 0xdc, 0x22, 0x8e, 0xf9, 0xe6, 0xa1);
+SOF_DEFINE_REG_UUID(sa);
 
 DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
 
-/* c63c4e75-8f61-4420-9319-1395932efa9e */
-SOF_DEFINE_UUID("agent_work", agent_work_uuid, 0xc63c4e75, 0x8f61, 0x4420,
-		 0x93, 0x19, 0x13, 0x95, 0x93, 0x2e, 0xfa, 0x9e);
+SOF_DEFINE_REG_UUID(agent_work);
 
 #if CONFIG_PERFORMANCE_COUNTERS
 static void perf_sa_trace(struct perf_cnt_data *pcd, int ignored)

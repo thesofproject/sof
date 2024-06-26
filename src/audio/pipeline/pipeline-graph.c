@@ -28,9 +28,7 @@
 
 LOG_MODULE_REGISTER(pipe, CONFIG_SOF_LOG_LEVEL);
 
-/* 4e934adb-b0ec-4d33-a086-c1022f921321 */
-SOF_DEFINE_UUID("pipe", pipe_uuid, 0x4e934adb, 0xb0ec, 0x4d33,
-		    0xa0, 0x86, 0xc1, 0x02, 0x2f, 0x92, 0x13, 0x21);
+SOF_DEFINE_REG_UUID(pipe);
 
 DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 

@@ -9,9 +9,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 
-/* eb0bd14b-7d5e-4dfa-bbe2-7762adb279f0 */
-SOF_DEFINE_UUID("swaudiodai", swaudiodai_uuid, 0xeb0bd14b, 0x7d5e, 0x4dfa,
-		0xbb, 0xe2, 0x77, 0x62, 0xad, 0xb2, 0x79, 0xf0);
+SOF_DEFINE_REG_UUID(swaudiodai);
 
 DECLARE_TR_CTX(swaudiodai_tr, SOF_UUID(swaudiodai_uuid), LOG_LEVEL_INFO);
 

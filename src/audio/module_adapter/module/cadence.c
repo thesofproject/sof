@@ -18,9 +18,7 @@
 
 LOG_MODULE_REGISTER(cadence, CONFIG_SOF_LOG_LEVEL);
 
-/* d8218443-5ff3-4a4c-b388-6cfe07b956aa */
-SOF_DEFINE_UUID("cadence_codec", cadence_codec_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
-		    0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xaa);
+SOF_DEFINE_REG_UUID(cadence_codec);
 
 DECLARE_TR_CTX(cadence_tr, SOF_UUID(cadence_uuid), LOG_LEVEL_INFO);
 

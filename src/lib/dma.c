@@ -22,9 +22,7 @@
 
 LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 
-/* bc3526a7-9b86-4ab4-84a5-2e02ae70cc10 */
-SOF_DEFINE_UUID("dma", dma_uuid, 0xbc3526a7, 0x9b86, 0x4ab4,
-		 0x84, 0xa5, 0x2e, 0x02, 0xae, 0x70, 0xcc, 0x10);
+SOF_DEFINE_REG_UUID(dma);
 
 DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 

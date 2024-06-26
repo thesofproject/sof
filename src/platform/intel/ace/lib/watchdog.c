@@ -21,9 +21,7 @@
 
 LOG_MODULE_REGISTER(wdt, CONFIG_SOF_LOG_LEVEL);
 
-/* 13c8bc59-c4fa-4ad1-b93a-ce97cd30acc7 */
-SOF_DEFINE_UUID("wdt", wdt_uuid, 0x13c8bc59, 0xc4fa, 0x4ad1,
-		 0xb9, 0x3a, 0xce, 0x97, 0xcd, 0x30, 0xac, 0xc7);
+SOF_DEFINE_REG_UUID(wdt);
 
 DECLARE_TR_CTX(wdt_tr, SOF_UUID(wdt_uuid), LOG_LEVEL_INFO);
 

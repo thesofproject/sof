@@ -40,9 +40,7 @@
 
 LOG_MODULE_REGISTER(crossover, CONFIG_SOF_LOG_LEVEL);
 
-/* 948c9ad1-806a-4131-ad6c-b2bda9e35a9f */
-SOF_DEFINE_UUID("crossover", crossover_uuid, 0x948c9ad1, 0x806a, 0x4131,
-		    0xad, 0x6c, 0xb2, 0xbd, 0xa9, 0xe3, 0x5a, 0x9f);
+SOF_DEFINE_REG_UUID(crossover);
 
 DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
 

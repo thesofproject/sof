@@ -18,9 +18,7 @@
 #define MAX_CONFIG_SIZE_BYTES (8192)
 #define NUM_IO_STREAMS (1)
 
-/* d944281a-afe9-4695-a043-d7f62b89538e*/
-SOF_DEFINE_UUID("waves", waves_uuid, 0xd944281a, 0xafe9, 0x4695,
-		    0xa0, 0x43, 0xd7, 0xf6, 0x2b, 0x89, 0x53, 0x8e);
+SOF_DEFINE_REG_UUID(waves);
 DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
 
 struct waves_codec_data {

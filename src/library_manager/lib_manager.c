@@ -45,8 +45,7 @@
 LOG_MODULE_REGISTER(lib_manager, CONFIG_SOF_LOG_LEVEL);
 /* 54cf5598-8b29-11ec-a8a3-0242ac120002 */
 
-SOF_DEFINE_UUID("lib_manager", lib_manager_uuid, 0x54cf5598, 0x8b29, 0x11ec,
-		 0xa8, 0xa3, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
+SOF_DEFINE_REG_UUID(lib_manager);
 
 DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 

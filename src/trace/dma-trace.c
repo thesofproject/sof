@@ -39,15 +39,11 @@
 
 LOG_MODULE_REGISTER(dma_trace, CONFIG_SOF_LOG_LEVEL);
 
-/* 58782c63-1326-4185-8459-22272e12d1f1 */
-SOF_DEFINE_UUID("dma_trace", dma_trace_uuid, 0x58782c63, 0x1326, 0x4185,
-		 0x84, 0x59, 0x22, 0x27, 0x2e, 0x12, 0xd1, 0xf1);
+SOF_DEFINE_REG_UUID(dma_trace);
 
 DECLARE_TR_CTX(dt_tr, SOF_UUID(dma_trace_uuid), LOG_LEVEL_INFO);
 
-/* 2b972272-c5b1-4b7e-926f-0fc5cb4c4690 */
-SOF_DEFINE_UUID("dma_trace_task", dma_trace_task_uuid, 0x2b972272, 0xc5b1,
-		 0x4b7e, 0x92, 0x6f, 0x0f, 0xc5, 0xcb, 0x4c, 0x46, 0x90);
+SOF_DEFINE_REG_UUID(dma_trace_task);
 
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,

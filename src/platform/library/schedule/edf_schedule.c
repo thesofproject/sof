@@ -13,9 +13,7 @@
 
  /* scheduler testbench definition */
 
-/* 5dbc3672-e290-43d8-91f8-81aafe453d5b */
-SOF_DEFINE_UUID("edf_sched_lib", edf_sched_lib_uuid, 0x5dbc3672, 0xe290, 0x43d8,
-		0x91, 0xf8, 0x81, 0xaa, 0xfe, 0x45, 0x3d, 0x5b);
+SOF_DEFINE_REG_UUID(edf_sched_lib);
 
 DECLARE_TR_CTX(edf_tr, SOF_UUID(edf_sched_lib_uuid), LOG_LEVEL_INFO);
 

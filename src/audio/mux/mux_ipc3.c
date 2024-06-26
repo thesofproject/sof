@@ -22,15 +22,11 @@
 
 LOG_MODULE_DECLARE(muxdemux, CONFIG_SOF_LOG_LEVEL);
 
-/* c607ff4d-9cb6-49dc-b678-7da3c63ea557 */
-SOF_DEFINE_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
-		    0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
+SOF_DEFINE_REG_UUID(mux);
 
 DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
 
-/* c4b26868-1430-470e-a089-15d1c77f851a */
-SOF_DEFINE_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
-		    0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
+SOF_DEFINE_REG_UUID(demux);
 
 DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 

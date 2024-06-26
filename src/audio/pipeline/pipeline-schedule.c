@@ -29,15 +29,11 @@
 
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
-/* f11818eb-e92e-4082-82a3-dc54c604ebb3 */
-SOF_DEFINE_UUID("pipe_task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
-		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);
+SOF_DEFINE_REG_UUID(pipe_task);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 
-/* ee755917-96b9-4130-b49e-37b9d0501993 */
-SOF_DEFINE_UUID("dp_task", dp_task_uuid, 0xee755917, 0x96b9, 0x4130,
-		 0xb4,  0x9e, 0x37, 0xb9, 0xd0, 0x50, 0x19, 0x93);
+SOF_DEFINE_REG_UUID(dp_task);
 
 /**
  * current static stack size for each DP component

@@ -26,9 +26,7 @@
 
 LOG_MODULE_REGISTER(pm_runtime, CONFIG_SOF_LOG_LEVEL);
 
-/* d7f6712d-131c-45a7-82ed-6aa9dc2291ea */
-SOF_DEFINE_UUID("pm_runtime", pm_runtime_uuid, 0xd7f6712d, 0x131c, 0x45a7,
-		 0x82, 0xed, 0x6a, 0xa9, 0xdc, 0x22, 0x91, 0xea);
+SOF_DEFINE_REG_UUID(pm_runtime);
 
 DECLARE_TR_CTX(pm_tr, SOF_UUID(pm_runtime_uuid), LOG_LEVEL_INFO);
 

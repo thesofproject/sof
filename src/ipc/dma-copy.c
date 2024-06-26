@@ -20,9 +20,7 @@
 /* tracing */
 LOG_MODULE_REGISTER(dma_copy, CONFIG_SOF_LOG_LEVEL);
 
-/* 729bf8b5-e873-4bf5-9690-8e2a3fd33911 */
-SOF_DEFINE_UUID("dma_copy", dma_copy_uuid, 0x729bf8b5, 0xe873, 0x4bf5,
-		 0x96, 0x90, 0x8e, 0x2a, 0x3f, 0xd3, 0x39, 0x11);
+SOF_DEFINE_REG_UUID(dma_copy);
 
 DECLARE_TR_CTX(dmacpy_tr, SOF_UUID(dma_copy_uuid), LOG_LEVEL_INFO);
 
