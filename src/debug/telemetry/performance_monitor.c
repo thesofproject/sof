@@ -38,6 +38,13 @@ struct perf_bitmap {
 	size_t size;
 };
 
+struct io_perf_monitor_ctx {
+	struct k_spinlock lock;
+	enum ipc4_perf_measurements_state_set state;
+	struct perf_bitmap io_performance_data_bitmap;
+	struct io_perf_data_item *io_perf_data;
+};
+
 struct perf_bitmap performance_data_bitmap;
 
 struct perf_data_item_comp *perf_data;
@@ -397,3 +404,227 @@ int performance_monitor_init(void)
 /* init performance monitor using Zephyr */
 SYS_INIT(performance_monitor_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+
+SYS_BITARRAY_DEFINE_STATIC(io_performance_data_bit_array, PERFORMANCE_DATA_ENTRIES_COUNT);
+
+#define IO_PERFORMANCE_ALLOC_BYTES 0x1000
+#define IO_PERFORMANCE_MAX_ENTRIES (IO_PERFORMANCE_ALLOC_BYTES / sizeof(struct io_perf_data_item))
+
+static struct io_perf_monitor_ctx perf_monitor_ctx;
+static struct io_perf_data_item io_perf_data_items[IO_PERFORMANCE_MAX_ENTRIES];
+
+int io_perf_monitor_init(void)
+{
+	int ret;
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+
+	k_spinlock_init(&self->lock);
+	k_spinlock_key_t key = k_spin_lock(&self->lock);
+
+	self->io_perf_data = (struct io_perf_data_item *)io_perf_data_items;
+	self->state = IPC4_PERF_MEASUREMENTS_DISABLED;
+
+	ret = perf_bitmap_init(&self->io_performance_data_bitmap, &io_performance_data_bit_array,
+			       IO_PERFORMANCE_MAX_ENTRIES);
+
+	k_spin_unlock(&self->lock, key);
+	return ret;
+}
+
+static struct io_perf_data_item *io_perf_monitor_get_next_slot(struct io_perf_monitor_ctx *self)
+{
+	int idx;
+	int ret;
+	k_spinlock_key_t key = k_spin_lock(&self->lock);
+
+	ret = perf_bitmap_alloc(&self->io_performance_data_bitmap, &idx);
+	if (ret < 0)
+		return NULL;
+	/* ref. FW did not set the bits, but here we do it to not have to use
+	 * isFree() check that the bitarray does not provide yet. Instead we will use isClear
+	 * ,and always set bit on bitmap alloc.
+	 */
+
+	ret = perf_bitmap_setbit(&self->io_performance_data_bitmap, idx);
+	if (ret < 0)
+		return NULL;
+
+	k_spin_unlock(&self->lock, key);
+	return &self->io_perf_data[idx];
+}
+
+int io_perf_monitor_release_slot(struct io_perf_data_item *item)
+{
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+	int idx;
+	int ret;
+	k_spinlock_key_t key;
+
+	if (!item) {
+		tr_err(&ipc_tr, "perf_data_item is null");
+		return -EINVAL;
+	}
+
+	item->is_removed = true;
+
+	key = k_spin_lock(&self->lock);
+	idx = item - self->io_perf_data;
+	k_spin_unlock(&self->lock, key);
+
+	/* we assign data items ourselves so neither of those should ever fail */
+	ret = perf_bitmap_clearbit(&self->io_performance_data_bitmap, idx);
+	assert(!ret);
+	if (ret < 0)
+		return ret;
+	ret = perf_bitmap_free(&self->io_performance_data_bitmap, idx);
+	assert(!ret);
+	return ret;
+}
+
+int
+io_perf_monitor_get_performance_data(struct io_global_perf_data *io_global_perf_data)
+{
+	if (!io_global_perf_data)
+		return 0;
+
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+	k_spinlock_key_t key = k_spin_lock(&self->lock);
+
+	size_t slot_idx = 0;
+	size_t slots_count = self->io_performance_data_bitmap.occupied;
+	size_t entries_cont = self->io_performance_data_bitmap.size;
+
+	for (size_t idx = 0; idx < entries_cont && slot_idx < slots_count; ++idx) {
+		if (perf_bitmap_is_bit_clear(&self->io_performance_data_bitmap, idx))
+			continue;
+		io_global_perf_data->perf_items[slot_idx] = self->io_perf_data[idx];
+		++slot_idx;
+	}
+	io_global_perf_data->perf_item_count = slots_count;
+
+	k_spin_unlock(&self->lock, key);
+	return 0;
+}
+
+static int
+io_perf_monitor_disable(struct io_perf_monitor_ctx *self)
+{
+	return 0;
+}
+
+static int
+io_perf_monitor_stop(struct io_perf_monitor_ctx *self)
+{
+	size_t slot_idx = 0;
+	size_t slots_count = self->io_performance_data_bitmap.occupied;
+	size_t entries_cont = self->io_performance_data_bitmap.size;
+
+	for (size_t idx = 0; idx < entries_cont && slot_idx < slots_count; ++idx) {
+		if (perf_bitmap_is_bit_clear(&self->io_performance_data_bitmap, idx))
+			continue;
+
+		self->io_perf_data[idx].data = 0;
+		++slot_idx;
+	}
+
+	return 0;
+}
+
+static int
+io_perf_monitor_start(struct io_perf_monitor_ctx *self)
+{
+	return 0;
+}
+
+static int
+io_perf_monitor_pause(struct io_perf_monitor_ctx *self)
+{
+	return 0;
+}
+
+int io_perf_monitor_set_state(enum ipc4_perf_measurements_state_set state)
+{
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+	int ret = 0;
+	k_spinlock_key_t key = k_spin_lock(&self->lock);
+
+	switch (state) {
+	case IPC4_PERF_MEASUREMENTS_DISABLED:
+		ret = io_perf_monitor_disable(self);
+		break;
+	case IPC4_PERF_MEASUREMENTS_STOPPED:
+		ret = io_perf_monitor_stop(self);
+		break;
+	case IPC4_PERF_MEASUREMENTS_STARTED:
+		ret = io_perf_monitor_start(self);
+		break;
+	case IPC4_PERF_MEASUREMENTS_PAUSED:
+		ret = io_perf_monitor_pause(self);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	if (ret == 0)
+		self->state = state;
+
+	k_spin_unlock(&self->lock, key);
+	return ret;
+}
+
+inline enum ipc4_perf_measurements_state_set io_perf_monitor_get_state(void)
+{
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+
+	return self->state;
+}
+
+int io_perf_monitor_init_data(struct io_perf_data_item **slot_id,
+			      struct io_perf_data_item *init_data)
+{
+	if (!slot_id)
+		return IPC4_ERROR_INVALID_PARAM;
+
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+	struct io_perf_data_item *new_slot = io_perf_monitor_get_next_slot(self);
+
+	if (!new_slot)
+		return IPC4_FAILURE;
+
+	new_slot->id = init_data->id;
+	new_slot->instance = init_data->instance;
+	new_slot->direction = init_data->direction;
+	new_slot->state = init_data->state;
+	new_slot->power_mode = init_data->power_mode;
+	new_slot->is_removed = false;
+	new_slot->data = 0;
+
+	*slot_id = new_slot;
+
+	return 0;
+}
+
+void io_perf_monitor_update_data(struct io_perf_data_item *slot_id, uint32_t increment)
+{
+	if (!slot_id)
+		return;
+
+	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+
+	/* this does not need a lock if each perf slot has only one user */
+	if (self->state == IPC4_PERF_MEASUREMENTS_STARTED)
+		slot_id->data += increment;
+}
+
+inline void io_perf_monitor_update_io_state(struct io_perf_data_item *slot_id, bool const power_up)
+{
+	slot_id->state = power_up;
+}
+
+inline void io_perf_monitor_update_power_mode(struct io_perf_data_item *slot_id,
+					      bool const power_mode)
+{
+	slot_id->power_mode = power_mode;
+}
+#endif /* CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS */
