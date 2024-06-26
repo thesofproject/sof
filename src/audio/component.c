@@ -482,7 +482,7 @@ int comp_copy(struct comp_dev *dev)
 	 *    to ring_buffer and result data from ring_buffer to comp_buffer
 	 *
 	 *  - second step will be performed by a thread specific to the DP module - DP module
-	 *    will take data from input wing_buffer (using source API), process it
+	 *    will take data from input ring_buffer (using source API), process it
 	 *    and put in output ring_buffer (using sink API)
 	 *
 	 * this allows the current pipeline structure to see a DP module as a "normal" LL

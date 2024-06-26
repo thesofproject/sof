@@ -19,6 +19,24 @@ DECLARE_SOF_RT_UUID("ring_buffer", ring_buffer_uuid, 0x393608d8, 0x4188, 0x11ee,
 		    0xbe, 0x56, 0x02, 0x42, 0xac, 0x12, 0x20, 0x02);
 DECLARE_TR_CTX(ring_buffer_tr, SOF_UUID(ring_buffer_uuid), LOG_LEVEL_INFO);
 
+/**
+ * @brief remove the queue from the list, free memory
+ */
+static void ring_buffer_free(struct sof_audio_buffer *buffer)
+{
+	struct ring_buffer *ring_buffer = (struct ring_buffer *) buffer;
+	rfree((__sparse_force void *)ring_buffer->_data_buffer);
+}
+
+/**
+ * @brief return true if the queue is shared between 2 cores
+ */
+static inline
+bool ring_buffer_is_shared(struct ring_buffer *ring_buffer)
+{
+	return !!(ring_buffer->_flags & RING_BUFFER_MODE_SHARED);
+}
+
 static inline uint8_t __sparse_cache *ring_buffer_buffer_end(struct ring_buffer *ring_buffer)
 {
 	return ring_buffer->_data_buffer + ring_buffer->data_buffer_size;
@@ -26,16 +44,18 @@ static inline uint8_t __sparse_cache *ring_buffer_buffer_end(struct ring_buffer 
 
 static inline struct ring_buffer *ring_buffer_from_sink(struct sof_sink *sink)
 {
-	return container_of(sink, struct ring_buffer, _sink_api);
+	/* sof_audio_buffer must be the 1st field of ring_buffer, simple cast is fine */
+	return (struct ring_buffer *) container_of(sink, struct sof_audio_buffer, _sink_api);
 }
 
 static inline struct ring_buffer *ring_buffer_from_source(struct sof_source *source)
 {
-	return container_of(source, struct ring_buffer, _source_api);
+	/* sof_audio_buffer must be the 1st field of ring_buffer, simple cast is fine */
+	return (struct ring_buffer *) container_of(source, struct sof_audio_buffer, _source_api);
 }
 
 static inline void ring_buffer_invalidate_shared(struct ring_buffer *ring_buffer,
-					      void __sparse_cache *ptr, size_t size)
+						 void __sparse_cache *ptr, size_t size)
 {
 	/* no cache required in case of not shared queue */
 	if (!ring_buffer_is_shared(ring_buffer))
@@ -54,7 +74,7 @@ static inline void ring_buffer_invalidate_shared(struct ring_buffer *ring_buffer
 }
 
 static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
-					     void __sparse_cache *ptr, size_t size)
+						void __sparse_cache *ptr, size_t size)
 {
 	/* no cache required in case of not shared queue */
 	if (!ring_buffer_is_shared(ring_buffer))
@@ -109,7 +129,7 @@ static size_t ring_buffer_get_data_available(struct sof_source *source)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	return _ring_buffer_get_data_available(ring_buffer);
 }
 
@@ -117,16 +137,16 @@ static size_t ring_buffer_get_free_size(struct sof_sink *sink)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	return ring_buffer->data_buffer_size - _ring_buffer_get_data_available(ring_buffer);
 }
 
 static int ring_buffer_get_buffer(struct sof_sink *sink, size_t req_size,
-			       void **data_ptr, void **buffer_start, size_t *buffer_size)
+				  void **data_ptr, void **buffer_start, size_t *buffer_size)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (req_size > ring_buffer_get_free_size(sink))
 		return -ENODATA;
 
@@ -144,7 +164,7 @@ static int ring_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (commit_size) {
 		ring_buffer_writeback_shared(ring_buffer,
 					     ring_buffer_get_pointer(ring_buffer,
@@ -161,12 +181,13 @@ static int ring_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 }
 
 static int ring_buffer_get_data(struct sof_source *source, size_t req_size,
-			     void const **data_ptr, void const **buffer_start, size_t *buffer_size)
+				void const **data_ptr, void const **buffer_start,
+				size_t *buffer_size)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
 	__sparse_cache void *data_ptr_c;
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (req_size > ring_buffer_get_data_available(source))
 		return -ENODATA;
 
@@ -186,7 +207,7 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (free_size) {
 		/* data consumed, free buffer space, no need for any special cache operations */
 		ring_buffer->_read_offset = ring_buffer_inc_offset(ring_buffer,
@@ -198,10 +219,10 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 }
 
 static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
-				   struct sof_ipc_stream_params *params,
-				   bool force_update)
+				      struct sof_ipc_stream_params *params,
+				      bool force_update)
 {
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (ring_buffer->_hw_params_configured && !force_update)
 		return 0;
 
@@ -216,22 +237,22 @@ static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
 }
 
 static int ring_buffer_set_ipc_params_source(struct sof_source *source,
-					  struct sof_ipc_stream_params *params,
-					  bool force_update)
+					     struct sof_ipc_stream_params *params,
+					     bool force_update)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
 }
 
 static int ring_buffer_set_ipc_params_sink(struct sof_sink *sink,
-					struct sof_ipc_stream_params *params,
-					bool force_update)
+					   struct sof_ipc_stream_params *params,
+					   bool force_update)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
 
-	CORE_CHECK_STRUCT(ring_buffer);
+	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
 }
 
@@ -250,7 +271,8 @@ static const struct sink_ops ring_buffer_sink_ops = {
 };
 
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				 uint32_t id, struct sof_audio_stream_params *audio_stream_params)
+				       uint32_t id,
+				       struct sof_audio_stream_params *audio_stream_params)
 {
 	struct ring_buffer *ring_buffer;
 
@@ -267,17 +289,17 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	ring_buffer->_flags = flags;
 	ring_buffer->audio_stream_params = audio_stream_params;
 
-	CORE_CHECK_STRUCT_INIT(ring_buffer, flags & RING_BUFFER_MODE_SHARED);
+	CORE_CHECK_STRUCT_INIT(&ring_buffer->audio_buffer, flags & RING_BUFFER_MODE_SHARED);
 
 	/* initiate structures */
-	source_init(ring_buffer_get_source(ring_buffer), &ring_buffer_source_ops,
+	source_init(&ring_buffer->audio_buffer._source_api, &ring_buffer_source_ops,
 		    ring_buffer->audio_stream_params);
-	sink_init(ring_buffer_get_sink(ring_buffer), &ring_buffer_sink_ops,
+	sink_init(&ring_buffer->audio_buffer._sink_api, &ring_buffer_sink_ops,
 		  ring_buffer->audio_stream_params);
 
 	/* set obs/ibs in sink/source interfaces */
-	sink_set_min_free_space(&ring_buffer->_sink_api, min_free_space);
-	source_set_min_available(&ring_buffer->_source_api, min_available);
+	sink_set_min_free_space(&ring_buffer->audio_buffer._sink_api, min_free_space);
+	source_set_min_available(&ring_buffer->audio_buffer._source_api, min_available);
 
 	uint32_t max_ibs_obs = MAX(min_available, min_free_space);
 
@@ -296,6 +318,10 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	tr_info(&ring_buffer_tr, "Ring buffer created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
 		id, ring_buffer_is_shared(ring_buffer), min_available, min_free_space,
 		ring_buffer->data_buffer_size);
+
+	/* set common buffer api */
+	ring_buffer->audio_buffer.free_op = ring_buffer_free;
+	ring_buffer->audio_buffer.buffer_type = BUFFER_TYPE_RING_BUFFER;
 
 	/* return a pointer to allocated structure */
 	return ring_buffer;

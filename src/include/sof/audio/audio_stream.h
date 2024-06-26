@@ -64,12 +64,12 @@ struct audio_stream {
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
 #if CONFIG_PIPELINE_2_0
-	struct ring_buffer *ring_buffer_sink; /**< sink API shadow, an additional ring_buffer
-						* at data in
-						*/
-	struct ring_buffer *ring_buffer_source; /**< source API shadow, an additional ring_buffer
-						  * at data out
-						  */
+	struct sof_audio_buffer *shadow_buffer_sink; /**< sink API shadow, an additional buffer
+						      * of any type at data input
+						      */
+	struct sof_audio_buffer *shadow_buffer_source; /**< source API shadow, an additional buffer
+							* at data output
+							*/
 #endif /* CONFIG_PIPELINE_2_0 */
 
 	/* runtime stream params */

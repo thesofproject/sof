@@ -16,7 +16,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/ring_buffer.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -920,7 +920,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 */
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, sink_list);
-		err = buffer_sync_shadow_ring_buffer(buffer, UINT_MAX);
+		err = buffer_sync_shadow_buffer(buffer, UINT_MAX);
 
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
@@ -949,7 +949,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		struct sof_source *following_mod_data_source =
 				audio_stream_get_source(&buffer->stream);
 
-		err = buffer_sync_shadow_ring_buffer
+		err = buffer_sync_shadow_buffer
 			(buffer,
 			 source_get_min_available(following_mod_data_source));
 
