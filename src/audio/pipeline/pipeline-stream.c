@@ -344,11 +344,18 @@ static int pipeline_calc_cps_consumption(struct comp_dev *current,
 
 	if (cd->cpc == 0) {
 		/* Use maximum clock budget, assume 1ms chunk size */
+		if (!ppl_data->kcps_acc[comp_core])
+			ppl_data->kcps_acc[comp_core] = ppl_data->kcps[comp_core];
 		ppl_data->kcps[comp_core] = CLK_MAX_CPU_HZ / 1000;
 		tr_warn(pipe,
 			"0 CPS requested for module: %#x, core: %d using safe max KCPS: %u",
 			current->ipc_config.id, comp_core, ppl_data->kcps[comp_core]);
 
+		/*
+		 * This return code indicates to the caller, that the kcps calue
+		 * shouldn't be used for slowing down the clock when terminating
+		 * the pipeline
+		 */
 		return PPL_STATUS_PATH_STOP;
 	} else {
 		kcps = cd->cpc * 1000 / current->period;
@@ -430,6 +437,12 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 			ret = walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
 
 			for (int i = 0; i < arch_num_cpus(); i++) {
+				if (ret == PPL_STATUS_PATH_STOP) {
+					/* Restore the value before maximization */
+					data.kcps[i] -= data.kcps_acc[i];
+					data.kcps_acc[i] = 0;
+				}
+
 				if (data.kcps[i] > 0) {
 					core_kcps_adjust(i, -data.kcps[i]);
 					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", core_kcps_get(i), i);
