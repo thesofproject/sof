@@ -124,6 +124,7 @@ struct pipeline_data {
 	uint32_t delay_ms;		/* between PRE_{START,RELEASE} and {START,RELEASE} */
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	uint32_t kcps[CONFIG_CORE_COUNT]; /**< the max count of KCPS */
+	uint32_t kcps_acc[CONFIG_CORE_COUNT]; /**< accumulated KCPS before maximization */
 #endif
 };
 
