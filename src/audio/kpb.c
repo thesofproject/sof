@@ -59,22 +59,16 @@ static const struct comp_driver comp_kpb;
 
 LOG_MODULE_REGISTER(kpb, CONFIG_SOF_LOG_LEVEL);
 #if CONFIG_IPC_MAJOR_4
-/* A8A0CB32-4A77-4DB1-85C7-53D7EE07BCE6 */
-SOF_DEFINE_UUID("kpb4", kpb4_uuid, 0xA8A0CB32, 0x4A77, 0x4DB1,
-		    0x85, 0xC7, 0x53, 0xD7, 0xEE, 0x07, 0xBC, 0xE6);
+SOF_DEFINE_REG_UUID(kpb4);
 #define KPB_UUID kpb4_uuid
 #else
-/* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
-SOF_DEFINE_UUID("kpb", kpb_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
-		    0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0x2e);
+SOF_DEFINE_REG_UUID(kpb);
 #define KPB_UUID kpb_uuid
 #endif
 
 DECLARE_TR_CTX(kpb_tr, SOF_UUID(KPB_UUID), LOG_LEVEL_INFO);
 
-/* e50057a5-8b27-4db4-bd79-9a639cee5f50 */
-SOF_DEFINE_UUID("kpb_task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
-		 0xbd, 0x79, 0x9a, 0x63, 0x9c, 0xee, 0x5f, 0x50);
+SOF_DEFINE_REG_UUID(kpb_task);
 
 /* KPB private data, runtime data */
 struct comp_data {

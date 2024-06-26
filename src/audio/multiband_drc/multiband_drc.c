@@ -37,9 +37,7 @@
 
 LOG_MODULE_REGISTER(multiband_drc, CONFIG_SOF_LOG_LEVEL);
 
-/* 0d9f2256-8e4f-47b3-8448-239a334f1191 */
-SOF_DEFINE_UUID("multiband_drc", multiband_drc_uuid, 0x0d9f2256, 0x8e4f, 0x47b3,
-		    0x84, 0x48, 0x23, 0x9a, 0x33, 0x4f, 0x11, 0x91);
+SOF_DEFINE_REG_UUID(multiband_drc);
 
 DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 

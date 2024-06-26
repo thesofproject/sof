@@ -38,9 +38,7 @@
 
 LOG_MODULE_REGISTER(drc, CONFIG_SOF_LOG_LEVEL);
 
-/* b36ee4da-006f-47f9-a06d-fecbe2d8b6ce */
-SOF_DEFINE_UUID("drc", drc_uuid, 0xb36ee4da, 0x006f, 0x47f9,
-		    0xa0, 0x6d, 0xfe, 0xcb, 0xe2, 0xd8, 0xb6, 0xce);
+SOF_DEFINE_REG_UUID(drc);
 
 DECLARE_TR_CTX(drc_tr, SOF_UUID(drc_uuid), LOG_LEVEL_INFO);
 

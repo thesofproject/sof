@@ -33,9 +33,7 @@
 #include <platform/chip_registers.h>
 #include <platform/acp_sp_dma.h>
 
-/*3ac07334-41ce-4447-a2c5-dff0d1fa1392*/
-SOF_DEFINE_UUID("acp_sp", acp_sp_uuid, 0x3ac07334, 0x41ce, 0x4447,
-		0xa2, 0xc5, 0xdf, 0xf0, 0xd1, 0xfa, 0x13, 0x92);
+SOF_DEFINE_REG_UUID(acp_sp);
 DECLARE_TR_CTX(acp_sp_rmb_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
 #define SP_TX_FIFO_ADDR		(SP_FIFO_SIZE * 2)

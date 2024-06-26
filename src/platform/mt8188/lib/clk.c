@@ -18,9 +18,7 @@
 #include <rtos/sof.h>
 #include <sof/trace/trace.h>
 
-/* 19d4e680-4479-48cc-af86-9f63d8b0098b */
-SOF_DEFINE_UUID("clkdrv_mt8188", clkdrv_mt8188_uuid, 0x19d4e680, 0x4479, 0x48cc,
-		 0xaf, 0x86, 0x9f, 0x63, 0xd8, 0xb0, 0x09, 0x8b);
+SOF_DEFINE_REG_UUID(clkdrv_mt8188);
 
 DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_mt8188_uuid), LOG_LEVEL_INFO);
 

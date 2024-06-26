@@ -35,9 +35,7 @@
 #define IPC_DSPMBOX_DSP_RSP 0
 #define IPC_DSPMBOX_DSP_REQ 1
 
-/* a3fe3bf2-39a4-4fc3-b341-8a96e0a26759 */
-SOF_DEFINE_UUID("ipc_task_mt818x", ipc_task_mt818x_uuid, 0xa3fe3bf2, 0x39a4, 0x4fc3,
-		 0xb3, 0x41, 0x8a, 0x96, 0xe0, 0xa2, 0x67, 0x59);
+SOF_DEFINE_REG_UUID(ipc_task_mt818x);
 
 static struct ipc *local_ipc;
 

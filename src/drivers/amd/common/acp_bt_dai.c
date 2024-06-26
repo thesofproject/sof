@@ -18,9 +18,7 @@
 #include <sof/lib/io.h>
 #include <platform/chip_offset_byte.h>
 
-/* 20865bfe-b833-4ff9-b22a-0482c3477497 */
-SOF_DEFINE_UUID("btdai", btdai_uuid, 0x20865bfe, 0xb833, 0x4ff9,
-		 0xb2, 0x2a, 0x04, 0x82, 0xc3, 0x47, 0x74, 0x97);
+SOF_DEFINE_REG_UUID(btdai);
 
 DECLARE_TR_CTX(btdai_tr, SOF_UUID(btdai_uuid), LOG_LEVEL_INFO);
 

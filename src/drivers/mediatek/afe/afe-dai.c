@@ -24,9 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* 30290c76-6a05-4784-8464-c21f09cee87e */
-SOF_DEFINE_UUID("afe_dai", afe_dai_uuid, 0x30290c76, 0x6a05, 0x4784,
-		 0x84, 0x64, 0xc2, 0x1f, 0x09, 0xce, 0xe8, 0x7e);
+SOF_DEFINE_REG_UUID(afe_dai);
 
 DECLARE_TR_CTX(afe_dai_tr, SOF_UUID(afe_dai_uuid), LOG_LEVEL_INFO);
 

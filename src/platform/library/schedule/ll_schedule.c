@@ -20,9 +20,7 @@
 
  /* scheduler testbench definition */
 
-/* 9f130ed8-2bbf-421c-836a-d5269147c9e7 */
-SOF_DEFINE_UUID("ll_sched_lib", ll_sched_lib_uuid, 0x9f130ed8, 0x2bbf, 0x421c,
-		0x83, 0x6a, 0xd5, 0x26, 0x91, 0x47, 0xc9, 0xe7);
+SOF_DEFINE_REG_UUID(ll_sched_lib);
 
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_lib_uuid), LOG_LEVEL_INFO);
 

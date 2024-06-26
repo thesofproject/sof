@@ -11,9 +11,7 @@
 
 LOG_MODULE_REGISTER(passthrough, CONFIG_SOF_LOG_LEVEL);
 
-/* 376b5e44-9c82-4ec2-bc83-10ea101afa8f */
-SOF_DEFINE_UUID("passthrough", passthrough_uuid, 0x376b5e44, 0x9c82, 0x4ec2,
-		    0xbc, 0x83, 0x10, 0xea, 0x10, 0x1a, 0xf8, 0x8f);
+SOF_DEFINE_REG_UUID(passthrough);
 DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 
 static int passthrough_codec_init(struct processing_module *mod)

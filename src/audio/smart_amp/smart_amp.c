@@ -24,15 +24,11 @@ static const struct comp_driver comp_smart_amp;
  * depending on configuration!
  */
 #if CONFIG_MAXIM_DSM
-/* 0cd84e80-ebd3-11ea-adc1-0242ac120002 */
-SOF_DEFINE_UUID("maxim_dsm", maxim_dsm_uuid, 0x0cd84e80, 0xebd3,
-		    0x11ea, 0xad, 0xc1, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
+SOF_DEFINE_REG_UUID(maxim_dsm);
 #define UUID_SYM maxim_dsm_uuid
 
 #else /* Passthrough */
-/* 64a794f0-55d3-4bca-9d5b-7b588badd037 */
-SOF_DEFINE_UUID("passthru_smart_amp", passthru_smart_amp_uuid, 0x64a794f0, 0x55d3,
-		    0x4bca, 0x9d, 0x5b, 0x7b, 0x58, 0x8b, 0xad, 0xd0, 0x37);
+SOF_DEFINE_REG_UUID(passthru_smart_amp);
 #define UUID_SYM passthru_smart_amp
 
 #endif

@@ -13,9 +13,7 @@
 
 LOG_MODULE_REGISTER(ipcgtw, CONFIG_SOF_LOG_LEVEL);
 
-/* a814a1ca-0b83-466c-9587-2f35ff8d12e8 */
-SOF_DEFINE_UUID("ipcgw", ipcgw_uuid, 0xa814a1ca, 0x0b83, 0x466c,
-		    0x95, 0x87, 0x2f, 0x35, 0xff, 0x8d, 0x12, 0xe8);
+SOF_DEFINE_REG_UUID(ipcgw);
 
 DECLARE_TR_CTX(ipcgtw_comp_tr, SOF_UUID(ipcgw_uuid), LOG_LEVEL_INFO);
 

@@ -33,9 +33,7 @@
 #include <platform/chip_registers.h>
 #include <platform/acp_sp_dma.h>
 
-/* 2ef92c66-78a4-41f7-b52f-5539707a9382 */
-SOF_DEFINE_UUID("acp_sp_common", acp_sp_common_uuid, 0x2ef92c66, 0x78a4, 0x41f7,
-		 0xb5, 0x2f, 0x55, 0x39, 0x70, 0x7a, 0x93, 0x82);
+SOF_DEFINE_REG_UUID(acp_sp_common);
 DECLARE_TR_CTX(acp_sp_tr, SOF_UUID(acp_sp_common_uuid), LOG_LEVEL_INFO);
 
 /* allocate next free DMA channel */

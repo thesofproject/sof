@@ -15,9 +15,7 @@
 #include <mt8188-afe-reg.h>
 #include <mt8188-afe-common.h>
 
-/* 99316bd9-07b9-4665-8179-6e048d67cb45 */
-SOF_DEFINE_UUID("sgen_mt8188", sgen_mt8188_uuid, 0x99316bd9, 0x07b9, 0x4665,
-		 0x81, 0x79, 0x6e, 0x04, 0x8d, 0x67, 0xcb, 0x45);
+SOF_DEFINE_REG_UUID(sgen_mt8188);
 
 DECLARE_TR_CTX(sgen_tr, SOF_UUID(sgen_mt8188_uuid), LOG_LEVEL_INFO);
 

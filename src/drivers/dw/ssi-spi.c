@@ -30,10 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* a417b6fb-459d-4cf9-be65-d38dc9057b80 */
-SOF_DEFINE_UUID("spi_completion", spi_completion_uuid, 0xa417b6fb,
-		 0x459d, 0x4cf9,
-		 0xbe, 0x65, 0xd3, 0x8d, 0xc9, 0x05, 0x7b, 0x80);
+SOF_DEFINE_REG_UUID(spi_completion);
 
 #define	SPI_REG_CTRLR0		0x00
 #define	SPI_REG_CTRLR1		0x04

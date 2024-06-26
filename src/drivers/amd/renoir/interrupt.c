@@ -26,9 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/*  6533d0eb-b785-4709-84f5-347c81720189*/
-SOF_DEFINE_UUID("irq_acp", irq_acp_uuid, 0x6533d0eb, 0xb785, 0x4709,
-		0x84, 0xf5, 0x34, 0x7c, 0x81, 0x72, 0x01, 0x89);
+SOF_DEFINE_REG_UUID(irq_acp);
 
 DECLARE_TR_CTX(acp_irq_tr, SOF_UUID(irq_acp_uuid), LOG_LEVEL_INFO);
 
