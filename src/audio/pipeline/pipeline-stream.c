@@ -344,7 +344,15 @@ static int pipeline_calc_cps_consumption(struct comp_dev *current,
 
 	if (cd->cpc == 0) {
 		/* Use maximum clock budget, assume 1ms chunk size */
-		ppl_data->kcps[comp_core] = CLK_MAX_CPU_HZ / 1000;
+		uint32_t core_kcps = core_kcps_get(comp_core);
+
+		if (!current->kcps_inc[comp_core]) {
+			current->kcps_inc[comp_core] = core_kcps;
+			ppl_data->kcps[comp_core] = CLK_MAX_CPU_HZ / 1000 - core_kcps;
+		} else {
+			ppl_data->kcps[comp_core] = core_kcps - current->kcps_inc[comp_core];
+			current->kcps_inc[comp_core] = 0;
+		}
 		tr_warn(pipe,
 			"0 CPS requested for module: %#x, core: %d using safe max KCPS: %u",
 			current->ipc_config.id, comp_core, ppl_data->kcps[comp_core]);
@@ -367,6 +375,9 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
 	int ret;
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+/* FIXME: this must be a platform-specific parameter or a Kconfig option */
+#define DSP_MIN_KCPS 50000
+
 	struct pipeline_data data = {
 		.start = p->source_comp,
 		.p = p,
@@ -431,8 +442,15 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 			for (int i = 0; i < arch_num_cpus(); i++) {
 				if (data.kcps[i] > 0) {
+					uint32_t core_kcps = core_kcps_get(i);
+
+					/* Tests showed, that we cannot go below 40000kcps on MTL */
+					if (data.kcps[i] > core_kcps - DSP_MIN_KCPS)
+						data.kcps[i] = core_kcps - DSP_MIN_KCPS;
+
 					core_kcps_adjust(i, -data.kcps[i]);
-					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", core_kcps_get(i), i);
+					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d",
+						core_kcps, i);
 				}
 			}
 		}
