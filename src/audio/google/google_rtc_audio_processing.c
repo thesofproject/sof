@@ -100,6 +100,15 @@ struct google_rtc_audio_processing_comp_data {
 	void (*out_copy)(struct sof_sink *dst, int frames, float **src_bufs);
 };
 
+/* The underlying API is not sparse-aware, so rather than try to
+ * finesse the conversions everywhere the buffers touch, turn checking
+ * off when we computed the cached address
+ */
+static void *cached_ptr(void *p)
+{
+	return (__sparse_force void *) sys_cache_cached_ptr_get(p);
+}
+
 void *GoogleRtcMalloc(size_t size)
 {
 	return rballoc(0, SOF_MEM_CAPS_RAM, size);
@@ -526,7 +535,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	cd->num_frames = NUM_FRAMES;
 
 	/* Giant blob of scratch memory. */
-	GoogleRtcAudioProcessingAttachMemoryBuffer(sys_cache_cached_ptr_get(&aec_mem_blob[0]),
+	GoogleRtcAudioProcessingAttachMemoryBuffer(cached_ptr(&aec_mem_blob[0]),
 						   sizeof(aec_mem_blob));
 
 	cd->state = GoogleRtcAudioProcessingCreateWithConfig(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ,
@@ -554,8 +563,8 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	}
 
 	for (i = 0; i < CHAN_MAX; i++) {
-		cd->raw_mic_buffers[i] = sys_cache_cached_ptr_get(&micbuf[i][0]);
-		cd->refout_buffers[i] = sys_cache_cached_ptr_get(&refoutbuf[i][0]);
+		cd->raw_mic_buffers[i] = cached_ptr(&micbuf[i][0]);
+		cd->refout_buffers[i] = cached_ptr(&refoutbuf[i][0]);
 	}
 
 	cd->buffered_frames = 0;
@@ -804,7 +813,7 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 
 	/* Clear the buffer if the reference pipeline shuts off */
 	if (!ref_ok && cd->last_ref_ok)
-		bzero(sys_cache_cached_ptr_get(refoutbuf), sizeof(refoutbuf));
+		bzero(cached_ptr(refoutbuf), sizeof(refoutbuf));
 
 	int fmic = source_get_data_frames_available(mic);
 	int fref = source_get_data_frames_available(ref);
