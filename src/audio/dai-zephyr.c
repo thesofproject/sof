@@ -314,7 +314,8 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 					continue;
 				}
 
-				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE)
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
+				    sink->hw_params_configured)
 					ret = dma_buffer_copy_from_no_consume(dd->dma_buffer,
 									      sink, converter[j],
 									      bytes);
@@ -1555,7 +1556,8 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 				sink = container_of(sink_list, struct comp_buffer, source_list);
 				sink_dev = sink->sink;
 
-				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE) {
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
+				    sink->hw_params_configured) {
 					sink_samples =
 						audio_stream_get_free_samples(&sink->stream);
 					samples = MIN(samples, sink_samples);
