@@ -123,6 +123,11 @@ jobs:
             zephyr_revision: mnfst
             IPC_platforms: mtl
 
+          # This is "duplication of effort" but it makes sure no one
+          # breaks --all, see for instance #9262 and previous commit.
+          - zephyr_revision: mnfst
+            IPC_platforms: --all
+
     steps:
       - uses: actions/checkout@v4
         # Download a full clone to fix `git describe`, sof_version.h and
