@@ -1,4 +1,4 @@
-% bf = bf_array_rot(bf)
+% bf = sof_bf_array_rot(bf)
 %
 % Inputs
 % bf.array_angle ... three element vector for x, y, z rotation [degrees]
@@ -17,7 +17,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_array_rot(bf)
+function bf = sof_bf_array_rot(bf)
 
 % Equations reference
 % https://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations

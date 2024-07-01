@@ -1,4 +1,4 @@
-% bf = bf_array_line(bf)
+% bf = sof_bf_array_line(bf)
 %
 % Inputs
 % bf.mic_n ... number of microphones
@@ -15,7 +15,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_array_line(bf)
+function bf = sof_bf_array_line(bf)
 
 bf.mic_y = linspace(0, -(bf.mic_n-1) * bf.mic_d, bf.mic_n) ...
 	+ (bf.mic_n-1) * bf.mic_d / 2;

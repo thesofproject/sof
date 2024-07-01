@@ -1,4 +1,4 @@
-% bf = bf_array_xyz(bf)
+% bf = sof_bf_array_xyz(bf)
 %
 % Inputs
 % bf.mic_x ... x coordinates [m]
@@ -17,7 +17,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_array_xyz(bf)
+function bf = sof_bf_array_xyz(bf)
 
 bf.mic_n = length(bf.mic_x);
 bf.mic_x = bf.mic_x - mean(bf.mic_x);

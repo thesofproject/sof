@@ -1,4 +1,4 @@
-function example_line_array()
+function sof_example_line_array()
 
 % example_line_array()
 %
@@ -32,7 +32,7 @@ end
 
 function line_one_beam(fs, d, az, n_mic, n_fir)
 	% Get defaults
-	bf = bf_defaults();
+	bf = sof_bf_defaults();
 	bf.input_channel_select = 0:(n_mic-1);      % Input all n channels to filters
 	bf.output_channel_mix = 3 * ones(1, n_mic); % Mix all filters to channel 1 and 2
 	bf.output_stream_mix = zeros(1, n_mic);     % Mix filters to stream 0
@@ -56,9 +56,9 @@ function line_one_beam(fs, d, az, n_mic, n_fir)
 	end
 
 	% Design
-	bf = bf_filenames_helper(bf);
-	bf = bf_design(bf);
-	bf.export_note = 'Created with script example_line_array.m';
-	bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_line_array.m';
-	bf_export(bf);
+	bf = sof_bf_filenames_helper(bf);
+	bf = sof_bf_design(bf);
+	bf.export_note = 'Created with script sof_example_line_array.m';
+	bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system sof_example_line_array.m';
+	sof_bf_export(bf);
 end

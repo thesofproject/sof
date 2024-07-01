@@ -1,4 +1,4 @@
-% bf_export(bf)
+% sof_bf_export(bf)
 %
 % Inputs
 % bf.sofctl3_fn .... filename of ascii text format blob
@@ -13,12 +13,10 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_export(bf)
+function bf = sof_bf_export(bf)
 
-% Use functionc from common, test utils
-addpath('../common');
-addpath('../eq');
-addpath('../../test/audio/test_utils');
+% Use functions from common, test utils
+sof_bf_paths(1);
 
 %% Add needed default controls if missing
 
@@ -76,8 +74,8 @@ end
 
 %% Build blob
 bf.all_filters = filters;
-bp3 = bf_blob_pack(bf, 3);
-bp4 = bf_blob_pack(bf, 4);
+bp3 = sof_bf_blob_pack(bf, 3);
+bp4 = sof_bf_blob_pack(bf, 4);
 
 %% Export
 if isempty(bf.sofctl3_fn)
@@ -118,8 +116,6 @@ else
 	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
 end
 
-rmpath('../../test/audio/test_utils');
-rmpath('../eq');
-rmpath('../common');
+sof_bf_paths(0);
 
 end

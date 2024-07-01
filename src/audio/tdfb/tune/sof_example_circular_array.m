@@ -1,4 +1,4 @@
-function example_circular_array()
+function sof_example_circular_array()
 
 % example_circular_array()
 %
@@ -27,7 +27,7 @@ end
 function circular_one_beam(fs, r, n, fir_length, az);
 
 % Get defaults
-bf = bf_defaults();
+bf = sof_bf_defaults();
 bf.input_channel_select = 0:(n-1);            % Input all n channels to filters
 bf.output_channel_mix_beam_off = zeros(1, n); % For some stereo symmetry
 bf.output_channel_mix_beam_off(2) = 1;        % Mic2 to channel 2^0
@@ -47,9 +47,9 @@ bf.steer_el = 0 * az;
 bf.fir_length = fir_length;
 
 % Design
-bf = bf_filenames_helper(bf);
-bf = bf_design(bf);
-bf.export_note = 'Created with script example_circular_array.m';
-bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_circular_array.m';
-bf_export(bf);
+bf = sof_bf_filenames_helper(bf);
+bf = sof_bf_design(bf);
+bf.export_note = 'Created with script sof_example_circular_array.m';
+bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system sof_example_circular_array.m';
+sof_bf_export(bf);
 end

@@ -1,4 +1,4 @@
-function bf = bf_defaults()
+function bf = sof_bf_defaults()
 
 % Recording array general setup
 bf.taylorwin_sidelobe = -30;
@@ -19,10 +19,11 @@ bf.plot_box = 0.20;  % Show 20cm wide plot cube for array geometry
 bf.array_angle = [0 0 0]; % Array rotation angles for xyz
 bf.tplg_fn = '';
 bf.sofctl_fn = '';
-bf.tplg1_path = '../../topology/topology1/m4/tdfb';
-bf.tplg2_path = '../../topology/topology2/include/components/tdfb';
-bf.sofctl3_path = '../../ctl/ipc3/tdfb';
-bf.sofctl4_path = '../../ctl/ipc4/tdfb';
+sof_tools = '../../../../tools';
+bf.tplg1_path = fullfile(sof_tools, 'topology/topology1/m4/tdfb');
+bf.tplg2_path = fullfile(sof_tools, 'topology/topology2/include/components/tdfb');
+bf.sofctl3_path = fullfile(sof_tools, 'ctl/ipc3/tdfb');
+bf.sofctl4_path = fullfile(sof_tools, 'ctl/ipc4/tdfb');
 bf.data_path = './data';
 bf.endian = 'little';
 bf.fn = 1;
