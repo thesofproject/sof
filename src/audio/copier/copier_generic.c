@@ -332,6 +332,12 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 
 	if (in_fmt->channels_count != out_fmt->channels_count ||
 			is_remapping_chmap(chmap, out_fmt->channels_count)) {
+
+		if (in_valid == SOF_IPC_FRAME_S16_LE && in == SOF_IPC_FRAME_S32_LE)
+			in = SOF_IPC_FRAME_S16_4LE;
+		if (out_valid == SOF_IPC_FRAME_S16_LE && out == SOF_IPC_FRAME_S32_LE)
+                        out = SOF_IPC_FRAME_S16_4LE;
+
 		return pcm_get_remap_function(in, out);
 	}
 
