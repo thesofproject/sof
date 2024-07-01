@@ -1,6 +1,4 @@
-function example_crossover()
-
-addpath ./../common
+function sof_example_crossover()
 
 % Sampling Frequency and Frequency cut-offs for crossover
 cr.fs = 48e3;
@@ -30,17 +28,18 @@ export_crossover(cr);
 cr.sinks = [0 1 2 3];
 export_crossover(cr);
 
-rmpath ./../common
-
 end
 
 function export_crossover(cr)
 
+sof_crossover_paths(true);
+
 endian = "little";
-tpath1 = '../../topology/topology1/m4/crossover';
-tpath2 = '../../topology/topology2/include/components/crossover';
-ctlpath3 = '../../ctl/ipc3/crossover';
-ctlpath4 = '../../ctl/ipc4/crossover';
+sof_tools = '../../../../tools';
+tpath1 = fullfile(sof_tools, 'topology/topology1/m4/crossover');
+tpath2 = fullfile(sof_tools, 'topology/topology2/include/components/crossover');
+ctlpath3 = fullfile(sof_tools, 'ctl/ipc3/crossover');
+ctlpath4 = fullfile(sof_tools, 'ctl/ipc4/crossover');
 
 str_way = sprintf('%dway', cr.num_sinks);
 str_freq = get_str_freq(cr);
@@ -65,24 +64,24 @@ assign_sinks(1:cr.num_sinks) = cr.sinks;
 % Generate zeros, poles and gain for crossover with the given frequencies
 switch cr.num_sinks
 	case 2
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low); % 2 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low); % 2 way crossover
 	case 3
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med); % 3 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med); % 3 way crossover
 	case 4
-		crossover = crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med, cr.fc_high); % 4 way crossover
+		crossover = sof_crossover_gen_coefs(cr.fs, cr.fc_low, cr.fc_med, cr.fc_high); % 4 way crossover
 	otherwise
 		error('Illegal number of sinks %d\n', num_sinks);
 end
 
 % Convert the [a,b] coefficients to values usable with SOF
-crossover_bqs = crossover_coef_quant(crossover.lp, crossover.hp);
+crossover_bqs = sof_crossover_coef_quant(crossover.lp, crossover.hp);
 
 % Convert coefficients to sof_crossover_config struct
-config = crossover_generate_config(crossover_bqs, cr.num_sinks, assign_sinks);
+config = sof_crossover_generate_config(crossover_bqs, cr.num_sinks, assign_sinks);
 
 % Convert struct to binary blob
-blob8 = crossover_build_blob(config, endian, 3);
-blob8_ipc4 = crossover_build_blob(config, endian, 4);
+blob8 = sof_crossover_build_blob(config, endian, 3);
+blob8_ipc4 = sof_crossover_build_blob(config, endian, 4);
 
 % Generate output files
 
@@ -98,8 +97,9 @@ alsactl_write(alsa3_fn, blob8);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Magnitude and Phase Response of each sink
-crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
+sof_crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
 
+sof_crossover_paths(false);
 end
 
 % Frequencies part for filename

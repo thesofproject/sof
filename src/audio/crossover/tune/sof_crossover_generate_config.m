@@ -1,4 +1,4 @@
-function config = crossover_generate_config(crossover_bqs, num_sinks, assign_sinks);
+function config = sof_crossover_generate_config(crossover_bqs, num_sinks, assign_sinks);
 
 config.num_sinks = num_sinks;
 config.assign_sinks = assign_sinks;

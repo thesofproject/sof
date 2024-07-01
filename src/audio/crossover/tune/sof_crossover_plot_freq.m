@@ -1,4 +1,4 @@
-function crossover_plot_freq(lp, hp, fs, num_sinks);
+function sof_crossover_plot_freq(lp, hp, fs, num_sinks);
 % Plot the transfer function of each sink. We need to reconstruct a filter
 % that represents the path the samples go through for each sinks.
 % Example 4-way crossover:
