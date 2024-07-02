@@ -379,9 +379,9 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 	return ret;
 }
 
-int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
-				    struct comp_buffer *sink,
-				    dma_process_func process, uint32_t source_bytes)
+int stream_copy_from_no_consume(struct comp_buffer *source,
+				struct comp_buffer *sink,
+				dma_process_func process, uint32_t source_bytes)
 {
 	struct audio_stream *istream = &source->stream;
 	uint32_t samples = source_bytes /
