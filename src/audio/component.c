@@ -495,7 +495,17 @@ int comp_copy(struct comp_dev *dev)
 		perf_cnt_init(&dev->pcd);
 #endif
 
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+		const uint32_t begin_stamp = (uint32_t)sof_cycle_get_64();
+#endif
+
 		ret = dev->drv->ops.copy(dev);
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+		const uint32_t cycles_consumed = (uint32_t)sof_cycle_get_64() - begin_stamp;
+
+		comp_update_performance_data(dev, cycles_consumed);
+#endif
 
 #if CONFIG_PERFORMANCE_COUNTERS
 		perf_cnt_stamp(&dev->pcd, perf_trace_null, dev);
@@ -505,3 +515,95 @@ int comp_copy(struct comp_dev *dev)
 
 	return ret;
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+void comp_init_performance_data(struct comp_dev *dev)
+{
+	struct perf_data_item_comp *item = dev->perf_data.perf_data_item;
+
+	if (item)
+		perf_data_item_comp_init(item, dev->ipc_config.id, 0);
+}
+
+/* returns true if budget violation occurred */
+static bool update_peak_of_measured_cpc(struct comp_dev *dev, size_t measured_cpc)
+{
+	if (measured_cpc <= dev->perf_data.peak_of_measured_cpc)
+		return false;
+	dev->perf_data.peak_of_measured_cpc = measured_cpc;
+	return measured_cpc > dev->cpc;
+}
+
+bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used)
+{
+	struct perf_data_item_comp *item = dev->perf_data.perf_data_item;
+
+	if (perf_meas_get_state() == IPC4_PERF_MEASUREMENTS_STARTED) {
+		/* we divide by ibs so we need to check if its set */
+		if (item && dev->ibs != 0) {
+			item->total_iteration_count++;
+			if (item->total_iteration_count == 0) {
+				/* We can't allow count to overflow to 0. Overflow will also make
+				 * the results incorrect. We don't want to crash in this case,
+				 * so we just log it.
+				 */
+				item->total_iteration_count = 1;
+				tr_err(&ipc_tr,
+				       "overflow for module %#x, performance measurement incorrect",
+				       dev_comp_id(dev));
+			}
+			item->total_cycles_consumed += cycles_used;
+			item->item.avg_kcps = item->total_cycles_consumed * dev->ll_chunk_size
+				/ (dev->ibs * item->total_iteration_count);
+			item->item.peak_kcps =
+				MAX(item->item.peak_kcps, (cycles_used * dev->ll_chunk_size)
+				/ dev->ibs);
+		}
+	}
+	return update_peak_of_measured_cpc(dev, cycles_used);
+}
+#endif
+
+#if CONFIG_IPC_MAJOR_4
+static uint32_t get_sample_group_size_in_bytes(const struct ipc4_audio_format fmt)
+{
+	return (fmt.depth >> 3) * fmt.channels_count;
+}
+
+static uint32_t get_one_ms_in_bytes(const struct ipc4_audio_format fmt)
+{
+	/* TODO Reference Firmware also has systick multiplier and divider in this equation */
+	return get_sample_group_size_in_bytes(fmt) *
+			(SOF_DIV_ROUND_UP(fmt.sampling_frequency, 1000) / 1000);
+}
+#endif
+
+void comp_update_ibs_obs_cpc(struct comp_dev *dev)
+{
+#if CONFIG_IPC_MAJOR_4
+	int ret;
+	struct ipc4_base_module_cfg dev_cfg;
+
+	ret = comp_get_attribute(dev, COMP_ATTR_BASE_CONFIG, &dev_cfg);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to get base config for module %#x",
+		       dev_comp_id(dev));
+		/* set neutral values */
+		dev->ll_chunk_size = 0;
+		dev->cpc = 0;
+		dev->obs = 0;
+		dev->ibs = 0;
+	}
+	dev->ll_chunk_size = get_one_ms_in_bytes(dev_cfg.audio_fmt);
+	dev->obs = dev_cfg.obs;
+	dev->ibs = dev_cfg.ibs;
+	dev->cpc = dev_cfg.cpc;
+#else
+	/* set neutral values */
+	dev->ll_chunk_size = 0;
+	dev->cpc = 0;
+	dev->obs = 0;
+	dev->ibs = 0;
+#endif
+}
+

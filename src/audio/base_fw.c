@@ -406,26 +406,65 @@ int set_perf_meas_state(const char *data)
 #ifdef CONFIG_SOF_TELEMETRY
 	enum ipc4_perf_measurements_state_set state = *data;
 
-	struct telemetry_wnd_data *wnd_data =
-			(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
-	struct system_tick_info *systick_info =
-			(struct system_tick_info *)wnd_data->system_tick_info;
-
 	switch (state) {
 	case IPC4_PERF_MEASUREMENTS_DISABLED:
+		disable_performance_counters();
+		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_DISABLED);
 		break;
 	case IPC4_PERF_MEASUREMENTS_STOPPED:
-		for (int i = 0; i < CONFIG_MAX_CORE_COUNT; i++)
-			systick_info[i].peak_utilization = 0;
+		enable_performance_counters();
+		reset_performance_counters();
+		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_STOPPED);
 		break;
 	case IPC4_PERF_MEASUREMENTS_STARTED:
+		enable_performance_counters();
+		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_STARTED);
+		break;
 	case IPC4_PERF_MEASUREMENTS_PAUSED:
+		enable_performance_counters();
+		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_PAUSED);
 		break;
 	default:
 		return -EINVAL;
 	}
 #endif
 	return IPC4_SUCCESS;
+}
+
+static int extended_global_perf_data_get(uint32_t *data_off_size, char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	int ret;
+	struct extended_global_perf_data *perf_data = (struct extended_global_perf_data *)data;
+
+	ret = get_extended_performance_data(perf_data);
+	if (ret < 0)
+		return IPC4_ERROR_INVALID_PARAM;
+	*data_off_size = sizeof(*perf_data)
+			+ perf_data->perf_item_count * sizeof(*perf_data->perf_items);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int global_perf_data_get(uint32_t *data_off_size, char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	int ret;
+	struct global_perf_data *perf_data = (struct global_perf_data *)data;
+
+	ret = get_performance_data(perf_data);
+	if (ret < 0)
+		return IPC4_ERROR_INVALID_PARAM;
+	*data_off_size = sizeof(*perf_data)
+			+ perf_data->perf_item_count * sizeof(*perf_data->perf_items);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
 }
 
 static int basefw_get_large_config(struct comp_dev *dev,
@@ -467,13 +506,16 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		return basefw_modules_info_get(data_offset, data);
 	case IPC4_LIBRARIES_INFO_GET:
 		return basefw_libraries_info_get(data_offset, data);
+	case IPC4_EXTENDED_GLOBAL_PERF_DATA:
+		return extended_global_perf_data_get(data_offset, data);
+	case IPC4_GLOBAL_PERF_DATA:
+		return global_perf_data_get(data_offset, data);
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
 	case IPC4_PIPELINE_PROPS_GET:
 	case IPC4_GATEWAYS_INFO_GET:
 	case IPC4_PERF_MEASUREMENTS_STATE:
-	case IPC4_GLOBAL_PERF_DATA:
 		COMPILER_FALLTHROUGH;
 	default:
 		break;

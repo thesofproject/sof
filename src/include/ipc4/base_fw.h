@@ -731,4 +731,72 @@ struct ipc4_system_time_info *basefw_get_system_time_info(void);
 /* Specifies I2S IPC4 version for PTL platform */
 static const uint32_t I2S_VER_30_PTL       = 0x40000;
 
+struct perf_data_item {
+	/* ID of the FW component */
+	uint32_t resource_id;
+	/* 0 - D0, 1 - D0i3. */
+	uint32_t power_mode : 1;
+	uint32_t rsvd : 30;
+	/* the component still exists (0) or has been already deleted (1) */
+	uint32_t is_removed : 1;
+	/* Peak KCPS captured */
+	uint32_t peak_kcps;
+	/* Average KCPS measured */
+	uint32_t avg_kcps;
+} __packed __aligned(4);
+
+struct ext_perf_data_item {
+	/* ID of the FW component */
+	uint32_t resource_id;
+	/* 0 - D0, 1 - D0i3. */
+	uint32_t power_mode : 1;
+	uint32_t rsvd : 30;
+	/* the component still exists (0) or has been already deleted (1) */
+	uint32_t is_removed : 1;
+	/*  peak number of DSP cycles used by a module */
+	uint32_t module_peak_dsp_cycles;
+	/* total number of DSP used since by a module start of measurements, */
+	uint64_t module_total_dsp_cycles_consumed;
+	/*  how many times a module was executed */
+	uint64_t module_total_dsp_iterations;
+	/*  peak number of <restricted> cycles used by a module.
+	 *  It is measured against DSP wall clock
+	 */
+	uint32_t module_peak_restricted_cycles;
+	/* total number of <restricted> cycles used by a module since start of
+	 * measurements. It is measured against DSP wall clock
+	 */
+	uint64_t module_total_restricted_cycles_consumed;
+	/*  how many times a module invoke <restricted> */
+	uint64_t module_total_restricted_iterations;
+} __packed __aligned(4);
+
+struct extended_global_perf_data {
+	/*  Specifies number of items in perf_items array. */
+	uint32_t perf_item_count;
+	/*  Array of extended global performance measurements. */
+	struct ext_perf_data_item perf_items[0];
+} __packed __aligned(4);
+
+struct perf_data_item_comp {
+	struct perf_data_item item;
+	/* Total iteration count of module instance */
+	uint32_t total_iteration_count;
+	/* Total cycles consumed by module instance */
+	uint64_t total_cycles_consumed;
+	/* <restricted> usage statistics against DSP wallclock cycles */
+	uint32_t restricted_peak_cycles;
+	uint64_t restricted_total_iterations;
+	uint64_t restricted_total_cycles;
+
+} __packed __aligned(4);
+
+struct global_perf_data {
+	/* Specifies number of items in perf_items array. */
+	uint32_t      perf_item_count;
+	/* Array of global performance measurements. */
+	struct perf_data_item  perf_items[0];
+
+} __packed __aligned(4);
+
 #endif /* __SOF_IPC4_BASE_FW_H__ */
