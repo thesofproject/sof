@@ -1375,8 +1375,7 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		}
 
 		if (is_any_ppl_active()) {
-			ipc_cmd_err(&ipc_tr, "some pipelines are still active");
-			return IPC4_BUSY;
+			tr_warn(&ipc_tr, "some pipelines are still active");
 		}
 
 #if defined(CONFIG_PM)
