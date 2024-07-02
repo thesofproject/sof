@@ -63,10 +63,14 @@ struct audio_stream {
 	void *end_addr;	/**< Buffer end address */
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	struct dp_queue *dp_queue_sink; /**< sink API shadow, an additional dp_queue at data in */
-	struct dp_queue *dp_queue_source; /**< source API shadow, an additional dp_queue at out */
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#if CONFIG_PIPELINE_2_0
+	struct sof_audio_buffer *shadow_buffer_sink; /**< sink API shadow, an additional buffer
+						      * of any type at data input
+						      */
+	struct sof_audio_buffer *shadow_buffer_source; /**< source API shadow, an additional buffer
+							* at data output
+							*/
+#endif /* CONFIG_PIPELINE_2_0 */
 
 	/* runtime stream params */
 	struct sof_audio_stream_params runtime_stream_params;

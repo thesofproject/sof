@@ -474,8 +474,8 @@ zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
-if(CONFIG_ZEPHYR_DP_SCHEDULER)
-	zephyr_library_sources(${SOF_AUDIO_PATH}/dp_queue.c)
+if(CONFIG_PIPELINE_2_0)
+	zephyr_library_sources(${SOF_AUDIO_PATH}/buffers/ring_buffer.c)
 endif()
 if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
 	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
