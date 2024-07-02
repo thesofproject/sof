@@ -90,7 +90,7 @@ function(sof_llext_build module)
 	get_target_property(proc_out_file ${module} pkg_input)
 	add_llext_command(TARGET ${module}
 		POST_BUILD
-		COMMAND ${SOF_BASE}scripts/llext_link_helper.py
+		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py
 			--text-addr="${SOF_LLEXT_TEXT_ADDR}" -f ${proc_in_file} ${CMAKE_C_COMPILER} --
 			-o ${proc_out_file} ${EXTRA_LINKER_PARAMS}
 	                $<TARGET_OBJECTS:${module}_llext_lib>

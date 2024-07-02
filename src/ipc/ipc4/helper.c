@@ -911,11 +911,11 @@ const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
 		}
 	}
 
-	tr_err(&comp_tr, "get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
-	       *(uint32_t *)(&uuid[0]),
-	       *(uint32_t *)(&uuid[4]),
-	       *(uint32_t *)(&uuid[8]),
-	       *(uint32_t *)(&uuid[12]));
+	tr_warn(&comp_tr, "get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
+		*(uint32_t *)(&uuid[0]),
+		*(uint32_t *)(&uuid[4]),
+		*(uint32_t *)(&uuid[8]),
+		*(uint32_t *)(&uuid[12]));
 
 out:
 	irq_local_enable(flags);
