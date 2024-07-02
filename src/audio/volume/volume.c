@@ -800,3 +800,34 @@ static const struct module_interface gain_interface = {
 DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
 SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
 #endif
+
+#if CONFIG_COMP_VOLUME_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#if CONFIG_COMP_PEAK_VOL
+#define UUID_PEAKVOL 0x23, 0x13, 0x17, 0x8a, 0xa3, 0x94, 0x1d, 0x4e, \
+		     0xaf, 0xe9, 0xfe, 0x5d, 0xba, 0xa4, 0xc3, 0x93
+SOF_LLEXT_MOD_ENTRY(peakvol, &volume_interface);
+#endif
+
+#if CONFIG_COMP_GAIN
+#define UUID_GAIN 0xa8, 0xa9, 0xbc, 0x61, 0xd0, 0x18, 0x18, 0x4a, \
+		  0x8e, 0x7b, 0x26, 0x39, 0x21, 0x98, 0x04, 0xb7
+SOF_LLEXT_MOD_ENTRY(gain, &gain_interface);
+#endif
+
+static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
+#if CONFIG_COMP_PEAK_VOL
+	SOF_LLEXT_MODULE_MANIFEST("PEAKVOL", peakvol_llext_entry, 1, UUID_PEAKVOL, 10),
+#endif
+#if CONFIG_COMP_GAIN
+	SOF_LLEXT_MODULE_MANIFEST("GAIN", gain_llext_entry, 1, UUID_GAIN, 40),
+#endif
+};
+
+SOF_LLEXT_BUILDINFO;
+#endif

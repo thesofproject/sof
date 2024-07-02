@@ -151,9 +151,9 @@ int ipc4_logging_enable_logs(bool first_block,
 				       &ops, NULL, MTRACE_IPC_CORE, 0);
 		schedule_task(&mtrace_task, mtrace_aging_timer * 1000, 0);
 	} else  {
+		schedule_task_cancel(&mtrace_task);
 		adsp_mtrace_log_init(NULL);
 		log_backend_deactivate(log_backend);
-		schedule_task_cancel(&mtrace_task);
 	}
 
 	return 0;

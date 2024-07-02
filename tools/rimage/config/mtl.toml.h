@@ -32,12 +32,8 @@
 #include <audio/copier/copier.toml>
 #endif
 
-#ifdef CONFIG_COMP_PEAK_VOL
-#include <audio/volume/peakvol.toml>
-#endif
-
-#ifdef CONFIG_COMP_GAIN
-#include <audio/volume/gain.toml>
+#ifdef CONFIG_COMP_VOLUME
+#include <audio/volume/volume.toml>
 #endif
 
 #ifdef CONFIG_COMP_ASRC

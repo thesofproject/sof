@@ -8,6 +8,7 @@
 
 #include <sof/math/exp_fcn.h>
 #include <sof/common.h>
+#include <rtos/symbol.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -370,5 +371,6 @@ int32_t sofm_exp_fixed(int32_t x)
 
 	return y;
 }
+EXPORT_SYMBOL(sofm_exp_fixed);
 
 #endif

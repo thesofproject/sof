@@ -6,6 +6,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/lut_trig.h>
+#include <rtos/symbol.h>
 #include <stdint.h>
 
 #define SOFM_LUT_SINE_C_Q20	341782638	/* 2 * SINE_NQUART / pi in Q12.20 */
@@ -106,3 +107,4 @@ int16_t sofm_lut_sin_fixed_16b(int32_t w)
 	sine = s0 + q_mults_32x32(frac, delta, Q_SHIFT_BITS_64(31, 16, 16)); /* Q1.16 */
 	return sat_int16((sine + 1) >> 1); /* Round to Q1.15 */
 }
+EXPORT_SYMBOL(sofm_lut_sin_fixed_16b);
