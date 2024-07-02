@@ -877,5 +877,5 @@ static const struct module_interface asrc_interface = {
 	.free = asrc_free,
 };
 
-DECLARE_MODULE_ADAPTER(asrc_interface, asrc_uuid, asrc_tr);
+DECLARE_MODULE_ADAPTER(asrc_interface, ASRC_UUID, asrc_tr);
 SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);

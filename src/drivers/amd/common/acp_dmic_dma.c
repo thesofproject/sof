@@ -36,10 +36,8 @@
 extern uint32_t dmic_rngbuff_size;
 struct acp_dmic_silence acp_initsilence;
 
-/* dc2199ea-cdae-4d23-a413-ffe442f785f2 */
-DECLARE_SOF_UUID("acp_dmic_dma", acp_dmic_dma_uuid, 0xdc2199ea, 0xcdae, 0x4d23,
-		 0xa4, 0x13, 0xff, 0xe4, 0x42, 0xf7, 0x85, 0xf2);
-DECLARE_TR_CTX(acp_dmic_dma_tr, SOF_UUID(acp_dmic_dma_uuid), LOG_LEVEL_INFO);
+SOF_DEFINE_REG_UUID(acp_dmic_dma_common);
+DECLARE_TR_CTX(acp_dmic_dma_tr, SOF_UUID(acp_dmic_dma_common_uuid), LOG_LEVEL_INFO);
 
 /* allocate next free DMA channel */
 static struct dma_chan_data *acp_dmic_dma_channel_get(struct dma *dma,

@@ -41,11 +41,9 @@
 #include "src.h"
 #include "src_config.h"
 
-/* e61bb28d-149a-4c1f-b709-46823ef5f5a3 */
-DECLARE_SOF_RT_UUID("src", src_uuid, 0xe61bb28d, 0x149a, 0x4c1f,
-		    0xb7, 0x09, 0x46, 0x82, 0x3e, 0xf5, 0xf5, 0xae);
+SOF_DEFINE_REG_UUID(src4);
 
-DECLARE_TR_CTX(src_tr, SOF_UUID(src_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(src_tr, SOF_UUID(src4_uuid), LOG_LEVEL_INFO);
 
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
 

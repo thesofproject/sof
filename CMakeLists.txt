@@ -184,6 +184,8 @@ if (BUILD_COUNTERS)
 sof_add_build_counter_rule()
 endif()
 
+include(scripts/cmake/uuid-registry.cmake)
+
 add_subdirectory(src)
 
 sof_append_relative_path_definitions(sof)

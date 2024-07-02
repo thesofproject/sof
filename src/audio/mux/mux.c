@@ -469,7 +469,7 @@ static const struct module_interface mux_interface = {
 	.free = mux_free,
 };
 
-DECLARE_MODULE_ADAPTER(mux_interface, mux_uuid, mux_tr);
+DECLARE_MODULE_ADAPTER(mux_interface, MUX_UUID, mux_tr);
 SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
 
 static const struct module_interface demux_interface = {

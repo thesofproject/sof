@@ -10,9 +10,7 @@
 #include <sof/audio/component_ext.h>
 
 // 6c8f0d53-ff77-4ca1-b825-c0c4e1b0d322
-DECLARE_SOF_UUID("posix-ipc-task", ipc_task_uuid,
-		 0x6c8f0d53, 0xff77, 0x4ca1,
-		 0xb8, 0x25, 0xc0, 0xc4, 0xe1, 0xb0, 0xd3, 0x22);
+SOF_DEFINE_REG_UUID(ipc_task_posix);
 
 static struct ipc *global_ipc;
 
@@ -207,7 +205,7 @@ int platform_ipc_init(struct ipc *ipc)
 	irq_enable(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
 
 	global_ipc = ipc;
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_posix_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
 	return 0;

@@ -124,7 +124,14 @@ int asrc_dai_start_timestamp(struct comp_data *cd);
 int asrc_dai_stop_timestamp(struct comp_data *cd);
 void asrc_update_buffer_format(struct comp_buffer *buf_c, struct comp_data *cd);
 void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *params);
-extern const struct sof_uuid asrc_uuid;
 extern struct tr_ctx asrc_tr;
+
+/* Different UUID names for different build configurations... */
+#ifdef CONFIG_IPC_MAJOR_4
+#define ASRC_UUID asrc4_uuid
+#else
+#define ASRC_UUID asrc_uuid
+#endif
+extern const struct sof_uuid ASRC_UUID;
 
 #endif

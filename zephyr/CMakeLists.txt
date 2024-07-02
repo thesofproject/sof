@@ -128,27 +128,6 @@ set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
     " Path to rimage board configuration files")
 
-include(ExternalProject)
-
-ExternalProject_Add(smex_ep
-	SOURCE_DIR "${ZEPHYR_SOF_MODULE_DIR}/smex/"
-	# The default paths are very "deep"
-	PREFIX     "${PROJECT_BINARY_DIR}/smex_ep"
-	BINARY_DIR "${PROJECT_BINARY_DIR}/smex_ep/build"
-	BUILD_ALWAYS 1
-	INSTALL_COMMAND "" # need smex only at build time
-)
-
-ExternalProject_Add(sof_logger_ep
-	SOURCE_DIR "${ZEPHYR_SOF_MODULE_DIR}/tools/"
-	# The default paths are very "deep"
-	PREFIX     "${PROJECT_BINARY_DIR}/sof-logger_ep"
-	BINARY_DIR "${PROJECT_BINARY_DIR}/sof-logger_ep/build"
-	BUILD_COMMAND cmake --build . --target sof-logger
-	BUILD_ALWAYS 1
-	INSTALL_COMMAND ""
-)
-
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
@@ -908,6 +887,9 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
+# Linker snippet for the UUID table
+zephyr_linker_sources("ROM_SECTIONS" uuid-snippet.ld)
+
 # Setup SOF directories
 set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -934,6 +916,8 @@ add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_
 
 # create version information
 include(../scripts/cmake/version.cmake)
+
+include(../scripts/cmake/uuid-registry.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)

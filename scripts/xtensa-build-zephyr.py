@@ -877,16 +877,6 @@ def build_platforms():
 			else: # unknown failure
 				raise cpe
 
-		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
-			"build", "smex")
-		fw_ldc_file = pathlib.Path(sof_platform_output_dir, f"sof-{platform}.ldc")
-		input_elf_file = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.elf")
-		# Extract metadata
-		execute_command([str(smex_executable), "-l", str(fw_ldc_file), str(input_elf_file)])
-
-		for p_alias in platform_configs[platform].aliases:
-			symlink_or_copy(sof_platform_output_dir, f"sof-{platform}.ldc", sof_platform_output_dir, f"sof-{p_alias}.ldc")
-
 		# reproducible-zephyr.ri is less useful now that show_installed_files() shows
 		# checksums too. However: - it's still useful when only the .ri file is
 		# available (no build logs for the other image), - it makes sure sof_ri_info.py
@@ -899,15 +889,6 @@ def build_platforms():
 
 	src_dest_list = []
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
-
-	# Install sof-logger from the last platform built (requires building at least one platform).
-	if platform_build_dir_name:
-		sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
-					      "sof-logger_ep", "build", "logger")
-		sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
-		sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
-
-		src_dest_list += [(sof_logger_executable_to_copy, sof_logger_installed_file)]
 
 	src_dest_list += [(pathlib.Path(SOF_TOP) /
 		"tools" / "mtrace"/ "mtrace-reader.py",
