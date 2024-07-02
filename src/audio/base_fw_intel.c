@@ -224,8 +224,8 @@ static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 	ext_system_time_data.rtc_l = (uint32_t)rtc;
 	ext_system_time_data.rtc_u = (uint32_t)(rtc >> 32);
 
-	memcpy_s(ext_system_time, sizeof(ext_system_time), &ext_system_time_data,
-		 sizeof(ext_system_time));
+	memcpy_s(ext_system_time, sizeof(*ext_system_time), &ext_system_time_data,
+		 sizeof(ext_system_time_data));
 	*data_offset = sizeof(struct ipc4_ext_system_time);
 
 	return IPC4_SUCCESS;
