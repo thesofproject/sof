@@ -518,9 +518,6 @@ static int copier_module_copy(struct processing_module *mod,
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
 
-			/* update corresponding sink format in case it isn't updated */
-			ipc4_update_buffer_format(sink_c, &cd->out_fmt[sink_queue_id]);
-
 			comp_get_copy_limits(src_c, sink_c, &processed_data);
 
 			samples = processed_data.frames *
@@ -990,6 +987,49 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
+static int copier_bind(struct processing_module *mod, void *data)
+{
+	const struct ipc4_module_bind_unbind *const bu = (struct ipc4_module_bind_unbind *)data;
+	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *buffer;
+	uint32_t src_id, sink_id;
+	struct list_item *list;
+
+	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
+
+	if (dev->ipc_config.id == src_id) {
+		/* update sink format */
+		list_for_item(list, &dev->bsink_list) {
+			buffer = container_of(list, struct comp_buffer, source_list);
+			uint32_t id = IPC4_SINK_QUEUE_ID(buf_get_id(buffer));
+
+			if (bu->extension.r.src_queue == id) {
+				ipc4_update_buffer_format(buffer, &cd->out_fmt[id]);
+				break;
+			}
+		}
+	} else if (dev->ipc_config.id == sink_id) {
+		/*
+		 * force update the source buffer format to cover cases where the source module
+		 * fails to set the sink buffer params
+		 */
+		if (!list_is_empty(&dev->bsource_list)) {
+			const struct ipc4_audio_format *const in_fmt = &cd->config.base.audio_fmt;
+
+			buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+
+			ipc4_update_buffer_format(buffer, in_fmt);
+		}
+	} else {
+		comp_err(dev, "Invalid bind request %x -> %x", src_id, sink_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int copier_unbind(struct processing_module *mod, void *data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
@@ -1023,6 +1063,7 @@ static const struct module_interface copier_interface = {
 	.free = copier_free,
 	.set_configuration = copier_set_configuration,
 	.get_configuration = copier_get_configuration,
+	.bind = copier_bind,
 	.unbind = copier_unbind,
 	.endpoint_ops = &copier_endpoint_ops,
 };
