@@ -180,7 +180,12 @@ enum ipc4_copier_module_config_params {
 	 * uint32_t. Config is only allowed when output pin is set up for 32bit and
 	 * source is connected to Gateway
 	 */
-	IPC4_COPIER_MODULE_CFG_ATTENUATION = 6
+	IPC4_COPIER_MODULE_CFG_ATTENUATION = 6,
+	/* Use LARGE_CONFIG_SET to setup new channel map, which allows to map channels
+	 * from gateway buffer to copier with any order.
+	 * Same mapping will be applied for all copier sinks.
+	 */
+	IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP = 7
 };
 
 struct ipc4_copier_config_timestamp_init_data {
@@ -199,6 +204,11 @@ struct ipc4_copier_config_set_sink_format {
 	struct ipc4_audio_format source_fmt;
 	/* Output format used by the sink */
 	struct ipc4_audio_format sink_fmt;
+} __attribute__((packed, aligned(4)));
+
+struct ipc4_copier_config_channel_map {
+	// TODO: ADD COMMENT !!!
+	uint32_t channel_map;
 } __attribute__((packed, aligned(4)));
 
 #define IPC4_COPIER_DATA_SEGMENT_DISABLE	(0 << 0)
@@ -232,6 +242,7 @@ struct copier_data {
 	 */
 	struct ipc4_copier_module_cfg config;
 	void *gtw_cfg;
+	enum ipc4_gateway_type gtw_type;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
@@ -267,7 +278,8 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      const struct ipc4_audio_format *out_fmt,
 				      enum ipc4_gateway_type type,
-				      enum ipc4_direction_type dir);
+				      enum ipc4_direction_type dir,
+				      uint32_t chmap);
 
 struct comp_ipc_config;
 int create_endpoint_buffer(struct comp_dev *dev,

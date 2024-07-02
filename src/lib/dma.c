@@ -323,20 +323,33 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 
 int dma_buffer_copy_from(struct comp_buffer *source,
 			 struct comp_buffer *sink,
-			 dma_process_func process, uint32_t source_bytes)
+			 dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
 	struct audio_stream *istream = &source->stream;
-	uint32_t samples = source_bytes /
-			   audio_stream_sample_bytes(istream);
-	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
-			      samples;
 	int ret;
+
+	///!!! ADD COMMENT !!!
+	if (source_channels == sink_channels) {
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		assert(source_channels);
+		assert(sink_channels);
+
+		int frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
 
 	/* source buffer contains data copied by DMA */
 	audio_stream_invalidate(istream, source_bytes);
 
 	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, samples);
+	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
 
 	buffer_stream_writeback(sink, sink_bytes);
 
@@ -352,19 +365,33 @@ int dma_buffer_copy_from(struct comp_buffer *source,
 
 int dma_buffer_copy_to(struct comp_buffer *source,
 		       struct comp_buffer *sink,
-		       dma_process_func process, uint32_t sink_bytes)
+		       dma_process_func process, uint32_t sink_bytes, uint32_t chmap)
 {
+
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int source_bytes;
 	struct audio_stream *ostream = &sink->stream;
-	uint32_t samples = sink_bytes /
-			   audio_stream_sample_bytes(ostream);
-	uint32_t source_bytes = audio_stream_sample_bytes(&source->stream) *
-			      samples;
 	int ret;
+
+	///!!! ADD COMMENT !!!
+	if (source_channels == sink_channels) {
+		source_samples = sink_bytes / audio_stream_sample_bytes(ostream);
+		source_bytes = source_samples * audio_stream_sample_bytes(&source->stream);
+	} else {
+		assert(source_channels);
+		assert(sink_channels);
+
+		int frames = sink_bytes / audio_stream_frame_bytes(ostream);
+		source_bytes = audio_stream_frame_bytes(&source->stream) * frames;
+		source_samples = frames * source_channels;
+	}
 
 	buffer_stream_invalidate(source, source_bytes);
 
 	/* process data */
-	ret = process(&source->stream, 0, ostream, 0, samples);
+	ret = process(&source->stream, 0, ostream, 0, source_samples, chmap);
 
 	/* sink buffer contains data meant to copied to DMA */
 	audio_stream_writeback(ostream, sink_bytes);
@@ -381,17 +408,30 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 
 int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
 				    struct comp_buffer *sink,
-				    dma_process_func process, uint32_t source_bytes)
+				    dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
 	struct audio_stream *istream = &source->stream;
-	uint32_t samples = source_bytes /
-			   audio_stream_sample_bytes(istream);
-	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
-			      samples;
 	int ret;
 
+	///!!! ADD COMMENT !!!
+	if (source_channels == sink_channels) {
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		assert(source_channels);
+		assert(sink_channels);
+
+		int frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
+
 	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, samples);
+	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
 
 	buffer_stream_writeback(sink, sink_bytes);
 

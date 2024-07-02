@@ -164,6 +164,7 @@ static int copier_dai_init(struct comp_dev *dev,
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
+	uint32_t chmap;
 	struct dai_data *dd;
 	int ret;
 
@@ -178,6 +179,7 @@ static int copier_dai_init(struct comp_dev *dev,
 		config->frame_fmt = out_frame_fmt;
 		pipeline->sink_comp = dev;
 		cd->bsource_buffer = true;
+		chmap = copier->base.audio_fmt.ch_map;
 	} else {
 		enum sof_ipc_frame in_frame_fmt, in_valid_fmt;
 
@@ -187,6 +189,7 @@ static int copier_dai_init(struct comp_dev *dev,
 					    copier->base.audio_fmt.s_type);
 		config->frame_fmt = in_frame_fmt;
 		pipeline->source_comp = dev;
+		chmap = copier->out_fmt.ch_map;
 	}
 
 	/* save the channel map and count for ALH multi-gateway */
@@ -204,6 +207,8 @@ static int copier_dai_init(struct comp_dev *dev,
 	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)
 		goto free_dd;
+
+	dd->chmap = chmap;
 
 	pipeline->sched_id = config->id;
 
@@ -234,7 +239,6 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	struct comp_ipc_config *config = &dev->ipc_config;
 	int dai_index[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	union ipc4_connector_node_id node_id;
-	enum ipc4_gateway_type type;
 	struct ipc_config_dai dai;
 	int dai_count;
 	int i, ret;
@@ -255,13 +259,13 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	case ipc4_hda_link_input_class:
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
-		type = ipc4_gtw_link;
+		cd->gtw_type = ipc4_gtw_link;
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
-		type = ipc4_gtw_ssp;
+		cd->gtw_type = ipc4_gtw_ssp;
 		ret = ipc4_find_dma_config(&dai, (uint8_t *)cd->gtw_cfg,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
@@ -275,11 +279,11 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 #if ACE_VERSION > ACE_VERSION_1_5
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
-		type = ipc4_gtw_link;
+		cd->gtw_type = ipc4_gtw_link;
 #else
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
-		type = ipc4_gtw_alh;
+		cd->gtw_type = ipc4_gtw_alh;
 #endif /* ACE_VERSION > ACE_VERSION_1_5 */
 		ret = copier_alh_assign_dai_index(dev, cd->gtw_cfg, node_id,
 						  &dai, dai_index, &dai_count);
@@ -289,7 +293,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
-		type = ipc4_gtw_dmic;
+		cd->gtw_type = ipc4_gtw_dmic;
 		ret = ipc4_find_dma_config(&dai, (uint8_t *)cd->gtw_cfg,
 					   copier->gtw_cfg.config_length * 4);
 		if (ret != 0) {
@@ -304,7 +308,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 
 	for (i = 0; i < dai_count; i++) {
 		dai.dai_index = dai_index[i];
-		ret = copier_dai_init(dev, config, copier, pipeline, &dai, type, i,
+		ret = copier_dai_init(dev, config, copier, pipeline, &dai, cd->gtw_type, i,
 				      dai_count);
 		if (ret) {
 			comp_err(dev, "failed to create dai");
@@ -313,11 +317,11 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	}
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
-			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type,
-					   IPC4_DIRECTION(dai.direction));
+			get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, cd->gtw_type,
+					   IPC4_DIRECTION(dai.direction), 0x76543210);
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(dev, "failed to get converter type %d, dir %d",
-			 type, dai.direction);
+			 cd->gtw_type, dai.direction);
 		return -EINVAL;
 	}
 
@@ -454,34 +458,49 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params, int dai_index)
 {
 	struct sof_ipc_stream_params demuxed_params = *params;
-	const struct ipc4_audio_format *in_fmt = &cd->config.base.audio_fmt;
-	const struct ipc4_audio_format *out_fmt = &cd->config.out_fmt;
-	enum sof_ipc_frame in_bits, in_valid_bits, out_bits, out_valid_bits;
 	int container_size;
 	int j, ret;
 
+///comp_info(dev, "@@@ copier_dai_params()");
+
 	if (cd->endpoint_num == 1) {
+		int dma_buf_channels;
+		int dma_buf_container_bits, dma_buf_valid_bits;
+		struct ipc4_audio_format in_fmt = cd->config.base.audio_fmt;
+		struct ipc4_audio_format out_fmt = cd->config.out_fmt;
+		enum ipc4_direction_type dir;
+
 		ret = dai_common_params(cd->dd[0], dev, params);
 
-		/*
-		 * dai_zephyr_params assigns the conversion function
-		 * based on the input/output formats but does not take
-		 * the valid bits into account. So change the conversion
-		 * function if the valid bits are different from the
-		 * container size.
-		 */
-		audio_stream_fmt_conversion(in_fmt->depth,
-					    in_fmt->valid_bit_depth,
-					    &in_bits, &in_valid_bits,
-					    in_fmt->s_type);
-		audio_stream_fmt_conversion(out_fmt->depth,
-					    out_fmt->valid_bit_depth,
-					    &out_bits, &out_valid_bits,
-					    out_fmt->s_type);
+		/// !!! ADD COMMENT !!!
+		dma_buf_channels = audio_stream_get_channels(&cd->dd[0]->dma_buffer->stream);
+		dma_buf_container_bits = audio_stream_sample_bytes(&cd->dd[0]->dma_buffer->stream) * 8;
+		///!!! ACHTUNG: nobody seems using valid_fmt !!!
+		dma_buf_valid_bits = get_sample_bitdepth(audio_stream_get_frm_fmt(&cd->dd[0]->dma_buffer->stream));
 
-		if (in_bits != in_valid_bits || out_bits != out_valid_bits)
-			cd->dd[0]->process =
-				cd->converter[IPC4_COPIER_GATEWAY_PIN];
+		if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+			out_fmt.channels_count = dma_buf_channels;
+if (!(dma_buf_container_bits == out_fmt.depth && out_fmt.depth != out_fmt.valid_bit_depth)) {
+			out_fmt.depth = dma_buf_container_bits;
+			out_fmt.valid_bit_depth = dma_buf_valid_bits;
+}
+			dir = ipc4_playback;
+		} else {
+			in_fmt.channels_count = dma_buf_channels;
+if (!(dma_buf_container_bits == in_fmt.depth && in_fmt.depth != in_fmt.valid_bit_depth)) {
+			in_fmt.depth = dma_buf_container_bits;
+			in_fmt.valid_bit_depth = dma_buf_valid_bits;
+}
+			dir = ipc4_capture;
+		}
+
+///comp_err(dev, "@@@ %d %d %x", in_fmt.channels_count, out_fmt.channels_count, cd->dd[0]->chmap);
+
+		cd->dd[0]->process =
+			get_converter_func(&in_fmt, &out_fmt, cd->gtw_type, dir, cd->dd[0]->chmap);
+
+///comp_err(dev, "@@@ p %x", cd->dd[0]->process);
+
 		return ret;
 	}
 	/* For ALH multi-gateway case, params->channels is a total multiplexed
@@ -502,10 +521,10 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 
 	switch (container_size) {
 	case 2:
-		cd->dd[dai_index]->process = copy_single_channel_c16;
+		cd->dd[dai_index]->channel_copy = copy_single_channel_c16;
 		break;
 	case 4:
-		cd->dd[dai_index]->process = copy_single_channel_c32;
+		cd->dd[dai_index]->channel_copy = copy_single_channel_c32;
 		break;
 	default:
 		comp_err(dev, "Unexpected container size: %d", container_size);

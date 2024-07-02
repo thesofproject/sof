@@ -106,6 +106,10 @@ struct llp_slot_info {
 	uint32_t reg_offset;
 };
 
+typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int src_channel,
+				 struct audio_stream *dst, unsigned int dst_channel,
+				 unsigned int frames);
+
 /**
  * \brief DAI runtime data
  */
@@ -125,8 +129,11 @@ struct dai_data {
 	int xrun;				/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;		/* processing function */
+	uint32_t chmap;
 
-	uint32_t period_bytes;			/* number of bytes per one period */
+	channel_copy_func channel_copy;		/* !!! ADD COMMENT !!! */
+
+	uint32_t period_bytes;			/* number of DMA bytes per one period */
 	uint64_t total_data_processed;
 
 	struct ipc_config_dai ipc_config;	/* generic common config */
@@ -145,8 +152,6 @@ struct dai_data {
 
 	/* llp slot info in memory windows */
 	struct llp_slot_info slot_info;
-	/* save current sampling for current dai device */
-	uint32_t sampling;
 	/* fast mode, use one byte memory to save repreated cycles */
 	bool fast_mode;
 };
