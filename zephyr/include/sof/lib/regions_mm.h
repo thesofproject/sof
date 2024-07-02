@@ -36,7 +36,7 @@
  * either be spanned on specifically configured heap or have
  * individual configs with bigger block sizes.
  */
-#define MAX_MEMORY_ALLOCATORS_COUNT 8
+#define MAX_MEMORY_ALLOCATORS_COUNT 10
 
 /* vmh_get_default_heap_config() function will try to split the region
  * down the given count. Only applicable when API client did not

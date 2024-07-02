@@ -6,6 +6,16 @@
  */
 
 #include <zephyr/init.h>
+#include <sof/trace/trace.h>
+#include <zephyr/init.h>
+#include <zephyr/kernel.h>
+#include <zephyr/pm/policy.h>
+#include <version.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/cache.h>
+LOG_MODULE_REGISTER(vmh_allocator, CONFIG_SOF_LOG_LEVEL);
+
+extern struct tr_ctx zephyr_tr;
 
 #if defined(CONFIG_MM_DRV)
 #include <sof/lib/regions_mm.h>
@@ -451,6 +461,9 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 		}
 	}
 
+	tr_warn(&zephyr_tr, "alloc %zu from %zu @ %p", size, block_size, ptr);
+
+
 	/* If ptr is NULL it means we did not allocate anything and we should
 	 * break execution here
 	 */
@@ -617,8 +630,12 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	if (retval)
 		return retval;
 
+	tr_warn(&zephyr_tr, "free %zu @ %p", size_to_free, ptr);
+
+	sys_cache_data_flush_and_invd_range(ptr, size_to_free);
 	return vmh_unmap_region(heap->physical_blocks_allocators[mem_block_iter], ptr,
 				size_to_free);
+
 }
 
 /**
