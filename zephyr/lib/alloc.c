@@ -206,8 +206,6 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t 
 		heap->core_id = cpu_get_id();
 		mem = vmh_alloc(heap, bytes);
 	}
-	tr_warn(&zephyr_tr, "alloc %zu @ %p", bytes, mem);
-
 
 	if (!mem)
 		return NULL;

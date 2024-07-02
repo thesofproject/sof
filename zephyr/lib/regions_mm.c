@@ -461,6 +461,9 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 		}
 	}
 
+	tr_warn(&zephyr_tr, "alloc %zu from %zu @ %p", size, block_size, ptr);
+
+
 	/* If ptr is NULL it means we did not allocate anything and we should
 	 * break execution here
 	 */
