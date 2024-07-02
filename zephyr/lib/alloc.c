@@ -251,7 +251,7 @@ static const struct vmh_heap_config static_hp_buffers = {
 	{
 		{ 128, 32},
 		{ 512, 8},
-		{ 1024, 16},
+		{ 1024, 32},
 		{ 2048, 8},
 		{ 4096, 11},
 		{ 8192, 13},
