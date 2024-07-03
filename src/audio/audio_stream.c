@@ -207,7 +207,7 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 }
 
 /* get a handler to source API */
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 struct sof_source *audio_stream_get_source(struct audio_stream *audio_stream)
 {
 	return audio_stream->secondary_buffer_source ?
@@ -222,7 +222,7 @@ struct sof_sink *audio_stream_get_sink(struct audio_stream *audio_stream)
 			&audio_stream->_sink_api;
 }
 
-#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#else /* CONFIG_PIPELINE_2_0 */
 
 struct sof_source *audio_stream_get_source(struct audio_stream *audio_stream)
 {
@@ -233,4 +233,4 @@ struct sof_sink *audio_stream_get_sink(struct audio_stream *audio_stream)
 {
 	return &audio_stream->_sink_api;
 }
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
