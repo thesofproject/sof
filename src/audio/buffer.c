@@ -103,11 +103,12 @@ int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input)
 		return -EINVAL;
 	}
 
-	struct dp_queue *dp_queue =
-		dp_queue_create(source_get_min_available(&buffer->stream._source_api),
-				sink_get_min_free_space(&buffer->stream._sink_api),
-				buffer->is_shared ? DP_QUEUE_MODE_SHARED : DP_QUEUE_MODE_LOCAL,
-				buf_get_id(buffer), &buffer->stream.runtime_stream_params);
+	struct ring_buffer *dp_queue =
+		ring_buffer_create(source_get_min_available(&buffer->stream._source_api),
+				   sink_get_min_free_space(&buffer->stream._sink_api),
+				   buffer->is_shared ?
+					RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
+				   buf_get_id(buffer), &buffer->stream.runtime_stream_params);
 
 	if (!dp_queue)
 		return -ENOMEM;
@@ -134,7 +135,7 @@ int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit)
 		 * get data from dp_queue_sink (use source API)
 		 * copy to comp_buffer (use sink API)
 		 */
-		data_src = dp_queue_get_source(buffer->stream.dp_queue_sink);
+		data_src = ring_buffer_get_source(buffer->stream.dp_queue_sink);
 		data_dst = &buffer->stream._sink_api;
 	} else if (buffer->stream.dp_queue_source) {
 		/*
@@ -143,7 +144,7 @@ int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit)
 		 * copy to dp_queue_source (use sink API)
 		 */
 		data_src = &buffer->stream._source_api;
-		data_dst = dp_queue_get_sink(buffer->stream.dp_queue_source);
+		data_dst = ring_buffer_get_sink(buffer->stream.dp_queue_source);
 
 	} else {
 		return -EINVAL;
@@ -385,8 +386,8 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	dp_queue_free(buffer->stream.dp_queue_sink);
-	dp_queue_free(buffer->stream.dp_queue_source);
+	ring_buffer_free(buffer->stream.dp_queue_sink);
+	ring_buffer_free(buffer->stream.dp_queue_source);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	rfree(buffer->stream.addr);
 	rfree(buffer);

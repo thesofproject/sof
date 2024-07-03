@@ -16,8 +16,9 @@
 #include <sof/coherent.h>
 
 /**
- * DP queue is a lockless circular buffer
- * providing safe consumer/producer cached operations cross cores
+ * ring_buffer is a lockless async circular buffer
+ * providing safe consumer/producer cached operations cross cores that may be write/read
+ * at any time
  *
  * prerequisites:
  *  1) incoming and outgoing data rate MUST be the same
@@ -31,7 +32,7 @@
  *    - cycle0 buffer empty, producer starting processing, consumer must wait
  *    - cycle3 produce 3 bytes (buf occupation = 3)
  *    - cycle6 produce 3 bytes (buf occupation = 6), consumer becomes ready
- *		in DP thread will start now - asyn to LL cycles
+ *		in consumer thread will start now - asyn to producer cycles
  *		in this example assuming it consumes data in next cycle
  *    - cycle7 consume 5 bytes, (buf occupation = 1)
  *    - cycle9 produce 3 bytes (buf occupation = 4)
@@ -59,15 +60,14 @@
  * The queue may work in 2 modes
  * 1) local mode
  *    in case both receiver and sender are located on the same core and cache coherency
- *    does not matter. dp_queue structure is located in cached memory
- *    In this case DP Queue is a simple ring buffer
+ *    does not matter. ring_buffer structure is located in cached memory
  *
  * 2) shared mode
  *    In this case we need to writeback cache when new data arrive and invalidate cache on
- *    secondary core. dp_queue structure is located in shared memory
+ *    secondary core. ring_buffer structure is located in shared memory
  *
  *
- * dpQueue is a lockless consumer/producer safe buffer. It is achieved by having only 2 shared
+ * ring_buffer is a lockless consumer/producer safe buffer. It is achieved by having only 2 shared
  * variables:
  *  _write_offset - can be modified by data producer only
  *  _read_offset - can be modified by data consumer only
@@ -96,22 +96,22 @@
  *		always means "buffer full"
  */
 
-struct dp_queue;
+struct ring_buffer;
 struct sof_audio_stream_params;
 
-/* DP flags */
-#define DP_QUEUE_MODE_LOCAL 0
-#define DP_QUEUE_MODE_SHARED BIT(1)
+/* buffer flags */
+#define RING_BUFFER_MODE_LOCAL 0
+#define RING_BUFFER_MODE_SHARED BIT(1)
 
-/* the dpQueue structure */
-struct dp_queue {
+/* the ring_buffer structure */
+struct ring_buffer {
 	CORE_CHECK_STRUCT_FIELD;
 
 	/* public: read only */
 
 	/* note!
-	 * as dpQueue is currently used as a shadow for comp_buffer only for DP components,
-	 * the audio_stream_params vector must be shared between comp_buffer and dp_queue
+	 * as ring_buffer is currently used as a shadow for comp_buffer only for DP components,
+	 * the audio_stream_params vector must be shared between comp_buffer and ring_buffer
 	 * the audio_stream_params pointer should point to the proper comp_buffer structure
 	 *
 	 * to be changed to the structure itself when pipeline2.0 is introduced
@@ -123,7 +123,7 @@ struct dp_queue {
 	struct sof_source _source_api;  /**< src api handler */
 	struct sof_sink _sink_api;      /**< sink api handler */
 
-	uint32_t _flags;		/* DP_QUEUE_MODE_* */
+	uint32_t _flags;		/* RING_BUFFER_MODE_* */
 
 	uint8_t __sparse_cache *_data_buffer;
 	size_t _write_offset;		/* private: to be modified by data producer using API */
@@ -135,64 +135,65 @@ struct dp_queue {
 /**
  *
  * @param min_available  minimum data available in queue required by the module using
- *			 dp_queue's source api
+ *			 ring_buffer's source api
  * @param min_free_space minimum buffer space in queue required by the module using
- *			 dp_queue's sink api
+ *			 ring_buffer's sink api
  *
- * @param flags a combinatin of DP_QUEUE_MODE_* flags determining working mode
+ * @param flags a combinatin of RING_BUFFER_MODE_* flags determining working mode
  *
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
  *
- * @param audio_stream_params pointer to audio params vector, shared between dp_queue and
+ * @param audio_stream_params pointer to audio params vector, shared between ring_buffer and
  *			      comp_buffer for dp modules
  *
  */
-struct dp_queue *dp_queue_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				 uint32_t id, struct sof_audio_stream_params *audio_stream_params);
+struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
+				       uint32_t id,
+				       struct sof_audio_stream_params *audio_stream_params);
 
 /**
- * @brief remove the queue from the list, free dp queue memory
+ * @brief remove the queue from the list, free memory
  */
 static inline
-void dp_queue_free(struct dp_queue *dp_queue)
+void ring_buffer_free(struct ring_buffer *ring_buffer)
 {
-	if (!dp_queue)
+	if (!ring_buffer)
 		return;
-	CORE_CHECK_STRUCT(dp_queue);
-	rfree((__sparse_force void *)dp_queue->_data_buffer);
-	rfree(dp_queue);
+	CORE_CHECK_STRUCT(ring_buffer);
+	rfree((__sparse_force void *)ring_buffer->_data_buffer);
+	rfree(ring_buffer);
 }
 
 /**
- * @brief return a handler to sink API of dp_queue.
+ * @brief return a handler to sink API of ring_buffer.
  *		  the handler may be used by helper functions defined in sink_api.h
  */
 static inline
-struct sof_sink *dp_queue_get_sink(struct dp_queue *dp_queue)
+struct sof_sink *ring_buffer_get_sink(struct ring_buffer *ring_buffer)
 {
-	CORE_CHECK_STRUCT(dp_queue);
-	return &dp_queue->_sink_api;
+	CORE_CHECK_STRUCT(ring_buffer);
+	return &ring_buffer->_sink_api;
 }
 
 /**
- * @brief return a handler to source API of dp_queue
+ * @brief return a handler to source API of ring_buffer
  *		  the handler may be used by helper functions defined in source_api.h
  */
 static inline
-struct sof_source *dp_queue_get_source(struct dp_queue *dp_queue)
+struct sof_source *ring_buffer_get_source(struct ring_buffer *ring_buffer)
 {
-	CORE_CHECK_STRUCT(dp_queue);
-	return &dp_queue->_source_api;
+	CORE_CHECK_STRUCT(ring_buffer);
+	return &ring_buffer->_source_api;
 }
 
 /**
  * @brief return true if the queue is shared between 2 cores
  */
 static inline
-bool dp_queue_is_shared(struct dp_queue *dp_queue)
+bool ring_buffer_is_shared(struct ring_buffer *ring_buffer)
 {
-	CORE_CHECK_STRUCT(dp_queue);
-	return !!(dp_queue->_flags & DP_QUEUE_MODE_SHARED);
+	CORE_CHECK_STRUCT(ring_buffer);
+	return !!(ring_buffer->_flags & RING_BUFFER_MODE_SHARED);
 }
 
 #endif /* __SOF_RING_BUFFER_H__ */

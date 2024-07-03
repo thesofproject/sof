@@ -211,14 +211,14 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 struct sof_source *audio_stream_get_source(struct audio_stream *audio_stream)
 {
 	return audio_stream->dp_queue_source ?
-			dp_queue_get_source(audio_stream->dp_queue_source) :
+			ring_buffer_get_source(audio_stream->dp_queue_source) :
 			&audio_stream->_source_api;
 }
 
 struct sof_sink *audio_stream_get_sink(struct audio_stream *audio_stream)
 {
 	return audio_stream->dp_queue_sink ?
-			dp_queue_get_sink(audio_stream->dp_queue_sink) :
+			ring_buffer_get_sink(audio_stream->dp_queue_sink) :
 			&audio_stream->_sink_api;
 }
 
