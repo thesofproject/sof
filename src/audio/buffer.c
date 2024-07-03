@@ -95,7 +95,7 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 	return buffer;
 }
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
 				   struct sof_audio_buffer *secondary_buffer)
 {
@@ -153,7 +153,7 @@ int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit)
 	err = source_to_sink_copy(data_src, data_dst, true, to_copy);
 	return err;
 }
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 
 struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
 				       uint32_t flags, uint32_t align, bool is_shared)
@@ -377,10 +377,10 @@ void buffer_free(struct comp_buffer *buffer)
 
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 	audio_buffer_free(buffer->stream.secondary_buffer_sink);
 	audio_buffer_free(buffer->stream.secondary_buffer_source);
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 	rfree(buffer->stream.addr);
 	rfree(buffer);
 }

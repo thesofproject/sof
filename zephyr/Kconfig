@@ -43,6 +43,14 @@ config DMA_DOMAIN_SEM_LIMIT
 	  that SEM_LIMIT covers the maximum number of tasks your system will be
 	  executing at some point (worst case).
 
+config PIPELINE_2_0
+	bool "Enable pipeline 2.0 changes"
+	depends on IPC_MAJOR_4
+	default y if ACE
+	help
+	  This flag enables changes to new pipeline structure, known as pipeline2_0
+	  It is required for certain new features, like DP_SCHEDULER.
+
 config ZEPHYR_DP_SCHEDULER
 	bool "use Zephyr thread based DP scheduler"
 	default y if ACE
@@ -50,6 +58,7 @@ config ZEPHYR_DP_SCHEDULER
 	depends on IPC_MAJOR_4
 	depends on ZEPHYR_SOF_MODULE
 	depends on ACE
+	depends on PIPELINE_2_0
 	help
 	  Enable Data Processing preemptive scheduler based on
 	  Zephyr preemptive threads.

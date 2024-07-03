@@ -902,7 +902,7 @@ out:
 	return ret;
 }
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 {
 	/*
@@ -960,12 +960,12 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 	}
 	return 0;
 }
-#else
+#else /* CONFIG_PIPELINE_2_0 */
 static inline int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 {
 	return -ENOTSUP;
 }
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 
 static int module_adapter_sink_source_copy(struct comp_dev *dev)
 {

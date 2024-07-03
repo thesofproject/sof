@@ -190,7 +190,7 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
 				       uint32_t flags, uint32_t align, bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_PIPELINE_2_0
 /*
  * attach a secondary buffer (any type) before buffer (when at_input == true) or behind a buffer
  *
@@ -228,7 +228,7 @@ int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
  *		secondary buffer in an operation
  */
 int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit);
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#endif /* CONFIG_PIPELINE_2_0 */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
 int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
 			  uint32_t alignment);
