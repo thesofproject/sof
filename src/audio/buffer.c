@@ -386,8 +386,8 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	ring_buffer_free(buffer->stream.dp_queue_sink);
-	ring_buffer_free(buffer->stream.dp_queue_source);
+	ring_buffer_free_legacy(buffer->stream.dp_queue_sink);
+	ring_buffer_free_legacy(buffer->stream.dp_queue_source);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	rfree(buffer->stream.addr);
 	rfree(buffer);
