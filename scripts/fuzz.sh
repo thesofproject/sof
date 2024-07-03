@@ -34,7 +34,7 @@ with the -b option.
 
 Simple wrapper around a libfuzzer test run, as much for
 documentation as direct use.  The idea here is really simple: build
-for the Zephyr "native_posix" board (which is a just a x86
+for the Zephyr "native_sim" board (which is a just a x86
 executable for the build host, not an emulated device) and run the
 resulting zephyr.exe file.  This specifies a "fuzz_corpus" directory
 to save the seeds that produce useful coverage output for use in
@@ -124,7 +124,7 @@ main()
   (set -x
    # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
    # the last 'VAL UE2' wins. Previous ones are silently ignored.
-  west build -d build-fuzz -b native_posix "$SOF_TOP"/app/ -- \
+  west build -d build-fuzz -b native_sim "$SOF_TOP"/app/ -- \
       "${fuzz_configs[@]}" "$@"
   )
 
