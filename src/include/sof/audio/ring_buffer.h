@@ -10,6 +10,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_stream.h>
+#include <sof/audio/audio_buffer.h>
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <ipc/topology.h>
@@ -105,7 +106,7 @@ struct sof_audio_stream_params;
 
 /* the ring_buffer structure */
 struct ring_buffer {
-	CORE_CHECK_STRUCT_FIELD;
+	struct sof_audio_buffer audio_buffer;
 
 	/* public: read only */
 
@@ -118,10 +119,6 @@ struct ring_buffer {
 	 */
 	struct sof_audio_stream_params *audio_stream_params;
 	size_t data_buffer_size;
-
-	/* private: */
-	struct sof_source _source_api;  /**< src api handler */
-	struct sof_sink _sink_api;      /**< sink api handler */
 
 	uint32_t _flags;		/* RING_BUFFER_MODE_* */
 
@@ -148,14 +145,13 @@ struct ring_buffer {
  *
  */
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				       uint32_t id,
-				       struct sof_audio_stream_params *audio_stream_params);
+				 uint32_t id, struct sof_audio_stream_params *audio_stream_params);
 
 /**
  * @brief remove the queue from the list, free memory
  */
 static inline
-void ring_buffer_free(struct ring_buffer *ring_buffer)
+void ring_buffer_free_legacy(struct ring_buffer *ring_buffer)
 {
 	if (!ring_buffer)
 		return;
@@ -171,8 +167,8 @@ void ring_buffer_free(struct ring_buffer *ring_buffer)
 static inline
 struct sof_sink *ring_buffer_get_sink(struct ring_buffer *ring_buffer)
 {
-	CORE_CHECK_STRUCT(ring_buffer);
-	return &ring_buffer->_sink_api;
+	CORE_CHECK_STRUCT(ring_buffer->audio_buffer);
+	return &ring_buffer->audio_buffer._sink_api;
 }
 
 /**
@@ -182,18 +178,8 @@ struct sof_sink *ring_buffer_get_sink(struct ring_buffer *ring_buffer)
 static inline
 struct sof_source *ring_buffer_get_source(struct ring_buffer *ring_buffer)
 {
-	CORE_CHECK_STRUCT(ring_buffer);
-	return &ring_buffer->_source_api;
-}
-
-/**
- * @brief return true if the queue is shared between 2 cores
- */
-static inline
-bool ring_buffer_is_shared(struct ring_buffer *ring_buffer)
-{
-	CORE_CHECK_STRUCT(ring_buffer);
-	return !!(ring_buffer->_flags & RING_BUFFER_MODE_SHARED);
+	CORE_CHECK_STRUCT(ring_buffer->audio_buffer);
+	return &ring_buffer->audio_buffer._source_api;
 }
 
 #endif /* __SOF_RING_BUFFER_H__ */
