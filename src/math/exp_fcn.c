@@ -11,6 +11,7 @@
 #include <sof/math/numbers.h>
 #include <sof/common.h>
 #include <rtos/bit.h>
+#include <rtos/symbol.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -258,6 +259,7 @@ int32_t sofm_exp_fixed(int32_t x)
 
 	return y;
 }
+EXPORT_SYMBOL(sofm_exp_fixed);
 
 #endif /* EXPONENTIAL_GENERIC */
 
@@ -284,3 +286,4 @@ int32_t sofm_db2lin_fixed(int32_t db)
 	arg = (int32_t)Q_MULTSR_32X32((int64_t)db, SOFM_EXP_LOG10_DIV20_Q27, 24, 27, 27);
 	return sofm_exp_fixed(arg);
 }
+EXPORT_SYMBOL(sofm_db2lin_fixed);
