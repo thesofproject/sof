@@ -9,6 +9,7 @@
 #define __SOF_AUDIO_BUFFER_H__
 
 #include <sof/audio/audio_stream.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/numbers.h>
 #include <sof/common.h>
@@ -191,37 +192,42 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 /*
- * create a shadow dp_queue buffer before buffer (when at_input == true) or behind a buffer
+ * attach a secondary buffer (any type) before buffer (when at_input == true) or behind a buffer
  *
  * before buffer (at_input == true):
- *  DP mod ==> (sink_API) shadow dp_queue ==> comp_buffer (audio_stream or source API) ==> LL mod
+ *  2.0 mod ==> (sink_API) secondary buffer ==>
+ *			==> comp_buffer (audio_stream or source API) ==> 1.0 mod
  *
  * after buffer (at_input == false):
- *  LL mod ==> (audio_stream or sink API) ==> comp_buffer ==> shadow dp_queue (source API) == DP mod
+ *  1.0 mod ==> (audio_stream or sink API) ==> comp_buffer ==>
+ *			==> secondary buffer(source API) == 2.0 mod
  *
- * If a shadow buffer is created, it replaces source or sink interface of audio_stream
- * allowing the module connected to it using all properties of dp_queue (like
- * lockless cross-core connection) keeping legacy interface to other modules
+ * If a secondary buffer is attached, it replaces source or sink interface of audio_stream
+ * allowing the module connected to it using all properties of secondary buffer (like
+ * lockless cross-core connection in case of ring_buffer etc.) keeping legacy interface
+ * to other modules
  *
- * buffer_sync_shadow_dp_queue must be called every 1 ms to move data to/from
- * shadow dp_queue to comp_buffer
+ * buffer_sync_secondary_buffer must be called every 1 ms to move data to/from
+ * secondary buffer to comp_buffer
  *
  * @param buffer pointer to a buffer
- * @param at_input true indicates that a shadow buffer is located at data input, replacing
+ * @param at_input true indicates that a secondary buffer is located at data input, replacing
  *			sink API of audio_stream
- *		   false indicates that a shadow buffer is located at data output, replacing
+ *		   false indicates that a secondary buffer is located at data output, replacing
  *			source API of audio_stream
+ * @param secondary_buffer pointer to a buffer to be attached
  */
-int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input);
+int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
+				   struct sof_audio_buffer *secondary_buffer);
 
 /*
- * move data from/to shadow buffer, must be called periodically as described above
+ * move data from/to secondary buffer, must be called periodically as described above
  *
  * @param buffer pointer to a buffer
- * @param limit data copy limit. Indicates maximum amount of data that will be moved from/to shadow
- *		buffer in an operation
+ * @param limit data copy limit. Indicates maximum amount of data that will be moved from/to
+ *		secondary buffer in an operation
  */
-int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit);
+int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
 int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,

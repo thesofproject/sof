@@ -7,7 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/audio/ring_buffer.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
@@ -96,55 +96,47 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 }
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-int buffer_create_shadow_dp_queue(struct comp_buffer *buffer, bool at_input)
+int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
+				   struct sof_audio_buffer *secondary_buffer)
 {
-	if (buffer->stream.dp_queue_sink || buffer->stream.dp_queue_source) {
-		buf_err(buffer, "Only one shadow dp_queue may be attached to a buffer");
+	if (buffer->stream.secondary_buffer_sink || buffer->stream.secondary_buffer_source) {
+		buf_err(buffer, "Only one secondary buffer may be attached to a buffer");
 		return -EINVAL;
 	}
-
-	struct ring_buffer *dp_queue =
-		ring_buffer_create(source_get_min_available(&buffer->stream._source_api),
-				   sink_get_min_free_space(&buffer->stream._sink_api),
-				   buffer->is_shared ?
-					RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
-				   buf_get_id(buffer), &buffer->stream.runtime_stream_params);
-
-	if (!dp_queue)
-		return -ENOMEM;
-
 	if (at_input)
-		buffer->stream.dp_queue_sink = dp_queue;
+		buffer->stream.secondary_buffer_sink = secondary_buffer;
 	else
-		buffer->stream.dp_queue_source = dp_queue;
+		buffer->stream.secondary_buffer_source = secondary_buffer;
 
-	buf_info(buffer, "dp_queue attached to buffer as a shadow, at_input: %u", at_input);
+	buf_info(buffer, "ring_buffer attached to buffer as a secondary, at_input: %u", at_input);
 	return 0;
 }
 
-int buffer_sync_shadow_dp_queue(struct comp_buffer *buffer, size_t limit)
+int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit)
 {
 	int err;
 
 	struct sof_source *data_src;
 	struct sof_sink *data_dst;
 
-	if (buffer->stream.dp_queue_sink) {
+	if (buffer->stream.secondary_buffer_sink) {
 		/*
-		 * comp_buffer sink API is shadowed, that means there's a dp_queue at data input
-		 * get data from dp_queue_sink (use source API)
+		 * comp_buffer sink API is shadowed, that means there's a secondary_buffer
+		 * at data input
+		 * get data from secondary_buffer (use source API)
 		 * copy to comp_buffer (use sink API)
 		 */
-		data_src = ring_buffer_get_source(buffer->stream.dp_queue_sink);
+		data_src = audio_buffer_get_source(buffer->stream.secondary_buffer_sink);
 		data_dst = &buffer->stream._sink_api;
-	} else if (buffer->stream.dp_queue_source) {
+	} else if (buffer->stream.secondary_buffer_source) {
 		/*
-		 * comp_buffer source API is shadowed, that means there's a dp_queue at data output
+		 * comp_buffer source API is shadowed, that means there's a secondary_buffer
+		 * at data output
 		 * get data from comp_buffer (use source API)
-		 * copy to dp_queue_source (use sink API)
+		 * copy to secondary_buffer (use sink API)
 		 */
 		data_src = &buffer->stream._source_api;
-		data_dst = ring_buffer_get_sink(buffer->stream.dp_queue_source);
+		data_dst = audio_buffer_get_sink(buffer->stream.secondary_buffer_source);
 
 	} else {
 		return -EINVAL;
@@ -386,8 +378,8 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	ring_buffer_free_legacy(buffer->stream.dp_queue_sink);
-	ring_buffer_free_legacy(buffer->stream.dp_queue_source);
+	audio_buffer_free(buffer->stream.secondary_buffer_sink);
+	audio_buffer_free(buffer->stream.secondary_buffer_source);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	rfree(buffer->stream.addr);
 	rfree(buffer);

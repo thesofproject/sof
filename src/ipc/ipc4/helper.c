@@ -7,6 +7,8 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/audio_buffer.h>
+#include <sof/audio/ring_buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
@@ -542,12 +544,29 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	source_set_min_available(audio_stream_get_source(&buffer->stream), ibs);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
+	struct ring_buffer *ring_buffer = NULL;
+
+	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		ring_buffer =
+			ring_buffer_create(source_get_min_available(&buffer->stream._source_api),
+					   sink_get_min_free_space(&buffer->stream._sink_api),
+					   buffer->is_shared ?
+						RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
+					   buf_get_id(buffer),
+					   &buffer->stream.runtime_stream_params);
+		if (!ring_buffer)
+			goto free;
+	}
+
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data destination module needs to use dp_queue */
-		buffer_create_shadow_dp_queue(buffer, false /* at_input = false */);
+		/* data destination module needs to use ring_buffer */
+		buffer_attach_secondary_buffer(buffer, false /* at_input = false */,
+					       &ring_buffer->audio_buffer);
 	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data source module needs to use dp_queue */
-		buffer_create_shadow_dp_queue(buffer, true /* at_input = true */);
+		/* data source module needs to use ring_buffer */
+		buffer_attach_secondary_buffer(buffer, true /* at_input = true */,
+					       &ring_buffer->audio_buffer);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been

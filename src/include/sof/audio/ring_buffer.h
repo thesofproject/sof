@@ -147,39 +147,4 @@ struct ring_buffer {
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
 				 uint32_t id, struct sof_audio_stream_params *audio_stream_params);
 
-/**
- * @brief remove the queue from the list, free memory
- */
-static inline
-void ring_buffer_free_legacy(struct ring_buffer *ring_buffer)
-{
-	if (!ring_buffer)
-		return;
-	CORE_CHECK_STRUCT(ring_buffer);
-	rfree((__sparse_force void *)ring_buffer->_data_buffer);
-	rfree(ring_buffer);
-}
-
-/**
- * @brief return a handler to sink API of ring_buffer.
- *		  the handler may be used by helper functions defined in sink_api.h
- */
-static inline
-struct sof_sink *ring_buffer_get_sink(struct ring_buffer *ring_buffer)
-{
-	CORE_CHECK_STRUCT(ring_buffer->audio_buffer);
-	return &ring_buffer->audio_buffer._sink_api;
-}
-
-/**
- * @brief return a handler to source API of ring_buffer
- *		  the handler may be used by helper functions defined in source_api.h
- */
-static inline
-struct sof_source *ring_buffer_get_source(struct ring_buffer *ring_buffer)
-{
-	CORE_CHECK_STRUCT(ring_buffer->audio_buffer);
-	return &ring_buffer->audio_buffer._source_api;
-}
-
 #endif /* __SOF_RING_BUFFER_H__ */

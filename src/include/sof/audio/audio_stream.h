@@ -64,8 +64,17 @@ struct audio_stream {
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	struct ring_buffer *dp_queue_sink; /** sink API for an additional buffer at data in */
-	struct ring_buffer *dp_queue_source; /**< source API for an additional buffer at out */
+	/**
+	 * sink API of an additional buffer
+	 * of any type at data input
+	 */
+	struct sof_audio_buffer *secondary_buffer_sink;
+
+	/**
+	 * source API of an additional buffer
+	 * at data output
+	 */
+	struct sof_audio_buffer *secondary_buffer_source;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	/* runtime stream params */
