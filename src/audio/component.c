@@ -474,14 +474,14 @@ int comp_copy(struct comp_dev *dev)
 	 *
 	 * DP components (modules) require two stage processing:
 	 *
-	 *   LL_mod -> [comp_buffer -> dp_queue] -> dp_mod -> [dp_queue -> comp_buffer] -> LL_mod
+	 *   LL_mod -> [comp_buffer->ring_buffer] -> dp_mod -> [ring_buffer ->comp_buffer] -> LL_mod
 	 *
 	 *  - in first step (it means - now) the pipeline must copy source data from comp_buffer
-	 *    to dp_queue and result data from dp_queue to comp_buffer
+	 *    to ring_buffer and result data from ring_buffer to comp_buffer
 	 *
 	 *  - second step will be performed by a thread specific to the DP module - DP module
-	 *    will take data from input dpQueue (using source API) , process it
-	 *    and put in output DP queue (using sink API)
+	 *    will take data from input ring_buffer (using source API), process it
+	 *    and put in output ring_buffer (using sink API)
 	 *
 	 * this allows the current pipeline structure to see a DP module as a "normal" LL
 	 *

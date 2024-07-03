@@ -16,7 +16,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
-#include <sof/audio/ring_buffer.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/platform.h>
@@ -903,10 +903,10 @@ out:
 }
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-static int module_adapter_copy_dp_queues(struct comp_dev *dev)
+static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 {
 	/*
-	 * copy data from component audio streams to dp_queue
+	 * copy data from component audio streams to ring_buffer
 	 * DP module processing itself will take place in DP thread
 	 * This is an adapter, to be removed when pipeline2.0 is ready
 	 */
@@ -916,11 +916,11 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 
 	list_for_item(blist, &dev->bsource_list) {
 		/* input - we need to copy data from audio_stream (as source)
-		 * to dp_queue (as sink)
+		 * to ring_buffer (as sink)
 		 */
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, sink_list);
-		err = buffer_sync_shadow_dp_queue(buffer, UINT_MAX);
+		err = buffer_sync_secondary_buffer(buffer, UINT_MAX);
 
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
@@ -932,7 +932,7 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		return 0;
 
 	list_for_item(blist, &dev->bsink_list) {
-		/* output - we need to copy data from dp_queue (as source)
+		/* output - we need to copy data from ring_buffer (as source)
 		 * to audio_stream (as sink)
 		 *
 		 * a trick is needed there:
@@ -949,7 +949,7 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		struct sof_source *following_mod_data_source =
 				audio_stream_get_source(&buffer->stream);
 
-		err = buffer_sync_shadow_dp_queue
+		err = buffer_sync_secondary_buffer
 			(buffer,
 			 source_get_min_available(following_mod_data_source));
 
@@ -961,7 +961,7 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 	return 0;
 }
 #else
-static inline int module_adapter_copy_dp_queues(struct comp_dev *dev)
+static inline int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 {
 	return -ENOTSUP;
 }
@@ -1110,7 +1110,7 @@ int module_adapter_copy(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-			return module_adapter_copy_dp_queues(dev);
+			return module_adapter_copy_ring_buffers(dev);
 		else
 			return module_adapter_sink_source_copy(dev);
 
