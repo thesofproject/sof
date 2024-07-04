@@ -33,7 +33,7 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 * reset so omitting setting also fir->delay to NULL.
 	 */
 }
-EXPORT_SYMBOL(fir_reset);
+LL_EXTENSION_SYMBOL(fir_reset);
 
 int fir_delay_size(struct sof_fir_coef_data *config)
 {
@@ -49,7 +49,7 @@ int fir_delay_size(struct sof_fir_coef_data *config)
 	 */
 	return (config->length + 2) * sizeof(int32_t);
 }
-EXPORT_SYMBOL(fir_delay_size);
+LL_EXTENSION_SYMBOL(fir_delay_size);
 
 int fir_init_coef(struct fir_state_32x16 *fir,
 		  struct sof_fir_coef_data *config)
@@ -65,7 +65,7 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 	fir->coef = (ae_p16x2s *)&config->coef[0];
 	return 0;
 }
-EXPORT_SYMBOL(fir_init_coef);
+LL_EXTENSION_SYMBOL(fir_init_coef);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
@@ -74,7 +74,7 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 	fir->rwp = (ae_p24x2f *)(fir->delay + fir->length - 1);
 	*data += fir->length; /* Point to next delay line start */
 }
-EXPORT_SYMBOL(fir_init_delay);
+LL_EXTENSION_SYMBOL(fir_init_delay);
 
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 		      int *rshift)
@@ -82,7 +82,7 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 	*lshift = (fir->out_shift < 0) ? -fir->out_shift : 0;
 	*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
 }
-EXPORT_SYMBOL(fir_get_lrshifts);
+LL_EXTENSION_SYMBOL(fir_get_lrshifts);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
@@ -156,6 +156,7 @@ void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int ls
 	a = AE_SRAAQ56(AE_SLLASQ56S(a, lshift), rshift);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y, 0);
 }
+LL_EXTENSION_SYMBOL(fir_32x16_hifiep);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
@@ -249,5 +250,6 @@ void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(b), (ae_q32s *)y1, 0);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y0, 0);
 }
+LL_EXTENSION_SYMBOL(fir_32x16_2x_hifiep);
 
 #endif
