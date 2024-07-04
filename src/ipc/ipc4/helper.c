@@ -377,7 +377,7 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shar
  * disable any interrupts.
  */
 
-#define ll_block(cross_core_bind) \
+#define ll_block(cross_core_bind, flags) \
 	do { \
 		if (cross_core_bind) \
 			domain_block(sof_get()->platform_timer_domain); \
@@ -385,7 +385,7 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shar
 			irq_local_disable(flags); \
 	} while (0)
 
-#define ll_unblock(cross_core_bind) \
+#define ll_unblock(cross_core_bind, flags) \
 	do { \
 		if (cross_core_bind) \
 			domain_unblock(sof_get()->platform_timer_domain); \
@@ -423,8 +423,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #else
 
-#define ll_block(cross_core_bind)	irq_local_disable(flags)
-#define ll_unblock(cross_core_bind)	irq_local_enable(flags)
+#define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
+#define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)
 
 #endif
 
@@ -436,7 +436,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *sink;
 	struct ipc4_base_module_cfg source_src_cfg;
 	struct ipc4_base_module_cfg sink_src_cfg;
-	uint32_t flags;
+	uint32_t flags = 0;
 	uint32_t ibs = 0;
 	uint32_t obs = 0;
 	uint32_t buf_size;
@@ -573,7 +573,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
-	ll_block(cross_core_bind);
+	ll_block(cross_core_bind, flags);
 
 	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
@@ -625,7 +625,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
-	ll_unblock(cross_core_bind);
+	ll_unblock(cross_core_bind, flags);
 
 	return IPC4_SUCCESS;
 
@@ -636,7 +636,7 @@ e_src_bind:
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	ll_unblock(cross_core_bind);
+	ll_unblock(cross_core_bind, flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -653,7 +653,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_dev *src, *sink;
 	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
-	uint32_t flags;
+	uint32_t flags = 0;
 	int ret, ret1;
 	bool cross_core_unbind;
 
@@ -700,24 +700,24 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * IPC or IDC task getting preempted which could result in buffers being only half connected
 	 * when a pipeline task gets executed.
 	 */
-	ll_block(cross_core_unbind);
+	ll_block(cross_core_unbind, flags);
 
 	if (cross_core_unbind) {
 #if CONFIG_CROSS_CORE_STREAM
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(src->ipc_config.core))
 			if (ll_wait_finished_on_core(src) < 0) {
-				ll_unblock(cross_core_unbind);
+				ll_unblock(cross_core_unbind, flags);
 				return IPC4_FAILURE;
 			}
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0) {
-				ll_unblock(cross_core_unbind);
+				ll_unblock(cross_core_unbind, flags);
 				return IPC4_FAILURE;
 			}
 #else
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		ll_unblock(cross_core_unbind);
+		ll_unblock(cross_core_unbind, flags);
 		return IPC4_FAILURE;
 #endif
 	}
@@ -728,7 +728,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ret = comp_unbind(src, bu);
 	ret1 = comp_unbind(sink, bu);
 
-	ll_unblock(cross_core_unbind);
+	ll_unblock(cross_core_unbind, flags);
 
 	buffer_free(buffer);
 
