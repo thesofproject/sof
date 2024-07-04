@@ -1,3 +1,7 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
 	REM # Multiband-DRC module config
 	[[module.entry]]
 	name = "MB_DRC"
@@ -5,7 +9,7 @@
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
