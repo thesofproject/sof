@@ -968,7 +968,7 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 				    "-e", "-c", str(rimage_cfg),
 				    "-k", str(signing_key), "-l", "-r",
 				    str(llext_input)]
-			execute_command(sign_cmd, cwd=west_top)
+			subprocess.run(sign_cmd, cwd=west_top)
 
 			# An intuitive way to make this multiline would be
 			# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
