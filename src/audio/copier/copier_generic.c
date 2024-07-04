@@ -61,7 +61,7 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params)
 {
-	struct comp_buffer *sink, *source;
+	struct comp_buffer *sink;
 	struct list_item *sink_list;
 
 	memset(params, 0, sizeof(*params));
@@ -88,19 +88,6 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 		j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
 		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);
-	}
-
-	/*
-	 * force update the source buffer format to cover cases where the source module
-	 * fails to set the sink buffer params
-	 */
-	if (!list_is_empty(&dev->bsource_list)) {
-		struct ipc4_audio_format *in_fmt;
-
-		source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-
-		in_fmt = &cd->config.base.audio_fmt;
-		ipc4_update_buffer_format(source, in_fmt);
 	}
 
 	/* update params for the DMA buffer */
