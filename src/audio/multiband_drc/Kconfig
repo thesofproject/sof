@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_MULTIBAND_DRC
-	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC = y
-	bool "Multiband Dynamic Range Compressor component"
+	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
+	tristate "Multiband Dynamic Range Compressor component"
 	select CORDIC_FIXED
 	select COMP_BLOB
 	default n

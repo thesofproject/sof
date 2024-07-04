@@ -869,11 +869,17 @@ if(NOT CONFIG_COMP_DRC STREQUAL "n")
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
-	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
-	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
-	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
-)
+if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/multiband_drc/llext
+			 ${PROJECT_BINARY_DIR}/multiband_drc_llext)
+	add_dependencies(app multiband_drc)
+elseif(CONFIG_COMP_MULTIBAND_DRC)
+	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
+		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
