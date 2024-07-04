@@ -3,6 +3,7 @@
 config COMP_IIR
 	tristate "IIR component"
 	select COMP_BLOB
+	default m if METEORLAKE
 	default y
 	depends on COMP_MODULE_ADAPTER
 	select MATH_IIR_DF1
