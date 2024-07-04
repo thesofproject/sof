@@ -156,6 +156,7 @@ void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int ls
 	a = AE_SRAAQ56(AE_SLLASQ56S(a, lshift), rshift);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y, 0);
 }
+EXPORT_SYMBOL(fir_32x16_hifiep);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
@@ -249,5 +250,6 @@ void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(b), (ae_q32s *)y1, 0);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y0, 0);
 }
+EXPORT_SYMBOL(fir_32x16_2x_hifiep);
 
 #endif

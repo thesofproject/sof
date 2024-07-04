@@ -162,6 +162,7 @@ void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y,
 	a = AE_SLAA64S(a, shift);
 	AE_S32_L_I(AE_ROUND32F48SSYM(a), (ae_int32 *)y, 0);
 }
+EXPORT_SYMBOL(fir_32x16_hifi3);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q

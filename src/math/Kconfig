@@ -170,7 +170,7 @@ choice "FILTER_SIMD_LEVEL_SELECT"
 endchoice
 
 config MATH_FIR
-	bool "FIR filter library"
+	tristate "FIR filter library"
 	default n
 	help
 	  This option builds FIR (Finite Impulse Response) filter library. It

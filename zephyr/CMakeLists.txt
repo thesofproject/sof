@@ -685,11 +685,17 @@ elseif(CONFIG_COMP_IIR)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_MATH_FIR
-	${SOF_MATH_PATH}/fir_generic.c
-	${SOF_MATH_PATH}/fir_hifi2ep.c
-	${SOF_MATH_PATH}/fir_hifi3.c
-)
+if(CONFIG_MATH_FIR STREQUAL "m")
+	add_subdirectory(${SOF_MATH_PATH}/fir_llext
+			 ${PROJECT_BINARY_DIR}/fir_llext)
+	add_dependencies(app fir)
+elseif(CONFIG_MATH_FIR)
+	zephyr_library_sources(
+		${SOF_MATH_PATH}/fir_generic.c
+		${SOF_MATH_PATH}/fir_hifi2ep.c
+		${SOF_MATH_PATH}/fir_hifi3.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
 	${SOF_MATH_PATH}/iir_df1_generic.c

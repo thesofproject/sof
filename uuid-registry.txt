@@ -72,6 +72,7 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 5150c0e6-27f9-4ec8-8351c705b642d12f eq_iir
 889f6dcd-ddcd-4e05-aa5b0d39f8bca961 esai
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
+93446e12-1864-4e04-afe03b1d778ffb79 fir
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
 c3c74249-058e-414f-82404da5f3fc2389 google_hotword
 bf0e1bbc-dc6a-45fe-bc902554cb137ab4 google_ctc_audio_processing
