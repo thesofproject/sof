@@ -21,6 +21,18 @@
 	} \
 }
 
+#define SOF_LLEXT_AUX_MANIFEST(manifest_name, entry, mod_uuid) \
+{ \
+	.module = { \
+		.name = manifest_name, \
+		.uuid = mod_uuid, \
+		.entry_point = (uint32_t)(entry), \
+		.type = { \
+			.load_type = SOF_MAN_MOD_TYPE_LLEXT_AUX, \
+		}, \
+	} \
+}
+
 #define SOF_LLEXT_MOD_ENTRY(name, interface) \
 static const struct module_interface *name##_llext_entry(void *mod_cfg, \
 					void *parent_ppl, void **mod_ptr) \
