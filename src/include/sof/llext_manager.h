@@ -18,7 +18,8 @@ struct comp_ipc_config;
 
 static inline bool module_is_llext(const struct sof_man_module *mod)
 {
-	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
+	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT ||
+		mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX;
 }
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
