@@ -958,14 +958,20 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
-	${SOF_AUDIO_PATH}/tdfb/tdfb.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
-)
+if(CONFIG_COMP_TDFB STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/tdfb/llext
+			 ${PROJECT_BINARY_DIR}/tdfb_llext)
+	add_dependencies(app tdfb)
+elseif(CONFIG_COMP_TDFB)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/tdfb/tdfb.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
 	${SOF_MATH_PATH}/sqrt_int16.c
