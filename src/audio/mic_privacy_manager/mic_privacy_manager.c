@@ -2,9 +2,9 @@
 //
 // Copyright(c) 2023 Intel Corporation. All rights reserved.
 
-
-#include "sof/audio/mic_privacy_manager.h"
-
+#include <sof/audio/audio_stream.h>
+#include <sof/audio/buffer.h>
+#include <sof/audio/mic_privacy_manager.h>
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/mic_privacy.h>
@@ -86,16 +86,6 @@ void handle_dmic_interrupt(void *const self, int a, int b)
 {
 	LOG_INF("mic_privacy handle_dmic_interrupt");
 	//TODO
-}
-
-void mic_priv_get_disable_stat(int num)
-{
-
-	uint32_t mic_disable_status = mic_privacy_api->get_fw_managed_mic_disable_status();
-
-	if(mbu_mic_stat != mic_disable_status)
-		LOG_INF("mic_priv_get_disable_stat(%d) = 0x%x STATE CHANGE", num, mic_disable_status);
-
 }
 
 void handle_fw_managed_interrupt(void * const dev)
@@ -243,7 +233,7 @@ void mic_privacy_process(struct mic_privacy_data *mic_priv, struct comp_buffer *
 
 		if (mic_priv->max_ramp_time_in_ms > 0) {
 			//gain_input(buffer, &mic_priv->mic_priv_gain_params, &mic_priv->mic_priv_gain_coefs_ioctl, copy_bytes);
-			data_zeroing(buffer); //Gain temporarily disabled
+			buffer_zero(buffer); //Gain temporarily disabled
 		}
 	}
 	else if (mic_priv->mic_privacy_state == FADE_OUT){
@@ -261,11 +251,11 @@ void mic_privacy_process(struct mic_privacy_data *mic_priv, struct comp_buffer *
 		if (mic_priv->max_ramp_time_in_ms > 0) {
 			//LOG_INF("FADE_OUT dmic_gain_input ramp time ms = %d", mic_priv->max_ramp_time_in_ms);
 			//gain_input(buffer, &mic_priv->mic_priv_gain_params, &mic_priv->mic_priv_gain_coefs_ioctl, copy_bytes);
-			data_zeroing(buffer); //Gain temporarily disabled
+			buffer_zero(buffer); //Gain temporarily disabled
 		}
 	}
 	else if (mic_priv->mic_privacy_state == MUTED) {
-		data_zeroing(buffer);
+		buffer_zero(buffer);
 	}
 }
 

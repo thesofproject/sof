@@ -7,6 +7,8 @@
 #include <rtos/atomic.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/mic_privacy_manager.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/dma.h>
@@ -19,6 +21,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <module/module/base.h>
+#include "../audio/copier/copier.h"
 
 LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 

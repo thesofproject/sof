@@ -97,7 +97,4 @@ void mic_privacy_process(struct mic_privacy_data *mic_priv, struct comp_buffer *
 void mic_priv_gain_input(uint8_t *buff, uint32_t buff_size,  uint32_t mic_priv_state,
 					const struct ipc4_audio_format *in_fmt);
 
-void mic_priv_get_disable_stat(int num);
-
-
 #endif /* ADSP_FW_MIC_PRIVACY_MANAGER_H */
