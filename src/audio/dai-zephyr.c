@@ -309,7 +309,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE  &&
 			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
-				ret = stream_copy_from_no_consume(dd->local_buffer, sink,
+				ret = stream_copy_from_no_consume(dev, dd->local_buffer, sink,
 								  converter[j], bytes, dd->chmap);
 			}
 		}
@@ -322,7 +322,8 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		 * The PCM converter functions used during DMA buffer copy can never fail,
 		 * so no need to check the return value of stream_copy_from_no_consume().
 		 */
-		ret = stream_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
+
+		ret = stream_copy_from_no_consume(dev, dd->dma_buffer, dd->local_buffer,
 						  dd->process, bytes, dd->chmap);
 #if CONFIG_IPC_MAJOR_4
 		/* Apply gain to the local buffer */
@@ -369,7 +370,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 				    audio_buffer_hw_params_configured(&sink->audio_buffer))
-					ret = stream_copy_from_no_consume(dd->dma_buffer,
+					ret = stream_copy_from_no_consume(dev, dd->dma_buffer,
 									  sink, converter[j],
 									  bytes, dd->chmap);
 			}

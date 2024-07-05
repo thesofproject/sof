@@ -34,6 +34,7 @@
 #endif
 
 struct comp_buffer;
+struct comp_dev;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
@@ -550,7 +551,8 @@ int dma_buffer_copy_to(struct comp_buffer __sparse_cache *source,
  * conversion function. DMA buffer consume should be performed after the data has been copied
  * to all sinks.
  */
-int stream_copy_from_no_consume(struct comp_buffer __sparse_cache *source,
+int stream_copy_from_no_consume(struct comp_dev *dev,
+				struct comp_buffer __sparse_cache *source,
 				struct comp_buffer __sparse_cache *sink,
 				dma_process_func process,
 				uint32_t source_bytes, uint32_t chmap);
