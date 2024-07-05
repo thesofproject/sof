@@ -28,6 +28,10 @@
 #include <rimage/sof/user/manifest.h>
 #include "copier/copier_gain.h"
 
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#endif
+
 struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];
@@ -98,6 +102,18 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 #ifdef CONFIG_SOC_INTEL_ACE30
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
+#endif
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	struct privacy_capabilities priv_caps;
+
+	tuple = tlv_next(tuple);
+
+	priv_caps.privacy_version = 1;
+	priv_caps.capabilities_length = 1;
+	priv_caps.capabilities[0] = mic_privacy_get_policy_register();
+
+	tlv_value_set(tuple, IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG, sizeof(priv_caps), &priv_caps);
 #endif
 
 	tuple = tlv_next(tuple);
