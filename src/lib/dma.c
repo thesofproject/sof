@@ -7,6 +7,10 @@
 #include <rtos/atomic.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#endif
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/dma.h>
@@ -20,6 +24,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <module/module/base.h>
+#include "../audio/copier/copier.h"
 
 LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 
@@ -453,7 +459,8 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 	return ret;
 }
 
-int stream_copy_from_no_consume(struct comp_buffer *source, struct comp_buffer *sink,
+int stream_copy_from_no_consume(struct comp_dev *dev, struct comp_buffer *source,
+				struct comp_buffer *sink,
 				dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
 	int source_channels = audio_stream_get_channels(&source->stream);
@@ -500,6 +507,14 @@ int stream_copy_from_no_consume(struct comp_buffer *source, struct comp_buffer *
 
 	/* process data */
 	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	struct processing_module *mod = comp_mod(dev);
+	struct copier_data *cd = module_get_private_data(mod);
+
+	if (cd->mic_priv)
+		mic_privacy_process(dev, cd->mic_priv, sink, source_samples);
+#endif
 
 	buffer_stream_writeback(sink, sink_bytes);
 
