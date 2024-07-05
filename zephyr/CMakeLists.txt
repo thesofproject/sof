@@ -905,6 +905,10 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
        boot_test.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_MICROPHONE_PRIVACY
+	${SOF_AUDIO_PATH}/mic_privacy_manager/mic_privacy_manager.c
+)
+
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 

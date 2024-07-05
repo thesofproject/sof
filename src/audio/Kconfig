@@ -71,6 +71,16 @@ config IPC4_GATEWAY
 	  host and DSP without using DMA: via memory window (audio payload) and
 	  IPC4 messages (set/get/flush commands).
 
+config MICROPHONE_PRIVACY
+	bool "microphone privacy"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Audio privacy feature allows end user to directly control if user space
+	  applications receive actual data from input devices (microphones).
+	  The control is bypassing application level settings or operating system
+	  controls (like audio endpoint volume).
+
 rsource "up_down_mixer/Kconfig"
 
 config COMP_BLOB

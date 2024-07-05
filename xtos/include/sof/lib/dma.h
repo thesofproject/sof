@@ -542,7 +542,7 @@ int dma_buffer_copy_from(struct comp_buffer *source,
  * conversion function. DMA buffer consume should be performed after the data has been copied
  * to all sinks.
  */
-int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
+int dma_buffer_copy_from_no_consume(struct comp_dev *dev, struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    dma_process_func process, uint32_t source_bytes);
 

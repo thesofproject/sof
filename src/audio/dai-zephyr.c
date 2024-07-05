@@ -278,7 +278,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		 * The PCM converter functions used during DMA buffer copy can never fail,
 		 * so no need to check the return value of dma_buffer_copy_from_no_consume().
 		 */
-		ret = dma_buffer_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
+		ret = dma_buffer_copy_from_no_consume(dev, dd->dma_buffer, dd->local_buffer,
 						      dd->process, bytes);
 #if CONFIG_IPC_MAJOR_4
 		struct list_item *sink_list;
@@ -317,7 +317,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				}
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE)
-					ret = dma_buffer_copy_from_no_consume(dd->dma_buffer,
+					ret = dma_buffer_copy_from_no_consume(dev, dd->dma_buffer,
 									      sink, converter[j],
 									      bytes);
 			}

@@ -32,6 +32,8 @@
 #include <sof/compiler_attributes.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/pcm_converter.h>
+#include <sof/lib/notifier.h>
+#include <sof/audio/mic_privacy_manager.h>
 
 static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
 
@@ -259,6 +261,7 @@ struct copier_data {
 	uint32_t channels[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	uint32_t chan_map[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	struct ipcgtw_data *ipcgtw_data;
+	struct mic_privacy_data *mic_priv;
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
@@ -280,4 +283,6 @@ enum sof_ipc_stream_direction
 
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params);
+
+void mic_privacy_event(void *arg, enum notify_id type, void *data);
 #endif
