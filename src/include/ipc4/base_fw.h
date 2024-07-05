@@ -399,7 +399,9 @@ enum ipc4_hw_config_params {
 	/* Size of a single memory bank (EBB) in bytes */
 	IPC4_EBB_SIZE_BYTES_HW_CFG        = 9,
 	/* UAOL capabilities */
-	IPC4_UAOL_CAPS_HW_CFG            = 10
+	IPC4_UAOL_CAPS_HW_CFG            = 10,
+	/* Mic privacy capabilities */
+	IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG = 11
 };
 
 enum ipc4_memory_type {
