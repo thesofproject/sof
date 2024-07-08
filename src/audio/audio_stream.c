@@ -7,7 +7,7 @@
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
-#include <sof/audio/dp_queue.h>
+#include <sof/audio/ring_buffer.h>
 
 static size_t audio_stream_get_free_size(struct sof_sink *sink)
 {

@@ -4,8 +4,8 @@
  *
  */
 
-#ifndef __SOF_DP_QUEUE_H__
-#define __SOF_DP_QUEUE_H__
+#ifndef __SOF_RING_BUFFER_H__
+#define __SOF_RING_BUFFER_H__
 
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
@@ -195,4 +195,4 @@ bool dp_queue_is_shared(struct dp_queue *dp_queue)
 	return !!(dp_queue->_flags & DP_QUEUE_MODE_SHARED);
 }
 
-#endif /* __SOF_DP_QUEUE_H__ */
+#endif /* __SOF_RING_BUFFER_H__ */
