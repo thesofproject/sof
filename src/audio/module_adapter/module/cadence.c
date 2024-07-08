@@ -16,11 +16,11 @@
 #include <ipc/compress_params.h>
 #include <rtos/init.h>
 
-LOG_MODULE_REGISTER(cadence, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(cadence_codec, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(cadence_codec);
 
-DECLARE_TR_CTX(cadence_tr, SOF_UUID(cadence_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(cadence_codec_tr, SOF_UUID(cadence_codec_uuid), LOG_LEVEL_INFO);
 
 enum cadence_api_id {
 	CADENCE_CODEC_WRAPPER_ID	= 0x01,
@@ -909,7 +909,7 @@ cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_i
 	return 0;
 }
 
-static const struct module_interface cadence_interface = {
+static const struct module_interface cadence_codec_interface = {
 	.init = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process_raw_data = cadence_codec_process,
@@ -918,5 +918,5 @@ static const struct module_interface cadence_interface = {
 	.free = cadence_codec_free
 };
 
-DECLARE_MODULE_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);
-SOF_MODULE_INIT(cadence, sys_comp_module_cadence_interface_init);
+DECLARE_MODULE_ADAPTER(cadence_codec_interface, cadence_codec_uuid, cadence_codec_tr);
+SOF_MODULE_INIT(cadence_codec, sys_comp_module_cadence_codec_interface_init);
