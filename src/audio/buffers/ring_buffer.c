@@ -7,15 +7,15 @@
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
 
-#include <sof/audio/dp_queue.h>
+#include <sof/audio/ring_buffer.h>
 
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
 
-LOG_MODULE_REGISTER(dp_queue, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(ring_buffer, CONFIG_SOF_LOG_LEVEL);
 
-SOF_DEFINE_REG_UUID(dp_queue);
-DECLARE_TR_CTX(dp_queue_tr, SOF_UUID(dp_queue_uuid), LOG_LEVEL_INFO);
+SOF_DEFINE_REG_UUID(ring_buffer);
+DECLARE_TR_CTX(dp_queue_tr, SOF_UUID(ring_buffer_uuid), LOG_LEVEL_INFO);
 
 static inline uint8_t __sparse_cache *dp_queue_buffer_end(struct dp_queue *dp_queue)
 {
