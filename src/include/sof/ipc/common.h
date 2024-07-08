@@ -27,7 +27,10 @@ struct ipc_msg;
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
-	(object).hdr.size == sizeof(object) ? 0 : 1
+	((object).hdr.size != sizeof(object))
+
+#define IPC_TAIL_IS_SIZE_INVALID(object)					\
+	((object).comp.hdr.size + (object).comp.ext_data_length < sizeof(object))
 
 /* ipc trace context, used by multiple units */
 extern struct tr_ctx ipc_tr;
