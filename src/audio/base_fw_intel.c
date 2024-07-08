@@ -351,6 +351,18 @@ static int basefw_set_fw_config(bool first_block,
 	return 0;
 }
 
+static int basefw_set_mic_priv_policy(bool first_block,
+				      bool last_block,
+				      uint32_t data_offset_or_size,
+				      const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 int basefw_vendor_set_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -361,6 +373,8 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
+	case IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK:
+		return basefw_set_mic_priv_policy(first_block, last_block, data_offset, data);
 	default:
 		break;
 	}
