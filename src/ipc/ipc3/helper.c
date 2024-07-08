@@ -215,6 +215,8 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_SG_HOST:
 	case SOF_COMP_DAI:
 	case SOF_COMP_SG_DAI:
+		if (IPC_TAIL_IS_SIZE_INVALID(*file))
+			return -EBADMSG;
 		config->file.channels = file->channels;
 		config->file.fn = file->fn;
 		config->file.frame_fmt = file->frame_fmt;
@@ -225,18 +227,24 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 #else
 	case SOF_COMP_HOST:
 	case SOF_COMP_SG_HOST:
+		if (IPC_TAIL_IS_SIZE_INVALID(*host))
+			return -EBADMSG;
 		config->host.direction = host->direction;
 		config->host.no_irq = host->no_irq;
 		config->host.dmac_config = host->dmac_config;
 		break;
 	case SOF_COMP_DAI:
 	case SOF_COMP_SG_DAI:
+		if (IPC_TAIL_IS_SIZE_INVALID(*dai))
+			return -EBADMSG;
 		config->dai.dai_index = dai->dai_index;
 		config->dai.direction = dai->direction;
 		config->dai.type = dai->type;
 		break;
 #endif
 	case SOF_COMP_VOLUME:
+		if (IPC_TAIL_IS_SIZE_INVALID(*vol))
+			return -EBADMSG;
 		config->volume.channels = vol->channels;
 		config->volume.initial_ramp = vol->initial_ramp;
 		config->volume.max_value = vol->max_value;
@@ -244,11 +252,15 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		config->volume.ramp = vol->ramp;
 		break;
 	case SOF_COMP_SRC:
+		if (IPC_TAIL_IS_SIZE_INVALID(*src))
+			return -EBADMSG;
 		config->src.rate_mask = src->rate_mask;
 		config->src.sink_rate = src->sink_rate;
 		config->src.source_rate = src->source_rate;
 		break;
 	case SOF_COMP_TONE:
+		if (IPC_TAIL_IS_SIZE_INVALID(*tone))
+			return -EBADMSG;
 		config->tone.ampl_mult = tone->ampl_mult;
 		config->tone.amplitude = tone->amplitude;
 		config->tone.freq_mult = tone->freq_mult;
@@ -260,6 +272,8 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		config->tone.sample_rate = tone->sample_rate;
 		break;
 	case SOF_COMP_ASRC:
+		if (IPC_TAIL_IS_SIZE_INVALID(*asrc))
+			return -EBADMSG;
 		config->asrc.source_rate = asrc->source_rate;
 		config->asrc.sink_rate = asrc->sink_rate;
 		config->asrc.asynchronous_mode = asrc->asynchronous_mode;
@@ -276,6 +290,12 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_SMART_AMP:
 	case SOF_COMP_MODULE_ADAPTER:
 	case SOF_COMP_NONE:
+		if (IPC_TAIL_IS_SIZE_INVALID(*proc))
+			return -EBADMSG;
+
+		if (proc->comp.hdr.size + proc->comp.ext_data_length > SOF_IPC_MSG_MAX_SIZE)
+			return -EBADMSG;
+
 		config->process.type = proc->type;
 		config->process.size = proc->size;
 #if CONFIG_LIBRARY || UNIT_TEST
