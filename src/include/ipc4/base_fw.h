@@ -288,6 +288,9 @@ enum ipc4_basefw_params {
 
 	/* Use LARGE_CONFIG_SET to change SDW ownership */
 	IPC4_SDW_OWNERSHIP = 31,
+
+	/* Set policy mask for mic privacy in FW managed mode */
+	IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK = 36,
 };
 
 enum ipc4_fw_config_params {
